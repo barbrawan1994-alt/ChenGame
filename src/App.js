@@ -2621,16 +2621,16 @@ const [pendingTask, setPendingTask] = useState(null);
     }
     
     // 🔥 [升级] 使用精致SVG模型生成器
-    // 计算合适的尺寸 - 减小尺寸避免遮挡状态栏
+    // 计算合适的尺寸 - 增大尺寸让精灵更明显
     const getModelSize = () => {
       // 尝试从不同场景获取容器大小
       if (typeof window !== 'undefined') {
-        // 战斗场景 - 减小尺寸
+        // 战斗场景 - 增大尺寸
         const battleContainer = document.querySelector('.sprite-v2');
         if (battleContainer) {
           const containerWidth = battleContainer.offsetWidth || 180;
-          // 减小到70%，确保不遮挡状态栏
-          return Math.min(containerWidth * 0.7, 120);
+          // 增大到85%，让精灵更明显
+          return Math.min(containerWidth * 0.85, 160);
         }
         // 图鉴/背包场景
         const smallContainer = document.querySelector('.pet-avatar-img, .pet-avatar-emoji');
@@ -2639,7 +2639,7 @@ const [pendingTask, setPendingTask] = useState(null);
           return Math.max(containerWidth, 36);
         }
       }
-      return 120; // 默认大小（战斗场景）- 减小了
+      return 160; // 默认大小（战斗场景）- 增大了
     };
     
     try {

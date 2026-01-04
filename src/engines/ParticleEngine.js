@@ -218,6 +218,66 @@ export class CanvasParticleSystem {
     }
   }
 
+  // 创建火花粒子
+  createSparkParticles(count = 50, x, y, color = '#FFD700') {
+    this.createParticles(count, x, y, {
+      color,
+      size: 3,
+      speed: 5,
+      life: 1.0,
+      gravity: 0
+    });
+  }
+
+  // 创建火焰粒子
+  createFireParticles(count = 30, x, y) {
+    const colors = ['#FF6B6B', '#FF8E8E', '#FFD93D', '#FF4444'];
+    for (let i = 0; i < count; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      this.createParticles(1, x, y, {
+        color,
+        size: 4,
+        speed: 3,
+        life: 1.0,
+        gravity: 0.1
+      });
+    }
+  }
+
+  // 创建水花粒子
+  createWaterParticles(count = 40, x, y) {
+    const colors = ['#4ECDC4', '#6EDDD6', '#A8E6CF'];
+    for (let i = 0; i < count; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 5 + 2;
+      this.createParticles(1, x, y, {
+        color,
+        size: 3,
+        speed,
+        life: 1.0,
+        gravity: 0.2
+      });
+    }
+  }
+
+  // 创建电光粒子
+  createElectricParticles(count = 60, x, y) {
+    const colors = ['#FFE66D', '#FFF89C', '#FFFFFF'];
+    for (let i = 0; i < count; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 8 + 3;
+      this.createParticles(1, x, y, {
+        color,
+        size: 2,
+        speed,
+        life: 1.0,
+        gravity: 0
+      });
+    }
+  }
+
   // 更新粒子
   update() {
     if (!this.ctx) return;
@@ -289,33 +349,66 @@ export class CanvasParticleSystem {
 export const ParticlePresets = {
   // 技能释放效果
   skillCast: (system, x, y, type) => {
+    if (!system || typeof system.createParticles !== 'function') {
+      console.warn('Particle system not initialized properly');
+      return;
+    }
+    
     switch (type) {
       case 'FIRE':
-        system.createFireParticles(50, x, y);
+        if (system.createFireParticles) {
+          system.createFireParticles(50, x, y);
+        } else {
+          system.createParticles(50, x, y, { color: '#FF6B6B', size: 4, speed: 3, gravity: 0.1 });
+        }
         break;
       case 'WATER':
-        system.createWaterParticles(60, x, y);
+        if (system.createWaterParticles) {
+          system.createWaterParticles(60, x, y);
+        } else {
+          system.createParticles(60, x, y, { color: '#4ECDC4', size: 3, speed: 5, gravity: 0.2 });
+        }
         break;
       case 'ELECTRIC':
-        system.createElectricParticles(70, x, y);
+        if (system.createElectricParticles) {
+          system.createElectricParticles(70, x, y);
+        } else {
+          system.createParticles(70, x, y, { color: '#FFE66D', size: 2, speed: 8, gravity: 0 });
+        }
         break;
       default:
-        system.createSparkParticles(40, x, y);
+        if (system.createSparkParticles) {
+          system.createSparkParticles(40, x, y);
+        } else {
+          system.createParticles(40, x, y, { color: '#FFD700', size: 3, speed: 5 });
+        }
     }
   },
 
   // 伤害数字效果
   damageNumber: (system, x, y, isCritical = false) => {
+    if (!system || typeof system.createParticles !== 'function') return;
+    
     const count = isCritical ? 80 : 50;
-    const color = isCritical ? 0xFF4444 : 0xFFD700;
-    system.createSparkParticles(count, x, y, color);
+    const color = isCritical ? '#FF4444' : '#FFD700';
+    if (system.createSparkParticles) {
+      system.createSparkParticles(count, x, y, color);
+    } else {
+      system.createParticles(count, x, y, { color, size: 3, speed: 5 });
+    }
   },
 
   // 胜利效果
   victory: (system, x, y) => {
+    if (!system || typeof system.createParticles !== 'function') return;
+    
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
-        system.createSparkParticles(30, x, y, 0xFFD700);
+        if (system.createSparkParticles) {
+          system.createSparkParticles(30, x, y, '#FFD700');
+        } else {
+          system.createParticles(30, x, y, { color: '#FFD700', size: 3, speed: 5 });
+        }
       }, i * 100);
     }
   }
