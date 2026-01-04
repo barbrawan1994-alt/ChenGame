@@ -2589,7 +2589,7 @@ const [pendingTask, setPendingTask] = useState(null);
     };
   };
   
-  const renderAvatar = (pet) => {
+  const renderAvatar = (pet, isEnemy = false) => {
     if (!pet) return null;
     const visual = generatePetVisual(pet);
     
@@ -2621,16 +2621,21 @@ const [pendingTask, setPendingTask] = useState(null);
     }
     
     // 🔥 [升级] 使用精致SVG模型生成器
-    // 计算合适的尺寸 - 增大尺寸让精灵更明显
-    const getModelSize = () => {
+    // 计算合适的尺寸 - 根据位置调整大小体现远近感
+    const getModelSize = (isEnemyParam = false) => {
       // 尝试从不同场景获取容器大小
       if (typeof window !== 'undefined') {
-        // 战斗场景 - 增大尺寸
+        // 战斗场景 - 根据敌我调整大小
         const battleContainer = document.querySelector('.sprite-v2');
         if (battleContainer) {
           const containerWidth = battleContainer.offsetWidth || 180;
-          // 增大到85%，让精灵更明显
-          return Math.min(containerWidth * 0.85, 160);
+          if (isEnemyParam) {
+            // 敌方（远处）- 稍小一些
+            return Math.min(containerWidth * 0.75, 140);
+          } else {
+            // 我方（近处）- 更大一些
+            return Math.min(containerWidth * 0.95, 180);
+          }
         }
         // 图鉴/背包场景
         const smallContainer = document.querySelector('.pet-avatar-img, .pet-avatar-emoji');
@@ -2639,11 +2644,11 @@ const [pendingTask, setPendingTask] = useState(null);
           return Math.max(containerWidth, 36);
         }
       }
-      return 160; // 默认大小（战斗场景）- 增大了
+      return isEnemyParam ? 140 : 180; // 默认大小（敌方小，我方大）
     };
     
     try {
-      const modelSize = getModelSize();
+      const modelSize = getModelSize(isEnemy);
       const svgModel = generatePetModel(pet, modelSize);
       
       if (svgModel) {
@@ -11533,6 +11538,70 @@ const renderMenu = () => {
             <div className="battle-scene-layer" style={{width: '100%', height: '100%', position: 'relative'}}>
                 
                 {/* ========================================== */}
+                {/* 战斗场景装饰元素 */}
+                {/* ========================================== */}
+                {/* 远景装饰 - 云朵 */}
+                <div className="battle-decor-clouds" style={{
+                    position: 'absolute',
+                    top: '5%',
+                    left: '0%',
+                    width: '100%',
+                    height: '30%',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    opacity: 0.4
+                }}>
+                    <div style={{position: 'absolute', fontSize: '80px', left: '10%', top: '10%', animation: 'float 8s ease-in-out infinite'}}>☁️</div>
+                    <div style={{position: 'absolute', fontSize: '60px', left: '50%', top: '5%', animation: 'float 10s ease-in-out infinite', animationDelay: '1s'}}>☁️</div>
+                    <div style={{position: 'absolute', fontSize: '70px', left: '80%', top: '15%', animation: 'float 9s ease-in-out infinite', animationDelay: '2s'}}>☁️</div>
+                </div>
+
+                {/* 中景装饰 - 地面元素 */}
+                <div className="battle-decor-ground" style={{
+                    position: 'absolute',
+                    bottom: '30%',
+                    left: '0%',
+                    width: '100%',
+                    height: '20%',
+                    pointerEvents: 'none',
+                    zIndex: 2,
+                    opacity: 0.3
+                }}>
+                    <div style={{position: 'absolute', fontSize: '40px', left: '15%', bottom: '0%', animation: 'float 6s ease-in-out infinite'}}>🌿</div>
+                    <div style={{position: 'absolute', fontSize: '35px', left: '45%', bottom: '0%', animation: 'float 7s ease-in-out infinite', animationDelay: '0.5s'}}>🌱</div>
+                    <div style={{position: 'absolute', fontSize: '50px', left: '70%', bottom: '0%', animation: 'float 5s ease-in-out infinite', animationDelay: '1s'}}>🌿</div>
+                    <div style={{position: 'absolute', fontSize: '30px', left: '85%', bottom: '0%', animation: 'float 8s ease-in-out infinite', animationDelay: '1.5s'}}>🌱</div>
+                </div>
+
+                {/* 光效装饰 */}
+                <div className="battle-decor-lights" style={{
+                    position: 'absolute',
+                    top: '0%',
+                    left: '0%',
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    background: 'radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(255,255,255,0.08) 0%, transparent 50%)',
+                    animation: 'battle-glow 8s ease-in-out infinite'
+                }} />
+
+                {/* 粒子装饰 */}
+                <div className="battle-decor-particles" style={{
+                    position: 'absolute',
+                    top: '0%',
+                    left: '0%',
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    backgroundImage: 'radial-gradient(1px 1px at 25% 25%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 75% 75%, rgba(255,255,255,0.2), transparent)',
+                    backgroundSize: '200% 200%',
+                    animation: 'battle-particles 15s linear infinite',
+                    opacity: 0.5
+                }} />
+                
+                {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角) */}
                 {/* ========================================== */}
                 <div className="enemy-zone-v2" style={{position: 'absolute', top: '10%', right: '10%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
@@ -11565,8 +11634,8 @@ const renderMenu = () => {
                         {renderPartyIndicators(battle.enemyParty)}
                     </div>
 
-                    {/* 敌方精灵图片 - 减小尺寸避免遮挡 */}
-                    <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(0.85)', transformOrigin: 'center bottom', marginRight: '15px'}}>
+                    {/* 敌方精灵图片 - 远处效果（较小） */}
+                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', transform: 'scale(0.75)', transformOrigin: 'center bottom', marginRight: '15px', opacity: 0.95}}>
                         {battle.isTrainer && (
                             <div className="trainer-avatar-wrapper" style={{
                                 position: 'absolute', bottom: '25px', right: '-35px', zIndex: -1, opacity: 0.9, transition: '0.3s'
@@ -11590,7 +11659,7 @@ const renderMenu = () => {
                                 animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
                                            ? 'shiny-flash-body 0.5s' : 'none'
                             }}>
-                            {renderAvatar(e)}
+                            {renderAvatar(e, true)}
                         </div>
                         {/* 技能释放特效 */}
                         {animEffect && animEffect.target === 'enemy' && animEffect.type !== 'SHINY_ENTRY' && ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE'].includes(animEffect.type) && (
@@ -11627,8 +11696,8 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 <div className="player-zone-v2" style={{position: 'absolute', bottom: '25%', left: '10%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
-                    {/* 我方精灵图片 - 使用增强动画组件 */}
-                    <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(1.0)', transformOrigin: 'center bottom', marginBottom: '10px', marginLeft: '20px'}}>
+                    {/* 我方精灵图片 - 近处效果（较大） */}
+                    <div className="sprite-wrapper player-sprite-wrapper" style={{position: 'relative', transform: 'scale(1.15)', transformOrigin: 'center bottom', marginBottom: '10px', marginLeft: '20px'}}>
                          <div 
                              ref={(el) => {
                                  if (el && !el.dataset.animated) {

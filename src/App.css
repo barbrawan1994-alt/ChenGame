@@ -513,29 +513,31 @@ button:active { transform: scale(0.96); }
   50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
 }
 
-/* 敌我区域 - 调整位置避免遮挡 */
+/* 敌我区域 - 调整位置和大小体现远近感 */
 .enemy-zone-v2 { 
   position: absolute; 
   top: 8%; 
-  right: 8%; 
+  right: 5%; 
   display: flex; 
   align-items: flex-end; 
   gap: 10px; 
-  transform: scale(0.9);
+  transform: scale(0.85);
   z-index: 10;
+  opacity: 0.95;
 }
 
 .player-zone-v2 { 
   position: absolute; 
-  bottom: 30%; 
-  left: 8%; 
+  bottom: 28%; 
+  left: 5%; 
   display: flex; 
   align-items: flex-end; 
   gap: 10px;
   z-index: 10;
+  transform: scale(1.0);
 }
 
-/* 精灵大图 - 精致版（增大尺寸让精灵更明显） */
+/* 精灵大图 - 精致版（根据远近调整大小） */
 .sprite-v2 {
   width: 180px; 
   height: 180px; 
@@ -556,10 +558,24 @@ button:active { transform: scale(0.96); }
   transform: scale(1.05);
 }
 
-.player-zone-v2 .sprite-v2 { 
-  width: 200px; 
-  height: 200px; 
-  font-size: 140px; 
+/* 我方精灵（近处）- 更大 */
+.player-zone-v2 .sprite-v2,
+.player-sprite-wrapper .sprite-v2 { 
+  width: 220px; 
+  height: 220px; 
+  font-size: 160px; 
+}
+
+/* 敌方精灵（远处）- 更小，带透视效果 */
+.enemy-zone-v2 .sprite-v2,
+.enemy-sprite-wrapper .sprite-v2 { 
+  width: 160px; 
+  height: 160px; 
+  font-size: 110px; 
+  filter: 
+    drop-shadow(0 6px 12px rgba(0,0,0,0.3))
+    drop-shadow(0 0 15px rgba(255,255,255,0.1))
+    brightness(0.95);
 }
 
 @keyframes float-enhanced {
