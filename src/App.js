@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import _ from 'lodash';
 import ThreeMap from './ThreeMap'; // 确保路径正确
-import { generatePetModel } from './UniquePetDesigner'; // 导入独特精灵设计师
+import { generatePetModel } from './PremiumPetDesigner'; // 导入精致精灵设计师
 const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
 const GRID_W = 30; 
@@ -2608,16 +2608,17 @@ const [pendingTask, setPendingTask] = useState(null);
       );
     }
     
-    // 🔥 [升级] 使用SVG模型生成器替代emoji
-    // 计算合适的尺寸 - 根据父容器自适应
+    // 🔥 [升级] 使用精致SVG模型生成器
+    // 计算合适的尺寸 - 减小尺寸避免遮挡状态栏
     const getModelSize = () => {
       // 尝试从不同场景获取容器大小
       if (typeof window !== 'undefined') {
-        // 战斗场景
+        // 战斗场景 - 减小尺寸
         const battleContainer = document.querySelector('.sprite-v2');
         if (battleContainer) {
           const containerWidth = battleContainer.offsetWidth || 180;
-          return Math.min(containerWidth * 0.9, 200);
+          // 减小到70%，确保不遮挡状态栏
+          return Math.min(containerWidth * 0.7, 120);
         }
         // 图鉴/背包场景
         const smallContainer = document.querySelector('.pet-avatar-img, .pet-avatar-emoji');
@@ -2626,7 +2627,7 @@ const [pendingTask, setPendingTask] = useState(null);
           return Math.max(containerWidth, 36);
         }
       }
-      return 200; // 默认大小（战斗场景）
+      return 120; // 默认大小（战斗场景）- 减小了
     };
     
     try {
@@ -11550,13 +11551,13 @@ const renderMenu = () => {
                         {renderPartyIndicators(battle.enemyParty)}
                     </div>
 
-                    {/* 敌方精灵图片 */}
-                    <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(1.3)', transformOrigin: 'center bottom', marginRight: '20px'}}>
+                    {/* 敌方精灵图片 - 减小尺寸避免遮挡 */}
+                    <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(0.85)', transformOrigin: 'center bottom', marginRight: '15px'}}>
                         {battle.isTrainer && (
                             <div className="trainer-avatar-wrapper" style={{
-                                position: 'absolute', bottom: '30px', right: '-40px', zIndex: -1, opacity: 0.9, transition: '0.3s'
+                                position: 'absolute', bottom: '25px', right: '-35px', zIndex: -1, opacity: 0.9, transition: '0.3s'
                             }}>
-                                <div className="trainer-emoji" style={{fontSize: '120px', filter: 'drop-shadow(-5px 5px 10px rgba(0,0,0,0.3))'}}>
+                                <div className="trainer-emoji" style={{fontSize: '100px', filter: 'drop-shadow(-5px 5px 10px rgba(0,0,0,0.3))'}}>
                                     {getTrainerAvatar(battle.trainerName)}
                                 </div>
                             </div>
@@ -11564,7 +11565,7 @@ const renderMenu = () => {
                         
                         <div className={`sprite-v2 ${animEffect?.target==='enemy'?'anim-shake':''}`} 
                              style={{
-                                 filter: 'drop-shadow(0 10px 8px rgba(0,0,0,0.2))',
+                                 filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
                                  animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
                                             ? 'shiny-flash-body 0.5s' : 'none'
                              }}>
@@ -11596,12 +11597,12 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 <div className="player-zone-v2" style={{position: 'absolute', bottom: '25%', left: '10%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
-                    {/* 我方精灵图片 */}
-                    <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(1.5)', transformOrigin: 'center bottom', marginBottom: '10px', marginLeft: '30px'}}>
+                    {/* 我方精灵图片 - 减小尺寸避免遮挡 */}
+                    <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(1.0)', transformOrigin: 'center bottom', marginBottom: '10px', marginLeft: '20px'}}>
                          <div className={`sprite-v2 ${animEffect?.target==='player'?'anim-shake':''}`} 
                              style={{
                                  transform: 'scaleX(-1)', // 镜像翻转，背对玩家
-                                 filter: 'drop-shadow(0 10px 8px rgba(0,0,0,0.2))',
+                                 filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
                                  animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player') 
                                             ? 'shiny-flash-body 0.5s' : 'none'
                              }}>
