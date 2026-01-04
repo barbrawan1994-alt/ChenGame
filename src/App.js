@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import _ from 'lodash';
 import ThreeMap from './ThreeMap'; // 确保路径正确
-import { generatePetModel } from './PremiumPetDesigner'; // 导入精致精灵设计师
+import { generatePetModel } from './engines/UltimatePetDesigner'; // 导入终极精灵设计师
 // 导入引擎系统
 import { GSAPAnimations, SpringAnimations, CombinedAnimations } from './engines/AnimationEngine';
 import { EnhancedButton, EnhancedCard, EnhancedProgressBar, EnhancedModal } from './engines/UIEnhancement';
+import { CanvasParticleSystem, ParticlePresets } from './engines/ParticleEngine';
 const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
 const GRID_W = 30; 

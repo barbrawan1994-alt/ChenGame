@@ -363,11 +363,20 @@ const CameraRig = ({ targetPos }) => {
   return null;
 };
 
-// --- 🌍 主组件 ---
+// --- 🌍 主组件（优化加载性能）---
 const ThreeMap = ({ mapGrid, playerPos }) => {
+  // 使用 useMemo 优化地图渲染
+  const tiles = React.useMemo(() => {
+    return mapGrid.map((row, y) =>
+      row.map((type, x) => (
+        <Tile key={`${x}-${y}`} x={x} y={y} type={type} />
+      ))
+    );
+  }, [mapGrid]);
+
   return (
     <div style={{ width: '100%', height: '100%', background: '#81D4FA' }}>
-      <Canvas shadows dpr={[1, 1.5]}>
+      <Canvas shadows dpr={[1, 1.2]}> {/* 降低dpr提升性能 */}
         {/* 🔴 核心修复：Zoom 改回 65！ */}
         <OrthographicCamera makeDefault position={[20, 20, 20]} zoom={65} near={-50} far={200} />
         
@@ -378,13 +387,13 @@ const ThreeMap = ({ mapGrid, playerPos }) => {
           position={[10, 20, 5]} 
           intensity={1.5} 
           castShadow 
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[1024, 1024]} {/* 降低阴影分辨率提升性能 */}
         >
           <orthographicCamera attach="shadow-camera" left={-20} right={20} top={20} bottom={-20} />
         </directionalLight>
         
         <Environment preset="park" />
-        <SoftShadows size={10} focus={0.5} samples={10} />
+        <SoftShadows size={8} focus={0.5} samples={8} /> {/* 降低阴影质量提升性能 */}
         
         {/* 🔴 核心修复：加回无尽之海！ */}
         <InfiniteSea />
@@ -399,11 +408,7 @@ const ThreeMap = ({ mapGrid, playerPos }) => {
         <BorderTrees />
 
         <group>
-          {mapGrid.map((row, y) =>
-            row.map((type, x) => (
-              <Tile key={`${x}-${y}`} x={x} y={y} type={type} />
-            ))
-          )}
+          {tiles}
           <Tile x={playerPos.x} y={playerPos.y} isPlayer={true} />
         </group>
       </Canvas>
