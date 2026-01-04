@@ -387,13 +387,13 @@ const ThreeMap = ({ mapGrid, playerPos }) => {
           position={[10, 20, 5]} 
           intensity={1.5} 
           castShadow 
-          shadow-mapSize={[1024, 1024]} {/* 降低阴影分辨率提升性能 */}
+          shadowMapSize={[1024, 1024]}
         >
           <orthographicCamera attach="shadow-camera" left={-20} right={20} top={20} bottom={-20} />
         </directionalLight>
         
         <Environment preset="park" />
-        <SoftShadows size={8} focus={0.5} samples={8} /> {/* 降低阴影质量提升性能 */}
+        <SoftShadows size={8} focus={0.5} samples={8} />
         
         {/* 🔴 核心修复：加回无尽之海！ */}
         <InfiniteSea />
