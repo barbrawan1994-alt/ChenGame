@@ -155,10 +155,10 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
         <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
           {move.name}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#666' }}>
-          <span>{move.t}</span>
-          <span>威力{move.power || 0}</span>
-          <span>PP {move.pp}/{move.maxPp}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#666', flexWrap: 'wrap', gap: '2px' }}>
+          <span style={{fontSize: '10px'}}>{move.t}</span>
+          <span style={{fontSize: '10px'}}>威力{move.power || 0}</span>
+          <span style={{fontSize: '10px', color: move.pp <= 5 ? '#FF5252' : '#666'}}>PP {move.pp}/{move.maxPp}</span>
         </div>
       </div>
     </animated.button>

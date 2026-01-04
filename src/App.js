@@ -6,6 +6,14 @@ import { generatePetModel } from './engines/UltimatePetDesigner'; // 导入终�
 import { GSAPAnimations, SpringAnimations, CombinedAnimations } from './engines/AnimationEngine';
 import { EnhancedButton, EnhancedCard, EnhancedProgressBar, EnhancedModal } from './engines/UIEnhancement';
 import { CanvasParticleSystem, ParticlePresets } from './engines/ParticleEngine';
+// 导入战斗增强组件
+import { 
+  EnhancedMoveButton, 
+  EnhancedHPBar, 
+  AnimatedDamageNumber, 
+  SkillCastEffect,
+  EnhancedBattleMessage 
+} from './engines/BattleEnhancements';
 const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
 const GRID_W = 30; 
@@ -11548,10 +11556,12 @@ const renderMenu = () => {
                             Lv.{e.level}
                         </div>
 
-                        {/* 第三行：血条 */}
-                        <div className="hp-track-v2" style={{height:'10px', marginTop:'2px'}}>
-                            <div className="hp-fill-v2" style={{width: `${(e.currentHp/eStats.maxHp)*100}%`, background: getHpColor(e.currentHp, eStats.maxHp)}}></div>
-                        </div>
+                        {/* 第三行：血条（使用增强组件） */}
+                        <EnhancedHPBar 
+                            current={e.currentHp} 
+                            max={eStats.maxHp} 
+                            label=""
+                        />
                         {renderPartyIndicators(battle.enemyParty)}
                     </div>
 
@@ -11567,14 +11577,30 @@ const renderMenu = () => {
                             </div>
                         )}
                         
-                        <div className={`sprite-v2 ${animEffect?.target==='enemy'?'anim-shake':''}`} 
-                             style={{
-                                 filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
-                                 animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
-                                            ? 'shiny-flash-body 0.5s' : 'none'
-                             }}>
+                        <div 
+                            ref={(el) => {
+                                if (el && !el.dataset.animated) {
+                                    el.dataset.animated = 'true';
+                                    GSAPAnimations.petEntry(el, 0.2);
+                                }
+                            }}
+                            className={`sprite-v2 ${animEffect?.target==='enemy'?'anim-shake':''}`} 
+                            style={{
+                                filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+                                animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
+                                           ? 'shiny-flash-body 0.5s' : 'none'
+                            }}>
                             {renderAvatar(e)}
                         </div>
+                        {/* 技能释放特效 */}
+                        {animEffect && animEffect.target === 'enemy' && animEffect.type !== 'SHINY_ENTRY' && ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE'].includes(animEffect.type) && (
+                            <SkillCastEffect
+                                type={animEffect.type}
+                                x={window.innerWidth * 0.8}
+                                y={window.innerHeight * 0.2}
+                                onComplete={() => {}}
+                            />
+                        )}
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy' && <RenderShinyStars />}
@@ -11601,9 +11627,16 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 <div className="player-zone-v2" style={{position: 'absolute', bottom: '25%', left: '10%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
-                    {/* 我方精灵图片 - 减小尺寸避免遮挡 */}
+                    {/* 我方精灵图片 - 使用增强动画组件 */}
                     <div className="sprite-wrapper" style={{position: 'relative', transform: 'scale(1.0)', transformOrigin: 'center bottom', marginBottom: '10px', marginLeft: '20px'}}>
-                         <div className={`sprite-v2 ${animEffect?.target==='player'?'anim-shake':''}`} 
+                         <div 
+                             ref={(el) => {
+                                 if (el && !el.dataset.animated) {
+                                     el.dataset.animated = 'true';
+                                     GSAPAnimations.petEntry(el, 0);
+                                 }
+                             }}
+                             className={`sprite-v2 ${animEffect?.target==='player'?'anim-shake':''}`} 
                              style={{
                                  transform: 'scaleX(-1)', // 镜像翻转，背对玩家
                                  filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
@@ -11616,6 +11649,15 @@ const renderMenu = () => {
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player' && <RenderShinyStars />}
                         {animEffect && animEffect.target === 'player' && renderEnhancedVfx(getVfxConfig(animEffect.type), 'player')}
+                        {/* 技能释放特效 */}
+                        {animEffect && animEffect.target === 'player' && animEffect.type !== 'SHINY_ENTRY' && ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE'].includes(animEffect.type) && (
+                            <SkillCastEffect
+                                type={animEffect.type}
+                                x={window.innerWidth * 0.2}
+                                y={window.innerHeight * 0.6}
+                                onComplete={() => {}}
+                            />
+                        )}
                     </div>
 
                     {/* 我方 HUD (血条) */}
@@ -11632,11 +11674,12 @@ const renderMenu = () => {
                             Lv.{p.level}
                         </div>
 
-                        {/* 第三行：血条 */}
-                        <div className="hp-track-v2" style={{height:'10px', marginTop:'2px'}}>
-                            <div className="hp-fill-v2" style={{width: `${(p.currentHp/pStats.maxHp)*100}%`, background: getHpColor(p.currentHp, pStats.maxHp)}}></div>
-                        </div>
-                        <div className="hp-text-v2" style={{fontSize:'12px', marginTop:'4px'}}>{Math.floor(p.currentHp)}/{pStats.maxHp}</div>
+                        {/* 第三行：血条（使用增强组件） */}
+                        <EnhancedHPBar 
+                            current={p.currentHp} 
+                            max={pStats.maxHp} 
+                            label=""
+                        />
                         {renderPartyIndicators(battle.playerCombatStates)}
                     </div>
                 </div>
@@ -11644,33 +11687,27 @@ const renderMenu = () => {
             </div>
 
 
-            {/* 醒目的战斗日志浮层 */}
-            <div className="battle-log-container" style={{
-                position: 'absolute', 
-                bottom: '20px', 
-                left: '50%', 
-                transform: 'translateX(-50%)',
-                width: '90%',
-                textAlign: 'center',
-                zIndex: 20,
-                pointerEvents: 'none' 
-            }}>
-                <div key={battle.logs[0]} style={{
-                    background: 'rgba(0, 0, 0, 0.75)', 
-                    color: '#fff',
-                    padding: '12px 24px',
-                    borderRadius: '30px',
-                    fontSize: '18px', 
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                    display: 'inline-block',
-                    border: '2px solid rgba(255,255,255,0.2)',
-                    backdropFilter: 'blur(4px)',
-                    animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+            {/* 醒目的战斗日志浮层（使用增强组件） */}
+            {battle.logs[0] && (
+                <div className="battle-log-container" style={{
+                    position: 'absolute', 
+                    bottom: '20px', 
+                    left: '50%', 
+                    transform: 'translateX(-50%)',
+                    width: '90%',
+                    textAlign: 'center',
+                    zIndex: 20,
+                    pointerEvents: 'none' 
                 }}>
-                    {battle.logs[0]}
+                    <EnhancedBattleMessage 
+                        key={battle.logs[0]}
+                        message={battle.logs[0]}
+                        type={battle.logs[0].includes('倒下了') ? 'error' : 
+                              battle.logs[0].includes('胜利') || battle.logs[0].includes('成功') ? 'success' : 
+                              battle.logs[0].includes('警告') ? 'warning' : 'info'}
+                    />
                 </div>
-            </div>
+            )}
 
         </div>
 
@@ -11684,7 +11721,7 @@ const renderMenu = () => {
                         </div>
                     )}
                     <div className="battle-row-layout">
-                        {/* 技能按钮区 (3列2行) */}
+                        {/* 技能按钮区 (使用增强组件) */}
                         <div className="moves-grid-v2" style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -11698,27 +11735,25 @@ const renderMenu = () => {
                                 const isP2Turn = battle.phase === 'input_p2';
                                 const activeMoves = isP2Turn ? e.combatMoves : p.combatMoves;
                                 return activeMoves.map((m, i) => (
-                                    <button key={i} className={`move-btn-v2 type-${m.t}`} 
-                                        onClick={() => { if (battle.isPvP) handlePvPInput(isP2Turn ? 2 : 1, 'move', i); else executeTurn(i); }} 
-                                        disabled={m.pp<=0}
-                                        style={{
-                                            display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                                            padding: '6px 8px', height: '100%'
+                                    <EnhancedMoveButton
+                                        key={i}
+                                        move={{
+                                            t: m.t || 'NORMAL',
+                                            name: m.name,
+                                            power: m.p || 0,
+                                            pp: m.pp,
+                                            maxPp: m.maxPP || 15
                                         }}
-                                    >
-                                        <div style={{display:'flex', justifyContent:'space-between', width:'100%', alignItems:'center', marginBottom:'2px'}}>
-                                            <div className="move-name-v2" style={{fontSize:'13px', whiteSpace:'nowrap'}}>{m.name}</div>
-                                            {m.isExtra && <span style={{fontSize:'9px', background:'rgba(0,0,0,0.2)', padding:'1px 3px', borderRadius:'3px'}}>装</span>}
-                                        </div>
-                                        
-                                        <div className="move-info-row" style={{fontSize:'10px', width:'100%', justifyContent:'space-between', opacity:0.9}}>
-                                            <span>{TYPES[m.t].name}</span>
-                                            <span className="move-power-badge" style={{fontSize:'10px'}}>{m.p>0 ? `威力${m.p}` : '变化'}</span>
-                                        </div>
-                                        <div className="move-meta-v2" style={{marginTop:'2px', fontSize:'10px', alignSelf:'flex-end'}}>
-                                            <span style={{color: m.pp<=5 ? '#FFCDD2' : '#fff'}}>PP {m.pp}/{m.maxPP||15}</span>
-                                        </div>
-                                    </button>
+                                        onClick={() => { 
+                                            if (battle.isPvP) {
+                                                handlePvPInput(isP2Turn ? 2 : 1, 'move', i);
+                                            } else {
+                                                executeTurn(i);
+                                            }
+                                        }}
+                                        disabled={m.pp <= 0}
+                                        index={i}
+                                    />
                                 ));
                             })()}
                         </div>
