@@ -14,7 +14,10 @@
     "productName": "Pokemon RPG Legends",
     "mac": {
       "category": "public.app-category.games",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "files": [
       "dist/**/*",
@@ -25,9 +28,13 @@
     }
   },
   "dependencies": {
+    "@react-three/drei": "^9.108.3",
+    "@react-three/fiber": "^8.16.8",
+    "@types/three": "^0.182.0",
     "lodash": "^4.17.21",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "three": "^0.165.0"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
@@ -47,4 +54,3 @@
     "webpack-dev-server": "^4.15.1"
   }
 }
-

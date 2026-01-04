@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import _ from 'lodash';
-
+import ThreeMap from './ThreeMap'; // 确保路径正确
+import { generatePetModel } from './UniquePetDesigner'; // 导入独特精灵设计师
 const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
 const GRID_W = 30; 
@@ -2260,20 +2261,71 @@ const HIGH_TIER_POOL = [3, 6, 9, 18, 33, 65, 69, 94, 130, 138, 139, 140, 143, 14
 const ROCK_POOL = [64, 65, 73, 74, 95, 133, 134, 135, 136, 139, 169, 190, 225, 226, 250]; 
 const WATER_POOL = [7, 8, 9, 21, 22, 23, 24, 25, 26, 27, 28, 76, 77, 78, 107, 108, 109, 120, 123, 126, 129, 130, 158, 159, 165, 173, 174, 211, 212, 235, 246];
 export default function RPG(props) {
+  // =================================================================
+  // 🔥 [核心修复 1] 启动瞬间同步读取存档 (防止存档“丢失”)
+  // =================================================================
+  let savedData = {};
+  try {
+    const raw = localStorage.getItem(SAVE_KEY); // 直接读取，不等待
+    if (raw) {
+      savedData = JSON.parse(raw);
+      console.log("✅ 成功读取存档:", savedData.trainerName);
+    }
+  } catch (e) {
+    console.error("存档读取失败", e);
+  }
+
+  // =================================================================
+  // 🔥 [核心修复 2] 使用读取到的 savedData 直接初始化所有状态
+  // =================================================================
   
-  const [view, setView] = useState('menu');
+  // 基础视图
+  const [view, setView] = useState('menu'); 
   const encounterTimerRef = useRef(null);
+  
+  // 玩家身份 (优先用存档里的名字，没有才用默认)
+  const [trainerName, setTrainerName] = useState(savedData.trainerName || '小智');
+  const [trainerAvatar, setTrainerAvatar] = useState(savedData.trainerAvatar || '🧢');
+  const [unlockedTitles, setUnlockedTitles] = useState(savedData.unlockedTitles || ['见习训练家']);
+  const [currentTitle, setCurrentTitle] = useState(savedData.currentTitle || '见习训练家');
+
+  // 核心资产 (金币/背包/队伍)
+  const [gold, setGold] = useState(savedData.gold || 1000);
+  const [party, setParty] = useState(savedData.party || []);
+  const [box, setBox] = useState(savedData.box || []);
+  const [accessories, setAccessories] = useState(savedData.accessories || []);
+  
+  // 背包初始化 (防止旧存档缺字段导致报错)
+  const defaultInventory = { 
+    balls: { poke: 10, great: 0, ultra: 0, master: 0, net:0, dusk:0, quick:0, timer:0, heal:0 }, 
+    meds: {}, tms: {}, misc: {}, stones: {}, berries: 0 
+  };
+  const [inventory, setInventory] = useState({ ...defaultInventory, ...(savedData.inventory || {}) });
+
+  // 游戏进度
+  const [mapProgress, setMapProgress] = useState(savedData.mapProgress || {});
+  const [caughtDex, setCaughtDex] = useState(savedData.caughtDex || []);
+  const [completedChallenges, setCompletedChallenges] = useState(savedData.completedChallenges || []);
+  const [badges, setBadges] = useState(savedData.badges || []);
+  const [viewedIntros, setViewedIntros] = useState(savedData.viewedIntros || []);
+  const [sectTitles, setSectTitles] = useState(savedData.sectTitles || []);
+  const [leagueWins, setLeagueWins] = useState(savedData.leagueWins || 0);
+
+  // 存档状态标记 (关键！直接根据是否读到金币来判断是否有存档)
+  const [hasSave, setHasSave] = useState(!!savedData.gold); 
+  const [loaded, setLoaded] = useState(true); // 直接设为加载完成，不需要 useEffect 等待
+
+  // 临时状态 (不需要存入 savedData 的部分)
   const [activityRecords, setActivityRecords] = useState({ bug: 0, fishing: 0, beauty: 0 });
   const [resultData, setResultData] = useState(null); 
 
+  // 环境与天气系统
+  const [weather, setWeather] = useState('CLEAR');    
+  const [mapWeathers, setMapWeathers] = useState({}); 
+  const [timePhase, setTimePhase] = useState('DAY'); 
+  const [gameTime, setGameTime] = useState(0);
 
-// 1. 状态定义
-// [修改] 移除原来的 const [weather, setWeather]...
-// [新增] 使用对象存储每个地图的天气： { 1: 'CLEAR', 2: 'RAIN', ... }
-const [weather, setWeather] = useState('CLEAR');    
-const [mapWeathers, setMapWeathers] = useState({}); 
-const [timePhase, setTimePhase] = useState('DAY'); 
-const [gameTime, setGameTime] = useState(0);
+  
 
 // 2. [新增] 天气生成算法 (根据地图类型决定天气权重)
 const generateWeatherForMap = (mapType) => {
@@ -2440,24 +2492,209 @@ const [pendingTask, setPendingTask] = useState(null);
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
   // [优化] 2. 核心头像渲染函数 (支持 CSS 类控制大小)
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-  const renderAvatar = (pet) => {
+  
+  // 🔥 [新增] 智能精灵视觉生成系统
+  const generatePetVisual = (pet) => {
     if (!pet) return null;
     const imgUrl = imageMap[pet.id];
-
-    // 如果有图片，渲染图片 (使用 CSS 类 .pet-avatar-img 控制大小)
+    
+    // 如果有图片，优先使用图片
     if (imgUrl) {
+      return {
+        type: 'image',
+        url: imgUrl,
+        emoji: pet.emoji
+      };
+    }
+    
+    // 根据精灵名字和类型生成增强的视觉表现
+    const name = pet.name || '';
+    const type = pet.type || 'NORMAL';
+    const baseInfo = POKEDEX.find(p => p.id === pet.id) || {};
+    
+    // 类型颜色映射
+    const typeColors = {
+      FIRE: '#FF6B6B', WATER: '#4ECDC4', GRASS: '#95E1D3', 
+      ELECTRIC: '#FFE66D', ICE: '#A8E6CF', FIGHT: '#FF8B94',
+      POISON: '#C7CEEA', GROUND: '#D4A574', FLYING: '#B8E6B8',
+      PSYCHIC: '#FFB6C1', BUG: '#C8E6C9', ROCK: '#D3D3D3',
+      GHOST: '#E0BBE4', DRAGON: '#FFD93D', STEEL: '#B8B8B8',
+      FAIRY: '#FFB6D9', GOD: '#FFD700', NORMAL: '#F5F5F5'
+    };
+    
+    // 根据名字关键词生成特殊效果
+    let visualStyle = {
+      emoji: pet.emoji,
+      color: typeColors[type] || '#F5F5F5',
+      effects: [],
+      glow: false,
+      particles: []
+    };
+    
+    // 名字关键词匹配
+    if (name.includes('火') || name.includes('炎') || name.includes('熔') || name.includes('焰')) {
+      visualStyle.effects.push('fire');
+      visualStyle.glow = true;
+      visualStyle.particles.push('🔥');
+    }
+    if (name.includes('水') || name.includes('海') || name.includes('波') || name.includes('流')) {
+      visualStyle.effects.push('water');
+      visualStyle.particles.push('💧');
+    }
+    if (name.includes('草') || name.includes('叶') || name.includes('森') || name.includes('花')) {
+      visualStyle.effects.push('grass');
+      visualStyle.particles.push('🍃');
+    }
+    if (name.includes('电') || name.includes('雷') || name.includes('闪')) {
+      visualStyle.effects.push('electric');
+      visualStyle.glow = true;
+      visualStyle.particles.push('⚡');
+    }
+    if (name.includes('冰') || name.includes('雪') || name.includes('寒')) {
+      visualStyle.effects.push('ice');
+      visualStyle.particles.push('❄️');
+    }
+    if (name.includes('龙') || name.includes('神') || name.includes('王') || name.includes('主')) {
+      visualStyle.effects.push('dragon');
+      visualStyle.glow = true;
+      visualStyle.particles.push('✨');
+    }
+    if (name.includes('鬼') || name.includes('幽') || name.includes('暗')) {
+      visualStyle.effects.push('ghost');
+      visualStyle.particles.push('👻');
+    }
+    if (name.includes('钢') || name.includes('铁') || name.includes('机')) {
+      visualStyle.effects.push('steel');
+    }
+    if (name.includes('妖精') || name.includes('仙')) {
+      visualStyle.effects.push('fairy');
+      visualStyle.particles.push('✨');
+    }
+    
+    return {
+      type: 'enhanced',
+      visual: visualStyle
+    };
+  };
+  
+  const renderAvatar = (pet) => {
+    if (!pet) return null;
+    const visual = generatePetVisual(pet);
+    
+    // 如果有图片，渲染图片
+    if (visual.type === 'image') {
       return (
-        <img 
-          src={imgUrl} 
-          alt={pet.name} 
-          className="pet-avatar-img" 
-          // 移除内联的 width/height，完全交给 CSS 控制
-          style={{ objectFit: 'contain' }} 
-        />
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          <img 
+            src={visual.url} 
+            alt={pet.name} 
+            className="pet-avatar-img" 
+            style={{ objectFit: 'contain' }} 
+          />
+          {/* 添加闪光效果 */}
+          {pet.isShiny && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(45deg, rgba(255,215,0,0.3), rgba(255,255,255,0.3))',
+              animation: 'shiny-flash 2s infinite',
+              pointerEvents: 'none'
+            }} />
+          )}
+        </div>
       );
     }
-
-    // 如果没图片，回退显示 Emoji (使用 CSS 类 .pet-avatar-emoji 控制大小)
+    
+    // 🔥 [升级] 使用SVG模型生成器替代emoji
+    // 计算合适的尺寸 - 根据父容器自适应
+    const getModelSize = () => {
+      // 尝试从不同场景获取容器大小
+      if (typeof window !== 'undefined') {
+        // 战斗场景
+        const battleContainer = document.querySelector('.sprite-v2');
+        if (battleContainer) {
+          const containerWidth = battleContainer.offsetWidth || 180;
+          return Math.min(containerWidth * 0.9, 200);
+        }
+        // 图鉴/背包场景
+        const smallContainer = document.querySelector('.pet-avatar-img, .pet-avatar-emoji');
+        if (smallContainer) {
+          const containerWidth = smallContainer.offsetWidth || 36;
+          return Math.max(containerWidth, 36);
+        }
+      }
+      return 200; // 默认大小（战斗场景）
+    };
+    
+    try {
+      const modelSize = getModelSize();
+      const svgModel = generatePetModel(pet, modelSize);
+      
+      if (svgModel) {
+        return (
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+            animation: 'float 3s ease-in-out infinite'
+          }}>
+            {svgModel}
+            {/* 闪光特效叠加 */}
+            {pet.isShiny && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'radial-gradient(circle, rgba(255,215,0,0.3), transparent)',
+                animation: 'shiny-rotate 3s linear infinite',
+                pointerEvents: 'none',
+                borderRadius: '50%'
+              }} />
+            )}
+          </div>
+        );
+      }
+    } catch (error) {
+      console.warn('SVG模型生成失败，使用回退方案:', error);
+    }
+    
+    // 如果生成失败，回退到增强的emoji渲染
+    if (visual.type === 'enhanced') {
+      const v = visual.visual;
+      return (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <span 
+            className="pet-avatar-emoji"
+            style={{
+              filter: v.glow ? `drop-shadow(0 0 10px ${v.color}) drop-shadow(0 0 20px ${v.color}66)` : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+              animation: v.effects.includes('fire') ? 'fire-glow 1.5s infinite' :
+                         v.effects.includes('electric') ? 'electric-pulse 1s infinite' :
+                         v.effects.includes('dragon') ? 'dragon-aura 2s infinite' : 'float 3s ease-in-out infinite'
+            }}
+          >
+            {v.emoji}
+          </span>
+        </div>
+      );
+    }
+    
+    // 最终回退
     return <span className="pet-avatar-emoji">{pet.emoji}</span>;
   };
   // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
@@ -2484,31 +2721,16 @@ const [pendingTask, setPendingTask] = useState(null);
     return list.sort((a, b) => a.t.localeCompare(b.t));
   }, []);
 
-  const [loaded, setLoaded] = useState(false);
-  const [hasSave, setHasSave] = useState(false); 
 
 
 
 
-  // [新增] 玩家信息与称号系统
-  const [trainerName, setTrainerName] = useState('小智');
-  const [unlockedTitles, setUnlockedTitles] = useState(['见习训练家']);
-  const [currentTitle, setCurrentTitle] = useState('见习训练家');
+
+  
   // 临时的输入状态
   const [tempName, setTempName] = useState(''); 
 
-  // 游戏数据
-  const [gold, setGold] = useState(1000); 
-  const [party, setParty] = useState([]); 
-  const [box, setBox] = useState([]);     
-  const [accessories, setAccessories] = useState([]);
-  const [inventory, setInventory] = useState({ 
-    balls: { poke: 10, great: 0, ultra: 0, master: 0, net:0, dusk:0, quick:0, timer:0, heal:0 }, 
-    meds: {}, 
-    tms: {},  
-    misc: {}, 
-    berries: 0 
-  });
+ 
   // 1. 在 useState 区域添加这两个状态
   const [selectedBagItem, setSelectedBagItem] = useState(null); // 当前选中的物品详情
   const [usingItem, setUsingItem] = useState(null); // 当前准备使用的物品
@@ -2517,12 +2739,7 @@ const [pendingTask, setPendingTask] = useState(null);
     // 装备系统状态
   const [equipModalOpen, setEquipModalOpen] = useState(false);
   const [targetEquipSlot, setTargetEquipSlot] = useState({ petIdx: 0, slotIdx: 0 });
-const [sectTitles, setSectTitles] = useState([]); 
-  const [mapProgress, setMapProgress] = useState({});
-  const [caughtDex, setCaughtDex] = useState([]); 
-  const [completedChallenges, setCompletedChallenges] = useState([]);
-  const [badges, setBadges] = useState([]); 
-  const [viewedIntros, setViewedIntros] = useState([]); 
+
   // 初始精灵三选一
   const [starterOptions, setStarterOptions] = useState([]);
 const [fusionParent, setFusionParent] = useState(null); // 融合父本
@@ -2539,10 +2756,10 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
   const [currentMapId, setCurrentMapId] = useState(1);
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
   const [mapGrid, setMapGrid] = useState([]); // 随机生成的网格数据
- const [leagueWins, setLeagueWins] = useState(0); // 获得冠军次数
+
   const [leagueRound, setLeagueRound] = useState(0); // 当前轮次: 0=未参加, 1=16强, 2=8强, 3=半决赛, 4=决赛
   // 在 RPG 组件内部
-const [trainerAvatar, setTrainerAvatar] = useState('🧢'); 
+
 // 还需要一个控制头像选择弹窗的状态
 const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
@@ -3841,83 +4058,7 @@ useEffect(() => {
     }
   }, [playerPos]);
 
-     // [修改] 初始化与读档逻辑 (增加兼容性处理)
-  useEffect(() => {
-    const initGame = () => {
-      try {
-        const savedData = localStorage.getItem(SAVE_KEY);
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          if (parsed.party && parsed.party.length > 0) {
-            setGold(parsed.gold || 1000);
-            setParty(parsed.party);
-            setBox(parsed.box || []);
-             setLeagueWins(parsed.leagueWins || 0);
-            // 轮次不保存，重新进游戏需要重新打，或者你可以选择保存它
-            setLeagueRound(0); 
-            // ✅ 确保 accessories 是数组
-            setAccessories(Array.isArray(parsed.accessories) ? parsed.accessories : []);
-            
-            // --- 兼容性处理 ---
-            let loadedInv = parsed.inventory || {};
-            
-            // 1. 补全球
-            const defaultBalls = { poke: 0, great: 0, ultra: 0, master: 0, net:0, dusk:0, quick:0, timer:0, heal:0 };
-            loadedInv.balls = { ...defaultBalls, ...(loadedInv.balls || {}) };
-
-            // 2. 迁移旧药品
-            loadedInv.meds = loadedInv.meds || {};
-            if (loadedInv.potions) {
-               loadedInv.meds.potion = (loadedInv.meds.potion || 0) + loadedInv.potions;
-               delete loadedInv.potions;
-            }
-            if (loadedInv.ethers) {
-               loadedInv.meds.ether = (loadedInv.meds.ether || 0) + loadedInv.ethers;
-               delete loadedInv.ethers;
-            }
-
-            // 3. ✅ 强制初始化关键对象，防止报错
-            loadedInv.tms = loadedInv.tms || {};
-            loadedInv.stones = loadedInv.stones || {}; // <--- 新增兼容处理
-            loadedInv.misc = loadedInv.misc || {}; 
-            // 如果旧存档把 rebirth_pill 放在了根目录，尝试迁移进来
-            if (loadedInv.rebirth_pill) {
-                loadedInv.misc.rebirth_pill = (loadedInv.misc.rebirth_pill || 0) + loadedInv.rebirth_pill;
-                delete loadedInv.rebirth_pill;
-            }
-      
-            setInventory(loadedInv);
-            setTrainerName(parsed.trainerName || '小智');
-setTrainerAvatar(parsed.trainerAvatar || '🧢'); 
-            setSectTitles(parsed.sectTitles || []);
-            setMapProgress(parsed.mapProgress || {});
-            setCaughtDex(parsed.caughtDex || []);
-            setCompletedChallenges(parsed.completedChallenges || []);
-            setBadges(parsed.badges || []);
-            setViewedIntros(parsed.viewedIntros || []);
-            const savedProgress = parsed.storyProgress || 0;
-const actualProgress = Math.max(savedProgress, (parsed.badges || []).length);
-setStoryProgress(actualProgress); 
-            setTrainerName(parsed.trainerName || '小智');
-            setUnlockedTitles(parsed.unlockedTitles || ['见习训练家']);
-            setCurrentTitle(parsed.currentTitle || '见习训练家');
-            setHasSave(true); 
-          } else {
-            setHasSave(false);
-          }
-        } else {
-          setHasSave(false);
-        }
-      } catch (e) {
-        console.error("Save load error", e);
-        setHasSave(false);
-      }
-      setLoaded(true);
-    };
-
-    initGame();
-  }, []);
-
+     
 
 // ----------------------------------------------------------------
 // [升级版] 0.5 雷达图组件 (支持自定义文字颜色)
@@ -4010,8 +4151,24 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
    // 修改 manualSave (存档逻辑)
   const manualSave = () => {
-     // ▼▼▼ 加入 leagueWins ▼▼▼
-     const dataToSave = { gold, party, box, accessories, sectTitles,inventory, trainerAvatar,mapProgress, caughtDex, completedChallenges, badges, viewedIntros, leagueWins, trainerName, unlockedTitles, currentTitle  };
+     const dataToSave = {
+       trainerName, 
+       trainerAvatar, 
+       gold, 
+       party, 
+       box, 
+       accessories, 
+       sectTitles,
+       inventory, 
+       mapProgress, 
+       caughtDex, 
+       completedChallenges, 
+       badges, 
+       viewedIntros, 
+       leagueWins, 
+       unlockedTitles, 
+       currentTitle
+     };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
      alert("✅ 存档保存成功！");
@@ -10272,7 +10429,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -10352,51 +10509,22 @@ const renderMenu = () => {
                X:{playerPos.x} Y:{playerPos.y}
             </div>
           </div>
-          {/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */}
-
-          {/* 地图视口 */}
-          <div className="grid-viewport" ref={mapContainerRef} style={{
+          {/* 🔥🔥🔥🔥🔥 核心修改区域开始 🔥🔥🔥🔥🔥 */}
+          {/* 原本的 grid-viewport (2D) 已被移除，替换为下面的 3D 容器 */}
+          
+          <div style={{
               flex: 1, 
-              overflow: 'auto', 
               position: 'relative', 
               borderRadius: '12px', 
-              boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
-              background: theme.boardBg,
+              overflow: 'hidden', // 必须隐藏溢出，否则 canvas 可能撑大
+              boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)', // 加个内阴影增加深邃感
               marginBottom: '0',
-              paddingBottom: '100px' 
+              background: '#000' // 3D 加载前的底色
           }}>
-            <div className="grid-board" style={{
-                gridTemplateColumns: `repeat(${GRID_W}, 1fr)`, 
-                backgroundColor: theme.boardBg, 
-                width: `${GRID_W * 40}px`, 
-                height: `${GRID_H * 40}px`
-            }}>
-              {mapGrid.map((row, y) => row.map((cell, x) => (
-                <div key={`${x}-${y}`} className={`grid-tile type-${cell}`}>
-                  {cell===1 && <span className="item-emoji">{theme.obstacle}</span>}
-                  {cell===2 && <span className="item-emoji" style={{opacity:0.7}}>{theme.ground}</span>}
-                  {cell===3 && <span className="item-emoji">{theme.water}</span>}
-                  {cell===4 && <span className="item-emoji">🎁</span>}
-                  {cell===6 && <span className="item-emoji">{theme.rock}</span>}
-                  {cell===7 && <span className="item-emoji">🌿</span>}
-                  {cell===8 && <span className="item-emoji">🏥</span>}
-                  {cell===9 && <span className="gym-building">🏟️</span>}
-                  {cell===10 && <span className="item-emoji">🏪</span>}
-                  {cell===11 && <span className="item-emoji enemy-pulse">⚔️</span>}
-                  {cell===12 && <span className="item-emoji enemy-pulse" style={{filter:'hue-rotate(280deg)'}}>💂</span>}
-                  {cell===13 && <span className="item-emoji enemy-pulse" style={{fontSize:'32px'}}>👹</span>}
-                   {/* ▼▼▼ [新增] 大赛 NPC 渲染 ▼▼▼ */}
-                  {cell===20 && <span className="item-emoji" style={{fontSize:'28px'}}>🦋</span>}
-                  {cell===21 && <span className="item-emoji" style={{fontSize:'28px'}}>🎣</span>}
-                  {cell===22 && <span className="item-emoji" style={{fontSize:'28px'}}>🎀</span>}
-                  {/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */}
-                  {cell===99 && <span className="item-emoji task-pulse">{STORY_SCRIPT[storyProgress]?.tasks?.find(t=>t.step===storyStep)?.emoji || '❓'}</span>}
-                  {playerPos.x===x && playerPos.y===y && <div className="player-sprite">{renderAvatar(party[0]) || '🤠'}</div>}
-                </div>
-              )))}
-            </div>
+              {/* 传入关键数据：地图网格 和 玩家位置 */}
+              <ThreeMap mapGrid={mapGrid} playerPos={playerPos} />
           </div>
-
+          {/* 🔥🔥🔥🔥🔥 核心修改区域结束 🔥🔥🔥🔥🔥 */}
           {/* 底部菜单栏 (保持不变) */}
           <div className="map-dock-capsule" style={{
               position: 'absolute', bottom: '25px', left: '50%', transform: 'translateX(-50%)',
@@ -11240,7 +11368,103 @@ const renderMenu = () => {
         );
     };
 
-    const getVfxConfig = (type) => { const map = { NORMAL: '💥', FIRE: '🔥', WATER: '🌊', GRASS: '🍃', ELECTRIC: '⚡', ICE: '❄️', FIGHT: '👊', POISON: '☠️', GROUND: '🪨', FLYING: '🌪️', PSYCHIC: '🔮', BUG: '🕸️', ROCK: '🧱', GHOST: '👻', DRAGON: '🐲', STEEL: '⚔️', FAIRY: '✨', GOD: '🌌', HEAL: '💚', BUFF: '💪', DEBUFF: '💢', PROTECT: '🛡️', SLEEP: '💤', PARALYSIS: '⚡', FREEZE: '🧊', CONFUSION: '💫', THROW_BALL: '🔴', CATCH_SUCCESS: '✨', LEVEL_UP: '🆙', EVOLUTION: '🧬' }; return map[type] || '💥'; };
+    // 🔥 [升级] 增强的技能特效配置
+    const getVfxConfig = (type) => { 
+      const map = { 
+        NORMAL: { emoji: '💥', class: 'vfx-normal', particles: ['💥', '✨'] }, 
+        FIRE: { emoji: '🔥', class: 'vfx-fire', particles: ['🔥', '🔥', '🔥'] }, 
+        WATER: { emoji: '🌊', class: 'vfx-water', particles: ['💧', '🌊', '💧'] }, 
+        GRASS: { emoji: '🍃', class: 'vfx-grass', particles: ['🍃', '🌿', '🍃'] }, 
+        ELECTRIC: { emoji: '⚡', class: 'vfx-electric', particles: ['⚡', '⚡', '⚡'] }, 
+        ICE: { emoji: '❄️', class: 'vfx-ice', particles: ['❄️', '❄️', '❄️'] }, 
+        FIGHT: { emoji: '👊', class: 'vfx-normal', particles: ['💥', '👊'] }, 
+        POISON: { emoji: '☠️', class: 'vfx-normal', particles: ['💜', '☠️'] }, 
+        GROUND: { emoji: '🪨', class: 'vfx-normal', particles: ['🪨', '💥'] }, 
+        FLYING: { emoji: '🌪️', class: 'vfx-normal', particles: ['🌪️', '💨'] }, 
+        PSYCHIC: { emoji: '🔮', class: 'vfx-normal', particles: ['🔮', '✨'] }, 
+        BUG: { emoji: '🕸️', class: 'vfx-normal', particles: ['🕸️', '💚'] }, 
+        ROCK: { emoji: '🧱', class: 'vfx-normal', particles: ['🧱', '💥'] }, 
+        GHOST: { emoji: '👻', class: 'vfx-normal', particles: ['👻', '💜'] }, 
+        DRAGON: { emoji: '🐲', class: 'vfx-dragon', particles: ['🐲', '✨', '🌟'] }, 
+        STEEL: { emoji: '⚔️', class: 'vfx-normal', particles: ['⚔️', '✨'] }, 
+        FAIRY: { emoji: '✨', class: 'vfx-normal', particles: ['✨', '💖', '✨'] }, 
+        GOD: { emoji: '🌌', class: 'vfx-dragon', particles: ['🌟', '✨', '🌌', '🌟'] }, 
+        HEAL: { emoji: '💚', class: 'vfx-normal', particles: ['💚', '✨'] }, 
+        BUFF: { emoji: '💪', class: 'vfx-normal', particles: ['💪', '✨'] }, 
+        DEBUFF: { emoji: '💢', class: 'vfx-normal', particles: ['💢', '💥'] }, 
+        PROTECT: { emoji: '🛡️', class: 'vfx-normal', particles: ['🛡️', '✨'] }, 
+        SLEEP: { emoji: '💤', class: 'vfx-normal', particles: ['💤', '💤'] }, 
+        PARALYSIS: { emoji: '⚡', class: 'vfx-electric', particles: ['⚡', '⚡'] }, 
+        FREEZE: { emoji: '🧊', class: 'vfx-ice', particles: ['🧊', '❄️'] }, 
+        CONFUSION: { emoji: '💫', class: 'vfx-normal', particles: ['💫', '✨'] }, 
+        THROW_BALL: { emoji: '🔴', class: 'vfx-normal', particles: ['🔴'] }, 
+        CATCH_SUCCESS: { emoji: '✨', class: 'vfx-normal', particles: ['✨', '🌟', '✨'] }, 
+        LEVEL_UP: { emoji: '🆙', class: 'vfx-normal', particles: ['🆙', '✨'] }, 
+        EVOLUTION: { emoji: '🧬', class: 'vfx-normal', particles: ['🧬', '✨', '🌟'] } 
+      }; 
+      return map[type] || { emoji: '💥', class: 'vfx-normal', particles: ['💥'] }; 
+    };
+    
+    // 🔥 [新增] 渲染增强的技能特效
+    const renderEnhancedVfx = (vfxConfig, target) => {
+      if (!vfxConfig) return null;
+      
+      return (
+        <div className={`vfx-impact-container ${vfxConfig.class}`} style={{
+          position: 'absolute',
+          top: target === 'enemy' ? '20%' : '60%',
+          left: target === 'enemy' ? '70%' : '20%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 100,
+          pointerEvents: 'none'
+        }}>
+          {/* 主特效emoji */}
+          <div className="vfx-emoji" style={{fontSize:'120px'}}>
+            {vfxConfig.emoji}
+          </div>
+          
+          {/* 粒子特效 */}
+          <div className="vfx-particles">
+            {vfxConfig.particles.map((p, i) => {
+              const angle = (360 / vfxConfig.particles.length) * i;
+              const distance = 100;
+              const tx = Math.cos(angle * Math.PI / 180) * distance;
+              const ty = Math.sin(angle * Math.PI / 180) * distance;
+              
+              return (
+                <div 
+                  key={i}
+                  className="vfx-particle"
+                  style={{
+                    '--tx': `${tx}px`,
+                    '--ty': `${ty}px`,
+                    left: '50%',
+                    top: '50%',
+                    animationDelay: `${i * 0.1}s`
+                  }}
+                >
+                  {p}
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* 属性特效背景 */}
+          {vfxConfig.class !== 'vfx-normal' && (
+            <div className={vfxConfig.class} style={{
+              position: 'absolute',
+              width: '300px',
+              height: '300px',
+              borderRadius: '50%',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none'
+            }} />
+          )}
+        </div>
+      );
+    };
     const getTrainerAvatar = (name) => { if (!name) return '🧢'; if (name.includes('捕虫')) return '🕸️'; if (name.includes('功夫') || name.includes('格斗')) return '🥋'; if (name.includes('登山')) return '🧗'; if (name.includes('钓鱼')) return '🎣'; if (name.includes('火箭') || name.includes('日蚀')) return '🕵️'; if (name.includes('馆主')) return '🎖️'; if (name.includes('冠军') || name.includes('首领')) return '👑'; return '🧢'; };
     
     let bgClass = 'bg-grass'; 
@@ -11349,13 +11573,20 @@ const renderMenu = () => {
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'enemy' && (
-                            <div className="vfx-impact-container">
-                                <div className="vfx-emoji" style={{fontSize:'60px'}}>
-                                    {getVfxConfig(animEffect.type)}
-                                </div>
-                                {animEffect.type === 'CATCH_SUCCESS' && <div className="catch-success-anim">GOTCHA!</div>}
-                            </div>
+                        {animEffect && animEffect.target === 'enemy' && renderEnhancedVfx(getVfxConfig(animEffect.type), 'enemy')}
+                        {animEffect?.type === 'CATCH_SUCCESS' && animEffect?.target === 'enemy' && (
+                          <div className="catch-success-anim" style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            fontSize: '48px',
+                            fontWeight: '900',
+                            color: '#FFD700',
+                            textShadow: '0 0 20px rgba(255,215,0,0.8)',
+                            animation: 'shiny-text-pop 1s ease-out forwards',
+                            zIndex: 200
+                          }}>GOTCHA!</div>
                         )}
                     </div>
                 </div>
@@ -11379,13 +11610,7 @@ const renderMenu = () => {
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'player' && (
-                            <div className="vfx-impact-container">
-                                <div className="vfx-emoji" style={{fontSize:'60px'}}>
-                                    {getVfxConfig(animEffect.type)}
-                                </div>
-                            </div>
-                        )}
+                        {animEffect && animEffect.target === 'player' && renderEnhancedVfx(getVfxConfig(animEffect.type), 'player')}
                     </div>
 
                     {/* 我方 HUD (血条) */}
@@ -12729,5 +12954,3 @@ const renderMenu = () => {
     </div>
   );
 }
-
-      
