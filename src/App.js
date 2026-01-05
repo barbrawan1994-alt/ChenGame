@@ -11538,42 +11538,102 @@ const renderMenu = () => {
             <div className="battle-scene-layer" style={{width: '100%', height: '100%', position: 'relative'}}>
                 
                 {/* ========================================== */}
-                {/* 战斗场景装饰元素 */}
+                {/* 战斗场景装饰元素 - 让画面更丰满 */}
                 {/* ========================================== */}
-                {/* 远景装饰 - 云朵 */}
+                {/* 远景装饰 - 云朵和天空元素 */}
                 <div className="battle-decor-clouds" style={{
                     position: 'absolute',
-                    top: '5%',
+                    top: '0%',
                     left: '0%',
                     width: '100%',
-                    height: '30%',
+                    height: '40%',
                     pointerEvents: 'none',
                     zIndex: 1,
-                    opacity: 0.4
+                    opacity: 0.5
                 }}>
-                    <div style={{position: 'absolute', fontSize: '80px', left: '10%', top: '10%', animation: 'float 8s ease-in-out infinite'}}>☁️</div>
-                    <div style={{position: 'absolute', fontSize: '60px', left: '50%', top: '5%', animation: 'float 10s ease-in-out infinite', animationDelay: '1s'}}>☁️</div>
-                    <div style={{position: 'absolute', fontSize: '70px', left: '80%', top: '15%', animation: 'float 9s ease-in-out infinite', animationDelay: '2s'}}>☁️</div>
+                    <div style={{position: 'absolute', fontSize: '100px', left: '5%', top: '5%', animation: 'float 12s ease-in-out infinite', filter: 'blur(2px)'}}>☁️</div>
+                    <div style={{position: 'absolute', fontSize: '80px', left: '35%', top: '8%', animation: 'float 14s ease-in-out infinite', animationDelay: '1s', filter: 'blur(1px)'}}>☁️</div>
+                    <div style={{position: 'absolute', fontSize: '90px', left: '60%', top: '3%', animation: 'float 11s ease-in-out infinite', animationDelay: '2s', filter: 'blur(2px)'}}>☁️</div>
+                    <div style={{position: 'absolute', fontSize: '70px', left: '85%', top: '10%', animation: 'float 13s ease-in-out infinite', animationDelay: '3s', filter: 'blur(1px)'}}>☁️</div>
+                    {/* 星星装饰 */}
+                    <div style={{position: 'absolute', fontSize: '30px', left: '20%', top: '15%', animation: 'twinkle 3s ease-in-out infinite'}}>✨</div>
+                    <div style={{position: 'absolute', fontSize: '25px', left: '75%', top: '20%', animation: 'twinkle 4s ease-in-out infinite', animationDelay: '1s'}}>⭐</div>
+                    <div style={{position: 'absolute', fontSize: '20px', left: '50%', top: '12%', animation: 'twinkle 5s ease-in-out infinite', animationDelay: '2s'}}>✨</div>
                 </div>
 
-                {/* 中景装饰 - 地面元素 */}
+                {/* 中景装饰 - 地面和植物元素 */}
                 <div className="battle-decor-ground" style={{
                     position: 'absolute',
-                    bottom: '30%',
+                    bottom: '25%',
                     left: '0%',
                     width: '100%',
-                    height: '20%',
+                    height: '25%',
                     pointerEvents: 'none',
                     zIndex: 2,
-                    opacity: 0.3
+                    opacity: 0.4
                 }}>
-                    <div style={{position: 'absolute', fontSize: '40px', left: '15%', bottom: '0%', animation: 'float 6s ease-in-out infinite'}}>🌿</div>
-                    <div style={{position: 'absolute', fontSize: '35px', left: '45%', bottom: '0%', animation: 'float 7s ease-in-out infinite', animationDelay: '0.5s'}}>🌱</div>
-                    <div style={{position: 'absolute', fontSize: '50px', left: '70%', bottom: '0%', animation: 'float 5s ease-in-out infinite', animationDelay: '1s'}}>🌿</div>
-                    <div style={{position: 'absolute', fontSize: '30px', left: '85%', bottom: '0%', animation: 'float 8s ease-in-out infinite', animationDelay: '1.5s'}}>🌱</div>
+                    {/* 左侧植物 */}
+                    <div style={{position: 'absolute', fontSize: '60px', left: '8%', bottom: '0%', animation: 'float 7s ease-in-out infinite', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'}}>🌿</div>
+                    <div style={{position: 'absolute', fontSize: '45px', left: '12%', bottom: '5%', animation: 'float 8s ease-in-out infinite', animationDelay: '0.5s'}}>🌱</div>
+                    <div style={{position: 'absolute', fontSize: '50px', left: '25%', bottom: '0%', animation: 'float 6s ease-in-out infinite', animationDelay: '1s'}}>🌿</div>
+                    
+                    {/* 中间装饰 */}
+                    <div style={{position: 'absolute', fontSize: '40px', left: '45%', bottom: '3%', animation: 'float 9s ease-in-out infinite', animationDelay: '1.5s'}}>🌱</div>
+                    <div style={{position: 'absolute', fontSize: '55px', left: '55%', bottom: '0%', animation: 'float 7.5s ease-in-out infinite', animationDelay: '2s'}}>🌿</div>
+                    
+                    {/* 右侧植物 */}
+                    <div style={{position: 'absolute', fontSize: '50px', left: '72%', bottom: '0%', animation: 'float 8s ease-in-out infinite', animationDelay: '2.5s'}}>🌿</div>
+                    <div style={{position: 'absolute', fontSize: '35px', left: '78%', bottom: '4%', animation: 'float 7s ease-in-out infinite', animationDelay: '3s'}}>🌱</div>
+                    <div style={{position: 'absolute', fontSize: '45px', left: '88%', bottom: '0%', animation: 'float 6.5s ease-in-out infinite', animationDelay: '3.5s'}}>🌿</div>
+                    
+                    {/* 地面装饰线 */}
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '0%',
+                        left: '0%',
+                        width: '100%',
+                        height: '2px',
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }} />
                 </div>
 
-                {/* 光效装饰 */}
+                {/* 侧边装饰 - 柱子或建筑元素 */}
+                <div className="battle-decor-sides" style={{
+                    position: 'absolute',
+                    bottom: '25%',
+                    left: '0%',
+                    width: '100%',
+                    height: '50%',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    opacity: 0.2
+                }}>
+                    {/* 左侧柱子 */}
+                    <div style={{
+                        position: 'absolute',
+                        left: '3%',
+                        bottom: '0%',
+                        width: '30px',
+                        height: '40%',
+                        background: 'linear-gradient(180deg, rgba(139, 69, 19, 0.6), rgba(101, 67, 33, 0.4))',
+                        borderRadius: '15px 15px 0 0',
+                        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.3)'
+                    }} />
+                    {/* 右侧柱子 */}
+                    <div style={{
+                        position: 'absolute',
+                        right: '3%',
+                        bottom: '0%',
+                        width: '30px',
+                        height: '35%',
+                        background: 'linear-gradient(180deg, rgba(139, 69, 19, 0.6), rgba(101, 67, 33, 0.4))',
+                        borderRadius: '15px 15px 0 0',
+                        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.3)'
+                    }} />
+                </div>
+
+                {/* 光效装饰 - 多层光晕 */}
                 <div className="battle-decor-lights" style={{
                     position: 'absolute',
                     top: '0%',
@@ -11582,11 +11642,15 @@ const renderMenu = () => {
                     height: '100%',
                     pointerEvents: 'none',
                     zIndex: 1,
-                    background: 'radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(255,255,255,0.08) 0%, transparent 50%)',
-                    animation: 'battle-glow 8s ease-in-out infinite'
+                    background: `
+                        radial-gradient(ellipse at 15% 25%, rgba(255,255,255,0.12) 0%, transparent 50%),
+                        radial-gradient(ellipse at 85% 75%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                        radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 60%)
+                    `,
+                    animation: 'battle-glow 10s ease-in-out infinite'
                 }} />
 
-                {/* 粒子装饰 */}
+                {/* 粒子装饰 - 增强版 */}
                 <div className="battle-decor-particles" style={{
                     position: 'absolute',
                     top: '0%',
@@ -11595,10 +11659,16 @@ const renderMenu = () => {
                     height: '100%',
                     pointerEvents: 'none',
                     zIndex: 1,
-                    backgroundImage: 'radial-gradient(1px 1px at 25% 25%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 75% 75%, rgba(255,255,255,0.2), transparent)',
-                    backgroundSize: '200% 200%',
-                    animation: 'battle-particles 15s linear infinite',
-                    opacity: 0.5
+                    backgroundImage: `
+                        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.4), transparent),
+                        radial-gradient(1px 1px at 50% 20%, rgba(255,255,255,0.3), transparent),
+                        radial-gradient(1px 1px at 80% 40%, rgba(255,255,255,0.35), transparent),
+                        radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.25), transparent),
+                        radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.3), transparent)
+                    `,
+                    backgroundSize: '200% 200%, 180% 180%, 220% 220%, 190% 190%, 210% 210%',
+                    animation: 'battle-particles 20s linear infinite',
+                    opacity: 0.6
                 }} />
                 
                 {/* ========================================== */}

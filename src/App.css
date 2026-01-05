@@ -489,8 +489,14 @@ button:active { transform: scale(0.96); }
 }
 
 @keyframes battle-particles {
-  0% { background-position: 0% 0%, 100% 100%, 50% 50%, 80% 20%; }
-  100% { background-position: 100% 100%, 0% 0%, 150% 150%, 20% 80%; }
+  0% { background-position: 0% 0%, 100% 100%, 50% 50%, 80% 20%, 30% 60%; }
+  100% { background-position: 100% 100%, 0% 0%, 150% 150%, 20% 80%, 70% 40%; }
+}
+
+/* 闪烁动画 */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
 
 /* 战斗场景光晕效果 */
