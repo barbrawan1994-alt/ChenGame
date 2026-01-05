@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import _ from 'lodash';
 import ThreeMap from './ThreeMap'; // 确保路径正确
-import { generatePetModel } from './engines/UltimatePetDesigner'; // 导入终极精灵设计师
+import { generatePetModel } from './engines/NativePetDesigner'; // 导入原生精灵设计师
 // 导入引擎系统
 import { GSAPAnimations, SpringAnimations, CombinedAnimations } from './engines/AnimationEngine';
 import { EnhancedButton, EnhancedCard, EnhancedProgressBar, EnhancedModal } from './engines/UIEnhancement';
