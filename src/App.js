@@ -10514,7 +10514,7 @@ const renderMenu = () => {
                       boxShadow: isPlayer ? 'inset 0 0 0 2px #ff5252, 0 0 6px rgba(255,82,82,0.5)' : 'none',
                       borderRadius: '2px'
                     }}>
-                      {isPlayer ? '🧑' : tile.emoji}
+                      {isPlayer ? trainerAvatar : tile.emoji}
                     </div>
                   );
                 }
