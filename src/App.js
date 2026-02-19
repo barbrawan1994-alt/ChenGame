@@ -11699,7 +11699,7 @@ const renderMenu = () => {
                     </div>
 
                     {/* 敌方精灵图片 - 远处效果（较小） */}
-                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', transform: 'scale(0.9)', transformOrigin: 'center bottom', marginRight: '15px', opacity: 0.95}}>
+                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', marginRight: '15px'}}>
                         {battle.isTrainer && (
                             <div className="trainer-avatar-wrapper" style={{
                                 position: 'absolute', bottom: '25px', right: '-35px', zIndex: -1, opacity: 0.9, transition: '0.3s'
