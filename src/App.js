@@ -10460,77 +10460,69 @@ const renderMenu = () => {
                X:{playerPos.x} Y:{playerPos.y}
             </div>
           </div>
-          {/* 2D 平面地图视口 */}
+          {/* 2D 平面地图 - 显示完整地图并铺满视口 */}
           <div className="grid-viewport" style={{
               flex: 1,
               position: 'relative',
               borderRadius: '12px',
               overflow: 'hidden',
-              boxShadow: 'inset 0 0 15px rgba(0,0,0,0.15)',
-              background: '#a8d5ba'
+              boxShadow: 'inset 0 0 15px rgba(0,0,0,0.1)',
+              background: '#a8d5ba',
+              display: 'flex',
+              alignItems: 'stretch'
           }}>
             {mapGrid.length > 0 && (() => {
-              const TILE = 36;
-              const viewW = 15;
-              const viewH = 11;
-              const halfW = Math.floor(viewW / 2);
-              const halfH = Math.floor(viewH / 2);
-              const startX = Math.max(0, Math.min(playerPos.x - halfW, GRID_W - viewW));
-              const startY = Math.max(0, Math.min(playerPos.y - halfH, GRID_H - viewH));
-              const endX = Math.min(startX + viewW, GRID_W);
-              const endY = Math.min(startY + viewH, GRID_H);
-
               const TILE_STYLE = {
-                1:  { bg: '#5d8a5d', emoji: '🌲', label: '' },
-                2:  { bg: '#b5d6a7', emoji: '', label: '' },
-                3:  { bg: '#64b5f6', emoji: '〰️', label: '' },
-                4:  { bg: '#b5d6a7', emoji: '📦', label: '' },
-                5:  { bg: '#d7c9a0', emoji: '', label: '' },
-                6:  { bg: '#9e9e9e', emoji: '🪨', label: '' },
-                7:  { bg: '#8bc78b', emoji: '', label: ',' },
-                8:  { bg: '#ef9a9a', emoji: '🏥', label: '' },
-                9:  { bg: '#ce93d8', emoji: '⚔️', label: '' },
-                10: { bg: '#ffcc80', emoji: '🛒', label: '' },
-                11: { bg: '#b5d6a7', emoji: '💀', label: '' },
-                12: { bg: '#b5d6a7', emoji: '☠️', label: '' },
-                13: { bg: '#b5d6a7', emoji: '👿', label: '' },
-                20: { bg: '#b5d6a7', emoji: '🦋', label: '' },
-                21: { bg: '#b5d6a7', emoji: '🎣', label: '' },
-                22: { bg: '#b5d6a7', emoji: '🎀', label: '' },
-                99: { bg: '#fff9c4', emoji: '❗', label: '' },
+                1:  { bg: '#5d8a5d', emoji: '🌲' },
+                2:  { bg: '#b5d6a7', emoji: '' },
+                3:  { bg: '#64b5f6', emoji: '〰️' },
+                4:  { bg: '#b5d6a7', emoji: '📦' },
+                5:  { bg: '#d7c9a0', emoji: '' },
+                6:  { bg: '#9e9e9e', emoji: '🪨' },
+                7:  { bg: '#8bc78b', emoji: '' },
+                8:  { bg: '#ef9a9a', emoji: '🏥' },
+                9:  { bg: '#ce93d8', emoji: '⚔️' },
+                10: { bg: '#ffcc80', emoji: '🛒' },
+                11: { bg: '#b5d6a7', emoji: '💀' },
+                12: { bg: '#b5d6a7', emoji: '☠️' },
+                13: { bg: '#b5d6a7', emoji: '👿' },
+                20: { bg: '#c5e1a5', emoji: '🦋' },
+                21: { bg: '#b3e5fc', emoji: '🎣' },
+                22: { bg: '#f8bbd0', emoji: '🎀' },
+                99: { bg: '#fff9c4', emoji: '❗' },
               };
 
               const rows = [];
-              for (let y = startY; y < endY; y++) {
+              for (let y = 0; y < GRID_H; y++) {
                 const cells = [];
-                for (let x = startX; x < endX; x++) {
+                for (let x = 0; x < GRID_W; x++) {
                   const type = mapGrid[y][x];
                   const isPlayer = x === playerPos.x && y === playerPos.y;
                   const tile = TILE_STYLE[type] || TILE_STYLE[2];
                   const isEven = (x + y) % 2 === 0;
                   let bg = tile.bg;
-                  if (type === 2 && isEven) bg = '#a8ce9f';
+                  if (type === 2) bg = isEven ? '#b5d6a7' : '#a8ce9f';
                   if (type === 7) bg = isEven ? '#7bb87b' : '#8bc78b';
 
                   cells.push(
                     <div key={`${x}-${y}`} style={{
-                      width: TILE + 'px', height: TILE + 'px',
-                      background: bg,
+                      flex: '1 1 0',
+                      aspectRatio: '1',
+                      background: isPlayer ? '#ffcdd2' : bg,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: isPlayer ? '22px' : '16px',
+                      fontSize: 'min(1.4vw, 14px)',
                       position: 'relative',
-                      borderRadius: '3px',
-                      transition: 'background 0.15s',
-                      boxShadow: isPlayer ? '0 0 12px rgba(255,82,82,0.6)' : 'none',
-                      border: isPlayer ? '2px solid #ff5252' : '1px solid rgba(0,0,0,0.06)',
-                      zIndex: isPlayer ? 10 : 1
+                      boxShadow: isPlayer ? '0 0 8px rgba(255,82,82,0.7) inset' : 'none',
+                      border: isPlayer ? '2px solid #ff5252' : '0.5px solid rgba(0,0,0,0.04)',
+                      zIndex: isPlayer ? 10 : 1,
+                      borderRadius: '2px'
                     }}>
-                      {isPlayer ? '🧑' : (tile.emoji || tile.label)}
+                      {isPlayer ? '🧑' : tile.emoji}
                     </div>
                   );
                 }
                 rows.push(
-                  <div key={y} style={{ display: 'flex' }}>
+                  <div key={y} style={{ display: 'flex', flex: '1 1 0' }}>
                     {cells}
                   </div>
                 );
@@ -10538,9 +10530,7 @@ const renderMenu = () => {
               return (
                 <div style={{
                   display: 'flex', flexDirection: 'column',
-                  position: 'absolute',
-                  top: '50%', left: '50%',
-                  transform: 'translate(-50%, -50%)'
+                  width: '100%', height: '100%'
                 }}>
                   {rows}
                 </div>
@@ -11709,7 +11699,7 @@ const renderMenu = () => {
                     </div>
 
                     {/* 敌方精灵图片 - 远处效果（较小） */}
-                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', transform: 'scale(0.75)', transformOrigin: 'center bottom', marginRight: '15px', opacity: 0.95}}>
+                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', transform: 'scale(0.9)', transformOrigin: 'center bottom', marginRight: '15px', opacity: 0.95}}>
                         {battle.isTrainer && (
                             <div className="trainer-avatar-wrapper" style={{
                                 position: 'absolute', bottom: '25px', right: '-35px', zIndex: -1, opacity: 0.9, transition: '0.3s'

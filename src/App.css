@@ -572,12 +572,12 @@ button:active { transform: scale(0.96); }
   font-size: 130px; 
 }
 
-/* 敌方精灵（远处）- 更小，带透视效果 */
+/* 敌方精灵（远处）- 稍小，带透视效果 */
 .enemy-zone-v2 .sprite-v2,
 .enemy-sprite-wrapper .sprite-v2 { 
-  width: 130px; 
-  height: 130px; 
-  font-size: 90px; 
+  width: 150px; 
+  height: 150px; 
+  font-size: 100px; 
   filter: 
     drop-shadow(0 6px 12px rgba(0,0,0,0.3))
     drop-shadow(0 0 15px rgba(255,255,255,0.1))
@@ -615,16 +615,16 @@ button:active { transform: scale(0.96); }
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  padding: 14px; 
+  padding: 14px;
   border-radius: 16px;
+  min-width: 240px;
+  width: auto;
+  max-width: 340px;
   box-shadow: 
     0 8px 32px rgba(0,0,0,0.15),
     inset 0 1px 0 rgba(255,255,255,0.6);
-  width: 220px;
-  border-left: 5px solid #333;
   border: 2px solid rgba(255,255,255,0.3);
   position: relative;
-  overflow: hidden;
 }
 
 .hud-card::before {
