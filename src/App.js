@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import _ from 'lodash';
-import ThreeMap from './ThreeMap'; // 确保路径正确
-import { generatePetModel } from './engines/NativePetDesigner'; // 导入原生精灵设计师
+// ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
 import { GSAPAnimations, SpringAnimations, CombinedAnimations } from './engines/AnimationEngine';
 import { EnhancedButton, EnhancedCard, EnhancedProgressBar, EnhancedModal } from './engines/UIEnhancement';
@@ -2620,58 +2619,6 @@ const [pendingTask, setPendingTask] = useState(null);
       );
     }
     
-    // 🔥 [升级] 使用精致SVG模型生成器
-    // 计算合适的尺寸 - 根据位置调整大小体现远近感
-    const getModelSize = (isEnemyParam = false) => {
-      if (typeof window !== 'undefined') {
-        const battleContainer = document.querySelector('.sprite-v2');
-        if (battleContainer) {
-          if (isEnemyParam) return 100;
-          return 130;
-        }
-      }
-      return 80;
-    };
-    
-    try {
-      const modelSize = getModelSize(isEnemy);
-      const svgModel = generatePetModel(pet, modelSize);
-      
-      if (svgModel) {
-        return (
-          <div style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-            animation: 'float 3s ease-in-out infinite'
-          }}>
-            {svgModel}
-            {/* 闪光特效叠加 */}
-            {pet.isShiny && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'radial-gradient(circle, rgba(255,215,0,0.3), transparent)',
-                animation: 'shiny-rotate 3s linear infinite',
-                pointerEvents: 'none',
-                borderRadius: '50%'
-              }} />
-            )}
-          </div>
-        );
-      }
-    } catch (error) {
-      console.warn('SVG模型生成失败，使用回退方案:', error);
-    }
-    
-    // 如果生成失败，回退到增强的emoji渲染
     if (visual.type === 'enhanced') {
       const v = visual.visual;
       return (
@@ -9239,7 +9186,7 @@ const renderMenu = () => {
                 <div style={{height:'8px', background: typeColor}}></div>
                 
                 <div style={{padding:'15px', textAlign:'center'}}>
-                    <div style={{width:'80px', height:'80px', margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'center', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.1))', animation:'float 3s ease-in-out infinite', overflow:'hidden'}}>
+                    <div style={{fontSize:'48px', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.1))', animation:'float 3s ease-in-out infinite'}}>
                         {renderAvatar(leader)}
                     </div>
                     <div style={{fontWeight:'bold', fontSize:'16px', marginTop:'5px', color:'#333'}}>
@@ -10513,22 +10460,93 @@ const renderMenu = () => {
                X:{playerPos.x} Y:{playerPos.y}
             </div>
           </div>
-          {/* 🔥🔥🔥🔥🔥 核心修改区域开始 🔥🔥🔥🔥🔥 */}
-          {/* 原本的 grid-viewport (2D) 已被移除，替换为下面的 3D 容器 */}
-          
-          <div style={{
-              flex: 1, 
-              position: 'relative', 
-              borderRadius: '12px', 
-              overflow: 'hidden', // 必须隐藏溢出，否则 canvas 可能撑大
-              boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)', // 加个内阴影增加深邃感
-              marginBottom: '0',
-              background: '#000' // 3D 加载前的底色
+          {/* 2D 平面地图视口 */}
+          <div className="grid-viewport" style={{
+              flex: 1,
+              position: 'relative',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: 'inset 0 0 15px rgba(0,0,0,0.15)',
+              background: '#a8d5ba'
           }}>
-              {/* 传入关键数据：地图网格 和 玩家位置 */}
-              <ThreeMap mapGrid={mapGrid} playerPos={playerPos} />
+            {mapGrid.length > 0 && (() => {
+              const TILE = 36;
+              const viewW = 15;
+              const viewH = 11;
+              const halfW = Math.floor(viewW / 2);
+              const halfH = Math.floor(viewH / 2);
+              const startX = Math.max(0, Math.min(playerPos.x - halfW, GRID_W - viewW));
+              const startY = Math.max(0, Math.min(playerPos.y - halfH, GRID_H - viewH));
+              const endX = Math.min(startX + viewW, GRID_W);
+              const endY = Math.min(startY + viewH, GRID_H);
+
+              const TILE_STYLE = {
+                1:  { bg: '#5d8a5d', emoji: '🌲', label: '' },
+                2:  { bg: '#b5d6a7', emoji: '', label: '' },
+                3:  { bg: '#64b5f6', emoji: '〰️', label: '' },
+                4:  { bg: '#b5d6a7', emoji: '📦', label: '' },
+                5:  { bg: '#d7c9a0', emoji: '', label: '' },
+                6:  { bg: '#9e9e9e', emoji: '🪨', label: '' },
+                7:  { bg: '#8bc78b', emoji: '', label: ',' },
+                8:  { bg: '#ef9a9a', emoji: '🏥', label: '' },
+                9:  { bg: '#ce93d8', emoji: '⚔️', label: '' },
+                10: { bg: '#ffcc80', emoji: '🛒', label: '' },
+                11: { bg: '#b5d6a7', emoji: '💀', label: '' },
+                12: { bg: '#b5d6a7', emoji: '☠️', label: '' },
+                13: { bg: '#b5d6a7', emoji: '👿', label: '' },
+                20: { bg: '#b5d6a7', emoji: '🦋', label: '' },
+                21: { bg: '#b5d6a7', emoji: '🎣', label: '' },
+                22: { bg: '#b5d6a7', emoji: '🎀', label: '' },
+                99: { bg: '#fff9c4', emoji: '❗', label: '' },
+              };
+
+              const rows = [];
+              for (let y = startY; y < endY; y++) {
+                const cells = [];
+                for (let x = startX; x < endX; x++) {
+                  const type = mapGrid[y][x];
+                  const isPlayer = x === playerPos.x && y === playerPos.y;
+                  const tile = TILE_STYLE[type] || TILE_STYLE[2];
+                  const isEven = (x + y) % 2 === 0;
+                  let bg = tile.bg;
+                  if (type === 2 && isEven) bg = '#a8ce9f';
+                  if (type === 7) bg = isEven ? '#7bb87b' : '#8bc78b';
+
+                  cells.push(
+                    <div key={`${x}-${y}`} style={{
+                      width: TILE + 'px', height: TILE + 'px',
+                      background: bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: isPlayer ? '22px' : '16px',
+                      position: 'relative',
+                      borderRadius: '3px',
+                      transition: 'background 0.15s',
+                      boxShadow: isPlayer ? '0 0 12px rgba(255,82,82,0.6)' : 'none',
+                      border: isPlayer ? '2px solid #ff5252' : '1px solid rgba(0,0,0,0.06)',
+                      zIndex: isPlayer ? 10 : 1
+                    }}>
+                      {isPlayer ? '🧑' : (tile.emoji || tile.label)}
+                    </div>
+                  );
+                }
+                rows.push(
+                  <div key={y} style={{ display: 'flex' }}>
+                    {cells}
+                  </div>
+                );
+              }
+              return (
+                <div style={{
+                  display: 'flex', flexDirection: 'column',
+                  position: 'absolute',
+                  top: '50%', left: '50%',
+                  transform: 'translate(-50%, -50%)'
+                }}>
+                  {rows}
+                </div>
+              );
+            })()}
           </div>
-          {/* 🔥🔥🔥🔥🔥 核心修改区域结束 🔥🔥🔥🔥🔥 */}
           {/* 底部菜单栏 (保持不变) */}
           <div className="map-dock-capsule" style={{
               position: 'absolute', bottom: '25px', left: '50%', transform: 'translateX(-50%)',
