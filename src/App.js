@@ -10508,13 +10508,10 @@ const renderMenu = () => {
                     <div key={`${x}-${y}`} style={{
                       flex: '1 1 0',
                       aspectRatio: '1',
-                      background: isPlayer ? '#ffcdd2' : bg,
+                      background: isPlayer ? '#ff8a80' : bg,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 'min(1.4vw, 14px)',
-                      position: 'relative',
-                      boxShadow: isPlayer ? '0 0 8px rgba(255,82,82,0.7) inset' : 'none',
-                      border: isPlayer ? '2px solid #ff5252' : '0.5px solid rgba(0,0,0,0.04)',
-                      zIndex: isPlayer ? 10 : 1,
+                      boxShadow: isPlayer ? 'inset 0 0 0 2px #ff5252, 0 0 6px rgba(255,82,82,0.5)' : 'none',
                       borderRadius: '2px'
                     }}>
                       {isPlayer ? '🧑' : tile.emoji}
