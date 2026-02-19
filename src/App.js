@@ -10510,7 +10510,7 @@ const renderMenu = () => {
                       aspectRatio: '1',
                       background: isPlayer ? '#ff8a80' : bg,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 'min(1.4vw, 14px)',
+                      fontSize: isPlayer ? 'min(2.2vw, 22px)' : 'min(1.4vw, 14px)',
                       boxShadow: isPlayer ? 'inset 0 0 0 2px #ff5252, 0 0 6px rgba(255,82,82,0.5)' : 'none',
                       borderRadius: '2px'
                     }}>
