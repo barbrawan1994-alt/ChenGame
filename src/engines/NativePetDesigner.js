@@ -567,7 +567,7 @@ const generateRefinedMouth = (features, colors, size, centerX, centerY) => {
 // =========================================
 // 主生成函数
 // =========================================
-export const generatePetModel = (pet, size = 180) => {
+export const generatePetModel = (pet, size = 120) => {
   if (!pet) return null;
   
   const name = pet.name || '';
@@ -590,11 +590,12 @@ export const generatePetModel = (pet, size = 180) => {
   
   return (
     <svg 
-      width={finalSize} 
-      height={finalSize} 
+      width="100%" 
+      height="100%" 
       viewBox={`0 0 ${finalSize} ${finalSize}`} 
-      style={{ overflow: 'visible' }}
+      style={{ overflow: 'visible', maxWidth: finalSize, maxHeight: finalSize }}
       className="pet-svg-model"
+      preserveAspectRatio="xMidYMid meet"
     >
       <defs>
         {/* 主体渐变 */}

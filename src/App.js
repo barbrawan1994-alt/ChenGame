@@ -2623,28 +2623,14 @@ const [pendingTask, setPendingTask] = useState(null);
     // 🔥 [升级] 使用精致SVG模型生成器
     // 计算合适的尺寸 - 根据位置调整大小体现远近感
     const getModelSize = (isEnemyParam = false) => {
-      // 尝试从不同场景获取容器大小
       if (typeof window !== 'undefined') {
-        // 战斗场景 - 根据敌我调整大小
         const battleContainer = document.querySelector('.sprite-v2');
         if (battleContainer) {
-          const containerWidth = battleContainer.offsetWidth || 180;
-          if (isEnemyParam) {
-            // 敌方（远处）- 稍小一些
-            return Math.min(containerWidth * 0.75, 140);
-          } else {
-            // 我方（近处）- 更大一些
-            return Math.min(containerWidth * 0.95, 180);
-          }
-        }
-        // 图鉴/背包场景
-        const smallContainer = document.querySelector('.pet-avatar-img, .pet-avatar-emoji');
-        if (smallContainer) {
-          const containerWidth = smallContainer.offsetWidth || 36;
-          return Math.max(containerWidth, 36);
+          if (isEnemyParam) return 100;
+          return 130;
         }
       }
-      return isEnemyParam ? 140 : 180; // 默认大小（敌方小，我方大）
+      return 80;
     };
     
     try {
@@ -9253,7 +9239,7 @@ const renderMenu = () => {
                 <div style={{height:'8px', background: typeColor}}></div>
                 
                 <div style={{padding:'15px', textAlign:'center'}}>
-                    <div style={{fontSize:'48px', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.1))', animation:'float 3s ease-in-out infinite'}}>
+                    <div style={{width:'80px', height:'80px', margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'center', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.1))', animation:'float 3s ease-in-out infinite', overflow:'hidden'}}>
                         {renderAvatar(leader)}
                     </div>
                     <div style={{fontWeight:'bold', fontSize:'16px', marginTop:'5px', color:'#333'}}>

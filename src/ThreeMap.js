@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrthographicCamera, MapControls, Text, Float, SoftShadows, RoundedBox, Environment, ContactShadows } from '@react-three/drei';
+import { OrthographicCamera, MapControls, Text, Float, RoundedBox, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
 // --- 🎨 1. 视觉配置 ---
@@ -367,6 +367,7 @@ const CameraRig = ({ targetPos }) => {
 const ThreeMap = ({ mapGrid, playerPos }) => {
   // 使用 useMemo 优化地图渲染
   const tiles = React.useMemo(() => {
+    if (!mapGrid || mapGrid.length === 0) return [];
     return mapGrid.map((row, y) =>
       row.map((type, x) => (
         <Tile key={`${x}-${y}`} x={x} y={y} type={type} />
@@ -382,18 +383,18 @@ const ThreeMap = ({ mapGrid, playerPos }) => {
         
         <CameraRig targetPos={playerPos} />
 
-        <ambientLight intensity={0.6} />
+        <ambientLight intensity={0.7} />
+        <hemisphereLight args={['#87CEEB', '#a8d5ba', 0.5]} />
         <directionalLight 
           position={[10, 20, 5]} 
-          intensity={1.5} 
+          intensity={1.2} 
           castShadow 
           shadowMapSize={[1024, 1024]}
         >
           <orthographicCamera attach="shadow-camera" left={-20} right={20} top={20} bottom={-20} />
         </directionalLight>
         
-        <Environment preset="park" />
-        <SoftShadows size={8} focus={0.5} samples={8} />
+        <fog attach="fog" args={['#81D4FA', 30, 80]} />
         
         {/* 🔴 核心修复：加回无尽之海！ */}
         <InfiniteSea />
