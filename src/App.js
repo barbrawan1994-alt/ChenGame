@@ -24,6 +24,7 @@ import {
   RANDOM_EQUIP_DB,
   EVO_STONES,
   GROWTH_ITEMS,
+  CURSED_ITEMS,
 } from './data/items';
 import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
@@ -802,11 +803,55 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
         if (used) {
             setInventory(prev => ({...prev, meds: {...(prev.meds||{}), [itemKey]: ((prev.meds||{})[itemKey] || 0) - 1}}));
-            
-            // 战斗中被照顾会感到安心，亲密度 +1
             p.intimacy = Math.min(255, (p.intimacy || 0) + 1);
-            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         }
+    }
+
+    // 战斗中使用咒具
+    if (category === 'cursed') {
+      const cItem = CURSED_ITEMS[itemKey];
+      if (!cItem || ((inventory.cursed || {})[itemKey] || 0) <= 0) return;
+
+      if (cItem.type === 'CE_HEAL') {
+        const maxCE = pState.maxCE || 0;
+        if (maxCE <= 0) { alert("该精灵没有咒力！"); return; }
+        const heal = Math.floor(maxCE * cItem.val);
+        pState.cursedEnergy = Math.min(maxCE, (pState.cursedEnergy || 0) + heal);
+        logMsg = `使用了 ${cItem.name}，恢复了 ${heal} 咒力!`;
+        used = true;
+      } else if (cItem.type === 'CE_RESTORE') {
+        if ((pState.maxCE || 0) <= 0) { alert("该精灵没有咒力！"); return; }
+        pState.cursedEnergy = Math.min(pState.maxCE, (pState.cursedEnergy || 0) + cItem.val);
+        logMsg = `使用了 ${cItem.name}，恢复了 ${cItem.val} 咒力!`;
+        used = true;
+      } else if (cItem.type === 'CE_BOOST') {
+        pState.cursedBoost = (pState.cursedBoost || 0) + cItem.val;
+        logMsg = `使用了 ${cItem.name}，术式威力提升 ${cItem.val * 100}%!`;
+        used = true;
+      } else if (cItem.type === 'ANTI_DOMAIN') {
+        const state = battle;
+        if (state.activeDomain && state.activeDomain.ownerSide === 'enemy') {
+          state.activeDomain = null;
+          logMsg = `使用了 ${cItem.name}，破除了敌方领域!`;
+          used = true;
+        } else { alert("当前没有敌方领域！"); return; }
+      } else if (cItem.type === 'SEAL') {
+        const enemy = battle.enemyParty?.[battle.enemyActiveIdx];
+        if (enemy && !battle.isBoss) {
+          if (Math.random() < cItem.val) {
+            enemy.currentHp = 0;
+            logMsg = `使用了 ${cItem.name}，成功封印了 ${enemy.name}!`;
+            used = true;
+          } else {
+            logMsg = `使用了 ${cItem.name}，但封印失败了...`;
+            used = true;
+          }
+        } else { alert(battle.isBoss ? "对Boss无效！" : "无效目标！"); return; }
+      }
+
+      if (used) {
+        setInventory(prev => ({ ...prev, cursed: { ...(prev.cursed || {}), [itemKey]: ((prev.cursed || {})[itemKey] || 0) - 1 } }));
+      }
     }
 
     if (used) {
@@ -815,7 +860,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         setAnimEffect({ type: 'HEAL', target: 'player' });
         await wait(800);
         setAnimEffect(null);
-        await enemyTurn(); // 消耗一回合
+        await enemyTurn();
     }
   };
 
@@ -5731,6 +5776,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
 
+        // 咒具加成 (咒言放大器)
+        if (move.isCursed && atkState.cursedBoost) {
+            rawDmg *= (1 + atkState.cursedBoost);
+        }
+
         // 特性修正
         if (['overgrow','blaze','torrent','swarm'].includes(attacker.trait)) {
             const typeMap = { overgrow:'GRASS', blaze:'FIRE', torrent:'WATER', swarm:'BUG' };
@@ -6061,21 +6111,38 @@ const grantContestReward = (config, score, subjectPet = null) => {
           activeDidLevelUp = true; 
         }
 
-        // ▼▼▼ [修改] 进化条件检查 (支持 时间/天气/亲密度) ▼▼▼
+        // ▼▼▼ 进化条件检查 (支持 时间/天气/亲密度/分支进化) ▼▼▼
         let meetsCondition = false;
         
         if (pet.evo && pet.level >= pet.evoLvl) {
-            meetsCondition = true;
-            const evoData = POKEDEX.find(p => p.id === pet.id); // 获取原始数据
-            const condition = evoData?.evoCondition;
-
-            if (condition) {
-                // 检查时间
+            const evoData = POKEDEX.find(p => p.id === pet.id);
+            
+            // 先检查分支进化 (evoAlt) 是否匹配当前条件
+            let altTarget = null;
+            if (evoData?.evoAlt) {
+              for (const alt of evoData.evoAlt) {
+                let altMatch = true;
+                if (alt.condition.time && alt.condition.time !== timePhase) altMatch = false;
+                if (alt.condition.weather && alt.condition.weather !== weather) altMatch = false;
+                if (alt.condition.intimacy && (pet.intimacy || 0) < alt.condition.intimacy) altMatch = false;
+                if (altMatch) { altTarget = alt.target; break; }
+              }
+            }
+            
+            if (altTarget) {
+              // 分支进化条件满足，切换进化目标
+              pet.evo = altTarget;
+              meetsCondition = true;
+            } else {
+              // 检查默认进化目标的条件
+              meetsCondition = true;
+              const defaultEvoData = POKEDEX.find(p => p.id === pet.evo);
+              const condition = defaultEvoData?.evoCondition;
+              if (condition) {
                 if (condition.time && condition.time !== timePhase) meetsCondition = false;
-                // 检查天气
                 if (condition.weather && condition.weather !== weather) meetsCondition = false;
-                // 检查亲密度
                 if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) meetsCondition = false;
+              }
             }
         }
 
@@ -6303,6 +6370,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     });
 
+    // 咒具掉落: 训练家/Boss/道馆战斗有概率掉落咒术道具
+    if (isTrainer || isGym || isChallenge || type === 'boss') {
+      const cursedDropChance = (type === 'boss' || isChallenge) ? 0.15 : (isGym ? 0.1 : 0.05);
+      if (Math.random() < cursedDropChance) {
+        const cursedKeys = Object.keys(CURSED_ITEMS).filter(k => k !== 'sukuna_finger');
+        const dropKey = _.sample(cursedKeys);
+        if (dropKey) {
+          setInventory(inv => ({ ...inv, cursed: { ...(inv.cursed || {}), [dropKey]: ((inv.cursed || {})[dropKey] || 0) + 1 } }));
+          addLog(`获得咒具: ${CURSED_ITEMS[dropKey].icon} ${CURSED_ITEMS[dropKey].name}!`);
+        }
+      }
+      // 宿傩之指: Boss/挑战塔 2%概率掉落
+      if ((type === 'boss' || isChallenge) && Math.random() < 0.02) {
+        setInventory(inv => ({ ...inv, cursed: { ...(inv.cursed || {}), sukuna_finger: ((inv.cursed || {}).sukuna_finger || 0) + 1 } }));
+        addLog(`获得稀有咒具: 🫵 宿傩之指!`);
+      }
+    }
+
     // ▼▼▼ 亲密度与魅力值结算逻辑 ▼▼▼
     const updatedParty = finalParty.map((p, index) => {
         let newPet = { ...p };
@@ -6486,7 +6571,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setInventory(prev => ({...prev, max_candy: (prev.max_candy || 0) + 1}));
             const rand = Math.random();
             let rewardPet;
-            const validIds = POKEDEX.filter(p => p.id < 254).map(p => p.id);
+            const validIds = POKEDEX.filter(p => p.id <= 500).map(p => p.id);
             const rewardId = _.sample(validIds);
             if (rand < 0.3) rewardPet = createPet(rewardId, 5, false, true);
             else if (rand < 0.6) { rewardPet = createPet(rewardId, 5, false, true); rewardPet.isFusedShiny = true; rewardPet.name = `异色·${rewardPet.name}`; rewardPet.customBaseStats = getStats(rewardPet); } 
@@ -6552,8 +6637,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           if (currentChapter.reward.items) {
              setInventory(inv => {
-                const newInv = {...inv};
-                currentChapter.reward.items.forEach(it => newInv[it.id] = (newInv[it.id]||0) + it.count);
+                const newInv = {...inv, meds: {...(inv.meds||{})}, cursed: {...(inv.cursed||{})}};
+                currentChapter.reward.items.forEach(it => {
+                  if (MEDICINES[it.id]) {
+                    newInv.meds[it.id] = (newInv.meds[it.id] || 0) + it.count;
+                  } else if (it.id === 'berry') {
+                    newInv.berries = (newInv.berries || 0) + it.count;
+                  } else if (CURSED_ITEMS[it.id]) {
+                    newInv.cursed[it.id] = (newInv.cursed[it.id] || 0) + it.count;
+                  } else {
+                    newInv[it.id] = (newInv[it.id] || 0) + it.count;
+                  }
+                });
                 return newInv;
              });
           }
@@ -7223,6 +7318,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
          for(let k=0; k<count; k++) setAccessories(prev => [...prev, id]);
          const acc = ACCESSORY_DB.find(a => a.id === id);
          itemName = acc ? acc.name : '饰品';
+      }
+      // --- 4. 购买咒具 ---
+      else if (type === 'cursed') {
+         setInventory(i => ({
+             ...i,
+             cursed: { ...(i.cursed || {}), [id]: ((i.cursed || {})[id] || 0) + count }
+         }));
+         const cItem = CURSED_ITEMS[id];
+         itemName = cItem ? cItem.name : '咒具';
       }
       
       setBuyCounts(prev => ({...prev, [id]: 1}));
@@ -10848,6 +10952,21 @@ const renderMenu = () => {
         if (['meds', 'tm', 'growth', 'stone'].includes(selectedBagItem.category)) {
             setUsingItem({ id: selectedBagItem.id, category: selectedBagItem.category, data: selectedBagItem });
             setSelectedBagItem(null); setView('team'); 
+        } else if (selectedBagItem.category === 'cursed') {
+            const cItem = CURSED_ITEMS[selectedBagItem.id];
+            if (!cItem) return;
+            if (cItem.type === 'CE_MAX_UP') {
+              const idxStr = prompt(`请选择精灵 (1-${party.length}) 使用 ${cItem.name}:`, "1");
+              const idx = parseInt(idxStr) - 1;
+              if (!isNaN(idx) && idx >= 0 && idx < party.length) {
+                party[idx].maxCE = (party[idx].maxCE || 0) + cItem.val;
+                setInventory(inv => ({ ...inv, cursed: { ...inv.cursed, [selectedBagItem.id]: inv.cursed[selectedBagItem.id] - 1 } }));
+                alert(`${party[idx].name} 的咒力上限永久提升 +${cItem.val}!`);
+              }
+            } else {
+              alert(`${cItem.name} 只能在战斗中使用。`);
+            }
+            setSelectedBagItem(null);
         } else if (selectedBagItem.id === 'rebirth_pill') {
              const idxStr = prompt(`请输入要洗练的精灵序号 (1-${party.length}):`, "1");
              const idx = parseInt(idxStr) - 1;
@@ -10898,6 +11017,13 @@ const renderMenu = () => {
             });
           }
         });
+    } else if (bagTab === 'cursed') {
+        currentCat = 'cursed';
+        Object.keys(inventory.cursed || {}).forEach(k => {
+          if ((inventory.cursed || {})[k] > 0 && CURSED_ITEMS[k]) {
+            currentItems.push({ ...CURSED_ITEMS[k], count: inventory.cursed[k] });
+          }
+        });
     }
 
     return (
@@ -10913,7 +11039,7 @@ const renderMenu = () => {
             {/* 左侧侧边栏 */}
             <div style={{width: '180px', background: '#f5f7fa', borderRight: '1px solid #eee', padding: '20px 0'}}>
                 <div style={{padding: '0 20px 20px', fontWeight: 'bold', fontSize: '18px', color: '#333', borderBottom: '1px solid #eee', marginBottom: '10px'}}>我的背包</div>
-                {['balls', 'meds', 'tms', 'stones', 'misc', 'accessories', 'fruits'].map(tab => (
+                {['balls', 'meds', 'tms', 'stones', 'misc', 'accessories', 'fruits', 'cursed'].map(tab => (
                     <div key={tab} onClick={()=>setBagTab(tab)} style={{
                         padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
                         background: bagTab===tab ? '#E3F2FD' : 'transparent',
@@ -10921,8 +11047,8 @@ const renderMenu = () => {
                         fontWeight: bagTab===tab ? 'bold' : 'normal',
                         borderRight: bagTab===tab ? '3px solid #1976D2' : '3px solid transparent'
                     }}>
-                        <span style={{display:'flex',alignItems:'center'}}>{tab==='balls'?renderBallCSS('poke',18):tab==='meds'?renderMedCSS('potion',18):tab==='tms'?renderTMCSS('NORMAL',18):tab==='stones'?renderStoneCSS('fire_stone',18):tab==='misc'?renderGrowthCSS('exp_candy',18):tab==='accessories'?renderAccCSS('a1',18):tab==='fruits'?<span style={{width:18,height:18,borderRadius:'50%',background:'linear-gradient(135deg,#D32F2F,#FF6F00)',display:'inline-block'}} />:null}</span>
-                        <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':tab==='accessories'?'饰品':'恶魔果实'}</span>
+                        <span style={{display:'flex',alignItems:'center'}}>{tab==='balls'?renderBallCSS('poke',18):tab==='meds'?renderMedCSS('potion',18):tab==='tms'?renderTMCSS('NORMAL',18):tab==='stones'?renderStoneCSS('fire_stone',18):tab==='misc'?renderGrowthCSS('exp_candy',18):tab==='accessories'?renderAccCSS('a1',18):tab==='fruits'?<span style={{width:18,height:18,borderRadius:'50%',background:'linear-gradient(135deg,#D32F2F,#FF6F00)',display:'inline-block'}} />:tab==='cursed'?<span style={{width:18,height:18,borderRadius:'50%',background:'linear-gradient(135deg,#7C3AED,#4C1D95)',display:'inline-block'}} />:null}</span>
+                        <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':tab==='accessories'?'饰品':tab==='fruits'?'恶魔果实':'咒具'}</span>
                     </div>
                 ))}
                 <button onClick={() => setView('grid_map')} style={{
@@ -12268,6 +12394,7 @@ const renderMenu = () => {
             )}
             <div className={`shop-nav-item ${shopTab==='growth'?'active':''}`} onClick={()=>setShopTab('growth')}>增强</div>
             <div className={`shop-nav-item ${shopTab==='accessories'?'active':''}`} onClick={()=>setShopTab('accessories')}>饰品</div>
+            <div className={`shop-nav-item ${shopTab==='cursed'?'active':''}`} onClick={()=>setShopTab('cursed')}>咒具</div>
             
             <div className="shop-balance-display" style={{marginTop:'auto', padding:'10px', textAlign:'center', borderTop:'1px solid #eee', fontWeight:'bold', color:'#FF9800'}}>
                 💰 {gold}
@@ -12410,7 +12537,7 @@ const renderMenu = () => {
 
               {/* 6. 饰品 */}
               {shopTab === 'accessories' && ACCESSORY_DB.map(acc => {
-                if (acc.id === 'trophy') return null;
+                if (acc.id === 'trophy' || acc.id === 'blue_lily' || acc.id === 'nichirin_blade') return null;
                 const count = buyCounts[acc.id] || 1;
                 const price = acc.price * count;
                 return (
@@ -12425,6 +12552,28 @@ const renderMenu = () => {
                       <div className="btn-counter" onClick={() => updateBuyCount(acc.id, 1)}>+</div>
                     </div>
                     <button className="btn-buy-pro" onClick={() => buyItemPro(acc.id, acc.price, 'acc')} disabled={gold < price}>购买</button>
+                  </div>
+                );
+              })}
+
+              {/* 7. 咒具 */}
+              {shopTab === 'cursed' && Object.keys(CURSED_ITEMS).map(key => {
+                const item = CURSED_ITEMS[key];
+                if (item.price <= 0) return null;
+                const count = buyCounts[key] || 1;
+                const price = item.price * count;
+                return (
+                  <div key={key} className="shop-card-pro">
+                    <div className="shop-pro-icon"><span style={{fontSize:36}}>{item.icon}</span></div>
+                    <div className="shop-pro-name">{item.name}</div>
+                    <div className="shop-pro-desc">{item.desc}</div>
+                    <div className="shop-pro-price">💰 {price}</div>
+                    <div className="shop-counter">
+                      <div className="btn-counter" onClick={() => updateBuyCount(key, -1)}>-</div>
+                      <div className="counter-val">{count}</div>
+                      <div className="btn-counter" onClick={() => updateBuyCount(key, 1)}>+</div>
+                    </div>
+                    <button className="btn-buy-pro" onClick={() => buyItemPro(key, item.price, 'cursed')} disabled={gold < price}>购买</button>
                   </div>
                 );
               })}

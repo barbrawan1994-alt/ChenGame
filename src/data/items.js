@@ -63,6 +63,8 @@ export const ACCESSORY_DB = [
   { id: 'a8', name: '金属涂层', type: 'DEF', val: 40, icon: '🛡️', price: 2000, desc: '防御力+40' },
   { id: 'a9', name: '奇迹种子', type: 'HP', val: 200, icon: '🌰', price: 3000, desc: '最大HP+200' },
   { id: 'trophy', name: '冠军奖杯', type: 'ATK', val: 200, icon: '🏆', price: 99999, desc: '至高荣誉！全属性大幅提升(隐藏效果)' },
+  { id: 'blue_lily', name: '蓝色彼岸花', type: 'HP', val: 300, icon: '🌺', price: 99999, desc: '无限城深处绽放的神秘花朵，赋予持有者超凡生命力' },
+  { id: 'nichirin_blade', name: '日轮刀', type: 'ATK', val: 250, icon: '⚔️', price: 99999, desc: '以特殊矿石锻造的神器之刃，斩杀一切邪恶' },
 ];
 
 export const RANDOM_EQUIP_DB = [

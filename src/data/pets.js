@@ -449,7 +449,7 @@ const TIME_WEATHER_PETS = [
   // ------------------------------------------------------
   // [组1：昼夜双子] 同一种幼体，根据时间进化为不同形态
   // ------------------------------------------------------
-  { id: 381, name: '时之沙', type: 'NORMAL', emoji: '⏳', hp: 45, atk: 45, def: 45, evo: 382, evoLvl: 20, desc: '身体里流淌着时间的沙砾，对光线非常敏感' },
+  { id: 381, name: '时之沙', type: 'NORMAL', emoji: '⏳', hp: 45, atk: 45, def: 45, evo: 382, evoLvl: 20, evoAlt: [{ target: 383, condition: { time: 'NIGHT' } }], desc: '身体里流淌着时间的沙砾，对光线非常敏感' },
   // 白天进化 -> 光系战士
   { id: 382, name: '晨曦卫士', type: 'FIGHT', emoji: '🌞', hp: 80, atk: 110, def: 70, evoCondition: { time: 'DAY' }, desc: '只在白天进化。吸收阳光作为铠甲，正义感极强' },
   // 夜晚进化 -> 暗系刺客
@@ -458,7 +458,7 @@ const TIME_WEATHER_PETS = [
   // ------------------------------------------------------
   // [组2：天气预报员] 漂浮泡泡的远亲，根据天气变异
   // ------------------------------------------------------
-  { id: 384, name: '云团团', type: 'FLYING', emoji: '☁️', hp: 50, atk: 40, def: 40, evo: 385, evoLvl: 25, desc: '一团不稳定的水汽，极易受天气影响' },
+  { id: 384, name: '云团团', type: 'FLYING', emoji: '☁️', hp: 50, atk: 40, def: 40, evo: 385, evoLvl: 25, evoAlt: [{ target: 386, condition: { weather: 'SUN' } }, { target: 387, condition: { weather: 'SNOW' } }], desc: '一团不稳定的水汽，极易受天气影响' },
   // 雨天 -> 暴风雨形态
   { id: 385, name: '雷雨君主', type: 'ELECTRIC', emoji: '⛈️', hp: 85, atk: 105, def: 80, evoCondition: { weather: 'RAIN' }, desc: '在暴雨中吸收雷电进化，性格暴躁' },
   // 晴天 -> 热气球形态
@@ -538,7 +538,7 @@ const TIME_WEATHER_PETS = [
   // ------------------------------------------------------
   // [组12：季节变换] 模拟季节 (通过天气)
   // ------------------------------------------------------
-  { id: 417, name: '四季鹿', type: 'NORMAL', emoji: '🦌', hp: 60, atk: 60, def: 60, evo: 418, evoLvl: 30, desc: '根据进化时的天气改变属性' },
+  { id: 417, name: '四季鹿', type: 'NORMAL', emoji: '🦌', hp: 60, atk: 60, def: 60, evo: 418, evoLvl: 30, evoAlt: [{ target: 419, condition: { weather: 'SNOW' } }], desc: '根据进化时的天气改变属性' },
   // 晴天进化 -> 春之鹿 (草)
   { id: 418, name: '繁花神鹿', type: 'GRASS', emoji: '🌸', hp: 95, atk: 100, def: 95, evoCondition: { weather: 'SUN' }, desc: '象征春天的到来，所过之处鲜花盛开' },
   // 雪天进化 -> 冬之鹿 (冰)
