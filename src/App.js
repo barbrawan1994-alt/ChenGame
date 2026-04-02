@@ -6687,21 +6687,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
     addLog(`去吧! ${BALLS[ballType].name}!`);
     
-    await wait(1200);
+    await wait(1000);
 
     const enemy = battle.enemyParty[battle.enemyActiveIdx];
     const catchChance = calculateCatchRate(ballType, enemy);
     const roll = Math.random();
 
-    // 1.5 球落地摇晃
+    // 1.5 球命中后摇晃（紧张感）
     setAnimEffect({ type: 'BALL_WOBBLE', target: 'enemy', ballType });
-    await wait(1800);
+    await wait(2200);
     setAnimEffect(null);
 
     // 2. 判定捕捉结果
     if (roll < catchChance || ballType === 'master') { 
       setAnimEffect({ type: 'CATCH_SUCCESS', target: 'enemy', ballType });
-      await wait(2000); 
+      await wait(2200); 
       setAnimEffect(null);
 
       addLog(`✨ 成功捕捉 ${enemy.name}!`);
@@ -11695,10 +11695,14 @@ const renderMenu = () => {
                             }}
                             className={`sprite-v2 anim-idle-float ${animEffect?.target==='enemy' && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                             style={{
-                                filter: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type) ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2)' : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
-                                transition: 'transform 0.5s, opacity 0.5s, filter 0.3s',
-                                transform: animEffect?.type === 'BALL_WOBBLE' ? 'scale(0.3)' : animEffect?.type === 'CATCH_SUCCESS' ? 'scale(0)' : undefined,
-                                opacity: animEffect?.type === 'CATCH_SUCCESS' ? 0 : 1,
+                                filter: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type)
+                                  ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2) saturate(0.3)' 
+                                  : animEffect?.type === 'THROW_BALL' 
+                                    ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(1.3)' 
+                                    : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+                                transition: 'transform 0.6s cubic-bezier(.4,0,.2,1), opacity 0.5s, filter 0.4s',
+                                transform: animEffect?.type === 'THROW_BALL' ? 'scale(0.85)' : animEffect?.type === 'BALL_WOBBLE' ? 'scale(0)' : animEffect?.type === 'CATCH_SUCCESS' ? 'scale(0)' : undefined,
+                                opacity: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type) ? 0 : 1,
                                 animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
                                            ? 'shiny-flash-body 0.5s' : undefined
                             }}>
@@ -11929,22 +11933,49 @@ const renderMenu = () => {
         {/* ====== 精灵球投掷/捕获动画 ====== */}
         {animEffect?.type === 'THROW_BALL' && (
           <div className="catch-ball-stage">
+            {/* 主球体 - 抛物线飞行 */}
             <div className="catch-ball-sprite">
-              {renderBallCSS(animEffect.ballType || 'poke', 36)}
+              {renderBallCSS(animEffect.ballType || 'poke', 40)}
             </div>
-            {[0,1,2,3,4].map(i => (
+            {/* 尾迹粒子 - 沿抛物线分布 */}
+            {[
+              {bx:'18%',by:'38%',ex:'28%',ey:'52%',d:0.15,dur:'0.5s'},
+              {bx:'25%',by:'48%',ex:'40%',ey:'62%',d:0.25,dur:'0.45s'},
+              {bx:'35%',by:'58%',ex:'50%',ey:'68%',d:0.35,dur:'0.4s'},
+              {bx:'45%',by:'64%',ex:'60%',ey:'66%',d:0.45,dur:'0.35s'},
+              {bx:'55%',by:'66%',ex:'68%',ey:'60%',d:0.55,dur:'0.3s'},
+              {bx:'65%',by:'62%',ex:'75%',ey:'54%',d:0.65,dur:'0.25s'},
+              {bx:'72%',by:'56%',ex:'80%',ey:'50%',d:0.72,dur:'0.2s'},
+            ].map((t, i) => (
               <div key={i} className="catch-ball-trail" style={{
-                '--trail-x': `${40 + i * 40}px`, '--trail-y': `${-30 - i * 25}px`,
-                animationDelay: `${i * 0.1}s`, opacity: 0.6 - i * 0.1
+                '--t-bx':t.bx,'--t-by':t.by,'--t-ex':t.ex,'--t-ey':t.ey,
+                '--trail-dur':t.dur,
+                animationDelay:`${t.d}s`,
+                width: `${8 - i * 0.5}px`, height: `${8 - i * 0.5}px`,
               }} />
             ))}
+            {/* 速度线 */}
+            {[
+              {b:'55%',l:'30%',a:-35,w:50,d:0.2},
+              {b:'62%',l:'45%',a:-20,w:45,d:0.35},
+              {b:'68%',l:'55%',a:-5,w:40,d:0.45},
+              {b:'60%',l:'65%',a:15,w:35,d:0.55},
+              {b:'52%',l:'73%',a:25,w:30,d:0.65},
+            ].map((sl, i) => (
+              <div key={`sl-${i}`} className="catch-speed-line" style={{
+                bottom:sl.b, left:sl.l, transform:`rotate(${sl.a}deg)`,
+                '--sl-w':`${sl.w}px`, animationDelay:`${sl.d}s`
+              }} />
+            ))}
+            {/* 命中闪光 */}
             <div className="catch-flash-ring" />
+            <div className="catch-hit-flash" />
           </div>
         )}
         {animEffect?.type === 'BALL_WOBBLE' && (
           <div className="catch-ball-stage">
             <div className="catch-ball-sprite landed">
-              {renderBallCSS(animEffect.ballType || 'poke', 36)}
+              {renderBallCSS(animEffect.ballType || 'poke', 40)}
             </div>
           </div>
         )}

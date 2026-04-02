@@ -4380,48 +4380,94 @@ button:active {
 
 /* ====== 精灵球投掷动画系统 ====== */
 .catch-ball-stage {
-  position: absolute; inset: 0; pointer-events: none; z-index: 300; overflow: hidden;
+  position: absolute; inset: 0; pointer-events: none; z-index: 300; overflow: visible;
 }
+
+/* 球体：从玩家位置(左下)抛物线飞向敌方(右上) */
 .catch-ball-sprite {
-  position: absolute; bottom: 55%; left: 15%;
-  width: 36px; height: 36px; border-radius: 50%; z-index: 301;
-  animation: ball-throw-arc 0.7s cubic-bezier(0.15,0.6,0.35,1) forwards;
+  position: absolute;
+  bottom: 38%; left: 18%;
+  width: 40px; height: 40px; border-radius: 50%; z-index: 301;
+  animation: ball-throw-arc 0.85s cubic-bezier(0.2,0.8,0.3,1) forwards;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
 }
 @keyframes ball-throw-arc {
-  0%   { transform: translate(0,0) rotate(0deg) scale(0.5); opacity: 0; }
-  15%  { transform: translate(10%,-20%) rotate(90deg) scale(1); opacity: 1; }
-  50%  { transform: translate(120%,-160%) rotate(360deg) scale(1.1); }
-  85%  { transform: translate(200%,-60%) rotate(600deg) scale(0.9); }
-  100% { transform: translate(220%,-20%) rotate(720deg) scale(0.85); opacity: 1; }
+  0%   { bottom: 38%; left: 18%; transform: rotate(0deg) scale(0.6); opacity: 0; }
+  8%   { bottom: 40%; left: 20%; transform: rotate(60deg) scale(1); opacity: 1; }
+  25%  { bottom: 60%; left: 35%; transform: rotate(200deg) scale(1.15); }
+  45%  { bottom: 72%; left: 52%; transform: rotate(400deg) scale(1.05); }
+  65%  { bottom: 65%; left: 68%; transform: rotate(560deg) scale(0.95); }
+  85%  { bottom: 52%; left: 78%; transform: rotate(680deg) scale(0.85); }
+  100% { bottom: 46%; left: 82%; transform: rotate(720deg) scale(0.8); opacity: 1; }
 }
+
+/* 球落地后在敌方位置摇晃 */
 .catch-ball-sprite.landed {
-  animation: ball-wobble 0.6s ease-in-out 3;
+  bottom: 46%; left: 82%;
+  animation: ball-wobble 0.5s ease-in-out 3;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
 }
 @keyframes ball-wobble {
-  0%, 100% { transform: translate(220%,-20%) rotate(0deg); }
-  25%      { transform: translate(220%,-20%) rotate(-20deg); }
-  75%      { transform: translate(220%,-20%) rotate(20deg); }
+  0%, 100% { transform: rotate(0deg) scale(0.8); }
+  20%      { transform: rotate(-25deg) scale(0.85); }
+  40%      { transform: rotate(18deg) scale(0.78); }
+  60%      { transform: rotate(-12deg) scale(0.82); }
+  80%      { transform: rotate(8deg) scale(0.8); }
 }
+
+/* 抛物线尾迹粒子 */
 .catch-ball-trail {
-  position: absolute; bottom: 55%; left: 15%;
-  width: 8px; height: 8px; border-radius: 50%;
-  background: rgba(255,255,255,0.7); filter: blur(2px);
-  animation: ball-trail-fade 0.5s ease-out forwards;
+  position: absolute;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,200,100,0.4));
+  filter: blur(1px);
+  animation: ball-trail-fly var(--trail-dur, 0.7s) ease-out forwards;
 }
-@keyframes ball-trail-fade {
-  0%   { opacity: 0.8; transform: translate(var(--trail-x,0),var(--trail-y,0)) scale(1); }
-  100% { opacity: 0; transform: translate(var(--trail-x,0),var(--trail-y,0)) scale(0); }
+@keyframes ball-trail-fly {
+  0%   { bottom: var(--t-by, 38%); left: var(--t-bx, 18%); opacity: 0.9; transform: scale(1); }
+  100% { bottom: var(--t-ey, 60%); left: var(--t-ex, 50%); opacity: 0; transform: scale(0); }
 }
+
+/* 命中闪光环 - 在敌方位置闪白 */
 .catch-flash-ring {
-  position: absolute; top: 30%; left: 65%;
-  width: 80px; height: 80px; border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.8);
-  transform: translate(-50%,-50%) scale(0);
-  animation: catch-flash-expand 0.4s 0.7s ease-out forwards;
+  position: absolute; bottom: 48%; left: 83%;
+  width: 100px; height: 100px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.9);
+  transform: translate(-50%, 50%) scale(0);
+  animation: catch-flash-expand 0.4s 0.8s ease-out forwards;
 }
 @keyframes catch-flash-expand {
-  0%   { transform: translate(-50%,-50%) scale(0); opacity: 1; }
-  100% { transform: translate(-50%,-50%) scale(3); opacity: 0; }
+  0%   { transform: translate(-50%, 50%) scale(0); opacity: 1; }
+  50%  { transform: translate(-50%, 50%) scale(2); opacity: 0.6; }
+  100% { transform: translate(-50%, 50%) scale(4); opacity: 0; }
+}
+
+/* 命中瞬间的屏幕白闪 */
+.catch-hit-flash {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 82% 48%, rgba(255,255,255,0.6) 0%, transparent 60%);
+  animation: catch-screen-flash 0.3s 0.75s ease-out forwards;
+  opacity: 0;
+}
+@keyframes catch-screen-flash {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 球飞行时的速度线 */
+.catch-speed-line {
+  position: absolute;
+  height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  transform-origin: left center;
+  animation: speed-line-fade 0.4s ease-out forwards;
+  opacity: 0;
+}
+@keyframes speed-line-fade {
+  0%   { opacity: 0; width: 0; }
+  30%  { opacity: 0.7; width: var(--sl-w, 40px); }
+  100% { opacity: 0; width: var(--sl-w, 40px); }
 }
 
 /* 捕获成功 - 星爆 + GOTCHA */
@@ -4433,23 +4479,23 @@ button:active {
   position: absolute; width: 60px; height: 60px; border-radius: 50%;
   border: 3px solid var(--ring-color, #FFD600);
   animation: catch-ring-burst 0.8s ease-out forwards;
-  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  bottom: 46%; left: 82%; transform: translate(-50%, 50%);
 }
 @keyframes catch-ring-burst {
-  0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 1; }
-  100% { transform: translate(-50%,-50%) scale(4); opacity: 0; }
+  0%   { transform: translate(-50%, 50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, 50%) scale(5); opacity: 0; }
 }
 .catch-star-particle {
-  position: absolute; top: 50%; left: 50%;
-  width: 8px; height: 8px;
+  position: absolute; bottom: 46%; left: 82%;
+  width: 10px; height: 10px;
   background: var(--star-color, #FFD600);
   clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
-  animation: star-shoot 0.9s ease-out forwards;
-  box-shadow: 0 0 6px var(--star-color, #FFD600);
+  animation: star-shoot 1s ease-out forwards;
+  box-shadow: 0 0 8px var(--star-color, #FFD600);
 }
 @keyframes star-shoot {
-  0%   { transform: translate(-50%,-50%) translateX(0) translateY(0) scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: translate(-50%,-50%) translateX(var(--sx,60px)) translateY(var(--sy,-60px)) scale(0.3) rotate(180deg); opacity: 0; }
+  0%   { transform: translate(-50%, 50%) translateX(0) translateY(0) scale(1.2) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, 50%) translateX(var(--sx,60px)) translateY(var(--sy,-60px)) scale(0) rotate(360deg); opacity: 0; }
 }
 .catch-gotcha-text {
   position: relative; z-index: 5;
@@ -4467,24 +4513,25 @@ button:active {
 }
 .catch-sparkle-bg {
   position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(255,214,0,0.2) 0%, transparent 60%);
-  animation: sparkle-bg-pulse 1s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at 80% 45%, rgba(255,214,0,0.25) 0%, rgba(255,140,0,0.1) 30%, transparent 65%);
+  animation: sparkle-bg-pulse 0.8s ease-in-out infinite alternate;
 }
 @keyframes sparkle-bg-pulse {
-  0%   { opacity: 0.3; }
-  100% { opacity: 0.7; }
+  0%   { opacity: 0.4; }
+  100% { opacity: 0.8; }
 }
 
 /* 捕获失败 - 球碎裂 */
 .catch-fail-burst {
-  position: absolute; top: 30%; left: 65%;
+  position: absolute; bottom: 46%; left: 82%;
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--shard-color, #FF5252);
-  animation: fail-shard 0.5s ease-out forwards;
+  box-shadow: 0 0 6px var(--shard-color, #FF5252);
+  animation: fail-shard 0.6s ease-out forwards;
 }
 @keyframes fail-shard {
-  0%   { transform: translate(-50%,-50%) scale(1); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--fx,30px)), calc(-50% + var(--fy,-30px))) scale(0.3); opacity: 0; }
+  0%   { transform: translate(-50%, 50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--fx,30px)), calc(50% + var(--fy,-30px))) scale(0); opacity: 0; }
 }
 
 /* 领域展开覆盖层 */
