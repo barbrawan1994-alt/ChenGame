@@ -11575,11 +11575,12 @@ const renderMenu = () => {
                         <div className="moves-grid-v2" style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(2, 1fr)', 
-                            gridTemplateRows: 'repeat(auto-fill, 1fr)',    
-                            gap: '6px',
+                            gridTemplateRows: 'repeat(2, 1fr)',    
+                            gap: '8px',
                             width: '100%',
                             height: '100%',
-                            minHeight: '140px' 
+                            minHeight: '140px',
+                            overflow: 'visible'
                         }}>
                             {(() => {
                                 const isP2Turn = battle.phase === 'input_p2';
@@ -11592,7 +11593,12 @@ const renderMenu = () => {
                                             name: m.name,
                                             power: m.p || 0,
                                             pp: m.pp,
-                                            maxPp: m.maxPP || 15
+                                            maxPp: m.maxPP || 15,
+                                            acc: m.acc,
+                                            desc: m.desc || '',
+                                            isCursed: m.isCursed,
+                                            ceCost: m.ceCost,
+                                            isExtra: m.isExtra,
                                         }}
                                         onClick={() => { 
                                             if (battle.isPvP) {

@@ -2644,6 +2644,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   z-index: 200 !important;
   margin: 0 !important;
   border-bottom: none !important;
+  overflow: visible !important;
 }
 
 /* 战斗场景高度 */
@@ -2689,12 +2690,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 /* 1. 网格改为 4列 x 2行 */
 .moves-grid-v2 {
   display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important; /* 强制 4 列 */
-  grid-template-rows: repeat(2, 1fr) !important;    /* 强制 2 行 */
-  gap: 8px !important; /* 间距稍微调小 */
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-rows: repeat(2, 1fr) !important;
+  gap: 8px !important;
   padding: 0 !important;
   height: 100% !important;
-  overflow-y: auto !important; /* 如果超过8个，允许滚动 */
+  overflow: visible !important;
 }
 
 /* 2. 技能按钮：紧凑化设计 */
@@ -2734,10 +2735,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 /* 5. 针对手机端的适配 (如果屏幕太窄，自动变回 2 列) */
 @media (max-width: 600px) {
   .moves-grid-v2 {
-    grid-template-columns: repeat(2, 1fr) !important; /* 手机上改回2列 */
-    grid-template-rows: repeat(4, 1fr) !important;    /* 变成4行 */
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: repeat(4, 1fr) !important;
   }
 }
+
+@keyframes tooltipFadeIn {
+  from { opacity:0; transform:translateX(-50%) translateY(4px); }
+  to   { opacity:1; transform:translateX(-50%) translateY(0); }
+}
+
 /* =================================================================
    👇 精灵详情页居中矫正 (粘贴到 CSS 最底部)
    目标：把左侧的详情栏变成居中弹窗，并加黑背景
