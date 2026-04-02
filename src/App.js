@@ -7189,6 +7189,11 @@ const renderNameInput = () => (
   };
 
 
+const titleSpriteUrls = React.useMemo(() => {
+  const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
+  return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
+}, []);
+
 const renderMenu = () => {
   const resetGame = () => {
     if (confirm("⚠️ 警告：确定要删除所有存档并重新开始吗？")) {
@@ -7197,10 +7202,7 @@ const renderMenu = () => {
     }
   };
 
-  const titleSprites = React.useMemo(() => {
-    const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
-    return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
-  }, []);
+  const titleSprites = titleSpriteUrls;
 
   return (
     <div className="screen" style={{
