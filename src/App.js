@@ -29,6 +29,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { generateSprite } from './SpriteGenerator';
+import { getSpriteUrl } from './SpriteMap';
 import {
   SECT_DB,
   SECT_CHIEFS_CONFIG,
@@ -342,9 +343,14 @@ const [pendingTask, setPendingTask] = useState(null);
       return { type: 'image', url: imgUrl, emoji: pet.emoji };
     }
     
-    const spriteUrl = generateSprite(pet, POKEDEX);
+    const spriteUrl = getSpriteUrl(pet);
     if (spriteUrl) {
-      return { type: 'pixel', url: spriteUrl };
+      return { type: 'image', url: spriteUrl, emoji: pet.emoji };
+    }
+
+    const pixelUrl = generateSprite(pet, POKEDEX);
+    if (pixelUrl) {
+      return { type: 'pixel', url: pixelUrl };
     }
     
     return { type: 'emoji', emoji: pet.emoji || '🐾' };
@@ -4546,6 +4552,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
             player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - cost);
         }
 
+        if (vow.sacrifice.noSwitch) {
+            addLog(`📜 ${player.name} 缚誓: ${vow.sacrifice.turns}回合内无法换人!`);
+        }
+        if (vow.sacrifice.defMult && vow.sacrifice.defMult < 1) {
+            addLog(`📜 ${player.name} 缚誓代价: 防御降低至${vow.sacrifice.defMult * 100}%!`);
+        }
+        if (vow.reward.spdMult) {
+            const spdBoost = Math.min(6, Math.round(Math.log2(vow.reward.spdMult) * 4));
+            player.stages.spd = Math.min(6, (player.stages.spd || 0) + spdBoost);
+            addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
+        }
+
         player.activeVow = { ...vow, turnsLeft: vow.reward.turns };
         addLog(`📜 ${player.name} 立下缚誓——${vow.name}!`);
         addLog(`📖 ${vow.desc}`);
@@ -5089,15 +5107,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
 
-        // 缚誓加成
         const vow = atkState.activeVow;
         if (vow && vow.turnsLeft > 0) {
             if (vow.reward.atkMult) rawDmg *= vow.reward.atkMult;
             if (vow.reward.nextMovePower) { rawDmg *= vow.reward.nextMovePower; vow.turnsLeft = 0; }
         }
         const defVow = defState.activeVow;
-        if (defVow && defVow.turnsLeft > 0 && defVow.reward.defMult) {
-            rawDmg /= defVow.reward.defMult;
+        if (defVow && defVow.turnsLeft > 0) {
+            if (defVow.reward.defMult) rawDmg /= defVow.reward.defMult;
+            if (defVow.sacrifice?.defMult && defVow.sacrifice.defMult < 1) {
+                rawDmg *= (1 / defVow.sacrifice.defMult);
+            }
         }
 
         // 特性修正
@@ -10305,7 +10325,7 @@ const renderMenu = () => {
                                 <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><span>🏃</span><span>逃跑</span></button>
                                 {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><span>🔮</span><span>蓄力</span></button>}
                                 {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><span>🌀</span><span>领域</span></button>}
-                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const vowList = BINDING_VOWS.map((v,i) => `${i+1}. ${v.name}: ${v.desc}`).join('\n'); const choice = prompt(`选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
+                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const vowList = BINDING_VOWS.map((v,i) => { let cost = ''; if (v.sacrifice.hpPercent) cost += `💔HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `🔮CE-${v.sacrifice.cePercent*100}% `; if (v.sacrifice.noSwitch) cost += `🚫禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `🛡️防御x${v.sacrifice.defMult} ${v.sacrifice.turns}回合 `; if (v.sacrifice.revealMoves) cost += `👁️展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `⚔️伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `💥下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `🛡️防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `💨速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `🔮CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
                             </div>
                         ) : (
                             <div className="actions-sidebar">
