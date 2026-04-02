@@ -10,17 +10,6 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    webPreferences: {
-      nodeIntegration: true,
-      // 确保这里没有禁用音频的设置
-    }
-  });
-  // ... 其他代码
-}
-function createWindow() {
-  const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
     title: "Pokemon RPG Legends",
     webPreferences: {
       nodeIntegration: true,
