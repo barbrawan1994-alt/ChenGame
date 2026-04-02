@@ -118,6 +118,9 @@ export default function RPG(props) {
   };
   const [inventory, setInventory] = useState({ ...defaultInventory, ...(savedData.inventory || {}) });
   const [fruitInventory, setFruitInventory] = useState(savedData.fruitInventory || []);
+  const [fruitDexCatFilter, setFruitDexCatFilter] = useState('ALL');
+  const [fruitDexRarFilter, setFruitDexRarFilter] = useState('ALL');
+  const [fruitDexSelected, setFruitDexSelected] = useState(null);
 
   // 游戏进度
   const [mapProgress, setMapProgress] = useState(savedData.mapProgress || {});
@@ -7503,6 +7506,249 @@ const titleSpriteUrls = React.useMemo(() => {
   return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
 }, []);
 
+// ==========================================
+// 恶魔果实图鉴
+// ==========================================
+const renderFruitDex = () => {
+  const allFruits = getAllFruits();
+  const categories = ['ALL', 'PARAMECIA', 'ZOAN', 'LOGIA'];
+  const rarities = ['ALL', 'LEGENDARY', 'EPIC', 'RARE', 'COMMON'];
+  const catFilter = fruitDexCatFilter;
+  const setCatFilter = setFruitDexCatFilter;
+  const rarFilter = fruitDexRarFilter;
+  const setRarFilter = setFruitDexRarFilter;
+  const selectedFruit = fruitDexSelected;
+  const setSelectedFruit = setFruitDexSelected;
+
+  const filtered = allFruits.filter(f => {
+    if (catFilter !== 'ALL' && f.category !== catFilter) return false;
+    if (rarFilter !== 'ALL' && f.rarity !== rarFilter) return false;
+    return true;
+  });
+
+  const ownedFruitIds = new Set(fruitInventory);
+  party.forEach(p => { if (p.devilFruit) ownedFruitIds.add(p.devilFruit); });
+
+  const catNames = { ALL: '全部', PARAMECIA: '超人系', ZOAN: '动物系', LOGIA: '自然系' };
+  const catColors = { ALL: '#666', PARAMECIA: '#FF6F00', ZOAN: '#2E7D32', LOGIA: '#1565C0' };
+  const rarNames = { ALL: '全部', LEGENDARY: '传说', EPIC: '史诗', RARE: '稀有', COMMON: '普通' };
+
+  const buildEffectDesc = (tr) => {
+    const parts = [];
+    if (tr.atkMult) parts.push(`物攻×${tr.atkMult}`);
+    if (tr.sAtkMult) parts.push(`特攻×${tr.sAtkMult}`);
+    if (tr.defMult) parts.push(`物防×${tr.defMult}`);
+    if (tr.sDefMult) parts.push(`特防×${tr.sDefMult}`);
+    if (tr.spdMult) parts.push(`速度×${tr.spdMult}`);
+    if (tr.hpMult) parts.push(`HP×${tr.hpMult}`);
+    if (tr.movePowerBoost) parts.push(`技能威力+${(tr.movePowerBoost*100).toFixed(0)}%`);
+    if (tr.critBoost) parts.push(`暴击+${tr.critBoost}级`);
+    if (tr.evaBoost) parts.push(`闪避+${(tr.evaBoost*100).toFixed(0)}%`);
+    if (tr.ignoreDefPercent) parts.push(`无视${(tr.ignoreDefPercent*100).toFixed(0)}%防御`);
+    if (tr.fixedDmgPercent) parts.push(`附加${(tr.fixedDmgPercent*100).toFixed(0)}%固定伤`);
+    if (tr.healPerTurn) parts.push(`每回合回${(tr.healPerTurn*100).toFixed(0)}%HP`);
+    if (tr.selfDotPerTurn) parts.push(`每回合自损${(tr.selfDotPerTurn*100).toFixed(0)}%HP`);
+    if (tr.dotPerTurn) parts.push(`敌方每回合损${(tr.dotPerTurn*100).toFixed(0)}%HP`);
+    if (tr.typeImmune) parts.push(`免疫${TYPES[tr.typeImmune]?.name || tr.typeImmune}系`);
+    if (tr.reflectPhysical) parts.push(`反弹${(tr.reflectPhysical*100).toFixed(0)}%物理伤`);
+    if (tr.reflectAll) parts.push(`反弹${(tr.reflectAll*100).toFixed(0)}%所有伤`);
+    if (tr.onHitBurn) parts.push(`${(tr.onHitBurn*100).toFixed(0)}%概率灼伤`);
+    if (tr.onHitPoison) parts.push(`${(tr.onHitPoison*100).toFixed(0)}%概率中毒`);
+    if (tr.onHitFreeze) parts.push(`${(tr.onHitFreeze*100).toFixed(0)}%概率冰冻`);
+    if (tr.onHitConfuse) parts.push(`${(tr.onHitConfuse*100).toFixed(0)}%概率混乱`);
+    if (tr.hpDrain) parts.push(`吸血${(tr.hpDrain*100).toFixed(0)}%`);
+    if (tr.multiHit) parts.push(`${tr.multiHit}连击`);
+    if (tr.enemySpdDown) parts.push(`每回合降速-${tr.enemySpdDown}级`);
+    if (tr.enemyAtkDown) parts.push(`每回合降攻-${tr.enemyAtkDown}级`);
+    if (tr.enemyAccDown) parts.push(`每回合降命中-${tr.enemyAccDown}级`);
+    if (tr.cancelEnemyFruit) parts.push('取消敌方变身');
+    if (tr.typeBoost) parts.push(`增伤:${Object.entries(tr.typeBoost).map(([k,v])=>`${TYPES[k]?.name||k}×${v}`).join(',')}`);
+    if (tr.convertNormalTo) parts.push(`普通技→${TYPES[tr.convertNormalTo]?.name || tr.convertNormalTo}系`);
+    return parts;
+  };
+
+  return (
+    <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #1a0a0a 0%, #2d0f0f 40%, #0f0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
+      {/* 头部 */}
+      <div style={{padding:'16px 20px', display:'flex', alignItems:'center', gap:'12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0}}>
+        <button onClick={() => setView('menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
+        <div>
+          <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'1px'}}>恶魔果实图鉴</div>
+          <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>共 {allFruits.length} 种 · 已拥有 {ownedFruitIds.size} 种</div>
+        </div>
+      </div>
+
+      {/* 筛选 */}
+      <div style={{padding:'10px 16px', display:'flex', gap:'8px', flexShrink:0, flexWrap:'wrap'}}>
+        {categories.map(c => (
+          <button key={c} onClick={() => setCatFilter(c)} style={{
+            padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none',
+            background: catFilter === c ? catColors[c] : 'rgba(255,255,255,0.06)',
+            color: catFilter === c ? '#fff' : 'rgba(255,255,255,0.5)',
+            transition:'all 0.2s'
+          }}>{catNames[c]}</button>
+        ))}
+        <div style={{width:'1px', background:'rgba(255,255,255,0.1)', margin:'0 4px'}} />
+        {rarities.map(r => (
+          <button key={r} onClick={() => setRarFilter(r)} style={{
+            padding:'5px 10px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none',
+            background: rarFilter === r ? (FRUIT_RARITY_CONFIG[r]?.color || '#555') : 'rgba(255,255,255,0.06)',
+            color: rarFilter === r ? '#fff' : 'rgba(255,255,255,0.5)',
+            transition:'all 0.2s'
+          }}>{rarNames[r]}</button>
+        ))}
+      </div>
+
+      {/* 果实列表 */}
+      <div style={{flex:1, overflowY:'auto', padding:'0 16px 16px'}}>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:'10px'}}>
+          {filtered.map(fruit => {
+            const rc = FRUIT_RARITY_CONFIG[fruit.rarity];
+            const owned = ownedFruitIds.has(fruit.id);
+            const catC = catColors[fruit.category];
+            return (
+              <div key={fruit.id} onClick={() => setSelectedFruit(fruit)} style={{
+                background: `linear-gradient(160deg, ${rc.color}18, rgba(0,0,0,0.3))`,
+                border: `1px solid ${rc.color}${owned ? '60' : '25'}`,
+                borderRadius:'14px', padding:'12px 10px', cursor:'pointer',
+                transition:'all 0.25s', position:'relative', overflow:'hidden'
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow=`0 6px 20px ${rc.color}30`; }}
+              onMouseOut={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
+              >
+                {owned && <div style={{position:'absolute', top:'6px', right:'6px', width:'8px', height:'8px', borderRadius:'50%', background:'#4CAF50', boxShadow:'0 0 6px #4CAF5080'}} />}
+                <div style={{
+                  width:'44px', height:'44px', borderRadius:'50%', margin:'0 auto 8px',
+                  background: `radial-gradient(circle at 35% 35%, ${rc.color}60, ${rc.color}20)`,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  boxShadow: `0 0 12px ${rc.color}30`, fontSize:'22px'
+                }}>
+                  {fruit.category === 'PARAMECIA' ? '🔮' : fruit.category === 'ZOAN' ? '🐉' : '🌊'}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  <div style={{fontSize:'12px', fontWeight:'700', color:'#fff', marginBottom:'3px', lineHeight:'1.2'}}>{fruit.name}</div>
+                  <div style={{display:'flex', gap:'4px', justifyContent:'center', flexWrap:'wrap'}}>
+                    <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'8px', background:`${catC}30`, color:catC, fontWeight:'600'}}>
+                      {FRUIT_CATEGORY_NAMES[fruit.category]}
+                    </span>
+                    <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'8px', background:`${rc.color}30`, color:rc.color, fontWeight:'600'}}>
+                      {rc.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 果实详情弹窗 */}
+      {selectedFruit && (() => {
+        const f = selectedFruit;
+        const rc = FRUIT_RARITY_CONFIG[f.rarity];
+        const catC = catColors[f.category];
+        const effects = buildEffectDesc(f.transform);
+        const tm = f.transformMove;
+        const owned = ownedFruitIds.has(f.id);
+        return (
+          <div onClick={() => setSelectedFruit(null)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width:'90%', maxWidth:'400px', maxHeight:'85vh', overflowY:'auto',
+              background:'linear-gradient(170deg, #1e1e2e, #0f0f1f)', borderRadius:'20px',
+              border:`1px solid ${rc.color}40`, boxShadow:`0 16px 48px rgba(0,0,0,0.5), 0 0 30px ${rc.color}15`,
+              position:'relative'
+            }}>
+              {/* 顶部光晕 */}
+              <div style={{position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'200px', height:'80px', background:`radial-gradient(ellipse, ${rc.color}25, transparent)`, pointerEvents:'none'}} />
+
+              <div style={{padding:'24px 20px 0', textAlign:'center', position:'relative'}}>
+                {/* 果实图标 */}
+                <div style={{
+                  width:'72px', height:'72px', borderRadius:'50%', margin:'0 auto 12px',
+                  background:`radial-gradient(circle at 35% 35%, ${rc.color}80, ${rc.color}30)`,
+                  display:'flex', alignItems:'center', justifyContent:'center', fontSize:'36px',
+                  boxShadow:`0 0 24px ${rc.color}40`, border:`2px solid ${rc.color}50`
+                }}>
+                  {f.category === 'PARAMECIA' ? '🔮' : f.category === 'ZOAN' ? '🐉' : '🌊'}
+                </div>
+                <div style={{fontSize:'20px', fontWeight:'800', color:'#fff'}}>{f.name}</div>
+                <div style={{display:'flex', gap:'6px', justifyContent:'center', margin:'8px 0 4px'}}>
+                  <span style={{fontSize:'11px', padding:'2px 10px', borderRadius:'10px', background:`${catC}25`, color:catC, fontWeight:'700'}}>
+                    {FRUIT_CATEGORY_NAMES[f.category]}
+                  </span>
+                  <span style={{fontSize:'11px', padding:'2px 10px', borderRadius:'10px', background:`${rc.color}25`, color:rc.color, fontWeight:'700'}}>
+                    {rc.label}
+                  </span>
+                  {owned && <span style={{fontSize:'11px', padding:'2px 10px', borderRadius:'10px', background:'rgba(76,175,80,0.2)', color:'#4CAF50', fontWeight:'700'}}>已拥有</span>}
+                </div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.6)', marginTop:'8px', lineHeight:'1.5'}}>{f.desc}</div>
+              </div>
+
+              {/* 变身信息 */}
+              <div style={{padding:'16px 20px'}}>
+                <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.5)', marginBottom:'8px', letterSpacing:'1px'}}>变身效果 · {f.duration}回合</div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                  {effects.map((eff, i) => (
+                    <span key={i} style={{
+                      fontSize:'11px', padding:'4px 10px', borderRadius:'10px',
+                      background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.8)',
+                      border:'1px solid rgba(255,255,255,0.08)'
+                    }}>{eff}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* 变身技能 */}
+              <div style={{padding:'0 20px 16px'}}>
+                <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.5)', marginBottom:'8px', letterSpacing:'1px'}}>变身技能</div>
+                <div style={{
+                  background:'rgba(255,255,255,0.04)', borderRadius:'12px', padding:'12px',
+                  border:'1px solid rgba(255,255,255,0.06)'
+                }}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <div>
+                      <span style={{fontSize:'14px', fontWeight:'700', color:'#fff'}}>{tm.name}</span>
+                      <span style={{
+                        marginLeft:'8px', fontSize:'9px', padding:'2px 8px', borderRadius:'8px',
+                        background: TYPES[tm.t]?.color || '#666', color:'#fff', fontWeight:'600'
+                      }}>{TYPES[tm.t]?.name || tm.t}</span>
+                    </div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)'}}>PP:{tm.pp}</div>
+                  </div>
+                  <div style={{display:'flex', gap:'16px', marginTop:'6px', fontSize:'11px', color:'rgba(255,255,255,0.6)'}}>
+                    <span>威力: <span style={{color:'#FF7043', fontWeight:'700'}}>{tm.p}</span></span>
+                    <span>命中: <span style={{color:'#42A5F5', fontWeight:'700'}}>{tm.acc}</span></span>
+                    {tm.effect && <span style={{color:'#AB47BC'}}>附加: {tm.effect.type === 'STATUS' ? tm.effect.status : `${tm.effect.stat}${tm.effect.val > 0 ? '-' : '+'}${Math.abs(tm.effect.val)}`}</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* 获取方式 */}
+              <div style={{padding:'0 20px 20px'}}>
+                <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.5)', marginBottom:'8px', letterSpacing:'1px'}}>获取方式</div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', lineHeight:'1.6'}}>
+                  {(f.rarity === 'COMMON' || f.rarity === 'RARE') && <div>· 商店购买 (💰{rc.shopPrice.toLocaleString()}G)</div>}
+                  <div>· 地图果实树随机获取</div>
+                  <div>· 战斗掉落 (概率{(rc.dropRate*100).toFixed(1)}%)</div>
+                </div>
+              </div>
+
+              <button onClick={() => setSelectedFruit(null)} style={{
+                position:'absolute', top:'12px', right:'12px', background:'rgba(255,255,255,0.1)',
+                border:'none', color:'#fff', width:'30px', height:'30px', borderRadius:'50%',
+                fontSize:'16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'
+              }}>×</button>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
+
 const renderMenu = () => {
   const resetGame = () => {
     if (confirm("⚠️ 警告：确定要删除所有存档并重新开始吗？")) {
@@ -7602,7 +7848,7 @@ const renderMenu = () => {
         </button>
 
         {/* 功能按钮组 */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginTop:'16px'}}>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginTop:'16px'}}>
             <button onClick={() => setView('pokedex')} style={{
             padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
             background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
@@ -7636,6 +7882,24 @@ const renderMenu = () => {
             <div>
               <div style={{fontSize:'13px', fontWeight:'700'}}>技能大全</div>
               <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>287 种技能</div>
+            </div>
+            </button>
+
+            <button onClick={() => setView('fruit_dex')} style={{
+            padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
+            background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
+            display:'flex', alignItems:'center', gap:'10px',
+            transition:'all 0.25s', backdropFilter:'blur(8px)'
+          }}
+          onMouseOver={e => { e.currentTarget.style.background='rgba(220,38,38,0.12)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)'; }}
+          onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
+          >
+            <div style={{width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg, #dc2626, #b91c1c)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg>
+            </div>
+            <div>
+              <div style={{fontSize:'13px', fontWeight:'700'}}>果实图鉴</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{getAllFruits().length} 种恶魔果实</div>
             </div>
             </button>
         </div>
@@ -8608,6 +8872,87 @@ const renderMenu = () => {
                     </div>
                 );
             })()}
+
+            {/* 3.5 恶魔果实 */}
+            <div style={{margin:'0 20px 15px'}}>
+              {(() => {
+                const equippedFruit = viewStatPet.devilFruit ? getFruitById(viewStatPet.devilFruit) : null;
+                const rarityConf = equippedFruit ? FRUIT_RARITY_CONFIG[equippedFruit.rarity] : null;
+                return (
+                  <div style={{
+                    background: equippedFruit
+                      ? `linear-gradient(135deg, ${rarityConf?.color || '#666'}15, #fff)`
+                      : '#f9f9f9',
+                    border: equippedFruit
+                      ? `1.5px solid ${rarityConf?.color || '#ccc'}`
+                      : '1.5px dashed #ddd',
+                    borderRadius:'12px', padding:'12px'
+                  }}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: equippedFruit ? '8px' : '0'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                        <div style={{
+                          fontSize:'22px', background:'#fff', borderRadius:'50%', width:'36px', height:'36px',
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          boxShadow: equippedFruit ? `0 0 8px ${rarityConf?.color || '#999'}40` : 'none'
+                        }}>
+                          {equippedFruit ? '🍎' : '🔲'}
+                        </div>
+                        <div>
+                          <div style={{fontWeight:'bold', fontSize:'13px', color: equippedFruit ? rarityConf?.color : '#999'}}>
+                            {equippedFruit ? equippedFruit.name : '未装备果实'}
+                          </div>
+                          {equippedFruit && (
+                            <div style={{fontSize:'10px', color:'#888'}}>
+                              [{FRUIT_CATEGORY_NAMES[equippedFruit.category]}] {FRUIT_RARITY_CONFIG[equippedFruit.rarity]?.label} · 持续{equippedFruit.duration}回合
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button onClick={() => {
+                        if (equippedFruit) {
+                          if (confirm(`卸下 ${equippedFruit.name} 并放回背包?`)) {
+                            setFruitInventory(prev => [...prev, viewStatPet.devilFruit]);
+                            const idx = party.findIndex(p => p.uid === viewStatPet.uid);
+                            if (idx !== -1) {
+                              const np = [...party]; np[idx] = {...np[idx], devilFruit: null}; setParty(np); setViewStatPet(np[idx]);
+                            }
+                          }
+                        } else {
+                          if (fruitInventory.length === 0) { alert('背包中没有果实，可以去商店购买或战斗中获得！'); return; }
+                          const list = fruitInventory.map((fid, i) => {
+                            const f = getFruitById(fid); return f ? `${i+1}. ${f.name} [${FRUIT_RARITY_CONFIG[f.rarity]?.label}]` : null;
+                          }).filter(Boolean).join('\n');
+                          const choice = prompt(`选择要装备的果实 (输入序号):\n${list}`);
+                          const ci = parseInt(choice) - 1;
+                          if (!isNaN(ci) && ci >= 0 && ci < fruitInventory.length) {
+                            const fid = fruitInventory[ci];
+                            setFruitInventory(prev => { const n = [...prev]; n.splice(ci, 1); return n; });
+                            const idx = party.findIndex(p => p.uid === viewStatPet.uid);
+                            if (idx !== -1) {
+                              const np = [...party];
+                              if (np[idx].devilFruit) setFruitInventory(prev => [...prev, np[idx].devilFruit]);
+                              np[idx] = {...np[idx], devilFruit: fid}; setParty(np); setViewStatPet(np[idx]);
+                            }
+                          }
+                        }
+                      }} style={{
+                        background: equippedFruit ? '#fff' : 'linear-gradient(135deg, #D32F2F, #FF6F00)',
+                        color: equippedFruit ? rarityConf?.color || '#666' : '#fff',
+                        border: equippedFruit ? `1px solid ${rarityConf?.color || '#ddd'}` : 'none',
+                        padding:'6px 12px', borderRadius:'20px', fontSize:'11px', fontWeight:'bold', cursor:'pointer'
+                      }}>
+                        {equippedFruit ? '更换' : '装备果实'}
+                      </button>
+                    </div>
+                    {equippedFruit && (
+                      <div style={{fontSize:'11px', color:'#555', background:'rgba(255,255,255,0.8)', padding:'6px 8px', borderRadius:'6px', lineHeight:'1.4'}}>
+                        {equippedFruit.desc}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* 4. 道具与培养 */}
             <div style={{padding:'0 20px 20px'}}>
@@ -12201,6 +12546,7 @@ const renderMenu = () => {
       {view === 'starter_select' && renderStarterSelect()}
       {view === 'pokedex' && renderPokedex()}
       {view === 'skill_dex' && renderSkillDex()}
+      {view === 'fruit_dex' && renderFruitDex()}
       {view === 'world_map' && renderWorldMap()}
       {view === 'bag' && renderBag()}
       {view === 'grid_map' && renderGridMap()}
