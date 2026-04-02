@@ -429,3 +429,45 @@ export function getFruitsByCategory(category) {
 export function getShopFruits() {
   return Object.values(DEVIL_FRUITS).filter(f => f.rarity === 'COMMON' || f.rarity === 'RARE');
 }
+
+export const FRUIT_ICONS = {
+  df_gomu:      { bg: 'linear-gradient(135deg, #E53935, #FF8A80)', pattern: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 50%)', symbol: 'G', symbolColor: '#fff' },
+  df_gura:      { bg: 'linear-gradient(135deg, #6A1B9A, #CE93D8)', pattern: 'repeating-conic-gradient(#6A1B9A 0% 25%, transparent 0% 50%) 50% / 12px 12px', symbol: '震', symbolColor: '#fff' },
+  df_ope:       { bg: 'linear-gradient(135deg, #1565C0, #90CAF9)', pattern: 'radial-gradient(circle, rgba(255,255,255,0.3) 30%, transparent 70%)', symbol: 'R', symbolColor: '#fff' },
+  df_ito:       { bg: 'linear-gradient(135deg, #F06292, #FCE4EC)', pattern: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.15) 3px, rgba(255,255,255,0.15) 5px)', symbol: '糸', symbolColor: '#AD1457' },
+  df_mochi:     { bg: 'linear-gradient(135deg, #FFB74D, #FFF3E0)', pattern: 'radial-gradient(circle at 60% 60%, rgba(255,255,255,0.5), transparent)', symbol: '糯', symbolColor: '#E65100' },
+  df_pero:      { bg: 'linear-gradient(135deg, #F48FB1, #FCE4EC)', pattern: 'radial-gradient(circle at 30% 70%, rgba(255,255,255,0.5), transparent)', symbol: '甜', symbolColor: '#880E4F' },
+  df_zushi:     { bg: 'linear-gradient(135deg, #5D4037, #BCAAA4)', pattern: 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,0.3), transparent)', symbol: '重', symbolColor: '#fff' },
+  df_doa:       { bg: 'linear-gradient(135deg, #7E57C2, #D1C4E9)', pattern: 'linear-gradient(0deg, transparent 45%, rgba(255,255,255,0.2) 50%, transparent 55%)', symbol: '門', symbolColor: '#fff' },
+  df_suke:      { bg: 'linear-gradient(135deg, rgba(200,200,200,0.4), rgba(255,255,255,0.2))', pattern: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1) 2px, transparent 2px, transparent 6px)', symbol: '透', symbolColor: 'rgba(100,100,100,0.6)' },
+  df_noro:      { bg: 'linear-gradient(135deg, #B39DDB, #EDE7F6)', pattern: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.3), transparent)', symbol: '遅', symbolColor: '#4527A0' },
+  df_bomu:      { bg: 'linear-gradient(135deg, #FF6F00, #FFD54F)', pattern: 'radial-gradient(circle at 50% 50%, #FF3D00 20%, transparent 60%)', symbol: '爆', symbolColor: '#fff' },
+  df_sabi:      { bg: 'linear-gradient(135deg, #8D6E63, #D7CCC8)', pattern: 'repeating-conic-gradient(#795548 0% 25%, transparent 0% 50%) 50% / 8px 8px', symbol: '锈', symbolColor: '#3E2723' },
+  df_hito_buddha: { bg: 'linear-gradient(135deg, #FFD700, #FFF8E1)', pattern: 'radial-gradient(circle at 50% 30%, rgba(255,255,255,0.6), transparent)', symbol: '佛', symbolColor: '#FF6F00' },
+  df_ryu_pteranodon: { bg: 'linear-gradient(135deg, #1B5E20, #A5D6A7)', pattern: 'linear-gradient(45deg, rgba(0,0,0,0.1) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.1) 75%)', symbol: '翼', symbolColor: '#fff' },
+  df_neko:      { bg: 'linear-gradient(135deg, #FF8F00, #FFE082)', pattern: 'repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(139,69,19,0.15) 4px, rgba(139,69,19,0.15) 6px)', symbol: '豹', symbolColor: '#4E342E' },
+  df_ushi_bison: { bg: 'linear-gradient(135deg, #37474F, #B0BEC5)', pattern: 'radial-gradient(circle at 50% 60%, rgba(0,0,0,0.2), transparent)', symbol: '牛', symbolColor: '#fff' },
+  df_hebi_yamata: { bg: 'linear-gradient(135deg, #4A148C, #EA80FC)', pattern: 'repeating-linear-gradient(60deg, transparent, transparent 3px, rgba(255,255,255,0.1) 3px, rgba(255,255,255,0.1) 5px)', symbol: '蛇', symbolColor: '#fff' },
+  df_tori_phoenix: { bg: 'linear-gradient(135deg, #FF6D00, #FFAB40)', pattern: 'radial-gradient(circle at 50% 30%, #FFD740, transparent 60%)', symbol: '凰', symbolColor: '#BF360C' },
+  df_mogu:      { bg: 'linear-gradient(135deg, #4E342E, #A1887F)', pattern: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.2), transparent)', symbol: '鼹', symbolColor: '#EFEBE9' },
+  df_kumo:      { bg: 'linear-gradient(135deg, #263238, #78909C)', pattern: 'radial-gradient(circle at 70% 30%, rgba(255,255,255,0.15), transparent)', symbol: '蛛', symbolColor: '#B0BEC5' },
+  df_zou:       { bg: 'linear-gradient(135deg, #455A64, #CFD8DC)', pattern: 'radial-gradient(ellipse at 50% 70%, rgba(0,0,0,0.15), transparent)', symbol: '象', symbolColor: '#fff' },
+  df_uma:       { bg: 'linear-gradient(135deg, #1A237E, #7986CB)', pattern: 'linear-gradient(180deg, transparent 40%, rgba(255,255,255,0.1) 60%)', symbol: '馬', symbolColor: '#C5CAE9' },
+  df_sara:      { bg: 'linear-gradient(135deg, #33691E, #AED581)', pattern: 'repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(0,100,0,0.1) 3px, rgba(0,100,0,0.1) 5px)', symbol: '龍', symbolColor: '#1B5E20' },
+  df_mushi:     { bg: 'linear-gradient(135deg, #827717, #E6EE9C)', pattern: 'radial-gradient(circle at 60% 40%, rgba(255,255,255,0.3), transparent)', symbol: '虫', symbolColor: '#33691E' },
+  df_mera:      { bg: 'linear-gradient(135deg, #D50000, #FF8A65)', pattern: 'radial-gradient(circle at 50% 70%, #FF6D00, transparent 60%)', symbol: '炎', symbolColor: '#FFD600' },
+  df_hie:       { bg: 'linear-gradient(135deg, #0097A7, #E0F7FA)', pattern: 'radial-gradient(circle at 40% 30%, rgba(255,255,255,0.6), transparent)', symbol: '氷', symbolColor: '#006064' },
+  df_goro:      { bg: 'linear-gradient(135deg, #F9A825, #FFF9C4)', pattern: 'linear-gradient(30deg, transparent 40%, rgba(255,255,255,0.5) 42%, transparent 44%)', symbol: '雷', symbolColor: '#E65100' },
+  df_pika:      { bg: 'linear-gradient(135deg, #FFD600, #FFFDE7)', pattern: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.5) 20%, transparent 50%)', symbol: '光', symbolColor: '#FF6F00' },
+  df_magu:      { bg: 'linear-gradient(135deg, #B71C1C, #FF5722)', pattern: 'radial-gradient(circle at 60% 70%, #FF3D00, transparent 50%)', symbol: '岩', symbolColor: '#FFD600' },
+  df_suna:      { bg: 'linear-gradient(135deg, #F9A825, #D7CCC8)', pattern: 'repeating-conic-gradient(#C8A415 0% 25%, transparent 0% 50%) 50% / 6px 6px', symbol: '砂', symbolColor: '#4E342E' },
+  df_yami:      { bg: 'linear-gradient(135deg, #212121, #424242)', pattern: 'radial-gradient(circle at 50% 50%, #000 20%, transparent 60%)', symbol: '闇', symbolColor: '#9C27B0' },
+  df_kaze:      { bg: 'linear-gradient(135deg, #B2EBF2, #E0F7FA)', pattern: 'repeating-linear-gradient(120deg, transparent, transparent 4px, rgba(255,255,255,0.3) 4px, rgba(255,255,255,0.3) 6px)', symbol: '風', symbolColor: '#00838F' },
+  df_numa:      { bg: 'linear-gradient(135deg, #4E342E, #795548)', pattern: 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,0.3), transparent)', symbol: '沼', symbolColor: '#A1887F' },
+  df_gas:       { bg: 'linear-gradient(135deg, #7B1FA2, #CE93D8)', pattern: 'radial-gradient(circle at 40% 60%, rgba(255,255,255,0.2), transparent)', symbol: '毒', symbolColor: '#E1BEE7' },
+  df_beta:      { bg: 'linear-gradient(135deg, #689F38, #C5E1A5)', pattern: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 30%, transparent)', symbol: '粘', symbolColor: '#33691E' },
+};
+
+export function getFruitIcon(fruitId) {
+  return FRUIT_ICONS[fruitId] || { bg: 'linear-gradient(135deg, #666, #999)', pattern: '', symbol: '?', symbolColor: '#fff' };
+}

@@ -65,7 +65,7 @@ import {
 } from './data/housing';
 import {
   DEVIL_FRUITS, FRUIT_RARITY_CONFIG, FRUIT_CATEGORY_NAMES,
-  getRandomFruit, getFruitById, getAllFruits, getShopFruits,
+  getRandomFruit, getFruitById, getAllFruits, getFruitIcon,
 } from './data/devilfruits';
 
 const BREATHING_BUFFS = [
@@ -7468,33 +7468,108 @@ const renderNameInput = () => (
       const matchSearch = s.name.includes(skillSearchTerm);
       return matchType && matchSearch;
     });
+
+    const getSkillCategory = (s) => {
+      if (s.category === 'status') return '变化';
+      if (s.p > 0 && s.t) return s.p >= 100 ? '物理/特殊' : '物理/特殊';
+      return '变化';
+    };
+    const getPowerColor = (p) => {
+      if (p >= 120) return '#FF1744';
+      if (p >= 80) return '#FF9100';
+      if (p >= 40) return '#FFD600';
+      if (p > 0) return '#69F0AE';
+      return '#616161';
+    };
+    const getPowerRank = (p) => {
+      if (p >= 120) return 'S';
+      if (p >= 80) return 'A';
+      if (p >= 40) return 'B';
+      if (p > 0) return 'C';
+      return '-';
+    };
+
     return (
-      <div className="screen dex-screen" style={{background: '#1a1a2e'}}>
-        <div className="nav-header glass-panel" style={{background: 'rgba(30,30,40,0.9)', borderBottom:'1px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 15px'}}>
-          <button className="btn-back" onClick={() => setView('menu')} style={{color: '#fff', background: 'transparent', border: '1px solid #555', padding: '5px 15px', borderRadius: '20px', cursor: 'pointer', fontSize: '14px'}}>🔙 返回</button>
-          <div className="nav-title" style={{color:'#fff', fontSize: '18px', fontWeight: 'bold'}}>技能大百科</div>
-          <div style={{width: 60}}></div>
+      <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #0a0a1a 0%, #111133 50%, #0a0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
+        {/* 顶栏 */}
+        <div style={{padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, background:'rgba(0,0,0,0.3)', backdropFilter:'blur(12px)'}}>
+          <button onClick={() => setView('menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
+          <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'2px', background:'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>技能大百科</div>
+          <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>{filteredSkills.length} 技能</div>
         </div>
-        <div className="dex-filters" style={{background: '#16213e', borderBottom: '1px solid #333', padding: '15px'}}>
-          <input type="text" placeholder="🔍 搜索技能名称..." value={skillSearchTerm} onChange={e => setSkillSearchTerm(e.target.value)} style={{width: '100%', padding: '10px', borderRadius: '8px', border: 'none', background: '#0f3460', color: '#fff', marginBottom: '10px'}}/>
-          <div style={{display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'5px'}}>
-            <div className={`filter-chip ${skillFilter==='ALL'?'active':''}`} onClick={()=>setSkillFilter('ALL')}>全部</div>
-            <div className={`filter-chip ${skillFilter==='STATUS'?'active':''}`} onClick={()=>setSkillFilter('STATUS')} style={{background:'#9C27B0', borderColor:'#9C27B0', color:'#fff'}}>变化系</div>
-            {Object.keys(TYPES).map(t => (<div key={t} className={`filter-chip ${skillFilter===t?'active':''}`} onClick={()=>setSkillFilter(t)} style={skillFilter===t ? {background: TYPES[t].color, borderColor: TYPES[t].color, color:'#fff'} : {}}>{TYPES[t].name}</div>))}
+
+        {/* 搜索与筛选 */}
+        <div style={{padding:'12px 16px', flexShrink:0}}>
+          <div style={{position:'relative', marginBottom:'10px'}}>
+            <input type="text" placeholder="搜索技能名称..." value={skillSearchTerm} onChange={e => setSkillSearchTerm(e.target.value)}
+              style={{width:'100%', padding:'10px 14px 10px 36px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.05)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box'}} />
+            <svg style={{position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', opacity:0.3}} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="white" strokeWidth="2"/><path d="M21 21l-4.35-4.35" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+          <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
+            <button onClick={()=>setSkillFilter('ALL')} style={{padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter==='ALL' ? '#6366f1' : 'rgba(255,255,255,0.06)', color: skillFilter==='ALL' ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>全部</button>
+            <button onClick={()=>setSkillFilter('STATUS')} style={{padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter==='STATUS' ? '#9C27B0' : 'rgba(255,255,255,0.06)', color: skillFilter==='STATUS' ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>变化</button>
+            {Object.keys(TYPES).map(t => (
+              <button key={t} onClick={()=>setSkillFilter(t)} style={{padding:'5px 10px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter===t ? TYPES[t].color : 'rgba(255,255,255,0.06)', color: skillFilter===t ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>{TYPES[t].name}</button>
+            ))}
           </div>
         </div>
-        <div className="dex-grid-refined" style={{gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', padding: '20px', gap: '15px'}}>
-          {filteredSkills.map((skill, idx) => (
-            <div key={idx} className="skill-card-pro" style={{borderLeft: `4px solid ${TYPES[skill.t]?.color}`}}>
-              <div className="skill-card-header"><span className="skill-name">{skill.name}</span><span className="skill-type-badge" style={{background: TYPES[skill.t]?.color}}>{TYPES[skill.t]?.name}</span></div>
-              <div className="skill-card-stats">
-                <div className="stat-pill"><span className="label">威力</span><span className="val" style={{color: skill.p > 0 ? '#FF5252' : '#999'}}>{skill.p > 0 ? skill.p : '-'}</span></div>
-                <div className="stat-pill"><span className="label">PP</span><span className="val">{skill.pp}</span></div>
-                <div className="stat-pill"><span className="label">分类</span><span className="val">{skill.category === 'status' ? '变化' : '物理/特殊'}</span></div>
-              </div>
-              {skill.desc && <div className="skill-desc">{skill.desc}</div>}
-            </div>
-          ))}
+
+        {/* 技能列表 */}
+        <div style={{flex:1, overflowY:'auto', padding:'0 16px 16px'}}>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'10px'}}>
+            {filteredSkills.map((skill, idx) => {
+              const typeColor = TYPES[skill.t]?.color || '#666';
+              const pwrColor = getPowerColor(skill.p);
+              const pwrRank = getPowerRank(skill.p);
+              return (
+                <div key={idx} style={{
+                  background:'rgba(255,255,255,0.03)', borderRadius:'14px', padding:'14px',
+                  border:`1px solid ${typeColor}20`, position:'relative', overflow:'hidden',
+                  transition:'all 0.2s'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background=`${typeColor}10`; e.currentTarget.style.borderColor=`${typeColor}40`; e.currentTarget.style.transform='translateY(-2px)'; }}
+                onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor=`${typeColor}20`; e.currentTarget.style.transform=''; }}
+                >
+                  {/* 左侧色条 */}
+                  <div style={{position:'absolute', left:0, top:'12px', bottom:'12px', width:'3px', borderRadius:'0 3px 3px 0', background:typeColor}} />
+
+                  {/* 威力等级标识 */}
+                  {skill.p > 0 && <div style={{position:'absolute', top:'10px', right:'10px', width:'24px', height:'24px', borderRadius:'6px', background:`${pwrColor}20`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'900', color:pwrColor, border:`1px solid ${pwrColor}30`}}>{pwrRank}</div>}
+
+                  <div style={{paddingLeft:'10px'}}>
+                    {/* 名称行 */}
+                    <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
+                      <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>{skill.name}</span>
+                      <span style={{fontSize:'9px', padding:'2px 8px', borderRadius:'8px', background:typeColor, color:'#fff', fontWeight:'600'}}>{TYPES[skill.t]?.name || '变化'}</span>
+                    </div>
+
+                    {/* 数据行 */}
+                    <div style={{display:'flex', gap:'12px', fontSize:'11px', marginBottom: skill.desc ? '8px' : '0'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>威力</span>
+                        <span style={{fontWeight:'800', color: skill.p > 0 ? pwrColor : 'rgba(255,255,255,0.25)', fontSize:'14px'}}>{skill.p > 0 ? skill.p : '-'}</span>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>PP</span>
+                        <span style={{fontWeight:'700', color:'#42A5F5'}}>{skill.pp}</span>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>命中</span>
+                        <span style={{fontWeight:'700', color:'#66BB6A'}}>{skill.acc || 100}</span>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>分类</span>
+                        <span style={{fontWeight:'600', color:'rgba(255,255,255,0.6)'}}>{getSkillCategory(skill)}</span>
+                      </div>
+                    </div>
+
+                    {/* 描述 */}
+                    {skill.desc && <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', lineHeight:'1.5', borderTop:'1px solid rgba(255,255,255,0.04)', paddingTop:'6px'}}>{skill.desc}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -7505,6 +7580,27 @@ const titleSpriteUrls = React.useMemo(() => {
   const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
   return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
 }, []);
+
+// 恶魔果实 CSS 图标渲染
+const renderFruitCSSIcon = (fruitId, size = 44) => {
+  const icon = getFruitIcon(fruitId);
+  return (
+    <div style={{
+      width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+      background: icon.bg, position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: `0 2px 8px rgba(0,0,0,0.2)`, flexShrink: 0
+    }}>
+      {icon.pattern && <div style={{position:'absolute', inset:0, background:icon.pattern, borderRadius:'50%'}} />}
+      <span style={{
+        position:'relative', zIndex:1, fontWeight:'900',
+        fontSize: `${Math.round(size * 0.42)}px`,
+        color: icon.symbolColor, textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        lineHeight: 1
+      }}>{icon.symbol}</span>
+    </div>
+  );
+};
 
 // ==========================================
 // 恶魔果实图鉴
@@ -7617,13 +7713,8 @@ const renderFruitDex = () => {
               onMouseOut={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
               >
                 {owned && <div style={{position:'absolute', top:'6px', right:'6px', width:'8px', height:'8px', borderRadius:'50%', background:'#4CAF50', boxShadow:'0 0 6px #4CAF5080'}} />}
-                <div style={{
-                  width:'44px', height:'44px', borderRadius:'50%', margin:'0 auto 8px',
-                  background: `radial-gradient(circle at 35% 35%, ${rc.color}60, ${rc.color}20)`,
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  boxShadow: `0 0 12px ${rc.color}30`, fontSize:'22px'
-                }}>
-                  {fruit.category === 'PARAMECIA' ? '🔮' : fruit.category === 'ZOAN' ? '🐉' : '🌊'}
+                <div style={{margin:'0 auto 8px'}}>
+                  {renderFruitCSSIcon(fruit.id, 44)}
                 </div>
                 <div style={{textAlign:'center'}}>
                   <div style={{fontSize:'12px', fontWeight:'700', color:'#fff', marginBottom:'3px', lineHeight:'1.2'}}>{fruit.name}</div>
@@ -7666,13 +7757,8 @@ const renderFruitDex = () => {
 
               <div style={{padding:'24px 20px 0', textAlign:'center', position:'relative'}}>
                 {/* 果实图标 */}
-                <div style={{
-                  width:'72px', height:'72px', borderRadius:'50%', margin:'0 auto 12px',
-                  background:`radial-gradient(circle at 35% 35%, ${rc.color}80, ${rc.color}30)`,
-                  display:'flex', alignItems:'center', justifyContent:'center', fontSize:'36px',
-                  boxShadow:`0 0 24px ${rc.color}40`, border:`2px solid ${rc.color}50`
-                }}>
-                  {f.category === 'PARAMECIA' ? '🔮' : f.category === 'ZOAN' ? '🐉' : '🌊'}
+                <div style={{margin:'0 auto 12px'}}>
+                  {renderFruitCSSIcon(f.id, 72)}
                 </div>
                 <div style={{fontSize:'20px', fontWeight:'800', color:'#fff'}}>{f.name}</div>
                 <div style={{display:'flex', gap:'6px', justifyContent:'center', margin:'8px 0 4px'}}>
@@ -7730,9 +7816,9 @@ const renderFruitDex = () => {
               <div style={{padding:'0 20px 20px'}}>
                 <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.5)', marginBottom:'8px', letterSpacing:'1px'}}>获取方式</div>
                 <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', lineHeight:'1.6'}}>
-                  {(f.rarity === 'COMMON' || f.rarity === 'RARE') && <div>· 商店购买 (💰{rc.shopPrice.toLocaleString()}G)</div>}
-                  <div>· 地图果实树随机获取</div>
-                  <div>· 战斗掉落 (概率{(rc.dropRate*100).toFixed(1)}%)</div>
+                  <div>· 地图果实树随机采集</div>
+                  <div>· 击败训练家/野生精灵掉落 (概率{(rc.dropRate*100).toFixed(1)}%)</div>
+                  <div>· 特殊副本/活动奖励</div>
                 </div>
               </div>
 
@@ -7849,59 +7935,29 @@ const renderMenu = () => {
 
         {/* 功能按钮组 */}
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginTop:'16px'}}>
-            <button onClick={() => setView('pokedex')} style={{
-            padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
-            background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
-            display:'flex', alignItems:'center', gap:'10px',
-            transition:'all 0.25s', backdropFilter:'blur(8px)'
-          }}
-          onMouseOver={e => { e.currentTarget.style.background='rgba(251,191,36,0.12)'; e.currentTarget.style.borderColor='rgba(251,191,36,0.3)'; }}
-          onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
-          >
-            <div style={{width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg, #f59e0b, #d97706)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            <div>
-              <div style={{fontSize:'13px', fontWeight:'700'}}>精灵图鉴</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{caughtDex.length}/500 已收集</div>
-            </div>
-            </button>
-
-            <button onClick={() => setView('skill_dex')} style={{
-            padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
-            background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
-            display:'flex', alignItems:'center', gap:'10px',
-            transition:'all 0.25s', backdropFilter:'blur(8px)'
-          }}
-          onMouseOver={e => { e.currentTarget.style.background='rgba(59,130,246,0.12)'; e.currentTarget.style.borderColor='rgba(59,130,246,0.3)'; }}
-          onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
-          >
-            <div style={{width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg, #3b82f6, #2563eb)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            <div>
-              <div style={{fontSize:'13px', fontWeight:'700'}}>技能大全</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>287 种技能</div>
-            </div>
-            </button>
-
-            <button onClick={() => setView('fruit_dex')} style={{
-            padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
-            background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
-            display:'flex', alignItems:'center', gap:'10px',
-            transition:'all 0.25s', backdropFilter:'blur(8px)'
-          }}
-          onMouseOver={e => { e.currentTarget.style.background='rgba(220,38,38,0.12)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)'; }}
-          onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
-          >
-            <div style={{width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg, #dc2626, #b91c1c)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg>
-            </div>
-            <div>
-              <div style={{fontSize:'13px', fontWeight:'700'}}>果实图鉴</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{getAllFruits().length} 种恶魔果实</div>
-            </div>
-            </button>
+            {[
+              { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/500`, color:'#f59e0b', hoverBg:'rgba(251,191,36,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              { key:'skill_dex', label:'技能大全', sub:'287种', color:'#3b82f6', hoverBg:'rgba(59,130,246,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', hoverBg:'rgba(220,38,38,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
+            ].map(btn => (
+              <button key={btn.key} onClick={() => setView(btn.key)} style={{
+                padding:'14px 8px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
+                background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
+                display:'flex', flexDirection:'column', alignItems:'center', gap:'8px',
+                transition:'all 0.25s', backdropFilter:'blur(8px)'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background=btn.hoverBg; e.currentTarget.style.borderColor=`${btn.color}50`; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
+              >
+                <div style={{width:'36px', height:'36px', borderRadius:'10px', background:`linear-gradient(135deg, ${btn.color}, ${btn.color}cc)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                  {btn.icon}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  <div style={{fontSize:'12px', fontWeight:'700', whiteSpace:'nowrap'}}>{btn.label}</div>
+                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{btn.sub}</div>
+                </div>
+              </button>
+            ))}
         </div>
 
         {/* 存档信息 (有存档时显示) */}
@@ -8890,13 +8946,10 @@ const renderMenu = () => {
                   }}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: equippedFruit ? '8px' : '0'}}>
                       <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                        <div style={{
-                          fontSize:'22px', background:'#fff', borderRadius:'50%', width:'36px', height:'36px',
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                          boxShadow: equippedFruit ? `0 0 8px ${rarityConf?.color || '#999'}40` : 'none'
-                        }}>
-                          {equippedFruit ? '🍎' : '🔲'}
-                        </div>
+                        {equippedFruit
+                          ? renderFruitCSSIcon(viewStatPet.devilFruit, 36)
+                          : <div style={{width:'36px', height:'36px', borderRadius:'50%', background:'#f0f0f0', border:'2px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', color:'#bbb'}}>+</div>
+                        }
                         <div>
                           <div style={{fontWeight:'bold', fontSize:'13px', color: equippedFruit ? rarityConf?.color : '#999'}}>
                             {equippedFruit ? equippedFruit.name : '未装备果实'}
@@ -10278,7 +10331,7 @@ const renderMenu = () => {
           if (fruit) {
             const equipped = [...party, ...box].filter(p => p.devilFruit === fid).length;
             currentItems.push({
-              id: fid, name: fruit.name, icon: '🍎',
+              id: fid, name: fruit.name, icon: null, fruitId: fid,
               desc: `[${FRUIT_CATEGORY_NAMES[fruit.category]}] ${fruit.desc}\n持续${fruit.duration}回合`,
               count, rarity: fruit.rarity, category: fruit.category, equipped,
             });
@@ -10307,7 +10360,8 @@ const renderMenu = () => {
                         fontWeight: bagTab===tab ? 'bold' : 'normal',
                         borderRight: bagTab===tab ? '3px solid #1976D2' : '3px solid transparent'
                     }}>
-                        <span>{tab==='balls'?'🔴':tab==='meds'?'💊':tab==='tms'?'💿':tab==='stones'?'🔮':tab==='misc'?'💎':tab==='accessories'?'💍':'🍎'}</span>
+                        <span>{tab==='balls'?'🔴':tab==='meds'?'💊':tab==='tms'?'💿':tab==='stones'?'🔮':tab==='misc'?'💎':tab==='accessories'?'💍':''}</span>
+                        {tab==='fruits' && <span style={{width:'20px',height:'20px',borderRadius:'50%',background:'linear-gradient(135deg,#D32F2F,#FF6F00)',display:'inline-block'}} />}
                         <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':tab==='accessories'?'饰品':'恶魔果实'}</span>
                     </div>
                 ))}
@@ -10347,7 +10401,7 @@ const renderMenu = () => {
                                 background: isFruit ? `linear-gradient(135deg, ${rarityColor}10, #fafafa)` : '#fafafa'
                             }} onMouseOver={e => e.currentTarget.style.borderColor = rarityColor}
                                onMouseOut={e => e.currentTarget.style.borderColor = isFruit ? rarityColor : '#eee'}>
-                                <div style={{fontSize: '32px', marginBottom: '5px'}}>{item.icon || item.emoji}</div>
+                                <div style={{fontSize: '32px', marginBottom: '5px'}}>{item.fruitId ? renderFruitCSSIcon(item.fruitId, 36) : (item.icon || item.emoji)}</div>
                                 <div style={{fontSize: '12px', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2', height: '28px', overflow: 'hidden'}}>{item.name}</div>
                                 {isFruit && <div style={{fontSize:'9px', color: rarityColor, fontWeight:'bold'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label} · {FRUIT_CATEGORY_NAMES[item.category]}</div>}
                                 <div style={{
@@ -11287,9 +11341,9 @@ const renderMenu = () => {
                         {/* 技能按钮区 (使用增强组件) */}
                         <div className="moves-grid-v2" style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 1fr)', 
-                            gridTemplateRows: 'repeat(2, 1fr)',    
-                            gap: '8px',
+                            gridTemplateColumns: 'repeat(2, 1fr)', 
+                            gridTemplateRows: 'repeat(auto-fill, 1fr)',    
+                            gap: '6px',
                             width: '100%',
                             height: '100%',
                             minHeight: '140px' 
@@ -11324,13 +11378,13 @@ const renderMenu = () => {
                         {/* 侧边操作按钮 */}
                         {!battle.isPvP ? (
                             <div className="actions-sidebar">
-                                <button className="action-btn-v2 btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}><span>🎒</span><span>背包</span></button>
-                                <button className="action-btn-v2 btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}><span>🔄</span><span>交换</span></button>
-                                <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><span>🏃</span><span>逃跑</span></button>
-                                {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-v2 btn-fruit-transform" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)', color:'#fff', fontSize:'11px', boxShadow:'0 0 12px rgba(255,111,0,0.4)'}} onClick={() => executeDevilFruit('player')}><span>🍎</span><span>变身</span></button>}
-                                {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><span>🔮</span><span>蓄力</span></button>}
-                                {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><span>🌀</span><span>领域</span></button>}
-                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const curCE = p.cursedEnergy || 0; const vowList = BINDING_VOWS.map((v,i) => { const canUse = curCE >= (v.ceCost || 0); const ceTag = `🔮需${v.ceCost||0}CE${canUse ? '✅' : '❌(不足)'}`; let cost = ceTag + ' '; if (v.sacrifice.hpPercent) cost += `💔HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `🔮额外燃烧${v.sacrifice.cePercent*100}%CE `; if (v.sacrifice.noSwitch) cost += `🚫禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `🛡️防御x${v.sacrifice.defMult} `; if (v.sacrifice.revealMoves) cost += `👁️展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `⚔️伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `💥下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `🛡️防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `💨速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `🔮CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name} ${canUse?'':'[咒力不足]'}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`当前咒力: ${curCE}/${p.maxCE}\n\n选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
+                                <button className="action-btn-v2 btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M20 7h-4l-2-3H10L8 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="white" strokeWidth="2"/></svg><span>背包</span></button>
+                                <button className="action-btn-v2 btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg><span>交换</span></button>
+                                <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M13 4l-1 7h6l-8 9 1-7H5l8-9z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg><span>逃跑</span></button>
+                                {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-v2 btn-fruit-transform" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)', color:'#fff', fontSize:'11px', boxShadow:'0 0 12px rgba(255,111,0,0.4)'}} onClick={() => executeDevilFruit('player')}><span style={{display:'flex',justifyContent:'center'}}>{renderFruitCSSIcon(p.devilFruit, 22)}</span><span>变身</span></button>}
+                                {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 8v4l3 3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg><span>蓄力</span></button>}
+                                {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><circle cx="12" cy="12" r="4" stroke="white" strokeWidth="2"/></svg><span>领域</span></button>}
+                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const curCE = p.cursedEnergy || 0; const vowList = BINDING_VOWS.map((v,i) => { const canUse = curCE >= (v.ceCost || 0); const ceTag = `需${v.ceCost||0}CE${canUse ? ' [可用]' : ' [不足]'}`; let cost = ceTag + ' '; if (v.sacrifice.hpPercent) cost += `HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `额外燃烧${v.sacrifice.cePercent*100}%CE `; if (v.sacrifice.noSwitch) cost += `禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `防御x${v.sacrifice.defMult} `; if (v.sacrifice.revealMoves) cost += `展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name} ${canUse?'':'[咒力不足]'}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`当前咒力: ${curCE}/${p.maxCE}\n\n选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="white" strokeWidth="2"/><path d="M14 2v6h6" stroke="white" strokeWidth="2"/></svg><span>缚誓</span></button>}
                             </div>
                         ) : (
                             <div className="actions-sidebar">
@@ -11529,8 +11583,6 @@ const renderMenu = () => {
             {badges.length >= 6 && (
                 <div className={`shop-nav-item ${shopTab==='stones'?'active':''}`} onClick={()=>setShopTab('stones')}>进化石</div>
             )}
-            <div className={`shop-nav-item ${shopTab==='fruits'?'active':''}`} onClick={()=>setShopTab('fruits')} style={shopTab==='fruits'?{background:'linear-gradient(135deg,#D32F2F,#FF6F00)',color:'#fff'}:{}}>恶魔果实</div>
-
             <div className={`shop-nav-item ${shopTab==='growth'?'active':''}`} onClick={()=>setShopTab('growth')}>增强</div>
             <div className={`shop-nav-item ${shopTab==='accessories'?'active':''}`} onClick={()=>setShopTab('accessories')}>饰品</div>
             
@@ -11629,25 +11681,7 @@ const renderMenu = () => {
                 );
               })}
 
-              {/* 恶魔果实商人 */}
-              {shopTab === 'fruits' && getShopFruits().map(fruit => {
-                const price = FRUIT_RARITY_CONFIG[fruit.rarity]?.shopPrice || 5000;
-                return (
-                  <div key={fruit.id} className="shop-card-pro" style={{borderColor: FRUIT_RARITY_CONFIG[fruit.rarity]?.color || '#666'}}>
-                    <div className="shop-pro-icon">🍎</div>
-                    <div className="shop-pro-name" style={{color: FRUIT_RARITY_CONFIG[fruit.rarity]?.color}}>{fruit.name}</div>
-                    <div className="shop-pro-desc" style={{fontSize:'11px'}}>[{FRUIT_CATEGORY_NAMES[fruit.category]}] {fruit.desc}</div>
-                    <div style={{fontSize:'9px', color:'#999', margin:'2px 0'}}>持续 {fruit.duration} 回合 | {FRUIT_RARITY_CONFIG[fruit.rarity]?.label}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <button className="btn-buy-pro" onClick={() => {
-                      if (gold < price) { alert('金币不足!'); return; }
-                      setGold(g => g - price);
-                      setFruitInventory(prev => [...prev, fruit.id]);
-                      alert(`购买了 ${fruit.name}!`);
-                    }} disabled={gold < price}>购买</button>
-                  </div>
-                );
-              })}
+              {/* 恶魔果实已移除商店渠道，仅通过活动/战斗获取 */}
 
               {/* 5. 增强 */}
               {shopTab === 'growth' && (

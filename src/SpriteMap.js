@@ -5,7 +5,7 @@ const SPRITE_EXT = '.png';
 const TRAINER_BASE = 'https://play.pokemonshowdown.com/sprites/trainers/';
 export const TRAINER_SPRITES = [
   { id: 'red', name: '小赤', url: `${TRAINER_BASE}red.png` },
-  { id: 'leaf', name: '小叶', url: `${TRAINER_BASE}leaf.png` },
+  { id: 'leaf', name: '小叶', url: `${TRAINER_BASE}green.png` },
   { id: 'brendan', name: '小遥', url: `${TRAINER_BASE}brendan.png` },
   { id: 'may', name: '小瑶', url: `${TRAINER_BASE}may.png` },
   { id: 'lucas', name: '小光', url: `${TRAINER_BASE}lucas.png` },
