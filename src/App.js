@@ -7467,31 +7467,106 @@ const renderMenu = () => {
           })}
         </div>
 
-        {/* --- 副本列表 (保持不变) --- */}
-        <div className="dungeon-list" style={{display: mapTab==='dungeons'?'flex':'none', flexDirection:'column', gap:'12px'}}>
+        {/* --- 特殊副本列表 (重新设计) --- */}
+        <div className="dungeon-list-v2" style={{display: mapTab==='dungeons'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(420px, 1fr))', gap:'16px', padding:'4px'}}>
              {[...DUNGEONS, HYAKKI_DUNGEON].map(d => {
-             let runner = '🏃'; let particle = '✨';
-             if (d.type === 'gold' || d.type === 'gold_pro') { runner = '🤠'; particle = '💰'; }
-             else if (d.type === 'exp') { runner = '🤓'; particle = '📚'; }
-             else if (d.type === 'catch') { runner = '🦁'; particle = '🍃'; }
-             else if (d.type === 'stone') { runner = '🧙‍♂️'; particle = '🔮'; }
-             else if (d.type === 'stat') { runner = '🥋'; particle = '💪'; }
-             else if (d.type === 'shiny_hunt') { runner = '😎'; particle = '✨'; }
-             else if (d.type === 'infinity') { runner = '🥷'; particle = '👻'; }
-             else if (d.type === 'hyakki') { runner = '👹'; particle = '🔮'; }
+             const difficultyStars = d.recLvl >= 80 ? '★★★★★' : d.recLvl >= 60 ? '★★★★' : d.recLvl >= 40 ? '★★★' : d.recLvl >= 20 ? '★★' : '★';
+             const tierLabel = d.recLvl >= 80 ? '传说' : d.recLvl >= 60 ? '史诗' : d.recLvl >= 40 ? '精英' : '普通';
+             const tierColor = d.recLvl >= 80 ? '#FF6B35' : d.recLvl >= 60 ? '#9C27B0' : d.recLvl >= 40 ? '#2196F3' : '#4CAF50';
 
              return (
-             <div key={d.id} className="dungeon-card" onClick={() => enterDungeon(d)} style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: '#fff', borderRadius: '16px', borderLeft: `6px solid ${d.color}`, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s', position: 'relative', overflow: 'hidden'}} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.01)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
-               <div style={{display: 'flex', alignItems: 'center', gap: '15px', width: '280px', flexShrink: 0}}>
-                   <div className="dungeon-icon-wrapper" style={{background: d.color, width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', color: '#fff', flexShrink: 0, boxShadow: `0 4px 10px ${d.color}66`}}>{d.icon}</div>
-                   <div className="dungeon-info"><div className="dungeon-name" style={{fontSize: '16px', fontWeight: 'bold', color: '#333'}}>{d.name}</div><div className="dungeon-desc" style={{fontSize: '12px', color: '#666', marginTop: '4px'}}>{d.desc}</div><div className="dungeon-req" style={{fontSize: '11px', color: '#999', marginTop: '2px', background:'#f0f0f0', display:'inline-block', padding:'2px 6px', borderRadius:'4px'}}>推荐 Lv.{d.recLvl}</div></div>
+             <div key={d.id} className="dungeon-card-v2" onClick={() => enterDungeon(d)}
+               style={{
+                 position:'relative', overflow:'hidden', borderRadius:'20px', cursor:'pointer',
+                 background:'#fff', boxShadow:'0 8px 30px rgba(0,0,0,0.08)',
+                 transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+                 border:'1px solid rgba(0,0,0,0.04)'
+               }}
+               onMouseOver={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow=`0 16px 40px ${d.color}30`; }}
+               onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'; }}
+             >
+               {/* 顶部渐变横幅 */}
+               <div style={{
+                 background:`linear-gradient(135deg, ${d.color}, ${d.color}bb)`,
+                 padding:'16px 20px 14px', position:'relative', overflow:'hidden'
+               }}>
+                 {/* 装饰光效 */}
+                 <div style={{position:'absolute', top:'-30px', right:'-30px', width:'100px', height:'100px', borderRadius:'50%', background:'rgba(255,255,255,0.15)'}} />
+                 <div style={{position:'absolute', bottom:'-20px', left:'30%', width:'60px', height:'60px', borderRadius:'50%', background:'rgba(255,255,255,0.08)'}} />
+                 
+                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative', zIndex:1}}>
+                   <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                     <div style={{
+                       width:'48px', height:'48px', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center',
+                       fontSize:'24px', background:'rgba(255,255,255,0.25)', backdropFilter:'blur(8px)',
+                       boxShadow:'0 4px 12px rgba(0,0,0,0.1)'
+                     }}>{d.icon}</div>
+                     <div>
+                       <div style={{fontSize:'17px', fontWeight:'800', color:'#fff', textShadow:'0 1px 3px rgba(0,0,0,0.2)', letterSpacing:'0.5px'}}>{d.name}</div>
+                       <div style={{fontSize:'12px', color:'rgba(255,255,255,0.85)', marginTop:'3px', lineHeight:'1.3'}}>{d.desc}</div>
+                     </div>
+                   </div>
+                   <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px'}}>
+                     <span style={{
+                       fontSize:'10px', fontWeight:'700', color:'#fff', background:'rgba(0,0,0,0.2)',
+                       padding:'3px 10px', borderRadius:'20px', letterSpacing:'1px'
+                     }}>{tierLabel}</span>
+                     <span style={{fontSize:'11px', color:'rgba(255,255,255,0.9)', letterSpacing:'2px'}}>{difficultyStars}</span>
+                   </div>
+                 </div>
                </div>
-               <div className="dungeon-middle-stage"><div className="anim-runner" style={{animationDelay: '0s'}}>{runner}</div><div className="anim-particle" style={{left: '20%', animationDelay: '0.5s'}}>{particle}</div><div className="anim-particle" style={{left: '50%', animationDelay: '1.2s', fontSize:'10px'}}>{particle}</div><div className="anim-particle" style={{left: '80%', animationDelay: '2.5s'}}>{particle}</div></div>
-               <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '20px', paddingRight: '20px', borderRight: '1px dashed #eee', minWidth: '180px'}}>
-                  <div style={{fontSize: '10px', color: '#aaa', marginBottom: '5px', fontWeight: 'bold', letterSpacing:'1px'}}>REWARD PREVIEW</div>
-                  <div style={{display: 'flex', gap: '8px'}}>{d.rewards && d.rewards.map((r, idx) => (<div key={idx} style={{background: '#fafafa', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', color: '#555', border: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500'}}><span style={{fontSize:'12px'}}>{r.icon}</span><span>{r.text}</span></div>))}</div>
+               
+               {/* 内容区域 */}
+               <div style={{padding:'14px 20px 16px'}}>
+                 {/* 推荐等级 + 限制条件 */}
+                 <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px'}}>
+                   <span style={{
+                     fontSize:'11px', fontWeight:'600', color:tierColor, background:`${tierColor}15`,
+                     padding:'4px 10px', borderRadius:'8px', border:`1px solid ${tierColor}30`
+                   }}>Lv.{d.recLvl}+</span>
+                   {d.restriction && d.restriction !== 'none' && (
+                     <span style={{
+                       fontSize:'10px', color:'#F44336', background:'#FFF3F0',
+                       padding:'3px 8px', borderRadius:'6px', border:'1px solid #FFCDD2'
+                     }}>
+                       {d.restriction === 'min_lvl_60' ? '🔒 Lv.60限制' :
+                        d.restriction === 'solo_run' ? '🎯 单挑模式' :
+                        d.restriction === 'entry_fee' ? '💰 门票5000G' :
+                        d.restriction === 'lucky_nature' ? '🍀 需幸运性格' : ''}
+                     </span>
+                   )}
+                   {d.isJJK && <span style={{fontSize:'10px', color:'#7B1FA2', background:'#F3E5F5', padding:'3px 8px', borderRadius:'6px', border:'1px solid #CE93D8'}}>🔮 咒术</span>}
+                 </div>
+                 
+                 {/* 奖励展示 */}
+                 <div style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
+                   <span style={{fontSize:'10px', color:'#aaa', fontWeight:'700', letterSpacing:'0.5px', marginRight:'4px'}}>奖励</span>
+                   {d.rewards && d.rewards.map((r, idx) => (
+                     <div key={idx} style={{
+                       background:`linear-gradient(135deg, ${d.color}08, ${d.color}15)`,
+                       padding:'5px 12px', borderRadius:'10px', fontSize:'11px',
+                       color:'#555', border:`1px solid ${d.color}25`,
+                       display:'flex', alignItems:'center', gap:'5px', fontWeight:'600'
+                     }}>
+                       <span style={{fontSize:'13px'}}>{r.icon}</span>
+                       <span>{r.text}</span>
+                     </div>
+                   ))}
+                 </div>
+                 
+                 {/* 进入按钮 */}
+                 <button onClick={(e) => { e.stopPropagation(); enterDungeon(d); }} style={{
+                   width:'100%', marginTop:'14px', padding:'11px', border:'none',
+                   background:`linear-gradient(135deg, ${d.color}, ${d.color}cc)`,
+                   color:'#fff', fontWeight:'700', cursor:'pointer', fontSize:'13px',
+                   borderRadius:'12px', letterSpacing:'1px',
+                   boxShadow:`0 4px 15px ${d.color}35`,
+                   transition:'all 0.2s'
+                 }}
+                 onMouseOver={e => { e.currentTarget.style.transform='scale(1.02)'; e.currentTarget.style.boxShadow=`0 6px 20px ${d.color}50`; }}
+                 onMouseOut={e => { e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow=`0 4px 15px ${d.color}35`; }}
+                 >进入副本</button>
                </div>
-               <button className="btn-enter-dungeon" style={{background: `linear-gradient(135deg, ${d.color}, ${d.color}dd)`, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', boxShadow: `0 4px 15px ${d.color}44`, flexShrink: 0}}>进入</button>
              </div>
            )})}
         </div>

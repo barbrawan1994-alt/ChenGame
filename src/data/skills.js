@@ -345,6 +345,97 @@ const SIDE_EFFECT_SKILLS = [
   { name: '流星光束', t: 'ROCK', p: 120, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 1.0 }, desc: '蓄力攻击，提升特攻' }
 ];
 
+// ==========================================
+// [新增] 50种高级技能 (含复合效果、回血、反伤、天气等)
+// ==========================================
+const ADVANCED_SKILLS = [
+  // --- 火系 (5) ---
+  { name: '业火爆炎', t: 'FIRE', p: 130, pp: 5, effect: { type: 'STATUS', status: 'BRN', chance: 0.5 }, desc: '释放炼狱之火，130威力+50%灼伤' },
+  { name: '灼热践踏', t: 'FIRE', p: 85, pp: 15, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '踩踏烈焰，85威力+50%降速' },
+  { name: '阳炎乱舞', t: 'FIRE', p: 75, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 1.0 }, desc: '以热浪为掩护，75威力+提升速度' },
+  { name: '火神之怒', t: 'FIRE', p: 110, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '神火焚天，110威力+30%降防' },
+  { name: '焰灵咒', t: 'FIRE', p: 95, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '幻焰迷心，95威力+20%混乱' },
+
+  // --- 水系 (5) ---
+  { name: '深渊漩涡', t: 'WATER', p: 100, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '深海漩涡卷入，100威力+50%降速' },
+  { name: '暴雨洗礼', t: 'WATER', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 1, chance: 0.3 }, desc: '雨水滋润，80威力+30%提特防' },
+  { name: '水神裁决', t: 'WATER', p: 130, pp: 5, effect: { type: 'STATUS', status: 'FRZ', chance: 0.15 }, desc: '绝对水压，130威力+15%冰冻' },
+  { name: '潮汐之力', t: 'WATER', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '潮汐冲刷意志，90威力+30%降物攻' },
+  { name: '泡影破灭', t: 'WATER', p: 70, pp: 15, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.5 }, desc: '泡沫爆裂，70威力+50%降特防' },
+
+  // --- 草系 (4) ---
+  { name: '藤蔓绞杀', t: 'GRASS', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '藤蔓缠绕，90威力+50%降速' },
+  { name: '花粉风暴', t: 'GRASS', p: 80, pp: 15, effect: { type: 'STATUS', status: 'SLP', chance: 0.2 }, desc: '花粉催眠，80威力+20%睡眠' },
+  { name: '世界树之怒', t: 'GRASS', p: 140, pp: 5, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1, chance: 0.5 }, desc: '世界树之力，140威力+50%提防' },
+  { name: '光合冲击', t: 'GRASS', p: 85, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.3 }, desc: '汲取阳光攻击，85威力+30%提特攻' },
+
+  // --- 电系 (3) ---
+  { name: '雷神降世', t: 'ELECTRIC', p: 140, pp: 5, effect: { type: 'STATUS', status: 'PAR', chance: 0.5 }, desc: '天雷降临，140威力+50%麻痹' },
+  { name: '电磁脉冲', t: 'ELECTRIC', p: 85, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 2, chance: 0.3 }, desc: '电磁波干扰，85威力+30%大幅降速' },
+  { name: '闪电链', t: 'ELECTRIC', p: 75, pp: 15, effect: { type: 'STATUS', status: 'PAR', chance: 0.4 }, desc: '连锁闪电，75威力+40%麻痹' },
+
+  // --- 冰系 (3) ---
+  { name: '极寒领域', t: 'ICE', p: 100, pp: 8, effect: { type: 'DEBUFF', stat: 'spd', val: 2, chance: 0.5 }, desc: '冰域降临，100威力+50%大幅降速' },
+  { name: '冰晶穿刺', t: 'ICE', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '冰晶贯穿铠甲，90威力+30%降物防' },
+  { name: '钻石星尘', t: 'ICE', p: 120, pp: 5, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1, chance: 1.0 }, desc: '冰晶防护+攻击，120威力+提物防' },
+
+  // --- 格斗 (3) ---
+  { name: '百烈拳', t: 'FIGHT', p: 70, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '连续出拳越打越强，70威力+30%提物攻' },
+  { name: '气功波', t: 'FIGHT', p: 95, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '精神攻击，95威力+20%混乱' },
+  { name: '天罡拳', t: 'FIGHT', p: 120, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.5 }, desc: '破甲重击，120威力+50%降物防' },
+
+  // --- 毒系 (2) ---
+  { name: '瘴气弥漫', t: 'POISON', p: 85, pp: 10, effect: { type: 'STATUS', status: 'PSN', chance: 0.5 }, desc: '毒雾笼罩，85威力+50%中毒' },
+  { name: '剧毒之牙', t: 'POISON', p: 110, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '毒牙穿刺，110威力+30%降防' },
+
+  // --- 地面 (2) ---
+  { name: '大地裁决', t: 'GROUND', p: 110, pp: 8, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '地裂阻敌，110威力+50%降速' },
+  { name: '沙暴冲击', t: 'GROUND', p: 80, pp: 15, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.5 }, desc: '黄沙遮目，80威力+50%降命中' },
+
+  // --- 飞行 (2) ---
+  { name: '天翔龙卷', t: 'FLYING', p: 110, pp: 8, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '龙卷风席卷，110威力+30%混乱' },
+  { name: '疾风斩', t: 'FLYING', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 0.5 }, desc: '风之加护，80威力+50%提速' },
+
+  // --- 超能 (3) ---
+  { name: '精神崩坏', t: 'PSYCHIC', p: 100, pp: 8, effect: { type: 'STATUS', status: 'CON', chance: 0.4 }, desc: '精神冲击，100威力+40%混乱' },
+  { name: '念动力场', t: 'PSYCHIC', p: 85, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 1, chance: 0.5 }, desc: '念力护盾，85威力+50%提特防' },
+  { name: '次元斩击', t: 'PSYCHIC', p: 130, pp: 5, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '切割精神，130威力+30%降特防' },
+
+  // --- 虫系 (2) ---
+  { name: '虫群风暴', t: 'BUG', p: 95, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '虫群侵蚀意志，95威力+30%降物攻' },
+  { name: '毒鳞粉', t: 'BUG', p: 70, pp: 15, effect: { type: 'STATUS', status: 'PSN', chance: 0.5 }, desc: '有毒鳞粉，70威力+50%中毒' },
+
+  // --- 岩石 (2) ---
+  { name: '巨岩压顶', t: 'ROCK', p: 110, pp: 8, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '巨岩压制，110威力+50%降速' },
+  { name: '宝石闪光', t: 'ROCK', p: 80, pp: 15, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.3 }, desc: '宝石折射致盲，80威力+30%降命中' },
+
+  // --- 幽灵 (3) ---
+  { name: '怨灵缠身', t: 'GHOST', p: 90, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '怨灵攻击精神，90威力+30%混乱' },
+  { name: '冥府之门', t: 'GHOST', p: 130, pp: 5, effect: { type: 'DEBUFF', stat: 's_def', val: 2, chance: 0.3 }, desc: '冥界力量，130威力+30%大幅降特防' },
+  { name: '诅咒之刃', t: 'GHOST', p: 85, pp: 15, effect: { type: 'STATUS', status: 'PSN', chance: 0.3 }, desc: '被诅咒侵蚀，85威力+30%中毒' },
+
+  // --- 龙系 (2) ---
+  { name: '龙神咆哮', t: 'DRAGON', p: 140, pp: 5, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.5 }, desc: '龙之威压，140威力+50%降物攻' },
+  { name: '龙鳞守护', t: 'DRAGON', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1, chance: 0.5 }, desc: '龙鳞硬化+攻击，80威力+50%提物防' },
+
+  // --- 钢系 (2) ---
+  { name: '铁壁突击', t: 'STEEL', p: 100, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1, chance: 0.3 }, desc: '钢铁冲锋，100威力+30%提物防' },
+  { name: '合金斩', t: 'STEEL', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '合金利刃切割铠甲，90威力+30%降物防' },
+
+  // --- 妖精 (3) ---
+  { name: '月华光辉', t: 'FAIRY', p: 100, pp: 10, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 0.3 }, desc: '圣洁月光，100威力+30%降特攻' },
+  { name: '精灵之舞', t: 'FAIRY', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.5 }, desc: '舞蹈蓄力，80威力+50%提特攻' },
+  { name: '梦幻泡影', t: 'FAIRY', p: 110, pp: 8, effect: { type: 'STATUS', status: 'SLP', chance: 0.15 }, desc: '梦幻之力，110威力+15%催眠' },
+
+  // --- 暗系 (3) ---
+  { name: '暗影吞噬', t: 'DARK', p: 95, pp: 10, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '暗影侵蚀，95威力+30%降特防' },
+  { name: '深渊凝视', t: 'DARK', p: 80, pp: 15, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '深渊之眼，80威力+30%混乱' },
+  { name: '黑洞吸引', t: 'DARK', p: 130, pp: 5, effect: { type: 'DEBUFF', stat: 'spd', val: 2, chance: 0.5 }, desc: '黑洞引力，130威力+50%大幅降速' },
+
+  // --- 神系 (1) ---
+  { name: '天启审判', t: 'GOD', p: 160, pp: 3, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '天之审判降临，160威力+50%大幅降防' },
+];
+
 // [自动注入] 将新技能合并到 SKILL_DB
 const injectStatusSkills = () => {
   STATUS_SKILLS_DB.forEach(skill => {
@@ -374,4 +465,15 @@ const injectSideEffectSkills = () => {
 // 立即执行
 injectSideEffectSkills();
 
-export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS };
+// [自动注入] 50种高级技能
+const injectAdvancedSkills = () => {
+  ADVANCED_SKILLS.forEach(skill => {
+    if (!SKILL_DB[skill.t]) SKILL_DB[skill.t] = [];
+    if (!SKILL_DB[skill.t].find(s => s.name === skill.name)) {
+      SKILL_DB[skill.t].push(skill);
+    }
+  });
+};
+injectAdvancedSkills();
+
+export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS, ADVANCED_SKILLS };
