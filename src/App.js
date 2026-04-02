@@ -13302,7 +13302,7 @@ const renderMenu = () => {
         const currentFruit = pet?.devilFruit ? getFruitById(pet.devilFruit) : null;
         return (
           <div style={{
-            position:'fixed', inset:0, zIndex:9500,
+            position:'fixed', inset:0, zIndex:10500,
             background:'rgba(0,0,0,0.7)', backdropFilter:'blur(8px)',
             display:'flex', justifyContent:'center', alignItems:'center',
             animation:'fadeIn 0.25s ease-out'
