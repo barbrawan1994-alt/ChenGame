@@ -4395,11 +4395,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.protected = false;
             }
             
-            await wait(1000); 
+            await wait(1200); 
             await enemyTurn(tempBattle);
         } else {
-            // 敌人死亡结算
-            await wait(500);
+            await wait(800);
             const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(enemy, party, tempBattle);
             
             // 更新全局队伍
@@ -4885,7 +4884,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkState.volatiles.sleepTurns > 0) {
             addLog(`${attacker.name} 正在熟睡...`);
             setAnimEffect({ type: 'SLEEP', target: source === 'player' ? 'player' : 'enemy' }); 
-            await wait(800); setAnimEffect(null);
+            await wait(1200); setAnimEffect(null);
             return false; 
         } else {
             atkState.status = null;
@@ -4896,7 +4895,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (Math.random() < 0.8) {
             addLog(`${attacker.name} 被冻结了，无法动弹!`);
             setAnimEffect({ type: 'FREEZE', target: source === 'player' ? 'player' : 'enemy' }); 
-            await wait(800); setAnimEffect(null);
+            await wait(1200); setAnimEffect(null);
             return false; 
         } else {
             atkState.status = null;
@@ -4906,13 +4905,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (atkState.status === 'PAR' && Math.random() < 0.25) {
         addLog(`${attacker.name} 身体麻痹，无法行动!`);
         setAnimEffect({ type: 'PARALYSIS', target: source === 'player' ? 'player' : 'enemy' }); 
-        await wait(800); setAnimEffect(null);
+        await wait(1200); setAnimEffect(null);
         return false; 
     }
     if (atkState.status === 'CON') {
         addLog(`${attacker.name} 混乱了!`);
         setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
-        await wait(500); setAnimEffect(null);
+        await wait(1000); setAnimEffect(null);
         if (Math.random() < 0.33) {
             addLog(`它攻击了自己!`);
             const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
@@ -4936,14 +4935,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 2. 技能施放与命中
     addLog(`${attacker.name} 使用 ${move.name}`);
-    await wait(600); // 🔥 [新增] 增加等待，让玩家看清使用了什么技能
+    await wait(1000);
 
     // 守住逻辑 (移到显示技能名之后)
     const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self');
     if (defState.volatiles.protected && isAttackOrDebuff) {
         addLog(`✋ ${defender.name} 守住了攻击!`); 
         setAnimEffect({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
-        await wait(800); 
+        await wait(1200); 
         setAnimEffect(null);
         return false;
     }
@@ -4963,12 +4962,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     if (move.p > 0 && Math.random() * 100 > finalHitChance) {
         addLog(`但是没有命中!`);
-        await wait(500);
+        await wait(1000);
         return false;
     }
 
     setAnimEffect({ type: move.t, source: source, target: source === 'player' ? 'enemy' : 'player', isCrit: false });
-    await wait(700); 
+    await wait(1000); 
     setAnimEffect(null);
 
     // 3. 伤害/效果结算
@@ -5059,7 +5058,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 }
             }
         }
-        await wait(500); setAnimEffect(null);
+        await wait(1000); setAnimEffect(null);
     } else {
         // === 伤害类技能 ===
         const statsAtk = getStats(attacker, atkState.stages, atkState.status); 
@@ -5184,7 +5183,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (isCrit) {
           setAnimEffect({ type: move.t, target: source === 'player' ? 'enemy' : 'player', isCrit: true });
-          await wait(400);
+          await wait(600);
           setAnimEffect(null);
         }
 
@@ -5332,7 +5331,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                      addLog(`追加效果: ${targetName} 陷入了异常状态!`);
                      setAnimEffect({ type: eff.status, target: targetSide });
                  }
-                 await wait(400); setAnimEffect(null);
+                 await wait(800); setAnimEffect(null);
              }
         }
     }
@@ -10540,24 +10539,21 @@ const renderMenu = () => {
             </div>
 
 
-            {/* 醒目的战斗日志浮层（使用增强组件） */}
-            {battle.logs[0] && (
+            {/* 战斗日志浮层 - 显示最近多条消息 */}
+            {battle.logs && battle.logs.length > 0 && (
                 <div className="battle-log-container" style={{
                     position: 'absolute', 
                     bottom: '20px', 
                     left: '50%', 
                     transform: 'translateX(-50%)',
                     width: '90%',
+                    maxWidth: '620px',
                     textAlign: 'center',
                     zIndex: 20,
                     pointerEvents: 'none' 
                 }}>
                     <EnhancedBattleMessage 
-                        key={battle.logs[0]}
-                        message={battle.logs[0]}
-                        type={battle.logs[0].includes('倒下了') ? 'error' : 
-                              battle.logs[0].includes('胜利') || battle.logs[0].includes('成功') ? 'success' : 
-                              battle.logs[0].includes('警告') ? 'warning' : 'info'}
+                        logs={battle.logs.slice(0, 4)}
                     />
                 </div>
             )}

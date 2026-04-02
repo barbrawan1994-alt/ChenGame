@@ -146,24 +146,19 @@ export const EnhancedHPBar = ({ current, max, label }) => {
 // =========================================
 // 战斗消息增强组件
 // =========================================
-export const EnhancedBattleMessage = ({ message, type = 'info' }) => {
-  const typeStyles = {
-    info: { background: 'rgba(33, 150, 243, 0.9)', color: '#fff' },
-    success: { background: 'rgba(76, 175, 80, 0.9)', color: '#fff' },
-    warning: { background: 'rgba(255, 193, 7, 0.9)', color: '#000' },
-    error: { background: 'rgba(244, 67, 54, 0.9)', color: '#fff' }
-  };
+export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => {
+  const allLogs = logs.length > 0 ? logs : (message ? [message] : []);
+  const displayLogs = allLogs.slice(0, 4);
 
   return (
-    <div style={{
-      ...typeStyles[type],
-      padding: '12px 20px', borderRadius: '12px',
-      fontSize: '14px', fontWeight: 'bold', textAlign: 'center',
-      marginBottom: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-      backdropFilter: 'blur(10px)',
-      animation: 'dmg-pop-v3 0.4s ease-out forwards'
-    }}>
-      {message}
+    <div className="battle-msg-queue">
+      {displayLogs.map((msg, i) => (
+        <div key={`${msg}-${i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'}`}
+          style={{ opacity: i === 0 ? 1 : Math.max(0.4, 1 - i * 0.25) }}
+        >
+          {msg}
+        </div>
+      ))}
     </div>
   );
 };
