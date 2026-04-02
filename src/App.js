@@ -121,6 +121,7 @@ export default function RPG(props) {
   const [fruitDexCatFilter, setFruitDexCatFilter] = useState('ALL');
   const [fruitDexRarFilter, setFruitDexRarFilter] = useState('ALL');
   const [fruitDexSelected, setFruitDexSelected] = useState(null);
+  const [vowModal, setVowModal] = useState(false);
 
   // 游戏进度
   const [mapProgress, setMapProgress] = useState(savedData.mapProgress || {});
@@ -10686,6 +10687,7 @@ const renderMenu = () => {
     };
 
     // 🔥 门派徽章渲染函数 (胶囊样式)
+    const sectBadgeRef = React.useRef(null);
     const renderSectBadge = (pet, side) => {
         const s = SECT_DB[pet.sectId || 1];
         const lv = pet.sectLevel || 1; 
@@ -10694,9 +10696,11 @@ const renderMenu = () => {
 
         return (
             <div 
+                ref={battleTooltip === tooltipKey ? sectBadgeRef : null}
                 style={{position: 'relative', display: 'inline-block', marginLeft: '4px', cursor: 'help', zIndex: 20}}
                 onMouseEnter={() => setBattleTooltip(tooltipKey)}
                 onMouseLeave={() => setBattleTooltip(null)}
+                onClick={() => setBattleTooltip(prev => prev === tooltipKey ? null : tooltipKey)}
             >
                 <div style={{
                     display:'inline-flex', alignItems:'center', gap:'3px',
@@ -10712,13 +10716,15 @@ const renderMenu = () => {
 
                 {battleTooltip === tooltipKey && (
                     <div style={{
-                        position: 'absolute', bottom: '130%', left: side === 'enemy' ? 'auto' : '50%', right: side === 'enemy' ? '-10px' : 'auto',
-                        transform: side === 'player' ? 'translateX(-50%)' : 'none', width: '200px', background: 'rgba(20, 20, 30, 0.95)', 
-                        backdropFilter: 'blur(8px)', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '11px', zIndex: 100, 
-                        textAlign: 'left', border: `1px solid ${s.color}`, boxShadow: `0 4px 20px ${s.color}66`
+                        position: 'fixed', top: side === 'player' ? 'auto' : '60px', bottom: side === 'player' ? '260px' : 'auto',
+                        left: '50%', transform: 'translateX(-50%)',
+                        width: '240px', background: 'rgba(15,15,25,0.97)', 
+                        backdropFilter: 'blur(12px)', color: '#fff', padding: '14px', borderRadius: '12px', fontSize: '12px', zIndex: 9999, 
+                        textAlign: 'left', border: `1.5px solid ${s.color}`, boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${s.color}40`,
+                        pointerEvents: 'none'
                     }}>
-                        <div style={{fontWeight:'bold', color: s.color, marginBottom:'4px', borderBottom:'1px solid rgba(255,255,255,0.1)', paddingBottom:'4px'}}>{s.icon} {s.name}心法</div>
-                        <div style={{lineHeight:'1.4', color:'#ddd', fontSize:'10px'}}>{effectText}</div>
+                        <div style={{fontWeight:'800', color: s.color, marginBottom:'6px', borderBottom:`1px solid ${s.color}30`, paddingBottom:'6px', fontSize:'13px'}}>{s.name}心法 · 第{lv}层</div>
+                        <div style={{lineHeight:'1.6', color:'#ddd', fontSize:'11px'}}>{effectText}</div>
                     </div>
                 )}
             </div>
@@ -11384,7 +11390,7 @@ const renderMenu = () => {
                                 {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-v2 btn-fruit-transform" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)', color:'#fff', fontSize:'11px', boxShadow:'0 0 12px rgba(255,111,0,0.4)'}} onClick={() => executeDevilFruit('player')}><span style={{display:'flex',justifyContent:'center'}}>{renderFruitCSSIcon(p.devilFruit, 22)}</span><span>变身</span></button>}
                                 {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 8v4l3 3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg><span>蓄力</span></button>}
                                 {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><circle cx="12" cy="12" r="4" stroke="white" strokeWidth="2"/></svg><span>领域</span></button>}
-                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const curCE = p.cursedEnergy || 0; const vowList = BINDING_VOWS.map((v,i) => { const canUse = curCE >= (v.ceCost || 0); const ceTag = `需${v.ceCost||0}CE${canUse ? ' [可用]' : ' [不足]'}`; let cost = ceTag + ' '; if (v.sacrifice.hpPercent) cost += `HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `额外燃烧${v.sacrifice.cePercent*100}%CE `; if (v.sacrifice.noSwitch) cost += `禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `防御x${v.sacrifice.defMult} `; if (v.sacrifice.revealMoves) cost += `展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name} ${canUse?'':'[咒力不足]'}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`当前咒力: ${curCE}/${p.maxCE}\n\n选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="white" strokeWidth="2"/><path d="M14 2v6h6" stroke="white" strokeWidth="2"/></svg><span>缚誓</span></button>}
+                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => setVowModal(true)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="white" strokeWidth="2"/><path d="M14 2v6h6" stroke="white" strokeWidth="2"/></svg><span>缚誓</span></button>}
                             </div>
                         ) : (
                             <div className="actions-sidebar">
@@ -12607,6 +12613,115 @@ const renderMenu = () => {
       {fusionMode && renderFusion()} 
       {renderAvatarSelector()}
       {renderPetDetailModal()}
+
+      {/* 缚誓选择弹窗 */}
+      {vowModal && battle && (() => {
+        const p = battle.player[0];
+        const curCE = p.cursedEnergy || 0;
+        const maxCE = p.maxCE || 0;
+        const ceRatio = maxCE > 0 ? curCE / maxCE : 0;
+        return (
+          <div onClick={() => setVowModal(false)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width:'92%', maxWidth:'420px', maxHeight:'80vh', 
+              background:'linear-gradient(170deg, #0f0a2e, #1a1040)', borderRadius:'20px',
+              border:'1px solid rgba(99,102,241,0.3)', boxShadow:'0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(99,102,241,0.1)',
+              display:'flex', flexDirection:'column', overflow:'hidden'
+            }}>
+              {/* 头部 */}
+              <div style={{padding:'20px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <div>
+                    <div style={{fontSize:'18px', fontWeight:'800', color:'#fff', letterSpacing:'1px'}}>缚誓之术</div>
+                    <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>以牺牲换取力量的禁术</div>
+                  </div>
+                  <button onClick={() => setVowModal(false)} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', width:'32px', height:'32px', borderRadius:'50%', fontSize:'16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>×</button>
+                </div>
+                {/* 咒力条 */}
+                <div style={{marginTop:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
+                  <div style={{fontSize:'11px', color:'#CE93D8', fontWeight:'700', flexShrink:0}}>咒力</div>
+                  <div style={{flex:1, height:'8px', background:'rgba(255,255,255,0.06)', borderRadius:'4px', overflow:'hidden'}}>
+                    <div style={{width:`${ceRatio*100}%`, height:'100%', borderRadius:'4px', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s', boxShadow:'0 0 8px rgba(224,64,251,0.4)'}} />
+                  </div>
+                  <span style={{fontSize:'12px', color:'#E1BEE7', fontWeight:'700', flexShrink:0}}>{curCE}/{maxCE}</span>
+                </div>
+              </div>
+
+              {/* 缚誓列表 */}
+              <div style={{flex:1, overflowY:'auto', padding:'12px 16px'}}>
+                {BINDING_VOWS.map((v, i) => {
+                  const canUse = curCE >= (v.ceCost || 0);
+                  const costs = [];
+                  if (v.ceCost) costs.push({label:`消耗${v.ceCost}CE`, color:'#CE93D8'});
+                  if (v.sacrifice.hpPercent) costs.push({label:`HP-${v.sacrifice.hpPercent*100}%`, color:'#EF5350'});
+                  if (v.sacrifice.cePercent) costs.push({label:`燃烧${v.sacrifice.cePercent*100}%CE`, color:'#FF7043'});
+                  if (v.sacrifice.noSwitch) costs.push({label:`禁换${v.sacrifice.turns}回合`, color:'#78909C'});
+                  if (v.sacrifice.defMult) costs.push({label:`防御×${v.sacrifice.defMult}`, color:'#90A4AE'});
+                  if (v.sacrifice.revealMoves) costs.push({label:'暴露技能', color:'#78909C'});
+                  const rewards = [];
+                  if (v.reward.atkMult) rewards.push({label:`伤害×${v.reward.atkMult}`, color:'#FF7043'});
+                  if (v.reward.nextMovePower) rewards.push({label:`下招×${v.reward.nextMovePower}`, color:'#FFD54F'});
+                  if (v.reward.defMult) rewards.push({label:`防御×${v.reward.defMult}`, color:'#66BB6A'});
+                  if (v.reward.spdMult) rewards.push({label:`速度×${v.reward.spdMult}`, color:'#42A5F5'});
+                  if (v.reward.ceMult) rewards.push({label:`CE回复×${v.reward.ceMult}`, color:'#CE93D8'});
+                  return (
+                    <div key={v.id} 
+                      onClick={() => { if (canUse) { setVowModal(false); executeBindingVow(v.id); } }}
+                      style={{
+                        background: canUse ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.01)',
+                        border: `1px solid ${canUse ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)'}`,
+                        borderRadius:'14px', padding:'14px', marginBottom:'10px',
+                        cursor: canUse ? 'pointer' : 'not-allowed',
+                        opacity: canUse ? 1 : 0.45,
+                        transition:'all 0.2s'
+                      }}
+                      onMouseOver={e => { if(canUse) { e.currentTarget.style.background='rgba(99,102,241,0.1)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.4)'; } }}
+                      onMouseOut={e => { e.currentTarget.style.background=canUse?'rgba(255,255,255,0.04)':'rgba(255,255,255,0.01)'; e.currentTarget.style.borderColor=canUse?'rgba(99,102,241,0.25)':'rgba(255,255,255,0.04)'; }}
+                    >
+                      {/* 标题行 */}
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                          <div style={{width:'28px', height:'28px', borderRadius:'8px', background:'linear-gradient(135deg, #1A237E, #42A5F5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'900', color:'#fff'}}>{i+1}</div>
+                          <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>{v.name}</span>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                          {canUse 
+                            ? <span style={{fontSize:'10px', padding:'2px 8px', borderRadius:'8px', background:'rgba(76,175,80,0.15)', color:'#66BB6A', fontWeight:'700'}}>可用</span>
+                            : <span style={{fontSize:'10px', padding:'2px 8px', borderRadius:'8px', background:'rgba(239,83,80,0.15)', color:'#EF5350', fontWeight:'700'}}>CE不足</span>
+                          }
+                          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>{v.reward.turns}回合</span>
+                        </div>
+                      </div>
+                      {/* 代价 */}
+                      <div style={{marginBottom:'6px'}}>
+                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600', marginBottom:'4px', letterSpacing:'0.5px'}}>代价</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'4px'}}>
+                          {costs.map((c, ci) => (
+                            <span key={ci} style={{fontSize:'10px', padding:'2px 8px', borderRadius:'6px', background:`${c.color}15`, color:c.color, fontWeight:'600', border:`1px solid ${c.color}20`}}>{c.label}</span>
+                          ))}
+                        </div>
+                      </div>
+                      {/* 效果 */}
+                      <div>
+                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600', marginBottom:'4px', letterSpacing:'0.5px'}}>效果</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'4px'}}>
+                          {rewards.map((r, ri) => (
+                            <span key={ri} style={{fontSize:'10px', padding:'2px 8px', borderRadius:'6px', background:`${r.color}15`, color:r.color, fontWeight:'600', border:`1px solid ${r.color}20`}}>{r.label}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {renderEvolutionScene()} 
       {/* 全局消息弹窗 */}
       {messageBox && (
