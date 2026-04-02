@@ -270,3 +270,62 @@ export const LEGENDARY_POOL = [144, 145, 146, 150, 151, 216, 218, 220, 222, 228,
 export const HIGH_TIER_POOL = [3, 6, 9, 18, 33, 65, 69, 94, 130, 138, 139, 140, 143, 149, 160, 168, 182, 190, 199, 206, 241]; 
 export const ROCK_POOL = [64, 65, 73, 74, 95, 133, 134, 135, 136, 139, 169, 190, 225, 226, 250]; 
 export const WATER_POOL = [7, 8, 9, 21, 22, 23, 24, 25, 26, 27, 28, 76, 77, 78, 107, 108, 109, 120, 123, 126, 129, 130, 158, 159, 165, 173, 174, 211, 212, 235, 246];
+
+// ==========================================
+// 咒术回战 - 挑战与副本
+// ==========================================
+export const JJK_CHALLENGES = [
+  {
+    id: 'jjk_exchange', title: '咒术高专交流会', desc: '与京都校的术师切磋',
+    req: 30, boss: 68, bossLvl: 55, teamSize: 4, rewardId: 68,
+    bg: 'linear-gradient(135deg, #1A237E 0%, #3949AB 100%)', color: '#E8EAF6',
+    isJJK: true, hasCE: true,
+  },
+  {
+    id: 'jjk_todo', title: '东堂葵的挑战', desc: '你喜欢哪种类型的女性？',
+    req: 40, boss: 57, bossLvl: 65, teamSize: 3, rewardId: 57,
+    bg: 'linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%)', color: '#F3E5F5',
+    isJJK: true, hasCE: true, npc: 'todo',
+  },
+  {
+    id: 'jjk_mahito', title: '讨伐特级咒灵·真人', desc: '灵魂的形态即将被改变',
+    req: 60, boss: 150, bossLvl: 70, teamSize: 5, rewardId: 93,
+    bg: 'linear-gradient(135deg, #880E4F 0%, #AD1457 100%)', color: '#FCE4EC',
+    isJJK: true, hasCE: true, npc: 'mahito', isBoss: true,
+  },
+  {
+    id: 'jjk_jogo', title: '讨伐特级咒灵·漏瑚', desc: '大地燃烧的恐惧',
+    req: 65, boss: 146, bossLvl: 75, teamSize: 5, rewardId: 146,
+    bg: 'linear-gradient(135deg, #BF360C 0%, #E64A19 100%)', color: '#FBE9E7',
+    isJJK: true, hasCE: true, npc: 'jogo', isBoss: true,
+  },
+  {
+    id: 'jjk_geto', title: '夏油杰·百鬼夜行', desc: '曾经的最强术师发动了百鬼夜行',
+    req: 75, boss: 94, bossLvl: 80, teamSize: 6, rewardId: 94,
+    bg: 'linear-gradient(135deg, #212121 0%, #424242 100%)', color: '#F5F5F5',
+    isJJK: true, hasCE: true, npc: 'geto', isBoss: true,
+  },
+  {
+    id: 'jjk_sukuna', title: '诅咒之王·宿傩', desc: '千年前的诅咒之王，你敢挑战吗？',
+    req: 90, boss: 150, bossLvl: 100, teamSize: 6, rewardId: 150,
+    bg: 'linear-gradient(135deg, #B71C1C 0%, #D32F2F 100%)', color: '#FFEBEE',
+    isJJK: true, hasCE: true, npc: 'sukuna', isBoss: true,
+  },
+  {
+    id: 'jjk_gojo_sparring', title: '五条悟的特训', desc: '最强术师亲自指导的特训',
+    req: 50, boss: 150, bossLvl: 80, teamSize: 4, rewardId: 65,
+    bg: 'linear-gradient(135deg, #0D47A1 0%, #1976D2 100%)', color: '#E3F2FD',
+    isJJK: true, hasCE: true, npc: 'gojo',
+  },
+];
+
+export const HYAKKI_DUNGEON = {
+  id: 'hyakki_yako', name: '百鬼夜行', desc: '连续对战咒灵的终极考验 (5波+Boss)',
+  type: 'hyakki', color: '#4A148C', icon: '👹', recLvl: 80, restriction: 'none',
+  isJJK: true,
+  rewards: [
+    { icon: '👹', text: '特级咒灵精华' },
+    { icon: '🔮', text: '咒力结晶' },
+    { icon: '🏠', text: '传说级家具' },
+  ]
+};

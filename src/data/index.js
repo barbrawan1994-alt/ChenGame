@@ -8,3 +8,5 @@ export * from './sects';
 export * from './maps';
 export * from './story';
 export * from './battles';
+export * from './jujutsu';
+export * from './housing';

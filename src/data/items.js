@@ -97,3 +97,23 @@ export const GROWTH_ITEMS = [
    { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 3000, desc: '给宝可梦吃下后，等级提升1级', stat: 'level_up', val: 1 },
   { id: 'max_candy', name: '神奇糖果', emoji: '🍬', price: 99999, desc: '瞬间升至 Lv.100 (仅限非满级精灵)', stat: 'level_max', val: 100 },
 ];
+
+// ==========================================
+// 咒术回战 - 咒具与道具
+// ==========================================
+export const CURSED_ITEMS = {
+  ce_crystal: { id: 'ce_crystal', name: '咒力结晶', price: 5000, icon: '🔮',
+    desc: '使用后恢复30%咒力上限', type: 'CE_HEAL', val: 0.3 },
+  cursed_speech_amp: { id: 'cursed_speech_amp', name: '咒言放大器', price: 15000, icon: '📢',
+    desc: '持有者术式威力+20%', type: 'CE_BOOST', val: 0.2 },
+  inverted_spear: { id: 'inverted_spear', name: '天逆鉾', price: 50000, icon: '🔱',
+    desc: '特级咒具，否定一切术式 (破除对方领域)', type: 'ANTI_DOMAIN', val: 1 },
+  prison_realm: { id: 'prison_realm', name: '獄門疆', price: 100000, icon: '📦',
+    desc: '特级咒具，一定概率封印对手 (Boss无效)', type: 'SEAL', val: 0.3 },
+  sukuna_finger: { id: 'sukuna_finger', name: '宿傩之指', price: 0, icon: '🫵',
+    desc: '诅咒之王的手指，使用后永久提升咒力上限+10', type: 'CE_MAX_UP', val: 10 },
+  cursed_energy_pill: { id: 'cursed_energy_pill', name: '咒力丹', price: 3000, icon: '💊',
+    desc: '恢复50点咒力', type: 'CE_RESTORE', val: 50 },
+  binding_scroll: { id: 'binding_scroll', name: '缚誓卷轴', price: 8000, icon: '📜',
+    desc: '允许在战斗外设立缚誓，持续整场战斗', type: 'VOW_SCROLL', val: 1 },
+};

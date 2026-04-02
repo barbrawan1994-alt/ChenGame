@@ -48,7 +48,19 @@ import {
   HIGH_TIER_POOL,
   ROCK_POOL,
   WATER_POOL,
+  JJK_CHALLENGES,
+  HYAKKI_DUNGEON,
 } from './data';
+import {
+  CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE,
+  COMMON_TECHNIQUES, TYPE_TECHNIQUES, DOMAINS, BINDING_VOWS,
+  JJK_NPCS, HYAKKI_YAKO_CONFIG, AWAKENING_CONDITIONS,
+} from './data/jujutsu';
+import {
+  HOUSE_TYPES, FURNITURE_QUALITY, FURNITURE_DB, FURNITURE_SETS,
+  HOUSING_SCORE_TIERS, rollQuality, getHousingScoreTier, calcHouseScore,
+  calcResidentBenefits, DEFAULT_HOUSING_STATE, FURNITURE_TILE,
+} from './data/housing';
 
 const BREATHING_BUFFS = [
   { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +20%', effect: (p) => p.customBaseStats.p_atk = Math.floor(p.customBaseStats.p_atk * 1.2) },
@@ -108,6 +120,9 @@ export default function RPG(props) {
   const [viewedIntros, setViewedIntros] = useState(savedData.viewedIntros || []);
   const [sectTitles, setSectTitles] = useState(savedData.sectTitles || []);
   const [leagueWins, setLeagueWins] = useState(savedData.leagueWins || 0);
+
+  // 家园系统
+  const [housing, setHousing] = useState(savedData.housing || { ...DEFAULT_HOUSING_STATE });
 
   // 存档状态标记 (关键！直接根据是否读到金币来判断是否有存档)
   const [hasSave, setHasSave] = useState(!!savedData.gold); 
@@ -173,7 +188,34 @@ useEffect(() => {
                 
                 if (prev > 0) addGlobalLog(`🌍 各地的天气发生了变化...`);
             }
-            
+
+            // 家园系统：每900秒结算一次入住收益
+            if (nextTime % 900 === 0 && housing.currentHouse) {
+                const placed = housing.furniture.filter(f => f.placed);
+                const ben = calcResidentBenefits(placed);
+                const residentIds = housing.residents.filter(Boolean);
+                if (residentIds.length > 0 && (ben.hpRegen > 0 || ben.expBonus > 0 || ben.intimacyBonus > 0)) {
+                    setBox(prevBox => prevBox.map(p => {
+                        if (!residentIds.includes(p.uid || p.id)) return p;
+                        const maxHp = getStats(p).maxHp;
+                        return {
+                            ...p,
+                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + ben.hpRegen),
+                            intimacy: Math.min(255, (p.intimacy || 0) + ben.intimacyBonus),
+                        };
+                    }));
+                    setParty(prevParty => prevParty.map(p => {
+                        if (!residentIds.includes(p.uid || p.id)) return p;
+                        const maxHp = getStats(p).maxHp;
+                        return {
+                            ...p,
+                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + ben.hpRegen),
+                            intimacy: Math.min(255, (p.intimacy || 0) + ben.intimacyBonus),
+                        };
+                    }));
+                }
+            }
+
             return nextTime;
         });
     }, 1000); // 1秒 = 游戏内1秒 (可根据需要调整流逝速度，例如 100ms)
@@ -1895,7 +1937,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        viewedIntros, 
        leagueWins, 
        unlockedTitles, 
-       currentTitle
+       currentTitle,
+       housing
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -2426,6 +2469,276 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 9. [新增] 锁定界面
   // ==========================================
+  // ==========================================
+  // 精灵家园系统 - 完整UI
+  // ==========================================
+  const renderHousing = () => {
+    const currentHouseDef = HOUSE_TYPES.find(h => h.id === housing.currentHouse);
+    const nextHouseIdx = currentHouseDef ? HOUSE_TYPES.indexOf(currentHouseDef) + 1 : 0;
+    const nextHouseDef = HOUSE_TYPES[nextHouseIdx] || null;
+    const placedFurniture = housing.furniture.filter(f => f.placed);
+    const unplacedFurniture = housing.furniture.filter(f => !f.placed);
+    const benefits = calcResidentBenefits(placedFurniture);
+    const score = calcHouseScore(placedFurniture);
+    const tier = getHousingScoreTier(score);
+
+    const completedSets = FURNITURE_SETS.filter(set =>
+      set.items.every(itemId => placedFurniture.some(f => f.baseId === itemId))
+    );
+
+    const buyHouse = (houseDef) => {
+      if (gold < houseDef.price) { alert(`金币不足! 需要 ${houseDef.price}`); return; }
+      if (!confirm(`购买 ${houseDef.icon} ${houseDef.name}？\n价格: ${houseDef.price} 金币\n精灵槽: ${houseDef.slots} | 家具槽: ${houseDef.furnitureSlots}`)) return;
+      setGold(g => g - houseDef.price);
+      setHousing(prev => ({
+        ...prev,
+        currentHouse: houseDef.id,
+        residents: Array(houseDef.slots).fill(null),
+      }));
+      alert(`🎉 成功购买 ${houseDef.name}!`);
+    };
+
+    const placeFurniture = (furnitureIdx) => {
+      if (!currentHouseDef) { alert('请先购买房屋!'); return; }
+      if (placedFurniture.length >= currentHouseDef.furnitureSlots) { alert('家具槽已满!'); return; }
+      setHousing(prev => {
+        const updated = [...prev.furniture];
+        updated[furnitureIdx] = { ...updated[furnitureIdx], placed: true, slotIdx: placedFurniture.length };
+        return { ...prev, furniture: updated };
+      });
+    };
+
+    const removeFurniture = (furnitureIdx) => {
+      setHousing(prev => {
+        const updated = [...prev.furniture];
+        updated[furnitureIdx] = { ...updated[furnitureIdx], placed: false, slotIdx: null };
+        return { ...prev, furniture: updated };
+      });
+    };
+
+    const assignResident = (slotIdx) => {
+      if (!currentHouseDef) return;
+      const available = [...box, ...party].filter(p => p.currentHp > 0 && !housing.residents.includes(p.uid));
+      if (available.length === 0) { alert('没有可入住的精灵!'); return; }
+      const names = available.map((p, i) => `${i + 1}. ${p.emoji || '🔵'} ${p.name} Lv.${p.level}`).join('\n');
+      const choice = prompt(`选择入住精灵:\n${names}\n\n输入序号:`);
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < available.length) {
+        const pet = available[idx];
+        setHousing(prev => {
+          const newResidents = [...prev.residents];
+          newResidents[slotIdx] = pet.uid || pet.id;
+          return { ...prev, residents: newResidents };
+        });
+      }
+    };
+
+    const removeResident = (slotIdx) => {
+      setHousing(prev => {
+        const newResidents = [...prev.residents];
+        newResidents[slotIdx] = null;
+        return { ...prev, residents: newResidents };
+      });
+    };
+
+    const findPetByUid = (uid) => [...party, ...box].find(p => (p.uid || p.id) === uid);
+
+    const buyFurnitureFromShop = (def) => {
+      if (!def.shopPrice) return;
+      if (gold < def.shopPrice) { alert('金币不足!'); return; }
+      if (!confirm(`购买 ${def.icon} ${def.name}？\n价格: ${def.shopPrice} 金币`)) return;
+      setGold(g => g - def.shopPrice);
+      const quality = rollQuality('shop');
+      setHousing(prev => ({
+        ...prev,
+        furniture: [...prev.furniture, { baseId: def.id, quality, placed: false, slotIdx: null }],
+      }));
+      alert(`🎉 获得 ${def.icon} ${def.name} (${FURNITURE_QUALITY[quality].name})`);
+    };
+
+    const [housingTab, setHousingTab] = useState('overview');
+
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
+        <div className="nav-header glass-panel">
+          <button className="btn-back" onClick={() => setView('world_map')}>🔙 返回</button>
+          <div className="nav-title">🏡 精灵家园</div>
+          <div className="nav-coin">💰 {gold}</div>
+        </div>
+
+        <div style={{display:'flex', gap:'8px', justifyContent:'center', margin:'10px 0'}}>
+          {['overview','furniture','residents','shop','upgrade'].map(tab => (
+            <button key={tab} onClick={() => setHousingTab(tab)}
+              style={{padding:'8px 16px', borderRadius:'20px', border:'none', cursor:'pointer',
+                background: housingTab === tab ? '#8D6E63' : '#fff',
+                color: housingTab === tab ? '#fff' : '#666', fontWeight:'bold', fontSize:'12px',
+                boxShadow: housingTab === tab ? '0 4px 12px rgba(141,110,99,0.4)' : 'none'}}>
+              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', shop:'🛒 商店', upgrade:'⬆️ 升级'}[tab]}
+            </button>
+          ))}
+        </div>
+
+        <div style={{padding:'0 20px 20px', maxHeight:'calc(100vh - 140px)', overflow:'auto'}}>
+
+          {housingTab === 'overview' && (
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
+              <div style={{background:'#fff', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
+                <div style={{fontSize:'48px', textAlign:'center'}}>{currentHouseDef?.icon || '🏕️'}</div>
+                <div style={{textAlign:'center', fontWeight:'bold', fontSize:'18px', margin:'8px 0'}}>{currentHouseDef?.name || '露宿野外'}</div>
+                <div style={{textAlign:'center', color:'#888', fontSize:'13px'}}>
+                  {currentHouseDef ? `精灵槽: ${housing.residents.filter(r => r).length}/${currentHouseDef.slots} | 家具槽: ${placedFurniture.length}/${currentHouseDef.furnitureSlots}` : '还没有家呢...去商店看看吧!'}
+                </div>
+              </div>
+              <div style={{background:'#fff', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
+                <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'12px'}}>📊 家园评分</div>
+                <div style={{fontSize:'32px', fontWeight:'bold', color:'#8D6E63', textAlign:'center'}}>{score}</div>
+                <div style={{textAlign:'center', color: tier.buff ? '#4CAF50' : '#999', fontWeight:'bold', fontSize:'14px', margin:'4px 0'}}>🏅 {tier.title}</div>
+                {tier.buff && <div style={{fontSize:'11px', color:'#666', textAlign:'center'}}>
+                  {tier.buff.allStats ? `全属性+${tier.buff.allStats} ` : ''}
+                  {tier.buff.expBonus ? `经验+${Math.floor(tier.buff.expBonus*100)}% ` : ''}
+                  {tier.buff.intimacyMult ? `亲密度x${tier.buff.intimacyMult} ` : ''}
+                </div>}
+              </div>
+              <div style={{background:'#fff', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', gridColumn:'span 2'}}>
+                <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'8px'}}>📋 每日收益 (入住精灵)</div>
+                <div style={{display:'flex', gap:'20px', justifyContent:'center', fontSize:'13px'}}>
+                  <span>❤️ HP恢复: +{benefits.hpRegen}</span>
+                  <span>⭐ 经验: +{(benefits.expBonus * 100).toFixed(0)}%</span>
+                  <span>💕 亲密度: +{benefits.intimacyBonus}</span>
+                  {benefits.ceRegen > 0 && <span>🔮 咒力恢复: +{benefits.ceRegen}</span>}
+                </div>
+                {completedSets.length > 0 && (
+                  <div style={{marginTop:'8px', borderTop:'1px solid #eee', paddingTop:'8px'}}>
+                    <div style={{fontSize:'12px', color:'#4CAF50', fontWeight:'bold'}}>✨ 已激活套装:</div>
+                    {completedSets.map(s => <div key={s.id} style={{fontSize:'11px', color:'#666', marginTop:'2px'}}>{s.name}: {s.desc}</div>)}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {housingTab === 'furniture' && (
+            <div>
+              {placedFurniture.length > 0 && (
+                <div style={{marginBottom:'16px'}}>
+                  <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'8px'}}>🪑 已放置的家具</div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'8px'}}>
+                    {housing.furniture.map((f, idx) => {
+                      if (!f.placed) return null;
+                      const def = FURNITURE_DB.find(d => d.id === f.baseId);
+                      if (!def) return null;
+                      const qual = FURNITURE_QUALITY[f.quality];
+                      return (
+                        <div key={idx} style={{background:'#fff', borderRadius:'12px', padding:'10px', border:`2px solid ${qual.color}`, cursor:'pointer', position:'relative'}} onClick={() => removeFurniture(idx)}>
+                          <div style={{fontSize:'24px', textAlign:'center'}}>{def.icon}</div>
+                          <div style={{fontSize:'11px', fontWeight:'bold', textAlign:'center', marginTop:'4px'}}>{def.name}</div>
+                          <div style={{fontSize:'10px', textAlign:'center', color: qual.color, fontWeight:'bold'}}>{qual.name}</div>
+                          <div style={{position:'absolute', top:'4px', right:'4px', fontSize:'10px', cursor:'pointer', color:'#f44336'}}>✕</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'8px'}}>📦 背包中的家具 ({unplacedFurniture.length}件)</div>
+              {unplacedFurniture.length === 0 && <div style={{color:'#999', textAlign:'center', padding:'20px'}}>背包空空如也... 去冒险获取家具吧!</div>}
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'8px'}}>
+                {housing.furniture.map((f, idx) => {
+                  if (f.placed) return null;
+                  const def = FURNITURE_DB.find(d => d.id === f.baseId);
+                  if (!def) return null;
+                  const qual = FURNITURE_QUALITY[f.quality];
+                  return (
+                    <div key={idx} style={{background:'#fff', borderRadius:'12px', padding:'10px', border:'1px solid #eee', cursor:'pointer'}} onClick={() => placeFurniture(idx)}>
+                      <div style={{fontSize:'24px', textAlign:'center'}}>{def.icon}</div>
+                      <div style={{fontSize:'11px', fontWeight:'bold', textAlign:'center', marginTop:'4px'}}>{def.name}</div>
+                      <div style={{fontSize:'10px', textAlign:'center', color: qual.color, fontWeight:'bold'}}>{qual.name}</div>
+                      <div style={{fontSize:'9px', textAlign:'center', color:'#4CAF50'}}>点击放置</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {housingTab === 'residents' && (
+            <div>
+              {!currentHouseDef && <div style={{textAlign:'center', padding:'40px', color:'#999'}}>请先购买房屋!</div>}
+              {currentHouseDef && (
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:'12px'}}>
+                  {housing.residents.map((uid, idx) => {
+                    const pet = uid ? findPetByUid(uid) : null;
+                    return (
+                      <div key={idx} style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', textAlign:'center', border: pet ? '2px solid #4CAF50' : '2px dashed #ccc', minHeight:'120px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+                        {pet ? (
+                          <>
+                            <div style={{fontSize:'36px'}}>{pet.emoji || '🔵'}</div>
+                            <div style={{fontWeight:'bold', fontSize:'13px', marginTop:'4px'}}>{pet.name}</div>
+                            <div style={{fontSize:'11px', color:'#888'}}>Lv.{pet.level}</div>
+                            <button onClick={() => removeResident(idx)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'12px', border:'none', background:'#ffebee', color:'#f44336', fontSize:'11px', cursor:'pointer'}}>召回</button>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{fontSize:'36px', opacity:0.3}}>🏠</div>
+                            <div style={{color:'#999', fontSize:'12px', marginTop:'4px'}}>空槽位</div>
+                            <button onClick={() => assignResident(idx)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'12px', border:'none', background:'#E8F5E9', color:'#4CAF50', fontSize:'11px', cursor:'pointer'}}>分配精灵</button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {housingTab === 'shop' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'12px'}}>
+              {FURNITURE_DB.filter(f => f.shopPrice).map(def => (
+                <div key={def.id} style={{background:'#fff', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', cursor:'pointer', transition:'0.2s'}} onClick={() => buyFurnitureFromShop(def)}>
+                  <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                    <span style={{fontSize:'28px'}}>{def.icon}</span>
+                    <div>
+                      <div style={{fontWeight:'bold', fontSize:'13px'}}>{def.name}</div>
+                      <div style={{fontSize:'10px', color:'#888'}}>{{REST:'休息类',TRAIN:'训练类',PLAY:'娱乐类',DECO:'装饰类'}[def.category] || def.category}</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex', justifyContent:'space-between', marginTop:'8px', alignItems:'center'}}>
+                    <span style={{fontSize:'12px', color:'#FF9800', fontWeight:'bold'}}>💰 {def.shopPrice}</span>
+                    <span style={{fontSize:'10px', color:'#4CAF50'}}>品质: 普通~优秀</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {housingTab === 'upgrade' && (
+            <div style={{maxWidth:'500px', margin:'0 auto'}}>
+              {HOUSE_TYPES.map((h, idx) => {
+                const isOwned = housing.currentHouse === h.id;
+                const ownedIdx = HOUSE_TYPES.findIndex(ht => ht.id === housing.currentHouse);
+                const isNext = idx === ownedIdx + 1 || (!housing.currentHouse && idx === 0);
+                const isPast = idx <= ownedIdx;
+                return (
+                  <div key={h.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', border: isOwned ? '2px solid #4CAF50' : isNext ? '2px solid #FF9800' : '1px solid #eee', opacity: isPast && !isOwned ? 0.5 : 1}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                      <span style={{fontSize:'36px'}}>{h.icon}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:'bold', fontSize:'16px'}}>{h.name} {isOwned && <span style={{color:'#4CAF50', fontSize:'12px'}}>✓ 当前</span>}</div>
+                        <div style={{fontSize:'12px', color:'#888'}}>精灵槽: {h.slots} | 家具槽: {h.furnitureSlots}</div>
+                      </div>
+                      {isNext && <button onClick={() => buyHouse(h)} style={{padding:'8px 20px', borderRadius:'20px', border:'none', background:'linear-gradient(135deg,#FF9800,#F57C00)', color:'#fff', fontWeight:'bold', cursor:'pointer', fontSize:'13px'}} disabled={gold < h.price}>💰 {h.price}</button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderLocked = () => (
       <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff'}}>
          <div style={{fontSize: '60px', marginBottom: '20px'}}>🔒</div>
@@ -2904,6 +3217,16 @@ const useGrowthItem = (petIndex, itemId) => {
             newGrid[5][15] = 22;
         }
         // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    // 随机放置家具拾取点 (2-3个, 25%概率出现)
+    const furnitureCount = _.random(2, 3);
+    for (let fi = 0; fi < furnitureCount; fi++) {
+        if (Math.random() < 0.25) continue;
+        const fx = _.random(2, GRID_W - 3);
+        const fy = _.random(2, GRID_H - 3);
+        if (newGrid[fy][fx] === 2) newGrid[fy][fx] = FURNITURE_TILE;
+    }
+
     setMapGrid(newGrid);
     setView('grid_map');
   };
@@ -3018,6 +3341,28 @@ const useGrowthItem = (petIndex, itemId) => {
         }
         // 踩上去不回弹，停在格子上
         return; 
+      }
+
+      // 家具拾取点 (Tile 30)
+      if (tileType === FURNITURE_TILE) {
+        const pickupPool = FURNITURE_DB.filter(f => f.dropSource === 'pickup');
+        if (pickupPool.length > 0) {
+          const def = _.sample(pickupPool);
+          const quality = rollQuality('pickup');
+          const qualInfo = FURNITURE_QUALITY[quality];
+          setHousing(prev => ({
+            ...prev,
+            furniture: [...prev.furniture, { baseId: def.id, quality, placed: false, slotIdx: null }],
+          }));
+          setMapGrid(prev => {
+            const g = prev.map(r => [...r]);
+            g[y][x] = 2;
+            return g;
+          });
+          addLog(`🏠 捡到家具: ${def.icon} ${def.name} (${qualInfo.name})`);
+          alert(`🏠 发现了 ${def.icon} ${def.name} (${qualInfo.name})!`);
+        }
+        return;
       }
 
       // ------------------------------------------------
@@ -3756,9 +4101,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
             pp: Math.min(m.pp, m.maxPP || m.pp) 
         }));
 
+        const baseStats = POKEDEX.find(pd => pd.id === p.id) || {};
+        const grade = getCurseGrade(p.customBaseStats || baseStats);
+        const maxCE = getMaxCE(p.level, grade.key);
+        const typeTech = TYPE_TECHNIQUES[p.type];
+        const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel);
+        const cursedMoves = [];
+        if (hasCT) {
+            if (p.cursedTechnique) {
+                const ct = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES].find(t => t.id === p.cursedTechnique);
+                if (ct) cursedMoves.push({ ...ct, isCursed: true });
+            } else if (typeTech) {
+                cursedMoves.push({ ...typeTech, isCursed: true });
+            }
+        }
+
         return {
             ...p,
-            combatMoves,
+            combatMoves: [...combatMoves, ...cursedMoves],
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
             
             // ▼▼▼ [修复] 进战斗时，自动清除“混乱”状态 (因为它本应是临时的) ▼▼▼
@@ -3766,7 +4126,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
             // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             
             volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
-            turnCounters: { status: 0, stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 } }
+            turnCounters: { status: 0, stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 } },
+            cursedEnergy: 0,
+            maxCE,
+            curseGrade: grade,
+            hasDomain: p.hasDomain || false,
+            domainType: p.domainType || p.type,
+            usedDomain: false,
+            activeVow: null,
         };
     };
 
@@ -3778,8 +4145,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 直接修改初始数据，确保第一回合状态正确
     const applyIntimidate = (sourceUnit, targetUnit) => {
         if (sourceUnit.trait === 'intimidate') {
-            // 降低1级物攻，最低-6
-            targetUnit.stages.p_atk = Math.max(-6, -1);
+            targetUnit.stages.p_atk = Math.max(-6, (targetUnit.stages.p_atk || 0) - 1);
         }
     };
     
@@ -3808,7 +4174,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       showSwitch: false,
       trainerName,
       pvpActions: { p1: null, p2: null },
-      type: type // 记录战斗类型，方便结算判断
+      type: type,
+      activeDomain: null,
+      activeVows: { player: null, enemy: null },
     });
     
     setShowBallMenu(false);
@@ -4016,25 +4384,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const switchPokemon = async (newIdx) => {
     if (newIdx === battle.activeIdx) return;
     
-    const currentPet = party[battle.activeIdx];
+    const combatStates = battle.playerCombatStates;
+    const currentPet = combatStates[battle.activeIdx];
     const isForcedSwitch = currentPet.currentHp <= 0;
 
-    if (party[newIdx].currentHp <= 0) { 
+    if (combatStates[newIdx].currentHp <= 0) { 
         alert("该精灵已失去战斗能力！"); 
         return; 
     }
 
-    // ▼▼▼ [新增] 再生力 (Regenerator) ▼▼▼
-    // 下场时恢复 1/3 血量
     if (currentPet.trait === 'regenerator' && !isForcedSwitch) {
         const max = getStats(currentPet).maxHp;
         const heal = Math.floor(max / 3);
         currentPet.currentHp = Math.min(max, currentPet.currentHp + heal);
         addLog(`${currentPet.name} 的 [再生力] 恢复了体力！`);
     }
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    const newPet = party[newIdx];
+    const newPet = combatStates[newIdx];
 
     const nextBattleState = {
         ...battle,
@@ -4078,13 +4444,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // 这是一个深拷贝，PP 是在这里扣除的
         let tempBattle = _.cloneDeep(battle); 
        const tempPlayerState = tempBattle.playerCombatStates[battle.activeIdx];
-        if (tempPlayerState.combatMoves[moveIdx].pp <= 0) {
-             alert("PP不足！");
-             setBattle(prev => ({ ...prev, phase: 'input' }));
-             return;
-        }
-        
         const move = tempPlayerState.combatMoves[moveIdx];
+        if (move.isCursed) {
+            if ((tempPlayerState.cursedEnergy || 0) < (move.ceCost || 0)) {
+                alert("咒力不足！");
+                setBattle(prev => ({ ...prev, phase: 'input' }));
+                return;
+            }
+        } else if (move.pp <= 0) {
+            alert("PP不足！");
+            setBattle(prev => ({ ...prev, phase: 'input' }));
+            return;
+        }
         const player = tempPlayerState;
         const enemy = tempBattle.enemyParty[battle.enemyActiveIdx];
 
@@ -4174,6 +4545,118 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
 
+  // ==========================================
+  // 咒术系统 - 蓄力 (消耗一回合, 回复咒力)
+  // ==========================================
+  const executeChargeCE = async () => {
+    if (battle.phase !== 'input') return;
+    setBattle(prev => ({ ...prev, phase: 'busy' }));
+    try {
+        let tempBattle = _.cloneDeep(battle);
+        const player = tempBattle.playerCombatStates[battle.activeIdx];
+        const chargeAmt = CURSED_ENERGY_CONFIG.chargeAction;
+        player.cursedEnergy = Math.min(player.maxCE, (player.cursedEnergy || 0) + chargeAmt);
+        addLog(`🔮 ${player.name} 蓄积咒力! (+${chargeAmt} CE)`);
+        setAnimEffect({ type: 'BUFF', target: 'player' });
+        await wait(800);
+        setAnimEffect(null);
+        setBattle(prev => ({
+            ...prev,
+            playerCombatStates: tempBattle.playerCombatStates,
+        }));
+        await wait(500);
+        await enemyTurn(tempBattle);
+    } catch (e) {
+        console.error("Charge CE Error:", e);
+        setBattle(prev => ({ ...prev, phase: 'input' }));
+    }
+  };
+
+  // ==========================================
+  // 咒术系统 - 领域展开
+  // ==========================================
+  const executeDomainExpansion = async () => {
+    if (battle.phase !== 'input') return;
+    const state = battle.playerCombatStates[battle.activeIdx];
+    const domainDef = DOMAINS[state.domainType];
+    if (!domainDef) { alert('该精灵无法展开领域!'); return; }
+    if (state.usedDomain) { alert('本场战斗已使用过领域展开!'); return; }
+    if ((state.cursedEnergy || 0) < domainDef.ceCost) { alert(`咒力不足! 需要 ${domainDef.ceCost} CE`); return; }
+    if (battle.activeDomain) { alert('场上已有领域!'); return; }
+
+    setBattle(prev => ({ ...prev, phase: 'busy' }));
+    try {
+        let tempBattle = _.cloneDeep(battle);
+        const player = tempBattle.playerCombatStates[battle.activeIdx];
+        player.cursedEnergy -= domainDef.ceCost;
+        player.usedDomain = true;
+        tempBattle.activeDomain = {
+            name: domainDef.name,
+            ownerSide: 'player',
+            turnsLeft: domainDef.turns,
+            effect: domainDef.effect,
+            type: state.domainType,
+        };
+        addLog(`🌀 ${player.name} 展开领域——${domainDef.name}!`);
+        addLog(`📖 ${domainDef.desc}`);
+        setAnimEffect({ type: 'DOMAIN', target: 'player' });
+        await wait(1500);
+        setAnimEffect(null);
+        setBattle(prev => ({
+            ...prev,
+            playerCombatStates: tempBattle.playerCombatStates,
+            activeDomain: tempBattle.activeDomain,
+        }));
+        await wait(500);
+        await enemyTurn(tempBattle);
+    } catch (e) {
+        console.error("Domain Error:", e);
+        setBattle(prev => ({ ...prev, phase: 'input' }));
+    }
+  };
+
+  // ==========================================
+  // 咒术系统 - 缚誓
+  // ==========================================
+  const executeBindingVow = async (vowId) => {
+    if (battle.phase !== 'input') return;
+    const vow = BINDING_VOWS.find(v => v.id === vowId);
+    if (!vow) return;
+
+    setBattle(prev => ({ ...prev, phase: 'busy' }));
+    try {
+        let tempBattle = _.cloneDeep(battle);
+        const player = tempBattle.playerCombatStates[battle.activeIdx];
+
+        if (vow.sacrifice.hpPercent) {
+            const cost = Math.floor(getStats(player).maxHp * vow.sacrifice.hpPercent);
+            player.currentHp = Math.max(1, player.currentHp - cost);
+            addLog(`📜 ${player.name} 献出 ${cost} HP!`);
+        }
+        if (vow.sacrifice.cePercent) {
+            const cost = Math.floor((player.cursedEnergy || 0) * vow.sacrifice.cePercent);
+            player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - cost);
+        }
+
+        player.activeVow = { ...vow, turnsLeft: vow.reward.turns };
+        addLog(`📜 ${player.name} 立下缚誓——${vow.name}!`);
+        addLog(`📖 ${vow.desc}`);
+        setAnimEffect({ type: 'BUFF', target: 'player' });
+        await wait(1000);
+        setAnimEffect(null);
+
+        setBattle(prev => ({
+            ...prev,
+            playerCombatStates: tempBattle.playerCombatStates,
+        }));
+        await wait(500);
+        await enemyTurn(tempBattle);
+    } catch (e) {
+        console.error("Vow Error:", e);
+        setBattle(prev => ({ ...prev, phase: 'input' }));
+    }
+  };
+
     // ==========================================
   // [修改] 敌人回合 (含被动特性与天气结算)
   // ==========================================
@@ -4186,7 +4669,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     if (enemy.currentHp <= 0) return;
 
-    const movesWithPP = enemy.moves.filter(m => m.pp > 0);
+    // 领域 enemySkipChance
+    const dom = state.activeDomain;
+    if (dom && dom.turnsLeft > 0 && dom.ownerSide === 'player' && dom.effect.enemySkipChance) {
+        if (Math.random() < dom.effect.enemySkipChance) {
+            addLog(`🌀 ${enemy.name} 被领域压制，无法行动!`);
+            await wait(800);
+            setBattle(prev => ({ ...prev, phase: 'input' }));
+            return;
+        }
+    }
+
+    // AI: 尝试展开领域 (Boss有50%几率，其他20%几率)
+    if (enemy.hasDomain && !enemy.usedDomain && !state.activeDomain &&
+        (enemy.cursedEnergy || 0) >= (DOMAINS[enemy.domainType]?.ceCost || 999) &&
+        enemy.currentHp < getStats(enemy).maxHp * 0.5) {
+        const chance = (state.isBoss || state.isChallenge) ? 0.5 : 0.2;
+        if (Math.random() < chance) {
+            const domDef = DOMAINS[enemy.domainType];
+            enemy.cursedEnergy -= domDef.ceCost;
+            enemy.usedDomain = true;
+            state.activeDomain = {
+                name: domDef.name, ownerSide: 'enemy',
+                turnsLeft: domDef.turns, effect: domDef.effect, type: enemy.domainType,
+            };
+            addLog(`🌀 ${enemy.name} 展开领域——${domDef.name}!`);
+            addLog(`📖 ${domDef.desc}`);
+            setAnimEffect({ type: 'DOMAIN', target: 'enemy' });
+            await wait(1500);
+            setAnimEffect(null);
+        }
+    }
+
+    const movesWithPP = (enemy.combatMoves || enemy.moves).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
     const smartMoves = movesWithPP.filter(m => {
         if (m.p > 0) return true;
         if (m.effect) {
@@ -4252,10 +4767,56 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     };
 
-    // 对双方执行天气伤害
     applyWeatherDmg(player);
     applyWeatherDmg(enemy);
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    const playerExpLogs = checkEffectExpiration(player, player);
+    const enemyExpLogs = checkEffectExpiration(enemy, enemy);
+    [...playerExpLogs, ...enemyExpLogs].forEach(l => addLog(l));
+
+    // 咒力自然恢复
+    [player, enemy].forEach(u => {
+        if (u.maxCE > 0 && u.currentHp > 0) {
+            let regen = CURSED_ENERGY_CONFIG.regenPerTurn;
+            if (u.activeVow?.reward?.ceMult) regen = Math.floor(regen * u.activeVow.reward.ceMult);
+            u.cursedEnergy = Math.min(u.maxCE, (u.cursedEnergy || 0) + regen);
+        }
+    });
+
+    // 领域展开回合递减 & DoT
+    if (state.activeDomain && state.activeDomain.turnsLeft > 0) {
+        const dom = state.activeDomain;
+        dom.turnsLeft--;
+        const eff = dom.effect;
+        if (eff.dot > 0) {
+            const target = dom.ownerSide === 'player' ? enemy : player;
+            const dotDmg = Math.floor(getStats(target).maxHp * eff.dot);
+            target.currentHp = Math.max(0, target.currentHp - dotDmg);
+            addLog(`🌀 领域效果: ${target.name} 受到 ${dotDmg} 点领域伤害!`);
+            if (target === player && target.currentHp <= 0) playerDied = true;
+        }
+        if (eff.healPerTurn > 0) {
+            const owner = dom.ownerSide === 'player' ? player : enemy;
+            const heal = Math.floor(getStats(owner).maxHp * eff.healPerTurn);
+            owner.currentHp = Math.min(getStats(owner).maxHp, owner.currentHp + heal);
+            addLog(`🌀 领域效果: ${owner.name} 恢复了 ${heal} HP!`);
+        }
+        if (dom.turnsLeft <= 0) {
+            addLog(`🌀 ${dom.name} 的领域消散了!`);
+            state.activeDomain = null;
+        }
+    }
+
+    // 缚誓回合递减
+    [player, enemy].forEach(u => {
+        if (u.activeVow && u.activeVow.turnsLeft > 0) {
+            u.activeVow.turnsLeft--;
+            if (u.activeVow.turnsLeft <= 0) {
+                addLog(`📜 ${u.name} 的缚誓 [${u.activeVow.name}] 已结束`);
+                u.activeVow = null;
+            }
+        }
+    });
 
     if (playerDied || player.currentHp <= 0) {
        await wait(500);
@@ -4405,11 +4966,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`它攻击了自己!`);
             const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
             attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
+            return false;
         }
     }
 
-    // 扣除 PP (含压迫感特性)
-    if (move.pp > 0) {
+    if (move.isCursed && move.ceCost) {
+        if (atkState.cursedEnergy < move.ceCost) {
+            addLog(`${attacker.name} 咒力不足，无法施展 ${move.name}!`);
+            return false;
+        }
+        atkState.cursedEnergy -= move.ceCost;
+        addLog(`🔮 消耗 ${move.ceCost} 咒力`);
+    } else if (move.pp > 0) {
         let ppCost = 1;
         if (defState.trait === 'pressure') ppCost = 2; 
         move.pp = Math.max(0, move.pp - ppCost);
@@ -4554,9 +5122,33 @@ const grantContestReward = (config, score, subjectPet = null) => {
             rawDmg *= 1.2; // 夜晚幽灵/恶系增强
         }
         if (timePhase === 'DAY' && (move.t === 'GRASS' || move.t === 'FIRE')) {
-            rawDmg *= 1.1; // 白天草/火系微增
+            rawDmg *= 1.1;
         }
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+        // 领域展开加成
+        const dom = battleState.activeDomain;
+        if (dom && dom.turnsLeft > 0) {
+            const isOwner = (dom.ownerSide === source);
+            const eff = dom.effect;
+            if (isOwner) {
+                if (eff.atkBoost) rawDmg *= eff.atkBoost;
+                if (eff.hpDrain && dmg === 0) { /* handled post-damage */ }
+            } else {
+                if (eff.enemyAtkDown) rawDmg *= eff.enemyAtkDown;
+                if (eff.enemyDefDown) rawDmg /= eff.enemyDefDown;
+            }
+        }
+
+        // 缚誓加成
+        const vow = atkState.activeVow;
+        if (vow && vow.turnsLeft > 0) {
+            if (vow.reward.atkMult) rawDmg *= vow.reward.atkMult;
+            if (vow.reward.nextMovePower) { rawDmg *= vow.reward.nextMovePower; vow.turnsLeft = 0; }
+        }
+        const defVow = defState.activeVow;
+        if (defVow && defVow.turnsLeft > 0 && defVow.reward.defMult) {
+            rawDmg /= defVow.reward.defMult;
+        }
 
         // 特性修正
         if (['overgrow','blaze','torrent','swarm'].includes(attacker.trait)) {
@@ -4924,14 +5516,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // 🔥 [捕虫大赛拦截]
             // ▼▼▼ [修复] 捕虫大赛：使用基因评分公式 (解决分数虚高) ▼▼▼
       if (battle.type === 'contest_bug') {
-          // 1. 执行入队逻辑
+          const syncPartyFromBattle = (currentParty) => {
+            return currentParty.map((p, idx) => {
+              const cs = battle.playerCombatStates?.[idx];
+              if (cs) { p.currentHp = cs.currentHp; p.moves = cs.combatMoves?.slice(0, p.moves?.length) || p.moves; }
+              return {...p};
+            });
+          };
+          const contestPet = finalParty[0];
           if (party.length < 6) {
-              setParty(prev => [...syncCurrentParty(prev), newPet]);
-              addLog(`🦋 ${newPet.name} 已加入队伍！`);
+              setParty(prev => [...syncPartyFromBattle(prev), contestPet]);
+              addLog(`🦋 ${contestPet.name} 已加入队伍！`);
           } else {
-              setBox(prev => [...prev, newPet]);
-              setParty(prev => syncCurrentParty(prev));
-              addLog(`🦋 ${newPet.name} 已发送到电脑盒子。`);
+              setBox(prev => [...prev, contestPet]);
+              setParty(prev => syncPartyFromBattle(prev));
+              addLog(`🦋 ${contestPet.name} 已发送到电脑盒子。`);
           }
 
           // 2. 🔥 [核心修改] 基因评分公式 🔥
@@ -4952,8 +5551,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
               score += 300; // 闪光大幅加分
           }
           
-          // 触发结算弹窗
-          grantContestReward(CONTEST_CONFIG.bug, score, newPet);
+          grantContestReward(CONTEST_CONFIG.bug, score, contestPet);
+          setBattle(null);
           return; 
       }
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
@@ -4967,6 +5566,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const goldGain = Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1));
     setGold(g => g + goldGain);
+
+    // 家具掉落 (战斗获得, 20%基础概率, Boss/Gym 50%)
+    const furnitureDropChance = (isBoss || isGym || isChallenge) ? 0.5 : 0.2;
+    if (Math.random() < furnitureDropChance) {
+        const battleFurniture = FURNITURE_DB.filter(f => f.dropSource === 'battle');
+        if (battleFurniture.length > 0) {
+            const droppedDef = _.sample(battleFurniture);
+            const quality = rollQuality('battle', isBoss);
+            const newFurniture = { baseId: droppedDef.id, quality, placed: false, slotIdx: null };
+            setHousing(prev => ({ ...prev, furniture: [...prev.furniture, newFurniture] }));
+            const qualInfo = FURNITURE_QUALITY[quality];
+            addLog(`🏠 获得家具: ${droppedDef.icon} ${droppedDef.name} (${qualInfo.name})`);
+        }
+    }
 
     // ▼▼▼ [新增] 亲密度与魅力值结算逻辑 ▼▼▼
     const updatedParty = finalParty.map((p, index) => {
@@ -5244,7 +5857,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
             const rewardPet = createPet(341, 50); 
             rewardPet.name = "暗黑超梦";
-            rewardPet.customBaseStats = { hp: 106, atk: 150, def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
+            rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
             if (party.length < 6) setParty([...updatedParty, rewardPet]); // 使用 updatedParty
             else {
                 setParty(updatedParty); // 先更新队伍数据
@@ -5274,6 +5887,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     
     addLog(`胜利! 总经验+${totalBattleExp} / 金币+${goldGain}`);
+
+    setBattle(null);
 
     const hasPendingSkill = partyToSave.some(p => p.pendingLearnMove);
 
@@ -6642,6 +7257,11 @@ const renderMenu = () => {
       else if (dungeon.type === 'gold_pro') startBattle({ id: 994, name: '豪宅金库', lvl: [50, 60], pool: [118, 119, 364], drop: 15000 }, 'wild'); 
       else if (dungeon.type === 'shiny_hunt') startBattle({ id: 993, name: '闪光山谷', lvl: [80, 90], pool: [147, 148, 151, 244, 299], drop: 1000 }, 'dungeon_shiny');
       else if (dungeon.type === 'infinity') enterInfinityCastle();
+      else if (dungeon.type === 'hyakki') {
+        if (party[0].level < 80) { alert("⛔ 等级不足！\n百鬼夜行要求首发精灵 Lv.80 以上。"); return; }
+        alert("👹 百鬼夜行开始！\n连续5波咒灵将向你袭来，最后一波是特级咒灵Boss！");
+        startBattle({ id: 998, name: '百鬼夜行', lvl: [60, 90], pool: [92, 93, 94, 110, 89, 42], drop: 5000 }, 'wild');
+      }
     };
 
     // --- 🔥 获取当前时间信息 ---
@@ -6693,11 +7313,12 @@ const renderMenu = () => {
               { id: 'maps', icon: '🗺️', label: '区域探索', color: '#2196F3' },
               { id: 'dungeons', icon: '⚔️', label: '特殊副本', color: '#9C27B0' },
               { id: 'challenges', icon: '🔥', label: '挑战之路', color: '#FF5722' },
-              { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#009688' }
+              { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#009688' },
+              { id: 'housing', icon: '🏡', label: '精灵家园', color: '#8D6E63' }
             ].map(tab => {
               const isActive = mapTab === tab.id || (tab.id === 'sects' && view === 'sect_summit');
               return (
-                <div key={tab.id} onClick={() => { if (tab.id === 'sects') setView('sect_summit'); else { setMapTab(tab.id); if (view === 'sect_summit') setView('world_map'); } }}
+                <div key={tab.id} onClick={() => { if (tab.id === 'sects') setView('sect_summit'); else if (tab.id === 'housing') setView('housing'); else { setMapTab(tab.id); if (view === 'sect_summit') setView('world_map'); } }}
                   style={{padding: '10px 24px', borderRadius: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: '0.3s', background: isActive ? `linear-gradient(135deg, ${tab.color}, ${tab.color}dd)` : 'transparent', color: isActive ? '#fff' : '#666', fontWeight: isActive ? 'bold' : '500', boxShadow: isActive ? `0 4px 15px ${tab.color}66` : 'none', transform: isActive ? 'scale(1.05)' : 'scale(1)'}}>
                   <span style={{fontSize: '18px'}}>{tab.icon}</span><span style={{fontSize: '15px'}}>{tab.label}</span>
                 </div>
@@ -6787,7 +7408,7 @@ const renderMenu = () => {
 
         {/* --- 副本列表 (保持不变) --- */}
         <div className="dungeon-list" style={{display: mapTab==='dungeons'?'flex':'none', flexDirection:'column', gap:'12px'}}>
-             {DUNGEONS.map(d => {
+             {[...DUNGEONS, HYAKKI_DUNGEON].map(d => {
              let runner = '🏃'; let particle = '✨';
              if (d.type === 'gold' || d.type === 'gold_pro') { runner = '🤠'; particle = '💰'; }
              else if (d.type === 'exp') { runner = '🤓'; particle = '📚'; }
@@ -6796,6 +7417,7 @@ const renderMenu = () => {
              else if (d.type === 'stat') { runner = '🥋'; particle = '💪'; }
              else if (d.type === 'shiny_hunt') { runner = '😎'; particle = '✨'; }
              else if (d.type === 'infinity') { runner = '🥷'; particle = '👻'; }
+             else if (d.type === 'hyakki') { runner = '👹'; particle = '🔮'; }
 
              return (
              <div key={d.id} className="dungeon-card" onClick={() => enterDungeon(d)} style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: '#fff', borderRadius: '16px', borderLeft: `6px solid ${d.color}`, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s', position: 'relative', overflow: 'hidden'}} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.01)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
@@ -6815,7 +7437,7 @@ const renderMenu = () => {
 
         {/* --- 挑战之路 (保持不变) --- */}
         <div className="challenge-grid-new" style={{display: mapTab==='challenges'?'grid':'none', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px'}}>
-          {CHALLENGES.map(c => {
+          {[...CHALLENGES, ...JJK_CHALLENGES].map(c => {
             const currentCaught = caughtDex.length;
             const isUnlocked = currentCaught >= c.req;
             const isCleared = completedChallenges.includes(c.id);
@@ -6823,7 +7445,7 @@ const renderMenu = () => {
             const bossInfo = POKEDEX.find(p => p.id === c.boss);
             return (
               <div key={c.id} className="chal-card-pro hover-scale" style={{opacity: isUnlocked ? 1 : 0.8}}>
-                <div className="chal-pro-header"><div style={{fontWeight:'bold', color: isUnlocked ? c.color : '#999', fontSize:'15px'}}>{c.title}</div>{isCleared ? (<span style={{fontSize:'10px', background:'#4CAF50', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>✅ 已通关</span>) : (<span style={{fontSize:'10px', background: isUnlocked ? '#FF9800' : '#ddd', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>{isUnlocked ? '🔥 进行中' : '🔒 未解锁'}</span>)}</div>
+                <div className="chal-pro-header"><div style={{fontWeight:'bold', color: isUnlocked ? c.color : '#999', fontSize:'15px'}}>{c.isJJK && '🔮 '}{c.title}</div>{isCleared ? (<span style={{fontSize:'10px', background:'#4CAF50', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>✅ 已通关</span>) : (<span style={{fontSize:'10px', background: isUnlocked ? '#FF9800' : '#ddd', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>{isUnlocked ? '🔥 进行中' : '🔒 未解锁'}</span>)}</div>
                 <div className="chal-pro-body"><div className="chal-boss-box" style={{borderColor: c.color}}>{bossInfo?.emoji}</div><div style={{flex:1}}><div style={{fontSize:'12px', color:'#666', marginBottom:'8px', lineHeight:'1.4'}}>{c.desc}</div><div style={{fontSize:'10px', display:'flex', justifyContent:'space-between', color:'#888', marginBottom:'2px'}}><span>解锁进度</span><span>{currentCaught}/{c.req}</span></div><div className="chal-progress-bar"><div className="chal-progress-fill" style={{width: `${progressPct}%`, background: isUnlocked ? c.color : '#ccc'}}></div></div></div></div>
                 <button onClick={() => isUnlocked && startBattle(null, 'challenge', c.id)} disabled={!isUnlocked} style={{width:'100%', padding:'12px', border:'none', background: isUnlocked ? `linear-gradient(90deg, ${c.color}, ${c.color}dd)` : '#f0f0f0', color: isUnlocked ? '#fff' : '#aaa', fontWeight: 'bold', cursor: isUnlocked ? 'pointer' : 'not-allowed', marginTop: 'auto'}}>{isUnlocked ? (isCleared ? '再次挑战' : '开始挑战') : `需收集 ${c.req} 只精灵`}</button>
               </div>
@@ -8101,7 +8723,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -8211,6 +8833,7 @@ const renderMenu = () => {
                 21: { bg: '#b3e5fc', emoji: '🎣' },
                 22: { bg: '#f8bbd0', emoji: '🎀' },
                 99: { bg: '#fff9c4', emoji: '❗' },
+                [FURNITURE_TILE]: { bg: '#d7ccc8', emoji: '🎁' },
               };
 
               const rows = [];
@@ -9241,8 +9864,24 @@ const renderMenu = () => {
     // 战斗主场景
     return (
       <div className="screen battle-screen">
-        {/* 🔥 插入环境特效层 (天气/昼夜) 🔥 */}
         {renderEnvironmentOverlay()}
+        {battle.activeDomain && (
+            <div style={{
+                position:'absolute', top:0, left:0, right:0, bottom:0,
+                background: battle.activeDomain.ownerSide === 'player'
+                    ? 'radial-gradient(ellipse at center, rgba(123,31,162,0.15) 0%, transparent 70%)'
+                    : 'radial-gradient(ellipse at center, rgba(183,28,28,0.15) 0%, transparent 70%)',
+                zIndex:5, pointerEvents:'none',
+                animation: 'pulse 2s ease-in-out infinite',
+            }}>
+                <div style={{position:'absolute', top:'8px', left:'50%', transform:'translateX(-50%)',
+                    background:'rgba(0,0,0,0.7)', color:'#E040FB', padding:'4px 16px', borderRadius:'20px',
+                    fontSize:'12px', fontWeight:'bold', border:'1px solid #E040FB', backdropFilter:'blur(4px)',
+                    pointerEvents:'auto', zIndex:10}}>
+                    🌀 {battle.activeDomain.name} ({battle.activeDomain.turnsLeft}回合)
+                </div>
+            </div>
+        )}
 
         <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
             {animEffect?.type === 'BLACKOUT' && <div className="blackout-overlay">😵 眼前一黑...</div>}
@@ -9413,6 +10052,15 @@ const renderMenu = () => {
                             max={eStats.maxHp} 
                             label=""
                         />
+                        {e.maxCE > 0 && (
+                            <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                                <span style={{fontSize:'9px', color: e.curseGrade?.color || '#999', fontWeight:'bold'}}>🔮{e.curseGrade?.name || ''}</span>
+                                <div style={{flex:1, height:'4px', background:'#333', borderRadius:'2px', overflow:'hidden'}}>
+                                    <div style={{width:`${((e.cursedEnergy||0)/e.maxCE)*100}%`, height:'100%', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s'}}></div>
+                                </div>
+                                <span style={{fontSize:'9px', color:'#CE93D8'}}>{e.cursedEnergy||0}/{e.maxCE}</span>
+                            </div>
+                        )}
                         {renderPartyIndicators(battle.enemyParty)}
                     </div>
 
@@ -9531,6 +10179,15 @@ const renderMenu = () => {
                             max={pStats.maxHp} 
                             label=""
                         />
+                        {p.maxCE > 0 && (
+                            <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                                <span style={{fontSize:'9px', color: p.curseGrade?.color || '#999', fontWeight:'bold'}}>🔮{p.curseGrade?.name || ''}</span>
+                                <div style={{flex:1, height:'4px', background:'#333', borderRadius:'2px', overflow:'hidden'}}>
+                                    <div style={{width:`${((p.cursedEnergy||0)/p.maxCE)*100}%`, height:'100%', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s'}}></div>
+                                </div>
+                                <span style={{fontSize:'9px', color:'#CE93D8'}}>{p.cursedEnergy||0}/{p.maxCE}</span>
+                            </div>
+                        )}
                         {renderPartyIndicators(battle.playerCombatStates)}
                     </div>
                 </div>
@@ -9613,8 +10270,11 @@ const renderMenu = () => {
                         {!battle.isPvP ? (
                             <div className="actions-sidebar">
                                 <button className="action-btn-v2 btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}><span>🎒</span><span>背包</span></button>
-                                <button className="action-btn-v2 btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))}><span>🔄</span><span>交换</span></button>
+                                <button className="action-btn-v2 btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}><span>🔄</span><span>交换</span></button>
                                 <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><span>🏃</span><span>逃跑</span></button>
+                                {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><span>🔮</span><span>蓄力</span></button>}
+                                {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><span>🌀</span><span>领域</span></button>}
+                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const vowList = BINDING_VOWS.map((v,i) => `${i+1}. ${v.name}: ${v.desc}`).join('\n'); const choice = prompt(`选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
                             </div>
                         ) : (
                             <div className="actions-sidebar">
@@ -10820,6 +11480,7 @@ const renderMenu = () => {
       {view === 'name_input' && renderNameInput()}
       {view === 'fishing_game' && renderFishingGame()}
     {view === 'beauty_contest' && renderBeautyContest()}
+      {view === 'housing' && renderHousing()}
       {view === 'locked' && renderLocked()}
       {renderResultModal()} 
       {renderActivityModal()} 

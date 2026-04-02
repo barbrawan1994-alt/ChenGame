@@ -273,5 +273,72 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "获得终极奖励：神兽【起源之光】 + 【冠军奖杯】！" }
     ],
     reward: { gold: 500000 } 
+  },
+  // ==========================================
+  // 咒术回战篇 - 新章节
+  // ==========================================
+  {
+    chapter: 8,
+    mapId: 100, // 都立咒术高专
+    title: "咒术篇·序章：觉醒之日",
+    objective: "前往都立咒术高专，在五条悟的指导下觉醒咒力。",
+    intro: [
+      { name: "五条悟", text: "哟～你就是新来的？我是五条悟，都立咒术高专的老师。也是——最强的术师。" },
+      { name: "五条悟", text: "我感觉到你的精灵体内蕴含着不一般的咒力... 来，让我教你如何引导它。" },
+      { name: "五条悟", text: "不过首先，你得通过一些小考验。准备好了吗？" }
+    ],
+    tasks: [
+      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 92, name: '低级咒灵', text: "嘎嘎嘎...（一只三级咒灵从阴影中浮现）", emoji: '👻' },
+      { step: 1, x: 20, y: 8, type: 'dialog', name: '五条悟', text: "不错嘛！你的精灵已经能本能地运用咒力了。接下来让我教你'咒力强化'的基础。", emoji: '👨‍🏫' },
+      { step: 2, x: 15, y: 15, type: 'battle', enemyId: 93, name: '二级咒灵', text: "嘶嘶嘶...（一只更强大的咒灵出现了！）", emoji: '👹' }
+    ],
+    midEvent: { enemyId: 93, name: '二级咒灵' },
+    outro: [
+      { name: "五条悟", text: "恭喜你通过了入学考试！从今天起，你就是咒术高专的学生了。" },
+      { name: "系统", text: "🔮 全队精灵觉醒咒力系统！可以在战斗中使用术式和领域展开了！" }
+    ],
+    reward: { gold: 10000, items: [{id:'potion', count:10}] }
+  },
+  {
+    chapter: 9,
+    mapId: 100,
+    title: "咒术篇·一：交流会",
+    objective: "参加东京校与京都校的交流会对战。",
+    intro: [
+      { name: "东堂葵", text: "你！你喜欢什么类型的女性？这很重要！决定了我们能不能做好兄弟！" },
+      { name: "东堂葵", text: "哈哈哈！不管怎样，先让我看看你的实力！" }
+    ],
+    tasks: [
+      { step: 0, x: 8, y: 5, type: 'battle', enemyId: 57, name: '京都校 三轮霞', text: "作为术师，保护人类是我们的使命。让我测试你的决心！", emoji: '⚔️' },
+      { step: 1, x: 22, y: 12, type: 'battle', enemyId: 68, name: '东堂葵', text: "好兄弟！来吧，让我们用拳头交流！Boogie Woogie！", emoji: '💪' },
+    ],
+    midEvent: { enemyId: 68, name: '东堂葵' },
+    outro: [
+      { name: "五条悟", text: "交流会结束了～不过，暗中有些不好的气息在蠢蠢欲动..." },
+      { name: "系统", text: "获得咒术秘典：可以学习新的通用术式了！" }
+    ],
+    reward: { gold: 20000 }
+  },
+  {
+    chapter: 10,
+    mapId: 100,
+    title: "咒术篇·二：渋谷事変",
+    objective: "渋谷被帳覆盖了！击败入侵的特级咒灵，阻止百鬼夜行！",
+    intro: [
+      { name: "伊地知", text: "紧急情报！渋谷出现大规模帳！五条老师被封印了！" },
+      { name: "伊地知", text: "特级咒灵真人、漏瑚、花御同时出现！所有术师紧急集合！" }
+    ],
+    tasks: [
+      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 42, name: '特级咒灵·花御', text: "（植物般的咒灵静静地看着你）...去爱自然吧。", emoji: '🌿' },
+      { step: 1, x: 15, y: 10, type: 'battle', enemyId: 146, name: '特级咒灵·漏瑚', text: "渺小的人类！在真正的自然之力面前颤抖吧！", emoji: '🌋' },
+      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 150, name: '特级咒灵·真人', text: "灵魂的形态... 就让我来改造改造吧！无为转变！", emoji: '🎭' },
+      { step: 3, x: 15, y: 3, type: 'battle', enemyId: 150, name: '诅咒之王·宿傩', text: "...有点意思。让我稍微认真一点。", emoji: '👹' },
+    ],
+    midEvent: { enemyId: 150, name: '诅咒之王·宿傩' },
+    outro: [
+      { name: "五条悟", text: "（被解封后）抱歉啊～让你们受苦了。不过你的成长让我很惊讶。" },
+      { name: "系统", text: "渋谷事变结束！获得特殊奖励：精灵可以学习领域展开！" }
+    ],
+    reward: { gold: 100000 }
   }
 ];
