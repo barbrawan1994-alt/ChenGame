@@ -124,6 +124,7 @@ export default function RPG(props) {
 
   // 家园系统
   const [housing, setHousing] = useState(savedData.housing || { ...DEFAULT_HOUSING_STATE });
+  const [housingTab, setHousingTab] = useState('overview');
 
   // 存档状态标记 (关键！直接根据是否读到金币来判断是否有存档)
   const [hasSave, setHasSave] = useState(!!savedData.gold); 
@@ -2453,8 +2454,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }));
       alert(`🎉 获得 ${def.icon} ${def.name} (${FURNITURE_QUALITY[quality].name})`);
     };
-
-    const [housingTab, setHousingTab] = useState('overview');
 
     return (
       <div className="screen" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
