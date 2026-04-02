@@ -29,6 +29,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
+import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS } from './data/achievements';
 import { generateSprite } from './SpriteGenerator';
 import { getSpriteUrl, getSpriteFallbackUrls, TRAINER_SPRITES, NPC_SPRITES, getNpcSprite } from './SpriteMap';
 import {
@@ -137,6 +138,12 @@ export default function RPG(props) {
   // 家园系统
   const [housing, setHousing] = useState(savedData.housing || { ...DEFAULT_HOUSING_STATE });
   const [housingTab, setHousingTab] = useState('overview');
+
+  // 成就系统
+  const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
+  const [unlockedAchs, setUnlockedAchs] = useState(savedData.unlockedAchs || []);
+  const [achNotification, setAchNotification] = useState(null);
+  const [achCatFilter, setAchCatFilter] = useState('ALL');
 
   // 存档状态标记 (关键！直接根据是否读到金币来判断是否有存档)
   const [hasSave, setHasSave] = useState(!!savedData.gold); 
@@ -251,11 +258,11 @@ useEffect(() => {
 
   // 1. 进入下一层
   const nextInfinityFloor = () => {
-    setInfinityState(prev => ({
-      ...prev,
-      floor: prev.floor + 1,
-      status: 'selecting' // 回到选门状态
-    }));
+    setInfinityState(prev => {
+      const newFloor = prev.floor + 1;
+      updateAchStat({ maxInfinityFloor: newFloor });
+      return { ...prev, floor: newFloor, status: 'selecting' };
+    });
   };
 
   // 2. 选择呼吸法 Buff
@@ -843,8 +850,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     // 4. 进入第一张地图 (触发剧情对话)
     enterMap(1);
+
+    // 5. 成就：选择初始精灵
+    updateAchStat({ starterChosen: true, totalCaught: 1 });
     
-    // 5. 提示
+    // 6. 提示
     alert(`🎉 恭喜！你获得了 ${newPet.name}！\n冒险开始了！`);
   };
 
@@ -1889,12 +1899,103 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        unlockedTitles, 
        currentTitle,
        housing,
-       fruitInventory
+       fruitInventory,
+       achStats,
+       unlockedAchs
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
      alert("✅ 存档保存成功！");
   };
+  // ==========================================
+  // 成就系统 - 核心函数
+  // ==========================================
+  const updateAchStat = useCallback((updates) => {
+    setAchStats(prev => {
+      const next = { ...prev };
+      for (const [k, v] of Object.entries(updates)) {
+        if (typeof v === 'function') next[k] = v(prev[k]);
+        else if (typeof v === 'boolean') next[k] = v;
+        else if (k.startsWith('max')) next[k] = Math.max(prev[k] || 0, v);
+        else next[k] = (prev[k] || 0) + v;
+      }
+      return next;
+    });
+  }, []);
+
+  const checkAchievements = useCallback((statsOverride) => {
+    const stats = statsOverride || achStats;
+    const newUnlocks = [];
+    ACHIEVEMENTS.forEach(ach => {
+      if (unlockedAchs.includes(ach.id)) return;
+      try {
+        if (ach.check(stats)) {
+          newUnlocks.push(ach);
+        }
+      } catch (e) { /* skip broken checks */ }
+    });
+    if (newUnlocks.length > 0) {
+      const newIds = newUnlocks.map(a => a.id);
+      setUnlockedAchs(prev => [...prev, ...newIds]);
+      let totalGoldReward = 0;
+      newUnlocks.forEach(ach => {
+        if (ach.reward) {
+          if (ach.reward.gold) totalGoldReward += ach.reward.gold;
+          if (ach.reward.title) unlockTitle(ach.reward.title);
+        }
+      });
+      if (totalGoldReward > 0) setGold(g => g + totalGoldReward);
+      setAchNotification(newUnlocks[0]);
+      if (newUnlocks.length > 1) {
+        let idx = 1;
+        const showNext = () => {
+          if (idx < newUnlocks.length) {
+            setAchNotification(newUnlocks[idx]);
+            idx++;
+            setTimeout(showNext, 2500);
+          }
+        };
+        setTimeout(showNext, 2500);
+      }
+      setTimeout(() => setAchNotification(null), 2500 * newUnlocks.length + 500);
+    }
+  }, [achStats, unlockedAchs]);
+
+  useEffect(() => {
+    checkAchievements();
+  }, [achStats]);
+
+  const syncAchStats = useCallback(() => {
+    setAchStats(prev => {
+      const next = { ...prev };
+      next.dexCount = caughtDex.length;
+      next.badgeCount = badges.length;
+      next.leagueWins = leagueWins;
+      next.sectChiefsDefeated = (sectTitles || []).length;
+      next.uniqueFruits = [...new Set(fruitInventory || [])].length;
+      next.challengesCompleted = (completedChallenges || []).filter(c => c && c.startsWith && c.startsWith('c')).length;
+      next.achievementCount = unlockedAchs.length;
+      const allPets = [...(party || []), ...(box || [])];
+      next.maxPetLevel = Math.max(0, ...allPets.map(p => p?.level || 0));
+      const team = party || [];
+      next.eliteTeamReady = team.length >= 6 && team.every(p => (p?.level || 0) >= 50);
+      const types = new Set();
+      (caughtDex || []).forEach(id => {
+        const p = POKEDEX.find(pk => pk.id === id);
+        if (p) types.add(p.type);
+      });
+      next.typesCollected = types.size;
+      next.houseLevel = (['tent','cabin','house','mansion','castle'].indexOf(housing?.houseType || 'tent'));
+      next.furnitureCount = (housing?.furniture || []).length;
+      next.mapsVisited = Object.keys(mapProgress || {}).length;
+      return next;
+    });
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress]);
+
+  useEffect(() => {
+    syncAchStats();
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, party, box, housing, mapProgress]);
+
     // [新增] 解锁称号通用函数
   const unlockTitle = (title) => {
       if (!unlockedTitles.includes(title)) {
@@ -2683,6 +2784,119 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               })}
             </div>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 成就系统 - 渲染
+  // ==========================================
+  const renderAchievements = () => {
+    const total = ACHIEVEMENTS.length;
+    const unlocked = unlockedAchs.length;
+    const pct = Math.round((unlocked / total) * 100);
+    const cats = ['ALL', ...Object.keys(ACH_CATEGORY)];
+    const filtered = achCatFilter === 'ALL' ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => a.cat === achCatFilter);
+    return (
+      <div style={{position:'fixed', inset:0, background:'linear-gradient(170deg, #0a0a1a 0%, #111827 50%, #0a1628 100%)', zIndex:3000, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+        {/* Header */}
+        <div style={{padding:'20px 24px 16px', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
+            <button onClick={() => setView('world_map')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>成就大厅</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>{unlocked} / {total} 已解锁</div>
+            </div>
+            <div style={{width:'70px'}} />
+          </div>
+          {/* Progress bar */}
+          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+            <div style={{flex:1, height:'8px', background:'rgba(255,255,255,0.06)', borderRadius:'4px', overflow:'hidden'}}>
+              <div style={{width:`${pct}%`, height:'100%', borderRadius:'4px', background:'linear-gradient(90deg, #FFD700, #FF8F00)', transition:'width 0.5s', boxShadow:'0 0 10px rgba(255,215,0,0.3)'}} />
+            </div>
+            <span style={{fontSize:'13px', color:'#FFD700', fontWeight:'800', flexShrink:0}}>{pct}%</span>
+          </div>
+          {/* Category tabs */}
+          <div style={{display:'flex', gap:'6px', marginTop:'12px', overflowX:'auto', paddingBottom:'4px'}}>
+            {cats.map(c => {
+              const isAll = c === 'ALL';
+              const cat = ACH_CATEGORY[c];
+              const active = achCatFilter === c;
+              return (
+                <button key={c} onClick={() => setAchCatFilter(c)} style={{
+                  background: active ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: active ? '1px solid rgba(255,215,0,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                  color: active ? '#FFD700' : 'rgba(255,255,255,0.5)',
+                  padding:'5px 12px', borderRadius:'8px', fontSize:'11px', fontWeight:'700',
+                  cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.2s'
+                }}>
+                  {isAll ? '全部' : `${cat.icon} ${cat.name}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Achievement grid */}
+        <div style={{flex:1, overflowY:'auto', padding:'16px 20px', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'10px', alignContent:'start'}}>
+          {filtered.map(ach => {
+            const done = unlockedAchs.includes(ach.id);
+            const cat = ACH_CATEGORY[ach.cat];
+            const rar = ACH_RARITY[ach.rarity];
+            const isHidden = ach.hidden && !done;
+            return (
+              <div key={ach.id} style={{
+                background: done ? `linear-gradient(135deg, ${rar.color}12, ${rar.color}06)` : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${done ? `${rar.color}40` : 'rgba(255,255,255,0.04)'}`,
+                borderRadius:'14px', padding:'14px 16px', position:'relative', overflow:'hidden',
+                opacity: done ? 1 : 0.6, transition:'all 0.2s'
+              }}>
+                {/* Glow for unlocked */}
+                {done && <div style={{position:'absolute', top:0, left:0, right:0, height:'2px', background:`linear-gradient(90deg, transparent, ${rar.color}, transparent)`}} />}
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px', flex:1, minWidth:0}}>
+                    <div style={{
+                      width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
+                      background: done ? `linear-gradient(135deg, ${rar.color}30, ${rar.color}15)` : 'rgba(255,255,255,0.04)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:'18px', border: done ? `1px solid ${rar.color}40` : '1px solid rgba(255,255,255,0.06)'
+                    }}>
+                      {done ? (cat?.icon || '🏆') : (isHidden ? '❓' : cat?.icon || '📋')}
+                    </div>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:'13px', fontWeight:'800', color: done ? '#fff' : 'rgba(255,255,255,0.5)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                        {isHidden ? '???' : ach.name}
+                      </div>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px'}}>
+                        {isHidden ? '达成隐藏条件后解锁' : ach.desc}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Stars */}
+                  <div style={{flexShrink:0, fontSize:'10px', letterSpacing:'1px', color: done ? rar.color : 'rgba(255,255,255,0.15)'}}>
+                    {'★'.repeat(rar.stars)}{'☆'.repeat(5 - rar.stars)}
+                  </div>
+                </div>
+                {/* Reward */}
+                <div style={{display:'flex', alignItems:'center', gap:'6px', marginTop:'4px'}}>
+                  <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:`${rar.color}15`, color:rar.color, fontWeight:'700', border:`1px solid ${rar.color}20`}}>
+                    {rar.name}
+                  </span>
+                  {ach.reward?.gold && (
+                    <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(255,215,0,0.1)', color:'#FFD700', fontWeight:'700'}}>
+                      +{ach.reward.gold.toLocaleString()} 金币
+                    </span>
+                  )}
+                  {ach.reward?.title && (
+                    <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(156,39,176,0.1)', color:'#CE93D8', fontWeight:'700'}}>
+                      称号: {ach.reward.title}
+                    </span>
+                  )}
+                  {done && <span style={{marginLeft:'auto', fontSize:'10px', color:'#43a047', fontWeight:'700'}}>✓ 已完成</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -3519,7 +3733,8 @@ const useGrowthItem = (petIndex, itemId) => {
       // ------------------------------------------------
       // 增加地图探索度
       setMapProgress(prev => ({ ...prev, [currentMapId]: Math.min(100, (prev[currentMapId]||0) + 1) }));
-      
+      updateAchStat({ totalSteps: 1 });
+
       const roll = Math.random();
       const mapInfo = MAPS.find(m => m.id === currentMapId);
       const progress = mapProgress[currentMapId] || 0;
@@ -3712,6 +3927,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setActivityRecords(prev => ({ ...prev, [typeKey]: score }));
         isNewRecord = true;
     }
+
+    // 成就追踪
+    if (typeKey === 'fishing') updateAchStat({ fishingWins: 1 });
+    if (typeKey === 'beauty') updateAchStat({ beautyWins: 1 });
 
     // 3. 🔥 核心修复：智能判断奖励类型 🔥
     // 如果配置里写了 type='pet' 或者 ID 是数字，就当作精灵处理
@@ -4602,6 +4821,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         };
         addLog(`🌀 ${player.name} 展开领域——${domainDef.name}!`);
         addLog(`📖 ${domainDef.desc}`);
+        updateAchStat({ domainsUsed: 1 });
         setAnimEffect({ type: 'DOMAIN', target: 'player' });
         await wait(1500);
         setAnimEffect(null);
@@ -4640,6 +4860,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - vow.ceCost);
             addLog(`🔮 消耗 ${vow.ceCost} 咒力`);
         }
+        updateAchStat({ vowsUsed: 1 });
         if (vow.sacrifice.hpPercent) {
             const cost = Math.floor(getStats(player).maxHp * vow.sacrifice.hpPercent);
             player.currentHp = Math.max(1, player.currentHp - cost);
@@ -4714,6 +4935,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     addLog(`${unit.name} 吃下了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
+    if (side === 'player') updateAchStat({ fruitTransforms: 1 });
     setAnimEffect({ type: 'TRANSFORM', target: side === 'player' ? 'player' : 'enemy' });
     await wait(1500);
     setAnimEffect(null);
@@ -5459,6 +5681,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (typeMod > 1.2) msg += ` 效果拔群!`;
         if (typeMod < 0.9) msg += ` 收效甚微...`;
         addLog(msg);
+
+        if (source === 'player') {
+          updateAchStat({ maxDamageDealt: dmg });
+          if (typeMod > 1.2) updateAchStat({ superEffectiveHits: 1 });
+        }
 
         // 结实 & 亲密度保命
         let survivalMsg = null;
@@ -6283,6 +6510,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
     
     addLog(`胜利! 总经验+${totalBattleExp} / 金币+${goldGain}`);
 
+    // 成就追踪 - 战斗胜利
+    const winAchUpdates = { battlesWon: 1, totalGoldEarned: goldGain };
+    const newStreak = (achStats.currentWinStreak || 0) + 1;
+    winAchUpdates.currentWinStreak = p => newStreak;
+    winAchUpdates.maxWinStreak = newStreak;
+    const activePet = battle.playerCombatStates?.[battle.activeIdx];
+    if (activePet) {
+      const maxHp = getStats(party[battle.activeIdx] || activePet).maxHp;
+      if (activePet.currentHp <= maxHp * 0.1) winAchUpdates.clutchWins = 1;
+      if (activePet.currentHp >= maxHp) winAchUpdates.perfectWins = 1;
+    }
+    if (isTrainer && battle.playerCombatStates) {
+      const allAlive = battle.playerCombatStates.every(p => p && p.currentHp > 0);
+      if (allAlive) winAchUpdates.sweepWins = 1;
+    }
+    const eMaxLv = Math.max(0, ...enemyParty.map(e => e?.level || 0));
+    const pMinLv = Math.min(Infinity, ...(party || []).map(p => p?.level || 999));
+    if (eMaxLv - pMinLv >= 20) winAchUpdates.underdogWins = 1;
+    if (battle.turnCount && battle.turnCount <= 3) winAchUpdates.quickWins = 1;
+    if (type === 'pvp') winAchUpdates.pvpWins = 1;
+    updateAchStat(winAchUpdates);
+
     setBattle(null);
 
     const hasPendingSkill = partyToSave.some(p => p.pendingLearnMove);
@@ -6333,6 +6582,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     setParty(healedParty);
+    updateAchStat({ timesDefeated: 1, currentWinStreak: p => 0 });
 
     enterMap(currentMapId);
 
@@ -6405,10 +6655,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         setParty(newParty);
-        setBattle(null); // 结束战斗
-        setView('grid_map'); // 回地图
+        updateAchStat({ timesRun: 1 });
+        setBattle(null);
+        setView('grid_map');
     } else {
-        // --- 失败 ---
         addLog("🚫 逃跑失败！被对方拦住了！");
         setBattle(prev => ({ ...prev, phase: 'busy' })); 
         
@@ -6456,6 +6706,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       addLog(`✨ 成功捕捉 ${enemy.name}!`);
       if (!caughtDex.includes(enemy.id)) setCaughtDex(prev => [...prev, enemy.id]);
+
+      // 成就追踪
+      const catchAchUpdates = { totalCaught: 1 };
+      if (enemy.isShiny) catchAchUpdates.shinyCaught = 1;
+      if (LEGENDARY_POOL && LEGENDARY_POOL.includes(enemy.id)) catchAchUpdates.legendCaught = 1;
+      if (ballType === 'master') catchAchUpdates.masterBallUsed = 1;
+      updateAchStat(catchAchUpdates);
 
       // 生成新精灵对象
       const newPet = { ...enemy, uid: Date.now() };
@@ -6864,6 +7121,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       
       setBuyCounts(prev => ({...prev, [id]: 1}));
       
+      updateAchStat({ maxSinglePurchase: totalCost });
       alert(`✅ 购买成功！\n获得了 ${itemName} x${count}\n花费了 ${totalCost} 金币`);
     } else {
       alert("❌ 金币不足！无法购买。");
@@ -8139,6 +8397,7 @@ const renderMenu = () => {
               { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/500`, color:'#f59e0b', hoverBg:'rgba(251,191,36,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
               { key:'skill_dex', label:'技能大全', sub:'287种', color:'#3b82f6', hoverBg:'rgba(59,130,246,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
               { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', hoverBg:'rgba(220,38,38,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
+              { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', hoverBg:'rgba(168,85,247,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
             ].map(btn => (
               <button key={btn.key} onClick={() => setView(btn.key)} style={{
                 padding:'14px 8px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
@@ -12896,6 +13155,7 @@ const renderMenu = () => {
       {view === 'fishing_game' && renderFishingGame()}
     {view === 'beauty_contest' && renderBeautyContest()}
       {view === 'housing' && renderHousing()}
+      {view === 'achievements' && renderAchievements()}
       {view === 'locked' && renderLocked()}
       {renderResultModal()} 
       {renderActivityModal()} 
@@ -13017,7 +13277,50 @@ const renderMenu = () => {
         );
       })()}
 
-      {renderEvolutionScene()} 
+      {renderEvolutionScene()}
+      {/* 成就解锁通知 */}
+      {achNotification && (() => {
+        const ach = achNotification;
+        const rar = ACH_RARITY[ach.rarity];
+        const cat = ACH_CATEGORY[ach.cat];
+        return (
+          <div style={{
+            position:'fixed', top:'20px', right:'20px', zIndex:10000,
+            background:`linear-gradient(135deg, rgba(15,10,40,0.95), rgba(25,20,50,0.95))`,
+            backdropFilter:'blur(20px)',
+            border:`1px solid ${rar.color}50`,
+            borderRadius:'16px', padding:'14px 18px', minWidth:'280px', maxWidth:'360px',
+            boxShadow:`0 10px 40px rgba(0,0,0,0.5), 0 0 20px ${rar.color}20`,
+            animation:'achSlideIn 0.4s cubic-bezier(.22,1,.36,1)',
+            display:'flex', alignItems:'center', gap:'12px'
+          }}>
+            <div style={{
+              width:'42px', height:'42px', borderRadius:'12px', flexShrink:0,
+              background:`linear-gradient(135deg, ${rar.color}30, ${rar.color}10)`,
+              border:`1px solid ${rar.color}40`,
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px'
+            }}>
+              {cat?.icon || '🏆'}
+            </div>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{fontSize:'10px', color:rar.color, fontWeight:'700', letterSpacing:'1px', marginBottom:'2px'}}>
+                成就解锁 {'★'.repeat(rar.stars)}
+              </div>
+              <div style={{fontSize:'14px', fontWeight:'800', color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                {ach.name}
+              </div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>
+                {ach.desc}
+              </div>
+              {ach.reward?.gold && (
+                <div style={{fontSize:'10px', color:'#FFD700', fontWeight:'700', marginTop:'3px'}}>
+                  +{ach.reward.gold.toLocaleString()} 金币
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {/* 全局消息弹窗 */}
       {messageBox && (
         <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.2s'}} onClick={() => { if(messageBox.callback) messageBox.callback(); setMessageBox(null); }}>

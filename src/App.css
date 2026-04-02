@@ -2745,6 +2745,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   to   { opacity:1; transform:translateX(-50%) translateY(0); }
 }
 
+@keyframes achSlideIn {
+  0%   { opacity:0; transform:translateX(100px) scale(0.8); }
+  100% { opacity:1; transform:translateX(0) scale(1); }
+}
+
 /* =================================================================
    👇 精灵详情页居中矫正 (粘贴到 CSS 最底部)
    目标：把左侧的详情栏变成居中弹窗，并加黑背景
