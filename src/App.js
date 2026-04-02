@@ -642,10 +642,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const ball = BALLS[ballType];
       let rate = ball.rate;
       
-      // 获取当前地图信息
+      if (!battle) return 0.5;
       const mapInfo = MAPS.find(m => m.id === battle.mapId);
-      // 计算当前回合数 (根据战斗日志数量估算)
-      const turnCount = Math.floor(battle.logs.length / 2);
+      const turnCount = Math.floor((battle.logs || []).length / 2);
 
       // 网纹球：水系或虫系
       if (ballType === 'net') {
@@ -4437,8 +4436,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [修复版] 玩家回合 (修复升级UI不刷新)
   // ==========================================
   const executeTurn = async (moveIdx) => {
-  if (battle.phase !== 'input') return;
-    setBattle(prev => ({ ...prev, phase: 'busy' }));
+  if (!battle || battle.phase !== 'input') return;
+    setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
 
     try {
         // 这是一个深拷贝，PP 是在这里扣除的
@@ -4734,8 +4733,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await wait(500);
 
     const state = currentBattleState || battle;
-    const player = state.playerCombatStates[state.activeIdx];
-    const enemy = state.enemyParty[state.enemyActiveIdx];
+    if (!state) return;
+    const player = state.playerCombatStates?.[state.activeIdx];
+    const enemy = state.enemyParty?.[state.enemyActiveIdx];
+    if (!player || !enemy) return;
 
     if (enemy.currentHp <= 0) return;
 
@@ -5076,7 +5077,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [核心修复] 战斗行动逻辑 (含特性/亲密度/天气/时间判定)
   // ==========================================
   const performAction = async (attacker, defender, move, source, battleState) => {
-    setBattle(prev => ({ ...prev, phase: 'anim' }));
+    if (!battleState && !battle) return;
+    setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
 
     const atkIdx = source === 'player' ? battleState.activeIdx : battleState.enemyActiveIdx;
     const defIdx = source === 'player' ? battleState.enemyActiveIdx : battleState.activeIdx;
@@ -6426,7 +6428,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     
     // 1. 扣球并播放投掷动画
     setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: prev.balls[ballType] - 1 } }));
-    setBattle(prev => ({...prev, phase: 'anim'}));
+    setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
     addLog(`去吧! ${BALLS[ballType].name}!`);
     
@@ -6509,7 +6511,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       addLog("哎呀! 差点就捉到了!");
       await wait(1000);
       setAnimEffect(null);
-      setBattle(prev => ({...prev, phase: 'input'}));
+      setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev);
       await enemyTurn();
     }
     } catch (e) {
@@ -6864,7 +6866,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
 
-  const addLog = (msg) => setBattle(prev => ({...prev, logs: [msg, ...prev.logs].slice(0, 3)}));
+  const addLog = (msg) => setBattle(prev => prev ? ({...prev, logs: [msg, ...(prev.logs||[])].slice(0, 3)}) : prev);
   const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
   const forgetMove = (moveIndex) => {
