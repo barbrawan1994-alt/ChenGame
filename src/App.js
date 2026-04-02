@@ -5036,6 +5036,69 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
 
+    // --- AI: 缚誓决策 ---
+    const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
+    if (!enemy.activeVow && enemy.maxCE > 0 && (enemy.cursedEnergy || 0) >= 15) {
+      const vowChance = isHardBattle ? 0.25 : 0.08;
+      if (Math.random() < vowChance) {
+        const hpRatio = enemy.currentHp / getStats(enemy).maxHp;
+        const affordableVows = BINDING_VOWS.filter(v => (enemy.cursedEnergy || 0) >= (v.ceCost || 0));
+        if (affordableVows.length > 0) {
+          let chosenVow = null;
+          if (hpRatio < 0.35 && affordableVows.find(v => v.id === 'vow_power')) {
+            chosenVow = affordableVows.find(v => v.id === 'vow_power');
+          } else if (hpRatio > 0.6 && affordableVows.find(v => v.id === 'vow_speed')) {
+            chosenVow = affordableVows.find(v => v.id === 'vow_speed');
+          } else if (hpRatio < 0.5 && affordableVows.find(v => v.id === 'vow_burn')) {
+            chosenVow = affordableVows.find(v => v.id === 'vow_burn');
+          } else {
+            chosenVow = _.sample(affordableVows);
+          }
+          if (chosenVow) {
+            enemy.cursedEnergy = Math.max(0, (enemy.cursedEnergy || 0) - (chosenVow.ceCost || 0));
+            if (chosenVow.sacrifice.hpPercent) {
+              const cost = Math.floor(getStats(enemy).maxHp * chosenVow.sacrifice.hpPercent);
+              enemy.currentHp = Math.max(1, enemy.currentHp - cost);
+            }
+            if (chosenVow.sacrifice.cePercent) {
+              const cost = Math.floor((enemy.cursedEnergy || 0) * chosenVow.sacrifice.cePercent);
+              enemy.cursedEnergy = Math.max(0, (enemy.cursedEnergy || 0) - cost);
+            }
+            if (chosenVow.reward.spdMult) {
+              const spdBoost = Math.min(6, Math.round(Math.log2(chosenVow.reward.spdMult) * 4));
+              enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + spdBoost);
+            }
+            enemy.activeVow = { ...chosenVow, turnsLeft: chosenVow.reward.turns };
+            addLog(`📜 ${enemy.name} 立下缚誓——${chosenVow.name}!`);
+            addLog(`📖 ${chosenVow.desc}`);
+            setAnimEffect({ type: 'BUFF', target: 'enemy' });
+            await wait(1200);
+            setAnimEffect(null);
+          }
+        }
+      }
+    }
+
+    // --- AI: 蓄力决策 (CE不足30%且无其他行动时) ---
+    if (enemy.maxCE > 0 && (enemy.cursedEnergy || 0) < enemy.maxCE * 0.3 && !enemy.activeVow) {
+      const chargeChance = isHardBattle ? 0.2 : 0.05;
+      if (Math.random() < chargeChance) {
+        const gain = Math.floor(enemy.maxCE * 0.25);
+        enemy.cursedEnergy = Math.min(enemy.maxCE, (enemy.cursedEnergy || 0) + gain);
+        addLog(`🔮 ${enemy.name} 集中精神蓄积咒力! (+${gain}CE)`);
+        setAnimEffect({ type: 'CHARGE_CE', target: 'enemy' });
+        await wait(1000);
+        setAnimEffect(null);
+        setBattle(prev => ({
+          ...prev, phase: 'input',
+          enemyParty: state.enemyParty,
+          playerCombatStates: state.playerCombatStates,
+        }));
+        return;
+      }
+    }
+
+    // --- AI: 技能选择 ---
     const movesWithPP = (enemy.combatMoves || enemy.moves).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
     const smartMoves = movesWithPP.filter(m => {
         if (m.p > 0) return true;
@@ -5054,11 +5117,53 @@ const grantContestReward = (config, score, subjectPet = null) => {
     });
 
     let enemyMove;
-    if (smartMoves.length > 0) {
+    if (isHardBattle && smartMoves.length > 1) {
+      // 训练家AI: 根据局势智能选择技能
+      const hpRatio = enemy.currentHp / getStats(enemy).maxHp;
+      const playerHpRatio = player.currentHp / getStats(player).maxHp;
+      const damageMoves = smartMoves.filter(m => m.p > 0);
+      const buffMoves = smartMoves.filter(m => m.effect?.type === 'BUFF');
+      const debuffMoves = smartMoves.filter(m => m.effect?.type === 'DEBUFF' || m.effect?.type === 'STATUS');
+      const healMoves = smartMoves.filter(m => m.effect?.type === 'HEAL' || m.t === 'HEAL');
+      const cursedMoves = smartMoves.filter(m => m.isCursed && m.p > 0);
+      const fruitMoves = smartMoves.filter(m => m.isFruitMove || m.isExtra);
+
+      // 缚誓加成下优先高威力
+      if (enemy.activeVow?.reward?.atkMult > 1 || enemy.activeVow?.reward?.nextMovePower > 1) {
+        const strongest = damageMoves.sort((a, b) => (b.p || 0) - (a.p || 0))[0];
+        if (strongest) { enemyMove = strongest; }
+      }
+      // 玩家残血 → 用最强招收割
+      if (!enemyMove && playerHpRatio < 0.25 && damageMoves.length > 0) {
+        enemyMove = damageMoves.sort((a, b) => (b.p || 0) - (a.p || 0))[0];
+      }
+      // 自身高血量开局 → 偶尔用buff/debuff
+      if (!enemyMove && hpRatio > 0.7 && Math.random() < 0.35) {
+        if (buffMoves.length > 0 && Math.random() < 0.5) {
+          enemyMove = _.sample(buffMoves);
+        } else if (debuffMoves.length > 0) {
+          enemyMove = _.sample(debuffMoves);
+        }
+      }
+      // 有咒术技能且CE充足 → 概率使用
+      if (!enemyMove && cursedMoves.length > 0 && Math.random() < 0.4) {
+        enemyMove = _.sample(cursedMoves);
+      }
+      // 有果实技能 → 概率使用
+      if (!enemyMove && fruitMoves.length > 0 && Math.random() < 0.3) {
+        enemyMove = _.sample(fruitMoves);
+      }
+      // 兜底: 从攻击技能中随机
+      if (!enemyMove) {
+        enemyMove = damageMoves.length > 0 ? _.sample(damageMoves) : _.sample(smartMoves);
+      }
+    } else if (smartMoves.length > 0) {
         enemyMove = _.sample(smartMoves);
     } else if (movesWithPP.length > 0) {
         enemyMove = _.sample(movesWithPP); 
-    } else {
+    }
+
+    if (!enemyMove) {
         enemyMove = { name: '挣扎', p: 20, t: 'NORMAL' }; 
     }
     
