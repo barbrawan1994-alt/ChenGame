@@ -562,20 +562,20 @@ button:active { transform: scale(0.96); }
   transform: scale(1.05);
 }
 
-/* 我方精灵（近处）- 更大 */
+/* 我方精灵（近处）- 更大更近 */
 .player-zone-v2 .sprite-v2,
 .player-sprite-wrapper .sprite-v2 { 
-  width: 180px; 
-  height: 180px; 
-  font-size: 130px; 
+  width: 200px; 
+  height: 200px; 
+  font-size: 140px; 
 }
 
-/* 敌方精灵（远处）- 稍小，带透视效果 */
+/* 敌方精灵（远处）- 明显更小，带透视效果 */
 .enemy-zone-v2 .sprite-v2,
 .enemy-sprite-wrapper .sprite-v2 { 
-  width: 150px; 
-  height: 150px; 
-  font-size: 100px; 
+  width: 120px; 
+  height: 120px; 
+  font-size: 85px; 
   filter: 
     drop-shadow(0 6px 12px rgba(0,0,0,0.3))
     drop-shadow(0 0 15px rgba(255,255,255,0.1))

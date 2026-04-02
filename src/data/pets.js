@@ -739,14 +739,135 @@ const STONE_EVO_RULES = {
   203: { dawn_stone: 371 } // 雪虫 -> 冰雪女王
 };
 
+// ==========================================
+// [新增] 69只新精灵 (ID 432-500)
+// 包含: 8组三段进化 + 12组二段进化 + 10只神兽 + 11只独立精灵
+// ==========================================
+const NEW_PETS_500 = [
+  // === 三段进化链 ===
+  // 1. 暗影猫家族 (DARK)
+  { id: 432, name: '暗影幼猫', type: 'DARK', emoji: '🐈‍⬛', hp: 40, atk: 55, def: 35, evo: 433, evoLvl: 18, desc: '在月光下出生的黑猫，瞳孔中映射着星空。' },
+  { id: 433, name: '黑夜猎豹', type: 'DARK', emoji: '🐆', hp: 65, atk: 85, def: 55, evo: 434, evoLvl: 38, desc: '行走于暗夜的猎手，速度快如闪电。' },
+  { id: 434, name: '虚无之主', type: 'DARK', emoji: '👁️', hp: 85, atk: 115, def: 75, desc: '统御暗影的王者，据说它能吞噬一切光芒。' },
+
+  // 2. 格斗家族 (FIGHT)
+  { id: 435, name: '拳击仔', type: 'FIGHT', emoji: '🥊', hp: 50, atk: 60, def: 40, evo: 436, evoLvl: 20, desc: '戴着过大拳套的小家伙，充满斗志。' },
+  { id: 436, name: '格斗勇士', type: 'FIGHT', emoji: '🤼', hp: 70, atk: 85, def: 60, evo: 437, evoLvl: 40, desc: '经过千锤百炼的格斗家，拳风可碎巨石。' },
+  { id: 437, name: '无双霸王', type: 'FIGHT', emoji: '💪', hp: 95, atk: 120, def: 80, desc: '传说中的武道巅峰者，一拳之力可裂山川。' },
+
+  // 3. 萤光蛾家族 (BUG)
+  { id: 438, name: '萤火虫', type: 'BUG', emoji: '🪲', hp: 35, atk: 30, def: 40, evo: 439, evoLvl: 16, desc: '夜晚发出温暖微光的小虫子。' },
+  { id: 439, name: '幻光蛾', type: 'BUG', emoji: '🦋', hp: 55, atk: 65, def: 55, evo: 440, evoLvl: 34, desc: '翅膀上的鳞粉能折射出梦幻光芒。' },
+  { id: 440, name: '彩翼天蛾', type: 'BUG', emoji: '🪻', hp: 75, atk: 100, def: 80, desc: '翅膀展开时如同七色彩虹，是森林的守护者。' },
+
+  // 4. 飞行家族 (FLYING)
+  { id: 441, name: '微风雀', type: 'FLYING', emoji: '🕊️', hp: 38, atk: 45, def: 35, evo: 442, evoLvl: 17, desc: '轻盈的小鸟，总是追着风跑。' },
+  { id: 442, name: '疾风鹰', type: 'FLYING', emoji: '🦅', hp: 60, atk: 80, def: 55, evo: 443, evoLvl: 36, desc: '翱翔于高空的猛禽，俯冲速度惊人。' },
+  { id: 443, name: '暴风之翼', type: 'FLYING', emoji: '🌪️', hp: 80, atk: 110, def: 75, desc: '振翅即可掀起暴风的传说飞禽。' },
+
+  // 5. 花精灵家族 (FAIRY)
+  { id: 444, name: '花蕾精', type: 'FAIRY', emoji: '🌸', hp: 45, atk: 35, def: 45, evo: 445, evoLvl: 19, desc: '住在花苞里的小精灵，散发甜蜜芳香。' },
+  { id: 445, name: '花瓣仙', type: 'FAIRY', emoji: '🌺', hp: 65, atk: 60, def: 70, evo: 446, evoLvl: 38, desc: '飘舞的花瓣就是她的魔法，能治愈伤痛。' },
+  { id: 446, name: '百花女王', type: 'FAIRY', emoji: '👸', hp: 90, atk: 85, def: 100, desc: '花之国度的女王，所过之处百花盛开。' },
+
+  // 6. 龙族家族 (DRAGON)
+  { id: 447, name: '龙蛋仔', type: 'DRAGON', emoji: '🥚', hp: 50, atk: 50, def: 55, evo: 448, evoLvl: 25, desc: '刚从龙蛋中孵化的幼龙，好奇心旺盛。' },
+  { id: 448, name: '翔龙', type: 'DRAGON', emoji: '🐉', hp: 72, atk: 80, def: 70, evo: 449, evoLvl: 45, desc: '学会飞翔的年轻巨龙，正在磨练龙息。' },
+  { id: 449, name: '天空龙王', type: 'DRAGON', emoji: '🐲', hp: 100, atk: 120, def: 95, desc: '君临苍穹的龙王，龙息可融化钢铁。' },
+
+  // 7. 暗影狼家族 (DARK)
+  { id: 450, name: '暗影狼崽', type: 'DARK', emoji: '🐕', hp: 42, atk: 50, def: 38, evo: 451, evoLvl: 22, desc: '独自在黑暗中嚎叫的小狼。' },
+  { id: 451, name: '幽冥战狼', type: 'DARK', emoji: '🐺', hp: 68, atk: 82, def: 60, evo: 452, evoLvl: 42, desc: '在月下狩猎的暗影之狼，獠牙淬有暗能。' },
+  { id: 452, name: '黑暗天狼', type: 'DARK', emoji: '🌑', hp: 90, atk: 110, def: 80, desc: '暗夜的最终支配者，传说它是月亮的影子。' },
+
+  // 8. 大地家族 (GROUND)
+  { id: 453, name: '掘地鼠', type: 'GROUND', emoji: '🐹', hp: 40, atk: 50, def: 45, evo: 454, evoLvl: 20, desc: '在地下快速挖洞的小鼠，爪子坚硬如铁。' },
+  { id: 454, name: '穿山兽', type: 'GROUND', emoji: '🦔', hp: 65, atk: 75, def: 80, evo: 455, evoLvl: 40, desc: '全身覆盖岩石鳞甲，能穿透最坚硬的地层。' },
+  { id: 455, name: '大地巨人', type: 'GROUND', emoji: '🏔️', hp: 95, atk: 100, def: 115, desc: '传说中的地底王者，每一步都能引发地震。' },
+
+  // === 二段进化链 ===
+  // 9. 露珠精灵 (FAIRY)
+  { id: 456, name: '露珠精灵', type: 'FAIRY', emoji: '💧', hp: 48, atk: 40, def: 50, evo: 457, evoLvl: 28, desc: '住在清晨露珠里的微小精灵。' },
+  { id: 457, name: '晨露仙子', type: 'FAIRY', emoji: '✨', hp: 78, atk: 70, def: 85, desc: '在朝阳中翩翩起舞的仙子，带来一天的好运。' },
+
+  // 10. 甲虫 (BUG)
+  { id: 458, name: '角甲虫', type: 'BUG', emoji: '🪳', hp: 45, atk: 55, def: 60, evo: 459, evoLvl: 26, desc: '头上有巨大犄角的甲虫，力量惊人。' },
+  { id: 459, name: '铠甲独角仙', type: 'BUG', emoji: '🪲', hp: 75, atk: 95, def: 90, desc: '浑身铠甲的巨型甲虫，角上的力量能掀翻巨石。' },
+
+  // 11. 武僧 (FIGHT)
+  { id: 460, name: '修行僧', type: 'FIGHT', emoji: '🧘', hp: 55, atk: 50, def: 55, evo: 461, evoLvl: 32, desc: '在山中修行的武僧，追求武道真谛。' },
+  { id: 461, name: '悟道大师', type: 'FIGHT', emoji: '🥋', hp: 85, atk: 90, def: 85, desc: '参透武道奥义的大师，一招一式皆有禅意。' },
+
+  // 12. 暗鸦 (DARK)
+  { id: 462, name: '影子鸦', type: 'DARK', emoji: '🐦‍⬛', hp: 40, atk: 60, def: 35, evo: 463, evoLvl: 30, desc: '在暗处窥视的乌鸦，眼中闪烁诡异光芒。' },
+  { id: 463, name: '暗鸦领主', type: 'DARK', emoji: '🦉', hp: 70, atk: 95, def: 65, desc: '统领群鸦的黑暗之王，能操纵影子攻击敌人。' },
+
+  // 13. 气球鸟 (FLYING)
+  { id: 464, name: '气球鸟', type: 'FLYING', emoji: '🎈', hp: 55, atk: 35, def: 35, evo: 465, evoLvl: 24, desc: '身体轻如气球的奇妙鸟类，随风飘荡。' },
+  { id: 465, name: '飞艇翼龙', type: 'FLYING', emoji: '🛩️', hp: 85, atk: 75, def: 70, desc: '进化后获得了强劲的飞行能力，能穿越暴风。' },
+
+  // 14. 海马龙 (DRAGON)
+  { id: 466, name: '小海马龙', type: 'DRAGON', emoji: '🐴', hp: 42, atk: 55, def: 48, evo: 467, evoLvl: 35, desc: '海中的龙种后裔，鳞片闪烁着蓝光。' },
+  { id: 467, name: '海龙王', type: 'DRAGON', emoji: '🐳', hp: 80, atk: 100, def: 85, desc: '统治深海的龙王，能引发巨大海啸。' },
+
+  // 15. 治愈草 (HEAL)
+  { id: 468, name: '小药草', type: 'HEAL', emoji: '🌿', hp: 55, atk: 30, def: 45, evo: 469, evoLvl: 30, desc: '具有强大治愈力的小草，散发清新气息。' },
+  { id: 469, name: '生命之树', type: 'HEAL', emoji: '🌲', hp: 100, atk: 55, def: 90, desc: '千年古树化身的精灵，触碰它即可恢复元气。' },
+
+  // 16. 蝙蝠 (DARK)
+  { id: 470, name: '暗影蝠', type: 'DARK', emoji: '🦇', hp: 38, atk: 55, def: 30, evo: 471, evoLvl: 28, desc: '在洞穴深处栖息的蝙蝠，超声波能迷惑敌人。' },
+  { id: 471, name: '吸血伯爵', type: 'DARK', emoji: '🧛', hp: 70, atk: 90, def: 60, desc: '传说中的暗夜贵族，吸取敌人生命力为己用。' },
+
+  // 17. 黄金甲虫 (BUG)
+  { id: 472, name: '粪球虫', type: 'BUG', emoji: '🐛', hp: 40, atk: 45, def: 55, evo: 473, evoLvl: 26, desc: '滚动着小石球的勤劳虫子。' },
+  { id: 473, name: '黄金甲虫', type: 'BUG', emoji: '🏅', hp: 72, atk: 80, def: 90, desc: '进化后全身覆盖金色甲壳，坚硬无比。' },
+
+  // 18. 糖果精灵 (FAIRY)
+  { id: 474, name: '糖果精灵', type: 'FAIRY', emoji: '🍬', hp: 50, atk: 40, def: 40, evo: 475, evoLvl: 22, desc: '散发甜蜜气息的小精灵，让人心情愉悦。' },
+  { id: 475, name: '甜梦天使', type: 'FAIRY', emoji: '🍭', hp: 80, atk: 75, def: 70, desc: '能让敌人陷入甜蜜美梦的天使。' },
+
+  // 19. 机甲 (STEEL)
+  { id: 476, name: '铁皮人', type: 'STEEL', emoji: '🤖', hp: 50, atk: 50, def: 70, evo: 477, evoLvl: 35, desc: '古代遗迹中出土的小型机械人。' },
+  { id: 477, name: '机甲战士', type: 'STEEL', emoji: '🦾', hp: 82, atk: 85, def: 105, desc: '全面升级的钢铁战士，装甲可抵御任何攻击。' },
+
+  // 20. 毒蘑菇 (POISON)
+  { id: 478, name: '毒蘑菇', type: 'POISON', emoji: '🍄', hp: 48, atk: 55, def: 40, evo: 479, evoLvl: 28, desc: '颜色鲜艳的毒蘑菇，散发致命孢子。' },
+  { id: 479, name: '剧毒菌王', type: 'POISON', emoji: '☠️', hp: 78, atk: 90, def: 70, desc: '蘑菇森林的统治者，毒雾可覆盖整座山谷。' },
+
+  // === 神兽级别 (独立无进化，高基础属性) ===
+  { id: 480, name: '暗黑龙神', type: 'DARK', emoji: '🐉', hp: 105, atk: 130, def: 90, desc: '【神兽】诞生于混沌之中的暗黑龙，能撕裂空间的缝隙。' },
+  { id: 481, name: '光明凤凰', type: 'FAIRY', emoji: '🔥', hp: 100, atk: 110, def: 110, desc: '【神兽】传说中涅槃重生的光之凤凰，翅膀闪耀圣洁光辉。' },
+  { id: 482, name: '时间之蛇', type: 'PSYCHIC', emoji: '⏳', hp: 95, atk: 115, def: 100, desc: '【神兽】盘踞在时间长河中的巨蛇，能窥视过去与未来。' },
+  { id: 483, name: '空间之鲸', type: 'WATER', emoji: '🐋', hp: 120, atk: 100, def: 100, desc: '【神兽】遨游于空间裂缝的巨鲸，身体中藏着无数星系。' },
+  { id: 484, name: '混沌魔神', type: 'GHOST', emoji: '💀', hp: 90, atk: 125, def: 95, desc: '【神兽】万物归于虚无前的最终守望者，掌控生与死的平衡。' },
+  { id: 485, name: '大地母神', type: 'GROUND', emoji: '🌍', hp: 130, atk: 85, def: 120, desc: '【神兽】孕育万物的大地之母，所到之处草木繁茂。' },
+  { id: 486, name: '永恒之树', type: 'GRASS', emoji: '🌳', hp: 125, atk: 80, def: 125, desc: '【神兽】存在了亿万年的世界树，连接天地的生命之源。' },
+  { id: 487, name: '雷霆战神', type: 'ELECTRIC', emoji: '⚡', hp: 90, atk: 130, def: 85, desc: '【神兽】云端之上的雷电之主，一击可劈开群山。' },
+  { id: 488, name: '钢铁巨像', type: 'STEEL', emoji: '🗽', hp: 110, atk: 100, def: 130, desc: '【神兽】远古文明建造的终极守卫，千年不朽的钢铁之躯。' },
+  { id: 489, name: '冰霜女帝', type: 'ICE', emoji: '❄️', hp: 95, atk: 115, def: 105, desc: '【神兽】统治极地冰原的女帝，呼吸即可冻结万物。' },
+
+  // === 独立精灵 (普通至稀有) ===
+  { id: 490, name: '竹叶熊猫', type: 'FIGHT', emoji: '🐼', hp: 80, atk: 85, def: 75, desc: '以竹子为食的功夫熊猫，看似慵懒实则身手矫健。' },
+  { id: 491, name: '珊瑚海马', type: 'WATER', emoji: '🪸', hp: 55, atk: 60, def: 70, desc: '生活在珊瑚礁中的海马，身上长满了彩色珊瑚。' },
+  { id: 492, name: '陨石精灵', type: 'ROCK', emoji: '☄️', hp: 70, atk: 90, def: 80, desc: '从天而降的陨石中诞生的精灵，蕴含宇宙能量。' },
+  { id: 493, name: '彩虹鹦鹉', type: 'FLYING', emoji: '🦜', hp: 60, atk: 70, def: 55, desc: '拥有七色羽毛的鹦鹉，叫声能改变天气。' },
+  { id: 494, name: '沙漠蝎王', type: 'POISON', emoji: '🦂', hp: 75, atk: 95, def: 85, desc: '在沙漠深处潜伏的剧毒蝎子，尾刺一击致命。' },
+  { id: 495, name: '极光鹿', type: 'ICE', emoji: '🦌', hp: 70, atk: 65, def: 70, desc: '鹿角上闪烁着极光的神鹿，是北国的守护兽。' },
+  { id: 496, name: '熔岩蜥蜴', type: 'FIRE', emoji: '🦎', hp: 60, atk: 80, def: 65, desc: '在火山口生活的蜥蜴，皮肤下流淌着岩浆。' },
+  { id: 497, name: '闪电貂', type: 'ELECTRIC', emoji: '⚡', hp: 55, atk: 75, def: 50, desc: '速度极快的小型电属性精灵，身体放出电火花。' },
+  { id: 498, name: '幽灵船长', type: 'GHOST', emoji: '🏴‍☠️', hp: 72, atk: 85, def: 65, desc: '传说中的幽灵海盗船长，漂泊在迷雾之海。' },
+  { id: 499, name: '岩石泰坦', type: 'ROCK', emoji: '🪨', hp: 90, atk: 85, def: 100, desc: '由巨岩构成的泰坦巨人，每一步都震动大地。' },
+  { id: 500, name: '催眠师', type: 'PSYCHIC', emoji: '🔮', hp: 65, atk: 80, def: 60, desc: '拥有强大催眠能力的超能力者，能操控他人梦境。' },
+];
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
-    UNIQUE_REWARD_PET, ...CRYSTAL_PETS
+    UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 341);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 500);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
@@ -756,4 +877,4 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500 };

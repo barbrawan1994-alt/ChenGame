@@ -4542,6 +4542,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let tempBattle = _.cloneDeep(battle);
         const player = tempBattle.playerCombatStates[battle.activeIdx];
 
+        if (vow.ceCost && (player.cursedEnergy || 0) < vow.ceCost) {
+            addLog(`📜 咒力不足! 需要 ${vow.ceCost} CE`);
+            setBattle(prev => ({ ...prev, phase: 'input' }));
+            return;
+        }
+        if (vow.ceCost) {
+            player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - vow.ceCost);
+            addLog(`🔮 消耗 ${vow.ceCost} 咒力`);
+        }
         if (vow.sacrifice.hpPercent) {
             const cost = Math.floor(getStats(player).maxHp * vow.sacrifice.hpPercent);
             player.currentHp = Math.max(1, player.currentHp - cost);
@@ -4550,6 +4559,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (vow.sacrifice.cePercent) {
             const cost = Math.floor((player.cursedEnergy || 0) * vow.sacrifice.cePercent);
             player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - cost);
+            addLog(`🔮 额外燃烧 ${cost} 咒力!`);
         }
 
         if (vow.sacrifice.noSwitch) {
@@ -10076,7 +10086,7 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角) */}
                 {/* ========================================== */}
-                <div className="enemy-zone-v2" style={{position: 'absolute', top: '10%', right: '10%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
+                <div className="enemy-zone-v2" style={{position: 'absolute', top: '5%', right: '8%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
                     
                     {/* 敌方 HUD (血条) */}
                     <div className="hud-card hud-enemy" style={{transform: 'scale(1.1)', transformOrigin: 'right top', marginBottom: '10px'}}>
@@ -10175,10 +10185,10 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 {/* 2. 我方区域 (左下角) */}
                 {/* ========================================== */}
-                <div className="player-zone-v2" style={{position: 'absolute', bottom: '25%', left: '10%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                <div className="player-zone-v2" style={{position: 'absolute', bottom: '8%', left: '5%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
                     {/* 我方精灵图片 - 近处效果（较大） */}
-                    <div className="sprite-wrapper player-sprite-wrapper" style={{position: 'relative', transform: 'scale(1.15)', transformOrigin: 'center bottom', marginBottom: '10px', marginLeft: '20px'}}>
+                    <div className="sprite-wrapper player-sprite-wrapper" style={{position: 'relative', transform: 'scale(1.3)', transformOrigin: 'left bottom', marginBottom: '10px', marginLeft: '10px'}}>
                          <div 
                              ref={(el) => {
                                  if (el && !el.dataset.animated) {
@@ -10325,7 +10335,7 @@ const renderMenu = () => {
                                 <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><span>🏃</span><span>逃跑</span></button>
                                 {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><span>🔮</span><span>蓄力</span></button>}
                                 {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><span>🌀</span><span>领域</span></button>}
-                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const vowList = BINDING_VOWS.map((v,i) => { let cost = ''; if (v.sacrifice.hpPercent) cost += `💔HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `🔮CE-${v.sacrifice.cePercent*100}% `; if (v.sacrifice.noSwitch) cost += `🚫禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `🛡️防御x${v.sacrifice.defMult} ${v.sacrifice.turns}回合 `; if (v.sacrifice.revealMoves) cost += `👁️展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `⚔️伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `💥下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `🛡️防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `💨速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `🔮CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
+                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const curCE = p.cursedEnergy || 0; const vowList = BINDING_VOWS.map((v,i) => { const canUse = curCE >= (v.ceCost || 0); const ceTag = `🔮需${v.ceCost||0}CE${canUse ? '✅' : '❌(不足)'}`; let cost = ceTag + ' '; if (v.sacrifice.hpPercent) cost += `💔HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `🔮额外燃烧${v.sacrifice.cePercent*100}%CE `; if (v.sacrifice.noSwitch) cost += `🚫禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `🛡️防御x${v.sacrifice.defMult} `; if (v.sacrifice.revealMoves) cost += `👁️展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `⚔️伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `💥下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `🛡️防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `💨速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `🔮CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name} ${canUse?'':'[咒力不足]'}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`当前咒力: ${curCE}/${p.maxCE}\n\n选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
                             </div>
                         ) : (
                             <div className="actions-sidebar">

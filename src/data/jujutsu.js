@@ -147,28 +147,28 @@ export const DOMAINS = {
          desc: '神之领域，全属性大幅提升' },
 };
 
-// 缚誓系统
+// 缚誓系统 (每个缚誓都需要最低咒力门槛 ceCost)
 export const BINDING_VOWS = [
-  { id: 'vow_power', name: '以命搏命',
+  { id: 'vow_power', name: '以命搏命', ceCost: 20,
     sacrifice: { hpPercent: 0.3 },
     reward: { atkMult: 2.0, turns: 1 },
-    desc: '献出30%HP，下一击伤害翻倍' },
-  { id: 'vow_reveal', name: '术式开示',
+    desc: '消耗20CE+30%HP，下一击伤害翻倍' },
+  { id: 'vow_reveal', name: '术式开示', ceCost: 15,
     sacrifice: { revealMoves: true },
     reward: { ceMult: 1.5, turns: 3 },
-    desc: '向对手展示全部技能，3回合内咒力恢复1.5倍' },
-  { id: 'vow_restrict', name: '自缚之缚',
+    desc: '消耗15CE，展示技能换取3回合咒力恢复1.5倍' },
+  { id: 'vow_restrict', name: '自缚之缚', ceCost: 25,
     sacrifice: { noSwitch: true, turns: 3 },
     reward: { defMult: 1.5, turns: 3 },
-    desc: '3回合不能换人，但防御提升50%' },
-  { id: 'vow_burn', name: '焚尽咒力',
+    desc: '消耗25CE，3回合不能换人但防御+50%' },
+  { id: 'vow_burn', name: '焚尽咒力', ceCost: 40,
     sacrifice: { cePercent: 0.5 },
     reward: { nextMovePower: 2.5, turns: 1 },
-    desc: '燃烧50%咒力，下一招威力2.5倍' },
-  { id: 'vow_speed', name: '瞬身之誓',
+    desc: '消耗40CE+燃烧50%剩余咒力，下一招威力2.5倍' },
+  { id: 'vow_speed', name: '瞬身之誓', ceCost: 30,
     sacrifice: { defMult: 0.5, turns: 2 },
     reward: { spdMult: 2.0, turns: 2 },
-    desc: '放弃防御换取极速，2回合内速度翻倍但防御减半' },
+    desc: '消耗30CE，2回合速度翻倍但防御减半' },
 ];
 
 // 咒术高专 NPC / 角色
