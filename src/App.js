@@ -144,6 +144,7 @@ export default function RPG(props) {
   const [unlockedAchs, setUnlockedAchs] = useState(savedData.unlockedAchs || []);
   const [achNotification, setAchNotification] = useState(null);
   const [achCatFilter, setAchCatFilter] = useState('ALL');
+  const [fruitPickModal, setFruitPickModal] = useState(null);
 
   // 存档状态标记 (关键！直接根据是否读到金币来判断是否有存档)
   const [hasSave, setHasSave] = useState(!!savedData.gold); 
@@ -9420,41 +9421,32 @@ const renderMenu = () => {
                           )}
                         </div>
                       </div>
-                      <button onClick={() => {
-                        if (equippedFruit) {
-                          if (confirm(`卸下 ${equippedFruit.name} 并放回背包?`)) {
+                      <div style={{display:'flex', gap:'6px'}}>
+                        {equippedFruit && (
+                          <button onClick={() => {
                             setFruitInventory(prev => [...prev, viewStatPet.devilFruit]);
                             const idx = party.findIndex(p => p.uid === viewStatPet.uid);
                             if (idx !== -1) {
                               const np = [...party]; np[idx] = {...np[idx], devilFruit: null}; setParty(np); setViewStatPet(np[idx]);
                             }
-                          }
-                        } else {
-                          if (fruitInventory.length === 0) { alert('背包中没有果实，可以去商店购买或战斗中获得！'); return; }
-                          const list = fruitInventory.map((fid, i) => {
-                            const f = getFruitById(fid); return f ? `${i+1}. ${f.name} [${FRUIT_RARITY_CONFIG[f.rarity]?.label}]` : null;
-                          }).filter(Boolean).join('\n');
-                          const choice = prompt(`选择要装备的果实 (输入序号):\n${list}`);
-                          const ci = parseInt(choice) - 1;
-                          if (!isNaN(ci) && ci >= 0 && ci < fruitInventory.length) {
-                            const fid = fruitInventory[ci];
-                            setFruitInventory(prev => { const n = [...prev]; n.splice(ci, 1); return n; });
-                            const idx = party.findIndex(p => p.uid === viewStatPet.uid);
-                            if (idx !== -1) {
-                              const np = [...party];
-                              if (np[idx].devilFruit) setFruitInventory(prev => [...prev, np[idx].devilFruit]);
-                              np[idx] = {...np[idx], devilFruit: fid}; setParty(np); setViewStatPet(np[idx]);
-                            }
-                          }
-                        }
-                      }} style={{
-                        background: equippedFruit ? '#fff' : 'linear-gradient(135deg, #D32F2F, #FF6F00)',
-                        color: equippedFruit ? rarityConf?.color || '#666' : '#fff',
-                        border: equippedFruit ? `1px solid ${rarityConf?.color || '#ddd'}` : 'none',
-                        padding:'6px 12px', borderRadius:'20px', fontSize:'11px', fontWeight:'bold', cursor:'pointer'
-                      }}>
-                        {equippedFruit ? '更换' : '装备果实'}
-                      </button>
+                          }} style={{
+                            background:'rgba(0,0,0,0.05)', color:'#999', border:'1px solid #ddd',
+                            padding:'5px 10px', borderRadius:'16px', fontSize:'11px', cursor:'pointer'
+                          }}>卸下</button>
+                        )}
+                        <button onClick={() => {
+                          if (fruitInventory.length === 0) { alert('背包中没有恶魔果实，通过战斗或活动获得吧！'); return; }
+                          setFruitPickModal({ petUid: viewStatPet.uid });
+                        }} style={{
+                          background: equippedFruit ? '#fff' : 'linear-gradient(135deg, #D32F2F, #FF6F00)',
+                          color: equippedFruit ? rarityConf?.color || '#666' : '#fff',
+                          border: equippedFruit ? `1px solid ${rarityConf?.color || '#ddd'}` : 'none',
+                          padding:'5px 14px', borderRadius:'16px', fontSize:'11px', fontWeight:'bold', cursor:'pointer',
+                          boxShadow: equippedFruit ? 'none' : '0 2px 8px rgba(211,47,47,0.3)'
+                        }}>
+                          {equippedFruit ? '更换' : '装备果实'}
+                        </button>
+                      </div>
                     </div>
                     {equippedFruit && (
                       <div style={{fontSize:'11px', color:'#555', background:'rgba(255,255,255,0.8)', padding:'6px 8px', borderRadius:'6px', lineHeight:'1.4'}}>
@@ -13309,6 +13301,151 @@ const renderMenu = () => {
       })()}
 
       {renderEvolutionScene()}
+
+      {/* 恶魔果实选择弹窗 */}
+      {fruitPickModal && (() => {
+        const fruits = fruitInventory.map((fid, i) => ({ idx: i, fid, fruit: getFruitById(fid) })).filter(x => x.fruit);
+        const pet = party.find(p => p.uid === fruitPickModal.petUid);
+        const currentFruit = pet?.devilFruit ? getFruitById(pet.devilFruit) : null;
+        return (
+          <div style={{
+            position:'fixed', inset:0, zIndex:9500,
+            background:'rgba(0,0,0,0.7)', backdropFilter:'blur(8px)',
+            display:'flex', justifyContent:'center', alignItems:'center',
+            animation:'fadeIn 0.25s ease-out'
+          }} onClick={() => setFruitPickModal(null)}>
+            <div style={{
+              background:'linear-gradient(160deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%)',
+              borderRadius:'20px', width:'90%', maxWidth:'520px', maxHeight:'80vh',
+              boxShadow:'0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
+              display:'flex', flexDirection:'column', overflow:'hidden',
+              border:'1px solid rgba(255,255,255,0.08)'
+            }} onClick={e => e.stopPropagation()}>
+              {/* 头部 */}
+              <div style={{
+                padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)',
+                background:'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)'
+              }}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <div>
+                    <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
+                      选择恶魔果实
+                    </div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'3px'}}>
+                      为 <span style={{color:'#64B5F6', fontWeight:'600'}}>{pet?.name || '精灵'}</span> 选择一个果实装备
+                      {currentFruit && <span> · 当前: <span style={{color: FRUIT_RARITY_CONFIG[currentFruit.rarity]?.color || '#fff'}}>{currentFruit.name}</span></span>}
+                    </div>
+                  </div>
+                  <button onClick={() => setFruitPickModal(null)} style={{
+                    width:'32px', height:'32px', borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)',
+                    background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.5)', fontSize:'16px',
+                    cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s'
+                  }}>✕</button>
+                </div>
+              </div>
+              {/* 果实列表 */}
+              <div style={{
+                flex:1, overflowY:'auto', padding:'12px 14px',
+                display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:'10px',
+                scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.15) transparent'
+              }}>
+                {fruits.length === 0 ? (
+                  <div style={{gridColumn:'1/-1', textAlign:'center', padding:'40px 0', color:'rgba(255,255,255,0.3)', fontSize:'13px'}}>
+                    背包中暂无恶魔果实
+                  </div>
+                ) : fruits.map(({idx, fid, fruit}) => {
+                  const rc = FRUIT_RARITY_CONFIG[fruit.rarity] || {};
+                  const catName = FRUIT_CATEGORY_NAMES[fruit.category] || '';
+                  return (
+                    <div key={idx} onClick={() => {
+                      setFruitInventory(prev => { const n = [...prev]; n.splice(idx, 1); return n; });
+                      const pidx = party.findIndex(p => p.uid === fruitPickModal.petUid);
+                      if (pidx !== -1) {
+                        const np = [...party];
+                        if (np[pidx].devilFruit) setFruitInventory(prev => [...prev, np[pidx].devilFruit]);
+                        np[pidx] = {...np[pidx], devilFruit: fid}; setParty(np); setViewStatPet(np[pidx]);
+                      }
+                      setFruitPickModal(null);
+                    }} style={{
+                      background:`linear-gradient(145deg, ${rc.color || '#666'}18, rgba(255,255,255,0.03))`,
+                      border:`1px solid ${rc.color || '#555'}30`,
+                      borderRadius:'14px', padding:'14px 10px 12px', cursor:'pointer',
+                      transition:'all 0.25s cubic-bezier(.22,1,.36,1)', position:'relative', overflow:'hidden'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+                      e.currentTarget.style.boxShadow = `0 8px 25px ${rc.color || '#666'}30`;
+                      e.currentTarget.style.borderColor = `${rc.color || '#666'}60`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = '';
+                      e.currentTarget.style.boxShadow = '';
+                      e.currentTarget.style.borderColor = `${rc.color || '#555'}30`;
+                    }}>
+                      {/* 稀有度光晕 */}
+                      <div style={{
+                        position:'absolute', top:'-20px', right:'-20px', width:'60px', height:'60px',
+                        background:`radial-gradient(circle, ${rc.color || '#666'}15, transparent 70%)`,
+                        borderRadius:'50%', pointerEvents:'none'
+                      }} />
+                      {/* 图标 */}
+                      <div style={{display:'flex', justifyContent:'center', marginBottom:'8px'}}>
+                        {renderFruitCSSIcon(fid, 42)}
+                      </div>
+                      {/* 名称 */}
+                      <div style={{
+                        textAlign:'center', fontSize:'13px', fontWeight:'700',
+                        color: rc.color || '#ccc', lineHeight:'1.3', marginBottom:'4px'
+                      }}>{fruit.name}</div>
+                      {/* 标签行 */}
+                      <div style={{display:'flex', justifyContent:'center', gap:'4px', marginBottom:'6px', flexWrap:'wrap'}}>
+                        <span style={{
+                          fontSize:'9px', padding:'2px 6px', borderRadius:'8px',
+                          background:`${rc.color || '#666'}20`, color: rc.color || '#aaa',
+                          fontWeight:'600', border:`1px solid ${rc.color || '#666'}25`
+                        }}>{rc.label || '普通'}</span>
+                        <span style={{
+                          fontSize:'9px', padding:'2px 6px', borderRadius:'8px',
+                          background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.45)',
+                          fontWeight:'600'
+                        }}>{catName}</span>
+                      </div>
+                      {/* 描述 */}
+                      <div style={{
+                        fontSize:'10px', color:'rgba(255,255,255,0.35)', lineHeight:'1.4',
+                        textAlign:'center', display:'-webkit-box', WebkitLineClamp:2,
+                        WebkitBoxOrient:'vertical', overflow:'hidden'
+                      }}>{fruit.desc}</div>
+                      {/* 持续回合 */}
+                      <div style={{
+                        textAlign:'center', marginTop:'6px', fontSize:'9px',
+                        color:'rgba(255,255,255,0.3)'
+                      }}>
+                        变身持续 <span style={{color:'#FFD740', fontWeight:'600'}}>{fruit.duration}</span> 回合
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 底部提示 */}
+              <div style={{
+                padding:'10px 16px', borderTop:'1px solid rgba(255,255,255,0.06)',
+                display:'flex', justifyContent:'space-between', alignItems:'center'
+              }}>
+                <span style={{fontSize:'10px', color:'rgba(255,255,255,0.25)'}}>
+                  拥有 {fruits.length} 个果实
+                </span>
+                <button onClick={() => setFruitPickModal(null)} style={{
+                  background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)',
+                  border:'1px solid rgba(255,255,255,0.08)', padding:'6px 16px',
+                  borderRadius:'10px', fontSize:'11px', cursor:'pointer', fontWeight:'600'
+                }}>取消</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 成就解锁通知 */}
       {achNotification && (() => {
         const ach = achNotification;
