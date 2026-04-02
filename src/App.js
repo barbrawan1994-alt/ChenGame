@@ -13,7 +13,7 @@ import {
   SkillCastEffect,
   EnhancedBattleMessage 
 } from './engines/BattleEnhancements';
-import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG, TRAINER_AVATARS } from './data/constants';
+import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG } from './data/constants';
 import { TYPES, TYPE_CHARM_BASE, TYPE_BIAS } from './data/types';
 import {
   BALLS,
@@ -29,7 +29,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { generateSprite } from './SpriteGenerator';
-import { getSpriteUrl } from './SpriteMap';
+import { getSpriteUrl, TRAINER_SPRITES } from './SpriteMap';
 import {
   SECT_DB,
   SECT_CHIEFS_CONFIG,
@@ -97,7 +97,7 @@ export default function RPG(props) {
   
   // 玩家身份 (优先用存档里的名字，没有才用默认)
   const [trainerName, setTrainerName] = useState(savedData.trainerName || '小智');
-  const [trainerAvatar, setTrainerAvatar] = useState(savedData.trainerAvatar || '🧢');
+  const [trainerAvatar, setTrainerAvatar] = useState(savedData.trainerAvatar && savedData.trainerAvatar.startsWith('http') ? savedData.trainerAvatar : TRAINER_SPRITES[0].url);
   const [unlockedTitles, setUnlockedTitles] = useState(savedData.unlockedTitles || ['见习训练家']);
   const [currentTitle, setCurrentTitle] = useState(savedData.currentTitle || '见习训练家');
 
@@ -336,6 +336,13 @@ const [pendingTask, setPendingTask] = useState(null);
   // [优化] 2. 核心头像渲染函数 (支持 CSS 类控制大小)
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
   
+  const renderAvatarImg = (url, size = 40) => {
+    if (!url || !url.startsWith('http')) {
+      return <span style={{fontSize: size * 0.75}}>{url || '🧢'}</span>;
+    }
+    return <img src={url} alt="avatar" style={{width: size, height: size, objectFit: 'contain', imageRendering: 'auto'}} onError={e => { e.target.style.display='none'; }} />;
+  };
+
   const generatePetVisual = (pet) => {
     if (!pet) return null;
     const imgUrl = imageMap[pet.id];
@@ -7691,7 +7698,8 @@ const renderMenu = () => {
                         display:'flex', alignItems:'center', justifyContent:'center',
                         fontSize:'40px', border:'3px solid #fff',
                         boxShadow:'0 4px 10px rgba(0,0,0,0.1)',
-                        transition:'transform 0.2s, border-color 0.2s'
+                        transition:'transform 0.2s, border-color 0.2s',
+                        overflow:'hidden'
                     }}
                     onMouseOver={e => {
                         e.currentTarget.style.transform = 'scale(1.05)';
@@ -7703,16 +7711,15 @@ const renderMenu = () => {
                     }}
                     title="点击更换形象"
                 >
-                    {trainerAvatar}
+                    {renderAvatarImg(trainerAvatar, 64)}
                 </div>
-                {/* 编辑小图标 */}
                 <div style={{
                     position:'absolute', bottom:'0', right:'0', 
                     background:'#FF9800', color:'#fff', borderRadius:'50%', 
                     width:'20px', height:'20px', fontSize:'12px', 
                     display:'flex', alignItems:'center', justifyContent:'center',
                     border:'2px solid #fff', pointerEvents:'none'
-                }}>✏️</div>
+                }}>✏</div>
             </div>
 
             <div style={{fontWeight:'800', fontSize:'18px', color:'#333', marginBottom:'4px'}}>{trainerName || '训练家'}</div>
@@ -9094,7 +9101,11 @@ const renderMenu = () => {
                           {leaderSprite ? (
                             <img src={leaderSprite} alt="" className="player-pet-img" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                           ) : null}
-                          <div className="player-fallback" style={{display: leaderSprite ? 'none' : 'flex'}}>{trainerAvatar}</div>
+                          <div className="player-fallback" style={{display: leaderSprite ? 'none' : 'flex'}}>
+                            {trainerAvatar && trainerAvatar.startsWith('http')
+                              ? <img src={trainerAvatar} alt="" style={{width:32,height:32,objectFit:'contain'}} />
+                              : (trainerAvatar || '🧢')}
+                          </div>
                           <div className="player-shadow" />
                         </div>
                       )}
@@ -9179,24 +9190,28 @@ const renderMenu = () => {
             <div style={{fontSize:'16px', fontWeight:'bold', marginBottom:'15px', textAlign:'center'}}>选择你的形象</div>
             
             <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px',
-                maxHeight: '300px', overflowY: 'auto', padding: '5px'
+                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px',
+                maxHeight: '400px', overflowY: 'auto', padding: '5px'
             }}>
-                {TRAINER_AVATARS.map((avatar, i) => (
-                    <div key={i} 
+                {TRAINER_SPRITES.map((t) => (
+                    <div key={t.id} 
                         onClick={() => {
-                            setTrainerAvatar(avatar);
+                            setTrainerAvatar(t.url);
                             setShowAvatarSelector(false);
                         }}
                         style={{
-                            fontSize: '28px', cursor: 'pointer', 
-                            background: trainerAvatar === avatar ? '#E3F2FD' : '#f9f9f9',
-                            border: trainerAvatar === avatar ? '2px solid #2196F3' : '1px solid #eee',
-                            borderRadius: '8px', width: '45px', height: '45px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            cursor: 'pointer', 
+                            background: trainerAvatar === t.url ? '#E3F2FD' : '#f9f9f9',
+                            border: trainerAvatar === t.url ? '2px solid #2196F3' : '1px solid #eee',
+                            borderRadius: '10px', padding: '6px 2px',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            transition: 'transform 0.15s, box-shadow 0.15s'
                         }}
+                        onMouseOver={e => { e.currentTarget.style.transform='scale(1.05)'; e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'; }}
+                        onMouseOut={e => { e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none'; }}
                     >
-                        {avatar}
+                        <img src={t.url} alt={t.name} style={{width:56, height:56, objectFit:'contain'}} onError={e => { e.target.src=''; e.target.alt=t.name; }} />
+                        <div style={{fontSize:'10px', color:'#666', marginTop:'2px', whiteSpace:'nowrap'}}>{t.name}</div>
                     </div>
                 ))}
             </div>
