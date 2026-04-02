@@ -752,15 +752,16 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const useBattleItem = async (itemKey, category) => {
     if (!battle) return;
     const p = party[battle.activeIdx];
-    const pState = battle.playerCombatStates[battle.activeIdx];
+    const pState = battle.playerCombatStates?.[battle.activeIdx];
+    if (!p || !pState) return;
     let used = false;
     let logMsg = "";
 
     if (category === 'meds') {
         const item = MEDICINES[itemKey];
-        if ((inventory.meds[itemKey] || 0) <= 0) return;
+        if (!item || !item.type) return;
+        if ((inventory.meds?.[itemKey] || 0) <= 0) return;
 
-        // --- 效果判定逻辑 (保持不变) ---
         if (item.type === 'HP') {
             const max = getStats(p).maxHp;
             if (p.currentHp >= max) { alert("体力已满！"); return; }
@@ -780,8 +781,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
                 logMsg = `使用了 ${item.name}，治愈了异常状态!`;
                 used = true;
             }
-        } else if (item.type.includes('PP')) {
-             p.moves.forEach(m => m.pp = Math.min(m.maxPP||15, m.pp + item.val));
+        } else if (item.type && item.type.includes('PP')) {
+             (p.moves || []).forEach(m => m.pp = Math.min(m.maxPP||15, m.pp + item.val));
              logMsg = `使用了 ${item.name}，PP得到了恢复！`;
              used = true;
         } else if (item.type === 'REVIVE') {
@@ -792,9 +793,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
         }
 
         if (used) {
-            setInventory(prev => ({...prev, meds: {...prev.meds, [itemKey]: prev.meds[itemKey] - 1}}));
+            setInventory(prev => ({...prev, meds: {...(prev.meds||{}), [itemKey]: ((prev.meds||{})[itemKey] || 0) - 1}}));
             
-            // ▼▼▼ [新增] 战斗中吃药增加亲密度 ▼▼▼
             // 战斗中被照顾会感到安心，亲密度 +1
             p.intimacy = Math.min(255, (p.intimacy || 0) + 1);
             // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
@@ -1393,6 +1393,7 @@ const CHARM_RANK_COLORS = {
     
     const newParty = [...party];
     const pet = newParty[petIdx];
+    if (!pet) { alert("无效的精灵序号！"); return; }
     const stats = getStats(pet);
     let consumed = false;
     let msg = "";
@@ -1434,7 +1435,7 @@ const CHARM_RANK_COLORS = {
     // --- 药品逻辑 (修改部分) ---
     if (usingItem.category === 'meds') {
         const med = usingItem.data;
-        // 复活药
+        if (!med || !med.type) { alert("该物品数据异常，无法使用。"); return; }
         if (med.type === 'REVIVE') {
             if (pet.currentHp > 0) { alert("它还很精神呢，不需要复活！"); return; }
             const healAmt = Math.floor(stats.maxHp * med.val);
@@ -1452,7 +1453,7 @@ const CHARM_RANK_COLORS = {
                 pet.currentHp = Math.min(stats.maxHp, pet.currentHp + heal);
                 consumed = true;
                 msg = `恢复了体力！`;
-            } else if (med.type.includes('PP')) {
+            } else if (med.type && med.type.includes('PP')) {
                  pet.moves.forEach(m => m.pp = m.maxPP || 15);
                  consumed = true;
                  msg = `所有技能 PP 已恢复！`;
@@ -1474,23 +1475,24 @@ const CHARM_RANK_COLORS = {
         }
         
         if (consumed) {
-            setInventory(prev => ({...prev, meds: {...prev.meds, [med.id]: prev.meds[med.id] - 1}}));
-            
-            // ▼▼▼ [新增] 非战斗吃药增加亲密度 ▼▼▼
-            // 闲暇时的照料，亲密度 +2
+            if (med.id === 'berry') {
+                setInventory(prev => ({...prev, berries: Math.max(0, (prev.berries || 0) - 1)}));
+            } else {
+                setInventory(prev => ({...prev, meds: {...prev.meds, [med.id]: (prev.meds[med.id] || 0) - 1}}));
+            }
             pet.intimacy = Math.min(255, (pet.intimacy || 0) + 2);
             msg += ` (亲密度 +2)`;
-            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         }
     }
     // --- 技能书 (TM) ---
     else if (usingItem.category === 'tm') {
         if (pet.currentHp <= 0) { alert("晕厥的精灵无法学习技能！"); return; }
         const tm = usingItem.data;
+        if (!tm) { alert("技能书数据异常！"); return; }
         if (pet.type !== tm.type && pet.secondaryType !== tm.type) {
             alert(`❌ 无法学习！属性不匹配。`); return;
         }
-        if (pet.moves.some(m => m.name === tm.name)) {
+        if ((pet.moves || []).some(m => m.name === tm.name)) {
             alert("已经学会了这个技能！"); return;
         }
         const newMove = { name: tm.name, p: tm.p, t: tm.type, pp: tm.pp, maxPP: tm.pp, desc: tm.desc };
@@ -1514,6 +1516,7 @@ const CHARM_RANK_COLORS = {
     else if (usingItem.category === 'growth') {
         if (pet.currentHp <= 0) { alert("晕厥的精灵无法使用！"); return; }
         const item = usingItem.data;
+        if (!item) { alert("道具数据异常！"); return; }
       
         if (item.id === 'max_candy') {
             if (pet.level >= 100) { alert("它已经达到等级上限了！"); return; }
@@ -1551,12 +1554,14 @@ const CHARM_RANK_COLORS = {
         alert(`✅ 使用成功！\n${msg}`);
         
         let remaining = 0;
-        if (usingItem.category === 'meds') remaining = inventory.meds[usingItem.id] - 1;
-        else if (usingItem.category === 'tm') remaining = inventory.tms[usingItem.id] - 1;
-        else if (usingItem.category === 'stone') remaining = inventory.stones[usingItem.id] - 1;
-        else if (usingItem.category === 'growth') remaining = inventory[usingItem.id] - 1;
+        if (usingItem.category === 'meds') {
+            remaining = usingItem.id === 'berry' ? (inventory.berries || 0) - 1 : (inventory.meds[usingItem.id] || 0) - 1;
+        }
+        else if (usingItem.category === 'tm') remaining = (inventory.tms[usingItem.id] || 0) - 1;
+        else if (usingItem.category === 'stone') remaining = ((inventory.stones || {})[usingItem.id] || 0) - 1;
+        else if (usingItem.category === 'growth') remaining = (inventory[usingItem.id] || 0) - 1;
         
-        if (remaining < 0) {
+        if (remaining <= 0) {
             setUsingItem(null);
             setView('bag');
         }
@@ -9423,7 +9428,7 @@ const renderMenu = () => {
                 {/* 如果正在使用物品，显示提示 */}
                 {usingItem && (
                     <div className="using-item-tip">
-                        正在使用: <b>{usingItem.data.name}</b>
+                        正在使用: <b>{usingItem.data?.name || usingItem.id}</b>
                         <span style={{fontSize:'10px', marginLeft:'5px'}}>(请选择对象)</span>
                     </div>
                 )}
@@ -9535,7 +9540,7 @@ const renderMenu = () => {
       {/* 物品使用模式提示条 */}
       {usingItem && (
           <div style={{background:'#2196F3', color:'#fff', padding:'10px', textAlign:'center', fontWeight:'bold', boxShadow:'0 2px 5px rgba(0,0,0,0.2)'}}>
-              正在使用: {usingItem.data.name} <br/>
+              正在使用: {usingItem.data?.name || usingItem.id} <br/>
               <span style={{fontSize:'12px', fontWeight:'normal'}}>请选择一个对象</span>
           </div>
       )}
@@ -10498,21 +10503,21 @@ const renderMenu = () => {
     let currentCat = '';
     if (bagTab === 'balls') {
         currentCat = 'ball';
-        Object.keys(inventory.balls).forEach(k => { if (inventory.balls[k] > 0) currentItems.push({ ...BALLS[k], count: inventory.balls[k] }); });
+        Object.keys(inventory.balls || {}).forEach(k => { if ((inventory.balls||{})[k] > 0 && BALLS[k]) currentItems.push({ ...BALLS[k], count: inventory.balls[k] }); });
     } else if (bagTab === 'meds') {
         currentCat = 'meds';
-        Object.keys(inventory.meds).forEach(k => { if (inventory.meds[k] > 0) currentItems.push({ ...MEDICINES[k], count: inventory.meds[k] }); });
-        if (inventory.berries > 0) currentItems.push({ id: 'berry', name: '树果', icon: '🍒', desc: '恢复少量体力', count: inventory.berries });
+        Object.keys(inventory.meds || {}).forEach(k => { if ((inventory.meds||{})[k] > 0 && MEDICINES[k]) currentItems.push({ ...MEDICINES[k], count: inventory.meds[k] }); });
+        if (inventory.berries > 0) currentItems.push({ id: 'berry', name: '树果', icon: '🍒', desc: '恢复少量体力', count: inventory.berries, type: 'HP', val: 30 });
     } else if (bagTab === 'tms') {
         currentCat = 'tm';
-        Object.keys(inventory.tms).forEach(k => { if (inventory.tms[k] > 0) { const tm = TMS.find(t => t.id === k); if (tm) currentItems.push({ ...tm, count: inventory.tms[k] }); } });
+        Object.keys(inventory.tms || {}).forEach(k => { if ((inventory.tms||{})[k] > 0) { const tm = TMS.find(t => t.id === k); if (tm) currentItems.push({ ...tm, count: inventory.tms[k] }); } });
     } else if (bagTab === 'stones') { 
         currentCat = 'stone';
         Object.keys(inventory.stones || {}).forEach(k => { if (inventory.stones[k] > 0) { const s = EVO_STONES[k]; if (s) currentItems.push({ ...s, count: inventory.stones[k] }); } });
     } else if (bagTab === 'misc') {
         currentCat = 'growth';
         GROWTH_ITEMS.forEach(g => { if (inventory[g.id] > 0) currentItems.push({ ...g, count: inventory[g.id], icon: g.emoji }); });
-        if (inventory.misc.rebirth_pill > 0) currentItems.push({ ...MISC_ITEMS.rebirth_pill, count: inventory.misc.rebirth_pill });
+        if ((inventory.misc?.rebirth_pill || 0) > 0) currentItems.push({ ...MISC_ITEMS.rebirth_pill, count: inventory.misc.rebirth_pill });
     } else if (bagTab === 'accessories') {
         currentCat = 'acc';
         ACCESSORY_DB.forEach(acc => { const count = accessories.filter(item => item === acc.id).length; if (count > 0) currentItems.push({ ...acc, count }); });
@@ -10883,8 +10888,9 @@ const renderMenu = () => {
   const renderBattle = () => {
     if (!battle) return null;
     
-    const p = battle.playerCombatStates[battle.activeIdx];
-    const e = battle.enemyParty[battle.enemyActiveIdx];
+    const p = battle.playerCombatStates?.[battle.activeIdx];
+    const e = battle.enemyParty?.[battle.enemyActiveIdx];
+    if (!p || !e) return null;
     const pStats = getStats(p);
     const eStats = getStats(e);
     
@@ -10965,8 +10971,9 @@ const renderMenu = () => {
     const getHpColor = (current, max) => { const pct = (current / max) * 100; if (pct > 50) return '#4CAF50'; if (pct > 20) return '#FFC107'; return '#FF5252'; };
     
     const renderPartyIndicators = (team) => {
+        if (!team || !Array.isArray(team)) return null;
         const total = team.length;
-        const alive = team.filter(m => m.currentHp > 0).length;
+        const alive = team.filter(m => m && m.currentHp > 0).length;
         return (
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', background:'rgba(0,0,0,0.05)', padding:'4px 8px', borderRadius:'6px'}}>
                 <div style={{fontSize: '11px', fontWeight: 'bold', color: '#555', display:'flex', alignItems:'center', gap:'4px'}}>
@@ -11257,7 +11264,7 @@ const renderMenu = () => {
                 <div style={{width: '500px', background: '#fff', borderRadius: '20px', padding: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'}}>
                     <div style={{fontSize: '18px', fontWeight: 'bold', marginBottom: '15px', textAlign: 'center', color: '#333'}}>选择出战伙伴</div>
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px'}}>
-                        {battle.playerCombatStates.map((pet, idx) => {
+                        {(battle.playerCombatStates || []).map((pet, idx) => {
                             const maxHp = getStats(pet).maxHp;
                             const isFainted = pet.currentHp <= 0;
                             const isActive = idx === battle.activeIdx;
@@ -11576,7 +11583,7 @@ const renderMenu = () => {
                         }}>
                             {(() => {
                                 const isP2Turn = battle.phase === 'input_p2';
-                                const activeMoves = isP2Turn ? e.combatMoves : p.combatMoves;
+                                const activeMoves = isP2Turn ? (e?.combatMoves || []) : (p?.combatMoves || []);
                                 return activeMoves.map((m, i) => (
                                     <EnhancedMoveButton
                                         key={i}
@@ -11635,14 +11642,14 @@ const renderMenu = () => {
               <div className="bag-list-area">
                 {battleBagTab === 'balls' && (
                   <>
-                    {Object.keys(inventory.balls).filter(k => inventory.balls[k] > 0).length === 0 && <div className="empty-hint">没有可用的精灵球</div>}
-                    {Object.keys(inventory.balls).map(type => { const count = inventory.balls[type]; if (count <= 0) return null; const ball = BALLS[type]; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {Object.keys(inventory.balls || {}).filter(k => (inventory.balls||{})[k] > 0).length === 0 && <div className="empty-hint">没有可用的精灵球</div>}
+                    {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
                   </>
                 )}
                 {battleBagTab === 'meds' && (
                   <>
-                    {Object.keys(inventory.meds).filter(k => inventory.meds[k] > 0).length === 0 && <div className="empty-hint">没有可用的药品</div>}
-                    {Object.keys(inventory.meds).map(key => { const count = inventory.meds[key]; if (count <= 0) return null; const item = MEDICINES[key]; return ( <div key={key} className="bag-list-item" onClick={() => useBattleItem(key, 'meds')}><div className="item-icon-box">{renderMedCSS(key, 32) || <span>{item.icon}</span>}</div><div className="item-info-box"><div className="item-name">{item.name}</div><div className="item-desc">{item.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {Object.keys(inventory.meds || {}).filter(k => (inventory.meds||{})[k] > 0).length === 0 && <div className="empty-hint">没有可用的药品</div>}
+                    {Object.keys(inventory.meds || {}).map(key => { const count = (inventory.meds||{})[key]; if (count <= 0) return null; const item = MEDICINES[key]; if (!item) return null; return ( <div key={key} className="bag-list-item" onClick={() => useBattleItem(key, 'meds')}><div className="item-icon-box">{renderMedCSS(key, 32) || <span>{item.icon}</span>}</div><div className="item-info-box"><div className="item-name">{item.name}</div><div className="item-desc">{item.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
                   </>
                 )}
               </div>
