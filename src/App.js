@@ -4967,8 +4967,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return false;
     }
 
-    setAnimEffect({ type: move.t, source: source, target: source === 'player' ? 'enemy' : 'player' });
-    await wait(600); 
+    setAnimEffect({ type: move.t, source: source, target: source === 'player' ? 'enemy' : 'player', isCrit: false });
+    await wait(700); 
     setAnimEffect(null);
 
     // 3. 伤害/效果结算
@@ -5181,6 +5181,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         dmg = Math.floor(rawDmg);
         dmg = Math.max(1, dmg); 
+
+        if (isCrit) {
+          setAnimEffect({ type: move.t, target: source === 'player' ? 'enemy' : 'player', isCrit: true });
+          await wait(400);
+          setAnimEffect(null);
+        }
 
         let msg = `造成 ${dmg} 伤害`;
         if (isCrit) msg += ` (暴击!)`;
@@ -8867,7 +8873,7 @@ const renderMenu = () => {
                         textShadow: '0 0 4px rgba(0,0,0,0.8)', // 🔥 加黑色阴影，保证在白背景下可见
                         animation: `snow-fall ${3 + Math.random()*2}s linear infinite`, 
                         animationDelay: `-${Math.random()*3}s`
-                    }}>❄️</div>
+                    }}><div style={{width:8+Math.random()*6, height:8+Math.random()*6, background:'#fff', borderRadius:'50%', boxShadow:'0 0 4px #fff'}} /></div>
                 ))}
             </div>
         );
@@ -8900,7 +8906,7 @@ const renderMenu = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     animation: 'sun-spin 20s linear infinite'
                 }}>
-                    <div style={{fontSize:'100px', filter:'drop-shadow(0 0 20px orange)'}}>☀️</div>
+                    <div style={{width:80, height:80, borderRadius:'50%', background:'radial-gradient(circle, #FFD54F, #FF9800)', boxShadow:'0 0 40px #FFD54F, 0 0 80px #FF980088, 0 0 120px #FFD54F44'}} />
                 </div>
                 {/* 强烈的暖光滤镜 */}
                 <div style={{position:'absolute', inset:0, background:'radial-gradient(circle at 90% 10%, rgba(255,200,0,0.25) 0%, transparent 60%)', mixBlendMode:'screen'}}></div>
@@ -9976,101 +9982,76 @@ const renderMenu = () => {
         );
     };
 
-    // 🔥 [升级] 增强的技能特效配置
-    const getVfxConfig = (type) => { 
-      const map = { 
-        NORMAL: { emoji: '💥', class: 'vfx-normal', particles: ['💥', '✨'] }, 
-        FIRE: { emoji: '🔥', class: 'vfx-fire', particles: ['🔥', '🔥', '🔥'] }, 
-        WATER: { emoji: '🌊', class: 'vfx-water', particles: ['💧', '🌊', '💧'] }, 
-        GRASS: { emoji: '🍃', class: 'vfx-grass', particles: ['🍃', '🌿', '🍃'] }, 
-        ELECTRIC: { emoji: '⚡', class: 'vfx-electric', particles: ['⚡', '⚡', '⚡'] }, 
-        ICE: { emoji: '❄️', class: 'vfx-ice', particles: ['❄️', '❄️', '❄️'] }, 
-        FIGHT: { emoji: '👊', class: 'vfx-normal', particles: ['💥', '👊'] }, 
-        POISON: { emoji: '☠️', class: 'vfx-normal', particles: ['💜', '☠️'] }, 
-        GROUND: { emoji: '🪨', class: 'vfx-normal', particles: ['🪨', '💥'] }, 
-        FLYING: { emoji: '🌪️', class: 'vfx-normal', particles: ['🌪️', '💨'] }, 
-        PSYCHIC: { emoji: '🔮', class: 'vfx-normal', particles: ['🔮', '✨'] }, 
-        BUG: { emoji: '🕸️', class: 'vfx-normal', particles: ['🕸️', '💚'] }, 
-        ROCK: { emoji: '🧱', class: 'vfx-normal', particles: ['🧱', '💥'] }, 
-        GHOST: { emoji: '👻', class: 'vfx-normal', particles: ['👻', '💜'] }, 
-        DRAGON: { emoji: '🐲', class: 'vfx-dragon', particles: ['🐲', '✨', '🌟'] }, 
-        STEEL: { emoji: '⚔️', class: 'vfx-normal', particles: ['⚔️', '✨'] }, 
-        FAIRY: { emoji: '✨', class: 'vfx-normal', particles: ['✨', '💖', '✨'] }, 
-        GOD: { emoji: '🌌', class: 'vfx-dragon', particles: ['🌟', '✨', '🌌', '🌟'] }, 
-        HEAL: { emoji: '💚', class: 'vfx-normal', particles: ['💚', '✨'] }, 
-        BUFF: { emoji: '💪', class: 'vfx-normal', particles: ['💪', '✨'] }, 
-        DEBUFF: { emoji: '💢', class: 'vfx-normal', particles: ['💢', '💥'] }, 
-        PROTECT: { emoji: '🛡️', class: 'vfx-normal', particles: ['🛡️', '✨'] }, 
-        SLEEP: { emoji: '💤', class: 'vfx-normal', particles: ['💤', '💤'] }, 
-        PARALYSIS: { emoji: '⚡', class: 'vfx-electric', particles: ['⚡', '⚡'] }, 
-        FREEZE: { emoji: '🧊', class: 'vfx-ice', particles: ['🧊', '❄️'] }, 
-        CONFUSION: { emoji: '💫', class: 'vfx-normal', particles: ['💫', '✨'] }, 
-        THROW_BALL: { emoji: '🔴', class: 'vfx-normal', particles: ['🔴'] }, 
-        CATCH_SUCCESS: { emoji: '✨', class: 'vfx-normal', particles: ['✨', '🌟', '✨'] }, 
-        LEVEL_UP: { emoji: '🆙', class: 'vfx-normal', particles: ['🆙', '✨'] }, 
-        EVOLUTION: { emoji: '🧬', class: 'vfx-normal', particles: ['🧬', '✨', '🌟'] } 
-      }; 
-      return map[type] || { emoji: '💥', class: 'vfx-normal', particles: ['💥'] }; 
+    const getVfxClass = (type) => {
+      const map = {
+        NORMAL: 'vfx-normal', FIRE: 'vfx-fire', WATER: 'vfx-water', GRASS: 'vfx-grass',
+        ELECTRIC: 'vfx-electric', ICE: 'vfx-ice', FIGHT: 'vfx-fight', POISON: 'vfx-poison',
+        GROUND: 'vfx-ground', FLYING: 'vfx-flying', PSYCHIC: 'vfx-psychic', BUG: 'vfx-bug',
+        ROCK: 'vfx-rock', GHOST: 'vfx-ghost', DRAGON: 'vfx-dragon', STEEL: 'vfx-steel',
+        FAIRY: 'vfx-fairy', DARK: 'vfx-dark', GOD: 'vfx-god',
+        HEAL: 'vfx-heal', BUFF: 'vfx-heal', DEBUFF: 'vfx-fire',
+        PROTECT: 'vfx-steel', SLEEP: 'vfx-psychic', PARALYSIS: 'vfx-electric',
+        FREEZE: 'vfx-ice', CONFUSION: 'vfx-psychic',
+        THROW_BALL: 'vfx-normal', CATCH_SUCCESS: 'vfx-fairy',
+        LEVEL_UP: 'vfx-god', EVOLUTION: 'vfx-god', DOMAIN: 'vfx-dragon'
+      };
+      return map[type] || 'vfx-normal';
     };
-    
-    // 🔥 [新增] 渲染增强的技能特效
-    const renderEnhancedVfx = (vfxConfig, target) => {
-      if (!vfxConfig) return null;
-      
+
+    const renderEnhancedVfx = (type, target) => {
+      if (!type) return null;
+      const cls = getVfxClass(type);
+      const sparkCount = 10;
+      const rayCount = 8;
+      const sparks = [];
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (360 / sparkCount) * i + Math.random() * 20;
+        const dist = 60 + Math.random() * 60;
+        const tx = Math.cos(angle * Math.PI / 180) * dist;
+        const ty = Math.sin(angle * Math.PI / 180) * dist;
+        const sz = 4 + Math.random() * 6;
+        sparks.push(
+          <div key={`s${i}`} className="vfx-spark" style={{
+            '--tx': `${tx}px`, '--ty': `${ty}px`, '--sz': `${sz}px`,
+            '--d': `${i * 0.04}s`
+          }} />
+        );
+      }
+      const rays = [];
+      for (let i = 0; i < rayCount; i++) {
+        rays.push(
+          <div key={`r${i}`} className="vfx-ray" style={{
+            transform: `rotate(${(360 / rayCount) * i}deg)`,
+            animationDelay: `${i * 0.03}s`
+          }} />
+        );
+      }
+
+      const screenFlashColor = {
+        FIRE: 'rgba(255,107,53,0.25)', WATER: 'rgba(79,195,247,0.2)', ELECTRIC: 'rgba(255,214,0,0.3)',
+        ICE: 'rgba(179,229,252,0.25)', DRAGON: 'rgba(255,213,79,0.25)', PSYCHIC: 'rgba(244,143,177,0.2)',
+        GHOST: 'rgba(126,87,194,0.2)', GOD: 'rgba(255,213,79,0.3)', DOMAIN: 'rgba(255,213,79,0.3)',
+      }[type];
+
       return (
-        <div className={`vfx-impact-container ${vfxConfig.class}`} style={{
-          position: 'absolute',
-          top: target === 'enemy' ? '20%' : '60%',
-          left: target === 'enemy' ? '70%' : '20%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 100,
-          pointerEvents: 'none'
-        }}>
-          {/* 主特效emoji */}
-          <div className="vfx-emoji" style={{fontSize:'120px'}}>
-            {vfxConfig.emoji}
+        <>
+          {screenFlashColor && <div className="vfx-screen-flash" style={{background: screenFlashColor}} />}
+          <div className={`vfx-impact-container ${cls}`} style={{
+            position: 'absolute',
+            top: target === 'enemy' ? '30%' : '50%',
+            left: target === 'enemy' ? '60%' : '40%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 100, pointerEvents: 'none'
+          }}>
+            <div className="vfx-core" />
+            <div className="vfx-ring" />
+            <div className="vfx-ring" />
+            <div className="vfx-ring" />
+            <div className="vfx-rays">{rays}</div>
+            <div className="vfx-sparks">{sparks}</div>
+            <div className="vfx-trail" />
           </div>
-          
-          {/* 粒子特效 */}
-          <div className="vfx-particles">
-            {vfxConfig.particles.map((p, i) => {
-              const angle = (360 / vfxConfig.particles.length) * i;
-              const distance = 100;
-              const tx = Math.cos(angle * Math.PI / 180) * distance;
-              const ty = Math.sin(angle * Math.PI / 180) * distance;
-              
-              return (
-                <div 
-                  key={i}
-                  className="vfx-particle"
-                  style={{
-                    '--tx': `${tx}px`,
-                    '--ty': `${ty}px`,
-                    left: '50%',
-                    top: '50%',
-                    animationDelay: `${i * 0.1}s`
-                  }}
-                >
-                  {p}
-                </div>
-              );
-            })}
-          </div>
-          
-          {/* 属性特效背景 */}
-          {vfxConfig.class !== 'vfx-normal' && (
-            <div className={vfxConfig.class} style={{
-              position: 'absolute',
-              width: '300px',
-              height: '300px',
-              borderRadius: '50%',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none'
-            }} />
-          )}
-        </div>
+        </>
       );
     };
     const getTrainerAvatar = (name) => {
@@ -10142,69 +10123,38 @@ const renderMenu = () => {
         )}
 
         <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
-            {animEffect?.type === 'BLACKOUT' && <div className="blackout-overlay">😵 眼前一黑...</div>}
+            {animEffect?.type === 'BLACKOUT' && <div className="blackout-overlay">眼前一黑...</div>}
             
             <div className="battle-scene-layer" style={{width: '100%', height: '100%', position: 'relative'}}>
                 
-                {/* ========================================== */}
-                {/* 战斗场景装饰元素 - 让画面更丰满 */}
-                {/* ========================================== */}
-                {/* 远景装饰 - 云朵和天空元素 */}
-                <div className="battle-decor-clouds" style={{
-                    position: 'absolute',
-                    top: '0%',
-                    left: '0%',
-                    width: '100%',
-                    height: '40%',
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    opacity: 0.5
-                }}>
-                    <div style={{position: 'absolute', fontSize: '100px', left: '5%', top: '5%', animation: 'float 12s ease-in-out infinite', filter: 'blur(2px)'}}>☁️</div>
-                    <div style={{position: 'absolute', fontSize: '80px', left: '35%', top: '8%', animation: 'float 14s ease-in-out infinite', animationDelay: '1s', filter: 'blur(1px)'}}>☁️</div>
-                    <div style={{position: 'absolute', fontSize: '90px', left: '60%', top: '3%', animation: 'float 11s ease-in-out infinite', animationDelay: '2s', filter: 'blur(2px)'}}>☁️</div>
-                    <div style={{position: 'absolute', fontSize: '70px', left: '85%', top: '10%', animation: 'float 13s ease-in-out infinite', animationDelay: '3s', filter: 'blur(1px)'}}>☁️</div>
-                    {/* 星星装饰 */}
-                    <div style={{position: 'absolute', fontSize: '30px', left: '20%', top: '15%', animation: 'twinkle 3s ease-in-out infinite'}}>✨</div>
-                    <div style={{position: 'absolute', fontSize: '25px', left: '75%', top: '20%', animation: 'twinkle 4s ease-in-out infinite', animationDelay: '1s'}}>⭐</div>
-                    <div style={{position: 'absolute', fontSize: '20px', left: '50%', top: '12%', animation: 'twinkle 5s ease-in-out infinite', animationDelay: '2s'}}>✨</div>
+                {/* 远景 - CSS云朵 */}
+                <div style={{position:'absolute', top:0, left:0, width:'100%', height:'40%', pointerEvents:'none', zIndex:1, opacity:0.4}}>
+                    {[{l:'5%',t:'5%',w:120,h:40,dur:18},{l:'30%',t:'10%',w:90,h:30,dur:22},{l:'55%',t:'3%',w:110,h:35,dur:16},{l:'80%',t:'12%',w:80,h:28,dur:20}].map((c,i) => (
+                        <div key={i} style={{position:'absolute', left:c.l, top:c.t, width:c.w, height:c.h,
+                            background:'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.6), transparent 70%)',
+                            borderRadius:'50%', filter:'blur(3px)',
+                            animation:`float ${c.dur}s ease-in-out infinite`, animationDelay:`${i*2}s`
+                        }} />
+                    ))}
+                    {[{l:'18%',t:'18%',sz:4},{l:'45%',t:'8%',sz:3},{l:'72%',t:'15%',sz:5}].map((s,i) => (
+                        <div key={`st${i}`} style={{position:'absolute', left:s.l, top:s.t, width:s.sz, height:s.sz,
+                            background:'#fff', borderRadius:'50%', boxShadow:'0 0 6px 2px rgba(255,255,255,0.6)',
+                            animation:`twinkle ${3+i}s ease-in-out infinite`, animationDelay:`${i}s`
+                        }} />
+                    ))}
                 </div>
 
-                {/* 中景装饰 - 地面和植物元素 */}
-                <div className="battle-decor-ground" style={{
-                    position: 'absolute',
-                    bottom: '25%',
-                    left: '0%',
-                    width: '100%',
-                    height: '25%',
-                    pointerEvents: 'none',
-                    zIndex: 2,
-                    opacity: 0.4
-                }}>
-                    {/* 左侧植物 */}
-                    <div style={{position: 'absolute', fontSize: '60px', left: '8%', bottom: '0%', animation: 'float 7s ease-in-out infinite', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'}}>🌿</div>
-                    <div style={{position: 'absolute', fontSize: '45px', left: '12%', bottom: '5%', animation: 'float 8s ease-in-out infinite', animationDelay: '0.5s'}}>🌱</div>
-                    <div style={{position: 'absolute', fontSize: '50px', left: '25%', bottom: '0%', animation: 'float 6s ease-in-out infinite', animationDelay: '1s'}}>🌿</div>
-                    
-                    {/* 中间装饰 */}
-                    <div style={{position: 'absolute', fontSize: '40px', left: '45%', bottom: '3%', animation: 'float 9s ease-in-out infinite', animationDelay: '1.5s'}}>🌱</div>
-                    <div style={{position: 'absolute', fontSize: '55px', left: '55%', bottom: '0%', animation: 'float 7.5s ease-in-out infinite', animationDelay: '2s'}}>🌿</div>
-                    
-                    {/* 右侧植物 */}
-                    <div style={{position: 'absolute', fontSize: '50px', left: '72%', bottom: '0%', animation: 'float 8s ease-in-out infinite', animationDelay: '2.5s'}}>🌿</div>
-                    <div style={{position: 'absolute', fontSize: '35px', left: '78%', bottom: '4%', animation: 'float 7s ease-in-out infinite', animationDelay: '3s'}}>🌱</div>
-                    <div style={{position: 'absolute', fontSize: '45px', left: '88%', bottom: '0%', animation: 'float 6.5s ease-in-out infinite', animationDelay: '3.5s'}}>🌿</div>
-                    
-                    {/* 地面装饰线 */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '0%',
-                        left: '0%',
-                        width: '100%',
-                        height: '2px',
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                    }} />
+                {/* 地面装饰 - CSS草丛 */}
+                <div style={{position:'absolute', bottom:'25%', left:0, width:'100%', height:'20%', pointerEvents:'none', zIndex:2, opacity:0.35}}>
+                    {[{l:'6%',w:30,h:40},{l:'14%',w:20,h:28},{l:'26%',w:25,h:35},{l:'48%',w:18,h:25},{l:'58%',w:28,h:38},{l:'74%',w:22,h:30},{l:'86%',w:26,h:34}].map((g,i) => (
+                        <div key={i} style={{position:'absolute', left:g.l, bottom:0, width:g.w, height:g.h,
+                            background:`linear-gradient(to top, rgba(76,175,80,0.5), transparent)`,
+                            borderRadius:'50% 50% 0 0',
+                            animation:`float ${6+i*0.7}s ease-in-out infinite`, animationDelay:`${i*0.4}s`
+                        }} />
+                    ))}
+                    <div style={{position:'absolute', bottom:0, left:0, width:'100%', height:2,
+                        background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'}} />
                 </div>
 
                 {/* 侧边装饰 - 柱子或建筑元素 */}
@@ -10341,11 +10291,11 @@ const renderMenu = () => {
                                     GSAPAnimations.petEntry(el, 0.2);
                                 }
                             }}
-                            className={`sprite-v2 ${animEffect?.target==='enemy'?'anim-shake':''}`} 
+                            className={`sprite-v2 anim-idle-float ${animEffect?.target==='enemy' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                             style={{
                                 filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
                                 animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
-                                           ? 'shiny-flash-body 0.5s' : 'none'
+                                           ? 'shiny-flash-body 0.5s' : undefined
                             }}>
                             {renderAvatar(e, true)}
                         </div>
@@ -10361,7 +10311,7 @@ const renderMenu = () => {
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'enemy' && renderEnhancedVfx(getVfxConfig(animEffect.type), 'enemy')}
+                        {animEffect && animEffect.target === 'enemy' && renderEnhancedVfx(animEffect.type, 'enemy')}
                         {animEffect?.type === 'CATCH_SUCCESS' && animEffect?.target === 'enemy' && (
                           <div className="catch-success-anim" style={{
                             position: 'absolute',
@@ -10393,19 +10343,19 @@ const renderMenu = () => {
                                      GSAPAnimations.petEntry(el, 0);
                                  }
                              }}
-                             className={`sprite-v2 ${animEffect?.target==='player'?'anim-shake':''}`} 
+                             className={`sprite-v2 anim-idle-float ${animEffect?.target==='player' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                              style={{
-                                 transform: 'scaleX(-1)', // 镜像翻转，背对玩家
+                                 transform: 'scaleX(-1)',
                                  filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
                                  animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player') 
-                                            ? 'shiny-flash-body 0.5s' : 'none'
+                                            ? 'shiny-flash-body 0.5s' : undefined
                              }}>
                             {renderAvatar(p)}
                         </div>
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'player' && renderEnhancedVfx(getVfxConfig(animEffect.type), 'player')}
+                        {animEffect && animEffect.target === 'player' && renderEnhancedVfx(animEffect.type, 'player')}
                         {/* 技能释放特效 */}
                         {animEffect && animEffect.target === 'player' && animEffect.type !== 'SHINY_ENTRY' && ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE'].includes(animEffect.type) && (
                             <SkillCastEffect

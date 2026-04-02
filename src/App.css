@@ -892,9 +892,8 @@ button:active { transform: scale(0.96); }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
+/* legacy vfx-container kept for compatibility */
 .vfx-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 99; pointer-events: none; }
-.vfx-emoji { font-size: 100px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.9)); animation: vfx-burst 0.5s forwards; }
-@keyframes vfx-burst { 0% { transform: scale(0.2); opacity: 0; } 40% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1.2); opacity: 0; } }
 
 /* 宠物图片通用 */
 .pet-avatar-img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -3750,153 +3749,389 @@ button:active {
 }
 
 /* =========================================
-   🎆 [新增] 战斗技能特效增强
+   战斗技能特效系统 v3 - 纯CSS光效/粒子
    ========================================= */
 
-/* 技能特效容器增强 */
 .vfx-impact-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 100;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: 100; pointer-events: none;
+  width: 200px; height: 200px;
+  display: flex; align-items: center; justify-content: center;
 }
 
-/* 技能特效emoji增强 */
-.vfx-emoji {
-  font-size: 120px !important;
-  filter: drop-shadow(0 0 20px rgba(255,255,255,0.9)) 
-          drop-shadow(0 0 40px rgba(255,255,255,0.6)) !important;
-  animation: vfx-burst-enhanced 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
-  position: relative;
+/* === 核心光球 === */
+.vfx-core {
+  position: absolute; width: 80px; height: 80px; border-radius: 50%;
+  animation: vfx-core-burst 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes vfx-core-burst {
+  0%   { transform: scale(0); opacity: 0; filter: blur(8px); }
+  25%  { transform: scale(1.6); opacity: 1; filter: blur(0); }
+  60%  { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(2.5); opacity: 0; filter: blur(4px); }
 }
 
-/* 增强的爆发动画 */
-@keyframes vfx-burst-enhanced {
-  0% { 
-    transform: scale(0) rotate(0deg);
-    opacity: 0;
-    filter: blur(10px);
-  }
-  30% { 
-    transform: scale(1.8) rotate(180deg);
-    opacity: 1;
-    filter: blur(0px);
-  }
-  60% { 
-    transform: scale(1.2) rotate(360deg);
-    opacity: 1;
-  }
-  100% { 
-    transform: scale(1.5) rotate(540deg);
-    opacity: 0;
-    filter: blur(5px);
-  }
+/* === 冲击波环 === */
+.vfx-ring {
+  position: absolute; width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.6);
+  animation: vfx-ring-expand 0.8s ease-out forwards;
+}
+.vfx-ring:nth-child(2) { animation-delay: 0.1s; border-width: 2px; }
+.vfx-ring:nth-child(3) { animation-delay: 0.2s; border-width: 1px; }
+@keyframes vfx-ring-expand {
+  0%   { transform: scale(0); opacity: 1; }
+  100% { transform: scale(6); opacity: 0; }
 }
 
-/* 属性特效粒子 */
-.vfx-particles {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
-  pointer-events: none;
+/* === 光线射线 === */
+.vfx-rays {
+  position: absolute; width: 100%; height: 100%;
+  animation: vfx-rays-spin 0.8s ease-out forwards;
+}
+.vfx-ray {
+  position: absolute; top: 50%; left: 50%;
+  width: 3px; height: 80px; border-radius: 2px;
+  transform-origin: center top;
+  animation: vfx-ray-shoot 0.6s ease-out forwards;
+}
+@keyframes vfx-rays-spin {
+  0%   { transform: rotate(0deg); opacity: 1; }
+  100% { transform: rotate(45deg); opacity: 0; }
+}
+@keyframes vfx-ray-shoot {
+  0%   { height: 0; opacity: 1; }
+  40%  { height: 120px; opacity: 1; }
+  100% { height: 140px; opacity: 0; }
 }
 
-.vfx-particle {
-  position: absolute;
-  font-size: 30px;
-  animation: particle-explode 1s ease-out forwards;
+/* === CSS粒子(非emoji) === */
+.vfx-sparks { position: absolute; width: 100%; height: 100%; }
+.vfx-spark {
+  position: absolute; top: 50%; left: 50%;
+  width: var(--sz, 6px); height: var(--sz, 6px);
+  border-radius: 50%;
+  animation: vfx-spark-fly 0.9s ease-out forwards;
+  animation-delay: var(--d, 0s);
+}
+@keyframes vfx-spark-fly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx, 60px), var(--ty, -60px)) scale(0); opacity: 0; }
 }
 
-@keyframes particle-explode {
-  0% {
-    transform: translate(0, 0) scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--tx, 0), var(--ty, 0)) scale(1.5);
-    opacity: 0;
-  }
+/* === 属性拖尾 === */
+.vfx-trail {
+  position: absolute; width: 100%; height: 100%;
+  animation: vfx-trail-fade 1s ease-out forwards;
+}
+@keyframes vfx-trail-fade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-/* 火系特效 */
-.vfx-fire {
-  background: radial-gradient(circle, rgba(255,107,107,0.8), rgba(255,107,107,0));
-  animation: fire-expand 0.6s ease-out forwards;
+/* ===================== 各属性主题色 ===================== */
+
+/* 火 FIRE */
+.vfx-fire .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #FF6B35 30%, #FF3D00 60%, transparent 75%);
+  box-shadow: 0 0 40px #FF6B35, 0 0 80px #FF3D0088, 0 0 120px #FF6B3544;
+}
+.vfx-fire .vfx-ring { border-color: #FF6B35; }
+.vfx-fire .vfx-ray { background: linear-gradient(to bottom, #FFF176, #FF6B35, transparent); }
+.vfx-fire .vfx-spark { background: radial-gradient(circle, #FFEB3B, #FF6B35); }
+.vfx-fire .vfx-trail {
+  background: radial-gradient(ellipse at center, rgba(255,107,53,0.4) 0%, transparent 70%);
 }
 
-@keyframes fire-expand {
-  0% { transform: scale(0); opacity: 1; }
-  100% { transform: scale(3); opacity: 0; }
+/* 水 WATER */
+.vfx-water .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #4FC3F7 30%, #0288D1 60%, transparent 75%);
+  box-shadow: 0 0 40px #4FC3F7, 0 0 80px #0288D188, 0 0 120px #4FC3F744;
+}
+.vfx-water .vfx-ring { border-color: #4FC3F7; }
+.vfx-water .vfx-ray { background: linear-gradient(to bottom, #E1F5FE, #4FC3F7, transparent); }
+.vfx-water .vfx-spark { background: radial-gradient(circle, #E1F5FE, #4FC3F7); }
+.vfx-water .vfx-trail {
+  background: radial-gradient(ellipse at center, rgba(79,195,247,0.3) 0%, transparent 70%);
 }
 
-/* 水系特效 */
-.vfx-water {
-  background: radial-gradient(circle, rgba(78,205,196,0.6), rgba(78,205,196,0));
-  animation: water-ripple 0.8s ease-out forwards;
+/* 草 GRASS */
+.vfx-grass .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #66BB6A 30%, #2E7D32 60%, transparent 75%);
+  box-shadow: 0 0 40px #66BB6A, 0 0 80px #2E7D3288, 0 0 120px #66BB6A44;
+}
+.vfx-grass .vfx-ring { border-color: #66BB6A; }
+.vfx-grass .vfx-ray { background: linear-gradient(to bottom, #C8E6C9, #66BB6A, transparent); }
+.vfx-grass .vfx-spark { background: radial-gradient(circle, #C8E6C9, #2E7D32); }
+
+/* 电 ELECTRIC */
+.vfx-electric .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #FFD600 30%, #F9A825 60%, transparent 75%);
+  box-shadow: 0 0 50px #FFD600, 0 0 100px #F9A82588, 0 0 140px #FFD60044;
+}
+.vfx-electric .vfx-ring { border-color: #FFD600; }
+.vfx-electric .vfx-ray { background: linear-gradient(to bottom, #FFFDE7, #FFD600, transparent); width: 2px; }
+.vfx-electric .vfx-spark { background: radial-gradient(circle, #FFF9C4, #FFD600); }
+.vfx-electric .vfx-trail {
+  background: radial-gradient(ellipse at center, rgba(255,214,0,0.35) 0%, transparent 70%);
+}
+.vfx-electric .vfx-core { animation-name: vfx-electric-flash; }
+@keyframes vfx-electric-flash {
+  0%   { transform: scale(0); opacity: 0; }
+  15%  { transform: scale(2); opacity: 1; }
+  25%  { transform: scale(0.8); opacity: 0.5; }
+  35%  { transform: scale(2.2); opacity: 1; }
+  50%  { transform: scale(1); opacity: 0.6; }
+  65%  { transform: scale(1.8); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; filter: blur(6px); }
 }
 
-@keyframes water-ripple {
-  0% { transform: scale(0); opacity: 1; }
-  100% { transform: scale(4); opacity: 0; }
+/* 冰 ICE */
+.vfx-ice .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #B3E5FC 30%, #4DD0E1 60%, transparent 75%);
+  box-shadow: 0 0 40px #B3E5FC, 0 0 80px #4DD0E188;
+}
+.vfx-ice .vfx-ring { border-color: #B3E5FC; }
+.vfx-ice .vfx-ray { background: linear-gradient(to bottom, #fff, #B3E5FC, transparent); }
+.vfx-ice .vfx-spark { background: radial-gradient(circle, #fff, #B3E5FC); width: 4px; height: 12px; border-radius: 2px; }
+.vfx-ice .vfx-core { animation-name: vfx-ice-freeze; }
+@keyframes vfx-ice-freeze {
+  0%   { transform: scale(0) rotate(0deg); opacity: 0; filter: blur(8px); }
+  30%  { transform: scale(1.5) rotate(60deg); opacity: 1; filter: blur(0); }
+  100% { transform: scale(2) rotate(120deg); opacity: 0; filter: blur(2px) brightness(1.5); }
 }
 
-/* 电系特效 */
-.vfx-electric {
-  animation: electric-shock 0.5s ease-out forwards;
+/* 格斗 FIGHT */
+.vfx-fight .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #FF7043 30%, #D84315 60%, transparent 75%);
+  box-shadow: 0 0 40px #FF7043, 0 0 80px #D8431588;
+}
+.vfx-fight .vfx-ring { border-color: #FF7043; border-width: 4px; }
+.vfx-fight .vfx-ray { background: linear-gradient(to bottom, #FFCCBC, #FF7043, transparent); width: 4px; }
+.vfx-fight .vfx-spark { background: radial-gradient(circle, #FFCCBC, #FF7043); width: 8px; height: 8px; }
+
+/* 毒 POISON */
+.vfx-poison .vfx-core {
+  background: radial-gradient(circle, #CE93D8 0%, #AB47BC 40%, #7B1FA2 70%, transparent 80%);
+  box-shadow: 0 0 40px #AB47BC, 0 0 80px #7B1FA288;
+}
+.vfx-poison .vfx-ring { border-color: #CE93D8; }
+.vfx-poison .vfx-ray { background: linear-gradient(to bottom, #E1BEE7, #AB47BC, transparent); }
+.vfx-poison .vfx-spark { background: radial-gradient(circle, #E1BEE7, #7B1FA2); }
+
+/* 地面 GROUND */
+.vfx-ground .vfx-core {
+  background: radial-gradient(circle, #FFCC80 0%, #FF9800 40%, #E65100 70%, transparent 80%);
+  box-shadow: 0 0 40px #FF9800, 0 0 80px #E6510088;
+}
+.vfx-ground .vfx-ring { border-color: #FFCC80; }
+.vfx-ground .vfx-spark { background: radial-gradient(circle, #FFCC80, #E65100); width: 8px; height: 8px; }
+
+/* 飞行 FLYING */
+.vfx-flying .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #B2DFDB 40%, #80CBC4 70%, transparent 80%);
+  box-shadow: 0 0 30px #B2DFDB, 0 0 60px #80CBC488;
+}
+.vfx-flying .vfx-ring { border-color: #B2DFDB; }
+.vfx-flying .vfx-spark { background: radial-gradient(circle, #fff, #B2DFDB); width: 4px; height: 10px; }
+
+/* 超能 PSYCHIC */
+.vfx-psychic .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #F48FB1 30%, #E91E63 60%, transparent 75%);
+  box-shadow: 0 0 50px #F48FB1, 0 0 100px #E91E6388;
+}
+.vfx-psychic .vfx-ring { border-color: #F48FB1; }
+.vfx-psychic .vfx-ray { background: linear-gradient(to bottom, #FCE4EC, #F48FB1, transparent); }
+.vfx-psychic .vfx-spark { background: radial-gradient(circle, #FCE4EC, #E91E63); }
+
+/* 虫 BUG */
+.vfx-bug .vfx-core {
+  background: radial-gradient(circle, #DCEDC8 0%, #8BC34A 40%, #558B2F 70%, transparent 80%);
+  box-shadow: 0 0 30px #8BC34A, 0 0 60px #558B2F88;
+}
+.vfx-bug .vfx-ring { border-color: #8BC34A; }
+.vfx-bug .vfx-spark { background: radial-gradient(circle, #DCEDC8, #558B2F); }
+
+/* 岩石 ROCK */
+.vfx-rock .vfx-core {
+  background: radial-gradient(circle, #D7CCC8 0%, #A1887F 40%, #6D4C41 70%, transparent 80%);
+  box-shadow: 0 0 30px #A1887F, 0 0 60px #6D4C4188;
+}
+.vfx-rock .vfx-ring { border-color: #A1887F; border-width: 4px; }
+.vfx-rock .vfx-spark { background: radial-gradient(circle, #D7CCC8, #6D4C41); width: 10px; height: 10px; border-radius: 2px; }
+
+/* 幽灵 GHOST */
+.vfx-ghost .vfx-core {
+  background: radial-gradient(circle, #CE93D8 0%, #7E57C2 40%, #4527A0 70%, transparent 80%);
+  box-shadow: 0 0 50px #7E57C2, 0 0 100px #4527A088;
+}
+.vfx-ghost .vfx-ring { border-color: #B39DDB; border-style: dashed; }
+.vfx-ghost .vfx-spark { background: radial-gradient(circle, #D1C4E9, #4527A0); }
+.vfx-ghost .vfx-core { animation-name: vfx-ghost-phase; }
+@keyframes vfx-ghost-phase {
+  0%   { transform: scale(0); opacity: 0; }
+  20%  { transform: scale(1.5); opacity: 0.8; }
+  40%  { transform: scale(0.8); opacity: 0.4; }
+  60%  { transform: scale(2); opacity: 0.9; }
+  80%  { transform: scale(1.2); opacity: 0.3; }
+  100% { transform: scale(2.5); opacity: 0; }
 }
 
-@keyframes electric-shock {
-  0%, 100% { 
-    filter: brightness(1) drop-shadow(0 0 0 #FFE66D);
-  }
-  25%, 75% { 
-    filter: brightness(2) drop-shadow(0 0 30px #FFE66D);
-  }
-  50% { 
-    filter: brightness(3) drop-shadow(0 0 50px #FFE66D);
-  }
+/* 龙 DRAGON */
+.vfx-dragon .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #FFD54F 20%, #FF6F00 45%, #E65100 70%, transparent 80%);
+  box-shadow: 0 0 60px #FFD54F, 0 0 120px #FF6F0088, 0 0 180px #E6510044;
+}
+.vfx-dragon .vfx-ring { border-color: #FFD54F; border-width: 4px; }
+.vfx-dragon .vfx-ray { background: linear-gradient(to bottom, #FFFDE7, #FFD54F, #FF6F00, transparent); width: 4px; }
+.vfx-dragon .vfx-spark { background: radial-gradient(circle, #FFF9C4, #FF6F00); width: 8px; height: 8px; }
+
+/* 钢 STEEL */
+.vfx-steel .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #B0BEC5 30%, #607D8B 60%, transparent 75%);
+  box-shadow: 0 0 40px #B0BEC5, 0 0 80px #607D8B88;
+}
+.vfx-steel .vfx-ring { border-color: #B0BEC5; border-width: 3px; }
+.vfx-steel .vfx-spark { background: radial-gradient(circle, #ECEFF1, #607D8B); }
+
+/* 妖精 FAIRY */
+.vfx-fairy .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #F8BBD0 30%, #F06292 60%, transparent 75%);
+  box-shadow: 0 0 40px #F8BBD0, 0 0 80px #F0629288, 0 0 120px #F8BBD044;
+}
+.vfx-fairy .vfx-ring { border-color: #F8BBD0; }
+.vfx-fairy .vfx-ray { background: linear-gradient(to bottom, #FCE4EC, #F8BBD0, transparent); }
+.vfx-fairy .vfx-spark { background: radial-gradient(circle, #FCE4EC, #F06292); }
+.vfx-fairy .vfx-core { animation-name: vfx-fairy-sparkle; }
+@keyframes vfx-fairy-sparkle {
+  0%   { transform: scale(0) rotate(0deg); opacity: 0; }
+  30%  { transform: scale(1.8) rotate(60deg); opacity: 1; }
+  50%  { transform: scale(1.2) rotate(120deg); opacity: 0.7; }
+  70%  { transform: scale(2) rotate(180deg); opacity: 1; }
+  100% { transform: scale(2.5) rotate(270deg); opacity: 0; filter: blur(4px); }
 }
 
-/* 草系特效 */
-.vfx-grass {
-  background: radial-gradient(circle, rgba(149,225,211,0.5), rgba(149,225,211,0));
-  animation: grass-grow 0.7s ease-out forwards;
+/* 暗 DARK */
+.vfx-dark .vfx-core {
+  background: radial-gradient(circle, #616161 0%, #424242 30%, #212121 60%, transparent 75%);
+  box-shadow: 0 0 40px #424242, 0 0 80px #21212188;
+}
+.vfx-dark .vfx-ring { border-color: #616161; }
+.vfx-dark .vfx-spark { background: radial-gradient(circle, #757575, #212121); }
+
+/* 普通 NORMAL */
+.vfx-normal .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #E0E0E0 30%, #9E9E9E 60%, transparent 75%);
+  box-shadow: 0 0 30px #E0E0E0, 0 0 60px #9E9E9E88;
+}
+.vfx-normal .vfx-ring { border-color: #E0E0E0; }
+.vfx-normal .vfx-spark { background: radial-gradient(circle, #fff, #9E9E9E); }
+
+/* 神/治愈 GOD/HEAL */
+.vfx-god .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #FFD54F 20%, #E1BEE7 50%, #B3E5FC 80%, transparent 90%);
+  box-shadow: 0 0 60px #FFD54F, 0 0 120px #E1BEE788, 0 0 180px #B3E5FC44;
+}
+.vfx-god .vfx-ring { border-color: #FFD54F; border-width: 3px; }
+.vfx-god .vfx-spark { background: radial-gradient(circle, #FFF9C4, #FFD54F); }
+
+.vfx-heal .vfx-core {
+  background: radial-gradient(circle, #fff 0%, #A5D6A7 30%, #4CAF50 60%, transparent 75%);
+  box-shadow: 0 0 40px #A5D6A7, 0 0 80px #4CAF5088;
+}
+.vfx-heal .vfx-ring { border-color: #A5D6A7; }
+.vfx-heal .vfx-spark { background: radial-gradient(circle, #C8E6C9, #4CAF50); }
+.vfx-heal .vfx-core { animation-name: vfx-heal-pulse; }
+@keyframes vfx-heal-pulse {
+  0%   { transform: scale(0); opacity: 0; }
+  30%  { transform: scale(1.5); opacity: 0.9; }
+  60%  { transform: scale(1.2); opacity: 0.6; }
+  80%  { transform: scale(1.8); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
 }
 
-@keyframes grass-grow {
-  0% { transform: scaleY(0) scaleX(1); opacity: 1; }
-  100% { transform: scaleY(3) scaleX(2); opacity: 0; }
+/* === 全屏闪光 === */
+.vfx-screen-flash {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 999; pointer-events: none;
+  animation: vfx-flash 0.3s ease-out forwards;
+}
+@keyframes vfx-flash {
+  0%   { opacity: 0.5; }
+  100% { opacity: 0; }
 }
 
-/* 冰系特效 */
-.vfx-ice {
-  background: radial-gradient(circle, rgba(168,230,207,0.6), rgba(168,230,207,0));
-  animation: ice-crystal 0.9s ease-out forwards;
+/* === BUFF/DEBUFF光柱 === */
+.vfx-buff-pillar {
+  position: absolute; width: 60px; left: 50%; top: 0; bottom: 0;
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(105,240,174,0.5), rgba(105,240,174,0) 70%);
+  animation: buff-pillar-rise 0.8s ease-out forwards;
+  pointer-events: none; z-index: 90;
+}
+@keyframes buff-pillar-rise {
+  0%   { opacity: 0; transform: translateX(-50%) scaleY(0); }
+  40%  { opacity: 1; transform: translateX(-50%) scaleY(1); }
+  100% { opacity: 0; transform: translateX(-50%) scaleY(1.2); }
 }
 
-@keyframes ice-crystal {
-  0% { transform: scale(0) rotate(0deg); opacity: 1; }
-  100% { transform: scale(3) rotate(360deg); opacity: 0; }
+/* 精灵球飞行 */
+.vfx-ball-throw {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff, #FF5252 60%, #C62828);
+  box-shadow: 0 0 10px rgba(255,82,82,0.6);
+  animation: ball-arc 0.8s cubic-bezier(0.2, 0, 0.4, 1) forwards;
+  z-index: 200; position: absolute; pointer-events: none;
+}
+@keyframes ball-arc {
+  0%   { left: 20%; bottom: 60%; opacity: 1; }
+  50%  { left: 55%; bottom: 80%; }
+  100% { left: 70%; bottom: 30%; opacity: 1; }
 }
 
-/* 龙系特效 */
-.vfx-dragon {
-  background: radial-gradient(circle, rgba(255,217,61,0.7), rgba(255,217,61,0));
-  animation: dragon-aura-expand 1s ease-out forwards;
+/* 捕获成功星光 */
+.vfx-catch-stars {
+  position: absolute; width: 120px; height: 120px;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  pointer-events: none; z-index: 200;
+}
+.vfx-catch-star {
+  position: absolute; top: 50%; left: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #FFD54F; box-shadow: 0 0 8px #FFD54F;
+  animation: catch-star-burst 1s ease-out forwards;
+}
+@keyframes catch-star-burst {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx, 50px), var(--ty, -50px)) scale(0); opacity: 0; }
 }
 
-@keyframes dragon-aura-expand {
-  0% { transform: scale(0) rotate(0deg); opacity: 1; }
-  50% { transform: scale(2) rotate(180deg); opacity: 0.8; }
-  100% { transform: scale(4) rotate(360deg); opacity: 0; }
+/* 领域展开覆盖层 */
+.vfx-domain-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none; z-index: 50;
+  animation: domain-pulse 2s ease-in-out infinite;
+}
+@keyframes domain-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
+}
+
+/* 进化特效 */
+.vfx-evolution-glow {
+  position: absolute; width: 120px; height: 120px;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,215,0,0.4) 40%, transparent 70%);
+  animation: evolution-glow-pulse 1.5s ease-in-out forwards;
+  pointer-events: none; z-index: 100;
+}
+@keyframes evolution-glow-pulse {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  30%  { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+  60%  { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
 }
 
 /* 战斗场景增强 */
@@ -3985,70 +4220,159 @@ button:active {
 }
 
 /* 精灵震动效果增强 */
+/* === 受击抖动 - 多级 === */
 .anim-shake {
-  animation: shake-enhanced 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) !important;
+  animation: shake-v3 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards !important;
+}
+@keyframes shake-v3 {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  10%  { transform: translate(-8px, -2px) rotate(-2deg); }
+  20%  { transform: translate(8px, 2px) rotate(2deg); }
+  30%  { transform: translate(-6px, 1px) rotate(-1.5deg); }
+  40%  { transform: translate(6px, -1px) rotate(1.5deg); }
+  50%  { transform: translate(-4px, 0) rotate(-1deg); }
+  60%  { transform: translate(4px, 0) rotate(1deg); }
+  70%  { transform: translate(-2px, 0) rotate(-0.5deg); }
+  80%  { transform: translate(2px, 0) rotate(0.5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
 }
 
-@keyframes shake-enhanced {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px) rotate(-2deg); }
-  20%, 40%, 60%, 80% { transform: translateX(10px) rotate(2deg); }
+/* 暴击抖动 - 更猛烈 */
+.anim-shake-crit {
+  animation: shake-crit-v3 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards !important;
+}
+@keyframes shake-crit-v3 {
+  0%   { transform: translate(0, 0) scale(1); filter: brightness(1); }
+  10%  { transform: translate(-14px, -4px) scale(1.05); filter: brightness(2); }
+  20%  { transform: translate(14px, 4px) scale(0.95); filter: brightness(1); }
+  30%  { transform: translate(-10px, 2px) scale(1.03); filter: brightness(1.5); }
+  40%  { transform: translate(10px, -2px) scale(0.97); }
+  50%  { transform: translate(-6px, 0) scale(1.02); }
+  60%  { transform: translate(6px, 0) scale(0.98); }
+  70%  { transform: translate(-3px, 0) scale(1.01); }
+  80%  { transform: translate(3px, 0) scale(0.99); }
+  100% { transform: translate(0, 0) scale(1); filter: brightness(1); }
 }
 
-/* 伤害数字显示 */
+/* 受击闪白 */
+.anim-hit-flash {
+  animation: hit-flash-v3 0.3s ease-out forwards !important;
+}
+@keyframes hit-flash-v3 {
+  0%   { filter: brightness(1); }
+  20%  { filter: brightness(3) saturate(0); }
+  40%  { filter: brightness(1); }
+  60%  { filter: brightness(2) saturate(0.5); }
+  100% { filter: brightness(1); }
+}
+
+/* 闪避动画 */
+.anim-dodge {
+  animation: dodge-v3 0.5s ease-out forwards !important;
+}
+@keyframes dodge-v3 {
+  0%   { transform: translateX(0); opacity: 1; }
+  30%  { transform: translateX(40px); opacity: 0.3; }
+  60%  { transform: translateX(40px); opacity: 0.3; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* 倒下动画 */
+.anim-faint {
+  animation: faint-v3 0.8s ease-in forwards !important;
+}
+@keyframes faint-v3 {
+  0%   { transform: translateY(0) scale(1); opacity: 1; filter: brightness(1); }
+  30%  { transform: translateY(0) scale(1); opacity: 1; filter: brightness(0.5) saturate(0); }
+  100% { transform: translateY(30px) scale(0.3); opacity: 0; filter: brightness(0) saturate(0); }
+}
+
+/* === 伤害数字 v3 === */
 .damage-number {
-  position: absolute;
-  font-size: 48px;
-  font-weight: 900;
-  color: #FF5252;
-  text-shadow: 
-    0 0 10px rgba(255,82,82,0.8),
-    0 0 20px rgba(255,82,82,0.6),
-    2px 2px 4px rgba(0,0,0,0.8);
-  animation: damage-pop 1s ease-out forwards;
-  z-index: 200;
-  pointer-events: none;
+  position: absolute; z-index: 200; pointer-events: none;
+  font-size: 36px; font-weight: 900;
+  font-family: 'Arial Black', 'Impact', sans-serif;
+  color: #fff;
+  -webkit-text-stroke: 2px rgba(0,0,0,0.6);
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.8),
+    0 0 12px var(--dmg-glow, rgba(255,82,82,0.7));
+  animation: dmg-pop-v3 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes dmg-pop-v3 {
+  0%   { transform: translateY(0) scale(0.3); opacity: 0; }
+  15%  { transform: translateY(-10px) scale(1.3); opacity: 1; }
+  30%  { transform: translateY(-20px) scale(1); opacity: 1; }
+  100% { transform: translateY(-70px) scale(0.7); opacity: 0; }
 }
 
-@keyframes damage-pop {
-  0% {
-    transform: translateY(0) scale(0.5);
-    opacity: 1;
-  }
-  50% {
-    transform: translateY(-30px) scale(1.2);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-60px) scale(0.8);
-    opacity: 0;
-  }
-}
-
-/* 暴击特效 */
+/* 暴击伤害 */
 .damage-number.crit {
-  color: #FFD700;
-  font-size: 64px;
-  animation: crit-pop 1.2s ease-out forwards;
+  font-size: 52px; color: #FFD700;
+  -webkit-text-stroke: 2px rgba(100,60,0,0.8);
+  text-shadow:
+    0 2px 6px rgba(0,0,0,0.9),
+    0 0 20px rgba(255,215,0,0.8),
+    0 0 40px rgba(255,150,0,0.5);
+  animation: dmg-crit-v3 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes dmg-crit-v3 {
+  0%   { transform: translateY(0) scale(0.2) rotate(-10deg); opacity: 0; }
+  10%  { transform: translateY(-5px) scale(1.8) rotate(5deg); opacity: 1; }
+  25%  { transform: translateY(-15px) scale(1.2) rotate(-3deg); opacity: 1; }
+  40%  { transform: translateY(-30px) scale(1); opacity: 1; }
+  100% { transform: translateY(-90px) scale(0.6) rotate(0deg); opacity: 0; }
 }
 
-@keyframes crit-pop {
-  0% {
-    transform: translateY(0) scale(0.3) rotate(0deg);
-    opacity: 1;
-  }
-  30% {
-    transform: translateY(-20px) scale(1.5) rotate(180deg);
-    opacity: 1;
-  }
-  60% {
-    transform: translateY(-40px) scale(1.2) rotate(360deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-80px) scale(0.6) rotate(540deg);
-    opacity: 0;
-  }
+/* 治疗数字 */
+.damage-number.heal {
+  color: #69F0AE;
+  -webkit-text-stroke: 2px rgba(0,80,40,0.6);
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.6),
+    0 0 16px rgba(105,240,174,0.7);
+  animation: dmg-heal-v3 1.2s ease-out forwards;
+}
+@keyframes dmg-heal-v3 {
+  0%   { transform: translateY(0) scale(0.5); opacity: 0; }
+  20%  { transform: translateY(-15px) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
+}
+
+/* Miss文字 */
+.damage-number.miss {
+  font-size: 28px; color: #B0BEC5;
+  -webkit-text-stroke: 1px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  font-style: italic;
+}
+
+/* === 精灵入场动画 === */
+.anim-entrance-player {
+  animation: entrance-slide-right 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes entrance-slide-right {
+  0%   { transform: translateX(-120px) scale(0.5); opacity: 0; }
+  60%  { transform: translateX(10px) scale(1.05); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+.anim-entrance-enemy {
+  animation: entrance-slide-left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes entrance-slide-left {
+  0%   { transform: translateX(120px) scale(0.5); opacity: 0; }
+  60%  { transform: translateX(-10px) scale(1.05); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+/* 精灵待机浮动 */
+.anim-idle-float {
+  animation: idle-float 3s ease-in-out infinite;
+}
+@keyframes idle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 /* 标题页动画 */
