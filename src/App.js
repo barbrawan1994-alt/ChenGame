@@ -4002,16 +4002,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const grade = getCurseGrade(p.customBaseStats || baseStats);
         const maxCE = getMaxCE(p.level, grade.key);
         const typeTech = TYPE_TECHNIQUES[p.type];
-        const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel);
+        const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel) || ((p.intimacy || 0) >= (AWAKENING_CONDITIONS.byIntimacy || 150));
         const cursedMoves = [];
         if (hasCT) {
             if (p.cursedTechnique) {
                 const ct = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES].find(t => t.id === p.cursedTechnique);
                 if (ct) cursedMoves.push({ ...ct, isCursed: true });
+                else if (typeTech) cursedMoves.push({ ...typeTech, isCursed: true });
             } else if (typeTech) {
                 cursedMoves.push({ ...typeTech, isCursed: true });
             }
         }
+        if (hasCT && cursedMoves.length > 0 && grade.key !== 'GRADE4') {
+            const healTech = COMMON_TECHNIQUES.find(t => t.id === 'ct_reverse');
+            if (healTech && !cursedMoves.find(m => m.id === 'ct_reverse')) {
+                cursedMoves.push({ ...healTech, isCursed: true });
+            }
+        }
+        const canDomain = p.hasDomain || (p.level >= 50 && hasCT && ['SPECIAL','GRADE1'].includes(grade.key));
 
         return {
             ...p,
@@ -4024,10 +4032,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             
             volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
             turnCounters: { status: 0, stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 } },
-            cursedEnergy: 0,
+            cursedEnergy: Math.floor(maxCE * (CURSED_ENERGY_CONFIG.initialPercent || 0.3)),
             maxCE,
             curseGrade: grade,
-            hasDomain: p.hasDomain || false,
+            hasDomain: canDomain,
             domainType: p.domainType || p.type,
             usedDomain: false,
             activeVow: null,
@@ -4908,7 +4916,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const accStage = atkState.stages.acc || 0;
     const evaStage = defState.stages.eva || 0;
     const stage = Math.max(-6, Math.min(6, accStage - evaStage));
-    const accMult = stage >= 0 ? (3 + stage) / 3 : 3 / (3 + Math.abs(stage));
+    let accMult = stage >= 0 ? (3 + stage) / 3 : 3 / (3 + Math.abs(stage));
+    const domHit = battleState.activeDomain;
+    if (domHit && domHit.turnsLeft > 0) {
+        if (domHit.ownerSide === source && domHit.effect.enemyAccDown) accMult *= domHit.effect.enemyAccDown;
+        if (domHit.ownerSide !== source && domHit.effect.evasionBoost) accMult /= domHit.effect.evasionBoost;
+        if (domHit.ownerSide !== source && domHit.effect.enemyAccDown) accMult *= domHit.effect.enemyAccDown;
+    }
     const moveAcc = move.acc || 100;
     const finalHitChance = moveAcc * accMult;
 
@@ -4985,6 +4999,31 @@ const grantContestReward = (config, score, subjectPet = null) => {
              defState.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
              addLog(`全场的能力变化被重置了!`);
         }
+        else if (move.isCursed) {
+            if (eff.healPercent) {
+                const heal = Math.floor(getStats(attacker).maxHp * eff.healPercent);
+                attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
+                addLog(`🔮 ${attacker.name} 以反转术式恢复了 ${heal} HP!`);
+                setAnimEffect({ type: 'HEAL', target: source === 'player' ? 'player' : 'enemy' });
+            }
+            if (eff.stat && eff.stages) {
+                atkState.stages[eff.stat] = Math.min(6, (atkState.stages[eff.stat] || 0) + eff.stages);
+                addLog(`🔮 ${attacker.name} 咒力强化! ${eff.stat === 'p_atk' ? '物攻' : eff.stat}+${eff.stages}!`);
+                setAnimEffect({ type: 'BUFF', target: source === 'player' ? 'player' : 'enemy' });
+            }
+            if (eff.isolate) {
+                addLog(`🔮 ${attacker.name} 展开了帳! ${eff.turns}回合内双方无法换人!`);
+                if (battleState) battleState.isolateTurns = eff.turns;
+            }
+            if (eff.antiDomain && battleState.activeDomain && battleState.activeDomain.ownerSide !== source) {
+                battleState.activeDomain.turnsLeft = Math.max(0, battleState.activeDomain.turnsLeft - (eff.turns || 2));
+                addLog(`🔮 简易领域抵消了 ${eff.turns || 2} 回合的领域效果!`);
+                if (battleState.activeDomain.turnsLeft <= 0) {
+                    addLog(`🌀 对方的领域被完全抵消了!`);
+                    battleState.activeDomain = null;
+                }
+            }
+        }
         await wait(500); setAnimEffect(null);
     } else {
         // === 伤害类技能 ===
@@ -4995,8 +5034,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let defVal = category === 'physical' ? statsDef.p_def : statsDef.s_def;
 
         let isCrit = false;
-        let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0); 
+        const ceMoveEff = move.isCursed ? (move.effect || {}) : {};
+        let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0) + (ceMoveEff.critBoost || 0); 
         if (Math.random() * 100 < (statsAtk.crit * (1 + critStage * 0.5))) isCrit = true;
+
+        if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
 
         let typeMod = getTypeMod(move.t, defender.type);
         const levelBase = attacker.level * 0.8 + 5;
@@ -5033,17 +5075,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
             rawDmg *= 1.1;
         }
 
-        // 领域展开加成
         const dom = battleState.activeDomain;
         if (dom && dom.turnsLeft > 0) {
             const isOwner = (dom.ownerSide === source);
             const eff = dom.effect;
             if (isOwner) {
                 if (eff.atkBoost) rawDmg *= eff.atkBoost;
-                if (eff.hpDrain && dmg === 0) { /* handled post-damage */ }
+                if (eff.defBoost && !isOwner) rawDmg /= eff.defBoost;
             } else {
                 if (eff.enemyAtkDown) rawDmg *= eff.enemyAtkDown;
                 if (eff.enemyDefDown) rawDmg /= eff.enemyDefDown;
+                if (eff.defBoost) rawDmg /= eff.defBoost;
             }
         }
 
@@ -5098,6 +5140,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         if (atkSect === 4 && isCrit) rawDmg *= (1 + (0.1 + atkSectLv * 0.05));
         if (atkSect === 10) rawDmg *= (1 + (0.05 + atkSectLv * 0.02));
+        if (atkSect === 11 && category === 'special') rawDmg *= (1 + (0.02 + atkSectLv * 0.01));
 
         dmg = Math.floor(rawDmg);
         dmg = Math.max(1, dmg); 
@@ -5145,6 +5188,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const heal = Math.floor(getStats(attacker).maxHp * (0.02 + atkSectLv * 0.01));
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
         }
+        if (atkSect === 11 && !isDead && move.p > 0 && !defState.volatiles.confused && Math.random() < (0.03 + atkSectLv * 0.02)) {
+            defState.volatiles.confused = 3; addLog(`🏔️ 紫霞神功扰乱心神，${defender.name} 混乱了！`);
+        }
+        if (defSect === 12 && category === 'special' && move.p > 0 && dmg > 0) {
+            const reflectPct = 0.05 + defSectLv * 0.03;
+            const reflectDmg = Math.floor(dmg * reflectPct);
+            if (reflectDmg > 0) {
+                attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
+                addLog(`☯️ 太极功以柔克刚，反弹了 ${reflectDmg} 点特攻伤害！`);
+            }
+        }
 
         if (category === 'physical' && !isDead) {
             if (defender.trait === 'static' && Math.random() < 0.3 && !attacker.status) {
@@ -5155,9 +5209,71 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
 
+        if (dom && dom.turnsLeft > 0 && dmg > 0 && dom.ownerSide === source) {
+            if (dom.effect.hpDrain) {
+                const drainHeal = Math.floor(dmg * dom.effect.hpDrain);
+                attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + drainHeal);
+                addLog(`🌀 领域效果: ${attacker.name} 吸取了 ${drainHeal} HP!`);
+            }
+            if (dom.effect.leechBoost && ceMoveEff.leech) {
+                const extraHeal = Math.floor(dmg * dom.effect.leechBoost);
+                attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + extraHeal);
+            }
+        }
+        if (dom && dom.turnsLeft > 0 && !isDead && dom.ownerSide === source && dom.effect.paralyzeChance && !defender.status) {
+            if (Math.random() < dom.effect.paralyzeChance) {
+                defState.status = 'PAR'; addLog(`🌀 领域效果: ${defender.name} 被麻痹了!`);
+            }
+        }
+
+        if (!isDead && move.isCursed && ceMoveEff && dmg > 0) {
+            if (ceMoveEff.leech) {
+                const heal = Math.floor(dmg * ceMoveEff.leech);
+                attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
+                addLog(`🔮 ${attacker.name} 吸取了 ${heal} HP!`);
+            }
+            if (ceMoveEff.hpDrain) {
+                const heal = Math.floor(dmg * ceMoveEff.hpDrain);
+                attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
+                addLog(`🔮 ${attacker.name} 吸收了 ${heal} HP!`);
+            }
+            if (ceMoveEff.paralyze && !defender.status && Math.random() < ceMoveEff.paralyze) {
+                defState.status = 'PAR'; addLog(`⚡ ${defender.name} 被咒力麻痹了!`);
+            }
+            if (ceMoveEff.freeze && !defender.status && Math.random() < ceMoveEff.freeze) {
+                defState.status = 'FRZ'; addLog(`❄️ ${defender.name} 被咒力冻结了!`);
+            }
+            if (ceMoveEff.poison && !defender.status) {
+                defState.status = 'PSN'; addLog(`☠️ ${defender.name} 被咒力侵蚀，中毒了!`);
+            }
+            if (ceMoveEff.confuse && Math.random() < ceMoveEff.confuse) {
+                defState.volatiles.confused = 3; addLog(`🌀 ${defender.name} 陷入了混乱!`);
+            }
+            if (ceMoveEff.spdDown) {
+                defState.stages.spd = Math.max(-6, (defState.stages.spd || 0) - ceMoveEff.spdDown);
+                addLog(`🔮 ${defender.name} 的速度下降了!`);
+            }
+            if (ceMoveEff.accDown) {
+                defState.stages.acc = Math.max(-6, (defState.stages.acc || 0) - ceMoveEff.accDown);
+                addLog(`🔮 ${defender.name} 的命中下降了!`);
+            }
+            if (ceMoveEff.atkDown) {
+                defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - ceMoveEff.atkDown);
+                defState.stages.s_atk = Math.max(-6, (defState.stages.s_atk || 0) - ceMoveEff.atkDown);
+                addLog(`🔮 ${defender.name} 的攻击下降了!`);
+            }
+            if (ceMoveEff.breakBarrier) {
+                defState.volatiles.protected = false;
+                if (battleState.activeDomain && battleState.activeDomain.ownerSide !== source) {
+                    battleState.activeDomain = null;
+                    addLog(`🔮 天逆鉾破除了对方的领域!`);
+                }
+            }
+        }
+
         if (!isDead && move.effect && move.p > 0) {
              const eff = move.effect;
-             if (Math.random() < (eff.chance || 1.0)) {
+             if (!move.isCursed && Math.random() < (eff.chance || 1.0)) {
                  const targetState = eff.target === 'self' ? atkState : defState;
                  const targetName = eff.target === 'self' ? attacker.name : defender.name;
                  const targetSide = eff.target === 'self' ? (source==='player'?'player':'enemy') : (source==='player'?'enemy':'player');

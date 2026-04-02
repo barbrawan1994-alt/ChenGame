@@ -4,9 +4,10 @@
 
 export const CURSED_ENERGY_CONFIG = {
   maxCE: 100,
-  regenPerTurn: 8,
-  chargeAction: 25,
+  regenPerTurn: 15,
+  chargeAction: 40,
   levelScaling: 0.5,
+  initialPercent: 0.3,
 };
 
 export const CURSE_GRADES = {
