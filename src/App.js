@@ -8961,7 +8961,7 @@ const renderMenu = () => {
         {/* 环境特效层 (下雨/天黑等) */}
         {renderEnvironmentOverlay()}
 
-        <div className="deco-cloud" style={{top: '10%', animationDuration: '60s'}}>☁️</div>
+        <div className="deco-cloud" style={{top: '10%', animationDuration: '60s', width: 80, height: 30, background: 'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.4), transparent)', borderRadius: '50%', filter: 'blur(3px)'}} />
         
         {/* 左侧面板 */}
         {renderLeftPanel()}
@@ -9028,8 +9028,8 @@ const renderMenu = () => {
               overflow: 'hidden', background: '#2d5a3d'
           }}>
             {mapGrid.length > 0 && (() => {
-              const TILE_SZ = 56;
-              const VW = 15, VH = 11;
+              const TILE_SZ = 68;
+              const VW = 13, VH = 9;
               const halfW = Math.floor(VW / 2), halfH = Math.floor(VH / 2);
               const camX = Math.max(0, Math.min(GRID_W - VW, playerPos.x - halfW));
               const camY = Math.max(0, Math.min(GRID_H - VH, playerPos.y - halfH));
@@ -10157,86 +10157,33 @@ const renderMenu = () => {
                         background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'}} />
                 </div>
 
-                {/* 侧边装饰 - 柱子或建筑元素 */}
-                <div className="battle-decor-sides" style={{
-                    position: 'absolute',
-                    bottom: '25%',
-                    left: '0%',
-                    width: '100%',
-                    height: '50%',
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    opacity: 0.2
+                {/* 战场地面 - 宝可梦风格透视草地 */}
+                <div style={{
+                    position:'absolute', bottom:0, left:0, width:'100%', height:'45%',
+                    background:'linear-gradient(180deg, transparent 0%, rgba(76,175,80,0.15) 20%, rgba(56,142,60,0.3) 100%)',
+                    pointerEvents:'none', zIndex:2
                 }}>
-                    {/* 左侧柱子 */}
-                    <div style={{
-                        position: 'absolute',
-                        left: '3%',
-                        bottom: '0%',
-                        width: '30px',
-                        height: '40%',
-                        background: 'linear-gradient(180deg, rgba(139, 69, 19, 0.6), rgba(101, 67, 33, 0.4))',
-                        borderRadius: '15px 15px 0 0',
-                        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.3)'
-                    }} />
-                    {/* 右侧柱子 */}
-                    <div style={{
-                        position: 'absolute',
-                        right: '3%',
-                        bottom: '0%',
-                        width: '30px',
-                        height: '35%',
-                        background: 'linear-gradient(180deg, rgba(139, 69, 19, 0.6), rgba(101, 67, 33, 0.4))',
-                        borderRadius: '15px 15px 0 0',
-                        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.3)'
-                    }} />
+                    <div style={{position:'absolute', top:0, left:0, width:'100%', height:2,
+                        background:'linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.35) 50%, transparent 90%)'}} />
                 </div>
 
-                {/* 光效装饰 - 多层光晕 */}
-                <div className="battle-decor-lights" style={{
-                    position: 'absolute',
-                    top: '0%',
-                    left: '0%',
-                    width: '100%',
-                    height: '100%',
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    background: `
-                        radial-gradient(ellipse at 15% 25%, rgba(255,255,255,0.12) 0%, transparent 50%),
-                        radial-gradient(ellipse at 85% 75%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                        radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 60%)
-                    `,
-                    animation: 'battle-glow 10s ease-in-out infinite'
-                }} />
-
-                {/* 粒子装饰 - 增强版 */}
-                <div className="battle-decor-particles" style={{
-                    position: 'absolute',
-                    top: '0%',
-                    left: '0%',
-                    width: '100%',
-                    height: '100%',
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    backgroundImage: `
-                        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.4), transparent),
-                        radial-gradient(1px 1px at 50% 20%, rgba(255,255,255,0.3), transparent),
-                        radial-gradient(1px 1px at 80% 40%, rgba(255,255,255,0.35), transparent),
-                        radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.25), transparent),
-                        radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.3), transparent)
-                    `,
-                    backgroundSize: '200% 200%, 180% 180%, 220% 220%, 190% 190%, 210% 210%',
-                    animation: 'battle-particles 20s linear infinite',
-                    opacity: 0.6
+                {/* 光晕装饰 */}
+                <div style={{
+                    position:'absolute', top:0, left:0, width:'100%', height:'100%',
+                    pointerEvents:'none', zIndex:1, opacity:0.5,
+                    background:`
+                        radial-gradient(ellipse at 15% 30%, rgba(255,255,255,0.1) 0%, transparent 40%),
+                        radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.08) 0%, transparent 40%)
+                    `
                 }} />
                 
                 {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角) */}
                 {/* ========================================== */}
-                <div className="enemy-zone-v2" style={{position: 'absolute', top: '5%', right: '8%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
+                <div className="enemy-zone-v2" style={{position: 'absolute', top: '2%', right: '4%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
                     
-                    {/* 敌方 HUD (血条) */}
-                    <div className="hud-card hud-enemy" style={{transform: 'scale(1.1)', transformOrigin: 'right top', marginBottom: '10px'}}>
+                    {/* 敌方 HUD */}
+                    <div className="hud-card hud-enemy" style={{marginBottom: '8px'}}>
                         {/* 第一行：名字 + 门派 + 状态 */}
                         <div className="hud-name-row" style={{
                             display:'flex', alignItems:'center', gap:'6px', flexWrap:'nowrap', 
@@ -10272,17 +10219,16 @@ const renderMenu = () => {
                         {renderPartyIndicators(battle.enemyParty)}
                     </div>
 
-                    {/* 敌方精灵图片 - 远处效果（较小） */}
-                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', marginRight: '15px'}}>
+                    {/* 敌方精灵 */}
+                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', marginRight: '10px'}}>
                         {battle.isTrainer && (
-                            <div className="trainer-avatar-wrapper" style={{
-                                position: 'absolute', bottom: '25px', right: '-35px', zIndex: -1, opacity: 0.9, transition: '0.3s'
+                            <div style={{
+                                position: 'absolute', bottom: '20px', right: '-40px', zIndex: -1, opacity: 0.85, width: 80, height: 80
                             }}>
-                                <div className="trainer-emoji" style={{fontSize: '100px', filter: 'drop-shadow(-5px 5px 10px rgba(0,0,0,0.3))'}}>
-                                    {getTrainerAvatar(battle.trainerName)}
-                                </div>
+                                {getTrainerAvatar(battle.trainerName)}
                             </div>
                         )}
+                        <div className="battle-platform battle-platform-enemy" />
                         
                         <div 
                             ref={(el) => {
@@ -10332,10 +10278,11 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 {/* 2. 我方区域 (左下角) */}
                 {/* ========================================== */}
-                <div className="player-zone-v2" style={{position: 'absolute', bottom: '8%', left: '5%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                <div className="player-zone-v2" style={{position: 'absolute', bottom: '4%', left: '3%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
-                    {/* 我方精灵图片 - 近处效果（较大） */}
-                    <div className="sprite-wrapper player-sprite-wrapper" style={{position: 'relative', transform: 'scale(1.3)', transformOrigin: 'left bottom', marginBottom: '10px', marginLeft: '10px'}}>
+                    {/* 我方精灵 */}
+                    <div className="sprite-wrapper player-sprite-wrapper" style={{position: 'relative', marginBottom: '6px', marginLeft: '5px'}}>
+                        <div className="battle-platform battle-platform-player" />
                          <div 
                              ref={(el) => {
                                  if (el && !el.dataset.animated) {
@@ -10367,8 +10314,8 @@ const renderMenu = () => {
                         )}
                     </div>
 
-                    {/* 我方 HUD (血条) */}
-                    <div className="hud-card hud-player" style={{transform: 'scale(1.1)', transformOrigin: 'left bottom'}}>
+                    {/* 我方 HUD */}
+                    <div className="hud-card hud-player">
                         {/* 第一行：名字 + 门派 + 状态 */}
                         <div className="hud-name-row" style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
                             <span style={{fontSize:'14px', fontWeight:'bold'}}>{p.name}</span>
@@ -10428,7 +10375,7 @@ const renderMenu = () => {
         </div>
 
         {/* 底部操作栏 */}
-        <div className="battle-panel-v2" style={{height: '25%', minHeight: '180px'}}>
+        <div className="battle-panel-v2" style={{height: '210px'}}>
             {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'input_p2') ? (
               <div className="controls-area-v2">
                     {battle.isPvP && (

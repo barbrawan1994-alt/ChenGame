@@ -403,69 +403,53 @@ button:active { transform: scale(0.96); }
   overflow: hidden; display: flex; flex-direction: column;
 }
 
-/* 战斗场景层 - 升级版 */
+/* 战斗场景层 v3 */
 .battle-stage-v2 {
   position: absolute; top: 0; left: 0; width: 100%;
-  height: calc(100% - 260px); /* 留出底部面板高度 */
+  height: calc(100% - 210px);
   z-index: 1;
-  background: 
-    radial-gradient(ellipse at top, rgba(79, 172, 254, 0.8) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(0, 242, 254, 0.6) 0%, transparent 50%),
-    linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  background-size: 100% 100%, 100% 100%, 200% 200%;
-  background-position: center top, center bottom, 0% 0%;
-  animation: battle-bg-shift 15s ease infinite;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(135,206,250,0.6) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(144,238,144,0.4) 0%, transparent 45%),
+    linear-gradient(180deg, #87CEEB 0%, #a8e6cf 50%, #6abf69 100%);
   overflow: hidden;
 }
 
-.battle-stage-v2.bg-grass { 
-  background: 
-    radial-gradient(ellipse at top, rgba(67, 233, 123, 0.7) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(149, 225, 211, 0.6) 0%, transparent 50%),
+.battle-stage-v2.bg-grass {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(135,206,250,0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(144,238,144,0.35) 0%, transparent 45%),
     linear-gradient(135deg, #84fab0 0%, #8fd3f4 50%, #a8edea 100%);
   background-size: 100% 100%, 100% 100%, 200% 200%;
   background-position: center top, center bottom, 0% 0%;
 }
 
-.battle-stage-v2.bg-fire { 
-  background: 
-    radial-gradient(ellipse at top, rgba(249, 212, 35, 0.8) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(255, 107, 107, 0.7) 0%, transparent 50%),
-    linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #f9d423 100%);
-  background-size: 100% 100%, 100% 100%, 200% 200%;
-  background-position: center top, center bottom, 0% 0%;
+.battle-stage-v2.bg-fire {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,183,77,0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(255,138,101,0.35) 0%, transparent 45%),
+    linear-gradient(180deg, #f9a825 0%, #ef6c00 40%, #bf360c 100%);
 }
 
 .battle-stage-v2.bg-water {
-  background: 
-    radial-gradient(ellipse at top, rgba(78, 205, 196, 0.8) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(168, 230, 207, 0.6) 0%, transparent 50%),
-    linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #43e97b 100%);
-  background-size: 100% 100%, 100% 100%, 200% 200%;
-  background-position: center top, center bottom, 0% 0%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(129,212,250,0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(77,182,172,0.35) 0%, transparent 45%),
+    linear-gradient(180deg, #81d4fa 0%, #4fc3f7 40%, #0288d1 100%);
 }
 
 .battle-stage-v2.bg-city {
-  background: 
-    radial-gradient(ellipse at top, rgba(179, 181, 198, 0.7) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(141, 153, 174, 0.6) 0%, transparent 50%),
-    linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  background-size: 100% 100%, 100% 100%, 200% 200%;
-  background-position: center top, center bottom, 0% 0%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(176,190,197,0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(144,164,174,0.3) 0%, transparent 45%),
+    linear-gradient(180deg, #cfd8dc 0%, #90a4ae 40%, #546e7a 100%);
 }
 
 .battle-stage-v2.bg-cave {
-  background: 
-    radial-gradient(ellipse at top, rgba(99, 102, 241, 0.6) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(55, 48, 163, 0.7) 0%, transparent 50%),
-    linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
-  background-size: 100% 100%, 100% 100%, 200% 200%;
-  background-position: center top, center bottom, 0% 0%;
-}
-
-@keyframes battle-bg-shift {
-  0%, 100% { background-position: center top, center bottom, 0% 0%; }
-  50% { background-position: center top, center bottom, 100% 100%; }
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(149,117,205,0.4) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(69,39,160,0.35) 0%, transparent 45%),
+    linear-gradient(180deg, #7e57c2 0%, #512da8 40%, #311b92 100%);
 }
 
 /* 战斗场景粒子背景 */
@@ -520,76 +504,56 @@ button:active { transform: scale(0.96); }
 }
 
 /* 敌我区域 - 调整位置和大小体现远近感 */
-.enemy-zone-v2 { 
-  position: absolute; 
-  top: 8%; 
-  right: 5%; 
-  display: flex; 
-  align-items: flex-end; 
-  gap: 10px; 
-  z-index: 10;
+.enemy-zone-v2 {
+  position: absolute;
+  top: 2%; right: 4%;
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 6px; z-index: 10;
 }
 
-.player-zone-v2 { 
-  position: absolute; 
-  bottom: 28%; 
-  left: 5%; 
-  display: flex; 
-  align-items: flex-end; 
-  gap: 10px;
-  z-index: 10;
-  transform: scale(1.0);
+.player-zone-v2 {
+  position: absolute;
+  bottom: 4%; left: 3%;
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 6px; z-index: 10;
 }
 
-/* 精灵大图 - 精致版（根据远近调整大小） */
+/* 精灵大图 v3 */
 .sprite-v2 {
-  width: 150px; 
-  height: 150px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  font-size: 100px; 
-  z-index: 5; 
-  position: relative;
-  filter: 
-    drop-shadow(0 8px 16px rgba(0,0,0,0.3))
-    drop-shadow(0 0 20px rgba(255,255,255,0.1));
-  animation: float-enhanced 3s ease-in-out infinite;
+  width: 180px; height: 180px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5; position: relative;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.35));
   transition: transform 0.3s ease;
 }
-
-.sprite-v2:hover {
-  transform: scale(1.05);
+.sprite-v2 img {
+  image-rendering: auto;
 }
+.sprite-v2:hover { transform: scale(1.04); }
 
-/* 我方精灵（近处）- 更大更近 */
+/* 我方精灵 - 大而近 */
 .player-zone-v2 .sprite-v2,
-.player-sprite-wrapper .sprite-v2 { 
-  width: 200px; 
-  height: 200px; 
-  font-size: 140px; 
+.player-sprite-wrapper .sprite-v2 {
+  width: 260px; height: 260px;
 }
 
-/* 敌方精灵（远处）- 明显更小，带透视效果 */
+/* 敌方精灵 - 远处透视 */
 .enemy-zone-v2 .sprite-v2,
-.enemy-sprite-wrapper .sprite-v2 { 
-  width: 120px; 
-  height: 120px; 
-  font-size: 85px; 
-  filter: 
-    drop-shadow(0 6px 12px rgba(0,0,0,0.3))
-    drop-shadow(0 0 15px rgba(255,255,255,0.1))
-    brightness(0.95);
+.enemy-sprite-wrapper .sprite-v2 {
+  width: 200px; height: 200px;
+  filter:
+    drop-shadow(0 8px 16px rgba(0,0,0,0.3))
+    brightness(0.97);
 }
 
 @keyframes float-enhanced {
-  0%, 100% { 
-    transform: translateY(0) rotate(0deg);
-    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)) drop-shadow(0 0 30px rgba(255,255,255,0.1));
+  0%, 100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.35));
   }
-  50% { 
-    transform: translateY(-15px) rotate(2deg);
-    filter: drop-shadow(0 15px 30px rgba(0,0,0,0.4)) drop-shadow(0 0 40px rgba(255,255,255,0.2));
+  50% {
+    transform: translateY(-8px);
+    filter: drop-shadow(0 16px 28px rgba(0,0,0,0.4));
   }
 }
 
@@ -601,76 +565,58 @@ button:active { transform: scale(0.96); }
   max-height: 100%;
 }
 
-/* 圆形底座 */
+/* 精灵脚下平台 - 宝可梦风格椭圆 */
 .battle-platform {
-  position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%) scaleY(0.3);
-  width: 260px; height: 260px; background: rgba(0,0,0,0.15); border-radius: 50%;
-  z-index: 0; border: 4px solid rgba(255,255,255,0.1);
+  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+  z-index: 0;
+}
+.battle-platform-player {
+  width: 260px; height: 50px;
+  background: radial-gradient(ellipse, rgba(76,175,80,0.45) 0%, rgba(76,175,80,0.15) 50%, transparent 72%);
+  border-radius: 50%;
+}
+.battle-platform-enemy {
+  width: 200px; height: 40px;
+  background: radial-gradient(ellipse, rgba(244,67,54,0.3) 0%, rgba(244,67,54,0.1) 50%, transparent 72%);
+  border-radius: 50%;
 }
 
-/* HUD 信息卡 - 升级版 */
+/* HUD 信息卡 v3 */
 .hud-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 14px;
-  border-radius: 16px;
-  min-width: 240px;
-  width: auto;
-  max-width: 340px;
-  box-shadow: 
-    0 8px 32px rgba(0,0,0,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.6);
-  border: 2px solid rgba(255,255,255,0.3);
-  position: relative;
+  background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(248,250,252,0.88));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 10px 14px;
+  border-radius: 14px;
+  min-width: 220px; max-width: 300px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5);
+  border: 1.5px solid rgba(255,255,255,0.4);
+  position: relative; overflow: hidden;
 }
-
 .hud-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-  animation: hud-shine 3s linear infinite;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  border-radius: 14px 14px 0 0;
 }
 
-@keyframes hud-shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
+.hud-enemy { border-color: rgba(244,67,54,0.25); }
+.hud-enemy::before { background: linear-gradient(90deg, transparent, rgba(244,67,54,0.5), transparent); }
 
-.hud-enemy { 
-  border-left-color: #FF5252;
-  border-color: rgba(255, 82, 82, 0.3);
-}
-
-.hud-enemy::before {
-  background: linear-gradient(90deg, transparent, rgba(255, 82, 82, 0.3), transparent);
-}
-
-.hud-player { 
-  border-left-color: #4CAF50;
-  border-color: rgba(76, 175, 80, 0.3);
-}
-
-.hud-player::before {
-  background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
-}
+.hud-player { border-color: rgba(76,175,80,0.25); }
+.hud-player::before { background: linear-gradient(90deg, transparent, rgba(76,175,80,0.5), transparent); }
 .hud-name-row { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; margin-bottom: 5px; }
 .hp-track-v2 { width: 100%; height: 10px; background: #ddd; border-radius: 5px; overflow: hidden; }
 .hp-fill-v2 { height: 100%; transition: width 0.3s; }
 
-/* 底部操作面板 (修复消失问题) */
+/* 底部操作面板 */
 .battle-panel-v2 {
   position: absolute; bottom: 0; left: 0; width: 100%;
-  height: 260px; /* 固定高度 */
-  background: rgba(255, 255, 255, 0.98);
-  border-top-left-radius: 24px; border-top-right-radius: 24px;
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+  height: 210px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(245,247,250,0.99));
+  border-top-left-radius: 20px; border-top-right-radius: 20px;
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.12);
   z-index: 1000; display: flex; flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid rgba(0,0,0,0.06);
 }
 
 .msg-box-v2 {
@@ -1674,43 +1620,26 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   background: #000; /* 防止露白 */
 }
 
-/* 2. 战斗场景层：给底部面板留出绝对空间 */
+/* 战斗场景层高度 */
 .battle-stage-v2 {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  /* 关键：留出底部 260px 高度，防止场景被面板遮挡 */
-  height: calc(100% - 260px); 
+  position: absolute; top: 0; left: 0; width: 100%;
+  height: calc(100% - 210px);
   z-index: 1;
-  background-size: cover;
-  background-position: center bottom;
 }
 
-/* 3. 底部操作面板容器 - 升级版 */
+/* 底部操作面板 - 紧凑版 */
 .battle-panel-v2 {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 260px; /* 固定高度，确保能放下所有按钮 */
-  
-  /* 升级的美化样式 */
-  background: linear-gradient(to top, rgba(248, 249, 250, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 3px solid rgba(51, 51, 51, 0.3);
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
-  box-shadow: 
-    0 -10px 40px rgba(0,0,0,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.8);
-  
-  z-index: 1000; /* 确保在最上层 */
-  display: flex;
-  flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom); /* 适配手机底部 */
-  position: relative;
+  position: absolute; bottom: 0; left: 0; width: 100%;
+  height: 210px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(245,247,250,0.99));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top-left-radius: 20px; border-top-right-radius: 20px;
+  box-shadow: 0 -6px 24px rgba(0,0,0,0.1);
+  z-index: 1000;
+  display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
   overflow: hidden;
 }
 
@@ -2275,28 +2204,24 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   flex-direction: column !important;
 }
 
-/* 2. 强制战斗场景高度，给底部留出空间 */
+/* 战斗场景高度与面板对齐 */
 .battle-stage-v2 {
   position: absolute !important;
   top: 0; left: 0;
   width: 100% !important;
-  height: calc(100% - 220px) !important; /* 留出底部空间 */
+  height: calc(100% - 210px) !important;
   z-index: 1 !important;
 }
 
-/* 3. 强制底部面板固定在屏幕最下方 */
 .battle-panel-v2 {
-  position: fixed !important;
+  position: absolute !important;
   bottom: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: 220px !important; /* 固定高度 */
-  background: #f5f5f5 !important; /* 浅灰背景，防止透明 */
-  border-top: 4px solid #333 !important;
+  height: 210px !important;
   z-index: 200 !important;
   display: flex !important;
   flex-direction: column !important;
-  box-shadow: 0 -5px 20px rgba(0,0,0,0.2) !important;
 }
 
 /* 4. 消息框样式修复 */
@@ -2481,11 +2406,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 .btn-switch { background: linear-gradient(135deg, #42A5F5, #1E88E5) !important; }
 .btn-run { background: #78909C !important; }
 
-/* 6. 修复底部面板整体高度 */
+/* 底部面板高度同步 */
 .battle-panel-v2 {
-  height: 240px !important; /* 稍微加高一点 */
+  height: 210px !important;
   padding-bottom: env(safe-area-inset-bottom) !important;
-  background: #fff !important;
 }
 /* =================================================================
    👇 战斗界面终极修复 (绝对定位版 - 解决按钮错位)
@@ -2566,11 +2490,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 .btn-switch { background: linear-gradient(135deg, #42A5F5, #1E88E5) !important; }
 .btn-run { background: #78909C !important; }
 
-/* 6. 修复底部面板容器 */
+/* 底部面板容器 */
 .battle-panel-v2 {
-  height: auto !important;
-  min-height: 220px !important;
-  background: #fff !important;
+  height: 210px !important;
   padding-bottom: env(safe-area-inset-bottom) !important;
 }
 /* =================================================================
@@ -2711,26 +2633,25 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   z-index: 100 !important;
 }
 
-/* 2. 底部面板：钉在容器底部 */
+/* 底部面板定位 */
 .battle-panel-v2 {
-  position: absolute !important; /* 关键：相对于战斗容器定位 */
+  position: absolute !important;
   bottom: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: 220px !important; /* 固定高度，确保不露底 */
+  height: 210px !important;
   z-index: 200 !important;
   margin: 0 !important;
   border-bottom: none !important;
 }
 
-/* 3. 战斗场景：填满剩余空间 */
+/* 战斗场景高度 */
 .battle-stage-v2 {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: calc(100% - 220px) !important; /* 减去底部面板高度 */
-  background-size: cover !important;
+  height: calc(100% - 210px) !important;
   background-position: center bottom !important;
 }
 
@@ -4607,36 +4528,53 @@ button:active {
   box-shadow: 0 0 16px rgba(255,235,59,0.5);
 }
 
-/* --- 玩家标记 --- */
+/* --- 玩家标记 v3 --- */
 .player-marker {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   z-index: 20;
 }
+.player-marker::before {
+  content: ''; position: absolute;
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 3px solid rgba(66,165,245,0.7);
+  animation: player-ping 2s ease-out infinite;
+  z-index: 0;
+}
+@keyframes player-ping {
+  0%   { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
 .player-pet-img {
-  width: 40px; height: 40px; object-fit: contain;
-  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+  width: 50px; height: 50px; object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
   z-index: 2; position: relative;
   animation: player-bob 2s ease-in-out infinite;
 }
 .player-fallback {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.9); border: 2px solid #fff;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.95); border: 3px solid #42A5F5;
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; z-index: 2; position: relative;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  font-size: 24px; z-index: 2; position: relative;
+  box-shadow: 0 4px 12px rgba(66,165,245,0.4);
 }
 .player-shadow {
-  position: absolute; bottom: 4px;
-  width: 28px; height: 8px; border-radius: 50%;
-  background: rgba(0,0,0,0.2); filter: blur(2px);
+  position: absolute; bottom: 3px;
+  width: 32px; height: 10px; border-radius: 50%;
+  background: rgba(0,0,0,0.25); filter: blur(2px);
   z-index: 1;
+}
+
+/* 玩家所在格高亮 */
+.mt-cell:has(.player-marker) {
+  box-shadow: inset 0 0 0 2px rgba(66,165,245,0.5);
+  background-blend-mode: screen;
 }
 
 /* --- Vignette 暗角 --- */
 .map-vignette {
   position: absolute; inset: 0; pointer-events: none; z-index: 10;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.25) 100%);
   border-radius: 16px;
 }
 
