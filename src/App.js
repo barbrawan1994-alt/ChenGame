@@ -520,7 +520,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
         // 2. 如果当前在“功能未开放”界面，相当于点击返回
         if (view === 'locked') {
             e.preventDefault();
-            setView('world_map');
+            setView(hasSave && party.length > 0 ? 'grid_map' : 'menu');
             return;
         }
       }
@@ -1067,9 +1067,9 @@ const CHARM_RANK_COLORS = {
             alignItems: 'center',
             position: 'sticky', top: 0, zIndex: 10 // 保持在顶部
         }}>
-          <button className="btn-back" onClick={() => setView('world_map')} style={{
+          <button className="btn-back" onClick={() => setView('grid_map')} style={{
               color:'#fff', 
-              background: '#333', // 🟢 给按钮加个深灰背景，更像按钮
+              background: '#333',
               border: '1px solid #555',
               padding: '6px 12px',
               borderRadius: '6px',
@@ -2018,7 +2018,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const handleStartGame = () => {
     if (hasSave) {
-      setView('world_map');
+      setView('grid_map');
     } else {
       setView('name_input'); 
     }
@@ -2438,7 +2438,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 if(confirm("确定要退出吗？进度将丢失，Buff也会重置。")) {
                     // 退出时建议重置队伍状态(可选)，防止Buff带出副本
                     // 这里简单处理直接退出
-                    setInfinityState(null); setView('world_map');
+                    setInfinityState(null); setView('grid_map');
                 }
             }} style={{background:'transparent', border:'1px solid #666', color:'#aaa', padding:'5px 15px', borderRadius:'20px', fontSize:'12px'}}>放弃</button>
         </div>
@@ -2613,7 +2613,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     return (
       <div className="screen" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView('world_map')}>🔙 返回</button>
+          <button className="btn-back" onClick={() => setView('grid_map')}>⬅ 返回地图</button>
           <div className="nav-title">🏡 精灵家园</div>
           <div className="nav-coin">💰 {gold}</div>
         </div>
@@ -4572,10 +4572,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
               setGold(g => g + 5000);
               alert("获得获胜奖励：5000 金币");
           }
-          setView('world_map');
+          setView('grid_map');
           setBattle(null);
       } else {
-          // 强制换人
           if (deadSide === 'player') {
               // 更新 battle 状态中的 activeIdx
               setBattle(prev => ({ 
@@ -6454,7 +6453,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             alert(`🌅 恭喜通关【无限城 100层】！\n获得传说称号、饰品及神宠！`);
             setInfinityState(null);
             setBattle(null);
-            setView('world_map');
+            setView('grid_map');
             return;
         }
         
@@ -6594,7 +6593,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setCaughtDex(prev => [...prev, 341]);
             alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
             setBattle(null);
-            setView('world_map');
+            setView('grid_map');
             return; 
           }
 
@@ -6672,7 +6671,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setInfinityState(null); 
         setAnimEffect(null);
         setBattle(null);
-        setView('world_map'); 
+        setView('grid_map'); 
         return;
     }
 
@@ -8597,7 +8596,7 @@ const renderMenu = () => {
       <div className="screen map-screen">
         {/* 顶部导航 */}
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView('menu')}>🔙 返回</button>
+          <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')}>⬅ {hasSave && party.length > 0 ? '返回地图' : '返回'}</button>
           <div className="nav-title">冒险地图</div>
           <div className="nav-coin">💰 {gold}</div>
         </div>
@@ -10234,8 +10233,10 @@ const renderMenu = () => {
               justifyContent: 'space-between', alignItems: 'center', padding: '0 15px',
               height: '50px' 
           }}>
-            {/* 左侧：退出按钮 */}
-            <button className="btn-back-sm" onClick={handleExitAndSave} style={{width:'80px'}}>⬅ 退出</button>
+            {/* 左侧：当前地图名称 */}
+            <div style={{display:'flex', alignItems:'center', gap:'6px', minWidth:'80px'}}>
+              <span style={{fontSize:'14px', fontWeight:'700', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'120px'}}>{currentMap?.name || '未知区域'}</span>
+            </div>
             
             {/* 中间：环境仪表盘 (只读显示) */}
             {/* 🔥 [修改] 移除了 onClick 事件，改为纯展示 */}
@@ -10411,6 +10412,8 @@ const renderMenu = () => {
               boxShadow: '0 15px 40px rgba(0,0,0,0.25)', zIndex: 100, whiteSpace: 'nowrap'
           }}>
             {[
+              { id: 'worldmap', icon: '🗺️', label: '地图', action: () => { handleExitAndSave(); setMapTab('maps'); } },
+              { id: 'dungeons', icon: '⚔️', label: '副本', action: () => { handleExitAndSave(); setMapTab('dungeons'); } },
               { id: 'team', icon: '🛡️', label: '伙伴', action: () => setTeamMode(true) },
               { id: 'shop', icon: '🛍️', label: '商店', action: () => setShopMode(true) },
               { id: 'fusion', icon: '🧬', label: '融合', action: () => setFusionMode(true) },
@@ -10419,7 +10422,7 @@ const renderMenu = () => {
               { id: 'league', icon: '🏆', label: '联盟' },
               { id: 'pc', icon: '💻', label: '电脑', action: () => setPcMode(true) },
               { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
-              { id: 'achievements', icon: '🏆', label: '成就', action: () => setView('achievements') },
+              { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
                 style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
