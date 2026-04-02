@@ -9982,74 +9982,252 @@ const renderMenu = () => {
         );
     };
 
-    const getVfxClass = (type) => {
-      const map = {
-        NORMAL: 'vfx-normal', FIRE: 'vfx-fire', WATER: 'vfx-water', GRASS: 'vfx-grass',
-        ELECTRIC: 'vfx-electric', ICE: 'vfx-ice', FIGHT: 'vfx-fight', POISON: 'vfx-poison',
-        GROUND: 'vfx-ground', FLYING: 'vfx-flying', PSYCHIC: 'vfx-psychic', BUG: 'vfx-bug',
-        ROCK: 'vfx-rock', GHOST: 'vfx-ghost', DRAGON: 'vfx-dragon', STEEL: 'vfx-steel',
-        FAIRY: 'vfx-fairy', DARK: 'vfx-dark', GOD: 'vfx-god',
-        HEAL: 'vfx-heal', BUFF: 'vfx-heal', DEBUFF: 'vfx-fire',
-        PROTECT: 'vfx-steel', SLEEP: 'vfx-psychic', PARALYSIS: 'vfx-electric',
-        FREEZE: 'vfx-ice', CONFUSION: 'vfx-psychic',
-        THROW_BALL: 'vfx-normal', CATCH_SUCCESS: 'vfx-fairy',
-        LEVEL_UP: 'vfx-god', EVOLUTION: 'vfx-god', DOMAIN: 'vfx-dragon'
-      };
-      return map[type] || 'vfx-normal';
+    const VFX_MAP = {
+      NORMAL:'vfx-normal', FIRE:'vfx-fire', WATER:'vfx-water', GRASS:'vfx-grass',
+      ELECTRIC:'vfx-electric', ICE:'vfx-ice', FIGHT:'vfx-fight', POISON:'vfx-poison',
+      GROUND:'vfx-ground', FLYING:'vfx-flying', PSYCHIC:'vfx-psychic', BUG:'vfx-bug',
+      ROCK:'vfx-rock', GHOST:'vfx-ghost', DRAGON:'vfx-dragon', STEEL:'vfx-steel',
+      FAIRY:'vfx-fairy', DARK:'vfx-dark', GOD:'vfx-god',
+      HEAL:'vfx-heal', BUFF:'vfx-heal', DEBUFF:'vfx-fire',
+      PROTECT:'vfx-steel', SLEEP:'vfx-psychic', PARALYSIS:'vfx-electric',
+      FREEZE:'vfx-ice', CONFUSION:'vfx-psychic',
+      THROW_BALL:'vfx-normal', CATCH_SUCCESS:'vfx-fairy',
+      LEVEL_UP:'vfx-god', EVOLUTION:'vfx-god', DOMAIN:'vfx-dragon'
     };
 
     const renderEnhancedVfx = (type, target) => {
       if (!type) return null;
-      const cls = getVfxClass(type);
-      const sparkCount = 10;
-      const rayCount = 8;
-      const sparks = [];
-      for (let i = 0; i < sparkCount; i++) {
-        const angle = (360 / sparkCount) * i + Math.random() * 20;
-        const dist = 60 + Math.random() * 60;
-        const tx = Math.cos(angle * Math.PI / 180) * dist;
-        const ty = Math.sin(angle * Math.PI / 180) * dist;
-        const sz = 4 + Math.random() * 6;
-        sparks.push(
-          <div key={`s${i}`} className="vfx-spark" style={{
-            '--tx': `${tx}px`, '--ty': `${ty}px`, '--sz': `${sz}px`,
-            '--d': `${i * 0.04}s`
-          }} />
-        );
-      }
-      const rays = [];
-      for (let i = 0; i < rayCount; i++) {
-        rays.push(
-          <div key={`r${i}`} className="vfx-ray" style={{
-            transform: `rotate(${(360 / rayCount) * i}deg)`,
-            animationDelay: `${i * 0.03}s`
-          }} />
-        );
-      }
+      const cls = VFX_MAP[type] || 'vfx-normal';
 
-      const screenFlashColor = {
-        FIRE: 'rgba(255,107,53,0.25)', WATER: 'rgba(79,195,247,0.2)', ELECTRIC: 'rgba(255,214,0,0.3)',
-        ICE: 'rgba(179,229,252,0.25)', DRAGON: 'rgba(255,213,79,0.25)', PSYCHIC: 'rgba(244,143,177,0.2)',
-        GHOST: 'rgba(126,87,194,0.2)', GOD: 'rgba(255,213,79,0.3)', DOMAIN: 'rgba(255,213,79,0.3)',
+      const screenFlash = {
+        FIRE:'rgba(255,107,53,0.25)', WATER:'rgba(79,195,247,0.2)', ELECTRIC:'rgba(255,214,0,0.35)',
+        ICE:'rgba(179,229,252,0.25)', DRAGON:'rgba(255,180,0,0.3)', PSYCHIC:'rgba(244,143,177,0.2)',
+        GHOST:'rgba(126,87,194,0.25)', GOD:'rgba(255,213,79,0.35)', DOMAIN:'rgba(255,213,79,0.3)',
+        FIGHT:'rgba(255,112,67,0.2)', FAIRY:'rgba(248,187,208,0.2)',
       }[type];
+
+      const pos = {
+        top: target === 'enemy' ? '30%' : '50%',
+        left: target === 'enemy' ? '60%' : '40%'
+      };
+
+      const mkSparks = (n, distMin, distMax, szMin, szMax) => {
+        const out = [];
+        for (let i = 0; i < n; i++) {
+          const a = (360/n)*i + Math.random()*25;
+          const d = distMin + Math.random()*(distMax-distMin);
+          out.push(<div key={`s${i}`} className="vfx-spark" style={{
+            '--tx':`${Math.cos(a*Math.PI/180)*d}px`, '--ty':`${Math.sin(a*Math.PI/180)*d}px`,
+            '--sz':`${szMin+Math.random()*(szMax-szMin)}px`, '--d':`${i*0.04}s`
+          }}/>);
+        }
+        return out;
+      };
+      const mkRays = (n) => Array.from({length:n},(_,i)=>(
+        <div key={`r${i}`} className="vfx-ray" style={{transform:`rotate(${(360/n)*i}deg)`, animationDelay:`${i*0.03}s`}}/>
+      ));
+      const mkRings = (n) => Array.from({length:n},(_,i)=>(
+        <div key={`rn${i}`} className="vfx-ring" style={{animationDelay:`${i*0.12}s`}}/>
+      ));
+
+      let inner;
+      switch(type) {
+        case 'FIRE': {
+          const flames = Array.from({length:14},(_,i)=>{
+            const x = -40+Math.random()*80; const sz = 8+Math.random()*16;
+            return <div key={`fl${i}`} className="vfx-flame" style={{'--fx':`${x}px`,'--fsz':`${sz}px`,'--fd':`${i*0.06}s`}}/>;
+          });
+          inner = <>{flames}<div className="vfx-core"/>{mkRings(2)}<div className="vfx-sparks">{mkSparks(12,50,100,4,10)}</div></>;
+          break;
+        }
+        case 'WATER': {
+          const ripples = Array.from({length:5},(_,i)=>(
+            <div key={`wp${i}`} className="vfx-ripple" style={{animationDelay:`${i*0.15}s`}}/>
+          ));
+          const drops = Array.from({length:10},(_,i)=>{
+            const x = -60+Math.random()*120;
+            return <div key={`wd${i}`} className="vfx-waterdrop" style={{'--wx':`${x}px`,'--wd':`${i*0.05}s`}}/>;
+          });
+          inner = <>{ripples}{drops}<div className="vfx-core"/></>;
+          break;
+        }
+        case 'GRASS': {
+          const leaves = Array.from({length:12},(_,i)=>{
+            const a = (360/12)*i; const d = 40+Math.random()*70;
+            return <div key={`lf${i}`} className="vfx-leaf" style={{
+              '--lx':`${Math.cos(a*Math.PI/180)*d}px`,'--ly':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--lr':`${Math.random()*360}deg`,'--ld':`${i*0.06}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{mkRings(2)}{leaves}<div className="vfx-trail"/></>;
+          break;
+        }
+        case 'ELECTRIC': {
+          const bolts = Array.from({length:6},(_,i)=>{
+            const a = (360/6)*i;
+            return <div key={`bl${i}`} className="vfx-bolt" style={{transform:`rotate(${a}deg)`,'--bd':`${i*0.08}s`}}/>;
+          });
+          inner = <>{bolts}<div className="vfx-core"/><div className="vfx-sparks">{mkSparks(16,30,110,3,7)}</div></>;
+          break;
+        }
+        case 'ICE': {
+          const crystals = Array.from({length:8},(_,i)=>{
+            const a = (360/8)*i; const d = 30+Math.random()*50;
+            return <div key={`ic${i}`} className="vfx-crystal" style={{
+              '--cx':`${Math.cos(a*Math.PI/180)*d}px`,'--cy':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--cr':`${a}deg`,'--cd':`${i*0.07}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{crystals}{mkRings(3)}<div className="vfx-frost-overlay"/></>;
+          break;
+        }
+        case 'FIGHT': {
+          const impacts = Array.from({length:3},(_,i)=>(
+            <div key={`im${i}`} className="vfx-impact-burst" style={{animationDelay:`${i*0.15}s`,'--isc':`${1+i*0.5}`}}/>
+          ));
+          inner = <><div className="vfx-core"/>{impacts}<div className="vfx-sparks">{mkSparks(14,40,90,6,12)}</div><div className="vfx-rays">{mkRays(12)}</div></>;
+          break;
+        }
+        case 'DRAGON': {
+          const spirals = Array.from({length:10},(_,i)=>{
+            const a = (360/10)*i;
+            return <div key={`ds${i}`} className="vfx-spiral" style={{
+              '--sa':`${a}deg`,'--sd':`${i*0.05}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{mkRings(3)}<div className="vfx-rays">{mkRays(10)}</div>{spirals}<div className="vfx-sparks">{mkSparks(14,50,120,5,10)}</div></>;
+          break;
+        }
+        case 'GHOST': {
+          const wisps = Array.from({length:6},(_,i)=>{
+            const a = (360/6)*i; const d = 40+Math.random()*40;
+            return <div key={`wi${i}`} className="vfx-wisp" style={{
+              '--wx':`${Math.cos(a*Math.PI/180)*d}px`,'--wy':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--wd':`${i*0.12}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{wisps}<div className="vfx-shadow-pulse"/></>;
+          break;
+        }
+        case 'PSYCHIC': {
+          const orbits = Array.from({length:6},(_,i)=>(
+            <div key={`po${i}`} className="vfx-psy-orbit" style={{'--pa':`${(360/6)*i}deg`,'--pd':`${i*0.1}s`}}/>
+          ));
+          inner = <><div className="vfx-core"/>{mkRings(3)}{orbits}<div className="vfx-psy-wave"/></>;
+          break;
+        }
+        case 'POISON': {
+          const bubbles = Array.from({length:10},(_,i)=>{
+            const x = -50+Math.random()*100; const sz = 6+Math.random()*14;
+            return <div key={`pb${i}`} className="vfx-poison-bubble" style={{
+              '--bx':`${x}px`,'--bsz':`${sz}px`,'--bd':`${i*0.08}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{bubbles}<div className="vfx-toxic-mist"/></>;
+          break;
+        }
+        case 'FAIRY': {
+          const stars = Array.from({length:12},(_,i)=>{
+            const a = (360/12)*i; const d = 30+Math.random()*70;
+            return <div key={`fs${i}`} className="vfx-fairy-star" style={{
+              '--fx':`${Math.cos(a*Math.PI/180)*d}px`,'--fy':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--fr':`${Math.random()*360}deg`,'--fd':`${i*0.06}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{mkRings(2)}{stars}</>;
+          break;
+        }
+        case 'HEAL': case 'BUFF': {
+          const hearts = Array.from({length:8},(_,i)=>{
+            const x = -40+Math.random()*80;
+            return <div key={`hh${i}`} className="vfx-heal-particle" style={{
+              '--hx':`${x}px`,'--hd':`${i*0.1}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{hearts}{mkRings(2)}<div className="vfx-heal-aura"/></>;
+          break;
+        }
+        case 'GROUND': {
+          const debris = Array.from({length:10},(_,i)=>{
+            const x = -60+Math.random()*120; const sz = 6+Math.random()*12;
+            return <div key={`gd${i}`} className="vfx-debris" style={{'--dx':`${x}px`,'--dsz':`${sz}px`,'--dd':`${i*0.05}s`}}/>;
+          });
+          inner = <><div className="vfx-core"/><div className="vfx-quake-line"/>{debris}{mkRings(2)}</>;
+          break;
+        }
+        case 'ROCK': {
+          const rocks = Array.from({length:8},(_,i)=>{
+            const a = (360/8)*i; const d = 30+Math.random()*50; const sz = 8+Math.random()*14;
+            return <div key={`rk${i}`} className="vfx-rock-shard" style={{
+              '--rx':`${Math.cos(a*Math.PI/180)*d}px`,'--ry':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--rsz':`${sz}px`,'--rd':`${i*0.05}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{rocks}<div className="vfx-sparks">{mkSparks(8,40,80,6,10)}</div></>;
+          break;
+        }
+        case 'FLYING': {
+          const gusts = Array.from({length:5},(_,i)=>(
+            <div key={`gw${i}`} className="vfx-gust" style={{animationDelay:`${i*0.12}s`,'--gy':`${-20+i*10}px`}}/>
+          ));
+          inner = <><div className="vfx-core"/>{gusts}<div className="vfx-sparks">{mkSparks(8,40,90,3,6)}</div></>;
+          break;
+        }
+        case 'STEEL': {
+          const shards = Array.from({length:8},(_,i)=>{
+            const a = (360/8)*i; const d = 40+Math.random()*50;
+            return <div key={`ss${i}`} className="vfx-steel-shard" style={{
+              '--sx':`${Math.cos(a*Math.PI/180)*d}px`,'--sy':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--sr':`${a}deg`,'--sd':`${i*0.06}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{mkRings(3)}{shards}</>;
+          break;
+        }
+        case 'DARK': {
+          const shadows = Array.from({length:8},(_,i)=>{
+            const a = (360/8)*i; const d = 30+Math.random()*50;
+            return <div key={`dk${i}`} className="vfx-dark-tendril" style={{
+              '--dtx':`${Math.cos(a*Math.PI/180)*d}px`,'--dty':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--dtd':`${i*0.08}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/><div className="vfx-dark-vortex"/>{shadows}</>;
+          break;
+        }
+        case 'BUG': {
+          const bugs = Array.from({length:10},(_,i)=>{
+            const a = (360/10)*i; const d = 35+Math.random()*55;
+            return <div key={`bg${i}`} className="vfx-bug-mote" style={{
+              '--bx':`${Math.cos(a*Math.PI/180)*d}px`,'--by':`${Math.sin(a*Math.PI/180)*d}px`,
+              '--bd':`${i*0.06}s`
+            }}/>;
+          });
+          inner = <><div className="vfx-core"/>{bugs}{mkRings(2)}</>;
+          break;
+        }
+        case 'GOD': case 'EVOLUTION': case 'LEVEL_UP': case 'DOMAIN': {
+          const godRays = Array.from({length:16},(_,i)=>(
+            <div key={`gr${i}`} className="vfx-ray" style={{transform:`rotate(${(360/16)*i}deg)`,animationDelay:`${i*0.02}s`}}/>
+          ));
+          inner = <><div className="vfx-core"/>{mkRings(4)}<div className="vfx-rays">{godRays}</div><div className="vfx-sparks">{mkSparks(18,40,130,4,10)}</div></>;
+          break;
+        }
+        default: {
+          inner = <><div className="vfx-core"/>{mkRings(3)}<div className="vfx-rays">{mkRays(8)}</div><div className="vfx-sparks">{mkSparks(10,50,100,4,8)}</div><div className="vfx-trail"/></>;
+          break;
+        }
+      }
 
       return (
         <>
-          {screenFlashColor && <div className="vfx-screen-flash" style={{background: screenFlashColor}} />}
+          {screenFlash && <div className="vfx-screen-flash" style={{background: screenFlash}} />}
           <div className={`vfx-impact-container ${cls}`} style={{
-            position: 'absolute',
-            top: target === 'enemy' ? '30%' : '50%',
-            left: target === 'enemy' ? '60%' : '40%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 100, pointerEvents: 'none'
+            position:'absolute', ...pos,
+            transform:'translate(-50%,-50%)',
+            zIndex:100, pointerEvents:'none'
           }}>
-            <div className="vfx-core" />
-            <div className="vfx-ring" />
-            <div className="vfx-ring" />
-            <div className="vfx-ring" />
-            <div className="vfx-rays">{rays}</div>
-            <div className="vfx-sparks">{sparks}</div>
-            <div className="vfx-trail" />
+            {inner}
           </div>
         </>
       );
