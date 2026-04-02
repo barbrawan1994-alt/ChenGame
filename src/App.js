@@ -11817,7 +11817,7 @@ const renderMenu = () => {
         </div>
 
         {/* 底部操作栏 */}
-        <div className="battle-panel-v2" style={{height: '210px'}}>
+        <div className="battle-panel-v2">
             {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'input_p2') ? (
               <div className="controls-area-v2">
                     {battle.isPvP && (
@@ -11827,16 +11827,7 @@ const renderMenu = () => {
                     )}
                     <div className="battle-row-layout">
                         {/* 技能按钮区 (使用增强组件) */}
-                        <div className="moves-grid-v2" style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)', 
-                            gridTemplateRows: 'repeat(2, 1fr)',    
-                            gap: '8px',
-                            width: '100%',
-                            height: '100%',
-                            minHeight: '140px',
-                            overflow: 'visible'
-                        }}>
+                        <div className="moves-grid-v2">
                             {(() => {
                                 const isP2Turn = battle.phase === 'input_p2';
                                 const activeMoves = isP2Turn ? (e?.combatMoves || []) : (p?.combatMoves || []);
@@ -11889,8 +11880,8 @@ const renderMenu = () => {
                 </div>
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
-                    <span style={{color:'#666', fontWeight:'bold', fontSize:'18px'}}>{battle.phase === 'busy' ? '回合结算中...' : '等待行动...'}</span>
-                    <button style={{padding:'6px 16px', background:'#FF5252', color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'12px'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); }}>操作无响应？点击恢复</button>
+                    <span style={{color:'rgba(255,255,255,0.5)', fontWeight:'bold', fontSize:'16px', letterSpacing:'1px'}}>{battle.phase === 'busy' ? '回合结算中...' : '等待行动...'}</span>
+                    <button style={{padding:'5px 14px', background:'rgba(255,82,82,0.8)', color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'11px'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); }}>操作无响应？点击恢复</button>
                 </div>
             )}
         </div> 
