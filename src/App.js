@@ -122,6 +122,7 @@ export default function RPG(props) {
   const [fruitDexRarFilter, setFruitDexRarFilter] = useState('ALL');
   const [fruitDexSelected, setFruitDexSelected] = useState(null);
   const [vowModal, setVowModal] = useState(false);
+  const sectBadgeRef = React.useRef(null);
 
   // 游戏进度
   const [mapProgress, setMapProgress] = useState(savedData.mapProgress || {});
@@ -10687,7 +10688,6 @@ const renderMenu = () => {
     };
 
     // 🔥 门派徽章渲染函数 (胶囊样式)
-    const sectBadgeRef = React.useRef(null);
     const renderSectBadge = (pet, side) => {
         const s = SECT_DB[pet.sectId || 1];
         const lv = pet.sectLevel || 1; 
