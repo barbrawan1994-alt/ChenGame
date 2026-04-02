@@ -28,6 +28,7 @@ import {
 import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
+import { generateSprite } from './SpriteGenerator';
 import {
   SECT_DB,
   SECT_CHIEFS_CONFIG,
@@ -333,112 +334,36 @@ const [pendingTask, setPendingTask] = useState(null);
   // [优化] 2. 核心头像渲染函数 (支持 CSS 类控制大小)
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
   
-  // 🔥 [新增] 智能精灵视觉生成系统
   const generatePetVisual = (pet) => {
     if (!pet) return null;
     const imgUrl = imageMap[pet.id];
-    
-    // 如果有图片，优先使用图片
     if (imgUrl) {
-      return {
-        type: 'image',
-        url: imgUrl,
-        emoji: pet.emoji
-      };
+      return { type: 'image', url: imgUrl, emoji: pet.emoji };
     }
     
-    // 根据精灵名字和类型生成增强的视觉表现
-    const name = pet.name || '';
-    const type = pet.type || 'NORMAL';
-    const baseInfo = POKEDEX.find(p => p.id === pet.id) || {};
-    
-    // 类型颜色映射
-    const typeColors = {
-      FIRE: '#FF6B6B', WATER: '#4ECDC4', GRASS: '#95E1D3', 
-      ELECTRIC: '#FFE66D', ICE: '#A8E6CF', FIGHT: '#FF8B94',
-      POISON: '#C7CEEA', GROUND: '#D4A574', FLYING: '#B8E6B8',
-      PSYCHIC: '#FFB6C1', BUG: '#C8E6C9', ROCK: '#D3D3D3',
-      GHOST: '#E0BBE4', DRAGON: '#FFD93D', STEEL: '#B8B8B8',
-      FAIRY: '#FFB6D9', GOD: '#FFD700', NORMAL: '#F5F5F5'
-    };
-    
-    // 根据名字关键词生成特殊效果
-    let visualStyle = {
-      emoji: pet.emoji,
-      color: typeColors[type] || '#F5F5F5',
-      effects: [],
-      glow: false,
-      particles: []
-    };
-    
-    // 名字关键词匹配
-    if (name.includes('火') || name.includes('炎') || name.includes('熔') || name.includes('焰')) {
-      visualStyle.effects.push('fire');
-      visualStyle.glow = true;
-      visualStyle.particles.push('🔥');
-    }
-    if (name.includes('水') || name.includes('海') || name.includes('波') || name.includes('流')) {
-      visualStyle.effects.push('water');
-      visualStyle.particles.push('💧');
-    }
-    if (name.includes('草') || name.includes('叶') || name.includes('森') || name.includes('花')) {
-      visualStyle.effects.push('grass');
-      visualStyle.particles.push('🍃');
-    }
-    if (name.includes('电') || name.includes('雷') || name.includes('闪')) {
-      visualStyle.effects.push('electric');
-      visualStyle.glow = true;
-      visualStyle.particles.push('⚡');
-    }
-    if (name.includes('冰') || name.includes('雪') || name.includes('寒')) {
-      visualStyle.effects.push('ice');
-      visualStyle.particles.push('❄️');
-    }
-    if (name.includes('龙') || name.includes('神') || name.includes('王') || name.includes('主')) {
-      visualStyle.effects.push('dragon');
-      visualStyle.glow = true;
-      visualStyle.particles.push('✨');
-    }
-    if (name.includes('鬼') || name.includes('幽') || name.includes('暗')) {
-      visualStyle.effects.push('ghost');
-      visualStyle.particles.push('👻');
-    }
-    if (name.includes('钢') || name.includes('铁') || name.includes('机')) {
-      visualStyle.effects.push('steel');
-    }
-    if (name.includes('妖精') || name.includes('仙')) {
-      visualStyle.effects.push('fairy');
-      visualStyle.particles.push('✨');
+    const spriteUrl = generateSprite(pet, POKEDEX);
+    if (spriteUrl) {
+      return { type: 'pixel', url: spriteUrl };
     }
     
-    return {
-      type: 'enhanced',
-      visual: visualStyle
-    };
+    return { type: 'emoji', emoji: pet.emoji || '🐾' };
   };
   
   const renderAvatar = (pet, isEnemy = false) => {
     if (!pet) return null;
     const visual = generatePetVisual(pet);
     
-    // 如果有图片，渲染图片
-    if (visual.type === 'image') {
+    if (visual.type === 'image' || visual.type === 'pixel') {
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
           <img 
             src={visual.url} 
             alt={pet.name} 
-            className="pet-avatar-img" 
-            style={{ objectFit: 'contain' }} 
+            className={visual.type === 'pixel' ? 'pet-avatar-pixel' : 'pet-avatar-img'}
           />
-          {/* 添加闪光效果 */}
           {pet.isShiny && (
             <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
               background: 'linear-gradient(45deg, rgba(255,215,0,0.3), rgba(255,255,255,0.3))',
               animation: 'shiny-flash 2s infinite',
               pointerEvents: 'none'
@@ -448,34 +373,7 @@ const [pendingTask, setPendingTask] = useState(null);
       );
     }
     
-    if (visual.type === 'enhanced') {
-      const v = visual.visual;
-      return (
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <span 
-            className="pet-avatar-emoji"
-            style={{
-              filter: v.glow ? `drop-shadow(0 0 10px ${v.color}) drop-shadow(0 0 20px ${v.color}66)` : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-              animation: v.effects.includes('fire') ? 'fire-glow 1.5s infinite' :
-                         v.effects.includes('electric') ? 'electric-pulse 1s infinite' :
-                         v.effects.includes('dragon') ? 'dragon-aura 2s infinite' : 'float 3s ease-in-out infinite'
-            }}
-          >
-            {v.emoji}
-          </span>
-        </div>
-      );
-    }
-    
-    // 最终回退
-    return <span className="pet-avatar-emoji">{pet.emoji}</span>;
+    return <span className="pet-avatar-emoji">{visual.emoji || pet.emoji || '🐾'}</span>;
   };
   // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     // 缓存技能列表 (避免重复计算)
@@ -4393,43 +4291,46 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return; 
     }
 
-    if (currentPet.trait === 'regenerator' && !isForcedSwitch) {
-        const max = getStats(currentPet).maxHp;
-        const heal = Math.floor(max / 3);
-        currentPet.currentHp = Math.min(max, currentPet.currentHp + heal);
-        addLog(`${currentPet.name} 的 [再生力] 恢复了体力！`);
-    }
+    try {
+        if (currentPet.trait === 'regenerator' && !isForcedSwitch) {
+            const max = getStats(currentPet).maxHp;
+            const heal = Math.floor(max / 3);
+            currentPet.currentHp = Math.min(max, currentPet.currentHp + heal);
+            addLog(`${currentPet.name} 的 [再生力] 恢复了体力！`);
+        }
 
-    const newPet = combatStates[newIdx];
+        const newPet = combatStates[newIdx];
 
-    const nextBattleState = {
-        ...battle,
-        activeIdx: newIdx,
-        showSwitch: false,
-        phase: 'anim',
-        logs: [`去吧 ${newPet.name}!`, ...battle.logs]
-    };
+        const nextBattleState = {
+            ...battle,
+            activeIdx: newIdx,
+            showSwitch: false,
+            phase: 'anim',
+            logs: [`去吧 ${newPet.name}!`, ...battle.logs]
+        };
 
-    setBattle(nextBattleState);
+        setBattle(nextBattleState);
 
-    await wait(500); 
-    await triggerShinyAnim('player', newPet);
+        await wait(500); 
+        await triggerShinyAnim('player', newPet);
 
-    // ▼▼▼ [新增] 触发新上场精灵的特性 (威吓) ▼▼▼
-    const me = nextBattleState.playerCombatStates[newIdx];
-    const opp = nextBattleState.enemyParty[nextBattleState.enemyActiveIdx];
-    if (me.trait === 'intimidate' && opp.currentHp > 0) {
-        opp.stages.p_atk = Math.max(-6, (opp.stages.p_atk||0) - 1);
-        addLog(`${me.name} 的 [威吓] 降低了对手的攻击！`);
-        setAnimEffect({ type: 'DEBUFF', target: 'enemy' });
-        await wait(800); setAnimEffect(null);
-    }
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        const me = nextBattleState.playerCombatStates[newIdx];
+        const opp = nextBattleState.enemyParty[nextBattleState.enemyActiveIdx];
+        if (me.trait === 'intimidate' && opp.currentHp > 0) {
+            opp.stages.p_atk = Math.max(-6, (opp.stages.p_atk||0) - 1);
+            addLog(`${me.name} 的 [威吓] 降低了对手的攻击！`);
+            setAnimEffect({ type: 'DEBUFF', target: 'enemy' });
+            await wait(800); setAnimEffect(null);
+        }
 
-    if (isForcedSwitch) {
-        setBattle(prev => ({ ...prev, phase: 'input' }));
-    } else {
-        await enemyTurn(nextBattleState);
+        if (isForcedSwitch) {
+            setBattle(prev => ({ ...prev, phase: 'input' }));
+        } else {
+            await enemyTurn(nextBattleState);
+        }
+    } catch (e) {
+        console.error("Switch Error:", e);
+        setBattle(prev => prev ? ({ ...prev, phase: 'input', showSwitch: false }) : null);
     }
   };
 
@@ -4485,12 +4386,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setParty(newParty); 
              addLog(logMsg);
             
-            // 🔥🔥🔥 [核心修复] 立即同步战斗状态，并重新生成 combatMoves 🔥🔥🔥
             setBattle(prev => {
                 const updatedCombatStates = prev.playerCombatStates.map((cs, i) => {
                     const updatedPet = newParty[i];
+                    if (!updatedPet) return cs;
                     
-                    // 1. 重新获取装备带来的技能
                     const equipMoves = (updatedPet.equips || []).map(equip => {
                         if (equip && typeof equip === 'object' && equip.extraSkill) {
                             return { ...equip.extraSkill, isExtra: true };
@@ -4498,8 +4398,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
                         return null;
                     }).filter(Boolean);
 
-                    // 2. 重新组合战斗技能列表 (新学会的技能在 updatedPet.moves 里)
-                    const newCombatMoves = [...updatedPet.moves, ...equipMoves];
+                    const cursedMoves = (cs.combatMoves || []).filter(m => m.isCursed);
+                    const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves];
 
                     return {
                         ...cs,
@@ -4507,9 +4407,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
                         currentHp: updatedPet.currentHp, 
                         exp: updatedPet.exp,
                         nextExp: updatedPet.nextExp,
-                        moves: updatedPet.moves, // 更新基础技能数据
-                        combatMoves: newCombatMoves, // <--- 关键：更新UI渲染用的技能列表
-                        ...updatedPet 
+                        name: updatedPet.name,
+                        moves: updatedPet.moves,
+                        combatMoves: newCombatMoves,
+                        canEvolve: updatedPet.canEvolve,
+                        pendingLearnMove: updatedPet.pendingLearnMove,
                     };
                 });
                 return {
@@ -4517,19 +4419,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
                     playerCombatStates: updatedCombatStates
                 };
             });
-            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             if (activeDidLevelUp) {
                 setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
                 await wait(1200); setAnimEffect(null);
             }
 
-            const nextEnemyIdx = battle.enemyParty.findIndex((p, i) => i > battle.enemyActiveIdx && p.currentHp > 0);
+            const nextEnemyIdx = tempBattle.enemyParty.findIndex((p, i) => i > tempBattle.enemyActiveIdx && p.currentHp > 0);
             if (nextEnemyIdx !== -1) {
                 setBattle(prev => ({
                     ...prev, enemyActiveIdx: nextEnemyIdx, phase: 'anim', 
                     logs: [`对手派出了 ${prev.enemyParty[nextEnemyIdx].name}!`, ...prev.logs]
                 }));
-                await triggerShinyAnim('enemy', battle.enemyParty[nextEnemyIdx]);
+                await triggerShinyAnim('enemy', tempBattle.enemyParty[nextEnemyIdx]);
                 await wait(1000);
                 setBattle(prev => ({ ...prev, phase: 'input' })); 
             } else {
@@ -4661,6 +4562,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [修改] 敌人回合 (含被动特性与天气结算)
   // ==========================================
   const enemyTurn = async (currentBattleState = null) => {
+   try {
     await wait(500);
 
     const state = currentBattleState || battle;
@@ -4746,8 +4648,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await processPassive(player, 'player');
     await processPassive(enemy, 'enemy');
 
-    // ▼▼▼ [新增] 天气回合伤害 (沙暴/冰雹) ▼▼▼
-    const applyWeatherDmg = (unit) => {
+    // 天气回合伤害 (沙暴/冰雹)
+    const applyWeatherDmg = (unit, isPlayer) => {
         if (unit.currentHp <= 0) return;
         let weatherDmg = 0;
         const maxHp = getStats(unit).maxHp;
@@ -4763,12 +4665,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (weatherDmg > 0) {
             unit.currentHp = Math.max(0, unit.currentHp - weatherDmg);
-            if (unit.currentHp <= 0) playerDied = true; // 如果是玩家死了
+            if (unit.currentHp <= 0 && isPlayer) playerDied = true;
         }
     };
 
-    applyWeatherDmg(player);
-    applyWeatherDmg(enemy);
+    applyWeatherDmg(player, true);
+    applyWeatherDmg(enemy, false);
 
     const playerExpLogs = checkEffectExpiration(player, player);
     const enemyExpLogs = checkEffectExpiration(enemy, enemy);
@@ -4835,6 +4737,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           phase: 'input' 
       }));
     }
+   } catch (e) {
+      console.error("Enemy Turn Error:", e);
+      setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
+   }
   };
 
 
@@ -4845,21 +4751,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const getTypeMod = (moveType, targetType) => {
     // 简化的克制逻辑表 (你可以根据需要完善)
     const chart = {
+      NORMAL:  { weak: ['ROCK', 'STEEL'], strong: [] },
       FIRE:    { weak: ['WATER', 'ROCK', 'GROUND'], strong: ['GRASS', 'ICE', 'BUG', 'STEEL'] },
       WATER:   { weak: ['GRASS', 'ELECTRIC'], strong: ['FIRE', 'GROUND', 'ROCK'] },
       GRASS:   { weak: ['FIRE', 'ICE', 'POISON', 'FLYING', 'BUG'], strong: ['WATER', 'GROUND', 'ROCK'] },
       ELECTRIC:{ weak: ['GROUND'], strong: ['WATER', 'FLYING'] },
       ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON'] },
-      FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'STEEL'] },
+      FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'STEEL', 'DARK'] },
+      POISON:  { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'] },
       GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL'] },
       FLYING:  { weak: ['ELECTRIC', 'ICE', 'ROCK'], strong: ['GRASS', 'FIGHT', 'BUG'] },
-      PSYCHIC: { weak: ['BUG', 'GHOST'], strong: ['FIGHT', 'POISON'] },
+      PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK'], strong: ['FIGHT', 'POISON'] },
+      BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG'] },
-      GHOST:   { weak: ['GHOST'], strong: ['PSYCHIC', 'GHOST'] },
+      GHOST:   { weak: ['GHOST', 'DARK'], strong: ['PSYCHIC', 'GHOST'] },
       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY'], strong: ['DRAGON'] },
+      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST'] },
       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY'] },
-      FAIRY:   { weak: ['POISON', 'STEEL'], strong: ['FIGHT', 'DRAGON'] },
-      // ... 其他属性默认 1.0
+      FAIRY:   { weak: ['POISON', 'STEEL'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
     };
 
     const info = chart[moveType];
@@ -5270,8 +5179,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
-    // 4. 回合结束结算 (灼伤/中毒)
-    if (!isDead && source === 'enemy') { 
+    // 4. 回合结束结算 (灼伤/中毒) — 每次行动后对行动方结算
+    if (!isDead) {
         const applyDot = (unit, state) => {
             if (unit.currentHp <= 0) return false;
             if (state.status === 'BRN' || state.status === 'PSN') {
@@ -5283,13 +5192,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return false;
         };
         
-        const playerInBattle = battleState.playerCombatStates[battleState.activeIdx];
-        const enemyInBattle = battleState.enemyParty[battleState.enemyActiveIdx];
+        const atkDiedFromDot = applyDot(atkState, atkState);
+        const defDiedFromDot = applyDot(defState, defState);
 
-        const playerDiedFromDot = applyDot(playerInBattle, playerInBattle);
-        const enemyDiedFromDot = applyDot(enemyInBattle, enemyInBattle);
-
-        if (playerDiedFromDot) isDead = true; 
+        if (source === 'player' && defDiedFromDot) isDead = true;
+        if (source === 'enemy' && atkDiedFromDot) isDead = true;
+        if (source === 'enemy' && defDiedFromDot) isDead = true;
     }
 
     return isDead;
@@ -5300,8 +5208,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const processDefeatedEnemy = (deadEnemy, currentParty, finalBattleState) => { 
   
-    // 基础经验系数
-    const baseExp = Math.floor(deadEnemy.level * 30 * (battle.isTrainer ? 1.5 : 1));
+    const bState = finalBattleState || battle;
+    const baseExp = Math.floor(deadEnemy.level * 30 * (bState.isTrainer ? 1.5 : 1));
     
     let levelUpLog = '';
     let hasPendingSkill = false;
@@ -5309,12 +5217,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const newParty = currentParty.map((p, index) => {
       let pet = { ...p };
-      
-     const sourceState = finalBattleState || battle; 
     
-    if (sourceState && sourceState.playerCombatStates && sourceState.playerCombatStates[index]) {
-        const combatState = sourceState.playerCombatStates[index];
+    if (bState && bState.playerCombatStates && bState.playerCombatStates[index]) {
+        const combatState = bState.playerCombatStates[index];
         pet.currentHp = combatState.currentHp;
+        pet.status = combatState.status || null;
         pet.moves = pet.moves.map(m => {
             const combatMove = combatState.combatMoves.find(cm => cm.name === m.name && !cm.isExtra);
             if (combatMove) {
@@ -5324,7 +5231,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         });
     }
 
-      const isActive = index === battle.activeIdx;
+      const isActive = index === bState.activeIdx;
       const shareRatio = isActive ? 1.0 : 0.5; 
       const expGain = Math.floor(baseExp * shareRatio);
       
@@ -5506,10 +5413,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
 
       const handleWin = (finalParty) => {
+       try {
          if (audioRef.current) {
         audioRef.current.src = BGM_SOURCES.VICTORY;
-        audioRef.current.play();
-        // 胜利音乐通常不循环，或者你可以手动设置 loop={false}
+        audioRef.current.play().catch(() => {});
         audioRef.current.loop = false; 
     }
     
@@ -5533,22 +5440,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
               addLog(`🦋 ${contestPet.name} 已发送到电脑盒子。`);
           }
 
-          // 2. 🔥 [核心修改] 基因评分公式 🔥
-          // 获取基础种族值 (固定值，不受等级影响)
-          const baseInfo = POKEDEX.find(p => p.id === newPet.id) || {};
-          // 计算种族值总和 (衡量品种稀有度)
-          const baseTotal = (baseInfo.hp||0) + (baseInfo.atk||0) + (baseInfo.def||0) + (baseInfo.spd||0); // 简单累加
-          
-          // 获取个体值总和 (衡量先天资质, Max ~186)
-          const ivSum = Object.values(newPet.ivs).reduce((a, b) => a + b, 0);
-
-          // 🧮 最终公式：(个体值 x 1.5) + (种族值 x 0.8) + (闪光加分 300)
-          // 绿毛虫(弱): 种族约180 -> 分数约 144 + 个体值(0~270) = 150~400分
-          // 圣甲虫(强): 种族约400 -> 分数约 320 + 个体值(0~270) = 350~600分
+          // 2. 基因评分公式
+          const baseInfo = POKEDEX.find(p => p.id === contestPet.id) || {};
+          const baseTotal = (baseInfo.hp||0) + (baseInfo.atk||0) + (baseInfo.def||0) + (baseInfo.spd||0);
+          const ivSum = contestPet.ivs ? Object.values(contestPet.ivs).reduce((a, b) => a + b, 0) : 0;
           let score = Math.floor((ivSum * 1.5) + (baseTotal * 0.8));
           
-          if (newPet.isShiny) {
-              score += 300; // 闪光大幅加分
+          if (contestPet.isShiny) {
+              score += 300;
           }
           
           grantContestReward(CONTEST_CONFIG.bug, score, contestPet);
@@ -5670,7 +5569,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             alert(`🥋 切磋结束！\n你再次证明了自己作为【${chiefInfo.title}】的实力！`);
         }
         
-        setParty(updatedParty); // 🔥 使用更新了亲密度的队伍
+        setParty(updatedParty);
+        setBattle(null);
         setView('sect_summit'); 
         return; 
     }
@@ -5729,6 +5629,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
             alert(`🌅 恭喜通关【无限城 100层】！\n获得传说称号、饰品及神宠！`);
             setInfinityState(null);
+            setBattle(null);
             setView('world_map');
             return;
         }
@@ -5740,6 +5641,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         } else {
             nextInfinityFloor();
         }
+        setBattle(null);
         setView('infinity_castle'); 
         return; 
     }
@@ -5751,6 +5653,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
            if (leagueWins + 1 >= 5) unlockTitle('传奇霸主');
            setLeagueRound(prev => prev + 1);
            alert(`🎉 胜利！\n恭喜晋级下一轮！`);
+           setBattle(null);
            setView('league'); 
            return; 
         } else {
@@ -5773,6 +5676,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
 
             alert(`🏆 联盟冠军！\n\n获得奖励：\n1. 🍬 神奇糖果 x1\n2. 🎁 Lv.5 ${rewardPet.name}\n3. 🏆 联盟冠军奖杯数 +1`);
+            setBattle(null);
             setView('league'); 
             return;
         }
@@ -5865,6 +5769,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             setCaughtDex(prev => [...prev, 341]);
             alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
+            setBattle(null);
             setView('world_map');
             return; 
           }
@@ -5902,6 +5807,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
          setTimeout(() => setView('grid_map'), 2000);
       }
     }
+       } catch (e) {
+         console.error("HandleWin Error:", e);
+         setBattle(null);
+         setView('grid_map');
+       }
   };
 
     const handleDefeat = async () => {
@@ -6029,6 +5939,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setShowBallMenu(false);
     if (battle.isTrainer || battle.isGym || battle.isChallenge) return addLog("训练家的精灵不能捕捉！");
     if (inventory.balls[ballType] <= 0) return addLog("球不足！");
+    try {
     
     // 1. 扣球并播放投掷动画
     setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: prev.balls[ballType] - 1 } }));
@@ -6088,9 +5999,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           let score = baseStats.maxHp + baseStats.p_atk + baseStats.spd;
           if (newPet.isShiny) score += 200;
           
-          // 触发结算弹窗
           grantContestReward(CONTEST_CONFIG.bug, score, newPet);
-          return; // 结束函数
+          setBattle(null);
+          return;
       }
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
@@ -6104,6 +6015,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       
       await wait(1000);
+      setBattle(null);
       setView('grid_map');
 
     } else {
@@ -6112,6 +6024,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       await wait(500);
       setBattle(prev => ({...prev, phase: 'input'}));
       await enemyTurn();
+    }
+    } catch (e) {
+      console.error("Catch Error:", e);
+      setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
     }
   };
 
@@ -9842,7 +9758,7 @@ const renderMenu = () => {
                                      onMouseOver={e => { if(!isActive && !isFainted) e.currentTarget.style.background = '#fff'; }}
                                      onMouseOut={e => { if(!isActive && !isFainted) e.currentTarget.style.background = '#f5f7fa'; }}
                                 >
-                                    <div style={{fontSize: '32px', marginRight: '10px', filter: isFainted ? 'grayscale(1)' : 'none'}}>{pet.emoji}</div>
+                                    <div style={{width: '48px', height: '48px', marginRight: '10px', filter: isFainted ? 'grayscale(1)' : 'none'}}>{renderAvatar(pet)}</div>
                                     <div style={{flex: 1}}>
                                         <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color: '#333'}}><span>{pet.name}</span><span style={{fontSize: '11px', color: '#666'}}>Lv.{pet.level}</span></div>
                                         <div style={{height: '6px', background: '#ddd', borderRadius: '3px', marginTop: '6px', overflow: 'hidden'}}><div style={{width: `${(pet.currentHp/maxHp)*100}%`, background: getHpColor(pet.currentHp, maxHp), height: '100%', transition: 'width 0.3s'}}></div></div>
@@ -10259,7 +10175,7 @@ const renderMenu = () => {
                                                 executeTurn(i);
                                             }
                                         }}
-                                        disabled={m.pp <= 0}
+                                        disabled={m.isCursed ? ((p.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
                                         index={i}
                                     />
                                 ));
@@ -10284,7 +10200,10 @@ const renderMenu = () => {
                     </div>
                 </div>
             ) : (
-                <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'#666', fontWeight:'bold', fontSize:'18px'}}>{battle.phase === 'busy' ? '回合结算中...' : '等待行动...'}</div>
+                <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
+                    <span style={{color:'#666', fontWeight:'bold', fontSize:'18px'}}>{battle.phase === 'busy' ? '回合结算中...' : '等待行动...'}</span>
+                    <button style={{padding:'6px 16px', background:'#FF5252', color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'12px'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); }}>操作无响应？点击恢复</button>
+                </div>
             )}
         </div> 
         

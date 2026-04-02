@@ -898,6 +898,11 @@ button:active { transform: scale(0.96); }
 
 /* 宠物图片通用 */
 .pet-avatar-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pet-avatar-pixel { 
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+}
 .pet-avatar-emoji { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; line-height: 1; font-size: 80%; }
 
 /* 闪光特效 */
@@ -1622,6 +1627,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   width: 100%; height: 100%; object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
+.pet-avatar-pixel {
+  width: 100%; height: 100%; object-fit: contain;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.3));
+  transition: transform 0.2s ease;
+}
+.pet-avatar-pixel:hover { transform: scale(1.05); }
 .pet-avatar-emoji {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
