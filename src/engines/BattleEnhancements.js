@@ -47,28 +47,26 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
 
   const color = typeColors[move.t] || '#90A4AE';
   const ppRatio = move.maxPp > 0 ? move.pp / move.maxPp : 0;
-  const ppBarColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
-  const isFruit = move.name && (move.isFruitMove || false);
+  const ppBarColor = ppRatio > 0.5 ? '#66BB6A' : ppRatio > 0.2 ? '#FFA726' : '#EF5350';
 
   return (
     <button
       style={{
         background: isHovered && !disabled
-          ? `linear-gradient(145deg, ${color}18 0%, rgba(20,20,35,0.95) 100%)`
-          : `linear-gradient(145deg, ${color}0D 0%, rgba(15,15,25,0.92) 100%)`,
-        backdropFilter: 'blur(12px)',
-        border: `1.5px solid ${isHovered && !disabled ? `${color}60` : `${color}25`}`,
-        borderRadius: '12px',
-        padding: '8px 10px',
+          ? `linear-gradient(145deg, #fff 0%, #f8f9fb 100%)`
+          : `linear-gradient(145deg, #f8f9fb 0%, #eef0f4 100%)`,
+        border: `2px solid ${isHovered && !disabled ? color : `${color}80`}`,
+        borderRadius: '10px',
+        padding: '7px 10px',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
+        opacity: disabled ? 0.45 : 1,
         position: 'relative',
         overflow: 'hidden',
-        transition: 'all 0.2s ease',
-        transform: isHovered && !disabled ? 'translateY(-1px) scale(1.02)' : 'none',
+        transition: 'all 0.15s ease',
+        transform: isHovered && !disabled ? 'translateY(-1px)' : 'none',
         boxShadow: isHovered && !disabled
-          ? `0 6px 20px ${color}25, inset 0 1px 0 ${color}15`
-          : `0 2px 8px rgba(0,0,0,0.2)`,
+          ? `0 4px 16px ${color}30`
+          : `0 1px 4px rgba(0,0,0,0.08)`,
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -78,37 +76,36 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
       {/* 左侧属性色条 */}
       <div style={{
         position:'absolute', left:0, top:0, bottom:0,
-        width:'3px', background:`linear-gradient(180deg, ${color}, ${color}60)`,
-        borderRadius:'3px 0 0 3px'
+        width:'4px', background: color
       }} />
 
-      <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', paddingLeft:'6px', gap:'4px' }}>
+      <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', paddingLeft:'6px', gap:'3px' }}>
         {/* 名称 + 属性标签 */}
         <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-          <span style={{ fontSize:'13px', fontWeight:'800', color:'#fff', letterSpacing:'0.3px' }}>
+          <span style={{ fontSize:'13px', fontWeight:'800', color:'#1a1a2e', letterSpacing:'0.3px', lineHeight:1.2 }}>
             {move.name}
           </span>
           <span style={{
-            fontSize:'9px', padding:'1px 5px', borderRadius:'4px',
+            fontSize:'9px', padding:'1px 6px', borderRadius:'4px',
             background: color, color:'#fff', fontWeight:'700',
-            lineHeight:'1.4', flexShrink:0
+            lineHeight:'1.5', flexShrink:0
           }}>{typeNames[move.t] || move.t}</span>
         </div>
 
         {/* 威力 + PP */}
-        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
           <div style={{ display:'flex', alignItems:'baseline', gap:'2px' }}>
-            <span style={{ fontSize:'9px', color:'rgba(255,255,255,0.35)' }}>威力</span>
-            <span style={{ fontSize:'14px', fontWeight:'900', color: move.power > 0 ? '#fff' : 'rgba(255,255,255,0.25)', lineHeight:1 }}>
+            <span style={{ fontSize:'9px', color:'#999', fontWeight:'600' }}>威力</span>
+            <span style={{ fontSize:'15px', fontWeight:'900', color: move.power > 0 ? color : '#ccc', lineHeight:1 }}>
               {move.power > 0 ? move.power : '-'}
             </span>
           </div>
           {/* PP bar */}
           <div style={{ flex:1, display:'flex', alignItems:'center', gap:'4px' }}>
-            <div style={{ flex:1, height:'4px', borderRadius:'2px', background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
-              <div style={{ width:`${ppRatio * 100}%`, height:'100%', borderRadius:'2px', background:ppBarColor, transition:'width 0.3s' }} />
+            <div style={{ flex:1, height:'5px', borderRadius:'3px', background:'#e0e0e0', overflow:'hidden' }}>
+              <div style={{ width:`${ppRatio * 100}%`, height:'100%', borderRadius:'3px', background:ppBarColor, transition:'width 0.3s' }} />
             </div>
-            <span style={{ fontSize:'9px', color: move.pp <= 3 ? '#F44336' : 'rgba(255,255,255,0.4)', fontWeight:'600', flexShrink:0 }}>
+            <span style={{ fontSize:'10px', color: move.pp <= 3 ? '#EF5350' : '#777', fontWeight:'700', flexShrink:0 }}>
               {move.pp}/{move.maxPp}
             </span>
           </div>
