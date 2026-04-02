@@ -5224,34 +5224,109 @@ button:active {
 }
 
 /* =================================================================
-   战斗面板暗色主题最终覆盖
+   战斗面板暗色主题 - 终极覆盖 (所有布局规则集中在此)
    ================================================================= */
 .battle-panel-v2 {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 180px !important;
+  z-index: 200 !important;
   background: linear-gradient(180deg, #1a1a2e 0%, #141428 100%) !important;
-  border-top: 1px solid rgba(255,255,255,0.06) !important;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
+  border-top: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 -6px 30px rgba(0,0,0,0.5) !important;
   border-radius: 14px 14px 0 0 !important;
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 .battle-panel-v2::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important; right: 0 !important;
   height: 1px !important;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(100,181,246,0.4) 25%,
-    rgba(171,71,188,0.4) 50%,
-    rgba(239,83,80,0.4) 75%,
+    rgba(100,181,246,0.5) 25%,
+    rgba(171,71,188,0.5) 50%,
+    rgba(239,83,80,0.5) 75%,
     transparent 100%
   ) !important;
+  z-index: 1 !important;
+}
+.battle-stage-v2 {
+  height: calc(100% - 180px) !important;
 }
 .controls-area-v2 {
+  display: flex !important;
+  flex-direction: row !important;
+  flex: 1 !important;
+  gap: 8px !important;
+  padding: 8px 10px !important;
   background: transparent !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+.battle-row-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+.moves-grid-v2 {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-auto-rows: 1fr !important;
+  gap: 6px !important;
+  height: 100% !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+.actions-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  flex-shrink: 0 !important;
+  height: 100% !important;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
 }
 .actions-sidebar .action-btn-v2 {
+  flex: 1 !important;
+  width: 100% !important;
   border-radius: 8px !important;
-  font-size: 10px !important;
+  font-size: 9px !important;
   font-weight: 700 !important;
   gap: 1px !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  color: #fff !important;
+  min-height: 0 !important;
+  padding: 2px 4px !important;
+}
+.actions-sidebar .action-btn-v2 svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0 !important;
 }
 .actions-sidebar .btn-catch {
   background: linear-gradient(135deg, #c62828, #e53935) !important;
@@ -5262,11 +5337,4 @@ button:active {
 .actions-sidebar .btn-run {
   background: linear-gradient(135deg, #37474f, #546e7a) !important;
   color: #ccc !important;
-}
-.battle-row-layout {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 8px !important;
-  height: 100% !important;
-  width: 100% !important;
 }

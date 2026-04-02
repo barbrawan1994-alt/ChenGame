@@ -1716,7 +1716,7 @@ const CHARM_RANK_COLORS = {
 
     const hasDamageMove = moves.some(m => m.p > 0);
     if (!hasDamageMove) {
-        let fallbackMove = { name: '撞击', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100 };
+        let fallbackMove = { name: '撞击', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100, desc: '用身体猛撞对手的基本攻击' };
         const typeSkills = SKILL_DB[base.type];
         if (typeSkills && typeSkills.length > 0) {
             const basicStab = typeSkills.find(s => s.p > 0);
@@ -1728,7 +1728,8 @@ const CHARM_RANK_COLORS = {
                     pp: basicStab.pp || 35,
                     maxPP: basicStab.pp || 35,
                     acc: basicStab.acc || 100,
-                    effect: basicStab.effect
+                    effect: basicStab.effect,
+                    desc: basicStab.desc || ''
                 };
             }
         }
@@ -2804,7 +2805,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         {/* Header */}
         <div style={{padding:'20px 24px 16px', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
-            <button onClick={() => setView('world_map')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+            <button onClick={() => setView(hasSave && party.length > 0 ? 'world_map' : 'menu')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>成就大厅</div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>{unlocked} / {total} 已解锁</div>
@@ -2907,7 +2908,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff'}}>
          <div style={{fontSize: '60px', marginBottom: '20px'}}>🔒</div>
          <h2 style={{marginBottom: '10px'}}>功能尚未开放</h2>
-         <button onClick={() => setView('world_map')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
+         <button onClick={() => setView(hasSave && party.length > 0 ? 'world_map' : 'menu')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
       </div>
   );
 
@@ -3127,7 +3128,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         }
     }
 
-    return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc };
+    return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, desc: template.desc || '' };
   };
 
 
@@ -8392,38 +8393,38 @@ const renderMenu = () => {
             </div>
         </button>
 
-        {/* 功能按钮组 */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginTop:'16px'}}>
+        {/* 功能按钮组 - 2x2 网格 */}
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'20px'}}>
             {[
-              { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/500`, color:'#f59e0b', hoverBg:'rgba(251,191,36,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'skill_dex', label:'技能大全', sub:'287种', color:'#3b82f6', hoverBg:'rgba(59,130,246,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', hoverBg:'rgba(220,38,38,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
-              { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', hoverBg:'rgba(168,85,247,0.12)', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/500`, color:'#f59e0b', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              { key:'skill_dex', label:'技能大全', sub:'287种', color:'#3b82f6', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
+              { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
             ].map(btn => (
               <button key={btn.key} onClick={() => setView(btn.key)} style={{
-                padding:'14px 8px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
+                padding:'12px 14px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
                 background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
-                display:'flex', flexDirection:'column', alignItems:'center', gap:'8px',
-                transition:'all 0.25s', backdropFilter:'blur(8px)'
+                display:'flex', alignItems:'center', gap:'12px',
+                transition:'all 0.25s', backdropFilter:'blur(8px)', textAlign:'left'
               }}
-              onMouseOver={e => { e.currentTarget.style.background=btn.hoverBg; e.currentTarget.style.borderColor=`${btn.color}50`; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
+              onMouseOver={e => { e.currentTarget.style.background=`${btn.color}15`; e.currentTarget.style.borderColor=`${btn.color}40`; e.currentTarget.style.transform='translateY(-1px)'; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.transform='none'; }}
               >
-                <div style={{width:'36px', height:'36px', borderRadius:'10px', background:`linear-gradient(135deg, ${btn.color}, ${btn.color}cc)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                <div style={{width:'36px', height:'36px', borderRadius:'10px', background:`linear-gradient(135deg, ${btn.color}, ${btn.color}bb)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 12px ${btn.color}30`}}>
                   {btn.icon}
                 </div>
-                <div style={{textAlign:'center'}}>
-                  <div style={{fontSize:'12px', fontWeight:'700', whiteSpace:'nowrap'}}>{btn.label}</div>
-                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{btn.sub}</div>
+                <div>
+                  <div style={{fontSize:'13px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
+                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>{btn.sub}</div>
                 </div>
               </button>
             ))}
         </div>
 
-        {/* 存档信息 (有存档时显示) */}
+        {/* 存档信息 */}
         {hasSave && (
           <div style={{
-            marginTop:'20px', padding:'14px 16px', borderRadius:'12px',
+            marginTop:'16px', padding:'12px 16px', borderRadius:'12px',
             background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)',
             display:'flex', justifyContent:'space-between', alignItems:'center'
           }}>
@@ -8432,16 +8433,16 @@ const renderMenu = () => {
               <span>{caughtDex.length} 图鉴</span>
               <span>{gold?.toLocaleString() || 0} G</span>
             </div>
-            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.25)', letterSpacing:'0.5px'}}>
+            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.25)'}}>
               {party.length} 只同行
             </div>
           </div>
         )}
 
-        {/* 底部 - 版本 + 重置 */}
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'24px', paddingTop:'16px', borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        {/* 底部 */}
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px', paddingTop:'14px', borderTop:'1px solid rgba(255,255,255,0.05)'}}>
           <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v2.0 · 500 Creatures</span>
-          <span onClick={resetGame} style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', cursor:'pointer', transition:'color 0.2s', letterSpacing:'0.5px'}}
+          <span onClick={resetGame} style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', cursor:'pointer', transition:'color 0.2s'}}
             onMouseOver={e => e.currentTarget.style.color='rgba(239,68,68,0.6)'}
             onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,0.2)'}
           >重置存档</span>
@@ -10313,6 +10314,7 @@ const renderMenu = () => {
               { id: 'league', icon: '🏆', label: '联盟' },
               { id: 'pc', icon: '💻', label: '电脑', action: () => setPcMode(true) },
               { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
+              { id: 'achievements', icon: '🏆', label: '成就', action: () => setView('achievements') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
                 style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
