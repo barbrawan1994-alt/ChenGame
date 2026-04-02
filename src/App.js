@@ -10742,7 +10742,7 @@ const renderMenu = () => {
         const side = battleTooltip.replace('_sect', '');
         const pet = side === 'player' 
             ? battle.playerCombatStates?.[battle.activeIdx]
-            : battle.enemy?.[0];
+            : battle.enemyParty?.[battle.enemyActiveIdx];
         if (!pet) return null;
         const s = SECT_DB[pet.sectId || 1];
         const lv = pet.sectLevel || 1;
@@ -11186,9 +11186,9 @@ const renderMenu = () => {
                         {/* 第一行：名字 + 门派 + 状态 */}
                         <div className="hud-name-row" style={{
                             display:'flex', alignItems:'center', gap:'6px', flexWrap:'nowrap', 
-                            justifyContent: 'flex-end', width: '100%'
+                            justifyContent: 'flex-end', width: '100%', overflow:'visible'
                         }}>
-                            <span style={{fontSize:'14px', fontWeight:'bold', whiteSpace: 'nowrap'}}>
+                            <span style={{fontSize:'13px', fontWeight:'bold', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
                             {renderSectBadge(e, 'enemy')}
