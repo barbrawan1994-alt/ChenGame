@@ -30,6 +30,76 @@ export const TRAINER_SPRITES = [
   { id: 'clair', name: '小椿', url: `${TRAINER_BASE}clair.png` },
 ];
 
+// NPC / enemy trainer sprites keyed by role/keyword
+export const NPC_SPRITES = {
+  default: `${TRAINER_BASE}youngster.png`,
+  professor: `${TRAINER_BASE}oak.png`,
+  gym_grass: `${TRAINER_BASE}erika.png`,
+  gym_water: `${TRAINER_BASE}misty.png`,
+  gym_fire: `${TRAINER_BASE}blaine.png`,
+  gym_electric: `${TRAINER_BASE}surge.png`,
+  gym_fight: `${TRAINER_BASE}brawly.png`,
+  gym_default: `${TRAINER_BASE}norman.png`,
+  champion: `${TRAINER_BASE}cynthia.png`,
+  challenge: `${TRAINER_BASE}grimsley.png`,
+  rocket: `${TRAINER_BASE}archer.png`,
+  eclipse: `${TRAINER_BASE}cyrus.png`,
+  bugcatcher: `${TRAINER_BASE}bugcatcher.png`,
+  fighter: `${TRAINER_BASE}blackbelt.png`,
+  hiker: `${TRAINER_BASE}hiker.png`,
+  fisher: `${TRAINER_BASE}fisherman.png`,
+  lass: `${TRAINER_BASE}lass.png`,
+  ace: `${TRAINER_BASE}acetrainer-gen4.png`,
+  rival: `${TRAINER_BASE}blue.png`,
+  beauty: `${TRAINER_BASE}beauty-gen4dp.png`,
+  scientist: `${TRAINER_BASE}scientist.png`,
+  psychic_m: `${TRAINER_BASE}psychic-gen4.png`,
+  ranger: `${TRAINER_BASE}pokemonranger.png`,
+  elder: `${TRAINER_BASE}gentleman.png`,
+  sailor: `${TRAINER_BASE}sailor.png`,
+  youngster: `${TRAINER_BASE}youngster.png`,
+  picnicker: `${TRAINER_BASE}picnicker.png`,
+  cooltrainer: `${TRAINER_BASE}cooltrainer.png`,
+};
+
+export function getNpcSprite(trainerName, battle) {
+  if (!trainerName && !battle) return NPC_SPRITES.default;
+
+  if (battle?.isGym) {
+    switch (battle.mapId) {
+      case 1: return NPC_SPRITES.gym_grass;
+      case 2: return NPC_SPRITES.gym_water;
+      case 3: return NPC_SPRITES.gym_fire;
+      case 4: return NPC_SPRITES.gym_electric;
+      case 5: return NPC_SPRITES.gym_fight;
+      default: return NPC_SPRITES.gym_default;
+    }
+  }
+  if (battle?.isChallenge) return NPC_SPRITES.challenge;
+
+  const n = trainerName || '';
+  if (n.includes('捕虫')) return NPC_SPRITES.bugcatcher;
+  if (n.includes('功夫') || n.includes('格斗')) return NPC_SPRITES.fighter;
+  if (n.includes('登山')) return NPC_SPRITES.hiker;
+  if (n.includes('钓鱼')) return NPC_SPRITES.fisher;
+  if (n.includes('火箭') || n.includes('日蚀')) return NPC_SPRITES.rocket;
+  if (n.includes('馆主')) return NPC_SPRITES.gym_default;
+  if (n.includes('冠军') || n.includes('首领')) return NPC_SPRITES.champion;
+  if (n.includes('美女') || n.includes('淑女')) return NPC_SPRITES.beauty;
+  if (n.includes('科学家') || n.includes('博士')) return NPC_SPRITES.scientist;
+  if (n.includes('超能')) return NPC_SPRITES.psychic_m;
+  if (n.includes('巡护')) return NPC_SPRITES.ranger;
+  if (n.includes('老人') || n.includes('绅士')) return NPC_SPRITES.elder;
+  if (n.includes('水手')) return NPC_SPRITES.sailor;
+
+  // Random but deterministic based on name
+  const pool = [NPC_SPRITES.youngster, NPC_SPRITES.lass, NPC_SPRITES.ace,
+    NPC_SPRITES.picnicker, NPC_SPRITES.cooltrainer, NPC_SPRITES.ranger];
+  let hash = 0;
+  for (let i = 0; i < n.length; i++) hash = ((hash << 5) - hash) + n.charCodeAt(i);
+  return pool[Math.abs(hash) % pool.length];
+}
+
 // 490 game IDs -> 490 unique National Dex IDs
 // Verified: key Pokemon-named creatures match their correct sprites
 const ID_TO_NATDEX = {

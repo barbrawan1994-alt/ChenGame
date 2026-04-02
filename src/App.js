@@ -29,7 +29,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { generateSprite } from './SpriteGenerator';
-import { getSpriteUrl, TRAINER_SPRITES } from './SpriteMap';
+import { getSpriteUrl, TRAINER_SPRITES, NPC_SPRITES, getNpcSprite } from './SpriteMap';
 import {
   SECT_DB,
   SECT_CHIEFS_CONFIG,
@@ -2582,7 +2582,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       <div key={idx} style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', textAlign:'center', border: pet ? '2px solid #4CAF50' : '2px dashed #ccc', minHeight:'120px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
                         {pet ? (
                           <>
-                            <div style={{fontSize:'36px'}}>{pet.emoji || '🔵'}</div>
+                            <div style={{width:48, height:48}}>{renderAvatar(pet)}</div>
                             <div style={{fontWeight:'bold', fontSize:'13px', marginTop:'4px'}}>{pet.name}</div>
                             <div style={{fontSize:'11px', color:'#888'}}>Lv.{pet.level}</div>
                             <button onClick={() => removeResident(idx)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'12px', border:'none', background:'#ffebee', color:'#f44336', fontSize:'11px', cursor:'pointer'}}>召回</button>
@@ -6561,7 +6561,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       <div className="screen" style={{background: 'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 100}}>
         <div className="glass-panel" style={{width:'90%', maxWidth:'400px', padding:'20px', color:'#333'}}>
           <div style={{textAlign:'center', marginBottom:'20px'}}>
-            <div style={{fontSize:'40px'}}>{p.emoji}</div>
+            <div style={{width:64, height:64, margin:'0 auto'}}>{renderAvatar(p)}</div>
             <h3 style={{margin:'10px 0'}}>{p.name} 想要学习新技能!</h3>
             <div style={{background:'#FFF9C4', padding:'10px', borderRadius:'8px', border:'2px solid #FBC02D', marginBottom:'15px'}}>
               <div style={{fontWeight:'900', fontSize:'18px'}}>{pendingMove.name}</div>
@@ -6607,7 +6607,7 @@ const renderNameInput = () => (
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '60px',
             boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
         }}>
-            🧙‍♂️
+            <img src={NPC_SPRITES.professor} alt="博士" style={{width:60, height:60, objectFit:'contain'}} />
         </div>
 
         <h2 style={{color: '#333', marginBottom: '5px', fontSize: '24px'}}>欢迎来到宝可梦世界！</h2>
@@ -6617,7 +6617,7 @@ const renderNameInput = () => (
             background: '#f0f2f5', padding: '10px', borderRadius: '15px', 
             border: '2px solid #e1e4e8', marginBottom: '25px', display: 'flex', alignItems: 'center'
         }}>
-            <span style={{fontSize: '24px', padding: '0 10px'}}>🧢</span>
+            <img src={TRAINER_SPRITES[0].url} alt="" style={{width:32, height:32, objectFit:'contain', margin:'0 6px'}} />
             <input 
                 type="text" 
                 placeholder="你的名字..." 
@@ -7659,7 +7659,7 @@ const renderMenu = () => {
             return (
               <div key={c.id} className="chal-card-pro hover-scale" style={{opacity: isUnlocked ? 1 : 0.8}}>
                 <div className="chal-pro-header"><div style={{fontWeight:'bold', color: isUnlocked ? c.color : '#999', fontSize:'15px'}}>{c.isJJK && '🔮 '}{c.title}</div>{isCleared ? (<span style={{fontSize:'10px', background:'#4CAF50', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>✅ 已通关</span>) : (<span style={{fontSize:'10px', background: isUnlocked ? '#FF9800' : '#ddd', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>{isUnlocked ? '🔥 进行中' : '🔒 未解锁'}</span>)}</div>
-                <div className="chal-pro-body"><div className="chal-boss-box" style={{borderColor: c.color}}>{bossInfo?.emoji}</div><div style={{flex:1}}><div style={{fontSize:'12px', color:'#666', marginBottom:'8px', lineHeight:'1.4'}}>{c.desc}</div><div style={{fontSize:'10px', display:'flex', justifyContent:'space-between', color:'#888', marginBottom:'2px'}}><span>解锁进度</span><span>{currentCaught}/{c.req}</span></div><div className="chal-progress-bar"><div className="chal-progress-fill" style={{width: `${progressPct}%`, background: isUnlocked ? c.color : '#ccc'}}></div></div></div></div>
+                <div className="chal-pro-body"><div className="chal-boss-box" style={{borderColor: c.color}}>{bossInfo ? renderAvatar(bossInfo) : null}</div><div style={{flex:1}}><div style={{fontSize:'12px', color:'#666', marginBottom:'8px', lineHeight:'1.4'}}>{c.desc}</div><div style={{fontSize:'10px', display:'flex', justifyContent:'space-between', color:'#888', marginBottom:'2px'}}><span>解锁进度</span><span>{currentCaught}/{c.req}</span></div><div className="chal-progress-bar"><div className="chal-progress-fill" style={{width: `${progressPct}%`, background: isUnlocked ? c.color : '#ccc'}}></div></div></div></div>
                 <button onClick={() => isUnlocked && startBattle(null, 'challenge', c.id)} disabled={!isUnlocked} style={{width:'100%', padding:'12px', border:'none', background: isUnlocked ? `linear-gradient(90deg, ${c.color}, ${c.color}dd)` : '#f0f0f0', color: isUnlocked ? '#fff' : '#aaa', fontWeight: 'bold', cursor: isUnlocked ? 'pointer' : 'not-allowed', marginTop: 'auto'}}>{isUnlocked ? (isCleared ? '再次挑战' : '开始挑战') : `需收集 ${c.req} 只精灵`}</button>
               </div>
             );
@@ -9812,22 +9812,20 @@ const renderMenu = () => {
   const getTrainerConfig = () => {
     if (!battle.isTrainer && !battle.isGym && !battle.isChallenge) return null;
 
-    let avatar = '🧢'; 
+    let avatar = getNpcSprite(battle.trainerName, battle);
     let title = '路过的训练家';
 
     if (battle.isGym) {
       switch (battle.mapId) {
-        case 1: avatar = '👩‍🌾'; title = '草系馆主 莉佳'; break; 
-        case 2: avatar = '🏊‍♂️'; title = '水系馆主 小霞'; break; 
-        case 3: avatar = '👨‍🚒'; title = '火系馆主 夏伯'; break; 
-        case 4: avatar = '🎸'; title = '电系馆主 马志士'; break; 
-        case 5: avatar = '🥋'; title = '格斗馆主 阿四'; break; 
-        default: avatar = '🎩'; title = '道馆馆主'; break;
+        case 1: title = '草系馆主 莉佳'; break; 
+        case 2: title = '水系馆主 小霞'; break; 
+        case 3: title = '火系馆主 夏伯'; break; 
+        case 4: title = '电系馆主 马志士'; break; 
+        case 5: title = '格斗馆主 阿四'; break; 
+        default: title = '道馆馆主'; break;
       }
     } else if (battle.isChallenge) {
-      avatar = '🧛'; title = '挑战塔主';
-    } else {
-      avatar = '🧢'; 
+      title = '挑战塔主';
     }
 
     return { avatar, title };
@@ -10075,7 +10073,10 @@ const renderMenu = () => {
         </div>
       );
     };
-    const getTrainerAvatar = (name) => { if (!name) return '🧢'; if (name.includes('捕虫')) return '🕸️'; if (name.includes('功夫') || name.includes('格斗')) return '🥋'; if (name.includes('登山')) return '🧗'; if (name.includes('钓鱼')) return '🎣'; if (name.includes('火箭') || name.includes('日蚀')) return '🕵️'; if (name.includes('馆主')) return '🎖️'; if (name.includes('冠军') || name.includes('首领')) return '👑'; return '🧢'; };
+    const getTrainerAvatar = (name) => {
+      const spriteUrl = getNpcSprite(name, battle);
+      return <img src={spriteUrl} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => { e.target.style.display='none'; }} />;
+    };
     
     let bgClass = 'bg-grass'; 
     if (battle.isGym) bgClass = 'bg-city'; else if (battle.isChallenge) bgClass = 'bg-cave'; 
