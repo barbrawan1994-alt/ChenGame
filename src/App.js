@@ -63,6 +63,10 @@ import {
   HOUSING_SCORE_TIERS, rollQuality, getHousingScoreTier, calcHouseScore,
   calcResidentBenefits, DEFAULT_HOUSING_STATE, FURNITURE_TILE,
 } from './data/housing';
+import {
+  DEVIL_FRUITS, FRUIT_RARITY_CONFIG, FRUIT_CATEGORY_NAMES,
+  getRandomFruit, getFruitById, getAllFruits, getShopFruits,
+} from './data/devilfruits';
 
 const BREATHING_BUFFS = [
   { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +20%', effect: (p) => p.customBaseStats.p_atk = Math.floor(p.customBaseStats.p_atk * 1.2) },
@@ -113,6 +117,7 @@ export default function RPG(props) {
     meds: {}, tms: {}, misc: {}, stones: {}, berries: 0 
   };
   const [inventory, setInventory] = useState({ ...defaultInventory, ...(savedData.inventory || {}) });
+  const [fruitInventory, setFruitInventory] = useState(savedData.fruitInventory || []);
 
   // 游戏进度
   const [mapProgress, setMapProgress] = useState(savedData.mapProgress || {});
@@ -218,7 +223,7 @@ useEffect(() => {
                     }));
                 }
             }
-
+            
             return nextTime;
         });
     }, 1000); // 1秒 = 游戏内1秒 (可根据需要调整流逝速度，例如 100ms)
@@ -1850,7 +1855,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        leagueWins, 
        unlockedTitles, 
        currentTitle,
-       housing
+       housing,
+       fruitInventory
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -3137,6 +3143,15 @@ const useGrowthItem = (petIndex, itemId) => {
         if (newGrid[fy][fx] === 2) newGrid[fy][fx] = FURNITURE_TILE;
     }
 
+    // 随机放置果实树 (1-2棵, 30%概率)
+    const fruitTreeCount = _.random(1, 2);
+    for (let ft = 0; ft < fruitTreeCount; ft++) {
+        if (Math.random() < 0.3) continue;
+        const ftx = _.random(2, GRID_W - 3);
+        const fty = _.random(2, GRID_H - 3);
+        if (newGrid[fty][ftx] === 2) newGrid[fty][ftx] = 14;
+    }
+
     setMapGrid(newGrid);
     setView('grid_map');
   };
@@ -3271,6 +3286,23 @@ const useGrowthItem = (petIndex, itemId) => {
           });
           addLog(`🏠 捡到家具: ${def.icon} ${def.name} (${qualInfo.name})`);
           alert(`🏠 发现了 ${def.icon} ${def.name} (${qualInfo.name})!`);
+        }
+        return; 
+      }
+
+      // 果实树 (Tile 14)
+      if (tileType === 14) {
+        const fruitId = getRandomFruit(party[0]?.level || 10, 'wild');
+        const fruit = getFruitById(fruitId);
+        if (fruit) {
+          setFruitInventory(prev => [...prev, fruitId]);
+          setMapGrid(prev => {
+            const g = prev.map(r => [...r]);
+            g[y][x] = 2;
+            return g;
+          });
+          addLog(`发现恶魔果实: ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]!`);
+          alert(`发现了 ${fruit.name} [${FRUIT_CATEGORY_NAMES[fruit.category]}]!\n${fruit.desc}`);
         }
         return;
       }
@@ -3990,6 +4022,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // --- 统一后续处理 ---
+    // 恶魔果实分配: 训练家必带，野外30%随机
+    if (isTrainer || isGym || type === 'challenge' || isStory || type === 'league') {
+      enemyParty.forEach(p => {
+        if (!p.devilFruit) p.devilFruit = getRandomFruit(p.level, 'trainer');
+      });
+    } else {
+      enemyParty.forEach(p => {
+        if (!p.devilFruit && Math.random() < 0.3) {
+          p.devilFruit = getRandomFruit(p.level, 'wild');
+        }
+      });
+    }
+
     if (isTrainer || type === 'challenge') {
       enemyParty.forEach(p => p.name = `${p.name}`);
     }
@@ -4052,6 +4097,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             domainType: p.domainType || p.type,
             usedDomain: false,
             activeVow: null,
+            devilFruit: p.devilFruit || null,
+            fruitTransformed: false,
+            fruitTurnsLeft: 0,
+            fruitUsed: false,
+            fruitEffects: null,
         };
     };
 
@@ -4312,41 +4362,41 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     try {
-        if (currentPet.trait === 'regenerator' && !isForcedSwitch) {
-            const max = getStats(currentPet).maxHp;
-            const heal = Math.floor(max / 3);
-            currentPet.currentHp = Math.min(max, currentPet.currentHp + heal);
-            addLog(`${currentPet.name} 的 [再生力] 恢复了体力！`);
-        }
+    if (currentPet.trait === 'regenerator' && !isForcedSwitch) {
+        const max = getStats(currentPet).maxHp;
+        const heal = Math.floor(max / 3);
+        currentPet.currentHp = Math.min(max, currentPet.currentHp + heal);
+        addLog(`${currentPet.name} 的 [再生力] 恢复了体力！`);
+    }
 
         const newPet = combatStates[newIdx];
 
-        const nextBattleState = {
-            ...battle,
-            activeIdx: newIdx,
-            showSwitch: false,
-            phase: 'anim',
-            logs: [`去吧 ${newPet.name}!`, ...battle.logs]
-        };
+    const nextBattleState = {
+        ...battle,
+        activeIdx: newIdx,
+        showSwitch: false,
+        phase: 'anim',
+        logs: [`去吧 ${newPet.name}!`, ...battle.logs]
+    };
 
-        setBattle(nextBattleState);
+    setBattle(nextBattleState);
 
-        await wait(500); 
-        await triggerShinyAnim('player', newPet);
+    await wait(500); 
+    await triggerShinyAnim('player', newPet);
 
-        const me = nextBattleState.playerCombatStates[newIdx];
-        const opp = nextBattleState.enemyParty[nextBattleState.enemyActiveIdx];
-        if (me.trait === 'intimidate' && opp.currentHp > 0) {
-            opp.stages.p_atk = Math.max(-6, (opp.stages.p_atk||0) - 1);
-            addLog(`${me.name} 的 [威吓] 降低了对手的攻击！`);
-            setAnimEffect({ type: 'DEBUFF', target: 'enemy' });
-            await wait(800); setAnimEffect(null);
-        }
+    const me = nextBattleState.playerCombatStates[newIdx];
+    const opp = nextBattleState.enemyParty[nextBattleState.enemyActiveIdx];
+    if (me.trait === 'intimidate' && opp.currentHp > 0) {
+        opp.stages.p_atk = Math.max(-6, (opp.stages.p_atk||0) - 1);
+        addLog(`${me.name} 的 [威吓] 降低了对手的攻击！`);
+        setAnimEffect({ type: 'DEBUFF', target: 'enemy' });
+        await wait(800); setAnimEffect(null);
+    }
 
-        if (isForcedSwitch) {
-            setBattle(prev => ({ ...prev, phase: 'input' }));
-        } else {
-            await enemyTurn(nextBattleState);
+    if (isForcedSwitch) {
+        setBattle(prev => ({ ...prev, phase: 'input' }));
+    } else {
+        await enemyTurn(nextBattleState);
         }
     } catch (e) {
         console.error("Switch Error:", e);
@@ -4373,9 +4423,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 return;
             }
         } else if (move.pp <= 0) {
-            alert("PP不足！");
-            setBattle(prev => ({ ...prev, phase: 'input' }));
-            return;
+             alert("PP不足！");
+             setBattle(prev => ({ ...prev, phase: 'input' }));
+             return;
         }
         const player = tempPlayerState;
         const enemy = tempBattle.enemyParty[battle.enemyActiveIdx];
@@ -4600,6 +4650,54 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
     // ==========================================
+  // 恶魔果实变身
+  // ==========================================
+  const executeDevilFruit = async (side = 'player', battleStateOverride = null) => {
+    if (side === 'player' && battle.phase !== 'input') return;
+    const tempBattle = battleStateOverride || _.cloneDeep(battle);
+    const unit = side === 'player'
+      ? tempBattle.playerCombatStates[tempBattle.activeIdx]
+      : tempBattle.enemyParty[tempBattle.enemyActiveIdx];
+
+    if (!unit.devilFruit || unit.fruitUsed || unit.fruitTransformed) return;
+    const fruit = getFruitById(unit.devilFruit);
+    if (!fruit) return;
+
+    if (side === 'player') setBattle(prev => ({ ...prev, phase: 'busy' }));
+
+    unit.fruitTransformed = true;
+    unit.fruitUsed = true;
+    unit.fruitTurnsLeft = fruit.duration;
+    unit.fruitEffects = { ...fruit.transform };
+
+    if (fruit.transform.hpMult) {
+      const stats = getStats(unit);
+      const bonus = Math.floor(stats.maxHp * (fruit.transform.hpMult - 1));
+      unit.currentHp = Math.min(unit.currentHp + bonus, Math.floor(stats.maxHp * fruit.transform.hpMult));
+    }
+
+    if (fruit.transformMove) {
+      unit.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
+    }
+
+    addLog(`${unit.name} 吃下了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
+    setAnimEffect({ type: 'TRANSFORM', target: side === 'player' ? 'player' : 'enemy' });
+    await wait(1500);
+    setAnimEffect(null);
+
+    if (side === 'player') {
+      setBattle(prev => ({
+        ...prev,
+        playerCombatStates: tempBattle.playerCombatStates,
+        enemyParty: tempBattle.enemyParty,
+      }));
+      await wait(500);
+      await enemyTurn(tempBattle);
+    }
+    return tempBattle;
+  };
+
+    // ==========================================
   // [修改] 敌人回合 (含被动特性与天气结算)
   // ==========================================
   const enemyTurn = async (currentBattleState = null) => {
@@ -4642,6 +4740,41 @@ const grantContestReward = (config, score, subjectPet = null) => {
             await wait(1500);
             setAnimEffect(null);
         }
+    }
+
+    // AI: 尝试果实变身 (有果实且未用过，HP<70%时50%概率，或首回合20%概率)
+    if (enemy.devilFruit && !enemy.fruitUsed && !enemy.fruitTransformed) {
+      const hpRatio = enemy.currentHp / getStats(enemy).maxHp;
+      const transformChance = hpRatio < 0.7 ? 0.5 : 0.2;
+      if (Math.random() < transformChance) {
+        const fruit = getFruitById(enemy.devilFruit);
+        if (fruit) {
+          enemy.fruitTransformed = true;
+          enemy.fruitUsed = true;
+          enemy.fruitTurnsLeft = fruit.duration;
+          enemy.fruitEffects = { ...fruit.transform };
+          if (fruit.transform.hpMult) {
+            const stats = getStats(enemy);
+            const bonus = Math.floor(stats.maxHp * (fruit.transform.hpMult - 1));
+            enemy.currentHp = Math.min(enemy.currentHp + bonus, Math.floor(stats.maxHp * fruit.transform.hpMult));
+          }
+          if (fruit.transformMove) {
+            enemy.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
+          }
+          addLog(`${enemy.name} 发动了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
+          setAnimEffect({ type: 'TRANSFORM', target: 'enemy' });
+          await wait(1500);
+          setAnimEffect(null);
+
+          // 变身消耗回合，之后结算
+          setBattle(prev => ({
+            ...prev, phase: 'input',
+            playerCombatStates: state.playerCombatStates,
+            enemyParty: state.enemyParty,
+          }));
+          return;
+        }
+      }
     }
 
     const movesWithPP = (enemy.combatMoves || enemy.moves).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
@@ -4761,6 +4894,50 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     });
 
+    // 果实变身回合递减 + 每回合效果
+    [player, enemy].forEach(u => {
+        if (u.fruitTransformed && u.fruitTurnsLeft > 0) {
+            const fe = u.fruitEffects;
+            if (fe && fe.healPerTurn && u.currentHp > 0) {
+                const heal = Math.floor(getStats(u).maxHp * fe.healPerTurn);
+                u.currentHp = Math.min(getStats(u).maxHp, u.currentHp + heal);
+                addLog(`${u.name} 的果实回复了 ${heal} HP!`);
+            }
+            if (fe && fe.selfDotPerTurn && u.currentHp > 0) {
+                const dot = Math.floor(getStats(u).maxHp * fe.selfDotPerTurn);
+                u.currentHp = Math.max(1, u.currentHp - dot);
+                addLog(`${u.name} 受到果实反噬 ${dot} 伤害!`);
+            }
+            if (fe && fe.dotPerTurn) {
+                const target = u === player ? enemy : player;
+                if (target.currentHp > 0) {
+                    const dot = Math.floor(getStats(target).maxHp * fe.dotPerTurn);
+                    target.currentHp = Math.max(0, target.currentHp - dot);
+                    addLog(`${target.name} 受到果实束缚 ${dot} 伤害!`);
+                }
+            }
+            if (fe && fe.enemySpdDown) {
+                const target = u === player ? enemy : player;
+                target.stages.spd = Math.max(-6, (target.stages.spd || 0) - 1);
+            }
+            if (fe && fe.enemyAtkDown) {
+                const target = u === player ? enemy : player;
+                target.stages.p_atk = Math.max(-6, (target.stages.p_atk || 0) - 1);
+            }
+            if (fe && fe.enemyAccDown) {
+                const target = u === player ? enemy : player;
+                target.stages.acc = Math.max(-6, (target.stages.acc || 0) - 1);
+            }
+            u.fruitTurnsLeft--;
+            if (u.fruitTurnsLeft <= 0) {
+                u.fruitTransformed = false;
+                u.fruitEffects = null;
+                u.combatMoves = (u.combatMoves || []).filter(m => !m.isFruitMove);
+                addLog(`${u.name} 的果实变身结束了!`);
+            }
+        }
+    });
+
     if (playerDied || player.currentHp <= 0) {
        await wait(500);
        const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
@@ -4781,7 +4958,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
    } catch (e) {
       console.error("Enemy Turn Error:", e);
       setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
-   }
+    }
   };
 
 
@@ -4960,6 +5137,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const moveAcc = move.acc || 100;
     const finalHitChance = moveAcc * accMult;
 
+    // 果实属性免疫
+    const defFE = defState.fruitTransformed ? defState.fruitEffects : null;
+    if (defFE && defFE.typeImmune && move.t === defFE.typeImmune && move.p > 0) {
+        addLog(`${defender.name} 的果实能力免疫了 ${move.t} 属性攻击!`);
+        await wait(1000);
+        return false;
+    }
+
+    // 果实闪避加成
+    if (defFE && defFE.evaBoost) {
+        const evaRoll = Math.random();
+        if (evaRoll < defFE.evaBoost) {
+            addLog(`${defender.name} 借助果实能力闪避了攻击!`);
+            await wait(1000);
+            return false;
+        }
+    }
+
     if (move.p > 0 && Math.random() * 100 > finalHitChance) {
         addLog(`但是没有命中!`);
         await wait(1000);
@@ -5067,12 +5262,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let atkVal = category === 'physical' ? statsAtk.p_atk : statsAtk.s_atk;
         let defVal = category === 'physical' ? statsDef.p_def : statsDef.s_def;
 
+        // 果实变身攻防倍率
+        const atkFE = atkState.fruitTransformed ? atkState.fruitEffects : null;
+        const _defFE = defState.fruitTransformed ? defState.fruitEffects : null;
+        if (atkFE) {
+          if (category === 'physical' && atkFE.atkMult) atkVal = Math.floor(atkVal * atkFE.atkMult);
+          if (category === 'special' && atkFE.sAtkMult) atkVal = Math.floor(atkVal * atkFE.sAtkMult);
+        }
+        if (_defFE) {
+          if (category === 'physical' && _defFE.defMult) defVal = Math.floor(defVal * _defFE.defMult);
+          if (category === 'special' && _defFE.sDefMult) defVal = Math.floor(defVal * _defFE.sDefMult);
+        }
+
         let isCrit = false;
         const ceMoveEff = move.isCursed ? (move.effect || {}) : {};
-        let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0) + (ceMoveEff.critBoost || 0); 
+        let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0) + (ceMoveEff.critBoost || 0);
+        if (atkFE && atkFE.critBoost) critStage += atkFE.critBoost;
         if (Math.random() * 100 < (statsAtk.crit * (1 + critStage * 0.5))) isCrit = true;
 
         if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
+        if (atkFE && atkFE.ignoreDefPercent) defVal = Math.floor(defVal * (1 - atkFE.ignoreDefPercent));
 
         let typeMod = getTypeMod(move.t, defender.type);
         const levelBase = attacker.level * 0.8 + 5;
@@ -5085,7 +5294,29 @@ const grantContestReward = (config, score, subjectPet = null) => {
         rawDmg *= typeMod;
         rawDmg *= (0.9 + Math.random() * 0.2); 
 
-        // ▼▼▼ [新增] 天气/时间 伤害修正 ▼▼▼
+        // 果实变身增伤
+        if (atkFE) {
+          if (atkFE.movePowerBoost) rawDmg *= (1 + atkFE.movePowerBoost);
+          if (atkFE.typeBoost && atkFE.typeBoost[move.t]) rawDmg *= atkFE.typeBoost[move.t];
+          if (atkFE.convertNormalTo && move.t === 'NORMAL') {
+            rawDmg *= 1.3;
+          }
+          if (atkFE.fixedDmgPercent && move.p > 0) {
+            const fixedBonus = Math.floor(getStats(defender).maxHp * atkFE.fixedDmgPercent);
+            rawDmg += fixedBonus;
+          }
+        }
+
+        // 暗暗果实: 取消对手果实效果
+        if (atkFE && atkFE.cancelEnemyFruit && defState.fruitTransformed) {
+          defState.fruitTransformed = false;
+          defState.fruitEffects = null;
+          defState.fruitTurnsLeft = 0;
+          defState.combatMoves = defState.combatMoves.filter(m => !m.isFruitMove);
+          addLog(`暗暗果实的力量取消了 ${defender.name} 的果实变身!`);
+        }
+
+        // ▼▼▼ 天气/时间 伤害修正 ▼▼▼
         if (weather === 'RAIN') {
             if (move.t === 'WATER') { rawDmg *= 1.5; addLog('🌧️ 雨天增强了水系威力！'); }
             if (move.t === 'FIRE') { rawDmg *= 0.5; }
@@ -5207,6 +5438,57 @@ const grantContestReward = (config, score, subjectPet = null) => {
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
         if (survivalMsg) addLog(survivalMsg);
         isDead = defender.currentHp <= 0;
+
+        // 果实攻击附带效果
+        if (atkFE && !isDead && dmg > 0) {
+          if (atkFE.onHitBurn && !defState.status && Math.random() < atkFE.onHitBurn) {
+            defState.status = 'BRN'; addLog(`果实之力灼烧了 ${defender.name}!`);
+          }
+          if (atkFE.onHitPoison && !defState.status && Math.random() < atkFE.onHitPoison) {
+            defState.status = 'PSN'; addLog(`果实毒素侵蚀了 ${defender.name}!`);
+          }
+          if (atkFE.onHitFreeze && !defState.status && Math.random() < atkFE.onHitFreeze) {
+            defState.status = 'FRZ'; addLog(`果实冰封了 ${defender.name}!`);
+          }
+          if (atkFE.onHitConfuse && !defState.volatiles.confused && Math.random() < atkFE.onHitConfuse) {
+            defState.volatiles.confused = 3; addLog(`果实幻术迷惑了 ${defender.name}!`);
+          }
+          if (atkFE.onHitDefDown) {
+            defState.stages.p_def = Math.max(-6, (defState.stages.p_def || 0) - atkFE.onHitDefDown);
+            addLog(`${defender.name} 的物防下降了!`);
+          }
+          if (atkFE.onHitSpdDown) {
+            defState.stages.spd = Math.max(-6, (defState.stages.spd || 0) - atkFE.onHitSpdDown);
+            addLog(`${defender.name} 的速度下降了!`);
+          }
+          if (atkFE.hpDrain) {
+            const heal = Math.floor(dmg * atkFE.hpDrain);
+            attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
+            addLog(`${attacker.name} 吸收了 ${heal} HP!`);
+          }
+          if (atkFE.multiHit) {
+            const extraHits = _.random(atkFE.multiHit[0], atkFE.multiHit[1]) - 1;
+            for (let h = 0; h < extraHits && defender.currentHp > 0; h++) {
+              const extraDmg = Math.max(1, Math.floor(dmg * 0.6));
+              defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
+              addLog(`追加攻击! 造成 ${extraDmg} 伤害`);
+            }
+            isDead = defender.currentHp <= 0;
+          }
+        }
+        // 果实防御方反弹
+        if (_defFE && dmg > 0 && !isDead) {
+          if (_defFE.reflectPhysical && category === 'physical') {
+            const ref = Math.floor(dmg * _defFE.reflectPhysical);
+            attacker.currentHp = Math.max(0, attacker.currentHp - ref);
+            addLog(`${defender.name} 的果实反弹了 ${ref} 伤害!`);
+          }
+          if (_defFE.reflectAll) {
+            const ref = Math.floor(dmg * _defFE.reflectAll);
+            attacker.currentHp = Math.max(0, attacker.currentHp - ref);
+            addLog(`${defender.name} 的果实反弹了 ${ref} 伤害!`);
+          }
+        }
 
         // 反伤与状态触发
         if (defSect === 9 && category === 'physical' && move.p > 0 && dmg > 0) {
@@ -5374,7 +5656,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const newParty = currentParty.map((p, index) => {
       let pet = { ...p };
-    
+      
     if (bState && bState.playerCombatStates && bState.playerCombatStates[index]) {
         const combatState = bState.playerCombatStates[index];
         pet.currentHp = combatState.currentHp;
@@ -5637,7 +5919,22 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
-    // ▼▼▼ [新增] 亲密度与魅力值结算逻辑 ▼▼▼
+    // 恶魔果实掉落: 击败携带果实的敌人，按稀有度概率掉落
+    enemyParty.forEach(ep => {
+      if (ep.devilFruit) {
+        const fruit = getFruitById(ep.devilFruit);
+        if (fruit) {
+          const dropRate = FRUIT_RARITY_CONFIG[fruit.rarity]?.dropRate || 0.05;
+          const boosted = (battle.isBoss || battle.isChallenge) ? dropRate * 2 : dropRate;
+          if (Math.random() < boosted) {
+            setFruitInventory(prev => [...prev, fruit.id]);
+            addLog(`获得恶魔果实: ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]!`);
+          }
+        }
+      }
+    });
+
+    // ▼▼▼ 亲密度与魅力值结算逻辑 ▼▼▼
     const updatedParty = finalParty.map((p, index) => {
         let newPet = { ...p };
         
@@ -5968,7 +6265,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          console.error("HandleWin Error:", e);
          setBattle(null);
          setView('grid_map');
-       }
+    }
   };
 
     const handleDefeat = async () => {
@@ -7249,7 +7546,7 @@ const renderMenu = () => {
       ))}
 
       {/* 主卡片 */}
-      <div style={{
+          <div style={{
         position:'relative', zIndex:10, width:'90%', maxWidth:'460px',
         background:'rgba(255,255,255,0.04)', backdropFilter:'blur(24px)',
         border:'1px solid rgba(255,255,255,0.08)',
@@ -7296,17 +7593,17 @@ const renderMenu = () => {
           </svg>
           <div style={{textAlign:'left'}}>
             <div style={{fontSize:'16px', fontWeight:'700', color:'#fff', letterSpacing:'0.5px'}}>
-              {hasSave ? '继续冒险' : '开始新游戏'}
-            </div>
+                    {hasSave ? '继续冒险' : '开始新游戏'}
+                </div>
             <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'2px'}}>
               {hasSave ? '读取上次的冒险进度' : '踏上全新的传说旅途'}
+                </div>
             </div>
-          </div>
         </button>
 
         {/* 功能按钮组 */}
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginTop:'16px'}}>
-          <button onClick={() => setView('pokedex')} style={{
+            <button onClick={() => setView('pokedex')} style={{
             padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
             background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
             display:'flex', alignItems:'center', gap:'10px',
@@ -7322,9 +7619,9 @@ const renderMenu = () => {
               <div style={{fontSize:'13px', fontWeight:'700'}}>精灵图鉴</div>
               <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{caughtDex.length}/500 已收集</div>
             </div>
-          </button>
+            </button>
 
-          <button onClick={() => setView('skill_dex')} style={{
+            <button onClick={() => setView('skill_dex')} style={{
             padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
             background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
             display:'flex', alignItems:'center', gap:'10px',
@@ -7340,7 +7637,7 @@ const renderMenu = () => {
               <div style={{fontSize:'13px', fontWeight:'700'}}>技能大全</div>
               <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>287 种技能</div>
             </div>
-          </button>
+            </button>
         </div>
 
         {/* 存档信息 (有存档时显示) */}
@@ -7586,8 +7883,8 @@ const renderMenu = () => {
                      <div>
                        <div style={{fontSize:'17px', fontWeight:'800', color:'#fff', textShadow:'0 1px 3px rgba(0,0,0,0.2)', letterSpacing:'0.5px'}}>{d.name}</div>
                        <div style={{fontSize:'12px', color:'rgba(255,255,255,0.85)', marginTop:'3px', lineHeight:'1.3'}}>{d.desc}</div>
-                     </div>
-                   </div>
+               </div>
+               </div>
                    <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px'}}>
                      <span style={{
                        fontSize:'10px', fontWeight:'700', color:'#fff', background:'rgba(0,0,0,0.2)',
@@ -8941,7 +9238,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -9106,6 +9403,9 @@ const renderMenu = () => {
                   } else if (type === FURNITURE_TILE) {
                     tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
                     content = (<div className="bld-chest"><div className="chest-body" style={{background:'#8D6E63'}} /><div className="chest-lid" style={{background:'#6D4C41'}} /></div>);
+                  } else if (type === 14) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="fruit-tree-icon"><div className="tree-crown" style={{background:'radial-gradient(circle, #FF6F00 30%, #388E3C 60%)', boxShadow:'0 0 8px rgba(255,111,0,0.4)'}}/><div className="tree-trunk" /></div>);
                   }
 
                   cells.push(
@@ -9123,12 +9423,12 @@ const renderMenu = () => {
                             {trainerAvatar && trainerAvatar.startsWith('http')
                               ? <img src={trainerAvatar} alt="" style={{width:32,height:32,objectFit:'contain'}} />
                               : (trainerAvatar || '🧢')}
-                          </div>
+                    </div>
                           <div className="player-shadow" />
                         </div>
                       )}
-                    </div>
-                  );
+                  </div>
+                );
                 }
                 rows.push(<div key={vy} style={{display:'flex'}}>{cells}</div>);
               }
@@ -9624,6 +9924,21 @@ const renderMenu = () => {
         currentCat = 'acc';
         ACCESSORY_DB.forEach(acc => { const count = accessories.filter(item => item === acc.id).length; if (count > 0) currentItems.push({ ...acc, count }); });
         accessories.forEach(item => { if (typeof item === 'object' && item.isUnique) currentItems.push({ ...item, name: item.displayName, count: 1, desc: `${item.desc} | 技能: ${item.extraSkill.name}` }); });
+    } else if (bagTab === 'fruits') {
+        currentCat = 'fruit';
+        const fruitCounts = {};
+        fruitInventory.forEach(fid => { fruitCounts[fid] = (fruitCounts[fid] || 0) + 1; });
+        Object.entries(fruitCounts).forEach(([fid, count]) => {
+          const fruit = getFruitById(fid);
+          if (fruit) {
+            const equipped = [...party, ...box].filter(p => p.devilFruit === fid).length;
+            currentItems.push({
+              id: fid, name: fruit.name, icon: '🍎',
+              desc: `[${FRUIT_CATEGORY_NAMES[fruit.category]}] ${fruit.desc}\n持续${fruit.duration}回合`,
+              count, rarity: fruit.rarity, category: fruit.category, equipped,
+            });
+          }
+        });
     }
 
     return (
@@ -9639,7 +9954,7 @@ const renderMenu = () => {
             {/* 左侧侧边栏 */}
             <div style={{width: '180px', background: '#f5f7fa', borderRight: '1px solid #eee', padding: '20px 0'}}>
                 <div style={{padding: '0 20px 20px', fontWeight: 'bold', fontSize: '18px', color: '#333', borderBottom: '1px solid #eee', marginBottom: '10px'}}>我的背包</div>
-                {['balls', 'meds', 'tms', 'stones', 'misc', 'accessories'].map(tab => (
+                {['balls', 'meds', 'tms', 'stones', 'misc', 'accessories', 'fruits'].map(tab => (
                     <div key={tab} onClick={()=>setBagTab(tab)} style={{
                         padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
                         background: bagTab===tab ? '#E3F2FD' : 'transparent',
@@ -9647,8 +9962,8 @@ const renderMenu = () => {
                         fontWeight: bagTab===tab ? 'bold' : 'normal',
                         borderRight: bagTab===tab ? '3px solid #1976D2' : '3px solid transparent'
                     }}>
-                        <span>{tab==='balls'?'🔴':tab==='meds'?'💊':tab==='tms'?'💿':tab==='stones'?'🔮':tab==='misc'?'💎':'💍'}</span>
-                        <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':'饰品'}</span>
+                        <span>{tab==='balls'?'🔴':tab==='meds'?'💊':tab==='tms'?'💿':tab==='stones'?'🔮':tab==='misc'?'💎':tab==='accessories'?'💍':'🍎'}</span>
+                        <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':tab==='accessories'?'饰品':'恶魔果实'}</span>
                     </div>
                 ))}
                 <button onClick={() => setView('grid_map')} style={{
@@ -9676,23 +9991,29 @@ const renderMenu = () => {
                             <div>暂无此类物品</div>
                         </div>
                     ) : (
-                        currentItems.map((item, idx) => (
+                        currentItems.map((item, idx) => {
+                            const isFruit = currentCat === 'fruit';
+                            const rarityColor = isFruit && item.rarity ? (FRUIT_RARITY_CONFIG[item.rarity]?.color || '#666') : '#2196F3';
+                            return (
                             <div key={idx} onClick={() => handleItemClick(item, currentCat)} style={{
-                                border: '1px solid #eee', borderRadius: '10px', padding: '10px',
+                                border: isFruit ? `2px solid ${rarityColor}` : '1px solid #eee', borderRadius: '10px', padding: '10px',
                                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                                 cursor: 'pointer', transition: '0.2s', position: 'relative',
-                                background: '#fafafa'
-                            }} onMouseOver={e => e.currentTarget.style.borderColor = '#2196F3'}
-                               onMouseOut={e => e.currentTarget.style.borderColor = '#eee'}>
+                                background: isFruit ? `linear-gradient(135deg, ${rarityColor}10, #fafafa)` : '#fafafa'
+                            }} onMouseOver={e => e.currentTarget.style.borderColor = rarityColor}
+                               onMouseOut={e => e.currentTarget.style.borderColor = isFruit ? rarityColor : '#eee'}>
                                 <div style={{fontSize: '32px', marginBottom: '5px'}}>{item.icon || item.emoji}</div>
                                 <div style={{fontSize: '12px', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2', height: '28px', overflow: 'hidden'}}>{item.name}</div>
+                                {isFruit && <div style={{fontSize:'9px', color: rarityColor, fontWeight:'bold'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label} · {FRUIT_CATEGORY_NAMES[item.category]}</div>}
                                 <div style={{
                                     position: 'absolute', top: '5px', right: '5px', 
-                                    background: '#2196F3', color: '#fff', fontSize: '10px', 
+                                    background: rarityColor, color: '#fff', fontSize: '10px', 
                                     padding: '1px 6px', borderRadius: '10px'
                                 }}>x{item.count}</div>
+                                {isFruit && item.equipped > 0 && <div style={{position:'absolute', top:'5px', left:'5px', fontSize:'9px', color:'#4CAF50', fontWeight:'bold'}}>装备{item.equipped}</div>}
                             </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>
@@ -9708,6 +10029,38 @@ const renderMenu = () => {
                     <div style={{fontSize:'60px', marginBottom:'15px'}}>{selectedBagItem.icon || selectedBagItem.emoji || '📦'}</div>
                     <div style={{fontSize:'18px', fontWeight:'bold', color:'#333', marginBottom:'5px'}}>{selectedBagItem.name}</div>
                     <div style={{fontSize:'13px', color:'#666', margin:'10px 0', textAlign:'center', background:'#f5f5f5', padding:'10px', borderRadius:'8px', width:'100%'}}>{selectedBagItem.desc}</div>
+                    {selectedBagItem.category === 'fruit' && (
+                      <div style={{width:'100%', marginBottom:'10px'}}>
+                        <div style={{fontSize:'11px', color:'#888', marginBottom:'6px'}}>装备到精灵:</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                          {party.map((pet, pi) => (
+                            <button key={pi} onClick={() => {
+                              if (pet.devilFruit === selectedBagItem.id) {
+                                setParty(prev => prev.map((pp, i) => i === pi ? {...pp, devilFruit: null} : pp));
+                                setFruitInventory(prev => [...prev, selectedBagItem.id]);
+                                alert(`已从 ${pet.name} 卸下 ${selectedBagItem.name}`);
+                              } else {
+                                if (pet.devilFruit) {
+                                  setFruitInventory(prev => [...prev, pet.devilFruit]);
+                                }
+                                const idx = fruitInventory.indexOf(selectedBagItem.id);
+                                if (idx === -1) { alert('果实不足'); return; }
+                                setFruitInventory(prev => { const n = [...prev]; n.splice(idx, 1); return n; });
+                                setParty(prev => prev.map((pp, i) => i === pi ? {...pp, devilFruit: selectedBagItem.id} : pp));
+                                alert(`已将 ${selectedBagItem.name} 装备给 ${pet.name}`);
+                              }
+                              setSelectedBagItem(null);
+                            }} style={{
+                              padding:'6px 10px', borderRadius:'8px', fontSize:'11px', cursor:'pointer',
+                              border: pet.devilFruit === selectedBagItem.id ? '2px solid #4CAF50' : '1px solid #ddd',
+                              background: pet.devilFruit === selectedBagItem.id ? '#E8F5E9' : '#fff',
+                            }}>
+                              {pet.name} Lv.{pet.level} {pet.devilFruit === selectedBagItem.id ? '(卸下)' : pet.devilFruit ? '(替换)' : ''}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div style={{display:'flex', gap:'10px', width:'100%'}}>
                         <button onClick={() => setSelectedBagItem(null)} style={{flex:1, padding:'10px', border:'1px solid #ddd', background:'#fff', borderRadius:'8px', cursor:'pointer'}}>关闭</button>
                         {['meds', 'tm', 'growth', 'acc', 'stone'].includes(selectedBagItem.category) && (
@@ -10003,7 +10356,8 @@ const renderMenu = () => {
       PROTECT:'vfx-steel', SLEEP:'vfx-psychic', PARALYSIS:'vfx-electric',
       FREEZE:'vfx-ice', CONFUSION:'vfx-psychic',
       THROW_BALL:'vfx-normal', CATCH_SUCCESS:'vfx-fairy',
-      LEVEL_UP:'vfx-god', EVOLUTION:'vfx-god', DOMAIN:'vfx-dragon'
+      LEVEL_UP:'vfx-god', EVOLUTION:'vfx-god', DOMAIN:'vfx-dragon',
+      TRANSFORM:'vfx-transform'
     };
 
     const renderEnhancedVfx = (type, target) => {
@@ -10224,12 +10578,19 @@ const renderMenu = () => {
           inner = <><div className="vfx-core"/>{mkRings(4)}<div className="vfx-rays">{godRays}</div><div className="vfx-sparks">{mkSparks(18,40,130,4,10)}</div></>;
           break;
         }
+        case 'TRANSFORM': {
+          const spirals = Array.from({length:12},(_,i)=>(
+            <div key={`ts${i}`} className="vfx-spiral" style={{animationDelay:`${i*0.08}s`, transform:`rotate(${(360/12)*i}deg) translateX(60px)`}}/>
+          ));
+          inner = <><div className="vfx-core" style={{background:'radial-gradient(circle, #FF6F00, #D32F2F)', width:60,height:60}}/>{mkRings(3)}{spirals}<div className="vfx-sparks">{mkSparks(16,50,120,5,10)}</div></>;
+          break;
+        }
         default: {
           inner = <><div className="vfx-core"/>{mkRings(3)}<div className="vfx-rays">{mkRays(8)}</div><div className="vfx-sparks">{mkSparks(10,50,100,4,8)}</div><div className="vfx-trail"/></>;
           break;
         }
       }
-
+      
       return (
         <>
           {screenFlash && <div className="vfx-screen-flash" style={{background: screenFlash}} />}
@@ -10347,7 +10708,7 @@ const renderMenu = () => {
                 </div>
 
                 {/* 战场地面 - 宝可梦风格透视草地 */}
-                <div style={{
+                    <div style={{
                     position:'absolute', bottom:0, left:0, width:'100%', height:'45%',
                     background:'linear-gradient(180deg, transparent 0%, rgba(76,175,80,0.15) 20%, rgba(56,142,60,0.3) 100%)',
                     pointerEvents:'none', zIndex:2
@@ -10383,9 +10744,13 @@ const renderMenu = () => {
                             </span>
                             {renderSectBadge(e, 'enemy')}
                             {renderStatusBadges(e)}
+                            {e.devilFruit && (() => { const df = getFruitById(e.devilFruit); return df ? (
+                              <span className="fruit-badge" style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
+                                {df.name}{e.fruitTransformed ? ` (${e.fruitTurnsLeft})` : ''}
+                              </span>
+                            ) : null; })()}
                         </div>
 
-                        {/* 🔥 [修改] 第二行：等级 (右对齐，放在血条上方) */}
                         <div style={{fontSize:'14px', fontStyle:'italic', textAlign:'right', marginTop:'4px', marginRight:'2px'}}>
                             Lv.{e.level}
                         </div>
@@ -10409,12 +10774,12 @@ const renderMenu = () => {
                     </div>
 
                     {/* 敌方精灵 */}
-                    <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', marginRight: '10px'}}>
+                    <div className={`sprite-wrapper enemy-sprite-wrapper ${e.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginRight: '10px'}}>
                         {battle.isTrainer && (
                             <div style={{
                                 position: 'absolute', bottom: '10px', right: '-60px', zIndex: -1, opacity: 0.9, width: 160, height: 160
                             }}>
-                                {getTrainerAvatar(battle.trainerName)}
+                                    {getTrainerAvatar(battle.trainerName)}
                             </div>
                         )}
                         <div className="battle-platform battle-platform-enemy" />
@@ -10470,7 +10835,7 @@ const renderMenu = () => {
                 <div className="player-zone-v2" style={{position: 'absolute', bottom: '4%', left: '3%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
                     {/* 我方精灵 */}
-                    <div className="sprite-wrapper player-sprite-wrapper" style={{position: 'relative', marginBottom: '6px', marginLeft: '5px'}}>
+                    <div className={`sprite-wrapper player-sprite-wrapper ${p.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginBottom: '6px', marginLeft: '5px'}}>
                         <div className="battle-platform battle-platform-player" />
                          <div 
                              ref={(el) => {
@@ -10510,9 +10875,13 @@ const renderMenu = () => {
                             <span style={{fontSize:'14px', fontWeight:'bold'}}>{p.name}</span>
                             {renderSectBadge(p, 'player')}
                             {renderStatusBadges(p)}
+                            {p.devilFruit && (() => { const df = getFruitById(p.devilFruit); return df ? (
+                              <span className="fruit-badge" style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
+                                {df.name}{p.fruitTransformed ? ` (${p.fruitTurnsLeft})` : ''}
+                              </span>
+                            ) : null; })()}
                         </div>
                         
-                        {/* 🔥 [修改] 第二行：等级 (右对齐，放在血条上方，与敌方保持一致) */}
                         <div style={{fontSize:'14px', fontStyle:'italic', textAlign:'right', marginTop:'4px', marginRight:'2px'}}>
                             Lv.{p.level}
                         </div>
@@ -10613,6 +10982,7 @@ const renderMenu = () => {
                                 <button className="action-btn-v2 btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}><span>🎒</span><span>背包</span></button>
                                 <button className="action-btn-v2 btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}><span>🔄</span><span>交换</span></button>
                                 <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><span>🏃</span><span>逃跑</span></button>
+                                {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-v2 btn-fruit-transform" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)', color:'#fff', fontSize:'11px', boxShadow:'0 0 12px rgba(255,111,0,0.4)'}} onClick={() => executeDevilFruit('player')}><span>🍎</span><span>变身</span></button>}
                                 {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><span>🔮</span><span>蓄力</span></button>}
                                 {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><span>🌀</span><span>领域</span></button>}
                                 {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => { const curCE = p.cursedEnergy || 0; const vowList = BINDING_VOWS.map((v,i) => { const canUse = curCE >= (v.ceCost || 0); const ceTag = `🔮需${v.ceCost||0}CE${canUse ? '✅' : '❌(不足)'}`; let cost = ceTag + ' '; if (v.sacrifice.hpPercent) cost += `💔HP-${v.sacrifice.hpPercent*100}% `; if (v.sacrifice.cePercent) cost += `🔮额外燃烧${v.sacrifice.cePercent*100}%CE `; if (v.sacrifice.noSwitch) cost += `🚫禁换${v.sacrifice.turns}回合 `; if (v.sacrifice.defMult) cost += `🛡️防御x${v.sacrifice.defMult} `; if (v.sacrifice.revealMoves) cost += `👁️展示技能 `; let reward = ''; if (v.reward.atkMult) reward += `⚔️伤害x${v.reward.atkMult} `; if (v.reward.nextMovePower) reward += `💥下招x${v.reward.nextMovePower} `; if (v.reward.defMult) reward += `🛡️防御x${v.reward.defMult} `; if (v.reward.spdMult) reward += `💨速度x${v.reward.spdMult} `; if (v.reward.ceMult) reward += `🔮CE回复x${v.reward.ceMult} `; return `${i+1}. ${v.name} ${canUse?'':'[咒力不足]'}\n   代价: ${cost}\n   效果: ${reward}(${v.reward.turns}回合)`; }).join('\n'); const choice = prompt(`当前咒力: ${curCE}/${p.maxCE}\n\n选择缚誓:\n${vowList}\n\n输入序号:`); const idx = parseInt(choice) - 1; if (idx >= 0 && idx < BINDING_VOWS.length) executeBindingVow(BINDING_VOWS[idx].id); }}><span>📜</span><span>缚誓</span></button>}
@@ -10814,6 +11184,7 @@ const renderMenu = () => {
             {badges.length >= 6 && (
                 <div className={`shop-nav-item ${shopTab==='stones'?'active':''}`} onClick={()=>setShopTab('stones')}>进化石</div>
             )}
+            <div className={`shop-nav-item ${shopTab==='fruits'?'active':''}`} onClick={()=>setShopTab('fruits')} style={shopTab==='fruits'?{background:'linear-gradient(135deg,#D32F2F,#FF6F00)',color:'#fff'}:{}}>恶魔果实</div>
 
             <div className={`shop-nav-item ${shopTab==='growth'?'active':''}`} onClick={()=>setShopTab('growth')}>增强</div>
             <div className={`shop-nav-item ${shopTab==='accessories'?'active':''}`} onClick={()=>setShopTab('accessories')}>饰品</div>
@@ -10909,6 +11280,26 @@ const renderMenu = () => {
                       <div className="btn-counter" onClick={() => updateBuyCount(key, 1)}>+</div>
                     </div>
                     <button className="btn-buy-pro" onClick={() => buyItemPro(key, item.price, 'stone')} disabled={gold < price}>购买</button>
+                  </div>
+                );
+              })}
+
+              {/* 恶魔果实商人 */}
+              {shopTab === 'fruits' && getShopFruits().map(fruit => {
+                const price = FRUIT_RARITY_CONFIG[fruit.rarity]?.shopPrice || 5000;
+                return (
+                  <div key={fruit.id} className="shop-card-pro" style={{borderColor: FRUIT_RARITY_CONFIG[fruit.rarity]?.color || '#666'}}>
+                    <div className="shop-pro-icon">🍎</div>
+                    <div className="shop-pro-name" style={{color: FRUIT_RARITY_CONFIG[fruit.rarity]?.color}}>{fruit.name}</div>
+                    <div className="shop-pro-desc" style={{fontSize:'11px'}}>[{FRUIT_CATEGORY_NAMES[fruit.category]}] {fruit.desc}</div>
+                    <div style={{fontSize:'9px', color:'#999', margin:'2px 0'}}>持续 {fruit.duration} 回合 | {FRUIT_RARITY_CONFIG[fruit.rarity]?.label}</div>
+                    <div className="shop-pro-price">💰 {price}</div>
+                    <button className="btn-buy-pro" onClick={() => {
+                      if (gold < price) { alert('金币不足!'); return; }
+                      setGold(g => g - price);
+                      setFruitInventory(prev => [...prev, fruit.id]);
+                      alert(`购买了 ${fruit.name}!`);
+                    }} disabled={gold < price}>购买</button>
                   </div>
                 );
               })}

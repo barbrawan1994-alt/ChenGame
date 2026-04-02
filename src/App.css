@@ -5003,3 +5003,121 @@ button:active {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
 }
+
+/* ============================================================ */
+/* 恶魔果实系统样式 */
+/* ============================================================ */
+
+/* 变身光环 */
+.fruit-transformed {
+  position: relative;
+}
+.fruit-transformed::before {
+  content: '';
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,111,0,0.25) 0%, rgba(211,47,47,0.1) 50%, transparent 70%);
+  animation: fruit-aura 1.5s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+.fruit-transformed::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,111,0,0.35);
+  animation: fruit-ring-pulse 2s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes fruit-aura {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes fruit-ring-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* 果实标签 */
+.fruit-badge {
+  display: inline-flex;
+  align-items: center;
+  animation: fruit-badge-glow 2s ease-in-out infinite;
+}
+
+@keyframes fruit-badge-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(255,111,0,0.2); }
+  50% { box-shadow: 0 0 10px rgba(255,111,0,0.5); }
+}
+
+/* 变身按钮 */
+.btn-fruit-transform {
+  position: relative;
+  overflow: hidden;
+}
+.btn-fruit-transform::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(transparent, rgba(255,255,255,0.15), transparent);
+  animation: fruit-btn-rotate 3s linear infinite;
+}
+
+@keyframes fruit-btn-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 变身VFX */
+.vfx-transform .vfx-core {
+  background: radial-gradient(circle, #FF6F00 30%, #D32F2F 60%, transparent 80%) !important;
+  width: 60px !important;
+  height: 60px !important;
+  box-shadow: 0 0 40px rgba(255,111,0,0.6), 0 0 80px rgba(211,47,47,0.3) !important;
+}
+
+.vfx-transform .vfx-ring {
+  border-color: rgba(255,111,0,0.5) !important;
+}
+
+.vfx-transform .vfx-spark {
+  background: radial-gradient(circle, #FFD54F, #FF6F00) !important;
+}
+
+/* 果实树地图图标 */
+.fruit-tree-icon {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.fruit-tree-icon .tree-crown {
+  background: radial-gradient(circle, #FF6F00 25%, #388E3C 55%, #2E7D32 100%);
+  width: 70%;
+  height: 55%;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255,111,0,0.5);
+  animation: fruit-tree-glow 2s ease-in-out infinite;
+}
+.fruit-tree-icon .tree-trunk {
+  width: 15%;
+  height: 25%;
+  background: #5D4037;
+  border-radius: 0 0 3px 3px;
+}
+
+@keyframes fruit-tree-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,111,0,0.3); }
+  50% { box-shadow: 0 0 16px rgba(255,111,0,0.7); }
+}
