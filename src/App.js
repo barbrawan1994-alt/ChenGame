@@ -7197,95 +7197,163 @@ const renderMenu = () => {
     }
   };
 
-  return (
-    <div className="screen happy-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-      
-      {/* 背景装饰：漂浮的圆圈 */}
-      <div className="floating-shape" style={{width: 200, height: 200, top: '10%', left: '10%', animation: 'float 6s infinite'}}></div>
-      <div className="floating-shape" style={{width: 150, height: 150, bottom: '20%', right: '15%', animation: 'float 8s infinite reverse'}}></div>
-      
-      {/* 跑动的装饰 (可以用 Emoji 或图片) */}
-      <div style={{
-          position: 'absolute', bottom: '10%', fontSize: '60px', 
-          animation: 'run-across 15s linear infinite', zIndex: 1
-      }}>⚡️🐕</div>
+  const titleSprites = React.useMemo(() => {
+    const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
+    return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
+  }, []);
 
-      <div className="menu-content-pro" style={{
-          textAlign: 'center', zIndex: 10, width: '90%', maxWidth: '420px', 
-          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)',
-          padding: '40px', borderRadius: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.2), inset 0 0 0 5px rgba(255,255,255,0.5)',
-          animation: 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+  return (
+    <div className="screen" style={{
+      display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
+      background:'linear-gradient(165deg, #0f0c29 0%, #1a1a4e 30%, #24243e 60%, #0f0c29 100%)',
+      position:'relative', overflow:'hidden'
+    }}>
+      {/* 动态星空背景 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.2), transparent), radial-gradient(1.5px 1.5px at 60% 20%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 80% 50%, rgba(255,255,255,0.15), transparent), radial-gradient(2px 2px at 10% 80%, rgba(255,255,255,0.2), transparent), radial-gradient(1px 1px at 70% 90%, rgba(255,255,255,0.3), transparent), radial-gradient(1.5px 1.5px at 90% 10%, rgba(255,255,255,0.2), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 30s ease infinite', opacity:0.8}} />
+
+      {/* 光晕装饰 */}
+      <div style={{position:'absolute', top:'-20%', left:'-10%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', filter:'blur(60px)'}} />
+      <div style={{position:'absolute', bottom:'-15%', right:'-10%', width:'50%', height:'50%', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 70%)', filter:'blur(60px)'}} />
+      <div style={{position:'absolute', top:'30%', right:'20%', width:'30%', height:'30%', borderRadius:'50%', background:'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter:'blur(50px)'}} />
+
+      {/* 漂浮精灵剪影 */}
+      {titleSprites.map((url, i) => (
+        <div key={i} style={{
+          position:'absolute',
+          left: `${5 + (i % 6) * 16}%`,
+          top: i < 6 ? `${8 + i * 5}%` : `${55 + (i-6) * 6}%`,
+          width: `${40 + (i % 3) * 15}px`,
+          height: `${40 + (i % 3) * 15}px`,
+          opacity: 0.06 + (i % 3) * 0.02,
+          animation: `float ${5 + i * 0.7}s ease-in-out infinite`,
+          animationDelay: `${i * 0.5}s`,
+          filter:'grayscale(1) brightness(2)',
+          pointerEvents:'none'
+        }}>
+          <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => e.target.style.display='none'} />
+        </div>
+      ))}
+
+      {/* 主卡片 */}
+      <div style={{
+        position:'relative', zIndex:10, width:'90%', maxWidth:'460px',
+        background:'rgba(255,255,255,0.04)', backdropFilter:'blur(24px)',
+        border:'1px solid rgba(255,255,255,0.08)',
+        borderRadius:'28px', padding:'48px 40px 40px',
+        boxShadow:'0 25px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+        animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
-        
-        {/* LOGO 区域 */}
-        <div style={{marginBottom: '40px', transform: 'rotate(-2deg)'}}>
+
+        {/* Logo */}
+        <div style={{textAlign:'center', marginBottom:'40px'}}>
           <div style={{
-              fontSize: '56px', fontWeight: '900', color: '#FFD700', 
-              textShadow: '4px 4px 0px #3B4CCA, 8px 8px 0px rgba(0,0,0,0.2)', 
-              letterSpacing: '2px', fontFamily: 'Arial Black, sans-serif',
-              animation: 'float 3s ease-in-out infinite'
-          }}>
-            POKÉMON
-          </div>
+            fontSize:'13px', fontWeight:'600', letterSpacing:'6px', color:'rgba(255,255,255,0.35)',
+            textTransform:'uppercase', marginBottom:'12px'
+          }}>Legends RPG</div>
           <div style={{
-              fontSize: '16px', color: '#3B4CCA', fontWeight: 'bold', 
-              letterSpacing: '6px', marginTop: '-5px', textTransform: 'uppercase',
-              background: '#fff', display: 'inline-block', padding: '2px 10px', borderRadius: '10px'
-          }}>
-            Legends RPG
-          </div>
+            fontSize:'48px', fontWeight:'900', letterSpacing:'4px',
+            background:'linear-gradient(135deg, #f8fafc 0%, #94a3b8 50%, #f8fafc 100%)',
+            backgroundSize:'200% 200%', animation:'title-shimmer 4s ease infinite',
+            WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+            fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
+            lineHeight:1.1
+          }}>POKEMON</div>
+          <div style={{
+            width:'80px', height:'2px', margin:'16px auto 0',
+            background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+          }} />
         </div>
 
-        {/* 主按钮 */}
+        {/* 主按钮 - 开始游戏 */}
         <button onClick={handleStartGame} style={{
-            width: '100%', padding: '20px', borderRadius: '50px', border: 'none', 
-            background: 'linear-gradient(180deg, #4FC3F7 0%, #2196F3 100%)', 
-            boxShadow: '0 10px 20px rgba(33, 150, 243, 0.4), inset 0 2px 0 rgba(255,255,255,0.4)', 
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px',
-            transition: 'transform 0.1s', animation: 'pulse-glow 2s infinite'
+          width:'100%', padding:'18px 24px', borderRadius:'16px', border:'none',
+          background:'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
+          transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden'
         }}
-        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
-        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 20px 40px rgba(99,102,241,0.4)'; }}
+        onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(99,102,241,0.25)'; }}
+        onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
+        onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
         >
-            <span style={{fontSize: '32px', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.2))'}}>🚀</span>
-            <div style={{textAlign: 'left'}}>
-                <div style={{fontSize: '20px', fontWeight: '900', color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                    {hasSave ? '继续冒险' : '开始新游戏'}
-                </div>
-                <div style={{fontSize: '12px', color: 'rgba(255,255,255,0.9)', fontWeight: '500'}}>
-                    {hasSave ? '读取上次的进度' : '踏上全新的旅程'}
-                </div>
+          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+            <path d="M8 5v14l11-7z" fill="white"/>
+          </svg>
+          <div style={{textAlign:'left'}}>
+            <div style={{fontSize:'16px', fontWeight:'700', color:'#fff', letterSpacing:'0.5px'}}>
+              {hasSave ? '继续冒险' : '开始新游戏'}
             </div>
+            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'2px'}}>
+              {hasSave ? '读取上次的冒险进度' : '踏上全新的传说旅途'}
+            </div>
+          </div>
         </button>
 
-        {/* 次级按钮网格 */}
-        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px'}}>
-            <button onClick={() => setView('pokedex')} style={{
-                padding: '15px', borderRadius: '20px', border: 'none', 
-                background: '#FFF3E0', color: '#F57C00', cursor: 'pointer', 
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                boxShadow: '0 5px 0 #FFE0B2', transition: 'transform 0.1s'
-            }}>
-                <span style={{fontSize: '28px', marginBottom: '5px'}}>📖</span>
-                <span style={{fontSize: '14px', fontWeight: 'bold'}}>图鉴</span>
-            </button>
-            <button onClick={() => setView('skill_dex')} style={{
-                padding: '15px', borderRadius: '20px', border: 'none', 
-                background: '#E3F2FD', color: '#1976D2', cursor: 'pointer', 
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                boxShadow: '0 5px 0 #BBDEFB', transition: 'transform 0.1s'
-            }}>
-                <span style={{fontSize: '28px', marginBottom: '5px'}}>⚡</span>
-                <span style={{fontSize: '14px', fontWeight: 'bold'}}>技能</span>
-            </button>
+        {/* 功能按钮组 */}
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginTop:'16px'}}>
+          <button onClick={() => setView('pokedex')} style={{
+            padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
+            background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
+            display:'flex', alignItems:'center', gap:'10px',
+            transition:'all 0.25s', backdropFilter:'blur(8px)'
+          }}
+          onMouseOver={e => { e.currentTarget.style.background='rgba(251,191,36,0.12)'; e.currentTarget.style.borderColor='rgba(251,191,36,0.3)'; }}
+          onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
+          >
+            <div style={{width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg, #f59e0b, #d97706)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <div style={{fontSize:'13px', fontWeight:'700'}}>精灵图鉴</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{caughtDex.length}/500 已收集</div>
+            </div>
+          </button>
+
+          <button onClick={() => setView('skill_dex')} style={{
+            padding:'16px 12px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
+            background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
+            display:'flex', alignItems:'center', gap:'10px',
+            transition:'all 0.25s', backdropFilter:'blur(8px)'
+          }}
+          onMouseOver={e => { e.currentTarget.style.background='rgba(59,130,246,0.12)'; e.currentTarget.style.borderColor='rgba(59,130,246,0.3)'; }}
+          onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}
+          >
+            <div style={{width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg, #3b82f6, #2563eb)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <div style={{fontSize:'13px', fontWeight:'700'}}>技能大全</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>287 种技能</div>
+            </div>
+          </button>
         </div>
 
-        <div onClick={resetGame} style={{
-            marginTop: '30px', color: '#aaa', fontSize: '12px', cursor: 'pointer', 
-            textDecoration: 'underline', opacity: 0.6
-        }}>
-            重置存档 (Fix Data)
+        {/* 存档信息 (有存档时显示) */}
+        {hasSave && (
+          <div style={{
+            marginTop:'20px', padding:'14px 16px', borderRadius:'12px',
+            background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)',
+            display:'flex', justifyContent:'space-between', alignItems:'center'
+          }}>
+            <div style={{display:'flex', gap:'16px', fontSize:'11px', color:'rgba(255,255,255,0.4)'}}>
+              <span>Lv.{party[0]?.level || '?'}</span>
+              <span>{caughtDex.length} 图鉴</span>
+              <span>{gold?.toLocaleString() || 0} G</span>
+            </div>
+            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.25)', letterSpacing:'0.5px'}}>
+              {party.length} 只同行
+            </div>
+          </div>
+        )}
+
+        {/* 底部 - 版本 + 重置 */}
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'24px', paddingTop:'16px', borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v2.0 · 500 Creatures</span>
+          <span onClick={resetGame} style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', cursor:'pointer', transition:'color 0.2s', letterSpacing:'0.5px'}}
+            onMouseOver={e => e.currentTarget.style.color='rgba(239,68,68,0.6)'}
+            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,0.2)'}
+          >重置存档</span>
         </div>
       </div>
     </div>
