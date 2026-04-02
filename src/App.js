@@ -9022,14 +9022,27 @@ const renderMenu = () => {
                X:{playerPos.x} Y:{playerPos.y}
             </div>
           </div>
-          {/* 2D 视口地图 - 摄像机跟随玩家 */}
-          <div className="grid-viewport-v2" style={{
-              flex: 1, position: 'relative', borderRadius: '16px',
+          {/* 2D 视口地图 - 自适应铺满 */}
+          <div className="grid-viewport-v2" ref={el => {
+            if (el && !el.dataset.sized) {
+              el.dataset.sized = '1';
+              const ro = new ResizeObserver(() => { el.dataset.w = el.clientWidth; el.dataset.h = el.clientHeight; });
+              ro.observe(el);
+            }
+          }} style={{
+              flex: 1, position: 'relative', borderRadius: '12px',
               overflow: 'hidden', background: '#2d5a3d'
           }}>
             {mapGrid.length > 0 && (() => {
-              const TILE_SZ = 68;
-              const VW = 13, VH = 9;
+              const vpEl = document.querySelector('.grid-viewport-v2');
+              const vpW = vpEl ? vpEl.clientWidth : 700;
+              const vpH = vpEl ? vpEl.clientHeight : 500;
+              const VW = Math.max(11, Math.ceil(vpW / 52) | 1);
+              const VH = Math.max(9, Math.ceil(vpH / 52) | 1);
+              const TILE_SZ = Math.max(Math.floor(Math.min(vpW / VW, vpH / VH)), 40);
+              const totalW = VW * TILE_SZ;
+              const totalH = VH * TILE_SZ;
+
               const halfW = Math.floor(VW / 2), halfH = Math.floor(VH / 2);
               const camX = Math.max(0, Math.min(GRID_W - VW, playerPos.x - halfW));
               const camY = Math.max(0, Math.min(GRID_H - VH, playerPos.y - halfH));
@@ -9124,17 +9137,16 @@ const renderMenu = () => {
                 <div className="map-camera" style={{
                   transform: `translate(${offsetX}px, ${offsetY}px)`,
                   transition: 'transform 0.15s ease-out',
-                  width: VW * TILE_SZ, height: VH * TILE_SZ,
+                  width: totalW, height: totalH,
                   position: 'absolute',
                   top: '50%', left: '50%',
-                  marginTop: -(VH * TILE_SZ) / 2,
-                  marginLeft: -(VW * TILE_SZ) / 2,
+                  marginTop: -totalH / 2,
+                  marginLeft: -totalW / 2,
                 }}>
                   {rows}
                 </div>
               );
             })()}
-            {/* Vignette overlay */}
             <div className="map-vignette" />
           </div>
           {/* 底部菜单栏 (保持不变) */}
@@ -10401,7 +10413,7 @@ const renderMenu = () => {
                     <div className="sprite-wrapper enemy-sprite-wrapper" style={{position: 'relative', marginRight: '10px'}}>
                         {battle.isTrainer && (
                             <div style={{
-                                position: 'absolute', bottom: '20px', right: '-40px', zIndex: -1, opacity: 0.85, width: 80, height: 80
+                                position: 'absolute', bottom: '10px', right: '-60px', zIndex: -1, opacity: 0.9, width: 160, height: 160
                             }}>
                                 {getTrainerAvatar(battle.trainerName)}
                             </div>
