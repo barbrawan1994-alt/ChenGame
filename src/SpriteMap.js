@@ -1,4 +1,8 @@
-const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
+const SPRITE_CDNS = [
+  'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/',
+  'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/',
+];
+const SPRITE_BASE = SPRITE_CDNS[0];
 const SPRITE_EXT = '.png';
 
 // Trainer character sprites (Pokemon Showdown - open source)
@@ -140,11 +144,11 @@ const ID_TO_NATDEX = {
   307:30, 308:32, 309:292, 310:112, 311:185, 312:591, 313:215, 314:228, 315:260,
   316:47, 317:169, 318:71, 319:510, 320:33, 321:34, 322:220, 323:40, 324:233,
   325:222, 326:246, 327:48, 328:309, 329:102, 330:49, 331:410, 332:190, 333:122,
-  334:310, 335:60, 336:163, 337:194, 338:325, 339:610, 340:152, 342:549, 343:311,
+  334:310, 335:60, 336:163, 337:194, 338:325, 339:610, 340:152, 341:720, 342:549, 343:311,
   344:164, 345:247, 346:127, 347:356, 348:121, 349:167, 350:221, 351:61, 352:229,
   353:106, 354:177, 355:166, 356:211, 357:426, 358:86, 359:153, 360:173, 361:476,
   362:244, 363:312, 364:90, 365:299, 366:345, 367:178, 368:238, 369:700, 370:77,
-  371:378, 381:98, 382:475, 383:263, 384:187, 385:479, 386:78, 387:459, 388:442,
+  371:378, 372:719, 373:323, 374:340, 375:602, 376:455, 377:713, 378:711, 379:576, 380:545, 381:98, 382:475, 383:263, 384:187, 385:479, 386:78, 387:459, 388:442,
   389:530, 390:562, 391:193, 392:346, 393:207, 394:118, 395:582, 396:192, 397:154,
   398:188, 399:107, 400:199, 401:108, 402:597, 403:563, 404:592, 405:440, 406:438,
   407:189, 408:270, 409:119, 410:120, 411:598, 412:201, 413:204, 414:174, 415:494,
@@ -191,4 +195,11 @@ export function getSpriteUrl(pet) {
   const fallbacks = TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL;
   const idx = pet.id % fallbacks.length;
   return `${SPRITE_BASE}${fallbacks[idx]}${SPRITE_EXT}`;
+}
+
+export function getSpriteFallbackUrls(pet) {
+  if (!pet) return [];
+  const natdex = ID_TO_NATDEX[pet.id];
+  const id = natdex || ((TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL)[pet.id % (TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL).length]);
+  return SPRITE_CDNS.map(cdn => `${cdn}${id}${SPRITE_EXT}`);
 }

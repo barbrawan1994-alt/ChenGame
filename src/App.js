@@ -29,7 +29,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { generateSprite } from './SpriteGenerator';
-import { getSpriteUrl, TRAINER_SPRITES, NPC_SPRITES, getNpcSprite } from './SpriteMap';
+import { getSpriteUrl, getSpriteFallbackUrls, TRAINER_SPRITES, NPC_SPRITES, getNpcSprite } from './SpriteMap';
 import {
   SECT_DB,
   SECT_CHIEFS_CONFIG,
@@ -378,13 +378,36 @@ const [pendingTask, setPendingTask] = useState(null);
     const visual = generatePetVisual(pet);
     
     if (visual.type === 'image' || visual.type === 'pixel') {
+      const fallbackUrls = getSpriteFallbackUrls(pet);
+      const tc = TYPES[pet.type]?.color || '#999';
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
           <img 
             src={visual.url} 
             alt={pet.name} 
             className={visual.type === 'pixel' ? 'pet-avatar-pixel' : 'pet-avatar-img'}
+            onError={e => {
+              const img = e.target;
+              const tried = parseInt(img.dataset.retryIdx || '0', 10);
+              const nextUrl = fallbackUrls[tried + 1];
+              if (nextUrl && img.src !== nextUrl) {
+                img.dataset.retryIdx = String(tried + 1);
+                img.src = nextUrl;
+              } else {
+                img.style.display = 'none';
+                const fb = img.parentElement?.querySelector('.avatar-fallback');
+                if (fb) fb.style.display = 'flex';
+              }
+            }}
           />
+          <div className="avatar-fallback" style={{
+            display:'none', width:'100%', height:'100%', alignItems:'center', justifyContent:'center',
+            background: `linear-gradient(135deg, ${tc}40, ${tc}15)`,
+            borderRadius:'50%', fontSize:'clamp(14px, 38%, 42px)', fontWeight:'900',
+            color: tc, textShadow: `0 1px 4px ${tc}60`
+          }}>
+            {(pet.name || '?')[0]}
+          </div>
           {pet.isShiny && (
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
