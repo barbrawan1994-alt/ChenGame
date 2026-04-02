@@ -26,6 +26,7 @@ import {
   GROWTH_ITEMS,
 } from './data/items';
 import { TRAIT_DB, NATURE_DB } from './data/traits';
+import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { generateSprite } from './SpriteGenerator';
@@ -6426,21 +6427,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 1. 扣球并播放投掷动画
     setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: prev.balls[ballType] - 1 } }));
     setBattle(prev => ({...prev, phase: 'anim'}));
-    setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType: ballType });
+    setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
     addLog(`去吧! ${BALLS[ballType].name}!`);
     
-    await wait(800); 
-    setAnimEffect(null);
+    await wait(1200);
 
     const enemy = battle.enemyParty[battle.enemyActiveIdx];
     const catchChance = calculateCatchRate(ballType, enemy);
     const roll = Math.random();
 
+    // 1.5 球落地摇晃
+    setAnimEffect({ type: 'BALL_WOBBLE', target: 'enemy', ballType });
+    await wait(1800);
+    setAnimEffect(null);
+
     // 2. 判定捕捉结果
     if (roll < catchChance || ballType === 'master') { 
-      // 播放成功动画
-      setAnimEffect({ type: 'CATCH_SUCCESS', ballType: ballType });
-      await wait(1500); 
+      setAnimEffect({ type: 'CATCH_SUCCESS', target: 'enemy', ballType });
+      await wait(2000); 
       setAnimEffect(null);
 
       addLog(`✨ 成功捕捉 ${enemy.name}!`);
@@ -6501,9 +6505,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setView('grid_map');
 
     } else {
-      // 捕捉失败
+      setAnimEffect({ type: 'CATCH_FAIL', target: 'enemy', ballType });
       addLog("哎呀! 差点就捉到了!");
-      await wait(500);
+      await wait(1000);
+      setAnimEffect(null);
       setBattle(prev => ({...prev, phase: 'input'}));
       await enemyTurn();
     }
@@ -7605,6 +7610,169 @@ const titleSpriteUrls = React.useMemo(() => {
   const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
   return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
 }, []);
+
+// ============ 道具 CSS 图标渲染系统 ============
+const renderBallCSS = (ballId, size = 40) => {
+  const b = BALL_ICONS[ballId];
+  if (!b) return null;
+  const bh = Math.max(2, size * 0.08);
+  const br = Math.max(6, size * 0.18);
+  return (
+    <div style={{width:size,height:size,position:'relative',borderRadius:'50%',overflow:'hidden',boxShadow:`0 2px 8px ${b.glow}, inset 0 1px 2px rgba(255,255,255,0.4)`,flexShrink:0}}>
+      <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',background:b.top}} />
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:'50%',background:b.bottom}} />
+      {b.stripes && <><div style={{position:'absolute',top:'12%',left:'8%',right:'8%',height:3,background:'rgba(255,0,0,0.4)',borderRadius:2}} /><div style={{position:'absolute',top:'24%',left:'15%',right:'15%',height:2,background:'rgba(255,0,0,0.3)',borderRadius:2}} /></>}
+      {b.bolt && <div style={{position:'absolute',top:'12%',left:'50%',transform:'translateX(-50%)',color:'#FFD600',fontSize:size*0.35,fontWeight:900,textShadow:'0 0 4px #FF6F00',lineHeight:1}}>⚡</div>}
+      {b.cross && <div style={{position:'absolute',top:'15%',left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:size*0.32,fontWeight:900,lineHeight:1}}>+</div>}
+      {b.letter && <div style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',color:'#E040FB',fontSize:size*0.3,fontWeight:900,textShadow:'0 0 6px rgba(224,64,251,0.6)',lineHeight:1}}>{b.letter}</div>}
+      {b.mesh && <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',background:'repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px)'}} />}
+      <div style={{position:'absolute',top:'50%',left:0,right:0,height:bh,transform:'translateY(-50%)',background:b.band,zIndex:2}} />
+      <div style={{position:'absolute',top:'50%',left:'50%',width:br,height:br,transform:'translate(-50%,-50%)',borderRadius:'50%',background:b.btn,border:`${Math.max(1,size*0.04)}px solid #555`,zIndex:3,boxShadow:'0 0 4px rgba(0,0,0,0.3)'}} />
+      <div style={{position:'absolute',top:'4%',left:'15%',width:size*0.2,height:size*0.1,background:'rgba(255,255,255,0.5)',borderRadius:'50%',transform:'rotate(-30deg)'}} />
+    </div>
+  );
+};
+
+const renderMedCSS = (medId, size = 40) => {
+  const m = MED_ICONS[medId];
+  if (!m) return null;
+  const s = size;
+  const wrap = {width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0};
+  const shineEl = m.shine ? <div style={{position:'absolute',top:'12%',right:'18%',width:4,height:4,background:'#fff',borderRadius:'50%',boxShadow:'0 0 6px #fff'}} /> : null;
+  if (m.shape === 'bottle') return (
+    <div style={wrap}>
+      <div style={{position:'absolute',top:'8%',left:'35%',right:'35%',height:'14%',background:m.cap,borderRadius:'3px 3px 0 0'}} />
+      <div style={{position:'absolute',top:'20%',left:'24%',right:'24%',height:'70%',background:`linear-gradient(135deg,${m.c},${m.c}dd)`,borderRadius:'4px 4px 8px 8px',boxShadow:`0 2px 8px ${m.c}40`,overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'35%',height:'100%',background:'rgba(255,255,255,0.2)',borderRadius:'4px 0 0 8px'}} />
+        {shineEl}
+      </div>
+      <div style={{position:'absolute',bottom:'22%',left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:s*0.2,fontWeight:900,textShadow:'0 1px 2px rgba(0,0,0,0.3)',lineHeight:1}}>{m.label}</div>
+    </div>
+  );
+  if (m.shape === 'flask') return (
+    <div style={wrap}>
+      <div style={{position:'absolute',top:'6%',left:'38%',right:'38%',height:'16%',background:m.cap,borderRadius:'3px 3px 1px 1px'}} />
+      <div style={{position:'absolute',top:'20%',left:'20%',right:'20%',height:'68%',background:`linear-gradient(135deg,${m.c},${m.c}cc)`,borderRadius:'30% 30% 50% 50%',boxShadow:`0 2px 8px ${m.c}40`,overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'30%',height:'100%',background:'rgba(255,255,255,0.2)'}} />
+        {shineEl}
+      </div>
+      <div style={{position:'absolute',bottom:'24%',left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:s*0.19,fontWeight:900,textShadow:'0 1px 2px rgba(0,0,0,0.3)',lineHeight:1}}>{m.label}</div>
+    </div>
+  );
+  if (m.shape === 'tube') return (
+    <div style={wrap}>
+      <div style={{position:'absolute',top:'14%',left:'30%',right:'30%',height:'62%',background:'linear-gradient(180deg,#f5f5f5,#e0e0e0)',borderRadius:6,boxShadow:'0 1px 4px rgba(0,0,0,0.15)',overflow:'hidden'}}>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:'50%',background:m.c,opacity:0.7}} />
+      </div>
+      <div style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',width:8,height:8,background:m.accent,borderRadius:2}} />
+      <div style={{position:'absolute',bottom:'20%',left:'50%',transform:'translateX(-50%)',color:m.accent,fontSize:s*0.28,fontWeight:900,lineHeight:1}}>{m.sym}</div>
+    </div>
+  );
+  if (m.shape === 'crystal') return (
+    <div style={wrap}>
+      <div style={{width:s*0.6,height:s*0.7,background:`linear-gradient(135deg,${m.c},${m.accent})`,clipPath:'polygon(50% 0%,100% 35%,80% 100%,20% 100%,0% 35%)',boxShadow:`0 2px 10px ${m.c}60`,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'40%',height:'100%',background:'rgba(255,255,255,0.3)'}} />
+        {shineEl}
+      </div>
+    </div>
+  );
+  if (m.shape === 'diamond') return (
+    <div style={wrap}>
+      <div style={{width:s*0.55,height:s*0.55,background:`linear-gradient(135deg,${m.c},${m.accent})`,transform:'rotate(45deg)',borderRadius:4,boxShadow:`0 2px 10px ${m.c}50`,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'40%',height:'100%',background:'rgba(255,255,255,0.3)'}} />
+        {shineEl}
+      </div>
+    </div>
+  );
+  return null;
+};
+
+const renderStoneCSS = (stoneId, size = 40) => {
+  const st = STONE_ICONS[stoneId];
+  if (!st) return null;
+  const s = size;
+  const r = s * 0.14;
+  return (
+    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <div style={{width:s*0.72,height:s*0.72,background:`linear-gradient(135deg,${st.c1},${st.c2})`,borderRadius:r,transform:'rotate(12deg)',boxShadow:`0 2px 10px ${st.glow}60, inset 0 1px 2px rgba(255,255,255,0.4)`,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'40%',height:'100%',background:'rgba(255,255,255,0.2)',borderRadius:`${r}px 0 0 ${r}px`}} />
+        <div style={{position:'absolute',top:'8%',right:'12%',width:s*0.1,height:s*0.1,background:'rgba(255,255,255,0.6)',borderRadius:'50%'}} />
+      </div>
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:s*0.38,fontWeight:900,textShadow:`0 1px 3px rgba(0,0,0,0.3), 0 0 8px ${st.glow}80`,lineHeight:1}}>{st.sym}</div>
+    </div>
+  );
+};
+
+const renderAccCSS = (accId, size = 40) => {
+  const a = ACC_ICONS[accId];
+  if (!a) return null;
+  const s = size;
+  const clips = {
+    star:'polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)',
+    crown:'polygon(0% 100%,10% 35%,30% 60%,50% 15%,70% 60%,90% 35%,100% 100%)',
+    shield:'polygon(50% 0%,100% 15%,95% 65%,50% 100%,5% 65%,0% 15%)',
+    trophy:'polygon(15% 0%,85% 0%,95% 30%,70% 55%,72% 65%,60% 65%,60% 80%,75% 85%,75% 100%,25% 100%,25% 85%,40% 80%,40% 65%,28% 65%,30% 55%,5% 30%)',
+    fang:'polygon(50% 0%,100% 30%,80% 100%,50% 85%,20% 100%,0% 30%)',
+    round:'',
+  };
+  const clip = clips[a.shape] || '';
+  return (
+    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <div style={{width:s*0.78,height:s*0.78,background:`linear-gradient(135deg,${a.c},${a.b})`,clipPath:clip||undefined,borderRadius:clip?undefined:'50%',boxShadow:`0 2px 8px ${a.c}40`,position:'relative'}} />
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:s*0.34,fontWeight:900,textShadow:'0 1px 2px rgba(0,0,0,0.4)',lineHeight:1}}>{a.sym}</div>
+    </div>
+  );
+};
+
+const renderGrowthCSS = (growthId, size = 40) => {
+  const g = GROWTH_ICONS[growthId];
+  if (!g) return null;
+  const s = size;
+  return (
+    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <div style={{width:s*0.78,height:s*0.78,background:g.bg,borderRadius:s*0.18,border:`2px solid ${g.c}`,boxShadow:`0 2px 6px ${g.c}30`,position:'relative',overflow:'hidden'}}>
+        {g.shine && <div style={{position:'absolute',top:'10%',right:'15%',width:5,height:5,background:'#fff',borderRadius:'50%',boxShadow:`0 0 6px ${g.c}`}} />}
+      </div>
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:g.c,fontSize:s*0.26,fontWeight:900,lineHeight:1}}>{g.sym}</div>
+    </div>
+  );
+};
+
+const renderTMCSS = (tmType, size = 40) => {
+  const color = TM_ICON_COLORS[tmType] || '#78909C';
+  const s = size;
+  return (
+    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <div style={{width:s*0.76,height:s*0.76,background:`radial-gradient(circle at 40% 40%,${color}cc,${color})`,borderRadius:'50%',boxShadow:`0 2px 8px ${color}50, inset 0 -2px 4px rgba(0,0,0,0.2)`,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:'50%',left:'50%',width:s*0.28,height:s*0.28,transform:'translate(-50%,-50%)',background:'rgba(0,0,0,0.25)',borderRadius:'50%'}} />
+        <div style={{position:'absolute',top:'50%',left:'50%',width:s*0.08,height:s*0.08,transform:'translate(-50%,-50%)',background:'#fff',borderRadius:'50%'}} />
+        <div style={{position:'absolute',top:'6%',left:'22%',width:s*0.18,height:s*0.08,background:'rgba(255,255,255,0.4)',borderRadius:'50%',transform:'rotate(-25deg)'}} />
+      </div>
+      <div style={{position:'absolute',bottom:1,left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:s*0.16,fontWeight:800,background:color,padding:'0 3px',borderRadius:2,lineHeight:1.3}}>TM</div>
+    </div>
+  );
+};
+
+const renderMiscCSS = (size = 40) => {
+  const s = size;
+  return (
+    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <div style={{width:s*0.7,height:s*0.7,background:'linear-gradient(135deg,#FCE4EC,#fff)',borderRadius:'50%',border:'2px solid #E91E63',boxShadow:'0 2px 6px rgba(233,30,99,0.3)'}} />
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#E91E63',fontSize:s*0.38,fontWeight:900,lineHeight:1}}>⟳</div>
+    </div>
+  );
+};
+
+const renderItemIcon = (category, itemId, size = 36, tmType) => {
+  if (category === 'ball') return renderBallCSS(itemId, size);
+  if (category === 'med') return renderMedCSS(itemId, size);
+  if (category === 'stone') return renderStoneCSS(itemId, size);
+  if (category === 'acc') return renderAccCSS(itemId, size);
+  if (category === 'growth') return renderGrowthCSS(itemId, size);
+  if (category === 'tm') return renderTMCSS(tmType || 'NORMAL', size);
+  if (category === 'misc') return renderMiscCSS(size);
+  return null;
+};
 
 // 恶魔果实 CSS 图标渲染
 const renderFruitCSSIcon = (fruitId, size = 44) => {
@@ -10385,8 +10553,7 @@ const renderMenu = () => {
                         fontWeight: bagTab===tab ? 'bold' : 'normal',
                         borderRight: bagTab===tab ? '3px solid #1976D2' : '3px solid transparent'
                     }}>
-                        <span>{tab==='balls'?'🔴':tab==='meds'?'💊':tab==='tms'?'💿':tab==='stones'?'🔮':tab==='misc'?'💎':tab==='accessories'?'💍':''}</span>
-                        {tab==='fruits' && <span style={{width:'20px',height:'20px',borderRadius:'50%',background:'linear-gradient(135deg,#D32F2F,#FF6F00)',display:'inline-block'}} />}
+                        <span style={{display:'flex',alignItems:'center'}}>{tab==='balls'?renderBallCSS('poke',18):tab==='meds'?renderMedCSS('potion',18):tab==='tms'?renderTMCSS('NORMAL',18):tab==='stones'?renderStoneCSS('fire_stone',18):tab==='misc'?renderGrowthCSS('exp_candy',18):tab==='accessories'?renderAccCSS('a1',18):tab==='fruits'?<span style={{width:18,height:18,borderRadius:'50%',background:'linear-gradient(135deg,#D32F2F,#FF6F00)',display:'inline-block'}} />:null}</span>
                         <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':tab==='accessories'?'饰品':'恶魔果实'}</span>
                     </div>
                 ))}
@@ -10426,7 +10593,16 @@ const renderMenu = () => {
                                 background: isFruit ? `linear-gradient(135deg, ${rarityColor}10, #fafafa)` : '#fafafa'
                             }} onMouseOver={e => e.currentTarget.style.borderColor = rarityColor}
                                onMouseOut={e => e.currentTarget.style.borderColor = isFruit ? rarityColor : '#eee'}>
-                                <div style={{fontSize: '32px', marginBottom: '5px'}}>{item.fruitId ? renderFruitCSSIcon(item.fruitId, 36) : (item.icon || item.emoji)}</div>
+                                <div style={{marginBottom: '5px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:36}}>
+                                  {item.fruitId ? renderFruitCSSIcon(item.fruitId, 36) 
+                                    : currentCat==='ball' ? renderBallCSS(item.id, 36)
+                                    : currentCat==='meds' ? (renderMedCSS(item.id, 36) || <span style={{fontSize:28}}>{item.icon}</span>)
+                                    : currentCat==='tm' ? renderTMCSS(item.type || 'NORMAL', 36)
+                                    : currentCat==='stone' ? (renderStoneCSS(item.id, 36) || <span style={{fontSize:28}}>{item.icon}</span>)
+                                    : currentCat==='growth' ? (renderGrowthCSS(item.id, 36) || (item.id === 'rebirth_pill' ? renderMiscCSS(36) : <span style={{fontSize:28}}>{item.icon||item.emoji}</span>))
+                                    : currentCat==='acc' ? (renderAccCSS(item.id, 36) || <span style={{fontSize:28}}>{item.icon}</span>)
+                                    : <span style={{fontSize:28}}>{item.icon || item.emoji}</span>}
+                                </div>
                                 <div style={{fontSize: '12px', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2', height: '28px', overflow: 'hidden'}}>{item.name}</div>
                                 {isFruit && <div style={{fontSize:'9px', color: rarityColor, fontWeight:'bold'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label} · {FRUIT_CATEGORY_NAMES[item.category]}</div>}
                                 <div style={{
@@ -10450,7 +10626,16 @@ const renderMenu = () => {
                     width:'300px', background:'#fff', borderRadius:'16px', padding:'20px',
                     display:'flex', flexDirection:'column', alignItems:'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
                 }}>
-                    <div style={{fontSize:'60px', marginBottom:'15px'}}>{selectedBagItem.icon || selectedBagItem.emoji || '📦'}</div>
+                    <div style={{marginBottom:'15px', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                      {selectedBagItem.fruitId ? renderFruitCSSIcon(selectedBagItem.fruitId, 60)
+                        : selectedBagItem.category === 'ball' ? renderBallCSS(selectedBagItem.id, 60)
+                        : selectedBagItem.category === 'meds' ? (renderMedCSS(selectedBagItem.id, 60) || <span style={{fontSize:48}}>{selectedBagItem.icon}</span>)
+                        : selectedBagItem.category === 'tm' ? renderTMCSS(selectedBagItem.type || 'NORMAL', 60)
+                        : selectedBagItem.category === 'stone' ? (renderStoneCSS(selectedBagItem.id, 60) || <span style={{fontSize:48}}>{selectedBagItem.icon}</span>)
+                        : selectedBagItem.category === 'growth' ? (renderGrowthCSS(selectedBagItem.id, 60) || renderMiscCSS(60))
+                        : selectedBagItem.category === 'acc' ? (renderAccCSS(selectedBagItem.id, 60) || <span style={{fontSize:48}}>{selectedBagItem.icon}</span>)
+                        : <span style={{fontSize:48}}>{selectedBagItem.icon || selectedBagItem.emoji || '📦'}</span>}
+                    </div>
                     <div style={{fontSize:'18px', fontWeight:'bold', color:'#333', marginBottom:'5px'}}>{selectedBagItem.name}</div>
                     <div style={{fontSize:'13px', color:'#666', margin:'10px 0', textAlign:'center', background:'#f5f5f5', padding:'10px', borderRadius:'8px', width:'100%'}}>{selectedBagItem.desc}</div>
                     {selectedBagItem.category === 'fruit' && (
@@ -11240,9 +11425,12 @@ const renderMenu = () => {
                                     GSAPAnimations.petEntry(el, 0.2);
                                 }
                             }}
-                            className={`sprite-v2 anim-idle-float ${animEffect?.target==='enemy' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                            className={`sprite-v2 anim-idle-float ${animEffect?.target==='enemy' && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                             style={{
-                                filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+                                filter: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type) ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2)' : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+                                transition: 'transform 0.5s, opacity 0.5s, filter 0.3s',
+                                transform: animEffect?.type === 'BALL_WOBBLE' ? 'scale(0.3)' : animEffect?.type === 'CATCH_SUCCESS' ? 'scale(0)' : undefined,
+                                opacity: animEffect?.type === 'CATCH_SUCCESS' ? 0 : 1,
                                 animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
                                            ? 'shiny-flash-body 0.5s' : undefined
                             }}>
@@ -11260,21 +11448,7 @@ const renderMenu = () => {
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'enemy' && renderEnhancedVfx(animEffect.type, 'enemy')}
-                        {animEffect?.type === 'CATCH_SUCCESS' && animEffect?.target === 'enemy' && (
-                          <div className="catch-success-anim" style={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            fontSize: '48px',
-                            fontWeight: '900',
-                            color: '#FFD700',
-                            textShadow: '0 0 20px rgba(255,215,0,0.8)',
-                            animation: 'shiny-text-pop 1s ease-out forwards',
-                            zIndex: 200
-                          }}>GOTCHA!</div>
-                        )}
+                        {animEffect && animEffect.target === 'enemy' && !['THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect.type) && renderEnhancedVfx(animEffect.type, 'enemy')}
                     </div>
                 </div>
 
@@ -11455,18 +11629,18 @@ const renderMenu = () => {
         {showBallMenu && (
           <div className="ball-menu-overlay" onClick={() => setShowBallMenu(false)}>
             <div className="ball-menu-card" onClick={e => e.stopPropagation()}>
-              <div className="bag-header"><div className={`bag-tab ${battleBagTab==='balls'?'active':''}`} onClick={()=>setBattleBagTab('balls')}>🔴 精灵球</div><div className={`bag-tab ${battleBagTab==='meds'?'active':''}`} onClick={()=>setBattleBagTab('meds')}>💊 药品</div></div>
+              <div className="bag-header"><div className={`bag-tab ${battleBagTab==='balls'?'active':''}`} onClick={()=>setBattleBagTab('balls')} style={{display:'flex',alignItems:'center',gap:4}}>{renderBallCSS('poke',16)} 精灵球</div><div className={`bag-tab ${battleBagTab==='meds'?'active':''}`} onClick={()=>setBattleBagTab('meds')} style={{display:'flex',alignItems:'center',gap:4}}>{renderMedCSS('potion',16)} 药品</div></div>
               <div className="bag-list-area">
                 {battleBagTab === 'balls' && (
                   <>
                     {Object.keys(inventory.balls).filter(k => inventory.balls[k] > 0).length === 0 && <div className="empty-hint">没有可用的精灵球</div>}
-                    {Object.keys(inventory.balls).map(type => { const count = inventory.balls[type]; if (count <= 0) return null; const ball = BALLS[type]; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{ball.icon}</div><div className="item-info-box"><div className="item-name">{ball.name}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {Object.keys(inventory.balls).map(type => { const count = inventory.balls[type]; if (count <= 0) return null; const ball = BALLS[type]; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
                   </>
                 )}
                 {battleBagTab === 'meds' && (
                   <>
                     {Object.keys(inventory.meds).filter(k => inventory.meds[k] > 0).length === 0 && <div className="empty-hint">没有可用的药品</div>}
-                    {Object.keys(inventory.meds).map(key => { const count = inventory.meds[key]; if (count <= 0) return null; const item = MEDICINES[key]; return ( <div key={key} className="bag-list-item" onClick={() => useBattleItem(key, 'meds')}><div className="item-icon-box">{item.icon}</div><div className="item-info-box"><div className="item-name">{item.name}</div><div className="item-desc">{item.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {Object.keys(inventory.meds).map(key => { const count = inventory.meds[key]; if (count <= 0) return null; const item = MEDICINES[key]; return ( <div key={key} className="bag-list-item" onClick={() => useBattleItem(key, 'meds')}><div className="item-icon-box">{renderMedCSS(key, 32) || <span>{item.icon}</span>}</div><div className="item-info-box"><div className="item-name">{item.name}</div><div className="item-desc">{item.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
                   </>
                 )}
               </div>
@@ -11477,6 +11651,64 @@ const renderMenu = () => {
 
         {/* 门派详情浮层 */}
         {renderSectTooltipOverlay()}
+
+        {/* ====== 精灵球投掷/捕获动画 ====== */}
+        {animEffect?.type === 'THROW_BALL' && (
+          <div className="catch-ball-stage">
+            <div className="catch-ball-sprite">
+              {renderBallCSS(animEffect.ballType || 'poke', 36)}
+            </div>
+            {[0,1,2,3,4].map(i => (
+              <div key={i} className="catch-ball-trail" style={{
+                '--trail-x': `${40 + i * 40}px`, '--trail-y': `${-30 - i * 25}px`,
+                animationDelay: `${i * 0.1}s`, opacity: 0.6 - i * 0.1
+              }} />
+            ))}
+            <div className="catch-flash-ring" />
+          </div>
+        )}
+        {animEffect?.type === 'BALL_WOBBLE' && (
+          <div className="catch-ball-stage">
+            <div className="catch-ball-sprite landed">
+              {renderBallCSS(animEffect.ballType || 'poke', 36)}
+            </div>
+          </div>
+        )}
+        {animEffect?.type === 'CATCH_SUCCESS' && (
+          <div className="catch-success-stage">
+            <div className="catch-sparkle-bg" />
+            {[0,1,2].map(i => (
+              <div key={`ring-${i}`} className="catch-success-ring" style={{
+                '--ring-color': ['#FFD600','#FF6D00','#FF1744'][i],
+                animationDelay: `${i * 0.15}s`
+              }} />
+            ))}
+            {Array.from({length:12}).map((_,i) => {
+              const angle = (i / 12) * 360;
+              const dist = 60 + Math.random() * 40;
+              return <div key={`star-${i}`} className="catch-star-particle" style={{
+                '--sx': `${Math.cos(angle*Math.PI/180)*dist}px`,
+                '--sy': `${Math.sin(angle*Math.PI/180)*dist}px`,
+                '--star-color': ['#FFD600','#FF6D00','#FF1744','#E040FB','#2979FF'][i%5],
+                animationDelay: `${i * 0.05}s`
+              }} />;
+            })}
+            <div className="catch-gotcha-text">GOTCHA!</div>
+          </div>
+        )}
+        {animEffect?.type === 'CATCH_FAIL' && (
+          <div className="catch-ball-stage">
+            {Array.from({length:8}).map((_,i) => {
+              const angle = (i/8)*360;
+              return <div key={i} className="catch-fail-burst" style={{
+                '--fx': `${Math.cos(angle*Math.PI/180)*40}px`,
+                '--fy': `${Math.sin(angle*Math.PI/180)*40}px`,
+                '--shard-color': ['#FF5252','#FF8A80','#FFAB91','#FFD600'][i%4],
+                animationDelay: `${i*0.04}s`
+              }} />;
+            })}
+          </div>
+        )}
       </div>
     );
   };
@@ -11657,7 +11889,7 @@ const renderMenu = () => {
                 const price = item.price * count;
                 return (
                   <div key={type} className="shop-card-pro">
-                    <div className="shop-pro-icon">{item.icon}</div>
+                    <div className="shop-pro-icon">{renderBallCSS(type, 42)}</div>
                     <div className="shop-pro-name">{item.name}</div>
                     <div className="shop-pro-desc">{item.desc}</div>
                     <div className="shop-pro-price">💰 {price}</div>
@@ -11678,7 +11910,7 @@ const renderMenu = () => {
                 const price = item.price * count;
                 return (
                   <div key={key} className="shop-card-pro">
-                    <div className="shop-pro-icon">{item.icon}</div>
+                    <div className="shop-pro-icon">{renderMedCSS(key, 42) || <span style={{fontSize:36}}>{item.icon}</span>}</div>
                     <div className="shop-pro-name">{item.name}</div>
                     <div className="shop-pro-desc">{item.desc}</div>
                     <div className="shop-pro-price">💰 {price}</div>
@@ -11698,7 +11930,7 @@ const renderMenu = () => {
                 const price = tm.price * count;
                 return (
                   <div key={tm.id} className="shop-card-pro" style={{borderLeft: `3px solid ${TYPES[tm.type].color}`}}>
-                    <div className="shop-pro-icon">💿</div>
+                    <div className="shop-pro-icon">{renderTMCSS(tm.type || 'NORMAL', 42)}</div>
                     <div className="shop-pro-name">{tm.name}</div>
                     <div className="shop-pro-desc" style={{color: TYPES[tm.type].color, fontWeight:'bold'}}>{TYPES[tm.type].name}</div>
                     <div className="shop-pro-desc">{tm.desc}</div>
@@ -11720,7 +11952,7 @@ const renderMenu = () => {
                 const price = item.price * count;
                 return (
                   <div key={key} className="shop-card-pro" style={{borderColor: '#7B1FA2'}}>
-                    <div className="shop-pro-icon">{item.icon}</div>
+                    <div className="shop-pro-icon">{renderStoneCSS(key, 42) || <span style={{fontSize:36}}>{item.icon}</span>}</div>
                     <div className="shop-pro-name" style={{color:'#7B1FA2'}}>{item.name}</div>
                     <div className="shop-pro-desc">{item.desc}</div>
                     <div className="shop-pro-price">💰 {price}</div>
@@ -11744,7 +11976,7 @@ const renderMenu = () => {
                         const price = item.price * count;
                         return (
                         <div key={item.id} className="shop-card-pro" style={{borderColor: '#FFD700'}}>
-                            <div className="shop-pro-icon">{item.emoji}</div>
+                            <div className="shop-pro-icon">{renderGrowthCSS(item.id, 42) || <span style={{fontSize:36}}>{item.emoji}</span>}</div>
                             <div className="shop-pro-name" style={{color:'#E65100'}}>{item.name}</div>
                             <div className="shop-pro-desc">{item.desc}</div>
                             <div className="shop-pro-price">💰 {price}</div>
@@ -11762,7 +11994,7 @@ const renderMenu = () => {
                         const price = item.price * count;
                         return (
                         <div key={item.id} className="shop-card-pro" style={{borderColor: '#E91E63'}}>
-                            <div className="shop-pro-icon">{item.icon}</div>
+                            <div className="shop-pro-icon">{renderMiscCSS(42)}</div>
                             <div className="shop-pro-name" style={{color:'#C2185B'}}>{item.name}</div>
                             <div className="shop-pro-desc">{item.desc}</div>
                             <div className="shop-pro-price">💰 {price}</div>
@@ -11785,7 +12017,7 @@ const renderMenu = () => {
                 const price = acc.price * count;
                 return (
                   <div key={acc.id} className="shop-card-pro">
-                    <div className="shop-pro-icon">{acc.icon}</div>
+                    <div className="shop-pro-icon">{renderAccCSS(acc.id, 42) || <span style={{fontSize:36}}>{acc.icon}</span>}</div>
                     <div className="shop-pro-name">{acc.name}</div>
                     <div className="shop-pro-desc">{acc.desc}</div>
                     <div className="shop-pro-price">💰 {price}</div>
