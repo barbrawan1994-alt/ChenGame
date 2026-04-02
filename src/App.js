@@ -10687,7 +10687,7 @@ const renderMenu = () => {
         return badges;
     };
 
-    // 🔥 门派徽章渲染函数 (胶囊样式)
+    // 🔥 门派徽章渲染函数 (胶囊样式 + 点击弹出详情)
     const renderSectBadge = (pet, side) => {
         const s = SECT_DB[pet.sectId || 1];
         const lv = pet.sectLevel || 1; 
@@ -10696,11 +10696,8 @@ const renderMenu = () => {
 
         return (
             <div 
-                ref={battleTooltip === tooltipKey ? sectBadgeRef : null}
-                style={{position: 'relative', display: 'inline-block', marginLeft: '4px', cursor: 'help', zIndex: 20}}
-                onMouseEnter={() => setBattleTooltip(tooltipKey)}
-                onMouseLeave={() => setBattleTooltip(null)}
-                onClick={() => setBattleTooltip(prev => prev === tooltipKey ? null : tooltipKey)}
+                style={{position: 'relative', display: 'inline-block', marginLeft: '4px', cursor: 'pointer', zIndex: 20}}
+                onClick={(e) => { e.stopPropagation(); setBattleTooltip(prev => prev === tooltipKey ? null : tooltipKey); }}
             >
                 <div style={{
                     display:'inline-flex', alignItems:'center', gap:'3px',
@@ -10713,20 +10710,44 @@ const renderMenu = () => {
                     <div style={{width:'14px', height:'14px', borderRadius:'50%', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'#000', lineHeight:1}}>{s.icon}</div>
                     <span style={{textShadow:'0 1px 1px rgba(0,0,0,0.5)'}}>{s.name} <span style={{opacity:0.8, fontSize:'9px'}}>Lv.{lv}</span></span>
                 </div>
+            </div>
+        );
+    };
 
-                {battleTooltip === tooltipKey && (
-                    <div style={{
-                        position: 'fixed', top: side === 'player' ? 'auto' : '60px', bottom: side === 'player' ? '260px' : 'auto',
-                        left: '50%', transform: 'translateX(-50%)',
-                        width: '240px', background: 'rgba(15,15,25,0.97)', 
-                        backdropFilter: 'blur(12px)', color: '#fff', padding: '14px', borderRadius: '12px', fontSize: '12px', zIndex: 9999, 
-                        textAlign: 'left', border: `1.5px solid ${s.color}`, boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${s.color}40`,
-                        pointerEvents: 'none'
-                    }}>
-                        <div style={{fontWeight:'800', color: s.color, marginBottom:'6px', borderBottom:`1px solid ${s.color}30`, paddingBottom:'6px', fontSize:'13px'}}>{s.name}心法 · 第{lv}层</div>
-                        <div style={{lineHeight:'1.6', color:'#ddd', fontSize:'11px'}}>{effectText}</div>
+    const renderSectTooltipOverlay = () => {
+        if (!battleTooltip || !battleTooltip.endsWith('_sect')) return null;
+        const side = battleTooltip.replace('_sect', '');
+        const pet = side === 'player' 
+            ? battle.playerCombatStates?.[battle.activeIdx]
+            : battle.enemy?.[0];
+        if (!pet) return null;
+        const s = SECT_DB[pet.sectId || 1];
+        const lv = pet.sectLevel || 1;
+        const effectText = s.effect ? s.effect(lv) : s.desc;
+        return (
+            <div onClick={() => setBattleTooltip(null)} style={{
+                position:'fixed', inset:0, zIndex:99999, display:'flex', alignItems:'center', justifyContent:'center',
+                background:'rgba(0,0,0,0.4)', backdropFilter:'blur(3px)'
+            }}>
+                <div onClick={e => e.stopPropagation()} style={{
+                    width:'280px', background:'rgba(15,15,25,0.97)', backdropFilter:'blur(12px)',
+                    color:'#fff', padding:'20px', borderRadius:'16px', fontSize:'12px',
+                    textAlign:'left', border:`1.5px solid ${s.color}`,
+                    boxShadow:`0 12px 40px rgba(0,0,0,0.5), 0 0 24px ${s.color}30`
+                }}>
+                    <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px', paddingBottom:'10px', borderBottom:`1px solid ${s.color}30`}}>
+                        <div style={{width:'32px', height:'32px', borderRadius:'50%', background:`linear-gradient(135deg, ${s.color}, ${s.color}80)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color:'#fff', fontWeight:'900'}}>{s.icon}</div>
+                        <div>
+                            <div style={{fontSize:'15px', fontWeight:'800', color:s.color}}>{s.name}心法</div>
+                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)'}}>当前境界: 第{lv}层</div>
+                        </div>
                     </div>
-                )}
+                    <div style={{lineHeight:'1.7', color:'#ddd', fontSize:'11px'}}>{effectText}</div>
+                    <button onClick={() => setBattleTooltip(null)} style={{
+                        width:'100%', marginTop:'12px', padding:'8px', borderRadius:'8px', border:'none',
+                        background:`${s.color}20`, color:s.color, fontSize:'12px', fontWeight:'700', cursor:'pointer'
+                    }}>关闭</button>
+                </div>
             </div>
         );
     };
@@ -11430,6 +11451,9 @@ const renderMenu = () => {
             </div>
           </div>
         )}
+
+        {/* 门派详情浮层 */}
+        {renderSectTooltipOverlay()}
       </div>
     );
   };
@@ -12616,7 +12640,8 @@ const renderMenu = () => {
 
       {/* 缚誓选择弹窗 */}
       {vowModal && battle && (() => {
-        const p = battle.player[0];
+        const p = battle.playerCombatStates?.[battle.activeIdx];
+        if (!p) return null;
         const curCE = p.cursedEnergy || 0;
         const maxCE = p.maxCE || 0;
         const ceRatio = maxCE > 0 ? curCE / maxCE : 0;
