@@ -9007,80 +9007,116 @@ const renderMenu = () => {
                X:{playerPos.x} Y:{playerPos.y}
             </div>
           </div>
-          {/* 2D 平面地图 - 显示完整地图并铺满视口 */}
-          <div className="grid-viewport" style={{
-              flex: 1,
-              position: 'relative',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: 'inset 0 0 15px rgba(0,0,0,0.1)',
-              background: '#a8d5ba',
-              display: 'flex',
-              alignItems: 'stretch'
+          {/* 2D 视口地图 - 摄像机跟随玩家 */}
+          <div className="grid-viewport-v2" style={{
+              flex: 1, position: 'relative', borderRadius: '16px',
+              overflow: 'hidden', background: '#2d5a3d'
           }}>
             {mapGrid.length > 0 && (() => {
-              const TILE_STYLE = {
-                1:  { bg: '#5d8a5d', emoji: '🌲' },
-                2:  { bg: '#b5d6a7', emoji: '' },
-                3:  { bg: '#64b5f6', emoji: '〰️' },
-                4:  { bg: '#b5d6a7', emoji: '📦' },
-                5:  { bg: '#d7c9a0', emoji: '' },
-                6:  { bg: '#9e9e9e', emoji: '🪨' },
-                7:  { bg: '#8bc78b', emoji: '' },
-                8:  { bg: '#ef9a9a', emoji: '🏥' },
-                9:  { bg: '#ce93d8', emoji: '⚔️' },
-                10: { bg: '#ffcc80', emoji: '🛒' },
-                11: { bg: '#b5d6a7', emoji: '💀' },
-                12: { bg: '#b5d6a7', emoji: '☠️' },
-                13: { bg: '#b5d6a7', emoji: '👿' },
-                20: { bg: '#c5e1a5', emoji: '🦋' },
-                21: { bg: '#b3e5fc', emoji: '🎣' },
-                22: { bg: '#f8bbd0', emoji: '🎀' },
-                99: { bg: '#fff9c4', emoji: '❗' },
-                [FURNITURE_TILE]: { bg: '#d7ccc8', emoji: '🎁' },
-              };
+              const TILE_SZ = 56;
+              const VW = 15, VH = 11;
+              const halfW = Math.floor(VW / 2), halfH = Math.floor(VH / 2);
+              const camX = Math.max(0, Math.min(GRID_W - VW, playerPos.x - halfW));
+              const camY = Math.max(0, Math.min(GRID_H - VH, playerPos.y - halfH));
+              const offsetX = -(playerPos.x - halfW - camX) * TILE_SZ;
+              const offsetY = -(playerPos.y - halfH - camY) * TILE_SZ;
+
+              const leaderPet = party[0];
+              const leaderSprite = leaderPet ? getSpriteUrl(leaderPet) : null;
 
               const rows = [];
-              for (let y = 0; y < GRID_H; y++) {
+              for (let vy = 0; vy < VH; vy++) {
                 const cells = [];
-                for (let x = 0; x < GRID_W; x++) {
-                  const type = mapGrid[y][x];
-                  const isPlayer = x === playerPos.x && y === playerPos.y;
-                  const tile = TILE_STYLE[type] || TILE_STYLE[2];
-                  const isEven = (x + y) % 2 === 0;
-                  let bg = tile.bg;
-                  if (type === 2) bg = isEven ? '#b5d6a7' : '#a8ce9f';
-                  if (type === 7) bg = isEven ? '#7bb87b' : '#8bc78b';
+                for (let vx = 0; vx < VW; vx++) {
+                  const wx = camX + vx, wy = camY + vy;
+                  if (wx < 0 || wx >= GRID_W || wy < 0 || wy >= GRID_H) {
+                    cells.push(<div key={`${vx}-${vy}`} className="mt-void" style={{width:TILE_SZ,height:TILE_SZ}} />);
+                    continue;
+                  }
+                  const type = mapGrid[wy][wx];
+                  const isPlayer = wx === playerPos.x && wy === playerPos.y;
+                  const isEven = (wx + wy) % 2 === 0;
+                  const seed = (wx * 7 + wy * 13) % 10;
+
+                  let tileClass = 'mt-ground';
+                  let content = null;
+
+                  if (type === 1) {
+                    tileClass = 'mt-tree';
+                    content = (<div className="tree-icon"><div className="tree-crown" /><div className="tree-trunk" /></div>);
+                  } else if (type === 2) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                  } else if (type === 3) {
+                    tileClass = 'mt-water';
+                  } else if (type === 4) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="bld-chest"><div className="chest-body" /><div className="chest-lid" /></div>);
+                  } else if (type === 5) {
+                    tileClass = 'mt-sand';
+                  } else if (type === 6) {
+                    tileClass = 'mt-rock';
+                    content = (<div className="rock-icon" />);
+                  } else if (type === 7) {
+                    tileClass = 'mt-tallgrass';
+                  } else if (type === 8) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="bld-center"><div className="center-cross" /></div>);
+                  } else if (type === 9) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="bld-gym"><div className="gym-roof" /><div className="gym-body" /></div>);
+                  } else if (type === 10) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="bld-shop"><span>SHOP</span></div>);
+                  } else if (type >= 11 && type <= 13) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className={`npc-icon npc-enemy npc-lv${type-10}`}><div className="npc-head" /><div className="npc-body" /></div>);
+                  } else if (type >= 20 && type <= 22) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="npc-icon npc-friendly"><div className="npc-head" /><div className="npc-body" /><div className="npc-bubble">!</div></div>);
+                  } else if (type === 99) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="story-beacon" />);
+                  } else if (type === FURNITURE_TILE) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="bld-chest"><div className="chest-body" style={{background:'#8D6E63'}} /><div className="chest-lid" style={{background:'#6D4C41'}} /></div>);
+                  }
 
                   cells.push(
-                    <div key={`${x}-${y}`} style={{
-                      flex: '1 1 0',
-                      aspectRatio: '1',
-                      background: isPlayer ? '#ff8a80' : bg,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: isPlayer ? 'min(2.4vw, 24px)' : 'min(2vw, 20px)',
-                      boxShadow: isPlayer ? 'inset 0 0 0 2px #ff5252, 0 0 6px rgba(255,82,82,0.5)' : 'none',
-                      borderRadius: '2px'
-                    }}>
-                      {isPlayer ? trainerAvatar : tile.emoji}
+                    <div key={`${vx}-${vy}`}
+                      className={`mt-cell ${tileClass}`}
+                      style={{width:TILE_SZ, height:TILE_SZ, animationDelay: type===7||type===3 ? `${seed*0.15}s` : undefined}}
+                    >
+                      {content}
+                      {isPlayer && (
+                        <div className="player-marker">
+                          {leaderSprite ? (
+                            <img src={leaderSprite} alt="" className="player-pet-img" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                          ) : null}
+                          <div className="player-fallback" style={{display: leaderSprite ? 'none' : 'flex'}}>{trainerAvatar}</div>
+                          <div className="player-shadow" />
+                        </div>
+                      )}
                     </div>
                   );
                 }
-                rows.push(
-                  <div key={y} style={{ display: 'flex', flex: '1 1 0' }}>
-                    {cells}
-                  </div>
-                );
+                rows.push(<div key={vy} style={{display:'flex'}}>{cells}</div>);
               }
               return (
-                <div style={{
-                  display: 'flex', flexDirection: 'column',
-                  width: '100%', height: '100%'
+                <div className="map-camera" style={{
+                  transform: `translate(${offsetX}px, ${offsetY}px)`,
+                  transition: 'transform 0.15s ease-out',
+                  width: VW * TILE_SZ, height: VH * TILE_SZ,
+                  position: 'absolute',
+                  top: '50%', left: '50%',
+                  marginTop: -(VH * TILE_SZ) / 2,
+                  marginLeft: -(VW * TILE_SZ) / 2,
                 }}>
                   {rows}
                 </div>
               );
             })()}
+            {/* Vignette overlay */}
+            <div className="map-vignette" />
           </div>
           {/* 底部菜单栏 (保持不变) */}
           <div className="map-dock-capsule" style={{

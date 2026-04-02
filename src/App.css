@@ -4062,3 +4062,288 @@ button:active {
   20% { transform: translateX(100%); }
   100% { transform: translateX(100%); }
 }
+
+/* ============================================ */
+/* 地图视觉升级 v2 - 视口/纹理/建筑/玩家/氛围 */
+/* ============================================ */
+
+.grid-viewport-v2 {
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* --- 地形格子基础 --- */
+.mt-cell {
+  position: relative; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0;
+}
+.mt-void { background: #1a3a25; }
+
+/* 草地 - 棋盘格纹理 */
+.mt-ground {
+  background: #8fbc6b;
+  background-image:
+    radial-gradient(circle at 30% 40%, rgba(255,255,255,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, rgba(0,0,0,0.04) 0%, transparent 50%);
+}
+.mt-ground-alt {
+  background: #7dad5c;
+  background-image:
+    radial-gradient(circle at 60% 30%, rgba(255,255,255,0.05) 0%, transparent 50%),
+    radial-gradient(circle at 30% 70%, rgba(0,0,0,0.03) 0%, transparent 50%);
+}
+
+/* 高草 - 深绿+草叶条纹+摇摆 */
+.mt-tallgrass {
+  background: #5a9e4a;
+  background-image:
+    repeating-linear-gradient(175deg, transparent, transparent 3px, rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 5px);
+  position: relative;
+}
+.mt-tallgrass::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(170deg, transparent 40%, rgba(60,130,40,0.5) 42%, transparent 44%),
+    linear-gradient(175deg, transparent 55%, rgba(50,120,30,0.4) 57%, transparent 59%),
+    linear-gradient(168deg, transparent 25%, rgba(70,140,50,0.3) 27%, transparent 29%);
+  animation: grass-sway 2.5s ease-in-out infinite;
+  animation-delay: inherit;
+}
+
+/* 水面 - 渐变+波纹动画 */
+.mt-water {
+  background: linear-gradient(135deg, #4aa3df 0%, #3b8fd4 50%, #4aa3df 100%);
+  background-size: 200% 200%;
+  animation: water-flow 3s ease-in-out infinite;
+  position: relative;
+}
+.mt-water::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 70%, rgba(255,255,255,0.15) 0%, transparent 50%);
+  animation: water-shimmer 2s ease-in-out infinite;
+  animation-delay: inherit;
+}
+
+/* 树木 */
+.mt-tree {
+  background: #5a8a4a;
+  background-image: radial-gradient(circle at 50% 60%, rgba(0,0,0,0.1) 0%, transparent 70%);
+}
+
+/* 沙地 - 点状纹理 */
+.mt-sand {
+  background: #d4c59a;
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(0,0,0,0.06) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+/* 岩石地面 */
+.mt-rock {
+  background: #8a8a8a;
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.08) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.08) 75%, transparent 75%);
+  background-size: 12px 12px;
+}
+
+/* --- CSS树木图标 --- */
+.tree-icon {
+  position: relative; width: 32px; height: 40px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.tree-crown {
+  width: 30px; height: 26px; border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(ellipse at 40% 35%, #4a8c3f, #2d6b25);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.25), inset 0 -4px 8px rgba(0,0,0,0.15);
+  z-index: 2;
+}
+.tree-trunk {
+  width: 8px; height: 14px; margin-top: -4px;
+  background: linear-gradient(180deg, #6d4c2a, #5a3e22);
+  border-radius: 0 0 2px 2px; z-index: 1;
+}
+
+/* --- 岩石图标 --- */
+.rock-icon {
+  width: 28px; height: 22px;
+  background: linear-gradient(135deg, #999 0%, #777 40%, #666 100%);
+  border-radius: 40% 50% 45% 55%;
+  box-shadow: 0 3px 5px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.15);
+}
+
+/* --- 宝可梦中心 --- */
+.bld-center {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #f5f5f5 100%);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.2), 0 0 12px rgba(244,67,54,0.3);
+  display: flex; align-items: center; justify-content: center;
+  animation: bld-pulse 2s ease-in-out infinite;
+}
+.center-cross {
+  width: 18px; height: 18px; position: relative;
+}
+.center-cross::before, .center-cross::after {
+  content: ''; position: absolute; background: #e53935; border-radius: 1px;
+}
+.center-cross::before { width: 18px; height: 6px; top: 6px; left: 0; }
+.center-cross::after { width: 6px; height: 18px; top: 0; left: 6px; }
+
+/* --- 道馆 --- */
+.bld-gym {
+  width: 34px; height: 32px; display: flex; flex-direction: column; align-items: center;
+}
+.gym-roof {
+  width: 0; height: 0;
+  border-left: 17px solid transparent; border-right: 17px solid transparent;
+  border-bottom: 12px solid #7B1FA2;
+  filter: drop-shadow(0 -1px 3px rgba(123,31,162,0.4));
+}
+.gym-body {
+  width: 28px; height: 16px;
+  background: linear-gradient(180deg, #9C27B0, #7B1FA2);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  position: relative;
+}
+.gym-body::after {
+  content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 8px; height: 10px; background: #E1BEE7; border-radius: 2px 2px 0 0;
+}
+
+/* --- 商店 --- */
+.bld-shop {
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+  border-radius: 6px; padding: 4px 8px;
+  box-shadow: 0 3px 8px rgba(255,152,0,0.35);
+}
+.bld-shop span {
+  font-size: 9px; font-weight: 900; color: #fff;
+  letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* --- 宝箱 --- */
+.bld-chest {
+  width: 24px; height: 20px; position: relative;
+  display: flex; flex-direction: column; align-items: center;
+}
+.chest-body {
+  width: 24px; height: 14px; background: #FFA726;
+  border-radius: 0 0 3px 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+.chest-lid {
+  width: 26px; height: 7px; background: #FF8F00;
+  border-radius: 3px 3px 0 0; margin-bottom: -1px;
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.15);
+}
+
+/* --- NPC图标 --- */
+.npc-icon {
+  width: 28px; height: 34px; position: relative;
+  display: flex; flex-direction: column; align-items: center;
+}
+.npc-head {
+  width: 14px; height: 14px; border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.npc-body {
+  width: 16px; height: 14px; border-radius: 3px 3px 0 0;
+  margin-top: -2px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.npc-friendly .npc-head { background: #42A5F5; }
+.npc-friendly .npc-body { background: #1E88E5; }
+.npc-enemy .npc-head { background: #757575; }
+.npc-enemy .npc-body { background: #424242; }
+.npc-lv2 .npc-head { background: #EF5350; }
+.npc-lv2 .npc-body { background: #D32F2F; }
+.npc-lv3 .npc-head { background: #AB47BC; }
+.npc-lv3 .npc-body { background: #7B1FA2; }
+
+.npc-bubble {
+  position: absolute; top: -10px; right: -4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #FFC107; color: #333;
+  font-size: 10px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  animation: bld-pulse 1.5s ease-in-out infinite;
+}
+
+/* --- 剧情光柱 --- */
+.story-beacon {
+  width: 12px; height: 40px;
+  background: linear-gradient(180deg, rgba(255,235,59,0.9) 0%, rgba(255,235,59,0) 100%);
+  border-radius: 6px 6px 0 0;
+  animation: beacon-glow 1.5s ease-in-out infinite;
+  box-shadow: 0 0 16px rgba(255,235,59,0.5);
+}
+
+/* --- 玩家标记 --- */
+.player-marker {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 20;
+}
+.player-pet-img {
+  width: 40px; height: 40px; object-fit: contain;
+  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+  z-index: 2; position: relative;
+  animation: player-bob 2s ease-in-out infinite;
+}
+.player-fallback {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.9); border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; z-index: 2; position: relative;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+}
+.player-shadow {
+  position: absolute; bottom: 4px;
+  width: 28px; height: 8px; border-radius: 50%;
+  background: rgba(0,0,0,0.2); filter: blur(2px);
+  z-index: 1;
+}
+
+/* --- Vignette 暗角 --- */
+.map-vignette {
+  position: absolute; inset: 0; pointer-events: none; z-index: 10;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
+  border-radius: 16px;
+}
+
+/* --- 地图动画 --- */
+@keyframes grass-sway {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(1px); }
+  75% { transform: translateX(-1px); }
+}
+
+@keyframes water-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes water-shimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes bld-pulse {
+  0%, 100% { box-shadow: 0 3px 8px rgba(0,0,0,0.2), 0 0 8px rgba(244,67,54,0.2); }
+  50% { box-shadow: 0 3px 8px rgba(0,0,0,0.2), 0 0 18px rgba(244,67,54,0.45); }
+}
+
+@keyframes beacon-glow {
+  0%, 100% { opacity: 0.7; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.1); }
+}
+
+@keyframes player-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
