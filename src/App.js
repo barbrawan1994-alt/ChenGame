@@ -133,13 +133,13 @@ const sampleWeightedTM = (tmList) => {
 };
 
 const sampleWeightedAccessory = () => {
-  const droppable = ACCESSORY_DB.filter(a => !['trophy', 'blue_lily', 'nichirin_blade'].includes(a.id));
+  const droppable = ACCESSORY_DB.filter(a => (a.tier || 0) <= 4);
   const weighted = droppable.map(acc => {
-    const price = acc.price || 5000;
+    const t = acc.tier || 1;
     let w;
-    if (price <= 6000) w = 50;
-    else if (price <= 15000) w = 25;
-    else if (price <= 30000) w = 10;
+    if (t === 1) w = 50;
+    else if (t === 2) w = 25;
+    else if (t === 3) w = 10;
     else w = 3;
     return { acc, w };
   });
@@ -150,6 +150,16 @@ const sampleWeightedAccessory = () => {
     if (roll <= 0) return acc;
   }
   return weighted[weighted.length - 1].acc;
+};
+
+const getEquipEffects = (pet) => {
+  const effects = [];
+  (pet.equips || []).forEach(equip => {
+    if (!equip) return;
+    const accData = typeof equip === 'string' ? ACCESSORY_DB.find(c => c.id === equip) : equip;
+    if (accData && accData.effect) effects.push(accData.effect);
+  });
+  return effects;
 };
 
 export default function RPG(props) {
@@ -1102,6 +1112,7 @@ const CHARM_RANK_COLORS = {
                  if ((ivKey === 'p_def' || ivKey === 's_def') && aType === 'DEF') val += accData.val;
                  if (ivKey === 's_def' && aType === 'SDEF') val += accData.val;
                  if (ivKey === 'spd' && aType === 'SPD') val += accData.val;
+                 if (ivKey === 'spd' && accData.effect && accData.effect.id === 'bonus_spd') val += accData.effect.val;
             }
         });
 
@@ -6971,6 +6982,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
         if (atkFE && atkFE.ignoreDefPercent) defVal = Math.floor(defVal * (1 - atkFE.ignoreDefPercent));
 
+        const atkEquipFx = getEquipEffects(attacker);
+        const defEquipFx = getEquipEffects(defender);
+        atkEquipFx.forEach(fx => {
+          if (fx.id === 'ignore_def') defVal = Math.floor(defVal * (1 - fx.val));
+          if (fx.id === 'void_heart' && fx.ignDef) defVal = Math.floor(defVal * (1 - fx.ignDef));
+        });
+
         let typeMod = getTypeMod(move.t, defender.type);
         const levelBase = attacker.level * 0.8 + 5;
         const movePower = move.p || 40;
@@ -6979,11 +6997,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const statFactor = Math.pow(ratio, 0.65);
 
         let rawDmg = (levelBase + powerFactor) * statFactor;
-        if (isCrit) rawDmg *= 1.5;
+        let critDmgMult = 1.5;
+        atkEquipFx.forEach(fx => { if (fx.id === 'crit_dmg') critDmgMult += fx.val; });
+        if (isCrit) rawDmg *= critDmgMult;
         rawDmg *= typeMod;
         const isSTAB = (move.t === attacker.type || move.t === attacker.secondaryType);
         if (isSTAB) rawDmg *= 1.5;
-        rawDmg *= (0.9 + Math.random() * 0.2); 
+        rawDmg *= (0.9 + Math.random() * 0.2);
+
+        atkEquipFx.forEach(fx => {
+          if (fx.id === 'type_boost' && move.t === fx.moveType) rawDmg *= (1 + fx.val);
+          if (fx.id === 'type_heal' && move.t === fx.moveType) rawDmg *= (1 + fx.typeVal);
+        });
 
         // 果实变身增伤
         if (atkFE) {
@@ -7133,15 +7158,34 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (typeMod > 1.2) updateAchStat({ superEffectiveHits: 1 });
         }
 
-        // 结实 & 亲密度保命
+        let equipDodged = false;
+        if (!isImmune && !isDodged) {
+          defEquipFx.forEach(fx => {
+            if (fx.id === 'dodge' && Math.random() < fx.val) { equipDodged = true; }
+          });
+          if (equipDodged) { dmg = 0; rawDmg = 0; addLog(`${defender.name} 的饰品发动，闪避了攻击！`); }
+        }
+        if (!isImmune && !isDodged && !equipDodged) {
+          defEquipFx.forEach(fx => {
+            if (fx.id === 'reduce_special' && category === 'special') { rawDmg *= (1 - fx.val); dmg = Math.floor(rawDmg); }
+          });
+        }
+
         let survivalMsg = null;
         if (defender.trait === 'sturdy' && defender.currentHp === statsDef.maxHp && dmg >= defender.currentHp) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 的结实特性撑住了！`;
         }
-        else if (defender.intimacy >= 200 && dmg >= defender.currentHp && Math.random() < 0.15) {
+        else if (dmg >= defender.currentHp) {
+          let endured = false;
+          defEquipFx.forEach(fx => {
+            if (fx.id === 'endure' && !defender._endureUsed) { endured = true; defender._endureUsed = true; }
+          });
+          if (endured) { dmg = defender.currentHp - 1; survivalMsg = `🪶 ${defender.name} 的不死鸟羽发动，硬撑住了！`; }
+          else if (defender.intimacy >= 200 && Math.random() < 0.15) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 为了不让你伤心，撑住了攻击！`;
+          }
         }
 
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
@@ -7197,6 +7241,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const ref = Math.floor(dmg * _defFE.reflectAll);
             attacker.currentHp = Math.max(0, attacker.currentHp - ref);
             addLog(`${defender.name} 的果实反弹了 ${ref} 伤害!`);
+          }
+        }
+
+        // 饰品效果：吸血/反伤
+        if (dmg > 0 && !isImmune && !isDodged && !equipDodged) {
+          let equipDrain = 0;
+          atkEquipFx.forEach(fx => {
+            if (fx.id === 'lifesteal') equipDrain += fx.val;
+            if (fx.id === 'void_heart' && fx.lifesteal) equipDrain += fx.lifesteal;
+          });
+          if (equipDrain > 0) {
+            const eHeal = Math.floor(dmg * equipDrain);
+            attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + eHeal);
+            addLog(`💍 ${attacker.name} 吸取了 ${eHeal} HP！`);
+          }
+          if (!isDead) {
+            defEquipFx.forEach(fx => {
+              if (fx.id === 'reflect') {
+                const ref = Math.floor(dmg * fx.val);
+                if (ref > 0) { attacker.currentHp = Math.max(0, attacker.currentHp - ref); addLog(`🌵 ${defender.name} 的荆棘反弹了 ${ref} 伤害！`); }
+              }
+            });
           }
         }
 
@@ -7337,11 +7403,36 @@ const grantContestReward = (config, score, subjectPet = null) => {
         atkState.activeVow = null;
     }
 
-    // 4. 回合结束结算 (灼伤/中毒) — 每次行动后对行动方结算
+    // 4a. 饰品回合恢复
+    if (!isDead) {
+      [attacker, defender].forEach(unit => {
+        if (unit.currentHp <= 0) return;
+        const eFx = getEquipEffects(unit);
+        let healPct = 0;
+        eFx.forEach(fx => {
+          if (fx.id === 'heal_turn') healPct += fx.val;
+          if (fx.id === 'type_heal') healPct += fx.healVal;
+        });
+        if (healPct > 0) {
+          const mHp = getStats(unit).maxHp;
+          const h = Math.floor(mHp * healPct);
+          unit.currentHp = Math.min(mHp, unit.currentHp + h);
+          addLog(`🌙 ${unit.name} 的饰品恢复了 ${h} HP`);
+        }
+      });
+    }
+
+    // 4b. 回合结束结算 (灼伤/中毒) — 每次行动后对行动方结算
     if (!isDead) {
         const applyDot = (unit, state) => {
             if (unit.currentHp <= 0) return false;
             if (state.status === 'BRN' || state.status === 'PSN') {
+                const eFx = getEquipEffects(unit);
+                let immune = false;
+                eFx.forEach(fx => {
+                  if (fx.id === 'status_immune' && (fx.val === 'ALL' || fx.val === state.status)) { immune = true; state.status = null; }
+                });
+                if (immune) { addLog(`🌸 ${unit.name} 的饰品净化了异常状态！`); return false; }
                 const dot = Math.floor(getStats(unit).maxHp / 8);
                 unit.currentHp = Math.max(0, unit.currentHp - dot);
                 addLog(`${unit.name} 受到 ${state.status==='BRN'?'灼伤':'毒'} 伤害!`);
@@ -7350,8 +7441,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return false;
         };
         
-        const atkDiedFromDot = applyDot(atkState, atkState);
-        const defDiedFromDot = applyDot(defState, defState);
+        const atkDiedFromDot = applyDot(attacker, atkState);
+        const defDiedFromDot = applyDot(defender, defState);
 
         if (source === 'player' && defDiedFromDot) isDead = true;
         if (source === 'enemy' && atkDiedFromDot) isDead = true;
@@ -14447,10 +14538,10 @@ const renderMenu = () => {
       4: ['vit_hp','vit_patk','vit_pdef','vit_satk','vit_sdef','vit_spd','vit_crit','exp_candy','max_candy'],
     };
     const accByTier = {
-      1: ['a1','a3','a10'],
-      2: ['a1','a3','a10','a11','a4'],
-      3: ['a2','a8','a4','a11','a12'],
-      4: ['a2','a8','a7','a13','a14','a12'],
+      1: ['a1','a3','a10','a22','a24'],
+      2: ['a1','a3','a10','a11','a28','a23'],
+      3: ['a2','a8','a4','a12','a13'],
+      4: ['a2','a8','a7','a14','a15'],
     };
     const showStones = tier >= 3;
     const showCursed = tier >= 3;

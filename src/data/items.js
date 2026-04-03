@@ -63,35 +63,86 @@ export const MISC_ITEMS = {
 };
 
 export const ACCESSORY_DB = [
-  // Tier 1 - 基础饰品
-  { id: 'a1', name: '勇气徽章', type: 'ATK', val: 15, icon: '🎖️', price: 5000, desc: '攻击力+15' },
-  { id: 'a3', name: '守护围巾', type: 'DEF', val: 15, icon: '🧣', price: 5000, desc: '防御力+15' },
-  { id: 'a10', name: '活力头带', type: 'HP', val: 60, icon: '🎀', price: 5000, desc: '最大HP+60' },
-  { id: 'a11', name: '疾风羽饰', type: 'SPD', val: 15, icon: '🪶', price: 6000, desc: '速度+15' },
-  // Tier 2 - 进阶饰品
-  { id: 'a2', name: '力量拳套', type: 'ATK', val: 35, icon: '🥊', price: 12000, desc: '攻击力+35' },
-  { id: 'a8', name: '金属涂层', type: 'DEF', val: 40, icon: '🛡️', price: 15000, desc: '防御力+40' },
-  { id: 'a4', name: '爱心饼干', type: 'HP', val: 100, icon: '🍪', price: 10000, desc: '最大HP+100' },
-  { id: 'a12', name: '锐利之爪', type: 'CRIT', val: 8, icon: '🦅', price: 12000, desc: '暴击率+8%' },
-  { id: 'a13', name: '智慧眼镜', type: 'SATK', val: 35, icon: '🥽', price: 12000, desc: '特攻+35' },
-  { id: 'a14', name: '坚韧披风', type: 'SDEF', val: 35, icon: '🧥', price: 12000, desc: '特防+35' },
-  // Tier 3 - 高级饰品
-  { id: 'a7', name: '龙之牙', type: 'ATK', val: 50, icon: '🦷', price: 20000, desc: '攻击力+50' },
-  { id: 'a6', name: '天使光环', type: 'DEF', val: 60, icon: '😇', price: 25000, desc: '防御力+60' },
-  { id: 'a9', name: '奇迹种子', type: 'HP', val: 200, icon: '🌰', price: 22000, desc: '最大HP+200' },
-  { id: 'a15', name: '雷神护腕', type: 'SPD', val: 40, icon: '⚡', price: 20000, desc: '速度+40' },
-  { id: 'a16', name: '暗杀之刃', type: 'CRIT', val: 15, icon: '🗡️', price: 22000, desc: '暴击率+15%' },
-  { id: 'a17', name: '贤者之书', type: 'SATK', val: 60, icon: '📕', price: 25000, desc: '特攻+60' },
-  { id: 'a18', name: '不屈铠甲', type: 'SDEF', val: 60, icon: '🎽', price: 25000, desc: '特防+60' },
-  // Tier 4 - 顶级饰品
-  { id: 'a5', name: '王者皇冠', type: 'ATK', val: 80, icon: '👑', price: 40000, desc: '攻击力+80' },
-  { id: 'a19', name: '龙鳞战甲', type: 'DEF', val: 80, icon: '🐉', price: 40000, desc: '防御力+80' },
-  { id: 'a20', name: '生命之冠', type: 'HP', val: 350, icon: '💎', price: 45000, desc: '最大HP+350' },
-  { id: 'a21', name: '幻影斗篷', type: 'SPD', val: 60, icon: '🌀', price: 40000, desc: '速度+60' },
-  // 非卖品 - 只能通过掉落获得
-  { id: 'trophy', name: '冠军奖杯', type: 'ATK', val: 200, icon: '🏆', price: 99999, desc: '至高荣誉！全属性大幅提升(隐藏效果)' },
-  { id: 'blue_lily', name: '蓝色彼岸花', type: 'HP', val: 300, icon: '🌺', price: 99999, desc: '无限城深处绽放的神秘花朵，赋予持有者超凡生命力' },
-  { id: 'nichirin_blade', name: '日轮刀', type: 'ATK', val: 250, icon: '⚔️', price: 99999, desc: '以特殊矿石锻造的神器之刃，斩杀一切邪恶' },
+  // =========================================
+  //  Tier 1 - 基础饰品 (3000-6000)
+  // =========================================
+  { id: 'a1',  name: '勇气徽章',   type: 'ATK',  val: 15,  icon: '🎖️', price: 5000,  tier: 1, desc: '攻击力+15' },
+  { id: 'a3',  name: '守护围巾',   type: 'DEF',  val: 15,  icon: '🧣', price: 5000,  tier: 1, desc: '防御力+15' },
+  { id: 'a10', name: '活力头带',   type: 'HP',   val: 60,  icon: '🎀', price: 5000,  tier: 1, desc: '最大HP+60' },
+  { id: 'a11', name: '疾风羽饰',   type: 'SPD',  val: 15,  icon: '🪶', price: 6000,  tier: 1, desc: '速度+15' },
+  { id: 'a22', name: '知识水晶',   type: 'SATK', val: 15,  icon: '🔮', price: 5000,  tier: 1, desc: '特攻+15' },
+  { id: 'a23', name: '精神头环',   type: 'SDEF', val: 15,  icon: '🧠', price: 5000,  tier: 1, desc: '特防+15' },
+  { id: 'a24', name: '幸运铃铛',   type: 'CRIT', val: 5,   icon: '🔔', price: 4000,  tier: 1, desc: '暴击率+5%' },
+  { id: 'a25', name: '生命草环',   type: 'HP',   val: 30,  icon: '🌿', price: 4500,  tier: 1, desc: 'HP+30，每回合恢复3%HP', effect: { id: 'heal_turn', val: 0.03 } },
+  { id: 'a26', name: '解毒护符',   type: 'HP',   val: 20,  icon: '💚', price: 3500,  tier: 1, desc: 'HP+20，免疫中毒', effect: { id: 'status_immune', val: 'PSN' } },
+  { id: 'a27', name: '先攻之爪',   type: 'SPD',  val: 10,  icon: '🐾', price: 5500,  tier: 1, desc: '速度+10，8%概率先手', effect: { id: 'priority', val: 0.08 } },
+
+  // =========================================
+  //  Tier 2 - 进阶饰品 (8000-18000)
+  // =========================================
+  { id: 'a2',  name: '力量拳套',   type: 'ATK',  val: 35,  icon: '🥊', price: 12000, tier: 2, desc: '攻击力+35' },
+  { id: 'a8',  name: '金属涂层',   type: 'DEF',  val: 40,  icon: '🛡️', price: 15000, tier: 2, desc: '防御力+40' },
+  { id: 'a4',  name: '爱心饼干',   type: 'HP',   val: 100, icon: '🍪', price: 10000, tier: 2, desc: '最大HP+100' },
+  { id: 'a12', name: '锐利之爪',   type: 'CRIT', val: 8,   icon: '🦅', price: 12000, tier: 2, desc: '暴击率+8%' },
+  { id: 'a13', name: '智慧眼镜',   type: 'SATK', val: 35,  icon: '🥽', price: 12000, tier: 2, desc: '特攻+35' },
+  { id: 'a14', name: '坚韧披风',   type: 'SDEF', val: 35,  icon: '🧥', price: 12000, tier: 2, desc: '特防+35' },
+  { id: 'a28', name: '迅捷腰带',   type: 'SPD',  val: 25,  icon: '🌊', price: 10000, tier: 2, desc: '速度+25' },
+  { id: 'a29', name: '吸血之牙',   type: 'ATK',  val: 10,  icon: '🦇', price: 14000, tier: 2, desc: '攻+10，攻击吸血8%', effect: { id: 'lifesteal', val: 0.08 } },
+  { id: 'a30', name: '火焰宝石',   type: 'ATK',  val: 10,  icon: '🔥', price: 13000, tier: 2, desc: '攻+10，火系伤害+15%', effect: { id: 'type_boost', moveType: 'FIRE', val: 0.15 } },
+  { id: 'a31', name: '冰霜宝石',   type: 'ATK',  val: 10,  icon: '❄️', price: 13000, tier: 2, desc: '攻+10，冰系伤害+15%', effect: { id: 'type_boost', moveType: 'ICE', val: 0.15 } },
+  { id: 'a32', name: '雷鸣宝石',   type: 'ATK',  val: 10,  icon: '⚡', price: 13000, tier: 2, desc: '攻+10，电系伤害+15%', effect: { id: 'type_boost', moveType: 'ELECTRIC', val: 0.15 } },
+  { id: 'a33', name: '净化吊坠',   type: 'HP',   val: 50,  icon: '🌸', price: 16000, tier: 2, desc: 'HP+50，免疫所有异常状态', effect: { id: 'status_immune', val: 'ALL' } },
+  { id: 'a34', name: '破甲之锥',   type: 'ATK',  val: 15,  icon: '🔩', price: 15000, tier: 2, desc: '攻+15，无视8%防御', effect: { id: 'ignore_def', val: 0.08 } },
+  { id: 'a35', name: '荆棘铠甲',   type: 'DEF',  val: 20,  icon: '🌵', price: 14000, tier: 2, desc: '防+20，反弹8%受到伤害', effect: { id: 'reflect', val: 0.08 } },
+
+  // =========================================
+  //  Tier 3 - 高级饰品 (20000-35000)
+  // =========================================
+  { id: 'a7',  name: '龙之牙',     type: 'ATK',  val: 50,  icon: '🦷', price: 20000, tier: 3, desc: '攻击力+50' },
+  { id: 'a6',  name: '天使光环',   type: 'DEF',  val: 60,  icon: '😇', price: 25000, tier: 3, desc: '防御力+60' },
+  { id: 'a9',  name: '奇迹种子',   type: 'HP',   val: 200, icon: '🌰', price: 22000, tier: 3, desc: '最大HP+200' },
+  { id: 'a15', name: '雷神护腕',   type: 'SPD',  val: 40,  icon: '⚡', price: 20000, tier: 3, desc: '速度+40' },
+  { id: 'a16', name: '暗杀之刃',   type: 'CRIT', val: 15,  icon: '🗡️', price: 22000, tier: 3, desc: '暴击率+15%' },
+  { id: 'a17', name: '贤者之书',   type: 'SATK', val: 60,  icon: '📕', price: 25000, tier: 3, desc: '特攻+60' },
+  { id: 'a18', name: '不屈铠甲',   type: 'SDEF', val: 60,  icon: '🎽', price: 25000, tier: 3, desc: '特防+60' },
+  { id: 'a36', name: '龙脉宝珠',   type: 'SATK', val: 20,  icon: '🐲', price: 28000, tier: 3, desc: '特攻+20，龙系伤害+20%', effect: { id: 'type_boost', moveType: 'DRAGON', val: 0.20 } },
+  { id: 'a37', name: '深海之泪',   type: 'SATK', val: 20,  icon: '🧊', price: 26000, tier: 3, desc: '特攻+20，水系伤害+20%', effect: { id: 'type_boost', moveType: 'WATER', val: 0.20 } },
+  { id: 'a38', name: '大地精魂',   type: 'ATK',  val: 20,  icon: '🏔️', price: 26000, tier: 3, desc: '攻+20，地面系伤害+20%', effect: { id: 'type_boost', moveType: 'GROUND', val: 0.20 } },
+  { id: 'a39', name: '不死鸟羽',   type: 'HP',   val: 80,  icon: '🪶', price: 30000, tier: 3, desc: 'HP+80，致命一击时以1HP存活(每场1次)', effect: { id: 'endure', val: 1 } },
+  { id: 'a40', name: '暗影面罩',   type: 'ATK',  val: 30,  icon: '🎭', price: 28000, tier: 3, desc: '攻+30，恶系伤害+15%', effect: { id: 'type_boost', moveType: 'DARK', val: 0.15 } },
+  { id: 'a41', name: '月光石链',   type: 'HP',   val: 80,  icon: '🌙', price: 28000, tier: 3, desc: 'HP+80，每回合恢复5%HP', effect: { id: 'heal_turn', val: 0.05 } },
+  { id: 'a42', name: '致命剃刀',   type: 'CRIT', val: 10,  icon: '💀', price: 30000, tier: 3, desc: '暴击+10%，暴击伤害+25%', effect: { id: 'crit_dmg', val: 0.25 } },
+  { id: 'a43', name: '圣光宝珠',   type: 'SATK', val: 20,  icon: '✨', price: 26000, tier: 3, desc: '特攻+20，光系伤害+20%', effect: { id: 'type_boost', moveType: 'LIGHT', val: 0.20 } },
+  { id: 'a53', name: '草之精华',   type: 'HP',   val: 60,  icon: '🍀', price: 24000, tier: 3, desc: 'HP+60，草系伤害+15%+回合恢复3%', effect: { id: 'type_heal', moveType: 'GRASS', typeVal: 0.15, healVal: 0.03 } },
+  { id: 'a54', name: '武神护手',   type: 'ATK',  val: 25,  icon: '🥋', price: 26000, tier: 3, desc: '攻+25，格斗系伤害+20%', effect: { id: 'type_boost', moveType: 'FIGHT', val: 0.20 } },
+  { id: 'a55', name: '幽灵水晶',   type: 'SATK', val: 20,  icon: '👻', price: 26000, tier: 3, desc: '特攻+20，幽灵系伤害+20%', effect: { id: 'type_boost', moveType: 'GHOST', val: 0.20 } },
+  { id: 'a56', name: '钢之纹章',   type: 'DEF',  val: 30,  icon: '⚙️', price: 26000, tier: 3, desc: '防+30，钢系伤害+15%', effect: { id: 'type_boost', moveType: 'STEEL', val: 0.15 } },
+  { id: 'a57', name: '风之羽冠',   type: 'SPD',  val: 25,  icon: '💨', price: 26000, tier: 3, desc: '速度+25，风系伤害+20%', effect: { id: 'type_boost', moveType: 'WIND', val: 0.20 } },
+  { id: 'a58', name: '毒蛇之环',   type: 'ATK',  val: 20,  icon: '🐍', price: 24000, tier: 3, desc: '攻+20，毒系伤害+20%', effect: { id: 'type_boost', moveType: 'POISON', val: 0.20 } },
+
+  // =========================================
+  //  Tier 4 - 顶级饰品 (40000-65000)
+  // =========================================
+  { id: 'a5',  name: '王者皇冠',   type: 'ATK',  val: 80,  icon: '👑', price: 40000, tier: 4, desc: '攻击力+80' },
+  { id: 'a19', name: '龙鳞战甲',   type: 'DEF',  val: 80,  icon: '🐉', price: 40000, tier: 4, desc: '防御力+80' },
+  { id: 'a20', name: '生命之冠',   type: 'HP',   val: 350, icon: '💎', price: 45000, tier: 4, desc: '最大HP+350' },
+  { id: 'a21', name: '幻影斗篷',   type: 'SPD',  val: 60,  icon: '🌀', price: 40000, tier: 4, desc: '速度+60' },
+  { id: 'a44', name: '破灭之刃',   type: 'ATK',  val: 60,  icon: '⚔️', price: 50000, tier: 4, desc: '攻+60，无视12%防御', effect: { id: 'ignore_def', val: 0.12 } },
+  { id: 'a45', name: '天穹之眼',   type: 'SATK', val: 80,  icon: '👁️', price: 48000, tier: 4, desc: '特攻+80' },
+  { id: 'a46', name: '不灭盾壁',   type: 'SDEF', val: 80,  icon: '🏛️', price: 50000, tier: 4, desc: '特防+80，特殊伤害减免10%', effect: { id: 'reduce_special', val: 0.10 } },
+  { id: 'a47', name: '血族之戒',   type: 'HP',   val: 120, icon: '💍', price: 55000, tier: 4, desc: 'HP+120，攻击吸血15%', effect: { id: 'lifesteal', val: 0.15 } },
+  { id: 'a48', name: '极光之翼',   type: 'SPD',  val: 50,  icon: '🦋', price: 52000, tier: 4, desc: '速+50，10%闪避攻击', effect: { id: 'dodge', val: 0.10 } },
+  { id: 'a49', name: '灭世之瞳',   type: 'CRIT', val: 20,  icon: '🔮', price: 60000, tier: 4, desc: '暴击+20%，暴击伤害+40%', effect: { id: 'crit_dmg', val: 0.40 } },
+
+  // =========================================
+  //  传说饰品 - 非卖品(只能通过特殊途径获得)
+  // =========================================
+  { id: 'trophy',         name: '冠军奖杯',   type: 'ATK',  val: 200, icon: '🏆', price: 99999, tier: 5, desc: '至高荣誉，攻击+200' },
+  { id: 'blue_lily',      name: '蓝色彼岸花', type: 'HP',   val: 300, icon: '🌺', price: 99999, tier: 5, desc: '无限城深处绽放的神秘花朵，HP+300' },
+  { id: 'nichirin_blade',name: '日轮刀',     type: 'ATK',  val: 250, icon: '⚔️', price: 99999, tier: 5, desc: '特殊矿石锻造的神刃，攻+250' },
+  { id: 'a50', name: '创世徽记',   type: 'ATK',  val: 50,  icon: '🌟', price: 99999, tier: 5, desc: '攻+50，每回合恢复3%HP', effect: { id: 'heal_turn', val: 0.03 } },
+  { id: 'a51', name: '虚空之心',   type: 'ATK',  val: 100, icon: '🖤', price: 99999, tier: 5, desc: '攻+100，无视15%防御+吸血10%', effect: { id: 'void_heart', ignDef: 0.15, lifesteal: 0.10 } },
+  { id: 'a52', name: '仙灵御剑',   type: 'ATK',  val: 80,  icon: '🗡️', price: 99999, tier: 5, desc: '攻+80，速+40(来自蜀山)', effect: { id: 'bonus_spd', val: 40 } },
 ];
 
 export const RANDOM_EQUIP_DB = [
