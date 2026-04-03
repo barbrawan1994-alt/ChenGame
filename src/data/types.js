@@ -16,6 +16,9 @@ export const TYPES = {
   DRAGON: { name: '龙', color: '#7038F8', bg: '#E1BEE7' },
   STEEL: { name: '钢', color: '#B8B8D0', bg: '#ECEFF1' },
   FAIRY: { name: '妖精', color: '#EE99AC', bg: '#FCE4EC' },
+  DARK: { name: '恶', color: '#705848', bg: '#EFEBE9' },
+  WIND: { name: '风', color: '#81D4FA', bg: '#E1F5FE' },
+  LIGHT: { name: '光', color: '#FFD54F', bg: '#FFFDE7' },
   HEAL: { name: '治愈', color: '#81C784', bg: '#E8F5E9' },
   GOD: { name: '神', color: '#333333', bg: '#D7CCC8' }
 };
@@ -41,7 +44,10 @@ export const TYPE_CHARM_BASE = {
   ROCK: 15,    // 岩石：坚硬
   BUG: 15,     // 虫：部分人害怕
   GHOST: 15,   // 幽灵：诡异
-  POISON: 10   // 毒：危险
+  POISON: 10,  // 毒：危险
+  DARK: 20,    // 恶：阴暗
+  WIND: 45,    // 风：飘逸
+  LIGHT: 55    // 光：圣洁
 };
 
 export const TYPE_BIAS = {
@@ -62,6 +68,9 @@ export const TYPE_BIAS = {
   DRAGON:  { p: 1.2, s: 1.2 }, // 种族强大
   STEEL:   { p: 1.2, s: 0.7 }, // 偏物攻
   FAIRY:   { p: 0.7, s: 1.3 }, // 偏特攻
+  DARK:    { p: 1.1, s: 1.0 },  // 偏物攻
+  WIND:    { p: 0.9, s: 1.2 },  // 偏特攻/速度
+  LIGHT:   { p: 0.8, s: 1.3 },  // 偏特攻
   HEAL:    { p: 0.5, s: 1.0 },
-  GOD:     { p: 1.5, s: 1.5 }  // 神
+  GOD:     { p: 1.5, s: 1.5 }   // 神
 };

@@ -860,14 +860,156 @@ const NEW_PETS_500 = [
   { id: 500, name: '催眠师', type: 'PSYCHIC', emoji: '🔮', hp: 65, atk: 80, def: 60, desc: '拥有强大催眠能力的超能力者，能操控他人梦境。' },
 ];
 
+// ==========================================
+// 新增100种精灵 (ID 501-600) - 含风/光属性
+// ==========================================
+const PETS_600 = [
+  // --- 风系精灵 (15种, 含进化链) ---
+  { id: 501, name: '微风兔', type: 'WIND', emoji: '🐇', hp: 40, atk: 35, def: 30, evo: 502, evoLvl: 16, desc: '在风中奔跑的小兔子，耳朵能感应气流。' },
+  { id: 502, name: '旋风兔', type: 'WIND', emoji: '🐇', hp: 60, atk: 55, def: 50, evo: 503, evoLvl: 36, desc: '进化后能制造小旋风，速度极快。' },
+  { id: 503, name: '暴风王兔', type: 'WIND', emoji: '🐇', hp: 80, atk: 85, def: 70, desc: '暴风之王，奔跑时掀起猛烈风暴。' },
+  { id: 504, name: '风铃鸟', type: 'WIND', emoji: '🐦', hp: 45, atk: 40, def: 35, evo: 505, evoLvl: 20, desc: '飞行时发出清脆风铃声的小鸟。' },
+  { id: 505, name: '疾风隼', type: 'WIND', emoji: '🦅', hp: 65, atk: 80, def: 55, evo: 506, evoLvl: 40, desc: '速度堪比疾风的猛禽。' },
+  { id: 506, name: '风暴凤凰', type: 'WIND', emoji: '🦅', hp: 85, atk: 110, def: 75, desc: '传说中掌控风暴的凤凰。' },
+  { id: 507, name: '浮空水母', type: 'WIND', emoji: '🪼', hp: 55, atk: 45, def: 40, evo: 508, evoLvl: 25, desc: '飘浮在空中的水母，靠风力移动。' },
+  { id: 508, name: '风暴水母', type: 'WIND', emoji: '🪼', hp: 75, atk: 70, def: 60, desc: '体内蕴含狂风之力的巨型气母。' },
+  { id: 509, name: '蒲公英精', type: 'WIND', emoji: '🌼', hp: 50, atk: 40, def: 45, evo: 510, evoLvl: 22, desc: '随风飘散种子的小精灵。' },
+  { id: 510, name: '风花仙子', type: 'WIND', emoji: '🌸', hp: 70, atk: 65, def: 65, desc: '掌控花瓣与风的妖精。' },
+  { id: 511, name: '龙卷蛇', type: 'WIND', emoji: '🐍', hp: 60, atk: 75, def: 55, desc: '身体卷成龙卷风形态的蛇。' },
+  { id: 512, name: '风刃螳螂', type: 'WIND', emoji: '🦗', hp: 55, atk: 90, def: 50, desc: '双臂化作风刃的螳螂，一击致命。' },
+  { id: 513, name: '气旋松鼠', type: 'WIND', emoji: '🐿️', hp: 45, atk: 50, def: 40, desc: '用尾巴制造小气旋的可爱松鼠。' },
+  { id: 514, name: '风行者', type: 'WIND', emoji: '💨', hp: 65, atk: 70, def: 55, desc: '在风中自由穿行的流浪者。' },
+  { id: 515, name: '暴风天使', type: 'WIND', emoji: '👼', hp: 75, atk: 80, def: 70, desc: '驾驭暴风的天使，守护旅人。' },
+
+  // --- 光系精灵 (15种, 含进化链) ---
+  { id: 516, name: '萤火虫', type: 'LIGHT', emoji: '🪲', hp: 35, atk: 30, def: 30, evo: 517, evoLvl: 18, desc: '在夜晚发出温暖光芒的小虫子。' },
+  { id: 517, name: '光辉蛾', type: 'LIGHT', emoji: '🦋', hp: 60, atk: 55, def: 50, evo: 518, evoLvl: 36, desc: '散发光辉的美丽蛾类精灵。' },
+  { id: 518, name: '圣光帝蛾', type: 'LIGHT', emoji: '🦋', hp: 80, atk: 85, def: 70, desc: '周身散发神圣光辉的帝王蛾。' },
+  { id: 519, name: '晨光猫', type: 'LIGHT', emoji: '🐱', hp: 40, atk: 40, def: 35, evo: 520, evoLvl: 20, desc: '在晨光中出现的神秘小猫。' },
+  { id: 520, name: '日光猫', type: 'LIGHT', emoji: '🐱', hp: 65, atk: 70, def: 55, evo: 521, evoLvl: 40, desc: '毛发散发日光的猫精灵。' },
+  { id: 521, name: '太阳狮', type: 'LIGHT', emoji: '🦁', hp: 85, atk: 100, def: 80, desc: '传说中太阳的化身，鬃毛如烈日。' },
+  { id: 522, name: '棱镜水晶', type: 'LIGHT', emoji: '💎', hp: 50, atk: 45, def: 60, evo: 523, evoLvl: 28, desc: '折射光线的水晶体精灵。' },
+  { id: 523, name: '虹光宝石', type: 'LIGHT', emoji: '💎', hp: 70, atk: 75, def: 85, desc: '散发七色光芒的宝石精灵。' },
+  { id: 524, name: '光子精灵', type: 'LIGHT', emoji: '✨', hp: 55, atk: 65, def: 45, evo: 525, evoLvl: 30, desc: '由光子构成的纯能量生物。' },
+  { id: 525, name: '光束战士', type: 'LIGHT', emoji: '✨', hp: 75, atk: 90, def: 65, desc: '能自由操控光束的战士。' },
+  { id: 526, name: '极光狐', type: 'LIGHT', emoji: '🦊', hp: 55, atk: 60, def: 50, desc: '毛尖闪烁极光的白狐。' },
+  { id: 527, name: '圣光独角兽', type: 'LIGHT', emoji: '🦄', hp: 70, atk: 80, def: 70, desc: '角上散发圣光的神圣独角兽。' },
+  { id: 528, name: '日轮鸟', type: 'LIGHT', emoji: '🐤', hp: 50, atk: 55, def: 40, desc: '背负日轮飞翔的金色小鸟。' },
+  { id: 529, name: '光之精灵', type: 'LIGHT', emoji: '🌟', hp: 60, atk: 65, def: 55, desc: '纯粹光之力量凝聚的精灵。' },
+  { id: 530, name: '天照使者', type: 'LIGHT', emoji: '☀️', hp: 80, atk: 90, def: 75, desc: '天照大神的使者，光芒普照大地。' },
+
+  // --- 恶系精灵 (10种, 含进化链) ---
+  { id: 531, name: '暗影鼠', type: 'DARK', emoji: '🐀', hp: 40, atk: 45, def: 30, evo: 532, evoLvl: 18, desc: '在暗影中潜行的小鼠。' },
+  { id: 532, name: '暗夜狼', type: 'DARK', emoji: '🐺', hp: 65, atk: 80, def: 55, evo: 533, evoLvl: 38, desc: '在月夜嚎叫的暗黑狼。' },
+  { id: 533, name: '冥王狼', type: 'DARK', emoji: '🐺', hp: 85, atk: 110, def: 75, desc: '统治暗界的冥王之狼。' },
+  { id: 534, name: '黑雾蝙蝠', type: 'DARK', emoji: '🦇', hp: 50, atk: 55, def: 40, evo: 535, evoLvl: 24, desc: '在黑雾中飞行的蝙蝠。' },
+  { id: 535, name: '暗翼魔蝠', type: 'DARK', emoji: '🦇', hp: 70, atk: 80, def: 60, desc: '展开暗之翼的魔界蝙蝠。' },
+  { id: 536, name: '暗影猫', type: 'DARK', emoji: '🐈‍⬛', hp: 45, atk: 55, def: 35, evo: 537, evoLvl: 22, desc: '与影子融为一体的黑猫。' },
+  { id: 537, name: '幽暗豹', type: 'DARK', emoji: '🐈‍⬛', hp: 70, atk: 85, def: 60, desc: '在黑夜中无声猎杀的暗豹。' },
+  { id: 538, name: '诡计蛇', type: 'DARK', emoji: '🐍', hp: 55, atk: 70, def: 50, desc: '擅长用诡计迷惑对手的蛇。' },
+  { id: 539, name: '深渊鱼', type: 'DARK', emoji: '🐟', hp: 60, atk: 65, def: 55, desc: '栖息在深渊的暗黑鱼类。' },
+  { id: 540, name: '暗影武士', type: 'DARK', emoji: '🥷', hp: 70, atk: 90, def: 60, desc: '从暗影中现身的神秘武士。' },
+
+  // --- 其他属性精灵 (60种, 补充各属性) ---
+  // 火系 (6种)
+  { id: 541, name: '火焰蜥', type: 'FIRE', emoji: '🦎', hp: 40, atk: 45, def: 35, evo: 542, evoLvl: 20, desc: '尾巴燃烧着火焰的小蜥蜴。' },
+  { id: 542, name: '烈焰巨蜥', type: 'FIRE', emoji: '🦎', hp: 70, atk: 85, def: 65, desc: '进化后全身被火焰包裹的巨蜥。' },
+  { id: 543, name: '火山幼龙', type: 'FIRE', emoji: '🐉', hp: 50, atk: 55, def: 45, evo: 544, evoLvl: 35, desc: '在火山中孵化的小龙。' },
+  { id: 544, name: '赤炎飞龙', type: 'FIRE', emoji: '🐉', hp: 80, atk: 95, def: 70, desc: '喷吐赤红火焰的巨型飞龙。' },
+  { id: 545, name: '灼热仙人掌', type: 'FIRE', emoji: '🌵', hp: 55, atk: 60, def: 70, desc: '在沙漠中自燃的仙人掌。' },
+  { id: 546, name: '火之舞者', type: 'FIRE', emoji: '💃', hp: 60, atk: 75, def: 50, desc: '在火焰中翩翩起舞的精灵。' },
+
+  // 水系 (6种)
+  { id: 547, name: '泡泡鱼', type: 'WATER', emoji: '🐠', hp: 40, atk: 35, def: 35, evo: 548, evoLvl: 18, desc: '吐出可爱泡泡的小鱼。' },
+  { id: 548, name: '深海鲸', type: 'WATER', emoji: '🐋', hp: 90, atk: 70, def: 80, desc: '潜入深海的巨大鲸鱼精灵。' },
+  { id: 549, name: '珊瑚精灵', type: 'WATER', emoji: '🪸', hp: 55, atk: 45, def: 65, evo: 550, evoLvl: 25, desc: '由珊瑚构成的美丽精灵。' },
+  { id: 550, name: '海礁巨兽', type: 'WATER', emoji: '🪸', hp: 80, atk: 70, def: 95, desc: '由整片珊瑚礁进化的巨兽。' },
+  { id: 551, name: '雨滴精', type: 'WATER', emoji: '💧', hp: 45, atk: 40, def: 40, desc: '由雨滴凝聚的小精灵。' },
+  { id: 552, name: '海马骑士', type: 'WATER', emoji: '🐴', hp: 60, atk: 65, def: 55, desc: '骑乘海浪的海马战士。' },
+
+  // 草系 (6种)
+  { id: 553, name: '种子球', type: 'GRASS', emoji: '🌱', hp: 40, atk: 30, def: 40, evo: 554, evoLvl: 16, desc: '圆滚滚的种子球，充满生机。' },
+  { id: 554, name: '花丛兽', type: 'GRASS', emoji: '🌿', hp: 65, atk: 55, def: 65, evo: 555, evoLvl: 36, desc: '身上长满花朵的森林兽。' },
+  { id: 555, name: '森之守护者', type: 'GRASS', emoji: '🌳', hp: 90, atk: 80, def: 90, desc: '守护古老森林的巨树精灵。' },
+  { id: 556, name: '蘑菇小子', type: 'GRASS', emoji: '🍄', hp: 50, atk: 45, def: 50, desc: '戴着蘑菇帽的可爱精灵。' },
+  { id: 557, name: '仙人球', type: 'GRASS', emoji: '🌵', hp: 55, atk: 55, def: 60, desc: '圆形仙人掌精灵，刺很尖。' },
+  { id: 558, name: '莲叶蛙', type: 'GRASS', emoji: '🐸', hp: 50, atk: 50, def: 45, desc: '坐在莲叶上的青蛙精灵。' },
+
+  // 电系 (5种)
+  { id: 559, name: '电火花', type: 'ELECTRIC', emoji: '⚡', hp: 35, atk: 40, def: 30, evo: 560, evoLvl: 22, desc: '身体不断放电的小精灵。' },
+  { id: 560, name: '雷暴兽', type: 'ELECTRIC', emoji: '⚡', hp: 70, atk: 85, def: 60, desc: '能召唤雷暴的电属性巨兽。' },
+  { id: 561, name: '电磁章鱼', type: 'ELECTRIC', emoji: '🐙', hp: 60, atk: 65, def: 55, desc: '触手放电的电磁章鱼。' },
+  { id: 562, name: '闪电鸟', type: 'ELECTRIC', emoji: '🐤', hp: 50, atk: 60, def: 45, desc: '翅膀闪着电光的黄色小鸟。' },
+  { id: 563, name: '电浆兽', type: 'ELECTRIC', emoji: '🔋', hp: 55, atk: 70, def: 50, desc: '由电浆构成的能量生物。' },
+
+  // 冰系 (5种)
+  { id: 564, name: '冰晶兔', type: 'ICE', emoji: '🐰', hp: 40, atk: 35, def: 40, evo: 565, evoLvl: 24, desc: '毛发如冰晶闪亮的兔子。' },
+  { id: 565, name: '冰霜麋鹿', type: 'ICE', emoji: '🦌', hp: 70, atk: 65, def: 70, desc: '鹿角覆盖冰霜的雄鹿。' },
+  { id: 566, name: '雪花精灵', type: 'ICE', emoji: '❄️', hp: 45, atk: 40, def: 45, desc: '由雪花凝聚的小精灵。' },
+  { id: 567, name: '冰川巨人', type: 'ICE', emoji: '🧊', hp: 85, atk: 80, def: 95, desc: '由冰川凝结的巨型精灵。' },
+  { id: 568, name: '寒霜狐', type: 'ICE', emoji: '🦊', hp: 55, atk: 65, def: 50, desc: '生活在雪原的白色狐狸。' },
+
+  // 格斗系 (5种)
+  { id: 569, name: '拳击猴', type: 'FIGHT', emoji: '🐒', hp: 45, atk: 55, def: 35, evo: 570, evoLvl: 26, desc: '酷爱拳击的小猴子。' },
+  { id: 570, name: '格斗猩猩', type: 'FIGHT', emoji: '🦍', hp: 80, atk: 100, def: 70, desc: '拥有极强力量的格斗猩猩。' },
+  { id: 571, name: '武道家', type: 'FIGHT', emoji: '🥋', hp: 60, atk: 80, def: 55, desc: '精通各种武术的格斗达人。' },
+  { id: 572, name: '铁拳蟹', type: 'FIGHT', emoji: '🦀', hp: 55, atk: 85, def: 70, desc: '拥有钢铁般硬拳的巨蟹。' },
+  { id: 573, name: '相扑力士', type: 'FIGHT', emoji: '🤼', hp: 90, atk: 75, def: 80, desc: '体型巨大的相扑选手精灵。' },
+
+  // 毒系 (4种)
+  { id: 574, name: '毒菇', type: 'POISON', emoji: '🍄', hp: 45, atk: 40, def: 45, evo: 575, evoLvl: 22, desc: '散发毒孢子的小蘑菇。' },
+  { id: 575, name: '瘴气菇王', type: 'POISON', emoji: '🍄', hp: 75, atk: 70, def: 70, desc: '释放致命瘴气的巨型蘑菇。' },
+  { id: 576, name: '剧毒蛙', type: 'POISON', emoji: '🐸', hp: 55, atk: 65, def: 50, desc: '皮肤分泌剧毒的箭毒蛙。' },
+  { id: 577, name: '毒刺海胆', type: 'POISON', emoji: '🦔', hp: 50, atk: 55, def: 65, desc: '全身毒刺的海底生物。' },
+
+  // 地面系 (4种)
+  { id: 578, name: '钻地鼹', type: 'GROUND', emoji: '🐹', hp: 45, atk: 50, def: 40, evo: 579, evoLvl: 24, desc: '善于挖掘隧道的小鼹鼠。' },
+  { id: 579, name: '地震犰狳', type: 'GROUND', emoji: '🐾', hp: 75, atk: 80, def: 85, desc: '能引发地震的铠甲犰狳。' },
+  { id: 580, name: '沙丘虫', type: 'GROUND', emoji: '🪱', hp: 55, atk: 60, def: 50, desc: '在沙丘下潜伏的巨虫。' },
+  { id: 581, name: '大地鲶鱼', type: 'GROUND', emoji: '🐟', hp: 65, atk: 70, def: 60, desc: '传说中引发地震的巨型鲶鱼。' },
+
+  // 飞行系 (3种)
+  { id: 582, name: '气球鸟', type: 'FLYING', emoji: '🎈', hp: 40, atk: 35, def: 30, evo: 583, evoLvl: 20, desc: '像气球一样漂浮的圆鸟。' },
+  { id: 583, name: '风暴鹰', type: 'FLYING', emoji: '🦅', hp: 70, atk: 85, def: 60, desc: '翱翔在风暴中的猛禽。' },
+  { id: 584, name: '天空鲸', type: 'FLYING', emoji: '🐋', hp: 80, atk: 70, def: 75, desc: '在天空游弋的巨大鲸鱼。' },
+
+  // 超能力系 (3种)
+  { id: 585, name: '念力球', type: 'PSYCHIC', emoji: '🔮', hp: 40, atk: 35, def: 35, evo: 586, evoLvl: 22, desc: '漂浮在空中的念力球体。' },
+  { id: 586, name: '心灵术士', type: 'PSYCHIC', emoji: '🧙', hp: 65, atk: 70, def: 55, desc: '精通心灵术的神秘术士。' },
+  { id: 587, name: '星象师', type: 'PSYCHIC', emoji: '🌙', hp: 60, atk: 75, def: 60, desc: '能预知未来的星象占卜师。' },
+
+  // 虫系 (3种)
+  { id: 588, name: '宝石甲虫', type: 'BUG', emoji: '🪲', hp: 50, atk: 55, def: 60, evo: 589, evoLvl: 24, desc: '甲壳闪耀宝石光泽的甲虫。' },
+  { id: 589, name: '钻石独角仙', type: 'BUG', emoji: '🪲', hp: 75, atk: 85, def: 80, desc: '角如钻石般坚硬的独角仙。' },
+  { id: 590, name: '丝绸蛾', type: 'BUG', emoji: '🦋', hp: 55, atk: 50, def: 50, desc: '翅膀如丝绸般美丽的蛾。' },
+
+  // 岩石系 (3种)
+  { id: 591, name: '小石头', type: 'ROCK', emoji: '🪨', hp: 45, atk: 50, def: 55, evo: 592, evoLvl: 25, desc: '有生命的小石头精灵。' },
+  { id: 592, name: '巨岩兽', type: 'ROCK', emoji: '🪨', hp: 80, atk: 80, def: 100, desc: '由巨岩构成的威武巨兽。' },
+  { id: 593, name: '化石翼龙', type: 'ROCK', emoji: '🦖', hp: 65, atk: 85, def: 60, desc: '从化石中复活的远古翼龙。' },
+
+  // 幽灵系 (3种)
+  { id: 594, name: '蜡烛幽灵', type: 'GHOST', emoji: '🕯️', hp: 40, atk: 40, def: 35, evo: 595, evoLvl: 22, desc: '烛光中漂浮的小幽灵。' },
+  { id: 595, name: '灯笼鬼', type: 'GHOST', emoji: '🏮', hp: 65, atk: 70, def: 60, desc: '提着灯笼的恐怖幽灵。' },
+  { id: 596, name: '幽灵骑士', type: 'GHOST', emoji: '🗡️', hp: 70, atk: 85, def: 65, desc: '骑着幽灵马的无头骑士。' },
+
+  // 龙系 (3种)
+  { id: 597, name: '小飞龙', type: 'DRAGON', emoji: '🐲', hp: 50, atk: 55, def: 45, evo: 598, evoLvl: 30, desc: '还不会喷火的幼龙。' },
+  { id: 598, name: '翡翠龙', type: 'DRAGON', emoji: '🐉', hp: 80, atk: 95, def: 75, desc: '鳞片如翡翠般翠绿的龙。' },
+  { id: 599, name: '星辰龙', type: 'DRAGON', emoji: '🐉', hp: 75, atk: 90, def: 70, desc: '身披星辰的神秘龙族。' },
+
+  // 钢/妖精/普通 (1种)
+  { id: 600, name: '机械天使', type: 'STEEL', emoji: '🤖', hp: 75, atk: 85, def: 85, desc: '融合科技与天使形态的终极机械。' },
+];
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
-    UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500
+    UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 500);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 600);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
@@ -877,4 +1019,4 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500 };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600 };

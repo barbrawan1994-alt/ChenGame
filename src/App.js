@@ -5577,7 +5577,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       WATER:   { weak: ['GRASS', 'ELECTRIC'], strong: ['FIRE', 'GROUND', 'ROCK'] },
       GRASS:   { weak: ['FIRE', 'ICE', 'POISON', 'FLYING', 'BUG'], strong: ['WATER', 'GROUND', 'ROCK'] },
       ELECTRIC:{ weak: ['GROUND'], strong: ['WATER', 'FLYING'] },
-      ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON'] },
+      ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'] },
       FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'STEEL', 'DARK'] },
       POISON:  { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'] },
       GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL'] },
@@ -5585,11 +5585,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
       PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK'], strong: ['FIGHT', 'POISON'] },
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG'] },
-      GHOST:   { weak: ['GHOST', 'DARK'], strong: ['PSYCHIC', 'GHOST'] },
+      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST'] },
       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY'], strong: ['DRAGON'] },
-      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST'] },
+      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST'] },
       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY'] },
       FAIRY:   { weak: ['POISON', 'STEEL'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
+      WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'] },
+      LIGHT:   { weak: ['DARK', 'GHOST'], strong: ['DARK', 'GHOST', 'POISON'] },
     };
 
     const info = chart[moveType];

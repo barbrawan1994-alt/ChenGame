@@ -189,6 +189,42 @@ const SKILL_DB = {
     { name: '大地掌控', p: 120, pp: 5, desc: '掌控大地之力的妖精攻击' },
     { name: '星光灭绝', p: 150, pp: 5, desc: '以星光之力歼灭一切' }
   ],
+  DARK: [
+    { name: '咬碎', p: 80, pp: 15, desc: '用尖牙咬碎对手，可能降防' },
+    { name: '暗袭要害', p: 70, pp: 15, desc: '攻击要害部位，暴击率高' },
+    { name: '恶之波动', p: 80, pp: 15, desc: '释放充满恶意的波动' },
+    { name: '暗黑爆裂', p: 85, pp: 10, desc: '释放浓缩的黑暗能量爆炸' },
+    { name: '夜袭', p: 70, pp: 20, desc: '趁黑夜突袭，必定先手' },
+    { name: '制裁光砾', p: 100, pp: 5, desc: '以制裁之力发射暗之光' },
+    { name: '暗影突袭', p: 90, pp: 15, desc: '从暗影中发动突然袭击' },
+    { name: '恶意追击', p: 60, pp: 20, desc: '追击逃跑的对手，威力翻倍' },
+    { name: '暗冥强击', p: 110, pp: 5, desc: '凝聚黑暗之力的致命一击' },
+    { name: '无尽暗夜', p: 140, pp: 3, desc: '将对手拖入无尽的黑暗中' },
+  ],
+  WIND: [
+    { name: '微风切割', p: 40, pp: 30, desc: '用微风刃攻击对手' },
+    { name: '旋风击', p: 55, pp: 25, desc: '卷起旋风攻击对手' },
+    { name: '镰鼬', p: 75, pp: 15, desc: '不可见的风之刃切裂对手' },
+    { name: '暴风', p: 90, pp: 10, desc: '掀起猛烈暴风攻击对手' },
+    { name: '真空波', p: 70, pp: 20, desc: '制造真空冲击波，必定先手' },
+    { name: '疾风连斩', p: 80, pp: 15, desc: '以风之速连续斩击对手' },
+    { name: '风刃暴击', p: 100, pp: 10, desc: '凝聚风刃的致命一击' },
+    { name: '龙卷天降', p: 110, pp: 5, desc: '召唤巨型龙卷风吞噬对手' },
+    { name: '风神之怒', p: 130, pp: 3, desc: '风神降临的毁灭性风暴' },
+    { name: '神风突击', p: 150, pp: 3, desc: '化身神风的终极突击' },
+  ],
+  LIGHT: [
+    { name: '圣光弹', p: 40, pp: 30, desc: '发射圣洁的光弹攻击' },
+    { name: '光辉冲击', p: 60, pp: 25, desc: '用光芒包裹身体冲击' },
+    { name: '棱镜光线', p: 75, pp: 15, desc: '发射七彩棱镜光线' },
+    { name: '圣光斩', p: 85, pp: 10, desc: '以圣光化为利刃斩击' },
+    { name: '极光幕帘', p: 70, pp: 15, desc: '展开极光护盾反击对手' },
+    { name: '审判之光', p: 100, pp: 10, desc: '降下审判的神圣光柱' },
+    { name: '光子爆发', p: 110, pp: 5, desc: '释放光子能量的猛烈爆炸' },
+    { name: '圣洁光辉', p: 90, pp: 10, desc: '散发圣洁光芒净化一切' },
+    { name: '天堂之光', p: 130, pp: 3, desc: '来自天堂的终极光束' },
+    { name: '创世光明', p: 160, pp: 3, desc: '开天辟地的创世光明' },
+  ],
   GOD: [
     { name: '神之裁决', p: 100, pp: 10, desc: '以神明之力裁决对手' },
     { name: '虚空破碎', p: 120, pp: 5, desc: '粉碎虚空的神圣一击' },
@@ -434,6 +470,48 @@ const ADVANCED_SKILLS = [
 
   // --- 神系 (1) ---
   { name: '天启审判', t: 'GOD', p: 160, pp: 3, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '天之审判降临，160威力+50%大幅降防' },
+
+  // --- 风系 (3) ---
+  { name: '真空斩月', t: 'WIND', p: 100, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 0.4 }, desc: '月形风刃，100威力+40%加速' },
+  { name: '飓风吞噬', t: 'WIND', p: 120, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '飓风撕裂防御，120威力+30%降防' },
+  { name: '风暴结界', t: 'WIND', p: 85, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 0.5 }, desc: '风暴护体，85威力+50%加速' },
+
+  // --- 光系 (3) ---
+  { name: '圣光审判', t: 'LIGHT', p: 110, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '圣光降下审判，110威力+30%降特防' },
+  { name: '光之壁垒', t: 'LIGHT', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 1, chance: 0.5 }, desc: '光之壁垒，80威力+50%升特防' },
+  { name: '极光冲击', t: 'LIGHT', p: 130, pp: 5, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '极光之力，130威力+20%混乱' },
+
+  // --- 暗系 (3) ---
+  { name: '暗夜猎杀', t: 'DARK', p: 95, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '暗夜猎杀，95威力+30%升攻' },
+  { name: '黑暗领域', t: 'DARK', p: 105, pp: 8, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.4 }, desc: '黑暗弥漫，105威力+40%降命中' },
+  { name: '终焉之影', t: 'DARK', p: 140, pp: 3, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '终焉暗影，140威力+30%混乱' },
+
+  // --- 火系新增 (2) ---
+  { name: '烈焰星坠', t: 'FIRE', p: 115, pp: 5, effect: { type: 'STATUS', status: 'BRN', chance: 0.4 }, desc: '如流星坠落的烈焰，115威力+40%灼伤' },
+  { name: '业火审判', t: 'FIRE', p: 140, pp: 3, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.5 }, desc: '业火焚尽，140威力+50%降特防' },
+
+  // --- 水系新增 (2) ---
+  { name: '深海漩涡', t: 'WATER', p: 95, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.4 }, desc: '深海漩涡卷入，95威力+40%降速' },
+  { name: '潮汐怒涛', t: 'WATER', p: 125, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '潮汐之怒，125威力+30%降防' },
+
+  // --- 草系新增 (2) ---
+  { name: '荆棘缠绕', t: 'GRASS', p: 85, pp: 15, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '荆棘纠缠，85威力+50%降速' },
+  { name: '世界树之力', t: 'GRASS', p: 130, pp: 3, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.5 }, desc: '世界树赐予力量，130威力+50%升特攻' },
+
+  // --- 电系新增 (1) ---
+  { name: '雷神制裁', t: 'ELECTRIC', p: 135, pp: 5, effect: { type: 'STATUS', status: 'PAR', chance: 0.4 }, desc: '雷神降临，135威力+40%麻痹' },
+
+  // --- 格斗新增 (1) ---
+  { name: '一拳超人', t: 'FIGHT', p: 150, pp: 3, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '全力一拳，150威力+50%大幅降防' },
+
+  // --- 钢系新增 (1) ---
+  { name: '合金重炮', t: 'STEEL', p: 120, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '合金炮弹轰击，120威力+30%降防' },
+
+  // --- 龙系新增 (1) ---
+  { name: '龙魂爆裂', t: 'DRAGON', p: 140, pp: 3, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.4 }, desc: '龙之魂魄爆发，140威力+40%升攻' },
+
+  // --- 冰系新增 (1) ---
+  { name: '绝对零度', t: 'ICE', p: 0, pp: 5, effect: { type: 'OHKO', chance: 0.3 }, desc: '绝对零度，30%概率一击必杀' },
 ];
 
 // [自动注入] 将新技能合并到 SKILL_DB

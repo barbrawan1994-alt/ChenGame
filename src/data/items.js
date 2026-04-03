@@ -45,7 +45,10 @@ export const TMS = [
   { id: 'tm_bolt',   name: '伏特攻击', type: 'ELECTRIC', p: 120, pp: 5, price: 12000, desc: '电系最强物攻，带麻痹效果' },
   { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',    p: 90, pp: 10, price: 8000, desc: '有概率冻结对手' },
   { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',  p: 40, pp: 20, price: 4000, desc: '攻击的同时提升攻击力' },
-  { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',   p: 90, pp: 15, price: 8000, desc: '稳定的火系强攻，带灼伤' }
+  { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',   p: 90, pp: 15, price: 8000, desc: '稳定的火系强攻，带灼伤' },
+  { id: 'tm_dark',   name: '暗冥强击', type: 'DARK',   p: 110, pp: 5, price: 8000, desc: '恶系大招，凝聚黑暗之力' },
+  { id: 'tm_wind',   name: '龙卷天降', type: 'WIND',   p: 110, pp: 5, price: 8000, desc: '风系大招，召唤龙卷风' },
+  { id: 'tm_light',  name: '光子爆发', type: 'LIGHT',  p: 110, pp: 5, price: 8000, desc: '光系大招，光子能量爆炸' },
 ];
 
 export const MISC_ITEMS = {
