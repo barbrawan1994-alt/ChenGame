@@ -1753,197 +1753,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   z-index: 1;
 }
 
-/* [重复定义 - 被文件末尾最终版覆盖] */
-.battle-panel-v2 {
-  position: absolute; bottom: 0; left: 0; width: 100%;
-  height: 180px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(245,247,250,0.99));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(0,0,0,0.06);
-  border-top-left-radius: 20px; border-top-right-radius: 20px;
-  box-shadow: 0 -6px 24px rgba(0,0,0,0.1);
-  z-index: 1000;
-  display: flex; flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom);
-  overflow: hidden;
-}
-
-.battle-panel-v2::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, 
-    transparent 0%,
-    rgba(33, 150, 243, 0.5) 25%,
-    rgba(76, 175, 80, 0.5) 50%,
-    rgba(255, 152, 0, 0.5) 75%,
-    transparent 100%
-  );
-  animation: panel-glow 3s linear infinite;
-}
-
-@keyframes panel-glow {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* 顶部黑条消息框 - 升级版 */
-.msg-box-v2 {
-  background: linear-gradient(135deg, rgba(51, 51, 51, 0.95) 0%, rgba(30, 30, 30, 0.95) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: #fff;
-  padding: 0 20px;
-  font-size: 14px;
-  font-weight: 800;
-  border-radius: 16px 16px 0 0; /* 圆角与面板贴合 */
-  text-align: left; /* 文字靠左更像传统RPG */
-  flex-shrink: 0;
-  height: 40px;
-  line-height: 40px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #555;
-}
-
-/* 操作区域布局 (左侧技能 + 右侧功能) */
-.controls-area-v2 {
-  flex: 1;
-  display: flex;
-  gap: 15px;
-  padding: 15px;
-  overflow: hidden;
-  background: #fff; /* 内容区纯白 */
-}
-
-/* 4. 技能网格 (2列 x 3行) */
-.moves-grid-v2 {
-  flex: 3; /* 技能区占据更多宽度 */
-  display: grid;
-  grid-template-columns: 1fr 1fr; 
-  grid-template-rows: repeat(3, 1fr); /* 强制3行 */
-  gap: 10px;
-  height: 100%;
-}
-
-/* 单个技能按钮美化 */
-.move-btn-v2 {
-  background: #fff;
-  border: 2px solid #e0e0e0; /* 加粗边框 */
-  border-radius: 12px;
-  padding: 5px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
-  cursor: pointer;
-  transition: all 0.1s;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 轻微浮起 */
-}
-
-.move-btn-v2:active {
-  transform: scale(0.96);
-  background: #f0f0f0;
-  border-color: #ccc;
-}
-
-/* 技能文字排版 */
-.move-name-v2 {
-  font-size: 14px;
-  font-weight: 900;
-  color: #333;
-  margin-bottom: 4px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.move-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  color: #666;
-  font-weight: 600;
-}
-
-/* 属性左侧色条 (关键装饰) */
-.move-btn-v2::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 15%;
-  bottom: 15%;
-  width: 5px;
-  border-radius: 0 4px 4px 0;
-  background: #ccc;
-}
-/* 常用属性色条 */
-.move-btn-v2.type-FIRE::after { background: #FF5252; }
-.move-btn-v2.type-WATER::after { background: #2196F3; }
-.move-btn-v2.type-GRASS::after { background: #4CAF50; }
-.move-btn-v2.type-ELECTRIC::after { background: #FFC107; }
-.move-btn-v2.type-NORMAL::after { background: #9E9E9E; }
-
-/* 5. 右侧功能按钮区 (垂直排列) */
-.actions-grid-v2 {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-  min-width: 80px; /* 保证右侧按钮不被挤没 */
-}
-
-/* 右侧侧边栏容器 */
-.actions-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 90px;
-  height: 100%;
-}
-
-.action-btn-v2 {
-  flex: 1;
-  border: none;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  flex-direction: row; /* 图标和文字横向排列 */
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-  transition: transform 0.1s;
-}
-
-.action-btn-v2:active { transform: scale(0.95); }
-
-.btn-catch { background: linear-gradient(135deg, #FF7043 0%, #FF5722 100%); }
-.btn-switch { background: linear-gradient(135deg, #42A5F5 0%, #2196F3 100%); }
-.btn-run { background: #CFD8DC; color: #455A64; }
-
-/* 6. 装备技能高亮样式 */
-.move-btn-v2.equip-skill {
-  background: #FFFDE7;
-  border: 2px solid #FFD700;
-}
-.move-btn-v2.equip-skill .move-name-v2::after {
-  content: '装备';
-  font-size: 9px;
-  background: #FFD700;
-  color: #fff;
-  padding: 2px 5px;
-  border-radius: 4px;
-}
+/* [战斗面板样式 - 见文件末尾统一定义] */
 /* =========================================
    [UI 重构] 左右侧边栏美化 (Side Panels)
    ========================================= */
@@ -2330,297 +2140,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   flex-direction: column !important;
 }
 
-/* 战斗场景高度与面板对齐 */
-.battle-stage-v2 {
-  position: absolute !important;
-  top: 0; left: 0;
-  width: 100% !important;
-  height: calc(100% - 180px) !important;
-  z-index: 1 !important;
-}
+/* [战斗面板重复定义已移至文件末尾] */
 
-.battle-panel-v2 {
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 180px !important;
-  z-index: 200 !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-/* 4. 消息框样式修复 */
-.msg-box-v2 {
-  background: #333 !important;
-  color: #fff !important;
-  padding: 8px 20px !important;
-  height: 36px !important;
-  display: flex !important;
-  align-items: center !important;
-  font-size: 14px !important;
-  font-weight: bold !important;
-}
-
-/* 5. 操作区域布局修复 */
-.controls-area-v2 {
-  flex: 1 !important;
-  display: flex !important;
-  gap: 10px !important;
-  padding: 10px 15px !important;
-  background: #fff !important;
-  height: 100% !important;
-}
-
-/* 6. 技能按钮网格强制样式 */
-.moves-grid-v2 {
-  flex: 1 !important;
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important; /* 强制两列 */
-  grid-template-rows: repeat(2, 1fr) !important; /* 强制两行 */
-  gap: 8px !important;
-  height: 100% !important;
-}
-
-/* 单个技能按钮美化 - 升级版 */
-.move-btn-v2 {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 2px solid rgba(224,224,224,0.5) !important;
-  border-radius: 12px !important;
-  padding: 8px 12px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  box-shadow: 
-    0 4px 12px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.8) !important;
-  height: auto !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  position: relative;
-  overflow: hidden;
-}
-
-.move-btn-v2::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  transition: left 0.5s;
-}
-
-.move-btn-v2:hover::before {
-  left: 100%;
-}
-
-.move-btn-v2:hover {
-  background: linear-gradient(135deg, rgba(240,248,255,0.98) 0%, rgba(230,240,250,0.98) 100%) !important;
-  border-color: #2196F3 !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 
-    0 6px 20px rgba(33, 150, 243, 0.2),
-    inset 0 1px 0 rgba(255,255,255,0.9) !important;
-}
-
-.move-btn-v2:active {
-  transform: translateY(0) scale(0.98) !important;
-}
-
-/* 7. 右侧功能按钮栏 (捕捉/交换/逃跑) */
-.actions-sidebar {
-  width: 100px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-  height: 100% !important;
-}
-
-.action-btn-v2 {
-  flex: 1 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  color: #fff !important;
-  font-weight: bold !important;
-  font-size: 13px !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
-}
-
-/* 按钮颜色强制 */
-.btn-catch { background: #FF7043 !important; }
-.btn-switch { background: #42A5F5 !important; }
-.btn-run { background: #78909C !important; }
-/* =================================================================
-   👇 战斗面板布局最终修正 (粘贴到 CSS 最底部，解决按钮消失问题)
-   ================================================================= */
-
-/* 1. 确保操作区是“左右横向”排列，而不是上下 */
-.controls-area-v2 {
-  display: flex !important;
-  flex-direction: row !important; /* 关键：强制横向 */
-  flex-wrap: nowrap !important;   /* 关键：禁止换行 */
-  align-items: stretch !important; /* 强制高度拉伸 */
-  gap: 15px !important;
-  padding: 12px !important;
-  height: calc(100% - 40px) !important; /* 减去顶部黑条高度 */
-  box-sizing: border-box !important;
-  background: #fff !important;
-}
-
-/* 2. 左侧技能区：占据剩余所有宽度 */
-.moves-grid-v2 {
-  flex: 1 !important; /* 自动占满左侧空间 */
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important; /* 两列 */
-  grid-template-rows: 1fr 1fr !important;    /* 两行 */
-  gap: 10px !important;
-  height: 100% !important;
-  width: auto !important; /* 防止宽度塌陷 */
-}
-
-/* 3. 技能按钮：强制撑满格子 */
-.move-btn-v2 {
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  background: #f9f9f9 !important;
-  border: 2px solid #e0e0e0 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 0 #ddd !important; /* 增加立体按压感 */
-}
-.move-btn-v2:active {
-  transform: translateY(4px) !important;
-  box-shadow: none !important;
-}
-
-/* 4. 右侧功能区：固定宽度，防止被挤没 */
-.actions-sidebar {
-  width: 110px !important; /* 固定宽度 */
-  min-width: 110px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-  height: 100% !important;
-  flex-shrink: 0 !important; /* 关键：禁止被压缩 */
-}
-
-/* 5. 功能按钮样式 (捕捉/交换/逃跑) */
-.action-btn-v2 {
-  flex: 1 !important; /* 均分垂直高度 */
-  width: 100% !important;
-  border: none !important;
-  border-radius: 10px !important;
-  color: #fff !important;
-  font-weight: 900 !important;
-  font-size: 14px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.2) !important;
-  margin-bottom: 0 !important;
-}
-
-/* 强制颜色，防止变成白色 */
-.btn-catch { background: linear-gradient(135deg, #FF7043, #F4511E) !important; }
-.btn-switch { background: linear-gradient(135deg, #42A5F5, #1E88E5) !important; }
-.btn-run { background: #78909C !important; }
-
-/* 底部面板高度同步 */
-.battle-panel-v2 {
-  height: 180px !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
-}
-/* =================================================================
-   👇 战斗界面终极修复 (绝对定位版 - 解决按钮错位)
-   ================================================================= */
-
-/* 1. 操作区域：改为相对定位，作为坐标基准 */
-.controls-area-v2 {
-  display: block !important;
-  position: relative !important;
-  width: 100% !important;
-  height: 100% !important;
-  padding: 8px 110px 8px 10px !important;
-  box-sizing: border-box !important;
-  background: transparent !important;
-}
-
-/* 2. 左侧技能区：强制填满剩余空间 */
-.moves-grid-v2 {
-  width: 100% !important;
-  height: 100% !important;
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important; /* 两列 */
-  grid-template-rows: 1fr 1fr !important;    /* 两行 */
-  gap: 12px !important;
-}
-
-/* 3. 技能按钮：美化并撑满 */
-.move-btn-v2 {
-  width: 100% !important;
-  height: 100% !important;
-  background: #f8f9fa !important;
-  border: 2px solid #e9ecef !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 0 #dee2e6 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  padding: 0 15px !important;
-  transition: all 0.1s !important;
-}
-.move-btn-v2:active {
-  transform: translateY(4px) !important;
-  box-shadow: none !important;
-}
-
-/* 4. 右侧功能区：绝对定位 (钉在右边) */
-.actions-sidebar {
-  position: absolute !important;
-  top: 15px !important;
-  right: 15px !important;
-  bottom: 15px !important;
-  width: 100px !important; /* 固定宽度 */
-  height: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  z-index: 10 !important;
-}
-
-/* 5. 功能按钮样式 */
-.action-btn-v2 {
-  flex: 1 !important; /* 三个按钮平分高度 */
-  width: 100% !important;
-  border: none !important;
-  border-radius: 10px !important;
-  color: #fff !important;
-  font-weight: bold !important;
-  font-size: 14px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
-  margin: 0 !important;
-}
-
-/* 按钮颜色 */
-.btn-catch { background: linear-gradient(135deg, #FF7043, #F4511E) !important; }
-.btn-switch { background: linear-gradient(135deg, #42A5F5, #1E88E5) !important; }
-.btn-run { background: #78909C !important; }
-
-/* 底部面板容器 */
-.battle-panel-v2 {
-  height: 180px !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
-}
+/* [重复战斗面板CSS已清理 - 见文件末尾统一定义] */
 /* =================================================================
    👇 全局弹窗强制居中补丁 (粘贴到 CSS 最底部)
    目标：商店、PC管理、详情页全部变成居中大弹窗
@@ -2759,74 +2281,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   z-index: 100 !important;
 }
 
-/* 底部面板定位 */
-.battle-panel-v2 {
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 180px !important;
-  z-index: 200 !important;
-  margin: 0 !important;
-  border-bottom: none !important;
-  overflow: visible !important;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%) !important;
-  border-top: 1px solid rgba(255,255,255,0.06) !important;
-  border-radius: 16px 16px 0 0 !important;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.4) !important;
-}
-
-/* 战斗场景高度 */
-.battle-stage-v2 {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: calc(100% - 180px) !important;
-  background-position: center bottom !important;
-}
-
-/* 4. 确保其他全屏弹窗也不溢出 */
-.shop-overlay, 
-.pc-management-screen, 
-.pet-detail-overlay {
-  position: absolute !important; /* 同样改为 absolute */
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* 5. 修正功能按钮区定位基准 */
-.controls-area-v2 {
-  position: relative !important;
-  height: 100% !important;
-  padding: 8px 110px 8px 10px !important;
-  background: transparent !important;
-}
-
-/* 6. 再次强制右侧按钮位置 */
-.actions-sidebar {
-  position: absolute !important;
-  right: 8px !important;
-  top: 8px !important;
-  bottom: 8px !important;
-  height: auto !important;
-  width: 90px !important;
-}
-/* =================================================================
-   👇 多技能适配补丁 (粘贴到 CSS 最底部)
-   目标：容纳 6 个技能 + 2 个装备技能 (共8个格子)
-   ================================================================= */
-
-/* 技能网格: 2列自动行 */
-.moves-grid-v2 {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  grid-auto-rows: 1fr !important;
-  gap: 6px !important;
-  padding: 0 !important;
-  height: 100% !important;
-  overflow: hidden !important;
-}
+/* [战斗面板重复CSS已清理 - 见文件末尾统一定义] */
 
 @keyframes tooltipFadeIn {
   from { opacity:0; transform:translateX(-50%) translateY(4px); }
@@ -5349,22 +4804,23 @@ button:active {
 }
 
 /* =================================================================
-   战斗面板暗色主题 - 终极覆盖 (所有布局规则集中在此)
+   ★★★ 战斗面板 - 唯一最终定义 (此文件中仅此一处) ★★★
    ================================================================= */
+
 .battle-panel-v2 {
   position: absolute !important;
   bottom: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: 180px !important;
+  height: 190px !important;
   z-index: 200 !important;
-  background: linear-gradient(180deg, #1a1a2e 0%, #141428 100%) !important;
-  border-top: 1px solid rgba(255,255,255,0.08) !important;
-  box-shadow: 0 -6px 30px rgba(0,0,0,0.5) !important;
-  border-radius: 14px 14px 0 0 !important;
-  overflow: visible !important;
+  background: linear-gradient(180deg, #1c1c34 0%, #14142a 100%) !important;
+  border-top: none !important;
+  border-radius: 16px 16px 0 0 !important;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
   display: flex !important;
   flex-direction: column !important;
+  overflow: hidden !important;
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -5372,19 +4828,40 @@ button:active {
   content: '' !important;
   position: absolute !important;
   top: 0 !important; left: 0 !important; right: 0 !important;
-  height: 1px !important;
+  height: 2px !important;
   background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(100,181,246,0.5) 25%,
-    rgba(171,71,188,0.5) 50%,
-    rgba(239,83,80,0.5) 75%,
-    transparent 100%
+    transparent, rgba(100,181,246,0.5) 25%,
+    rgba(171,71,188,0.5) 50%, rgba(255,152,0,0.5) 75%, transparent
   ) !important;
-  z-index: 1 !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+  animation: none !important;
 }
 .battle-stage-v2 {
-  height: calc(100% - 180px) !important;
+  height: calc(100% - 190px) !important;
 }
+
+/* 消息栏 */
+.msg-box-v2 {
+  background: rgba(10,10,20,0.85) !important;
+  color: #e0e0e0 !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  flex-shrink: 0 !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 操作区域 - flex横向布局 */
 .controls-area-v2 {
   display: flex !important;
   flex-direction: row !important;
@@ -5392,137 +4869,11 @@ button:active {
   gap: 8px !important;
   padding: 8px 10px !important;
   background: transparent !important;
-  height: 100% !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
   position: relative !important;
-}
-.battle-row-layout {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 8px !important;
-  height: 100% !important;
-  width: 100% !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-}
-.moves-grid-v2 {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  grid-auto-rows: 1fr !important;
-  gap: 6px !important;
-  height: 100% !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-}
-.actions-sidebar {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 5px !important;
-  width: 72px !important;
-  min-width: 72px !important;
-  flex-shrink: 0 !important;
-  height: 100% !important;
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-}
-.actions-sidebar .action-btn-v2 {
-  flex: 1 !important;
-  width: 100% !important;
-  border-radius: 8px !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  gap: 1px !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  color: #fff !important;
   min-height: 0 !important;
-  padding: 2px 4px !important;
 }
-.actions-sidebar .action-btn-v2 svg {
-  width: 14px !important;
-  height: 14px !important;
-  flex-shrink: 0 !important;
-}
-.actions-sidebar .btn-catch {
-  background: linear-gradient(135deg, #c62828, #e53935) !important;
-}
-.actions-sidebar .btn-switch {
-  background: linear-gradient(135deg, #1565c0, #1e88e5) !important;
-}
-.actions-sidebar .btn-run {
-  background: linear-gradient(135deg, #37474f, #546e7a) !important;
-  color: #ccc !important;
-}
-
-/* =================================================================
-   ★★★ 战斗面板 - 最终统一样式 (覆盖所有上方重复规则) ★★★
-   ================================================================= */
-
-/* 面板容器 */
-.battle-panel-v2 {
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 200px !important;
-  z-index: 200 !important;
-  background: linear-gradient(180deg, #1e1e35 0%, #151528 100%) !important;
-  border-top: none !important;
-  border-top-left-radius: 18px !important;
-  border-top-right-radius: 18px !important;
-  box-shadow: 0 -6px 30px rgba(0,0,0,0.4) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* 面板顶部彩色线 */
-.battle-panel-v2::before {
-  content: '' !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 2px !important;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(100,181,246,0.6) 20%,
-    rgba(171,71,188,0.6) 50%,
-    rgba(255,152,0,0.6) 80%,
-    transparent 100%
-  ) !important;
-  z-index: 10 !important;
-  pointer-events: none !important;
-  animation: none !important;
-}
-
-/* 操作区域 */
-.controls-area-v2 {
-  display: flex !important;
-  flex-direction: row !important;
-  flex: 1 !important;
-  gap: 8px !important;
-  padding: 10px 12px !important;
-  background: transparent !important;
-  height: 100% !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
-
-/* 行布局容器 */
 .battle-row-layout {
   display: flex !important;
   flex-direction: row !important;
@@ -5533,12 +4884,12 @@ button:active {
   min-width: 0 !important;
 }
 
-/* ===== 技能网格 ===== */
+/* 技能网格 - 2列 */
 .moves-grid-v2 {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   grid-auto-rows: 1fr !important;
-  gap: 6px !important;
+  gap: 5px !important;
   height: 100% !important;
   flex: 1 !important;
   min-width: 0 !important;
@@ -5546,13 +4897,13 @@ button:active {
   align-content: stretch !important;
 }
 
-/* ===== 右侧操作栏 ===== */
+/* 右侧操作栏 */
 .actions-sidebar {
   display: flex !important;
   flex-direction: column !important;
   gap: 4px !important;
-  width: 64px !important;
-  min-width: 64px !important;
+  width: 68px !important;
+  min-width: 68px !important;
   flex-shrink: 0 !important;
   height: 100% !important;
   position: relative !important;
@@ -5560,41 +4911,38 @@ button:active {
   right: auto !important;
   bottom: auto !important;
 }
-
-/* 操作按钮统一样式 */
 .actions-sidebar .action-btn-v2 {
   flex: 1 !important;
   width: 100% !important;
-  border-radius: 8px !important;
-  font-size: 8px !important;
+  border-radius: 10px !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
-  gap: 1px !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  gap: 2px !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35) !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
   color: #fff !important;
-  padding: 2px !important;
+  padding: 3px 2px !important;
   min-height: 0 !important;
-  transition: transform 0.1s, box-shadow 0.1s !important;
+  transition: transform 0.1s !important;
 }
 .actions-sidebar .action-btn-v2:active {
-  transform: scale(0.93) !important;
+  transform: scale(0.92) !important;
 }
 .actions-sidebar .action-btn-v2 svg {
-  width: 13px !important;
-  height: 13px !important;
+  width: 16px !important;
+  height: 16px !important;
   flex-shrink: 0 !important;
 }
 .actions-sidebar .action-btn-v2 span {
-  font-size: 8px !important;
-  line-height: 1.1 !important;
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
 }
-
-/* 操作按钮配色 */
 .actions-sidebar .btn-catch {
   background: linear-gradient(135deg, #c62828, #e53935) !important;
 }
@@ -5602,38 +4950,15 @@ button:active {
   background: linear-gradient(135deg, #1565c0, #1e88e5) !important;
 }
 .actions-sidebar .btn-run {
-  background: linear-gradient(135deg, #37474f, #546e7a) !important;
-  color: #aaa !important;
+  background: linear-gradient(135deg, #455a64, #607d8b) !important;
 }
 
-/* 消息框 */
-.msg-box-v2 {
-  background: linear-gradient(135deg, rgba(40,40,60,0.98), rgba(25,25,40,0.98)) !important;
-  color: #fff !important;
-  padding: 0 16px !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  text-align: left !important;
-  flex-shrink: 0 !important;
-  height: 32px !important;
-  line-height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
-  border-radius: 0 !important;
-}
-
-/* 旧版技能按钮(兼容) */
+/* 旧版技能按钮兼容 */
 .move-btn-v2 {
   width: 100% !important;
   height: 100% !important;
   box-sizing: border-box !important;
 }
-.move-btn-v2::after {
-  display: none !important;
-}
-
-/* 战斗场景高度配合200px面板 */
-.battle-stage-v2 {
-  height: calc(100% - 200px) !important;
-}
+.move-btn-v2::after { display: none !important; }
+.move-btn-v2::before { display: none !important; }
+.move-btn-v2:hover { transform: none !important; }

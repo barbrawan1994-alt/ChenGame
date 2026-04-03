@@ -7688,7 +7688,7 @@ const renderNameInput = () => (
     return (
       <div className="screen dex-screen">
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')}>🔙 返回</button>
+          <button className="btn-back" onClick={() => setView(party.length > 0 ? 'grid_map' : 'menu')}>🔙 返回</button>
           <div className="nav-title">精灵图鉴</div>
           <button className="btn-icon-only" onClick={syncDexData} style={{fontSize:'18px'}} title="修复图鉴数据">🔄</button>
         </div>
