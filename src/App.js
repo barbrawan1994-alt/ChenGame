@@ -163,11 +163,10 @@ const getEquipEffects = (pet) => {
 };
 
 const SIDE_STORY_LINES = [
-  { id: 'jjk',     name: '咒术回战篇', icon: '⛩️', startIdx: 13, endIdx: 15, chapters: 3, desc: '觉醒咒术之力，对决诅咒之王' },
-  { id: 'lycoris', name: '莉可莉丝篇', icon: '🎀', startIdx: 16, endIdx: 18, chapters: 3, desc: '搭档羁绊之旅，解锁搭档系统' },
-  { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 19, endIdx: 27, chapters: 9, desc: '十二门派与厌晚的史诗篇章' },
+  { id: 'jjk',     name: '咒术回战篇', icon: '⛩️', startIdx: 13, endIdx: 15, chapters: 3, unlockBadges: 5, desc: '觉醒咒术之力，对决诅咒之王' },
+  { id: 'lycoris', name: '莉可莉丝篇', icon: '🎀', startIdx: 16, endIdx: 18, chapters: 3, unlockBadges: 4, desc: '搭档羁绊之旅，解锁搭档系统' },
+  { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 19, endIdx: 27, chapters: 9, unlockBadges: 8, desc: '十二门派与厌晚的史诗篇章' },
 ];
-const SIDE_STORY_HUB_IDX = 13;
 
 const inferCompletedSideStories = (sp) => {
   const done = [];
@@ -368,6 +367,15 @@ useEffect(() => {
     return new Set(inferCompletedSideStories(savedData.storyProgress || 0));
   });
   const [activeSideStory, setActiveSideStory] = useState(savedData.activeSideStory || null);
+  const [mainStoryProgress, setMainStoryProgress] = useState(() => {
+    if (savedData.mainStoryProgress !== undefined) return savedData.mainStoryProgress;
+    const sp = savedData.storyProgress || 0;
+    if (savedData.activeSideStory) return sp;
+    const inSide = SIDE_STORY_LINES.some(l => sp >= l.startIdx && sp <= l.endIdx);
+    return inSide ? 12 : sp;
+  });
+  const [mainStoryStep, setMainStoryStep] = useState(savedData.mainStoryStep || 0);
+  const [sideStoryStates, setSideStoryStates] = useState(savedData.sideStoryStates || {});
   const [dialogQueue, setDialogQueue] = useState([]); // 当前待播放的对话队列
   const [isDialogVisible, setIsDialogVisible] = useState(false); // 是否显示对话框
   const [currentDialogIndex, setCurrentDialogIndex] = useState(0); // 当前对话说到第几句
@@ -2121,6 +2129,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        storyStep,
        completedSideStories: [...completedSideStories],
        activeSideStory,
+       mainStoryProgress,
+       mainStoryStep,
+       sideStoryStates,
        cafe,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
@@ -4152,9 +4163,8 @@ const useGrowthItem = (petIndex, itemId) => {
     setCurrentMapId(mapId);
 
     // 2. 剧情触发
-    const atSideStoryHub = storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory;
     const currentChapter = STORY_SCRIPT[storyProgress];
-    if (!atSideStoryHub && currentChapter && currentChapter.mapId === mapId && storyStep === 0) {
+    if (currentChapter && currentChapter.mapId === mapId && storyStep === 0) {
        if (!viewedIntros.includes(storyProgress)) {
             setDialogQueue(currentChapter.intro);
             setCurrentDialogIndex(0);
@@ -4576,8 +4586,7 @@ const useGrowthItem = (petIndex, itemId) => {
         const mapInfo = MAPS.find(m => m.id === currentMapId);
         
         const currentChapter = STORY_SCRIPT[storyProgress];
-        const atHub = storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory;
-        const storyNeedsThisGym = !atHub && currentChapter && currentChapter.mapId === currentMapId;
+        const storyNeedsThisGym = currentChapter && currentChapter.mapId === currentMapId;
         
         if (badges.includes(mapInfo.badge) && !storyNeedsThisGym) { 
           alert("你已经战胜过这里的馆主了！"); 
@@ -5708,7 +5717,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   // 搭档羁绊系统 - 核心逻辑
   // ==========================================
-  const isPartnerSystemUnlocked = () => completedSideStories.has('lycoris');
+  const isPartnerSystemUnlocked = () => badges.length >= 3;
 
   const setPartner = (petA, petB) => {
     if (!isPartnerSystemUnlocked()) { alert('🔒 搭档羁绊系统尚未解锁！\n\n完成【莉可莉丝篇·第壹章：搭档的意义】后解锁。'); return; }
@@ -8219,16 +8228,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
           try { checkTreasureUnlock('story', { chapter: nextProgress }); } catch(e) {}
 
           const finishedLine = SIDE_STORY_LINES.find(l => nextProgress === l.endIdx + 1);
-          if (finishedLine) {
+          if (finishedLine && activeSideStory) {
             setCompletedSideStories(prev => new Set([...prev, finishedLine.id]));
-            const updatedDone = new Set([...completedSideStories, finishedLine.id]);
-            const allDone = SIDE_STORY_LINES.every(l => updatedDone.has(l.id));
-            if (allDone) {
-              setStoryProgress(28);
-            } else {
-              setStoryProgress(SIDE_STORY_HUB_IDX);
-            }
+            setStoryProgress(mainStoryProgress);
+            setStoryStep(mainStoryStep);
+            setSideStoryStates(prev => { const n = {...prev}; delete n[finishedLine.id]; return n; });
             setActiveSideStory(null);
+            alert(`🎉 ${finishedLine.icon} ${finishedLine.name} 通关！已返回主线剧情。`);
           } else {
             setStoryProgress(nextProgress);
           }
@@ -10526,35 +10532,56 @@ const renderMenu = () => {
         </div>
 
         {/* 支线剧情选择 */}
-        {mapTab === 'maps' && storyProgress >= SIDE_STORY_HUB_IDX && storyProgress <= 28 && (() => {
+        {mapTab === 'maps' && (() => {
+          const availableLines = SIDE_STORY_LINES.filter(l => badges.length >= l.unlockBadges);
+          if (availableLines.length === 0) return null;
+
           const allDone = SIDE_STORY_LINES.every(l => completedSideStories.has(l.id));
-          const showHub = storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory && !allDone;
           const hasActive = activeSideStory !== null;
           const activeLine = hasActive ? SIDE_STORY_LINES.find(l => l.id === activeSideStory) : null;
           const activeChIdx = hasActive && activeLine ? storyProgress - activeLine.startIdx + 1 : 0;
 
-          if (!showHub && !hasActive && !allDone) return null;
-
           return (
             <div style={{margin:'0 20px 16px', padding:'16px 20px', background:'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.10))', borderRadius:'16px', border:'1px solid rgba(139,92,246,0.2)'}}>
-              <div style={{fontSize:'14px', fontWeight:'700', color:'#6366f1', marginBottom: showHub ? '12px' : '0', display:'flex', alignItems:'center', gap:'8px'}}>
+              <div style={{fontSize:'14px', fontWeight:'700', color:'#6366f1', marginBottom:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
                 <span style={{fontSize:'18px'}}>📜</span>
-                {allDone ? '全部支线已通关！' : showHub ? '主线已通关 — 选择支线剧情' : hasActive && activeLine ? `进行中：${activeLine.icon} ${activeLine.name}（${activeChIdx}/${activeLine.chapters}）` : ''}
+                {allDone ? '全部支线已通关！' : hasActive && activeLine ? (
+                  <span style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    {`进行中：${activeLine.icon} ${activeLine.name}（${activeChIdx}/${activeLine.chapters}）`}
+                    <span onClick={() => {
+                      setSideStoryStates(prev => ({...prev, [activeSideStory]: { progress: storyProgress, step: storyStep }}));
+                      setStoryProgress(mainStoryProgress);
+                      setStoryStep(mainStoryStep);
+                      setActiveSideStory(null);
+                    }} style={{fontSize:'11px', padding:'3px 10px', background:'rgba(239,68,68,0.12)', color:'#ef4444', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}}>
+                      返回主线
+                    </span>
+                  </span>
+                ) : '支线剧情'}
               </div>
-              {showHub && (
+              {!hasActive && (
                 <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px'}}>
-                  {SIDE_STORY_LINES.map(line => {
+                  {availableLines.map(line => {
                     const done = completedSideStories.has(line.id);
+                    const hasSave = sideStoryStates[line.id];
                     return (
                       <div key={line.id}
                         onClick={() => {
                           if (done) return;
+                          setMainStoryProgress(storyProgress);
+                          setMainStoryStep(storyStep);
                           setActiveSideStory(line.id);
-                          setStoryProgress(line.startIdx);
-                          setStoryStep(0);
-                          const firstChapter = STORY_SCRIPT[line.startIdx];
-                          if (firstChapter) {
-                            alert(`📜 ${line.icon} ${line.name}已开启！\n\n前往【${MAPS.find(m => m.id === firstChapter.mapId)?.name || '目标地图'}】开始冒险！`);
+                          if (hasSave) {
+                            setStoryProgress(hasSave.progress);
+                            setStoryStep(hasSave.step);
+                            alert(`📜 ${line.icon} ${line.name} 继续！\n\n前往【${MAPS.find(m => m.id === STORY_SCRIPT[hasSave.progress]?.mapId)?.name || '目标地图'}】继续冒险！`);
+                          } else {
+                            setStoryProgress(line.startIdx);
+                            setStoryStep(0);
+                            const firstChapter = STORY_SCRIPT[line.startIdx];
+                            if (firstChapter) {
+                              alert(`📜 ${line.icon} ${line.name} 已开启！\n\n前往【${MAPS.find(m => m.id === firstChapter.mapId)?.name || '目标地图'}】开始冒险！`);
+                            }
                           }
                         }}
                         style={{
@@ -10563,14 +10590,15 @@ const renderMenu = () => {
                           border: done ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(139,92,246,0.3)',
                           opacity: done ? 0.6 : 1,
                           transition: 'all 0.2s', boxShadow: done ? 'none' : '0 2px 8px rgba(139,92,246,0.1)',
-                          transform: done ? 'none' : undefined,
                         }}
                         onMouseOver={e => { if (!done) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(139,92,246,0.2)'; }}}
                         onMouseOut={e => { if (!done) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(139,92,246,0.1)'; }}}
                       >
-                        <div style={{fontSize:'24px', marginBottom:'6px'}}>{done ? '✅' : line.icon}</div>
+                        <div style={{fontSize:'24px', marginBottom:'6px'}}>{done ? '✅' : hasSave ? '▶️' : line.icon}</div>
                         <div style={{fontSize:'13px', fontWeight:'700', color: done ? '#999' : '#1e293b'}}>{line.name}</div>
-                        <div style={{fontSize:'11px', color: done ? '#bbb' : '#64748b', marginTop:'2px'}}>{done ? '已通关' : `${line.chapters}章 · ${line.desc}`}</div>
+                        <div style={{fontSize:'11px', color: done ? '#bbb' : '#64748b', marginTop:'2px'}}>
+                          {done ? '已通关' : hasSave ? `继续 · 第${hasSave.progress - line.startIdx + 1}/${line.chapters}章` : `${line.chapters}章 · ${line.desc}`}
+                        </div>
                       </div>
                     );
                   })}
@@ -10602,6 +10630,8 @@ const renderMenu = () => {
                     );
                 }
                 if (badges.length < 8) { isLocked = true; lockReason = `需收集 8 枚徽章 (当前${badges.length}枚)`; }
+            } else if (m.unlockBadges) {
+              if (badges.length < m.unlockBadges) { isLocked = true; lockReason = `需收集 ${m.unlockBadges} 枚徽章 (当前${badges.length}枚)`; }
             } else if (index > 0) {
               const prevMap = MAPS[index - 1];
               if (m.id === 9 && !completedChallenges.includes('ECLIPSE_HQ_CLEARED')) { isLocked = true; lockReason = "需摧毁【日蚀要塞】"; }
@@ -12311,7 +12341,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, cafe };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -12395,7 +12425,7 @@ const renderMenu = () => {
           </div>
           {/* 当前剧情任务提示条 */}
           {(() => {
-            if (storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory) return null;
+            if (!STORY_SCRIPT[storyProgress]) return null;
             const ch = STORY_SCRIPT[storyProgress];
             if (!ch || ch.mapId !== currentMapId) return null;
             const task = ch.tasks?.find(t => t.step === storyStep);

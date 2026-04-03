@@ -105,6 +105,20 @@ export const MAPS = [
     id: 100, name: '都立咒术高专', lvl: [40, 80],
     pool: [92, 93, 94, 63, 65, 93, 130, 149, 150, 151],
     drop: 500, type: 'ghost', color: '#1A237E', gymLeader: 150, gymLvl: 80, badge: '🔮', icon: '⛩️',
-    isJJK: true, desc: '东京都立咒术高等专门学校，术师们的训练基地', gymName: '五条悟'
+    isJJK: true, unlockBadges: 5, desc: '东京都立咒术高等专门学校，术师们的训练基地', gymName: '五条悟'
+  },
+  // 莉可莉丝篇 - DA特务本部
+  {
+    id: 101, name: 'DA特务本部', lvl: [25, 55],
+    pool: [35, 36, 40, 48, 57, 76, 79, 87, 88, 113, 120, 122, 131, 147, 148, 160, 170, 173, 174, 189, 194, 200, 209, 250, 290, 403, 411, 456],
+    drop: 350, type: 'city', color: '#E91E63', gymLeader: 194, gymLvl: 58, badge: '🎀', icon: '🎯',
+    unlockBadges: 4, desc: 'DA直属特务机关本部，千束和泷奈的据点', gymName: '真岛'
+  },
+  // 门派风云篇 - 武道圣地
+  {
+    id: 102, name: '武道圣地', lvl: [60, 95],
+    pool: [3, 7, 9, 13, 43, 49, 65, 84, 94, 106, 129, 138, 141, 150, 163, 182, 185, 199, 206, 223, 234, 249, 259, 263, 270, 275, 277, 278, 281, 282, 292, 329, 369, 430, 447],
+    drop: 600, type: 'mountain', color: '#4A148C', gymLeader: 281, gymLvl: 95, badge: '🏯', icon: '🏔️',
+    unlockBadges: 8, desc: '十二门派武道大会圣地，武林风云汇聚之所', gymName: '李逍遥'
   }
 ];

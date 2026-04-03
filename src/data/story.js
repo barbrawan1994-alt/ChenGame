@@ -725,7 +725,7 @@ export const STORY_SCRIPT = [
   // ===== 莉可莉丝篇·序章：来自DA的委托 =====
   {
     chapter: 18,
-    mapId: 6,
+    mapId: 101,
     title: "莉可莉丝篇·序章：来自DA的委托",
     objective: "调查赛博都市中异常暴走的精灵事件，协助DA特工千束和泷奈。",
     intro: [
@@ -775,7 +775,7 @@ export const STORY_SCRIPT = [
   // ===== 莉可莉丝篇·第壹章：搭档的意义 =====
   {
     chapter: 19,
-    mapId: 11,
+    mapId: 101,
     title: "莉可莉丝篇·第壹章：搭档的意义",
     objective: "向千束和泷奈学习'搭档'的力量，掌握协作战斗技巧。",
     intro: [
@@ -822,7 +822,7 @@ export const STORY_SCRIPT = [
   // ===== 莉可莉丝篇·第贰章：真岛的挑战 =====
   {
     chapter: 20,
-    mapId: 7,
+    mapId: 101,
     title: "莉可莉丝篇·第贰章：真岛的挑战",
     objective: "真岛出现，试图暴露精灵世界的秘密。击败他的手下和真岛本人！",
     intro: [
@@ -876,7 +876,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·壹 =====
   {
-    chapter: 21, mapId: 8,
+    chapter: 21, mapId: 102,
     title: "门派篇·壹：剑起苍穹",
     objective: "李逍遥发来邀请函——十二门派武道大会即将开幕，各门派暗流涌动。",
     intro: [
@@ -910,7 +910,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·贰 =====
   {
-    chapter: 22, mapId: 9,
+    chapter: 22, mapId: 102,
     title: "门派篇·贰：少林武当之争",
     objective: "少林与武当因'太虚令'反目，阻止两大门派决裂。",
     intro: [
@@ -941,7 +941,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·叁 =====
   {
-    chapter: 23, mapId: 7,
+    chapter: 23, mapId: 102,
     title: "门派篇·叁：暗影来袭",
     objective: "神秘人厌晚突然出现在武道大会上，她与太虚教有什么关联？",
     intro: [
@@ -973,7 +973,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·肆 =====
   {
-    chapter: 24, mapId: 10,
+    chapter: 24, mapId: 102,
     title: "门派篇·肆：毒与药的宿命",
     objective: "唐门与五毒教百年世仇激化，药王谷陷入危机。",
     intro: [
@@ -1004,7 +1004,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·伍 =====
   {
-    chapter: 25, mapId: 4,
+    chapter: 25, mapId: 102,
     title: "门派篇·伍：丐帮风波与逍遥往事",
     objective: "丐帮内部出现叛徒，逍遥派揭露太虚教的古老秘密。",
     intro: [
@@ -1034,7 +1034,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·陆 =====
   {
-    chapter: 26, mapId: 5,
+    chapter: 26, mapId: 102,
     title: "门派篇·陆：冰火两重天",
     objective: "明教与昆仑派被太虚教彻底挑拨，在火山之巅爆发全面冲突。",
     intro: [
@@ -1066,7 +1066,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·柒 =====
   {
-    chapter: 27, mapId: 6,
+    chapter: 27, mapId: 102,
     title: "门派篇·柒：天机与独孤",
     objective: "天机阁破解太虚秘境阵法，华山令狐冲发现太虚教的最终计划。",
     intro: [
@@ -1098,7 +1098,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·捌 =====
   {
-    chapter: 28, mapId: 12,
+    chapter: 28, mapId: 102,
     title: "门派篇·捌：厌晚之约",
     objective: "厌晚在太虚秘境入口拦住了你——她要用全力和你决战，无论胜负都会揭露终极秘密。",
     intro: [
@@ -1129,7 +1129,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·玖 =====
   {
-    chapter: 29, mapId: 13,
+    chapter: 29, mapId: 102,
     title: "门派篇·玖：十二门派·终战",
     objective: "率领十二门派联盟+厌晚+李逍遥，攻入太虚秘境，击败虚空残响！",
     intro: [
