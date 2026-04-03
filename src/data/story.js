@@ -17,15 +17,21 @@ export const STORY_SCRIPT = [
       { name: "大木博士", text: "我需要你的帮助——去调查草原深处的黑雾源头。路上小心！" }
     ],
     tasks: [
-      { step: 0, x: 8, y: 6, type: 'battle', enemyId: 44, name: '狂暴的 贪吃鼠', text: '吱吱吱！！！（双眼发红，疯狂地向你扑来！黑色的雾气缠绕着它）', emoji: '🐀' },
+      { step: 0, x: 8, y: 6, type: 'battle', enemyId: 44, name: '狂暴的 贪吃鼠', text: '吱吱吱！！！（双眼发红，疯狂地向你扑来！黑色的雾气缠绕着它）', emoji: '🐀',
+        eliteParty: [{ id: 44, level: 10 }, { id: 38, level: 9 }]
+      },
       { step: 1, x: 14, y: 10, type: 'dialog', name: '受伤的护林员', text: "咳咳...谢谢你救了我。日蚀队在北边树林里放了一台奇怪的机器，那些黑雾就是从那里冒出来的！", emoji: '🧑‍🌾' },
-      { step: 2, x: 20, y: 5, type: 'battle', enemyId: 101, name: '日蚀队 步兵', text: '哼，别想靠近污染装置！日蚀计划不会因为你而停下！', emoji: '😈' },
+      { step: 2, x: 20, y: 5, type: 'battle', enemyId: 101, name: '日蚀队 步兵', text: '哼，别想靠近污染装置！日蚀计划不会因为你而停下！', emoji: '😈',
+        eliteParty: [{ id: 101, level: 12 }, { id: 44, level: 10 }]
+      },
       { step: 3, x: 20, y: 12, type: 'dialog', name: '被困的 叶苗苗', text: "（小家伙瑟瑟发抖地躲在倒塌的机器残骸后。你关掉了装置，黑雾逐渐消散。它感激地蹭了蹭你的腿。）", emoji: '🌱' },
-      { step: 4, x: 15, y: 8, type: 'battle', enemyId: 118, name: '日蚀队 小队长', text: '可恶！装置被破坏了！首领会不高兴的...不过，先把你解决掉再说！', emoji: '😈' },
+      { step: 4, x: 15, y: 8, type: 'battle', enemyId: 118, name: '日蚀队 小队长', text: '可恶！装置被破坏了！首领会不高兴的...不过，先把你解决掉再说！', emoji: '😈',
+        eliteParty: [{ id: 118, level: 14 }, { id: 101, level: 12 }, { id: 66, level: 11 }]
+      },
       { step: 5, x: 22, y: 14, type: 'battle', enemyId: 54, name: '神秘旁观者·厌晚', text: '（远处的树影下，一个黑衣女人静静注视着你。你发现她时，她微微勾唇）...有点意思。让我看看你值不值得关注。', emoji: '🌙',
         eliteParty: [
-          { id: 54, level: 18 },
-          { id: 93, level: 16 }
+          { id: 54, level: 13 },
+          { id: 93, level: 11 }
         ]
       }
     ],
@@ -54,15 +60,21 @@ export const STORY_SCRIPT = [
       { name: "竞争对手·苍", text: "不过看你这架势...算了，你走东路，我走西路。谁先到终点谁赢。" }
     ],
     tasks: [
-      { step: 0, x: 8, y: 15, type: 'battle', enemyId: 64, name: '日蚀队 守卫', text: "此路不通！这里马上就要变成废墟了，你也一起灰飞烟灭吧！", emoji: '🚧' },
+      { step: 0, x: 8, y: 15, type: 'battle', enemyId: 64, name: '日蚀队 守卫', text: "此路不通！这里马上就要变成废墟了，你也一起灰飞烟灭吧！", emoji: '🚧',
+        eliteParty: [{ id: 64, level: 18 }, { id: 66, level: 16 }]
+      },
       { step: 1, x: 15, y: 10, type: 'dialog', name: '被困的矿工', text: "谢谢你！炸弹在更深处...那边还有一只勇敢的小鸟一直在啄引信，它在帮我们！", emoji: '⛏️' },
-      { step: 2, x: 22, y: 5, type: 'battle', enemyId: 66, name: '日蚀队 突击兵', text: "为了首领的'新世界'，牺牲是必要的！连同这座山一起消失吧！", emoji: '⚔️' },
-      { step: 3, x: 20, y: 10, type: 'battle', enemyId: 15, name: '日蚀队 爆破专家', text: "倒计时30秒！来不及了，你和这座山的命运已经注定了！一起炸飞吧！", emoji: '💣' },
+      { step: 2, x: 22, y: 5, type: 'battle', enemyId: 66, name: '日蚀队 突击兵', text: "为了首领的'新世界'，牺牲是必要的！连同这座山一起消失吧！", emoji: '⚔️',
+        eliteParty: [{ id: 66, level: 20 }, { id: 64, level: 18 }, { id: 101, level: 17 }]
+      },
+      { step: 3, x: 20, y: 10, type: 'battle', enemyId: 15, name: '日蚀队 爆破专家', text: "倒计时30秒！来不及了，你和这座山的命运已经注定了！一起炸飞吧！", emoji: '💣',
+        eliteParty: [{ id: 15, level: 22 }, { id: 34, level: 20 }, { id: 66, level: 19 }]
+      },
       { step: 4, x: 12, y: 3, type: 'battle', enemyId: 93, name: '暗影观察者·厌晚', text: '（爆炸的硝烟中，一个身影悠然走来）...还活着？不错。那个叫苍的家伙也在附近呢...真热闹。', emoji: '🌙',
         eliteParty: [
-          { id: 93, level: 25 },
-          { id: 59, level: 23 },
-          { id: 54, level: 21 }
+          { id: 93, level: 20 },
+          { id: 59, level: 18 },
+          { id: 54, level: 16 }
         ]
       }
     ],
@@ -89,16 +101,22 @@ export const STORY_SCRIPT = [
       { name: "大木博士", text: "这个计划...如果成功，他们就能批量制造被控制的精灵军队。一定要阻止！" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 34, name: '暴走的 插头怪', text: "滋滋...滋滋...入侵者...检测到...抹杀...", emoji: '🔌' },
+      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 34, name: '暴走的 插头怪', text: "滋滋...滋滋...入侵者...检测到...抹杀...", emoji: '🔌',
+        eliteParty: [{ id: 34, level: 26 }, { id: 40, level: 24 }]
+      },
       { step: 1, x: 15, y: 8, type: 'dialog', name: '工厂AI残留', text: "警告：检测到非法篡改行为。核心数据正在被覆写...请尽快到达中央控制室。还剩余...3%...原始人格...", emoji: '💻' },
-      { step: 2, x: 25, y: 5, type: 'battle', enemyId: 40, name: '安保机器人 Mk-II', text: "检测到非法入侵者。启动歼灭协议。日蚀队权限覆写...执行中...", emoji: '🤖' },
-      { step: 3, x: 15, y: 15, type: 'battle', enemyId: 81, name: '日蚀队 首席科学家', text: "你来晚了！阿尔忒弥斯计划即将完成！有了这个原型机，我们的军队将无可匹敌！", emoji: '👨‍🔬' },
+      { step: 2, x: 25, y: 5, type: 'battle', enemyId: 40, name: '安保机器人 Mk-II', text: "检测到非法入侵者。启动歼灭协议。日蚀队权限覆写...执行中...", emoji: '🤖',
+        eliteParty: [{ id: 40, level: 28 }, { id: 34, level: 26 }, { id: 87, level: 25 }]
+      },
+      { step: 3, x: 15, y: 15, type: 'battle', enemyId: 81, name: '日蚀队 首席科学家', text: "你来晚了！阿尔忒弥斯计划即将完成！有了这个原型机，我们的军队将无可匹敌！", emoji: '👨‍🔬',
+        eliteParty: [{ id: 81, level: 30 }, { id: 40, level: 28 }, { id: 34, level: 27 }, { id: 87, level: 26 }]
+      },
       { step: 4, x: 8, y: 3, type: 'battle', enemyId: 93, name: '暗影观察者·厌晚', text: '（控制室的屏幕全部熄灭，黑暗中只有一双冰冷的眼睛）科学家的数据我已经拿到了。顺便...再试试你的深浅。', emoji: '🌙',
         eliteParty: [
-          { id: 93, level: 32 },
-          { id: 59, level: 30 },
-          { id: 94, level: 28 },
-          { id: 54, level: 26 }
+          { id: 93, level: 27 },
+          { id: 59, level: 25 },
+          { id: 94, level: 23 },
+          { id: 54, level: 21 }
         ]
       }
     ],
@@ -125,17 +143,23 @@ export const STORY_SCRIPT = [
       { name: "竞争对手·苍", text: "我只是...来确认一件事。别多管闲事。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 27, name: '被污染的 触手怪', text: "（浑身散发着黑色的恶臭，向你喷射腐蚀性毒液。它的眼睛里流着浑浊的泪水。）", emoji: '🦑' },
+      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 27, name: '被污染的 触手怪', text: "（浑身散发着黑色的恶臭，向你喷射腐蚀性毒液。它的眼睛里流着浑浊的泪水。）", emoji: '🦑',
+        eliteParty: [{ id: 27, level: 33 }, { id: 24, level: 31 }]
+      },
       { step: 1, x: 18, y: 8, type: 'dialog', name: '竞争对手·苍', text: "...我曾经也有一只精灵。三年前，日蚀队的第一次实验'成功'了——代价是整个沿海村庄和所有精灵的生命。那天我失去了一切。", emoji: '😔' },
-      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 118, name: '日蚀队 潜水员', text: "这片海域已经被征用了！虚空结晶的能量采集不能中断！", emoji: '🤿' },
-      { step: 3, x: 10, y: 10, type: 'battle', enemyId: 130, name: '被虚空侵蚀的 暴鲤龙', text: "吼！！！（痛苦地翻滚着，身上的虚空结晶不断生长。它已经失去了理智。）", emoji: '🐉' },
+      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 118, name: '日蚀队 潜水员', text: "这片海域已经被征用了！虚空结晶的能量采集不能中断！", emoji: '🤿',
+        eliteParty: [{ id: 118, level: 35 }, { id: 27, level: 33 }, { id: 24, level: 32 }]
+      },
+      { step: 3, x: 10, y: 10, type: 'battle', enemyId: 130, name: '被虚空侵蚀的 暴鲤龙', text: "吼！！！（痛苦地翻滚着，身上的虚空结晶不断生长。它已经失去了理智。）", emoji: '🐉',
+        eliteParty: [{ id: 130, level: 38 }, { id: 118, level: 36 }, { id: 27, level: 35 }]
+      },
       { step: 4, x: 22, y: 3, type: 'battle', enemyId: 94, name: '暗影执行者·厌晚', text: '（海面上的薄雾中，一只小船缓缓靠岸。厌晚踩着礁石走来）虚空结晶...这东西比我想象的有趣。你呢？比上次有趣了一点。', emoji: '🌙',
         eliteParty: [
-          { id: 94, level: 40 },
-          { id: 59, level: 38 },
-          { id: 93, level: 36 },
-          { id: 54, level: 34 },
-          { id: 130, level: 32 }
+          { id: 94, level: 35 },
+          { id: 59, level: 33 },
+          { id: 93, level: 31 },
+          { id: 54, level: 29 },
+          { id: 130, level: 27 }
         ]
       }
     ],
@@ -162,18 +186,24 @@ export const STORY_SCRIPT = [
       { name: "日蚀队 干部·炎", text: "（远处传来声音）力量！唯有力量才是这个世界的真理！伊布这种弱小的存在，只有被改造才有价值！" }
     ],
     tasks: [
-      { step: 0, x: 8, y: 12, type: 'battle', enemyId: 104, name: '狂暴 火花猴', text: "叽叽！！（被高温和虚空能量双重折磨，完全失去了理智）", emoji: '🐒' },
+      { step: 0, x: 8, y: 12, type: 'battle', enemyId: 104, name: '狂暴 火花猴', text: "叽叽！！（被高温和虚空能量双重折磨，完全失去了理智）", emoji: '🐒',
+        eliteParty: [{ id: 104, level: 42 }, { id: 105, level: 40 }]
+      },
       { step: 1, x: 16, y: 6, type: 'dialog', name: '被囚禁的伊布', text: "（透过铁笼的缝隙，你看到一只浑身伤痕的伊布。它的眼神中既有恐惧，又有不屈。）", emoji: '🦊' },
-      { step: 2, x: 22, y: 5, type: 'battle', enemyId: 105, name: '日蚀队 精英卫队', text: "干部正在进行伟大的实验！进化是精灵的宿命——不，是义务！", emoji: '💂' },
-      { step: 3, x: 12, y: 8, type: 'battle', enemyId: 126, name: '日蚀队 干部·炎', text: "够了！既然你要保护弱者，那就让我展示真正的力量！火焰不是温暖——是毁灭！", emoji: '🔥' },
+      { step: 2, x: 22, y: 5, type: 'battle', enemyId: 105, name: '日蚀队 精英卫队', text: "干部正在进行伟大的实验！进化是精灵的宿命——不，是义务！", emoji: '💂',
+        eliteParty: [{ id: 105, level: 44 }, { id: 104, level: 42 }, { id: 126, level: 41 }]
+      },
+      { step: 3, x: 12, y: 8, type: 'battle', enemyId: 126, name: '日蚀队 干部·炎', text: "够了！既然你要保护弱者，那就让我展示真正的力量！火焰不是温暖——是毁灭！", emoji: '🔥',
+        eliteParty: [{ id: 126, level: 46 }, { id: 105, level: 44 }, { id: 104, level: 43 }, { id: 42, level: 42 }]
+      },
       { step: 4, x: 20, y: 14, type: 'battle', enemyId: 94, name: '暗影执行者·厌晚', text: '（岩浆的红光映出她冷峻的侧脸）干部·炎那种货色...还不配当我的对手。你呢？让我看看你有没有资格。', emoji: '🌙',
         eliteParty: [
-          { id: 94, level: 45 },
-          { id: 59, level: 43 },
-          { id: 93, level: 41 },
-          { id: 130, level: 39 },
-          { id: 54, level: 37 },
-          { id: 126, level: 35 }
+          { id: 94, level: 40 },
+          { id: 59, level: 38 },
+          { id: 93, level: 36 },
+          { id: 130, level: 34 },
+          { id: 54, level: 32 },
+          { id: 126, level: 30 }
         ]
       }
     ],
@@ -200,18 +230,24 @@ export const STORY_SCRIPT = [
       { name: "神秘黑客·琳", text: "我能远程协助你，但你需要亲自到达中央控制塔。路上...会很艰难。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 87, name: '巡逻 铁哑铃', text: "目标锁定...入侵者编号#0001...启动排除程序...", emoji: '🔩' },
+      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 87, name: '巡逻 铁哑铃', text: "目标锁定...入侵者编号#0001...启动排除程序...", emoji: '🔩',
+        eliteParty: [{ id: 87, level: 48 }, { id: 40, level: 46 }]
+      },
       { step: 1, x: 15, y: 8, type: 'dialog', name: '神秘黑客·琳', text: "（通讯器响起）好消息！我找到了入侵者的身份——是日蚀队的技术总监'量子'。他比那个首席科学家段位高得多。", emoji: '💻' },
-      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 88, name: '重装 金属怪', text: "装甲强度100%...超载模式启动...目标：粉碎。", emoji: '🦾' },
-      { step: 3, x: 18, y: 12, type: 'battle', enemyId: 132, name: 'AI 核心守护者', text: "最高级威胁检测...启动歼灭协议...错误...原始指令冲突...保护...还是...毁灭...", emoji: '🤖' },
+      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 88, name: '重装 金属怪', text: "装甲强度100%...超载模式启动...目标：粉碎。", emoji: '🦾',
+        eliteParty: [{ id: 88, level: 50 }, { id: 87, level: 48 }, { id: 40, level: 47 }]
+      },
+      { step: 3, x: 18, y: 12, type: 'battle', enemyId: 132, name: 'AI 核心守护者', text: "最高级威胁检测...启动歼灭协议...错误...原始指令冲突...保护...还是...毁灭...", emoji: '🤖',
+        eliteParty: [{ id: 132, level: 52 }, { id: 88, level: 50 }, { id: 87, level: 49 }, { id: 40, level: 48 }]
+      },
       { step: 4, x: 10, y: 3, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（全息屏幕上突然出现她的身影，随后本人从通风管道翻身落下）琳是吧？你的黑客技术不错——但别想查到我的情报。至于你...', emoji: '🌙',
         eliteParty: [
-          { id: 94, level: 50 },
-          { id: 609, level: 48 },
-          { id: 59, level: 47 },
-          { id: 93, level: 46 },
-          { id: 130, level: 45 },
-          { id: 54, level: 44 }
+          { id: 94, level: 47 },
+          { id: 609, level: 45 },
+          { id: 59, level: 44 },
+          { id: 93, level: 43 },
+          { id: 130, level: 42 },
+          { id: 54, level: 41 }
         ]
       }
     ],
@@ -238,20 +274,26 @@ export const STORY_SCRIPT = [
       { name: "竞争对手·苍", text: "（苍已经站在古堡门口）...这个地方，我来过。三年前，他们在这里...（攥紧拳头）你不用管我。这是我的事。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 54, name: '恶作剧的 飘飘魂', text: "嘻嘻嘻...好久没有活人来了...陪我玩...永远留在这里吧！", emoji: '👻' },
+      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 54, name: '恶作剧的 飘飘魂', text: "嘻嘻嘻...好久没有活人来了...陪我玩...永远留在这里吧！", emoji: '👻',
+        eliteParty: [{ id: 54, level: 52 }, { id: 59, level: 50 }]
+      },
       { step: 1, x: 15, y: 8, type: 'dialog', name: '苍的回忆（幻影）', text: "（古堡的墙壁上浮现出影像：三年前的苍，抱着一只奄奄一息的精灵，绝望地恳求穿白袍的人救它...）", emoji: '😭' },
-      { step: 2, x: 25, y: 5, type: 'battle', enemyId: 59, name: '怨念 诅咒娃娃', text: "好恨啊...为什么只有我被抛弃...为什么没有人来救我...", emoji: '🎎' },
+      { step: 2, x: 25, y: 5, type: 'battle', enemyId: 59, name: '怨念 诅咒娃娃', text: "好恨啊...为什么只有我被抛弃...为什么没有人来救我...", emoji: '🎎',
+        eliteParty: [{ id: 59, level: 54 }, { id: 54, level: 52 }, { id: 94, level: 51 }]
+      },
       { step: 3, x: 20, y: 12, type: 'battle', enemyId: 94, name: '神秘训练家·厌晚', text: "（一个穿着黑色长裙的女人从阴影中走出，冰冷地注视着你）...你就是最近让日蚀队头疼的小鬼？看在你走到这里的份上，我就用三成的力量陪你玩玩。", emoji: '🌙',
         eliteParty: [
-          { id: 609, level: 55 },
-          { id: 94, level: 53 },
-          { id: 59, level: 52 },
-          { id: 93, level: 51 },
-          { id: 130, level: 50 },
-          { id: 126, level: 49 }
+          { id: 609, level: 52 },
+          { id: 94, level: 50 },
+          { id: 59, level: 49 },
+          { id: 93, level: 48 },
+          { id: 130, level: 47 },
+          { id: 126, level: 46 }
         ]
       },
-      { step: 4, x: 15, y: 10, type: 'battle', enemyId: 94, name: '噬魂 耿鬼', text: "多么美味的悲伤和愤怒！让我尝尝你的灵魂——哦，还有那个男孩的...", emoji: '👿' }
+      { step: 4, x: 15, y: 10, type: 'battle', enemyId: 94, name: '噬魂 耿鬼', text: "多么美味的悲伤和愤怒！让我尝尝你的灵魂——哦，还有那个男孩的...", emoji: '👿',
+        eliteParty: [{ id: 94, level: 56 }, { id: 59, level: 54 }, { id: 54, level: 53 }, { id: 93, level: 52 }]
+      }
     ],
     midEvent: { enemyId: 94, name: '噬魂 耿鬼' },
     outro: [
@@ -279,10 +321,16 @@ export const STORY_SCRIPT = [
       { name: "竞争对手·苍", text: "日蚀队的副首领亲自来了。这意味着事情很大。我会从内部配合你——但你需要正面突破。" }
     ],
     tasks: [
-      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 42, name: '暴怒的 疾风鹰', text: "（锐利的眼神锁定了你。它在守护龙脉入口，绝不允许任何人靠近！）", emoji: '🦅' },
-      { step: 1, x: 20, y: 5, type: 'battle', enemyId: 142, name: '虚空猎手', text: "（被虚空能量侵蚀的飞龙，发出刺耳的尖啸，周围空间扭曲！）", emoji: '🐉' },
+      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 42, name: '暴怒的 疾风鹰', text: "（锐利的眼神锁定了你。它在守护龙脉入口，绝不允许任何人靠近！）", emoji: '🦅',
+        eliteParty: [{ id: 42, level: 58 }, { id: 15, level: 56 }]
+      },
+      { step: 1, x: 20, y: 5, type: 'battle', enemyId: 142, name: '虚空猎手', text: "（被虚空能量侵蚀的飞龙，发出刺耳的尖啸，周围空间扭曲！）", emoji: '🐉',
+        eliteParty: [{ id: 142, level: 60 }, { id: 42, level: 58 }, { id: 130, level: 57 }]
+      },
       { step: 2, x: 15, y: 12, type: 'dialog', name: '龙之长老', text: "年轻人...你来得正好。龙脉正在被吸取能量。如果继续下去，天空会崩塌，大地会裂开。请接受龙之考验——只有通过考验的人才能阻止灾难。", emoji: '🐲' },
-      { step: 3, x: 14, y: 14, type: 'battle', enemyId: 142, name: '龙脉守护者', text: "（龙之长老化身战斗形态！这是考验——它需要确认你的决心和实力！）", emoji: '🌪️' },
+      { step: 3, x: 14, y: 14, type: 'battle', enemyId: 142, name: '龙脉守护者', text: "（龙之长老化身战斗形态！这是考验——它需要确认你的决心和实力！）", emoji: '🌪️',
+        eliteParty: [{ id: 142, level: 62 }, { id: 79, level: 60 }, { id: 42, level: 59 }, { id: 130, level: 58 }]
+      },
       { step: 4, x: 8, y: 2, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（云端之上，厌晚负手而立，衣袂猎猎作响）龙脉之力...首领想要，我也有点好奇。不过比起龙脉，我更想知道——你现在能接住我几招？', emoji: '🌙',
         eliteParty: [
           { id: 609, level: 60 },
@@ -315,10 +363,16 @@ export const STORY_SCRIPT = [
       { name: "大木博士", text: "最令人担忧的是...情报显示，日蚀队的副首领'霜'在亲自指挥这次行动。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 76, name: '领地意识的 冰海豹', text: "（它不是敌人——它在阻止你靠近危险区域。但唯一的路就在它身后。）", emoji: '🦭' },
+      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 76, name: '领地意识的 冰海豹', text: "（它不是敌人——它在阻止你靠近危险区域。但唯一的路就在它身后。）", emoji: '🦭',
+        eliteParty: [{ id: 76, level: 62 }, { id: 199, level: 60 }]
+      },
       { step: 1, x: 15, y: 10, type: 'dialog', name: '日蚀队 逃兵', text: "别去了！副首领·霜疯了！她唤醒的那个东西...不是精灵，是灾难！我们的人已经被冻成冰雕了！", emoji: '😱' },
-      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 199, name: '狂暴 象牙猪', text: "吼！！！（被远古寒气激活的远古巨兽，獠牙闪着寒冰之光）", emoji: '🐗' },
-      { step: 3, x: 16, y: 8, type: 'battle', enemyId: 131, name: '日蚀队 副首领·霜', text: "冰之力量才是永恒的...在绝对零度面前，一切都将停止。包括时间本身！", emoji: '❄️' },
+      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 199, name: '狂暴 象牙猪', text: "吼！！！（被远古寒气激活的远古巨兽，獠牙闪着寒冰之光）", emoji: '🐗',
+        eliteParty: [{ id: 199, level: 65 }, { id: 76, level: 63 }, { id: 131, level: 62 }]
+      },
+      { step: 3, x: 16, y: 8, type: 'battle', enemyId: 131, name: '日蚀队 副首领·霜', text: "冰之力量才是永恒的...在绝对零度面前，一切都将停止。包括时间本身！", emoji: '❄️',
+        eliteParty: [{ id: 131, level: 68 }, { id: 199, level: 66 }, { id: 76, level: 65 }, { id: 253, level: 64 }, { id: 142, level: 63 }]
+      },
       { step: 4, x: 10, y: 4, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: "（寒风中，那个熟悉的身影再次出现）又见面了。上次只用了三成——这次，我用六成。你能活下来吗？", emoji: '🌙',
         eliteParty: [
           { id: 608, level: 65, devilFruit: 'df_yami' },
@@ -355,10 +409,16 @@ export const STORY_SCRIPT = [
       { name: "大木博士", text: "苍身陷险境！但他掌握的情报至关重要——关乎整个世界的命运！" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 68, name: '潜伏的 穿山甲', text: "（突然从沙地里钻出！沙暴让它变得异常暴躁）", emoji: '🦔' },
+      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 68, name: '潜伏的 穿山甲', text: "（突然从沙地里钻出！沙暴让它变得异常暴躁）", emoji: '🦔',
+        eliteParty: [{ id: 68, level: 66 }, { id: 185, level: 64 }]
+      },
       { step: 1, x: 15, y: 8, type: 'dialog', name: '竞争对手·苍', text: "你来了...（浑身是伤）日蚀计划的真相——首领要用收集的所有能量，打开次元裂缝，召唤虚空之神。虚空之神...它不是创造者，而是毁灭者。", emoji: '🩸' },
-      { step: 2, x: 25, y: 5, type: 'battle', enemyId: 185, name: '剧毒 龙王蝎', text: "（虚空能量让它的毒性增强了百倍，一击就能让人石化）", emoji: '🦂' },
-      { step: 3, x: 20, y: 15, type: 'battle', enemyId: 248, name: '日蚀队 副首领·砂', text: "苍！你这个叛徒！首领给了你一切——力量、地位、复仇的机会！你却为了一个陌生人背叛我们？", emoji: '🦂' },
+      { step: 2, x: 25, y: 5, type: 'battle', enemyId: 185, name: '剧毒 龙王蝎', text: "（虚空能量让它的毒性增强了百倍，一击就能让人石化）", emoji: '🦂',
+        eliteParty: [{ id: 185, level: 69 }, { id: 68, level: 67 }, { id: 248, level: 66 }]
+      },
+      { step: 3, x: 20, y: 15, type: 'battle', enemyId: 248, name: '日蚀队 副首领·砂', text: "苍！你这个叛徒！首领给了你一切——力量、地位、复仇的机会！你却为了一个陌生人背叛我们？", emoji: '🦂',
+        eliteParty: [{ id: 248, level: 72 }, { id: 185, level: 70 }, { id: 68, level: 69 }, { id: 253, level: 68 }, { id: 142, level: 67 }]
+      },
       { step: 4, x: 5, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（沙暴中她的身影若隐若现）副首领·砂也不过如此。苍...你选错了阵营。不过没关系，反正最后——所有人都要面对我。', emoji: '🌙',
         eliteParty: [
           { id: 608, level: 70, devilFruit: 'df_yami' },
@@ -393,10 +453,16 @@ export const STORY_SCRIPT = [
       { name: "大木博士", text: "记住——不管你看到什么，都不要被迷惑！这里的一切都是假的！" }
     ],
     tasks: [
-      { step: 0, x: 15, y: 5, type: 'battle', enemyId: 48, name: '诡异的 粉粉球', text: "来玩吧...这里没有痛苦，没有战斗...永远快乐...永远留下来...", emoji: '🧶' },
+      { step: 0, x: 15, y: 5, type: 'battle', enemyId: 48, name: '诡异的 粉粉球', text: "来玩吧...这里没有痛苦，没有战斗...永远快乐...永远留下来...", emoji: '🧶',
+        eliteParty: [{ id: 48, level: 72 }, { id: 178, level: 70 }]
+      },
       { step: 1, x: 8, y: 12, type: 'dialog', name: '幻境中的你', text: "（你看到了自己的幻象——在一个没有日蚀队的世界里，和所有精灵在草原上奔跑。那么平静，那么美好...但你知道这不是真的。）", emoji: '💭' },
-      { step: 2, x: 5, y: 15, type: 'battle', enemyId: 178, name: '梦境守门人', text: "醒来干什么？现实只有痛苦和战斗...在这里，你可以拥有一切...", emoji: '🧙' },
-      { step: 3, x: 10, y: 12, type: 'battle', enemyId: 146, name: '噩梦核心 达克莱伊', text: "你居然能抵抗理想世界的诱惑？那我就让你体验真正的噩梦！比现实更可怕的深渊！", emoji: '🌑' },
+      { step: 2, x: 5, y: 15, type: 'battle', enemyId: 178, name: '梦境守门人', text: "醒来干什么？现实只有痛苦和战斗...在这里，你可以拥有一切...", emoji: '🧙',
+        eliteParty: [{ id: 178, level: 75 }, { id: 48, level: 73 }, { id: 146, level: 72 }]
+      },
+      { step: 3, x: 10, y: 12, type: 'battle', enemyId: 146, name: '噩梦核心 达克莱伊', text: "你居然能抵抗理想世界的诱惑？那我就让你体验真正的噩梦！比现实更可怕的深渊！", emoji: '🌑',
+        eliteParty: [{ id: 146, level: 78 }, { id: 178, level: 76 }, { id: 150, level: 75 }, { id: 253, level: 74 }]
+      },
       { step: 4, x: 20, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（幻境崩碎的裂缝中，厌晚的身影从梦境的残片里走出）梦？现实？对我来说没有区别——因为无论在哪个世界，我都是最强的。来吧，在你清醒的时候再打一次。', emoji: '🌙',
         eliteParty: [
           { id: 608, level: 76, devilFruit: 'df_yami' },
@@ -432,9 +498,13 @@ export const STORY_SCRIPT = [
       { name: "竞争对手·苍", text: "三年了...一切在今天结束。不管付出什么代价。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 10, type: 'battle', enemyId: 253, name: '虚空守门人', text: "首领大人的伟业不可阻挡。在虚空之神面前，你们不过是蝼蚁！", emoji: '🛡️' },
+      { step: 0, x: 5, y: 10, type: 'battle', enemyId: 253, name: '虚空守门人', text: "首领大人的伟业不可阻挡。在虚空之神面前，你们不过是蝼蚁！", emoji: '🛡️',
+        eliteParty: [{ id: 253, level: 78 }, { id: 248, level: 76 }, { id: 142, level: 75 }]
+      },
       { step: 1, x: 15, y: 5, type: 'dialog', name: '竞争对手·苍', text: "（苍被日蚀队精英围攻，身负重伤）...走！别管我！阻止深渊比什么都重要！我...已经完成了我的复仇。活着见到这一天...就够了。", emoji: '💔' },
-      { step: 2, x: 25, y: 10, type: 'battle', enemyId: 253, name: '虚空处刑者', text: "毁灭即是新生。旧世界已经腐朽——只有虚空能带来纯净的开始！", emoji: '⚔️' },
+      { step: 2, x: 25, y: 10, type: 'battle', enemyId: 253, name: '虚空处刑者', text: "毁灭即是新生。旧世界已经腐朽——只有虚空能带来纯净的开始！", emoji: '⚔️',
+        eliteParty: [{ id: 253, level: 80 }, { id: 248, level: 78 }, { id: 185, level: 77 }, { id: 142, level: 76 }]
+      },
       { step: 3, x: 20, y: 8, type: 'battle', enemyId: 607, name: '暗影执行者·厌晚 [全力]', text: "（通往首领的路被厌晚挡住。她缓缓拔出腰间的精灵球，眼中第一次露出认真的神色）...我等这一天很久了。不是为了首领的命令——是为了我自己。在古堡、在冻土...你让我感受到了久违的心跳。这一次，全力以赴。", emoji: '🌙',
         eliteParty: [
           { id: 608, level: 80, devilFruit: 'df_yami' },
@@ -445,7 +515,9 @@ export const STORY_SCRIPT = [
           { id: 604, level: 80 }
         ]
       },
-      { step: 4, x: 15, y: 3, type: 'battle', enemyId: 255, name: '日蚀队 首领·深渊', text: "（一个穿着漆黑长袍的男人缓缓转身）...你终于来了。连厌晚都输给了你？有趣...三年前我毁掉了一个村庄，只为测试虚空能量。你的朋友苍——他以为自己在复仇，其实从一开始就是我计划的一部分。现在，见证新世界的诞生吧！", emoji: '⚫' }
+      { step: 4, x: 15, y: 3, type: 'battle', enemyId: 255, name: '日蚀队 首领·深渊', text: "（一个穿着漆黑长袍的男人缓缓转身）...你终于来了。连厌晚都输给了你？有趣...三年前我毁掉了一个村庄，只为测试虚空能量。你的朋友苍——他以为自己在复仇，其实从一开始就是我计划的一部分。现在，见证新世界的诞生吧！", emoji: '⚫',
+        eliteParty: [{ id: 255, level: 85 }, { id: 253, level: 83 }, { id: 248, level: 82 }, { id: 146, level: 81 }, { id: 150, level: 80 }, { id: 142, level: 79 }]
+      }
     ],
     midEvent: { enemyId: 255, name: '日蚀队 首领·深渊' },
     outro: [
@@ -475,11 +547,21 @@ export const STORY_SCRIPT = [
       { name: "竞争对手·苍", text: "（站在你身边）我也要去。这条路...我们一起走到尽头。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 271, name: '天王 元素领主', text: "我是第一天王！万物皆有元素，而我掌控元素的秩序！来展示你驾驭精灵的方式吧！", emoji: '🔥' },
-      { step: 1, x: 5, y: 5, type: 'battle', enemyId: 269, name: '天王 秩序圣骑', text: "我是第二天王！绝对的防御就是绝对的正义！你的攻击能突破我的壁垒吗？", emoji: '🛡️' },
-      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 270, name: '天王 武斗神', text: "我是第三天王！无需华丽的技巧——只要最纯粹的力量！用你的拳头来证明！", emoji: '👊' },
-      { step: 3, x: 25, y: 5, type: 'battle', enemyId: 280, name: '天王 虫群之心', text: "我是第四天王！千万不要小看微小的力量——亿万虫群的意志是不可阻挡的洪流！", emoji: '🦗' },
-      { step: 4, x: 15, y: 2, type: 'battle', enemyId: 283, name: '冠军 创世元灵', text: "你走到了终点。你的旅途、你的决心、你与精灵之间的羁绊——让我全部见证。向创世之力发起挑战吧！", emoji: '👑' },
+      { step: 0, x: 5, y: 15, type: 'battle', enemyId: 271, name: '天王 元素领主', text: "我是第一天王！万物皆有元素，而我掌控元素的秩序！来展示你驾驭精灵的方式吧！", emoji: '🔥',
+        eliteParty: [{ id: 271, level: 88 }, { id: 126, level: 86 }, { id: 131, level: 85 }, { id: 253, level: 84 }, { id: 142, level: 83 }, { id: 104, level: 82 }]
+      },
+      { step: 1, x: 5, y: 5, type: 'battle', enemyId: 269, name: '天王 秩序圣骑', text: "我是第二天王！绝对的防御就是绝对的正义！你的攻击能突破我的壁垒吗？", emoji: '🛡️',
+        eliteParty: [{ id: 269, level: 88 }, { id: 199, level: 86 }, { id: 248, level: 85 }, { id: 88, level: 84 }, { id: 76, level: 83 }, { id: 130, level: 82 }]
+      },
+      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 270, name: '天王 武斗神', text: "我是第三天王！无需华丽的技巧——只要最纯粹的力量！用你的拳头来证明！", emoji: '👊',
+        eliteParty: [{ id: 270, level: 88 }, { id: 68, level: 86 }, { id: 185, level: 85 }, { id: 105, level: 84 }, { id: 42, level: 83 }, { id: 64, level: 82 }]
+      },
+      { step: 3, x: 25, y: 5, type: 'battle', enemyId: 280, name: '天王 虫群之心', text: "我是第四天王！千万不要小看微小的力量——亿万虫群的意志是不可阻挡的洪流！", emoji: '🦗',
+        eliteParty: [{ id: 280, level: 88 }, { id: 252, level: 86 }, { id: 110, level: 85 }, { id: 293, level: 84 }, { id: 112, level: 83 }, { id: 327, level: 82 }]
+      },
+      { step: 4, x: 15, y: 2, type: 'battle', enemyId: 283, name: '冠军 创世元灵', text: "你走到了终点。你的旅途、你的决心、你与精灵之间的羁绊——让我全部见证。向创世之力发起挑战吧！", emoji: '👑',
+        eliteParty: [{ id: 283, level: 92 }, { id: 254, level: 90 }, { id: 255, level: 89 }, { id: 146, level: 88 }, { id: 150, level: 87 }, { id: 142, level: 86 }]
+      },
       { step: 5, x: 15, y: 8, type: 'battle', enemyId: 607, name: '厌晚 [真·全力]', text: '（一切结束后，厌晚独自站在冠军之路的尽头，背对着你）...你真的做到了。打败了深渊，封印了虚空...但我答应过你——等一切结束后，再打一次。这一次...是我作为战士，对你最高的敬意。全力以赴，一个不留！', emoji: '🌙',
         eliteParty: [
           { id: 608, level: 92, devilFruit: 'df_yami' },
@@ -517,9 +599,13 @@ export const STORY_SCRIPT = [
       { name: "五条悟", text: "不过首先，你得通过入学考验。准备好了吗？别紧张，我会在旁边看着～" }
     ],
     tasks: [
-      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 92, name: '低级咒灵', text: "嘎嘎嘎...（一只三级咒灵从阴影中浮现，浑身散发诅咒般的气息）", emoji: '👻' },
+      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 92, name: '低级咒灵', text: "嘎嘎嘎...（一只三级咒灵从阴影中浮现，浑身散发诅咒般的气息）", emoji: '👻',
+        eliteParty: [{ id: 92, level: 52 }, { id: 59, level: 50 }]
+      },
       { step: 1, x: 20, y: 8, type: 'dialog', name: '五条悟', text: "不错嘛！你的精灵已经能本能地运用咒力了。记住——咒力不是单纯的力量，而是意志的具现。接下来学习'咒力强化'的要诀。", emoji: '👨‍🏫' },
-      { step: 2, x: 15, y: 15, type: 'battle', enemyId: 93, name: '二级咒灵', text: "嘶嘶嘶...（一只更强大的咒灵出现！空气中弥漫着令人窒息的咒力压迫感）", emoji: '👹' },
+      { step: 2, x: 15, y: 15, type: 'battle', enemyId: 93, name: '二级咒灵', text: "嘶嘶嘶...（一只更强大的咒灵出现！空气中弥漫着令人窒息的咒力压迫感）", emoji: '👹',
+        eliteParty: [{ id: 93, level: 56 }, { id: 92, level: 54 }, { id: 59, level: 53 }]
+      },
       { step: 3, x: 22, y: 10, type: 'battle', enemyId: 609, name: '不速之客·厌晚', text: '（结界的边缘，一个不属于咒术界的身影悠然步入）咒力？有意思...和虚空能量有些相似呢。五条悟是吧？你的学生，我借来试试。', emoji: '🌙',
         eliteParty: [
           { id: 609, level: 58 },
@@ -550,8 +636,12 @@ export const STORY_SCRIPT = [
       { name: "伏黑惠", text: "无视那个肌肉笨蛋。交流会的规则很简单——所有人都是对手。" }
     ],
     tasks: [
-      { step: 0, x: 8, y: 5, type: 'battle', enemyId: 57, name: '京都校 三轮霞', text: "作为术师，保护人类是我们的使命。先让我测试你的决心和实力！", emoji: '⚔️' },
-      { step: 1, x: 22, y: 12, type: 'battle', enemyId: 68, name: '东堂葵', text: "好兄弟！来吧！让我们用拳头交流灵魂！Boogie Woogie！", emoji: '💪' },
+      { step: 0, x: 8, y: 5, type: 'battle', enemyId: 57, name: '京都校 三轮霞', text: "作为术师，保护人类是我们的使命。先让我测试你的决心和实力！", emoji: '⚔️',
+        eliteParty: [{ id: 57, level: 58 }, { id: 42, level: 56 }, { id: 76, level: 55 }]
+      },
+      { step: 1, x: 22, y: 12, type: 'battle', enemyId: 68, name: '东堂葵', text: "好兄弟！来吧！让我们用拳头交流灵魂！Boogie Woogie！", emoji: '💪',
+        eliteParty: [{ id: 68, level: 62 }, { id: 105, level: 60 }, { id: 270, level: 59 }, { id: 64, level: 58 }]
+      },
       { step: 2, x: 15, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（交流会的观众席上，厌晚鼓了鼓掌）打得不错。不过这种程度的对手...让我来提升一下训练的强度吧。', emoji: '🌙',
         eliteParty: [
           { id: 608, level: 64, devilFruit: 'df_yami' },
@@ -583,10 +673,18 @@ export const STORY_SCRIPT = [
       { name: "伏黑惠", text: "五条老师不在了...现在只能靠我们自己了。" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 42, name: '特级咒灵·花御', text: "（植物般的巨大咒灵静静地看着你）...你们人类总是在破坏...去爱自然吧...永远地...", emoji: '🌿' },
-      { step: 1, x: 15, y: 10, type: 'battle', enemyId: 146, name: '特级咒灵·漏瑚', text: "渺小的人类！在真正的自然之力面前颤抖吧！大地的咆哮才是这个世界的主旋律！", emoji: '🌋' },
-      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 150, name: '特级咒灵·真人', text: "灵魂的形态...太有趣了！就让我来改造改造吧～無為転変！你的灵魂会变成什么形状呢？", emoji: '🎭' },
-      { step: 3, x: 15, y: 3, type: 'battle', enemyId: 150, name: '诅咒之王·宿傩', text: "...啊，有点意思。你居然能走到这里。让我稍微认真一点——品味一下，绝望的滋味。", emoji: '👹' },
+      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 42, name: '特级咒灵·花御', text: "（植物般的巨大咒灵静静地看着你）...你们人类总是在破坏...去爱自然吧...永远地...", emoji: '🌿',
+        eliteParty: [{ id: 42, level: 68 }, { id: 1, level: 66 }, { id: 252, level: 65 }]
+      },
+      { step: 1, x: 15, y: 10, type: 'battle', enemyId: 146, name: '特级咒灵·漏瑚', text: "渺小的人类！在真正的自然之力面前颤抖吧！大地的咆哮才是这个世界的主旋律！", emoji: '🌋',
+        eliteParty: [{ id: 146, level: 72 }, { id: 126, level: 70 }, { id: 104, level: 69 }]
+      },
+      { step: 2, x: 25, y: 15, type: 'battle', enemyId: 150, name: '特级咒灵·真人', text: "灵魂的形态...太有趣了！就让我来改造改造吧～無為転変！你的灵魂会变成什么形状呢？", emoji: '🎭',
+        eliteParty: [{ id: 150, level: 74 }, { id: 178, level: 72 }, { id: 93, level: 71 }, { id: 59, level: 70 }]
+      },
+      { step: 3, x: 15, y: 3, type: 'battle', enemyId: 150, name: '诅咒之王·宿傩', text: "...啊，有点意思。你居然能走到这里。让我稍微认真一点——品味一下，绝望的滋味。", emoji: '👹',
+        eliteParty: [{ id: 150, level: 78 }, { id: 146, level: 76 }, { id: 142, level: 75 }, { id: 253, level: 74 }, { id: 248, level: 73 }]
+      },
       { step: 4, x: 8, y: 8, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（渋谷的废墟中，厌晚踩着碎石缓缓走来）宿傩...咒灵...这个世界比我想的更有意思。趁着混乱——让我好好打一场。', emoji: '🌙',
         eliteParty: [
           { id: 608, level: 72, devilFruit: 'df_yami' },
@@ -622,12 +720,20 @@ export const STORY_SCRIPT = [
       { name: "锦木千束", text: "好啦好啦～出发！对了，待会带你去我们的咖啡厅坐坐，超棒的哦！" }
     ],
     tasks: [
-      { step: 0, x: 8, y: 5, type: 'battle', enemyId: 120, name: '暴走的 雷光兽', text: '呜呜呜呜！！（浑身放出失控的电弧，眼中闪烁着诡异的红光）', emoji: '⚡' },
+      { step: 0, x: 8, y: 5, type: 'battle', enemyId: 120, name: '暴走的 雷光兽', text: '呜呜呜呜！！（浑身放出失控的电弧，眼中闪烁着诡异的红光）', emoji: '⚡',
+        eliteParty: [{ id: 120, level: 48 }, { id: 87, level: 46 }]
+      },
       { step: 1, x: 15, y: 8, type: 'dialog', name: '锦木千束', text: "做得好！看到了吗，那只精灵身上有个奇怪的装置。这和我们之前调查的一样——有人在用控制芯片操纵精灵！", emoji: '🎀' },
-      { step: 2, x: 20, y: 12, type: 'battle', enemyId: 130, name: '暴走的 钢翼鹰', text: '（金属翅膀疯狂拍打，芯片闪烁红光，理智已被完全覆盖）', emoji: '🦅' },
-      { step: 3, x: 25, y: 6, type: 'battle', enemyId: 140, name: '暴走的 影幽龙', text: '（龙形的暗影在建筑间穿梭，城市陷入一片混乱）', emoji: '🐉' },
+      { step: 2, x: 20, y: 12, type: 'battle', enemyId: 130, name: '暴走的 钢翼鹰', text: '（金属翅膀疯狂拍打，芯片闪烁红光，理智已被完全覆盖）', emoji: '🦅',
+        eliteParty: [{ id: 130, level: 50 }, { id: 120, level: 48 }, { id: 42, level: 47 }]
+      },
+      { step: 3, x: 25, y: 6, type: 'battle', enemyId: 140, name: '暴走的 影幽龙', text: '（龙形的暗影在建筑间穿梭，城市陷入一片混乱）', emoji: '🐉',
+        eliteParty: [{ id: 140, level: 52 }, { id: 130, level: 50 }, { id: 142, level: 49 }]
+      },
       { step: 4, x: 22, y: 15, type: 'dialog', name: '井之上泷奈', text: "信号源追踪到了城西废弃工厂。千束，准备行动。...你也一起来。", emoji: '🔫' },
-      { step: 5, x: 12, y: 3, type: 'battle', enemyId: 145, name: '神秘操控者', text: '你们是DA的人？哼，来晚了。我的控制芯片已经分布在整个城市——你们阻止不了的！', emoji: '🦹' },
+      { step: 5, x: 12, y: 3, type: 'battle', enemyId: 145, name: '神秘操控者', text: '你们是DA的人？哼，来晚了。我的控制芯片已经分布在整个城市——你们阻止不了的！', emoji: '🦹',
+        eliteParty: [{ id: 145, level: 54 }, { id: 140, level: 52 }, { id: 132, level: 51 }, { id: 88, level: 50 }]
+      },
       { step: 6, x: 18, y: 10, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（操控者倒下后，暗处传来拍手声）DA和日蚀队...都是有趣的组织呢。千束、泷奈...你们的搭档战术确实漂亮。不过——比起你们，我更想和这个人打。', emoji: '🌙',
         eliteParty: [
           { id: 609, level: 55 },
@@ -664,11 +770,17 @@ export const STORY_SCRIPT = [
       { name: "锦木千束", text: "先和我们打一场热身赛，然后你自己试试搭档战斗！准备好了吗？" }
     ],
     tasks: [
-      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 100, name: '千束的搭档·风铃鸟', text: '（千束温柔地摸了摸风铃鸟的头）来吧，给新朋友展示一下我们的实力！', emoji: '🐦' },
+      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 100, name: '千束的搭档·风铃鸟', text: '（千束温柔地摸了摸风铃鸟的头）来吧，给新朋友展示一下我们的实力！', emoji: '🐦',
+        eliteParty: [{ id: 100, level: 55 }, { id: 42, level: 53 }, { id: 15, level: 52 }]
+      },
       { step: 1, x: 18, y: 6, type: 'dialog', name: '锦木千束', text: "看到了吗？搭档之间的默契不是一朝一夕的事。要在战斗中一起成长，羁绊才会越来越深！", emoji: '🎀' },
-      { step: 2, x: 22, y: 12, type: 'battle', enemyId: 120, name: '泷奈的搭档·钢拳猿', text: '（泷奈严肃地点了点头）不要留手。我要看看你的精灵之间有没有搭档的潜质。', emoji: '🦍' },
+      { step: 2, x: 22, y: 12, type: 'battle', enemyId: 120, name: '泷奈的搭档·钢拳猿', text: '（泷奈严肃地点了点头）不要留手。我要看看你的精灵之间有没有搭档的潜质。', emoji: '🦍',
+        eliteParty: [{ id: 120, level: 57 }, { id: 88, level: 55 }, { id: 87, level: 54 }]
+      },
       { step: 3, x: 15, y: 5, type: 'dialog', name: '井之上泷奈', text: "...还不错。你的精灵们之间有潜力。但真正的搭档，需要在生死关头依然信任对方。", emoji: '🔫' },
-      { step: 4, x: 8, y: 15, type: 'battle', enemyId: 130, name: 'Alan机关测试者', text: 'DA的小训练家们又来了？Alan机关的实力可不是你们能想象的！搭档？那种东西没有用！', emoji: '🤖' },
+      { step: 4, x: 8, y: 15, type: 'battle', enemyId: 130, name: 'Alan机关测试者', text: 'DA的小训练家们又来了？Alan机关的实力可不是你们能想象的！搭档？那种东西没有用！', emoji: '🤖',
+        eliteParty: [{ id: 130, level: 60 }, { id: 132, level: 58 }, { id: 88, level: 57 }, { id: 140, level: 56 }]
+      },
       { step: 5, x: 20, y: 5, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（千束正在庆祝，厌晚从屋顶跳下）搭档的意义？呵...让我这个独行者来检验一下你们的"搭档之力"到底有多少斤两。', emoji: '🌙',
         eliteParty: [
           { id: 609, level: 62, devilFruit: 'df_yami' },
@@ -705,11 +817,19 @@ export const STORY_SCRIPT = [
       { name: "真岛", text: "（广播响起）呵呵...DA的小玩偶们又来了？这次的舞台我可是精心准备的。来吧，让我看看你们的'搭档之力'有多脆弱！" }
     ],
     tasks: [
-      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 135, name: '真岛的先锋·影杀手', text: '真岛大人说了，今天谁也别想活着离开这里！品尝恐惧吧！', emoji: '🗡️' },
-      { step: 1, x: 12, y: 8, type: 'battle', enemyId: 140, name: '真岛的精锐·暗夜猎手', text: '你以为击败我就完了？后面还有更强的在等着你！真岛大人的计划不可阻挡！', emoji: '🌑' },
+      { step: 0, x: 5, y: 5, type: 'battle', enemyId: 135, name: '真岛的先锋·影杀手', text: '真岛大人说了，今天谁也别想活着离开这里！品尝恐惧吧！', emoji: '🗡️',
+        eliteParty: [{ id: 135, level: 62 }, { id: 59, level: 60 }, { id: 94, level: 59 }]
+      },
+      { step: 1, x: 12, y: 8, type: 'battle', enemyId: 140, name: '真岛的精锐·暗夜猎手', text: '你以为击败我就完了？后面还有更强的在等着你！真岛大人的计划不可阻挡！', emoji: '🌑',
+        eliteParty: [{ id: 140, level: 64 }, { id: 135, level: 62 }, { id: 142, level: 61 }]
+      },
       { step: 2, x: 20, y: 5, type: 'dialog', name: '锦木千束', text: "小心！真岛的核心手下就在前方。他们使用的精灵都被芯片强化过，非常棘手。相信你的搭档，我们一起上！", emoji: '🎀' },
-      { step: 3, x: 22, y: 12, type: 'battle', enemyId: 145, name: '真岛的副官·幻影', text: '真岛大人的理想——让所有人看到精灵的真实力量！你们DA的秘密都将被揭露！', emoji: '👤' },
-      { step: 4, x: 15, y: 15, type: 'battle', enemyId: 150, name: '真岛', text: '终于来了啊。你知道吗？我也有搭档——不过我的搭档可不需要什么温情脉脉的羁绊。绝对的力量！这才是搭档的真谛！', emoji: '🎭' },
+      { step: 3, x: 22, y: 12, type: 'battle', enemyId: 145, name: '真岛的副官·幻影', text: '真岛大人的理想——让所有人看到精灵的真实力量！你们DA的秘密都将被揭露！', emoji: '👤',
+        eliteParty: [{ id: 145, level: 66 }, { id: 140, level: 64 }, { id: 150, level: 63 }, { id: 132, level: 62 }]
+      },
+      { step: 4, x: 15, y: 15, type: 'battle', enemyId: 150, name: '真岛', text: '终于来了啊。你知道吗？我也有搭档——不过我的搭档可不需要什么温情脉脉的羁绊。绝对的力量！这才是搭档的真谛！', emoji: '🎭',
+        eliteParty: [{ id: 150, level: 70 }, { id: 145, level: 68 }, { id: 142, level: 67 }, { id: 253, level: 66 }, { id: 248, level: 65 }]
+      },
       { step: 5, x: 25, y: 8, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（真岛逃走后，古堡深处传来熟悉的脚步声）真岛那种人也配谈力量？哼。你倒是让我越来越期待了——每次见面，你都变得更强。所以...这次我也稍微加点力度。', emoji: '🌙',
         eliteParty: [
           { id: 608, level: 70, devilFruit: 'df_yami' },
