@@ -4866,7 +4866,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
         }
 
-        player.activeVow = { ...vow, turnsLeft: vow.reward.turns };
+        player.activeVow = { ...vow, turnsLeft: vow.reward.turns + 1 };
         addLog(`📜 ${player.name} 立下缚誓——${vow.name}!`);
         addLog(`📖 ${vow.desc}`);
         setAnimEffect({ type: 'BUFF', target: 'player' });
