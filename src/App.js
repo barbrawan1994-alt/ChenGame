@@ -31,6 +31,7 @@ import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS 
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS } from './data/achievements';
+import GAME_GUIDE from './data/gameGuide';
 import { generateSprite } from './SpriteGenerator';
 import { getSpriteUrl, getSpriteFallbackUrls, TRAINER_SPRITES, NPC_SPRITES, getNpcSprite } from './SpriteMap';
 import {
@@ -642,7 +643,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
    const [evoAnim, setEvoAnim] = useState(null); // { oldPet, newPet, targetIdx, step: 0-3 }
   const [beautyState, setBeautyState] = useState({ round: 1, appeal: 0, history: [], log: [] });
   const [activityModal, setActivityModal] = useState(null); 
-  const [battleTooltip, setBattleTooltip] = useState(null); 
+  const [battleTooltip, setBattleTooltip] = useState(null);
+  const [guideSearch, setGuideSearch] = useState('');
+  const [guideExpanded, setGuideExpanded] = useState({});
+  const [guideCat, setGuideCat] = useState(null);
     // ==========================================
   
   // [新增] 核心逻辑函数群
@@ -2835,6 +2839,118 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           )}
         </div>
       </div>
+    );
+  };
+
+  // ==========================================
+  // 游戏说明
+  // ==========================================
+  const renderGuide = () => {
+    const filtered = guideCat ? GAME_GUIDE.filter(g => g.id === guideCat) : GAME_GUIDE;
+    const q = guideSearch.trim().toLowerCase();
+    const results = q
+      ? filtered.map(cat => ({
+          ...cat,
+          sections: cat.sections.filter(s =>
+            s.title.toLowerCase().includes(q) || s.content.toLowerCase().includes(q)
+          ),
+        })).filter(cat => cat.sections.length > 0)
+      : filtered;
+
+    return (
+      <div style={{position:'fixed', inset:0, background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)', zIndex:9999, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+        {/* 顶栏 */}
+        <div style={{padding:'16px 20px 12px', flexShrink:0, borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
+            <button onClick={() => { setView(party.length > 0 ? 'grid_map' : 'menu'); setGuideSearch(''); setGuideCat(null); }}
+              style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'10px', padding:'6px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600'}}>
+              返回
+            </button>
+            <div style={{fontSize:'18px', fontWeight:'800', color:'#fff', letterSpacing:'1px'}}>游戏说明</div>
+            <div style={{width:'60px'}} />
+          </div>
+          {/* 搜索栏 */}
+          <div style={{position:'relative', marginBottom:'10px'}}>
+            <input
+              type="text" placeholder="搜索规则/系统..."
+              value={guideSearch} onChange={e => setGuideSearch(e.target.value)}
+              style={{width:'100%', padding:'8px 12px 8px 32px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.06)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box'}}
+            />
+            <span style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.3)', fontSize:'14px'}}>&#128269;</span>
+          </div>
+          {/* 分类标签 */}
+          <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none'}}>
+            <button onClick={() => setGuideCat(null)}
+              style={{padding:'4px 12px', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.1)', fontSize:'11px', fontWeight:'600', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
+                background: !guideCat ? 'rgba(255,255,255,0.15)' : 'transparent', color: !guideCat ? '#fff' : 'rgba(255,255,255,0.5)'}}>
+              全部
+            </button>
+            {GAME_GUIDE.map(g => (
+              <button key={g.id} onClick={() => setGuideCat(g.id)}
+                style={{padding:'4px 12px', borderRadius:'20px', border:`1px solid ${guideCat === g.id ? g.color+'60' : 'rgba(255,255,255,0.1)'}`, fontSize:'11px', fontWeight:'600', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
+                  background: guideCat === g.id ? g.color+'25' : 'transparent', color: guideCat === g.id ? g.color : 'rgba(255,255,255,0.5)'}}>
+                {g.icon} {g.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 内容区 */}
+        <div style={{flex:1, overflowY:'auto', padding:'12px 16px', scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.15) transparent'}}>
+          {results.length === 0 && (
+            <div style={{textAlign:'center', padding:'60px 20px', color:'rgba(255,255,255,0.3)'}}>
+              <div style={{fontSize:'40px', marginBottom:'12px'}}>&#128270;</div>
+              <div style={{fontSize:'14px'}}>没有找到匹配的内容</div>
+            </div>
+          )}
+          {results.map(cat => {
+            const isExpanded = guideExpanded[cat.id] !== false;
+            return (
+              <div key={cat.id} style={{marginBottom:'16px'}}>
+                {/* 分类标题 */}
+                <div
+                  onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}
+                  style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderRadius:'12px', cursor:'pointer',
+                    background:`linear-gradient(135deg, ${cat.color}15, ${cat.color}08)`, border:`1px solid ${cat.color}30`,
+                    transition:'all 0.2s'}}>
+                  <span style={{fontSize:'22px'}}>{cat.icon}</span>
+                  <span style={{flex:1, fontSize:'15px', fontWeight:'700', color:'#fff', letterSpacing:'0.5px'}}>{cat.title}</span>
+                  <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginRight:'4px'}}>{cat.sections.length}项</span>
+                  <span style={{color:'rgba(255,255,255,0.3)', fontSize:'12px', transition:'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none'}}>&#9654;</span>
+                </div>
+                {/* 子条目 */}
+                {isExpanded && (
+                  <div style={{marginTop:'6px', marginLeft:'8px', borderLeft:`2px solid ${cat.color}30`, paddingLeft:'12px'}}>
+                    {cat.sections.map((sec, si) => (
+                      <div key={si} style={{padding:'10px 12px', marginBottom:'4px', borderRadius:'8px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.04)', transition:'background 0.15s'}}
+                        onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+                        onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.03)'}>
+                        <div style={{fontSize:'13px', fontWeight:'700', color:cat.color, marginBottom:'6px', display:'flex', alignItems:'center', gap:'6px'}}>
+                          <span style={{width:'6px', height:'6px', borderRadius:'50%', background:cat.color, flexShrink:0}} />
+                          {sec.title}
+                        </div>
+                        <div style={{fontSize:'12px', lineHeight:'1.7', color:'rgba(255,255,255,0.65)', whiteSpace:'pre-line'}}>
+                          {q ? highlightSearch(sec.content, q) : sec.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const highlightSearch = (text, query) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase()
+        ? <span key={i} style={{background:'rgba(255,193,7,0.3)', color:'#FFD54F', borderRadius:'2px', padding:'0 1px'}}>{part}</span>
+        : part
     );
   };
 
@@ -8605,6 +8721,7 @@ const renderMenu = () => {
               { key:'skill_dex', label:'技能大全', sub:'287种', color:'#3b82f6', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
               { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
               { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
             ].map(btn => (
               <button key={btn.key} onClick={() => setView(btn.key)} style={{
                 padding:'12px 14px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
@@ -10624,6 +10741,7 @@ const renderMenu = () => {
               { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
+              { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
                 style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
@@ -13691,6 +13809,7 @@ const renderMenu = () => {
     {view === 'beauty_contest' && renderBeautyContest()}
       {view === 'housing' && renderHousing()}
       {view === 'achievements' && renderAchievements()}
+      {view === 'guide' && renderGuide()}
       {view === 'locked' && renderLocked()}
       {renderResultModal()} 
       {renderActivityModal()} 
