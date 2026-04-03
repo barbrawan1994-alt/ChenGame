@@ -6458,9 +6458,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
-    // 缚誓回合递减
+    // 缚誓回合递减 (跳过一次性缚誓——以命搏命/焚尽咒力由技能使用时消耗)
     [player, enemy].forEach((u, idx) => {
         if (u.activeVow && u.activeVow.turnsLeft > 0) {
+            const isOneShot = u.activeVow.reward.atkMult || u.activeVow.reward.nextMovePower;
+            if (isOneShot) return;
             u.activeVow.turnsLeft--;
             if (u.activeVow.turnsLeft <= 0) {
                 const sideLabel = idx === 0 ? '[我方]' : '[敌方]';
