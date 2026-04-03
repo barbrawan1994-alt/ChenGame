@@ -2852,7 +2852,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         {/* Header */}
         <div style={{padding:'20px 24px 16px', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
-            <button onClick={() => setView(hasSave && party.length > 0 ? 'world_map' : 'menu')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+            <button onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>成就大厅</div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>{unlocked} / {total} 已解锁</div>
@@ -2886,66 +2886,65 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             })}
           </div>
         </div>
-        {/* Achievement grid */}
-        <div style={{flex:1, overflowY:'auto', padding:'16px 20px', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'10px', alignContent:'start'}}>
-          {filtered.map(ach => {
-            const done = unlockedAchs.includes(ach.id);
-            const cat = ACH_CATEGORY[ach.cat];
-            const rar = ACH_RARITY[ach.rarity];
-            const isHidden = ach.hidden && !done;
-            return (
-              <div key={ach.id} style={{
-                background: done ? `linear-gradient(135deg, ${rar.color}12, ${rar.color}06)` : 'rgba(255,255,255,0.02)',
-                border: `1px solid ${done ? `${rar.color}40` : 'rgba(255,255,255,0.04)'}`,
-                borderRadius:'14px', padding:'14px 16px', position:'relative', overflow:'hidden',
-                opacity: done ? 1 : 0.6, transition:'all 0.2s'
-              }}>
-                {/* Glow for unlocked */}
-                {done && <div style={{position:'absolute', top:0, left:0, right:0, height:'2px', background:`linear-gradient(90deg, transparent, ${rar.color}, transparent)`}} />}
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px', flex:1, minWidth:0}}>
-                    <div style={{
-                      width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
-                      background: done ? `linear-gradient(135deg, ${rar.color}30, ${rar.color}15)` : 'rgba(255,255,255,0.04)',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:'18px', border: done ? `1px solid ${rar.color}40` : '1px solid rgba(255,255,255,0.06)'
-                    }}>
-                      {done ? (cat?.icon || '🏆') : (isHidden ? '❓' : cat?.icon || '📋')}
+        {/* Achievement grid - 滚动容器与Grid分离，防止flex+grid压缩行高 */}
+        <div style={{flex:1, overflowY:'auto', padding:'16px 20px'}}>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'10px'}}>
+            {filtered.map(ach => {
+              const done = unlockedAchs.includes(ach.id);
+              const cat = ACH_CATEGORY[ach.cat];
+              const rar = ACH_RARITY[ach.rarity];
+              const isHidden = ach.hidden && !done;
+              return (
+                <div key={ach.id} style={{
+                  background: done ? `linear-gradient(135deg, ${rar.color}12, ${rar.color}06)` : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${done ? `${rar.color}40` : 'rgba(255,255,255,0.04)'}`,
+                  borderRadius:'14px', padding:'14px 16px', position:'relative',
+                  opacity: done ? 1 : 0.6, transition:'all 0.2s'
+                }}>
+                  {done && <div style={{position:'absolute', top:0, left:0, right:0, height:'2px', background:`linear-gradient(90deg, transparent, ${rar.color}, transparent)`, borderRadius:'14px 14px 0 0'}} />}
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'8px', flex:1, minWidth:0}}>
+                      <div style={{
+                        width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
+                        background: done ? `linear-gradient(135deg, ${rar.color}30, ${rar.color}15)` : 'rgba(255,255,255,0.04)',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        fontSize:'18px', border: done ? `1px solid ${rar.color}40` : '1px solid rgba(255,255,255,0.06)'
+                      }}>
+                        {done ? (cat?.icon || '🏆') : (isHidden ? '❓' : cat?.icon || '📋')}
+                      </div>
+                      <div style={{minWidth:0, flex:1}}>
+                        <div style={{fontSize:'13px', fontWeight:'800', color: done ? '#fff' : 'rgba(255,255,255,0.5)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                          {isHidden ? '???' : ach.name}
+                        </div>
+                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                          {isHidden ? '达成隐藏条件后解锁' : ach.desc}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{minWidth:0}}>
-                      <div style={{fontSize:'13px', fontWeight:'800', color: done ? '#fff' : 'rgba(255,255,255,0.5)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                        {isHidden ? '???' : ach.name}
-                      </div>
-                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px'}}>
-                        {isHidden ? '达成隐藏条件后解锁' : ach.desc}
-                      </div>
+                    <div style={{flexShrink:0, fontSize:'10px', letterSpacing:'1px', color: done ? rar.color : 'rgba(255,255,255,0.15)', marginLeft:'6px'}}>
+                      {'★'.repeat(rar.stars)}{'☆'.repeat(5 - rar.stars)}
                     </div>
                   </div>
-                  {/* Stars */}
-                  <div style={{flexShrink:0, fontSize:'10px', letterSpacing:'1px', color: done ? rar.color : 'rgba(255,255,255,0.15)'}}>
-                    {'★'.repeat(rar.stars)}{'☆'.repeat(5 - rar.stars)}
+                  <div style={{display:'flex', alignItems:'center', gap:'6px', marginTop:'4px', flexWrap:'wrap'}}>
+                    <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:`${rar.color}15`, color:rar.color, fontWeight:'700', border:`1px solid ${rar.color}20`}}>
+                      {rar.name}
+                    </span>
+                    {ach.reward?.gold && (
+                      <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(255,215,0,0.1)', color:'#FFD700', fontWeight:'700'}}>
+                        +{ach.reward.gold.toLocaleString()} 金币
+                      </span>
+                    )}
+                    {ach.reward?.title && (
+                      <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(156,39,176,0.1)', color:'#CE93D8', fontWeight:'700'}}>
+                        称号: {ach.reward.title}
+                      </span>
+                    )}
+                    {done && <span style={{marginLeft:'auto', fontSize:'10px', color:'#43a047', fontWeight:'700'}}>✓ 已完成</span>}
                   </div>
                 </div>
-                {/* Reward */}
-                <div style={{display:'flex', alignItems:'center', gap:'6px', marginTop:'4px'}}>
-                  <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:`${rar.color}15`, color:rar.color, fontWeight:'700', border:`1px solid ${rar.color}20`}}>
-                    {rar.name}
-                  </span>
-                  {ach.reward?.gold && (
-                    <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(255,215,0,0.1)', color:'#FFD700', fontWeight:'700'}}>
-                      +{ach.reward.gold.toLocaleString()} 金币
-                    </span>
-                  )}
-                  {ach.reward?.title && (
-                    <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(156,39,176,0.1)', color:'#CE93D8', fontWeight:'700'}}>
-                      称号: {ach.reward.title}
-                    </span>
-                  )}
-                  {done && <span style={{marginLeft:'auto', fontSize:'10px', color:'#43a047', fontWeight:'700'}}>✓ 已完成</span>}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -2955,7 +2954,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff'}}>
          <div style={{fontSize: '60px', marginBottom: '20px'}}>🔒</div>
          <h2 style={{marginBottom: '10px'}}>功能尚未开放</h2>
-         <button onClick={() => setView(hasSave && party.length > 0 ? 'world_map' : 'menu')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
+         <button onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
       </div>
   );
 
@@ -10436,7 +10435,7 @@ const renderMenu = () => {
           }}>
             {/* 左侧：当前地图名称 */}
             <div style={{display:'flex', alignItems:'center', gap:'6px', minWidth:'80px'}}>
-              <span style={{fontSize:'14px', fontWeight:'700', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'120px'}}>{currentMap?.name || '未知区域'}</span>
+              <span style={{fontSize:'14px', fontWeight:'700', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'120px'}}>{currentMapInfo?.name || '未知区域'}</span>
             </div>
             
             {/* 中间：环境仪表盘 (只读显示) */}
