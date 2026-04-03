@@ -55,6 +55,7 @@ import {
   WATER_POOL,
   JJK_CHALLENGES,
   HYAKKI_DUNGEON,
+  EXTRA_DUNGEONS,
 } from './data';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE,
@@ -153,6 +154,7 @@ export default function RPG(props) {
 
   // 临时状态 (不需要存入 savedData 的部分)
   const [activityRecords, setActivityRecords] = useState({ bug: 0, fishing: 0, beauty: 0 });
+  const [dungeonCooldowns, setDungeonCooldowns] = useState({});
   const [resultData, setResultData] = useState(null); 
 
   // 环境与天气系统
@@ -3835,105 +3837,7 @@ const useGrowthItem = (petIndex, itemId) => {
     setView('grid_map');
   };
 
-    const enterDungeon = (dungeon) => {
-    // 1. 狩猎地带逻辑 (保持不变)
-    if (dungeon.id === 'safari_zone') {
-      if (party[0].level < 100) {
-        alert("⛔ 权限不足！\n狩猎地带仅对顶尖训练家开放。\n要求：首发精灵等级达到 Lv.100");
-        return;
-      }
-      if (badges.length < 12) {
-        alert(`⛔ 权限不足！\n你需要收集全部 12 枚徽章才能进入狩猎地带。\n当前进度: ${badges.length}/12`);
-        return;
-      }
-      alert("🎉 欢迎来到狩猎地带！\n这里充满了传说中的神兽和稀有精灵！");
-      startBattle({ id: 997, name: '狩猎地带', lvl: [90, 100], pool: [], drop: 1000 }, 'safari');
-      return;
-    }
-
-    // 2. 基础等级检查
-    if (party[0].level < dungeon.recLvl) {
-      alert(`等级不足！建议等级: Lv.${dungeon.recLvl}`);
-      return;
-    }
-
-    // --- 新增：特殊限制检查逻辑 ---
-
-    // A. 元素之塔：等级限制 (Max Lv.50)
-    if (dungeon.restriction === 'min_lvl_60') {
-        const isOverLevel = party.some(p => p.level < 60);
-        if (isOverLevel) {
-            alert("⛔ 进入失败！\n规则限制：队伍中所有精灵等级不得超过 Lv.50。");
-            return;
-        }
-    }
-
-    // B. 英雄试炼：单挑限制 (Team Size = 1)
-    if (dungeon.restriction === 'solo_run') {
-        if (party.length > 1) {
-            alert("⛔ 进入失败！\n规则限制：只能携带 1 只精灵进行英雄试炼。");
-            return;
-        }
-    }
-
-    // C. 豪宅金库：门票收费
-    if (dungeon.restriction === 'entry_fee') {
-        if (gold < 5000) {
-            alert("⛔ 进入失败！\n你需要支付 5000 金币作为入场费。");
-            return;
-        }
-        if (!confirm("💰 确定支付 5000 金币进入豪宅金库吗？\n(通关后可获得约 20000 金币回报)")) {
-            return;
-        }
-        setGold(g => g - 5000); // 扣费
-    }
-
-    // D. 闪光山谷：性格限制 (首发必须是"幸运"类性格 - 这里用 'naive'/'hasty'/'quirky' 模拟)
-    if (dungeon.restriction === 'lucky_nature') {
-        // 假设 'naive'(天真), 'hasty'(急躁), 'quirky'(浮躁) 算作幸运性格
-        const luckyNatures = ['naive', 'hasty', 'quirky', 'serious', 'hardy']; 
-        const leaderNature = party[0].nature;
-        if (!luckyNatures.includes(leaderNature)) {
-            alert(`⛔ 进入失败！\n首发精灵必须是"幸运"性格之一：\n(天真/急躁/浮躁/严肃/努力)\n当前性格: ${NATURE_DB[leaderNature]?.name || '未知'}`);
-            return;
-        }
-    }
-
-    // 3. 触发战斗 (根据类型分发)
-    if (dungeon.type === 'gold') {
-      alert("进入黄金矿洞！这里全是喵喵！");
-      startBattle({ id: 999, name: '黄金矿洞', lvl: [30, 40], pool: [52], drop: 2000 }, 'wild'); 
-    } 
-    else if (dungeon.type === 'exp') {
-      alert("进入经验乐园！这里全是差不多娃娃！");
-      startBattle({ id: 998, name: '经验乐园', lvl: [20, 50], pool: [113], drop: 100 }, 'wild'); 
-    }
-    // --- 新增副本的战斗触发 ---
-    else if (dungeon.type === 'stone') {
-        alert("进入元素之塔！\n这里的精灵守护着进化石。");
-        // 敌人池：伊布家族 (126-130)
-        startBattle({ id: 996, name: '元素之塔', lvl: [40, 50], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 }, 'dungeon_stone');
-    }
-    else if (dungeon.type === 'stat') {
-        alert("进入英雄试炼！\n证明你的力量吧！");
-        // 敌人池：格斗系/龙系强敌
-        startBattle({ id: 995, name: '英雄试炼', lvl: [60, 65], pool: [63, 106, 138, 183, 214, 270], drop: 800 }, 'dungeon_stat');
-    }
-    else if (dungeon.type === 'gold_pro') {
-        alert("进入豪宅金库！\n遍地都是金子！");
-        // 敌人池：喵喵(118), 猫老大(119), 招财金猫(364)
-        startBattle({ id: 994, name: '豪宅金库', lvl: [50, 60], pool: [118, 119, 364], drop: 15000 }, 'wild'); // drop 极高
-    }
-    else if (dungeon.type === 'shiny_hunt') {
-        alert("进入闪光山谷！\n这里的空气闪烁着奇异的光芒...");
-        // 敌人池：稀有精灵
-        startBattle({ id: 993, name: '闪光山谷', lvl: [80, 90], pool: [147, 148, 151, 244, 299], drop: 1000 }, 'dungeon_shiny');
-    }
-      else if (dungeon.type === 'infinity') {
-        enterInfinityCastle();
-        return;
-    }
-  };
+    // (dead code removed - actual enterDungeon is in renderWorldMap)
 
   // ==========================================
   // [新增] 播放闪光特效逻辑
@@ -3987,8 +3891,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // --- 分支 A: 奖励是精灵 ---
     if (isPetReward) {
-        // 1. 创建精灵
-        const rewardPet = createPet(rewardTier.id, rewardTier.level, true, rewardTier.shiny);
+        // 奖励等级跟随当前地图等级（不超过地图上限，保证主线地图是核心成长路径）
+        const mapInfo = MAPS.find(m => m.id === currentMapId);
+        const rewardLvl = mapInfo ? Math.max(rewardTier.level, Math.floor((mapInfo.lvl[0] + mapInfo.lvl[1]) / 2)) : rewardTier.level;
+        const rewardPet = createPet(rewardTier.id, rewardLvl, true, rewardTier.shiny);
         rewardPet.name = rewardTier.name; 
         
         // 2. 应用保底个体值
@@ -4089,6 +3995,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let enemyParty = [];
     let trainerName = null;
     let dropGold = context?.drop || 200;
+    let extraBattleData = {};
 
     // -------------------------------------------------
     // 1. PvP 对战
@@ -4268,6 +4175,35 @@ const grantContestReward = (config, score, subjectPet = null) => {
         dropGold = 3000;
         trainerName = "稀有精灵";
     }
+    // Boss Rush - 连战Boss塔
+    else if (type === 'boss_rush') {
+        const bossId = _.sample(context.pool);
+        const boss = createPet(bossId, _.random(context.lvl[0], context.lvl[1]), true);
+        boss.ivs = { hp: 31, p_atk: 31, p_def: 31, s_atk: 31, s_def: 31, spd: 31 };
+        boss.currentHp = getStats(boss).maxHp;
+        enemyParty.push(boss);
+        dropGold = context.drop;
+        trainerName = `Boss塔守卫`;
+        extraBattleData = { bossRushWave: context.bossRushWave || 1 };
+    }
+    // 属性试炼场
+    else if (type === 'type_challenge') {
+        for (let i = 0; i < 2; i++) {
+          enemyParty.push(createPet(_.sample(context.pool), _.random(context.lvl[0], context.lvl[1]), true));
+        }
+        dropGold = context.drop;
+        trainerName = "属性导师";
+        extraBattleData = { challengeType: context.challengeType };
+    }
+    // 生存竞技场
+    else if (type === 'survival') {
+        const enemyId = _.sample(context.pool);
+        const survEnemy = createPet(enemyId, _.random(context.lvl[0], context.lvl[1]), true);
+        enemyParty.push(survEnemy);
+        dropGold = context.drop;
+        trainerName = "竞技场挑战者";
+        extraBattleData = { survivalWave: context.survivalWave || 1 };
+    }
     // -------------------------------------------------
     // 12. 特殊事件 (碎岩/冲浪/神兽)
     // -------------------------------------------------
@@ -4444,6 +4380,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       type: type,
       activeDomain: null,
       activeVows: { player: null, enemy: null },
+      ...extraBattleData,
     });
     
     setShowBallMenu(false);
@@ -6449,6 +6386,67 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 3. 豪宅金库 -> 额外金币
     if (battle.name === '豪宅金库') {
         addLog(`💰 发财了！从金库中带回了大量金币！`);
+    }
+
+    // Boss Rush - 连战Boss塔
+    if (battle.type === 'boss_rush') {
+      const wave = battle.bossRushWave || 1;
+      if (wave < 3) {
+        const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
+        const nextLvlBase = Math.min(100, (battle.enemyParty?.[0]?.level || 50) + 5);
+        addLog(`🗼 Boss塔第${wave}层通关！准备迎战第${wave + 1}层...`);
+        setParty(updatedParty);
+        setBattle(null);
+        setTimeout(() => {
+          startBattle({ id: 992, name: `Boss塔 第${wave+1}层`, lvl: [nextLvlBase, nextLvlBase + 5], pool: bossPool, drop: 2000 + wave * 1000, bossRushWave: wave + 1 }, 'boss_rush');
+        }, 1000);
+        return;
+      } else {
+        const bonusGold = 5000;
+        setGold(g => g + bonusGold);
+        addLog(`🏆 Boss塔全部通关！额外奖励 ${bonusGold} 金币！`);
+        const rewardItem = _.sample(GROWTH_ITEMS);
+        setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
+        addLog(`🎁 通关奖励: ${rewardItem.emoji} ${rewardItem.name}!`);
+      }
+    }
+
+    // 属性试炼场 - 奖励对应属性TM
+    if (battle.type === 'type_challenge') {
+      const cType = battle.challengeType;
+      if (cType) {
+        const matchingTMs = TMS.filter(tm => tm.type === cType);
+        if (matchingTMs.length > 0) {
+          const rewardTM = _.sample(matchingTMs);
+          setInventory(prev => ({ ...prev, tms: { ...prev.tms, [rewardTM.id]: (prev.tms[rewardTM.id]||0) + 1 } }));
+          addLog(`📖 属性试炼奖励: ${rewardTM.name}!`);
+        }
+      }
+    }
+
+    // 生存竞技场 - 每波递增，不断变强
+    if (battle.type === 'survival') {
+      const wave = battle.survivalWave || 1;
+      const bonusGold = wave * 500;
+      setGold(g => g + bonusGold);
+      addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
+      // 继续下一波，敌人等级+2
+      const nextLvl = Math.min(100, (battle.enemyParty?.[0]?.level || 70) + 2);
+      if (confirm(`🏟️ 第${wave}波胜利！\n已累计奖金 ${bonusGold} 金币\n继续挑战第${wave+1}波？(敌人更强)`)) {
+        setParty(updatedParty);
+        setBattle(null);
+        setTimeout(() => {
+          startBattle({ id: 990, name: '生存竞技场', lvl: [nextLvl, nextLvl + 3], pool: [...HIGH_TIER_POOL], drop: 0, survivalWave: wave + 1 }, 'survival');
+        }, 500);
+        return;
+      } else {
+        addLog(`🏟️ 竞技场结束，共坚持${wave}波！`);
+        if (wave >= 5) {
+          const rewardItem = _.sample(GROWTH_ITEMS);
+          setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
+          addLog(`🏅 坚持5波以上！额外获得 ${rewardItem.emoji} ${rewardItem.name}!`);
+        }
+      }
     }
 
     // 4. 随机装备掉落
@@ -8665,31 +8663,117 @@ const renderMenu = () => {
   // ==========================================
   const renderWorldMap = () => {
     // ... (原有的 enterDungeon 逻辑保持不变) ...
+    // 副本冷却检查（每个副本3场战斗后需等5分钟冷却）
+    const checkDungeonCooldown = (dungeonId) => {
+      const cd = dungeonCooldowns[dungeonId];
+      if (!cd) return true;
+      if (cd.count >= 3) {
+        const elapsed = Date.now() - cd.lastTime;
+        if (elapsed < 5 * 60 * 1000) {
+          const remaining = Math.ceil((5 * 60 * 1000 - elapsed) / 60000);
+          alert(`⏰ 副本冷却中！\n已连续挑战3次，请等待 ${remaining} 分钟后再进入。\n（主线地图随时可以探索！）`);
+          return false;
+        }
+        setDungeonCooldowns(prev => ({ ...prev, [dungeonId]: { count: 0, lastTime: Date.now() } }));
+      }
+      return true;
+    };
+    const recordDungeonEntry = (dungeonId) => {
+      setDungeonCooldowns(prev => {
+        const cd = prev[dungeonId] || { count: 0, lastTime: Date.now() };
+        return { ...prev, [dungeonId]: { count: cd.count + 1, lastTime: Date.now() } };
+      });
+    };
+
     const enterDungeon = (dungeon) => {
+      // --- 狩猎地带 (最高门槛, 最好奖励) ---
       if (dungeon.id === 'safari_zone') {
         if (party[0].level < 100) { alert("⛔ 权限不足！\n狩猎地带仅对顶尖训练家开放。\n要求：首发精灵等级达到 Lv.100"); return; }
-        if (badges.length < 8) { alert(`⛔ 权限不足！\n你需要收集全部 8 枚徽章才能进入狩猎地带。\n当前进度: ${badges.length}/8`); return; }
+        if (badges.length < 12) { alert(`⛔ 权限不足！\n你需要收集全部 12 枚徽章才能进入狩猎地带。\n当前进度: ${badges.length}/12`); return; }
+        if (!checkDungeonCooldown('safari_zone')) return;
+        recordDungeonEntry('safari_zone');
         alert("🎉 欢迎来到狩猎地带！\n这里充满了传说中的神兽和稀有精灵！");
         startBattle({ id: 997, name: '狩猎地带', lvl: [90, 100], pool: [], drop: 1000 }, 'safari');
         return;
       }
-      if (party[0].level < dungeon.recLvl) { alert(`等级不足！建议等级: Lv.${dungeon.recLvl}`); return; }
-      if (dungeon.restriction === 'min_lvl_60') { if (party.some(p => p.level < 60)) { alert("⛔ 队伍中所有精灵必须 > Lv.60"); return; } }
-      if (dungeon.restriction === 'solo_run') { if (party.length > 1) { alert("⛔ 只能携带 1 只精灵"); return; } }
-      if (dungeon.restriction === 'entry_fee') { if (gold < 5000) { alert("⛔ 金币不足 5000"); return; } if (confirm("支付 5000 金币入场？")) setGold(g => g - 5000); else return; }
-      if (dungeon.restriction === 'lucky_nature') { const lucky = ['naive', 'hasty', 'quirky', 'serious', 'hardy']; if (!lucky.includes(party[0].nature)) { alert("⛔ 首发精灵性格必须是幸运类"); return; } }
 
-      if (dungeon.type === 'gold') startBattle({ id: 999, name: '黄金矿洞', lvl: [30, 40], pool: [52], drop: 2000 }, 'wild'); 
-      else if (dungeon.type === 'exp') startBattle({ id: 998, name: '经验乐园', lvl: [20, 50], pool: [113], drop: 100 }, 'wild'); 
-      else if (dungeon.type === 'stone') startBattle({ id: 996, name: '元素之塔', lvl: [40, 50], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 }, 'dungeon_stone');
-      else if (dungeon.type === 'stat') startBattle({ id: 995, name: '英雄试炼', lvl: [60, 65], pool: [63, 106, 138, 183, 214, 270], drop: 800 }, 'dungeon_stat');
-      else if (dungeon.type === 'gold_pro') startBattle({ id: 994, name: '豪宅金库', lvl: [50, 60], pool: [118, 119, 364], drop: 15000 }, 'wild'); 
-      else if (dungeon.type === 'shiny_hunt') startBattle({ id: 993, name: '闪光山谷', lvl: [80, 90], pool: [147, 148, 151, 244, 299], drop: 1000 }, 'dungeon_shiny');
-      else if (dungeon.type === 'infinity') enterInfinityCastle();
+      // 基础门槛检查
+      if (party[0].level < dungeon.recLvl) { alert(`⛔ 等级不足！\n需要首发精灵达到 Lv.${dungeon.recLvl}`); return; }
+
+      // 徽章门槛（根据难度要求不同徽章数）
+      const badgeReqs = { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 8, hyakki: 6 };
+      const reqBadges = badgeReqs[dungeon.type] || 0;
+      if (badges.length < reqBadges) { alert(`⛔ 徽章不足！\n需要 ${reqBadges} 枚徽章。当前: ${badges.length}/${reqBadges}`); return; }
+
+      // 特殊限制
+      if (dungeon.restriction === 'min_lvl_60') { if (party.some(p => p.level < 60)) { alert("⛔ 队伍中所有精灵必须 ≥ Lv.60"); return; } }
+      if (dungeon.restriction === 'solo_run') { if (party.length > 1) { alert("⛔ 英雄试炼只能携带 1 只精灵"); return; } }
+      if (dungeon.restriction === 'entry_fee') {
+        const fee = 5000 + badges.length * 500;
+        if (gold < fee) { alert(`⛔ 金币不足 ${fee}`); return; }
+        if (confirm(`支付 ${fee} 金币入场？`)) setGold(g => g - fee); else return;
+      }
+      if (dungeon.restriction === 'lucky_nature') { const lucky = ['naive', 'hasty', 'quirky', 'serious', 'hardy']; if (!lucky.includes(party[0].nature)) { alert("⛔ 首发精灵性格必须是幸运类(天真/急躁/浮躁/严肃/努力)"); return; } }
+
+      // 冷却检查
+      if (!checkDungeonCooldown(dungeon.id)) return;
+      recordDungeonEntry(dungeon.id);
+
+      // --- 黄金矿洞 (低门槛, 低奖励) ---
+      if (dungeon.type === 'gold') {
+        startBattle({ id: 999, name: '黄金矿洞', lvl: [30, 40], pool: [52], drop: 800 }, 'wild');
+      }
+      // --- 经验乐园 (等级与玩家匹配, 合理经验) ---
+      else if (dungeon.type === 'exp') {
+        const expLvlMin = Math.max(20, party[0].level - 5);
+        const expLvlMax = Math.min(party[0].level + 5, 80);
+        startBattle({ id: 998, name: '经验乐园', lvl: [expLvlMin, expLvlMax], pool: [113, 52, 125], drop: 100 }, 'wild');
+      }
+      // --- 元素之塔 (中门槛, 进化石) ---
+      else if (dungeon.type === 'stone') {
+        startBattle({ id: 996, name: '元素之塔', lvl: [55, 65], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 }, 'dungeon_stone');
+      }
+      // --- 英雄试炼 (单挑, 增强剂) ---
+      else if (dungeon.type === 'stat') {
+        startBattle({ id: 995, name: '英雄试炼', lvl: [60, 70], pool: [63, 106, 138, 183, 214, 270], drop: 500 }, 'dungeon_stat');
+      }
+      // --- 豪宅金库 (高门票, 高风险高回报, 但有冷却限制) ---
+      else if (dungeon.type === 'gold_pro') {
+        startBattle({ id: 994, name: '豪宅金库', lvl: [60, 75], pool: [118, 119, 364], drop: 8000 }, 'wild');
+      }
+      // --- 闪光山谷 (高门槛, 高闪光率) ---
+      else if (dungeon.type === 'shiny_hunt') {
+        startBattle({ id: 993, name: '闪光山谷', lvl: [80, 90], pool: [147, 148, 151, 244, 299], drop: 1000 }, 'dungeon_shiny');
+      }
+      // --- 无限城 (终局内容) ---
+      else if (dungeon.type === 'infinity') { enterInfinityCastle(); }
+      // --- 百鬼夜行 (多波连战) ---
       else if (dungeon.type === 'hyakki') {
         if (party[0].level < 80) { alert("⛔ 等级不足！\n百鬼夜行要求首发精灵 Lv.80 以上。"); return; }
-        alert("👹 百鬼夜行开始！\n连续5波咒灵将向你袭来，最后一波是特级咒灵Boss！");
-        startBattle({ id: 998, name: '百鬼夜行', lvl: [60, 90], pool: [92, 93, 94, 110, 89, 42], drop: 5000 }, 'wild');
+        alert("👹 百鬼夜行开始！\n强大的咒灵将向你袭来！");
+        startBattle({ id: 998, name: '百鬼夜行', lvl: [75, 90], pool: [92, 93, 94, 130, 144, 146], drop: 3000 }, 'wild');
+      }
+      // --- 连战Boss塔 ---
+      else if (dungeon.type === 'boss_rush') {
+        const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
+        const bossLvl = Math.max(40, Math.min(party[0].level + 5, 80));
+        alert("🗼 连战Boss塔！\n连续击败3位强力Boss获取奖励！");
+        startBattle({ id: 992, name: 'Boss塔 第1层', lvl: [bossLvl - 5, bossLvl], pool: bossPool, drop: 1500, bossRushWave: 1 }, 'boss_rush');
+      }
+      // --- 属性试炼场 ---
+      else if (dungeon.type === 'type_challenge') {
+        const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'PSYCHIC', 'DARK', 'FIGHT', 'DRAGON'];
+        const chosenType = _.sample(types);
+        const typeNames = { FIRE:'火', WATER:'水', GRASS:'草', ELECTRIC:'电', PSYCHIC:'超能', DARK:'暗', FIGHT:'格斗', DRAGON:'龙' };
+        const typePools = { FIRE:[11,12,13,14,15], WATER:[22,24,26,28,30], GRASS:[1,2,3,4,41], ELECTRIC:[34,85,87,88,89], PSYCHIC:[63,64,65,100,101], DARK:[54,55,56,59,90], FIGHT:[62,66,68,106,214], DRAGON:[182,183,196,208,447] };
+        alert(`🎯 属性试炼场！\n今日指定属性: ${typeNames[chosenType]}系\n只有对应属性才能高效作战！`);
+        startBattle({ id: 991, name: `${typeNames[chosenType]}系试炼`, lvl: [30, 50], pool: typePools[chosenType] || [1,2,3], drop: 1500, challengeType: chosenType }, 'type_challenge');
+      }
+      // --- 生存竞技场 ---
+      else if (dungeon.type === 'survival') {
+        const survLvl = Math.min(party[0].level + 10, 100);
+        alert("🏟️ 生存竞技场！\n敌人将不断变强，坚持越久奖励越好！\n每击败一只，下一只等级+2！");
+        startBattle({ id: 990, name: '生存竞技场', lvl: [survLvl - 10, survLvl], pool: [...HIGH_TIER_POOL], drop: 500, survivalWave: 1 }, 'survival');
       }
     };
 
@@ -8837,10 +8921,10 @@ const renderMenu = () => {
 
         {/* --- 特殊副本列表 (重新设计) --- */}
         <div className="dungeon-list-v2" style={{display: mapTab==='dungeons'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(420px, 1fr))', gap:'16px', padding:'4px'}}>
-             {[...DUNGEONS, HYAKKI_DUNGEON].map(d => {
-             const difficultyStars = d.recLvl >= 80 ? '★★★★★' : d.recLvl >= 60 ? '★★★★' : d.recLvl >= 40 ? '★★★' : d.recLvl >= 20 ? '★★' : '★';
-             const tierLabel = d.recLvl >= 80 ? '传说' : d.recLvl >= 60 ? '史诗' : d.recLvl >= 40 ? '精英' : '普通';
-             const tierColor = d.recLvl >= 80 ? '#FF6B35' : d.recLvl >= 60 ? '#9C27B0' : d.recLvl >= 40 ? '#2196F3' : '#4CAF50';
+             {[...DUNGEONS, HYAKKI_DUNGEON, ...EXTRA_DUNGEONS].map(d => {
+             const difficultyStars = '★'.repeat(d.stars || (d.recLvl >= 80 ? 5 : d.recLvl >= 60 ? 4 : d.recLvl >= 40 ? 3 : d.recLvl >= 20 ? 2 : 1));
+             const tierLabel = d.rarity || (d.recLvl >= 80 ? '传说' : d.recLvl >= 60 ? '史诗' : d.recLvl >= 40 ? '精英' : '普通');
+             const tierColor = tierLabel === '传说' ? '#FF6B35' : tierLabel === '史诗' ? '#9C27B0' : tierLabel === '稀有' ? '#2196F3' : '#4CAF50';
 
              return (
              <div key={d.id} className="dungeon-card-v2" onClick={() => enterDungeon(d)}
@@ -8892,18 +8976,31 @@ const renderMenu = () => {
                      fontSize:'11px', fontWeight:'600', color:tierColor, background:`${tierColor}15`,
                      padding:'4px 10px', borderRadius:'8px', border:`1px solid ${tierColor}30`
                    }}>Lv.{d.recLvl}+</span>
-                   {d.restriction && d.restriction !== 'none' && (
-                     <span style={{
-                       fontSize:'10px', color:'#F44336', background:'#FFF3F0',
-                       padding:'3px 8px', borderRadius:'6px', border:'1px solid #FFCDD2'
-                     }}>
-                       {d.restriction === 'min_lvl_60' ? '🔒 Lv.60限制' :
-                        d.restriction === 'solo_run' ? '🎯 单挑模式' :
-                        d.restriction === 'entry_fee' ? '💰 门票5000G' :
-                        d.restriction === 'lucky_nature' ? '🍀 需幸运性格' : ''}
-                     </span>
-                   )}
-                   {d.isJJK && <span style={{fontSize:'10px', color:'#7B1FA2', background:'#F3E5F5', padding:'3px 8px', borderRadius:'6px', border:'1px solid #CE93D8'}}>🔮 咒术</span>}
+                  {(() => {
+                    const badgeReqs = { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 8, hyakki: 6, catch: 12, boss_rush: 4, type_challenge: 3, survival: 7 };
+                    const req = badgeReqs[d.type] || 0;
+                    return req > 0 ? <span style={{fontSize:'10px', color: badges.length >= req ? '#4CAF50' : '#F44336', background: badges.length >= req ? '#E8F5E9' : '#FFF3F0', padding:'3px 8px', borderRadius:'6px', border: badges.length >= req ? '1px solid #C8E6C9' : '1px solid #FFCDD2'}}>🏅 {badges.length}/{req}徽章</span> : null;
+                  })()}
+                  {d.restriction && d.restriction !== 'none' && (
+                    <span style={{
+                      fontSize:'10px', color:'#F44336', background:'#FFF3F0',
+                      padding:'3px 8px', borderRadius:'6px', border:'1px solid #FFCDD2'
+                    }}>
+                      {d.restriction === 'min_lvl_60' ? '🔒 全队Lv.60+' :
+                       d.restriction === 'solo_run' ? '🎯 单挑模式' :
+                       d.restriction === 'entry_fee' ? `💰 门票${5000 + badges.length * 500}G` :
+                       d.restriction === 'lucky_nature' ? '🍀 需幸运性格' : ''}
+                    </span>
+                  )}
+                  {d.isJJK && <span style={{fontSize:'10px', color:'#7B1FA2', background:'#F3E5F5', padding:'3px 8px', borderRadius:'6px', border:'1px solid #CE93D8'}}>🔮 咒术</span>}
+                  {(() => {
+                    const cd = dungeonCooldowns[d.id];
+                    if (cd && cd.count >= 3) {
+                      const elapsed = Date.now() - cd.lastTime;
+                      if (elapsed < 5 * 60 * 1000) return <span style={{fontSize:'10px', color:'#FF9800', background:'#FFF8E1', padding:'3px 8px', borderRadius:'6px', border:'1px solid #FFE0B2'}}>⏰ 冷却中</span>;
+                    }
+                    return cd ? <span style={{fontSize:'10px', color:'#666', background:'#F5F5F5', padding:'3px 8px', borderRadius:'6px'}}>{cd.count}/3次</span> : null;
+                  })()}
                  </div>
                  
                  {/* 奖励展示 */}
@@ -10616,18 +10713,18 @@ const renderMenu = () => {
     encounterNextBug(); // 直接调用遇敌逻辑
   };
 
-  // 1.1 捕虫大赛 - 遭遇下一只 (用于开始和逃跑后)
+  // 1.1 捕虫大赛 - 遭遇下一只 (等级跟随当前地图)
   const encounterNextBug = () => {
     const pool = CONTEST_CONFIG.bug.pool;
     const enemyId = _.sample(pool);
-    
-    // 启动一场特殊类型的战斗
+    const mapInfo = MAPS.find(m => m.id === currentMapId);
+    const mapLvl = mapInfo ? mapInfo.lvl : [2, 10];
     startBattle({
         id: 9001,
         name: '大赛目标',
         pool: [enemyId],
-        lvl: [15, 25], // 比赛等级区间
-        drop: 0 // 比赛没有金币掉落
+        lvl: mapLvl,
+        drop: 0
     }, 'contest_bug'); 
   };
 
@@ -10667,7 +10764,7 @@ const renderMenu = () => {
     }, waitTime);
   };
 
-  // 2.2 钓鱼 - 提竿
+  // 2.2 钓鱼 - 提竿 (体重与鱼种/徽章挂钩)
   const reelIn = () => {
     const { status } = fishingState;
     
@@ -10675,14 +10772,18 @@ const renderMenu = () => {
         setFishingState(prev => ({ ...prev, status: 'fail', msg: '提竿太早了！吓跑了鱼。' }));
     } 
     else if (status === 'bite') {
-        // 成功！生成鱼的数据
         const pool = CONTEST_CONFIG.fishing.pool;
         const fishId = _.sample(pool);
-        // 随机生成鱼的重量 (1.0kg ~ 250.0kg)
-        let baseWeight = fishId === 130 ? 200 : (fishId === 119 ? 30 : 10); 
+        // 根据鱼种和玩家进度计算体重
+        const progressMult = 1 + badges.length * 0.8;
+        const weightTable = { 7: 15, 24: 40, 26: 60, 173: 100 };
+        let baseWeight = weightTable[fishId] || 20;
+        baseWeight *= progressMult;
         const weight = (Math.random() * baseWeight + 1).toFixed(1);
         
-        const fish = createPet(fishId, _.random(10, 40));
+        const mapInfo = MAPS.find(m => m.id === currentMapId);
+        const fishLvl = mapInfo ? mapInfo.lvl : [5, 15];
+        const fish = createPet(fishId, _.random(fishLvl[0], fishLvl[1]));
         
         setFishingState(prev => ({ 
             ...prev, 
@@ -10749,10 +10850,23 @@ const renderMenu = () => {
 
           const handleStart = () => {
         if (gold < config.entryFee) { alert("❌ 金币不足，无法报名！"); return; }
-        
-        // 🔥 [修复] 增加扣款逻辑
+        // 活动冷却检查 (3次后等3分钟)
+        const cdKey = `contest_${activityModal}`;
+        const cd = dungeonCooldowns[cdKey];
+        if (cd && cd.count >= 3) {
+          const elapsed = Date.now() - cd.lastTime;
+          if (elapsed < 3 * 60 * 1000) {
+            const remaining = Math.ceil((3 * 60 * 1000 - elapsed) / 60000);
+            alert(`⏰ 活动冷却中！已连续参加3次，请等待 ${remaining} 分钟。\n去主线地图探索吧！`);
+            return;
+          }
+          setDungeonCooldowns(prev => ({ ...prev, [cdKey]: { count: 0, lastTime: Date.now() } }));
+        }
+        setDungeonCooldowns(prev => {
+          const c = prev[cdKey] || { count: 0, lastTime: Date.now() };
+          return { ...prev, [cdKey]: { count: c.count + 1, lastTime: Date.now() } };
+        });
         setGold(g => g - config.entryFee); 
-        
         setActivityModal(null);
         if (activityModal === 'bug') startBugContest();
         else if (activityModal === 'fishing') startFishing();
@@ -10776,8 +10890,30 @@ const renderMenu = () => {
                     <div style={{fontSize:'16px', fontWeight:'900', color:'#FF6F00'}}>{myRecord} <span style={{fontSize:'10px'}}>{activityModal==='fishing'?'kg':'分'}</span></div>
                 </div>
 
-                <div style={{fontSize: '13px', color: '#555', lineHeight: '1.6', marginBottom: '20px', textAlign: 'center'}}>{config.desc}</div>
+                <div style={{fontSize: '13px', color: '#555', lineHeight: '1.6', marginBottom: '12px', textAlign: 'center'}}>{config.desc}</div>
                 
+                {/* 等级跟随地图提示 */}
+                {(() => {
+                  const mapInfo = MAPS.find(m => m.id === currentMapId);
+                  const mapLvl = mapInfo ? mapInfo.lvl : [2, 10];
+                  return (
+                    <div style={{background:'#E3F2FD', padding:'8px 12px', borderRadius:'8px', marginBottom:'12px', fontSize:'11px', color:'#1565C0', border:'1px solid #BBDEFB', textAlign:'center'}}>
+                      📍 等级随当前地图调整: Lv.{mapLvl[0]}~{mapLvl[1]} | 奖励等级: ~Lv.{Math.floor((mapLvl[0]+mapLvl[1])/2)}
+                    </div>
+                  );
+                })()}
+                {/* 冷却提示 */}
+                {(() => {
+                  const cdKey = `contest_${activityModal}`;
+                  const cd = dungeonCooldowns[cdKey];
+                  if (cd && cd.count > 0) {
+                    const inCooldown = cd.count >= 3 && (Date.now() - cd.lastTime) < 3 * 60 * 1000;
+                    return <div style={{background: inCooldown ? '#FFF3E0' : '#F5F5F5', padding:'6px 10px', borderRadius:'6px', marginBottom:'10px', fontSize:'11px', color: inCooldown ? '#E65100' : '#666', border:`1px solid ${inCooldown ? '#FFE0B2' : '#E0E0E0'}`, textAlign:'center'}}>
+                      {inCooldown ? `⏰ 冷却中 (${cd.count}/3次)，去主线地图探索吧！` : `已参加 ${cd.count}/3 次`}
+                    </div>;
+                  }
+                  return null;
+                })()}
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto'}}>
                     <div style={{fontSize: '12px', color: '#666'}}>报名费: <span style={{color: gold < config.entryFee ? '#F44336' : '#4CAF50', fontWeight: 'bold', fontSize: '16px'}}>💰 {config.entryFee}</span></div>
                     <button onClick={handleStart} style={{padding: '12px 30px', borderRadius: '25px', border: 'none', background: gold < config.entryFee ? '#ccc' : 'linear-gradient(90deg, #2196F3, #21CBF3)', color: '#fff', fontWeight: 'bold', fontSize: '14px', cursor: gold < config.entryFee ? 'not-allowed' : 'pointer', boxShadow: gold < config.entryFee ? 'none' : '0 4px 15px rgba(33, 150, 243, 0.3)'}}>立即报名</button>

@@ -150,7 +150,7 @@ export const CONTEST_CONFIG = {
   bug: {
     id: 'contest_bug',
     name: '捕虫大会',
-    desc: '捕捉虫系精灵！分数越高，奖励越稀有！',
+    desc: '在当前地图捕捉虫系精灵，分数越高奖励越稀有！等级随地图变化',
     entryFee: 500,
     // 修正野怪池：110绿毛虫(弱), 38脉冲虫(中), 293寄生幼虫(中), 252圣甲虫(强/稀有)
     pool: [110, 38, 293, 252], 
@@ -174,13 +174,13 @@ export const CONTEST_CONFIG = {
   fishing: {
     id: 'contest_fishing',
     name: '钓鱼王杯',
-    desc: '钓起大鱼！重量决定奖励！',
+    desc: '钓起大鱼！体重随徽章数增长，高徽章更容易钓到大鱼！',
     entryFee: 500,
     pool: [7, 24, 26, 173], 
     tiers: [
-      { min: 200.0, id: 410, name: '海啸领主(闪光)', level: 5, shiny: true, ivs: 5, msg: '🏆 钓鱼之神！传说中的深海霸主！' },
-      { min: 100.0, id: 235, name: '海啸王', level: 5, shiny: false, ivs: 4, msg: '🥇 冠军！这可是稀有的海怪！' },
-      { min: 50.0,  id: 22,  name: '激流鲨', level: 5, shiny: false, ivs: 3, msg: '🥈 亚军！这条鲨鱼很凶猛！' },
+      { min: 120.0, id: 410, name: '海啸领主(闪光)', level: 5, shiny: true, ivs: 5, msg: '🏆 钓鱼之神！传说中的深海霸主！' },
+      { min: 60.0, id: 235, name: '海啸王', level: 5, shiny: false, ivs: 4, msg: '🥇 冠军！这可是稀有的海怪！' },
+      { min: 25.0,  id: 22,  name: '激流鲨', level: 5, shiny: false, ivs: 3, msg: '🥈 亚军！这条鲨鱼很凶猛！' },
       { min: 0,     id: 7,   name: '泡泡鱼', level: 5, shiny: false, ivs: 2, msg: '🥉 只有一条泡泡鱼... 拿去煲汤吧。' }
     ]
   },
@@ -202,56 +202,64 @@ export const CONTEST_CONFIG = {
 // ==========================================
 export const DUNGEONS = [
   { 
-    id: 'gold_rush', name: '黄金矿洞', desc: '遍地金币！', type: 'gold', color: '#FFD700', icon: '💰', recLvl: 30,
+    id: 'gold_rush', name: '黄金矿洞', desc: '矿洞中散落着金币 (需2徽章)', type: 'gold', color: '#FFD700', icon: '💰', recLvl: 30,
+    rarity: '普通', stars: 2,
     rewards: [
-        { icon: '💰', text: '1W~5W 金币' },
-        { icon: '💎', text: '金珠/大金珠' }
+        { icon: '💰', text: '800 金币/场' },
+        { icon: '⏰', text: '3场后冷却5分钟' }
     ]
   },
   { 
-    id: 'exp_paradise', name: '经验乐园', desc: '极速升级！', type: 'exp', color: '#00E676', icon: '🎓', recLvl: 20,
+    id: 'exp_paradise', name: '经验乐园', desc: '经验加速区 (需1徽章)', type: 'exp', color: '#00E676', icon: '🎓', recLvl: 20,
+    rarity: '普通', stars: 1,
     rewards: [
-        { icon: '🍬', text: '经验糖果(L)' },
-        { icon: '📘', text: '高级经验书' }
+        { icon: '🍬', text: '等级匹配的经验' },
+        { icon: '⏰', text: '3场后冷却5分钟' }
     ]
   },
   { 
     id: 'safari_zone', name: '狩猎地带', desc: '神兽出没！(需Lv.100 + 12徽章)', type: 'catch', color: '#FF7043', icon: '🐾', recLvl: 100,
+    rarity: '传说', stars: 5,
     rewards: [
         { icon: '🐲', text: '随机神兽' },
         { icon: '🔴', text: '红色品质装备' }
     ]
   },
   { 
-    id: 'stone_tower', name: '元素之塔', desc: '掉落进化石！(限制: 需 Lv.60 以上进入)', type: 'stone', color: '#7B1FA2', icon: '🔮', recLvl: 60, restriction: 'min_lvl_60',
+    id: 'stone_tower', name: '元素之塔', desc: '进化石掉落 (需5徽章+全队Lv.60)', type: 'stone', color: '#7B1FA2', icon: '🔮', recLvl: 60, restriction: 'min_lvl_60',
+    rarity: '稀有', stars: 3,
     rewards: [
-        { icon: '⚡', text: '全属性进化石' },
-        { icon: '✨', text: '觉醒/暗之石' }
+        { icon: '⚡', text: '随机进化石' },
+        { icon: '⏰', text: '3场后冷却5分钟' }
     ]
   },
   { 
-    id: 'hero_trial', name: '英雄试炼', desc: '掉落属性增强剂！(限制: 仅限单只精灵出战)', type: 'stat', color: '#F44336', icon: '💪', recLvl: 60, restriction: 'solo_run',
+    id: 'hero_trial', name: '英雄试炼', desc: '属性增强剂 (需5徽章+单挑)', type: 'stat', color: '#F44336', icon: '💪', recLvl: 60, restriction: 'solo_run',
+    rarity: '稀有', stars: 3,
     rewards: [
-        { icon: '💪', text: '努力值药剂' },
-        { icon: '🧬', text: '属性增强剂' }
+        { icon: '💪', text: '随机增强剂' },
+        { icon: '🏅', text: '仅限单挑' }
     ]
   },
   { 
-    id: 'rich_man', name: '豪宅金库', desc: '海量金币！(门票: 5000金币)', type: 'gold_pro', color: '#FFC107', icon: '🏦', recLvl: 50, restriction: 'entry_fee',
+    id: 'rich_man', name: '豪宅金库', desc: '高回报金库 (需6徽章+门票)', type: 'gold_pro', color: '#FFC107', icon: '🏦', recLvl: 50, restriction: 'entry_fee',
+    rarity: '史诗', stars: 4,
     rewards: [
-        { icon: '🏆', text: '巨大金珠' },
-        { icon: '💰', text: '20W+ 金币' }
+        { icon: '💰', text: '8000 金币/场' },
+        { icon: '🎫', text: '门票随徽章递增' }
     ]
   },
   { 
-    id: 'shiny_valley', name: '闪光山谷', desc: '高概率闪光！(限制: 需携带"幸运"性格精灵)', type: 'shiny_hunt', color: '#00E676', icon: '✨', recLvl: 80, restriction: 'lucky_nature',
+    id: 'shiny_valley', name: '闪光山谷', desc: '高闪光率 (需8徽章+幸运性格)', type: 'shiny_hunt', color: '#00E676', icon: '✨', recLvl: 80, restriction: 'lucky_nature',
+    rarity: '史诗', stars: 4,
     rewards: [
         { icon: '✨', text: '高闪光概率' },
         { icon: '🍀', text: '幸运加成' }
     ]
   },
   { 
-    id: 'infinity_castle', name: '无限城', desc: '无尽的迷宫与恶鬼！(Roguelike模式)', type: 'infinity', color: '#7B1FA2', icon: '🏯', recLvl: 80, restriction: 'none',
+    id: 'infinity_castle', name: '无限城', desc: 'Roguelike模式 (需8徽章)', type: 'infinity', color: '#7B1FA2', icon: '🏯', recLvl: 80, restriction: 'none',
+    rarity: '传说', stars: 5,
     rewards: [
         { icon: '👹', text: '鬼杀队遗物' },
         { icon: '⚔️', text: '呼吸法秘籍' }
@@ -321,12 +329,43 @@ export const JJK_CHALLENGES = [
 ];
 
 export const HYAKKI_DUNGEON = {
-  id: 'hyakki_yako', name: '百鬼夜行', desc: '连续对战咒灵的终极考验 (5波+Boss)',
+  id: 'hyakki_yako', name: '百鬼夜行', desc: '对战强力咒灵 (需6徽章+Lv.80)',
   type: 'hyakki', color: '#4A148C', icon: '👹', recLvl: 80, restriction: 'none',
   isJJK: true,
+  rarity: '史诗', stars: 4,
   rewards: [
-    { icon: '👹', text: '特级咒灵精华' },
-    { icon: '🔮', text: '咒力结晶' },
-    { icon: '🏠', text: '传说级家具' },
+    { icon: '👹', text: '3000 金币' },
+    { icon: '🔮', text: '咒具掉落' },
   ]
 };
+
+// 新活动副本
+export const EXTRA_DUNGEONS = [
+  {
+    id: 'boss_rush', name: '连战Boss塔', desc: '连续挑战3个Boss (需4徽章)',
+    type: 'boss_rush', color: '#D32F2F', icon: '🗼', recLvl: 40,
+    rarity: '稀有', stars: 3,
+    rewards: [
+      { icon: '🏆', text: '通关奖金5000' },
+      { icon: '🎁', text: '随机稀有道具' }
+    ]
+  },
+  {
+    id: 'type_challenge', name: '属性试炼场', desc: '指定属性限定战 (需3徽章)',
+    type: 'type_challenge', color: '#1976D2', icon: '🎯', recLvl: 30,
+    rarity: '普通', stars: 2,
+    rewards: [
+      { icon: '📖', text: '属性专精TM' },
+      { icon: '💰', text: '1500 金币' }
+    ]
+  },
+  {
+    id: 'survival_arena', name: '生存竞技场', desc: '尽可能存活更多回合 (需7徽章)',
+    type: 'survival', color: '#FF6F00', icon: '🏟️', recLvl: 70,
+    rarity: '史诗', stars: 4,
+    rewards: [
+      { icon: '🏅', text: '按存活回合奖励' },
+      { icon: '💎', text: '高回合高品质装备' }
+    ]
+  }
+];
