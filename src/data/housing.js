@@ -3,11 +3,11 @@
 // ==========================================
 
 export const HOUSE_TYPES = [
-  { id: 'tent',    name: '帐篷',     price: 1000,   slots: 1, furnitureSlots: 3,  icon: '⛺' },
-  { id: 'cabin',   name: '小木屋',   price: 5000,   slots: 2, furnitureSlots: 6,  icon: '🏠' },
-  { id: 'house',   name: '花园别墅', price: 20000,  slots: 4, furnitureSlots: 12, icon: '🏡' },
-  { id: 'mansion', name: '豪华庄园', price: 100000, slots: 6, furnitureSlots: 20, icon: '🏰' },
-  { id: 'castle',  name: '精灵城堡', price: 500000, slots: 10, furnitureSlots: 30, icon: '🏯' },
+  { id: 'tent',    name: '帐篷',     price: 1000,   slots: 1, furnitureSlots: 3,  gardenSlots: 1, icon: '⛺' },
+  { id: 'cabin',   name: '小木屋',   price: 5000,   slots: 2, furnitureSlots: 6,  gardenSlots: 2, icon: '🏠' },
+  { id: 'house',   name: '花园别墅', price: 20000,  slots: 4, furnitureSlots: 12, gardenSlots: 3, icon: '🏡' },
+  { id: 'mansion', name: '豪华庄园', price: 100000, slots: 6, furnitureSlots: 20, gardenSlots: 4, icon: '🏰' },
+  { id: 'castle',  name: '精灵城堡', price: 500000, slots: 10, furnitureSlots: 30, gardenSlots: 5, icon: '🏯' },
 ];
 
 export const FURNITURE_QUALITY = {
@@ -219,6 +219,106 @@ export const DEFAULT_HOUSING_STATE = {
   residents: [],
   score: 0,
   lastTickTime: Date.now(),
+  garden: { plots: [], waterLog: {} },
+  treasures: [],
 };
 
 export const FURNITURE_TILE = 30;
+
+// ==========================================
+// 花园种植系统
+// ==========================================
+
+export const GARDEN_PLANTS = [
+  { id: 'sunflower',    name: '向日葵',     icon: '🌻', category: 'flower', growthMs: 15*60000,  scoreValue: 12, rarity: 'COMMON',    seedPrice: 100,  desc: '阳光灿烂的花朵' },
+  { id: 'rose',         name: '玫瑰',       icon: '🌹', category: 'flower', growthMs: 30*60000,  scoreValue: 20, rarity: 'COMMON',    seedPrice: 200,  desc: '优雅的红玫瑰' },
+  { id: 'tulip',        name: '郁金香',     icon: '🌷', category: 'flower', growthMs: 45*60000,  scoreValue: 25, rarity: 'UNCOMMON',  seedPrice: 350,  desc: '高贵典雅的球根花' },
+  { id: 'cherry_blossom', name: '樱花树',   icon: '🌸', category: 'flower', growthMs: 90*60000,  scoreValue: 45, rarity: 'RARE',      seedPrice: 800,  desc: '绽放粉色花瓣的小树' },
+  { id: 'crystal_flower', name: '水晶花',   icon: '💎', category: 'flower', growthMs: 180*60000, scoreValue: 80, rarity: 'EPIC',      seedPrice: null, desc: '闪耀着神秘光芒的奇花' },
+  { id: 'rainbow_bloom', name: '虹光之花',  icon: '🌈', category: 'flower', growthMs: 360*60000, scoreValue: 150, rarity: 'LEGENDARY', seedPrice: null, desc: '传说中开出七色光芒的神花' },
+  { id: 'berry_bush_g', name: '树果灌木',   icon: '🫐', category: 'fruit',  growthMs: 20*60000,  rarity: 'COMMON',    seedPrice: 150,  harvestItem: { type:'berry', id:'berry', count:5 },  desc: '结出美味树果' },
+  { id: 'heal_herb',    name: '回复草',     icon: '🌿', category: 'fruit',  growthMs: 40*60000,  rarity: 'COMMON',    seedPrice: 250,  harvestItem: { type:'med', id:'potion', count:3 },   desc: '可制成伤药的药草' },
+  { id: 'golden_apple', name: '金苹果树',   icon: '🍎', category: 'fruit',  growthMs: 120*60000, rarity: 'RARE',      seedPrice: 600,  harvestItem: { type:'med', id:'hyper_potion', count:2 }, desc: '结出金色苹果' },
+  { id: 'evo_vine',     name: '进化藤',     icon: '🍇', category: 'fruit',  growthMs: 180*60000, rarity: 'EPIC',      seedPrice: null, harvestItem: { type:'stone', id:null, count:1 },     desc: '结出蕴含进化能量的果实' },
+  { id: 'mint',         name: '薄荷',       icon: '🍃', category: 'herb',   growthMs: 10*60000,  rarity: 'COMMON',    seedPrice: 80,   harvestItem: { type:'misc', id:'rebirth_pill', count:1, chance:0.15 }, desc: '清爽的药用植物' },
+  { id: 'lucky_clover', name: '四叶草',     icon: '🍀', category: 'herb',   growthMs: 60*60000,  rarity: 'UNCOMMON',  seedPrice: 400,  harvestItem: { type:'candy', id:'exp_candy', count:2 }, desc: '传说能带来好运' },
+  { id: 'moonlight_fern', name: '月光蕨',   icon: '🌙', category: 'herb',   growthMs: 120*60000, rarity: 'RARE',      seedPrice: 700,  harvestItem: { type:'growth', id:null, count:1 },    desc: '在月光下发光的蕨类' },
+  { id: 'world_tree',   name: '世界树苗',   icon: '🌳', category: 'rare',   growthMs: 480*60000, scoreValue: 200, rarity: 'LEGENDARY', seedPrice: null, desc: '连接精灵世界的神树种子' },
+  { id: 'starfruit',    name: '星辰果',     icon: '⭐', category: 'rare',   growthMs: 300*60000, rarity: 'EPIC',      seedPrice: null, harvestItem: { type:'candy', id:'max_candy', count:1 }, desc: '蕴含星辰之力的奇果' },
+];
+
+export const getGardenSlots = (houseId) => {
+  const h = HOUSE_TYPES.find(t => t.id === houseId);
+  return h ? h.gardenSlots : 0;
+};
+
+export const SEED_DROP_TABLE = {
+  COMMON:    [{ plantId: 'crystal_flower', weight: 2 }, { plantId: 'evo_vine', weight: 3 }, { plantId: 'moonlight_fern', weight: 5 }],
+  UNCOMMON:  [{ plantId: 'crystal_flower', weight: 5 }, { plantId: 'evo_vine', weight: 5 }, { plantId: 'starfruit', weight: 3 }],
+  RARE:      [{ plantId: 'crystal_flower', weight: 8 }, { plantId: 'starfruit', weight: 5 }, { plantId: 'rainbow_bloom', weight: 2 }, { plantId: 'world_tree', weight: 1 }],
+};
+
+// ==========================================
+// 珍藏阁系统
+// ==========================================
+
+export const TREASURE_COLLECTIONS = [
+  {
+    id: 'badges', name: '徽章收藏', icon: '🏅', desc: '收集各地道馆的挑战徽章',
+    setBonus: { score: 120 },
+    items: [
+      { id: 'badge_1',  name: '草之徽章',   icon: '🍃', score: 15, condition: 'gym', mapId: 1 },
+      { id: 'badge_2',  name: '回音徽章',   icon: '🔊', score: 15, condition: 'gym', mapId: 2 },
+      { id: 'badge_3',  name: '齿轮徽章',   icon: '⚙️', score: 15, condition: 'gym', mapId: 3 },
+      { id: 'badge_4',  name: '海蓝徽章',   icon: '🌊', score: 15, condition: 'gym', mapId: 4 },
+      { id: 'badge_5',  name: '熔岩徽章',   icon: '🌋', score: 15, condition: 'gym', mapId: 5 },
+      { id: 'badge_6',  name: '电子徽章',   icon: '💻', score: 20, condition: 'gym', mapId: 6 },
+      { id: 'badge_7',  name: '幽魂徽章',   icon: '👻', score: 20, condition: 'gym', mapId: 7 },
+      { id: 'badge_8',  name: '天空徽章',   icon: '🌤️', score: 20, condition: 'gym', mapId: 8 },
+    ],
+  },
+  {
+    id: 'boss_trophies', name: 'Boss战利品', icon: '🏆', desc: '击败各大Boss后获得的纪念品',
+    setBonus: { score: 150 },
+    items: [
+      { id: 'trophy_eclipse', name: '日蚀碎章',     icon: '🌑', score: 30, condition: 'story', chapter: 5 },
+      { id: 'trophy_elite',   name: '四天王证明',   icon: '👑', score: 30, condition: 'story', chapter: 13 },
+      { id: 'trophy_champion', name: '冠军桂冠',    icon: '🎖️', score: 50, condition: 'story', chapter: 14 },
+      { id: 'trophy_sukuna',  name: '宿傩封印石',   icon: '🫵', score: 40, condition: 'story', chapter: 17 },
+      { id: 'trophy_majima',  name: '真岛的面具',   icon: '🎭', score: 40, condition: 'story', chapter: 20 },
+    ],
+  },
+  {
+    id: 'map_souvenirs', name: '地图纪念品', icon: '🗺️', desc: '探索各地获得的珍贵纪念品',
+    setBonus: { score: 100 },
+    items: [
+      { id: 'souvenir_grass',  name: '微风花环',     icon: '💐', score: 10, condition: 'explore', mapId: 1 },
+      { id: 'souvenir_valley', name: '回声水晶',     icon: '🔮', score: 10, condition: 'explore', mapId: 2 },
+      { id: 'souvenir_factory', name: '古代齿轮',    icon: '⚙️', score: 10, condition: 'explore', mapId: 3 },
+      { id: 'souvenir_sea',    name: '深海珍珠',     icon: '🫧', score: 15, condition: 'explore', mapId: 4 },
+      { id: 'souvenir_volcano', name: '熔岩晶石',    icon: '💎', score: 15, condition: 'explore', mapId: 5 },
+      { id: 'souvenir_cyber',  name: '量子芯片',     icon: '🔲', score: 15, condition: 'explore', mapId: 6 },
+    ],
+  },
+  {
+    id: 'legend_relics', name: '传说遗物', icon: '✨', desc: '来自传说精灵的珍贵物品',
+    setBonus: { score: 200 },
+    items: [
+      { id: 'relic_challenge5', name: '试炼者勋章',  icon: '🔱', score: 25, condition: 'challenge', challengeId: 'c5' },
+      { id: 'relic_challenge8', name: '征服者勋章',  icon: '⚜️', score: 35, condition: 'challenge', challengeId: 'c8' },
+      { id: 'relic_tower_top',  name: '塔顶之星',    icon: '💫', score: 50, condition: 'challenge', challengeId: 'c10' },
+      { id: 'relic_god_beast',  name: '神兽之鳞',    icon: '🐉', score: 40, condition: 'catch_legendary' },
+    ],
+  },
+  {
+    id: 'event_medals', name: '活动奖章', icon: '🎖️', desc: '各类特殊活动的参与纪念',
+    setBonus: { score: 80 },
+    items: [
+      { id: 'medal_bug',     name: '捕虫冠军章',   icon: '🐛', score: 15, condition: 'event', eventType: 'bug_catching' },
+      { id: 'medal_fish',    name: '钓鱼达人章',   icon: '🐟', score: 15, condition: 'event', eventType: 'fishing' },
+      { id: 'medal_contest', name: '华丽大赛章',   icon: '🌟', score: 15, condition: 'event', eventType: 'contest' },
+      { id: 'medal_cafe',    name: '咖啡大师章',   icon: '☕', score: 20, condition: 'cafe_lv5' },
+      { id: 'medal_housing', name: '家园大师章',   icon: '🏡', score: 20, condition: 'housing_score', minScore: 500 },
+    ],
+  },
+];
