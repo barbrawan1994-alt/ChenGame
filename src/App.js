@@ -6145,10 +6145,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
       const isActive = index === bState.activeIdx;
+      if (pet.currentHp <= 0 && !isActive) return pet;
       const shareRatio = isActive ? 1.0 : 0.5; 
       const expGain = Math.floor(baseExp * shareRatio);
       
       pet.exp += expGain;
+      if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
 
       // 升级逻辑
       while (pet.exp >= pet.nextExp) {
