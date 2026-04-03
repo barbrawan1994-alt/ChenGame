@@ -10251,8 +10251,6 @@ const renderMenu = () => {
         <div className="map-grid-container" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '15px'}}>
           {MAPS.map((m, index) => {
             const isCleared = badges.includes(m.badge);
-            const progress = mapProgress[m.id] || 0;
-            const gymLeaderInfo = POKEDEX.find(p => p.id === m.gymLeader);
             
             // 🔥 [新增] 获取该地图的独立天气
             const mapWeatherKey = mapWeathers[m.id] || 'CLEAR';
@@ -10317,8 +10315,9 @@ const renderMenu = () => {
                 </div>
                 
                 <div style={{marginTop:'auto', zIndex: 2}}>
-                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', marginBottom:'4px', opacity:0.9}}><span>镇守: {gymLeaderInfo?.name || '???'}</span><span>{progress}%</span></div>
-                    <div style={{height:'4px', background:'rgba(0,0,0,0.2)', borderRadius:'2px', overflow:'hidden'}}><div style={{width: `${progress}%`, background:'#fff', height:'100%'}}></div></div>
+                    <div style={{fontSize:'11px', opacity:0.9}}>
+                      <span style={{background:'rgba(0,0,0,0.25)', padding:'2px 8px', borderRadius:'8px'}}>🏟️ 馆主: {m.gymName || '???'}</span>
+                    </div>
                 </div>
                 <div style={{position:'absolute', right:'-10px', bottom:'-15px', fontSize:'90px', opacity:0.15, pointerEvents:'none', transform: 'rotate(-10deg)'}}>{m.icon}</div>
               </div>

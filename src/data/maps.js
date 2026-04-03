@@ -23,88 +23,88 @@ export const MAPS = [
     id: 1, name: '微风草原', lvl: [2, 10], 
     // 新增: 384(云团团), 396(枯萎草), 399(黏人猫), 401(护主犬), 413(萤火虫), 417(四季鹿), 422(静电飞鼠)
     pool: [1, 4, 8, 10, 16, 21, 41, 44, 46, 11, 101, 104, 107, 110, 115, 118, 125, 152, 161, 164, 172, 180, 191, 216, 232, 171, 175, 177, 231, 251, 384, 396, 399, 401, 413, 417, 422, 438, 441, 444, 464, 468, 472, 474, 501, 504, 509, 513, 516, 519, 531, 536, 547, 551, 553, 556, 558, 559, 564, 566, 574, 578, 582, 585, 588, 591, 594], 
-    drop: 50, type: 'grass', color: '#C8E6C9', gymLeader: 117, gymLvl: 15, badge: '🍃', icon: '🌿' 
+    drop: 50, type: 'grass', color: '#C8E6C9', gymLeader: 117, gymLvl: 15, badge: '🍃', icon: '🌿', gymName: '莉佳' 
   },
   { 
     id: 2, name: '回声山谷', lvl: [10, 25], 
     // 新增: 406(青苔石), 424(铁矿石)
     pool: [6, 14, 31, 34, 38, 51, 62, 64, 66, 68, 70, 72, 111, 113, 121, 133, 135, 166, 169, 181, 198, 190, 213, 230, 245, 296, 372, 73, 205, 406, 424, 453, 458, 460, 492, 499, 502, 507, 511, 517, 522, 524, 532, 534, 538, 542, 549, 554, 557, 569, 575, 580, 589, 592, 597], 
-    drop: 100, type: 'mountain', color: '#FFF9C4', gymLeader: 65, gymLvl: 28, badge: '🪨', icon: '⛰️' 
+    drop: 100, type: 'mountain', color: '#FFF9C4', gymLeader: 65, gymLvl: 28, badge: '🪨', icon: '⛰️', gymName: '小刚' 
   },
   { 
     id: 3, name: '遗迹工厂', lvl: [20, 40], 
     // 新增: 415(光能电池)
     pool: [34, 40, 54, 57, 60, 85, 87, 18, 5, 114, 116, 131, 119, 124, 127, 128, 189, 192, 195, 200, 203, 219, 235, 239, 293, 247, 415, 476, 497], 
-    drop: 200, boss: 140, type: 'factory', color: '#E1BEE7', gymLeader: 35, gymLvl: 42, badge: '⚡', icon: '🏭' 
+    drop: 200, boss: 140, type: 'factory', color: '#E1BEE7', gymLeader: 35, gymLvl: 42, badge: '⚡', icon: '🏭', gymName: '马志士' 
   },
   { 
     id: 4, name: '深蓝海域', lvl: [30, 55], 
     // 新增: 408(小水滴), 420(泥浆怪)
     pool: [22, 24, 26, 28, 30, 76, 79, 82, 27, 108, 120, 123, 126, 134, 136, 158, 173, 176, 206, 211, 222, 238, 246, 351, 408, 420, 466, 491, 505, 508, 510, 520, 523, 525, 535, 537, 539, 548, 550, 552, 560, 561, 565, 571, 576, 579, 581, 583, 586, 593, 595, 599], 
-    drop: 350, boss: 100, type: 'water', color: '#B3E5FC', gymLeader: 23, gymLvl: 58, badge: '💧', icon: '🌊' 
+    drop: 350, boss: 100, type: 'water', color: '#B3E5FC', gymLeader: 23, gymLvl: 58, badge: '💧', icon: '🌊', gymName: '小霞' 
   },
   { 
     id: 5, name: '熔岩火山', lvl: [40, 65], 
     // 火山保持原样，或者可以放一些耐热的
     pool: [11, 12, 13, 14, 15, 16, 17, 20, 93, 97, 104, 105, 106, 128, 155, 193, 201, 217, 233, 386, 496, 541, 543, 545, 546, 514, 526, 528, 529], 
-    drop: 400, boss: 97, type: 'fire', color: '#FFCCBC', gymLeader: 106, gymLvl: 68, badge: '🔥', icon: '🌋' 
+    drop: 400, boss: 97, type: 'fire', color: '#FFCCBC', gymLeader: 106, gymLvl: 68, badge: '🔥', icon: '🌋', gymName: '夏伯' 
   },
   { 
     id: 6, name: '赛博都市', lvl: [50, 75], 
     // 新增: 411(望远镜怪)
     pool: [35, 40, 87, 88, 89, 132, 140, 148, 149, 160, 170, 189, 200, 250, 290, 209, 411, 500], 
-    drop: 450, boss: 150, type: 'city', color: '#CFD8DC', gymLeader: 140, gymLvl: 78, badge: '🤖', icon: '🏙️' 
+    drop: 450, boss: 150, type: 'city', color: '#CFD8DC', gymLeader: 140, gymLvl: 78, badge: '🤖', icon: '🏙️', gymName: '娜姿' 
   },
   { 
     id: 7, name: '幽灵古堡', lvl: [55, 80], 
     // 新增: 388(迷途灵)
     pool: [18, 19, 54, 55, 56, 59, 90, 130, 144, 146, 178, 179, 185, 188, 204, 225, 240, 284, 207, 383, 388, 432, 450, 462, 470, 498], 
-    drop: 480, boss: 144, type: 'ghost', color: '#D1C4E9', gymLeader: 56, gymLvl: 82, badge: '👻', icon: '🏰' 
+    drop: 480, boss: 144, type: 'ghost', color: '#D1C4E9', gymLeader: 56, gymLvl: 82, badge: '👻', icon: '🏰', gymName: '松叶' 
   },
   { 
     id: 8, name: '天空王座', lvl: [70, 100], 
     // 新增: 430(流星之子) - 稀有
     pool: [3, 7, 9, 13, 15, 17, 19, 23, 33, 35, 39, 43, 49, 50, 53, 56, 59, 63, 65, 69, 71, 78, 81, 84, 94, 96, 98, 103, 106, 109, 112, 117, 122, 129, 130, 132, 137, 138, 139, 141, 144, 149, 182, 183, 196, 197, 199, 208, 229, 244, 249, 37, 215, 227, 430, 435, 447, 490, 493, 506, 515, 518, 521, 527, 530, 533, 540, 544, 555, 562, 563, 567, 568, 570, 572, 573, 577, 584, 587, 590, 596, 598, 600, 601, 602, 603, 607], 
-    drop: 600, boss: 150, type: 'sky', color: '#FFE0B2', gymLeader: 138, gymLvl: 95, badge: '👑', icon: '☁️' 
+    drop: 600, boss: 150, type: 'sky', color: '#FFE0B2', gymLeader: 138, gymLvl: 95, badge: '👑', icon: '☁️', gymName: '龙之长老' 
   },
   { 
     id: 9, name: '极寒冻土', lvl: [60, 85], 
     // 新增: 394(星光海豹), 426(登山雪人)
     pool: [86, 87, 90, 91, 124, 131, 144, 187, 188, 197, 199, 203, 204, 234, 243, 287, 387, 394, 419, 426, 495], 
-    drop: 550, type: 'ice', color: '#E0F7FA', gymLeader: 199, gymLvl: 88, badge: '❄️', icon: '🏔️' 
+    drop: 550, type: 'ice', color: '#E0F7FA', gymLeader: 199, gymLvl: 88, badge: '❄️', icon: '🏔️', gymName: '哈奇库' 
   },
   { 
     id: 10, name: '流沙荒漠', lvl: [45, 70], 
     // 新增: 381(时之沙), 391(沙丘虫), 428(陶土偶)
     pool: [27, 28, 50, 51, 74, 75, 76, 95, 99, 104, 105, 111, 112, 184, 185, 186, 190, 195, 219, 220, 248, 223, 252, 355, 381, 391, 428, 478, 494], 
-    drop: 420, type: 'ground', color: '#FFE082', gymLeader: 184, gymLvl: 72, badge: '🏜️', icon: '🐪' 
+    drop: 420, type: 'ground', color: '#FFE082', gymLeader: 184, gymLvl: 72, badge: '🏜️', icon: '🐪', gymName: '菊子' 
   },
   { 
     id: 11, name: '糖果王国', lvl: [35, 60], 
     // 新增: 403(破布偶)
     pool: [35, 36, 39, 40, 48, 113, 122, 124, 147, 173, 174, 183, 194, 217, 218, 299, 403, 456], 
-    drop: 380, type: 'fairy', color: '#F8BBD0', gymLeader: 194, gymLvl: 62, badge: '🍭', icon: '🏰' 
+    drop: 380, type: 'fairy', color: '#F8BBD0', gymLeader: 194, gymLvl: 62, badge: '🍭', icon: '🏰', gymName: '玛绣' 
   },
   { 
     id: 12, name: '银河空间站', lvl: [80, 99], 
     pool: [63, 64, 65, 81, 82, 100, 101, 132, 137, 142, 145, 150, 151, 189, 200, 221, 222, 237, 253, 447, 492, 500, 604, 605, 606, 607, 608, 610], 
-    drop: 800, type: 'space', color: '#311B92', gymLeader: 150, gymLvl: 100, badge: '🌌', icon: '🚀' 
+    drop: 800, type: 'space', color: '#311B92', gymLeader: 150, gymLvl: 100, badge: '🌌', icon: '🚀', gymName: '深渊' 
   },
   { 
     id: 13, name: '冠军之路', lvl: [100, 100], 
     pool: [254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610], 
-    drop: 2000, type: 'gold', color: '#FFD700', gymLeader: 340, gymLvl: 120, badge: '🏆', icon: '🏛️' 
+    drop: 2000, type: 'gold', color: '#FFD700', gymLeader: 340, gymLvl: 120, badge: '🏆', icon: '🏛️', gymName: '创世元灵' 
   },
   // 日蚀要塞
   { 
     id: 99, name: '日蚀要塞', lvl: [80, 90], pool: [], 
-    drop: 0, type: 'factory', color: '#263238', gymLeader: 350, gymLvl: 95, badge: '💀', icon: '🏯' 
+    drop: 0, type: 'factory', color: '#263238', gymLeader: 350, gymLvl: 95, badge: '💀', icon: '🏯', gymName: '日蚀首领' 
   },
   // 咒术回战 - 都立咒术高专
   {
     id: 100, name: '都立咒术高专', lvl: [40, 80],
     pool: [92, 93, 94, 63, 65, 93, 130, 149, 150, 151],
     drop: 500, type: 'ghost', color: '#1A237E', gymLeader: 150, gymLvl: 80, badge: '🔮', icon: '⛩️',
-    isJJK: true, desc: '东京都立咒术高等专门学校，术师们的训练基地'
+    isJJK: true, desc: '东京都立咒术高等专门学校，术师们的训练基地', gymName: '五条悟'
   }
 ];
