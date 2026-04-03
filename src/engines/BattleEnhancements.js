@@ -59,97 +59,107 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
       style={{
         width:'100%', height:'100%', boxSizing:'border-box',
         background: disabled
-          ? 'linear-gradient(160deg, #3a3a3a, #2a2a2a)'
-          : `linear-gradient(160deg, #1c1c30, #252540)`,
+          ? 'linear-gradient(160deg, #2a2a3a, #222233)'
+          : hovered
+            ? `linear-gradient(160deg, ${c}18, ${c}0a)`
+            : `linear-gradient(160deg, #2a2a45, #30304d)`,
         border:'none', borderRadius:'10px', padding:'0',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
+        opacity: disabled ? 0.35 : 1,
         position:'relative', overflow:'hidden',
         transition:'all 0.15s ease',
-        transform: hovered && !disabled ? 'translateY(-2px)' : 'none',
+        transform: hovered && !disabled ? 'translateY(-1px) scale(1.02)' : 'none',
         boxShadow: hovered && !disabled
-          ? `0 6px 20px ${c}35, inset 0 0 0 1.5px ${c}90`
-          : `0 2px 8px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05)`,
+          ? `0 4px 16px ${c}40, inset 0 0 0 1.5px ${c}80`
+          : `0 2px 6px rgba(0,0,0,0.4), inset 0 0 0 1px ${c}30`,
         display:'flex', flexDirection:'column',
         textAlign:'left',
       }}
     >
       {/* 左侧类型色条 */}
       <div style={{
-        position:'absolute', left:0, top:0, bottom:0, width:'3px',
-        background:`linear-gradient(180deg, ${c}, ${c}66)`,
+        position:'absolute', left:0, top:0, bottom:0, width:'4px',
+        background:`linear-gradient(180deg, ${c}, ${c}88)`,
         borderRadius:'10px 0 0 10px',
+        boxShadow:`0 0 8px ${c}40`,
+      }} />
+
+      {/* 顶部高光 */}
+      <div style={{
+        position:'absolute', top:0, left:4, right:0, height:'1px',
+        background:`linear-gradient(90deg, ${c}40, transparent 60%)`,
       }} />
 
       {/* 主内容 */}
       <div style={{
         flex:1, display:'flex', flexDirection:'column', justifyContent:'center',
-        padding:'4px 8px 4px 10px', gap:'1px', minHeight:0, overflow:'hidden',
+        padding:'5px 8px 4px 12px', gap:'2px', minHeight:0, overflow:'hidden',
       }}>
         {/* 行1: 技能名 + 属性徽章 + 威力 */}
-        <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-          {/* 名称 */}
+        <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
           <span style={{
-            fontSize:'12px', fontWeight:'700', color:'#f0f0f0',
+            fontSize:'13px', fontWeight:'700', color:'#eee',
             letterSpacing:'0.3px', lineHeight:1.2,
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             flex:1, minWidth:0,
+            textShadow:'0 1px 2px rgba(0,0,0,0.3)',
           }}>{move.name}</span>
-          {/* 特殊标签 */}
           {(move.isCursed || move.isExtra) && (
             <span style={{
-              fontSize:'7px', padding:'1px 3px', borderRadius:'3px', flexShrink:0,
-              background: move.isCursed ? '#7c3aed' : '#d97706',
+              fontSize:'8px', padding:'1px 4px', borderRadius:'3px', flexShrink:0,
+              background: move.isCursed ? 'linear-gradient(135deg, #7c3aed, #9333ea)' : 'linear-gradient(135deg, #d97706, #f59e0b)',
               color:'#fff', fontWeight:'700', lineHeight:'1.5',
+              boxShadow: move.isCursed ? '0 0 6px rgba(124,58,237,0.3)' : '0 0 6px rgba(217,119,6,0.3)',
             }}>{move.isCursed ? '咒' : '果'}</span>
           )}
-          {/* 属性 */}
           <span style={{
-            fontSize:'8px', padding:'1px 4px', borderRadius:'3px', flexShrink:0,
-            background:`${c}cc`, color:'#fff', fontWeight:'700',
-            lineHeight:'1.5', letterSpacing:'0.5px',
+            fontSize:'9px', padding:'2px 5px', borderRadius:'4px', flexShrink:0,
+            background:`${c}dd`, color:'#fff', fontWeight:'700',
+            lineHeight:'1.4', letterSpacing:'0.5px',
+            boxShadow:`0 1px 4px ${c}40`,
           }}>{tName}</span>
-          {/* 威力数字 */}
           <span style={{
-            fontSize:'11px', fontWeight:'800', flexShrink:0,
+            fontSize:'12px', fontWeight:'800', flexShrink:0,
             color: move.power > 0
-              ? (move.power >= 150 ? '#FF5252' : move.power >= 100 ? c : 'rgba(255,255,255,0.6)')
+              ? (move.power >= 150 ? '#FF5252' : move.power >= 100 ? c : 'rgba(255,255,255,0.7)')
               : 'rgba(255,255,255,0.2)',
-            minWidth:'20px', textAlign:'right',
+            minWidth:'22px', textAlign:'right',
+            textShadow: move.power >= 100 ? `0 0 6px ${c}40` : 'none',
           }}>{move.power > 0 ? move.power : '—'}</span>
         </div>
 
-        {/* 行2: 技能描述 (始终可见) */}
+        {/* 行2: 技能描述 */}
         {hasDesc && (
           <div style={{
-            fontSize:'8px', lineHeight:'1.3',
-            color: hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
+            fontSize:'9px', lineHeight:'1.3',
+            color: hovered ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.3)',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             transition:'color 0.15s',
           }}>{move.desc}</div>
         )}
 
         {/* 行3: PP条 + CE消耗 */}
-        <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'1px'}}>
-          {/* PP mini bar */}
+        <div style={{display:'flex', alignItems:'center', gap:'5px', marginTop:'2px'}}>
           <div style={{
-            flex:1, height:'2px', borderRadius:'1px',
-            background:'rgba(255,255,255,0.07)', overflow:'hidden',
+            flex:1, height:'3px', borderRadius:'2px',
+            background:'rgba(255,255,255,0.1)', overflow:'hidden',
           }}>
             <div style={{
-              width:`${ppRatio * 100}%`, height:'100%', borderRadius:'1px',
-              background: ppColor,
+              width:`${ppRatio * 100}%`, height:'100%', borderRadius:'2px',
+              background: `linear-gradient(90deg, ${ppColor}, ${ppColor}cc)`,
               transition:'width 0.3s',
+              boxShadow: ppRatio <= 0.2 ? `0 0 4px ${ppColor}` : 'none',
             }} />
           </div>
           <span style={{
-            fontSize:'8px', fontWeight:'600', flexShrink:0, lineHeight:1,
-            color: ppRatio <= 0.2 ? '#F44336' : 'rgba(255,255,255,0.3)',
+            fontSize:'9px', fontWeight:'600', flexShrink:0, lineHeight:1,
+            color: ppRatio <= 0.2 ? '#F44336' : 'rgba(255,255,255,0.4)',
           }}>{move.pp}/{move.maxPp}</span>
           {move.isCursed && move.ceCost > 0 && (
             <span style={{
-              fontSize:'7px', color:'#a78bfa', fontWeight:'600', flexShrink:0,
-              background:'rgba(124,58,237,0.15)', padding:'0 3px', borderRadius:'2px',
+              fontSize:'8px', color:'#a78bfa', fontWeight:'600', flexShrink:0,
+              background:'rgba(124,58,237,0.2)', padding:'1px 4px', borderRadius:'3px',
+              boxShadow:'0 0 4px rgba(124,58,237,0.15)',
             }}>咒{move.ceCost}</span>
           )}
         </div>
@@ -159,7 +169,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
       {hovered && !disabled && (
         <div style={{
           position:'absolute', inset:0, pointerEvents:'none', borderRadius:'10px',
-          background:`radial-gradient(ellipse at 30% 20%, ${c}14 0%, transparent 55%)`,
+          background:`radial-gradient(ellipse at 30% 20%, ${c}20 0%, transparent 55%)`,
         }} />
       )}
     </button>
