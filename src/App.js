@@ -1697,7 +1697,7 @@ const CHARM_RANK_COLORS = {
     const diversityRng = Math.floor(Math.random() * 9) - 4; 
     const speedRng = Math.floor(Math.random() * 71) + 40;
 
-    const sectId = Math.floor(Math.random() * 10) + 1; 
+    const sectId = Math.floor(Math.random() * 12) + 1; 
     let autoSectLv = Math.floor(level / 10) + 1;
     if (isBoss || isShiny) autoSectLv += 2;
     const sectLevel = Math.max(1, Math.min(10, autoSectLv));
@@ -2312,7 +2312,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         }
     }
 
-    // 5. 更新队伍：移除父母，添加子代
+    // 5. 满血：融合后的精灵HP回满
+    const maxHp = getStats(newPet).maxHp;
+    newPet.currentHp = maxHp;
+
+    // 6. 更新队伍：移除父母，添加子代
     const newParty = party.filter(p => p.uid !== fusionParent.uid && p.uid !== fusionChild.uid);
     newParty.push(newPet);
     setParty(newParty);
@@ -3236,14 +3240,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (p.evo) evolvedIds.add(p.evo);
     });
 
-    // 2. 动态筛选合法的初始精灵
+    // 2. 动态筛选合法的初始精灵(排除进化型、神兽、高级)
     const validStarters = POKEDEX.filter(p => {
       if (!p || !p.id) return false;
       if (evolvedIds.has(p.id)) return false;
       if (LEGENDARY_POOL.includes(p.id)) return false;
       if (HIGH_TIER_POOL.includes(p.id)) return false;
       if (NEW_GOD_IDS.includes(p.id)) return false;
-      if (p.id >= 254) return false;
       return true;
     });
 
@@ -6292,7 +6295,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const minSectLv = Math.floor(floor / 10);
     const maxSectLv = Math.min(10, 3 + Math.floor(floor / 8));
     
-    enemy.sectId = _.random(1, 10); // 随机分配一个门派
+    enemy.sectId = _.random(1, 12); // 随机分配一个门派(12个门派)
     enemy.sectLevel = Math.min(10, _.random(minSectLv, maxSectLv));
     
     // 3. 装备技能强化 (Equipment Skills)
@@ -13629,6 +13632,10 @@ const renderMenu = () => {
             nature: oldPet.nature, ivs: oldPet.ivs, evs: oldPet.evs,
             isShiny: oldPet.isShiny, isFusedShiny: oldPet.isFusedShiny,
             intimacy: oldPet.intimacy, charm: oldPet.charm, trait: oldPet.trait,
+            sectId: oldPet.sectId, sectLevel: oldPet.sectLevel,
+            devilFruit: oldPet.devilFruit,
+            diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
+            cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
             canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
         });
         // 进化后回满血
