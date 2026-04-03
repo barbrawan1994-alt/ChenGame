@@ -1002,14 +1002,29 @@ const PETS_600 = [
   { id: 600, name: '机械天使', type: 'STEEL', emoji: '🤖', hp: 75, atk: 85, def: 85, desc: '融合科技与天使形态的终极机械。' },
 ];
 
+// --- 新增10只风/光/恶属性神兽 (ID 601-610) ---
+const GODS_610 = [
+  { id: 601, name: '岚神·风伯', type: 'WIND',  emoji: '🌪️', hp: 100, atk: 155, def: 95,  spd: 160, desc: '掌控风暴的远古风神，一吹息就能掀翻大陆。' },
+  { id: 602, name: '苍穹凤凰',   type: 'WIND',  emoji: '🦅', hp: 110, atk: 140, def: 110, spd: 140, desc: '翅膀卷起飓风的传说凤凰，风暴即是生命。' },
+  { id: 603, name: '真空之主',   type: 'WIND',  emoji: '🌀', hp: 90,  atk: 170, def: 85,  spd: 170, desc: '能制造绝对真空的恐怖存在，无声无息地抹杀一切。' },
+  { id: 604, name: '天照大神',   type: 'LIGHT', emoji: '☀️', hp: 120, atk: 145, def: 120, spd: 120, desc: '太阳的化身，普照万物的至高神灵。' },
+  { id: 605, name: '极光天使',   type: 'LIGHT', emoji: '👼', hp: 100, atk: 130, def: 130, spd: 130, desc: '身披七色极光的天使，是光之意志的守护者。' },
+  { id: 606, name: '棱镜圣兽',   type: 'LIGHT', emoji: '💎', hp: 130, atk: 120, def: 140, spd: 100, desc: '身体如棱镜般折射一切攻击的圣兽。' },
+  { id: 607, name: '创世之光',   type: 'LIGHT', emoji: '✨', hp: 110, atk: 165, def: 100, spd: 145, desc: '宇宙诞生时的第一道光，蕴含创世之力。' },
+  { id: 608, name: '冥渊魔王',   type: 'DARK',  emoji: '👿', hp: 130, atk: 160, def: 100, spd: 110, desc: '统治深渊的魔王，黑暗中的绝对统治者。' },
+  { id: 609, name: '暗影刺客',   type: 'DARK',  emoji: '🗡️', hp: 85,  atk: 175, def: 80,  spd: 175, desc: '从暗影中现身的终极刺客，一击夺命。' },
+  { id: 610, name: '永夜之主',   type: 'DARK',  emoji: '🌑', hp: 140, atk: 135, def: 130, spd: 105, desc: '能让世界陷入永夜的恐怖存在。' },
+];
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
-    UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600
+    UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600,
+    ...GODS_610
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 600);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 610);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
@@ -1019,4 +1034,4 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600 };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610 };

@@ -1060,6 +1060,10 @@ const CHARM_RANK_COLORS = {
         finalSpd = Math.floor(finalSpd * (1 + (sectLv * 0.02))); 
     }
 
+    if (pet.fruitTransformed && pet.fruitEffects?.spdMult) {
+        finalSpd = Math.floor(finalSpd * pet.fruitEffects.spdMult);
+    }
+
     return {
       maxHp: calc(baseStats.hp, 'hp', 'maxHp', true),
       p_atk: calc(baseStats.p_atk, 'p_atk', 'p_atk'),
@@ -4853,10 +4857,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (act1.type === 'switch' && act2.type !== 'switch') first = 'p1';
       else if (act2.type === 'switch' && act1.type !== 'switch') first = 'p2';
       else {
-          const s1 = getStats(p1, p1.stages).spd;
-          const s2 = getStats(p2, p2.stages).spd;
-          if (s2 > s1) first = 'p2';
-          else if (s1 === s2 && Math.random() < 0.5) first = 'p2';
+          if (p1.fruitFirstStrike && !p2.fruitFirstStrike) { first = 'p1'; p1.fruitFirstStrike = false; }
+          else if (p2.fruitFirstStrike && !p1.fruitFirstStrike) { first = 'p2'; p2.fruitFirstStrike = false; }
+          else {
+              const s1 = getStats(p1, p1.stages).spd;
+              const s2 = getStats(p2, p2.stages).spd;
+              if (s2 > s1) first = 'p2';
+              else if (s1 === s2 && Math.random() < 0.5) first = 'p2';
+              if (p1.fruitFirstStrike) p1.fruitFirstStrike = false;
+              if (p2.fruitFirstStrike) p2.fruitFirstStrike = false;
+          }
       }
 
       const firstActor = first === 'p1' ? p1 : p2;
@@ -5489,11 +5499,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
       unit.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
     }
 
+    if (fruit.transform.cureStatus && unit.status) {
+      addLog(`${unit.name} 的状态异常被果实之力治愈了！`);
+      unit.status = null;
+    }
+
     addLog(`${unit.name} 吃下了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
     if (side === 'player') updateAchStat({ fruitTransforms: 1 });
     setAnimEffect({ type: 'TRANSFORM', target: side === 'player' ? 'player' : 'enemy' });
     await wait(1500);
     setAnimEffect(null);
+
+    if (fruit.transform.firstStrike) {
+      unit.fruitFirstStrike = true;
+      addLog(`⚡ ${unit.name} 获得了先手行动权！`);
+    }
 
     if (side === 'player') {
       setBattle(prev => ({
@@ -5836,15 +5856,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             if (fe && fe.enemySpdDown) {
                 const target = u === player ? enemy : player;
-                target.stages.spd = Math.max(-6, (target.stages.spd || 0) - 1);
+                const drop = Math.min(fe.enemySpdDown, 2);
+                target.stages.spd = Math.max(-6, (target.stages.spd || 0) - drop);
             }
             if (fe && fe.enemyAtkDown) {
                 const target = u === player ? enemy : player;
-                target.stages.p_atk = Math.max(-6, (target.stages.p_atk || 0) - 1);
+                const drop = Math.min(fe.enemyAtkDown, 2);
+                target.stages.p_atk = Math.max(-6, (target.stages.p_atk || 0) - drop);
             }
             if (fe && fe.enemyAccDown) {
                 const target = u === player ? enemy : player;
-                target.stages.acc = Math.max(-6, (target.stages.acc || 0) - 1);
+                const drop = Math.min(fe.enemyAccDown, 2);
+                target.stages.acc = Math.max(-6, (target.stages.acc || 0) - drop);
             }
             u.fruitTurnsLeft--;
             if (u.fruitTurnsLeft <= 0) {

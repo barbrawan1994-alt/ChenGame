@@ -155,6 +155,9 @@ export const DOMAINS = {
   FAIRY: { name: '梦幻庭园', turns: 3, ceCost: 80,
            effect: { healPerTurn: 0.08, enemyAtkDown: 0.7, dot: 0 },
            desc: '妖精领域，每回合恢复8%HP，敌方攻击-30%' },
+  DARK: { name: '暗黑领域·无间', turns: 3, ceCost: 85,
+          effect: { atkBoost: 1.5, hpDrain: 0.15, enemyAccDown: 0.7, dot: 0 },
+          desc: '暗之领域，攻击+50%，每次攻击吸血15%，敌方命中-30%' },
   WIND: { name: '风神领域·疾空', turns: 3, ceCost: 80,
           effect: { spdBoost: 2.0, atkBoost: 1.3, dot: 0 },
           desc: '风之领域，速度翻倍，攻击+30%' },
@@ -365,6 +368,17 @@ export const GOD_TECHNIQUES = {
   487: { id: 'ct_god_487', name: '雷神一击', ceCost: 55, p: 160, pp: 99, cat: 'special', moveType: 'ELECTRIC', effect: { paralyze: 0.45 }, desc: '雷霆战神的究极雷击' },
   488: { id: 'ct_god_488', name: '铁壁崩拳', ceCost: 50, p: 150, pp: 99, cat: 'physical', moveType: 'STEEL', effect: { defDown: 2 }, desc: '钢铁巨像的铁壁碎裂之拳' },
   489: { id: 'ct_god_489', name: '冰霜女帝之怒', ceCost: 55, p: 155, pp: 99, cat: 'special', moveType: 'ICE', effect: { freeze: 0.4, spdDown: 1 }, desc: '冰霜女帝的终极冻结' },
+  // GODS_610 (601~610) — 风/光/恶神兽专属
+  601: { id: 'ct_god_601', name: '嵐神·風刃万断', ceCost: 55, p: 155, pp: 99, cat: 'special', moveType: 'WIND', effect: { spdDown: 2 }, desc: '岚神召唤万千风刃，切碎一切并大幅降速' },
+  602: { id: 'ct_god_602', name: '飓风·终焉',     ceCost: 50, p: 150, pp: 99, cat: 'special', moveType: 'WIND', effect: { confuse: 0.4 }, desc: '苍穹凤凰展翅引发终焉飓风，40%混乱' },
+  603: { id: 'ct_god_603', name: '真空·绝灭',     ceCost: 60, p: 160, pp: 99, cat: 'special', moveType: 'WIND', effect: { ignoreDefense: true }, desc: '真空之主制造绝对真空，无视一切防御' },
+  604: { id: 'ct_god_604', name: '天照·炎陽',     ceCost: 55, p: 155, pp: 99, cat: 'special', moveType: 'LIGHT', effect: { healPercent: 0.2 }, desc: '天照大神降下太阳真火，同时恢复20%HP' },
+  605: { id: 'ct_god_605', name: '极光·七色审判', ceCost: 50, p: 145, pp: 99, cat: 'special', moveType: 'LIGHT', effect: { accDown: 1, spdDown: 1 }, desc: '极光天使的七色光束，降低命中和速度' },
+  606: { id: 'ct_god_606', name: '棱镜·全反射',   ceCost: 50, p: 140, pp: 99, cat: 'special', moveType: 'LIGHT', effect: { defUp: 2 }, desc: '棱镜圣兽全方位折射，大幅提升自身防御' },
+  607: { id: 'ct_god_607', name: '创世·光明裁决', ceCost: 60, p: 165, pp: 99, cat: 'special', moveType: 'LIGHT', effect: { ignoreDefense: true }, desc: '创世之光的终极裁决，无视一切防御' },
+  608: { id: 'ct_god_608', name: '冥渊·堕天',     ceCost: 55, p: 160, pp: 99, cat: 'special', moveType: 'DARK', effect: { hpDrain: 0.25 }, desc: '冥渊魔王的堕天一击，吸取25%伤害为HP' },
+  609: { id: 'ct_god_609', name: '暗影·瞬杀',     ceCost: 55, p: 155, pp: 99, cat: 'physical', moveType: 'DARK', effect: { critBoost: 3 }, desc: '暗影刺客的终极暗杀，暴击率暴增' },
+  610: { id: 'ct_god_610', name: '永夜·吞天',     ceCost: 55, p: 150, pp: 99, cat: 'special', moveType: 'DARK', effect: { accDown: 2, atkDown: 1 }, desc: '永夜之主吞噬天光，降低命中和攻击' },
 };
 
 // 咒术觉醒条件

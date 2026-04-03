@@ -25,8 +25,8 @@ export const DEVIL_FRUITS = {
     desc: '身体变成橡胶，免疫电系攻击，物攻与速度大幅提升',
     duration: 4,
     transform: {
-      atkMult: 1.6, defMult: 1.2, spdMult: 1.3,
-      movePowerBoost: 0.3, typeImmune: 'ELECTRIC',
+      atkMult: 1.4, defMult: 1.2, spdMult: 1.3,
+      movePowerBoost: 0.2, typeImmune: 'ELECTRIC',
     },
     transformMove: { name: '橡胶火箭炮', t: 'FIGHT', p: 120, pp: 5, acc: 90, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.3 } },
@@ -36,7 +36,7 @@ export const DEVIL_FRUITS = {
     desc: '引发地震与海啸，无视部分防御，技能威力大增',
     duration: 4,
     transform: {
-      atkMult: 1.5, ignoreDefPercent: 0.4, movePowerBoost: 0.35,
+      atkMult: 1.5, ignoreDefPercent: 0.2, movePowerBoost: 0.25,
     },
     transformMove: { name: '大地裂击', t: 'GROUND', p: 130, pp: 4, acc: 85, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 2, target: 'enemy', chance: 0.5 } },
@@ -84,10 +84,10 @@ export const DEVIL_FRUITS = {
   },
   df_zushi: {
     id: 'df_zushi', name: '重力果实', category: 'PARAMECIA', rarity: 'EPIC',
-    desc: '操控重力，大幅降低对手速度，飞行系无法闪避地面攻击',
+    desc: '操控重力，大幅降低对手速度，防御提升',
     duration: 5,
     transform: {
-      enemySpdDown: 2, groundFlying: true, defMult: 1.2,
+      enemySpdDown: 2, defMult: 1.2,
     },
     transformMove: { name: '重力压制', t: 'GROUND', p: 90, pp: 6, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'spd', val: 2, target: 'enemy', chance: 0.6 } },
@@ -202,7 +202,7 @@ export const DEVIL_FRUITS = {
     desc: '变身远古翼龙，飞行与龙系双增伤，速度大幅提升',
     duration: 4,
     transform: {
-      spdMult: 1.6, atkMult: 1.3,
+      spdMult: 1.5, atkMult: 1.3,
       typeBoost: { FLYING: 1.5, DRAGON: 1.5 },
     },
     transformMove: { name: '翼龙俯冲', t: 'DRAGON', p: 120, pp: 4, acc: 90, isFruitMove: true },
@@ -223,7 +223,7 @@ export const DEVIL_FRUITS = {
     desc: '化身九尾妖狐，特攻大增，攻击有概率魅惑对手',
     duration: 4,
     transform: {
-      sAtkMult: 1.6, spdMult: 1.2,
+      sAtkMult: 1.5, spdMult: 1.2,
       onHitConfuse: 0.25,
     },
     transformMove: { name: '妖狐幻术', t: 'PSYCHIC', p: 100, pp: 6, acc: 95, isFruitMove: true,
@@ -234,7 +234,7 @@ export const DEVIL_FRUITS = {
     desc: '化身猎豹，速度极大提升，暴击率翻倍',
     duration: 4,
     transform: {
-      spdMult: 1.8, atkMult: 1.2, critBoost: 3,
+      spdMult: 1.5, atkMult: 1.2, critBoost: 2,
     },
     transformMove: { name: '豹式突袭', t: 'NORMAL', p: 90, pp: 8, acc: 100, isFruitMove: true },
   },
@@ -340,7 +340,7 @@ export const DEVIL_FRUITS = {
     desc: '化身猛禽隼，速度极大提升，飞行系技能增伤',
     duration: 4,
     transform: {
-      spdMult: 1.7, atkMult: 1.2, typeBoost: { FLYING: 1.5 },
+      spdMult: 1.5, atkMult: 1.2, typeBoost: { FLYING: 1.5 },
     },
     transformMove: { name: '疾风猛禽', t: 'FLYING', p: 90, pp: 6, acc: 100, isFruitMove: true },
   },
@@ -360,8 +360,8 @@ export const DEVIL_FRUITS = {
     desc: '身体化为岩浆，火系技能威力翻倍，灼伤概率100%',
     duration: 3,
     transform: {
-      typeBoost: { FIRE: 2.0 },
-      onHitBurn: 1.0, defMult: 1.2,
+      typeBoost: { FIRE: 1.5 },
+      onHitBurn: 0.5, defMult: 1.2,
     },
     transformMove: { name: '犬噬红莲', t: 'FIRE', p: 130, pp: 3, acc: 85, isFruitMove: true,
       effect: { type: 'STATUS', status: 'BRN', chance: 1.0, target: 'enemy' } },
@@ -382,7 +382,7 @@ export const DEVIL_FRUITS = {
     duration: 4,
     transform: {
       defMult: 1.4,
-      typeBoost: { ICE: 1.6 },
+      typeBoost: { ICE: 1.5 },
       onHitFreeze: 0.3,
     },
     transformMove: { name: '冰河时代', t: 'ICE', p: 110, pp: 4, acc: 90, isFruitMove: true,
@@ -393,7 +393,7 @@ export const DEVIL_FRUITS = {
     desc: '身体化为闪电，电系增伤，速度+60%，变身首回合必先手',
     duration: 4,
     transform: {
-      spdMult: 1.6, firstStrike: true,
+      spdMult: 1.5, firstStrike: true,
       typeBoost: { ELECTRIC: 1.5 },
     },
     transformMove: { name: '万雷', t: 'ELECTRIC', p: 120, pp: 4, acc: 85, isFruitMove: true,
@@ -404,7 +404,7 @@ export const DEVIL_FRUITS = {
     desc: '身体化为光，速度极大提升，普通攻击变为光属性',
     duration: 4,
     transform: {
-      spdMult: 1.8, sAtkMult: 1.3,
+      spdMult: 1.5, sAtkMult: 1.3,
       convertNormalTo: 'ELECTRIC',
     },
     transformMove: { name: '天丛云剑', t: 'ELECTRIC', p: 105, pp: 5, acc: 95, isFruitMove: true },
@@ -487,10 +487,10 @@ export const DEVIL_FRUITS = {
   },
   df_kaze: {
     id: 'df_kaze', name: '风风果实', category: 'LOGIA', rarity: 'EPIC',
-    desc: '身体化为狂风，速度极大提升，飞行系增伤，吹散增益',
+    desc: '身体化为狂风，速度提升，飞行系增伤，每回合降低敌方攻击',
     duration: 4,
     transform: {
-      spdMult: 1.7, typeBoost: { FLYING: 1.6 }, clearEnemyBuffs: true,
+      spdMult: 1.5, typeBoost: { FLYING: 1.5 }, enemyAtkDown: 1,
     },
     transformMove: { name: '暴风绝断', t: 'FLYING', p: 110, pp: 4, acc: 90, isFruitMove: true },
   },
@@ -517,7 +517,7 @@ export const DEVIL_FRUITS = {
     desc: '身体化为等离子态，无视部分防御，电系技能威力翻倍',
     duration: 3,
     transform: {
-      sAtkMult: 1.5, ignoreDefPercent: 0.3, typeBoost: { ELECTRIC: 2.0 },
+      sAtkMult: 1.5, ignoreDefPercent: 0.15, typeBoost: { ELECTRIC: 1.5 },
     },
     transformMove: { name: '等离子轰击', t: 'ELECTRIC', p: 140, pp: 3, acc: 85, isFruitMove: true,
       effect: { type: 'STATUS', status: 'PAR', chance: 0.5, target: 'enemy' } },
