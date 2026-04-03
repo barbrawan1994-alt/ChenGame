@@ -8753,7 +8753,16 @@ const renderNameInput = () => {
               const stats = getStats(p);
               const typeConfig = TYPES[p.type] || TYPES.NORMAL;
               const natureName = NATURE_DB[p.nature]?.name || '未知';
-              const totalStats = stats.maxHp + stats.p_atk + stats.p_def + stats.s_atk + stats.s_def + stats.spd;
+              const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
+              const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
+              const diversity = (baseInfo.id % 5) * 2 - 4;
+              const bstHp = baseInfo.hp || 60;
+              const bstPAtk = Math.floor((baseInfo.atk || 50) * bias.p) + diversity;
+              const bstPDef = Math.floor((baseInfo.def || 50) * bias.p);
+              const bstSAtk = Math.floor((baseInfo.atk || 50) * bias.s) - diversity;
+              const bstSDef = Math.floor((baseInfo.def || 50) * bias.s);
+              const bstSpd = baseInfo.spd || (40 + (baseInfo.id * 7 % 70));
+              const bst = bstHp + bstPAtk + bstPDef + bstSAtk + bstSDef + bstSpd;
 
               return (
                 <div key={i} style={{
@@ -8845,7 +8854,7 @@ const renderNameInput = () => {
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px',
                       padding:'6px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.04)'}}>
                       <span style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>种族值总和</span>
-                      <span style={{fontSize:'13px', fontWeight:'800', color:'rgba(255,255,255,0.8)'}}>{totalStats}</span>
+                      <span style={{fontSize:'13px', fontWeight:'800', color:'rgba(255,255,255,0.8)'}}>{bst}</span>
                     </div>
 
                     <button style={{
