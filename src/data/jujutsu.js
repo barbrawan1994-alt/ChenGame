@@ -174,7 +174,7 @@ export const BINDING_VOWS = [
   { id: 'vow_power', name: '以命搏命', ceCost: 20,
     sacrifice: { hpPercent: 0.3 },
     reward: { atkMult: 2.5, turns: 1 },
-    desc: '消耗20CE+30%HP，下一次攻击伤害2.5倍(仅一次，攻击后失效)' },
+    desc: '消耗20CE+30%HP，下一次攻击伤害2.5倍(仅一次，使用任何技能后立即失效)' },
   { id: 'vow_reveal', name: '术式开示', ceCost: 15,
     sacrifice: { revealMoves: true },
     reward: { ceMult: 1.5, turns: 3 },
@@ -383,8 +383,8 @@ export const GOD_TECHNIQUES = {
 
 // 咒术觉醒条件
 export const AWAKENING_CONDITIONS = {
-  byLevel: 30,
-  byIntimacy: 150,
+  byLevel: 50,
+  byIntimacy: 100,
   specialAwakenings: [
     { petId: 150, technique: 'ct_void', condition: 'level >= 50' },
     { petId: 68,  technique: 'ct_divergent_fist', condition: 'intimacy >= 200' },

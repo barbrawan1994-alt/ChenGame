@@ -194,8 +194,8 @@ export const DUNGEONS = [
     id: 'gold_rush', name: '黄金矿洞', desc: '矿洞中散落着金币 (需2徽章)', type: 'gold', color: '#FFD700', icon: '💰', recLvl: 30,
     rarity: '普通', stars: 2,
     rewards: [
-        { icon: '💰', text: '800 金币/场' },
-        { icon: '⏰', text: '3场后冷却5分钟' }
+        { icon: '💰', text: '400 金币/场' },
+        { icon: '⏰', text: '每日上限5场' }
     ]
   },
   { 

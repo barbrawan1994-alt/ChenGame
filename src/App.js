@@ -1451,28 +1451,24 @@ const CHARM_RANK_COLORS = {
         // 2. 处理挂起任务 (如战斗)
         if (pendingTask) {
            if (pendingTask.type === 'battle') {
-              // 启动战斗
               startBattle({ 
                 id: 999, 
                 name: pendingTask.name, 
                 pool: [pendingTask.enemyId],
-                eliteParty: pendingTask.eliteParty || null
+                eliteParty: pendingTask.eliteParty || null,
+                storyTaskStep: pendingTask.step,
               }, 'story_task');
               
-              // 清空任务
               setPendingTask(null);
-              
-              // 【关键修复】触发战斗后直接返回，不再执行后续的 setView('grid_map')
               return; 
            } else {
-              // 纯对话任务：推进剧情
-              setStoryStep(prev => prev + 1);
+              const nextStep = pendingTask.step + 1;
+              setStoryStep(nextStep);
               
               const currentChapter = STORY_SCRIPT[storyProgress];
-              const nextTask = currentChapter?.tasks?.find(t => t.step === storyStep + 1);
+              const nextTask = currentChapter?.tasks?.find(t => t.step === nextStep);
               if(nextTask) {
                   alert(`✅ 线索已收集！\n新的目标出现在坐标 (${nextTask.x}, ${nextTask.y})`);
-                  // 刷新地图显示新任务点
                   setMapGrid(prev => {
                       const newGrid = prev.map(row => [...row]);
                       if(newGrid[nextTask.y]) newGrid[nextTask.y][nextTask.x] = 99;
@@ -4038,12 +4034,6 @@ const useGrowthItem = (petIndex, itemId) => {
   };
 
       const enterMap = (mapId) => {
-    // 1. 检查球 (保持不变)
-    const totalBalls = Object.values(inventory.balls).reduce((a,b)=>a+b, 0);
-    if (totalBalls === 0) {
-       setInventory(prev => ({...prev, balls: {...prev.balls, poke: 5}}));
-       alert("检测到你没有捕获球，系统赠送了 5 个精灵球！");
-    }
     
     setCurrentMapId(mapId);
 
@@ -4151,20 +4141,21 @@ const useGrowthItem = (petIndex, itemId) => {
      // 每张地图都放置活动NPC (捕虫20/钓鱼21/选美22 轮换)
         if (mapId >= 1 && mapId <= 13) {
             const activityTiles = [20, 21, 22];
-            const actIdx = (mapId - 1) % 3;
-            const placeX = Math.min(3 + (mapId % 5), GRID_W - 3);
-            const placeY = Math.min(3 + (mapId % 4), GRID_H - 3);
-            if (newGrid[placeY] && newGrid[placeY][placeX] === 2) {
-                newGrid[placeY][placeX] = activityTiles[actIdx];
-            }
-            if (mapId <= 10) {
-                const secIdx = (mapId) % 3;
-                const px2 = Math.min(6 + (mapId % 3), GRID_W - 3);
-                const py2 = Math.min(5 + (mapId % 5), GRID_H - 3);
-                if (newGrid[py2] && newGrid[py2][px2] === 2 && secIdx !== actIdx) {
-                    newGrid[py2][px2] = activityTiles[secIdx];
+            const placeActivity = (tileType) => {
+                const candidates = [];
+                for (let y = 2; y < GRID_H - 2; y++) {
+                    for (let x = 2; x < GRID_W - 2; x++) {
+                        if (newGrid[y][x] === 2) candidates.push({x, y});
+                    }
                 }
-            }
+                if (candidates.length > 0) {
+                    const pos = candidates[Math.floor(Math.random() * candidates.length)];
+                    newGrid[pos.y][pos.x] = tileType;
+                    return true;
+                }
+                return false;
+            };
+            activityTiles.forEach(tile => placeActivity(tile));
         }
 
     // 随机放置家具拾取点 (2-3个, 25%概率出现)
@@ -4743,7 +4734,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = type === 'boss' || type === 'challenge' || type === 'story_mid' || type === 'story_task' || type === 'eclipse_leader';
     const isGym = type === 'gym';
     const isStory = type === 'story_mid' || type === 'story_task';
-    const isTrainer = type === 'trainer' || isGym || isStory || type === 'league' || type === 'pvp' || type.startsWith('eclipse_');
+    const isTrainer = type === 'trainer' || isGym || isStory || type === 'league' || type === 'pvp' || type === 'sect_challenge' || type.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -4798,16 +4789,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 3. 挑战塔
     // -------------------------------------------------
     else if (type === 'challenge') {
-      const challenge = CHALLENGES.find(c => c.id === challengeId);
+      const challenge = [...CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
+      if (!challenge) { alert("挑战数据未找到"); return; }
       enemyParty.push(createPet(challenge.boss, challenge.bossLvl, true, true));
-      const minionCount = (challenge.teamSize || 3) - 1; 
-      for(let i=0; i<minionCount; i++) {
-        const randomDex = _.random(1, 250); 
-        const minionLvl = Math.max(5, challenge.bossLvl - _.random(2, 5));
-        enemyParty.push(createPet(randomDex, minionLvl));
+      const targetSize = 6;
+      while (enemyParty.length < targetSize) {
+        const randomDex = _.random(1, 500); 
+        const minionLvl = Math.max(10, challenge.bossLvl - _.random(1, 5));
+        enemyParty.push(createPet(randomDex, minionLvl, true));
       }
       trainerName = `[挑战] ${challenge.title}`;
-      dropGold = 2000;
+      dropGold = 3000;
     }
     // -------------------------------------------------
     // 4. 剧情中途 Boss
@@ -4840,6 +4832,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
        }
        trainerName = context.name;
        dropGold = context.drop || 500;
+       if (context.storyTaskStep != null) extraBattleData.storyTaskStep = context.storyTaskStep;
     }
     // -------------------------------------------------
     // 6. 日蚀队干部
@@ -4991,13 +4984,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 13. 无限城
     // -------------------------------------------------
     else if (type === 'infinity') {
-        // 无限城逻辑已经在外部处理好 customParty
         enemyParty = context.customParty;
         trainerName = context.name;
         dropGold = 0;
     }
     // -------------------------------------------------
-    // 14. 普通野怪 (兜底逻辑)
+    // 14. 门派首席挑战
+    // -------------------------------------------------
+    else if (type === 'sect_challenge') {
+        enemyParty = context.customParty || [];
+        trainerName = context.name || '门派首席';
+        dropGold = context.drop || 10000;
+    }
+    // -------------------------------------------------
+    // 15. 普通野怪 (兜底逻辑)
     // -------------------------------------------------
     else {
          if (!context || !context.lvl) {
@@ -5057,31 +5057,37 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const grade = getCurseGrade(p.customBaseStats || baseStats, p.curseTalent || 0);
         const maxCE = getMaxCE(p.level, grade.key);
         const typeTech = TYPE_TECHNIQUES[p.type];
-        const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel) || ((p.intimacy || 0) >= (AWAKENING_CONDITIONS.byIntimacy || 150));
+        const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel && (p.intimacy || 0) >= AWAKENING_CONDITIONS.byIntimacy);
         const cursedMoves = [];
+        const normalizeCursedMove = (cm) => ({
+            ...cm,
+            isCursed: true,
+            t: cm.t || cm.moveType || p.type,
+            maxPP: cm.pp || 15,
+        });
         if (hasCT) {
             const godTech = GOD_TECHNIQUES[p.id];
             const specialAwk = AWAKENING_CONDITIONS.specialAwakenings.find(s => s.petId === p.id);
             if (godTech && !p.cursedTechnique) {
-                cursedMoves.push({ ...godTech, isCursed: true });
+                cursedMoves.push(normalizeCursedMove(godTech));
             } else if (p.cursedTechnique) {
                 const allTechs = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES, ...Object.values(GOD_TECHNIQUES)];
                 const ct = allTechs.find(t => t.id === p.cursedTechnique);
-                if (ct) cursedMoves.push({ ...ct, isCursed: true });
-                else if (typeTech) cursedMoves.push({ ...typeTech, isCursed: true });
+                if (ct) cursedMoves.push(normalizeCursedMove(ct));
+                else if (typeTech) cursedMoves.push(normalizeCursedMove(typeTech));
             } else if (specialAwk) {
                 const allTechs = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES, ...Object.values(GOD_TECHNIQUES)];
                 const ct = allTechs.find(t => t.id === specialAwk.technique);
-                if (ct) cursedMoves.push({ ...ct, isCursed: true });
-                else if (typeTech) cursedMoves.push({ ...typeTech, isCursed: true });
+                if (ct) cursedMoves.push(normalizeCursedMove(ct));
+                else if (typeTech) cursedMoves.push(normalizeCursedMove(typeTech));
             } else if (typeTech) {
-                cursedMoves.push({ ...typeTech, isCursed: true });
+                cursedMoves.push(normalizeCursedMove(typeTech));
             }
         }
         if (hasCT && cursedMoves.length > 0 && grade.key !== 'GRADE4') {
             const healTech = COMMON_TECHNIQUES.find(t => t.id === 'ct_reverse');
             if (healTech && !cursedMoves.find(m => m.id === 'ct_reverse')) {
-                cursedMoves.push({ ...healTech, isCursed: true });
+                cursedMoves.push(normalizeCursedMove(healTech));
             }
         }
         const canDomain = p.hasDomain || (p.level >= 50 && hasCT && ['SPECIAL','GRADE1','GRADE2'].includes(grade.key));
@@ -5688,11 +5694,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (combo.effect.poison && Math.random() < combo.effect.poison) { e.status = 'PSN'; addLog(`☠️ ${e.name} 中毒了！`); }
         if (combo.effect.confuse && Math.random() < combo.effect.confuse) { e.volatiles = { ...(e.volatiles || {}), confused: 3 }; addLog(`😵 ${e.name} 陷入混乱！`); }
         if (combo.effect.healPercent) { const heal = Math.floor(pStats.maxHp * combo.effect.healPercent); p.currentHp = Math.min(pStats.maxHp, p.currentHp + heal); addLog(`💚 ${p.name} 恢复了 ${heal} HP！`); }
-        if (combo.effect.atkUp) { p.stages = { ...(p.stages || {}), atk: Math.min(6, (p.stages?.atk || 0) + combo.effect.atkUp) }; }
-        if (combo.effect.spAtkUp) { p.stages = { ...(p.stages || {}), spAtk: Math.min(6, (p.stages?.spAtk || 0) + combo.effect.spAtkUp) }; }
+        if (combo.effect.atkUp) { p.stages = { ...(p.stages || {}), p_atk: Math.min(6, (p.stages?.p_atk || 0) + combo.effect.atkUp) }; }
+        if (combo.effect.spAtkUp) { p.stages = { ...(p.stages || {}), s_atk: Math.min(6, (p.stages?.s_atk || 0) + combo.effect.spAtkUp) }; }
         if (combo.effect.spdUp) { p.stages = { ...(p.stages || {}), spd: Math.min(6, (p.stages?.spd || 0) + combo.effect.spdUp) }; }
-        if (combo.effect.defUp) { p.stages = { ...(p.stages || {}), def: Math.min(6, (p.stages?.def || 0) + combo.effect.defUp) }; }
-        if (combo.effect.defDown) { e.stages = { ...(e.stages || {}), def: Math.max(-6, (e.stages?.def || 0) - combo.effect.defDown) }; }
+        if (combo.effect.defUp) { p.stages = { ...(p.stages || {}), p_def: Math.min(6, (p.stages?.p_def || 0) + combo.effect.defUp) }; }
+        if (combo.effect.defDown) { e.stages = { ...(e.stages || {}), p_def: Math.max(-6, (e.stages?.p_def || 0) - combo.effect.defDown) }; }
         if (combo.effect.spdDown) { e.stages = { ...(e.stages || {}), spd: Math.max(-6, (e.stages?.spd || 0) - combo.effect.spdDown) }; }
         if (combo.effect.cureStatus) { p.status = null; addLog(`✨ ${p.name} 的状态异常被清除了！`); }
       }
@@ -6026,7 +6032,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
         }
 
-        player.activeVow = JSON.parse(JSON.stringify({ ...vow, turnsLeft: vow.reward.turns + 1, side: 'player' }));
+        player.activeVow = JSON.parse(JSON.stringify({ ...vow, turnsLeft: vow.reward.turns, side: 'player' }));
         player.vowUsed = true;
         addLog(`📜 [我方] ${player.name} 立下缚誓——${vow.name}!`);
         addLog(`📖 ${vow.desc}`);
@@ -6056,7 +6062,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       ? tempBattle.playerCombatStates[tempBattle.activeIdx]
       : tempBattle.enemyParty[tempBattle.enemyActiveIdx];
 
-    if (!unit.devilFruit || unit.fruitUsed || unit.fruitTransformed) return;
+    if (!unit || !unit.devilFruit || unit.fruitUsed || unit.fruitTransformed) return;
     const fruit = getFruitById(unit.devilFruit);
     if (!fruit) return;
 
@@ -6177,9 +6183,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           await wait(1500);
           setAnimEffect(null);
 
-          // 变身消耗回合，之后结算
           setBattle(prev => ({
             ...prev, phase: 'input',
+            turnCount: (prev?.turnCount || 0) + 1,
             playerCombatStates: state.playerCombatStates,
             enemyParty: state.enemyParty,
           }));
@@ -6243,6 +6249,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setAnimEffect(null);
         setBattle(prev => ({
           ...prev, phase: 'input',
+          turnCount: (prev?.turnCount || 0) + 1,
           enemyParty: state.enemyParty,
           playerCombatStates: state.playerCombatStates,
         }));
@@ -6286,13 +6293,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (eCombo.effect.paralyze && Math.random() < eCombo.effect.paralyze && !player.status) { player.status = 'PAR'; addLog(`⚡ ${player.name} 被麻痹了！`); }
             if (eCombo.effect.freeze && Math.random() < eCombo.effect.freeze && !player.status) { player.status = 'FRZ'; addLog(`🧊 ${player.name} 被冻结了！`); }
             if (eCombo.effect.poison && Math.random() < eCombo.effect.poison && !player.status) { player.status = 'PSN'; addLog(`☠️ ${player.name} 中毒了！`); }
-            if (eCombo.effect.defDown) { player.stages = { ...(player.stages || {}), def: Math.max(-6, (player.stages?.def || 0) - eCombo.effect.defDown) }; }
+            if (eCombo.effect.defDown) { player.stages = { ...(player.stages || {}), p_def: Math.max(-6, (player.stages?.p_def || 0) - eCombo.effect.defDown) }; }
             if (eCombo.effect.spdDown) { player.stages = { ...(player.stages || {}), spd: Math.max(-6, (player.stages?.spd || 0) - eCombo.effect.spdDown) }; }
           }
 
           state.enemyComboUsed = true;
           setBattle(prev => ({
             ...prev, phase: 'input', enemyComboUsed: true,
+            turnCount: (prev?.turnCount || 0) + 1,
             playerCombatStates: state.playerCombatStates,
             enemyParty: state.enemyParty,
           }));
@@ -6623,7 +6631,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const performAction = async (attacker, defender, move, source, battleState) => {
     if (!battleState && !battle) return false;
-    if (!attacker || !defender || !move) { return false; }
+    if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
     setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
 
     const atkIdx = source === 'player' ? battleState.activeIdx : battleState.enemyActiveIdx;
@@ -7208,6 +7216,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
                  await wait(800); setAnimEffect(null);
              }
         }
+    }
+
+    // 3.5 以命搏命等一次性缚誓: 无论使用了什么技能都立即失效
+    const vowCheck = atkState.activeVow;
+    if (vowCheck && (vowCheck.reward.atkMult || vowCheck.reward.nextMovePower)) {
+        if (vowCheck.turnsLeft > 0) {
+            addLog(`📜 ${attacker.name} 的缚誓 [${vowCheck.name}] 已消耗`);
+        }
+        atkState.activeVow = null;
     }
 
     // 4. 回合结束结算 (灼伤/中毒) — 每次行动后对行动方结算
@@ -7833,60 +7850,67 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9. 剧情逻辑
+    const storyChapter = STORY_SCRIPT[storyProgress];
     try {
-    const currentChapter = STORY_SCRIPT[storyProgress];
-    const currentTask = currentChapter?.tasks?.find(t => t.step === storyStep);
-    
-    if (currentTask && currentTask.type === 'battle' && battle.trainerName === currentTask.name) {
-        const nextStep = storyStep + 1;
-        setStoryStep(nextStep);
-        const nextTask = currentChapter.tasks.find(t => t.step === nextStep);
-        if (nextTask) {
-            setMapGrid(prevGrid => {
-                const newGrid = prevGrid.map(row => [...row]); 
-                if (newGrid[nextTask.y]) newGrid[nextTask.y][nextTask.x] = 99; 
-                return newGrid;
-            });
-            alert(`✅ 威胁已清除！\n\n新的线索出现在坐标 (${nextTask.x}, ${nextTask.y})`);
-        } else {
-            alert("🎉 阶段任务全部完成！\n\n道路已打通，现在可以去挑战道馆馆主了！");
-        }
+    if (storyChapter && (type === 'story_task' || type === 'story_mid')) {
+        const resolvedStep = battle.storyTaskStep != null ? battle.storyTaskStep : storyStep;
+        const currentTask = storyChapter.tasks?.find(t => t.step === resolvedStep);
+        const isStoryMatch = currentTask && currentTask.type === 'battle' && 
+            (battle.storyTaskStep != null || battle.trainerName === currentTask.name);
+        
+        if (isStoryMatch) {
+            const nextStep = resolvedStep + 1;
+            setStoryStep(nextStep);
+            const nextTask = storyChapter.tasks?.find(t => t.step === nextStep);
+            if (nextTask) {
+                setMapGrid(prevGrid => {
+                    const newGrid = prevGrid.map(row => [...row]); 
+                    if (newGrid[nextTask.y] && nextTask.x < newGrid[0].length) {
+                        newGrid[nextTask.y][nextTask.x] = 99; 
+                    }
+                    return newGrid;
+                });
+                setTimeout(() => alert(`✅ 威胁已清除！\n\n新的线索出现在坐标 (${nextTask.x}, ${nextTask.y})`), 100);
+            } else {
+                setTimeout(() => alert("🎉 阶段任务全部完成！\n\n道路已打通，现在可以去挑战道馆馆主了！"), 100);
+            }
 
-        if (storyProgress === 12 && storyStep === 4) {
-           unlockTitle('巅峰王者'); 
-            setAccessories(prev => [...prev, 'trophy']);
-            const godPet = createPet(254, 100, true, true); 
-            godPet.name = "起源之光(冠军)";
-            godPet.customBaseStats = { hp: 200, p_atk: 200, p_def: 200, s_atk: 200, s_def: 200, spd: 200, crit: 50 };
-            if (party.length < 6) setParty(prev => [...prev, godPet]);
-            else setBox(prev => [...prev, godPet]);
-            alert("🏆 恭喜通关二周目！\n\n已获得：\n1. 饰品【冠军奖杯】\n2. 神宠【起源之光】");
+            if (storyProgress === 12 && resolvedStep === 4) {
+               unlockTitle('巅峰王者'); 
+                setAccessories(prev => [...prev, 'trophy']);
+                const godPet = createPet(254, 100, true, true); 
+                godPet.name = "起源之光(冠军)";
+                godPet.customBaseStats = { hp: 200, p_atk: 200, p_def: 200, s_atk: 200, s_def: 200, spd: 200, crit: 50 };
+                if (party.length < 6) setParty(prev => [...prev, godPet]);
+                else setBox(prev => [...prev, godPet]);
+                alert("🏆 恭喜通关二周目！\n\n已获得：\n1. 饰品【冠军奖杯】\n2. 神宠【起源之光】");
+            }
         }
     }
     } catch (storyErr) { console.error("Story step error:", storyErr); }
 
-    if (battle.isGym && mapId && currentChapter && currentChapter.mapId === mapId) {
+    if (battle.isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
           const mapBadge = MAPS.find(m=>m.id===mapId)?.badge;
           const isNewBadge = mapBadge && !badges.includes(mapBadge);
           if (isNewBadge) {
             setBadges(prev => [...prev, mapBadge]);
           }
           try { checkTreasureUnlock('gym', { mapId }); } catch(e) {}
-          setDialogQueue(currentChapter.outro);
+          setDialogQueue(storyChapter.outro);
           setCurrentDialogIndex(0);
           setIsDialogVisible(true);
-          if (currentChapter.reward.gold) setGold(g => g + currentChapter.reward.gold);
-          if (currentChapter.reward.balls) {
+          if (storyChapter.reward.gold) setGold(g => g + storyChapter.reward.gold);
+          if (storyChapter.reward.balls) {
              setInventory(inv => {
                 const newBalls = {...inv.balls};
-                Object.keys(currentChapter.reward.balls).forEach(k => newBalls[k] += currentChapter.reward.balls[k]);
+                Object.keys(storyChapter.reward.balls).forEach(k => newBalls[k] += storyChapter.reward.balls[k]);
                 return {...inv, balls: newBalls};
              });
           }
-          if (currentChapter.reward.items) {
+          if (storyChapter.reward.items) {
              setInventory(inv => {
                 const newInv = {...inv, meds: {...(inv.meds||{})}, cursed: {...(inv.cursed||{})}};
-                currentChapter.reward.items.forEach(it => {
+                storyChapter.reward.items.forEach(it => {
                   if (MEDICINES[it.id]) {
                     newInv.meds[it.id] = (newInv.meds[it.id] || 0) + it.count;
                   } else if (it.id === 'berry') {
@@ -7940,8 +7964,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return; 
           }
 
-          if (currentChapter.reward.pokemon) {
-             const rewardPetInfo = currentChapter.reward.pokemon;
+          if (storyChapter.reward.pokemon) {
+             const rewardPetInfo = storyChapter.reward.pokemon;
              const rewardPet = createPet(rewardPetInfo.id, rewardPetInfo.level);
              if (!caughtDex.includes(rewardPet.id)) setCaughtDex(prev => [...prev, rewardPet.id]);
              if (party.length < 6) {
@@ -7955,7 +7979,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setStoryProgress(prev => {
             const newProgress = prev + 1;
             const lycorisChapters = [18, 19, 20];
-            if (lycorisChapters.includes(currentChapter?.chapter)) {
+            if (lycorisChapters.includes(storyChapter?.chapter)) {
               updateAchStat({ lycorisChaptersCleared: 1 });
             }
             try { checkTreasureUnlock('story', { chapter: newProgress }); } catch(e) {}
@@ -8195,7 +8219,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try {
     
     // 1. 扣球并播放投掷动画
-    setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: prev.balls[ballType] - 1 } }));
+    setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: Math.max(0, (prev.balls[ballType] || 0) - 1) } }));
     setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
     addLog(`去吧! ${BALLS[ballType].name}!`);
@@ -8230,8 +8254,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (ballType === 'master') catchAchUpdates.masterBallUsed = 1;
       updateAchStat(catchAchUpdates);
 
-      // 生成新精灵对象
+      // 生成新精灵对象 (野外捕获的精灵不保留恶魔果实)
       const newPet = { ...enemy, uid: Date.now() };
+      delete newPet.devilFruit;
+      delete newPet.fruitUsed;
+      delete newPet.fruitTransformed;
+      delete newPet.fruitTurnsLeft;
+      delete newPet.fruitEffects;
       if (ballType === 'heal') newPet.currentHp = getStats(newPet).maxHp;
 
       // 🔥 [核心修复] 同步当前战斗状态 (防止战斗中扣血/PP未保存)
@@ -10086,9 +10115,14 @@ const renderMenu = () => {
       if (!checkDungeonCooldown(dungeon.id)) return;
       recordDungeonEntry(dungeon.id);
 
-      // --- 黄金矿洞 (低门槛, 低奖励) ---
+      // --- 黄金矿洞 (低门槛, 限每日5场, 适度奖励) ---
       if (dungeon.type === 'gold') {
-        startBattle({ id: 999, name: '黄金矿洞', lvl: [30, 40], pool: [52], drop: 800 }, 'wild');
+        const goldCd = dungeonCooldowns['gold_rush'] || { count: 0, lastTime: 0 };
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const isNewDay = goldCd.lastTime < todayStart.getTime();
+        const dailyCount = isNewDay ? 0 : goldCd.count;
+        if (dailyCount >= 5) { alert("⛔ 黄金矿洞今日次数已用完（每日上限5场）\n明天再来吧！"); return; }
+        startBattle({ id: 999, name: '黄金矿洞', lvl: [30, 40], pool: [52], drop: 400 }, 'wild');
       }
       // --- 经验乐园 (等级与玩家匹配, 合理经验) ---
       else if (dungeon.type === 'exp') {
@@ -12934,7 +12968,7 @@ const renderMenu = () => {
     const currentEquipId = pet.equips ? pet.equips[slotIdx] : null;
     const uniqueAccessories = _.uniq(accessories);
     return (
-      <div className="modal-overlay" onClick={() => setEquipModalOpen(false)} style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000}}>
+      <div className="modal-overlay" onClick={() => setEquipModalOpen(false)} style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001}}>
         <div onClick={e => e.stopPropagation()} style={{width: '360px', maxHeight: '500px', background: '#fff', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
           <div style={{padding: '15px', background: '#673AB7', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}><div style={{fontWeight: 'bold'}}>装备饰品</div><button onClick={() => setEquipModalOpen(false)} style={{background:'transparent', border:'none', color:'#fff', fontSize:'18px', cursor:'pointer'}}>✕</button></div>
           <div style={{padding: '15px', overflowY: 'auto', flex: 1}}>
