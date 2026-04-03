@@ -14344,9 +14344,9 @@ const renderMenu = () => {
       4: ['hyper_potion','max_potion','ether','max_ether','full_heal','revive','max_revive'],
     };
     const tmsByTier = {
-      1: ['tm_fire','tm_water','tm_grass','tm_flame'],
-      2: ['tm_fire','tm_water','tm_grass','tm_elec','tm_ice','tm_pup','tm_flame','tm_shadow'],
-      3: ['tm_fire','tm_water','tm_grass','tm_elec','tm_ice','tm_eq','tm_psy','tm_shadow','tm_dragon','tm_fight','tm_sludge','tm_flame','tm_icebeam'],
+      1: TMS.filter(t=>t.tier<=1).map(t=>t.id),
+      2: TMS.filter(t=>t.tier<=2).map(t=>t.id),
+      3: TMS.filter(t=>t.tier<=3).map(t=>t.id),
       4: TMS.map(t=>t.id),
     };
     const growthByTier = {
@@ -14453,7 +14453,9 @@ const renderMenu = () => {
               })}
               {shopTab==='tms' && availTMs.map(tmId=>{
                 const tm=TMS.find(t=>t.id===tmId); if(!tm) return null;
-                return renderShopCard(tm.id,renderTMCSS(tm.type||'NORMAL',36),tm.name,`${TYPES[tm.type]?.name||''} · 威力${tm.p}`,tm.price,'tm',{borderColor:TYPES[tm.type]?.color});
+                const tierLabel = tm.tier===1?'基础':tm.tier===2?'进阶':tm.tier===3?'高级':'终极';
+                const tierTagColor = tm.tier===1?'#78909C':tm.tier===2?'#43A047':tm.tier===3?'#FB8C00':'#E53935';
+                return renderShopCard(tm.id,renderTMCSS(tm.type||'NORMAL',36),tm.name,`${TYPES[tm.type]?.name||''} · 威力${tm.p}`,tm.price,'tm',{borderColor:TYPES[tm.type]?.color,tag:tierLabel,tagColor:tierTagColor});
               })}
               {shopTab==='stones' && Object.keys(EVO_STONES).map(key=>{
                 const item=EVO_STONES[key];
