@@ -2618,39 +2618,58 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
 /* --- 区域探索优化 (地形背景) --- */
 .map-card-pro {
-  border-radius: 16px;
+  border-radius: 20px;
   position: relative;
   overflow: hidden;
   color: #fff;
-  min-height: 140px;
+  min-height: 160px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 15px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  padding: 18px 20px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s cubic-bezier(.4,0,.2,1);
+  border: 1px solid rgba(255,255,255,0.15);
 }
+.map-card-pro::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%);
+  pointer-events: none; z-index: 1;
+}
+.map-card-pro:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1);
+}
+.map-card-pro > * { position: relative; z-index: 2; }
 
 /* 动态地形背景 */
-.theme-bg-grass { background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%); }
-.theme-bg-water { background: linear-gradient(135deg, #42A5F5 0%, #1E88E5 100%); }
-.theme-bg-fire { background: linear-gradient(135deg, #FF7043 0%, #F4511E 100%); }
-.theme-bg-mountain { background: linear-gradient(135deg, #8D6E63 0%, #6D4C41 100%); }
-.theme-bg-cave { background: linear-gradient(135deg, #78909C 0%, #546E7A 100%); }
-.theme-bg-city { background: linear-gradient(135deg, #BDBDBD 0%, #757575 100%); }
-.theme-bg-ice { background: linear-gradient(135deg, #26C6DA 0%, #00ACC1 100%); }
-.theme-bg-ghost { background: linear-gradient(135deg, #AB47BC 0%, #7B1FA2 100%); }
-.theme-bg-fairy { background: linear-gradient(135deg, #EC407A 0%, #D81B60 100%); }
-.theme-bg-space { background: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%); }
-.theme-bg-locked { background: #e0e0e0; color: #999; } /* 锁定状态 */
+.theme-bg-grass { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 50%, #56ab2f 100%); }
+.theme-bg-water { background: linear-gradient(135deg, #0052D4 0%, #4364F7 50%, #6FB1FC 100%); }
+.theme-bg-fire { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); }
+.theme-bg-mountain { background: linear-gradient(135deg, #3E2723 0%, #795548 50%, #A1887F 100%); }
+.theme-bg-cave { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); }
+.theme-bg-city { background: linear-gradient(135deg, #2c3e50 0%, #606c88 50%, #3f4c6b 100%); }
+.theme-bg-ice { background: linear-gradient(135deg, #43C6AC 0%, #70CDDD 50%, #F8FFAE 100%); }
+.theme-bg-ghost { background: linear-gradient(135deg, #200122 0%, #6f0000 100%); }
+.theme-bg-fairy { background: linear-gradient(135deg, #ee9ca7 0%, #ffdde1 50%, #ee9ca7 100%); }
+.theme-bg-space { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); }
+.theme-bg-sky { background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); }
+.theme-bg-ground { background: linear-gradient(135deg, #c79081 0%, #dfa579 100%); }
+.theme-bg-factory { background: linear-gradient(135deg, #373B44 0%, #4286f4 100%); }
+.theme-bg-gold { background: linear-gradient(135deg, #F09819 0%, #EDDE5D 50%, #F09819 100%); }
+.theme-bg-locked { background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%); color: #fff; }
 
 .map-lock-mask {
   position: absolute; top:0; left:0; right:0; bottom:0;
-  background: rgba(255,255,255,0.6);
-  backdrop-filter: blur(2px);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  color: #555; font-weight: bold;
+  color: #fff; font-weight: 600;
   z-index: 10;
+  letter-spacing: 0.5px;
 }
 /* =========================================
    1. 全局背景与字体优化

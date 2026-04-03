@@ -10188,71 +10188,69 @@ const renderMenu = () => {
     const timeInfo = TIME_PHASES[timePhase];
 
     return (
-      <div className="screen map-screen">
+      <div className="screen map-screen" style={{background:'linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%)', minHeight:'100vh'}}>
         {/* 顶部导航 */}
-        <div className="nav-header glass-panel">
+        <div className="nav-header" style={{background:'rgba(255,255,255,0.95)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(0,0,0,0.06)', boxShadow:'0 1px 12px rgba(0,0,0,0.04)'}}>
           <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu')}>⬅ {hasSave && party.length > 0 ? '返回地图' : '返回'}</button>
-          <div className="nav-title">冒险地图</div>
-          <div className="nav-coin">💰 {gold}</div>
+          <div className="nav-title" style={{fontSize:'17px', fontWeight:'700', letterSpacing:'1px'}}>冒险地图</div>
+          <div className="nav-coin" style={{background:'linear-gradient(135deg,#ffd54f,#ffb300)', color:'#5d4037', padding:'4px 12px', borderRadius:'20px', fontWeight:'bold', fontSize:'13px'}}>💰 {gold}</div>
         </div>
         
-        {/* 🔥 [修改] 顶部仪表盘：只显示时间，移除天气 🔥 */}
+        {/* 顶部信息栏 */}
         <div style={{
-            margin: '10px 20px 0',
-            padding: '10px 20px',
-            background: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-            border: '1px solid rgba(255,255,255,0.5)'
+            margin: '12px 20px 0', padding: '12px 22px',
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)',
+            borderRadius: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            boxShadow: '0 2px 20px rgba(0,0,0,0.04)', border: '1px solid rgba(255,255,255,0.6)'
         }}>
-            <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                {/* 时间显示 (放大显示) */}
-                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                    <span style={{fontSize:'28px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{timeInfo.icon}</span>
-                    <div>
-                        <div style={{fontSize:'10px', color:'#888', fontWeight:'bold', textTransform:'uppercase'}}>World Time</div>
-                        <div style={{fontSize:'16px', fontWeight:'bold', color:'#333'}}>{timeInfo.name}</div>
-                    </div>
+            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                <div style={{width:44, height:44, borderRadius:'14px', background:'linear-gradient(135deg,#667eea,#764ba2)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(102,126,234,0.3)'}}>
+                    <span style={{fontSize:'22px'}}>{timeInfo.icon}</span>
+                </div>
+                <div>
+                    <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'1.5px'}}>World Time</div>
+                    <div style={{fontSize:'16px', fontWeight:'700', color:'#1e293b'}}>{timeInfo.name}</div>
                 </div>
             </div>
-
-            {/* 右侧提示改为时间相关 */}
-            <div style={{fontSize:'11px', color:'#666', fontStyle:'italic', textAlign:'right'}}>
+            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+              <div style={{fontSize:'11px', color:'#64748b', fontStyle:'italic', textAlign:'right', maxWidth:'160px'}}>
                 {timePhase === 'DAY' ? '阳光明媚，适合冒险' : (timePhase === 'DUSK' ? '天色渐晚，注意安全' : '深夜是幽灵活跃的时刻...')}
+              </div>
+              <div style={{background:'linear-gradient(135deg,#e2e8f0,#cbd5e1)', padding:'6px 14px', borderRadius:'12px', fontSize:'12px', fontWeight:'600', color:'#475569'}}>
+                🏅 {badges.length} 徽章
+              </div>
             </div>
         </div>
 
-        {/* --- 导航胶囊 --- */}
-        <div className="map-nav-container" style={{display: 'flex', justifyContent: 'center', margin: '20px 0 25px 0', position: 'relative', zIndex: 10}}>
-          <div className="glass-capsule" style={{background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(12px)', padding: '6px', borderRadius: '50px', boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)', border: '1px solid rgba(255, 255, 255, 0.4)', display: 'flex', gap: '8px'}}>
+        {/* 导航胶囊 */}
+        <div className="map-nav-container" style={{display:'flex', justifyContent:'center', margin:'16px 0 20px 0', position:'relative', zIndex:10}}>
+          <div style={{background:'rgba(255,255,255,0.88)', backdropFilter:'blur(16px)', padding:'5px', borderRadius:'50px', boxShadow:'0 4px 24px rgba(0,0,0,0.06)', border:'1px solid rgba(255,255,255,0.5)', display:'flex', gap:'4px'}}>
             {[
-              { id: 'maps', icon: '🗺️', label: '区域探索', color: '#2196F3' },
-              { id: 'dungeons', icon: '⚔️', label: '特殊副本', color: '#9C27B0' },
-              { id: 'challenges', icon: '🔥', label: '挑战之路', color: '#FF5722' },
-              { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#009688' },
-              { id: 'housing', icon: '🏡', label: '精灵家园', color: '#8D6E63' }
+              { id: 'maps', icon: '🗺️', label: '区域探索', color: '#3b82f6' },
+              { id: 'dungeons', icon: '⚔️', label: '特殊副本', color: '#8b5cf6' },
+              { id: 'challenges', icon: '🔥', label: '挑战之路', color: '#ef4444' },
+              { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#14b8a6' },
+              { id: 'housing', icon: '🏡', label: '精灵家园', color: '#a78bfa' }
             ].map(tab => {
               const isActive = mapTab === tab.id || (tab.id === 'sects' && view === 'sect_summit');
               return (
                 <div key={tab.id} onClick={() => { if (tab.id === 'sects') setView('sect_summit'); else if (tab.id === 'housing') setView('housing'); else { setMapTab(tab.id); if (view === 'sect_summit') setView('world_map'); } }}
-                  style={{padding: '10px 24px', borderRadius: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: '0.3s', background: isActive ? `linear-gradient(135deg, ${tab.color}, ${tab.color}dd)` : 'transparent', color: isActive ? '#fff' : '#666', fontWeight: isActive ? 'bold' : '500', boxShadow: isActive ? `0 4px 15px ${tab.color}66` : 'none', transform: isActive ? 'scale(1.05)' : 'scale(1)'}}>
-                  <span style={{fontSize: '18px'}}>{tab.icon}</span><span style={{fontSize: '15px'}}>{tab.label}</span>
+                  style={{padding:'9px 20px', borderRadius:'40px', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', transition:'all 0.3s cubic-bezier(.4,0,.2,1)',
+                    background: isActive ? `linear-gradient(135deg, ${tab.color}, ${tab.color}cc)` : 'transparent',
+                    color: isActive ? '#fff' : '#64748b', fontWeight: isActive ? '700' : '500', fontSize:'13px',
+                    boxShadow: isActive ? `0 4px 16px ${tab.color}44` : 'none',
+                    transform: isActive ? 'scale(1.03)' : 'scale(1)'}}>
+                  <span style={{fontSize:'16px'}}>{tab.icon}</span><span>{tab.label}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* --- 地图列表 --- */}
-        <div className="map-grid-container" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '15px'}}>
+        {/* 地图网格 */}
+        <div className="map-grid-container" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'16px', padding:'0 20px 20px'}}>
           {MAPS.map((m, index) => {
             const isCleared = badges.includes(m.badge);
-            
-            // 🔥 [新增] 获取该地图的独立天气
             const mapWeatherKey = mapWeathers[m.id] || 'CLEAR';
             const mapWeatherInfo = WEATHERS[mapWeatherKey];
             
@@ -10262,10 +10260,10 @@ const renderMenu = () => {
             if (m.id === 99) {
                 if (completedChallenges.includes('ECLIPSE_HQ_CLEARED')) {
                     return (
-                        <div key={m.id} className="map-card-pro theme-bg-locked" style={{filter: 'grayscale(100%)', opacity: 0.6, cursor:'not-allowed'}}>
-                            <div className="map-lock-mask" style={{background:'rgba(0,0,0,0.6)', color:'#fff'}}>
-                                <div style={{fontSize:'30px', marginBottom:'5px'}}>🏚️</div>
-                                <div>日蚀要塞 (已摧毁)</div>
+                        <div key={m.id} className="map-card-pro theme-bg-locked" style={{filter:'grayscale(1)', opacity:0.5, cursor:'not-allowed'}}>
+                            <div className="map-lock-mask">
+                                <div style={{fontSize:'32px', marginBottom:'6px'}}>🏚️</div>
+                                <div style={{fontSize:'13px'}}>日蚀要塞 (已摧毁)</div>
                             </div>
                         </div>
                     );
@@ -10280,46 +10278,53 @@ const renderMenu = () => {
             const themeClass = isLocked ? 'theme-bg-locked' : `theme-bg-${m.type}`;
 
             return (
-              <div key={m.id} className={`map-card-pro hover-scale ${themeClass}`} onClick={() => { if (isLocked) alert(`🔒 该区域尚未解锁！\n\n${lockReason}`); else enterMap(m.id); }}>
-                {isLocked && <div className="map-lock-mask"><div style={{fontSize:'24px', marginBottom:'5px'}}>🔒</div><div style={{fontSize:'12px'}}>{lockReason}</div></div>}
+              <div key={m.id} className={`map-card-pro ${themeClass}`} onClick={() => { if (isLocked) alert(`🔒 该区域尚未解锁！\n\n${lockReason}`); else enterMap(m.id); }}>
+                {isLocked && (
+                  <div className="map-lock-mask">
+                    <div style={{width:48, height:48, borderRadius:'50%', background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'8px', border:'2px solid rgba(255,255,255,0.2)'}}>
+                      <span style={{fontSize:'22px'}}>🔒</span>
+                    </div>
+                    <div style={{fontSize:'12px', opacity:0.9}}>{lockReason}</div>
+                  </div>
+                )}
                 
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', zIndex: 2}}>
+                {/* 顶部区域：名称 + 通关标识 */}
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                     <div>
-                        <div style={{fontSize:'18px', fontWeight:'bold', display:'flex', alignItems:'center', gap:'6px', textShadow:'0 2px 4px rgba(0,0,0,0.2)'}}>
-                            {m.icon} {m.name}
+                        <div style={{fontSize:'20px', fontWeight:'800', display:'flex', alignItems:'center', gap:'8px', textShadow:'0 2px 8px rgba(0,0,0,0.25)', letterSpacing:'0.5px'}}>
+                            <span style={{fontSize:'24px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'}}>{m.icon}</span> {m.name}
                         </div>
-                        
-                        {/* 🔥 [修改] 在这里添加天气胶囊 🔥 */}
-                        <div style={{marginTop:'6px', display:'flex', gap:'6px', flexWrap:'wrap'}}>
-                           <span style={{fontSize:'11px', background:'rgba(255,255,255,0.2)', backdropFilter:'blur(2px)', padding:'2px 8px', borderRadius:'10px', color:'#fff'}}>
+                        <div style={{marginTop:'8px', display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                           <span style={{fontSize:'11px', background:'rgba(255,255,255,0.2)', backdropFilter:'blur(4px)', padding:'3px 10px', borderRadius:'12px', color:'#fff', fontWeight:'600', border:'1px solid rgba(255,255,255,0.15)'}}>
                                Lv.{m.lvl[0]}-{m.lvl[1]}
                            </span>
-                           
-                           {/* 天气显示 */}
                            {!isLocked && (
-                               <span style={{
-                                   fontSize:'11px', 
-                                   background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)', 
-                                   color: '#fff', 
-                                   padding:'2px 8px', borderRadius:'10px', 
-                                   display:'flex', alignItems:'center', gap:'4px',
-                                   border: '1px solid rgba(255,255,255,0.3)'
-                               }}>
+                               <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
+                                   color:'#fff', padding:'3px 10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'3px',
+                                   border:'1px solid rgba(255,255,255,0.12)', fontWeight:'500', backdropFilter:'blur(4px)'}}>
                                    {mapWeatherInfo.icon} {mapWeatherInfo.name}
                                </span>
                            )}
                         </div>
                     </div>
-                    
-                    {isCleared && <div style={{background:'#fff', color:'#4CAF50', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'}}>CLEAR</div>}
+                    {isCleared && (
+                      <div style={{background:'rgba(255,255,255,0.95)', color:'#16a34a', padding:'4px 10px', borderRadius:'10px', fontSize:'10px', fontWeight:'800', letterSpacing:'1px', boxShadow:'0 2px 8px rgba(0,0,0,0.1)'}}>
+                        ✓ CLEAR
+                      </div>
+                    )}
                 </div>
                 
-                <div style={{marginTop:'auto', zIndex: 2}}>
-                    <div style={{fontSize:'11px', opacity:0.9}}>
-                      <span style={{background:'rgba(0,0,0,0.25)', padding:'2px 8px', borderRadius:'8px'}}>🏟️ 馆主: {m.gymName || '???'}</span>
+                {/* 底部区域：馆主信息 */}
+                <div style={{marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      <span style={{width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.15)'}}>👑</span>
+                      <span style={{fontSize:'12px', fontWeight:'600', textShadow:'0 1px 4px rgba(0,0,0,0.2)'}}>馆主 · {m.gymName || '???'}</span>
                     </div>
+                    {!isLocked && <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>Lv.{m.gymLvl}</span>}
                 </div>
-                <div style={{position:'absolute', right:'-10px', bottom:'-15px', fontSize:'90px', opacity:0.15, pointerEvents:'none', transform: 'rotate(-10deg)'}}>{m.icon}</div>
+
+                {/* 装饰性背景图标 */}
+                <div style={{position:'absolute', right:'-5px', bottom:'-10px', fontSize:'80px', opacity:0.08, pointerEvents:'none', transform:'rotate(-12deg)', zIndex:0}}>{m.icon}</div>
               </div>
             );
           })}
