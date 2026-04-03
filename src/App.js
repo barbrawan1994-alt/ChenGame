@@ -652,8 +652,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // [新增] 核心逻辑函数群
   // ==========================================
 
-  // 1. 计算捕获率 (修正版：适配地图和属性)
+  // 1. 计算捕获率 (修正版：适配地图和属性 + 神兽/稀有度惩罚)
   const calculateCatchRate = (ballType, enemy) => {
+      if (ballType === 'master') return 1.0;
       const ball = BALLS[ballType];
       let rate = ball.rate;
       
@@ -665,19 +666,16 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (ballType === 'net') {
           if (enemy.type === 'WATER' || enemy.type === 'BUG') rate = 3.5;
       }
-      
       // 黑暗球：特定地图(工厂/古堡/太空) 或 幽灵/超能/毒系
       if (ballType === 'dusk') {
           const isDarkMap = mapInfo && ['factory', 'ghost', 'space'].includes(mapInfo.type);
           const isDarkType = ['GHOST', 'PSYCHIC', 'POISON'].includes(enemy.type);
           if (isDarkMap || isDarkType) rate = 3.5;
       }
-      
       // 先机球：前 3 回合
       if (ballType === 'quick') {
           if (turnCount <= 3) rate = 5.0;
       }
-      
       // 计时球：回合越久越强
       if (ballType === 'timer') {
           rate = 1.0 + (turnCount * 0.3);
@@ -686,7 +684,34 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
       const maxHp = getStats(enemy).maxHp;
       const hpRate = enemy.currentHp / maxHp;
-      return ((1 - hpRate) * 0.8 + 0.1) * rate;
+      let baseRate = ((1 - hpRate) * 0.8 + 0.1) * rate;
+
+      // 稀有度惩罚：神兽/高阶精灵大幅降低捕获率
+      const eid = enemy.id;
+      if (FINAL_GOD_IDS && FINAL_GOD_IDS.includes(eid)) {
+          baseRate *= 0.08;
+      } else if (NEW_GOD_IDS && NEW_GOD_IDS.includes(eid)) {
+          baseRate *= 0.12;
+      } else if (LEGENDARY_POOL && LEGENDARY_POOL.includes(eid)) {
+          baseRate *= 0.2;
+      } else if (HIGH_TIER_POOL && HIGH_TIER_POOL.includes(eid)) {
+          baseRate *= 0.4;
+      }
+
+      // 等级差惩罚：敌方等级远超我方首发时更难抓
+      const myLead = party[0];
+      if (myLead) {
+          const lvlDiff = enemy.level - myLead.level;
+          if (lvlDiff > 20) baseRate *= 0.3;
+          else if (lvlDiff > 10) baseRate *= 0.5;
+          else if (lvlDiff > 5) baseRate *= 0.7;
+      }
+
+      // 异常状态加成：睡眠/冰冻×2，麻痹/灼伤/中毒×1.5
+      if (enemy.status === 'SLP' || enemy.status === 'FRZ') baseRate *= 2.0;
+      else if (enemy.status === 'PAR' || enemy.status === 'BRN' || enemy.status === 'PSN') baseRate *= 1.5;
+
+      return Math.min(baseRate, 0.95);
   };
 
   // 2. 使用洗练药
@@ -2889,9 +2914,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const results = q
       ? filtered.map(cat => ({
           ...cat,
-          sections: cat.sections.filter(s =>
-            s.title.toLowerCase().includes(q) || s.content.toLowerCase().includes(q)
-          ),
+          sections: cat.sections.filter(s => {
+            if (s.title.toLowerCase().includes(q)) return true;
+            if (s.content && s.content.toLowerCase().includes(q)) return true;
+            if (s.sub && s.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q))) return true;
+            return false;
+          }),
         })).filter(cat => cat.sections.length > 0)
       : filtered;
 
@@ -2956,22 +2984,46 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginRight:'4px'}}>{cat.sections.length}项</span>
                   <span style={{color:'rgba(255,255,255,0.3)', fontSize:'12px', transition:'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none'}}>&#9654;</span>
                 </div>
-                {/* 子条目 */}
+                {/* 子条目 - 支持sub二级折叠 */}
                 {isExpanded && (
                   <div style={{marginTop:'6px', marginLeft:'8px', borderLeft:`2px solid ${cat.color}30`, paddingLeft:'12px'}}>
-                    {cat.sections.map((sec, si) => (
-                      <div key={si} style={{padding:'10px 12px', marginBottom:'4px', borderRadius:'8px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.04)', transition:'background 0.15s'}}
-                        onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
-                        onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.03)'}>
-                        <div style={{fontSize:'13px', fontWeight:'700', color:cat.color, marginBottom:'6px', display:'flex', alignItems:'center', gap:'6px'}}>
-                          <span style={{width:'6px', height:'6px', borderRadius:'50%', background:cat.color, flexShrink:0}} />
-                          {sec.title}
+                    {cat.sections.map((sec, si) => {
+                      const secKey = `${cat.id}_${si}`;
+                      const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
+                      const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : false);
+                      const hasSub = sec.sub && sec.sub.length > 0;
+                      return (
+                        <div key={si} style={{marginBottom:'4px'}}>
+                          <div
+                            onClick={() => hasSub && setGuideExpanded(prev => ({...prev, [secKey]: !secOpen}))}
+                            style={{padding:'10px 12px', borderRadius:'8px', background: secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.04)', cursor: hasSub ? 'pointer' : 'default', transition:'background 0.15s', display:'flex', alignItems:'center', gap:'8px'}}
+                            onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
+                            onMouseOut={e => { e.currentTarget.style.background= secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'; }}>
+                            <span style={{width:'6px', height:'6px', borderRadius:'50%', background:cat.color, flexShrink:0}} />
+                            <span style={{flex:1, fontSize:'13px', fontWeight:'700', color:cat.color}}>{sec.title}</span>
+                            {hasSub && <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginRight:'2px'}}>{sec.sub.length}条</span>}
+                            {hasSub && <span style={{color:'rgba(255,255,255,0.3)', fontSize:'10px', transition:'transform 0.2s', transform: secOpen ? 'rotate(90deg)' : 'none'}}>▶</span>}
+                          </div>
+                          {hasSub && secOpen && (
+                            <div style={{marginLeft:'16px', marginTop:'4px', display:'flex', flexDirection:'column', gap:'3px'}}>
+                              {sec.sub.map((item, idx) => (
+                                <div key={idx} style={{padding:'8px 12px', borderRadius:'6px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.03)'}}>
+                                  <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.8)', marginBottom:'4px'}}>{item.t}</div>
+                                  <div style={{fontSize:'11.5px', lineHeight:'1.75', color:'rgba(255,255,255,0.55)', whiteSpace:'pre-line'}}>
+                                    {q ? highlightSearch(item.c, q) : item.c}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {!hasSub && sec.content && (
+                            <div style={{padding:'4px 12px 8px 20px', fontSize:'12px', lineHeight:'1.7', color:'rgba(255,255,255,0.65)', whiteSpace:'pre-line'}}>
+                              {q ? highlightSearch(sec.content, q) : sec.content}
+                            </div>
+                          )}
                         </div>
-                        <div style={{fontSize:'12px', lineHeight:'1.7', color:'rgba(255,255,255,0.65)', whiteSpace:'pre-line'}}>
-                          {q ? highlightSearch(sec.content, q) : sec.content}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
