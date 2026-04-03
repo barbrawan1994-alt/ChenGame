@@ -503,6 +503,185 @@ button:active { transform: scale(0.96); }
   50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
 }
 
+/* ============================================ */
+/* 战斗场景 - 竞技场地面 + 环境装饰 */
+/* ============================================ */
+
+/* 透视竞技场地面 */
+.battle-arena-floor {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%) perspective(600px) rotateX(55deg);
+  width: 85%;
+  height: 55%;
+  border-radius: 50%;
+  background: 
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.12) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.06) 70%, transparent 72%),
+    radial-gradient(ellipse at 50% 50%, transparent 85%, rgba(0,0,0,0.04) 95%, transparent 97%);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* 场地中线 */
+.battle-arena-line {
+  position: absolute;
+  top: 50%;
+  left: 15%;
+  width: 70%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), rgba(255,255,255,0.35), rgba(255,255,255,0.2), transparent);
+  z-index: 3;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+/* 对战连线 - 两只精灵之间的能量场 */
+.battle-energy-link {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+.battle-energy-link::before {
+  content: '';
+  position: absolute;
+  top: 35%;
+  left: 20%;
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(76,175,80,0.3), transparent 20%, transparent 80%, rgba(244,67,54,0.3));
+  transform: rotate(-15deg);
+  filter: blur(2px);
+}
+
+/* 环境粒子 - 飘浮灰尘 */
+.battle-dust-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  animation: dust-float linear infinite;
+}
+
+@keyframes dust-float {
+  0% { opacity: 0; transform: translateY(0) translateX(0) scale(0.5); }
+  15% { opacity: 0.6; }
+  85% { opacity: 0.4; }
+  100% { opacity: 0; transform: translateY(-120px) translateX(30px) scale(1.2); }
+}
+
+/* 飘落叶子 */
+.battle-leaf {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  background: linear-gradient(135deg, #66BB6A, #43A047);
+  border-radius: 0 50% 0 50%;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  animation: leaf-fall linear infinite;
+}
+
+@keyframes leaf-fall {
+  0% { opacity: 0; transform: translateY(-20px) rotate(0deg) scale(0.7); }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(300px) translateX(80px) rotate(720deg) scale(0.4); }
+}
+
+/* 火焰粒子 */
+.battle-ember {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  animation: ember-rise linear infinite;
+}
+
+@keyframes ember-rise {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.4; }
+  100% { opacity: 0; transform: translateY(-200px) translateX(20px) scale(0.2); }
+}
+
+/* 水泡 */
+.battle-bubble {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  animation: bubble-rise linear infinite;
+}
+
+@keyframes bubble-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.5); }
+  15% { opacity: 0.7; }
+  85% { opacity: 0.3; }
+  100% { opacity: 0; transform: translateY(-180px) translateX(-15px) scale(1.5); }
+}
+
+/* 光点粒子 */
+.battle-sparkle {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  box-shadow: 0 0 4px 1px rgba(255,255,255,0.5);
+  animation: sparkle-drift ease-in-out infinite;
+}
+
+@keyframes sparkle-drift {
+  0%, 100% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 0.8; transform: scale(1.2); }
+}
+
+/* 地面装饰 - 岩石 */
+.battle-rock {
+  position: absolute;
+  background: linear-gradient(145deg, #8D6E63, #6D4C41);
+  border-radius: 30% 60% 40% 50%;
+  box-shadow: inset -2px -3px 4px rgba(0,0,0,0.3), 2px 3px 6px rgba(0,0,0,0.2);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* 地面装饰 - 花/草丛 */
+.battle-flora {
+  position: absolute;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* 环境光柱 */
+.battle-light-beam {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.15;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
+  transform-origin: top center;
+  filter: blur(4px);
+  animation: beam-sway 8s ease-in-out infinite;
+}
+
+@keyframes beam-sway {
+  0%, 100% { transform: rotate(-2deg) scaleX(1); opacity: 0.12; }
+  50% { transform: rotate(2deg) scaleX(1.1); opacity: 0.2; }
+}
+
 /* 敌我区域 - 调整位置和大小体现远近感 */
 .enemy-zone-v2 {
   position: absolute;

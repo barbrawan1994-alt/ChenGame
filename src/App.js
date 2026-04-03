@@ -11943,56 +11943,185 @@ const renderMenu = () => {
             
             <div className="battle-scene-layer" style={{width: '100%', height: '100%', position: 'relative'}}>
                 
-                {/* 远景 - CSS云朵 */}
-                <div style={{position:'absolute', top:0, left:0, width:'100%', height:'40%', pointerEvents:'none', zIndex:1, opacity:0.4}}>
-                    {[{l:'5%',t:'5%',w:120,h:40,dur:18},{l:'30%',t:'10%',w:90,h:30,dur:22},{l:'55%',t:'3%',w:110,h:35,dur:16},{l:'80%',t:'12%',w:80,h:28,dur:20}].map((c,i) => (
+                {/* ====== 竞技场地面 ====== */}
+                <div className="battle-arena-floor" />
+                <div className="battle-arena-line" />
+
+                {/* ====== 环境光柱 ====== */}
+                {[
+                  {l:'8%', w:60, h:'70%', t:0, rot:-4, delay:0},
+                  {l:'35%', w:80, h:'80%', t:0, rot:2, delay:2},
+                  {l:'65%', w:50, h:'65%', t:0, rot:-1, delay:4},
+                  {l:'88%', w:70, h:'75%', t:0, rot:3, delay:1},
+                ].map((b,i) => (
+                  <div key={`beam${i}`} className="battle-light-beam" style={{
+                    left:b.l, top:b.t, width:b.w, height:b.h,
+                    animationDelay:`${b.delay}s`, transform:`rotate(${b.rot}deg)`
+                  }} />
+                ))}
+
+                {/* ====== 远景 - 云朵 + 星光 ====== */}
+                <div style={{position:'absolute', top:0, left:0, width:'100%', height:'35%', pointerEvents:'none', zIndex:1, opacity:0.45}}>
+                    {[{l:'5%',t:'5%',w:130,h:42,dur:20},{l:'25%',t:'12%',w:100,h:32,dur:25},{l:'50%',t:'4%',w:120,h:38,dur:18},{l:'78%',t:'10%',w:90,h:30,dur:22}].map((c,i) => (
                         <div key={i} style={{position:'absolute', left:c.l, top:c.t, width:c.w, height:c.h,
                             background:'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.6), transparent 70%)',
-                            borderRadius:'50%', filter:'blur(3px)',
+                            borderRadius:'50%', filter:'blur(4px)',
                             animation:`float ${c.dur}s ease-in-out infinite`, animationDelay:`${i*2}s`
                         }} />
                     ))}
-                    {[{l:'18%',t:'18%',sz:4},{l:'45%',t:'8%',sz:3},{l:'72%',t:'15%',sz:5}].map((s,i) => (
-                        <div key={`st${i}`} style={{position:'absolute', left:s.l, top:s.t, width:s.sz, height:s.sz,
-                            background:'#fff', borderRadius:'50%', boxShadow:'0 0 6px 2px rgba(255,255,255,0.6)',
-                            animation:`twinkle ${3+i}s ease-in-out infinite`, animationDelay:`${i}s`
-                        }} />
-                    ))}
                 </div>
 
-                {/* 地面装饰 - CSS草丛 */}
-                <div style={{position:'absolute', bottom:'25%', left:0, width:'100%', height:'20%', pointerEvents:'none', zIndex:2, opacity:0.35}}>
-                    {[{l:'6%',w:30,h:40},{l:'14%',w:20,h:28},{l:'26%',w:25,h:35},{l:'48%',w:18,h:25},{l:'58%',w:28,h:38},{l:'74%',w:22,h:30},{l:'86%',w:26,h:34}].map((g,i) => (
-                        <div key={i} style={{position:'absolute', left:g.l, bottom:0, width:g.w, height:g.h,
-                            background:`linear-gradient(to top, rgba(76,175,80,0.5), transparent)`,
-                            borderRadius:'50% 50% 0 0',
-                            animation:`float ${6+i*0.7}s ease-in-out infinite`, animationDelay:`${i*0.4}s`
-                        }} />
-                    ))}
-                    <div style={{position:'absolute', bottom:0, left:0, width:'100%', height:2,
-                        background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'}} />
-                </div>
+                {/* ====== 中景装饰物 (根据地形类型) ====== */}
+                {(() => {
+                  const terrainDecorations = {
+                    'bg-grass': [
+                      <div key="tree1" style={{position:'absolute', bottom:'38%', left:'40%', zIndex:3, pointerEvents:'none', opacity:0.5}}>
+                        <div style={{width:8, height:35, background:'linear-gradient(180deg, #795548, #5D4037)', borderRadius:'2px', margin:'0 auto'}} />
+                        <div style={{width:40, height:30, background:'radial-gradient(ellipse, #66BB6A 40%, #43A047 70%, transparent)', borderRadius:'50%', marginTop:-8, marginLeft:-16}} />
+                      </div>,
+                      <div key="tree2" style={{position:'absolute', bottom:'42%', right:'38%', zIndex:3, pointerEvents:'none', opacity:0.4, transform:'scale(0.8)'}}>
+                        <div style={{width:6, height:28, background:'linear-gradient(180deg, #795548, #5D4037)', borderRadius:'2px', margin:'0 auto'}} />
+                        <div style={{width:35, height:25, background:'radial-gradient(ellipse, #81C784 40%, #4CAF50 70%, transparent)', borderRadius:'50%', marginTop:-6, marginLeft:-14}} />
+                      </div>,
+                      <div key="bush1" className="battle-flora" style={{bottom:'30%', left:'32%', width:20, height:14, background:'radial-gradient(ellipse, rgba(76,175,80,0.6), transparent)', borderRadius:'50%', opacity:0.5}} />,
+                      <div key="bush2" className="battle-flora" style={{bottom:'28%', right:'30%', width:16, height:10, background:'radial-gradient(ellipse, rgba(102,187,106,0.5), transparent)', borderRadius:'50%', opacity:0.4}} />,
+                      <div key="flower1" className="battle-flora" style={{bottom:'33%', left:'52%', opacity:0.6}}>
+                        <div style={{width:6, height:6, background:'#E91E63', borderRadius:'50%', boxShadow:'0 0 4px rgba(233,30,99,0.4)'}} />
+                      </div>,
+                      <div key="flower2" className="battle-flora" style={{bottom:'36%', left:'60%', opacity:0.5}}>
+                        <div style={{width:5, height:5, background:'#FFC107', borderRadius:'50%', boxShadow:'0 0 3px rgba(255,193,7,0.4)'}} />
+                      </div>,
+                      <div key="rock1" className="battle-rock" style={{bottom:'26%', left:'45%', width:22, height:14, opacity:0.35}} />,
+                      <div key="rock2" className="battle-rock" style={{bottom:'32%', right:'42%', width:16, height:10, opacity:0.25, borderRadius:'40% 55% 35% 60%'}} />,
+                    ],
+                    'bg-fire': [
+                      <div key="lava1" className="battle-rock" style={{bottom:'28%', left:'35%', width:30, height:18, opacity:0.4, background:'linear-gradient(145deg, #4E342E, #3E2723)', boxShadow:'inset -2px -3px 4px rgba(0,0,0,0.4), 0 0 10px rgba(255,87,34,0.2)'}} />,
+                      <div key="lava2" className="battle-rock" style={{bottom:'34%', right:'35%', width:24, height:14, opacity:0.35, background:'linear-gradient(145deg, #5D4037, #4E342E)', boxShadow:'inset -2px -3px 4px rgba(0,0,0,0.4), 0 0 8px rgba(255,152,0,0.15)'}} />,
+                      <div key="crack1" style={{position:'absolute', bottom:'25%', left:'42%', width:40, height:2, background:'linear-gradient(90deg, transparent, rgba(255,87,34,0.5), rgba(255,152,0,0.6), rgba(255,87,34,0.5), transparent)', zIndex:3, pointerEvents:'none', filter:'blur(1px)'}} />,
+                      <div key="crack2" style={{position:'absolute', bottom:'30%', left:'55%', width:25, height:2, background:'linear-gradient(90deg, transparent, rgba(255,87,34,0.4), transparent)', zIndex:3, pointerEvents:'none', filter:'blur(1px)', transform:'rotate(30deg)'}} />,
+                      <div key="glow" style={{position:'absolute', bottom:'20%', left:'48%', width:60, height:30, background:'radial-gradient(ellipse, rgba(255,87,34,0.15), transparent)', zIndex:2, pointerEvents:'none'}} />,
+                    ],
+                    'bg-water': [
+                      <div key="coral1" style={{position:'absolute', bottom:'32%', left:'38%', width:18, height:25, background:'linear-gradient(to top, #E91E63, #F48FB1)', borderRadius:'40% 60% 50% 50%', opacity:0.3, zIndex:3, pointerEvents:'none'}} />,
+                      <div key="coral2" style={{position:'absolute', bottom:'28%', right:'36%', width:14, height:20, background:'linear-gradient(to top, #FF9800, #FFCC80)', borderRadius:'50% 40% 60% 50%', opacity:0.25, zIndex:3, pointerEvents:'none'}} />,
+                      <div key="seaweed1" style={{position:'absolute', bottom:'26%', left:'50%', width:4, height:30, background:'linear-gradient(to top, #2E7D32, #66BB6A)', borderRadius:'2px', opacity:0.3, zIndex:3, pointerEvents:'none', animation:'float 5s ease-in-out infinite'}} />,
+                      <div key="seaweed2" style={{position:'absolute', bottom:'24%', left:'56%', width:3, height:24, background:'linear-gradient(to top, #388E3C, #81C784)', borderRadius:'2px', opacity:0.25, zIndex:3, pointerEvents:'none', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />,
+                      <div key="caustics" style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', background:'radial-gradient(ellipse at 40% 50%, rgba(255,255,255,0.05), transparent 30%), radial-gradient(ellipse at 60% 40%, rgba(255,255,255,0.04), transparent 25%)', zIndex:2, pointerEvents:'none', animation:'float 10s ease-in-out infinite'}} />,
+                    ],
+                    'bg-cave': [
+                      <div key="crystal1" style={{position:'absolute', bottom:'32%', left:'40%', zIndex:3, pointerEvents:'none', opacity:0.5}}>
+                        <div style={{width:6, height:22, background:'linear-gradient(180deg, #CE93D8, #9C27B0)', borderRadius:'2px 2px 0 0', transform:'rotate(-8deg)', boxShadow:'0 0 8px rgba(156,39,176,0.3)'}} />
+                      </div>,
+                      <div key="crystal2" style={{position:'absolute', bottom:'30%', left:'44%', zIndex:3, pointerEvents:'none', opacity:0.4}}>
+                        <div style={{width:5, height:16, background:'linear-gradient(180deg, #B39DDB, #7B1FA2)', borderRadius:'2px 2px 0 0', transform:'rotate(5deg)', boxShadow:'0 0 6px rgba(123,31,162,0.3)'}} />
+                      </div>,
+                      <div key="crystal3" style={{position:'absolute', bottom:'35%', right:'38%', zIndex:3, pointerEvents:'none', opacity:0.45}}>
+                        <div style={{width:7, height:20, background:'linear-gradient(180deg, #E1BEE7, #AB47BC)', borderRadius:'2px 2px 0 0', transform:'rotate(-3deg)', boxShadow:'0 0 10px rgba(171,71,188,0.4)'}} />
+                      </div>,
+                      <div key="stalag1" className="battle-rock" style={{bottom:'26%', left:'34%', width:20, height:25, opacity:0.3, background:'linear-gradient(180deg, #616161, #424242)', borderRadius:'30% 30% 50% 50%'}} />,
+                      <div key="stalag2" className="battle-rock" style={{bottom:'28%', right:'32%', width:16, height:18, opacity:0.25, background:'linear-gradient(180deg, #757575, #424242)', borderRadius:'35% 40% 45% 50%'}} />,
+                    ],
+                    'bg-city': [
+                      <div key="sign1" style={{position:'absolute', bottom:'35%', left:'42%', zIndex:3, pointerEvents:'none', opacity:0.3}}>
+                        <div style={{width:3, height:20, background:'#757575', margin:'0 auto'}} />
+                        <div style={{width:20, height:12, background:'linear-gradient(135deg, #42A5F5, #1E88E5)', borderRadius:'2px', marginTop:-1}} />
+                      </div>,
+                      <div key="cone1" style={{position:'absolute', bottom:'28%', right:'40%', zIndex:3, pointerEvents:'none', opacity:0.25}}>
+                        <div style={{width:0, height:0, borderLeft:'6px solid transparent', borderRight:'6px solid transparent', borderBottom:'16px solid #FF9800', margin:'0 auto'}} />
+                        <div style={{width:16, height:3, background:'#FF9800', borderRadius:'1px'}} />
+                      </div>,
+                      <div key="manhole" style={{position:'absolute', bottom:'24%', left:'50%', width:30, height:8, background:'radial-gradient(ellipse, rgba(100,100,100,0.3), transparent)', borderRadius:'50%', zIndex:3, pointerEvents:'none'}} />,
+                    ],
+                  };
+                  return terrainDecorations[bgClass] || terrainDecorations['bg-grass'] || [];
+                })()}
 
-                {/* 战场地面 - 宝可梦风格透视草地 */}
-                    <div style={{
+                {/* ====== 环境粒子系统 ====== */}
+                {(() => {
+                  const particleConfig = {
+                    'bg-grass': { cls:'battle-leaf', count:6, colors:['#66BB6A','#43A047','#81C784','#A5D6A7'] },
+                    'bg-fire': { cls:'battle-ember', count:8, colors:['#FF5722','#FF9800','#FFC107','#FF6D00'] },
+                    'bg-water': { cls:'battle-bubble', count:6, colors:[] },
+                    'bg-cave': { cls:'battle-sparkle', count:10, colors:['#CE93D8','#E1BEE7','#AB47BC','#fff'] },
+                    'bg-city': { cls:'battle-dust-particle', count:5, colors:['rgba(200,200,200,0.5)','rgba(180,180,180,0.4)'] },
+                  };
+                  const cfg = particleConfig[bgClass] || particleConfig['bg-grass'];
+                  return Array.from({length: cfg.count}, (_, i) => {
+                    const left = 15 + Math.random() * 70;
+                    const bottom = 15 + Math.random() * 50;
+                    const size = 3 + Math.random() * 6;
+                    const dur = 4 + Math.random() * 8;
+                    const delay = Math.random() * 6;
+                    const color = cfg.colors.length > 0 ? cfg.colors[i % cfg.colors.length] : undefined;
+                    return <div key={`ptc${i}`} className={cfg.cls} style={{
+                      left:`${left}%`, bottom:`${bottom}%`,
+                      width: size, height: cfg.cls === 'battle-leaf' ? size * 1.5 : size,
+                      animationDuration:`${dur}s`, animationDelay:`${delay}s`,
+                      ...(color ? {background: cfg.cls !== 'battle-bubble' ? color : undefined} : {})
+                    }} />;
+                  });
+                })()}
+
+                {/* ====== 中景光点 (通用) ====== */}
+                {Array.from({length: 8}, (_, i) => {
+                  const left = 20 + Math.random() * 60;
+                  const top = 20 + Math.random() * 50;
+                  const size = 2 + Math.random() * 3;
+                  const dur = 3 + Math.random() * 5;
+                  return <div key={`spk${i}`} className="battle-sparkle" style={{
+                    left:`${left}%`, top:`${top}%`, width:size, height:size,
+                    animationDuration:`${dur}s`, animationDelay:`${i * 0.8}s`
+                  }} />;
+                })}
+
+                {/* ====== 战场地面 - 渐变色底面 ====== */}
+                <div style={{
                     position:'absolute', bottom:0, left:0, width:'100%', height:'45%',
-                    background:'linear-gradient(180deg, transparent 0%, rgba(76,175,80,0.15) 20%, rgba(56,142,60,0.3) 100%)',
+                    background:'linear-gradient(180deg, transparent 0%, rgba(76,175,80,0.12) 20%, rgba(56,142,60,0.25) 100%)',
                     pointerEvents:'none', zIndex:2
                 }}>
                     <div style={{position:'absolute', top:0, left:0, width:'100%', height:2,
-                        background:'linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.35) 50%, transparent 90%)'}} />
+                        background:'linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.3) 50%, transparent 90%)'}} />
                 </div>
 
-                {/* 光晕装饰 */}
+                {/* ====== 对战能量连线 ====== */}
+                <div className="battle-energy-link" />
+
+                {/* ====== 光晕装饰 ====== */}
                 <div style={{
                     position:'absolute', top:0, left:0, width:'100%', height:'100%',
-                    pointerEvents:'none', zIndex:1, opacity:0.5,
+                    pointerEvents:'none', zIndex:1, opacity:0.4,
                     background:`
-                        radial-gradient(ellipse at 15% 30%, rgba(255,255,255,0.1) 0%, transparent 40%),
-                        radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.08) 0%, transparent 40%)
+                        radial-gradient(ellipse at 15% 30%, rgba(255,255,255,0.12) 0%, transparent 40%),
+                        radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.08) 0%, transparent 40%),
+                        radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 50%)
                     `
                 }} />
-                
+
+                {/* ====== 中央对战标记 ====== */}
+                <div style={{
+                  position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)',
+                  zIndex:3, pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center'
+                }}>
+                  {/* 能量涟漪 */}
+                  <div style={{
+                    width:80, height:80, borderRadius:'50%',
+                    border:'1px solid rgba(255,255,255,0.08)',
+                    boxShadow:'0 0 30px rgba(255,255,255,0.03), inset 0 0 20px rgba(255,255,255,0.02)',
+                    animation:'battle-glow 6s ease-in-out infinite', opacity:0.6
+                  }}>
+                    <div style={{
+                      width:'100%', height:'100%', borderRadius:'50%',
+                      background:'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%)',
+                    }} />
+                  </div>
+                  {/* 交叉射线 */}
+                  <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%) rotate(-20deg)', width:160, height:1,
+                    background:'linear-gradient(90deg, transparent, rgba(76,175,80,0.15), rgba(255,255,255,0.1), rgba(244,67,54,0.15), transparent)', filter:'blur(1px)'}} />
+                  <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%) rotate(20deg)', width:160, height:1,
+                    background:'linear-gradient(90deg, transparent, rgba(76,175,80,0.12), rgba(255,255,255,0.08), rgba(244,67,54,0.12), transparent)', filter:'blur(1px)'}} />
+                </div>
+
                 {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角) */}
                 {/* ========================================== */}
