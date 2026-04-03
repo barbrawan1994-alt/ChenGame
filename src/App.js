@@ -6104,10 +6104,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
-    // AI: 尝试果实变身 (有果实且未用过，HP<70%时50%概率，或首回合20%概率)
-    if (enemy.devilFruit && !enemy.fruitUsed && !enemy.fruitTransformed) {
-      const hpRatio = enemy.currentHp / getStats(enemy).maxHp;
-      const transformChance = hpRatio < 0.7 ? 0.5 : 0.2;
+    // AI: 尝试果实变身 (回合≥3 且 HP<50% 才允许，与玩家规则一致)
+    if (enemy.devilFruit && !enemy.fruitUsed && !enemy.fruitTransformed
+        && (state.turnCount || 0) >= 3
+        && enemy.currentHp < getStats(enemy).maxHp * 0.5) {
+      const transformChance = 0.6;
       if (Math.random() < transformChance) {
         const fruit = getFruitById(enemy.devilFruit);
         if (fruit) {
