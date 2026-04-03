@@ -89,6 +89,28 @@ const BREATHING_BUFFS = [
   { id: 'crit_up', name: '🐗 兽之呼吸', desc: '暴击率 +10%', effect: (p) => p.customBaseStats.crit += 10 },
   { id: 'heal_all', name: '🦋 虫之呼吸', desc: '立即恢复全队 50% HP', type: 'instant', effect: (p) => p.currentHp = Math.min(getStats(p).maxHp, p.currentHp + getStats(p).maxHp * 0.5) }
 ];
+const ALL_SKILL_TMS = (() => {
+  const existingKeys = new Set(TMS.map(t => `${t.type}_${t.name}`));
+  const generated = [];
+  Object.entries(SKILL_DB).forEach(([typeKey, skills]) => {
+    if (typeKey === 'GOD') return;
+    skills.forEach(skill => {
+      const sType = skill.t || typeKey;
+      const key = `${sType}_${skill.name}`;
+      if (!existingKeys.has(key)) {
+        generated.push({
+          id: `tmg_${sType}_${skill.name}`,
+          name: skill.name, type: sType,
+          p: skill.p || 0, pp: skill.pp || 10,
+          desc: skill.desc || `${sType}系技能`,
+          effect: skill.effect, val: skill.val,
+        });
+      }
+    });
+  });
+  return [...TMS, ...generated];
+})();
+
 export default function RPG(props) {
   // =================================================================
   // 🔥 [核心修复 1] 启动瞬间同步读取存档 (防止存档“丢失”)
@@ -1032,10 +1054,13 @@ const CHARM_RANK_COLORS = {
             else if (typeof equip === 'object') accData = equip; 
 
             if (accData) {
-                 const type = accData.type || accData.stat; 
-                 if (isHp && (accData.stat === 'HP' || type === 'HP')) val += accData.val;
-                 if ((ivKey === 'p_atk' || ivKey === 's_atk') && (type === 'ATK' || accData.stat === 'ATK')) val += accData.val;
-                 if ((ivKey === 'p_def' || ivKey === 's_def') && (type === 'DEF' || accData.stat === 'DEF')) val += accData.val;
+                 const aType = accData.type || accData.stat; 
+                 if (isHp && aType === 'HP') val += accData.val;
+                 if ((ivKey === 'p_atk' || ivKey === 's_atk') && aType === 'ATK') val += accData.val;
+                 if (ivKey === 's_atk' && aType === 'SATK') val += accData.val;
+                 if ((ivKey === 'p_def' || ivKey === 's_def') && aType === 'DEF') val += accData.val;
+                 if (ivKey === 's_def' && aType === 'SDEF') val += accData.val;
+                 if (ivKey === 'spd' && aType === 'SPD') val += accData.val;
             }
         });
 
@@ -1066,7 +1091,12 @@ const CHARM_RANK_COLORS = {
     };
 
     let finalCrit = Math.floor((baseStats.crit||5) + (ivs.crit||0) + (evs.crit||0) + (pet.level * 0.2));
-    if (chiefBonus.crit) finalCrit += chiefBonus.crit; 
+    if (chiefBonus.crit) finalCrit += chiefBonus.crit;
+    (pet.equips||[]).forEach(equip => {
+      if (!equip) return;
+      const accData = typeof equip === 'string' ? ACCESSORY_DB.find(c=>c.id===equip) : equip;
+      if (accData && (accData.type||accData.stat) === 'CRIT') finalCrit += accData.val;
+    });
 
     const sectId = pet.sectId || 1;
     const sectLv = pet.sectLevel || 1;
@@ -2162,6 +2192,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const newParty = [...party];
     const pet = newParty[petIdx];
     if (!pet.equips) pet.equips = [null, null];
+
+    const otherSlot = slotIdx === 0 ? 1 : 0;
+    const otherEquip = pet.equips[otherSlot];
+    if (typeof accOrId === 'string' && otherEquip === accOrId) {
+      alert('❌ 同一只精灵不能装备两个相同的饰品！'); return;
+    }
+    if (typeof accOrId === 'object' && typeof otherEquip === 'object' && accOrId.uid === otherEquip?.uid) {
+      alert('❌ 同一只精灵不能装备两个相同的饰品！'); return;
+    }
 
     const oldEquip = pet.equips[slotIdx];
     const newAccessories = [...accessories];
@@ -4433,7 +4472,7 @@ const useGrowthItem = (petIndex, itemId) => {
             rewardTitle = "发现珍贵球"; rewardDesc = `获得 ${ball.icon} ${ball.name}`;
         } else if (rand < 0.98) {
             // 5% 技能书
-            const tm = _.sample(TMS);
+            const tm = _.sample(ALL_SKILL_TMS);
             setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: (prev.tms[tm.id]||0) + 1}}));
             rewardTitle = "古老的秘籍"; rewardDesc = `获得 📜 ${tm.name} (技能书)`;
         } else if (rand < 0.99) {
@@ -5892,7 +5931,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + picked.count }));
       rewardMsg = `${item.emoji} ${item.name} x${picked.count}`;
     } else if (picked.type === 'tm') {
-      const tm = TMS[Math.floor(Math.random() * TMS.length)];
+      const tm = ALL_SKILL_TMS[Math.floor(Math.random() * ALL_SKILL_TMS.length)];
       setInventory(prev => ({ ...prev, tms: { ...prev.tms, [tm.id]: (prev.tms[tm.id] || 0) + picked.count } }));
       rewardMsg = `📜 ${tm.name}`;
     } else if (picked.type === 'misc') {
@@ -7730,7 +7769,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battle.type === 'type_challenge') {
       const cType = battle.challengeType;
       if (cType) {
-        const matchingTMs = TMS.filter(tm => tm.type === cType);
+        const matchingTMs = ALL_SKILL_TMS.filter(tm => tm.type === cType);
         if (matchingTMs.length > 0) {
           const rewardTM = _.sample(matchingTMs);
           setInventory(prev => ({ ...prev, tms: { ...prev.tms, [rewardTM.id]: (prev.tms[rewardTM.id]||0) + 1 } }));
@@ -8711,9 +8750,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }
       } 
 
-      // --- 3. 购买饰品 ---
       else if (type === 'acc') {
-         for(let k=0; k<count; k++) setAccessories(prev => [...prev, id]);
+         const alreadyOwned = accessories.filter(a => a === id).length + party.reduce((s,p) => s + ((p.equips||[]).filter(e => e === id).length), 0);
+         if (alreadyOwned > 0) { alert('❌ 每种饰品只能购买一个！'); return; }
+         setAccessories(prev => [...prev, id]);
          const acc = ACCESSORY_DB.find(a => a.id === id);
          itemName = acc ? acc.name : '饰品';
       }
@@ -12774,7 +12814,7 @@ const renderMenu = () => {
     let currentCat = '';
     if (bagTab === 'balls') { currentCat = 'ball'; Object.keys(inventory.balls || {}).forEach(k => { if ((inventory.balls||{})[k] > 0 && BALLS[k]) currentItems.push({ ...BALLS[k], count: inventory.balls[k] }); });
     } else if (bagTab === 'meds') { currentCat = 'meds'; Object.keys(inventory.meds || {}).forEach(k => { if ((inventory.meds||{})[k] > 0 && MEDICINES[k]) currentItems.push({ ...MEDICINES[k], count: inventory.meds[k] }); }); if (inventory.berries > 0) currentItems.push({ id: 'berry', name: '树果', icon: '🍒', desc: '恢复少量体力', count: inventory.berries, type: 'HP', val: 30 });
-    } else if (bagTab === 'tms') { currentCat = 'tm'; Object.keys(inventory.tms || {}).forEach(k => { if ((inventory.tms||{})[k] > 0) { const tm = TMS.find(t => t.id === k); if (tm) currentItems.push({ ...tm, count: inventory.tms[k] }); } });
+    } else if (bagTab === 'tms') { currentCat = 'tm'; Object.keys(inventory.tms || {}).forEach(k => { if ((inventory.tms||{})[k] > 0) { const tm = ALL_SKILL_TMS.find(t => t.id === k); if (tm) currentItems.push({ ...tm, count: inventory.tms[k] }); } });
     } else if (bagTab === 'stones') { currentCat = 'stone'; Object.keys(inventory.stones || {}).forEach(k => { if (inventory.stones[k] > 0) { const s = EVO_STONES[k]; if (s) currentItems.push({ ...s, count: inventory.stones[k] }); } });
     } else if (bagTab === 'misc') { currentCat = 'growth'; GROWTH_ITEMS.forEach(g => { if (inventory[g.id] > 0) currentItems.push({ ...g, count: inventory[g.id], icon: g.emoji }); }); if ((inventory.misc?.rebirth_pill || 0) > 0) currentItems.push({ ...MISC_ITEMS.rebirth_pill, count: inventory.misc.rebirth_pill });
     } else if (bagTab === 'accessories') { currentCat = 'acc'; ACCESSORY_DB.forEach(acc => { const count = accessories.filter(item => item === acc.id).length; if (count > 0) currentItems.push({ ...acc, count }); }); accessories.forEach(item => { if (typeof item === 'object' && item.isUnique) currentItems.push({ ...item, name: item.displayName, count: 1, desc: `${item.desc} | 技能: ${item.extraSkill.name}` }); });
@@ -14356,9 +14396,9 @@ const renderMenu = () => {
       4: ['vit_hp','vit_patk','vit_pdef','vit_satk','vit_sdef','vit_spd','vit_crit','exp_candy','max_candy'],
     };
     const accByTier = {
-      1: ['a1','a3'],
-      2: ['a1','a2','a3','a4'],
-      3: ['a1','a2','a3','a4','a5','a6'],
+      1: ['a1','a3','a10','a11'],
+      2: ['a1','a3','a10','a11','a2','a8','a4','a12','a13','a14'],
+      3: ['a2','a8','a4','a12','a13','a14','a7','a6','a9','a15','a16','a17','a18'],
       4: ACCESSORY_DB.filter(a=>!['trophy','blue_lily','nichirin_blade'].includes(a.id)).map(a=>a.id),
     };
     const showStones = tier >= 3;
@@ -14496,7 +14536,33 @@ const renderMenu = () => {
               })}
               {shopTab==='accessories' && availAcc.map(accId=>{
                 const acc=ACCESSORY_DB.find(a=>a.id===accId); if(!acc) return null;
-                return renderShopCard(acc.id,renderAccCSS(acc.id,36)||<span style={{fontSize:30}}>{acc.icon}</span>,acc.name,acc.desc,acc.price,'acc');
+                const accOwned = accessories.filter(a=>a===accId).length + party.reduce((s,p)=>s+((p.equips||[]).filter(e=>e===accId).length),0);
+                return (
+                  <div key={accId} style={{
+                    background:accOwned>0?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg,#ffffff,#f8f9ff)',borderRadius:'16px',
+                    padding:'18px 14px 14px',display:'flex',flexDirection:'column',alignItems:'center',
+                    textAlign:'center',border:accOwned>0?'1px solid #ccc':'1px solid #e8eaf6',position:'relative',
+                    transition:'all 0.25s ease',boxShadow:'0 2px 8px rgba(0,0,0,0.04)',
+                    borderLeft:`3px solid ${accOwned>0?'#aaa':'#EC407A'}`,opacity:accOwned>0?0.7:1,
+                  }}
+                  onMouseEnter={e=>{if(!accOwned){e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';}}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}>
+                    <span style={{position:'absolute',top:'-6px',left:'8px',background:'#FF6F00',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700'}}>限购1</span>
+                    <div style={{fontSize:'36px',marginBottom:'8px',filter:accOwned>0?'grayscale(1)':'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{renderAccCSS(acc.id,36)||<span style={{fontSize:30}}>{acc.icon}</span>}</div>
+                    <div style={{fontSize:'13px',fontWeight:'800',color:accOwned>0?'#999':'#1a1a2e',marginBottom:'3px'}}>{acc.name}</div>
+                    <div style={{fontSize:'10px',color:'#888',height:'28px',overflow:'hidden',lineHeight:'1.4',marginBottom:'8px'}}>{acc.desc}</div>
+                    <div style={{fontSize:'14px',fontWeight:'900',color:accOwned>0?'#aaa':'#F57C00',marginBottom:'10px'}}>💰 {acc.price.toLocaleString()}</div>
+                    {accOwned>0?(
+                      <div style={{width:'100%',padding:'8px',borderRadius:'10px',background:'#e0e0e0',color:'#999',fontWeight:'700',fontSize:'12px',textAlign:'center'}}>✅ 已拥有</div>
+                    ):(
+                      <button onClick={()=>buyItemPro(acc.id,acc.price,'acc')} disabled={gold<acc.price}
+                        style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=acc.price?'pointer':'not-allowed',
+                          background:gold>=acc.price?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
+                          color:gold>=acc.price?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=acc.price?'0 3px 8px rgba(0,0,0,0.15)':'none'
+                        }}>购买</button>
+                    )}
+                  </div>
+                );
               })}
               {shopTab==='cursed' && Object.keys(CURSED_ITEMS).map(key=>{
                 const item=CURSED_ITEMS[key]; if(!item||item.price<=0) return null;

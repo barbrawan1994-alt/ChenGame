@@ -63,15 +63,32 @@ export const MISC_ITEMS = {
 };
 
 export const ACCESSORY_DB = [
-  { id: 'a1', name: '勇气徽章', type: 'ATK', val: 15, icon: '🎖️', price: 3000, desc: '攻击力+15' },
-  { id: 'a2', name: '力量拳套', type: 'ATK', val: 35, icon: '🥊', price: 8000, desc: '攻击力+35' },
-  { id: 'a3', name: '守护围巾', type: 'DEF', val: 15, icon: '🧣', price: 3000, desc: '防御力+15' },
-  { id: 'a4', name: '爱心饼干', type: 'HP', val: 100, icon: '🍪', price: 5000, desc: '最大HP+100' },
-  { id: 'a5', name: '王者皇冠', type: 'ATK', val: 80, icon: '👑', price: 25000, desc: '攻击力+80' },
-  { id: 'a6', name: '天使光环', type: 'DEF', val: 60, icon: '😇', price: 20000, desc: '防御力+60' },
-  { id: 'a7', name: '龙之牙', type: 'ATK', val: 50, icon: '🦷', price: 12000, desc: '攻击力+50' },
-  { id: 'a8', name: '金属涂层', type: 'DEF', val: 40, icon: '🛡️', price: 10000, desc: '防御力+40' },
-  { id: 'a9', name: '奇迹种子', type: 'HP', val: 200, icon: '🌰', price: 15000, desc: '最大HP+200' },
+  // Tier 1 - 基础饰品
+  { id: 'a1', name: '勇气徽章', type: 'ATK', val: 15, icon: '🎖️', price: 5000, desc: '攻击力+15' },
+  { id: 'a3', name: '守护围巾', type: 'DEF', val: 15, icon: '🧣', price: 5000, desc: '防御力+15' },
+  { id: 'a10', name: '活力头带', type: 'HP', val: 60, icon: '🎀', price: 5000, desc: '最大HP+60' },
+  { id: 'a11', name: '疾风羽饰', type: 'SPD', val: 15, icon: '🪶', price: 6000, desc: '速度+15' },
+  // Tier 2 - 进阶饰品
+  { id: 'a2', name: '力量拳套', type: 'ATK', val: 35, icon: '🥊', price: 12000, desc: '攻击力+35' },
+  { id: 'a8', name: '金属涂层', type: 'DEF', val: 40, icon: '🛡️', price: 15000, desc: '防御力+40' },
+  { id: 'a4', name: '爱心饼干', type: 'HP', val: 100, icon: '🍪', price: 10000, desc: '最大HP+100' },
+  { id: 'a12', name: '锐利之爪', type: 'CRIT', val: 8, icon: '🦅', price: 12000, desc: '暴击率+8%' },
+  { id: 'a13', name: '智慧眼镜', type: 'SATK', val: 35, icon: '🥽', price: 12000, desc: '特攻+35' },
+  { id: 'a14', name: '坚韧披风', type: 'SDEF', val: 35, icon: '🧥', price: 12000, desc: '特防+35' },
+  // Tier 3 - 高级饰品
+  { id: 'a7', name: '龙之牙', type: 'ATK', val: 50, icon: '🦷', price: 20000, desc: '攻击力+50' },
+  { id: 'a6', name: '天使光环', type: 'DEF', val: 60, icon: '😇', price: 25000, desc: '防御力+60' },
+  { id: 'a9', name: '奇迹种子', type: 'HP', val: 200, icon: '🌰', price: 22000, desc: '最大HP+200' },
+  { id: 'a15', name: '雷神护腕', type: 'SPD', val: 40, icon: '⚡', price: 20000, desc: '速度+40' },
+  { id: 'a16', name: '暗杀之刃', type: 'CRIT', val: 15, icon: '🗡️', price: 22000, desc: '暴击率+15%' },
+  { id: 'a17', name: '贤者之书', type: 'SATK', val: 60, icon: '📕', price: 25000, desc: '特攻+60' },
+  { id: 'a18', name: '不屈铠甲', type: 'SDEF', val: 60, icon: '🎽', price: 25000, desc: '特防+60' },
+  // Tier 4 - 顶级饰品
+  { id: 'a5', name: '王者皇冠', type: 'ATK', val: 80, icon: '👑', price: 40000, desc: '攻击力+80' },
+  { id: 'a19', name: '龙鳞战甲', type: 'DEF', val: 80, icon: '🐉', price: 40000, desc: '防御力+80' },
+  { id: 'a20', name: '生命之冠', type: 'HP', val: 350, icon: '💎', price: 45000, desc: '最大HP+350' },
+  { id: 'a21', name: '幻影斗篷', type: 'SPD', val: 60, icon: '🌀', price: 40000, desc: '速度+60' },
+  // 非卖品 - 只能通过掉落获得
   { id: 'trophy', name: '冠军奖杯', type: 'ATK', val: 200, icon: '🏆', price: 99999, desc: '至高荣誉！全属性大幅提升(隐藏效果)' },
   { id: 'blue_lily', name: '蓝色彼岸花', type: 'HP', val: 300, icon: '🌺', price: 99999, desc: '无限城深处绽放的神秘花朵，赋予持有者超凡生命力' },
   { id: 'nichirin_blade', name: '日轮刀', type: 'ATK', val: 250, icon: '⚔️', price: 99999, desc: '以特殊矿石锻造的神器之刃，斩杀一切邪恶' },
