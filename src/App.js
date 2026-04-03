@@ -1446,7 +1446,8 @@ const CHARM_RANK_COLORS = {
               startBattle({ 
                 id: 999, 
                 name: pendingTask.name, 
-                pool: [pendingTask.enemyId] 
+                pool: [pendingTask.enemyId],
+                eliteParty: pendingTask.eliteParty || null
               }, 'story_task');
               
               // 清空任务
@@ -4810,10 +4811,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 5. 剧情任务战斗 / 日蚀队杂兵
     // -------------------------------------------------
     else if (type === 'story_task' || type === 'eclipse_grunt') {
-       const enemyId = context.pool[0]; 
        const mapInfo = MAPS.find(m => m.id === currentMapId);
-       const lvl = context.lvl ? context.lvl[0] : ((mapInfo?.lvl[0] || 5) + 3);
-       enemyParty.push(createPet(enemyId, lvl, true)); 
+       const baseLvl = context.lvl ? context.lvl[0] : ((mapInfo?.lvl[0] || 5) + 3);
+       if (context.eliteParty) {
+         context.eliteParty.forEach((ep, i) => {
+           const pet = createPet(ep.id, ep.level || baseLvl, true);
+           if (ep.moves) pet.moves = ep.moves.map(m => typeof m === 'object' ? m : (SKILL_DB.find(s => s.name === m) || pet.moves[0]));
+           if (ep.devilFruit) { pet.devilFruit = ep.devilFruit; pet.fruitUsed = false; pet.fruitTransformed = false; }
+           enemyParty.push(pet);
+         });
+       } else {
+         const enemyId = context.pool[0];
+         enemyParty.push(createPet(enemyId, baseLvl, true));
+       }
        trainerName = context.name;
        dropGold = context.drop || 500;
     }
@@ -5549,7 +5559,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   // 搭档羁绊系统 - 核心逻辑
   // ==========================================
+  const isPartnerSystemUnlocked = () => storyProgress > 19;
+
   const setPartner = (petA, petB) => {
+    if (!isPartnerSystemUnlocked()) { alert('🔒 搭档羁绊系统尚未解锁！\n\n完成【莉可莉丝篇·第壹章：搭档的意义】后解锁。'); return; }
     const update = (list) => list.map(p => {
       const uid = p.uid || p.id;
       if (uid === (petA.uid || petA.id)) return { ...p, partnerId: petB.uid || petB.id, bondPoints: p.partnerId === (petB.uid || petB.id) ? (p.bondPoints || 0) : 0 };
@@ -5580,6 +5593,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   const canUseCombo = (battle) => {
+    if (!isPartnerSystemUnlocked()) return false;
     if (!battle || comboUsedThisBattle) return false;
     if ((battle.turnCount || 0) < 3) return false;
     const activePet = battle.playerCombatStates?.[battle.activeIdx];
@@ -11138,14 +11152,14 @@ const renderMenu = () => {
                             padding:'5px 10px', borderRadius:'16px', fontSize:'11px', cursor:'pointer'
                           }}>解除</button>
                         )}
-                        <button onClick={() => setPartnerModal(true)} style={{
-                          background: partnerPet ? '#fff' : 'linear-gradient(135deg, #E91E63, #FF6090)',
-                          color: partnerPet ? '#E91E63' : '#fff',
+                        <button onClick={() => { if (!isPartnerSystemUnlocked()) { alert('🔒 搭档羁绊系统尚未解锁！\n\n完成【莉可莉丝篇·第壹章】后解锁。'); return; } setPartnerModal(true); }} style={{
+                          background: !isPartnerSystemUnlocked() ? '#ccc' : (partnerPet ? '#fff' : 'linear-gradient(135deg, #E91E63, #FF6090)'),
+                          color: !isPartnerSystemUnlocked() ? '#999' : (partnerPet ? '#E91E63' : '#fff'),
                           border: partnerPet ? '1px solid #E91E63' : 'none',
                           padding:'5px 14px', borderRadius:'16px', fontSize:'11px', fontWeight:'bold', cursor:'pointer',
                           boxShadow: partnerPet ? 'none' : '0 2px 8px rgba(233,30,99,0.3)'
                         }}>
-                          {partnerPet ? '更换' : '设置搭档'}
+                          {!isPartnerSystemUnlocked() ? '🔒 未解锁' : (partnerPet ? '更换' : '设置搭档')}
                         </button>
                       </div>
                     </div>
