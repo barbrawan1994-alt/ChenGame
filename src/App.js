@@ -3511,16 +3511,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
                             onMouseOut={e => { e.currentTarget.style.background= secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'; }}>
                             <span style={{width:'6px', height:'6px', borderRadius:'50%', background:cat.color, flexShrink:0}} />
-                            <span style={{flex:1, fontSize:'13px', fontWeight:'700', color:cat.color}}>{sec.title}</span>
+                            <span style={{flex:1, fontSize:'13px', fontWeight:'700', color:'rgba(255,255,255,0.92)'}}>{sec.title}</span>
                             {hasSub && <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginRight:'2px'}}>{sec.sub.length}条</span>}
                             {hasSub && <span style={{color:'rgba(255,255,255,0.3)', fontSize:'10px', transition:'transform 0.2s', transform: secOpen ? 'rotate(90deg)' : 'none'}}>▶</span>}
                           </div>
                           {hasSub && secOpen && (
                             <div style={{marginLeft:'16px', marginTop:'4px', display:'flex', flexDirection:'column', gap:'3px'}}>
                               {sec.sub.map((item, idx) => (
-                                <div key={idx} style={{padding:'8px 12px', borderRadius:'6px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.03)'}}>
-                                  <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.8)', marginBottom:'4px'}}>{item.t}</div>
-                                  <div style={{fontSize:'11.5px', lineHeight:'1.75', color:'rgba(255,255,255,0.78)', whiteSpace:'pre-line'}}>
+                                <div key={idx} style={{padding:'8px 12px', borderRadius:'6px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'}}>
+                                  <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.95)', marginBottom:'4px'}}>{item.t}</div>
+                                  <div style={{fontSize:'11.5px', lineHeight:'1.75', color:'rgba(255,255,255,0.85)', whiteSpace:'pre-line'}}>
                                     {q ? highlightSearch(item.c, q) : item.c}
                                   </div>
                                 </div>
@@ -3528,7 +3528,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             </div>
                           )}
                           {!hasSub && sec.content && (
-                            <div style={{padding:'4px 12px 8px 20px', fontSize:'12px', lineHeight:'1.7', color:'rgba(255,255,255,0.82)', whiteSpace:'pre-line'}}>
+                            <div style={{padding:'4px 12px 8px 20px', fontSize:'12px', lineHeight:'1.7', color:'rgba(255,255,255,0.88)', whiteSpace:'pre-line'}}>
                               {q ? highlightSearch(sec.content, q) : sec.content}
                             </div>
                           )}
