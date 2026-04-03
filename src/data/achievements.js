@@ -199,6 +199,22 @@ const ACHIEVEMENTS = [
     desc: '拥有5对Lv3搭档',
     hint: '提示：当五对精灵都达到完美默契…你就是真正的搭档大师',
     check: s => s.maxBondLv3Pairs >= 5, reward: { gold: 20000, title: '完美默契' }, hidden: true },
+
+  // ===== 奥特曼变身器系列 (6) =====
+  { id: 'ultra_first',    cat: 'COLLECTION', rarity: 'COMMON',    name: '光之初始',
+    desc: '获得第一个变身器', check: s => s.ultraCollected >= 1, reward: { gold: 500 } },
+  { id: 'ultra_10',       cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '变身器收藏家',
+    desc: '收集10种不同的变身器', check: s => s.ultraCollected >= 10, reward: { gold: 3000 } },
+  { id: 'ultra_30',       cat: 'COLLECTION', rarity: 'RARE',      name: '光之传承者',
+    desc: '收集30种不同的变身器', check: s => s.ultraCollected >= 30, reward: { gold: 8000, title: '光之战士' } },
+  { id: 'ultra_ssr',      cat: 'COLLECTION', rarity: 'EPIC',      name: 'SSR猎手',
+    desc: '获得5个SSR变身器', check: s => s.ultraSSRCount >= 5, reward: { gold: 15000, title: '传说巨人' } },
+  { id: 'ultra_win10',    cat: 'BATTLE',     rarity: 'UNCOMMON',  name: '变身战斗家',
+    desc: '变身战斗胜利10次', check: s => s.ultraBattleWins >= 10, reward: { gold: 5000 } },
+  { id: 'ultra_complete',  cat: 'SECRET',    rarity: 'LEGENDARY', name: '全变身器大师',
+    desc: '收集全部100种变身器',
+    hint: '提示：当所有光之巨人、怪兽和外星人的变身器齐聚…',
+    check: s => s.ultraCollected >= 100, reward: { gold: 50000, title: '宇宙之光' }, hidden: true },
 ];
 
 export const DEFAULT_ACH_STATS = {
@@ -270,6 +286,9 @@ export const DEFAULT_ACH_STATS = {
   cafeLevel: 0,
   lycorisChaptersCleared: 0,
   maxBondLv3Pairs: 0,
+  ultraCollected: 0,
+  ultraSSRCount: 0,
+  ultraBattleWins: 0,
 };
 
 export default ACHIEVEMENTS;

@@ -80,6 +80,12 @@ import {
   CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE, DRINK_LOOT_TABLES,
   DRINK_BREW_BASE_MS, DRINK_MIN_WORKER_STATS, calcBrewTimeMs,
 } from './data/lycoris';
+import {
+  ULTRA_DB, ULTRA_SKILLS, ULTRA_RARITY, ULTRA_FACTION, ULTRA_ROLE,
+  generateTransformer, rollTransformer, getUltraSkill, getUltraTemplate,
+  initUltraCombatState, generateEnemyTransformer, upgradeTransformer,
+  getTransformerUpgradeCost, TRANSFORMER_MAX_LEVEL, DEFAULT_ULTRA_STATE,
+} from './data/ultraman';
 
 const BREATHING_BUFFS = [
   { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +20%', effect: (p) => p.customBaseStats.p_atk = Math.floor(p.customBaseStats.p_atk * 1.2) },
@@ -159,6 +165,10 @@ export default function RPG(props) {
   // LycoReco咖啡厅
   const [cafe, setCafe] = useState(savedData.cafe || { ...DEFAULT_CAFE_STATE });
   const [cafeTab, setCafeTab] = useState('overview');
+
+  // 奥特曼战斗系统
+  const [ultraState, setUltraState] = useState(savedData.ultraState || { ...DEFAULT_ULTRA_STATE });
+  const [ultraView, setUltraView] = useState(null); // 'gallery' | 'manage' | null
 
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
@@ -2020,7 +2030,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        unlockedAchs,
        storyProgress,
        storyStep,
-       cafe
+       cafe,
+       ultraState,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -2121,9 +2132,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       // 50级以上精灵数量
       const allP = [...(party || []), ...(box || [])];
       next.lv50PetCount = allP.filter(p => (p?.level || 0) >= 50).length;
+      // 变身器收集
+      next.ultraCollected = (ultraState?.collection || []).length;
+      next.ultraSSRCount = (ultraState?.transformers || []).filter(t => t.rarity === 'SSR').length;
+      next.ultraBattleWins = ultraState?.ultraBattleWins || 0;
       return next;
     });
-  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress]);
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress, ultraState]);
 
   useEffect(() => {
     syncAchStats();
@@ -3429,6 +3444,206 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 游戏说明
   // ==========================================
+  // ==========================================
+  // 奥特曼变身器图鉴 & 管理
+  // ==========================================
+  const renderUltraGallery = () => {
+    const [tab, setTabLocal] = [ultraView || 'gallery', (t) => setUltraView(t)];
+    const owned = ultraState.transformers || [];
+    const collection = ultraState.collection || [];
+    const equipped = ultraState.equippedId ? owned.find(t => t.uid === ultraState.equippedId) : null;
+
+    const factionFilter = ultraView === 'ultra' ? null : (ultraView || null);
+    const filteredDB = ULTRA_DB;
+
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#0a0a1a 0%,#1a1a3e 50%,#0f0f2e 100%)', display:'flex', flexDirection:'column', height:'100vh'}}>
+        <div className="nav-header glass-panel" style={{flexShrink:0}}>
+          <button className="btn-back" onClick={() => setView(party.length > 0 ? (mapGrid.length > 0 ? 'grid_map' : 'world_map') : 'menu')}>返回</button>
+          <div className="nav-title">🔴 变身器系统</div>
+          <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)'}}>{collection.length}/{ULTRA_DB.length} 收集</div>
+        </div>
+
+        {/* 选项卡 */}
+        <div style={{display:'flex', gap:'0', padding:'8px 16px', flexShrink:0}}>
+          {[
+            {k:'gallery', l:'📖 图鉴', c:'#E53935'},
+            {k:'manage', l:'⚡ 管理', c:'#FF9800'},
+            {k:'equip', l:'🎯 装备', c:'#4CAF50'},
+          ].map(t => (
+            <button key={t.k} onClick={() => setTabLocal(t.k)} style={{
+              flex:1, padding:'10px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:'bold',
+              background: tab === t.k ? `${t.c}30` : 'transparent',
+              color: tab === t.k ? t.c : 'rgba(255,255,255,0.4)',
+              borderBottom: tab === t.k ? `2px solid ${t.c}` : '2px solid transparent',
+              transition:'all 0.2s'
+            }}>{t.l}</button>
+          ))}
+        </div>
+
+        <div style={{flex:1, overflow:'auto', padding:'12px 16px'}}>
+          {/* 图鉴页 */}
+          {tab === 'gallery' && (
+            <div>
+              {Object.entries(ULTRA_FACTION).map(([fk, fv]) => {
+                const items = ULTRA_DB.filter(u => u.faction === fk);
+                const ownedIds = collection;
+                return (
+                  <div key={fk} style={{marginBottom:'20px'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px'}}>
+                      <span style={{fontSize:'18px'}}>{fv.icon}</span>
+                      <span style={{fontSize:'14px', fontWeight:'bold', color:fv.color}}>{fv.name}</span>
+                      <span style={{fontSize:'11px', color:'rgba(255,255,255,0.4)'}}>({items.filter(i => ownedIds.includes(i.id)).length}/{items.length})</span>
+                    </div>
+                    <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:'8px'}}>
+                      {items.map(u => {
+                        const isOwned = ownedIds.includes(u.id);
+                        const rc = ULTRA_RARITY[u.rarity];
+                        return (
+                          <div key={u.id} onClick={() => { if(isOwned) alert(`${u.name}\n${u.desc}\n稀有度: ${u.rarity}\n类型: ${ULTRA_ROLE[u.role]?.name}`); }}
+                            style={{
+                              padding:'8px', borderRadius:'10px', textAlign:'center', cursor: isOwned ? 'pointer' : 'default',
+                              background: isOwned ? `${rc.color}15` : 'rgba(255,255,255,0.03)',
+                              border: isOwned ? `1px solid ${rc.color}40` : '1px solid rgba(255,255,255,0.05)',
+                              opacity: isOwned ? 1 : 0.4, transition:'all 0.2s'
+                          }}>
+                            <div style={{fontSize:'28px', marginBottom:'4px', filter: isOwned ? 'none' : 'grayscale(1)'}}>
+                              {u.emoji}
+                            </div>
+                            <div style={{fontSize:'9px', fontWeight:'bold', color: isOwned ? '#fff' : '#666', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                              {isOwned ? u.name : '???'}
+                            </div>
+                            <div style={{fontSize:'8px', color: rc.color, fontWeight:'bold', marginTop:'2px'}}>{u.rarity}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 管理页 */}
+          {tab === 'manage' && (
+            <div>
+              {owned.length === 0 ? (
+                <div style={{textAlign:'center', padding:'40px 0', color:'rgba(255,255,255,0.3)'}}>
+                  <div style={{fontSize:'40px', marginBottom:'10px'}}>🔴</div>
+                  <div>还没有变身器</div>
+                  <div style={{fontSize:'11px', marginTop:'5px'}}>通过商店抽取、剧情奖励或副本掉落获得</div>
+                </div>
+              ) : (
+                <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                  {owned.map(tf => {
+                    const rc = ULTRA_RARITY[tf.rarity];
+                    const isEquipped = ultraState.equippedId === tf.uid;
+                    const tmpl = getUltraTemplate(tf.templateId);
+                    return (
+                      <div key={tf.uid} style={{
+                        padding:'12px', borderRadius:'12px',
+                        background: isEquipped ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.05)',
+                        border: isEquipped ? '1.5px solid #4CAF50' : `1px solid ${rc.color}30`,
+                      }}>
+                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                          <div style={{fontSize:'32px'}}>{tf.emoji}</div>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                              <span style={{fontSize:'13px', fontWeight:'bold', color:'#fff'}}>{tf.name}</span>
+                              <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'6px', background:rc.bgGrad, color:'#fff', fontWeight:'bold'}}>{tf.rarity}</span>
+                              <span style={{fontSize:'9px', color:'rgba(255,255,255,0.4)'}}>Lv.{tf.level}</span>
+                              {isEquipped && <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'6px', background:'#4CAF50', color:'#fff'}}>装备中</span>}
+                            </div>
+                            <div style={{display:'flex', gap:'8px', marginTop:'4px', fontSize:'10px', color:'rgba(255,255,255,0.5)'}}>
+                              <span>HP:{tf.stats.hp}</span><span>攻:{tf.stats.atk}</span><span>防:{tf.stats.def}</span>
+                              <span>特攻:{tf.stats.spAtk}</span><span>速:{tf.stats.spd}</span>
+                            </div>
+                          </div>
+                          <div style={{display:'flex', flexDirection:'column', gap:'4px'}}>
+                            {!isEquipped && (
+                              <button onClick={() => setUltraState(prev => ({...prev, equippedId: tf.uid}))} style={{
+                                padding:'4px 12px', borderRadius:'8px', border:'none', background:'#4CAF50', color:'#fff',
+                                fontSize:'10px', fontWeight:'bold', cursor:'pointer'
+                              }}>装备</button>
+                            )}
+                            {tf.level < TRANSFORMER_MAX_LEVEL && (
+                              <button onClick={() => {
+                                const cost = getTransformerUpgradeCost(tf.level);
+                                if (gold < cost) { alert(`金币不足！需要 ${cost}`); return; }
+                                setGold(prev => prev - cost);
+                                setUltraState(prev => ({
+                                  ...prev,
+                                  transformers: prev.transformers.map(t => t.uid === tf.uid ? upgradeTransformer(t) : t)
+                                }));
+                              }} style={{
+                                padding:'4px 12px', borderRadius:'8px', border:'none', background:'#FF9800', color:'#fff',
+                                fontSize:'10px', fontWeight:'bold', cursor:'pointer'
+                              }}>升级({getTransformerUpgradeCost(tf.level)}G)</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 装备页 */}
+          {tab === 'equip' && (
+            <div style={{textAlign:'center'}}>
+              <div style={{marginBottom:'16px', padding:'16px', borderRadius:'14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)'}}>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.4)', marginBottom:'8px'}}>当前装备</div>
+                {equipped ? (
+                  <div>
+                    <div style={{fontSize:'40px'}}>{equipped.emoji}</div>
+                    <div style={{fontSize:'16px', fontWeight:'bold', color:'#fff', marginTop:'4px'}}>{equipped.name}</div>
+                    <div style={{fontSize:'11px', color:ULTRA_RARITY[equipped.rarity]?.color}}>{equipped.rarity} · Lv.{equipped.level}</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'6px'}}>{equipped.desc}</div>
+                    <button onClick={() => setUltraState(prev => ({...prev, equippedId: null}))} style={{
+                      marginTop:'8px', padding:'6px 20px', borderRadius:'10px', border:'1px solid #F44336', background:'transparent',
+                      color:'#F44336', fontSize:'11px', fontWeight:'bold', cursor:'pointer'
+                    }}>卸下</button>
+                  </div>
+                ) : (
+                  <div style={{color:'rgba(255,255,255,0.3)', padding:'20px'}}>
+                    <div style={{fontSize:'30px', marginBottom:'8px'}}>➕</div>
+                    <div style={{fontSize:'12px'}}>未装备变身器</div>
+                    <div style={{fontSize:'10px', marginTop:'4px'}}>去管理页装备一个变身器后，战斗中即可进行变身战斗</div>
+                  </div>
+                )}
+              </div>
+
+              {/* 抽取入口 */}
+              <div style={{padding:'16px', borderRadius:'14px', background:'linear-gradient(135deg, rgba(229,57,53,0.15), rgba(255,152,0,0.15))', border:'1px solid rgba(229,57,53,0.3)'}}>
+                <div style={{fontSize:'14px', fontWeight:'bold', color:'#E53935', marginBottom:'4px'}}>🎰 变身器抽取</div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginBottom:'10px'}}>消耗10000金币随机获得一个变身器</div>
+                <button onClick={() => {
+                  if (gold < 10000) { alert('金币不足！需要10000金币'); return; }
+                  setGold(prev => prev - 10000);
+                  const newTf = rollTransformer();
+                  setUltraState(prev => ({
+                    ...prev,
+                    transformers: [...prev.transformers, newTf],
+                    collection: prev.collection.includes(newTf.templateId) ? prev.collection : [...prev.collection, newTf.templateId]
+                  }));
+                  const rc = ULTRA_RARITY[newTf.rarity];
+                  alert(`🎉 获得了 ${newTf.rarity} 变身器！\n\n${newTf.emoji} ${newTf.name}\nHP:${newTf.stats.hp} 攻:${newTf.stats.atk} 防:${newTf.stats.def} 特攻:${newTf.stats.spAtk} 速:${newTf.stats.spd}`);
+                }} style={{
+                  padding:'10px 30px', borderRadius:'12px', border:'none',
+                  background:'linear-gradient(135deg, #E53935, #FF9800)', color:'#fff',
+                  fontSize:'13px', fontWeight:'bold', cursor:'pointer',
+                  boxShadow:'0 4px 15px rgba(229,57,53,0.4)'
+                }}>抽取 (10000G)</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderGuide = () => {
     const filtered = guideCat ? GAME_GUIDE.filter(g => g.id === guideCat) : GAME_GUIDE;
     const q = guideSearch.trim().toLowerCase();
@@ -5141,6 +5356,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
       battleEnemyParty[1].bondPoints = bondBase;
     }
 
+    // 奥特曼双轨战斗初始化
+    const playerTf = ultraState.equippedId ? ultraState.transformers.find(t => t.uid === ultraState.equippedId) : null;
+    const playerUltraCombat = playerTf ? initUltraCombatState(playerTf) : null;
+    let enemyUltraCombat = null;
+    if (isTrainer && playerUltraCombat) {
+      const avgLevel = enemyParty.reduce((s, p) => s + (p.level || 1), 0) / Math.max(1, enemyParty.length);
+      const enemyTf = generateEnemyTransformer(avgLevel);
+      enemyUltraCombat = initUltraCombatState(enemyTf);
+    }
+
     setBattle({
       enemyParty: battleEnemyParty,
       playerCombatStates: battlePlayerParty,
@@ -5165,6 +5390,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       activeVows: { player: null, enemy: null },
       turnCount: 0,
       enemyComboUsed: false,
+      playerUltra: playerUltraCombat,
+      enemyUltra: enemyUltraCombat,
+      ultraPhase: (playerUltraCombat && enemyUltraCombat) ? 'idle' : null,
+      ultraTurn: 0,
       ...extraBattleData,
     });
     
@@ -5935,6 +6164,114 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   // 咒术系统 - 领域展开
   // ==========================================
+  // ==========================================
+  // 奥特曼变身战斗执行
+  // ==========================================
+  const executeUltraAttack = () => {
+    if (!battle || battle.phase !== 'input') return;
+    const pu = battle.playerUltra;
+    const eu = battle.enemyUltra;
+    if (!pu || !eu || pu.currentHp <= 0 || eu.currentHp <= 0) return;
+
+    setBattle(prev => {
+      if (!prev) return prev;
+      const newPu = { ...prev.playerUltra };
+      const newEu = { ...prev.enemyUltra };
+      const logs = [...prev.logs];
+      const ultraTurn = (prev.ultraTurn || 0) + 1;
+
+      const calcUltraDmg = (attacker, defender, skill) => {
+        const isPhysical = skill.cat === 'physical';
+        const atk = isPhysical ? attacker.combatStats.atk : attacker.combatStats.spAtk;
+        const def = isPhysical ? defender.combatStats.def : defender.combatStats.spDef;
+        const power = skill.p || 0;
+        if (power === 0) return 0;
+        const base = Math.floor((power * 0.4 + 5) * (atk / Math.max(1, def)));
+        const rand = 0.85 + Math.random() * 0.15;
+        const crit = Math.random() < 0.1 ? 1.5 : 1;
+        return Math.max(1, Math.floor(base * rand * crit));
+      };
+
+      // 玩家选择一个技能（随机选最强的）
+      const playerSkills = newPu.combatSkills.filter(s => s.currentPp > 0 && s.p > 0);
+      const pSkill = playerSkills.length > 0 ? playerSkills.reduce((a, b) => (a.p || 0) > (b.p || 0) ? a : b) : newPu.combatSkills.find(s => s.currentPp > 0);
+
+      // 敌方AI选择技能
+      const enemySkills = newEu.combatSkills.filter(s => s.currentPp > 0 && s.p > 0);
+      const eSkill = enemySkills.length > 0 ? enemySkills[Math.floor(Math.random() * enemySkills.length)] : newEu.combatSkills.find(s => s.currentPp > 0);
+
+      if (!pSkill || !eSkill) {
+        logs.unshift('⚡ 变身战斗：双方能量耗尽！');
+        return { ...prev, playerUltra: newPu, enemyUltra: newEu, logs };
+      }
+
+      // 速度决定先后手
+      const pSpd = newPu.combatStats.spd;
+      const eSpd = newEu.combatStats.spd;
+      const playerFirst = pSpd >= eSpd;
+
+      const doAttack = (a, d, skill, aName, dName) => {
+        if (skill.cat === 'status') {
+          if (skill.effect?.type === 'HEAL') {
+            const heal = Math.floor(a.maxHp * (skill.effect.val || 0.3));
+            a.currentHp = Math.min(a.maxHp, a.currentHp + heal);
+            logs.unshift(`🔴 ${aName} 使用 ${skill.name}，恢复了 ${heal} HP`);
+          } else if (skill.effect?.type === 'PROTECT') {
+            a.isProtected = true;
+            logs.unshift(`🔴 ${aName} 使用 ${skill.name}，展开了防护罩`);
+          } else {
+            logs.unshift(`🔴 ${aName} 使用 ${skill.name}！`);
+          }
+          skill.currentPp--;
+          return;
+        }
+        const dmg = calcUltraDmg(a, d, skill);
+        if (d.isProtected) {
+          logs.unshift(`🛡️ ${dName} 的防护罩挡住了攻击！`);
+          d.isProtected = false;
+        } else {
+          d.currentHp = Math.max(0, d.currentHp - dmg);
+          logs.unshift(`⚡ ${aName} 使用 ${skill.name}，对 ${dName} 造成 ${dmg} 伤害！`);
+          if (skill.effect?.selfDmg) {
+            const selfD = Math.floor(a.maxHp * skill.effect.selfDmg);
+            a.currentHp = Math.max(1, a.currentHp - selfD);
+            logs.unshift(`💥 ${aName} 受到了 ${selfD} 反噬伤害`);
+          }
+          if (skill.effect?.leech) {
+            const heal = Math.floor(dmg * skill.effect.leech);
+            a.currentHp = Math.min(a.maxHp, a.currentHp + heal);
+            logs.unshift(`🩸 ${aName} 吸取了 ${heal} HP`);
+          }
+        }
+        skill.currentPp--;
+      };
+
+      const pName = `[己方] ${newPu.name}`;
+      const eName = `[敌方] ${newEu.name}`;
+
+      logs.unshift(`── 变身战斗 第${ultraTurn}回合 ──`);
+
+      if (playerFirst) {
+        doAttack(newPu, newEu, pSkill, pName, eName);
+        if (newEu.currentHp > 0) doAttack(newEu, newPu, eSkill, eName, pName);
+      } else {
+        doAttack(newEu, newPu, eSkill, eName, pName);
+        if (newPu.currentHp > 0) doAttack(newPu, newEu, pSkill, pName, eName);
+      }
+
+      if (newEu.currentHp <= 0) {
+        logs.unshift(`🎉 ${newEu.name} 被击败！训练家变身战获胜！`);
+        setUltraState(ps => ({...ps, ultraBattleWins: (ps.ultraBattleWins||0)+1}));
+      }
+      if (newPu.currentHp <= 0) {
+        logs.unshift(`💀 ${newPu.name} 被击败！训练家变身战失败...`);
+        setUltraState(ps => ({...ps, ultraBattleLosses: (ps.ultraBattleLosses||0)+1}));
+      }
+
+      return { ...prev, playerUltra: newPu, enemyUltra: newEu, logs, ultraTurn };
+    });
+  };
+
   const executeDomainExpansion = async () => {
     if (battle.phase !== 'input') return;
     const state = battle.playerCombatStates[battle.activeIdx];
@@ -7530,6 +7867,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
       }
     });
+
+    // 变身器掉落: 训练家/Boss/道馆战斗有概率掉落变身器
+    if (isTrainer || isGym || isChallenge || type === 'boss' || type === 'league') {
+      const tfDropChance = (type === 'boss' || isChallenge || type === 'league') ? 0.15 : (isGym ? 0.1 : 0.03);
+      if (Math.random() < tfDropChance) {
+        const newTf = rollTransformer();
+        setUltraState(prev => ({
+          ...prev,
+          transformers: [...prev.transformers, newTf],
+          collection: prev.collection.includes(newTf.templateId) ? prev.collection : [...prev.collection, newTf.templateId]
+        }));
+        addLog(`🔴 获得变身器: ${newTf.emoji} ${newTf.name} [${newTf.rarity}]!`);
+      }
+    }
 
     // 咒具掉落: 训练家/Boss/道馆战斗有概率掉落咒术道具
     if (isTrainer || isGym || isChallenge || type === 'boss') {
@@ -9964,7 +10315,8 @@ const renderMenu = () => {
               { key:'skill_dex', label:'技能大全', sub:`${allSkills.length}种`, color:'#3b82f6', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
               { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
               { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', wide: true, icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
+              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
+              { key:'ultra_gallery', label:'变身器图鉴', sub:`${ultraState.collection.length}/${ULTRA_DB.length}`, color:'#E53935', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="white" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg> },
             ].map(btn => (
               <button key={btn.key} onClick={() => setView(btn.key)} style={{
                 padding:'12px 14px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
@@ -11927,7 +12279,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, cafe };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, cafe, ultraState };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -12160,6 +12512,7 @@ const renderMenu = () => {
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'housing', icon: '🏡', label: '家园', action: () => setView('housing') },
+              { id: 'ultra', icon: '🔴', label: '变身', action: () => setView('ultra_gallery') },
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
@@ -13872,6 +14225,40 @@ const renderMenu = () => {
 
         </div>
 
+        {/* 奥特曼双轨战斗区 */}
+        {battle.playerUltra && battle.enemyUltra && (
+          <div style={{
+            background:'linear-gradient(135deg, rgba(229,57,53,0.08), rgba(255,152,0,0.08))',
+            borderTop:'1px solid rgba(229,57,53,0.2)', borderBottom:'1px solid rgba(229,57,53,0.2)',
+            padding:'6px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px'
+          }}>
+            {/* 己方变身器 */}
+            <div style={{flex:1, display:'flex', alignItems:'center', gap:'6px'}}>
+              <span style={{fontSize:'22px'}}>{battle.playerUltra.emoji}</span>
+              <div>
+                <div style={{fontSize:'10px', fontWeight:'bold', color:'#E53935'}}>{battle.playerUltra.name}</div>
+                <div style={{height:'4px', width:'60px', background:'rgba(0,0,0,0.2)', borderRadius:'2px', overflow:'hidden'}}>
+                  <div style={{height:'100%', width:`${(battle.playerUltra.currentHp/battle.playerUltra.maxHp)*100}%`, background:'linear-gradient(90deg,#E53935,#FF6F00)', borderRadius:'2px', transition:'width 0.3s'}}/>
+                </div>
+                <div style={{fontSize:'8px', color:'#999'}}>{battle.playerUltra.currentHp}/{battle.playerUltra.maxHp}</div>
+              </div>
+            </div>
+            {/* VS */}
+            <div style={{fontSize:'10px', fontWeight:'bold', color:'rgba(229,57,53,0.6)'}}>⚡VS⚡</div>
+            {/* 敌方变身器 */}
+            <div style={{flex:1, display:'flex', alignItems:'center', gap:'6px', justifyContent:'flex-end', textAlign:'right'}}>
+              <div>
+                <div style={{fontSize:'10px', fontWeight:'bold', color:'#1565C0'}}>{battle.enemyUltra.name}</div>
+                <div style={{height:'4px', width:'60px', background:'rgba(0,0,0,0.2)', borderRadius:'2px', overflow:'hidden', marginLeft:'auto'}}>
+                  <div style={{height:'100%', width:`${(battle.enemyUltra.currentHp/battle.enemyUltra.maxHp)*100}%`, background:'linear-gradient(90deg,#1565C0,#42A5F5)', borderRadius:'2px', transition:'width 0.3s'}}/>
+                </div>
+                <div style={{fontSize:'8px', color:'#999'}}>{battle.enemyUltra.currentHp}/{battle.enemyUltra.maxHp}</div>
+              </div>
+              <span style={{fontSize:'22px'}}>{battle.enemyUltra.emoji}</span>
+            </div>
+          </div>
+        )}
+
         {/* 底部操作栏 */}
         <div className="battle-panel-v2">
             {(battle.phase === 'input' || battle.phase === 'input_p1') ? (
@@ -13937,6 +14324,9 @@ const renderMenu = () => {
                               const canCombo = canUseCombo(battle);
                               return <button className="action-btn-h" style={{background: canCombo ? 'linear-gradient(135deg,#E91E63,#FF6090)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canCombo ? 1 : 0.7}} onClick={() => canCombo ? executeComboAttack() : alert(`协作技需要回合 ≥ 3\n当前回合: ${battle.turnCount || 0}`)} disabled={!canCombo}>{canCombo ? '协作' : `协作(${3-(battle.turnCount||0)}回合)`}</button>;
                             })()}
+                            {battle.playerUltra && battle.enemyUltra && battle.playerUltra.currentHp > 0 && (
+                              <button className="action-btn-h" style={{background:'linear-gradient(135deg,#E53935,#FF5722)'}} onClick={() => executeUltraAttack()}>变身战</button>
+                            )}
                         </div>
                     ) : (
                         <div className="actions-bar-h">
@@ -15268,6 +15658,7 @@ const renderMenu = () => {
       {view === 'housing' && renderHousing()}
       {view === 'achievements' && renderAchievements()}
       {view === 'guide' && renderGuide()}
+      {view === 'ultra_gallery' && renderUltraGallery()}
       {view === 'locked' && renderLocked()}
       {renderResultModal()} 
       {renderActivityModal()} 
