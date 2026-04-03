@@ -10327,7 +10327,7 @@ const renderMenu = () => {
                         </div>
                     );
                 }
-                if (badges.length < 8) { isLocked = true; lockReason = "需收集 8 枚徽章"; }
+                if (badges.length < 8) { isLocked = true; lockReason = `需收集 8 枚徽章 (当前${badges.length}枚)`; }
             } else if (index > 0) {
               const prevMap = MAPS[index - 1];
               if (m.id === 9 && !completedChallenges.includes('ECLIPSE_HQ_CLEARED')) { isLocked = true; lockReason = "需摧毁【日蚀要塞】"; }
@@ -12268,10 +12268,7 @@ const renderMenu = () => {
           </div>
           {/* 底部菜单栏 (保持不变) */}
           <div className="map-dock-capsule" style={{
-              position: 'absolute', bottom: '25px', left: '50%', transform: 'translateX(-50%)',
-              display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center',
-              background: 'rgba(255,255,255,0.95)', padding: '12px 30px', borderRadius: '50px', 
-              boxShadow: '0 15px 40px rgba(0,0,0,0.25)', zIndex: 100, whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap'
           }}>
             {[
               { id: 'worldmap', icon: '🗺️', label: '地图', action: () => { handleExitAndSave(); setMapTab('maps'); } },

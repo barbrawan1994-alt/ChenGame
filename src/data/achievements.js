@@ -82,7 +82,7 @@ const ACHIEVEMENTS = [
 
   // ===== 成长类 (15) =====
   { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: { gold: 800 } },
-  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部8枚道馆徽章',         check: s => s.badgeCount >= 8,      reward: { gold: 15000, title: '全徽章训练家' } },
+  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部13枚道馆徽章',        check: s => s.badgeCount >= 13,     reward: { gold: 15000, title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { gold: 10000, title: '联赛冠军' } },
   { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { gold: 50000, title: '联赛之王' } },
   { id: 'sect_first',      cat: 'GROWTH', rarity: 'UNCOMMON',  name: '门派弟子',     desc: '击败第一位门派掌门',          check: s => s.sectChiefsDefeated >= 1, reward: { gold: 3000 } },
@@ -112,7 +112,7 @@ const ACHIEVEMENTS = [
 
   // ===== 精通类 (9) =====
   { id: 'gold_million',    cat: 'MASTERY', rarity: 'EPIC',      name: '亿万富翁',     desc: '累计获得1,000,000金币',       check: s => s.totalGoldEarned >= 1000000, reward: { gold: 50000, title: '亿万富翁' } },
-  { id: 'all_badges_sects', cat: 'MASTERY', rarity: 'LEGENDARY', name: '至高训练家',   desc: '获得全徽章+击败全门派+联赛冠军', check: s => s.badgeCount >= 8 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 1, reward: { gold: 100000, title: '至高训练家' } },
+  { id: 'all_badges_sects', cat: 'MASTERY', rarity: 'LEGENDARY', name: '至高训练家',   desc: '获得全徽章+击败全门派+联赛冠军', check: s => s.badgeCount >= 13 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 1, reward: { gold: 100000, title: '至高训练家' } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 12, reward: { gold: 200000, title: '精灵大师' } },
   { id: 'completionist',   cat: 'MASTERY', rarity: 'LEGENDARY', name: '完美主义者',   desc: '解锁50个成就',                check: s => s.achievementCount >= 50, reward: { gold: 150000, title: '完美主义者' } },
   { id: 'speed_demon',     cat: 'MASTERY', rarity: 'RARE',      name: '速攻战术',     desc: '在3回合内结束战斗20次',       check: s => s.quickWins >= 20,      reward: { gold: 10000 } },

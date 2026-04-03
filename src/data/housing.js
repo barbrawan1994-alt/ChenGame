@@ -265,7 +265,7 @@ export const SEED_DROP_TABLE = {
 export const TREASURE_COLLECTIONS = [
   {
     id: 'badges', name: '徽章收藏', icon: '🏅', desc: '收集各地道馆的挑战徽章',
-    setBonus: { score: 120 },
+    setBonus: { score: 200 },
     items: [
       { id: 'badge_1',  name: '草之徽章',   icon: '🍃', score: 15, condition: 'gym', mapId: 1 },
       { id: 'badge_2',  name: '回音徽章',   icon: '🔊', score: 15, condition: 'gym', mapId: 2 },
@@ -275,6 +275,11 @@ export const TREASURE_COLLECTIONS = [
       { id: 'badge_6',  name: '电子徽章',   icon: '💻', score: 20, condition: 'gym', mapId: 6 },
       { id: 'badge_7',  name: '幽魂徽章',   icon: '👻', score: 20, condition: 'gym', mapId: 7 },
       { id: 'badge_8',  name: '天空徽章',   icon: '🌤️', score: 20, condition: 'gym', mapId: 8 },
+      { id: 'badge_9',  name: '极寒徽章',   icon: '❄️', score: 20, condition: 'gym', mapId: 9 },
+      { id: 'badge_10', name: '流沙徽章',   icon: '🏜️', score: 20, condition: 'gym', mapId: 10 },
+      { id: 'badge_11', name: '甜梦徽章',   icon: '🍭', score: 20, condition: 'gym', mapId: 11 },
+      { id: 'badge_12', name: '星辰徽章',   icon: '🌌', score: 25, condition: 'gym', mapId: 12 },
+      { id: 'badge_13', name: '创世徽章',   icon: '🏆', score: 30, condition: 'gym', mapId: 13 },
     ],
   },
   {
