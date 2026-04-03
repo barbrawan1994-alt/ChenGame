@@ -2280,51 +2280,85 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setAnimEffect({ type: 'EVOLUTION', target: 'player' }); 
     setTimeout(() => setAnimEffect(null), 1500);
   };
-  // --- 融合逻辑处理函数 ---
+  // --- 融合逻辑处理函数 (使用完整混合算法) ---
   const handleFusion = () => {
     if (!fusionParent || !fusionChild) return;
     if (gold < 500) { alert("金币不足！"); return; }
     
-    // 1. 扣除金币
+    const p1 = fusionParent;
+    const p2 = fusionChild;
+    if (p1.uid === p2.uid) { alert("不能融合同一只精灵！"); return; }
+
     setGold(g => g - 500);
 
-    // 2. 生成子代 (以母本为原型，等级重置为1)
-    // 注意：这里假设你有一个 createPokemon 函数，如果没有，请替换为你生成精灵的逻辑
-    const newPet = { ...JSON.parse(JSON.stringify(POKEDEX.find(p => p.id === fusionChild.id) || fusionChild)) };
-    newPet.uid = Date.now() + Math.random(); // 生成新ID
-    newPet.level = 1;
-    newPet.currentHp = newPet.hp; // 假设基础hp
-    newPet.exp = 0;
-    newPet.nextExp = 100;
+    const baseParent = Math.random() < 0.5 ? p1 : p2;
+    const otherParent = baseParent.uid === p1.uid ? p2 : p1;
     
-    // 3. 融合特性：概率异色 (20%)
-    if (Math.random() < 0.2) {
-        newPet.isFusedShiny = true; // 标记为融合异色
+    const isFusedShiny = Math.random() < 0.2;
+
+    const isDualType = Math.random() < 0.2;
+    let secondaryType = null;
+    if (isDualType && otherParent.type !== baseParent.type) {
+        secondaryType = otherParent.type;
     }
 
-    // 4. 继承父本的一个技能 (如果有)
-    if (fusionParent.moves && fusionParent.moves.length > 0) {
-        const inheritMove = fusionParent.moves[Math.floor(Math.random() * fusionParent.moves.length)];
-        if (!newPet.moves) newPet.moves = [];
-        // 避免重复
-        if (!newPet.moves.find(m => m.name === inheritMove.name)) {
-            newPet.moves.push(inheritMove);
-        }
-    }
+    const getBase = (pet) => pet.customBaseStats || (POKEDEX.find(d=>d.id===pet.id) || POKEDEX[0]);
+    const b1 = getBase(p1);
+    const b2 = getBase(p2);
+    const mixStat = (key) => {
+        const v1 = b1[key] || (key.includes('atk') ? b1.atk : b1.def) || 50;
+        const v2 = b2[key] || (key.includes('atk') ? b2.atk : b2.def) || 50;
+        const min = Math.min(v1, v2) * 0.9;
+        const max = Math.max(v1, v2) * 1.1;
+        return Math.floor(min + Math.random() * (max - min));
+    };
+    const newBaseStats = {
+        hp: mixStat('hp'), p_atk: mixStat('p_atk'), p_def: mixStat('p_def'),
+        s_atk: mixStat('s_atk'), s_def: mixStat('s_def'), spd: mixStat('spd'),
+        crit: Math.max(b1.crit||5, b2.crit||5)
+    };
 
-    // 5. 满血：融合后的精灵HP回满
-    const maxHp = getStats(newPet).maxHp;
-    newPet.currentHp = maxHp;
+    const poolMoves = [...(p1.moves||[]), ...(p2.moves||[])];
+    const uniqueMoves = _.uniqBy(poolMoves, 'name');
+    const finalMoves = _.sampleSize(uniqueMoves, 4);
 
-    // 6. 更新队伍：移除父母，添加子代
+    const avgLevel = Math.floor((p1.level + p2.level) / 2);
+    const natureData = NATURE_DB[baseParent.nature || 'docile'];
+    const newNextExp = Math.floor(avgLevel * 100 * (natureData?.exp || 1.0));
+
+    const randIV = () => Math.floor(Math.random() * 32);
+    const newPet = {
+        ...baseParent,
+        uid: Date.now() + Math.random(),
+        name: `融合·${baseParent.name}`,
+        level: avgLevel, exp: 0, nextExp: newNextExp,
+        moves: finalMoves,
+        customBaseStats: newBaseStats,
+        secondaryType: secondaryType,
+        isFusedShiny: isFusedShiny,
+        isShiny: isFusedShiny,
+        equip: null,
+        ivs: { hp: randIV(), p_atk: randIV(), p_def: randIV(),
+               s_atk: randIV(), s_def: randIV(), spd: randIV(), crit: Math.floor(Math.random()*10) },
+        evs: {},
+        canEvolve: false,
+    };
+
+    const finalStats = getStats(newPet);
+    newPet.currentHp = finalStats.maxHp;
+
     const newParty = party.filter(p => p.uid !== fusionParent.uid && p.uid !== fusionChild.uid);
     newParty.push(newPet);
     setParty(newParty);
     
-    // 6. 重置并提示
     setFusionParent(null);
     setFusionChild(null);
-    alert(`🧬 融合成功！\n父母消失了，一只全新的 ${newPet.name} (Lv.1) 诞生了！\n${newPet.isFusedShiny ? "✨ 哇！发生了基因突变，是异色个体！" : ""}`);
+
+    let msg = `🧬 融合成功！\n获得了 Lv.${newPet.level} ${newPet.name}！`;
+    if (isFusedShiny) msg += "\n✨ 发生突变！是异色闪光精灵！(全属性+35%)";
+    if (isDualType && secondaryType) msg += `\n⚡ 觉醒了双重属性：${TYPES[baseParent.type]?.name||baseParent.type} / ${TYPES[secondaryType]?.name||secondaryType}`;
+    msg += `\n📊 种族值由父母双方混合产生`;
+    alert(msg);
   };
 
     // ==========================================
@@ -13633,11 +13667,14 @@ const renderMenu = () => {
             moves: oldPet.moves, equip: oldPet.equip, equips: oldPet.equips,
             nature: oldPet.nature, ivs: oldPet.ivs, evs: oldPet.evs,
             isShiny: oldPet.isShiny, isFusedShiny: oldPet.isFusedShiny,
-            intimacy: oldPet.intimacy, charm: oldPet.charm, trait: oldPet.trait,
+            intimacy: oldPet.intimacy, charm: oldPet.charm,
+            trait: newPet.trait || oldPet.trait,
+            secondaryType: newPet.type2 || oldPet.secondaryType,
             sectId: oldPet.sectId, sectLevel: oldPet.sectLevel,
             devilFruit: oldPet.devilFruit,
             diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
             cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
+            customBaseStats: oldPet.customBaseStats,
             canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
         });
         // 进化后回满血
