@@ -4605,11 +4605,24 @@ button:active {
 
 /* --- 剧情光柱 --- */
 .story-beacon {
-  width: 12px; height: 40px;
-  background: linear-gradient(180deg, rgba(255,235,59,0.9) 0%, rgba(255,235,59,0) 100%);
-  border-radius: 6px 6px 0 0;
-  animation: beacon-glow 1.5s ease-in-out infinite;
-  box-shadow: 0 0 16px rgba(255,235,59,0.5);
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.story-beacon::before {
+  content: '❗';
+  font-size: 20px;
+  animation: beacon-glow 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(255,235,59,0.8));
+  z-index: 10;
+}
+.story-beacon::after {
+  content: '';
+  position: absolute;
+  width: 80%; height: 80%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,235,59,0.4) 0%, transparent 70%);
+  animation: beacon-pulse 2s ease-in-out infinite;
 }
 
 /* --- 玩家标记 v3 --- */
@@ -4685,8 +4698,12 @@ button:active {
 }
 
 @keyframes beacon-glow {
-  0%, 100% { opacity: 0.7; transform: scaleY(1); }
-  50% { opacity: 1; transform: scaleY(1.1); }
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+@keyframes beacon-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 0.6; transform: scale(1.2); }
 }
 
 @keyframes player-bob {

@@ -1464,18 +1464,19 @@ const CHARM_RANK_COLORS = {
            } else {
               const nextStep = pendingTask.step + 1;
               setStoryStep(nextStep);
+              console.log('[Story] Dialog task done, advancing to step', nextStep);
               
               const currentChapter = STORY_SCRIPT[storyProgress];
               const nextTask = currentChapter?.tasks?.find(t => t.step === nextStep);
               if(nextTask) {
-                  alert(`✅ 线索已收集！\n新的目标出现在坐标 (${nextTask.x}, ${nextTask.y})`);
                   setMapGrid(prev => {
                       const newGrid = prev.map(row => [...row]);
                       if(newGrid[nextTask.y]) newGrid[nextTask.y][nextTask.x] = 99;
                       return newGrid;
                   });
+                  alert(`✅ 剧情推进！\n\n📍 下一个目标: ${nextTask.name}\n📌 位置: 坐标 (${nextTask.x}, ${nextTask.y})\n\n${nextTask.type === 'battle' ? '⚔️ 前方有敌人！' : '💬 前方有人等待...'}`);
               } else {
-                  alert("🎉 阶段任务全部完成！\n现在可以去挑战道馆馆主了！");
+                  alert("🎉 本章剧情任务全部完成！\n现在可以去挑战道馆馆主了！");
               }
            }
            setPendingTask(null);
@@ -4540,6 +4541,26 @@ const useGrowthItem = (petIndex, itemId) => {
       }
     }
   }, [playerPos, mapGrid, currentMapId, mapProgress, badges, inventory, storyProgress, storyStep]);
+
+  // 剧情任务标记安全网: 确保当前任务的 tile 99 始终正确放置在地图上
+  useEffect(() => {
+    if (view !== 'grid_map' || !mapGrid.length || isDialogVisible || battle) return;
+    const currentChapter = STORY_SCRIPT[storyProgress];
+    if (!currentChapter || currentChapter.mapId !== currentMapId) return;
+    const currentTask = currentChapter.tasks?.find(t => t.step === storyStep);
+    if (!currentTask) return;
+    if (mapGrid[currentTask.y]?.[currentTask.x] === 99) return;
+    // tile 99 不在正确位置 → 修复
+    console.log(`[StoryFix] Placing tile 99 at (${currentTask.x},${currentTask.y}) for step ${storyStep}`);
+    setMapGrid(prev => {
+      if (!prev.length || prev[currentTask.y]?.[currentTask.x] === 99) return prev;
+      const g = prev.map(r => [...r]);
+      if (g[currentTask.y] && currentTask.x < (g[0]?.length || 0)) {
+        g[currentTask.y][currentTask.x] = 99;
+      }
+      return g;
+    });
+  }, [storyStep, storyProgress, view, currentMapId, battle, isDialogVisible, mapGrid]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -7858,10 +7879,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const isStoryMatch = currentTask && currentTask.type === 'battle' && 
             (battle.storyTaskStep != null || battle.trainerName === currentTask.name);
         
+        console.log('[Story] handleWin:', { type, storyProgress, resolvedStep, isStoryMatch, taskName: currentTask?.name, battleStep: battle.storyTaskStep });
+
         if (isStoryMatch) {
             const nextStep = resolvedStep + 1;
             setStoryStep(nextStep);
             const nextTask = storyChapter.tasks?.find(t => t.step === nextStep);
+            console.log('[Story] Advanced to step', nextStep, nextTask ? `→ ${nextTask.name} at (${nextTask.x},${nextTask.y})` : '→ all tasks done');
             if (nextTask) {
                 setMapGrid(prevGrid => {
                     const newGrid = prevGrid.map(row => [...row]); 
@@ -7870,9 +7894,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
                     }
                     return newGrid;
                 });
-                setTimeout(() => alert(`✅ 威胁已清除！\n\n新的线索出现在坐标 (${nextTask.x}, ${nextTask.y})`), 100);
+                setTimeout(() => alert(`✅ 剧情推进！\n\n📍 下一个目标: ${nextTask.name}\n📌 位置: 坐标 (${nextTask.x}, ${nextTask.y})\n\n${nextTask.type === 'battle' ? '⚔️ 前方有敌人！' : '💬 前方有人等待...'}`), 100);
             } else {
-                setTimeout(() => alert("🎉 阶段任务全部完成！\n\n道路已打通，现在可以去挑战道馆馆主了！"), 100);
+                setTimeout(() => alert("🎉 本章剧情任务全部完成！\n\n道路已打通，现在可以去挑战道馆馆主了！"), 100);
             }
 
             if (storyProgress === 12 && resolvedStep === 4) {
@@ -10000,14 +10024,14 @@ const renderMenu = () => {
               { key:'skill_dex', label:'技能大全', sub:`${allSkills.length}种`, color:'#3b82f6', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
               { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
               { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
+              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', wide:true, icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
             ].map(btn => (
               <button key={btn.key} onClick={() => setView(btn.key)} style={{
                 padding:'12px 14px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
                 background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
                 display:'flex', alignItems:'center', gap:'12px',
-                transition:'all 0.25s', backdropFilter:'blur(8px)', textAlign:'left',
-                ...(btn.wide ? { gridColumn: '1 / -1' } : {})
+                transition:'all 0.25s', backdropFilter:'blur(8px)',
+                ...(btn.wide ? { gridColumn: '1 / -1', justifyContent:'center', textAlign:'center' } : { textAlign:'left' })
               }}
               onMouseOver={e => { e.currentTarget.style.background=`${btn.color}15`; e.currentTarget.style.borderColor=`${btn.color}40`; e.currentTarget.style.transform='translateY(-1px)'; }}
               onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.transform='none'; }}
@@ -12050,6 +12074,23 @@ const renderMenu = () => {
                X:{playerPos.x} Y:{playerPos.y}
             </div>
           </div>
+          {/* 当前剧情任务提示条 */}
+          {(() => {
+            const ch = STORY_SCRIPT[storyProgress];
+            if (!ch || ch.mapId !== currentMapId) return null;
+            const task = ch.tasks?.find(t => t.step === storyStep);
+            if (!task) return (
+              <div style={{padding:'4px 12px', background:'rgba(76,175,80,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#4CAF50', fontWeight:'bold', textAlign:'center'}}>
+                ✅ 剧情任务已完成 · 前往道馆挑战馆主
+              </div>
+            );
+            return (
+              <div style={{padding:'4px 12px', background:'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#E65100', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <span>{task.type === 'battle' ? '⚔️' : '💬'} {task.name}</span>
+                <span style={{color:'#FF6D00'}}>📍({task.x},{task.y})</span>
+              </div>
+            );
+          })()}
           {/* 2D 视口地图 - 自适应铺满 */}
           <div className="grid-viewport-v2" ref={el => {
             if (el && !el.dataset.sized) {
@@ -13707,14 +13748,13 @@ const renderMenu = () => {
                     
                     {/* 敌方 HUD */}
                     <div className="hud-card hud-enemy" style={{marginBottom: '8px'}}>
-                        {/* 第一行：名字 + 门派 + 状态 */}
-                        <div className="hud-name-row" style={{
-                            display:'flex', alignItems:'center', gap:'6px', flexWrap:'nowrap', 
-                            justifyContent: 'flex-end', width: '100%', overflow:'visible'
-                        }}>
-                            <span style={{fontSize:'13px', fontWeight:'bold', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
+                            <span style={{fontSize:'13px', fontWeight:'bold', wordBreak:'break-all'}}>
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
+                            <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
                             {e.isFusedShiny ? (
                               <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
                             ) : e.isShiny ? (
@@ -13727,10 +13767,6 @@ const renderMenu = () => {
                                 {df.name}{e.fruitTransformed ? ` (${e.fruitTurnsLeft})` : ''}
                               </span>
                             ) : null; })()}
-                        </div>
-
-                        <div style={{fontSize:'14px', fontStyle:'italic', textAlign:'right', marginTop:'4px', marginRight:'2px'}}>
-                            Lv.{e.level}
                         </div>
 
                         {/* 第三行：血条（使用增强组件） */}
@@ -13849,9 +13885,11 @@ const renderMenu = () => {
 
                     {/* 我方 HUD */}
                     <div className="hud-card hud-player">
-                        {/* 第一行：名字 + 门派 + 状态 */}
-                        <div className="hud-name-row" style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
-                            <span style={{fontSize:'14px', fontWeight:'bold'}}>{p.name}</span>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
+                            <span style={{fontSize:'14px', fontWeight:'bold', wordBreak:'break-all'}}>{p.name}</span>
+                            <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{p.level}</span>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px'}}>
                             {p.isFusedShiny ? (
                               <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
                             ) : p.isShiny ? (
@@ -13864,10 +13902,6 @@ const renderMenu = () => {
                                 {df.name}{p.fruitTransformed ? ` (${p.fruitTurnsLeft})` : ''}
                               </span>
                             ) : null; })()}
-                        </div>
-                        
-                        <div style={{fontSize:'14px', fontStyle:'italic', textAlign:'right', marginTop:'4px', marginRight:'2px'}}>
-                            Lv.{p.level}
                         </div>
 
                         {/* 第三行：血条（使用增强组件） */}
