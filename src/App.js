@@ -179,7 +179,11 @@ export default function RPG(props) {
   // 环境与天气系统
   const [weather, setWeather] = useState('CLEAR');    
   const [mapWeathers, setMapWeathers] = useState({}); 
-  const [timePhase, setTimePhase] = useState('DAY'); 
+  const [timePhase, setTimePhase] = useState('DAY');
+  useEffect(() => {
+    const wk = mapWeathers[currentMapId] || 'CLEAR';
+    if (weather !== wk) setWeather(wk);
+  }, [currentMapId, mapWeathers]); 
   const [gameTime, setGameTime] = useState(0);
 
   
@@ -2135,7 +2139,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const handleStartGame = () => {
     if (hasSave) {
-      setView('grid_map');
+      setView('world_map');
     } else {
       setView('name_input'); 
     }
@@ -2686,8 +2690,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const currentHouseDef = HOUSE_TYPES.find(h => h.id === housing.currentHouse);
     const nextHouseIdx = currentHouseDef ? HOUSE_TYPES.indexOf(currentHouseDef) + 1 : 0;
     const nextHouseDef = HOUSE_TYPES[nextHouseIdx] || null;
-    const placedFurniture = housing.furniture.filter(f => f.placed);
-    const unplacedFurniture = housing.furniture.filter(f => !f.placed);
+    const placedFurniture = (housing.furniture || []).filter(f => f.placed);
+    const unplacedFurniture = (housing.furniture || []).filter(f => !f.placed);
     const benefits = calcResidentBenefits(placedFurniture);
     const furnitureScore = calcHouseScore(placedFurniture);
     const treasureScore = (housing.treasures || []).reduce((s, tid) => {
@@ -4187,6 +4191,10 @@ const useGrowthItem = (petIndex, itemId) => {
         return;
       }
 
+      if (!mapGrid[y]) {
+        setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy }));
+        return;
+      }
       const tileType = mapGrid[y][x];
 
       // ------------------------------------------------
@@ -11801,17 +11809,19 @@ const renderMenu = () => {
   // 6. [最终版] 探险地图界面 (含实时天气/时间显示)
   // ==========================================
   const renderGridMap = () => {
+    if (mapGrid.length === 0) {
+      setTimeout(() => setView('world_map'), 0);
+      return <div className="screen" style={{display:'flex',alignItems:'center',justifyContent:'center',background:'#1a1a2e',color:'#fff',fontSize:'16px'}}>加载中...</div>;
+    }
     const currentMapInfo = MAPS.find(m => m.id === currentMapId) || MAPS[0];
     const theme = THEME_CONFIG[currentMapInfo.type] || THEME_CONFIG.grass;
     
-    // 🔥 [修改] 获取当前环境信息
     const timeInfo = TIME_PHASES[timePhase];
     
     // 🔥 [核心] 从 mapWeathers 获取当前地图的天气，如果没有则默认 CLEAR
     const currentWeatherKey = mapWeathers[currentMapId] || 'CLEAR';
     // 同步更新全局 weather 状态以便 renderEnvironmentOverlay 使用 (如果有必要，或者直接传参)
-    // 这里我们做个小技巧：在渲染前把 weather 状态对齐，确保特效层正确
-    if (weather !== currentWeatherKey) setWeather(currentWeatherKey);
+    // 天气同步移到 useEffect 中避免在渲染期间 setState
     
     const weatherInfo = WEATHERS[currentWeatherKey];
 
@@ -12048,6 +12058,7 @@ const renderMenu = () => {
               { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
+              { id: 'housing', icon: '🏡', label: '家园', action: () => setView('housing') },
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
