@@ -13895,13 +13895,14 @@ const renderMenu = () => {
                         <div className="battle-platform battle-platform-enemy" />
                         
                         <div 
+                            key={`enemy-sprite-${battle.enemyActiveIdx}-${e.id}`}
                             ref={(el) => {
                                 if (el && !el.dataset.animated) {
                                     el.dataset.animated = 'true';
                                     GSAPAnimations.petEntry(el, 0.2);
                                 }
                             }}
-                            className={`sprite-v2 anim-idle-float ${animEffect?.target==='enemy' && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                            className={`sprite-v2 ${e.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                             style={{
                                 filter: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type)
                                   ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2) saturate(0.3)' 
@@ -13944,16 +13945,17 @@ const renderMenu = () => {
                     {/* 我方精灵 */}
                     <div className={`sprite-wrapper player-sprite-wrapper ${p.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginBottom: '6px', marginLeft: '5px'}}>
                         <div className="battle-platform battle-platform-player" />
+                         <div style={{transform: 'scaleX(-1)'}}>
                          <div 
+                             key={`player-sprite-${battle.activeIdx}-${p.id}`}
                              ref={(el) => {
                                  if (el && !el.dataset.animated) {
                                      el.dataset.animated = 'true';
                                      GSAPAnimations.petEntry(el, 0);
                                  }
                              }}
-                             className={`sprite-v2 anim-idle-float ${animEffect?.target==='player' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                             className={`sprite-v2 ${p.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                              style={{
-                                 transform: 'scaleX(-1)',
                                  filter: p.isFusedShiny
                                    ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)'
                                    : p.isShiny
@@ -13963,6 +13965,7 @@ const renderMenu = () => {
                                             ? 'shiny-flash-body 0.5s' : p.isFusedShiny ? 'fusedshiny-glow-battle 3s infinite' : p.isShiny ? 'shiny-glow-battle 3s infinite' : undefined
                              }}>
                             {renderAvatar(p)}
+                        </div>
                         </div>
 
                         {/* 特效层 */}
