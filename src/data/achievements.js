@@ -36,10 +36,13 @@ const ACHIEVEMENTS = [
   { id: 'catch_legend',    cat: 'COLLECTION', rarity: 'EPIC',      name: '神兽降临',     desc: '捕捉一只神兽',                check: s => s.legendCaught >= 1,    reward: { gold: 15000 } },
   { id: 'fruit_5',         cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '果实收藏家',   desc: '收集8种不同的恶魔果实',       check: s => s.uniqueFruits >= 8,    reward: { gold: 5000 } },
   { id: 'fruit_15',        cat: 'COLLECTION', rarity: 'RARE',      name: '果实鉴赏家',   desc: '收集20种不同的恶魔果实',      check: s => s.uniqueFruits >= 20,   reward: { gold: 15000 } },
-  { id: 'fruit_all',       cat: 'COLLECTION', rarity: 'LEGENDARY', name: '恶魔果实图鉴', desc: '收集全部35种恶魔果实',         check: s => s.uniqueFruits >= 35,   reward: { gold: 80000, title: '果实之王' } },
+  { id: 'fruit_all',       cat: 'COLLECTION', rarity: 'LEGENDARY', name: '恶魔果实图鉴', desc: '收集全部51种恶魔果实',         check: s => s.uniqueFruits >= 51,   reward: { gold: 80000, title: '果实之王' } },
   { id: 'catch_all_type',  cat: 'COLLECTION', rarity: 'EPIC',      name: '属性大师',     desc: '捕捉所有19种属性的精灵',      check: s => s.typesCollected >= 19, reward: { gold: 20000, title: '属性大师' } },
+  { id: 'catch_legend_5',  cat: 'COLLECTION', rarity: 'LEGENDARY', name: '神兽猎手',     desc: '捕捉5只不同的神兽',           check: s => s.legendCaught >= 5,    reward: { gold: 50000, title: '神兽猎手' } },
+  { id: 'fruit_30',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实鉴定师',   desc: '收集35种不同的恶魔果实',      check: s => s.uniqueFruits >= 35,   reward: { gold: 25000 } },
+  { id: 'catch_200',       cat: 'COLLECTION', rarity: 'RARE',      name: '精灵收割者',   desc: '累计捕捉200只精灵',           check: s => s.totalCaught >= 200,   reward: { gold: 10000 } },
 
-  // ===== 战斗类 (15) =====
+  // ===== 战斗类 (20) =====
   { id: 'win_first',       cat: 'BATTLE', rarity: 'COMMON',    name: '初次胜利',     desc: '赢得10场战斗',                check: s => s.battlesWon >= 10,     reward: { gold: 200 } },
   { id: 'win_50',          cat: 'BATTLE', rarity: 'UNCOMMON',  name: '百战老兵',     desc: '赢得100场战斗',               check: s => s.battlesWon >= 100,    reward: { gold: 5000 } },
   { id: 'win_200',         cat: 'BATTLE', rarity: 'RARE',      name: '战神降世',     desc: '赢得300场战斗',               check: s => s.battlesWon >= 300,    reward: { gold: 15000, title: '战神' } },
@@ -55,8 +58,13 @@ const ACHIEVEMENTS = [
   { id: 'vow_first',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '缚誓之力',     desc: '累计使用缚誓15次',            check: s => s.vowsUsed >= 15,       reward: { gold: 3000 } },
   { id: 'fruit_transform',  cat: 'BATTLE', rarity: 'UNCOMMON',  name: '恶魔觉醒',     desc: '累计在战斗中使用果实变身15次', check: s => s.fruitTransforms >= 15, reward: { gold: 3000 } },
   { id: 'fruit_50_trans',   cat: 'BATTLE', rarity: 'RARE',      name: '变身大师',     desc: '累计使用果实变身50次',        check: s => s.fruitTransforms >= 50, reward: { gold: 15000, title: '变身大师' } },
+  { id: 'win_1000',         cat: 'BATTLE', rarity: 'LEGENDARY', name: '千战不灭',     desc: '赢得1500场战斗',              check: s => s.battlesWon >= 1500,   reward: { gold: 100000, title: '千战之王' } },
+  { id: 'domain_30',        cat: 'BATTLE', rarity: 'EPIC',      name: '领域支配者',   desc: '累计展开领域30次',            check: s => s.domainsUsed >= 30,    reward: { gold: 20000, title: '领域支配者' } },
+  { id: 'vow_50',           cat: 'BATTLE', rarity: 'RARE',      name: '誓约之人',     desc: '累计使用缚誓50次',            check: s => s.vowsUsed >= 50,       reward: { gold: 10000 } },
+  { id: 'perfect_10',       cat: 'BATTLE', rarity: 'EPIC',      name: '不沾一尘',     desc: '以满HP赢得战斗10次',          check: s => s.perfectWins >= 10,    reward: { gold: 25000 } },
+  { id: 'clutch_5',         cat: 'BATTLE', rarity: 'EPIC',      name: '绝境专家',     desc: '在HP低于10%时赢5场战斗',      check: s => s.clutchWins >= 5,      reward: { gold: 20000, title: '绝境专家' } },
 
-  // ===== 探索类 (10) =====
+  // ===== 探索类 (14) =====
   { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '旅行者',       desc: '探索6个不同的地图',           check: s => s.mapsVisited >= 6,     reward: { gold: 800 } },
   { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索所有地图区域',            check: s => s.mapsVisited >= 13,    reward: { gold: 15000, title: '环游世界' } },
   { id: 'steps_1k',        cat: 'EXPLORE', rarity: 'COMMON',    name: '散步者',       desc: '在地图上行走5000步',          check: s => s.totalSteps >= 5000,   reward: { gold: 600 } },
@@ -67,8 +75,12 @@ const ACHIEVEMENTS = [
   { id: 'infinity_10',     cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '无尽攀登',     desc: '无限城堡到达第15层',          check: s => s.maxInfinityFloor >= 15, reward: { gold: 5000 } },
   { id: 'infinity_30',     cat: 'EXPLORE', rarity: 'RARE',      name: '深渊行者',     desc: '无限城堡到达第40层',          check: s => s.maxInfinityFloor >= 40, reward: { gold: 20000 } },
   { id: 'infinity_50',     cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限征服者',   desc: '无限城堡到达第80层',          check: s => s.maxInfinityFloor >= 80, reward: { gold: 60000, title: '无限征服者' } },
+  { id: 'infinity_100',    cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限之巅',     desc: '通关无限城堡100层',           check: s => s.maxInfinityFloor >= 100, reward: { gold: 100000, title: '无限之王' } },
+  { id: 'steps_100k',      cat: 'EXPLORE', rarity: 'EPIC',      name: '永不停歇',     desc: '在地图上行走150000步',        check: s => s.totalSteps >= 150000, reward: { gold: 40000, title: '远行者' } },
+  { id: 'chest_hunter',    cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '宝箱猎人',     desc: '开启50个地图宝箱',            check: s => s.chestsOpened >= 50,   reward: { gold: 5000 } },
+  { id: 'activity_master', cat: 'EXPLORE', rarity: 'RARE',      name: '活动达人',     desc: '参加活动总计50次',            check: s => (s.fishingWins || 0) + (s.beautyWins || 0) + (s.bugContestWins || 0) >= 50, reward: { gold: 15000 } },
 
-  // ===== 成长类 (11) =====
+  // ===== 成长类 (15) =====
   { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: { gold: 800 } },
   { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部8枚道馆徽章',         check: s => s.badgeCount >= 8,      reward: { gold: 15000, title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { gold: 10000, title: '联赛冠军' } },
@@ -80,8 +92,12 @@ const ACHIEVEMENTS = [
   { id: 'challenge_6',     cat: 'GROWTH', rarity: 'UNCOMMON',  name: '挑战达人',     desc: '通关8座挑战塔',               check: s => s.challengesCompleted >= 8, reward: { gold: 8000 } },
   { id: 'challenge_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '通关达人',     desc: '通关全部12座挑战塔',          check: s => s.challengesCompleted >= 12, reward: { gold: 40000, title: '全塔征服者' } },
   { id: 'gold_100k',       cat: 'GROWTH', rarity: 'UNCOMMON',  name: '小富即安',     desc: '累计获得200,000金币',         check: s => s.totalGoldEarned >= 200000, reward: { gold: 5000 } },
+  { id: 'lv50_team',       cat: 'GROWTH', rarity: 'UNCOMMON',  name: '中流砥柱',     desc: '拥有3只50级以上精灵',         check: s => s.lv50PetCount >= 3,    reward: { gold: 5000 } },
+  { id: 'lv80_pet',        cat: 'GROWTH', rarity: 'RARE',      name: '精英觉醒',     desc: '培养一只精灵到80级',          check: s => s.maxPetLevel >= 80,    reward: { gold: 8000 } },
+  { id: 'evo_master',      cat: 'GROWTH', rarity: 'RARE',      name: '进化达人',     desc: '累计进化精灵20次',            check: s => s.totalEvolutions >= 20, reward: { gold: 10000 } },
+  { id: 'fusion_master',   cat: 'GROWTH', rarity: 'RARE',      name: '融合专家',     desc: '累计融合精灵15次',            check: s => s.totalFusions >= 15,   reward: { gold: 10000 } },
 
-  // ===== 社交/生活类 (7) =====
+  // ===== 社交/生活类 (11) =====
   { id: 'house_first',     cat: 'SOCIAL', rarity: 'COMMON',    name: '安家落户',     desc: '将房子升级到2级',             check: s => s.houseLevel >= 2,      reward: { gold: 1500 } },
   { id: 'house_castle',    cat: 'SOCIAL', rarity: 'EPIC',      name: '城堡之主',     desc: '升级为城堡',                  check: s => s.houseLevel >= 5,      reward: { gold: 30000, title: '城堡领主' } },
   { id: 'furniture_10',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '室内设计师',   desc: '摆放20件家具',                check: s => s.furnitureCount >= 20, reward: { gold: 5000 } },
@@ -89,16 +105,23 @@ const ACHIEVEMENTS = [
   { id: 'fishing_5',       cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '钓鱼达人',     desc: '钓鱼活动获胜10次',            check: s => s.fishingWins >= 10,    reward: { gold: 3000 } },
   { id: 'beauty_first',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '选美冠军',     desc: '赢得精灵选美比赛3次',         check: s => s.beautyWins >= 3,      reward: { gold: 5000 } },
   { id: 'pvp_10',          cat: 'SOCIAL', rarity: 'RARE',      name: 'PvP强者',      desc: '赢得10场PvP对战',             check: s => s.pvpWins >= 10,        reward: { gold: 10000, title: 'PvP高手' } },
+  { id: 'fishing_20',      cat: 'SOCIAL', rarity: 'RARE',      name: '钓鱼大师',     desc: '钓鱼活动获胜30次',            check: s => s.fishingWins >= 30,    reward: { gold: 15000, title: '钓王' } },
+  { id: 'beauty_10',       cat: 'SOCIAL', rarity: 'RARE',      name: '选美之星',     desc: '赢得精灵选美比赛10次',        check: s => s.beautyWins >= 10,     reward: { gold: 10000, title: '选美之星' } },
+  { id: 'bug_contest_10',  cat: 'SOCIAL', rarity: 'RARE',      name: '虫王',         desc: '捕虫大会获得冠军10次',        check: s => s.bugContestWins >= 10, reward: { gold: 10000, title: '虫王' } },
+  { id: 'furniture_50',    cat: 'SOCIAL', rarity: 'RARE',      name: '装潢大师',     desc: '摆放50件家具',                check: s => s.furnitureCount >= 50, reward: { gold: 15000, title: '装潢大师' } },
 
-  // ===== 精通类 (6) =====
+  // ===== 精通类 (9) =====
   { id: 'gold_million',    cat: 'MASTERY', rarity: 'EPIC',      name: '亿万富翁',     desc: '累计获得1,000,000金币',       check: s => s.totalGoldEarned >= 1000000, reward: { gold: 50000, title: '亿万富翁' } },
   { id: 'all_badges_sects', cat: 'MASTERY', rarity: 'LEGENDARY', name: '至高训练家',   desc: '获得全徽章+击败全门派+联赛冠军', check: s => s.badgeCount >= 8 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 1, reward: { gold: 100000, title: '至高训练家' } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 12, reward: { gold: 200000, title: '精灵大师' } },
   { id: 'completionist',   cat: 'MASTERY', rarity: 'LEGENDARY', name: '完美主义者',   desc: '解锁50个成就',                check: s => s.achievementCount >= 50, reward: { gold: 150000, title: '完美主义者' } },
   { id: 'speed_demon',     cat: 'MASTERY', rarity: 'RARE',      name: '速攻战术',     desc: '在3回合内结束战斗20次',       check: s => s.quickWins >= 20,      reward: { gold: 10000 } },
   { id: 'type_master',     cat: 'MASTERY', rarity: 'EPIC',      name: '属性克制大师', desc: '利用属性克制造成超级有效500次', check: s => s.superEffectiveHits >= 500, reward: { gold: 25000 } },
+  { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴500+全门派+联赛10+全副本+全塔', check: s => s.dexCount >= 500 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 10 && s.dungeonsCleared >= 8 && s.challengesCompleted >= 12, reward: { gold: 500000, title: '真·大师' } },
+  { id: 'all_ach_80',      cat: 'MASTERY', rarity: 'EPIC',      name: '成就控',       desc: '解锁80个成就',                check: s => s.achievementCount >= 80, reward: { gold: 80000, title: '成就控' } },
+  { id: 'gold_5m',         cat: 'MASTERY', rarity: 'LEGENDARY', name: '黄金帝王',     desc: '累计获得5,000,000金币',       check: s => s.totalGoldEarned >= 5000000, reward: { gold: 200000, title: '黄金帝王' } },
 
-  // ===== 隐藏成就 (12) =====
+  // ===== 隐藏成就 (15) =====
   { id: 'secret_solo_god',   cat: 'SECRET', rarity: 'LEGENDARY', name: '以一敌百',
     desc: '用一只精灵独自击败冠军之路道馆馆主',
     hint: '提示：最终之地的守护者…你能只带一位勇士吗？',
@@ -148,6 +171,18 @@ const ACHIEVEMENTS = [
     name: '深渊回响',    desc: '无限城连续通关30层不使用任何回复道具',
     hint: '提示：不依赖药品的勇气——深渊中只有战斗',
     check: s => s.infinityNoHeal30 >= 1, reward: { gold: 40000, title: '深渊行者' }, hidden: true },
+  { id: 'secret_all_sects',  cat: 'SECRET', rarity: 'LEGENDARY',
+    name: '十二门全通',  desc: '击败全部12位门派掌门且队伍中有12种不同门派的精灵',
+    hint: '提示：武林中有十二条路——你能全部走一遍吗？',
+    check: s => s.sectChiefsDefeated >= 12 && s.partySectDiv >= 6, reward: { gold: 60000, title: '武林至尊' }, hidden: true },
+  { id: 'secret_triple_sys',  cat: 'SECRET', rarity: 'LEGENDARY',
+    name: '三系合一',    desc: '在同一场战斗中使用领域展开+缚誓+果实变身',
+    hint: '提示：将咒术、誓约与恶魔之力在一场战斗中全部释放…',
+    check: s => s.tripleSystemBattle >= 1, reward: { gold: 80000, title: '三系宗师' }, hidden: true },
+  { id: 'secret_nomoney',     cat: 'SECRET', rarity: 'RARE',
+    name: '身无分文',    desc: '金币恰好为0时赢下一场战斗',
+    hint: '提示：口袋空空的勇气——穷途末路的胜利',
+    check: s => s.zeroGoldWin >= 1, reward: { gold: 10000 }, hidden: true },
 ];
 
 export const DEFAULT_ACH_STATS = {
@@ -205,6 +240,14 @@ export const DEFAULT_ACH_STATS = {
   oneRoundTrainerWin: 0,
   longestBattle: 0,
   infinityNoHeal30: 0,
+  chestsOpened: 0,
+  bugContestWins: 0,
+  lv50PetCount: 0,
+  totalEvolutions: 0,
+  totalFusions: 0,
+  partySectDiv: 0,
+  tripleSystemBattle: 0,
+  zeroGoldWin: 0,
 };
 
 export default ACHIEVEMENTS;

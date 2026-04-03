@@ -16,10 +16,10 @@ export const FRUIT_CATEGORY_NAMES = {
 };
 
 // ============================================================
-// 35种恶魔果实
+// 51种恶魔果实
 // ============================================================
 export const DEVIL_FRUITS = {
-  // ===================== 超人系 (12种) =====================
+  // ===================== 超人系 (17种) =====================
   df_gomu: {
     id: 'df_gomu', name: '橡胶果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '身体变成橡胶，免疫电系攻击，物攻与速度大幅提升',
@@ -139,8 +139,55 @@ export const DEVIL_FRUITS = {
     transformMove: { name: '腐蚀之触', t: 'STEEL', p: 70, pp: 10, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.6 } },
   },
+  df_jiki: {
+    id: 'df_jiki', name: '磁磁果实', category: 'PARAMECIA', rarity: 'EPIC',
+    desc: '操控磁力场，钢系技能威力大增，可牵引对手降低速度',
+    duration: 5,
+    transform: {
+      sAtkMult: 1.4, typeBoost: { STEEL: 1.5 }, enemySpdDown: 1,
+    },
+    transformMove: { name: '磁暴轰击', t: 'STEEL', p: 105, pp: 5, acc: 95, isFruitMove: true,
+      effect: { type: 'DEBUFF', stat: 'spd', val: 1, target: 'enemy', chance: 0.5 } },
+  },
+  df_bari: {
+    id: 'df_bari', name: '屏障果实', category: 'PARAMECIA', rarity: 'RARE',
+    desc: '展开绝对防御屏障，物理伤害大幅减少，反弹部分伤害',
+    duration: 5,
+    transform: {
+      defMult: 1.7, reflectPhysical: 0.25, spdMult: 0.9,
+    },
+    transformMove: { name: '壁垒压制', t: 'PSYCHIC', p: 80, pp: 8, acc: 100, isFruitMove: true },
+  },
+  df_wara: {
+    id: 'df_wara', name: '草草果实', category: 'PARAMECIA', rarity: 'RARE',
+    desc: '操控稻草进行攻击，草系增伤，每回合少量恢复',
+    duration: 5,
+    transform: {
+      atkMult: 1.25, healPerTurn: 0.06, typeBoost: { GRASS: 1.4 },
+    },
+    transformMove: { name: '稻草铡刀', t: 'GRASS', p: 85, pp: 8, acc: 100, isFruitMove: true },
+  },
+  df_horu: {
+    id: 'df_horu', name: '荷尔蒙果实', category: 'PARAMECIA', rarity: 'EPIC',
+    desc: '注入荷尔蒙激发潜能，全属性中等提升并附带状态治疗',
+    duration: 4,
+    transform: {
+      atkMult: 1.25, defMult: 1.25, spdMult: 1.25, cureStatus: true,
+    },
+    transformMove: { name: '治愈荷尔蒙', t: 'NORMAL', p: 90, pp: 6, acc: 100, isFruitMove: true },
+  },
+  df_gasu: {
+    id: 'df_gasu', name: '瓦斯果实', category: 'PARAMECIA', rarity: 'COMMON',
+    desc: '释放有毒瓦斯，降低对手命中率，攻击附带中毒',
+    duration: 5,
+    transform: {
+      sAtkMult: 1.15, enemyAccDown: 1, onHitPoison: 0.3,
+    },
+    transformMove: { name: '毒气爆炸', t: 'POISON', p: 75, pp: 10, acc: 95, isFruitMove: true,
+      effect: { type: 'STATUS', status: 'PSN', chance: 0.5, target: 'enemy' } },
+  },
 
-  // ===================== 动物系 (12种) =====================
+  // ===================== 动物系 (17种) =====================
   df_hito_buddha: {
     id: 'df_hito_buddha', name: '人人果实·大佛形态', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '化身巨大金佛，全属性大幅提升，冲击波威力极高',
@@ -258,8 +305,56 @@ export const DEVIL_FRUITS = {
     },
     transformMove: { name: '狼牙撕咬', t: 'DARK', p: 80, pp: 8, acc: 100, isFruitMove: true },
   },
+  df_ryu_triceratops: {
+    id: 'df_ryu_triceratops', name: '龙龙果实·三角龙形态', category: 'ZOAN', rarity: 'LEGENDARY',
+    desc: '化身远古三角龙，物防极高，反弹物理伤害，强力冲撞',
+    duration: 3,
+    transform: {
+      defMult: 1.7, atkMult: 1.3, reflectPhysical: 0.3,
+    },
+    transformMove: { name: '三角猛冲', t: 'ROCK', p: 135, pp: 3, acc: 85, isFruitMove: true,
+      effect: { type: 'DEBUFF', stat: 'p_def', val: 2, target: 'enemy', chance: 0.4 } },
+  },
+  df_kumo_spider: {
+    id: 'df_kumo_spider', name: '蜘蛛果实·络新妇形态', category: 'ZOAN', rarity: 'EPIC',
+    desc: '化身巨型蜘蛛，织网降速，攻击附带毒素并可束缚',
+    duration: 4,
+    transform: {
+      sAtkMult: 1.35, spdMult: 1.2, enemySpdDown: 2, onHitPoison: 0.35,
+    },
+    transformMove: { name: '蛛网毒牙', t: 'BUG', p: 90, pp: 6, acc: 95, isFruitMove: true,
+      effect: { type: 'STATUS', status: 'PSN', chance: 0.5, target: 'enemy' } },
+  },
+  df_wani_croc: {
+    id: 'df_wani_croc', name: '鳄鱼果实·远古鳄形态', category: 'ZOAN', rarity: 'RARE',
+    desc: '化身远古鳄鱼，物攻物防均衡提升，咬击附带降防',
+    duration: 5,
+    transform: {
+      atkMult: 1.35, defMult: 1.35,
+    },
+    transformMove: { name: '远古噬咬', t: 'WATER', p: 95, pp: 6, acc: 95, isFruitMove: true,
+      effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.4 } },
+  },
+  df_taka_hawk: {
+    id: 'df_taka_hawk', name: '鸟鸟果实·隼形态', category: 'ZOAN', rarity: 'RARE',
+    desc: '化身猛禽隼，速度极大提升，飞行系技能增伤',
+    duration: 4,
+    transform: {
+      spdMult: 1.7, atkMult: 1.2, typeBoost: { FLYING: 1.5 },
+    },
+    transformMove: { name: '疾风猛禽', t: 'FLYING', p: 90, pp: 6, acc: 100, isFruitMove: true },
+  },
+  df_kame_turtle: {
+    id: 'df_kame_turtle', name: '龟龟果实·玄武形态', category: 'ZOAN', rarity: 'COMMON',
+    desc: '化身玄武巨龟，物防特防大增，回复少量HP',
+    duration: 6,
+    transform: {
+      defMult: 1.5, sDefMult: 1.5, healPerTurn: 0.05, spdMult: 0.7,
+    },
+    transformMove: { name: '玄武壁垒', t: 'WATER', p: 70, pp: 10, acc: 100, isFruitMove: true },
+  },
 
-  // ===================== 自然系 (11种) =====================
+  // ===================== 自然系 (17种) =====================
   df_magu: {
     id: 'df_magu', name: '岩浆果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为岩浆，火系技能威力翻倍，灼伤概率100%',
@@ -380,6 +475,62 @@ export const DEVIL_FRUITS = {
     transformMove: { name: '黏液陷阱', t: 'POISON', p: 70, pp: 10, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'spd', val: 2, target: 'enemy', chance: 0.6 } },
   },
+  df_numa: {
+    id: 'df_numa', name: '沼沼果实', category: 'LOGIA', rarity: 'EPIC',
+    desc: '身体化为无底沼泽，吞噬敌方攻击恢复HP，降低命中',
+    duration: 4,
+    transform: {
+      defMult: 1.3, hpDrain: 0.15, enemyAccDown: 2,
+    },
+    transformMove: { name: '无底沼泽', t: 'GROUND', p: 95, pp: 6, acc: 90, isFruitMove: true,
+      effect: { type: 'DEBUFF', stat: 'spd', val: 2, target: 'enemy', chance: 0.5 } },
+  },
+  df_kaze: {
+    id: 'df_kaze', name: '风风果实', category: 'LOGIA', rarity: 'EPIC',
+    desc: '身体化为狂风，速度极大提升，飞行系增伤，吹散增益',
+    duration: 4,
+    transform: {
+      spdMult: 1.7, typeBoost: { FLYING: 1.6 }, clearEnemyBuffs: true,
+    },
+    transformMove: { name: '暴风绝断', t: 'FLYING', p: 110, pp: 4, acc: 90, isFruitMove: true },
+  },
+  df_tsuchi: {
+    id: 'df_tsuchi', name: '土土果实', category: 'LOGIA', rarity: 'RARE',
+    desc: '身体化为大地，地面系增伤，物防极高，岩石系免疫',
+    duration: 5,
+    transform: {
+      defMult: 1.5, atkMult: 1.2, typeBoost: { GROUND: 1.4 }, typeImmune: 'ROCK',
+    },
+    transformMove: { name: '大地粉碎', t: 'GROUND', p: 90, pp: 6, acc: 95, isFruitMove: true },
+  },
+  df_kusa: {
+    id: 'df_kusa', name: '森森果实', category: 'LOGIA', rarity: 'RARE',
+    desc: '身体化为森林，草系增伤，每回合回复HP，降低对手速度',
+    duration: 5,
+    transform: {
+      sAtkMult: 1.3, healPerTurn: 0.1, typeBoost: { GRASS: 1.4 }, enemySpdDown: 1,
+    },
+    transformMove: { name: '森罗万象', t: 'GRASS', p: 90, pp: 6, acc: 95, isFruitMove: true },
+  },
+  df_plasma: {
+    id: 'df_plasma', name: '等离子果实', category: 'LOGIA', rarity: 'LEGENDARY',
+    desc: '身体化为等离子态，无视部分防御，电系技能威力翻倍',
+    duration: 3,
+    transform: {
+      sAtkMult: 1.5, ignoreDefPercent: 0.3, typeBoost: { ELECTRIC: 2.0 },
+    },
+    transformMove: { name: '等离子轰击', t: 'ELECTRIC', p: 140, pp: 3, acc: 85, isFruitMove: true,
+      effect: { type: 'STATUS', status: 'PAR', chance: 0.5, target: 'enemy' } },
+  },
+  df_jimen: {
+    id: 'df_jimen', name: '磁暴果实', category: 'LOGIA', rarity: 'COMMON',
+    desc: '释放磁暴能量，电系增伤，闪避小幅提升',
+    duration: 5,
+    transform: {
+      sAtkMult: 1.2, typeBoost: { ELECTRIC: 1.3 }, evaBoost: 0.2,
+    },
+    transformMove: { name: '磁暴冲击', t: 'ELECTRIC', p: 80, pp: 8, acc: 95, isFruitMove: true },
+  },
 };
 
 // 按稀有度分组的果实ID列表（用于随机抽取）
@@ -444,7 +595,12 @@ export const FRUIT_ICONS = {
   df_noro:            { bg: 'linear-gradient(135deg, #B39DDB, #EDE7F6)', pattern: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.3), transparent)', symbol: '遅', symbolColor: '#4527A0' },
   df_bomu:            { bg: 'linear-gradient(135deg, #FF6F00, #FFD54F)', pattern: 'radial-gradient(circle at 50% 50%, #FF3D00 20%, transparent 60%)', symbol: '爆', symbolColor: '#fff' },
   df_sabi:            { bg: 'linear-gradient(135deg, #8D6E63, #D7CCC8)', pattern: 'repeating-conic-gradient(#795548 0% 25%, transparent 0% 50%) 50% / 8px 8px', symbol: '锈', symbolColor: '#3E2723' },
-  // === 动物系 (12) ===
+  df_jiki:            { bg: 'linear-gradient(135deg, #1565C0, #90CAF9)', pattern: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 20%, transparent 60%)', symbol: '磁', symbolColor: '#0D47A1' },
+  df_bari:            { bg: 'linear-gradient(135deg, #00BCD4, #E0F7FA)', pattern: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.2) 3px, rgba(255,255,255,0.2) 5px)', symbol: '壁', symbolColor: '#006064' },
+  df_wara:            { bg: 'linear-gradient(135deg, #8BC34A, #DCEDC8)', pattern: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(139,195,74,0.2) 4px, rgba(139,195,74,0.2) 6px)', symbol: '草', symbolColor: '#33691E' },
+  df_horu:            { bg: 'linear-gradient(135deg, #EC407A, #F8BBD0)', pattern: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.4), transparent)', symbol: '荷', symbolColor: '#880E4F' },
+  df_gasu:            { bg: 'linear-gradient(135deg, #78909C, #CFD8DC)', pattern: 'radial-gradient(circle at 50% 60%, rgba(156,39,176,0.2), transparent 60%)', symbol: '瓦', symbolColor: '#37474F' },
+  // === 动物系 (17) ===
   df_hito_buddha:     { bg: 'linear-gradient(135deg, #FFD700, #FFF8E1)', pattern: 'radial-gradient(circle at 50% 30%, rgba(255,255,255,0.6), transparent)', symbol: '佛', symbolColor: '#FF6F00' },
   df_ryu_pteranodon:  { bg: 'linear-gradient(135deg, #1B5E20, #A5D6A7)', pattern: 'linear-gradient(45deg, rgba(0,0,0,0.1) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.1) 75%)', symbol: '翼', symbolColor: '#fff' },
   df_hebi_yamata:     { bg: 'linear-gradient(135deg, #4A148C, #EA80FC)', pattern: 'repeating-linear-gradient(60deg, transparent, transparent 3px, rgba(255,255,255,0.1) 3px, rgba(255,255,255,0.1) 5px)', symbol: '蛇', symbolColor: '#fff' },
@@ -457,7 +613,12 @@ export const FRUIT_ICONS = {
   df_uo_seiryu:       { bg: 'linear-gradient(135deg, #0D47A1, #42A5F5)', pattern: 'repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(255,255,255,0.1) 3px, rgba(255,255,255,0.1) 5px)', symbol: '龍', symbolColor: '#E3F2FD' },
   df_uma:             { bg: 'linear-gradient(135deg, #1A237E, #7986CB)', pattern: 'linear-gradient(180deg, transparent 40%, rgba(255,255,255,0.1) 60%)', symbol: '馬', symbolColor: '#C5CAE9' },
   df_inu_wolf:        { bg: 'linear-gradient(135deg, #37474F, #607D8B)', pattern: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.15), transparent)', symbol: '狼', symbolColor: '#ECEFF1' },
-  // === 自然系 (11) ===
+  df_ryu_triceratops: { bg: 'linear-gradient(135deg, #4E342E, #A1887F)', pattern: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.2) 20%, transparent)', symbol: '角', symbolColor: '#FFD54F' },
+  df_kumo_spider:     { bg: 'linear-gradient(135deg, #4A148C, #9C27B0)', pattern: 'repeating-linear-gradient(60deg, transparent, transparent 3px, rgba(255,255,255,0.1) 3px, rgba(255,255,255,0.1) 5px)', symbol: '蛛', symbolColor: '#CE93D8' },
+  df_wani_croc:       { bg: 'linear-gradient(135deg, #2E7D32, #81C784)', pattern: 'repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(0,0,0,0.08) 5px, rgba(0,0,0,0.08) 7px)', symbol: '鰐', symbolColor: '#1B5E20' },
+  df_taka_hawk:       { bg: 'linear-gradient(135deg, #5D4037, #D7CCC8)', pattern: 'radial-gradient(circle at 60% 30%, rgba(255,255,255,0.3), transparent)', symbol: '隼', symbolColor: '#fff' },
+  df_kame_turtle:     { bg: 'linear-gradient(135deg, #00695C, #80CBC4)', pattern: 'radial-gradient(ellipse at 50% 70%, rgba(0,0,0,0.15), transparent)', symbol: '亀', symbolColor: '#E0F2F1' },
+  // === 自然系 (17) ===
   df_magu:            { bg: 'linear-gradient(135deg, #B71C1C, #FF5722)', pattern: 'radial-gradient(circle at 60% 70%, #FF3D00, transparent 50%)', symbol: '岩', symbolColor: '#FFD600' },
   df_yami:            { bg: 'linear-gradient(135deg, #212121, #424242)', pattern: 'radial-gradient(circle at 50% 50%, #000 20%, transparent 60%)', symbol: '闇', symbolColor: '#9C27B0' },
   df_hie:             { bg: 'linear-gradient(135deg, #0097A7, #E0F7FA)', pattern: 'radial-gradient(circle at 40% 30%, rgba(255,255,255,0.6), transparent)', symbol: '氷', symbolColor: '#006064' },
@@ -469,6 +630,12 @@ export const FRUIT_ICONS = {
   df_yuki:            { bg: 'linear-gradient(135deg, #E1F5FE, #fff)', pattern: 'radial-gradient(circle at 30% 30%, rgba(100,181,246,0.3), transparent 50%)', symbol: '雪', symbolColor: '#0277BD' },
   df_doku:            { bg: 'linear-gradient(135deg, #7B1FA2, #CE93D8)', pattern: 'radial-gradient(circle at 40% 60%, rgba(255,255,255,0.2), transparent)', symbol: '毒', symbolColor: '#E1BEE7' },
   df_beta:            { bg: 'linear-gradient(135deg, #689F38, #C5E1A5)', pattern: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 30%, transparent)', symbol: '粘', symbolColor: '#33691E' },
+  df_numa:            { bg: 'linear-gradient(135deg, #3E2723, #795548)', pattern: 'radial-gradient(circle at 50% 70%, rgba(0,0,0,0.3), transparent 60%)', symbol: '沼', symbolColor: '#BCAAA4' },
+  df_kaze:            { bg: 'linear-gradient(135deg, #B3E5FC, #E1F5FE)', pattern: 'repeating-conic-gradient(rgba(3,169,244,0.1) 0% 25%, transparent 0% 50%) 50% / 10px 10px', symbol: '風', symbolColor: '#0277BD' },
+  df_tsuchi:          { bg: 'linear-gradient(135deg, #6D4C41, #D7CCC8)', pattern: 'repeating-conic-gradient(#5D4037 0% 25%, transparent 0% 50%) 50% / 8px 8px', symbol: '土', symbolColor: '#3E2723' },
+  df_kusa:            { bg: 'linear-gradient(135deg, #2E7D32, #A5D6A7)', pattern: 'radial-gradient(circle at 40% 50%, rgba(255,255,255,0.3), transparent 60%)', symbol: '森', symbolColor: '#1B5E20' },
+  df_plasma:          { bg: 'linear-gradient(135deg, #311B92, #7C4DFF)', pattern: 'radial-gradient(circle at 50% 50%, #B388FF 15%, transparent 50%)', symbol: '离', symbolColor: '#E8EAF6' },
+  df_jimen:           { bg: 'linear-gradient(135deg, #0288D1, #81D4FA)', pattern: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(255,255,255,0.15) 3px, rgba(255,255,255,0.15) 5px)', symbol: '暴', symbolColor: '#01579B' },
 };
 
 export function getFruitIcon(fruitId) {

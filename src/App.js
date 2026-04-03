@@ -2078,6 +2078,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.partyTypeDiv = partyTypes.size;
       // 隐藏成就：全队闪光
       next.fullShinyTeam = (party || []).length >= 6 && (party || []).every(p => p?.isShiny || p?.isFusedShiny);
+      // 队伍门派多样性
+      const partySects = new Set((party || []).map(p => p?.sect).filter(Boolean));
+      next.partySectDiv = partySects.size;
+      // 50级以上精灵数量
+      const allP = [...(party || []), ...(box || [])];
+      next.lv50PetCount = allP.filter(p => (p?.level || 0) >= 50).length;
       return next;
     });
   }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress]);
@@ -2307,6 +2313,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setParty(newParty);
     setFusionSlots([null, null]);
     setFusionMode(false);
+    updateAchStat({ totalFusions: 1 });
 
     // 11. 提示信息
     let msg = `🌀 融合成功！\n获得了 Lv.${newPet.level} ${newPet.name}！`;
@@ -3870,6 +3877,7 @@ const useGrowthItem = (petIndex, itemId) => {
       // ------------------------------------------------
       if (tileType === 4) {
         // 清除宝箱
+        updateAchStat({ chestsOpened: 1 });
         setMapGrid(prev => {
             const newGrid = prev.map(row => [...row]);
             newGrid[y][x] = 2;
@@ -4105,6 +4113,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 成就追踪
     if (typeKey === 'fishing') updateAchStat({ fishingWins: 1 });
     if (typeKey === 'beauty') updateAchStat({ beautyWins: 1 });
+    if (typeKey === 'bug') updateAchStat({ bugContestWins: 1 });
 
     // 3. 🔥 核心修复：智能判断奖励类型 🔥
     // 如果配置里写了 type='pet' 或者 ID 是数字，就当作精灵处理
@@ -5114,6 +5123,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
 
         player.activeVow = JSON.parse(JSON.stringify({ ...vow, turnsLeft: vow.reward.turns + 1, side: 'player' }));
+        player.vowUsed = true;
         addLog(`📜 [我方] ${player.name} 立下缚誓——${vow.name}!`);
         addLog(`📖 ${vow.desc}`);
         setAnimEffect({ type: 'BUFF', target: 'player' });
@@ -6995,6 +7005,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const alivePets = (battle.playerCombatStates || []).filter(p => p && p.currentHp > 0);
         if (alivePets.length === 1 && party.length === 1) winAchUpdates.soloGymClear = 1;
     }
+    // 三系合一：同一场使用领域+缚誓+果实
+    const pStates = battle.playerCombatStates || [];
+    const usedDomain = pStates.some(p => p?.usedDomain);
+    const usedVow = pStates.some(p => p?.vowUsed);
+    const usedFruit = pStates.some(p => p?.fruitUsed);
+    if (usedDomain && usedVow && usedFruit) winAchUpdates.tripleSystemBattle = 1;
+    // 身无分文
+    if (gold === 0) winAchUpdates.zeroGoldWin = 1;
     updateAchStat(winAchUpdates);
 
     setBattle(null);
@@ -13802,6 +13820,7 @@ const renderMenu = () => {
         // 开图鉴
         if (!caughtDex.includes(newPet.id)) setCaughtDex(prev => [...prev, newPet.id]);
         
+        updateAchStat({ totalEvolutions: 1 });
         setEvoAnim(null); // 关闭动画
     };
 
