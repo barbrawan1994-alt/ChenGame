@@ -253,8 +253,8 @@ useEffect(() => {
 
   const [skillFilter, setSkillFilter] = useState('ALL'); 
   const [skillSearchTerm, setSkillSearchTerm] = useState('');
- const [storyProgress, setStoryProgress] = useState(0); // 当前进行到第几章
-  const [storyStep, setStoryStep] = useState(0); // 0:刚进图, 1:完成中途事件, 2:已通关
+ const [storyProgress, setStoryProgress] = useState(savedData.storyProgress || 0);
+  const [storyStep, setStoryStep] = useState(savedData.storyStep || 0);
   const [dialogQueue, setDialogQueue] = useState([]); // 当前待播放的对话队列
   const [isDialogVisible, setIsDialogVisible] = useState(false); // 是否显示对话框
   const [currentDialogIndex, setCurrentDialogIndex] = useState(0); // 当前对话说到第几句
@@ -1983,7 +1983,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        housing,
        fruitInventory,
        achStats,
-       unlockedAchs
+       unlockedAchs,
+       storyProgress,
+       storyStep
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -10684,7 +10686,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
