@@ -146,41 +146,30 @@ export const CHALLENGES = [
   }
 ];
 export const CONTEST_CONFIG = {
-  // 1. 捕虫大赛 (所有地图轮换)
   bug: {
     id: 'contest_bug',
     name: '捕虫大会',
     desc: '在当前地图捕捉虫系精灵，分数越高奖励越稀有！精灵等级和奖励等级随地图变化',
-    entryFee: 500,
-    // 修正野怪池：110绿毛虫(弱), 38脉冲虫(中), 293寄生幼虫(中), 252圣甲虫(强/稀有)
+    entryFee: 2000,
     pool: [110, 38, 293, 252], 
-    // 分级奖励 (按分数从高到低)
     tiers: [
-      // 🏆 600分：必须抓到【闪光】的【强力虫子】才能达到
-      { min: 600, id: 327, name: '虫群主宰(闪光)', level: 5, shiny: true, ivs: 5, msg: '🏆 奇迹！你抓到了传说中的虫族霸主！' },
-      
-      // 🥇 450分：需要抓到【满个体值】的【强力虫子】(如圣甲虫)，或者【闪光】的【普通虫子】
-      { min: 450, id: 252, name: '圣甲虫', level: 5, shiny: false, ivs: 4, msg: '🥇 冠军！这只甲虫力大无穷！' },
-      
-      // 🥈 300分：需要抓到【强力虫子】(圣甲虫)，或者个体值极高的中等虫子
-      { min: 300, id: 112, name: '巴大蝶', level: 5, shiny: false, ivs: 3, msg: '🥈 优胜！这只蝴蝶翅膀很漂亮！' },
-      
-      // 🥉 0分：抓到绿毛虫通常只能拿这个
+      { min: 800, id: 327, name: '虫群主宰(闪光)', level: 5, shiny: true, ivs: 5, msg: '🏆 奇迹！你抓到了传说中的虫族霸主！' },
+      { min: 550, id: 252, name: '圣甲虫', level: 5, shiny: false, ivs: 4, msg: '🥇 冠军！这只甲虫力大无穷！' },
+      { min: 350, id: 112, name: '巴大蝶', level: 5, shiny: false, ivs: 3, msg: '🥈 优胜！这只蝴蝶翅膀很漂亮！' },
       { min: 0,   id: 110, name: '绿毛虫', level: 5, shiny: false, ivs: 2, msg: '🥉 参与奖。继续加油！' }
     ]
   },
 
-  // ... (钓鱼和选美保持不变，或者你可以按同样逻辑调整)
   fishing: {
     id: 'contest_fishing',
     name: '钓鱼王杯',
     desc: '钓起大鱼！体重随徽章数增长，高徽章更容易钓到大鱼！',
-    entryFee: 500,
+    entryFee: 2000,
     pool: [7, 24, 26, 173], 
     tiers: [
-      { min: 120.0, id: 410, name: '海啸领主(闪光)', level: 5, shiny: true, ivs: 5, msg: '🏆 钓鱼之神！传说中的深海霸主！' },
-      { min: 60.0, id: 235, name: '海啸王', level: 5, shiny: false, ivs: 4, msg: '🥇 冠军！这可是稀有的海怪！' },
-      { min: 25.0,  id: 22,  name: '激流鲨', level: 5, shiny: false, ivs: 3, msg: '🥈 亚军！这条鲨鱼很凶猛！' },
+      { min: 180.0, id: 410, name: '海啸领主(闪光)', level: 5, shiny: true, ivs: 5, msg: '🏆 钓鱼之神！传说中的深海霸主！' },
+      { min: 90.0, id: 235, name: '海啸王', level: 5, shiny: false, ivs: 4, msg: '🥇 冠军！这可是稀有的海怪！' },
+      { min: 40.0,  id: 22,  name: '激流鲨', level: 5, shiny: false, ivs: 3, msg: '🥈 亚军！这条鲨鱼很凶猛！' },
       { min: 0,     id: 7,   name: '泡泡鱼', level: 5, shiny: false, ivs: 2, msg: '🥉 只有一条泡泡鱼... 拿去煲汤吧。' }
     ]
   },

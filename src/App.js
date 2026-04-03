@@ -3838,13 +3838,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (p.evo) evolvedIds.add(p.evo);
     });
 
-    // 2. 动态筛选合法的初始精灵(排除进化型、神兽、高级)
+    // 2. 动态筛选合法的初始精灵(排除进化型、神兽、高级、种族值>450)
     const validStarters = POKEDEX.filter(p => {
       if (!p || !p.id) return false;
       if (evolvedIds.has(p.id)) return false;
       if (LEGENDARY_POOL.includes(p.id)) return false;
       if (HIGH_TIER_POOL.includes(p.id)) return false;
       if (NEW_GOD_IDS.includes(p.id)) return false;
+      const bias = TYPE_BIAS[p.type] || { p: 1.0, s: 1.0 };
+      const div = (p.id % 5) * 2 - 4;
+      const bst = (p.hp || 60) + Math.floor((p.atk || 50) * bias.p) + div + Math.floor((p.def || 50) * bias.p) + Math.floor((p.atk || 50) * bias.s) - div + Math.floor((p.def || 50) * bias.s) + (p.spd || (40 + (p.id * 7 % 70)));
+      if (bst > 450) return false;
       return true;
     });
 
@@ -5070,7 +5074,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 cursedMoves.push({ ...healTech, isCursed: true });
             }
         }
-        const canDomain = p.hasDomain || (p.level >= 50 && hasCT && ['SPECIAL','GRADE1'].includes(grade.key));
+        const canDomain = p.hasDomain || (p.level >= 50 && hasCT && ['SPECIAL','GRADE1','GRADE2'].includes(grade.key));
 
         return {
             ...p,
@@ -6730,7 +6734,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let dmg = 0;
     let isDead = false;
 
-    if (move.p === 0 && move.effect) {
+    if ((!move.p || move.p === 0) && move.effect) {
         // === 变化类技能 ===
         const eff = move.effect;
         const targetState = eff.target === 'self' ? atkState : defState;
@@ -6847,7 +6851,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         let typeMod = getTypeMod(move.t, defender.type);
         const levelBase = attacker.level * 0.8 + 5;
-        const powerFactor = move.p * 0.5 + 10;
+        const movePower = move.p || 40;
+        const powerFactor = movePower * 0.5 + 10;
         const ratio = atkVal / Math.max(1, defVal);
         const statFactor = Math.pow(ratio, 0.65);
 
@@ -7010,6 +7015,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
 
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
+        if (isNaN(defender.currentHp)) defender.currentHp = 0;
         if (survivalMsg) addLog(survivalMsg);
         isDead = defender.currentHp <= 0;
 
@@ -11122,6 +11128,57 @@ const renderMenu = () => {
               })()}
             </div>
 
+            {/* 3.6 饰品装备 */}
+            <div style={{margin:'0 20px 15px'}}>
+              {(() => {
+                const equips = viewStatPet.equips || [null, null];
+                return (
+                  <div style={{background:'#f9f9f9', border:'1.5px solid #e0e0e0', borderRadius:'12px', padding:'12px'}}>
+                    <div style={{fontSize:'12px', fontWeight:'bold', color:'#555', marginBottom:'8px'}}>🛡️ 饰品 ({equips.filter(e => e).length}/2)</div>
+                    <div style={{display:'flex', gap:'8px'}}>
+                      {[0, 1].map(slotIdx => {
+                        const accId = equips[slotIdx];
+                        let acc = null;
+                        if (typeof accId === 'string') acc = ACCESSORY_DB.find(a => a.id === accId);
+                        else if (typeof accId === 'object' && accId) acc = accId;
+                        const petIdx = party.findIndex(p => p.uid === viewStatPet.uid);
+                        return (
+                          <div key={slotIdx} style={{
+                            flex:1, background: acc ? 'linear-gradient(135deg,#E8EAF6,#fff)' : '#f0f0f0',
+                            border: acc ? '1.5px solid #5C6BC0' : '1.5px dashed #ccc',
+                            borderRadius:'10px', padding:'10px', display:'flex', alignItems:'center', gap:'8px',
+                            cursor:'pointer', transition:'all 0.2s'
+                          }} onClick={() => { if (petIdx >= 0) openEquipModal(petIdx, slotIdx); }}>
+                            <span style={{fontSize:'22px'}}>{acc ? (acc.icon || '🛡️') : '➕'}</span>
+                            <div style={{flex:1, minWidth:0}}>
+                              <div style={{fontSize:'11px', fontWeight:'bold', color: acc ? '#333' : '#aaa', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                                {acc ? acc.name : '空槽位'}
+                              </div>
+                              {acc && <div style={{fontSize:'9px', color:'#888'}}>{acc.desc || ''}</div>}
+                            </div>
+                            {acc && petIdx >= 0 && (
+                              <button onClick={(ev) => {
+                                ev.stopPropagation();
+                                const np = [...party]; const pet2 = np[petIdx];
+                                if (pet2.equips && pet2.equips[slotIdx]) {
+                                  setAccessories(prev => [...prev, pet2.equips[slotIdx]]);
+                                  pet2.equips[slotIdx] = null;
+                                  setParty(np); setViewStatPet({...pet2});
+                                }
+                              }} style={{
+                                background:'rgba(0,0,0,0.05)', color:'#999', border:'1px solid #ddd',
+                                padding:'2px 8px', borderRadius:'12px', fontSize:'10px', cursor:'pointer', flexShrink:0
+                              }}>卸</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
             {/* 3.7 搭档羁绊 */}
             <div style={{margin:'0 20px 15px'}}>
               {(() => {
@@ -12209,7 +12266,7 @@ const renderMenu = () => {
         // 只有还在 waiting 状态才触发咬钩
         setFishingState(prev => {
             if (prev.status === 'waiting') {
-                // 咬钩后，给 1 秒反应时间
+                // 咬钩后，给 0.6 秒反应时间
                 setTimeout(() => {
                     setFishingState(curr => {
                         if (curr.status === 'bite') {
@@ -12217,7 +12274,7 @@ const renderMenu = () => {
                         }
                         return curr;
                     });
-                }, 1000);
+                }, 600);
                 return { ...prev, status: 'bite', msg: '❗️ 咬钩了！快提竿！' };
             }
             return prev;
@@ -12236,7 +12293,7 @@ const renderMenu = () => {
         const pool = CONTEST_CONFIG.fishing.pool;
         const fishId = _.sample(pool);
         // 根据鱼种和玩家进度计算体重
-        const progressMult = 1 + badges.length * 0.8;
+        const progressMult = 1 + badges.length * 0.5;
         const weightTable = { 7: 15, 24: 40, 26: 60, 173: 100 };
         let baseWeight = weightTable[fishId] || 20;
         baseWeight *= progressMult;
