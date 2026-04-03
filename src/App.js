@@ -6280,6 +6280,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let rawDmg = (levelBase + powerFactor) * statFactor;
         if (isCrit) rawDmg *= 1.5;
         rawDmg *= typeMod;
+        const isSTAB = (move.t === attacker.type || move.t === attacker.secondaryType);
+        if (isSTAB) rawDmg *= 1.5;
         rawDmg *= (0.9 + Math.random() * 0.2); 
 
         // 果实变身增伤
@@ -6369,8 +6371,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
         if (attacker.trait === 'technician' && move.p <= 60) rawDmg *= 1.5;
-        if (attacker.trait === 'adaptability' && (attacker.type === move.t || attacker.secondaryType === move.t)) {
-            rawDmg *= 1.33;
+        if (attacker.trait === 'adaptability' && isSTAB) {
+            rawDmg *= (2.0 / 1.5);
         }
         if (isCrit && attacker.trait === 'sniper') rawDmg *= 1.5; 
 
@@ -13181,7 +13183,10 @@ const renderMenu = () => {
                             <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}>背包</button>
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}>交换</button>
                             <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}>逃跑</button>
-                            {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)'}} onClick={() => executeDevilFruit('player')}>变身</button>}
+                            {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && (() => {
+                              const canUse = (battle.turnCount >= 3) || (p.currentHp < getStats(p, p.stages).maxHp * 0.5);
+                              return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : alert('变身条件未满足！\n需要：战斗回合≥3 或 HP低于50%')} disabled={!canUse}>变身{!canUse ? `(${3-battle.turnCount}回合)` : ''}</button>;
+                            })()}
                             {p.maxCE > 0 && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button>}
                             {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}>领域</button>}
                             {p.maxCE > 0 && !p.activeVow && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button>}
