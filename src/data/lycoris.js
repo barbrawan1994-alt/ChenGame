@@ -108,15 +108,71 @@ export const getCafeLevel = (workCount) => {
 };
 
 export const CAFE_DRINKS = [
-  { id: 'chisato_blend',   name: '千束特调',   price: 500,   effect: { spdMult: 1.2 },                     unlock: 'story_lycoris_0', desc: '速度+20%（1场战斗）' },
-  { id: 'takina_latte',    name: '泷奈拿铁',   price: 600,   effect: { atkMult: 1.15 },                    unlock: 'story_lycoris_1', desc: '物攻+15%（1场战斗）' },
-  { id: 'partner_shake',   name: '搭档奶昔',   price: 800,   effect: { comboMult: 1.2 },                   unlock: 'first_partner',   desc: '协作技威力+20%（1场战斗）' },
-  { id: 'caffeine_rush',   name: '咖啡因冲击', price: 700,   effect: { priorityBoost: 0.3 },               unlock: 'cafe_lv2',        desc: '先手率+30%（1场战斗）' },
-  { id: 'relax_tea',       name: '放松花茶',   price: 600,   effect: { healBoost: 1.1 },                   unlock: 'cafe_lv3',        desc: 'HP回复效果+10%（1场战斗）' },
-  { id: 'battle_espresso', name: '战斗浓缩',   price: 900,   effect: { critBoost: 0.1 },                   unlock: 'cafe_lv4',        desc: '暴击率+10%（1场战斗）' },
-  { id: 'energy_smoothie', name: '能量果昔',   price: 1000,  effect: { expMult: 1.2 },                     unlock: 'cafe_lv5',        desc: '经验+20%（1场战斗）' },
-  { id: 'master_recipe',   name: '大师配方',   price: 2000,  effect: { atkMult: 1.05, spdMult: 1.05, critBoost: 0.05 }, unlock: 'all_lycoris_ach', desc: '全属性+5%（1场战斗）' },
+  { id: 'chisato_blend',   name: '千束特调',   tier: 1, price: 500,   unlock: 'story_lycoris_0', desc: '基础饮品，可获得药品/精灵球等基础道具' },
+  { id: 'takina_latte',    name: '泷奈拿铁',   tier: 2, price: 800,   unlock: 'story_lycoris_1', desc: '进阶饮品，可获得进化石/增强剂等成长道具' },
+  { id: 'partner_shake',   name: '搭档奶昔',   tier: 2, price: 1000,  unlock: 'first_partner',   desc: '特调饮品，可获得技能书/稀有球等好东西' },
+  { id: 'caffeine_rush',   name: '咖啡因冲击', tier: 3, price: 1200,  unlock: 'cafe_lv2',        desc: '高级饮品，有概率获得稀有技能书' },
+  { id: 'relax_tea',       name: '放松花茶',   tier: 3, price: 1500,  unlock: 'cafe_lv3',        desc: '高级饮品，有概率获得洗练药' },
+  { id: 'battle_espresso', name: '战斗浓缩',   tier: 4, price: 2000,  unlock: 'cafe_lv4',        desc: '极品饮品，有小概率获得恶魔果实!' },
+  { id: 'energy_smoothie', name: '能量果昔',   tier: 4, price: 2500,  unlock: 'cafe_lv5',        desc: '极品饮品，有小概率获得恶魔果实!' },
+  { id: 'master_recipe',   name: '大师配方',   tier: 5, price: 3000,  unlock: 'all_lycoris_ach', desc: '传说饮品，可获得最稀有的道具，包括传说果实!' },
 ];
+
+export const DRINK_LOOT_TABLES = {
+  1: [
+    { type: 'ball',  id: 'poke',    weight: 30, count: 3, name: '精灵球 x3' },
+    { type: 'ball',  id: 'great',   weight: 20, count: 2, name: '高级球 x2' },
+    { type: 'med',   id: 'potion',  weight: 25, count: 2, name: '伤药 x2' },
+    { type: 'med',   id: 'super_potion', weight: 15, count: 1, name: '好伤药 x1' },
+    { type: 'berry', id: 'berry',   weight: 10, count: 5, name: '树果 x5' },
+  ],
+  2: [
+    { type: 'ball',  id: 'great',   weight: 20, count: 2, name: '高级球 x2' },
+    { type: 'ball',  id: 'ultra',   weight: 10, count: 1, name: '超级球 x1' },
+    { type: 'med',   id: 'super_potion', weight: 15, count: 2, name: '好伤药 x2' },
+    { type: 'med',   id: 'hyper_potion', weight: 10, count: 1, name: '厉害伤药 x1' },
+    { type: 'stone', id: null,      weight: 15, count: 1, name: '随机进化石 x1' },
+    { type: 'growth',id: null,      weight: 15, count: 1, name: '随机增强剂 x1' },
+    { type: 'tm',    id: null,      weight: 10, count: 1, name: '随机技能书 x1' },
+    { type: 'candy', id: 'exp_candy', weight: 5, count: 1, name: '经验糖果 x1' },
+  ],
+  3: [
+    { type: 'ball',  id: 'ultra',   weight: 15, count: 2, name: '超级球 x2' },
+    { type: 'ball',  id: 'net',     weight: 8,  count: 1, name: '网纹球 x1' },
+    { type: 'ball',  id: 'dusk',    weight: 8,  count: 1, name: '黑暗球 x1' },
+    { type: 'tm',    id: null,      weight: 20, count: 1, name: '随机技能书 x1' },
+    { type: 'growth',id: null,      weight: 15, count: 1, name: '随机增强剂 x1' },
+    { type: 'stone', id: null,      weight: 12, count: 1, name: '随机进化石 x1' },
+    { type: 'misc',  id: 'rebirth_pill', weight: 8, count: 1, name: '洗练药 x1' },
+    { type: 'med',   id: 'max_potion',  weight: 8, count: 1, name: '全满药 x1' },
+    { type: 'candy', id: 'exp_candy', weight: 6, count: 2, name: '经验糖果 x2' },
+  ],
+  4: [
+    { type: 'tm',    id: null,      weight: 20, count: 1, name: '随机技能书 x1' },
+    { type: 'ball',  id: 'ultra',   weight: 12, count: 3, name: '超级球 x3' },
+    { type: 'ball',  id: 'quick',   weight: 8,  count: 1, name: '先机球 x1' },
+    { type: 'ball',  id: 'timer',   weight: 8,  count: 1, name: '计时球 x1' },
+    { type: 'growth',id: null,      weight: 12, count: 2, name: '随机增强剂 x2' },
+    { type: 'misc',  id: 'rebirth_pill', weight: 10, count: 1, name: '洗练药 x1' },
+    { type: 'candy', id: 'exp_candy', weight: 8, count: 3, name: '经验糖果 x3' },
+    { type: 'fruit', id: null,      weight: 5,  rarity: ['COMMON', 'RARE'], count: 1, name: '随机恶魔果实(普通~稀有)' },
+    { type: 'med',   id: 'revive',  weight: 10, count: 1, name: '复活草 x1' },
+    { type: 'stone', id: null,      weight: 7,  count: 2, name: '随机进化石 x2' },
+  ],
+  5: [
+    { type: 'tm',    id: null,      weight: 18, count: 1, name: '随机技能书 x1' },
+    { type: 'fruit', id: null,      weight: 10, rarity: ['COMMON', 'RARE', 'EPIC'], count: 1, name: '随机恶魔果实(普通~史诗)' },
+    { type: 'fruit', id: null,      weight: 3,  rarity: ['LEGENDARY'], count: 1, name: '传说恶魔果实!' },
+    { type: 'misc',  id: 'rebirth_pill', weight: 12, count: 2, name: '洗练药 x2' },
+    { type: 'ball',  id: 'master',  weight: 2,  count: 1, name: '大师球 x1' },
+    { type: 'candy', id: 'max_candy', weight: 5, count: 1, name: '极限糖果 x1' },
+    { type: 'candy', id: 'exp_candy', weight: 10, count: 5, name: '经验糖果 x5' },
+    { type: 'growth',id: null,      weight: 15, count: 3, name: '随机增强剂 x3' },
+    { type: 'ball',  id: 'ultra',   weight: 10, count: 5, name: '超级球 x5' },
+    { type: 'stone', id: null,      weight: 8,  count: 2, name: '随机进化石 x2' },
+    { type: 'med',   id: 'revive',  weight: 7,  count: 3, name: '复活草 x3' },
+  ],
+};
 
 export const DEFAULT_CAFE_STATE = {
   owned: false,
@@ -124,5 +180,4 @@ export const DEFAULT_CAFE_STATE = {
   totalWorkCount: 0,
   lastTickTime: Date.now(),
   unlockedDrinks: [],
-  activeDrink: null,
 };

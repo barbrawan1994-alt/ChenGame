@@ -75,7 +75,7 @@ import {
 import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
   SAME_TYPE_COMBO, DEFAULT_COMBO, BOND_PER_TURN, BOND_PER_KO,
-  CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE,
+  CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE, DRINK_LOOT_TABLES,
 } from './data/lycoris';
 
 const BREATHING_BUFFS = [
@@ -2971,12 +2971,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         金币倍率 x{getCafeLevel(cafe.totalWorkCount).goldMult}
                       </div>
                     </div>
-                    {cafe.activeDrink && (
-                      <div style={{background:'rgba(255,255,255,0.15)', borderRadius:'10px', padding:'8px 12px', fontSize:'12px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <span>当前饮品: {cafe.activeDrink.name}</span>
-                        <button onClick={clearDrinkBuff} style={{background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', padding:'4px 10px', borderRadius:'10px', fontSize:'11px', cursor:'pointer'}}>丢弃</button>
-                      </div>
-                    )}
+                    
                   </div>
 
                   {/* 打工精灵 */}
@@ -3002,25 +2997,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
                   {/* 饮品菜单 */}
                   <div style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
-                    <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>特调饮品</div>
+                    <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>特调饮品 <span style={{fontSize:'11px', fontWeight:'normal', color:'#888'}}>— 消耗金币获得随机道具</span></div>
                     <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                       {CAFE_DRINKS.map(drink => {
                         const unlocked = isDrinkUnlocked(drink);
+                        const tierColors = ['', '#78909C', '#43A047', '#1E88E5', '#8E24AA', '#FF6F00'];
+                        const tierNames = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
                         return (
                           <div key={drink.id} style={{
                             display:'flex', alignItems:'center', gap:'12px', padding:'12px', borderRadius:'12px',
                             background: unlocked ? '#fff' : '#f5f5f5', border: unlocked ? '1px solid #eee' : '1px dashed #ddd',
                             opacity: unlocked ? 1 : 0.6
                           }}>
-                            <div style={{width:'36px', height:'36px', borderRadius:'50%', background: unlocked ? 'linear-gradient(135deg,#C62828,#FF5252)' : '#e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color:'#fff', flexShrink:0}}>☕</div>
+                            <div style={{width:'36px', height:'36px', borderRadius:'50%', background: unlocked ? `linear-gradient(135deg,${tierColors[drink.tier]},${tierColors[drink.tier]}88)` : '#e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color:'#fff', flexShrink:0}}>☕</div>
                             <div style={{flex:1}}>
-                              <div style={{fontWeight:'bold', fontSize:'13px', color: unlocked ? '#333' : '#999'}}>{drink.name}</div>
+                              <div style={{fontWeight:'bold', fontSize:'13px', color: unlocked ? '#333' : '#999'}}>{drink.name} <span style={{fontSize:'10px', color:tierColors[drink.tier]}}>{tierNames[drink.tier]}</span></div>
                               <div style={{fontSize:'11px', color:'#888'}}>{drink.desc}</div>
                             </div>
                             {unlocked ? (
-                              <button onClick={() => makeDrink(drink.id)} disabled={!!cafe.activeDrink || gold < drink.price} style={{
-                                padding:'6px 14px', borderRadius:'16px', border:'none', fontSize:'11px', fontWeight:'bold', cursor: (cafe.activeDrink || gold < drink.price) ? 'not-allowed' : 'pointer',
-                                background: (cafe.activeDrink || gold < drink.price) ? '#e0e0e0' : 'linear-gradient(135deg,#C62828,#FF5252)', color: (cafe.activeDrink || gold < drink.price) ? '#999' : '#fff'
+                              <button onClick={() => makeDrink(drink.id)} disabled={gold < drink.price} style={{
+                                padding:'6px 14px', borderRadius:'16px', border:'none', fontSize:'11px', fontWeight:'bold', cursor: gold < drink.price ? 'not-allowed' : 'pointer',
+                                background: gold < drink.price ? '#e0e0e0' : `linear-gradient(135deg,${tierColors[drink.tier]},${tierColors[drink.tier]}CC)`, color: gold < drink.price ? '#999' : '#fff'
                               }}>💰 {drink.price}</button>
                             ) : (
                               <span style={{fontSize:'10px', color:'#bbb'}}>未解锁</span>
@@ -5222,8 +5219,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const combo = getComboMove(p, pt);
 
       const basePower = combo.power * bl.powerMult * 0.8;
-      const drinkBuff = cafe.activeDrink?.effect?.comboMult || 1;
-      const power = Math.floor(basePower * drinkBuff);
+      const power = Math.floor(basePower);
       const pStats = getStats(p);
       const eStats = getStats(e);
       const atk = combo.cat === 'special' ? pStats.s_atk : pStats.p_atk;
@@ -5330,14 +5326,60 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const drink = CAFE_DRINKS.find(d => d.id === drinkId);
     if (!drink) return;
     if (gold < drink.price) { alert(`金币不足！需要 ${drink.price} 金币`); return; }
-    if (cafe.activeDrink) { alert('已有饮品效果生效中！每次只能携带一种饮品。'); return; }
     setGold(g => g - drink.price);
-    setCafe(prev => ({ ...prev, activeDrink: { ...drink.effect, name: drink.name, id: drink.id } }));
-    alert(`☕ 制作了 ${drink.name}！效果将在下一场战斗中生效。`);
-  };
 
-  const clearDrinkBuff = () => {
-    setCafe(prev => ({ ...prev, activeDrink: null }));
+    const lootTable = DRINK_LOOT_TABLES[drink.tier] || DRINK_LOOT_TABLES[1];
+    const totalWeight = lootTable.reduce((s, e) => s + e.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let picked = lootTable[0];
+    for (const entry of lootTable) {
+      roll -= entry.weight;
+      if (roll <= 0) { picked = entry; break; }
+    }
+
+    let rewardMsg = '';
+    if (picked.type === 'ball') {
+      setInventory(prev => ({ ...prev, balls: { ...prev.balls, [picked.id]: (prev.balls[picked.id] || 0) + picked.count } }));
+      rewardMsg = picked.name;
+    } else if (picked.type === 'med') {
+      setInventory(prev => ({ ...prev, meds: { ...prev.meds, [picked.id]: (prev.meds[picked.id] || 0) + picked.count } }));
+      rewardMsg = picked.name;
+    } else if (picked.type === 'berry') {
+      setInventory(prev => ({ ...prev, berries: (prev.berries || 0) + picked.count }));
+      rewardMsg = picked.name;
+    } else if (picked.type === 'stone') {
+      const stoneKeys = Object.keys(EVO_STONES);
+      const stoneId = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
+      setInventory(prev => ({ ...prev, stones: { ...prev.stones, [stoneId]: (prev.stones[stoneId] || 0) + picked.count } }));
+      rewardMsg = `${EVO_STONES[stoneId].name} x${picked.count}`;
+    } else if (picked.type === 'growth') {
+      const item = GROWTH_ITEMS[Math.floor(Math.random() * GROWTH_ITEMS.length)];
+      setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + picked.count }));
+      rewardMsg = `${item.emoji} ${item.name} x${picked.count}`;
+    } else if (picked.type === 'tm') {
+      const tm = TMS[Math.floor(Math.random() * TMS.length)];
+      setInventory(prev => ({ ...prev, tms: { ...prev.tms, [tm.id]: (prev.tms[tm.id] || 0) + picked.count } }));
+      rewardMsg = `📜 ${tm.name}`;
+    } else if (picked.type === 'misc') {
+      setInventory(prev => ({ ...prev, misc: { ...prev.misc, [picked.id]: (prev.misc[picked.id] || 0) + picked.count } }));
+      rewardMsg = picked.name;
+    } else if (picked.type === 'candy') {
+      setInventory(prev => ({ ...prev, [picked.id]: (prev[picked.id] || 0) + picked.count }));
+      rewardMsg = picked.name;
+    } else if (picked.type === 'fruit') {
+      const allowedRarities = picked.rarity || ['COMMON'];
+      const allFruits = getAllFruits().filter(f => allowedRarities.includes(f.rarity));
+      if (allFruits.length > 0) {
+        const fruit = allFruits[Math.floor(Math.random() * allFruits.length)];
+        setFruitInventory(prev => [...prev, fruit.id]);
+        rewardMsg = `🍎 ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]`;
+      } else {
+        setInventory(prev => ({ ...prev, misc: { ...prev.misc, rebirth_pill: (prev.misc.rebirth_pill || 0) + 1 } }));
+        rewardMsg = '洗练药 x1 (保底)';
+      }
+    }
+
+    alert(`☕ ${drink.name} 制作完成！\n🎁 获得: ${rewardMsg}`);
   };
 
   const isLycorisStoryCompleted = (chapter) => {
@@ -6224,7 +6266,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0) + (ceMoveEff.critBoost || 0);
         if (atkFE && atkFE.critBoost) critStage += atkFE.critBoost;
         let critChance = statsAtk.crit * (1 + critStage * 0.5);
-        if (source === 'player' && cafe.activeDrink?.critBoost) critChance += cafe.activeDrink.critBoost * 100;
         if (Math.random() * 100 < critChance) isCrit = true;
 
         if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
@@ -6252,12 +6293,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const fixedBonus = Math.floor(getStats(defender).maxHp * atkFE.fixedDmgPercent);
             rawDmg += fixedBonus;
           }
-        }
-
-        // 饮品buff伤害加成（仅玩家方）
-        if (source === 'player' && cafe.activeDrink) {
-          if (cafe.activeDrink.atkMult && category === 'physical') rawDmg *= cafe.activeDrink.atkMult;
-          if (cafe.activeDrink.atkMult && category === 'special') rawDmg *= cafe.activeDrink.atkMult;
         }
 
         // 暗暗果实: 取消对手果实效果
@@ -7405,8 +7440,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setBox(bb => applyBond(bb));
     }
 
-    // 清除饮品buff（每场战斗消耗一次）
-    clearDrinkBuff();
     setComboUsedThisBattle(false);
 
     setBattle(null);
