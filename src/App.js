@@ -6396,25 +6396,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
               return {...p};
             });
           };
-          const contestPet = finalParty[0];
-          if (party.length < 6) {
-              setParty(prev => [...syncPartyFromBattle(prev), contestPet]);
-              addLog(`🦋 ${contestPet.name} 已加入队伍！`);
-          } else {
-              setBox(prev => [...prev, contestPet]);
-              setParty(prev => syncPartyFromBattle(prev));
-              addLog(`🦋 ${contestPet.name} 已发送到电脑盒子。`);
-          }
+          setParty(prev => syncPartyFromBattle(prev));
 
-          // 2. 基因评分公式
+          const contestPet = finalParty[0];
           const baseInfo = POKEDEX.find(p => p.id === contestPet.id) || {};
           const baseTotal = (baseInfo.hp||0) + (baseInfo.atk||0) + (baseInfo.def||0) + (baseInfo.spd||0);
           const ivSum = contestPet.ivs ? Object.values(contestPet.ivs).reduce((a, b) => a + b, 0) : 0;
           let score = Math.floor((ivSum * 1.5) + (baseTotal * 0.8));
-          
-          if (contestPet.isShiny) {
-              score += 300;
-          }
+          if (contestPet.isShiny) score += 300;
           
           grantContestReward(CONTEST_CONFIG.bug, score, contestPet);
           setBattle(null);
@@ -7085,19 +7074,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           });
       };
 
-      // ▼▼▼ [修复] 捕虫大赛：先入队/入库，再结算 ▼▼▼
+      // ▼▼▼ 捕虫大赛：只通过grantContestReward发放奖励精灵，不重复入队 ▼▼▼
       if (battle.type === 'contest_bug') {
-          // 1. 执行入队逻辑
-          if (party.length < 6) {
-              setParty(prev => [...syncCurrentParty(prev), newPet]);
-              addLog(`🦋 ${newPet.name} 已加入队伍！`);
-          } else {
-              setBox(prev => [...prev, newPet]);
-              setParty(prev => syncCurrentParty(prev)); // 即使存入电脑，也要同步当前队伍状态
-              addLog(`🦋 ${newPet.name} 已发送到电脑盒子。`);
-          }
-
-          // 2. 计算分数并结算
+          setParty(prev => syncCurrentParty(prev));
           const baseStats = getStats(newPet);
           let score = baseStats.maxHp + baseStats.p_atk + baseStats.spd;
           if (newPet.isShiny) score += 200;
@@ -8760,13 +8739,14 @@ const renderMenu = () => {
               { key:'skill_dex', label:'技能大全', sub:'287种', color:'#3b82f6', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
               { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
               { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
+              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', wide: true, icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
             ].map(btn => (
               <button key={btn.key} onClick={() => setView(btn.key)} style={{
                 padding:'12px 14px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
                 background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
                 display:'flex', alignItems:'center', gap:'12px',
-                transition:'all 0.25s', backdropFilter:'blur(8px)', textAlign:'left'
+                transition:'all 0.25s', backdropFilter:'blur(8px)', textAlign:'left',
+                ...(btn.wide ? { gridColumn: '1 / -1' } : {})
               }}
               onMouseOver={e => { e.currentTarget.style.background=`${btn.color}15`; e.currentTarget.style.borderColor=`${btn.color}40`; e.currentTarget.style.transform='translateY(-1px)'; }}
               onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.transform='none'; }}
