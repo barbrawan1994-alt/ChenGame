@@ -173,8 +173,8 @@ export const DOMAINS = {
 export const BINDING_VOWS = [
   { id: 'vow_power', name: '以命搏命', ceCost: 20,
     sacrifice: { hpPercent: 0.3 },
-    reward: { atkMult: 3.0, turns: 1 },
-    desc: '消耗20CE+30%HP，下回合伤害3倍(回合结束失效)' },
+    reward: { atkMult: 2.5, turns: 1 },
+    desc: '消耗20CE+30%HP，下一次攻击伤害2.5倍(仅一次，攻击后失效)' },
   { id: 'vow_reveal', name: '术式开示', ceCost: 15,
     sacrifice: { revealMoves: true },
     reward: { ceMult: 1.5, turns: 3 },
