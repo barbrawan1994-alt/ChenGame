@@ -4274,26 +4274,23 @@ const useGrowthItem = (petIndex, itemId) => {
       // 4. 剧情任务点 (Tile 99)
       // ------------------------------------------------
       if (tileType === 99) {
+        if (pendingTask || isDialogVisible) return;
         const currentChapter = STORY_SCRIPT[storyProgress];
         const task = currentChapter?.tasks?.find(t => t.step === storyStep);
         
         if (task) {
-           // 1. 播放对话
            setDialogQueue([{ name: task.name, text: task.text }]);
            setCurrentDialogIndex(0);
            setIsDialogVisible(true);
 
-           // 2. 清除地图上的这个点 (视觉上变为平地)
            setMapGrid(prev => {
                const newGrid = prev.map(row => [...row]);
                newGrid[y][x] = 2;
                return newGrid;
            });
 
-           // 3. 将任务存入挂起状态，等待对话结束后执行(战斗或推进剧情)
            setPendingTask(task);
         }
-        // 踩上去不回弹，停在格子上
         return; 
       }
 
@@ -4542,25 +4539,6 @@ const useGrowthItem = (petIndex, itemId) => {
     }
   }, [playerPos, mapGrid, currentMapId, mapProgress, badges, inventory, storyProgress, storyStep]);
 
-  // 剧情任务标记安全网: 确保当前任务的 tile 99 始终正确放置在地图上
-  useEffect(() => {
-    if (view !== 'grid_map' || !mapGrid.length || isDialogVisible || battle) return;
-    const currentChapter = STORY_SCRIPT[storyProgress];
-    if (!currentChapter || currentChapter.mapId !== currentMapId) return;
-    const currentTask = currentChapter.tasks?.find(t => t.step === storyStep);
-    if (!currentTask) return;
-    if (mapGrid[currentTask.y]?.[currentTask.x] === 99) return;
-    // tile 99 不在正确位置 → 修复
-    console.log(`[StoryFix] Placing tile 99 at (${currentTask.x},${currentTask.y}) for step ${storyStep}`);
-    setMapGrid(prev => {
-      if (!prev.length || prev[currentTask.y]?.[currentTask.x] === 99) return prev;
-      const g = prev.map(r => [...r]);
-      if (g[currentTask.y] && currentTask.x < (g[0]?.length || 0)) {
-        g[currentTask.y][currentTask.x] = 99;
-      }
-      return g;
-    });
-  }, [storyStep, storyProgress, view, currentMapId, battle, isDialogVisible, mapGrid]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -7534,7 +7512,50 @@ const grantContestReward = (config, score, subjectPet = null) => {
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, type } = battle;
-    
+
+    // ★★★ 剧情推进逻辑 (最优先执行，确保不被后续代码的异常阻断) ★★★
+    let storyHandled = false;
+    if (type === 'story_task' || type === 'story_mid') {
+      try {
+        const storyChapter = STORY_SCRIPT[storyProgress];
+        if (storyChapter) {
+          const resolvedStep = battle.storyTaskStep != null ? battle.storyTaskStep : storyStep;
+          const currentTask = storyChapter.tasks?.find(t => t.step === resolvedStep);
+          const isStoryMatch = currentTask && currentTask.type === 'battle' &&
+              (battle.storyTaskStep != null || battle.trainerName === currentTask.name);
+          console.log('[Story] handleWin:', { type, storyProgress, resolvedStep, isStoryMatch, taskName: currentTask?.name });
+          if (isStoryMatch) {
+            storyHandled = true;
+            const nextStep = resolvedStep + 1;
+            setStoryStep(nextStep);
+            const nextTask = storyChapter.tasks?.find(t => t.step === nextStep);
+            console.log('[Story] Advanced to step', nextStep, nextTask ? `→ ${nextTask.name} at (${nextTask.x},${nextTask.y})` : '→ all tasks done');
+            if (nextTask) {
+              setMapGrid(prevGrid => {
+                const g = prevGrid.map(r => [...r]);
+                if (g[nextTask.y] && nextTask.x < (g[0]?.length || 0)) g[nextTask.y][nextTask.x] = 99;
+                return g;
+              });
+              setTimeout(() => alert(`✅ 剧情推进！\n\n📍 下一个目标: ${nextTask.name}\n📌 位置: 坐标 (${nextTask.x}, ${nextTask.y})\n\n${nextTask.type === 'battle' ? '⚔️ 前方有敌人！' : '💬 前方有人等待...'}`), 100);
+            } else {
+              setTimeout(() => alert("🎉 本章剧情任务全部完成！\n\n道路已打通，现在可以去挑战道馆馆主了！"), 100);
+            }
+            if (storyProgress === 12 && resolvedStep === 4) {
+              unlockTitle('巅峰王者');
+              setAccessories(prev => [...prev, 'trophy']);
+              const godPet = createPet(254, 100, true, true);
+              godPet.name = "起源之光(冠军)";
+              godPet.customBaseStats = { hp: 200, p_atk: 200, p_def: 200, s_atk: 200, s_def: 200, spd: 200, crit: 50 };
+              if (party.length < 6) setParty(prev => [...prev, godPet]);
+              else setBox(prev => [...prev, godPet]);
+              alert("🏆 恭喜通关二周目！\n\n已获得：\n1. 饰品【冠军奖杯】\n2. 神宠【起源之光】");
+            }
+          }
+        }
+      } catch (storyErr) { console.error("[Story] Error in story progression:", storyErr); }
+    }
+    // ★★★ 剧情推进逻辑结束 ★★★
+
     let totalBattleExp = 0;
     enemyParty.forEach(e => {
       totalBattleExp += Math.floor(e.level * 50 * (isTrainer ? 1.5 : 1));
@@ -7870,49 +7891,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
-    // 9. 剧情逻辑
+    // 9. 道馆逻辑
     const storyChapter = STORY_SCRIPT[storyProgress];
-    try {
-    if (storyChapter && (type === 'story_task' || type === 'story_mid')) {
-        const resolvedStep = battle.storyTaskStep != null ? battle.storyTaskStep : storyStep;
-        const currentTask = storyChapter.tasks?.find(t => t.step === resolvedStep);
-        const isStoryMatch = currentTask && currentTask.type === 'battle' && 
-            (battle.storyTaskStep != null || battle.trainerName === currentTask.name);
-        
-        console.log('[Story] handleWin:', { type, storyProgress, resolvedStep, isStoryMatch, taskName: currentTask?.name, battleStep: battle.storyTaskStep });
-
-        if (isStoryMatch) {
-            const nextStep = resolvedStep + 1;
-            setStoryStep(nextStep);
-            const nextTask = storyChapter.tasks?.find(t => t.step === nextStep);
-            console.log('[Story] Advanced to step', nextStep, nextTask ? `→ ${nextTask.name} at (${nextTask.x},${nextTask.y})` : '→ all tasks done');
-            if (nextTask) {
-                setMapGrid(prevGrid => {
-                    const newGrid = prevGrid.map(row => [...row]); 
-                    if (newGrid[nextTask.y] && nextTask.x < newGrid[0].length) {
-                        newGrid[nextTask.y][nextTask.x] = 99; 
-                    }
-                    return newGrid;
-                });
-                setTimeout(() => alert(`✅ 剧情推进！\n\n📍 下一个目标: ${nextTask.name}\n📌 位置: 坐标 (${nextTask.x}, ${nextTask.y})\n\n${nextTask.type === 'battle' ? '⚔️ 前方有敌人！' : '💬 前方有人等待...'}`), 100);
-            } else {
-                setTimeout(() => alert("🎉 本章剧情任务全部完成！\n\n道路已打通，现在可以去挑战道馆馆主了！"), 100);
-            }
-
-            if (storyProgress === 12 && resolvedStep === 4) {
-               unlockTitle('巅峰王者'); 
-                setAccessories(prev => [...prev, 'trophy']);
-                const godPet = createPet(254, 100, true, true); 
-                godPet.name = "起源之光(冠军)";
-                godPet.customBaseStats = { hp: 200, p_atk: 200, p_def: 200, s_atk: 200, s_def: 200, spd: 200, crit: 50 };
-                if (party.length < 6) setParty(prev => [...prev, godPet]);
-                else setBox(prev => [...prev, godPet]);
-                alert("🏆 恭喜通关二周目！\n\n已获得：\n1. 饰品【冠军奖杯】\n2. 神宠【起源之光】");
-            }
-        }
-    }
-    } catch (storyErr) { console.error("Story step error:", storyErr); }
-
     if (battle.isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
           const mapBadge = MAPS.find(m=>m.id===mapId)?.badge;
           const isNewBadge = mapBadge && !badges.includes(mapBadge);
