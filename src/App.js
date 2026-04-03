@@ -8695,11 +8695,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }));
             itemName = MISC_ITEMS.rebirth_pill.name;
          }
-         // ✅ 修复2：增强剂存入根目录 (保持不变，因为 renderBag 是从根目录读的)
-         else if (id.startsWith('vit_')) {
+         // ✅ 修复2：增强剂/糖果等 GROWTH_ITEMS 存入根目录 (renderBag misc tab 从根目录读)
+         else if (GROWTH_ITEMS.some(g => g.id === id)) {
             setInventory(i => ({...i, [id]: (i[id] || 0) + count}));
             const growth = GROWTH_ITEMS.find(g => g.id === id);
-            itemName = growth ? growth.name : '增强剂';
+            itemName = growth ? growth.name : '增强道具';
          } 
          // ✅ 修复3：普通药品存入 meds
          else {
@@ -9455,7 +9455,7 @@ const renderNameInput = () => {
       <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #0a0a1a 0%, #111133 50%, #0a0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
         {/* 顶栏 */}
         <div style={{padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, background:'rgba(0,0,0,0.3)', backdropFilter:'blur(12px)'}}>
-          <button onClick={() => setView('menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
+          <button onClick={() => setView(party.length > 0 ? getBackToMapView() : 'menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
           <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'2px', background:'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>技能大百科</div>
           <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>{filteredSkills.length} 技能</div>
         </div>
@@ -9792,7 +9792,7 @@ const renderFruitDex = () => {
     <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #1a0a0a 0%, #2d0f0f 40%, #0f0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
       {/* 头部 */}
       <div style={{padding:'16px 20px', display:'flex', alignItems:'center', gap:'12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0}}>
-        <button onClick={() => setView('menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
+        <button onClick={() => setView(party.length > 0 ? getBackToMapView() : 'menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
         <div>
           <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'1px'}}>恶魔果实图鉴</div>
           <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>共 {allFruits.length} 种 · 已拥有 {ownedFruitIds.size} 种</div>
@@ -14376,208 +14376,157 @@ const renderMenu = () => {
 
       const renderShop = () => {
     if (!shopMode) return null;
-    const growthItems = GROWTH_ITEMS;
-    const specialItems = [MISC_ITEMS.rebirth_pill];
+    const mapInfo = MAPS.find(m => m.id === currentMapId) || MAPS[0];
+    const tier = currentMapId <= 3 ? 1 : currentMapId <= 6 ? 2 : currentMapId <= 9 ? 3 : 4;
+    const tierName = ['', '初级商店', '进阶商店', '高级商店', '顶级商店'][tier];
+    const tierColor = ['', '#78909C', '#2196F3', '#9C27B0', '#FF6F00'][tier];
+
+    const ballsByTier = {
+      1: ['poke','great','heal'],
+      2: ['poke','great','ultra','heal','net','dusk'],
+      3: ['poke','great','ultra','heal','net','dusk','quick','timer'],
+      4: ['poke','great','ultra','heal','net','dusk','quick','timer'],
+    };
+    const medsByTier = {
+      1: ['potion','super_potion','antidote','paralyze_heal','burn_heal'],
+      2: ['potion','super_potion','hyper_potion','ether','antidote','paralyze_heal','burn_heal','full_heal'],
+      3: ['super_potion','hyper_potion','max_potion','ether','max_ether','full_heal','revive'],
+      4: ['hyper_potion','max_potion','ether','max_ether','full_heal','revive','max_revive'],
+    };
+    const tmsByTier = {
+      1: ['tm_fire','tm_water','tm_grass','tm_flame'],
+      2: ['tm_fire','tm_water','tm_grass','tm_elec','tm_ice','tm_pup','tm_flame','tm_shadow'],
+      3: ['tm_fire','tm_water','tm_grass','tm_elec','tm_ice','tm_eq','tm_psy','tm_shadow','tm_dragon','tm_fight','tm_sludge','tm_flame','tm_icebeam'],
+      4: TMS.map(t=>t.id),
+    };
+    const growthByTier = {
+      1: [],
+      2: ['vit_hp','vit_patk','vit_pdef','exp_candy'],
+      3: ['vit_hp','vit_patk','vit_pdef','vit_satk','vit_sdef','vit_spd','exp_candy'],
+      4: ['vit_hp','vit_patk','vit_pdef','vit_satk','vit_sdef','vit_spd','vit_crit','exp_candy','max_candy'],
+    };
+    const accByTier = {
+      1: ['a1','a3'],
+      2: ['a1','a2','a3','a4'],
+      3: ['a1','a2','a3','a4','a5','a6'],
+      4: ACCESSORY_DB.filter(a=>!['trophy','blue_lily','nichirin_blade'].includes(a.id)).map(a=>a.id),
+    };
+    const showStones = tier >= 3;
+    const showCursed = tier >= 3;
+    const showSpecial = tier >= 4;
+
+    const availBalls = ballsByTier[tier];
+    const availMeds = medsByTier[tier];
+    const availTMs = tmsByTier[tier];
+    const availGrowth = growthByTier[tier];
+    const availAcc = accByTier[tier];
+
+    const renderShopCard = (key, icon, name, desc, unitPrice, buyType, extra) => {
+      const count = buyCounts[key] || 1;
+      const totalPrice = unitPrice * count;
+      return (
+        <div key={key} style={{
+          background:'linear-gradient(145deg, #ffffff, #f8f9ff)', borderRadius:'16px',
+          padding:'18px 14px 14px', display:'flex', flexDirection:'column', alignItems:'center',
+          textAlign:'center', border:'1px solid #e8eaf6', position:'relative',
+          transition:'all 0.25s ease', boxShadow:'0 2px 8px rgba(0,0,0,0.04)',
+          ...(extra?.borderColor ? {borderLeft:`3px solid ${extra.borderColor}`} : {})
+        }}
+        onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';}}
+        onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}
+        >
+          {extra?.tag && <span style={{position:'absolute',top:'-6px',right:'8px',background:extra.tagColor||'#4CAF50',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>{extra.tag}</span>}
+          <div style={{fontSize:'36px',marginBottom:'8px',filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{icon}</div>
+          <div style={{fontSize:'13px',fontWeight:'800',color:'#1a1a2e',marginBottom:'3px'}}>{name}</div>
+          <div style={{fontSize:'10px',color:'#888',height:'28px',overflow:'hidden',lineHeight:'1.4',marginBottom:'8px'}}>{desc}</div>
+          <div style={{fontSize:'14px',fontWeight:'900',color:'#F57C00',marginBottom:'10px'}}>💰 {totalPrice.toLocaleString()}</div>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px',background:'#f0f0f5',padding:'3px 6px',borderRadius:'16px'}}>
+            <div onClick={()=>updateBuyCount(key,-1)} style={{width:'24px',height:'24px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'14px',userSelect:'none'}}>-</div>
+            <span style={{fontSize:'13px',fontWeight:'700',minWidth:'20px'}}>{count}</span>
+            <div onClick={()=>updateBuyCount(key,1)} style={{width:'24px',height:'24px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'14px',userSelect:'none'}}>+</div>
+          </div>
+          <button onClick={()=>buyItemPro(key,unitPrice,buyType)} disabled={gold < totalPrice}
+            style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=totalPrice?'pointer':'not-allowed',
+              background:gold>=totalPrice?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
+              color:gold>=totalPrice?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=totalPrice?'0 3px 8px rgba(0,0,0,0.15)':'none'
+          }}>购买</button>
+        </div>
+      );
+    };
+
+    const tabs = [
+      {id:'balls',label:'精灵球',icon:'🔴'},
+      {id:'items',label:'药品',icon:'💊'},
+      {id:'tms',label:'技能书',icon:'📀'},
+      ...(showStones?[{id:'stones',label:'进化石',icon:'💎'}]:[]),
+      ...(availGrowth.length>0?[{id:'growth',label:'增强',icon:'💪'}]:[]),
+      {id:'accessories',label:'饰品',icon:'💍'},
+      ...(showCursed?[{id:'cursed',label:'咒具',icon:'🔮'}]:[]),
+      ...(showSpecial?[{id:'special',label:'特殊',icon:'✨'}]:[]),
+    ];
 
     return (
       <div className="modal-overlay">
-      
-        <div className="shop-modal-pro">
-          {/* 侧边导航栏 */}
-          <div className="shop-nav-sidebar">
-            <div className={`shop-nav-item ${shopTab==='balls'?'active':''}`} onClick={()=>setShopTab('balls')}>精灵球</div>
-            <div className={`shop-nav-item ${shopTab==='items'?'active':''}`} onClick={()=>setShopTab('items')}>药品</div>
-            <div className={`shop-nav-item ${shopTab==='tms'?'active':''}`} onClick={()=>setShopTab('tms')}>技能书</div>
-            
-            {/* 🔥 [新增] 进化石 Tab (获得6个徽章后显示) */}
-            {badges.length >= 6 && (
-                <div className={`shop-nav-item ${shopTab==='stones'?'active':''}`} onClick={()=>setShopTab('stones')}>进化石</div>
-            )}
-            <div className={`shop-nav-item ${shopTab==='growth'?'active':''}`} onClick={()=>setShopTab('growth')}>增强</div>
-            <div className={`shop-nav-item ${shopTab==='accessories'?'active':''}`} onClick={()=>setShopTab('accessories')}>饰品</div>
-            <div className={`shop-nav-item ${shopTab==='cursed'?'active':''}`} onClick={()=>setShopTab('cursed')}>咒具</div>
-            
-            <div className="shop-balance-display" style={{marginTop:'auto', padding:'10px', textAlign:'center', borderTop:'1px solid #eee', fontWeight:'bold', color:'#FF9800'}}>
-                💰 {gold}
+        <div className="shop-modal-pro" style={{background:'linear-gradient(180deg,#f8f9ff,#eef1ff)',borderRadius:'20px'}}>
+          <div className="shop-nav-sidebar" style={{background:'linear-gradient(180deg,#1a1a2e,#16213e)',borderRight:'none',padding:'0',borderRadius:'20px 0 0 20px'}}>
+            <div style={{padding:'18px 12px',textAlign:'center',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',fontWeight:'600',marginBottom:'4px'}}>{mapInfo.name}</div>
+              <div style={{fontSize:'14px',fontWeight:'800',color:tierColor,letterSpacing:'1px'}}>{tierName}</div>
             </div>
-            <button className="btn-close" style={{margin:'10px', padding:'5px', background:'#eee', border:'none', borderRadius:'4px'}} onClick={() => setShopMode(false)}>关闭</button>
+            {tabs.map(t=>(
+              <div key={t.id} className={`shop-nav-item ${shopTab===t.id?'active':''}`}
+                style={{padding:'12px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',fontWeight:'600',
+                  color:shopTab===t.id?'#fff':'rgba(255,255,255,0.5)',
+                  background:shopTab===t.id?`linear-gradient(90deg,${tierColor}40,transparent)`:'transparent',
+                  borderLeft:shopTab===t.id?`3px solid ${tierColor}`:'3px solid transparent',
+                  transition:'all 0.2s'}}
+                onClick={()=>setShopTab(t.id)}>
+                <span style={{fontSize:'16px'}}>{t.icon}</span>{t.label}
+              </div>
+            ))}
+            <div style={{marginTop:'auto',padding:'14px',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+              <div style={{textAlign:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>持有金币</div>
+              <div style={{textAlign:'center',fontSize:'18px',fontWeight:'900',color:'#FFD54F'}}>💰 {gold.toLocaleString()}</div>
+            </div>
+            <button style={{margin:'8px 12px 14px',padding:'8px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.7)',fontSize:'12px',fontWeight:'600',cursor:'pointer'}} onClick={()=>setShopMode(false)}>关闭商店</button>
           </div>
 
-          <div className="shop-content-area">
-            <div className="shop-grid-pro">
-              
-              {/* 1. 精灵球 */}
-              {shopTab === 'balls' && Object.keys(BALLS).map(type => {
-                if (type === 'master') return null;
-                const item = BALLS[type];
-                const buyId = `ball_${type}`;
-                const count = buyCounts[buyId] || 1;
-                const price = item.price * count;
-                return (
-                  <div key={type} className="shop-card-pro">
-                    <div className="shop-pro-icon">{renderBallCSS(type, 42)}</div>
-                    <div className="shop-pro-name">{item.name}</div>
-                    <div className="shop-pro-desc">{item.desc}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <div className="shop-counter">
-                      <div className="btn-counter" onClick={() => updateBuyCount(buyId, -1)}>-</div>
-                      <div className="counter-val">{count}</div>
-                      <div className="btn-counter" onClick={() => updateBuyCount(buyId, 1)}>+</div>
-                    </div>
-                    <button className="btn-buy-pro" onClick={() => buyItemPro(buyId, item.price, 'ball')} disabled={gold < price}>购买</button>
-                  </div>
-                );
+          <div className="shop-content-area" style={{padding:'20px',overflowY:'auto'}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:'14px'}}>
+              {shopTab==='balls' && availBalls.map(type=>{
+                const item=BALLS[type]; if(!item) return null;
+                return renderShopCard(`ball_${type}`,renderBallCSS(type,36)||item.icon,item.name,item.desc,item.price,'ball');
               })}
-
-              {/* 2. 药品 */}
-              {shopTab === 'items' && Object.keys(MEDICINES).map(key => {
-                const item = MEDICINES[key];
-                const count = buyCounts[key] || 1;
-                const price = item.price * count;
-                return (
-                  <div key={key} className="shop-card-pro">
-                    <div className="shop-pro-icon">{renderMedCSS(key, 42) || <span style={{fontSize:36}}>{item.icon}</span>}</div>
-                    <div className="shop-pro-name">{item.name}</div>
-                    <div className="shop-pro-desc">{item.desc}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <div className="shop-counter">
-                      <div className="btn-counter" onClick={() => updateBuyCount(key, -1)}>-</div>
-                      <div className="counter-val">{count}</div>
-                      <div className="btn-counter" onClick={() => updateBuyCount(key, 1)}>+</div>
-                    </div>
-                    <button className="btn-buy-pro" onClick={() => buyItemPro(key, item.price, 'item')} disabled={gold < price}>购买</button>
-                  </div>
-                );
+              {shopTab==='items' && availMeds.map(key=>{
+                const item=MEDICINES[key]; if(!item) return null;
+                return renderShopCard(key,renderMedCSS(key,36)||<span style={{fontSize:30}}>{item.icon}</span>,item.name,item.desc,item.price,'item');
               })}
-
-              {/* 3. 技能书 */}
-              {shopTab === 'tms' && TMS.map(tm => {
-                const count = buyCounts[tm.id] || 1;
-                const price = tm.price * count;
-                return (
-                  <div key={tm.id} className="shop-card-pro" style={{borderLeft: `3px solid ${TYPES[tm.type].color}`}}>
-                    <div className="shop-pro-icon">{renderTMCSS(tm.type || 'NORMAL', 42)}</div>
-                    <div className="shop-pro-name">{tm.name}</div>
-                    <div className="shop-pro-desc" style={{color: TYPES[tm.type].color, fontWeight:'bold'}}>{TYPES[tm.type].name}</div>
-                    <div className="shop-pro-desc">{tm.desc}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <div className="shop-counter">
-                      <div className="btn-counter" onClick={() => updateBuyCount(tm.id, -1)}>-</div>
-                      <div className="counter-val">{count}</div>
-                      <div className="btn-counter" onClick={() => updateBuyCount(tm.id, 1)}>+</div>
-                    </div>
-                    <button className="btn-buy-pro" onClick={() => buyItemPro(tm.id, tm.price, 'tm')} disabled={gold < price}>购买</button>
-                  </div>
-                );
+              {shopTab==='tms' && availTMs.map(tmId=>{
+                const tm=TMS.find(t=>t.id===tmId); if(!tm) return null;
+                return renderShopCard(tm.id,renderTMCSS(tm.type||'NORMAL',36),tm.name,`${TYPES[tm.type]?.name||''} · 威力${tm.p}`,tm.price,'tm',{borderColor:TYPES[tm.type]?.color});
               })}
-
-              {/* 🔥 [新增] 4. 进化石 (核心部分) */}
-              {shopTab === 'stones' && Object.keys(EVO_STONES).map(key => {
-                const item = EVO_STONES[key];
-                const count = buyCounts[key] || 1;
-                const price = item.price * count;
-                return (
-                  <div key={key} className="shop-card-pro" style={{borderColor: '#7B1FA2'}}>
-                    <div className="shop-pro-icon">{renderStoneCSS(key, 42) || <span style={{fontSize:36}}>{item.icon}</span>}</div>
-                    <div className="shop-pro-name" style={{color:'#7B1FA2'}}>{item.name}</div>
-                    <div className="shop-pro-desc">{item.desc}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <div className="shop-counter">
-                      <div className="btn-counter" onClick={() => updateBuyCount(key, -1)}>-</div>
-                      <div className="counter-val">{count}</div>
-                      <div className="btn-counter" onClick={() => updateBuyCount(key, 1)}>+</div>
-                    </div>
-                    <button className="btn-buy-pro" onClick={() => buyItemPro(key, item.price, 'stone')} disabled={gold < price}>购买</button>
-                  </div>
-                );
+              {shopTab==='stones' && Object.keys(EVO_STONES).map(key=>{
+                const item=EVO_STONES[key];
+                return renderShopCard(key,renderStoneCSS(key,36)||<span style={{fontSize:30}}>{item.icon}</span>,item.name,item.desc,item.price,'stone',{borderColor:'#9C27B0'});
               })}
-
-              {/* 恶魔果实已移除商店渠道，仅通过活动/战斗获取 */}
-
-              {/* 5. 增强 */}
-              {shopTab === 'growth' && (
+              {shopTab==='growth' && availGrowth.map(gId=>{
+                const item=GROWTH_ITEMS.find(g=>g.id===gId); if(!item) return null;
+                const extra = gId==='max_candy'?{tag:'稀有',tagColor:'#E91E63'}:gId==='exp_candy'?{tag:'热卖',tagColor:'#4CAF50'}:{};
+                return renderShopCard(item.id,renderGrowthCSS(item.id,36)||<span style={{fontSize:30}}>{item.emoji}</span>,item.name,item.desc,item.price,'item',extra);
+              })}
+              {shopTab==='accessories' && availAcc.map(accId=>{
+                const acc=ACCESSORY_DB.find(a=>a.id===accId); if(!acc) return null;
+                return renderShopCard(acc.id,renderAccCSS(acc.id,36)||<span style={{fontSize:30}}>{acc.icon}</span>,acc.name,acc.desc,acc.price,'acc');
+              })}
+              {shopTab==='cursed' && Object.keys(CURSED_ITEMS).map(key=>{
+                const item=CURSED_ITEMS[key]; if(!item||item.price<=0) return null;
+                return renderShopCard(key,<span style={{fontSize:30}}>{item.icon}</span>,item.name,item.desc,item.price,'cursed',{borderColor:'#4A148C'});
+              })}
+              {shopTab==='special' && (
                 <>
-                    {growthItems.map(item => {
-                        const count = buyCounts[item.id] || 1;
-                        const price = item.price * count;
-                        return (
-                        <div key={item.id} className="shop-card-pro" style={{borderColor: '#FFD700'}}>
-                            <div className="shop-pro-icon">{renderGrowthCSS(item.id, 42) || <span style={{fontSize:36}}>{item.emoji}</span>}</div>
-                            <div className="shop-pro-name" style={{color:'#E65100'}}>{item.name}</div>
-                            <div className="shop-pro-desc">{item.desc}</div>
-                            <div className="shop-pro-price">💰 {price}</div>
-                            <div className="shop-counter">
-                            <div className="btn-counter" onClick={() => updateBuyCount(item.id, -1)}>-</div>
-                            <div className="counter-val">{count}</div>
-                            <div className="btn-counter" onClick={() => updateBuyCount(item.id, 1)}>+</div>
-                            </div>
-                            <button className="btn-buy-pro" onClick={() => buyItemPro(item.id, item.price, 'item')} disabled={gold < price}>购买</button>
-                        </div>
-                        );
-                    })}
-                    {specialItems.map(item => {
-                        const count = buyCounts[item.id] || 1;
-                        const price = item.price * count;
-                        return (
-                        <div key={item.id} className="shop-card-pro" style={{borderColor: '#E91E63'}}>
-                            <div className="shop-pro-icon">{renderMiscCSS(42)}</div>
-                            <div className="shop-pro-name" style={{color:'#C2185B'}}>{item.name}</div>
-                            <div className="shop-pro-desc">{item.desc}</div>
-                            <div className="shop-pro-price">💰 {price}</div>
-                            <div className="shop-counter">
-                            <div className="btn-counter" onClick={() => updateBuyCount(item.id, -1)}>-</div>
-                            <div className="counter-val">{count}</div>
-                            <div className="btn-counter" onClick={() => updateBuyCount(item.id, 1)}>+</div>
-                            </div>
-                            <button className="btn-buy-pro" onClick={() => buyItemPro(item.id, item.price, 'item')} disabled={gold < price}>购买</button>
-                        </div>
-                        );
-                    })}
+                  {renderShopCard(MISC_ITEMS.rebirth_pill.id,renderMiscCSS(36),MISC_ITEMS.rebirth_pill.name,MISC_ITEMS.rebirth_pill.desc,MISC_ITEMS.rebirth_pill.price,'item',{tag:'特殊',tagColor:'#E91E63',borderColor:'#E91E63'})}
                 </>
               )}
-
-              {/* 6. 饰品 */}
-              {shopTab === 'accessories' && ACCESSORY_DB.map(acc => {
-                if (acc.id === 'trophy' || acc.id === 'blue_lily' || acc.id === 'nichirin_blade') return null;
-                const count = buyCounts[acc.id] || 1;
-                const price = acc.price * count;
-                return (
-                  <div key={acc.id} className="shop-card-pro">
-                    <div className="shop-pro-icon">{renderAccCSS(acc.id, 42) || <span style={{fontSize:36}}>{acc.icon}</span>}</div>
-                    <div className="shop-pro-name">{acc.name}</div>
-                    <div className="shop-pro-desc">{acc.desc}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <div className="shop-counter">
-                      <div className="btn-counter" onClick={() => updateBuyCount(acc.id, -1)}>-</div>
-                      <div className="counter-val">{count}</div>
-                      <div className="btn-counter" onClick={() => updateBuyCount(acc.id, 1)}>+</div>
-                    </div>
-                    <button className="btn-buy-pro" onClick={() => buyItemPro(acc.id, acc.price, 'acc')} disabled={gold < price}>购买</button>
-                  </div>
-                );
-              })}
-
-              {/* 7. 咒具 */}
-              {shopTab === 'cursed' && Object.keys(CURSED_ITEMS).map(key => {
-                const item = CURSED_ITEMS[key];
-                if (item.price <= 0) return null;
-                const count = buyCounts[key] || 1;
-                const price = item.price * count;
-                return (
-                  <div key={key} className="shop-card-pro">
-                    <div className="shop-pro-icon"><span style={{fontSize:36}}>{item.icon}</span></div>
-                    <div className="shop-pro-name">{item.name}</div>
-                    <div className="shop-pro-desc">{item.desc}</div>
-                    <div className="shop-pro-price">💰 {price}</div>
-                    <div className="shop-counter">
-                      <div className="btn-counter" onClick={() => updateBuyCount(key, -1)}>-</div>
-                      <div className="counter-val">{count}</div>
-                      <div className="btn-counter" onClick={() => updateBuyCount(key, 1)}>+</div>
-                    </div>
-                    <button className="btn-buy-pro" onClick={() => buyItemPro(key, item.price, 'cursed')} disabled={gold < price}>购买</button>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>

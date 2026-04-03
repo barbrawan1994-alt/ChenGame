@@ -100,7 +100,7 @@ export const GROWTH_ITEMS = [
   { id: 'vit_spd',  name: '极速之羽',   emoji: '🪶', price: 10000, desc: '永久速度+5', stat: 'spd', val: 5 },
   { id: 'vit_crit', name: '幸运四叶草', emoji: '🍀', price: 30000, desc: '永久暴击+1%', stat: 'crit', val: 1 },
    { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 3000, desc: '给宝可梦吃下后，等级提升1级', stat: 'level_up', val: 1 },
-  { id: 'max_candy', name: '神奇糖果', emoji: '🍬', price: 99999, desc: '瞬间升至 Lv.100 (仅限非满级精灵)', stat: 'level_max', val: 100 },
+  { id: 'max_candy', name: '神奇糖果', emoji: '🌟', price: 300000, desc: '瞬间升至 Lv.100 (仅限非满级精灵)', stat: 'level_max', val: 100 },
 ];
 
 // ==========================================
