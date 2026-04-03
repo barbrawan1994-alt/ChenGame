@@ -111,6 +111,47 @@ const ALL_SKILL_TMS = (() => {
   return [...TMS, ...generated];
 })();
 
+const sampleWeightedTM = (tmList) => {
+  const weighted = tmList.map(tm => {
+    const p = tm.p || 0;
+    let w;
+    if (p === 0) w = 60;
+    else if (p < 70) w = 100;
+    else if (p < 100) w = 50;
+    else if (p < 130) w = 15;
+    else if (p < 160) w = 5;
+    else w = 2;
+    return { tm, w };
+  });
+  const total = weighted.reduce((s, x) => s + x.w, 0);
+  let roll = Math.random() * total;
+  for (const { tm, w } of weighted) {
+    roll -= w;
+    if (roll <= 0) return tm;
+  }
+  return weighted[weighted.length - 1].tm;
+};
+
+const sampleWeightedAccessory = () => {
+  const droppable = ACCESSORY_DB.filter(a => !['trophy', 'blue_lily', 'nichirin_blade'].includes(a.id));
+  const weighted = droppable.map(acc => {
+    const price = acc.price || 5000;
+    let w;
+    if (price <= 6000) w = 50;
+    else if (price <= 15000) w = 25;
+    else if (price <= 30000) w = 10;
+    else w = 3;
+    return { acc, w };
+  });
+  const total = weighted.reduce((s, x) => s + x.w, 0);
+  let roll = Math.random() * total;
+  for (const { acc, w } of weighted) {
+    roll -= w;
+    if (roll <= 0) return acc;
+  }
+  return weighted[weighted.length - 1].acc;
+};
+
 export default function RPG(props) {
   // =================================================================
   // 🔥 [核心修复 1] 启动瞬间同步读取存档 (防止存档“丢失”)
@@ -4472,7 +4513,7 @@ const useGrowthItem = (petIndex, itemId) => {
             rewardTitle = "发现珍贵球"; rewardDesc = `获得 ${ball.icon} ${ball.name}`;
         } else if (rand < 0.98) {
             // 5% 技能书
-            const tm = _.sample(ALL_SKILL_TMS);
+            const tm = sampleWeightedTM(ALL_SKILL_TMS);
             setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: (prev.tms[tm.id]||0) + 1}}));
             rewardTitle = "古老的秘籍"; rewardDesc = `获得 📜 ${tm.name} (技能书)`;
         } else if (rand < 0.99) {
@@ -5047,9 +5088,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }
          let enemyId;
          let level = _.random(context.lvl[0], context.lvl[1]);
-         if (Math.random() < 0.005) {
+         const canMeetLegend = currentMapId >= 6;
+         if (canMeetLegend && Math.random() < 0.005) {
             enemyId = _.sample(LEGENDARY_POOL);
-            level = Math.max(level, 70); 
+            const mapMaxLvl = context.lvl ? context.lvl[1] : 70;
+            level = mapMaxLvl + _.random(1, 10);
             dropGold = 5000;
             alert("⚠️ 传说中的神兽降临了！");
          } else {
@@ -5931,7 +5974,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + picked.count }));
       rewardMsg = `${item.emoji} ${item.name} x${picked.count}`;
     } else if (picked.type === 'tm') {
-      const tm = ALL_SKILL_TMS[Math.floor(Math.random() * ALL_SKILL_TMS.length)];
+      const tm = sampleWeightedTM(ALL_SKILL_TMS);
       setInventory(prev => ({ ...prev, tms: { ...prev.tms, [tm.id]: (prev.tms[tm.id] || 0) + picked.count } }));
       rewardMsg = `📜 ${tm.name}`;
     } else if (picked.type === 'misc') {
@@ -7771,7 +7814,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (cType) {
         const matchingTMs = ALL_SKILL_TMS.filter(tm => tm.type === cType);
         if (matchingTMs.length > 0) {
-          const rewardTM = _.sample(matchingTMs);
+          const rewardTM = sampleWeightedTM(matchingTMs);
           setInventory(prev => ({ ...prev, tms: { ...prev.tms, [rewardTM.id]: (prev.tms[rewardTM.id]||0) + 1 } }));
           addLog(`📖 属性试炼奖励: ${rewardTM.name}!`);
         }
@@ -7803,13 +7846,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
 
-    // 4. 随机装备掉落
+    // 4. 随机装备掉落 (唯一装备 + 标准饰品)
     const dropRate = isTrainer ? 0.1 : 0.02;
     if (Math.random() < dropRate) {
         const baseEquip = _.sample(RANDOM_EQUIP_DB);
         const newEquip = createUniqueEquip(baseEquip.id);
         setAccessories(prev => [...prev, newEquip]);
         addLog(`🎁 意外收获！敌人掉落了 ${newEquip.icon} ${newEquip.displayName}！`);
+    }
+    const accDropRate = (isGym || isChallenge || isBoss) ? 0.15 : isTrainer ? 0.05 : 0.01;
+    if (Math.random() < accDropRate) {
+        const droppedAcc = sampleWeightedAccessory();
+        if (droppedAcc) {
+          setAccessories(prev => [...prev, droppedAcc.id]);
+          addLog(`💍 获得饰品：${droppedAcc.icon} ${droppedAcc.name}！`);
+        }
     }
 
     // 5. 门派挑战特殊逻辑
@@ -14396,10 +14447,10 @@ const renderMenu = () => {
       4: ['vit_hp','vit_patk','vit_pdef','vit_satk','vit_sdef','vit_spd','vit_crit','exp_candy','max_candy'],
     };
     const accByTier = {
-      1: ['a1','a3','a10','a11'],
-      2: ['a1','a3','a10','a11','a2','a8','a4','a12','a13','a14'],
-      3: ['a2','a8','a4','a12','a13','a14','a7','a6','a9','a15','a16','a17','a18'],
-      4: ACCESSORY_DB.filter(a=>!['trophy','blue_lily','nichirin_blade'].includes(a.id)).map(a=>a.id),
+      1: ['a1','a3','a10'],
+      2: ['a1','a3','a10','a11','a4'],
+      3: ['a2','a8','a4','a11','a12'],
+      4: ['a2','a8','a7','a13','a14','a12'],
     };
     const showStones = tier >= 3;
     const showCursed = tier >= 3;
