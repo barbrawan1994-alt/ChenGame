@@ -61,7 +61,7 @@ import {
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE,
   COMMON_TECHNIQUES, TYPE_TECHNIQUES, DOMAINS, BINDING_VOWS,
-  JJK_NPCS, HYAKKI_YAKO_CONFIG, AWAKENING_CONDITIONS,
+  JJK_NPCS, HYAKKI_YAKO_CONFIG, AWAKENING_CONDITIONS, GOD_TECHNIQUES,
 } from './data/jujutsu';
 import {
   HOUSE_TYPES, FURNITURE_QUALITY, FURNITURE_DB, FURNITURE_SETS,
@@ -127,6 +127,7 @@ export default function RPG(props) {
   const [fruitDexRarFilter, setFruitDexRarFilter] = useState('ALL');
   const [fruitDexSelected, setFruitDexSelected] = useState(null);
   const [vowModal, setVowModal] = useState(false);
+  const [battleFruitDetail, setBattleFruitDetail] = useState(null);
   const sectBadgeRef = React.useRef(null);
 
   // 游戏进度
@@ -4502,8 +4503,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel) || ((p.intimacy || 0) >= (AWAKENING_CONDITIONS.byIntimacy || 150));
         const cursedMoves = [];
         if (hasCT) {
-            if (p.cursedTechnique) {
-                const ct = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES].find(t => t.id === p.cursedTechnique);
+            const godTech = GOD_TECHNIQUES[p.id];
+            const specialAwk = AWAKENING_CONDITIONS.specialAwakenings.find(s => s.petId === p.id);
+            if (godTech && !p.cursedTechnique) {
+                cursedMoves.push({ ...godTech, isCursed: true });
+            } else if (p.cursedTechnique) {
+                const allTechs = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES, ...Object.values(GOD_TECHNIQUES)];
+                const ct = allTechs.find(t => t.id === p.cursedTechnique);
+                if (ct) cursedMoves.push({ ...ct, isCursed: true });
+                else if (typeTech) cursedMoves.push({ ...typeTech, isCursed: true });
+            } else if (specialAwk) {
+                const allTechs = [...Object.values(TYPE_TECHNIQUES), ...COMMON_TECHNIQUES, ...Object.values(GOD_TECHNIQUES)];
+                const ct = allTechs.find(t => t.id === specialAwk.technique);
                 if (ct) cursedMoves.push({ ...ct, isCursed: true });
                 else if (typeTech) cursedMoves.push({ ...typeTech, isCursed: true });
             } else if (typeTech) {
@@ -5071,8 +5082,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
         }
 
-        player.activeVow = { ...vow, turnsLeft: vow.reward.turns + 1 };
-        addLog(`📜 ${player.name} 立下缚誓——${vow.name}!`);
+        player.activeVow = JSON.parse(JSON.stringify({ ...vow, turnsLeft: vow.reward.turns + 1, side: 'player' }));
+        addLog(`📜 [我方] ${player.name} 立下缚誓——${vow.name}!`);
         addLog(`📖 ${vow.desc}`);
         setAnimEffect({ type: 'BUFF', target: 'player' });
         await wait(1000);
@@ -5253,8 +5264,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
               const spdBoost = Math.min(6, Math.round(Math.log2(chosenVow.reward.spdMult) * 4));
               enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + spdBoost);
             }
-            enemy.activeVow = { ...chosenVow, turnsLeft: chosenVow.reward.turns };
-            addLog(`📜 ${enemy.name} 立下缚誓——${chosenVow.name}!`);
+            enemy.activeVow = JSON.parse(JSON.stringify({ ...chosenVow, turnsLeft: chosenVow.reward.turns, side: 'enemy' }));
+            addLog(`📜 [敌方] ${enemy.name} 立下缚誓——${chosenVow.name}!`);
             addLog(`📖 ${chosenVow.desc}`);
             setAnimEffect({ type: 'BUFF', target: 'enemy' });
             await wait(1200);
@@ -5433,11 +5444,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 缚誓回合递减
-    [player, enemy].forEach(u => {
+    [player, enemy].forEach((u, idx) => {
         if (u.activeVow && u.activeVow.turnsLeft > 0) {
             u.activeVow.turnsLeft--;
             if (u.activeVow.turnsLeft <= 0) {
-                addLog(`📜 ${u.name} 的缚誓 [${u.activeVow.name}] 已结束`);
+                const sideLabel = idx === 0 ? '[我方]' : '[敌方]';
+                addLog(`📜 ${sideLabel} ${u.name} 的缚誓 [${u.activeVow.name}] 已结束`);
                 u.activeVow = null;
             }
         }
@@ -12329,7 +12341,7 @@ const renderMenu = () => {
                             {renderSectBadge(e, 'enemy')}
                             {renderStatusBadges(e)}
                             {e.devilFruit && (() => { const df = getFruitById(e.devilFruit); return df ? (
-                              <span className="fruit-badge" style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
+                              <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
                                 {df.name}{e.fruitTransformed ? ` (${e.fruitTurnsLeft})` : ''}
                               </span>
                             ) : null; })()}
@@ -12453,7 +12465,7 @@ const renderMenu = () => {
                             {renderSectBadge(p, 'player')}
                             {renderStatusBadges(p)}
                             {p.devilFruit && (() => { const df = getFruitById(p.devilFruit); return df ? (
-                              <span className="fruit-badge" style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
+                              <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
                                 {df.name}{p.fruitTransformed ? ` (${p.fruitTurnsLeft})` : ''}
                               </span>
                             ) : null; })()}
@@ -13899,6 +13911,76 @@ const renderMenu = () => {
       {fusionMode && renderFusion()} 
       {renderAvatarSelector()}
       {renderPetDetailModal()}
+
+      {/* 战斗果实详情弹窗 */}
+      {battleFruitDetail && (() => {
+        const df = battleFruitDetail;
+        const rarityConf = FRUIT_RARITY_CONFIG[df.rarity] || {};
+        const tf = df.transform || {};
+        const tm = df.transformMove;
+        const statLabels = [];
+        if (tf.atkMult) statLabels.push(`物攻 ×${tf.atkMult}`);
+        if (tf.sAtkMult) statLabels.push(`特攻 ×${tf.sAtkMult}`);
+        if (tf.defMult) statLabels.push(`物防 ×${tf.defMult}`);
+        if (tf.sDefMult) statLabels.push(`特防 ×${tf.sDefMult}`);
+        if (tf.spdMult) statLabels.push(`速度 ×${tf.spdMult}`);
+        if (tf.movePowerBoost) statLabels.push(`技能威力 +${Math.round(tf.movePowerBoost*100)}%`);
+        if (tf.healPerTurn) statLabels.push(`每回合回复 ${Math.round(tf.healPerTurn*100)}% HP`);
+        if (tf.typeImmune) statLabels.push(`免疫 ${TYPES[tf.typeImmune]?.name || tf.typeImmune} 属性`);
+        if (tf.ignoreDefPercent) statLabels.push(`无视 ${Math.round(tf.ignoreDefPercent*100)}% 防御`);
+        if (tf.dotPerTurn) statLabels.push(`每回合持续伤害 ${Math.round(tf.dotPerTurn*100)}%`);
+        if (tf.cancelEnemyFruit) statLabels.push('可取消对手果实变身');
+        if (tf.fixedDmgPercent) statLabels.push(`固定比例伤害 ${Math.round(tf.fixedDmgPercent*100)}%`);
+        if (tf.critBoost) statLabels.push(`暴击率 +${tf.critBoost}`);
+        if (tf.selfDotPerTurn) statLabels.push(`每回合自伤 ${Math.round(tf.selfDotPerTurn*100)}%`);
+        if (tf.hpDrain) statLabels.push(`吸血 ${Math.round(tf.hpDrain*100)}%`);
+        if (tf.accDown) statLabels.push(`降低敌方命中 ${tf.accDown} 级`);
+        if (tf.enemySpdDown) statLabels.push(`降低敌方速度 ${tf.enemySpdDown} 级`);
+        return (
+          <div onClick={() => setBattleFruitDetail(null)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center', zIndex:10600
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background:'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius:'16px',
+              padding:'24px', maxWidth:'420px', width:'90%', color:'#fff', border:`2px solid ${rarityConf.color || '#666'}`,
+              boxShadow:`0 0 30px ${rarityConf.color || '#666'}40`
+            }}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                  <span style={{fontSize:'28px'}}>{getFruitIcon(df.id)}</span>
+                  <div>
+                    <div style={{fontSize:'18px', fontWeight:'bold'}}>{df.name}</div>
+                    <div style={{fontSize:'12px', color: rarityConf.color, fontWeight:'bold'}}>
+                      {rarityConf.label} · {FRUIT_CATEGORY_NAMES[df.category] || df.category}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setBattleFruitDetail(null)} style={{background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:'32px', height:'32px', borderRadius:'50%', fontSize:'16px', cursor:'pointer'}}>×</button>
+              </div>
+              <div style={{fontSize:'13px', color:'#b0b0b0', marginBottom:'14px', lineHeight:'1.6'}}>{df.desc}</div>
+              <div style={{background:'rgba(255,255,255,0.05)', borderRadius:'10px', padding:'12px', marginBottom:'12px'}}>
+                <div style={{fontSize:'13px', fontWeight:'bold', color:'#64b5f6', marginBottom:'8px'}}>变身效果 (持续{df.duration}回合)</div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                  {statLabels.map((s,i) => (
+                    <span key={i} style={{background:'rgba(100,181,246,0.15)', border:'1px solid rgba(100,181,246,0.3)', borderRadius:'6px', padding:'3px 8px', fontSize:'11px', color:'#90caf9'}}>{s}</span>
+                  ))}
+                </div>
+              </div>
+              {tm && (
+                <div style={{background:'rgba(255,255,255,0.05)', borderRadius:'10px', padding:'12px'}}>
+                  <div style={{fontSize:'13px', fontWeight:'bold', color:'#ff9800', marginBottom:'6px'}}>变身专属技能</div>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <span style={{background: TYPES[tm.t]?.color || '#888', color:'#fff', padding:'2px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:'bold'}}>{TYPES[tm.t]?.name || tm.t}</span>
+                    <span style={{fontWeight:'bold', fontSize:'14px'}}>{tm.name}</span>
+                    <span style={{color:'#aaa', fontSize:'12px'}}>威力{tm.p} / 命中{tm.acc} / PP{tm.pp}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 缚誓选择弹窗 */}
       {vowModal && battle && (() => {
