@@ -546,7 +546,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
         // 2. 如果当前在“功能未开放”界面，相当于点击返回
         if (view === 'locked') {
             e.preventDefault();
-            setView(hasSave && party.length > 0 ? 'grid_map' : 'menu');
+            setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu');
             return;
         }
       }
@@ -2924,7 +2924,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     return (
       <div className="screen" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView('grid_map')}>⬅ 返回地图</button>
+          <button className="btn-back" onClick={() => setView(getBackToMapView())}>⬅ 返回地图</button>
           <div className="nav-title">🏡 精灵家园</div>
           <div className="nav-coin">💰 {gold}</div>
         </div>
@@ -3440,7 +3440,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         {/* 顶栏 */}
         <div style={{padding:'16px 20px 12px', flexShrink:0, borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
-            <button onClick={() => { setView(party.length > 0 ? 'grid_map' : 'menu'); setGuideSearch(''); setGuideCat(null); }}
+            <button onClick={() => { setView(party.length > 0 ? getBackToMapView() : 'menu'); setGuideSearch(''); setGuideCat(null); }}
               style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'10px', padding:'6px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600'}}>
               返回
             </button>
@@ -3570,7 +3570,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         {/* Header */}
         <div style={{padding:'20px 24px 16px', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
-            <button onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+            <button onClick={() => setView(hasSave && party.length > 0 ? (mapGrid.length > 0 ? 'grid_map' : 'world_map') : 'menu')} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>成就大厅</div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>{unlocked} / {total} 已解锁</div>
@@ -3672,7 +3672,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff'}}>
          <div style={{fontSize: '60px', marginBottom: '20px'}}>🔒</div>
          <h2 style={{marginBottom: '10px'}}>功能尚未开放</h2>
-         <button onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
+         <button onClick={() => setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
       </div>
   );
 
@@ -5133,9 +5133,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       playerCombatStates: battlePlayerParty,
       enemyActiveIdx: 0, 
       activeIdx, 
-      // 如果是 PvP，初始阶段设为 'input_p1'
-      phase: type === 'pvp' ? 'input_p1' : 'input', 
-      logs: [type === 'pvp' ? `PvP 对战开始！请 1P 选择行动` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`)],
+      phase: type === 'pvp' ? 'input' : 'input', 
+      logs: [type === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`)],
       mapId: context?.id,
       drop: dropGold,
       isBoss,
@@ -5176,38 +5175,48 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
 
   // ==========================================
-  // [新增] PvP 双人同屏控制逻辑
+  // [新增] PvP AI控制逻辑
   // ==========================================
 
-  // 1. 处理 PvP 输入 (缓存动作 -> 触发结算)
+  const getPvPAIAction = (state) => {
+      const enemy = state.enemyParty?.[state.enemyActiveIdx];
+      if (!enemy || enemy.currentHp <= 0) return { type: 'move', index: 0 };
+      const player = state.playerCombatStates?.[state.activeIdx];
+      const moves = enemy.combatMoves || [];
+      if (moves.length === 0) return { type: 'move', index: 0 };
+      const enemyHpRatio = enemy.currentHp / (getStats(enemy).maxHp || 1);
+      if (enemyHpRatio < 0.25) {
+          const aliveBackup = state.enemyParty.findIndex((ep, i) => i !== state.enemyActiveIdx && ep.currentHp > 0);
+          if (aliveBackup >= 0 && Math.random() < 0.3) return { type: 'switch', index: aliveBackup };
+      }
+      let bestIdx = 0;
+      let bestScore = -Infinity;
+      moves.forEach((m, i) => {
+          if (m.pp <= 0) return;
+          let score = (m.p || 0);
+          if (player) {
+              const typeMod = getTypeMod(m.t, player.type);
+              score *= typeMod;
+          }
+          score += Math.random() * 20;
+          if (score > bestScore) { bestScore = score; bestIdx = i; }
+      });
+      return { type: 'move', index: bestIdx };
+  };
+
+  // P1选完后AI自动决策P2
   const handlePvPInput = (playerNum, actionType, index) => {
-      // actionType: 'move' (技能) | 'switch' (换人)
-      
       setBattle(prev => {
-          const newActions = { ...prev.pvpActions, [`p${playerNum}`]: { type: actionType, index } };
-          
-          // 如果是 1P 选完 -> 切到 2P 界面
-          if (playerNum === 1) {
-              return {
-                  ...prev,
-                  pvpActions: newActions,
-                  phase: 'input_p2', // 切换阶段
-                  logs: [`1P 已就绪，请 2P (对手) 选择行动...`, ...prev.logs]
-              };
-          }
-          
-          // 如果是 2P 选完 -> 进入结算阶段
-          if (playerNum === 2) {
-              // 延迟 100ms 触发结算，让 UI 先更新为“结算中”
-              setTimeout(() => resolvePvPRound(newActions), 100);
-              return {
-                  ...prev,
-                  pvpActions: newActions,
-                  phase: 'busy', // 锁定界面
-                  logs: [`双方已就绪，正在结算回合...`, ...prev.logs]
-              };
-          }
-          return prev;
+          const p1Action = { type: actionType, index };
+          const aiAction = getPvPAIAction(prev);
+          const finalActions = { p1: p1Action, p2: aiAction };
+          setTimeout(() => resolvePvPRound(finalActions), 300);
+          return {
+              ...prev,
+              pvpActions: finalActions,
+              phase: 'busy',
+              logs: [`已行动，AI 对手正在思考...`, ...prev.logs]
+          };
       });
   };
 
@@ -5307,8 +5316,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       // 回合结束，重置为 1P 输入
       setBattle(prev => ({ 
           ...prev, 
-          phase: 'input_p1', 
-          logs: [`回合结束，请 1P 选择行动`, ...prev.logs],
+          phase: 'input', 
+          logs: [`回合结束，请选择行动`, ...prev.logs],
           pvpActions: { p1: null, p2: null }
       }));
   };
@@ -5342,16 +5351,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
                   ...prev, 
                   activeIdx: nextIdx, // 切换到下一个活着的
                   logs: [`我方派出了 ${team[nextIdx].name}!`, ...prev.logs],
-                  phase: 'input_p1', 
+                  phase: 'input', 
                   pvpActions: { p1: null, p2: null } 
               }));
               await triggerShinyAnim('player', team[nextIdx]);
           } else {
               setBattle(prev => ({ 
                   ...prev, 
-                  enemyActiveIdx: nextIdx, // 切换对手
+                  enemyActiveIdx: nextIdx,
                   logs: [`对手派出了 ${team[nextIdx].name}!`, ...prev.logs],
-                  phase: 'input_p1', 
+                  phase: 'input', 
                   pvpActions: { p1: null, p2: null } 
               }));
               await triggerShinyAnim('enemy', team[nextIdx]);
@@ -5557,6 +5566,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   // ==========================================
+  const getBackToMapView = () => mapGrid.length > 0 ? 'grid_map' : 'world_map';
+
   // 搭档羁绊系统 - 核心逻辑
   // ==========================================
   const isPartnerSystemUnlocked = () => storyProgress > 19;
@@ -9021,7 +9032,7 @@ const renderNameInput = () => {
     return (
       <div className="screen dex-screen">
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(party.length > 0 ? 'grid_map' : 'menu')}>🔙 返回</button>
+          <button className="btn-back" onClick={() => setView(party.length > 0 ? getBackToMapView() : 'menu')}>🔙 返回</button>
           <div className="nav-title">精灵图鉴</div>
           <button className="btn-icon-only" onClick={syncDexData} style={{fontSize:'18px'}} title="修复图鉴数据">🔄</button>
         </div>
@@ -10118,7 +10129,7 @@ const renderMenu = () => {
       <div className="screen map-screen">
         {/* 顶部导航 */}
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')}>⬅ {hasSave && party.length > 0 ? '返回地图' : '返回'}</button>
+          <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu')}>⬅ {hasSave && party.length > 0 ? '返回地图' : '返回'}</button>
           <div className="nav-title">冒险地图</div>
           <div className="nav-coin">💰 {gold}</div>
         </div>
@@ -13769,18 +13780,17 @@ const renderMenu = () => {
 
         {/* 底部操作栏 */}
         <div className="battle-panel-v2">
-            {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'input_p2') ? (
+            {(battle.phase === 'input' || battle.phase === 'input_p1') ? (
               <div className="controls-area-v2">
                     {battle.isPvP && (
-                        <div style={{textAlign:'center', background: (battle.phase === 'input' || battle.phase === 'input_p1') ? '#2196F3' : '#FF5252', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
-                            {(battle.phase === 'input' || battle.phase === 'input_p1') ? '🔵 1P 请行动' : '🔴 2P 请行动'}
+                        <div style={{textAlign:'center', background: '#2196F3', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
+                            🎮 PvP对战 · 对手由AI控制
                         </div>
                     )}
                     {/* 技能网格 - 占满上方空间 */}
                     <div className="moves-grid-v2">
                         {(() => {
-                            const isP2Turn = battle.phase === 'input_p2';
-                            const activeMoves = isP2Turn ? (e?.combatMoves || []) : (p?.combatMoves || []);
+                            const activeMoves = p?.combatMoves || [];
                             return activeMoves.map((m, i) => (
                                 <EnhancedMoveButton
                                     key={i}
@@ -13798,7 +13808,7 @@ const renderMenu = () => {
                                     }}
                                     onClick={() => { 
                                         if (battle.isPvP) {
-                                            handlePvPInput(isP2Turn ? 2 : 1, 'move', i);
+                                            handlePvPInput(1, 'move', i);
                                         } else {
                                             executeTurn(i);
                                         }
@@ -13836,7 +13846,7 @@ const renderMenu = () => {
                         </div>
                     ) : (
                         <div className="actions-bar-h">
-                            <button className="action-btn-h" style={{background:'#673AB7'}} onClick={() => { const team = (battle.phase === 'input_p2') ? battle.enemyParty : battle.playerCombatStates; const input = prompt("输入要交换的精灵序号 (1-6):"); const idx = parseInt(input) - 1; if (!isNaN(idx) && idx >= 0 && idx < team.length) { handlePvPInput((battle.phase === 'input_p2') ? 2 : 1, 'switch', idx); } }}>换人</button>
+                            <button className="action-btn-h" style={{background:'#673AB7'}} onClick={() => { const team = battle.playerCombatStates; const input = prompt("输入要交换的精灵序号 (1-6):"); const idx = parseInt(input) - 1; if (!isNaN(idx) && idx >= 0 && idx < team.length && team[idx]?.currentHp > 0 && idx !== battle.activeIdx) { handlePvPInput(1, 'switch', idx); } }}>换人</button>
                         </div>
                     )}
                 </div>
@@ -14799,13 +14809,13 @@ const renderMenu = () => {
     const leader = party[0];
 
     return (
-      <div className="screen" onClick={() => setView('grid_map')} style={{
+      <div className="screen" onClick={() => setView(getBackToMapView())} style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000
       }}>
         <div onClick={(e) => e.stopPropagation()} style={{
-            width: '650px', height: '450px', // 稍微加高一点
+            width: '650px', height: '450px',
             background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
             borderRadius: '24px', boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
             overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -15212,7 +15222,7 @@ const renderMenu = () => {
             }}>
               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px'}}>
                 <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                  <span style={{fontSize:'28px'}}>{getFruitIcon(df.id)}</span>
+                  <span style={{fontSize:'28px'}}>{(() => { const fi = getFruitIcon(df.id); return typeof fi === 'object' ? (fi.symbol || '🍎') : fi; })()}</span>
                   <div>
                     <div style={{fontSize:'18px', fontWeight:'bold'}}>{df.name}</div>
                     <div style={{fontSize:'12px', color: rarityConf.color, fontWeight:'bold'}}>
