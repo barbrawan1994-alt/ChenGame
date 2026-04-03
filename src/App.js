@@ -12741,15 +12741,10 @@ const renderMenu = () => {
   };
   
    // ==========================================
-  // [重写] 背包界面 (紧凑弹窗版)
+  // [重写] 背包界面 (精致美观版)
   // ==========================================
   const renderBag = () => {
-    // 点击物品处理
-    const handleItemClick = (item, category) => {
-        setSelectedBagItem({ ...item, category });
-    };
-
-    // 使用/装备按钮逻辑
+    const handleItemClick = (item, category) => { setSelectedBagItem({ ...item, category }); };
     const handleUseBtn = () => {
         if (!selectedBagItem) return;
         if (['meds', 'tm', 'growth', 'stone'].includes(selectedBagItem.category)) {
@@ -12766,215 +12761,170 @@ const renderMenu = () => {
                 setInventory(inv => ({ ...inv, cursed: { ...inv.cursed, [selectedBagItem.id]: inv.cursed[selectedBagItem.id] - 1 } }));
                 alert(`${party[idx].name} 的咒力上限永久提升 +${cItem.val}!`);
               }
-            } else {
-              alert(`${cItem.name} 只能在战斗中使用。`);
-            }
+            } else { alert(`${cItem.name} 只能在战斗中使用。`); }
             setSelectedBagItem(null);
         } else if (selectedBagItem.id === 'rebirth_pill') {
              const idxStr = prompt(`请输入要洗练的精灵序号 (1-${party.length}):`, "1");
              const idx = parseInt(idxStr) - 1;
-             if (!isNaN(idx) && idx >= 0 && idx < party.length) {
-                 openRebirthUI(party[idx]); setSelectedBagItem(null);
-             }
-        } else if (selectedBagItem.category === 'acc') {
-            alert("请前往 [我的伙伴] 界面，点击精灵进行饰品装备。");
+             if (!isNaN(idx) && idx >= 0 && idx < party.length) { openRebirthUI(party[idx]); setSelectedBagItem(null); }
+        } else if (selectedBagItem.category === 'acc') { alert("请前往 [我的伙伴] 界面，点击精灵进行饰品装备。");
         } else { alert("该物品无法直接使用"); }
     };
 
-    // === 准备数据 (保持原有逻辑) ===
     let currentItems = [];
     let currentCat = '';
-    if (bagTab === 'balls') {
-        currentCat = 'ball';
-        Object.keys(inventory.balls || {}).forEach(k => { if ((inventory.balls||{})[k] > 0 && BALLS[k]) currentItems.push({ ...BALLS[k], count: inventory.balls[k] }); });
-    } else if (bagTab === 'meds') {
-        currentCat = 'meds';
-        Object.keys(inventory.meds || {}).forEach(k => { if ((inventory.meds||{})[k] > 0 && MEDICINES[k]) currentItems.push({ ...MEDICINES[k], count: inventory.meds[k] }); });
-        if (inventory.berries > 0) currentItems.push({ id: 'berry', name: '树果', icon: '🍒', desc: '恢复少量体力', count: inventory.berries, type: 'HP', val: 30 });
-    } else if (bagTab === 'tms') {
-        currentCat = 'tm';
-        Object.keys(inventory.tms || {}).forEach(k => { if ((inventory.tms||{})[k] > 0) { const tm = TMS.find(t => t.id === k); if (tm) currentItems.push({ ...tm, count: inventory.tms[k] }); } });
-    } else if (bagTab === 'stones') { 
-        currentCat = 'stone';
-        Object.keys(inventory.stones || {}).forEach(k => { if (inventory.stones[k] > 0) { const s = EVO_STONES[k]; if (s) currentItems.push({ ...s, count: inventory.stones[k] }); } });
-    } else if (bagTab === 'misc') {
-        currentCat = 'growth';
-        GROWTH_ITEMS.forEach(g => { if (inventory[g.id] > 0) currentItems.push({ ...g, count: inventory[g.id], icon: g.emoji }); });
-        if ((inventory.misc?.rebirth_pill || 0) > 0) currentItems.push({ ...MISC_ITEMS.rebirth_pill, count: inventory.misc.rebirth_pill });
-    } else if (bagTab === 'accessories') {
-        currentCat = 'acc';
-        ACCESSORY_DB.forEach(acc => { const count = accessories.filter(item => item === acc.id).length; if (count > 0) currentItems.push({ ...acc, count }); });
-        accessories.forEach(item => { if (typeof item === 'object' && item.isUnique) currentItems.push({ ...item, name: item.displayName, count: 1, desc: `${item.desc} | 技能: ${item.extraSkill.name}` }); });
-    } else if (bagTab === 'fruits') {
-        currentCat = 'fruit';
-        const fruitCounts = {};
-        fruitInventory.forEach(fid => { fruitCounts[fid] = (fruitCounts[fid] || 0) + 1; });
-        Object.entries(fruitCounts).forEach(([fid, count]) => {
-          const fruit = getFruitById(fid);
-          if (fruit) {
-            const equipped = [...party, ...box].filter(p => p.devilFruit === fid).length;
-            currentItems.push({
-              id: fid, name: fruit.name, icon: null, fruitId: fid,
-              desc: `[${FRUIT_CATEGORY_NAMES[fruit.category]}] ${fruit.desc}\n持续${fruit.duration}回合`,
-              count, rarity: fruit.rarity, category: fruit.category, equipped,
-            });
-          }
-        });
-    } else if (bagTab === 'cursed') {
-        currentCat = 'cursed';
-        Object.keys(inventory.cursed || {}).forEach(k => {
-          if ((inventory.cursed || {})[k] > 0 && CURSED_ITEMS[k]) {
-            currentItems.push({ ...CURSED_ITEMS[k], count: inventory.cursed[k] });
-          }
-        });
-    }
+    if (bagTab === 'balls') { currentCat = 'ball'; Object.keys(inventory.balls || {}).forEach(k => { if ((inventory.balls||{})[k] > 0 && BALLS[k]) currentItems.push({ ...BALLS[k], count: inventory.balls[k] }); });
+    } else if (bagTab === 'meds') { currentCat = 'meds'; Object.keys(inventory.meds || {}).forEach(k => { if ((inventory.meds||{})[k] > 0 && MEDICINES[k]) currentItems.push({ ...MEDICINES[k], count: inventory.meds[k] }); }); if (inventory.berries > 0) currentItems.push({ id: 'berry', name: '树果', icon: '🍒', desc: '恢复少量体力', count: inventory.berries, type: 'HP', val: 30 });
+    } else if (bagTab === 'tms') { currentCat = 'tm'; Object.keys(inventory.tms || {}).forEach(k => { if ((inventory.tms||{})[k] > 0) { const tm = TMS.find(t => t.id === k); if (tm) currentItems.push({ ...tm, count: inventory.tms[k] }); } });
+    } else if (bagTab === 'stones') { currentCat = 'stone'; Object.keys(inventory.stones || {}).forEach(k => { if (inventory.stones[k] > 0) { const s = EVO_STONES[k]; if (s) currentItems.push({ ...s, count: inventory.stones[k] }); } });
+    } else if (bagTab === 'misc') { currentCat = 'growth'; GROWTH_ITEMS.forEach(g => { if (inventory[g.id] > 0) currentItems.push({ ...g, count: inventory[g.id], icon: g.emoji }); }); if ((inventory.misc?.rebirth_pill || 0) > 0) currentItems.push({ ...MISC_ITEMS.rebirth_pill, count: inventory.misc.rebirth_pill });
+    } else if (bagTab === 'accessories') { currentCat = 'acc'; ACCESSORY_DB.forEach(acc => { const count = accessories.filter(item => item === acc.id).length; if (count > 0) currentItems.push({ ...acc, count }); }); accessories.forEach(item => { if (typeof item === 'object' && item.isUnique) currentItems.push({ ...item, name: item.displayName, count: 1, desc: `${item.desc} | 技能: ${item.extraSkill.name}` }); });
+    } else if (bagTab === 'fruits') { currentCat = 'fruit'; const fruitCounts = {}; fruitInventory.forEach(fid => { fruitCounts[fid] = (fruitCounts[fid] || 0) + 1; }); Object.entries(fruitCounts).forEach(([fid, count]) => { const fruit = getFruitById(fid); if (fruit) { const equipped = [...party, ...box].filter(p => p.devilFruit === fid).length; currentItems.push({ id: fid, name: fruit.name, icon: null, fruitId: fid, desc: `[${FRUIT_CATEGORY_NAMES[fruit.category]}] ${fruit.desc}\n持续${fruit.duration}回合`, count, rarity: fruit.rarity, category: fruit.category, equipped }); } });
+    } else if (bagTab === 'cursed') { currentCat = 'cursed'; Object.keys(inventory.cursed || {}).forEach(k => { if ((inventory.cursed || {})[k] > 0 && CURSED_ITEMS[k]) currentItems.push({ ...CURSED_ITEMS[k], count: inventory.cursed[k] }); }); }
+
+    const tabConfig = [
+      {id:'balls',    label:'精灵球', icon:'🔴', color:'#EF5350'},
+      {id:'meds',     label:'药品',   icon:'💊', color:'#66BB6A'},
+      {id:'tms',      label:'技能书', icon:'📀', color:'#42A5F5'},
+      {id:'stones',   label:'进化石', icon:'💎', color:'#AB47BC'},
+      {id:'misc',     label:'道具',   icon:'🎁', color:'#FF9800'},
+      {id:'accessories',label:'饰品', icon:'💍', color:'#EC407A'},
+      {id:'fruits',   label:'果实',   icon:'🍎', color:'#D32F2F'},
+      {id:'cursed',   label:'咒具',   icon:'🔮', color:'#7B1FA2'},
+    ];
+    const activeTab = tabConfig.find(t=>t.id===bagTab) || tabConfig[0];
+    const totalItems = currentItems.reduce((s,i)=>s+i.count,0);
+
+    const renderItemIcon = (item, size) => {
+      if (item.fruitId) return renderFruitCSSIcon(item.fruitId, size);
+      if (currentCat==='ball') return renderBallCSS(item.id, size);
+      if (currentCat==='meds') return renderMedCSS(item.id, size) || <span style={{fontSize:size*0.75}}>{item.icon}</span>;
+      if (currentCat==='tm') return renderTMCSS(item.type || 'NORMAL', size);
+      if (currentCat==='stone') return renderStoneCSS(item.id, size) || <span style={{fontSize:size*0.75}}>{item.icon}</span>;
+      if (currentCat==='growth') return renderGrowthCSS(item.id, size) || (item.id === 'rebirth_pill' ? renderMiscCSS(size) : <span style={{fontSize:size*0.75}}>{item.icon||item.emoji}</span>);
+      if (currentCat==='acc') return renderAccCSS(item.id, size) || <span style={{fontSize:size*0.75}}>{item.icon}</span>;
+      return <span style={{fontSize:size*0.75}}>{item.icon || item.emoji || '📦'}</span>;
+    };
 
     return (
-      <div className="modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-      }}>
-        <div style={{
-            width: '800px', height: '550px', background: '#fff', borderRadius: '16px',
-            display: 'flex', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
-        }}>
-            {/* 左侧侧边栏 */}
-            <div style={{width: '180px', background: '#f5f7fa', borderRight: '1px solid #eee', padding: '20px 0'}}>
-                <div style={{padding: '0 20px 20px', fontWeight: 'bold', fontSize: '18px', color: '#333', borderBottom: '1px solid #eee', marginBottom: '10px'}}>我的背包</div>
-                {['balls', 'meds', 'tms', 'stones', 'misc', 'accessories', 'fruits', 'cursed'].map(tab => (
-                    <div key={tab} onClick={()=>setBagTab(tab)} style={{
-                        padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
-                        background: bagTab===tab ? '#E3F2FD' : 'transparent',
-                        color: bagTab===tab ? '#1976D2' : '#666',
-                        fontWeight: bagTab===tab ? 'bold' : 'normal',
-                        borderRight: bagTab===tab ? '3px solid #1976D2' : '3px solid transparent'
-                    }}>
-                        <span style={{display:'flex',alignItems:'center'}}>{tab==='balls'?renderBallCSS('poke',18):tab==='meds'?renderMedCSS('potion',18):tab==='tms'?renderTMCSS('NORMAL',18):tab==='stones'?renderStoneCSS('fire_stone',18):tab==='misc'?renderGrowthCSS('exp_candy',18):tab==='accessories'?renderAccCSS('a1',18):tab==='fruits'?<span style={{width:18,height:18,borderRadius:'50%',background:'linear-gradient(135deg,#D32F2F,#FF6F00)',display:'inline-block'}} />:tab==='cursed'?<span style={{width:18,height:18,borderRadius:'50%',background:'linear-gradient(135deg,#7C3AED,#4C1D95)',display:'inline-block'}} />:null}</span>
-                        <span>{tab==='balls'?'精灵球':tab==='meds'?'药品':tab==='tms'?'技能':tab==='stones'?'进化石':tab==='misc'?'道具':tab==='accessories'?'饰品':tab==='fruits'?'恶魔果实':'咒具'}</span>
-                    </div>
-                ))}
-                <button onClick={() => setView('grid_map')} style={{
-                    margin: '20px', width: '140px', padding: '10px', borderRadius: '8px', border: '1px solid #ddd',
-                    background: '#fff', cursor: 'pointer', fontSize: '14px'
-                }}>🔙 关闭背包</button>
+      <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(10,10,30,0.7)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
+        <div style={{width:'880px',maxWidth:'95vw',height:'600px',maxHeight:'90vh',background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',borderRadius:'24px',display:'flex',overflow:'hidden',boxShadow:'0 25px 60px rgba(0,0,0,0.5),0 0 120px rgba(100,100,255,0.08)',border:'1px solid rgba(255,255,255,0.08)'}}>
+            {/* 左侧导航 */}
+            <div style={{width:'170px',background:'rgba(0,0,0,0.3)',borderRight:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',flexShrink:0}}>
+                <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+                    <div style={{fontSize:'18px',fontWeight:'900',color:'#fff',letterSpacing:'2px',marginBottom:'4px'}}>🎒 背包</div>
+                    <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>💰 {gold.toLocaleString()} 金币</div>
+                </div>
+                <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
+                  {tabConfig.map(tab=>{
+                    const isActive = bagTab===tab.id;
+                    return (
+                      <div key={tab.id} onClick={()=>setBagTab(tab.id)} style={{
+                        padding:'10px 14px',margin:'2px 8px',borderRadius:'10px',cursor:'pointer',
+                        display:'flex',alignItems:'center',gap:'8px',transition:'all 0.2s',
+                        background:isActive?`linear-gradient(90deg,${tab.color}30,transparent)`:'transparent',
+                        borderLeft:isActive?`3px solid ${tab.color}`:'3px solid transparent',
+                      }}>
+                        <span style={{fontSize:'16px',filter:isActive?'none':'grayscale(0.5) opacity(0.6)'}}>{tab.icon}</span>
+                        <span style={{fontSize:'12px',fontWeight:isActive?'700':'500',color:isActive?'#fff':'rgba(255,255,255,0.45)',transition:'all 0.2s'}}>{tab.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={()=>setView(party.length>0?getBackToMapView():'menu')} style={{
+                  margin:'10px 12px 16px',padding:'10px',borderRadius:'12px',border:'1px solid rgba(255,255,255,0.1)',
+                  background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:'600',cursor:'pointer',transition:'all 0.2s',
+                }}>关闭背包</button>
             </div>
 
-            {/* 右侧内容区 */}
-            <div style={{flex: 1, padding: '20px', background: '#fff', display: 'flex', flexDirection: 'column'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: '#666', fontSize: '12px'}}>
-                    <span>当前分类物品</span>
-                    <span style={{color: '#FF9800', fontWeight: 'bold'}}>💰 {gold}</span>
+            {/* 右侧物品区 */}
+            <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0}}>
+                {/* 顶栏 */}
+                <div style={{padding:'16px 20px',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                        <span style={{fontSize:'20px'}}>{activeTab.icon}</span>
+                        <span style={{fontSize:'16px',fontWeight:'800',color:'#fff',letterSpacing:'1px'}}>{activeTab.label}</span>
+                        <span style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.06)',padding:'2px 10px',borderRadius:'10px'}}>{currentItems.length}种 · {totalItems}件</span>
+                    </div>
                 </div>
-                
-                <div style={{
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', // 调整格子大小
-                    gridAutoRows: 'max-content',
-                    gap: '12px', overflowY: 'auto', flex: 1, alignContent: 'start'
-                }}>
-                    {currentItems.length === 0 ? (
-                        <div style={{gridColumn: '1/-1', textAlign: 'center', color: '#ccc', marginTop: '50px'}}>
-                            <div style={{fontSize: '40px', marginBottom: '10px'}}>📦</div>
-                            <div>暂无此类物品</div>
-                        </div>
-                    ) : (
-                        currentItems.map((item, idx) => {
-                            const isFruit = currentCat === 'fruit';
-                            const rarityColor = isFruit && item.rarity ? (FRUIT_RARITY_CONFIG[item.rarity]?.color || '#666') : '#2196F3';
-                            return (
-                            <div key={idx} onClick={() => handleItemClick(item, currentCat)} style={{
-                                border: isFruit ? `2px solid ${rarityColor}` : '1px solid #eee', borderRadius: '10px', padding: '10px',
-                                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                                cursor: 'pointer', transition: '0.2s', position: 'relative',
-                                background: isFruit ? `linear-gradient(135deg, ${rarityColor}10, #fafafa)` : '#fafafa'
-                            }} onMouseOver={e => e.currentTarget.style.borderColor = rarityColor}
-                               onMouseOut={e => e.currentTarget.style.borderColor = isFruit ? rarityColor : '#eee'}>
-                                <div style={{marginBottom: '5px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:36}}>
-                                  {item.fruitId ? renderFruitCSSIcon(item.fruitId, 36) 
-                                    : currentCat==='ball' ? renderBallCSS(item.id, 36)
-                                    : currentCat==='meds' ? (renderMedCSS(item.id, 36) || <span style={{fontSize:28}}>{item.icon}</span>)
-                                    : currentCat==='tm' ? renderTMCSS(item.type || 'NORMAL', 36)
-                                    : currentCat==='stone' ? (renderStoneCSS(item.id, 36) || <span style={{fontSize:28}}>{item.icon}</span>)
-                                    : currentCat==='growth' ? (renderGrowthCSS(item.id, 36) || (item.id === 'rebirth_pill' ? renderMiscCSS(36) : <span style={{fontSize:28}}>{item.icon||item.emoji}</span>))
-                                    : currentCat==='acc' ? (renderAccCSS(item.id, 36) || <span style={{fontSize:28}}>{item.icon}</span>)
-                                    : <span style={{fontSize:28}}>{item.icon || item.emoji}</span>}
-                                </div>
-                                <div style={{fontSize: '12px', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2', height: '28px', overflow: 'hidden'}}>{item.name}</div>
-                                {isFruit && <div style={{fontSize:'9px', color: rarityColor, fontWeight:'bold'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label} · {FRUIT_CATEGORY_NAMES[item.category]}</div>}
-                                <div style={{
-                                    position: 'absolute', top: '5px', right: '5px', 
-                                    background: rarityColor, color: '#fff', fontSize: '10px', 
-                                    padding: '1px 6px', borderRadius: '10px'
-                                }}>x{item.count}</div>
-                                {isFruit && item.equipped > 0 && <div style={{position:'absolute', top:'5px', left:'5px', fontSize:'9px', color:'#4CAF50', fontWeight:'bold'}}>装备{item.equipped}</div>}
-                            </div>
-                            );
-                        })
-                    )}
+
+                {/* 物品网格 */}
+                <div style={{flex:1,padding:'16px 20px',overflowY:'auto'}}>
+                  {currentItems.length === 0 ? (
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.2)'}}>
+                      <div style={{fontSize:'48px',marginBottom:'12px',opacity:0.4}}>📦</div>
+                      <div style={{fontSize:'14px',fontWeight:'600'}}>暂无此类物品</div>
+                      <div style={{fontSize:'11px',marginTop:'4px',color:'rgba(255,255,255,0.15)'}}>可通过商店购买、战斗掉落或活动获取</div>
+                    </div>
+                  ) : (
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'10px',alignContent:'start'}}>
+                      {currentItems.map((item,idx)=>{
+                        const isFruit = currentCat === 'fruit';
+                        const rarityColor = isFruit && item.rarity ? (FRUIT_RARITY_CONFIG[item.rarity]?.color || '#666') : activeTab.color;
+                        return (
+                          <div key={idx} onClick={()=>handleItemClick(item,currentCat)} style={{
+                            background:'rgba(255,255,255,0.04)',borderRadius:'14px',padding:'14px 10px 12px',
+                            display:'flex',flexDirection:'column',alignItems:'center',cursor:'pointer',
+                            border:`1px solid rgba(255,255,255,0.06)`,position:'relative',transition:'all 0.25s',
+                          }}
+                          onMouseEnter={e=>{e.currentTarget.style.background='rgba(255,255,255,0.1)';e.currentTarget.style.borderColor=`${rarityColor}60`;e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow=`0 8px 20px ${rarityColor}15`;}}
+                          onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,0.04)';e.currentTarget.style.borderColor='rgba(255,255,255,0.06)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>
+                            <span style={{position:'absolute',top:'6px',right:'6px',background:`${rarityColor}cc`,color:'#fff',fontSize:'9px',padding:'1px 7px',borderRadius:'8px',fontWeight:'700'}}>x{item.count}</span>
+                            {isFruit && item.equipped > 0 && <span style={{position:'absolute',top:'6px',left:'6px',fontSize:'8px',color:'#4CAF50',fontWeight:'700',background:'rgba(76,175,80,0.15)',padding:'1px 5px',borderRadius:'6px'}}>装备{item.equipped}</span>}
+                            <div style={{marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',minHeight:36}}>{renderItemIcon(item,36)}</div>
+                            <div style={{fontSize:'11px',fontWeight:'700',color:'#fff',textAlign:'center',lineHeight:'1.3',height:'28px',overflow:'hidden',wordBreak:'break-all'}}>{item.name}</div>
+                            {isFruit && <div style={{fontSize:'8px',color:rarityColor,fontWeight:'600',marginTop:'2px'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label}</div>}
+                            {currentCat==='tm'&&item.type&&<div style={{fontSize:'8px',color:TYPES[item.type]?.color||'#888',fontWeight:'600',marginTop:'2px'}}>威力{item.p}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
             </div>
         </div>
 
-        {/* 详情弹窗 (保持原逻辑，微调样式) */}
+        {/* 物品详情弹窗 */}
         {selectedBagItem && (
-            <div className="modal-overlay" onClick={() => setSelectedBagItem(null)} style={{zIndex: 2000, background:'rgba(0,0,0,0.3)'}}>
-                <div className="bag-detail-card" onClick={e => e.stopPropagation()} style={{
-                    width:'300px', background:'#fff', borderRadius:'16px', padding:'20px',
-                    display:'flex', flexDirection:'column', alignItems:'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
-                }}>
-                    <div style={{marginBottom:'15px', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                      {selectedBagItem.fruitId ? renderFruitCSSIcon(selectedBagItem.fruitId, 60)
-                        : selectedBagItem.category === 'ball' ? renderBallCSS(selectedBagItem.id, 60)
-                        : selectedBagItem.category === 'meds' ? (renderMedCSS(selectedBagItem.id, 60) || <span style={{fontSize:48}}>{selectedBagItem.icon}</span>)
-                        : selectedBagItem.category === 'tm' ? renderTMCSS(selectedBagItem.type || 'NORMAL', 60)
-                        : selectedBagItem.category === 'stone' ? (renderStoneCSS(selectedBagItem.id, 60) || <span style={{fontSize:48}}>{selectedBagItem.icon}</span>)
-                        : selectedBagItem.category === 'growth' ? (renderGrowthCSS(selectedBagItem.id, 60) || renderMiscCSS(60))
-                        : selectedBagItem.category === 'acc' ? (renderAccCSS(selectedBagItem.id, 60) || <span style={{fontSize:48}}>{selectedBagItem.icon}</span>)
-                        : <span style={{fontSize:48}}>{selectedBagItem.icon || selectedBagItem.emoji || '📦'}</span>}
-                    </div>
-                    <div style={{fontSize:'18px', fontWeight:'bold', color:'#333', marginBottom:'5px'}}>{selectedBagItem.name}</div>
-                    <div style={{fontSize:'13px', color:'#666', margin:'10px 0', textAlign:'center', background:'#f5f5f5', padding:'10px', borderRadius:'8px', width:'100%'}}>{selectedBagItem.desc}</div>
-                    {selectedBagItem.category === 'fruit' && (
-                      <div style={{width:'100%', marginBottom:'10px'}}>
-                        <div style={{fontSize:'11px', color:'#888', marginBottom:'6px'}}>装备到精灵:</div>
-                        <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
-                          {party.map((pet, pi) => (
-                            <button key={pi} onClick={() => {
-                              if (pet.devilFruit === selectedBagItem.id) {
-                                setParty(prev => prev.map((pp, i) => i === pi ? {...pp, devilFruit: null} : pp));
-                                setFruitInventory(prev => [...prev, selectedBagItem.id]);
-                                alert(`已从 ${pet.name} 卸下 ${selectedBagItem.name}`);
-                              } else {
-                                if (pet.devilFruit) {
-                                  setFruitInventory(prev => [...prev, pet.devilFruit]);
-                                }
-                                const idx = fruitInventory.indexOf(selectedBagItem.id);
-                                if (idx === -1) { alert('果实不足'); return; }
-                                setFruitInventory(prev => { const n = [...prev]; n.splice(idx, 1); return n; });
-                                setParty(prev => prev.map((pp, i) => i === pi ? {...pp, devilFruit: selectedBagItem.id} : pp));
-                                alert(`已将 ${selectedBagItem.name} 装备给 ${pet.name}`);
-                              }
-                              setSelectedBagItem(null);
-                            }} style={{
-                              padding:'6px 10px', borderRadius:'8px', fontSize:'11px', cursor:'pointer',
-                              border: pet.devilFruit === selectedBagItem.id ? '2px solid #4CAF50' : '1px solid #ddd',
-                              background: pet.devilFruit === selectedBagItem.id ? '#E8F5E9' : '#fff',
-                            }}>
-                              {pet.name} Lv.{pet.level} {pet.devilFruit === selectedBagItem.id ? '(卸下)' : pet.devilFruit ? '(替换)' : ''}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{display:'flex', gap:'10px', width:'100%'}}>
-                        <button onClick={() => setSelectedBagItem(null)} style={{flex:1, padding:'10px', border:'1px solid #ddd', background:'#fff', borderRadius:'8px', cursor:'pointer'}}>关闭</button>
-                        {['meds', 'tm', 'growth', 'acc', 'stone'].includes(selectedBagItem.category) && (
-                            <button onClick={handleUseBtn} style={{flex:1, padding:'10px', border:'none', background: '#2196F3', borderRadius:'8px', fontWeight:'bold', color:'#fff', cursor:'pointer'}}>使用</button>
-                        )}
-                    </div>
+          <div className="modal-overlay" onClick={()=>setSelectedBagItem(null)} style={{zIndex:2000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)'}}>
+            <div onClick={e=>e.stopPropagation()} style={{
+              width:'320px',maxWidth:'90vw',background:'linear-gradient(145deg,#1a1a2e,#16213e)',borderRadius:'20px',padding:'24px',
+              display:'flex',flexDirection:'column',alignItems:'center',boxShadow:'0 20px 50px rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.08)'
+            }}>
+              <div style={{width:'72px',height:'72px',borderRadius:'16px',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'14px'}}>
+                {renderItemIcon(selectedBagItem,52)}
+              </div>
+              <div style={{fontSize:'17px',fontWeight:'800',color:'#fff',marginBottom:'4px'}}>{selectedBagItem.name}</div>
+              {selectedBagItem.count && <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginBottom:'10px'}}>持有 x{selectedBagItem.count}</div>}
+              <div style={{fontSize:'12px',color:'rgba(255,255,255,0.6)',textAlign:'center',background:'rgba(255,255,255,0.04)',padding:'12px 14px',borderRadius:'12px',width:'100%',lineHeight:'1.6',marginBottom:'16px',border:'1px solid rgba(255,255,255,0.04)'}}>{selectedBagItem.desc}</div>
+              {selectedBagItem.category === 'fruit' && (
+                <div style={{width:'100%',marginBottom:'14px'}}>
+                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'8px',fontWeight:'600'}}>装备到精灵:</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                    {party.map((pet,pi)=>(
+                      <button key={pi} onClick={()=>{
+                        if (pet.devilFruit===selectedBagItem.id){setParty(prev=>prev.map((pp,i)=>i===pi?{...pp,devilFruit:null}:pp));setFruitInventory(prev=>[...prev,selectedBagItem.id]);alert(`已从 ${pet.name} 卸下 ${selectedBagItem.name}`);}
+                        else{if(pet.devilFruit)setFruitInventory(prev=>[...prev,pet.devilFruit]);const idx=fruitInventory.indexOf(selectedBagItem.id);if(idx===-1){alert('果实不足');return;}setFruitInventory(prev=>{const n=[...prev];n.splice(idx,1);return n;});setParty(prev=>prev.map((pp,i)=>i===pi?{...pp,devilFruit:selectedBagItem.id}:pp));alert(`已将 ${selectedBagItem.name} 装备给 ${pet.name}`);}
+                        setSelectedBagItem(null);
+                      }} style={{padding:'6px 10px',borderRadius:'8px',fontSize:'10px',cursor:'pointer',fontWeight:'600',
+                        border:pet.devilFruit===selectedBagItem.id?'1px solid #4CAF50':'1px solid rgba(255,255,255,0.1)',
+                        background:pet.devilFruit===selectedBagItem.id?'rgba(76,175,80,0.15)':'rgba(255,255,255,0.05)',
+                        color:pet.devilFruit===selectedBagItem.id?'#4CAF50':'rgba(255,255,255,0.6)',
+                      }}>
+                        {pet.name} Lv.{pet.level} {pet.devilFruit===selectedBagItem.id?'✓卸下':pet.devilFruit?'↻替换':''}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              )}
+              <div style={{display:'flex',gap:'10px',width:'100%'}}>
+                <button onClick={()=>setSelectedBagItem(null)} style={{flex:1,padding:'11px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',borderRadius:'12px',cursor:'pointer',color:'rgba(255,255,255,0.6)',fontWeight:'600',fontSize:'12px'}}>关闭</button>
+                {['meds','tm','growth','acc','stone','cursed'].includes(selectedBagItem.category) && (
+                  <button onClick={handleUseBtn} style={{flex:1,padding:'11px',border:'none',background:`linear-gradient(135deg,${activeTab.color},${activeTab.color}cc)`,borderRadius:'12px',fontWeight:'700',color:'#fff',cursor:'pointer',fontSize:'12px',boxShadow:`0 4px 12px ${activeTab.color}40`}}>使用</button>
+                )}
+              </div>
             </div>
+          </div>
         )}
       </div>
     );
