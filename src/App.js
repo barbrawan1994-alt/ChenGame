@@ -8667,12 +8667,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }));
          itemName = BALLS[ballType].name;
       } 
-         // ➕ [新增] 2. 购买技能书 (修复不保存问题)
       else if (type === 'tm') {
-         // 这里的 id 直接就是 tm_fire 等
+         if ((inventory.tms?.[id]||0) > 0) { alert('❌ 每本技能书只能购买一次！'); return; }
          setInventory(i => ({
              ...i, 
-             tms: { ...i.tms, [id]: (i.tms[id] || 0) + count }
+             tms: { ...i.tms, [id]: (i.tms[id] || 0) + 1 }
          }));
          const tm = TMS.find(t => t.id === id);
          itemName = tm ? tm.name : '技能书';
@@ -14343,11 +14342,12 @@ const renderMenu = () => {
       3: ['super_potion','hyper_potion','max_potion','ether','max_ether','full_heal','revive'],
       4: ['hyper_potion','max_potion','ether','max_ether','full_heal','revive','max_revive'],
     };
+    const shopTMs = TMS.filter(t=>t.shopSell);
     const tmsByTier = {
-      1: TMS.filter(t=>t.tier<=1).map(t=>t.id),
-      2: TMS.filter(t=>t.tier<=2).map(t=>t.id),
-      3: TMS.filter(t=>t.tier<=3).map(t=>t.id),
-      4: TMS.map(t=>t.id),
+      1: shopTMs.filter(t=>t.tier<=1).map(t=>t.id),
+      2: shopTMs.filter(t=>t.tier<=2).map(t=>t.id),
+      3: shopTMs.filter(t=>t.tier<=2).map(t=>t.id),
+      4: shopTMs.map(t=>t.id),
     };
     const growthByTier = {
       1: [],
@@ -14453,9 +14453,37 @@ const renderMenu = () => {
               })}
               {shopTab==='tms' && availTMs.map(tmId=>{
                 const tm=TMS.find(t=>t.id===tmId); if(!tm) return null;
-                const tierLabel = tm.tier===1?'基础':tm.tier===2?'进阶':tm.tier===3?'高级':'终极';
-                const tierTagColor = tm.tier===1?'#78909C':tm.tier===2?'#43A047':tm.tier===3?'#FB8C00':'#E53935';
-                return renderShopCard(tm.id,renderTMCSS(tm.type||'NORMAL',36),tm.name,`${TYPES[tm.type]?.name||''} · 威力${tm.p}`,tm.price,'tm',{borderColor:TYPES[tm.type]?.color,tag:tierLabel,tagColor:tierTagColor});
+                const alreadyOwned = (inventory.tms?.[tmId]||0) > 0;
+                const tierLabel = tm.tier===1?'基础':tm.tier===2?'进阶':'高级';
+                const tierTagColor = tm.tier===1?'#78909C':tm.tier===2?'#43A047':'#FB8C00';
+                const typeColor = TYPES[tm.type]?.color||'#888';
+                return (
+                  <div key={tmId} style={{
+                    background: alreadyOwned?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg, #ffffff, #f8f9ff)',borderRadius:'16px',
+                    padding:'18px 14px 14px',display:'flex',flexDirection:'column',alignItems:'center',
+                    textAlign:'center',border:alreadyOwned?'1px solid #ccc':`1px solid #e8eaf6`,position:'relative',
+                    transition:'all 0.25s ease',boxShadow:'0 2px 8px rgba(0,0,0,0.04)',
+                    borderLeft:`3px solid ${alreadyOwned?'#aaa':typeColor}`,opacity:alreadyOwned?0.7:1,
+                  }}
+                  onMouseEnter={e=>{if(!alreadyOwned){e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';}}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}>
+                    <span style={{position:'absolute',top:'-6px',right:'8px',background:tierTagColor,color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>{tierLabel}</span>
+                    <span style={{position:'absolute',top:'-6px',left:'8px',background:'#FF6F00',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700'}}>限购1</span>
+                    <div style={{fontSize:'36px',marginBottom:'8px',filter:alreadyOwned?'grayscale(1)':'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{renderTMCSS(tm.type||'NORMAL',36)}</div>
+                    <div style={{fontSize:'13px',fontWeight:'800',color:alreadyOwned?'#999':'#1a1a2e',marginBottom:'3px'}}>{tm.name}</div>
+                    <div style={{fontSize:'10px',color:'#888',height:'28px',overflow:'hidden',lineHeight:'1.4',marginBottom:'8px'}}>{TYPES[tm.type]?.name||''} · 威力{tm.p}</div>
+                    <div style={{fontSize:'14px',fontWeight:'900',color:alreadyOwned?'#aaa':'#F57C00',marginBottom:'10px'}}>💰 {tm.price.toLocaleString()}</div>
+                    {alreadyOwned?(
+                      <div style={{width:'100%',padding:'8px',borderRadius:'10px',background:'#e0e0e0',color:'#999',fontWeight:'700',fontSize:'12px',textAlign:'center'}}>✅ 已拥有</div>
+                    ):(
+                      <button onClick={()=>buyItemPro(tm.id,tm.price,'tm')} disabled={gold<tm.price}
+                        style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=tm.price?'pointer':'not-allowed',
+                          background:gold>=tm.price?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
+                          color:gold>=tm.price?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=tm.price?'0 3px 8px rgba(0,0,0,0.15)':'none'
+                        }}>购买</button>
+                    )}
+                  </div>
+                );
               })}
               {shopTab==='stones' && Object.keys(EVO_STONES).map(key=>{
                 const item=EVO_STONES[key];

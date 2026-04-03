@@ -31,25 +31,24 @@ export const MEDICINES = {
 };
 
 export const TMS = [
-  // ★ 基础技能书 (Tier 1) — 威力 50-70, 适合前期
-  { id: 'tm_ember',  name: '火花冲击', type: 'FIRE',     p: 65,  pp: 15, price: 1500,  desc: '基础火系攻击，灼热的火焰冲击', tier: 1 },
-  { id: 'tm_aqua',   name: '水流喷射', type: 'WATER',    p: 65,  pp: 15, price: 1500,  desc: '基础水系攻击，高压水流冲击', tier: 1 },
-  { id: 'tm_vine',   name: '飞叶快刀', type: 'GRASS',    p: 65,  pp: 15, price: 1500,  desc: '基础草系攻击，锋利叶刃切割', tier: 1 },
-  { id: 'tm_shock',  name: '电击波',   type: 'ELECTRIC', p: 60,  pp: 15, price: 1200,  desc: '基础电系攻击，释放电流冲击', tier: 1 },
-  { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 50,  pp: 20, price: 2000,  desc: '攻击的同时提升自身攻击力', tier: 1 },
-  // ★★ 进阶技能书 (Tier 2) — 威力 80-95, 适合中期
-  { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',     p: 90,  pp: 12, price: 5000,  desc: '进阶火系技能，稳定火焰攻击，可能灼伤', tier: 2 },
-  { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',      p: 90,  pp: 10, price: 5000,  desc: '进阶冰系技能，冰冻光束，概率冻结', tier: 2 },
-  { id: 'tm_shadow', name: '暗影球',   type: 'GHOST',    p: 85,  pp: 10, price: 5000,  desc: '进阶幽灵系技能，凝聚暗影之力', tier: 2 },
-  { id: 'tm_sludge', name: '污泥炸弹', type: 'POISON',   p: 90,  pp: 8,  price: 6000,  desc: '进阶毒系技能，高概率使目标中毒', tier: 2 },
-  { id: 'tm_psy',    name: '精神强念', type: 'PSYCHIC',  p: 90,  pp: 8,  price: 5500,  desc: '进阶超能系技能，精神力集中攻击', tier: 2 },
-  // ★★★ 高级技能书 (Tier 3) — 威力 100-120, 适合后期
-  { id: 'tm_eq',     name: '地震',     type: 'GROUND',   p: 110, pp: 8,  price: 12000, desc: '高级地面系技能，大地震动席卷全场', tier: 3 },
-  { id: 'tm_dragon', name: '龙之波动', type: 'DRAGON',   p: 110, pp: 8,  price: 15000, desc: '高级龙系技能，龙族波动之力', tier: 3 },
-  { id: 'tm_fight',  name: '近身战',   type: 'FIGHT',    p: 120, pp: 5,  price: 15000, desc: '高级格斗系技能，猛烈近战但降低双防', tier: 3 },
-  { id: 'tm_dark',   name: '暗冥强击', type: 'DARK',     p: 110, pp: 5,  price: 12000, desc: '高级恶系技能，凝聚黑暗之力打击', tier: 3 },
-  { id: 'tm_wind',   name: '龙卷天降', type: 'WIND',     p: 110, pp: 5,  price: 12000, desc: '高级风系技能，召唤龙卷风横扫', tier: 3 },
-  // ★★★★ 终极大招 (Tier 4) — 威力 130-150, 适合终局
+  // ★ 基础技能书 (Tier 1) — 威力 50-70, 适合前期 (商店可售)
+  { id: 'tm_ember',  name: '火花冲击', type: 'FIRE',     p: 65,  pp: 15, price: 3000,  desc: '基础火系攻击，灼热的火焰冲击', tier: 1, shopSell: true },
+  { id: 'tm_aqua',   name: '水流喷射', type: 'WATER',    p: 65,  pp: 15, price: 3000,  desc: '基础水系攻击，高压水流冲击', tier: 1, shopSell: true },
+  { id: 'tm_vine',   name: '飞叶快刀', type: 'GRASS',    p: 65,  pp: 15, price: 3000,  desc: '基础草系攻击，锋利叶刃切割', tier: 1, shopSell: true },
+  { id: 'tm_shock',  name: '电击波',   type: 'ELECTRIC', p: 60,  pp: 15, price: 2500,  desc: '基础电系攻击，释放电流冲击', tier: 1, shopSell: true },
+  { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 50,  pp: 20, price: 3500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },
+  // ★★ 进阶技能书 (Tier 2) — 威力 80-95, 适合中期 (商店可售)
+  { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',     p: 90,  pp: 12, price: 8000,  desc: '进阶火系技能，稳定火焰攻击，可能灼伤', tier: 2, shopSell: true },
+  { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',      p: 90,  pp: 10, price: 8000,  desc: '进阶冰系技能，冰冻光束，概率冻结', tier: 2, shopSell: true },
+  { id: 'tm_shadow', name: '暗影球',   type: 'GHOST',    p: 85,  pp: 10, price: 7500,  desc: '进阶幽灵系技能，凝聚暗影之力', tier: 2, shopSell: true },
+  { id: 'tm_sludge', name: '污泥炸弹', type: 'POISON',   p: 90,  pp: 8,  price: 8500,  desc: '进阶毒系技能，高概率使目标中毒', tier: 2, shopSell: true },
+  { id: 'tm_psy',    name: '精神强念', type: 'PSYCHIC',  p: 90,  pp: 8,  price: 8000,  desc: '进阶超能系技能，精神力集中攻击', tier: 2, shopSell: true },
+  // ★★★ 高级/终极技能书 — 威力 100+, 不在商店出售, 只能通过掉落/奖励获得
+  { id: 'tm_eq',     name: '地震',     type: 'GROUND',   p: 110, pp: 8,  price: 12000, desc: '地面系高级技能，大地震动席卷全场', tier: 3 },
+  { id: 'tm_dragon', name: '龙之波动', type: 'DRAGON',   p: 110, pp: 8,  price: 15000, desc: '龙系高级技能，龙族波动之力', tier: 3 },
+  { id: 'tm_fight',  name: '近身战',   type: 'FIGHT',    p: 120, pp: 5,  price: 15000, desc: '格斗系高级技能，猛烈近战但降低双防', tier: 3 },
+  { id: 'tm_dark',   name: '暗冥强击', type: 'DARK',     p: 110, pp: 5,  price: 12000, desc: '恶系高级技能，凝聚黑暗之力打击', tier: 3 },
+  { id: 'tm_wind',   name: '龙卷天降', type: 'WIND',     p: 110, pp: 5,  price: 12000, desc: '风系高级技能，召唤龙卷风横扫', tier: 3 },
   { id: 'tm_fire',   name: '大字爆炎', type: 'FIRE',     p: 140, pp: 5,  price: 25000, desc: '火系终极大招，毁灭性的爆炎之力', tier: 4 },
   { id: 'tm_water',  name: '水炮',     type: 'WATER',    p: 140, pp: 5,  price: 25000, desc: '水系终极大招，极限高压水炮', tier: 4 },
   { id: 'tm_grass',  name: '日光束',   type: 'GRASS',    p: 145, pp: 5,  price: 28000, desc: '草系终极大招，凝聚太阳之力', tier: 4 },
