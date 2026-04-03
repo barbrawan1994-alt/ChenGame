@@ -206,9 +206,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 18, y: 12, type: 'battle', enemyId: 132, name: 'AI 核心守护者', text: "最高级威胁检测...启动歼灭协议...错误...原始指令冲突...保护...还是...毁灭...", emoji: '🤖' },
       { step: 4, x: 10, y: 3, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（全息屏幕上突然出现她的身影，随后本人从通风管道翻身落下）琳是吧？你的黑客技术不错——但别想查到我的情报。至于你...', emoji: '🌙',
         eliteParty: [
-          { id: 94, level: 42 },
-          { id: 609, level: 40 },
-          { id: 59, level: 38 }
+          { id: 94, level: 50 },
+          { id: 609, level: 48 },
+          { id: 59, level: 47 },
+          { id: 93, level: 46 },
+          { id: 130, level: 45 },
+          { id: 54, level: 44 }
         ]
       }
     ],
@@ -240,9 +243,12 @@ export const STORY_SCRIPT = [
       { step: 2, x: 25, y: 5, type: 'battle', enemyId: 59, name: '怨念 诅咒娃娃', text: "好恨啊...为什么只有我被抛弃...为什么没有人来救我...", emoji: '🎎' },
       { step: 3, x: 20, y: 12, type: 'battle', enemyId: 94, name: '神秘训练家·厌晚', text: "（一个穿着黑色长裙的女人从阴影中走出，冰冷地注视着你）...你就是最近让日蚀队头疼的小鬼？看在你走到这里的份上，我就用三成的力量陪你玩玩。", emoji: '🌙',
         eliteParty: [
-          { id: 609, level: 45 },
-          { id: 94, level: 43 },
-          { id: 59, level: 42 }
+          { id: 609, level: 55 },
+          { id: 94, level: 53 },
+          { id: 59, level: 52 },
+          { id: 93, level: 51 },
+          { id: 130, level: 50 },
+          { id: 126, level: 49 }
         ]
       },
       { step: 4, x: 15, y: 10, type: 'battle', enemyId: 94, name: '噬魂 耿鬼', text: "多么美味的悲伤和愤怒！让我尝尝你的灵魂——哦，还有那个男孩的...", emoji: '👿' }
@@ -279,9 +285,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 14, y: 14, type: 'battle', enemyId: 142, name: '龙脉守护者', text: "（龙之长老化身战斗形态！这是考验——它需要确认你的决心和实力！）", emoji: '🌪️' },
       { step: 4, x: 8, y: 2, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（云端之上，厌晚负手而立，衣袂猎猎作响）龙脉之力...首领想要，我也有点好奇。不过比起龙脉，我更想知道——你现在能接住我几招？', emoji: '🌙',
         eliteParty: [
-          { id: 609, level: 52 },
-          { id: 94, level: 50 },
-          { id: 603, level: 48 }
+          { id: 609, level: 60 },
+          { id: 94, level: 58 },
+          { id: 603, level: 57 },
+          { id: 59, level: 56 },
+          { id: 130, level: 55 },
+          { id: 93, level: 54 }
         ]
       }
     ],
@@ -312,10 +321,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 16, y: 8, type: 'battle', enemyId: 131, name: '日蚀队 副首领·霜', text: "冰之力量才是永恒的...在绝对零度面前，一切都将停止。包括时间本身！", emoji: '❄️' },
       { step: 4, x: 10, y: 4, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: "（寒风中，那个熟悉的身影再次出现）又见面了。上次只用了三成——这次，我用六成。你能活下来吗？", emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 58, devilFruit: 'df_yami' },
-          { id: 609, level: 56 },
-          { id: 610, level: 55 },
-          { id: 603, level: 54 }
+          { id: 608, level: 65, devilFruit: 'df_yami' },
+          { id: 609, level: 63 },
+          { id: 610, level: 62 },
+          { id: 603, level: 61 },
+          { id: 94, level: 60 },
+          { id: 604, level: 59 }
         ]
       }
     ],
@@ -350,10 +361,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 20, y: 15, type: 'battle', enemyId: 248, name: '日蚀队 副首领·砂', text: "苍！你这个叛徒！首领给了你一切——力量、地位、复仇的机会！你却为了一个陌生人背叛我们？", emoji: '🦂' },
       { step: 4, x: 5, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（沙暴中她的身影若隐若现）副首领·砂也不过如此。苍...你选错了阵营。不过没关系，反正最后——所有人都要面对我。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 63, devilFruit: 'df_yami' },
-          { id: 609, level: 60 },
-          { id: 94, level: 58 },
-          { id: 604, level: 60 }
+          { id: 608, level: 70, devilFruit: 'df_yami' },
+          { id: 609, level: 68, devilFruit: 'df_supa' },
+          { id: 94, level: 66 },
+          { id: 604, level: 65 },
+          { id: 610, level: 64 },
+          { id: 603, level: 63 }
         ]
       }
     ],
@@ -386,11 +399,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 10, y: 12, type: 'battle', enemyId: 146, name: '噩梦核心 达克莱伊', text: "你居然能抵抗理想世界的诱惑？那我就让你体验真正的噩梦！比现实更可怕的深渊！", emoji: '🌑' },
       { step: 4, x: 20, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（幻境崩碎的裂缝中，厌晚的身影从梦境的残片里走出）梦？现实？对我来说没有区别——因为无论在哪个世界，我都是最强的。来吧，在你清醒的时候再打一次。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 70, devilFruit: 'df_yami' },
-          { id: 609, level: 68, devilFruit: 'df_supa' },
-          { id: 610, level: 67 },
-          { id: 603, level: 66 },
-          { id: 94, level: 65 }
+          { id: 608, level: 76, devilFruit: 'df_yami' },
+          { id: 609, level: 74, devilFruit: 'df_supa' },
+          { id: 610, level: 73, devilFruit: 'df_hie' },
+          { id: 603, level: 72 },
+          { id: 94, level: 71 },
+          { id: 604, level: 70 }
         ]
       }
     ],
@@ -508,8 +522,12 @@ export const STORY_SCRIPT = [
       { step: 2, x: 15, y: 15, type: 'battle', enemyId: 93, name: '二级咒灵', text: "嘶嘶嘶...（一只更强大的咒灵出现！空气中弥漫着令人窒息的咒力压迫感）", emoji: '👹' },
       { step: 3, x: 22, y: 10, type: 'battle', enemyId: 609, name: '不速之客·厌晚', text: '（结界的边缘，一个不属于咒术界的身影悠然步入）咒力？有意思...和虚空能量有些相似呢。五条悟是吧？你的学生，我借来试试。', emoji: '🌙',
         eliteParty: [
-          { id: 609, level: 53 },
-          { id: 94, level: 50 }
+          { id: 609, level: 58 },
+          { id: 94, level: 56 },
+          { id: 59, level: 55 },
+          { id: 93, level: 54 },
+          { id: 130, level: 53 },
+          { id: 603, level: 52 }
         ]
       }
     ],
@@ -536,9 +554,12 @@ export const STORY_SCRIPT = [
       { step: 1, x: 22, y: 12, type: 'battle', enemyId: 68, name: '东堂葵', text: "好兄弟！来吧！让我们用拳头交流灵魂！Boogie Woogie！", emoji: '💪' },
       { step: 2, x: 15, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（交流会的观众席上，厌晚鼓了鼓掌）打得不错。不过这种程度的对手...让我来提升一下训练的强度吧。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 58 },
-          { id: 609, level: 56 },
-          { id: 94, level: 55 }
+          { id: 608, level: 64, devilFruit: 'df_yami' },
+          { id: 609, level: 62 },
+          { id: 94, level: 61 },
+          { id: 604, level: 60 },
+          { id: 59, level: 59 },
+          { id: 130, level: 58 }
         ]
       }
     ],
@@ -568,10 +589,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 15, y: 3, type: 'battle', enemyId: 150, name: '诅咒之王·宿傩', text: "...啊，有点意思。你居然能走到这里。让我稍微认真一点——品味一下，绝望的滋味。", emoji: '👹' },
       { step: 4, x: 8, y: 8, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（渋谷的废墟中，厌晚踩着碎石缓缓走来）宿傩...咒灵...这个世界比我想的更有意思。趁着混乱——让我好好打一场。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 68, devilFruit: 'df_yami' },
-          { id: 609, level: 66 },
-          { id: 610, level: 65 },
-          { id: 94, level: 63 }
+          { id: 608, level: 72, devilFruit: 'df_yami' },
+          { id: 609, level: 70, devilFruit: 'df_supa' },
+          { id: 610, level: 69 },
+          { id: 94, level: 68 },
+          { id: 604, level: 67 },
+          { id: 603, level: 66 }
         ]
       }
     ],
@@ -607,8 +630,12 @@ export const STORY_SCRIPT = [
       { step: 5, x: 12, y: 3, type: 'battle', enemyId: 145, name: '神秘操控者', text: '你们是DA的人？哼，来晚了。我的控制芯片已经分布在整个城市——你们阻止不了的！', emoji: '🦹' },
       { step: 6, x: 18, y: 10, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（操控者倒下后，暗处传来拍手声）DA和日蚀队...都是有趣的组织呢。千束、泷奈...你们的搭档战术确实漂亮。不过——比起你们，我更想和这个人打。', emoji: '🌙',
         eliteParty: [
-          { id: 609, level: 45 },
-          { id: 94, level: 42 }
+          { id: 609, level: 55 },
+          { id: 94, level: 53 },
+          { id: 59, level: 52 },
+          { id: 93, level: 51 },
+          { id: 130, level: 50 },
+          { id: 54, level: 49 }
         ]
       }
     ],
@@ -644,9 +671,12 @@ export const STORY_SCRIPT = [
       { step: 4, x: 8, y: 15, type: 'battle', enemyId: 130, name: 'Alan机关测试者', text: 'DA的小训练家们又来了？Alan机关的实力可不是你们能想象的！搭档？那种东西没有用！', emoji: '🤖' },
       { step: 5, x: 20, y: 5, type: 'battle', enemyId: 609, name: '暗影执行者·厌晚', text: '（千束正在庆祝，厌晚从屋顶跳下）搭档的意义？呵...让我这个独行者来检验一下你们的"搭档之力"到底有多少斤两。', emoji: '🌙',
         eliteParty: [
-          { id: 609, level: 50 },
-          { id: 94, level: 48 },
-          { id: 603, level: 47 }
+          { id: 609, level: 62, devilFruit: 'df_yami' },
+          { id: 94, level: 60 },
+          { id: 603, level: 59 },
+          { id: 604, level: 58 },
+          { id: 59, level: 57 },
+          { id: 130, level: 56 }
         ]
       }
     ],
@@ -682,10 +712,12 @@ export const STORY_SCRIPT = [
       { step: 4, x: 15, y: 15, type: 'battle', enemyId: 150, name: '真岛', text: '终于来了啊。你知道吗？我也有搭档——不过我的搭档可不需要什么温情脉脉的羁绊。绝对的力量！这才是搭档的真谛！', emoji: '🎭' },
       { step: 5, x: 25, y: 8, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（真岛逃走后，古堡深处传来熟悉的脚步声）真岛那种人也配谈力量？哼。你倒是让我越来越期待了——每次见面，你都变得更强。所以...这次我也稍微加点力度。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 60, devilFruit: 'df_yami' },
-          { id: 609, level: 58 },
-          { id: 610, level: 57 },
-          { id: 94, level: 55 }
+          { id: 608, level: 70, devilFruit: 'df_yami' },
+          { id: 609, level: 68, devilFruit: 'df_supa' },
+          { id: 610, level: 67 },
+          { id: 94, level: 66 },
+          { id: 604, level: 65 },
+          { id: 603, level: 64 }
         ]
       }
     ],
