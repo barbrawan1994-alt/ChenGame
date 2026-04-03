@@ -443,14 +443,23 @@ const [pendingTask, setPendingTask] = useState(null);
           }}>
             {(pet.name || '?')[0]}
           </div>
-          {pet.isShiny && (
+          {pet.isFusedShiny ? (
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'linear-gradient(45deg, rgba(213,0,249,0.25), rgba(123,31,162,0.2), rgba(255,255,255,0.15))',
+              animation: 'shiny-flash 2s infinite',
+              pointerEvents: 'none',
+              borderRadius: 'inherit'
+            }} />
+          ) : pet.isShiny ? (
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
               background: 'linear-gradient(45deg, rgba(255,215,0,0.3), rgba(255,255,255,0.3))',
               animation: 'shiny-flash 2s infinite',
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              borderRadius: 'inherit'
             }} />
-          )}
+          ) : null}
         </div>
       );
     }
@@ -10787,11 +10796,21 @@ const renderMenu = () => {
                         {grade}
                     </div>
 
-                    <div style={{fontSize:'45px', background:'#f5f5f5', borderRadius:'50%', width:'70px', height:'70px', display:'flex', alignItems:'center', justifyContent:'center', marginRight:'15px', overflow:'hidden', padding:'5px'}}>
+                    <div style={{fontSize:'45px', borderRadius:'50%', width:'70px', height:'70px', display:'flex', alignItems:'center', justifyContent:'center', marginRight:'15px', overflow:'hidden', padding:'5px', position:'relative',
+                      background: viewStatPet.isFusedShiny ? 'linear-gradient(135deg, #F3E5F5, #CE93D8)' : viewStatPet.isShiny ? 'linear-gradient(135deg, #FFF8E1, #FFD54F)' : '#f5f5f5',
+                      boxShadow: viewStatPet.isFusedShiny ? '0 0 12px rgba(213,0,249,0.4)' : viewStatPet.isShiny ? '0 0 12px rgba(255,215,0,0.4)' : 'none'
+                    }}>
                         {renderAvatar(viewStatPet)}
                     </div>
                     <div>
-                        <div style={{fontSize:'20px', fontWeight:'bold'}}>{viewStatPet.name} {viewStatPet.isShiny && '✨'}</div>
+                        <div style={{fontSize:'20px', fontWeight:'bold'}}>
+                          {viewStatPet.name}
+                          {viewStatPet.isFusedShiny ? (
+                            <span style={{marginLeft:'6px', background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'10px', padding:'2px 8px', borderRadius:'8px', fontWeight:'bold', verticalAlign:'middle'}}>🧬 异色</span>
+                          ) : viewStatPet.isShiny ? (
+                            <span style={{marginLeft:'6px', background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'10px', padding:'2px 8px', borderRadius:'8px', fontWeight:'bold', verticalAlign:'middle'}}>✨ 闪光</span>
+                          ) : null}
+                        </div>
                         <div style={{display:'flex', gap:'6px', marginTop:'5px'}}>
                         <span style={{background: TYPES[viewStatPet.type]?.color, color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
                             {TYPES[viewStatPet.type]?.name}
@@ -13415,9 +13434,9 @@ const renderMenu = () => {
                                      onMouseOver={e => { if(!isActive && !isFainted) e.currentTarget.style.background = '#fff'; }}
                                      onMouseOut={e => { if(!isActive && !isFainted) e.currentTarget.style.background = '#f5f7fa'; }}
                                 >
-                                    <div style={{width: '48px', height: '48px', marginRight: '10px', filter: isFainted ? 'grayscale(1)' : 'none'}}>{renderAvatar(pet)}</div>
+                                    <div style={{width: '48px', height: '48px', marginRight: '10px', filter: isFainted ? 'grayscale(1)' : pet.isFusedShiny ? 'drop-shadow(0 0 4px #D500F9) hue-rotate(150deg)' : pet.isShiny ? 'drop-shadow(0 0 4px #FFD700) brightness(1.1)' : 'none'}}>{renderAvatar(pet)}</div>
                                     <div style={{flex: 1}}>
-                                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color: '#333'}}><span>{pet.name}</span><span style={{fontSize: '11px', color: '#666'}}>Lv.{pet.level}</span></div>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color: '#333'}}><span>{pet.name} {pet.isFusedShiny ? <span style={{color:'#D500F9',fontSize:'10px'}}>🧬</span> : pet.isShiny ? <span style={{color:'#FFD700',fontSize:'10px'}}>✨</span> : null}</span><span style={{fontSize: '11px', color: '#666'}}>Lv.{pet.level}</span></div>
                                         <div style={{height: '6px', background: '#ddd', borderRadius: '3px', marginTop: '6px', overflow: 'hidden'}}><div style={{width: `${(pet.currentHp/maxHp)*100}%`, background: getHpColor(pet.currentHp, maxHp), height: '100%', transition: 'width 0.3s'}}></div></div>
                                         <div style={{fontSize: '10px', color: '#999', marginTop: '2px', textAlign: 'right'}}>{Math.floor(pet.currentHp)}/{maxHp}</div>
                                     </div>
@@ -13655,6 +13674,11 @@ const renderMenu = () => {
                             <span style={{fontSize:'13px', fontWeight:'bold', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
+                            {e.isFusedShiny ? (
+                              <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
+                            ) : e.isShiny ? (
+                              <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
+                            ) : null}
                             {renderSectBadge(e, 'enemy')}
                             {renderStatusBadges(e)}
                             {e.devilFruit && (() => { const df = getFruitById(e.devilFruit); return df ? (
@@ -13710,12 +13734,16 @@ const renderMenu = () => {
                                   ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2) saturate(0.3)' 
                                   : animEffect?.type === 'THROW_BALL' 
                                     ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(1.3)' 
-                                    : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+                                    : e.isFusedShiny
+                                      ? 'drop-shadow(0 0 8px #D500F9) drop-shadow(0 0 16px rgba(213,0,249,0.4)) hue-rotate(150deg)'
+                                      : e.isShiny
+                                        ? 'drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 16px rgba(255,215,0,0.4)) brightness(1.1)'
+                                        : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
                                 transition: 'transform 0.6s cubic-bezier(.4,0,.2,1), opacity 0.5s, filter 0.4s',
                                 transform: animEffect?.type === 'THROW_BALL' ? 'scale(0.85)' : animEffect?.type === 'BALL_WOBBLE' ? 'scale(0)' : animEffect?.type === 'CATCH_SUCCESS' ? 'scale(0)' : undefined,
                                 opacity: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type) ? 0 : 1,
                                 animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy') 
-                                           ? 'shiny-flash-body 0.5s' : undefined
+                                           ? 'shiny-flash-body 0.5s' : (e.isFusedShiny || e.isShiny) ? 'shiny-flash 3s infinite' : undefined
                             }}>
                             {renderAvatar(e, true)}
                         </div>
@@ -13753,9 +13781,13 @@ const renderMenu = () => {
                              className={`sprite-v2 anim-idle-float ${animEffect?.target==='player' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                              style={{
                                  transform: 'scaleX(-1)',
-                                 filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+                                 filter: p.isFusedShiny
+                                   ? 'drop-shadow(0 0 8px #D500F9) drop-shadow(0 0 16px rgba(213,0,249,0.4)) hue-rotate(150deg)'
+                                   : p.isShiny
+                                     ? 'drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 16px rgba(255,215,0,0.4)) brightness(1.1)'
+                                     : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
                                  animation: (animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player') 
-                                            ? 'shiny-flash-body 0.5s' : undefined
+                                            ? 'shiny-flash-body 0.5s' : (p.isFusedShiny || p.isShiny) ? 'shiny-flash 3s infinite' : undefined
                              }}>
                             {renderAvatar(p)}
                         </div>
@@ -13779,6 +13811,11 @@ const renderMenu = () => {
                         {/* 第一行：名字 + 门派 + 状态 */}
                         <div className="hud-name-row" style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
                             <span style={{fontSize:'14px', fontWeight:'bold'}}>{p.name}</span>
+                            {p.isFusedShiny ? (
+                              <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
+                            ) : p.isShiny ? (
+                              <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
+                            ) : null}
                             {renderSectBadge(p, 'player')}
                             {renderStatusBadges(p)}
                             {p.devilFruit && (() => { const df = getFruitById(p.devilFruit); return df ? (
