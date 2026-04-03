@@ -72,6 +72,11 @@ import {
   DEVIL_FRUITS, FRUIT_RARITY_CONFIG, FRUIT_CATEGORY_NAMES,
   getRandomFruit, getFruitById, getAllFruits, getFruitIcon,
 } from './data/devilfruits';
+import {
+  BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
+  SAME_TYPE_COMBO, DEFAULT_COMBO, BOND_PER_TURN, BOND_PER_KO,
+  CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE,
+} from './data/lycoris';
 
 const BREATHING_BUFFS = [
   { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +20%', effect: (p) => p.customBaseStats.p_atk = Math.floor(p.customBaseStats.p_atk * 1.2) },
@@ -143,6 +148,14 @@ export default function RPG(props) {
   // 家园系统
   const [housing, setHousing] = useState(savedData.housing || { ...DEFAULT_HOUSING_STATE });
   const [housingTab, setHousingTab] = useState('overview');
+
+  // 搭档羁绊系统
+  const [partnerModal, setPartnerModal] = useState(false);
+  const [comboUsedThisBattle, setComboUsedThisBattle] = useState(false);
+
+  // LycoReco咖啡厅
+  const [cafe, setCafe] = useState(savedData.cafe || { ...DEFAULT_CAFE_STATE });
+  const [cafeTab, setCafeTab] = useState('overview');
 
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
@@ -1985,7 +1998,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        achStats,
        unlockedAchs,
        storyProgress,
-       storyStep
+       storyStep,
+       cafe
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -2754,13 +2768,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         </div>
 
         <div style={{display:'flex', gap:'8px', justifyContent:'center', margin:'10px 0'}}>
-          {['overview','furniture','residents','shop','upgrade'].map(tab => (
+          {['overview','furniture','residents','shop','upgrade','cafe'].map(tab => (
             <button key={tab} onClick={() => setHousingTab(tab)}
               style={{padding:'8px 16px', borderRadius:'20px', border:'none', cursor:'pointer',
-                background: housingTab === tab ? '#8D6E63' : '#fff',
+                background: housingTab === tab ? (tab === 'cafe' ? '#C62828' : '#8D6E63') : '#fff',
                 color: housingTab === tab ? '#fff' : '#666', fontWeight:'bold', fontSize:'12px',
                 boxShadow: housingTab === tab ? '0 4px 12px rgba(141,110,99,0.4)' : 'none'}}>
-              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', shop:'🛒 商店', upgrade:'⬆️ 升级'}[tab]}
+              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', shop:'🛒 商店', upgrade:'⬆️ 升级', cafe:'☕ 咖啡厅'}[tab]}
             </button>
           ))}
         </div>
@@ -2919,6 +2933,101 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ========== 咖啡厅 ========== */}
+          {housingTab === 'cafe' && (
+            <div style={{maxWidth:'600px', margin:'0 auto'}}>
+              {!cafe.owned ? (
+                <div style={{textAlign:'center', padding:'40px 20px'}}>
+                  <div style={{fontSize:'48px', marginBottom:'16px'}}>☕</div>
+                  <div style={{fontWeight:'bold', fontSize:'18px', marginBottom:'8px', color:'#C62828'}}>LycoReco 咖啡厅</div>
+                  <div style={{fontSize:'13px', color:'#888', marginBottom:'20px'}}>通关莉可莉丝剧情序章后可购买</div>
+                  {isLycorisStoryCompleted(18) ? (
+                    <button onClick={buyCafe} style={{padding:'12px 30px', borderRadius:'25px', border:'none', background:'linear-gradient(135deg,#C62828,#FF5252)', color:'#fff', fontWeight:'bold', cursor:'pointer', fontSize:'14px', boxShadow:'0 4px 15px rgba(198,40,40,0.4)'}}>
+                      购买咖啡厅 (💰 {CAFE_BUILDING.price})
+                    </button>
+                  ) : (
+                    <div style={{fontSize:'12px', color:'#999', padding:'10px', background:'#f5f5f5', borderRadius:'10px'}}>
+                      需要先通关「莉可莉丝篇·序章」才能解锁
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {/* 咖啡厅状态 */}
+                  <div style={{background:'linear-gradient(135deg,#C62828,#D32F2F)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px'}}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px'}}>
+                      <div>
+                        <div style={{fontWeight:'bold', fontSize:'18px'}}>☕ LycoReco 咖啡厅</div>
+                        <div style={{fontSize:'12px', opacity:0.8}}>等级 {getCafeLevel(cafe.totalWorkCount).level} · 累计打工 {cafe.totalWorkCount} 次</div>
+                      </div>
+                      <div style={{background:'rgba(255,255,255,0.2)', padding:'6px 12px', borderRadius:'20px', fontSize:'12px', fontWeight:'bold'}}>
+                        金币倍率 x{getCafeLevel(cafe.totalWorkCount).goldMult}
+                      </div>
+                    </div>
+                    {cafe.activeDrink && (
+                      <div style={{background:'rgba(255,255,255,0.15)', borderRadius:'10px', padding:'8px 12px', fontSize:'12px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <span>当前饮品: {cafe.activeDrink.name}</span>
+                        <button onClick={clearDrinkBuff} style={{background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', padding:'4px 10px', borderRadius:'10px', fontSize:'11px', cursor:'pointer'}}>丢弃</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 打工精灵 */}
+                  <div style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                    <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>打工精灵 ({cafe.workers.length}/{CAFE_BUILDING.workerSlots})</div>
+                    <div style={{fontSize:'11px', color:'#888', marginBottom:'10px'}}>每5分钟产出 {Math.floor(CAFE_BUILDING.goldPerTick * getCafeLevel(cafe.totalWorkCount).goldMult)} 金币 + 亲密度+2</div>
+                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                      {party.map(p => {
+                        const uid = p.uid || p.id;
+                        const isWorking = cafe.workers.includes(uid);
+                        return (
+                          <div key={uid} onClick={() => assignCafeWorker(p)} style={{
+                            display:'flex', alignItems:'center', gap:'10px', padding:'10px', borderRadius:'10px', cursor:'pointer',
+                            background: isWorking ? '#FFF3E0' : '#f5f5f5', border: isWorking ? '2px solid #FF9800' : '1px solid #eee'
+                          }}>
+                            <div style={{fontWeight:'bold', fontSize:'13px', flex:1}}>{p.name} <span style={{fontSize:'10px', color:'#888'}}>Lv.{p.level}</span></div>
+                            <div style={{fontSize:'11px', color: isWorking ? '#E65100' : '#999', fontWeight:'bold'}}>{isWorking ? '打工中' : '空闲'}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 饮品菜单 */}
+                  <div style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                    <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>特调饮品</div>
+                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                      {CAFE_DRINKS.map(drink => {
+                        const unlocked = isDrinkUnlocked(drink);
+                        return (
+                          <div key={drink.id} style={{
+                            display:'flex', alignItems:'center', gap:'12px', padding:'12px', borderRadius:'12px',
+                            background: unlocked ? '#fff' : '#f5f5f5', border: unlocked ? '1px solid #eee' : '1px dashed #ddd',
+                            opacity: unlocked ? 1 : 0.6
+                          }}>
+                            <div style={{width:'36px', height:'36px', borderRadius:'50%', background: unlocked ? 'linear-gradient(135deg,#C62828,#FF5252)' : '#e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color:'#fff', flexShrink:0}}>☕</div>
+                            <div style={{flex:1}}>
+                              <div style={{fontWeight:'bold', fontSize:'13px', color: unlocked ? '#333' : '#999'}}>{drink.name}</div>
+                              <div style={{fontSize:'11px', color:'#888'}}>{drink.desc}</div>
+                            </div>
+                            {unlocked ? (
+                              <button onClick={() => makeDrink(drink.id)} disabled={!!cafe.activeDrink || gold < drink.price} style={{
+                                padding:'6px 14px', borderRadius:'16px', border:'none', fontSize:'11px', fontWeight:'bold', cursor: (cafe.activeDrink || gold < drink.price) ? 'not-allowed' : 'pointer',
+                                background: (cafe.activeDrink || gold < drink.price) ? '#e0e0e0' : 'linear-gradient(135deg,#C62828,#FF5252)', color: (cafe.activeDrink || gold < drink.price) ? '#999' : '#fff'
+                              }}>💰 {drink.price}</button>
+                            ) : (
+                              <span style={{fontSize:'10px', color:'#bbb'}}>未解锁</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -5033,6 +5142,211 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   // ==========================================
+  // 搭档羁绊系统 - 核心逻辑
+  // ==========================================
+  const setPartner = (petA, petB) => {
+    const update = (list) => list.map(p => {
+      const uid = p.uid || p.id;
+      if (uid === (petA.uid || petA.id)) return { ...p, partnerId: petB.uid || petB.id, bondPoints: p.partnerId === (petB.uid || petB.id) ? (p.bondPoints || 0) : 0 };
+      if (uid === (petB.uid || petB.id)) return { ...p, partnerId: petA.uid || petA.id, bondPoints: p.partnerId === (petA.uid || petA.id) ? (p.bondPoints || 0) : 0 };
+      if (uid === p.partnerId && (p.partnerId === (petA.uid || petA.id) || p.partnerId === (petB.uid || petB.id))) return { ...p, partnerId: null, bondPoints: 0 };
+      return p;
+    });
+    setParty(prev => update(prev));
+    setBox(prev => update(prev));
+    updateAchStat({ partnersFormed: 1 });
+  };
+
+  const removePartner = (pet) => {
+    const uid = pet.uid || pet.id;
+    const partnerId = pet.partnerId;
+    const update = (list) => list.map(p => {
+      const pUid = p.uid || p.id;
+      if (pUid === uid || pUid === partnerId) return { ...p, partnerId: null, bondPoints: 0 };
+      return p;
+    });
+    setParty(prev => update(prev));
+    setBox(prev => update(prev));
+  };
+
+  const getPartnerInParty = (pet) => {
+    if (!pet?.partnerId) return null;
+    return party.find(p => (p.uid || p.id) === pet.partnerId);
+  };
+
+  const canUseCombo = (battle) => {
+    if (!battle || comboUsedThisBattle) return false;
+    const activePet = battle.playerCombatStates?.[battle.activeIdx];
+    if (!activePet?.partnerId) return false;
+    const partner = battle.playerCombatStates?.find(p => (p.uid || p.id) === activePet.partnerId && p.currentHp > 0);
+    if (!partner) return false;
+    const bl = getBondLevel(activePet.bondPoints || 0);
+    return !!bl;
+  };
+
+  const getComboMove = (pet1, pet2) => {
+    const t1 = pet1.type || 'NORMAL';
+    const t2 = pet2.type || 'NORMAL';
+    if (t1 === t2) return { ...SAME_TYPE_COMBO, type: t1 };
+    const key = getPartnerComboKey(t1, t2);
+    if (key) return PARTNER_COMBOS[key];
+    return { ...DEFAULT_COMBO, type: t1 };
+  };
+
+  const executeComboAttack = async () => {
+    if (!battle || battle.phase !== 'input') return;
+    const activePet = battle.playerCombatStates[battle.activeIdx];
+    if (!activePet?.partnerId) return;
+    const partnerIdx = battle.playerCombatStates.findIndex(p => (p.uid || p.id) === activePet.partnerId && p.currentHp > 0);
+    if (partnerIdx < 0) return;
+    const partner = battle.playerCombatStates[partnerIdx];
+    const bl = getBondLevel(activePet.bondPoints || 0);
+    if (!bl) return;
+
+    setBattle(prev => ({ ...prev, phase: 'busy' }));
+    try {
+      let tempBattle = _.cloneDeep(battle);
+      const p = tempBattle.playerCombatStates[battle.activeIdx];
+      const pt = tempBattle.playerCombatStates[partnerIdx];
+      const e = tempBattle.enemyParty[tempBattle.enemyActiveIdx];
+      const combo = getComboMove(p, pt);
+
+      const basePower = combo.power * bl.powerMult * 0.8;
+      const drinkBuff = cafe.activeDrink?.effect?.comboMult || 1;
+      const power = Math.floor(basePower * drinkBuff);
+      const pStats = getStats(p);
+      const eStats = getStats(e);
+      const atk = combo.cat === 'special' ? pStats.s_atk : pStats.p_atk;
+      const def = combo.cat === 'special' ? eStats.s_def : eStats.p_def;
+      const stab = (combo.type === p.type || combo.type === pt.type) ? 1.5 : 1;
+      const typeMod = getTypeMod(combo.type, e.type);
+      const isCrit = combo.effect?.crit || Math.random() < 0.1;
+      const critMult = isCrit ? 1.5 : 1;
+      let dmg = Math.max(1, Math.floor(((p.level * 2 / 5 + 2) * power * atk / def / 50 + 2) * stab * typeMod * critMult * (0.85 + Math.random() * 0.15)));
+
+      addLog(`🤝 ${p.name} 和 ${pt.name} 发动协作技——【${combo.name}】！(Lv${bl.tier})`);
+      if (isCrit) addLog(`💥 暴击！`);
+      e.currentHp = Math.max(0, e.currentHp - dmg);
+      addLog(`💥 ${combo.name} 造成 ${dmg} 点伤害！`);
+
+      if (combo.effect) {
+        if (combo.effect.burn && Math.random() < combo.effect.burn) { e.status = 'BRN'; addLog(`🔥 ${e.name} 被灼伤了！`); }
+        if (combo.effect.paralyze && Math.random() < combo.effect.paralyze) { e.status = 'PAR'; addLog(`⚡ ${e.name} 被麻痹了！`); }
+        if (combo.effect.freeze && Math.random() < combo.effect.freeze) { e.status = 'FRZ'; addLog(`🧊 ${e.name} 被冻结了！`); }
+        if (combo.effect.poison && Math.random() < combo.effect.poison) { e.status = 'PSN'; addLog(`☠️ ${e.name} 中毒了！`); }
+        if (combo.effect.confuse && Math.random() < combo.effect.confuse) { e.volatiles = { ...(e.volatiles || {}), confused: 3 }; addLog(`😵 ${e.name} 陷入混乱！`); }
+        if (combo.effect.healPercent) { const heal = Math.floor(pStats.maxHp * combo.effect.healPercent); p.currentHp = Math.min(pStats.maxHp, p.currentHp + heal); addLog(`💚 ${p.name} 恢复了 ${heal} HP！`); }
+        if (combo.effect.atkUp) { p.stages = { ...(p.stages || {}), atk: Math.min(6, (p.stages?.atk || 0) + combo.effect.atkUp) }; }
+        if (combo.effect.spAtkUp) { p.stages = { ...(p.stages || {}), spAtk: Math.min(6, (p.stages?.spAtk || 0) + combo.effect.spAtkUp) }; }
+        if (combo.effect.spdUp) { p.stages = { ...(p.stages || {}), spd: Math.min(6, (p.stages?.spd || 0) + combo.effect.spdUp) }; }
+        if (combo.effect.defUp) { p.stages = { ...(p.stages || {}), def: Math.min(6, (p.stages?.def || 0) + combo.effect.defUp) }; }
+        if (combo.effect.defDown) { e.stages = { ...(e.stages || {}), def: Math.max(-6, (e.stages?.def || 0) - combo.effect.defDown) }; }
+        if (combo.effect.spdDown) { e.stages = { ...(e.stages || {}), spd: Math.max(-6, (e.stages?.spd || 0) - combo.effect.spdDown) }; }
+        if (combo.effect.cureStatus) { p.status = null; addLog(`✨ ${p.name} 的状态异常被清除了！`); }
+      }
+
+      updateAchStat({ comboAttacks: 1 });
+      setComboUsedThisBattle(true);
+
+      tempBattle.playerCombatStates[battle.activeIdx] = p;
+      tempBattle.playerCombatStates[partnerIdx] = pt;
+      tempBattle.enemyParty[tempBattle.enemyActiveIdx] = e;
+
+      setBattle(prev => ({
+        ...prev,
+        playerCombatStates: tempBattle.playerCombatStates,
+        enemyParty: tempBattle.enemyParty,
+        phase: 'busy',
+      }));
+      await wait(800);
+      await enemyTurn(tempBattle);
+    } catch (err) {
+      console.error("Combo Attack Error:", err);
+      setBattle(prev => ({ ...prev, phase: 'input' }));
+    }
+  };
+
+  // 咖啡厅系统 - 打工产出
+  const cafeTick = useCallback(() => {
+    setCafe(prev => {
+      if (!prev.owned || prev.workers.length === 0) return prev;
+      const now = Date.now();
+      const elapsed = now - (prev.lastTickTime || now);
+      if (elapsed < CAFE_BUILDING.tickInterval) return prev;
+      const ticks = Math.floor(elapsed / CAFE_BUILDING.tickInterval);
+      if (ticks <= 0) return prev;
+      const lvData = getCafeLevel(prev.totalWorkCount);
+      const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult);
+      setGold(g => g + goldEarned);
+      const newWorkCount = prev.totalWorkCount + ticks * prev.workers.length;
+      const intimacyIncrease = ticks * 2;
+      const update = (list) => list.map(p => {
+        if (prev.workers.includes(p.uid || p.id)) {
+          return { ...p, intimacy: Math.min(255, (p.intimacy || 0) + intimacyIncrease) };
+        }
+        return p;
+      });
+      setParty(pp => update(pp));
+      setBox(bb => update(bb));
+      const newLv = getCafeLevel(newWorkCount);
+      updateAchStat({ cafeLevel: newLv.level });
+      return { ...prev, totalWorkCount: newWorkCount, lastTickTime: now };
+    });
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(cafeTick, 60000);
+    return () => clearInterval(interval);
+  }, [cafeTick]);
+
+  const buyCafe = () => {
+    if (cafe.owned) { alert('已拥有咖啡厅！'); return; }
+    if (gold < CAFE_BUILDING.price) { alert(`金币不足！需要 ${CAFE_BUILDING.price} 金币`); return; }
+    setGold(g => g - CAFE_BUILDING.price);
+    setCafe(prev => ({ ...prev, owned: true, lastTickTime: Date.now() }));
+    alert('🎉 成功购买 LycoReco咖啡厅！');
+  };
+
+  const assignCafeWorker = (pet) => {
+    const uid = pet.uid || pet.id;
+    setCafe(prev => {
+      if (prev.workers.includes(uid)) return { ...prev, workers: prev.workers.filter(w => w !== uid) };
+      if (prev.workers.length >= CAFE_BUILDING.workerSlots) { alert(`最多只能安排 ${CAFE_BUILDING.workerSlots} 只精灵打工！`); return prev; }
+      return { ...prev, workers: [...prev.workers, uid] };
+    });
+  };
+
+  const makeDrink = (drinkId) => {
+    const drink = CAFE_DRINKS.find(d => d.id === drinkId);
+    if (!drink) return;
+    if (gold < drink.price) { alert(`金币不足！需要 ${drink.price} 金币`); return; }
+    if (cafe.activeDrink) { alert('已有饮品效果生效中！每次只能携带一种饮品。'); return; }
+    setGold(g => g - drink.price);
+    setCafe(prev => ({ ...prev, activeDrink: { ...drink.effect, name: drink.name, id: drink.id } }));
+    alert(`☕ 制作了 ${drink.name}！效果将在下一场战斗中生效。`);
+  };
+
+  const clearDrinkBuff = () => {
+    setCafe(prev => ({ ...prev, activeDrink: null }));
+  };
+
+  const isLycorisStoryCompleted = (chapter) => {
+    return storyProgress > chapter;
+  };
+
+  const isDrinkUnlocked = (drink) => {
+    if (drink.unlock === 'story_lycoris_0') return isLycorisStoryCompleted(18);
+    if (drink.unlock === 'story_lycoris_1') return isLycorisStoryCompleted(19);
+    if (drink.unlock === 'first_partner') return party.some(p => p.partnerId);
+    if (drink.unlock === 'cafe_lv2') return getCafeLevel(cafe.totalWorkCount).level >= 2;
+    if (drink.unlock === 'cafe_lv3') return getCafeLevel(cafe.totalWorkCount).level >= 3;
+    if (drink.unlock === 'cafe_lv4') return getCafeLevel(cafe.totalWorkCount).level >= 4;
+    if (drink.unlock === 'cafe_lv5') return getCafeLevel(cafe.totalWorkCount).level >= 5;
+    if (drink.unlock === 'all_lycoris_ach') return (unlockedAchs || []).includes('lycoris_clear');
+    return false;
+  };
+
+  // ==========================================
   // 咒术系统 - 领域展开
   // ==========================================
   const executeDomainExpansion = async () => {
@@ -5886,7 +6200,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const ceMoveEff = move.isCursed ? (move.effect || {}) : {};
         let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0) + (ceMoveEff.critBoost || 0);
         if (atkFE && atkFE.critBoost) critStage += atkFE.critBoost;
-        if (Math.random() * 100 < (statsAtk.crit * (1 + critStage * 0.5))) isCrit = true;
+        let critChance = statsAtk.crit * (1 + critStage * 0.5);
+        if (source === 'player' && cafe.activeDrink?.critBoost) critChance += cafe.activeDrink.critBoost * 100;
+        if (Math.random() * 100 < critChance) isCrit = true;
 
         if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
         if (atkFE && atkFE.ignoreDefPercent) defVal = Math.floor(defVal * (1 - atkFE.ignoreDefPercent));
@@ -5913,6 +6229,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const fixedBonus = Math.floor(getStats(defender).maxHp * atkFE.fixedDmgPercent);
             rawDmg += fixedBonus;
           }
+        }
+
+        // 饮品buff伤害加成（仅玩家方）
+        if (source === 'player' && cafe.activeDrink) {
+          if (cafe.activeDrink.atkMult && category === 'physical') rawDmg *= cafe.activeDrink.atkMult;
+          if (cafe.activeDrink.atkMult && category === 'special') rawDmg *= cafe.activeDrink.atkMult;
         }
 
         // 暗暗果实: 取消对手果实效果
@@ -6971,7 +7293,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
                  alert(`🎁 获得了伙伴：${rewardPet.name}！\n队伍已满，已发送到电脑。`);
              }
           }
-          setStoryProgress(prev => prev + 1);
+          setStoryProgress(prev => {
+            const newProgress = prev + 1;
+            const lycorisChapters = [18, 19, 20];
+            if (lycorisChapters.includes(currentChapter?.chapter)) {
+              updateAchStat({ lycorisChaptersCleared: 1 });
+            }
+            return newProgress;
+          });
           setStoryStep(0); 
        }
     }
@@ -7018,6 +7347,44 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 身无分文
     if (gold === 0) winAchUpdates.zeroGoldWin = 1;
     updateAchStat(winAchUpdates);
+
+    // 搭档羁绊累积（胜利时额外+10）
+    const bondUpdates = {};
+    (battle.playerCombatStates || []).forEach(p => {
+      if (p?.partnerId) {
+        const hasPartnerAlive = (battle.playerCombatStates || []).some(pp => (pp.uid || pp.id) === p.partnerId && pp.currentHp > 0);
+        if (hasPartnerAlive) {
+          bondUpdates[p.uid || p.id] = (bondUpdates[p.uid || p.id] || 0) + BOND_PER_KO + (battle.turnCount || 1) * BOND_PER_TURN;
+        }
+      }
+    });
+    if (Object.keys(bondUpdates).length > 0) {
+      const applyBond = (list) => list.map(p => {
+        const uid = p.uid || p.id;
+        if (bondUpdates[uid]) return { ...p, bondPoints: (p.bondPoints || 0) + bondUpdates[uid] };
+        return p;
+      });
+      setParty(pp => {
+        const updated = applyBond(pp);
+        let maxLv = 0;
+        let lv3Pairs = 0;
+        const counted = new Set();
+        [...updated, ...box].forEach(p => {
+          if (p.partnerId && p.bondPoints) {
+            const bl = getBondLevel(p.bondPoints);
+            if (bl) maxLv = Math.max(maxLv, bl.tier);
+            if (bl && bl.tier >= 3 && !counted.has(p.partnerId)) { lv3Pairs++; counted.add(p.uid || p.id); }
+          }
+        });
+        if (maxLv > 0) updateAchStat({ maxBondLevel: maxLv, maxBondLv3Pairs: lv3Pairs });
+        return updated;
+      });
+      setBox(bb => applyBond(bb));
+    }
+
+    // 清除饮品buff（每场战斗消耗一次）
+    clearDrinkBuff();
+    setComboUsedThisBattle(false);
 
     setBattle(null);
 
@@ -10057,6 +10424,104 @@ const renderMenu = () => {
               })()}
             </div>
 
+            {/* 3.7 搭档羁绊 */}
+            <div style={{margin:'0 20px 15px'}}>
+              {(() => {
+                const partnerPet = [...party, ...box].find(p => (p.uid || p.id) === viewStatPet.partnerId);
+                const bl = partnerPet ? getBondLevel(viewStatPet.bondPoints || 0) : null;
+                const nextBl = BOND_LEVELS.find(b => (viewStatPet.bondPoints || 0) < b.threshold);
+                return (
+                  <div style={{
+                    background: partnerPet ? 'linear-gradient(135deg, #FCE4EC, #fff)' : '#f9f9f9',
+                    border: partnerPet ? '1.5px solid #E91E63' : '1.5px dashed #ddd',
+                    borderRadius:'12px', padding:'12px'
+                  }}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                        <div style={{width:'36px', height:'36px', borderRadius:'50%', background: partnerPet ? 'linear-gradient(135deg,#E91E63,#FF6090)' : '#f0f0f0', border: partnerPet ? 'none' : '2px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color: partnerPet ? '#fff' : '#bbb'}}>
+                          {partnerPet ? '🤝' : '+'}
+                        </div>
+                        <div>
+                          <div style={{fontWeight:'bold', fontSize:'13px', color: partnerPet ? '#C2185B' : '#999'}}>
+                            {partnerPet ? `搭档: ${partnerPet.name}` : '未设置搭档'}
+                          </div>
+                          {partnerPet && bl && (
+                            <div style={{fontSize:'10px', color:'#888'}}>
+                              羁绊 Lv{bl.tier} ({bl.name}) · {viewStatPet.bondPoints || 0}点
+                              {nextBl && ` (下级: ${nextBl.threshold}点)`}
+                            </div>
+                          )}
+                          {partnerPet && !bl && (
+                            <div style={{fontSize:'10px', color:'#888'}}>
+                              羁绊 {viewStatPet.bondPoints || 0}/{BOND_LEVELS[0].threshold}点
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{display:'flex', gap:'6px'}}>
+                        {partnerPet && (
+                          <button onClick={() => { removePartner(viewStatPet); setViewStatPet(prev => ({...prev, partnerId: null, bondPoints: 0})); }} style={{
+                            background:'rgba(0,0,0,0.05)', color:'#999', border:'1px solid #ddd',
+                            padding:'5px 10px', borderRadius:'16px', fontSize:'11px', cursor:'pointer'
+                          }}>解除</button>
+                        )}
+                        <button onClick={() => setPartnerModal(true)} style={{
+                          background: partnerPet ? '#fff' : 'linear-gradient(135deg, #E91E63, #FF6090)',
+                          color: partnerPet ? '#E91E63' : '#fff',
+                          border: partnerPet ? '1px solid #E91E63' : 'none',
+                          padding:'5px 14px', borderRadius:'16px', fontSize:'11px', fontWeight:'bold', cursor:'pointer',
+                          boxShadow: partnerPet ? 'none' : '0 2px 8px rgba(233,30,99,0.3)'
+                        }}>
+                          {partnerPet ? '更换' : '设置搭档'}
+                        </button>
+                      </div>
+                    </div>
+                    {partnerPet && bl && (
+                      <div style={{marginTop:'8px'}}>
+                        <div style={{height:'4px', background:'#f0f0f0', borderRadius:'2px', overflow:'hidden'}}>
+                          <div style={{height:'100%', width: `${Math.min(100, ((viewStatPet.bondPoints || 0) / (nextBl?.threshold || 300)) * 100)}%`, background:'linear-gradient(90deg,#E91E63,#FF6090)', borderRadius:'2px', transition:'width 0.3s'}} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 搭档选择弹窗 */}
+            {partnerModal && (
+              <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setPartnerModal(false)}>
+                <div style={{background:'#fff', borderRadius:'16px', padding:'20px', maxWidth:'400px', width:'90%', maxHeight:'70vh', overflow:'auto'}} onClick={e => e.stopPropagation()}>
+                  <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'15px', color:'#C2185B'}}>选择搭档精灵</div>
+                  <div style={{fontSize:'11px', color:'#888', marginBottom:'10px'}}>选择一只精灵作为 {viewStatPet.name} 的搭档（每只精灵只能有一个搭档）</div>
+                  <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                    {[...party, ...box].filter(p => (p.uid || p.id) !== (viewStatPet.uid || viewStatPet.id) && p.currentHp > 0).map(p => {
+                      const isCurrentPartner = (p.uid || p.id) === viewStatPet.partnerId;
+                      const hasOtherPartner = p.partnerId && p.partnerId !== (viewStatPet.uid || viewStatPet.id);
+                      return (
+                        <div key={p.uid || p.id} onClick={() => {
+                          if (hasOtherPartner) { alert(`${p.name} 已有其他搭档，请先解除！`); return; }
+                          setPartner(viewStatPet, p);
+                          setViewStatPet(prev => ({...prev, partnerId: p.uid || p.id, bondPoints: prev.partnerId === (p.uid || p.id) ? (prev.bondPoints || 0) : 0 }));
+                          setPartnerModal(false);
+                          alert(`🤝 ${viewStatPet.name} 和 ${p.name} 结为搭档！`);
+                        }} style={{
+                          display:'flex', alignItems:'center', gap:'10px', padding:'10px', borderRadius:'10px', cursor:'pointer',
+                          background: isCurrentPartner ? '#FCE4EC' : '#f5f5f5', border: isCurrentPartner ? '2px solid #E91E63' : '1px solid #eee'
+                        }}>
+                          <div style={{fontWeight:'bold', fontSize:'13px', flex:1}}>{p.name} <span style={{fontSize:'10px', color:'#888'}}>Lv.{p.level}</span></div>
+                          <div style={{fontSize:'10px', color: TYPES[p.type]?.color, fontWeight:'bold'}}>{TYPES[p.type]?.name}</div>
+                          {isCurrentPartner && <span style={{fontSize:'10px', color:'#E91E63', fontWeight:'bold'}}>当前搭档</span>}
+                          {hasOtherPartner && <span style={{fontSize:'10px', color:'#999'}}>已有搭档</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => setPartnerModal(false)} style={{width:'100%', marginTop:'15px', padding:'10px', background:'#f5f5f5', border:'none', borderRadius:'10px', fontSize:'13px', cursor:'pointer'}}>取消</button>
+                </div>
+              </div>
+            )}
+
             {/* 4. 道具与培养 */}
             <div style={{padding:'0 20px 20px'}}>
                <div style={{background:'#FFF8E1', color:'#F57F17', padding:'8px', borderRadius:'8px', textAlign:'center', fontSize:'12px', fontWeight:'bold', marginBottom:'15px'}}>
@@ -10686,7 +11151,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, cafe };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -12664,6 +13129,7 @@ const renderMenu = () => {
                             {p.maxCE > 0 && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button>}
                             {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}>领域</button>}
                             {p.maxCE > 0 && !p.activeVow && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button>}
+                            {canUseCombo(battle) && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#E91E63,#FF6090)'}} onClick={executeComboAttack}>协作</button>}
                         </div>
                     ) : (
                         <div className="actions-bar-h">

@@ -183,6 +183,22 @@ const ACHIEVEMENTS = [
     name: '身无分文',    desc: '金币恰好为0时赢下一场战斗',
     hint: '提示：口袋空空的勇气——穷途末路的胜利',
     check: s => s.zeroGoldWin >= 1, reward: { gold: 10000 }, hidden: true },
+
+  // ===== 莉可莉丝系列 (6) =====
+  { id: 'lycoris_first_partner', cat: 'SOCIAL', rarity: 'UNCOMMON', name: '初次搭档',
+    desc: '结成第一对搭档', check: s => s.partnersFormed >= 1, reward: { gold: 1000 } },
+  { id: 'lycoris_bond_max',      cat: 'SOCIAL', rarity: 'RARE',    name: '心意相通',
+    desc: '搭档羁绊达到Lv3', check: s => s.maxBondLevel >= 3, reward: { gold: 5000, title: '最佳搭档' } },
+  { id: 'lycoris_combo_10',      cat: 'BATTLE', rarity: 'UNCOMMON', name: '协作高手',
+    desc: '使用协作技10次', check: s => s.comboAttacks >= 10, reward: { gold: 3000 } },
+  { id: 'lycoris_cafe_max',      cat: 'SOCIAL', rarity: 'RARE',    name: '咖啡大师',
+    desc: '咖啡厅升到满级(Lv5)', check: s => s.cafeLevel >= 5, reward: { gold: 10000, title: '咖啡大师' } },
+  { id: 'lycoris_clear',         cat: 'EXPLORE', rarity: 'RARE',   name: '莉可莉丝',
+    desc: '通关莉可莉丝全部3章剧情', check: s => s.lycorisChaptersCleared >= 3, reward: { gold: 8000, title: '秘密特工' } },
+  { id: 'lycoris_perfect',       cat: 'SECRET', rarity: 'LEGENDARY', name: '完美搭档',
+    desc: '拥有5对Lv3搭档',
+    hint: '提示：当五对精灵都达到完美默契…你就是真正的搭档大师',
+    check: s => s.maxBondLv3Pairs >= 5, reward: { gold: 20000, title: '完美默契' }, hidden: true },
 ];
 
 export const DEFAULT_ACH_STATS = {
@@ -248,6 +264,12 @@ export const DEFAULT_ACH_STATS = {
   partySectDiv: 0,
   tripleSystemBattle: 0,
   zeroGoldWin: 0,
+  partnersFormed: 0,
+  maxBondLevel: 0,
+  comboAttacks: 0,
+  cafeLevel: 0,
+  lycorisChaptersCleared: 0,
+  maxBondLv3Pairs: 0,
 };
 
 export default ACHIEVEMENTS;

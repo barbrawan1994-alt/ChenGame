@@ -10,3 +10,4 @@ export * from './story';
 export * from './battles';
 export * from './jujutsu';
 export * from './housing';
+export * from './lycoris';
