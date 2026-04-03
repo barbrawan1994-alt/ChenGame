@@ -1732,7 +1732,7 @@ const CHARM_RANK_COLORS = {
     }
 
     const base = POKEDEX.find(p => p.id === finalId) || POKEDEX[0];
-    const isShiny = forceShiny || (!isBoss && Math.random() < 0.04);
+    const isShiny = forceShiny || (!isBoss && Math.random() < 0.01);
     
     const randIV = () => Math.floor(Math.random() * 32); 
     const ivs = {
@@ -4997,7 +4997,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }
          let enemyId;
          let level = _.random(context.lvl[0], context.lvl[1]);
-         if (Math.random() < 0.02) {
+         if (Math.random() < 0.005) {
             enemyId = _.sample(LEGENDARY_POOL);
             level = Math.max(level, 70); 
             dropGold = 5000;

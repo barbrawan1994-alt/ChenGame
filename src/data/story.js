@@ -24,7 +24,8 @@ export const STORY_SCRIPT = [
       { step: 4, x: 15, y: 8, type: 'battle', enemyId: 118, name: '日蚀队 小队长', text: '可恶！装置被破坏了！首领会不高兴的...不过，先把你解决掉再说！', emoji: '😈' },
       { step: 5, x: 22, y: 14, type: 'battle', enemyId: 54, name: '神秘旁观者·厌晚', text: '（远处的树影下，一个黑衣女人静静注视着你。你发现她时，她微微勾唇）...有点意思。让我看看你值不值得关注。', emoji: '🌙',
         eliteParty: [
-          { id: 54, level: 15 }
+          { id: 54, level: 18 },
+          { id: 93, level: 16 }
         ]
       }
     ],
@@ -59,7 +60,9 @@ export const STORY_SCRIPT = [
       { step: 3, x: 20, y: 10, type: 'battle', enemyId: 15, name: '日蚀队 爆破专家', text: "倒计时30秒！来不及了，你和这座山的命运已经注定了！一起炸飞吧！", emoji: '💣' },
       { step: 4, x: 12, y: 3, type: 'battle', enemyId: 93, name: '暗影观察者·厌晚', text: '（爆炸的硝烟中，一个身影悠然走来）...还活着？不错。那个叫苍的家伙也在附近呢...真热闹。', emoji: '🌙',
         eliteParty: [
-          { id: 93, level: 20 }
+          { id: 93, level: 25 },
+          { id: 59, level: 23 },
+          { id: 54, level: 21 }
         ]
       }
     ],
@@ -92,8 +95,10 @@ export const STORY_SCRIPT = [
       { step: 3, x: 15, y: 15, type: 'battle', enemyId: 81, name: '日蚀队 首席科学家', text: "你来晚了！阿尔忒弥斯计划即将完成！有了这个原型机，我们的军队将无可匹敌！", emoji: '👨‍🔬' },
       { step: 4, x: 8, y: 3, type: 'battle', enemyId: 93, name: '暗影观察者·厌晚', text: '（控制室的屏幕全部熄灭，黑暗中只有一双冰冷的眼睛）科学家的数据我已经拿到了。顺便...再试试你的深浅。', emoji: '🌙',
         eliteParty: [
-          { id: 93, level: 25 },
-          { id: 59, level: 27 }
+          { id: 93, level: 32 },
+          { id: 59, level: 30 },
+          { id: 94, level: 28 },
+          { id: 54, level: 26 }
         ]
       }
     ],
@@ -126,8 +131,11 @@ export const STORY_SCRIPT = [
       { step: 3, x: 10, y: 10, type: 'battle', enemyId: 130, name: '被虚空侵蚀的 暴鲤龙', text: "吼！！！（痛苦地翻滚着，身上的虚空结晶不断生长。它已经失去了理智。）", emoji: '🐉' },
       { step: 4, x: 22, y: 3, type: 'battle', enemyId: 94, name: '暗影执行者·厌晚', text: '（海面上的薄雾中，一只小船缓缓靠岸。厌晚踩着礁石走来）虚空结晶...这东西比我想象的有趣。你呢？比上次有趣了一点。', emoji: '🌙',
         eliteParty: [
-          { id: 94, level: 32 },
-          { id: 54, level: 30 }
+          { id: 94, level: 40 },
+          { id: 59, level: 38 },
+          { id: 93, level: 36 },
+          { id: 54, level: 34 },
+          { id: 130, level: 32 }
         ]
       }
     ],
@@ -160,8 +168,12 @@ export const STORY_SCRIPT = [
       { step: 3, x: 12, y: 8, type: 'battle', enemyId: 126, name: '日蚀队 干部·炎', text: "够了！既然你要保护弱者，那就让我展示真正的力量！火焰不是温暖——是毁灭！", emoji: '🔥' },
       { step: 4, x: 20, y: 14, type: 'battle', enemyId: 94, name: '暗影执行者·厌晚', text: '（岩浆的红光映出她冷峻的侧脸）干部·炎那种货色...还不配当我的对手。你呢？让我看看你有没有资格。', emoji: '🌙',
         eliteParty: [
-          { id: 94, level: 37 },
-          { id: 59, level: 35 }
+          { id: 94, level: 45 },
+          { id: 59, level: 43 },
+          { id: 93, level: 41 },
+          { id: 130, level: 39 },
+          { id: 54, level: 37 },
+          { id: 126, level: 35 }
         ]
       }
     ],
