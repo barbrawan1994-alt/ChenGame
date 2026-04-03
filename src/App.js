@@ -7688,7 +7688,7 @@ const renderNameInput = () => (
     return (
       <div className="screen dex-screen">
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView('menu')}>🔙 返回</button>
+          <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? 'grid_map' : 'menu')}>🔙 返回</button>
           <div className="nav-title">精灵图鉴</div>
           <button className="btn-icon-only" onClick={syncDexData} style={{fontSize:'18px'}} title="修复图鉴数据">🔄</button>
         </div>
@@ -10623,6 +10623,7 @@ const renderMenu = () => {
               { id: 'pc', icon: '💻', label: '电脑', action: () => setPcMode(true) },
               { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
+              { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
                 style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
