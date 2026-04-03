@@ -13125,9 +13125,27 @@ const renderMenu = () => {
     // --- 辅助函数 ---
     const renderStatusBadges = (unit) => {
         const badges = [];
+        const badgeBase = { color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '10px', marginLeft: '3px', fontWeight: 'bold', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '2px' };
         const statusConfig = { BRN: { text: '灼伤', bg: '#FF5722' }, PSN: { text: '中毒', bg: '#9C27B0' }, PAR: { text: '麻痹', bg: '#FFC107', color: '#000' }, SLP: { text: '睡眠', bg: '#90A4AE' }, FRZ: { text: '冰冻', bg: '#03A9F4' } };
-        if (unit.status && statusConfig[unit.status]) { const cfg = statusConfig[unit.status]; badges.push(<span key="main" style={{background: cfg.bg, color: cfg.color || '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px', fontWeight: 'bold'}}>{cfg.text}</span>); }
-        if (unit.volatiles && unit.volatiles.confused) { badges.push(<span key="confused" style={{background: '#E91E63', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px', fontWeight: 'bold'}}>混乱</span>); }
+        if (unit.status && statusConfig[unit.status]) { const cfg = statusConfig[unit.status]; badges.push(<span key="main" style={{...badgeBase, background: cfg.bg, color: cfg.color || '#fff'}}>{cfg.text}</span>); }
+        if (unit.volatiles && unit.volatiles.confused) { badges.push(<span key="confused" style={{...badgeBase, background: '#E91E63'}}>混乱</span>); }
+
+        if (unit.activeVow && unit.activeVow.turnsLeft > 0) {
+            const vowStyle = {
+                'vow_power':   { bg: 'linear-gradient(135deg,#D32F2F,#FF5722)', icon: '🔥' },
+                'vow_reveal':  { bg: 'linear-gradient(135deg,#1565C0,#42A5F5)', icon: '📖' },
+                'vow_restrict': { bg: 'linear-gradient(135deg,#F9A825,#FFD54F)', icon: '🛡️' },
+                'vow_burn':    { bg: 'linear-gradient(135deg,#E65100,#FF9800)', icon: '💥' },
+                'vow_speed':   { bg: 'linear-gradient(135deg,#00838F,#26C6DA)', icon: '⚡' },
+            };
+            const vs = vowStyle[unit.activeVow.id] || { bg: '#555', icon: '📜' };
+            badges.push(<span key="vow" style={{...badgeBase, background: vs.bg, boxShadow: '0 0 6px rgba(255,255,255,0.3)', animation: 'vow-pulse 2s infinite'}}>{vs.icon}{unit.activeVow.name}</span>);
+        }
+
+        if (unit.fruitTransformed && unit.fruitTurnsLeft > 0) {
+            badges.push(<span key="fruit-active" style={{...badgeBase, background: 'linear-gradient(135deg,#6A1B9A,#AB47BC)', boxShadow: '0 0 8px rgba(171,71,188,0.5)', animation: 'vow-pulse 1.5s infinite'}}>🍎变身中({unit.fruitTurnsLeft})</span>);
+        }
+
         return badges;
     };
 
@@ -13702,6 +13720,33 @@ const renderMenu = () => {
                         radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 50%)
                     `
                 }} />
+
+                {/* ====== 领域展开全局标识 ====== */}
+                {battle.activeDomain && battle.activeDomain.turnsLeft > 0 && (
+                  <div style={{
+                    position:'absolute', top:'8px', left:'50%', transform:'translateX(-50%)', zIndex:10,
+                    background: battle.activeDomain.ownerSide === 'player'
+                      ? 'linear-gradient(135deg, rgba(33,150,243,0.85), rgba(13,71,161,0.9))'
+                      : 'linear-gradient(135deg, rgba(211,47,47,0.85), rgba(136,14,79,0.9))',
+                    padding:'6px 18px', borderRadius:'20px',
+                    boxShadow: battle.activeDomain.ownerSide === 'player'
+                      ? '0 0 20px rgba(33,150,243,0.5), 0 0 40px rgba(33,150,243,0.2)'
+                      : '0 0 20px rgba(211,47,47,0.5), 0 0 40px rgba(211,47,47,0.2)',
+                    display:'flex', alignItems:'center', gap:'8px',
+                    animation:'domain-banner-pulse 2s infinite', border:'1px solid rgba(255,255,255,0.3)'
+                  }}>
+                    <span style={{fontSize:'16px'}}>🌀</span>
+                    <span style={{color:'#fff', fontSize:'12px', fontWeight:'bold', textShadow:'0 1px 3px rgba(0,0,0,0.5)'}}>
+                      {battle.activeDomain.name}
+                    </span>
+                    <span style={{
+                      background:'rgba(255,255,255,0.2)', color:'#fff', fontSize:'10px',
+                      padding:'1px 8px', borderRadius:'10px', fontWeight:'bold'
+                    }}>
+                      {battle.activeDomain.ownerSide === 'player' ? '我方' : '敌方'} · 剩余{battle.activeDomain.turnsLeft}回合
+                    </span>
+                  </div>
+                )}
 
                 {/* ====== 中央对战标记 ====== */}
                 <div style={{

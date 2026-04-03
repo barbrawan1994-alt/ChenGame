@@ -503,6 +503,16 @@ button:active { transform: scale(0.96); }
   50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
 }
 
+@keyframes vow-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.05); }
+}
+
+@keyframes domain-banner-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(255,255,255,0.2), 0 0 30px rgba(33,150,243,0.3); }
+  50% { box-shadow: 0 0 25px rgba(255,255,255,0.35), 0 0 50px rgba(33,150,243,0.5); }
+}
+
 /* ============================================ */
 /* 战斗场景 - 竞技场地面 + 环境装饰 */
 /* ============================================ */
