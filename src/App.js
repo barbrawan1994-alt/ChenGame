@@ -2059,6 +2059,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.achievementCount = unlockedAchs.length;
       const allPets = [...(party || []), ...(box || [])];
       next.maxPetLevel = Math.max(0, ...allPets.map(p => p?.level || 0));
+      if (party && party.length > 0) {
+        next.starterLevel = party[0]?.level || 0;
+      }
       const team = party || [];
       next.eliteTeamReady = team.length >= 6 && team.every(p => (p?.level || 0) >= 50);
       const types = new Set();
@@ -3123,10 +3126,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         {done ? (cat?.icon || '🏆') : (isHidden ? '❓' : cat?.icon || '📋')}
                       </div>
                       <div style={{minWidth:0, flex:1}}>
-                        <div style={{fontSize:'13px', fontWeight:'800', color: done ? '#fff' : 'rgba(255,255,255,0.5)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                        <div style={{fontSize:'13px', fontWeight:'800', color: done ? '#fff' : 'rgba(255,255,255,0.5)'}}>
                           {isHidden ? '???' : ach.name}
                         </div>
-                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px', lineHeight:'1.4'}}>
                           {isHidden ? '达成隐藏条件后解锁' : ach.desc}
                         </div>
                       </div>
@@ -14288,10 +14291,10 @@ const renderMenu = () => {
               <div style={{fontSize:'10px', color:rar.color, fontWeight:'700', letterSpacing:'1px', marginBottom:'2px'}}>
                 成就解锁 {'★'.repeat(rar.stars)}
               </div>
-              <div style={{fontSize:'14px', fontWeight:'800', color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+              <div style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>
                 {ach.name}
               </div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px', lineHeight:'1.4'}}>
                 {ach.desc}
               </div>
               {ach.reward?.gold && (

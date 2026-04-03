@@ -25,8 +25,8 @@ export const ACH_RARITY = {
 // reward: { gold, title, item }
 const ACHIEVEMENTS = [
   // ===== 收集类 (13) =====
-  { id: 'catch_first',     cat: 'COLLECTION', rarity: 'COMMON',    name: '初出茅庐',     desc: '捕捉第一只精灵',             check: s => s.totalCaught >= 1,    reward: { gold: 200 } },
-  { id: 'catch_10',        cat: 'COLLECTION', rarity: 'COMMON',    name: '收藏爱好者',   desc: '图鉴中记录20种精灵',          check: s => s.dexCount >= 20,       reward: { gold: 800 } },
+  { id: 'catch_first',     cat: 'COLLECTION', rarity: 'COMMON',    name: '初出茅庐',     desc: '累计捕捉10只精灵',            check: s => s.totalCaught >= 10,   reward: { gold: 200 } },
+  { id: 'catch_10',        cat: 'COLLECTION', rarity: 'COMMON',    name: '收藏爱好者',   desc: '图鉴中记录30种精灵',          check: s => s.dexCount >= 30,       reward: { gold: 800 } },
   { id: 'catch_50',        cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '精灵猎人',     desc: '图鉴中记录80种精灵',          check: s => s.dexCount >= 80,       reward: { gold: 3000 } },
   { id: 'catch_100',       cat: 'COLLECTION', rarity: 'RARE',      name: '图鉴学者',     desc: '图鉴中记录150种精灵',         check: s => s.dexCount >= 150,      reward: { gold: 8000, title: '图鉴学者' } },
   { id: 'catch_250',       cat: 'COLLECTION', rarity: 'EPIC',      name: '精灵博士',     desc: '图鉴中记录300种精灵',         check: s => s.dexCount >= 300,      reward: { gold: 30000, title: '精灵博士' } },
@@ -40,7 +40,7 @@ const ACHIEVEMENTS = [
   { id: 'catch_all_type',  cat: 'COLLECTION', rarity: 'EPIC',      name: '属性大师',     desc: '捕捉所有19种属性的精灵',      check: s => s.typesCollected >= 19, reward: { gold: 20000, title: '属性大师' } },
 
   // ===== 战斗类 (15) =====
-  { id: 'win_first',       cat: 'BATTLE', rarity: 'COMMON',    name: '初次胜利',     desc: '赢得第一场战斗',              check: s => s.battlesWon >= 1,      reward: { gold: 200 } },
+  { id: 'win_first',       cat: 'BATTLE', rarity: 'COMMON',    name: '初次胜利',     desc: '赢得10场战斗',                check: s => s.battlesWon >= 10,     reward: { gold: 200 } },
   { id: 'win_50',          cat: 'BATTLE', rarity: 'UNCOMMON',  name: '百战老兵',     desc: '赢得100场战斗',               check: s => s.battlesWon >= 100,    reward: { gold: 5000 } },
   { id: 'win_200',         cat: 'BATTLE', rarity: 'RARE',      name: '战神降世',     desc: '赢得300场战斗',               check: s => s.battlesWon >= 300,    reward: { gold: 15000, title: '战神' } },
   { id: 'win_500',         cat: 'BATTLE', rarity: 'EPIC',      name: '千场勇士',     desc: '赢得800场战斗',               check: s => s.battlesWon >= 800,    reward: { gold: 50000, title: '不败战神' } },
@@ -51,15 +51,15 @@ const ACHIEVEMENTS = [
   { id: 'underdog',        cat: 'BATTLE', rarity: 'RARE',      name: '以弱胜强',     desc: '击败等级高出20级以上的对手',   check: s => s.underdogWins >= 1,    reward: { gold: 8000, title: '越级挑战者' } },
   { id: 'ko_streak_10',    cat: 'BATTLE', rarity: 'UNCOMMON',  name: '连胜达人',     desc: '达成15场连胜',                check: s => s.maxWinStreak >= 15,   reward: { gold: 5000 } },
   { id: 'ko_streak_30',    cat: 'BATTLE', rarity: 'EPIC',      name: '不败传说',     desc: '达成50场连胜',                check: s => s.maxWinStreak >= 50,   reward: { gold: 30000, title: '不败传说' } },
-  { id: 'domain_first',    cat: 'BATTLE', rarity: 'RARE',      name: '领域展开',     desc: '第一次展开领域',              check: s => s.domainsUsed >= 1,     reward: { gold: 5000 } },
-  { id: 'vow_first',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '缚誓之力',     desc: '第一次使用缚誓',              check: s => s.vowsUsed >= 1,        reward: { gold: 3000 } },
-  { id: 'fruit_transform',  cat: 'BATTLE', rarity: 'UNCOMMON',  name: '恶魔觉醒',     desc: '第一次在战斗中使用果实变身',  check: s => s.fruitTransforms >= 1, reward: { gold: 3000 } },
+  { id: 'domain_first',    cat: 'BATTLE', rarity: 'RARE',      name: '领域展开',     desc: '累计展开领域10次',            check: s => s.domainsUsed >= 10,    reward: { gold: 5000 } },
+  { id: 'vow_first',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '缚誓之力',     desc: '累计使用缚誓15次',            check: s => s.vowsUsed >= 15,       reward: { gold: 3000 } },
+  { id: 'fruit_transform',  cat: 'BATTLE', rarity: 'UNCOMMON',  name: '恶魔觉醒',     desc: '累计在战斗中使用果实变身15次', check: s => s.fruitTransforms >= 15, reward: { gold: 3000 } },
   { id: 'fruit_50_trans',   cat: 'BATTLE', rarity: 'RARE',      name: '变身大师',     desc: '累计使用果实变身50次',        check: s => s.fruitTransforms >= 50, reward: { gold: 15000, title: '变身大师' } },
 
   // ===== 探索类 (10) =====
-  { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '旅行者',       desc: '探索5个不同的地图',           check: s => s.mapsVisited >= 5,     reward: { gold: 800 } },
+  { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '旅行者',       desc: '探索6个不同的地图',           check: s => s.mapsVisited >= 6,     reward: { gold: 800 } },
   { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索所有地图区域',            check: s => s.mapsVisited >= 13,    reward: { gold: 15000, title: '环游世界' } },
-  { id: 'steps_1k',        cat: 'EXPLORE', rarity: 'COMMON',    name: '散步者',       desc: '在地图上行走3000步',          check: s => s.totalSteps >= 3000,   reward: { gold: 600 } },
+  { id: 'steps_1k',        cat: 'EXPLORE', rarity: 'COMMON',    name: '散步者',       desc: '在地图上行走5000步',          check: s => s.totalSteps >= 5000,   reward: { gold: 600 } },
   { id: 'steps_10k',       cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '马拉松选手',   desc: '在地图上行走20000步',         check: s => s.totalSteps >= 20000,  reward: { gold: 5000 } },
   { id: 'steps_50k',       cat: 'EXPLORE', rarity: 'RARE',      name: '万里长征',     desc: '在地图上行走80000步',         check: s => s.totalSteps >= 80000,  reward: { gold: 20000, title: '行者' } },
   { id: 'dungeon_first',   cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '副本探险者',   desc: '完成第一个特殊副本',          check: s => s.dungeonsCleared >= 1, reward: { gold: 3000 } },
@@ -69,7 +69,7 @@ const ACHIEVEMENTS = [
   { id: 'infinity_50',     cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限征服者',   desc: '无限城堡到达第80层',          check: s => s.maxInfinityFloor >= 80, reward: { gold: 60000, title: '无限征服者' } },
 
   // ===== 成长类 (11) =====
-  { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得第一枚道馆徽章',          check: s => s.badgeCount >= 1,      reward: { gold: 800 } },
+  { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: { gold: 800 } },
   { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部8枚道馆徽章',         check: s => s.badgeCount >= 8,      reward: { gold: 15000, title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { gold: 10000, title: '联赛冠军' } },
   { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { gold: 50000, title: '联赛之王' } },
@@ -82,7 +82,7 @@ const ACHIEVEMENTS = [
   { id: 'gold_100k',       cat: 'GROWTH', rarity: 'UNCOMMON',  name: '小富即安',     desc: '累计获得200,000金币',         check: s => s.totalGoldEarned >= 200000, reward: { gold: 5000 } },
 
   // ===== 社交/生活类 (7) =====
-  { id: 'house_first',     cat: 'SOCIAL', rarity: 'COMMON',    name: '安家落户',     desc: '购买第一套房子',              check: s => s.houseLevel >= 1,      reward: { gold: 1500 } },
+  { id: 'house_first',     cat: 'SOCIAL', rarity: 'COMMON',    name: '安家落户',     desc: '将房子升级到2级',             check: s => s.houseLevel >= 2,      reward: { gold: 1500 } },
   { id: 'house_castle',    cat: 'SOCIAL', rarity: 'EPIC',      name: '城堡之主',     desc: '升级为城堡',                  check: s => s.houseLevel >= 5,      reward: { gold: 30000, title: '城堡领主' } },
   { id: 'furniture_10',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '室内设计师',   desc: '摆放20件家具',                check: s => s.furnitureCount >= 20, reward: { gold: 5000 } },
   { id: 'legend_home',     cat: 'SOCIAL', rarity: 'LEGENDARY', name: '传说家园',     desc: '家园评分达到传说级别',         check: s => s.housingScoreTier >= 5, reward: { gold: 50000, title: '传说家园主' } },
@@ -99,10 +99,10 @@ const ACHIEVEMENTS = [
   { id: 'type_master',     cat: 'MASTERY', rarity: 'EPIC',      name: '属性克制大师', desc: '利用属性克制造成超级有效500次', check: s => s.superEffectiveHits >= 500, reward: { gold: 25000 } },
 
   // ===== 隐藏成就 (6) =====
-  { id: 'secret_starter',  cat: 'SECRET', rarity: 'COMMON',    name: '冒险的起点',   desc: '选择你的初始精灵',            check: s => s.starterChosen,        reward: { gold: 100 },  hidden: true },
-  { id: 'secret_faint',    cat: 'SECRET', rarity: 'UNCOMMON',  name: '跌倒再爬起',   desc: '首次被击败',                  check: s => s.timesDefeated >= 1,   reward: { gold: 2000 }, hidden: true },
-  { id: 'secret_run',      cat: 'SECRET', rarity: 'COMMON',    name: '三十六计',     desc: '从战斗中逃跑',                check: s => s.timesRun >= 1,        reward: { gold: 200 },  hidden: true },
-  { id: 'secret_master_ball', cat: 'SECRET', rarity: 'EPIC',    name: '大师球传说',   desc: '使用大师球捕捉精灵',          check: s => s.masterBallUsed >= 1,  reward: { gold: 10000 }, hidden: true },
+  { id: 'secret_starter',  cat: 'SECRET', rarity: 'COMMON',    name: '冒险的起点',   desc: '将初始精灵培养到20级',        check: s => s.starterLevel >= 20,   reward: { gold: 500 },  hidden: true },
+  { id: 'secret_faint',    cat: 'SECRET', rarity: 'UNCOMMON',  name: '跌倒再爬起',   desc: '被击败10次后继续战斗',        check: s => s.timesDefeated >= 10,  reward: { gold: 2000 }, hidden: true },
+  { id: 'secret_run',      cat: 'SECRET', rarity: 'COMMON',    name: '三十六计',     desc: '从战斗中逃跑10次',            check: s => s.timesRun >= 10,       reward: { gold: 500 },  hidden: true },
+  { id: 'secret_master_ball', cat: 'SECRET', rarity: 'EPIC',    name: '大师球传说',   desc: '使用大师球捕捉3只精灵',       check: s => s.masterBallUsed >= 3,  reward: { gold: 10000 }, hidden: true },
   { id: 'secret_overkill', cat: 'SECRET', rarity: 'RARE',      name: '毁天灭地',     desc: '单次伤害超过9999',            check: s => s.maxDamageDealt >= 9999, reward: { gold: 10000 }, hidden: true },
   { id: 'secret_rich',     cat: 'SECRET', rarity: 'RARE',      name: '挥金如土',     desc: '单次购物消费超过50000金币',   check: s => s.maxSinglePurchase >= 50000, reward: { gold: 15000 }, hidden: true },
 ];
@@ -146,6 +146,7 @@ export const DEFAULT_ACH_STATS = {
   quickWins: 0,
   superEffectiveHits: 0,
   starterChosen: false,
+  starterLevel: 0,
   timesDefeated: 0,
   timesRun: 0,
   masterBallUsed: 0,
