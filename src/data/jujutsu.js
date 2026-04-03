@@ -18,14 +18,23 @@ export const CURSE_GRADES = {
   GRADE4:  { name: '四级', minTotal: 0,   ceBonus: 0,  color: '#999999' },
 };
 
-export const getCurseGrade = (baseStats) => {
+export const getCurseGrade = (baseStats, curseTalent = 0) => {
   const total = (baseStats.hp || 0) + (baseStats.p_atk || baseStats.atk || 0) +
                 (baseStats.p_def || baseStats.def || 0) + (baseStats.s_atk || 0) +
-                (baseStats.s_def || 0) + (baseStats.spd || 0);
+                (baseStats.s_def || 0) + (baseStats.spd || 0) + (curseTalent || 0);
   for (const [key, g] of Object.entries(CURSE_GRADES)) {
     if (total >= g.minTotal) return { key, ...g };
   }
   return { key: 'GRADE4', ...CURSE_GRADES.GRADE4 };
+};
+
+export const generateCurseTalent = () => {
+  const r = Math.random();
+  if (r < 0.02) return Math.floor(Math.random() * 80 + 220);
+  if (r < 0.08) return Math.floor(Math.random() * 70 + 150);
+  if (r < 0.20) return Math.floor(Math.random() * 60 + 90);
+  if (r < 0.45) return Math.floor(Math.random() * 50 + 40);
+  return Math.floor(Math.random() * 40);
 };
 
 export const getMaxCE = (level, gradeKey) => {

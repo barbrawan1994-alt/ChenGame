@@ -59,7 +59,7 @@ import {
   EXTRA_DUNGEONS,
 } from './data';
 import {
-  CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE,
+  CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
   COMMON_TECHNIQUES, TYPE_TECHNIQUES, DOMAINS, BINDING_VOWS,
   JJK_NPCS, HYAKKI_YAKO_CONFIG, AWAKENING_CONDITIONS, GOD_TECHNIQUES,
 } from './data/jujutsu';
@@ -112,8 +112,9 @@ export default function RPG(props) {
 
   // 核心资产 (金币/背包/队伍)
   const [gold, setGold] = useState(savedData.gold || 1000);
-  const [party, setParty] = useState(savedData.party || []);
-  const [box, setBox] = useState(savedData.box || []);
+  const migrateCurseTalent = (pets) => (pets || []).map(p => p.curseTalent != null ? p : { ...p, curseTalent: generateCurseTalent() });
+  const [party, setParty] = useState(migrateCurseTalent(savedData.party));
+  const [box, setBox] = useState(migrateCurseTalent(savedData.box));
   const [accessories, setAccessories] = useState(savedData.accessories || []);
   
   // 背包初始化 (防止旧存档缺字段导致报错)
@@ -1756,6 +1757,8 @@ const CHARM_RANK_COLORS = {
     // --- [新增] 亲密度 (Intimacy) ---
     const intimacy = 70; 
 
+    const curseTalent = generateCurseTalent();
+
     let newPet = {
       ...base,
       uid: Date.now() + Math.random(),
@@ -1774,11 +1777,11 @@ const CHARM_RANK_COLORS = {
       speedRng,
       sectId: sectId,
       sectLevel: sectLevel,
-      // ▼▼▼ 新属性注入 ▼▼▼
       trait: randomTrait,
       charm: charmVal,
-      charmRank: charmRank, // 直接存中文名称
-      intimacy: intimacy
+      charmRank: charmRank,
+      intimacy: intimacy,
+      curseTalent: curseTalent,
     };
 
     // --- 技能生成逻辑 ---
@@ -3623,17 +3626,24 @@ const useGrowthItem = (petIndex, itemId) => {
         }
         setPlayerPos({x: 1, y: 2}); 
     }
-     // ▼▼▼ [新增] 放置大赛 NPC (Tile ID: 20=捕虫, 21=钓鱼, 22=选美) ▼▼▼
-        if (mapId === 1) { // 微风草原 -> 捕虫
-            newGrid[3][3] = 20; 
+     // 每张地图都放置活动NPC (捕虫20/钓鱼21/选美22 轮换)
+        if (mapId >= 1 && mapId <= 13) {
+            const activityTiles = [20, 21, 22];
+            const actIdx = (mapId - 1) % 3;
+            const placeX = Math.min(3 + (mapId % 5), GRID_W - 3);
+            const placeY = Math.min(3 + (mapId % 4), GRID_H - 3);
+            if (newGrid[placeY] && newGrid[placeY][placeX] === 2) {
+                newGrid[placeY][placeX] = activityTiles[actIdx];
+            }
+            if (mapId <= 10) {
+                const secIdx = (mapId) % 3;
+                const px2 = Math.min(6 + (mapId % 3), GRID_W - 3);
+                const py2 = Math.min(5 + (mapId % 5), GRID_H - 3);
+                if (newGrid[py2] && newGrid[py2][px2] === 2 && secIdx !== actIdx) {
+                    newGrid[py2][px2] = activityTiles[secIdx];
+                }
+            }
         }
-        else if (mapId === 4) { // 深蓝海域 -> 钓鱼
-            newGrid[4][4] = 21;
-        }
-        else if (mapId === 11) { // 糖果王国 -> 选美
-            newGrid[5][15] = 22;
-        }
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     // 随机放置家具拾取点 (2-3个, 25%概率出现)
     const furnitureCount = _.random(2, 3);
@@ -4497,7 +4507,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }));
 
         const baseStats = POKEDEX.find(pd => pd.id === p.id) || {};
-        const grade = getCurseGrade(p.customBaseStats || baseStats);
+        const grade = getCurseGrade(p.customBaseStats || baseStats, p.curseTalent || 0);
         const maxCE = getMaxCE(p.level, grade.key);
         const typeTech = TYPE_TECHNIQUES[p.type];
         const hasCT = p.cursedTechnique || (p.level >= AWAKENING_CONDITIONS.byLevel) || ((p.intimacy || 0) >= (AWAKENING_CONDITIONS.byIntimacy || 150));
@@ -9837,6 +9847,19 @@ const renderMenu = () => {
                             ❤️ {viewStatPet.intimacy || 0}
                         </span>
                     </div>
+                    {(() => {
+                        const bs = viewStatPet.customBaseStats || POKEDEX.find(pd => pd.id === viewStatPet.id) || {};
+                        const g = getCurseGrade(bs, viewStatPet.curseTalent || 0);
+                        return (
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                <span style={{fontSize:'10px', color:'#999'}}>咒级</span>
+                                <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                                    <span style={{fontSize:'9px', color:'#fff', background: g.color || '#999', padding:'1px 4px', borderRadius:'4px', fontWeight:'bold'}}>{g.name}</span>
+                                    <span style={{fontSize:'10px', color:'#aaa'}}>天赋{viewStatPet.curseTalent || 0}</span>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
 
