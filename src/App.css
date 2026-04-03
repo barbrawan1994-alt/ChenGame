@@ -4804,7 +4804,8 @@ button:active {
 }
 
 /* =================================================================
-   ★★★ 战斗面板 - 唯一最终定义 (此文件中仅此一处) ★★★
+   ★★★ 战斗面板 v3.0 - 唯一最终定义 (此文件中仅此一处) ★★★
+   布局: 消息栏(28px) → 技能网格(flex:1) → 操作按钮横排(38px)
    ================================================================= */
 
 .battle-panel-v2 {
@@ -4812,12 +4813,12 @@ button:active {
   bottom: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: 190px !important;
+  height: 200px !important;
   z-index: 200 !important;
-  background: linear-gradient(180deg, #1c1c34 0%, #14142a 100%) !important;
+  background: linear-gradient(180deg, #1a1a30 0%, #111125 100%) !important;
   border-top: none !important;
-  border-radius: 16px 16px 0 0 !important;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
+  border-radius: 14px 14px 0 0 !important;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.6) !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -4830,128 +4831,124 @@ button:active {
   top: 0 !important; left: 0 !important; right: 0 !important;
   height: 2px !important;
   background: linear-gradient(90deg,
-    transparent, rgba(100,181,246,0.5) 25%,
-    rgba(171,71,188,0.5) 50%, rgba(255,152,0,0.5) 75%, transparent
+    transparent 5%, rgba(100,181,246,0.6) 25%,
+    rgba(171,71,188,0.6) 50%, rgba(255,152,0,0.6) 75%, transparent 95%
   ) !important;
   z-index: 10 !important;
   pointer-events: none !important;
-  animation: none !important;
 }
 .battle-stage-v2 {
-  height: calc(100% - 190px) !important;
+  height: calc(100% - 200px) !important;
 }
 
 /* 消息栏 */
 .msg-box-v2 {
-  background: rgba(10,10,20,0.85) !important;
-  color: #e0e0e0 !important;
-  padding: 0 16px !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
+  background: rgba(8,8,18,0.9) !important;
+  color: #d0d0d0 !important;
+  padding: 0 14px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
   text-align: left !important;
   flex-shrink: 0 !important;
-  height: 30px !important;
-  line-height: 30px !important;
+  height: 28px !important;
+  line-height: 28px !important;
   display: flex !important;
   align-items: center !important;
-  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
   border-radius: 0 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
 
-/* 操作区域 - flex横向布局 */
+/* 操作区域 - 纵向布局: 技能区 + 底部按钮 */
 .controls-area-v2 {
   display: flex !important;
-  flex-direction: row !important;
+  flex-direction: column !important;
   flex: 1 !important;
-  gap: 8px !important;
-  padding: 8px 10px !important;
+  gap: 0 !important;
+  padding: 6px 8px !important;
   background: transparent !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
   position: relative !important;
   min-height: 0 !important;
 }
-.battle-row-layout {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 8px !important;
-  height: 100% !important;
-  width: 100% !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-}
 
-/* 技能网格 - 2列 */
+/* 技能网格 - 占满上方空间, 自适应列数 */
 .moves-grid-v2 {
   display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  grid-auto-rows: 1fr !important;
-  gap: 5px !important;
-  height: 100% !important;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+  grid-auto-rows: minmax(0, 1fr) !important;
+  gap: 4px !important;
   flex: 1 !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  align-content: stretch !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-bottom: 4px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255,255,255,0.15) transparent !important;
+}
+.moves-grid-v2::-webkit-scrollbar {
+  width: 3px;
+}
+.moves-grid-v2::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
 }
 
-/* 右侧操作栏 */
-.actions-sidebar {
+/* 底部操作按钮 - 横向排列 */
+.actions-bar-h {
   display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-  width: 68px !important;
-  min-width: 68px !important;
+  flex-direction: row !important;
+  gap: 5px !important;
   flex-shrink: 0 !important;
-  height: 100% !important;
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
-  bottom: auto !important;
+  height: 34px !important;
+  padding-top: 4px !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+  align-items: stretch !important;
 }
-.actions-sidebar .action-btn-v2 {
+.action-btn-h {
   flex: 1 !important;
-  width: 100% !important;
-  border-radius: 10px !important;
-  font-size: 10px !important;
+  max-width: 80px !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  gap: 2px !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35) !important;
+  color: #fff !important;
+  cursor: pointer !important;
   display: flex !important;
-  flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  cursor: pointer !important;
-  color: #fff !important;
-  padding: 3px 2px !important;
-  min-height: 0 !important;
-  transition: transform 0.1s !important;
+  transition: all 0.12s ease !important;
+  letter-spacing: 0.5px !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+  padding: 0 4px !important;
 }
-.actions-sidebar .action-btn-v2:active {
-  transform: scale(0.92) !important;
+.action-btn-h:hover:not(:disabled) {
+  filter: brightness(1.2) !important;
+  transform: translateY(-1px) !important;
 }
-.actions-sidebar .action-btn-v2 svg {
-  width: 16px !important;
-  height: 16px !important;
-  flex-shrink: 0 !important;
+.action-btn-h:active:not(:disabled) {
+  transform: scale(0.95) !important;
 }
-.actions-sidebar .action-btn-v2 span {
-  font-size: 9px !important;
-  line-height: 1.2 !important;
-  font-weight: 700 !important;
+.action-btn-h:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
 }
-.actions-sidebar .btn-catch {
+.action-btn-h.btn-catch {
   background: linear-gradient(135deg, #c62828, #e53935) !important;
 }
-.actions-sidebar .btn-switch {
+.action-btn-h.btn-switch {
   background: linear-gradient(135deg, #1565c0, #1e88e5) !important;
 }
-.actions-sidebar .btn-run {
+.action-btn-h.btn-run {
   background: linear-gradient(135deg, #455a64, #607d8b) !important;
 }
+
+/* 兼容: 隐藏旧版sidebar (防残留冲突) */
+.actions-sidebar { display: none !important; }
+.battle-row-layout { display: contents !important; }
 
 /* 旧版技能按钮兼容 */
 .move-btn-v2 {

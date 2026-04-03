@@ -8646,7 +8646,7 @@ const renderMenu = () => {
 
         {/* 底部 */}
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px', paddingTop:'14px', borderTop:'1px solid rgba(255,255,255,0.05)'}}>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v2.0 · 500 Creatures</span>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v3.0 · 500 Creatures</span>
           <span onClick={resetGame} style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', cursor:'pointer', transition:'color 0.2s'}}
             onMouseOver={e => e.currentTarget.style.color='rgba(239,68,68,0.6)'}
             onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,0.2)'}
@@ -12322,62 +12322,59 @@ const renderMenu = () => {
             {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'input_p2') ? (
               <div className="controls-area-v2">
                     {battle.isPvP && (
-                        <div style={{textAlign:'center', background: (battle.phase === 'input' || battle.phase === 'input_p1') ? '#2196F3' : '#FF5252', color:'#fff', fontWeight:'bold', padding:'6px', fontSize:'12px', flexShrink: 0}}>
-                            {(battle.phase === 'input' || battle.phase === 'input_p1') ? '🔵 1P (我方) 请行动' : '🔴 2P (对手) 请行动'}
+                        <div style={{textAlign:'center', background: (battle.phase === 'input' || battle.phase === 'input_p1') ? '#2196F3' : '#FF5252', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
+                            {(battle.phase === 'input' || battle.phase === 'input_p1') ? '🔵 1P 请行动' : '🔴 2P 请行动'}
                         </div>
                     )}
-                    <div className="battle-row-layout">
-                        {/* 技能按钮区 (使用增强组件) */}
-                        <div className="moves-grid-v2">
-                            {(() => {
-                                const isP2Turn = battle.phase === 'input_p2';
-                                const activeMoves = isP2Turn ? (e?.combatMoves || []) : (p?.combatMoves || []);
-                                return activeMoves.map((m, i) => (
-                                    <EnhancedMoveButton
-                                        key={i}
-                                        move={{
-                                            t: m.t || 'NORMAL',
-                                            name: m.name,
-                                            power: m.p || 0,
-                                            pp: m.pp,
-                                            maxPp: m.maxPP || 15,
-                                            acc: m.acc,
-                                            desc: m.desc || '',
-                                            isCursed: m.isCursed,
-                                            ceCost: m.ceCost,
-                                            isExtra: m.isExtra,
-                                        }}
-                                        onClick={() => { 
-                                            if (battle.isPvP) {
-                                                handlePvPInput(isP2Turn ? 2 : 1, 'move', i);
-                                            } else {
-                                                executeTurn(i);
-                                            }
-                                        }}
-                                        disabled={m.isCursed ? ((p.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
-                                        index={i}
-                                    />
-                                ));
-                            })()}
-                        </div>
-
-                        {/* 侧边操作按钮 */}
-                        {!battle.isPvP ? (
-                            <div className="actions-sidebar">
-                                <button className="action-btn-v2 btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M20 7h-4l-2-3H10L8 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="white" strokeWidth="2"/></svg><span>背包</span></button>
-                                <button className="action-btn-v2 btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg><span>交换</span></button>
-                                <button className="action-btn-v2 btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M13 4l-1 7h6l-8 9 1-7H5l8-9z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg><span>逃跑</span></button>
-                                {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-v2 btn-fruit-transform" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)', color:'#fff', fontSize:'11px', boxShadow:'0 0 12px rgba(255,111,0,0.4)'}} onClick={() => executeDevilFruit('player')}><span style={{display:'flex',justifyContent:'center'}}>{renderFruitCSSIcon(p.devilFruit, 22)}</span><span>变身</span></button>}
-                                {p.maxCE > 0 && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)', color:'#fff', fontSize:'11px'}} onClick={executeChargeCE}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 8v4l3 3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg><span>蓄力</span></button>}
-                                {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)', color:'#fff', fontSize:'11px'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><circle cx="12" cy="12" r="4" stroke="white" strokeWidth="2"/></svg><span>领域</span></button>}
-                                {p.maxCE > 0 && !p.activeVow && <button className="action-btn-v2" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)', color:'#fff', fontSize:'11px'}} onClick={() => setVowModal(true)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="white" strokeWidth="2"/><path d="M14 2v6h6" stroke="white" strokeWidth="2"/></svg><span>缚誓</span></button>}
-                            </div>
-                        ) : (
-                            <div className="actions-sidebar">
-                                <button className="action-btn-v2" style={{background:'#673AB7', height:'100%'}} onClick={() => { const team = (battle.phase === 'input_p2') ? battle.enemyParty : battle.playerCombatStates; const input = prompt("输入要交换的精灵序号 (1-6):"); const idx = parseInt(input) - 1; if (!isNaN(idx) && idx >= 0 && idx < team.length) { handlePvPInput((battle.phase === 'input_p2') ? 2 : 1, 'switch', idx); } }}><span>🔄</span><span>换人</span></button>
-                            </div>
-                        )}
+                    {/* 技能网格 - 占满上方空间 */}
+                    <div className="moves-grid-v2">
+                        {(() => {
+                            const isP2Turn = battle.phase === 'input_p2';
+                            const activeMoves = isP2Turn ? (e?.combatMoves || []) : (p?.combatMoves || []);
+                            return activeMoves.map((m, i) => (
+                                <EnhancedMoveButton
+                                    key={i}
+                                    move={{
+                                        t: m.t || 'NORMAL',
+                                        name: m.name,
+                                        power: m.p || 0,
+                                        pp: m.pp,
+                                        maxPp: m.maxPP || 15,
+                                        acc: m.acc,
+                                        desc: m.desc || '',
+                                        isCursed: m.isCursed,
+                                        ceCost: m.ceCost,
+                                        isExtra: m.isExtra,
+                                    }}
+                                    onClick={() => { 
+                                        if (battle.isPvP) {
+                                            handlePvPInput(isP2Turn ? 2 : 1, 'move', i);
+                                        } else {
+                                            executeTurn(i);
+                                        }
+                                    }}
+                                    disabled={m.isCursed ? ((p.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
+                                    index={i}
+                                />
+                            ));
+                        })()}
                     </div>
+                    {/* 底部操作按钮 - 横向排列 */}
+                    {!battle.isPvP ? (
+                        <div className="actions-bar-h">
+                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}>背包</button>
+                            <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}>交换</button>
+                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}>逃跑</button>
+                            {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#D32F2F,#FF6F00)'}} onClick={() => executeDevilFruit('player')}>变身</button>}
+                            {p.maxCE > 0 && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button>}
+                            {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}>领域</button>}
+                            {p.maxCE > 0 && !p.activeVow && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button>}
+                        </div>
+                    ) : (
+                        <div className="actions-bar-h">
+                            <button className="action-btn-h" style={{background:'#673AB7'}} onClick={() => { const team = (battle.phase === 'input_p2') ? battle.enemyParty : battle.playerCombatStates; const input = prompt("输入要交换的精灵序号 (1-6):"); const idx = parseInt(input) - 1; if (!isNaN(idx) && idx >= 0 && idx < team.length) { handlePvPInput((battle.phase === 'input_p2') ? 2 : 1, 'switch', idx); } }}>换人</button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
