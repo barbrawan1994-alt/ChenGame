@@ -162,6 +162,21 @@ const getEquipEffects = (pet) => {
   return effects;
 };
 
+const SIDE_STORY_LINES = [
+  { id: 'jjk',     name: '咒术回战篇', icon: '⛩️', startIdx: 13, endIdx: 15, chapters: 3, desc: '觉醒咒术之力，对决诅咒之王' },
+  { id: 'lycoris', name: '莉可莉丝篇', icon: '🎀', startIdx: 16, endIdx: 18, chapters: 3, desc: '搭档羁绊之旅，解锁搭档系统' },
+  { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 19, endIdx: 27, chapters: 9, desc: '十二门派与厌晚的史诗篇章' },
+];
+const SIDE_STORY_HUB_IDX = 13;
+
+const inferCompletedSideStories = (sp) => {
+  const done = [];
+  if (sp >= 16) done.push('jjk');
+  if (sp >= 19) done.push('lycoris');
+  if (sp >= 28) done.push('sect');
+  return done;
+};
+
 export default function RPG(props) {
   // =================================================================
   // 🔥 [核心修复 1] 启动瞬间同步读取存档 (防止存档“丢失”)
@@ -348,6 +363,11 @@ useEffect(() => {
   const [skillSearchTerm, setSkillSearchTerm] = useState('');
  const [storyProgress, setStoryProgress] = useState(savedData.storyProgress || 0);
   const [storyStep, setStoryStep] = useState(savedData.storyStep || 0);
+  const [completedSideStories, setCompletedSideStories] = useState(() => {
+    if (savedData.completedSideStories) return new Set(savedData.completedSideStories);
+    return new Set(inferCompletedSideStories(savedData.storyProgress || 0));
+  });
+  const [activeSideStory, setActiveSideStory] = useState(savedData.activeSideStory || null);
   const [dialogQueue, setDialogQueue] = useState([]); // 当前待播放的对话队列
   const [isDialogVisible, setIsDialogVisible] = useState(false); // 是否显示对话框
   const [currentDialogIndex, setCurrentDialogIndex] = useState(0); // 当前对话说到第几句
@@ -2099,6 +2119,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        unlockedAchs,
        storyProgress,
        storyStep,
+       completedSideStories: [...completedSideStories],
+       activeSideStory,
        cafe,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
@@ -4129,9 +4151,10 @@ const useGrowthItem = (petIndex, itemId) => {
     
     setCurrentMapId(mapId);
 
-    // 2. 剧情触发 (保持不变)
+    // 2. 剧情触发
+    const atSideStoryHub = storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory;
     const currentChapter = STORY_SCRIPT[storyProgress];
-    if (currentChapter && currentChapter.mapId === mapId && storyStep === 0) {
+    if (!atSideStoryHub && currentChapter && currentChapter.mapId === mapId && storyStep === 0) {
        if (!viewedIntros.includes(storyProgress)) {
             setDialogQueue(currentChapter.intro);
             setCurrentDialogIndex(0);
@@ -4553,7 +4576,8 @@ const useGrowthItem = (petIndex, itemId) => {
         const mapInfo = MAPS.find(m => m.id === currentMapId);
         
         const currentChapter = STORY_SCRIPT[storyProgress];
-        const storyNeedsThisGym = currentChapter && currentChapter.mapId === currentMapId;
+        const atHub = storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory;
+        const storyNeedsThisGym = !atHub && currentChapter && currentChapter.mapId === currentMapId;
         
         if (badges.includes(mapInfo.badge) && !storyNeedsThisGym) { 
           alert("你已经战胜过这里的馆主了！"); 
@@ -5684,7 +5708,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   // 搭档羁绊系统 - 核心逻辑
   // ==========================================
-  const isPartnerSystemUnlocked = () => storyProgress >= 18;
+  const isPartnerSystemUnlocked = () => completedSideStories.has('lycoris');
 
   const setPartner = (petA, petB) => {
     if (!isPartnerSystemUnlocked()) { alert('🔒 搭档羁绊系统尚未解锁！\n\n完成【莉可莉丝篇·第壹章：搭档的意义】后解锁。'); return; }
@@ -6018,7 +6042,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   const isLycorisStoryCompleted = (chapter) => {
-    return storyProgress > chapter;
+    if (completedSideStories.has('lycoris')) return true;
+    if (activeSideStory === 'lycoris') return storyProgress > chapter;
+    return false;
   };
 
   const isDrinkUnlocked = (drink) => {
@@ -8185,15 +8211,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
                  alert(`🎁 获得了伙伴：${rewardPet.name}！\n队伍已满，已发送到电脑。`);
              }
           }
-          setStoryProgress(prev => {
-            const newProgress = prev + 1;
-            const lycorisChapters = [18, 19, 20];
-            if (lycorisChapters.includes(storyChapter?.chapter)) {
-              updateAchStat({ lycorisChaptersCleared: 1 });
+          const nextProgress = storyProgress + 1;
+          const lycorisChapters = [18, 19, 20];
+          if (lycorisChapters.includes(storyChapter?.chapter)) {
+            updateAchStat({ lycorisChaptersCleared: 1 });
+          }
+          try { checkTreasureUnlock('story', { chapter: nextProgress }); } catch(e) {}
+
+          const finishedLine = SIDE_STORY_LINES.find(l => nextProgress === l.endIdx + 1);
+          if (finishedLine) {
+            setCompletedSideStories(prev => new Set([...prev, finishedLine.id]));
+            const updatedDone = new Set([...completedSideStories, finishedLine.id]);
+            const allDone = SIDE_STORY_LINES.every(l => updatedDone.has(l.id));
+            if (allDone) {
+              setStoryProgress(28);
+            } else {
+              setStoryProgress(SIDE_STORY_HUB_IDX);
             }
-            try { checkTreasureUnlock('story', { chapter: newProgress }); } catch(e) {}
-            return newProgress;
-          });
+            setActiveSideStory(null);
+          } else {
+            setStoryProgress(nextProgress);
+          }
           setStoryStep(0); 
     }
 
@@ -10487,6 +10525,61 @@ const renderMenu = () => {
           </div>
         </div>
 
+        {/* 支线剧情选择 */}
+        {mapTab === 'maps' && storyProgress >= SIDE_STORY_HUB_IDX && storyProgress <= 28 && (() => {
+          const allDone = SIDE_STORY_LINES.every(l => completedSideStories.has(l.id));
+          const showHub = storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory && !allDone;
+          const hasActive = activeSideStory !== null;
+          const activeLine = hasActive ? SIDE_STORY_LINES.find(l => l.id === activeSideStory) : null;
+          const activeChIdx = hasActive && activeLine ? storyProgress - activeLine.startIdx + 1 : 0;
+
+          if (!showHub && !hasActive && !allDone) return null;
+
+          return (
+            <div style={{margin:'0 20px 16px', padding:'16px 20px', background:'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.10))', borderRadius:'16px', border:'1px solid rgba(139,92,246,0.2)'}}>
+              <div style={{fontSize:'14px', fontWeight:'700', color:'#6366f1', marginBottom: showHub ? '12px' : '0', display:'flex', alignItems:'center', gap:'8px'}}>
+                <span style={{fontSize:'18px'}}>📜</span>
+                {allDone ? '全部支线已通关！' : showHub ? '主线已通关 — 选择支线剧情' : hasActive && activeLine ? `进行中：${activeLine.icon} ${activeLine.name}（${activeChIdx}/${activeLine.chapters}）` : ''}
+              </div>
+              {showHub && (
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px'}}>
+                  {SIDE_STORY_LINES.map(line => {
+                    const done = completedSideStories.has(line.id);
+                    return (
+                      <div key={line.id}
+                        onClick={() => {
+                          if (done) return;
+                          setActiveSideStory(line.id);
+                          setStoryProgress(line.startIdx);
+                          setStoryStep(0);
+                          const firstChapter = STORY_SCRIPT[line.startIdx];
+                          if (firstChapter) {
+                            alert(`📜 ${line.icon} ${line.name}已开启！\n\n前往【${MAPS.find(m => m.id === firstChapter.mapId)?.name || '目标地图'}】开始冒险！`);
+                          }
+                        }}
+                        style={{
+                          padding:'14px', borderRadius:'12px', cursor: done ? 'default' : 'pointer',
+                          background: done ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.85)',
+                          border: done ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(139,92,246,0.3)',
+                          opacity: done ? 0.6 : 1,
+                          transition: 'all 0.2s', boxShadow: done ? 'none' : '0 2px 8px rgba(139,92,246,0.1)',
+                          transform: done ? 'none' : undefined,
+                        }}
+                        onMouseOver={e => { if (!done) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(139,92,246,0.2)'; }}}
+                        onMouseOut={e => { if (!done) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(139,92,246,0.1)'; }}}
+                      >
+                        <div style={{fontSize:'24px', marginBottom:'6px'}}>{done ? '✅' : line.icon}</div>
+                        <div style={{fontSize:'13px', fontWeight:'700', color: done ? '#999' : '#1e293b'}}>{line.name}</div>
+                        <div style={{fontSize:'11px', color: done ? '#bbb' : '#64748b', marginTop:'2px'}}>{done ? '已通关' : `${line.chapters}章 · ${line.desc}`}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* 地图网格 */}
         <div className="map-grid-container" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'16px', padding:'0 20px 20px'}}>
           {MAPS.map((m, index) => {
@@ -12218,7 +12311,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, cafe };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, cafe };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -12302,6 +12395,7 @@ const renderMenu = () => {
           </div>
           {/* 当前剧情任务提示条 */}
           {(() => {
+            if (storyProgress === SIDE_STORY_HUB_IDX && !activeSideStory) return null;
             const ch = STORY_SCRIPT[storyProgress];
             if (!ch || ch.mapId !== currentMapId) return null;
             const task = ch.tasks?.find(t => t.step === storyStep);

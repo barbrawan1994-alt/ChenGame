@@ -1004,7 +1004,7 @@ export const STORY_SCRIPT = [
 
   // ===== 门派篇·伍 =====
   {
-    chapter: 25, mapId: 11,
+    chapter: 25, mapId: 4,
     title: "门派篇·伍：丐帮风波与逍遥往事",
     objective: "丐帮内部出现叛徒，逍遥派揭露太虚教的古老秘密。",
     intro: [
