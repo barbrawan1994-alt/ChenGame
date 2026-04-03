@@ -12171,7 +12171,7 @@ const renderMenu = () => {
                     <div className={`sprite-wrapper enemy-sprite-wrapper ${e.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginRight: '10px'}}>
                         {battle.isTrainer && (
                             <div style={{
-                                position: 'absolute', bottom: '10px', right: '-60px', zIndex: -1, opacity: 0.9, width: 160, height: 160
+                                position: 'absolute', bottom: '10px', right: '-70px', zIndex: -1, opacity: 0.9, width: 210, height: 210
                             }}>
                                     {getTrainerAvatar(battle.trainerName)}
                             </div>

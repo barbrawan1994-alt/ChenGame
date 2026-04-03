@@ -699,7 +699,7 @@ button:active { transform: scale(0.96); }
 
 /* 精灵大图 v3 */
 .sprite-v2 {
-  width: 180px; height: 180px;
+  width: 220px; height: 220px;
   display: flex; align-items: center; justify-content: center;
   z-index: 5; position: relative;
   filter: drop-shadow(0 10px 20px rgba(0,0,0,0.35));
@@ -713,13 +713,13 @@ button:active { transform: scale(0.96); }
 /* 我方精灵 - 大而近 */
 .player-zone-v2 .sprite-v2,
 .player-sprite-wrapper .sprite-v2 {
-  width: 260px; height: 260px;
+  width: 340px; height: 340px;
 }
 
 /* 敌方精灵 - 远处透视 */
 .enemy-zone-v2 .sprite-v2,
 .enemy-sprite-wrapper .sprite-v2 {
-  width: 200px; height: 200px;
+  width: 280px; height: 280px;
   filter:
     drop-shadow(0 8px 16px rgba(0,0,0,0.3))
     brightness(0.97);
@@ -750,12 +750,12 @@ button:active { transform: scale(0.96); }
   z-index: 0;
 }
 .battle-platform-player {
-  width: 260px; height: 50px;
+  width: 340px; height: 60px;
   background: radial-gradient(ellipse, rgba(76,175,80,0.45) 0%, rgba(76,175,80,0.15) 50%, transparent 72%);
   border-radius: 50%;
 }
 .battle-platform-enemy {
-  width: 200px; height: 40px;
+  width: 280px; height: 50px;
   background: radial-gradient(ellipse, rgba(244,67,54,0.3) 0%, rgba(244,67,54,0.1) 50%, transparent 72%);
   border-radius: 50%;
 }
