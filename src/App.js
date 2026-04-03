@@ -4790,15 +4790,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
     else if (type === 'challenge') {
       const challenge = [...CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
       if (!challenge) { alert("挑战数据未找到"); return; }
-      enemyParty.push(createPet(challenge.boss, challenge.bossLvl, true, true));
-      const targetSize = 6;
+      const bossIsShiny = challenge.bossLvl >= 80;
+      enemyParty.push(createPet(challenge.boss, challenge.bossLvl, true, bossIsShiny));
+      const targetSize = challenge.teamSize || 6;
       while (enemyParty.length < targetSize) {
         const randomDex = _.random(1, 500); 
-        const minionLvl = Math.max(10, challenge.bossLvl - _.random(1, 5));
+        const minionLvl = Math.max(10, challenge.bossLvl - _.random(3, 10));
         enemyParty.push(createPet(randomDex, minionLvl, true));
       }
       trainerName = `[挑战] ${challenge.title}`;
-      dropGold = 3000;
+      const challengeTier = challenge.bossLvl <= 35 ? 1 : challenge.bossLvl <= 60 ? 2 : challenge.bossLvl <= 85 ? 3 : 4;
+      dropGold = [500, 1000, 2000, 3000][challengeTier - 1];
     }
     // -------------------------------------------------
     // 4. 剧情中途 Boss
@@ -6154,6 +6156,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setAnimEffect({ type: 'DOMAIN', target: 'enemy' });
             await wait(1500);
             setAnimEffect(null);
+
+            setBattle(prev => ({
+              ...prev, phase: 'input',
+              turnCount: (prev?.turnCount || 0) + 1,
+              playerCombatStates: state.playerCombatStates,
+              enemyParty: state.enemyParty,
+              activeDomain: state.activeDomain,
+            }));
+            return;
         }
     }
 
@@ -6231,6 +6242,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setAnimEffect({ type: 'BUFF', target: 'enemy' });
             await wait(1200);
             setAnimEffect(null);
+
+            setBattle(prev => ({
+              ...prev, phase: 'input',
+              turnCount: (prev?.turnCount || 0) + 1,
+              playerCombatStates: state.playerCombatStates,
+              enemyParty: state.enemyParty,
+            }));
+            return;
           }
         }
       }
@@ -6976,16 +6995,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         if (isCrit && attacker.trait === 'sniper') rawDmg *= 1.5; 
 
+        let isImmune = false;
         if (defender.trait === 'levitate' && move.t === 'GROUND') {
-            rawDmg = 0; addLog(`${defender.name} 漂浮在空中，免疫了攻击！`);
+            rawDmg = 0; isImmune = true; addLog(`${defender.name} 漂浮在空中，免疫了攻击！`);
         }
         if (defender.trait === 'flash_fire' && move.t === 'FIRE') {
-            rawDmg = 0; addLog(`${defender.name} 吸收了火焰！`);
+            rawDmg = 0; isImmune = true; addLog(`${defender.name} 吸收了火焰！`);
         }
         if (defender.trait === 'multiscale' && defender.currentHp === statsDef.maxHp) {
             rawDmg *= 0.5;
         }
 
+        let isDodged = false;
         // 门派修正
         const atkSect = attacker.sectId || 1;
         const atkSectLv = attacker.sectLevel || 1;
@@ -6997,7 +7018,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (defSect === 3) {
             const dodgeChance = 0.02 + defSectLv * 0.01;
             if (Math.random() < dodgeChance) {
-                rawDmg = 0; addLog(`💨 ${defender.name} 施展凌波微步，闪避了攻击！`);
+                rawDmg = 0; isDodged = true; addLog(`💨 ${defender.name} 施展凌波微步，闪避了攻击！`);
             }
         }
         if (atkSect === 4 && isCrit) rawDmg *= (1 + (0.1 + atkSectLv * 0.05));
@@ -7005,21 +7026,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkSect === 11 && category === 'special') rawDmg *= (1 + (0.02 + atkSectLv * 0.01));
 
         dmg = Math.floor(rawDmg);
-        dmg = Math.max(1, dmg); 
+        if (!isImmune && !isDodged) {
+          dmg = Math.max(1, dmg);
+        }
 
-        if (isCrit) {
+        if (isCrit && !isImmune && !isDodged) {
           setAnimEffect({ type: move.t, target: source === 'player' ? 'enemy' : 'player', isCrit: true });
           await wait(600);
           setAnimEffect(null);
         }
 
-        let msg = `造成 ${dmg} 伤害`;
-        if (isCrit) msg += ` (暴击!)`;
-        if (typeMod > 1.2) msg += ` 效果拔群!`;
-        if (typeMod < 0.9) msg += ` 收效甚微...`;
-        addLog(msg);
+        if (isImmune || isDodged) {
+          addLog(`造成 0 伤害`);
+        } else {
+          let msg = `造成 ${dmg} 伤害`;
+          if (isCrit) msg += ` (暴击!)`;
+          if (typeMod > 1.2) msg += ` 效果拔群!`;
+          if (typeMod < 0.9) msg += ` 收效甚微...`;
+          addLog(msg);
+        }
 
-        if (source === 'player') {
+        if (source === 'player' && !isImmune && !isDodged) {
           updateAchStat({ maxDamageDealt: dmg });
           if (typeMod > 1.2) updateAchStat({ superEffectiveHits: 1 });
         }
@@ -7771,40 +7798,72 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     let partyToSave = updatedParty; // 🔥 使用更新了亲密度的队伍
 
-    // 6. 挑战塔逻辑
+    // 6. 挑战塔逻辑（阶梯奖励）
     if (isChallenge) {
        if (!completedChallenges.includes(challengeId)) {
          setCompletedChallenges(prev => [...prev, challengeId]);
          try { checkTreasureUnlock('challenge', { challengeId }); } catch(e) {}
-         setInventory(prev => ({...prev, balls: {...prev.balls, master: prev.balls.master + 1}})); 
          
-         const randomRewardId = _.random(1, 250);
-         const shinyReward = createPet(randomRewardId, 50, false, true); 
+         const cInfo = [...CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
+         const cBossLv = cInfo ? cInfo.bossLvl : 50;
+         const cTier = cBossLv <= 35 ? 1 : cBossLv <= 60 ? 2 : cBossLv <= 85 ? 3 : 4;
          
-         const towerEquipBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart', 'rng_scroll']);
-         const towerEquip = createUniqueEquip(towerEquipBase);
-         if (towerEquip) {
-           setAccessories(prev => [...prev, towerEquip]);
-           addLog(`🎁 挑战塔奖励：${towerEquip.displayName}！`);
-         }
-
-         addLog(`🎉 挑战完成！获得 大师球 + 闪光${shinyReward.name}！`);
-
-         if (updatedParty.length < 6) {
-            partyToSave = [...updatedParty, shinyReward];
-            setParty(partyToSave);
+         let rewardAlertLines = [];
+         
+         if (cTier === 1) {
+           setInventory(prev => ({...prev, balls: {...prev.balls, great: (prev.balls.great||0) + 3}}));
+           rewardAlertLines.push('1. 🟢 高级球 x3');
+           const rewardLv = Math.min(cBossLv, 25);
+           const rewardPet = createPet(cInfo?.rewardId || _.random(1,200), rewardLv, false, false);
+           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
+           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           rewardAlertLines.push(`2. 🐾 ${rewardPet.name} Lv.${rewardLv}`);
+           addLog(`🎉 挑战完成！获得 高级球x3 + ${rewardPet.name}！`);
+         } else if (cTier === 2) {
+           setInventory(prev => ({...prev, balls: {...prev.balls, ultra: (prev.balls.ultra||0) + 2}}));
+           rewardAlertLines.push('1. 🔵 超级球 x2');
+           const rewardLv = Math.min(cBossLv - 5, 40);
+           const rewardPet = createPet(cInfo?.rewardId || _.random(1,300), rewardLv, false, false);
+           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
+           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           rewardAlertLines.push(`2. 🐾 ${rewardPet.name} Lv.${rewardLv}`);
+           const equipBase = _.sample(['rng_heart', 'rng_scroll']);
+           const equip = createUniqueEquip(equipBase);
+           if (equip) { setAccessories(prev => [...prev, equip]); rewardAlertLines.push(`3. 🎁 ${equip.displayName}`); }
+           addLog(`🎉 挑战完成！获得 超级球x2 + ${rewardPet.name}！`);
+         } else if (cTier === 3) {
+           setInventory(prev => ({...prev, balls: {...prev.balls, ultra: (prev.balls.ultra||0) + 3}}));
+           rewardAlertLines.push('1. 🔵 超级球 x3');
+           const rewardLv = Math.min(cBossLv - 10, 55);
+           const isShinyReward = Math.random() < 0.3;
+           const rewardPet = createPet(cInfo?.rewardId || _.random(1,400), rewardLv, false, isShinyReward);
+           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
+           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           rewardAlertLines.push(`2. ${isShinyReward ? '✨ 闪光 ' : '🐾 '}${rewardPet.name} Lv.${rewardLv}`);
+           const equipBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart', 'rng_scroll']);
+           const equip = createUniqueEquip(equipBase);
+           if (equip) { setAccessories(prev => [...prev, equip]); rewardAlertLines.push(`3. 🎁 ${equip.displayName}`); }
+           addLog(`🎉 挑战完成！获得 超级球x3 + ${rewardPet.name}！`);
          } else {
-            setParty(updatedParty);
-            setBox(b => [...b, shinyReward]);
+           setInventory(prev => ({...prev, balls: {...prev.balls, master: prev.balls.master + 1}}));
+           rewardAlertLines.push('1. 🔮 大师球 x1');
+           const rewardLv = Math.min(cBossLv - 5, 70);
+           const rewardPet = createPet(cInfo?.rewardId || _.random(1,500), rewardLv, false, true);
+           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
+           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           rewardAlertLines.push(`2. ✨ 闪光 ${rewardPet.name} Lv.${rewardLv}`);
+           const equipBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart', 'rng_scroll']);
+           const equip = createUniqueEquip(equipBase);
+           if (equip) { setAccessories(prev => [...prev, equip]); rewardAlertLines.push(`3. 🎁 ${equip.displayName}`); }
+           addLog(`🎉 挑战完成！获得 大师球 + 闪光${rewardPet.name}！`);
          }
-
-         const equipName = towerEquip ? `\n3. 🎁 ${towerEquip.displayName}` : '';
-         setTimeout(() => alert(`🏆 挑战通关！\n\n获得奖励：\n1. 🔮 大师球 x1\n2. ✨ 闪光 ${shinyReward.name} Lv.50${equipName}\n\n${updatedParty.length >= 6 ? '(队伍已满，精灵已发送到电脑)' : ''}`), 300);
+         
+         setTimeout(() => alert(`🏆 挑战通关！\n\n获得奖励：\n${rewardAlertLines.join('\n')}\n\n${updatedParty.length >= 6 ? '(队伍已满，精灵已发送到电脑)' : ''}`), 300);
        } else {
-           setParty(updatedParty); // 即使挑战过也要更新亲密度
+           setParty(updatedParty);
        }
     } else {
-        setParty(updatedParty); // 普通战斗更新队伍
+        setParty(updatedParty);
     }
 
     if (battle.name === '狩猎地带') unlockTitle('狩猎大师');
@@ -8076,19 +8135,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     setComboUsedThisBattle(false);
 
-    setBattle(null);
-
     const hasPendingSkill = partyToSave.some(p => p.pendingLearnMove);
 
     if (hasPendingSkill) {
+      if (!isDialogVisible) setView('grid_map');
+      setBattle(null);
       setTimeout(() => {
         alert("⚠️ 队伍中有伙伴领悟了新技能！\n请在队伍界面处理技能去留，否则无法继续移动。");
         setView('team');
-      }, 1500);
+      }, 300);
     } else {
-      if (!isDialogVisible) {
-         setTimeout(() => setView('grid_map'), 2000);
-      }
+      if (!isDialogVisible) setView('grid_map');
+      setBattle(null);
     }
        } catch (e) {
          console.error("HandleWin Error:", e);
@@ -12228,6 +12286,8 @@ const renderMenu = () => {
               { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
+              { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
+              { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
               { id: 'housing', icon: '🏡', label: '家园', action: () => setView('housing') },
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
