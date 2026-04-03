@@ -7524,8 +7524,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const baseInfo = POKEDEX.find(p => p.id === contestPet.id) || {};
           const baseTotal = (baseInfo.hp||0) + (baseInfo.atk||0) + (baseInfo.def||0) + (baseInfo.spd||0);
           const ivSum = contestPet.ivs ? Object.values(contestPet.ivs).reduce((a, b) => a + b, 0) : 0;
-          let score = Math.floor((ivSum * 1.5) + (baseTotal * 0.8));
-          if (contestPet.isShiny) score += 300;
+          let score = Math.floor((ivSum * 1.0) + (baseTotal * 0.6));
+          if (contestPet.isShiny) score += 100;
           
           grantContestReward(CONTEST_CONFIG.bug, score, contestPet);
           setBattle(null);
@@ -8305,8 +8305,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (battle.type === 'contest_bug') {
           setParty(prev => syncCurrentParty(prev));
           const baseStats = getStats(newPet);
-          let score = baseStats.maxHp + baseStats.p_atk + baseStats.spd;
-          if (newPet.isShiny) score += 200;
+          let score = Math.floor(baseStats.maxHp * 0.6 + baseStats.p_atk * 0.8 + baseStats.spd * 0.6);
+          if (newPet.isShiny) score += 100;
           
           grantContestReward(CONTEST_CONFIG.bug, score, newPet);
           setBattle(null);
@@ -12393,12 +12393,11 @@ const renderMenu = () => {
     else if (status === 'bite') {
         const pool = CONTEST_CONFIG.fishing.pool;
         const fishId = _.sample(pool);
-        // 根据鱼种和玩家进度计算体重
-        const progressMult = 1 + badges.length * 0.5;
-        const weightTable = { 7: 15, 24: 40, 26: 60, 173: 100 };
+        const progressMult = 1 + badges.length * 0.15;
+        const weightTable = { 7: 15, 24: 35, 26: 55, 173: 90 };
         let baseWeight = weightTable[fishId] || 20;
         baseWeight *= progressMult;
-        const weight = (Math.random() * baseWeight + 1).toFixed(1);
+        const weight = (Math.random() * baseWeight * 0.7 + baseWeight * 0.1).toFixed(1);
         
         const mapInfo = MAPS.find(m => m.id === currentMapId);
         const fishLvl = mapInfo ? mapInfo.lvl : [5, 15];
@@ -12425,29 +12424,34 @@ const renderMenu = () => {
 
   // 3.1 华丽大赛 - 表演
   const performAppeal = (move) => {
-    const { round, appeal, log } = beautyState;
+    const { round, appeal, log, history } = beautyState;
     if (round > 5) return;
 
     let score = 0;
     let msg = "";
 
-    // 基础分：威力越低，表演分通常越高 (变化类技能加分)
-    if (move.p === 0) score += 30; // 变化技能
-    else if (move.p <= 60) score += 20; // 小威力技能
-    else score += 10; // 大招通常不够优雅
+    if (move.p === 0) score += 25;
+    else if (move.p <= 60) score += 15;
+    else score += 8;
 
-    // 属性加成：妖精/水/冰/草 系比较华丽
     if (['FAIRY', 'WATER', 'ICE', 'GRASS'].includes(move.t)) {
-        score += 10;
+        score += 8;
         msg = `✨ ${move.name} 非常华丽！`;
     } else {
         msg = `使用了 ${move.name}。`;
     }
 
-    // 随机波动
-    const rng = _.random(-5, 15);
+    // 连续使用同一招会扣分
+    if (history && history.length > 0 && history[history.length - 1] === move.name) {
+        score -= 10;
+        msg += " (重复使用，观众感到无聊！)";
+    }
+
+    const rng = _.random(-8, 10);
     score += rng;
-    if (rng > 10) msg += " 观众反应热烈！";
+    if (rng > 7) msg += " 观众反应热烈！";
+    else if (rng < -5) msg += " 观众反应冷淡...";
+    score = Math.max(0, score);
 
     // 更新状态
     setBeautyState(prev => ({
