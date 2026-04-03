@@ -2073,6 +2073,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.houseLevel = (['tent','cabin','house','mansion','castle'].indexOf(housing?.houseType || 'tent'));
       next.furnitureCount = (housing?.furniture || []).length;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
+      // 隐藏成就：队伍属性多样性
+      const partyTypes = new Set((party || []).map(p => p?.type).filter(Boolean));
+      next.partyTypeDiv = partyTypes.size;
+      // 隐藏成就：全队闪光
+      next.fullShinyTeam = (party || []).length >= 6 && (party || []).every(p => p?.isShiny || p?.isFusedShiny);
       return next;
     });
   }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress]);
@@ -3130,7 +3135,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                           {isHidden ? '???' : ach.name}
                         </div>
                         <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px', lineHeight:'1.4'}}>
-                          {isHidden ? '达成隐藏条件后解锁' : ach.desc}
+                          {isHidden ? (ach.hint || '达成隐藏条件后解锁') : ach.desc}
                         </div>
                       </div>
                     </div>
@@ -4183,6 +4188,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
+    // 额外奖励：最高档次有概率获得随机技能装备
+    if (rewardTier === config.tiers[0] && Math.random() < 0.3) {
+        const bonusBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart']);
+        const bonusEquip = createUniqueEquip(bonusBase);
+        if (bonusEquip) {
+            setAccessories(prev => [...prev, bonusEquip]);
+            setTimeout(() => alert(`🎁 活动冠军额外奖励：${bonusEquip.displayName}！`), 800);
+        }
+    }
+
     // 4. 设置结算弹窗数据
     setResultData({
         title: config.name,
@@ -4608,6 +4623,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       type: type,
       activeDomain: null,
       activeVows: { player: null, enemy: null },
+      turnCount: 0,
       ...extraBattleData,
     });
     
@@ -5032,7 +5048,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         };
         addLog(`🌀 ${player.name} 展开领域——${domainDef.name}!`);
         addLog(`📖 ${domainDef.desc}`);
-        updateAchStat({ domainsUsed: 1 });
+        const achUpdate = { domainsUsed: 1 };
+        if (tempBattle.activeDomain?.ownerSide === 'enemy') achUpdate.domainClash = 1;
+        updateAchStat(achUpdate);
         setAnimEffect({ type: 'DOMAIN', target: 'player' });
         await wait(1500);
         setAnimEffect(null);
@@ -5526,7 +5544,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           ...prev, 
           playerCombatStates: state.playerCombatStates.map(p => ({...p})), 
           enemyParty: state.enemyParty.map(e => ({...e})), 
-          phase: 'input' 
+          phase: 'input',
+          turnCount: (prev?.turnCount || 0) + 1,
       }));
     }
    } catch (e) {
@@ -6712,6 +6731,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
          const randomRewardId = _.random(1, 250);
          const shinyReward = createPet(randomRewardId, 50, false, true); 
          
+         const towerEquipBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart', 'rng_scroll']);
+         const towerEquip = createUniqueEquip(towerEquipBase);
+         if (towerEquip) {
+           setAccessories(prev => [...prev, towerEquip]);
+           addLog(`🎁 挑战塔奖励：${towerEquip.displayName}！`);
+         }
+
          addLog(`🎉 挑战完成！获得 大师球 + 闪光${shinyReward.name}！`);
 
          if (updatedParty.length < 6) {
@@ -6760,6 +6786,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return;
         }
         
+        if ([25, 50, 75].includes(currentFloor)) {
+            const equipBases = currentFloor >= 50 ? ['rng_grimoire', 'rng_sword', 'rng_heart'] : ['rng_scroll', 'rng_shield', 'rng_sword'];
+            const equipBase = _.sample(equipBases);
+            const eqReward = createUniqueEquip(equipBase);
+            if (eqReward) {
+                setAccessories(prev => [...prev, eqReward]);
+                addLog(`🎁 第${currentFloor}层奖励：获得 ${eqReward.displayName}！`);
+            }
+        }
         if (currentFloor % 5 === 0 || currentFloor % 10 === 0) {
             const options = _.sampleSize(BREATHING_BUFFS, 3);
             setInfinityState(prev => ({ ...prev, status: 'buff_select', buffOptions: options }));
@@ -6949,6 +6984,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (eMaxLv - pMinLv >= 20) winAchUpdates.underdogWins = 1;
     if (battle.turnCount && battle.turnCount <= 3) winAchUpdates.quickWins = 1;
     if (type === 'pvp') winAchUpdates.pvpWins = 1;
+    // 隐藏成就追踪
+    if (battle.turnCount) winAchUpdates.longestBattle = battle.turnCount;
+    if (isTrainer && battle.turnCount && battle.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
+    if (activePet && activePet.activeVow && activePet.currentHp <= 1) winAchUpdates.clutchVowWin = 1;
+    const playerHadFruit = battle.playerCombatStates?.some(p => p?.fruitUsed);
+    const enemyHadFruit = battle.enemyCombatStates?.some(e => e?.fruitUsed);
+    if (playerHadFruit && enemyHadFruit) winAchUpdates.dualFruitBattle = 1;
+    if (isGym && party?.filter(p => p?.currentHp > 0).length === 1) {
+        const alivePets = (battle.playerCombatStates || []).filter(p => p && p.currentHp > 0);
+        if (alivePets.length === 1 && party.length === 1) winAchUpdates.soloGymClear = 1;
+    }
     updateAchStat(winAchUpdates);
 
     setBattle(null);
@@ -7539,7 +7585,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       
       setBuyCounts(prev => ({...prev, [id]: 1}));
       
-      updateAchStat({ maxSinglePurchase: totalCost });
+      updateAchStat({ maxSinglePurchase: totalCost, totalGoldSpent: totalCost });
       alert(`✅ 购买成功！\n获得了 ${itemName} x${count}\n花费了 ${totalCost} 金币`);
     } else {
       alert("❌ 金币不足！无法购买。");
