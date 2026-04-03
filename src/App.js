@@ -4880,7 +4880,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       const leaderPet = createPet(context.gymLeader, aceLvl, true);
       enemyParty.push(leaderPet);
-      trainerName = `馆主 ${context.name.slice(0,2)}`;
+      trainerName = `馆主 ${context.gymName || context.name.slice(0,2)}`;
     }
     // -------------------------------------------------
     // 9. 普通训练家
@@ -7513,7 +7513,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, type } = battle;
+    const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, type } = battle;
 
     // ★★★ 剧情推进逻辑 (最优先执行，确保不被后续代码的异常阻断) ★★★
     let storyHandled = false;
@@ -7794,10 +7794,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
             partyToSave = [...updatedParty, shinyReward];
             setParty(partyToSave);
          } else {
-            setParty(updatedParty); // 保持当前队伍更新
+            setParty(updatedParty);
             setBox(b => [...b, shinyReward]);
-            addLog("奖励已发送到电脑。");
          }
+
+         const equipName = towerEquip ? `\n3. 🎁 ${towerEquip.displayName}` : '';
+         setTimeout(() => alert(`🏆 挑战通关！\n\n获得奖励：\n1. 🔮 大师球 x1\n2. ✨ 闪光 ${shinyReward.name} Lv.50${equipName}\n\n${updatedParty.length >= 6 ? '(队伍已满，精灵已发送到电脑)' : ''}`), 300);
        } else {
            setParty(updatedParty); // 即使挑战过也要更新亲密度
        }
@@ -7895,7 +7897,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 9. 道馆逻辑
     const storyChapter = STORY_SCRIPT[storyProgress];
-    if (battle.isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
+    if (isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
           const mapBadge = MAPS.find(m=>m.id===mapId)?.badge;
           const isNewBadge = mapBadge && !badges.includes(mapBadge);
           if (isNewBadge) {
@@ -7905,15 +7907,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setDialogQueue(storyChapter.outro);
           setCurrentDialogIndex(0);
           setIsDialogVisible(true);
-          if (storyChapter.reward.gold) setGold(g => g + storyChapter.reward.gold);
-          if (storyChapter.reward.balls) {
+          if (storyChapter.reward?.gold) setGold(g => g + storyChapter.reward.gold);
+          if (storyChapter.reward?.balls) {
              setInventory(inv => {
                 const newBalls = {...inv.balls};
-                Object.keys(storyChapter.reward.balls).forEach(k => newBalls[k] += storyChapter.reward.balls[k]);
+                Object.keys(storyChapter.reward.balls).forEach(k => newBalls[k] = (newBalls[k] || 0) + storyChapter.reward.balls[k]);
                 return {...inv, balls: newBalls};
              });
           }
-          if (storyChapter.reward.items) {
+          if (storyChapter.reward?.items) {
              setInventory(inv => {
                 const newInv = {...inv, meds: {...(inv.meds||{})}, cursed: {...(inv.cursed||{})}};
                 storyChapter.reward.items.forEach(it => {
@@ -7931,46 +7933,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
              });
           }
           
-          if (['eclipse_grunt', 'eclipse_executive'].includes(battle.type)) {
-            setMapGrid(prev => {
-                const newGrid = prev.map(row => [...row]);
-                const { x, y } = playerPos; 
-                for(let i=-2; i<=2; i++) {
-                    for(let j=-2; j<=2; j++) {
-                        const ty = y + j;
-                        const tx = x + i;
-                        if (ty >= 0 && ty < GRID_H && tx >= 0 && tx < GRID_W) {
-                            if (newGrid[ty][tx] === 11 || newGrid[ty][tx] === 12) {
-                                newGrid[ty][tx] = 2; 
-                                if(ty > 0 && newGrid[ty-1][tx] === 1) newGrid[ty-1][tx] = 2;
-                                if(ty < GRID_H-1 && newGrid[ty+1][tx] === 1) newGrid[ty+1][tx] = 2;
-                            }
-                        }
-                    }
-                }
-                return newGrid;
-            });
-            setTimeout(() => alert("敌人撤退了！道路已打通。"), 500);
-          }
-
-          if (battle.type === 'eclipse_leader') {
-            setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
-            const rewardPet = createPet(341, 50); 
-            rewardPet.name = "暗黑超梦";
-            rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
-            if (party.length < 6) setParty([...updatedParty, rewardPet]);
-            else {
-                setParty(updatedParty);
-                setBox(prev => [...prev, rewardPet]);
-            }
-            setCaughtDex(prev => [...prev, 341]);
-            alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
-            setBattle(null);
-            setView('grid_map');
-            return; 
-          }
-
-          if (storyChapter.reward.pokemon) {
+          if (storyChapter.reward?.pokemon) {
              const rewardPetInfo = storyChapter.reward.pokemon;
              const rewardPet = createPet(rewardPetInfo.id, rewardPetInfo.level);
              if (!caughtDex.includes(rewardPet.id)) setCaughtDex(prev => [...prev, rewardPet.id]);
@@ -7992,6 +7955,44 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return newProgress;
           });
           setStoryStep(0); 
+    }
+
+    if (['eclipse_grunt', 'eclipse_executive'].includes(battle.type)) {
+      setMapGrid(prev => {
+          const newGrid = prev.map(row => [...row]);
+          const { x, y } = playerPos; 
+          for(let i=-2; i<=2; i++) {
+              for(let j=-2; j<=2; j++) {
+                  const ty = y + j;
+                  const tx = x + i;
+                  if (ty >= 0 && ty < GRID_H && tx >= 0 && tx < GRID_W) {
+                      if (newGrid[ty][tx] === 11 || newGrid[ty][tx] === 12) {
+                          newGrid[ty][tx] = 2; 
+                          if(ty > 0 && newGrid[ty-1][tx] === 1) newGrid[ty-1][tx] = 2;
+                          if(ty < GRID_H-1 && newGrid[ty+1][tx] === 1) newGrid[ty+1][tx] = 2;
+                      }
+                  }
+              }
+          }
+          return newGrid;
+      });
+      setTimeout(() => alert("敌人撤退了！道路已打通。"), 500);
+    }
+    if (battle.type === 'eclipse_leader') {
+      setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
+      const rewardPet = createPet(341, 50); 
+      rewardPet.name = "暗黑超梦";
+      rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
+      if (party.length < 6) setParty([...updatedParty, rewardPet]);
+      else {
+          setParty(updatedParty);
+          setBox(prev => [...prev, rewardPet]);
+      }
+      setCaughtDex(prev => [...prev, 341]);
+      alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
+      setBattle(null);
+      setView('grid_map');
+      return; 
     }
 
     try { checkTreasureUnlock('explore', { mapId }); } catch(e) {}
