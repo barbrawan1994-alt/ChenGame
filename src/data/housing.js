@@ -280,6 +280,10 @@ export const TREASURE_COLLECTIONS = [
       { id: 'badge_11', name: '甜梦徽章',   icon: '🍭', score: 20, condition: 'gym', mapId: 11 },
       { id: 'badge_12', name: '星辰徽章',   icon: '🌌', score: 25, condition: 'gym', mapId: 12 },
       { id: 'badge_13', name: '创世徽章',   icon: '🏆', score: 30, condition: 'gym', mapId: 13 },
+      { id: 'badge_99', name: '日蚀徽章',   icon: '💀', score: 25, condition: 'gym', mapId: 99 },
+      { id: 'badge_100', name: '咒术徽章',  icon: '🔮', score: 25, condition: 'gym', mapId: 100 },
+      { id: 'badge_101', name: 'DA徽章',    icon: '🎀', score: 25, condition: 'gym', mapId: 101 },
+      { id: 'badge_102', name: '武道徽章',   icon: '🏯', score: 30, condition: 'gym', mapId: 102 },
     ],
   },
   {

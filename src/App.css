@@ -2682,14 +2682,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 .theme-bg-locked { background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%); color: #fff; }
 
 .map-lock-mask {
-  position: absolute; top:0; left:0; right:0; bottom:0;
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(4px);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  color: #fff; font-weight: 600;
+  position: absolute; top:8px; right:8px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; gap: 6px;
+  color: #fff; font-weight: 600; font-size: 11px;
   z-index: 10;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
 }
 /* =========================================
    1. 全局背景与字体优化

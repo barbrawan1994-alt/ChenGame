@@ -10375,7 +10375,7 @@ const renderMenu = () => {
       // --- 狩猎地带 (最高门槛, 最好奖励) ---
       if (dungeon.id === 'safari_zone') {
         if (party[0].level < 100) { alert("⛔ 权限不足！\n狩猎地带仅对顶尖训练家开放。\n要求：首发精灵等级达到 Lv.100"); return; }
-        if (badges.length < 12) { alert(`⛔ 权限不足！\n你需要收集全部 12 枚徽章才能进入狩猎地带。\n当前进度: ${badges.length}/12`); return; }
+        if (badges.length < 13) { alert(`⛔ 权限不足！\n你需要收集至少 13 枚徽章才能进入狩猎地带。\n当前进度: ${badges.length}/13`); return; }
         if (!checkDungeonCooldown('safari_zone')) return;
         recordDungeonEntry('safari_zone');
         alert("🎉 欢迎来到狩猎地带！\n这里充满了传说中的神兽和稀有精灵！");
@@ -10475,7 +10475,7 @@ const renderMenu = () => {
       <div className="screen map-screen" style={{background:'linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%)', minHeight:'100vh'}}>
         {/* 顶部导航 */}
         <div className="nav-header" style={{background:'rgba(255,255,255,0.95)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(0,0,0,0.06)', boxShadow:'0 1px 12px rgba(0,0,0,0.04)'}}>
-          <button className="btn-back" onClick={() => setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu')}>⬅ {hasSave && party.length > 0 ? '返回地图' : '返回'}</button>
+          <button className="btn-back" onClick={() => setView(mapGrid.length > 0 ? 'grid_map' : 'menu')}>⬅ {mapGrid.length > 0 ? '返回地图' : '返回'}</button>
           <div className="nav-title" style={{fontSize:'17px', fontWeight:'700', letterSpacing:'1px'}}>冒险地图</div>
           <div className="nav-coin" style={{background:'linear-gradient(135deg,#ffd54f,#ffb300)', color:'#5d4037', padding:'4px 12px', borderRadius:'20px', fontWeight:'bold', fontSize:'13px'}}>💰 {gold}</div>
         </div>
@@ -10638,16 +10638,14 @@ const renderMenu = () => {
               else if (!badges.includes(prevMap.badge)) { isLocked = true; lockReason = `需通关【${prevMap.name}】`; }
             }
 
-            const themeClass = isLocked ? 'theme-bg-locked' : `theme-bg-${m.type}`;
+            const themeClass = `theme-bg-${m.type}`;
 
             return (
-              <div key={m.id} className={`map-card-pro ${themeClass}`} onClick={() => { if (isLocked) alert(`🔒 该区域尚未解锁！\n\n${lockReason}`); else enterMap(m.id); }}>
+              <div key={m.id} className={`map-card-pro ${themeClass}`} style={isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined} onClick={() => { if (isLocked) alert(`🔒 该区域尚未解锁！\n\n${lockReason}`); else enterMap(m.id); }}>
                 {isLocked && (
                   <div className="map-lock-mask">
-                    <div style={{width:48, height:48, borderRadius:'50%', background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'8px', border:'2px solid rgba(255,255,255,0.2)'}}>
-                      <span style={{fontSize:'22px'}}>🔒</span>
-                    </div>
-                    <div style={{fontSize:'12px', opacity:0.9}}>{lockReason}</div>
+                    <span style={{fontSize:'14px'}}>🔒</span>
+                    <span>{lockReason}</span>
                   </div>
                 )}
                 
@@ -10661,13 +10659,11 @@ const renderMenu = () => {
                            <span style={{fontSize:'11px', background:'rgba(255,255,255,0.2)', backdropFilter:'blur(4px)', padding:'3px 10px', borderRadius:'12px', color:'#fff', fontWeight:'600', border:'1px solid rgba(255,255,255,0.15)'}}>
                                Lv.{m.lvl[0]}-{m.lvl[1]}
                            </span>
-                           {!isLocked && (
-                               <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
-                                   color:'#fff', padding:'3px 10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'3px',
-                                   border:'1px solid rgba(255,255,255,0.12)', fontWeight:'500', backdropFilter:'blur(4px)'}}>
-                                   {mapWeatherInfo.icon} {mapWeatherInfo.name}
-                               </span>
-                           )}
+                           <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
+                               color:'#fff', padding:'3px 10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'3px',
+                               border:'1px solid rgba(255,255,255,0.12)', fontWeight:'500', backdropFilter:'blur(4px)'}}>
+                               {mapWeatherInfo.icon} {mapWeatherInfo.name}
+                           </span>
                         </div>
                     </div>
                     {isCleared && (
@@ -10683,7 +10679,7 @@ const renderMenu = () => {
                       <span style={{width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.15)'}}>👑</span>
                       <span style={{fontSize:'12px', fontWeight:'600', textShadow:'0 1px 4px rgba(0,0,0,0.2)'}}>馆主 · {m.gymName || '???'}</span>
                     </div>
-                    {!isLocked && <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>Lv.{m.gymLvl}</span>}
+                    <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>Lv.{m.gymLvl}</span>
                 </div>
 
                 {/* 装饰性背景图标 */}
@@ -10751,7 +10747,7 @@ const renderMenu = () => {
                      padding:'4px 10px', borderRadius:'8px', border:`1px solid ${tierColor}30`
                    }}>Lv.{d.recLvl}+</span>
                   {(() => {
-                    const badgeReqs = { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 8, hyakki: 6, catch: 12, boss_rush: 4, type_challenge: 3, survival: 7 };
+                    const badgeReqs = { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 8, hyakki: 6, catch: 13, boss_rush: 4, type_challenge: 3, survival: 7 };
                     const req = badgeReqs[d.type] || 0;
                     return req > 0 ? <span style={{fontSize:'10px', color: badges.length >= req ? '#4CAF50' : '#F44336', background: badges.length >= req ? '#E8F5E9' : '#FFF3F0', padding:'3px 8px', borderRadius:'6px', border: badges.length >= req ? '1px solid #C8E6C9' : '1px solid #FFCDD2'}}>🏅 {badges.length}/{req}徽章</span> : null;
                   })()}
@@ -10952,10 +10948,12 @@ const renderMenu = () => {
         <div className="panel-card" style={{padding:'15px', background:'#fff', borderRadius:'16px', boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
              <div style={{fontSize:'12px', color:'#999', marginBottom:'5px', fontWeight:'bold', letterSpacing:'1px'}}>🏆 当前目标</div>
              <div style={{fontSize:'14px', fontWeight:'bold', color:'#333', display:'flex', alignItems:'center', gap:'5px'}}>
-                {badges.length < 12 ? (
-                    <><span>收集徽章:</span> <span style={{color:'#2196F3'}}>{badges.length} / 12</span></>
+                {badges.length < 13 ? (
+                    <><span>收集徽章:</span> <span style={{color:'#2196F3'}}>{badges.length} / {MAPS.length}</span></>
+                ) : badges.length < MAPS.length ? (
+                    <><span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！</span> <span style={{color:'#999', fontSize:'11px'}}>({badges.length}/{MAPS.length})</span></>
                 ) : (
-                    <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！</span>
+                    <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
                 )}
              </div>
         </div>
