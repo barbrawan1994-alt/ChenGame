@@ -4501,6 +4501,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const btnSecondary = {color:'#fff', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'8px 18px', borderRadius:'18px', cursor:'pointer', fontWeight:'bold', fontSize:'12px'};
 
     // 无帮派: 创建/加入
+    const leaveCooldown = gang.leaveTime ? Math.max(0, 24 * 60 * 60 * 1000 - (Date.now() - gang.leaveTime)) : 0;
+    const leaveHoursLeft = Math.ceil(leaveCooldown / (60 * 60 * 1000));
+    const canJoinGang = leaveCooldown <= 0;
+
     if (!gang.gangId) {
       return (
         <div className="screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
@@ -4510,11 +4514,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div style={{width:60}} />
           </div>
           <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'24px', overflowY:'auto'}}>
+            {!canJoinGang && (
+              <div style={{width:'100%', padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}>
+                <div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div>
+                <div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div>
+              </div>
+            )}
             <div style={{fontSize:'50px', marginBottom:'12px', filter:'drop-shadow(0 0 20px rgba(255,150,0,0.3))'}}>🏴</div>
             <div style={{fontSize:'20px', fontWeight:'bold', marginBottom:'6px'}}>加入一个帮派</div>
             <div style={{fontSize:'13px', color:'#9E9E9E', marginBottom:'24px', textAlign:'center'}}>加入帮派后可领俸禄、做任务、打帮战、学技能</div>
 
             <button onClick={() => {
+              if (!canJoinGang) { alert(`退帮冷却中，还需等待约 ${leaveHoursLeft} 小时`); return; }
               if (gold < GANG_CREATE_COST) { alert(`创建帮派需要 ${GANG_CREATE_COST.toLocaleString()} 金币`); return; }
               const name = prompt('给你的帮派起个名字吧:');
               if (!name || !name.trim()) return;
@@ -4548,6 +4559,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <div style={{fontSize:'11px', color:'#aaa', marginBottom:'4px'}}>{g.desc}</div>
                   <div style={{fontSize:'11px', color:'#FFD700', marginBottom:'8px'}}>帮主: {g.leader} · 成员 {g.members.length}人</div>
                   <button onClick={() => {
+                    if (!canJoinGang) { alert(`退帮冷却中，还需等待约 ${leaveHoursLeft} 小时`); return; }
                     if (!window.confirm(`确定要加入「${g.name}」吗？`)) return;
                     setGang({
                       gangId: g.id, isOwner: false, customGang: null,
@@ -4646,9 +4658,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           })()}
 
           <button onClick={() => {
-            if (!window.confirm('确定要退出帮派吗？帮贡将清零！')) return;
-            setGang({ ...DEFAULT_GANG_STATE });
+            const penalty = Math.floor((gold || 0) * 0.1);
+            const penaltyText = penalty > 0 ? `\n- 罚款 ${penalty.toLocaleString()} 金币（当前金币的10%）` : '';
+            if (!window.confirm(`⚠️ 退帮惩罚：\n- 帮贡清零\n- 个人技能全部重置\n- 24小时内无法加入新帮派${penaltyText}\n\n确定要退出帮派吗？`)) return;
+            if (penalty > 0) setGold(g => Math.max(0, g - penalty));
+            setGang({ ...DEFAULT_GANG_STATE, leaveTime: Date.now() });
             setGangTab('overview');
+            alert('你已退出帮派。所有帮派加成已失效，24小时后可加入新帮派。');
           }} style={{...btnSecondary, color:'#ef5350', borderColor:'rgba(239,83,80,0.3)', marginTop:'10px', width:'100%'}}>
             退出帮派
           </button>
@@ -4683,18 +4699,20 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <span style={{fontSize:'11px', color:'#aaa', minWidth:'50px', textAlign:'right'}}>{Math.min(progress, task.target)}/{task.target}</span>
                   {isDone && !isClaimed && (
                     <button onClick={() => {
-                      if (task.type === 'donate_gold') {
-                        if (gang.isOwner && gang.customGang) {
-                          setGang(prev => ({ ...prev, customGang: { ...prev.customGang, funds: (prev.customGang.funds || 0) + task.target } }));
+                      const taskFunds = task.type === 'donate_gold' ? task.target : Math.floor(task.reward * 30);
+                      setGang(prev => {
+                        const next = {
+                          ...prev,
+                          contribution: prev.contribution + task.reward,
+                          dailyCounts: { ...prev.dailyCounts, taskCompleted: [...prev.dailyCounts.taskCompleted, task.id + '_claimed'] },
+                        };
+                        if (prev.isOwner && prev.customGang) {
+                          next.customGang = { ...prev.customGang, funds: (prev.customGang.funds || 0) + taskFunds };
                         }
-                      }
-                      setGang(prev => ({
-                        ...prev,
-                        contribution: prev.contribution + task.reward,
-                        dailyCounts: { ...prev.dailyCounts, taskCompleted: [...prev.dailyCounts.taskCompleted, task.id + '_claimed'] },
-                      }));
+                        return next;
+                      });
                       if (task.gold > 0) setGold(g => g + task.gold);
-                      alert(`完成任务【${task.name}】！获得 ${task.reward} 帮贡${task.gold > 0 ? ` + ${task.gold} 金币` : ''}`);
+                      alert(`完成任务【${task.name}】！\n获得 ${task.reward} 帮贡${task.gold > 0 ? ` + ${task.gold} 金币` : ''}${gang.isOwner ? `\n+${taskFunds} 帮派资金` : ''}`);
                     }} style={{...btnPrimary, fontSize:'11px', padding:'5px 12px'}}>
                       领取
                     </button>
@@ -7910,15 +7928,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
         await wait(1200); setAnimEffect(null);
         return false; 
     }
-    if (atkState.status === 'CON') {
-        addLog(`${attacker.name} 混乱了!`);
-        setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
-        await wait(1000); setAnimEffect(null);
-        if (Math.random() < 0.33) {
-            addLog(`它攻击了自己!`);
-            const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
-            attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
-            return false;
+    if (atkState.volatiles && atkState.volatiles.confused > 0) {
+        atkState.volatiles.confused--;
+        if (atkState.volatiles.confused <= 0) {
+            addLog(`${attacker.name} 的混乱解除了!`);
+        } else {
+            addLog(`${attacker.name} 混乱了!`);
+            setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
+            await wait(1000); setAnimEffect(null);
+            if (Math.random() < 0.33) {
+                addLog(`它攻击了自己!`);
+                const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
+                attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
+                return false;
+            }
         }
     }
 
@@ -8504,10 +8527,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (!isDead && move.effect && move.p > 0) {
              const eff = move.effect;
+             const defSide = source === 'player' ? 'enemy' : 'player';
+             const atkSideStr = source === 'player' ? 'player' : 'enemy';
+
              if (!move.isCursed && Math.random() < (eff.chance || 1.0)) {
                  const targetState = eff.target === 'self' ? atkState : defState;
                  const targetName = eff.target === 'self' ? attacker.name : defender.name;
-                 const targetSide = eff.target === 'self' ? (source==='player'?'player':'enemy') : (source==='player'?'enemy':'player');
+                 const targetSide = eff.target === 'self' ? atkSideStr : defSide;
                  
                  if (eff.type === 'BUFF' || eff.type === 'DEBUFF') {
                      const delta = eff.type === 'BUFF' ? eff.val : -eff.val;
@@ -8522,6 +8548,55 @@ const grantContestReward = (config, score, subjectPet = null) => {
                  }
                  await wait(800); setAnimEffect(null);
              }
+
+             if (eff.confuse && !defState.volatiles?.confused && Math.random() < eff.confuse) {
+                 defState.volatiles = { ...(defState.volatiles || {}), confused: 3 };
+                 addLog(`😵 ${defender.name} 陷入了混乱!`);
+                 setAnimEffect({ type: 'CONFUSION', target: defSide }); await wait(800); setAnimEffect(null);
+             }
+             if (eff.burn && !defState.status && Math.random() < eff.burn) {
+                 defState.status = 'BRN';
+                 addLog(`🔥 ${defender.name} 被灼伤了!`);
+                 setAnimEffect({ type: 'BRN', target: defSide }); await wait(800); setAnimEffect(null);
+             }
+             if (eff.paralyze && !defState.status && Math.random() < eff.paralyze) {
+                 defState.status = 'PAR';
+                 addLog(`⚡ ${defender.name} 被麻痹了!`);
+                 setAnimEffect({ type: 'PARALYSIS', target: defSide }); await wait(800); setAnimEffect(null);
+             }
+             if (eff.poison && !defState.status && (eff.poison === true ? true : Math.random() < eff.poison)) {
+                 defState.status = 'PSN';
+                 addLog(`☠️ ${defender.name} 中毒了!`);
+                 setAnimEffect({ type: 'POISON', target: defSide }); await wait(800); setAnimEffect(null);
+             }
+             if (eff.freeze && !defState.status && Math.random() < eff.freeze) {
+                 defState.status = 'FRZ';
+                 addLog(`🧊 ${defender.name} 被冰冻了!`);
+                 setAnimEffect({ type: 'FREEZE', target: defSide }); await wait(800); setAnimEffect(null);
+             }
+             if (eff.sleep && !defState.status && Math.random() < eff.sleep) {
+                 defState.status = 'SLP';
+                 defState.volatiles = { ...(defState.volatiles || {}), sleepTurns: 2 + Math.floor(Math.random() * 2) };
+                 addLog(`😴 ${defender.name} 睡着了!`);
+                 setAnimEffect({ type: 'SLEEP', target: defSide }); await wait(800); setAnimEffect(null);
+             }
+             if (eff.healPercent) {
+                 const heal = Math.floor(getStats(attacker).maxHp * eff.healPercent);
+                 attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
+                 addLog(`💚 ${attacker.name} 恢复了 ${heal} HP!`);
+             }
+             if (eff.hpDrain && dmg > 0) {
+                 const drain = Math.floor(dmg * eff.hpDrain);
+                 attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + drain);
+                 addLog(`🩸 ${attacker.name} 吸取了 ${drain} HP!`);
+             }
+             if (eff.atkUp) { atkState.stages.p_atk = Math.min(6, (atkState.stages.p_atk || 0) + eff.atkUp); addLog(`⬆️ ${attacker.name} 的攻击提升了!`); }
+             if (eff.defUp) { atkState.stages.p_def = Math.min(6, (atkState.stages.p_def || 0) + eff.defUp); addLog(`⬆️ ${attacker.name} 的防御提升了!`); }
+             if (eff.spAtkUp) { atkState.stages.s_atk = Math.min(6, (atkState.stages.s_atk || 0) + eff.spAtkUp); addLog(`⬆️ ${attacker.name} 的特攻提升了!`); }
+             if (eff.spdUp) { atkState.stages.spd = Math.min(6, (atkState.stages.spd || 0) + eff.spdUp); addLog(`⬆️ ${attacker.name} 的速度提升了!`); }
+             if (eff.defDown) { defState.stages.p_def = Math.max(-6, (defState.stages.p_def || 0) - eff.defDown); addLog(`⬇️ ${defender.name} 的防御下降了!`); }
+             if (eff.spdDown) { defState.stages.spd = Math.max(-6, (defState.stages.spd || 0) - eff.spdDown); addLog(`⬇️ ${defender.name} 的速度下降了!`); }
+             if (eff.accDown) { defState.stages.acc = Math.max(-6, (defState.stages.acc || 0) - eff.accDown); addLog(`⬇️ ${defender.name} 的命中下降了!`); }
         }
     }
 
@@ -9280,9 +9355,41 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             return next;
         });
-        const equipDrop = Math.random() < 0.3 ? (() => { const eq = _.sample(RANDOM_EQUIP_DB); return createUniqueEquip(eq.id); })() : null;
-        if (equipDrop) setAccessories(prev => [...prev, equipDrop]);
-        alert(`⚔️ 帮战胜利！\n\n获得：\n💰 ${reward.funds} 帮派资金\n⭐ ${reward.contribution} 帮贡${equipDrop ? `\n🎁 ${equipDrop.displayName}` : ''}`);
+        const chestRewards = [];
+        const chestRoll = Math.random();
+        if (chestRoll < 0.4) {
+            const eq = _.sample(RANDOM_EQUIP_DB);
+            const drop = createUniqueEquip(eq.id);
+            setAccessories(prev => [...prev, drop]);
+            chestRewards.push(`🎁 饰品: ${drop.displayName}`);
+        }
+        if (Math.random() < 0.25) {
+            const candyCount = 1 + Math.floor(Math.random() * 2);
+            setInventory(prev => ({ ...prev, expCandy: (prev.expCandy || 0) + candyCount }));
+            chestRewards.push(`🍬 经验糖果 x${candyCount}`);
+        }
+        if (Math.random() < 0.2) {
+            const ballTypes = ['great', 'ultra', 'timer'];
+            const bt = _.sample(ballTypes);
+            const ballCount = 2 + Math.floor(Math.random() * 3);
+            setInventory(prev => ({ ...prev, balls: { ...prev.balls, [bt]: (prev.balls?.[bt] || 0) + ballCount } }));
+            const ballNames = { great: '高级球', ultra: '超级球', timer: '计时球' };
+            chestRewards.push(`⚾ ${ballNames[bt]} x${ballCount}`);
+        }
+        if (Math.random() < 0.15) {
+            const bonusGold = 2000 + Math.floor(Math.random() * 5000);
+            setGold(g => g + bonusGold);
+            chestRewards.push(`💰 额外金币 ${bonusGold.toLocaleString()}`);
+        }
+        if (Math.random() < 0.1) {
+            const tm = _.sample(allSkills.filter(s => s.p > 0 && s.p <= 100));
+            if (tm) {
+                setInventory(prev => ({ ...prev, tms: { ...(prev.tms || {}), [tm.id]: (prev.tms?.[tm.id] || 0) + 1 } }));
+                chestRewards.push(`📜 技能书: ${tm.name}`);
+            }
+        }
+        const chestText = chestRewards.length > 0 ? `\n\n🎰 帮战宝箱:\n${chestRewards.join('\n')}` : '';
+        alert(`⚔️ 帮战胜利！\n\n获得：\n💰 ${reward.funds} 帮派资金\n⭐ ${reward.contribution} 帮贡${chestText}`);
         setParty(updatedParty);
         setBattle(null);
         setView('gang');
