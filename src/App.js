@@ -10614,8 +10614,13 @@ const renderNameInput = () => {
         const grandChildren = getChildren(child.id);
         grandChildren.forEach(gc => stage2.push({ ...gc, parentId: child.id }));
     });
+    let stage3 = [];
+    stage2.forEach(child => {
+        const greatGrandChildren = getChildren(child.id);
+        greatGrandChildren.forEach(ggc => stage3.push({ ...ggc, parentId: child.id }));
+    });
 
-    return { root: rootPet, stage1, stage2 };
+    return { root: rootPet, stage1, stage2, stage3 };
   };
 
   const renderPokedex = () => {
@@ -10943,6 +10948,14 @@ const renderNameInput = () => {
                                  <div style={{color:'#ccc', fontSize:'12px'}}>➔</div>
                                  <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
                                      {family.stage2.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
+                                 </div>
+                             </>
+                         )}
+                         {family.stage3 && family.stage3.length > 0 && (
+                             <>
+                                 <div style={{color:'#ccc', fontSize:'12px'}}>➔</div>
+                                 <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
+                                     {family.stage3.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
                                  </div>
                              </>
                          )}
@@ -13212,6 +13225,14 @@ const renderMenu = () => {
                                 <div style={{color:'#ccc', fontSize:'14px'}}>➔</div>
                                 <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                                     {family.stage2.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
+                                </div>
+                            </>
+                        )}
+                        {family.stage3 && family.stage3.length > 0 && (
+                            <>
+                                <div style={{color:'#ccc', fontSize:'14px'}}>➔</div>
+                                <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                                    {family.stage3.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
                                 </div>
                             </>
                         )}
