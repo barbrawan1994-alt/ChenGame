@@ -546,14 +546,11 @@ const [pendingTask, setPendingTask] = useState(null);
       const tc = TYPES[pet.type]?.color || '#999';
       const isDigimon = visual.url && visual.url.includes('digi-api.com');
       return (
-        <div style={{ position: 'relative', width: '100%', height: '100%',
-          ...(isDigimon ? { borderRadius: '50%', overflow: 'hidden', background: `linear-gradient(135deg, ${tc}30, ${tc}15)` } : {})
-        }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
           <img 
             src={visual.url} 
             alt={pet.name} 
-            className={visual.type === 'pixel' ? 'pet-avatar-pixel' : 'pet-avatar-img'}
-            style={isDigimon ? {mixBlendMode: 'multiply', borderRadius: '50%'} : undefined}
+            className={visual.type === 'pixel' ? 'pet-avatar-pixel' : (isDigimon ? 'pet-avatar-img pet-avatar-digimon' : 'pet-avatar-img')}
             onError={e => {
               const img = e.target;
               const tried = parseInt(img.dataset.retryIdx || '0', 10);
@@ -2272,6 +2269,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   useEffect(() => {
     syncAchStats();
   }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, party, box, housing, mapProgress]);
+
+  useEffect(() => {
+    if (caughtDex.length > 0) checkDexTitles(caughtDex.length);
+  }, [caughtDex]);
 
     // [新增] 解锁称号通用函数
   const unlockTitle = (title) => {
@@ -10659,9 +10660,9 @@ const renderNameInput = () => {
               return (
                 <div key={pet.id} className={`dex-item ${isCaught ? 'caught' : 'missing'}`} onClick={() => setSelectedDexId(pet.id)} style={{cursor:'pointer'}}>
                   <div className="dex-item-id">#{String(pet.id).padStart(3, '0')}</div>
-                  <div className="dex-item-icon" style={!isCaught ? {filter:'brightness(0) opacity(0.3)'} : {}}>{renderAvatar(pet)}</div>
-                  <div className="dex-item-name">{isCaught ? pet.name : '???'}</div>
-                  {isCaught && <div className="dex-type-dot" style={{background: TYPES[pet.type]?.color || '#999'}}></div>}
+                  <div className="dex-item-icon" style={!isCaught ? {filter:'brightness(0.4) saturate(0)'} : {}}>{renderAvatar(pet)}</div>
+                  <div className="dex-item-name">{pet.name}</div>
+                  <div className="dex-type-dot" style={{background: TYPES[pet.type]?.color || '#999'}}></div>
                 </div>
               );
             })}
@@ -10681,20 +10682,30 @@ const renderNameInput = () => {
               maxHeight: '90vh', overflowY: 'auto'
             }}>
               
-              {!caughtDex.includes(selectedPet.id) ? (
+              {!caughtDex.includes(selectedPet.id) ? (() => {
+                const tc = TYPES[selectedPet.type]?.color || '#999';
+                const preEvo = POKEDEX.find(p => p.evo === selectedPet.id);
+                const spawnMaps = MAPS.filter(m => m.pool && m.pool.includes(selectedPet.id));
+                const isGod = selectedPet.id >= 601 && selectedPet.id <= 610;
+                let howToGet = [];
+                if (preEvo) howToGet.push(`由 ${preEvo.name}(#${preEvo.id}) ${preEvo.evoLvl ? `Lv.${preEvo.evoLvl}` : '使用进化石'}进化`);
+                if (spawnMaps.length > 0) howToGet.push(`野外出没: ${spawnMaps.map(m => m.name).join('、')}`);
+                if (isGod) howToGet.push('神兽 — 第6章后高级地图稀有遭遇');
+                if (howToGet.length === 0) howToGet.push('通过剧情任务、活动或特殊途径获得');
+                return (
                 <>
                   <div style={{
                     width: '100%', height: '110px', flexShrink: 0,
-                    background: 'linear-gradient(180deg, #9E9E9E 0%, #E0E0E0 100%)', 
+                    background: `linear-gradient(180deg, ${tc}99 0%, ${tc}44 100%)`, 
                     borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
                     position: 'absolute', top: 0, left: 0, zIndex: 0
                   }}></div>
                   <div style={{
-                    width: '90px', height: '90px', background: '#eee', borderRadius: '50%', flexShrink: 0,
+                    width: '90px', height: '90px', background: '#f5f5f5', borderRadius: '50%', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px',
                     marginTop: '65px', zIndex: 1, position: 'relative',
                     boxShadow: '0 6px 16px rgba(0,0,0,0.1)', overflow: 'hidden', padding: '5px',
-                    filter: 'brightness(0) opacity(0.15)'
+                    filter: 'brightness(0.4) saturate(0)'
                   }}>
                     {renderAvatar(selectedPet)}
                   </div>
@@ -10702,27 +10713,37 @@ const renderNameInput = () => {
                     <div style={{color: '#999', fontSize: '13px', fontWeight: '600', letterSpacing: '1px'}}>
                       #{String(selectedPet.id).padStart(3, '0')}
                     </div>
-                    <div style={{fontSize: '24px', fontWeight: '800', color: '#ccc', margin: '4px 0'}}>???</div>
+                    <div style={{fontSize: '24px', fontWeight: '800', color: '#555', margin: '4px 0'}}>{selectedPet.name}</div>
                     <div style={{
-                      display: 'inline-block', background: '#bbb', color: '#fff',
+                      display: 'inline-block', background: tc, color: '#fff',
                       padding: '4px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                    }}>未知属性</div>
+                    }}>{TYPES[selectedPet.type]?.name || selectedPet.type}</div>
                   </div>
+                  {selectedPet.desc && <div style={{width:'100%', padding:'12px 30px 0', textAlign:'center'}}>
+                    <div style={{fontSize:'12px', color:'#888', fontStyle:'italic', lineHeight:1.5}}>"{selectedPet.desc}"</div>
+                  </div>}
                   <div style={{
-                    width: '100%', padding: '30px', textAlign: 'center', color: '#999'
+                    width: '100%', padding: '20px 30px', textAlign: 'center', color: '#999'
                   }}>
-                    <div style={{fontSize: '48px', marginBottom: '12px'}}>🔒</div>
-                    <div style={{fontSize: '16px', fontWeight: '700', color: '#666', marginBottom: '8px'}}>该精灵尚未获得</div>
-                    <div style={{fontSize: '13px', lineHeight: 1.6}}>
-                      在野外探索、战斗或完成任务后<br/>有机会遇到并捕获这只精灵
+                    <div style={{fontSize: '28px', marginBottom: '10px'}}>🔒</div>
+                    <div style={{fontSize: '14px', fontWeight: '700', color: '#666', marginBottom: '10px'}}>尚未捕获</div>
+                    <div style={{textAlign:'left', width:'100%'}}>
+                      <div style={{fontSize:'12px', fontWeight:'700', color:'#888', marginBottom:'6px'}}>📍 获取方式</div>
+                      {howToGet.map((t, i) => (
+                        <div key={i} style={{fontSize:'12px', color:'#777', lineHeight:1.7, paddingLeft:'12px', position:'relative'}}>
+                          <span style={{position:'absolute', left:0}}>•</span>{t}
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <button onClick={() => setSelectedDexId(null)} style={{
                     padding: '8px 32px', borderRadius: '20px', border: 'none',
-                    background: '#9E9E9E', color: '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
+                    background: tc, color: '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
+                    opacity: 0.8
                   }}>关闭</button>
                 </>
-              ) : null}
+                );
+              })() : null}
 
               {caughtDex.includes(selectedPet.id) && (() => {
                   const allCaught = [...party, ...box].filter(p => p.id === selectedPet.id);
@@ -13826,6 +13847,7 @@ const renderMenu = () => {
 
               const leaderPet = party.find(p => p && p.currentHp > 0) || party[0];
               const leaderSprite = leaderPet ? getSpriteUrl(leaderPet) : null;
+              const leaderIsDigimon = leaderSprite && leaderSprite.includes('digi-api.com');
 
               const rows = [];
               for (let vy = 0; vy < VH; vy++) {
@@ -13896,7 +13918,7 @@ const renderMenu = () => {
                       {isPlayer && (
                         <div className="player-marker">
                           {leaderSprite ? (
-                            <img src={leaderSprite} alt="" className="player-pet-img" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                            <img src={leaderSprite} alt="" className={`player-pet-img ${leaderIsDigimon ? 'pet-avatar-digimon' : ''}`} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                           ) : null}
                           <div className="player-fallback" style={{display: leaderSprite ? 'none' : 'flex'}}>
                             {trainerAvatar && trainerAvatar.startsWith('http')
