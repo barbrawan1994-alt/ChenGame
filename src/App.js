@@ -83,6 +83,12 @@ import {
   getRandomFruit, getFruitById, getAllFruits, getFruitIcon,
 } from './data/devilfruits';
 import {
+  GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_TASKS, GANG_WAR_CONFIG,
+  GANG_ICONS, GANG_CREATE_COST, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
+  getGangRank, getGangSkillBonus, getGangSkills, getGangWarLevel, getGangWarReward,
+  generateCafeRecruits, DEFAULT_GANG_STATE,
+} from './data/gang';
+import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
   SAME_TYPE_COMBO, DEFAULT_COMBO, BOND_PER_TURN, BOND_PER_KO,
   CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE, DRINK_LOOT_TABLES,
@@ -260,6 +266,10 @@ export default function RPG(props) {
   const [marriageView, setMarriageView] = useState(null);
   const [dateEvent, setDateEvent] = useState(null);
   const [weddingScene, setWeddingScene] = useState(null);
+
+  // 帮派系统
+  const [gang, setGang] = useState(savedData.gang || { ...DEFAULT_GANG_STATE });
+  const [gangTab, setGangTab] = useState('overview');
 
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
@@ -1208,16 +1218,19 @@ const CHARM_RANK_COLORS = {
         finalSpd = Math.floor(finalSpd * pet.fruitEffects.spdMult);
     }
 
+    const gangBonus = getGangSkillBonus(getGangSkills(gang));
+    const applyGB = (val, pct) => pct > 0 ? Math.floor(val * (1 + pct / 100)) : val;
+
     return {
-      maxHp: calc(baseStats.hp, 'hp', 'maxHp', true),
-      p_atk: calc(baseStats.p_atk, 'p_atk', 'p_atk'),
-      p_def: calc(baseStats.p_def, 'p_def', 'p_def'),
+      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), gangBonus.hp),
+      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk),
+      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def),
       s_atk: calc(baseStats.s_atk, 's_atk', 's_atk'),
       s_def: calc(baseStats.s_def, 's_def', 's_def'),
-      spd:   finalSpd,
+      spd:   applyGB(finalSpd, gangBonus.spd),
       crit:  finalCrit,
-      atk: calc(baseStats.p_atk, 'p_atk', 'p_atk'), 
-      def: calc(baseStats.p_def, 'p_def', 'p_def')
+      atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk), 
+      def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def)
     };
   }
 
@@ -2154,6 +2167,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        sideStoryStates,
        cafe,
        marriage,
+       gang,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -2835,6 +2849,47 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 9. [新增] 锁定界面
   // ==========================================
+  // ==========================================
+  // 帮派系统 - 每日重置 & 工具函数
+  // ==========================================
+  const resetGangDailyCounts = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (gang.dailyCounts.resetDate !== today) {
+      const newDC = { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: today };
+      setGang(prev => ({ ...prev, dailyCounts: newDC }));
+      return newDC;
+    }
+    return gang.dailyCounts;
+  };
+
+  const getGangInfo = () => {
+    if (!gang.gangId) return null;
+    if (gang.isOwner && gang.customGang) return gang.customGang;
+    return GANG_PRESETS.find(g => g.id === gang.gangId) || null;
+  };
+
+  const getCurrentGangRank = () => getGangRank(gang.contribution, gang.isOwner);
+
+  const updateGangTaskProgress = (type, amount = 1) => {
+    if (!gang.gangId) return;
+    setGang(prev => {
+      const dc = { ...prev.dailyCounts };
+      const tp = { ...(dc.taskProgress || {}) };
+      const completed = [...(dc.taskCompleted || [])];
+      GANG_TASKS.forEach(task => {
+        if (task.type === type && !completed.includes(task.id)) {
+          tp[task.id] = (tp[task.id] || 0) + amount;
+          if (tp[task.id] >= task.target) {
+            completed.push(task.id);
+          }
+        }
+      });
+      dc.taskProgress = tp;
+      dc.taskCompleted = completed;
+      return { ...prev, dailyCounts: dc };
+    });
+  };
+
   // ==========================================
   // 婚姻伴侣系统 - 核心函数
   // ==========================================
@@ -4442,6 +4497,480 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     );
   };
 
+  // ==========================================
+  // 帮派系统 - 完整UI
+  // ==========================================
+  const renderGang = () => {
+    const gangInfo = getGangInfo();
+    const rank = getCurrentGangRank();
+    const dc = gang.dailyCounts || {};
+    const skills = getGangSkills(gang);
+    const bonus = getGangSkillBonus(skills);
+
+    const headerStyle = {background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5};
+    const cardStyle = {background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'12px', padding:'14px', marginBottom:'10px'};
+    const btnPrimary = {color:'#fff', background:'linear-gradient(135deg,#FF6F00,#FF8F00)', border:'none', padding:'10px 24px', borderRadius:'20px', cursor:'pointer', fontWeight:'bold', fontSize:'13px', boxShadow:'0 4px 12px rgba(255,111,0,0.3)'};
+    const btnSecondary = {color:'#fff', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'8px 18px', borderRadius:'18px', cursor:'pointer', fontWeight:'bold', fontSize:'12px'};
+
+    // 无帮派: 创建/加入
+    if (!gang.gangId) {
+      return (
+        <div className="screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
+          <div className="nav-header glass-panel" style={headerStyle}>
+            <button className="btn-back" onClick={() => setView('grid_map')} style={{...btnSecondary}}>⬅ 返回</button>
+            <div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>🏴 帮派系统</div>
+            <div style={{width:60}} />
+          </div>
+          <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'24px', overflowY:'auto'}}>
+            <div style={{fontSize:'50px', marginBottom:'12px', filter:'drop-shadow(0 0 20px rgba(255,150,0,0.3))'}}>🏴</div>
+            <div style={{fontSize:'20px', fontWeight:'bold', marginBottom:'6px'}}>加入一个帮派</div>
+            <div style={{fontSize:'13px', color:'#9E9E9E', marginBottom:'24px', textAlign:'center'}}>加入帮派后可领俸禄、做任务、打帮战、学技能</div>
+
+            <button onClick={() => {
+              if (gold < GANG_CREATE_COST) { alert(`创建帮派需要 ${GANG_CREATE_COST.toLocaleString()} 金币`); return; }
+              const name = prompt('给你的帮派起个名字吧:');
+              if (!name || !name.trim()) return;
+              const iconIdx = Math.floor(Math.random() * GANG_ICONS.length);
+              setGold(g => g - GANG_CREATE_COST);
+              setGang({
+                gangId: 'custom_' + Date.now(),
+                isOwner: true,
+                customGang: {
+                  id: 'custom_' + Date.now(), name: name.trim(), icon: GANG_ICONS[iconIdx],
+                  level: 1, funds: 0, members: [], skills: {}, wins: 0,
+                  color: '#FF6F00', power: 100, desc: '玩家自建帮派',
+                },
+                contribution: 0, rank: 'leader',
+                dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
+              });
+            }} style={{...btnPrimary, width:'80%', marginBottom:'16px', fontSize:'15px', padding:'14px 0'}}>
+              🏗️ 创建帮派（{GANG_CREATE_COST.toLocaleString()} 金币）
+            </button>
+
+            <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px', color:'#FFD700'}}>— 或加入已有帮派 —</div>
+            <div style={{width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+              {GANG_PRESETS.map(g => (
+                <div key={g.id} style={{...cardStyle, cursor:'pointer', transition:'transform 0.2s'}} onClick={() => {
+                  setGang({
+                    gangId: g.id, isOwner: false, customGang: null,
+                    contribution: 0, rank: 'member',
+                    dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
+                  });
+                }}>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
+                    <span style={{fontSize:'24px'}}>{g.icon}</span>
+                    <span style={{fontWeight:'bold', fontSize:'14px'}}>{g.name}</span>
+                    <span style={{fontSize:'11px', color:'#9E9E9E', marginLeft:'auto'}}>Lv.{g.level}</span>
+                  </div>
+                  <div style={{fontSize:'11px', color:'#aaa', marginBottom:'4px'}}>{g.desc}</div>
+                  <div style={{fontSize:'11px', color:'#FFD700'}}>帮主: {g.leader} · 成员 {g.members.length}人</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 有帮派
+    const tabs = [
+      { id: 'overview', label: '概览', icon: '🏠' },
+      { id: 'tasks', label: '任务', icon: '📋' },
+      { id: 'war', label: '帮战', icon: '⚔️' },
+      { id: 'skills', label: '技能', icon: '📖' },
+      { id: 'ranking', label: '排行', icon: '🏆' },
+      { id: 'recruit', label: '招募', icon: '👥' },
+    ];
+
+    const renderGangOverview = () => {
+      const memberCount = gangInfo?.members?.length || 0;
+      const maxMembers = GANG_MAX_MEMBERS(gangInfo?.level || 1);
+      return (
+        <div>
+          <div style={{...cardStyle, display:'flex', alignItems:'center', gap:'14px', background:'linear-gradient(135deg, rgba(255,111,0,0.15), rgba(255,143,0,0.05))'}}>
+            <span style={{fontSize:'48px'}}>{gangInfo?.icon || '🏴'}</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:'18px', fontWeight:'bold'}}>{gangInfo?.name || '未知帮派'}</div>
+              <div style={{fontSize:'12px', color:'#aaa', marginTop:'2px'}}>{gangInfo?.desc}</div>
+              <div style={{fontSize:'12px', color:'#FFD700', marginTop:'4px'}}>帮派等级: Lv.{gangInfo?.level || 1} · 战力 {gangInfo?.power || 0}</div>
+            </div>
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px'}}>
+            <div style={cardStyle}>
+              <div style={{fontSize:'11px', color:'#999'}}>你的职位</div>
+              <div style={{fontSize:'16px', fontWeight:'bold', color:'#FFD700'}}>{rank.icon} {rank.name}</div>
+            </div>
+            <div style={cardStyle}>
+              <div style={{fontSize:'11px', color:'#999'}}>帮贡</div>
+              <div style={{fontSize:'16px', fontWeight:'bold', color:'#4FC3F7'}}>{gang.contribution}</div>
+            </div>
+            <div style={cardStyle}>
+              <div style={{fontSize:'11px', color:'#999'}}>成员</div>
+              <div style={{fontSize:'16px', fontWeight:'bold'}}>{memberCount}/{maxMembers}</div>
+            </div>
+            <div style={cardStyle}>
+              <div style={{fontSize:'11px', color:'#999'}}>帮战胜场</div>
+              <div style={{fontSize:'16px', fontWeight:'bold', color:'#66BB6A'}}>{gangInfo?.wins || 0}</div>
+            </div>
+          </div>
+
+          <div style={cardStyle}>
+            <div style={{fontSize:'13px', fontWeight:'bold', marginBottom:'8px'}}>💰 每日俸禄</div>
+            {dc.salary ? (
+              <div style={{color:'#66BB6A', fontSize:'13px'}}>✅ 今日已领取 {rank.salary.toLocaleString()} 金币</div>
+            ) : (
+              <button onClick={() => {
+                resetGangDailyCounts();
+                if (gang.dailyCounts.salary) { alert('今日已领取俸禄'); return; }
+                setGold(g => g + rank.salary);
+                setGang(prev => ({ ...prev, dailyCounts: { ...prev.dailyCounts, salary: true } }));
+                alert(`领取俸禄 ${rank.salary.toLocaleString()} 金币！`);
+              }} style={btnPrimary}>
+                领取 {rank.salary.toLocaleString()} 金币
+              </button>
+            )}
+          </div>
+
+          {/* 职位晋升提示 */}
+          {(() => {
+            const nextRank = GANG_RANKS.find(r => r.minContribution > gang.contribution && r.minContribution >= 0);
+            if (!nextRank || gang.isOwner) return null;
+            return (
+              <div style={cardStyle}>
+                <div style={{fontSize:'13px', fontWeight:'bold', marginBottom:'6px'}}>🎯 下一职位: {nextRank.icon} {nextRank.name}</div>
+                <div style={{fontSize:'12px', color:'#aaa'}}>还需 {nextRank.minContribution - gang.contribution} 帮贡</div>
+                <div style={{width:'100%', height:'6px', background:'rgba(255,255,255,0.1)', borderRadius:'3px', marginTop:'6px', overflow:'hidden'}}>
+                  <div style={{height:'100%', width:`${Math.min(100, (gang.contribution / nextRank.minContribution) * 100)}%`, background:'linear-gradient(90deg,#FFD700,#FF8F00)', borderRadius:'3px'}} />
+                </div>
+                {gang.contribution >= nextRank.minContribution && (
+                  <button onClick={() => setGang(prev => ({ ...prev, rank: nextRank.id }))} style={{...btnPrimary, marginTop:'8px', fontSize:'12px', padding:'8px 16px'}}>
+                    晋升为 {nextRank.name}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
+          <button onClick={() => {
+            if (!window.confirm('确定要退出帮派吗？帮贡将清零！')) return;
+            setGang({ ...DEFAULT_GANG_STATE });
+            setGangTab('overview');
+          }} style={{...btnSecondary, color:'#ef5350', borderColor:'rgba(239,83,80,0.3)', marginTop:'10px', width:'100%'}}>
+            退出帮派
+          </button>
+        </div>
+      );
+    };
+
+    const renderGangTasks = () => {
+      const tp = dc.taskProgress || {};
+      const completed = dc.taskCompleted || [];
+      return (
+        <div>
+          <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px'}}>📋 每日任务</div>
+          {GANG_TASKS.map(task => {
+            const progress = tp[task.id] || 0;
+            const isDone = completed.includes(task.id);
+            const isClaimed = completed.includes(task.id + '_claimed');
+            return (
+              <div key={task.id} style={{...cardStyle, opacity: isClaimed ? 0.5 : 1}}>
+                <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
+                  <span style={{fontSize:'18px'}}>{task.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:'bold', fontSize:'13px'}}>{task.name}</div>
+                    <div style={{fontSize:'11px', color:'#aaa'}}>{task.desc}</div>
+                  </div>
+                  <span style={{fontSize:'11px', color:'#FFD700'}}>+{task.reward}帮贡</span>
+                </div>
+                <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                  <div style={{flex:1, height:'5px', background:'rgba(255,255,255,0.1)', borderRadius:'3px', overflow:'hidden'}}>
+                    <div style={{height:'100%', width:`${Math.min(100, (progress / task.target) * 100)}%`, background: isDone ? '#66BB6A' : 'linear-gradient(90deg,#4FC3F7,#29B6F6)', borderRadius:'3px', transition:'width 0.3s'}} />
+                  </div>
+                  <span style={{fontSize:'11px', color:'#aaa', minWidth:'50px', textAlign:'right'}}>{Math.min(progress, task.target)}/{task.target}</span>
+                  {isDone && !isClaimed && (
+                    <button onClick={() => {
+                      if (task.type === 'donate_gold') {
+                        if (gang.isOwner && gang.customGang) {
+                          setGang(prev => ({ ...prev, customGang: { ...prev.customGang, funds: (prev.customGang.funds || 0) + task.target } }));
+                        }
+                      }
+                      setGang(prev => ({
+                        ...prev,
+                        contribution: prev.contribution + task.reward,
+                        dailyCounts: { ...prev.dailyCounts, taskCompleted: [...prev.dailyCounts.taskCompleted, task.id + '_claimed'] },
+                      }));
+                      if (task.gold > 0) setGold(g => g + task.gold);
+                      alert(`完成任务【${task.name}】！获得 ${task.reward} 帮贡${task.gold > 0 ? ` + ${task.gold} 金币` : ''}`);
+                    }} style={{...btnPrimary, fontSize:'11px', padding:'5px 12px'}}>
+                      领取
+                    </button>
+                  )}
+                  {isClaimed && <span style={{fontSize:'11px', color:'#66BB6A'}}>✅</span>}
+                </div>
+              </div>
+            );
+          })}
+          {/* 捐献金币 */}
+          {!completed.includes('donate_gold') && (
+            <button onClick={() => {
+              if (gold < 5000) { alert('金币不足5000'); return; }
+              setGold(g => g - 5000);
+              updateGangTaskProgress('donate_gold', 5000);
+              if (gang.isOwner && gang.customGang) {
+                setGang(prev => ({ ...prev, customGang: { ...prev.customGang, funds: (prev.customGang.funds || 0) + 5000 } }));
+              }
+            }} style={{...btnSecondary, width:'100%', marginTop:'6px'}}>
+              💰 捐献 5,000 金币
+            </button>
+          )}
+          {/* 上交精灵 */}
+          {!completed.includes('donate_pet') && party.length > 1 && (
+            <button onClick={() => {
+              const eligible = party.filter(p => p.level >= 20);
+              if (eligible.length === 0) { alert('没有Lv.20以上的精灵可上交'); return; }
+              const petToGive = eligible[eligible.length - 1];
+              if (!window.confirm(`确定上交 ${petToGive.name} (Lv.${petToGive.level}) 吗？此操作不可恢复！`)) return;
+              setParty(prev => prev.filter(p => p.uid !== petToGive.uid));
+              updateGangTaskProgress('donate_pet', 1);
+            }} style={{...btnSecondary, width:'100%', marginTop:'6px'}}>
+              🐾 上交队尾精灵
+            </button>
+          )}
+        </div>
+      );
+    };
+
+    const renderGangWar = () => {
+      const rankObj = getCurrentGangRank();
+      const canWar = rankObj && GANG_RANKS.indexOf(rankObj) >= 1;
+      const warCount = dc.warCount || 0;
+      const targets = GANG_PRESETS.filter(g => g.id !== gang.gangId);
+      return (
+        <div>
+          <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>⚔️ 帮战</div>
+          <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>
+            今日帮战: {warCount}/{GANG_WAR_CONFIG.maxDaily} · {!canWar ? '需达到精英以上才能参与帮战' : '选择对手发起帮战'}
+          </div>
+          {canWar && targets.map(target => {
+            const reward = getGangWarReward(target);
+            const enemyLv = getGangWarLevel(target);
+            return (
+              <div key={target.id} style={{...cardStyle, display:'flex', alignItems:'center', gap:'10px'}}>
+                <span style={{fontSize:'28px'}}>{target.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:'bold', fontSize:'13px'}}>{target.name} <span style={{color:'#999', fontSize:'11px'}}>Lv.{target.level}</span></div>
+                  <div style={{fontSize:'11px', color:'#aaa'}}>对手等级 ~Lv.{enemyLv} · 奖励 {reward.funds}资金 + {reward.contribution}帮贡</div>
+                </div>
+                <button disabled={warCount >= GANG_WAR_CONFIG.maxDaily} onClick={() => {
+                  if (warCount >= GANG_WAR_CONFIG.maxDaily) { alert('今日帮战次数已用完'); return; }
+                  setGang(prev => ({ ...prev, dailyCounts: { ...prev.dailyCounts, warCount: (prev.dailyCounts.warCount || 0) + 1 } }));
+                  startBattle({ gangWarTarget: target }, 'gang_war');
+                }} style={{...btnPrimary, fontSize:'11px', padding:'8px 14px', opacity: warCount >= GANG_WAR_CONFIG.maxDaily ? 0.5 : 1}}>
+                  挑战
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    const renderGangSkills = () => {
+      const isOwner = gang.isOwner;
+      const funds = gang.customGang?.funds || 0;
+      const rankIdx = GANG_RANKS.findIndex(r => r.id === (gang.rank || 'member'));
+      const canLearnAdvanced = rankIdx >= 3;
+      return (
+        <div>
+          <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>📖 帮派技能</div>
+          {!isOwner && <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>帮派技能由帮主升级，你可查看当前加成</div>}
+          {isOwner && <div style={{fontSize:'12px', color:'#FFD700', marginBottom:'12px'}}>帮派资金: {funds.toLocaleString()} · 用于升级技能</div>}
+          {GANG_SKILLS.map((skill, idx) => {
+            const currentLv = skills[skill.id] || 0;
+            const val = currentLv * skill.valPerLv;
+            const nextCost = (currentLv + 1) * skill.costPerLv;
+            const isAdvanced = idx >= 4;
+            return (
+              <div key={skill.id} style={{...cardStyle, opacity: isAdvanced && !canLearnAdvanced && !isOwner ? 0.5 : 1}}>
+                <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                  <span style={{fontSize:'20px'}}>{skill.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:'bold', fontSize:'13px'}}>{skill.name} <span style={{color:'#4FC3F7', fontSize:'11px'}}>Lv.{currentLv}/{skill.maxLv}</span></div>
+                    <div style={{fontSize:'11px', color:'#aaa'}}>{skill.desc.replace('{val}', val)}</div>
+                  </div>
+                  {isOwner && currentLv < skill.maxLv && (
+                    <button onClick={() => {
+                      if (funds < nextCost) { alert(`资金不足，升级需要 ${nextCost.toLocaleString()}`); return; }
+                      setGang(prev => ({
+                        ...prev,
+                        customGang: {
+                          ...prev.customGang,
+                          funds: prev.customGang.funds - nextCost,
+                          skills: { ...(prev.customGang.skills || {}), [skill.id]: currentLv + 1 },
+                        },
+                      }));
+                    }} style={{...btnSecondary, fontSize:'11px', padding:'5px 10px'}}>
+                      升级 ({nextCost.toLocaleString()})
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          <div style={{...cardStyle, background:'rgba(76,175,80,0.1)', border:'1px solid rgba(76,175,80,0.2)'}}>
+            <div style={{fontSize:'12px', fontWeight:'bold', color:'#66BB6A', marginBottom:'4px'}}>当前帮派加成总览</div>
+            <div style={{fontSize:'11px', color:'#aaa', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
+              <span>物攻 +{bonus.atk}%</span><span>物防 +{bonus.def}%</span><span>HP +{bonus.hp}%</span>
+              <span>速度 +{bonus.spd}%</span><span>金币 +{bonus.gold}%</span><span>经验 +{bonus.exp}%</span>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const renderGangRanking = () => {
+      const allGangs = [
+        ...GANG_PRESETS.map(g => ({
+          ...g,
+          score: g.level * 100 + (g.members?.length || 0) * 10 + (g.wins || 0) * 5,
+        })),
+        ...(gang.isOwner && gang.customGang ? [{
+          ...gang.customGang,
+          score: (gang.customGang.level || 1) * 100 + (gang.customGang.members?.length || 0) * 10 + (gang.customGang.wins || 0) * 5,
+        }] : []),
+      ].sort((a, b) => b.score - a.score);
+
+      const medals = ['🥇','🥈','🥉'];
+      return (
+        <div>
+          <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px'}}>🏆 帮派排行榜</div>
+          {allGangs.map((g, i) => (
+            <div key={g.id} style={{...cardStyle, display:'flex', alignItems:'center', gap:'10px', background: g.id === gang.gangId || (gang.isOwner && g.id === gang.customGang?.id) ? 'rgba(255,215,0,0.1)' : cardStyle.background}}>
+              <span style={{fontSize:'20px', width:'28px', textAlign:'center'}}>{medals[i] || `${i+1}`}</span>
+              <span style={{fontSize:'24px'}}>{g.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:'bold', fontSize:'13px'}}>{g.name}</div>
+                <div style={{fontSize:'11px', color:'#aaa'}}>Lv.{g.level} · 成员{g.members?.length || 0}人 · {g.wins || 0}胜</div>
+              </div>
+              <div style={{fontSize:'14px', fontWeight:'bold', color:'#FFD700'}}>{g.score}</div>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    const renderGangRecruit = () => {
+      if (!gang.isOwner) return (
+        <div style={{textAlign:'center', padding:'40px 0', color:'#999'}}>
+          <div style={{fontSize:'40px', marginBottom:'12px'}}>🔒</div>
+          <div>只有帮主可以招募成员</div>
+        </div>
+      );
+      const cafeR = dc.cafeRecruits || [];
+      const members = gang.customGang?.members || [];
+      const maxM = GANG_MAX_MEMBERS(gang.customGang?.level || 1);
+      return (
+        <div>
+          <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>👥 招募成员</div>
+          <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>当前 {members.length}/{maxM} 人 · 咖啡厅每天可邀请3人</div>
+
+          {cafeR.length > 0 && (
+            <>
+              <div style={{fontSize:'12px', fontWeight:'bold', color:'#FFD700', marginBottom:'8px'}}>☕ 咖啡厅候选人</div>
+              {cafeR.map((npc, i) => (
+                <div key={i} style={{...cardStyle, display:'flex', alignItems:'center', gap:'10px'}}>
+                  <span style={{fontSize:'20px'}}>👤</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:'bold', fontSize:'13px'}}>{npc.name}</div>
+                    <div style={{fontSize:'11px', color:'#aaa'}}>Lv.{npc.level}</div>
+                  </div>
+                  <button onClick={() => {
+                    if (members.length >= maxM) { alert('帮派成员已满'); return; }
+                    setGang(prev => ({
+                      ...prev,
+                      customGang: { ...prev.customGang, members: [...(prev.customGang.members || []), npc] },
+                      dailyCounts: { ...prev.dailyCounts, cafeRecruits: prev.dailyCounts.cafeRecruits.filter((_, idx) => idx !== i) },
+                    }));
+                    alert(`${npc.name} 加入了帮派！`);
+                  }} style={{...btnPrimary, fontSize:'11px', padding:'6px 14px'}}>
+                    邀请
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* 帮派升级 */}
+          {gang.customGang && (
+            <div style={{...cardStyle, marginTop:'14px', background:'rgba(255,215,0,0.05)'}}>
+              <div style={{fontSize:'13px', fontWeight:'bold', marginBottom:'6px'}}>⬆️ 帮派升级</div>
+              <div style={{fontSize:'12px', color:'#aaa', marginBottom:'8px'}}>
+                当前 Lv.{gang.customGang.level} · 升级费用: {GANG_LEVEL_UP_COST(gang.customGang.level).toLocaleString()} 帮派资金
+              </div>
+              <button onClick={() => {
+                const cost = GANG_LEVEL_UP_COST(gang.customGang.level);
+                if ((gang.customGang.funds || 0) < cost) { alert(`帮派资金不足，需要 ${cost.toLocaleString()}`); return; }
+                setGang(prev => ({
+                  ...prev,
+                  customGang: {
+                    ...prev.customGang,
+                    level: prev.customGang.level + 1,
+                    funds: prev.customGang.funds - cost,
+                    power: (prev.customGang.power || 100) + 200,
+                  },
+                }));
+                alert('帮派升级成功！');
+              }} style={btnPrimary}>
+                升级帮派
+              </button>
+            </div>
+          )}
+
+          <div style={{fontSize:'12px', fontWeight:'bold', color:'#4FC3F7', marginTop:'14px', marginBottom:'8px'}}>📜 当前成员</div>
+          {members.map((m, i) => (
+            <div key={i} style={{...cardStyle, display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px'}}>
+              <span style={{fontSize:'14px'}}>👤</span>
+              <span style={{fontSize:'13px', fontWeight:'bold'}}>{m.name}</span>
+              <span style={{fontSize:'11px', color:'#aaa', marginLeft:'auto'}}>Lv.{m.level} · 贡献 {m.contribution || 0}</span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
+        <div className="nav-header glass-panel" style={headerStyle}>
+          <button className="btn-back" onClick={() => setView('grid_map')} style={btnSecondary}>⬅ 返回</button>
+          <div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>{gangInfo?.icon} {gangInfo?.name || '帮派'}</div>
+          <div style={{fontSize:'12px', color:'#FFD700'}}>{rank.icon} {rank.name}</div>
+        </div>
+
+        <div style={{display:'flex', gap:'0', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0}}>
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => setGangTab(tab.id)} style={{
+              flex:1, padding:'10px 0', background: gangTab === tab.id ? 'rgba(255,215,0,0.1)' : 'transparent',
+              border:'none', borderBottom: gangTab === tab.id ? '2px solid #FFD700' : '2px solid transparent',
+              color: gangTab === tab.id ? '#FFD700' : '#999', cursor:'pointer', fontSize:'12px', fontWeight:'bold',
+            }}>
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{flex:1, overflowY:'auto', padding:'16px'}}>
+          {gangTab === 'overview' && renderGangOverview()}
+          {gangTab === 'tasks' && renderGangTasks()}
+          {gangTab === 'war' && renderGangWar()}
+          {gangTab === 'skills' && renderGangSkills()}
+          {gangTab === 'ranking' && renderGangRanking()}
+          {gangTab === 'recruit' && renderGangRecruit()}
+        </div>
+      </div>
+    );
+  };
+
     // ==========================================
   // [修改] 初始精灵生成 (预先生成完整个体，保证所见即所得)
   // ==========================================
@@ -4644,6 +5173,7 @@ const useGrowthItem = (petIndex, itemId) => {
       const enterMap = (mapId) => {
     
     setCurrentMapId(mapId);
+    updateGangTaskProgress('explore_map', 1);
 
     // 2. 剧情触发
     const currentChapter = STORY_SCRIPT[storyProgress];
@@ -5340,7 +5870,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = type === 'boss' || type === 'challenge' || type === 'story_mid' || type === 'story_task' || type === 'eclipse_leader';
     const isGym = type === 'gym';
     const isStory = type === 'story_mid' || type === 'story_task';
-    const isTrainer = type === 'trainer' || isGym || isStory || type === 'league' || type === 'pvp' || type === 'sect_challenge' || type.startsWith('eclipse_');
+    const isTrainer = type === 'trainer' || isGym || isStory || type === 'league' || type === 'pvp' || type === 'sect_challenge' || type === 'gang_war' || type.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -5614,7 +6144,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
         dropGold = context.drop || 10000;
     }
     // -------------------------------------------------
-    // 15. 普通野怪 (兜底逻辑)
+    // 15b. 帮战
+    // -------------------------------------------------
+    else if (type === 'gang_war') {
+        const target = context.gangWarTarget;
+        const enemyLv = getGangWarLevel(target);
+        trainerName = `[${target.name}] 精锐`;
+        dropGold = 3000 + (target.level || 1) * 500;
+        const pool = target.teamPool && target.teamPool.length > 0 ? target.teamPool : HIGH_TIER_POOL;
+        for (let i = 0; i < 6; i++) {
+            const eid = pool[i % pool.length];
+            const lv = Math.max(50, enemyLv - Math.floor(Math.random() * 6));
+            enemyParty.push(createPet(eid, lv, true, i === 5));
+        }
+        extraBattleData.gangWarTarget = target;
+    }
+    // -------------------------------------------------
+    // 16. 普通野怪 (兜底逻辑)
     // -------------------------------------------------
     else {
          if (!context || !context.lvl) {
@@ -5653,6 +6199,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     if (isTrainer || type === 'challenge') {
       enemyParty.forEach(p => p.name = `${p.name}`);
+    }
+
+    // 敌方训练家帮派分配 (剧情NPC/道馆馆主不分配)
+    let trainerGangInfo = null;
+    if (type === 'trainer') {
+      const roll = Math.random();
+      if (roll < 0.4) {
+        trainerGangInfo = _.sample(GANG_PRESETS);
+      } else if (roll < 0.5 && gang.gangId) {
+        trainerGangInfo = getGangInfo();
+      }
+      if (trainerGangInfo) {
+        extraBattleData.trainerGang = { id: trainerGangInfo.id, name: trainerGangInfo.name, icon: trainerGangInfo.icon };
+        extraBattleData.canInviteToGang = !gang.isOwner ? false : true;
+      } else {
+        extraBattleData.canInviteToGang = gang.isOwner;
+      }
     }
 
     const activeIdx = party.findIndex(p => p.currentHp > 0);
@@ -8014,7 +8577,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (pet.currentHp <= 0 && !isActive) return pet;
       const shareRatio = isActive ? 1.0 : 0.5;
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
-      const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost));
+      const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
+      const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost) * (1 + gangExpBonus / 100));
       
       pet.exp += expGain;
       if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
@@ -8294,7 +8858,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       totalBattleExp += Math.floor(e.level * 50 * (isTrainer ? 1.5 : 1));
     });
 
-    const goldGain = Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1));
+    const gangGoldBonus = getGangSkillBonus(getGangSkills(gang)).gold;
+    const goldGain = Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * (1 + gangGoldBonus / 100));
     setGold(g => g + goldGain);
 
     // 家具掉落 (战斗获得, 20%基础概率, Boss/Gym 50%)
@@ -8666,6 +9231,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
+    // 9. 帮战胜利
+    if (battle.type === 'gang_war') {
+        const target = battle.gangWarTarget;
+        const reward = getGangWarReward(target);
+        setGang(prev => {
+            const next = { ...prev, contribution: prev.contribution + reward.contribution };
+            if (prev.isOwner && prev.customGang) {
+                next.customGang = { ...prev.customGang, funds: (prev.customGang.funds || 0) + reward.funds, wins: (prev.customGang.wins || 0) + 1 };
+            }
+            return next;
+        });
+        const equipDrop = Math.random() < 0.3 ? (() => { const eq = _.sample(RANDOM_EQUIP_DB); return createUniqueEquip(eq.id); })() : null;
+        if (equipDrop) setAccessories(prev => [...prev, equipDrop]);
+        alert(`⚔️ 帮战胜利！\n\n获得：\n💰 ${reward.funds} 帮派资金\n⭐ ${reward.contribution} 帮贡${equipDrop ? `\n🎁 ${equipDrop.displayName}` : ''}`);
+        setParty(updatedParty);
+        setBattle(null);
+        setView('gang');
+        return;
+    }
+
     // 9. 道馆逻辑
     const storyChapter = STORY_SCRIPT[storyProgress];
     if (isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
@@ -8783,6 +9368,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (marriage.pendingPropose) {
       updateQuestProgress(marriage.pendingPropose, 'win_battles', 1);
       updateQuestProgress(marriage.pendingPropose, 'win_streak', 1);
+    }
+
+    // 帮派任务 - 战斗胜利追踪
+    updateGangTaskProgress('battle_win', 1);
+
+    // 帮派招募 - 无帮派训练家可邀请入帮
+    if (battle.canInviteToGang && !battle.trainerGang && isTrainer && battle.type !== 'gang_war'
+        && !isStory && !isGym && gang.isOwner && gang.customGang) {
+      const maxM = GANG_MAX_MEMBERS(gang.customGang.level || 1);
+      if ((gang.customGang.members || []).length < maxM) {
+        const tName = battle.trainerName || '训练家';
+        if (window.confirm(`${tName} 看起来很厉害！\n是否邀请TA加入你的帮派？`)) {
+          setGang(prev => ({
+            ...prev,
+            customGang: {
+              ...prev.customGang,
+              members: [...(prev.customGang.members || []), { name: tName, level: Math.max(...enemyParty.map(e => e?.level || 1)), contribution: 0 }],
+            },
+          }));
+        }
+      }
     }
 
     // 成就追踪 - 战斗胜利
@@ -12841,7 +13447,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -13090,6 +13696,7 @@ const renderMenu = () => {
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
+              { id: 'gang', icon: '🏴', label: '帮派', action: () => setView('gang') },
               { id: 'housing', icon: '🏡', label: '家园', action: () => setView('housing') },
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
@@ -14609,6 +15216,11 @@ const renderMenu = () => {
                               <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
                             ) : null}
                             {renderSectBadge(e, 'enemy')}
+                            {battle.trainerGang && (
+                              <span style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(255,143,0,0.8), rgba(255,111,0,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)'}}>
+                                {battle.trainerGang.icon}{battle.trainerGang.name}
+                              </span>
+                            )}
                             {renderStatusBadges(e)}
                             {e.devilFruit && (() => { const df = getFruitById(e.devilFruit); return df ? (
                               <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
@@ -16197,6 +16809,7 @@ const renderMenu = () => {
       {view === 'name_input' && renderNameInput()}
       {view === 'fishing_game' && renderFishingGame()}
     {view === 'beauty_contest' && renderBeautyContest()}
+      {view === 'gang' && renderGang()}
       {view === 'housing' && renderHousing()}
       {view === 'achievements' && renderAchievements()}
       {view === 'guide' && renderGuide()}
