@@ -544,12 +544,16 @@ const [pendingTask, setPendingTask] = useState(null);
     if (visual.type === 'image' || visual.type === 'pixel') {
       const fallbackUrls = getSpriteFallbackUrls(pet);
       const tc = TYPES[pet.type]?.color || '#999';
+      const isDigimon = visual.url && visual.url.includes('digi-api.com');
       return (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%',
+          ...(isDigimon ? { borderRadius: '50%', overflow: 'hidden', background: `linear-gradient(135deg, ${tc}30, ${tc}15)` } : {})
+        }}>
           <img 
             src={visual.url} 
             alt={pet.name} 
             className={visual.type === 'pixel' ? 'pet-avatar-pixel' : 'pet-avatar-img'}
+            style={isDigimon ? {mixBlendMode: 'multiply', borderRadius: '50%'} : undefined}
             onError={e => {
               const img = e.target;
               const tried = parseInt(img.dataset.retryIdx || '0', 10);
@@ -2283,8 +2287,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const checkDexTitles = (currentCount) => {
       if (currentCount >= 50) unlockTitle('新手收藏家');
       if (currentCount >= 100) unlockTitle('图鉴达人');
-      if (currentCount >= 230) unlockTitle('博学大师');
-      if (currentCount >= 380) unlockTitle('全图鉴霸主');
+      if (currentCount >= 250) unlockTitle('博学大师');
+      if (currentCount >= 450) unlockTitle('全图鉴霸主');
+      if (currentCount >= 666) unlockTitle('传说收藏家');
   };
 
   const handleStartGame = () => {
@@ -11562,7 +11567,7 @@ const renderMenu = () => {
           
           <div style={{position:'relative', textAlign:'center'}}>
             <div style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'3px 14px', borderRadius:'20px', background:'rgba(255,165,0,0.15)', border:'1px solid rgba(255,165,0,0.25)', marginBottom:'14px'}}>
-              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.0</span>
+              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.1</span>
           </div>
             
           <div style={{
@@ -11689,7 +11694,7 @@ const renderMenu = () => {
           background:'rgba(0,0,0,0.15)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.0 · {POKEDEX.length} Creatures · Gang Wars</span>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.1 · {POKEDEX.length} Creatures · Gang Wars</span>
           <span style={{fontSize:'10px', color:'rgba(255,255,255,0.15)'}}>Legends RPG</span>
         </div>
       </div>
