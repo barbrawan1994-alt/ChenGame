@@ -11296,33 +11296,36 @@ const renderMenu = () => {
   };
 
   const titleSprites = titleSpriteUrls;
+  const gangName = gang?.gangId ? (gang.isOwner ? gang.customGang?.name : GANG_PRESETS.find(g=>g.id===gang.gangId)?.name) : null;
+  const gangIcon = gang?.gangId ? (gang.isOwner ? gang.customGang?.icon : GANG_PRESETS.find(g=>g.id===gang.gangId)?.icon) : null;
 
   return (
     <div className="screen" style={{
       display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background:'linear-gradient(165deg, #0f0c29 0%, #1a1a4e 30%, #24243e 60%, #0f0c29 100%)',
+      background:'linear-gradient(160deg, #0a0a1a 0%, #12122d 25%, #1a0a2e 50%, #0d1b3e 75%, #0a0a1a 100%)',
       position:'relative', overflow:'hidden'
     }}>
-      {/* 动态星空背景 */}
-      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.2), transparent), radial-gradient(1.5px 1.5px at 60% 20%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 80% 50%, rgba(255,255,255,0.15), transparent), radial-gradient(2px 2px at 10% 80%, rgba(255,255,255,0.2), transparent), radial-gradient(1px 1px at 70% 90%, rgba(255,255,255,0.3), transparent), radial-gradient(1.5px 1.5px at 90% 10%, rgba(255,255,255,0.2), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 30s ease infinite', opacity:0.8}} />
+      {/* 动态背景粒子 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 15% 25%, rgba(255,165,0,0.4), transparent), radial-gradient(1.5px 1.5px at 35% 65%, rgba(239,68,68,0.3), transparent), radial-gradient(2px 2px at 55% 15%, rgba(99,102,241,0.35), transparent), radial-gradient(1px 1px at 75% 45%, rgba(255,215,0,0.25), transparent), radial-gradient(1.5px 1.5px at 85% 75%, rgba(236,72,153,0.3), transparent), radial-gradient(1px 1px at 25% 85%, rgba(34,211,238,0.25), transparent), radial-gradient(2px 2px at 65% 55%, rgba(255,140,0,0.2), transparent), radial-gradient(1px 1px at 45% 35%, rgba(168,85,247,0.3), transparent)', backgroundSize:'250% 250%', animation:'battle-bg-shift 25s ease infinite', opacity:0.9}} />
 
-      {/* 光晕装饰 */}
-      <div style={{position:'absolute', top:'-20%', left:'-10%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', filter:'blur(60px)'}} />
-      <div style={{position:'absolute', bottom:'-15%', right:'-10%', width:'50%', height:'50%', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 70%)', filter:'blur(60px)'}} />
-      <div style={{position:'absolute', top:'30%', right:'20%', width:'30%', height:'30%', borderRadius:'50%', background:'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter:'blur(50px)'}} />
+      {/* 战火光晕效果 */}
+      <div style={{position:'absolute', top:'-25%', left:'-15%', width:'65%', height:'65%', borderRadius:'50%', background:'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 70%)', filter:'blur(80px)', animation:'float 8s ease-in-out infinite'}} />
+      <div style={{position:'absolute', bottom:'-20%', right:'-15%', width:'55%', height:'55%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,165,0,0.1) 0%, transparent 70%)', filter:'blur(70px)', animation:'float 10s ease-in-out infinite reverse'}} />
+      <div style={{position:'absolute', top:'20%', right:'10%', width:'40%', height:'40%', borderRadius:'50%', background:'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', filter:'blur(60px)', animation:'float 12s ease-in-out infinite'}} />
+      <div style={{position:'absolute', bottom:'30%', left:'5%', width:'35%', height:'35%', borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%)', filter:'blur(50px)', animation:'float 9s ease-in-out infinite reverse'}} />
 
       {/* 漂浮精灵剪影 */}
       {titleSprites.map((url, i) => (
         <div key={i} style={{
           position:'absolute',
-          left: `${5 + (i % 6) * 16}%`,
-          top: i < 6 ? `${8 + i * 5}%` : `${55 + (i-6) * 6}%`,
-          width: `${40 + (i % 3) * 15}px`,
-          height: `${40 + (i % 3) * 15}px`,
-          opacity: 0.06 + (i % 3) * 0.02,
-          animation: `float ${5 + i * 0.7}s ease-in-out infinite`,
-          animationDelay: `${i * 0.5}s`,
-          filter:'grayscale(1) brightness(2)',
+          left: `${3 + (i % 7) * 14}%`,
+          top: i < 6 ? `${5 + i * 6}%` : `${52 + (i-6) * 7}%`,
+          width: `${35 + (i % 4) * 12}px`,
+          height: `${35 + (i % 4) * 12}px`,
+          opacity: 0.04 + (i % 3) * 0.015,
+          animation: `float ${6 + i * 0.8}s ease-in-out infinite`,
+          animationDelay: `${i * 0.6}s`,
+          filter:'grayscale(1) brightness(2.5)',
           pointerEvents:'none'
         }}>
           <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => e.target.style.display='none'} />
@@ -11330,116 +11333,155 @@ const renderMenu = () => {
       ))}
 
       {/* 主卡片 */}
-          <div style={{
-        position:'relative', zIndex:10, width:'90%', maxWidth:'460px',
-        background:'rgba(255,255,255,0.04)', backdropFilter:'blur(24px)',
-        border:'1px solid rgba(255,255,255,0.08)',
-        borderRadius:'28px', padding:'48px 40px 40px',
-        boxShadow:'0 25px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+      <div style={{
+        position:'relative', zIndex:10, width:'92%', maxWidth:'480px',
+        background:'linear-gradient(145deg, rgba(20,20,40,0.85), rgba(15,15,35,0.92))',
+        backdropFilter:'blur(30px)',
+        border:'1px solid rgba(255,255,255,0.06)',
+        borderRadius:'24px', padding:'0', overflow:'hidden',
+        boxShadow:'0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08)',
         animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
 
-        {/* Logo */}
-        <div style={{textAlign:'center', marginBottom:'40px'}}>
-          <div style={{
-            fontSize:'13px', fontWeight:'600', letterSpacing:'6px', color:'rgba(255,255,255,0.35)',
-            textTransform:'uppercase', marginBottom:'12px'
-          }}>Legends RPG</div>
-          <div style={{
-            fontSize:'48px', fontWeight:'900', letterSpacing:'4px',
-            background:'linear-gradient(135deg, #f8fafc 0%, #94a3b8 50%, #f8fafc 100%)',
-            backgroundSize:'200% 200%', animation:'title-shimmer 4s ease infinite',
-            WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-            fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
-            lineHeight:1.1
-          }}>POKEMON</div>
-          <div style={{
-            width:'80px', height:'2px', margin:'16px auto 0',
-            background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
-          }} />
+        {/* 顶部横幅 - 版本主题 */}
+        <div style={{
+          position:'relative', padding:'32px 32px 28px', overflow:'hidden',
+          background:'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(255,140,0,0.12) 30%, rgba(168,85,247,0.1) 70%, rgba(59,130,246,0.12) 100%)',
+          borderBottom:'1px solid rgba(255,255,255,0.06)'
+        }}>
+          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%)', animation:'btn-shine 4s ease infinite'}} />
+          
+          <div style={{position:'relative', textAlign:'center'}}>
+            <div style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'3px 14px', borderRadius:'20px', background:'rgba(255,165,0,0.15)', border:'1px solid rgba(255,165,0,0.25)', marginBottom:'14px'}}>
+              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.0</span>
+            </div>
+            
+            <div style={{
+              fontSize:'40px', fontWeight:'900', letterSpacing:'3px',
+              background:'linear-gradient(135deg, #ffd700 0%, #ff8c00 25%, #ff4500 50%, #ff6347 75%, #ffd700 100%)',
+              backgroundSize:'300% 300%', animation:'title-shimmer 3s ease infinite',
+              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
+              lineHeight:1.1, marginBottom:'6px',
+              filter:'drop-shadow(0 2px 8px rgba(255,140,0,0.3))'
+            }}>帮派大战</div>
+            
+            <div style={{
+              fontSize:'22px', fontWeight:'800', letterSpacing:'8px',
+              background:'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #e2e8f0 100%)',
+              backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
+              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              marginBottom:'10px'
+            }}>POKEMON</div>
+
+            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', letterSpacing:'4px', fontWeight:'500'}}>LEGENDS RPG · GANG WARS</div>
+          </div>
         </div>
 
-        {/* 主按钮 - 开始游戏 */}
-        <button onClick={handleStartGame} style={{
-          width:'100%', padding:'18px 24px', borderRadius:'16px', border:'none',
-          background:'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
-          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
-          transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden'
-        }}
-        onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 20px 40px rgba(99,102,241,0.4)'; }}
-        onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(99,102,241,0.25)'; }}
-        onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
-        onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
-        >
-          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
-            <path d="M8 5v14l11-7z" fill="white"/>
-          </svg>
-          <div style={{textAlign:'left'}}>
-            <div style={{fontSize:'16px', fontWeight:'700', color:'#fff', letterSpacing:'0.5px'}}>
-                    {hasSave ? '继续冒险' : '开始新游戏'}
-                </div>
-            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'2px'}}>
-              {hasSave ? '读取上次的冒险进度' : '踏上全新的传说旅途'}
-                </div>
-            </div>
-        </button>
+        {/* 内容区域 */}
+        <div style={{padding:'24px 28px 28px'}}>
 
-        {/* 功能按钮组 - 2x2 网格 */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'20px'}}>
+          {/* 帮派信息条（有帮派时显示） */}
+          {gangName && (
+            <div style={{
+              display:'flex', alignItems:'center', gap:'10px', padding:'10px 16px', borderRadius:'12px',
+              background:'linear-gradient(135deg, rgba(255,165,0,0.08), rgba(255,140,0,0.04))',
+              border:'1px solid rgba(255,165,0,0.15)', marginBottom:'16px'
+            }}>
+              <span style={{fontSize:'20px'}}>{gangIcon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:'12px', fontWeight:'700', color:'#ffa500'}}>{gangName}</div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
+              </div>
+              <div style={{fontSize:'18px', opacity:0.6}}>🏴</div>
+            </div>
+          )}
+
+          {/* 主按钮 - 开始游戏 */}
+          <button onClick={handleStartGame} style={{
+            width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
+            background:'linear-gradient(135deg, #dc2626 0%, #ea580c 40%, #f59e0b 100%)',
+            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
+            transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden',
+            boxShadow:'0 8px 28px rgba(220,38,38,0.3)'
+          }}
+          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(220,38,38,0.45)'; }}
+          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(220,38,38,0.3)'; }}
+          onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
+          onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
+          >
+            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
+            <div style={{width:'40px', height:'40px', borderRadius:'12px', background:'rgba(0,0,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="white"/></svg>
+            </div>
+            <div style={{textAlign:'left', flex:1}}>
+              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
+                {hasSave ? '继续冒险' : '开始新游戏'}
+              </div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.75)', fontWeight:'400', marginTop:'1px'}}>
+                {hasSave ? '读取上次的冒险进度' : '踏上全新的传说旅途'}
+              </div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+
+          {/* 存档信息条 */}
+          {hasSave && (
+            <div style={{
+              display:'flex', justifyContent:'center', gap:'20px', marginTop:'12px', padding:'8px 0',
+            }}>
+              {[
+                { icon:'⚡', val:`Lv.${party[0]?.level || '?'}`, label:'等级' },
+                { icon:'📖', val:caughtDex.length, label:'图鉴' },
+                { icon:'💰', val:`${(gold||0) >= 10000 ? Math.floor((gold||0)/10000)+'万' : (gold||0).toLocaleString()}`, label:'金币' },
+                { icon:'🎖️', val:badges.length, label:'徽章' },
+              ].map((s,i) => (
+                <div key={i} style={{textAlign:'center'}}>
+                  <div style={{fontSize:'13px', fontWeight:'800', color:'rgba(255,255,255,0.8)'}}>{s.icon} {s.val}</div>
+                  <div style={{fontSize:'9px', color:'rgba(255,255,255,0.25)', marginTop:'1px'}}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 分隔线 */}
+          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)', margin:'14px 0'}} />
+
+          {/* 功能按钮 - 3列紧凑网格 */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
             {[
-              { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, color:'#f59e0b', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'skill_dex', label:'技能大全', sub:`${allSkills.length}种`, color:'#3b82f6', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length}种`, color:'#dc2626', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="white" strokeWidth="1.5"/><path d="M12 3C12 3 16 8 16 12s-4 9-4 9" stroke="white" strokeWidth="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5"/></svg> },
-              { key:'achievements', label:'成就大厅', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, color:'#a855f7', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              { key:'guide', label:'游戏说明', sub:'新手必看', color:'#26a69a', wide:true, icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="0.5" fill="white" stroke="white" strokeWidth="1"/></svg> },
+              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#f59e0b' },
+              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#3b82f6' },
+              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#dc2626' },
+              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#a855f7' },
+              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#26a69a' },
+              { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#6b7280', action: resetGame },
             ].map(btn => (
-              <button key={btn.key} onClick={() => setView(btn.key)} style={{
-                padding:'12px 14px', borderRadius:'14px', border:'1px solid rgba(255,255,255,0.08)',
-                background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer',
-                display:'flex', alignItems:'center', gap:'12px',
-                transition:'all 0.25s', backdropFilter:'blur(8px)',
-                ...(btn.wide ? { gridColumn: '1 / -1', justifyContent:'center', textAlign:'center' } : { textAlign:'left' })
+              <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
+                padding:'14px 8px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.05)',
+                background:'rgba(255,255,255,0.03)', color:'#fff', cursor:'pointer',
+                display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
+                transition:'all 0.25s', textAlign:'center'
               }}
-              onMouseOver={e => { e.currentTarget.style.background=`${btn.color}15`; e.currentTarget.style.borderColor=`${btn.color}40`; e.currentTarget.style.transform='translateY(-1px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.transform='none'; }}
+              onMouseOver={e => { e.currentTarget.style.background=`${btn.color}12`; e.currentTarget.style.borderColor=`${btn.color}30`; e.currentTarget.style.transform='translateY(-2px)'; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.05)'; e.currentTarget.style.transform='none'; }}
               >
-                <div style={{width:'36px', height:'36px', borderRadius:'10px', background:`linear-gradient(135deg, ${btn.color}, ${btn.color}bb)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 12px ${btn.color}30`}}>
-                  {btn.icon}
-                </div>
-                <div>
-                  <div style={{fontSize:'13px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
-                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>{btn.sub}</div>
-                </div>
+                <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{btn.emoji}</span>
+                <div style={{fontSize:'12px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
+                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>{btn.sub}</div>
               </button>
             ))}
+          </div>
         </div>
 
-        {/* 存档信息 */}
-        {hasSave && (
-          <div style={{
-            marginTop:'16px', padding:'12px 16px', borderRadius:'12px',
-            background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)',
-            display:'flex', justifyContent:'space-between', alignItems:'center'
-          }}>
-            <div style={{display:'flex', gap:'16px', fontSize:'11px', color:'rgba(255,255,255,0.4)'}}>
-              <span>Lv.{party[0]?.level || '?'}</span>
-              <span>{caughtDex.length} 图鉴</span>
-              <span>{gold?.toLocaleString() || 0} G</span>
-            </div>
-            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.25)'}}>
-              {party.length} 只同行
-            </div>
-          </div>
-        )}
-
-        {/* 底部 */}
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px', paddingTop:'14px', borderTop:'1px solid rgba(255,255,255,0.05)'}}>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v3.0 · {POKEDEX.length} Creatures</span>
-          <span onClick={resetGame} style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', cursor:'pointer', transition:'color 0.2s'}}
-            onMouseOver={e => e.currentTarget.style.color='rgba(239,68,68,0.6)'}
-            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,0.2)'}
-          >重置存档</span>
+        {/* 底部版权区 */}
+        <div style={{
+          padding:'12px 28px', borderTop:'1px solid rgba(255,255,255,0.04)',
+          background:'rgba(0,0,0,0.15)',
+          display:'flex', justifyContent:'space-between', alignItems:'center'
+        }}>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.0 · {POKEDEX.length} Creatures · Gang Wars</span>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.15)'}}>Legends RPG</span>
         </div>
       </div>
     </div>
