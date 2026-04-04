@@ -71,6 +71,14 @@ import {
   TREASURE_COLLECTIONS,
 } from './data/housing';
 import {
+  MARRIAGE_CANDIDATES, AFFECTION_STAGES, MARRIAGE_LEVELS,
+  getAffectionStage, getMarriageLevel, getSpouseBonus,
+  DATE_EVENTS, WEDDING_DIALOGUE,
+  PROPOSE_COST, WEDDING_COST, DATE_COST,
+  DAILY_DATE_LIMIT, DAILY_GIFT_LIMIT, DIVORCE_COOLDOWN_DAYS,
+  DEFAULT_MARRIAGE_STATE, getDailyGift,
+} from './data/marriage';
+import {
   DEVIL_FRUITS, FRUIT_RARITY_CONFIG, FRUIT_CATEGORY_NAMES,
   getRandomFruit, getFruitById, getAllFruits, getFruitIcon,
 } from './data/devilfruits';
@@ -247,6 +255,12 @@ export default function RPG(props) {
   const [cafe, setCafe] = useState(savedData.cafe || { ...DEFAULT_CAFE_STATE });
   const [cafeTab, setCafeTab] = useState('overview');
 
+  // 婚姻伴侣系统
+  const [marriage, setMarriage] = useState(savedData.marriage || { ...DEFAULT_MARRIAGE_STATE });
+  const [marriageView, setMarriageView] = useState(null);
+  const [dateEvent, setDateEvent] = useState(null);
+  const [weddingScene, setWeddingScene] = useState(null);
+
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
   const [unlockedAchs, setUnlockedAchs] = useState(savedData.unlockedAchs || []);
@@ -329,14 +343,18 @@ useEffect(() => {
                 const placed = housing.furniture.filter(f => f.placed);
                 const ben = calcResidentBenefits(placed);
                 const residentIds = housing.residents.filter(Boolean);
+                const spouseIntimacyMult = marriage.spouse ? 1 + (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).intimacyBoost || 0) : 1;
+                const spouseHealMult = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).healEfficiency || 0) : 0;
                 if (residentIds.length > 0 && (ben.hpRegen > 0 || ben.expBonus > 0 || ben.intimacyBonus > 0)) {
+                    const adjHpRegen = Math.floor(ben.hpRegen * (1 + spouseHealMult));
+                    const adjIntimacy = Math.floor(ben.intimacyBonus * spouseIntimacyMult);
                     setBox(prevBox => prevBox.map(p => {
                         if (!residentIds.includes(p.uid || p.id)) return p;
                         const maxHp = getStats(p).maxHp;
                         return {
                             ...p,
-                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + ben.hpRegen),
-                            intimacy: Math.min(255, (p.intimacy || 0) + ben.intimacyBonus),
+                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + adjHpRegen),
+                            intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy),
                         };
                     }));
                     setParty(prevParty => prevParty.map(p => {
@@ -344,8 +362,8 @@ useEffect(() => {
                         const maxHp = getStats(p).maxHp;
                         return {
                             ...p,
-                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + ben.hpRegen),
-                            intimacy: Math.min(255, (p.intimacy || 0) + ben.intimacyBonus),
+                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + adjHpRegen),
+                            intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy),
                         };
                     }));
                 }
@@ -1519,8 +1537,10 @@ const CHARM_RANK_COLORS = {
                             {/* 属性简略条 */}
                             <div style={{fontSize: '11px', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom:'10px'}}>
                                 <div style={{display:'flex', justifyContent:'space-between'}}><span>HP</span> <span style={{color:'#fff'}}>{stats.maxHp}</span></div>
-                                <div style={{display:'flex', justifyContent:'space-between'}}><span>攻击</span> <span style={{color:'#fff'}}>{stats.p_atk} / {stats.s_atk}</span></div>
-                                <div style={{display:'flex', justifyContent:'space-between'}}><span>防御</span> <span style={{color:'#fff'}}>{stats.p_def} / {stats.s_def}</span></div>
+                                <div style={{display:'flex', justifyContent:'space-between'}}><span>物攻</span> <span style={{color:'#fff'}}>{stats.p_atk}</span></div>
+                                <div style={{display:'flex', justifyContent:'space-between'}}><span>特攻</span> <span style={{color:'#fff'}}>{stats.s_atk}</span></div>
+                                <div style={{display:'flex', justifyContent:'space-between'}}><span>物防</span> <span style={{color:'#fff'}}>{stats.p_def}</span></div>
+                                <div style={{display:'flex', justifyContent:'space-between'}}><span>特防</span> <span style={{color:'#fff'}}>{stats.s_def}</span></div>
                                 <div style={{display:'flex', justifyContent:'space-between'}}><span>速度</span> <span style={{color:'#fff'}}>{stats.spd}</span></div>
                             </div>
 
@@ -2133,6 +2153,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        mainStoryStep,
        sideStoryStates,
        cafe,
+       marriage,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -2815,6 +2836,187 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 9. [新增] 锁定界面
   // ==========================================
   // ==========================================
+  // 婚姻伴侣系统 - 核心函数
+  // ==========================================
+  const resetMarriageDailyCounts = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (marriage.dailyCounts.resetDate !== today) {
+      setMarriage(prev => ({ ...prev, dailyCounts: { dates: 0, gifts: 0, chats: {}, resetDate: today } }));
+      return { dates: 0, gifts: 0, chats: {}, resetDate: today };
+    }
+    return marriage.dailyCounts;
+  };
+
+  const getAvailableCandidates = () => {
+    return MARRIAGE_CANDIDATES.filter(c => {
+      if (!c.unlockCondition) return true;
+      if (c.unlockCondition.badges && badges.length < c.unlockCondition.badges) return false;
+      if (c.unlockCondition.houseType) {
+        const houseIdx = HOUSE_TYPES.findIndex(h => h.id === c.unlockCondition.houseType);
+        const curIdx = HOUSE_TYPES.findIndex(h => h.id === housing.currentHouse);
+        if (curIdx < houseIdx) return false;
+      }
+      return true;
+    });
+  };
+
+  const handleChat = (candidateId) => {
+    const dc = resetMarriageDailyCounts();
+    if (dc.chats?.[candidateId]) { alert('今天已经和TA聊过了~'); return; }
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+    const aff = marriage.affections[candidateId] || 0;
+    const stage = getAffectionStage(aff);
+    const pool = candidate.dialogues[stage.id] || candidate.dialogues.stranger;
+    const text = pool[Math.floor(Math.random() * pool.length)];
+    setMarriage(prev => ({
+      ...prev,
+      affections: { ...prev.affections, [candidateId]: (prev.affections[candidateId] || 0) + 5 },
+      dailyCounts: { ...prev.dailyCounts, chats: { ...prev.dailyCounts.chats, [candidateId]: true } },
+    }));
+    alert(`${candidate.icon} ${candidate.name}：「${text}」\n\n💗 好感度 +5`);
+  };
+
+  const handleDate = (candidateId) => {
+    const dc = resetMarriageDailyCounts();
+    if (dc.dates >= DAILY_DATE_LIMIT) { alert(`今天已经约会了${DAILY_DATE_LIMIT}次，明天再来吧~`); return; }
+    if (gold < DATE_COST) { alert(`约会需要 ${DATE_COST} 金币~`); return; }
+    if (!cafe.owned) { alert('需要先拥有咖啡厅才能约会~'); return; }
+    setGold(g => g - DATE_COST);
+    setMarriage(prev => ({
+      ...prev,
+      dailyCounts: { ...prev.dailyCounts, dates: prev.dailyCounts.dates + 1 },
+    }));
+    const aff = marriage.affections[candidateId] || 0;
+    const stage = getAffectionStage(aff);
+    const eligible = DATE_EVENTS.filter(e => {
+      const eStageIdx = AFFECTION_STAGES.findIndex(s => s.id === e.stage);
+      const curStageIdx = AFFECTION_STAGES.findIndex(s => s.id === stage.id);
+      return curStageIdx >= eStageIdx;
+    });
+    if (eligible.length > 0 && Math.random() < 0.5) {
+      const evt = eligible[Math.floor(Math.random() * eligible.length)];
+      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+      setDateEvent({ ...evt, candidateId, candidateName: candidate.name, candidateIcon: candidate.icon });
+    } else {
+      const baseGain = 15 + Math.floor(Math.random() * 16);
+      setMarriage(prev => ({
+        ...prev,
+        affections: { ...prev.affections, [candidateId]: (prev.affections[candidateId] || 0) + baseGain },
+      }));
+      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+      alert(`${candidate.icon} 和${candidate.name}度过了美好的约会时光！\n\n💗 好感度 +${baseGain}`);
+    }
+  };
+
+  const handleDateChoice = (optionIdx) => {
+    if (!dateEvent) return;
+    const option = dateEvent.options[optionIdx];
+    const totalGain = 15 + option.affection;
+    setMarriage(prev => ({
+      ...prev,
+      affections: { ...prev.affections, [dateEvent.candidateId]: (prev.affections[dateEvent.candidateId] || 0) + totalGain },
+    }));
+    alert(`${dateEvent.candidateIcon} ${dateEvent.candidateName}：「${option.reply}」\n\n💗 好感度 +${totalGain}`);
+    setDateEvent(null);
+  };
+
+  const handleGift = (candidateId, itemIndex) => {
+    const dc = resetMarriageDailyCounts();
+    if (dc.gifts >= DAILY_GIFT_LIMIT) { alert(`今天已经送了${DAILY_GIFT_LIMIT}次礼物，明天再来吧~`); return; }
+    if (!inventory[itemIndex]) { return; }
+    const item = inventory[itemIndex];
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+    let gain = 5;
+    let reaction = '还可以吧...';
+    const itemName = (item.name || item.type || '').toLowerCase();
+    if (candidate.favoriteGifts.some(g => itemName.includes(g) || (item.category || '').includes(g) || (item.tags || []).includes(g))) {
+      gain = 20; reaction = '哇！我最喜欢的！谢谢你！';
+    } else if (candidate.hatedGifts.some(g => itemName.includes(g) || (item.category || '').includes(g) || (item.tags || []).includes(g))) {
+      gain = -10; reaction = '这个...我不太喜欢...';
+    }
+    const newInv = [...inventory];
+    if ((newInv[itemIndex].count || 1) > 1) { newInv[itemIndex] = { ...newInv[itemIndex], count: newInv[itemIndex].count - 1 }; }
+    else { newInv.splice(itemIndex, 1); }
+    setInventory(newInv);
+    setMarriage(prev => ({
+      ...prev,
+      affections: { ...prev.affections, [candidateId]: Math.max(0, (prev.affections[candidateId] || 0) + gain) },
+      dailyCounts: { ...prev.dailyCounts, gifts: prev.dailyCounts.gifts + 1 },
+    }));
+    alert(`${candidate.icon} ${candidate.name}：「${reaction}」\n\n💗 好感度 ${gain >= 0 ? '+' : ''}${gain}`);
+  };
+
+  const handlePropose = (candidateId) => {
+    const aff = marriage.affections[candidateId] || 0;
+    if (aff < 1000) { alert('好感度需要达到1000才能求婚~'); return; }
+    if (gold < PROPOSE_COST) { alert(`求婚需要 ${PROPOSE_COST} 金币购买戒指~`); return; }
+    if (marriage.spouse) { alert('你已经有配偶了~'); return; }
+    if (marriage.divorceDate) {
+      const diff = (Date.now() - new Date(marriage.divorceDate).getTime()) / (1000 * 60 * 60 * 24);
+      if (diff < DIVORCE_COOLDOWN_DAYS) {
+        alert(`离婚后需要等待${DIVORCE_COOLDOWN_DAYS}天才能再次求婚，还剩${Math.ceil(DIVORCE_COOLDOWN_DAYS - diff)}天。`);
+        return;
+      }
+    }
+    setGold(g => g - PROPOSE_COST);
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+    alert(`💍 你向${candidate.name}求婚了！\n\n${candidate.icon}「我...我愿意！」\n\n接下来请举办婚礼~`);
+    setMarriage(prev => ({ ...prev, pendingPropose: candidateId }));
+  };
+
+  const handleWedding = () => {
+    if (!marriage.pendingPropose) { return; }
+    if (gold < WEDDING_COST) { alert(`举办婚礼需要 ${WEDDING_COST} 金币~`); return; }
+    setGold(g => g - WEDDING_COST);
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.pendingPropose);
+    setWeddingScene({ step: 0, candidate });
+  };
+
+  const advanceWedding = () => {
+    if (!weddingScene) return;
+    if (weddingScene.step >= WEDDING_DIALOGUE.length - 1) {
+      setMarriage(prev => ({
+        ...prev,
+        spouse: prev.pendingPropose,
+        pendingPropose: null,
+        weddingDate: new Date().toISOString().slice(0, 10),
+        marriageLevel: 0,
+      }));
+      if (!unlockedTitles.includes('新婚快乐')) {
+        setUnlockedTitles(prev => [...prev, '新婚快乐']);
+      }
+      setWeddingScene(null);
+      alert('🎊 婚礼圆满结束！恭喜你们！\n已获得称号「新婚快乐」\n新的主题房屋已解锁购买！');
+      return;
+    }
+    setWeddingScene(prev => ({ ...prev, step: prev.step + 1 }));
+  };
+
+  const handleDivorce = () => {
+    if (!marriage.spouse) return;
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
+    if (!window.confirm(`确定要和${candidate.name}离婚吗？\n好感度将归零，且${DIVORCE_COOLDOWN_DAYS}天内不能再追求其他人。`)) return;
+    setMarriage(prev => ({
+      ...prev,
+      spouse: null,
+      affections: { ...prev.affections, [prev.spouse]: 0 },
+      marriageLevel: 0,
+      weddingDate: null,
+      divorceDate: new Date().toISOString(),
+    }));
+    alert(`你和${candidate.name}离婚了... 💔`);
+  };
+
+  const getSpouseBonuses = () => {
+    if (!marriage.spouse) return {};
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
+    if (!candidate) return {};
+    const aff = marriage.affections[marriage.spouse] || 0;
+    const ml = getMarriageLevel(aff);
+    return getSpouseBonus(candidate, ml.level);
+  };
+
+  // ==========================================
   // 精灵家园系统 - 完整UI
   // ==========================================
   const renderHousing = () => {
@@ -2943,6 +3145,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const elapsed = Date.now() - plot.plantedAt;
       if (elapsed < (plot.adjustedGrowth || plantDef.growthMs)) { alert('还没有成熟！'); return; }
 
+      const spGardenYield = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).gardenYield || 0) : 0;
+      const yieldMult = 1 + spGardenYield;
+
       let rewardMsg = '';
       if (plantDef.category === 'flower' || plantDef.category === 'rare') {
         const quality = plantDef.rarity === 'LEGENDARY' ? 'LEGENDARY' : plantDef.rarity === 'EPIC' ? 'EPIC' : rollQuality('battle', plantDef.rarity === 'RARE');
@@ -2953,37 +3158,40 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         rewardMsg = `${plantDef.icon} 装饰花卉 (${FURNITURE_QUALITY[quality]?.name}) +${plantDef.scoreValue || 0}评分`;
       } else if (plantDef.harvestItem) {
         const hi = plantDef.harvestItem;
+        const boostedCount = Math.floor((hi.count || 1) * yieldMult);
         if (hi.chance && Math.random() > hi.chance) {
-          rewardMsg = '这次没有收获到稀有材料...获得树果 x2 作为安慰';
-          setInventory(prev => ({ ...prev, berries: (prev.berries || 0) + 2 }));
+          const consolation = Math.max(2, Math.floor(2 * yieldMult));
+          rewardMsg = `这次没有收获到稀有材料...获得树果 x${consolation} 作为安慰`;
+          setInventory(prev => ({ ...prev, berries: (prev.berries || 0) + consolation }));
         } else if (hi.type === 'berry') {
-          setInventory(prev => ({ ...prev, berries: (prev.berries || 0) + hi.count }));
-          rewardMsg = `树果 x${hi.count}`;
+          setInventory(prev => ({ ...prev, berries: (prev.berries || 0) + boostedCount }));
+          rewardMsg = `树果 x${boostedCount}`;
         } else if (hi.type === 'med') {
-          setInventory(prev => ({ ...prev, meds: { ...prev.meds, [hi.id]: (prev.meds[hi.id] || 0) + hi.count } }));
-          rewardMsg = `药品 x${hi.count}`;
+          setInventory(prev => ({ ...prev, meds: { ...prev.meds, [hi.id]: (prev.meds[hi.id] || 0) + boostedCount } }));
+          rewardMsg = `药品 x${boostedCount}`;
         } else if (hi.type === 'stone') {
           const stoneKeys = Object.keys(EVO_STONES);
           const sid = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
-          setInventory(prev => ({ ...prev, stones: { ...prev.stones, [sid]: (prev.stones[sid] || 0) + hi.count } }));
-          rewardMsg = `${EVO_STONES[sid].name} x${hi.count}`;
+          setInventory(prev => ({ ...prev, stones: { ...prev.stones, [sid]: (prev.stones[sid] || 0) + boostedCount } }));
+          rewardMsg = `${EVO_STONES[sid].name} x${boostedCount}`;
         } else if (hi.type === 'misc') {
-          setInventory(prev => ({ ...prev, misc: { ...prev.misc, [hi.id]: (prev.misc[hi.id] || 0) + hi.count } }));
-          rewardMsg = `${hi.id === 'rebirth_pill' ? '洗练药' : hi.id} x${hi.count}`;
+          setInventory(prev => ({ ...prev, misc: { ...prev.misc, [hi.id]: (prev.misc[hi.id] || 0) + boostedCount } }));
+          rewardMsg = `${hi.id === 'rebirth_pill' ? '洗练药' : hi.id} x${boostedCount}`;
         } else if (hi.type === 'candy') {
-          setInventory(prev => ({ ...prev, [hi.id]: (prev[hi.id] || 0) + hi.count }));
-          rewardMsg = `${hi.id === 'exp_candy' ? '经验糖果' : hi.id === 'max_candy' ? '极限糖果' : hi.id} x${hi.count}`;
+          setInventory(prev => ({ ...prev, [hi.id]: (prev[hi.id] || 0) + boostedCount }));
+          rewardMsg = `${hi.id === 'exp_candy' ? '经验糖果' : hi.id === 'max_candy' ? '极限糖果' : hi.id} x${boostedCount}`;
         } else if (hi.type === 'growth') {
           const item = GROWTH_ITEMS[Math.floor(Math.random() * GROWTH_ITEMS.length)];
-          setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + hi.count }));
-          rewardMsg = `${item.name} x${hi.count}`;
+          setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + boostedCount }));
+          rewardMsg = `${item.name} x${boostedCount}`;
         }
       }
 
       let bonusSeedMsg = '';
       const rarityKey = plantDef.rarity === 'LEGENDARY' ? 'RARE' : plantDef.rarity === 'EPIC' ? 'UNCOMMON' : 'COMMON';
       const seedTable = SEED_DROP_TABLE[rarityKey];
-      if (seedTable && Math.random() < 0.2) {
+      const seedDropChance = Math.min(0.5, 0.2 * yieldMult);
+      if (seedTable && Math.random() < seedDropChance) {
         const tw = seedTable.reduce((s, e) => s + e.weight, 0);
         let r = Math.random() * tw;
         let seedPlant = seedTable[0];
@@ -3060,13 +3268,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         </div>
 
         <div style={{display:'flex', gap:'8px', justifyContent:'center', margin:'10px 0'}}>
-          {['overview','furniture','residents','garden','treasure','shop','upgrade','cafe'].map(tab => (
+          {['overview','furniture','residents','garden','treasure','shop','upgrade','cafe','dating'].map(tab => (
             <button key={tab} onClick={() => setHousingTab(tab)}
               style={{padding:'6px 12px', borderRadius:'20px', border:'none', cursor:'pointer',
-                background: housingTab === tab ? (tab === 'cafe' ? '#C62828' : tab === 'garden' ? '#43A047' : tab === 'treasure' ? '#FF8F00' : '#8D6E63') : '#fff',
+                background: housingTab === tab ? (tab === 'cafe' ? '#C62828' : tab === 'dating' ? '#E91E63' : tab === 'garden' ? '#43A047' : tab === 'treasure' ? '#FF8F00' : '#8D6E63') : '#fff',
                 color: housingTab === tab ? '#fff' : '#666', fontWeight:'bold', fontSize:'11px',
                 boxShadow: housingTab === tab ? '0 4px 12px rgba(141,110,99,0.4)' : 'none'}}>
-              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', garden:'🌱 花园', treasure:'✨ 珍藏', shop:'🛒 商店', upgrade:'⬆️ 升级', cafe:'☕ 咖啡厅'}[tab]}
+              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', garden:'🌱 花园', treasure:'✨ 珍藏', shop:'🛒 商店', upgrade:'⬆️ 升级', cafe:'☕ 咖啡厅', dating:'💕 约会'}[tab]}
             </button>
           ))}
         </div>
@@ -3107,6 +3315,29 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   </div>
                 )}
               </div>
+              {marriage.spouse && (() => {
+                const sp = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
+                const aff = marriage.affections[marriage.spouse] || 0;
+                const ml = getMarriageLevel(aff);
+                const bonuses = getSpouseBonuses();
+                return (
+                  <div style={{background:'linear-gradient(135deg,#FCE4EC,#fff)', borderRadius:'16px', padding:'16px', boxShadow:'0 4px 20px rgba(233,30,99,0.1)', gridColumn:'span 2', border:'1px solid #F8BBD0', marginTop:'0'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px'}}>
+                      <div style={{width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#E91E63,#F06292)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', color:'#fff'}}>{sp.icon}</div>
+                      <div>
+                        <div style={{fontWeight:'bold', fontSize:'14px', color:'#E91E63'}}>💕 配偶：{sp.name}</div>
+                        <div style={{fontSize:'11px', color:'#999'}}>{ml.name} · 加成倍率 x{ml.bonusMult}</div>
+                      </div>
+                      <button onClick={() => setHousingTab('dating')} style={{marginLeft:'auto', padding:'6px 14px', borderRadius:'14px', border:'none', background:'#E91E63', color:'#fff', fontSize:'11px', fontWeight:'bold', cursor:'pointer'}}>前往约会</button>
+                    </div>
+                    <div style={{fontSize:'11px', color:'#666'}}>
+                      {sp.bonusDesc}
+                      {bonuses.intimacyBoost ? ` · 亲密度+${Math.round(bonuses.intimacyBoost*100)}%` : ''}
+                      {bonuses.cafeGoldBase ? ` · 咖啡馆金币+${Math.round(bonuses.cafeGoldBase*100)}%` : ''}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -3207,9 +3438,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
           {housingTab === 'upgrade' && (
             <div style={{maxWidth:'500px', margin:'0 auto'}}>
-              {HOUSE_TYPES.map((h, idx) => {
+              {HOUSE_TYPES.filter(h => !h.requireMarriage).map((h, idx) => {
                 const isOwned = housing.currentHouse === h.id;
-                const ownedIdx = HOUSE_TYPES.findIndex(ht => ht.id === housing.currentHouse);
+                const ownedIdx = HOUSE_TYPES.filter(ht => !ht.requireMarriage).findIndex(ht => ht.id === housing.currentHouse);
                 const isNext = idx === ownedIdx + 1 || (!housing.currentHouse && idx === 0);
                 const isPast = idx <= ownedIdx;
                 return (
@@ -3218,13 +3449,35 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       <span style={{fontSize:'36px'}}>{h.icon}</span>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:'bold', fontSize:'16px'}}>{h.name} {isOwned && <span style={{color:'#4CAF50', fontSize:'12px'}}>✓ 当前</span>}</div>
-                        <div style={{fontSize:'12px', color:'#888'}}>精灵槽: {h.slots} | 家具槽: {h.furnitureSlots}</div>
+                        <div style={{fontSize:'12px', color:'#888'}}>精灵槽: {h.slots} | 家具槽: {h.furnitureSlots} | 花园槽: {h.gardenSlots}</div>
                       </div>
                       {isNext && <button onClick={() => buyHouse(h)} style={{padding:'8px 20px', borderRadius:'20px', border:'none', background:'linear-gradient(135deg,#FF9800,#F57C00)', color:'#fff', fontWeight:'bold', cursor:'pointer', fontSize:'13px'}} disabled={gold < h.price}>💰 {h.price}</button>}
                     </div>
                   </div>
                 );
               })}
+              {marriage.spouse && (
+                <>
+                  <div style={{fontWeight:'bold', fontSize:'14px', color:'#E91E63', margin:'20px 0 12px', display:'flex', alignItems:'center', gap:'6px'}}>💕 主题婚房 <span style={{fontSize:'11px', color:'#999', fontWeight:'normal'}}>结婚后解锁</span></div>
+                  {HOUSE_TYPES.filter(h => h.requireMarriage).map(h => {
+                    const isOwned = housing.currentHouse === h.id;
+                    const canBuy = !isOwned && gold >= h.price;
+                    return (
+                      <div key={h.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(233,30,99,0.08)', border: isOwned ? '2px solid #E91E63' : '1px solid #F8BBD0'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                          <span style={{fontSize:'36px'}}>{h.icon}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:'bold', fontSize:'16px'}}>{h.name} {isOwned && <span style={{color:'#E91E63', fontSize:'12px'}}>✓ 当前</span>}</div>
+                            <div style={{fontSize:'12px', color:'#888'}}>精灵槽: {h.slots} | 家具槽: {h.furnitureSlots} | 花园槽: {h.gardenSlots}</div>
+                            <div style={{fontSize:'11px', color:'#E91E63', marginTop:'2px'}}>{h.desc}</div>
+                          </div>
+                          {!isOwned && <button onClick={() => buyHouse(h)} style={{padding:'8px 20px', borderRadius:'20px', border:'none', background: canBuy ? 'linear-gradient(135deg,#E91E63,#F06292)' : '#e0e0e0', color: canBuy ? '#fff' : '#999', fontWeight:'bold', cursor: canBuy ? 'pointer' : 'not-allowed', fontSize:'13px'}} disabled={!canBuy}>💰 {h.price}</button>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
           )}
 
@@ -3538,6 +3791,185 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       })}
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========== 约会角落 ========== */}
+          {housingTab === 'dating' && (
+            <div style={{maxWidth:'600px', margin:'0 auto'}}>
+              {/* 婚礼场景 */}
+              {weddingScene && (
+                <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={advanceWedding}>
+                  <div style={{background:'linear-gradient(135deg,#FFF8E1,#FFE0B2)', borderRadius:'24px', padding:'40px', maxWidth:'400px', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+                    <div style={{fontSize:'48px', marginBottom:'16px'}}>💒</div>
+                    {(() => {
+                      const d = WEDDING_DIALOGUE[weddingScene.step];
+                      const speaker = d.name.replace('{spouse}', weddingScene.candidate.name);
+                      return (<>
+                        <div style={{fontWeight:'bold', fontSize:'14px', color:'#E91E63', marginBottom:'8px'}}>{speaker}</div>
+                        <div style={{fontSize:'15px', color:'#333', lineHeight:1.8}}>{d.text}</div>
+                        <div style={{fontSize:'11px', color:'#999', marginTop:'20px'}}>点击任意处继续 ({weddingScene.step + 1}/{WEDDING_DIALOGUE.length})</div>
+                      </>);
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* 约会事件弹窗 */}
+              {dateEvent && (
+                <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'}}>
+                  <div style={{background:'linear-gradient(135deg,#FCE4EC,#fff)', borderRadius:'20px', padding:'30px', maxWidth:'400px', width:'100%', boxShadow:'0 16px 48px rgba(0,0,0,0.4)'}}>
+                    <div style={{fontSize:'36px', textAlign:'center', marginBottom:'12px'}}>{dateEvent.candidateIcon}</div>
+                    <div style={{fontSize:'14px', color:'#333', lineHeight:1.7, marginBottom:'8px'}}>{dateEvent.text.replace('{name}', dateEvent.candidateName)}</div>
+                    <div style={{fontSize:'15px', fontWeight:'bold', color:'#E91E63', marginBottom:'16px'}}>{dateEvent.question}</div>
+                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                      {dateEvent.options.map((opt, i) => (
+                        <button key={i} onClick={() => handleDateChoice(i)} style={{
+                          padding:'12px 16px', borderRadius:'12px', border:'2px solid #F8BBD0',
+                          background:'#fff', color:'#333', fontSize:'13px', cursor:'pointer', textAlign:'left',
+                          transition:'all 0.2s'
+                        }}
+                        onMouseEnter={e => { e.target.style.background = '#FCE4EC'; e.target.style.borderColor = '#E91E63'; }}
+                        onMouseLeave={e => { e.target.style.background = '#fff'; e.target.style.borderColor = '#F8BBD0'; }}
+                        >{opt.text}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 配偶状态卡 */}
+              {marriage.spouse && (() => {
+                const sp = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
+                const aff = marriage.affections[marriage.spouse] || 0;
+                const ml = getMarriageLevel(aff);
+                return (
+                  <div style={{background:'linear-gradient(135deg,#E91E63,#F06292)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'16px'}}>
+                      <div style={{width:'56px', height:'56px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px'}}>{sp.icon}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:'bold', fontSize:'18px'}}>💕 {sp.name} <span style={{fontSize:'12px', opacity:0.85}}>({sp.title})</span></div>
+                        <div style={{fontSize:'12px', opacity:0.85}}>婚姻等级：{ml.name} · 好感度 {aff}</div>
+                        <div style={{fontSize:'11px', opacity:0.7, marginTop:'2px'}}>结婚日期：{marriage.weddingDate}</div>
+                      </div>
+                    </div>
+                    <div style={{marginTop:'12px', fontSize:'11px', opacity:0.8}}>专属加成：{sp.bonusDesc}</div>
+                    <div style={{display:'flex', gap:'8px', marginTop:'12px'}}>
+                      <button onClick={() => handleChat(marriage.spouse)} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background:'rgba(255,255,255,0.2)', color:'#fff', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}>💬 聊天</button>
+                      <button onClick={() => handleDate(marriage.spouse)} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background:'rgba(255,255,255,0.2)', color:'#fff', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}>☕ 约会</button>
+                      <button onClick={handleDivorce} style={{padding:'8px 12px', borderRadius:'10px', border:'none', background:'rgba(0,0,0,0.2)', color:'rgba(255,255,255,0.6)', fontSize:'11px', cursor:'pointer'}}>离婚</button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 待婚礼 */}
+              {marriage.pendingPropose && !marriage.spouse && (() => {
+                const pp = MARRIAGE_CANDIDATES.find(c => c.id === marriage.pendingPropose);
+                return (
+                  <div style={{background:'linear-gradient(135deg,#FF6F00,#FFA726)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px', textAlign:'center'}}>
+                    <div style={{fontSize:'40px', marginBottom:'8px'}}>💍</div>
+                    <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'4px'}}>{pp.name}已经答应了你的求婚！</div>
+                    <div style={{fontSize:'12px', opacity:0.85, marginBottom:'16px'}}>举办婚礼需要 💰 {WEDDING_COST} 金币</div>
+                    <button onClick={handleWedding} disabled={gold < WEDDING_COST} style={{
+                      padding:'12px 30px', borderRadius:'25px', border:'none', fontWeight:'bold', fontSize:'14px',
+                      background: gold < WEDDING_COST ? '#ccc' : '#fff', color: gold < WEDDING_COST ? '#999' : '#E91E63',
+                      cursor: gold < WEDDING_COST ? 'not-allowed' : 'pointer', boxShadow:'0 4px 15px rgba(0,0,0,0.2)'
+                    }}>🎊 举办婚礼</button>
+                  </div>
+                );
+              })()}
+
+              {/* 候选人列表 */}
+              <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'12px', color:'#333'}}>
+                {marriage.spouse ? '💕 其他认识的人' : '💕 约会角落'}
+              </div>
+              {!cafe.owned && (
+                <div style={{padding:'20px', textAlign:'center', background:'#FFF3E0', borderRadius:'12px', border:'1px solid #FFE0B2', marginBottom:'16px'}}>
+                  <div style={{fontSize:'32px', marginBottom:'8px'}}>☕</div>
+                  <div style={{fontWeight:'bold', color:'#E65100', marginBottom:'4px'}}>需要先拥有咖啡厅</div>
+                  <div style={{fontSize:'12px', color:'#999'}}>通关莉可莉丝篇后购买咖啡厅，即可解锁约会功能</div>
+                </div>
+              )}
+              {cafe.owned && (
+                <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
+                  {(() => {
+                    const available = getAvailableCandidates();
+                    const locked = MARRIAGE_CANDIDATES.filter(c => !available.find(a => a.id === c.id));
+                    return (<>
+                      {available.map(c => {
+                        const aff = marriage.affections[c.id] || 0;
+                        const stage = getAffectionStage(aff);
+                        const isSpouse = marriage.spouse === c.id;
+                        if (isSpouse) return null;
+                        const nextStage = AFFECTION_STAGES[AFFECTION_STAGES.indexOf(stage) + 1];
+                        return (
+                          <div key={c.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', border: stage.id === 'lover' ? '2px solid #E91E63' : '1px solid #eee'}}>
+                            <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px'}}>
+                              <div style={{width:'48px', height:'48px', borderRadius:'50%', background:`linear-gradient(135deg,${stage.color}33,${stage.color}11)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px', border:`2px solid ${stage.color}44`}}>{c.icon}</div>
+                              <div style={{flex:1}}>
+                                <div style={{fontWeight:'bold', fontSize:'14px'}}>{c.name} <span style={{fontSize:'11px', color:'#999'}}>({c.title})</span></div>
+                                <div style={{fontSize:'12px', color:stage.color, fontWeight:'bold'}}>{stage.icon} {stage.name} · 好感度 {aff}{nextStage ? ` / ${nextStage.min}` : ''}</div>
+                              </div>
+                            </div>
+                            <div style={{fontSize:'12px', color:'#888', marginBottom:'10px'}}>{c.desc}</div>
+                            {nextStage && (
+                              <div style={{width:'100%', height:'6px', background:'#eee', borderRadius:'3px', overflow:'hidden', marginBottom:'10px'}}>
+                                <div style={{width:`${Math.min(100, (aff - stage.min) / (nextStage.min - stage.min) * 100)}%`, height:'100%', background:`linear-gradient(90deg,${stage.color},${nextStage.color})`, borderRadius:'3px', transition:'width 0.3s'}} />
+                              </div>
+                            )}
+                            <div style={{fontSize:'11px', color:'#aaa', marginBottom:'10px'}}>加成：{c.bonusDesc}</div>
+                            <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                              <button onClick={() => handleChat(c.id)} style={{padding:'6px 14px', borderRadius:'14px', border:'1px solid #E0E0E0', background:'#fafafa', fontSize:'11px', fontWeight:'bold', cursor:'pointer', color:'#666'}}>💬 聊天</button>
+                              <button onClick={() => handleDate(c.id)} style={{padding:'6px 14px', borderRadius:'14px', border:'none', background:'linear-gradient(135deg,#E91E63,#F06292)', fontSize:'11px', fontWeight:'bold', cursor:'pointer', color:'#fff'}}>☕ 约会 (💰{DATE_COST})</button>
+                              <button onClick={() => setMarriageView(c.id)} style={{padding:'6px 14px', borderRadius:'14px', border:'1px solid #E0E0E0', background:'#fafafa', fontSize:'11px', fontWeight:'bold', cursor:'pointer', color:'#666'}}>🎁 送礼</button>
+                              {stage.id === 'lover' && aff >= 1000 && !marriage.spouse && !marriage.pendingPropose && (
+                                <button onClick={() => handlePropose(c.id)} style={{padding:'6px 14px', borderRadius:'14px', border:'none', background:'linear-gradient(135deg,#FF6F00,#FFA726)', fontSize:'11px', fontWeight:'bold', cursor:'pointer', color:'#fff'}}>💍 求婚 (💰{PROPOSE_COST})</button>
+                              )}
+                            </div>
+                            {/* 送礼面板 */}
+                            {marriageView === c.id && (
+                              <div style={{marginTop:'12px', padding:'12px', background:'#f9f9f9', borderRadius:'12px', border:'1px solid #eee'}}>
+                                <div style={{fontWeight:'bold', fontSize:'12px', marginBottom:'8px', color:'#666'}}>🎁 选择礼物 (今日 {marriage.dailyCounts.gifts}/{DAILY_GIFT_LIMIT})</div>
+                                {inventory.length === 0 ? (
+                                  <div style={{fontSize:'11px', color:'#999', padding:'10px', textAlign:'center'}}>背包是空的~</div>
+                                ) : (
+                                  <div style={{display:'flex', flexWrap:'wrap', gap:'6px', maxHeight:'150px', overflow:'auto'}}>
+                                    {inventory.map((item, idx) => (
+                                      <button key={idx} onClick={() => { handleGift(c.id, idx); setMarriageView(null); }}
+                                        style={{padding:'6px 10px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', fontSize:'11px', cursor:'pointer', color:'#333'}}>
+                                        {item.name || item.type} {(item.count||1) > 1 ? `x${item.count}` : ''}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <button onClick={() => setMarriageView(null)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'10px', border:'1px solid #ddd', background:'#fff', fontSize:'10px', cursor:'pointer', color:'#999'}}>关闭</button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {locked.length > 0 && (
+                        <div style={{marginTop:'8px'}}>
+                          <div style={{fontSize:'12px', color:'#999', marginBottom:'8px'}}>🔒 未解锁</div>
+                          {locked.map(c => (
+                            <div key={c.id} style={{display:'flex', alignItems:'center', gap:'10px', padding:'12px', background:'#f5f5f5', borderRadius:'12px', marginBottom:'6px', opacity:0.6}}>
+                              <div style={{width:'36px', height:'36px', borderRadius:'50%', background:'#e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px'}}>❓</div>
+                              <div>
+                                <div style={{fontWeight:'bold', fontSize:'13px', color:'#999'}}>{c.name}</div>
+                                <div style={{fontSize:'10px', color:'#bbb'}}>
+                                  {c.unlockCondition?.badges ? `需要 ${c.unlockCondition.badges} 枚徽章` : ''}
+                                  {c.unlockCondition?.houseType ? `需要拥有「${HOUSE_TYPES.find(h => h.id === c.unlockCondition.houseType)?.name}」` : ''}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>);
+                  })()}
                 </div>
               )}
             </div>
@@ -5862,7 +6294,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const ticks = Math.floor(elapsed / CAFE_BUILDING.tickInterval);
         if (ticks > 0) {
           const lvData = getCafeLevel(prev.totalWorkCount);
-          const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult);
+          const spCafeBonus = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).cafeGold || 0) : 0;
+          const spCafeBase = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).cafeGoldBase || 0) : 0;
+          const cafeGoldMult = 1 + spCafeBonus + spCafeBase;
+          const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult * cafeGoldMult);
           setGold(g => g + goldEarned);
           const newWorkCount = prev.totalWorkCount + ticks * prev.workers.length;
           const intimacyIncrease = ticks * 2;
@@ -7517,8 +7952,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const isActive = index === bState.activeIdx;
       if (pet.currentHp <= 0 && !isActive) return pet;
-      const shareRatio = isActive ? 1.0 : 0.5; 
-      const expGain = Math.floor(baseExp * shareRatio);
+      const shareRatio = isActive ? 1.0 : 0.5;
+      const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
+      const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost));
       
       pet.exp += expGain;
       if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
@@ -12339,7 +12775,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
