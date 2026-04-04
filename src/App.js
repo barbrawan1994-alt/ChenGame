@@ -1098,7 +1098,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     // ==========================================
   // [核心] 属性计算函数 (含特性修正)
   // ==========================================
-  function getStats(pet, stages = null, status = null) {
+  function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
     const growth = 1 + pet.level * 0.05; 
     const shinyMod = pet.isFusedShiny ? 1.35 : (pet.isShiny ? 1.2 : 1.0);
 
@@ -1211,15 +1211,15 @@ const [viewStatPet, setViewStatPet] = useState(null);
         finalSpd = Math.floor(finalSpd * pet.fruitEffects.spdMult);
     }
 
-    const gangBonus = getGangSkillBonus(getGangSkills(gang));
+    const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
     const applyGB = (val, pct) => pct > 0 ? Math.floor(val * (1 + pct / 100)) : val;
 
     return {
       maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), gangBonus.hp),
       p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk),
       p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def),
-      s_atk: calc(baseStats.s_atk, 's_atk', 's_atk'),
-      s_def: calc(baseStats.s_def, 's_def', 's_def'),
+      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), gangBonus.s_atk),
+      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), gangBonus.s_def),
       spd:   applyGB(finalSpd, gangBonus.spd),
       crit:  finalCrit,
       atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk), 
@@ -4778,7 +4778,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             const currentLv = skills[skill.id] || 0;
             const val = currentLv * skill.valPerLv;
             const nextCost = currentLv < skill.maxLv ? skill.costPerLv * (GANG_SKILL_COST_MULT[currentLv] || 1) : 0;
-            const isAdvanced = idx >= 4;
+            const isAdvanced = idx >= 6;
             return (
               <div key={skill.id} style={{...cardStyle, opacity: isAdvanced && !canLearnAdvanced && !isOwner ? 0.5 : 1}}>
                 <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
@@ -6199,7 +6199,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         trainerGangInfo = getGangInfo();
       }
       if (trainerGangInfo) {
-        extraBattleData.trainerGang = { id: trainerGangInfo.id, name: trainerGangInfo.name, icon: trainerGangInfo.icon };
+        const tgSkills = trainerGangInfo.skills || {};
+        extraBattleData.trainerGang = { id: trainerGangInfo.id, name: trainerGangInfo.name, icon: trainerGangInfo.icon, skills: tgSkills };
+        extraBattleData.trainerGangBonus = getGangSkillBonus(tgSkills);
         extraBattleData.canInviteToGang = !gang.isOwner ? false : true;
       } else {
         extraBattleData.canInviteToGang = gang.isOwner;
@@ -8035,8 +8037,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         await wait(1000); setAnimEffect(null);
     } else {
         // === 伤害类技能 ===
-        const statsAtk = getStats(attacker, atkState.stages, atkState.status); 
-        const statsDef = getStats(defender, defState.stages, defState.status);
+        const noGang = { atk:0, def:0, s_atk:0, s_def:0, hp:0, spd:0, gold:0, exp:0 };
+        const enemyGB = battleState.trainerGangBonus || noGang;
+        const atkGB = source === 'player' ? undefined : enemyGB;
+        const defGB = source === 'player' ? enemyGB : undefined;
+        const statsAtk = getStats(attacker, atkState.stages, atkState.status, atkGB); 
+        const statsDef = getStats(defender, defState.stages, defState.status, defGB);
         const category = getMoveCategory(move.t);
         let atkVal = category === 'physical' ? statsAtk.p_atk : statsAtk.s_atk;
         let defVal = category === 'physical' ? statsDef.p_def : statsDef.s_def;
