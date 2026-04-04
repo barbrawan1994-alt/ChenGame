@@ -11272,40 +11272,21 @@ const renderItemIcon = (category, itemId, size = 36, tmType) => {
 };
 
 const renderFruitCSSIcon = (fruitId, size = 44) => {
-  const imgUrl = FRUIT_IMAGE_URLS[fruitId];
-  if (imgUrl) {
-    return (
-      <div style={{
-        width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-        background: 'linear-gradient(135deg, #2c1810, #5d3a1a)', position: 'relative', overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 0 8px rgba(255,200,100,0.2)', flexShrink: 0,
-        border: '2px solid rgba(255,180,50,0.4)'
-      }}>
-        <img src={imgUrl} alt="" style={{
-          width: '85%', height: '85%', objectFit: 'contain',
-          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
-        }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-        <span style={{display:'none', position:'absolute', fontWeight:'900',
-          fontSize: `${Math.round(size * 0.42)}px`, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.3)'
-        }}>{getFruitIcon(fruitId).symbol}</span>
-      </div>
-    );
-  }
   const icon = getFruitIcon(fruitId);
   return (
     <div style={{
       width: `${size}px`, height: `${size}px`, borderRadius: '50%',
       background: icon.bg, position: 'relative', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: `0 2px 8px rgba(0,0,0,0.2)`, flexShrink: 0
+      boxShadow: `0 2px 8px rgba(0,0,0,0.3), inset 0 1px 4px rgba(255,255,255,0.15)`,
+      flexShrink: 0, border: '2px solid rgba(255,255,255,0.12)'
     }}>
       {icon.pattern && <div style={{position:'absolute', inset:0, background:icon.pattern, borderRadius:'50%'}} />}
       <span style={{
-        position:'relative', zIndex:1, fontWeight:'900',
-        fontSize: `${Math.round(size * 0.42)}px`,
-        color: icon.symbolColor, textShadow: '0 1px 3px rgba(0,0,0,0.3)',
-        lineHeight: 1
+        position:'relative', zIndex:1,
+        fontSize: `${Math.round(size * 0.5)}px`,
+        lineHeight: 1,
+        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
       }}>{icon.symbol}</span>
     </div>
   );

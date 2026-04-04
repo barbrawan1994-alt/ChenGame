@@ -73,7 +73,7 @@ const ID_TO_DIGIMON = {
   586: 'Wizarmon',            // 心灵术士(PSYCHIC) → 巫师兽
   588: 'Kabuterimon',         // 宝石甲虫(BUG) → 比多兽
   589: 'Okuwamon',            // 钻石独角仙(BUG) → 锹形虫兽
-  591: 'Gotsumon',            // 小石头(ROCK) → 岩石兽
+  591: 'Gottsumon',            // 小石头(ROCK) → 岩石兽
   592: 'Golemon',             // 巨岩兽(ROCK) → 岩浆兽
   593: 'Megadramon',          // 化石翼龙(ROCK) → 百万龙
   594: 'Bakemon',             // 蜡烛幽灵(GHOST) → 幽灵兽
