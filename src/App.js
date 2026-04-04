@@ -85,8 +85,8 @@ import {
 import {
   GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
   GANG_ICONS, GANG_CREATE_COST, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
-  getGangRank, getGangSkillBonus, getGangSkills, getGangWarLevel, getGangWarReward,
-  generateCafeRecruits, DEFAULT_GANG_STATE,
+  getGangRank, getGangSkillBonus, getGangSkills, getGangMaxSkills, getGangWarLevel, getGangWarReward,
+  generateCafeRecruits, DEFAULT_GANG_STATE, PERSONAL_SKILL_COST_MULT, PERSONAL_SKILL_BASE_COST,
 } from './data/gang';
 import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
@@ -4520,15 +4520,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               if (!name || !name.trim()) return;
               const iconIdx = Math.floor(Math.random() * GANG_ICONS.length);
               setGold(g => g - GANG_CREATE_COST);
+              const gangId = 'custom_' + Date.now();
               setGang({
-                gangId: 'custom_' + Date.now(),
+                gangId,
                 isOwner: true,
                 customGang: {
-                  id: 'custom_' + Date.now(), name: name.trim(), icon: GANG_ICONS[iconIdx],
+                  id: gangId, name: name.trim(), icon: GANG_ICONS[iconIdx],
                   level: 1, funds: 0, members: [], skills: {}, wins: 0,
                   color: '#FF6F00', power: 100, desc: '玩家自建帮派',
                 },
-                contribution: 0, rank: 'leader',
+                contribution: 0, rank: 'leader', personalSkills: {},
                 dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
               });
             }} style={{...btnPrimary, width:'80%', marginBottom:'16px', fontSize:'15px', padding:'14px 0'}}>
@@ -4538,20 +4539,24 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px', color:'#FFD700'}}>— 或加入已有帮派 —</div>
             <div style={{width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
               {GANG_PRESETS.map(g => (
-                <div key={g.id} style={{...cardStyle, cursor:'pointer', transition:'transform 0.2s'}} onClick={() => {
-                  setGang({
-                    gangId: g.id, isOwner: false, customGang: null,
-                    contribution: 0, rank: 'member',
-                    dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
-                  });
-                }}>
+                <div key={g.id} style={{...cardStyle, transition:'transform 0.2s'}}>
                   <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
                     <span style={{fontSize:'24px'}}>{g.icon}</span>
                     <span style={{fontWeight:'bold', fontSize:'14px'}}>{g.name}</span>
                     <span style={{fontSize:'11px', color:'#9E9E9E', marginLeft:'auto'}}>Lv.{g.level}</span>
                   </div>
                   <div style={{fontSize:'11px', color:'#aaa', marginBottom:'4px'}}>{g.desc}</div>
-                  <div style={{fontSize:'11px', color:'#FFD700'}}>帮主: {g.leader} · 成员 {g.members.length}人</div>
+                  <div style={{fontSize:'11px', color:'#FFD700', marginBottom:'8px'}}>帮主: {g.leader} · 成员 {g.members.length}人</div>
+                  <button onClick={() => {
+                    if (!window.confirm(`确定要加入「${g.name}」吗？`)) return;
+                    setGang({
+                      gangId: g.id, isOwner: false, customGang: null,
+                      contribution: 0, rank: 'member', personalSkills: {},
+                      dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
+                    });
+                  }} style={{...btnPrimary, width:'100%', fontSize:'12px', padding:'8px 0'}}>
+                    加入帮派
+                  </button>
                 </div>
               ))}
             </div>
@@ -4767,50 +4772,89 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const renderGangSkills = () => {
       const isOwner = gang.isOwner;
       const funds = gang.customGang?.funds || 0;
+      const maxSkills = getGangMaxSkills(gang);
+      const personalSk = gang.personalSkills || {};
       const rankIdx = GANG_RANKS.findIndex(r => r.id === (gang.rank || 'member'));
       const canLearnAdvanced = rankIdx >= 3;
       return (
         <div>
           <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>📖 帮派技能</div>
-          {!isOwner && <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>帮派技能由帮主升级，你可查看当前加成</div>}
-          {isOwner && <div style={{fontSize:'12px', color:'#FFD700', marginBottom:'12px'}}>帮派资金: {funds.toLocaleString()} · 用于升级技能</div>}
+          {isOwner ? (
+            <div style={{fontSize:'12px', color:'#FFD700', marginBottom:'12px'}}>帮派资金: {funds.toLocaleString()} · 升级帮派技能上限（帮主自动获得满级效果）</div>
+          ) : (
+            <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>消耗帮贡升级个人技能等级，上限由帮主设定 · 当前帮贡: <span style={{color:'#4FC3F7'}}>{gang.contribution}</span></div>
+          )}
           {GANG_SKILLS.map((skill, idx) => {
-            const currentLv = skills[skill.id] || 0;
-            const val = currentLv * skill.valPerLv;
-            const nextCost = currentLv < skill.maxLv ? skill.costPerLv * (GANG_SKILL_COST_MULT[currentLv] || 1) : 0;
+            const gangMaxLv = maxSkills[skill.id] || 0;
+            const myLv = isOwner ? gangMaxLv : Math.min(personalSk[skill.id] || 0, gangMaxLv);
+            const myVal = myLv * skill.valPerLv;
             const isAdvanced = idx >= 6;
+            const gangUpgradeCost = gangMaxLv < skill.maxLv ? skill.costPerLv * (GANG_SKILL_COST_MULT[gangMaxLv] || 1) : 0;
+            const personalUpgradeCost = myLv < gangMaxLv ? PERSONAL_SKILL_BASE_COST * (PERSONAL_SKILL_COST_MULT[myLv] || 1) : 0;
+            const canUpgradePersonal = !isOwner && myLv < gangMaxLv && (!isAdvanced || canLearnAdvanced);
+
             return (
               <div key={skill.id} style={{...cardStyle, opacity: isAdvanced && !canLearnAdvanced && !isOwner ? 0.5 : 1}}>
                 <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
                   <span style={{fontSize:'20px'}}>{skill.icon}</span>
                   <div style={{flex:1}}>
-                    <div style={{fontWeight:'bold', fontSize:'13px'}}>{skill.name} <span style={{color:'#4FC3F7', fontSize:'11px'}}>Lv.{currentLv}/{skill.maxLv}</span></div>
-                    <div style={{fontSize:'11px', color:'#aaa'}}>{skill.desc.replace('{val}', val)}</div>
+                    <div style={{fontWeight:'bold', fontSize:'13px'}}>
+                      {skill.name}
+                      <span style={{color:'#4FC3F7', fontSize:'11px', marginLeft:'4px'}}>
+                        {isOwner ? `帮派 Lv.${gangMaxLv}/${skill.maxLv}` : `Lv.${myLv}/${gangMaxLv}`}
+                      </span>
+                      {!isOwner && <span style={{color:'#666', fontSize:'10px', marginLeft:'4px'}}>(帮派上限 {gangMaxLv})</span>}
+                    </div>
+                    <div style={{fontSize:'11px', color:'#aaa'}}>{skill.desc.replace('{val}', myVal)}</div>
+                    {!isOwner && gangMaxLv > 0 && (
+                      <div style={{width:'100%', height:'4px', background:'rgba(255,255,255,0.08)', borderRadius:'2px', marginTop:'4px', overflow:'hidden'}}>
+                        <div style={{height:'100%', width:`${(myLv / gangMaxLv) * 100}%`, background:'linear-gradient(90deg,#4FC3F7,#29B6F6)', borderRadius:'2px', transition:'width 0.3s'}} />
+                      </div>
+                    )}
                   </div>
-                  {isOwner && currentLv < skill.maxLv && (
+                  {isOwner && gangMaxLv < skill.maxLv && (
                     <button onClick={() => {
-                      if (funds < nextCost) { alert(`资金不足，升级需要 ${nextCost.toLocaleString()}`); return; }
+                      if (funds < gangUpgradeCost) { alert(`帮派资金不足，升级需要 ${gangUpgradeCost.toLocaleString()}`); return; }
                       setGang(prev => ({
                         ...prev,
                         customGang: {
                           ...prev.customGang,
-                          funds: prev.customGang.funds - nextCost,
-                          skills: { ...(prev.customGang.skills || {}), [skill.id]: currentLv + 1 },
+                          funds: prev.customGang.funds - gangUpgradeCost,
+                          skills: { ...(prev.customGang.skills || {}), [skill.id]: gangMaxLv + 1 },
                         },
                       }));
-                    }} style={{...btnSecondary, fontSize:'11px', padding:'5px 10px'}}>
-                      升级 ({nextCost.toLocaleString()})
+                    }} style={{...btnSecondary, fontSize:'11px', padding:'5px 10px', flexShrink:0}}>
+                      升级上限 ({gangUpgradeCost.toLocaleString()})
                     </button>
+                  )}
+                  {canUpgradePersonal && (
+                    <button onClick={() => {
+                      if (gang.contribution < personalUpgradeCost) { alert(`帮贡不足，升级需要 ${personalUpgradeCost} 帮贡`); return; }
+                      setGang(prev => ({
+                        ...prev,
+                        contribution: prev.contribution - personalUpgradeCost,
+                        personalSkills: { ...(prev.personalSkills || {}), [skill.id]: myLv + 1 },
+                      }));
+                    }} style={{...btnSecondary, fontSize:'11px', padding:'5px 10px', flexShrink:0}}>
+                      学习 ({personalUpgradeCost} 帮贡)
+                    </button>
+                  )}
+                  {!isOwner && myLv >= gangMaxLv && gangMaxLv > 0 && (
+                    <span style={{fontSize:'10px', color:'#66BB6A', fontWeight:'bold', flexShrink:0}}>✅ 已满</span>
+                  )}
+                  {!isOwner && gangMaxLv === 0 && (
+                    <span style={{fontSize:'10px', color:'#666', flexShrink:0}}>未开放</span>
                   )}
                 </div>
               </div>
             );
           })}
           <div style={{...cardStyle, background:'rgba(76,175,80,0.1)', border:'1px solid rgba(76,175,80,0.2)'}}>
-            <div style={{fontSize:'12px', fontWeight:'bold', color:'#66BB6A', marginBottom:'4px'}}>当前帮派加成总览</div>
+            <div style={{fontSize:'12px', fontWeight:'bold', color:'#66BB6A', marginBottom:'4px'}}>你的实际加成</div>
             <div style={{fontSize:'11px', color:'#aaa', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
-              <span>物攻 +{bonus.atk}%</span><span>物防 +{bonus.def}%</span><span>HP +{bonus.hp}%</span>
-              <span>速度 +{bonus.spd}%</span><span>金币 +{bonus.gold}%</span><span>经验 +{bonus.exp}%</span>
+              <span>物攻 +{bonus.atk}%</span><span>物防 +{bonus.def}%</span><span>特攻 +{bonus.s_atk}%</span>
+              <span>特防 +{bonus.s_def}%</span><span>HP +{bonus.hp}%</span><span>速度 +{bonus.spd}%</span>
+              <span>金币 +{bonus.gold}%</span><span>经验 +{bonus.exp}%</span>
             </div>
           </div>
         </div>
@@ -15287,7 +15331,8 @@ const renderMenu = () => {
                     <div className={`sprite-wrapper enemy-sprite-wrapper ${e.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginRight: '10px'}}>
                         {battle.isTrainer && (
                             <div style={{
-                                position: 'absolute', bottom: '10px', right: '-70px', zIndex: -1, opacity: 0.9, width: 210, height: 210
+                                position: 'absolute', bottom: '0px', right: '-50px', zIndex: 1, opacity: 0.35, width: 180, height: 180,
+                                filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))', pointerEvents: 'none'
                             }}>
                                     {getTrainerAvatar(battle.trainerName)}
                             </div>
@@ -15395,6 +15440,14 @@ const renderMenu = () => {
                               <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
                             ) : null}
                             {renderSectBadge(p, 'player')}
+                            {gang?.gangId && (() => {
+                              const gi = getGangInfo();
+                              return gi ? (
+                                <span style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(76,175,80,0.8), rgba(56,142,60,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)'}}>
+                                  {gi.icon}{gi.name}
+                                </span>
+                              ) : null;
+                            })()}
                             {renderStatusBadges(p)}
                             {p.devilFruit && (() => { const df = getFruitById(p.devilFruit); return df ? (
                               <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>

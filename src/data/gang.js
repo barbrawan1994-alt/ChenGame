@@ -168,11 +168,25 @@ export const getGangSkillBonus = (skills) => {
   };
 };
 
-export const getGangSkills = (gang) => {
+export const getGangMaxSkills = (gang) => {
   if (!gang || !gang.gangId) return {};
   if (gang.isOwner && gang.customGang) return gang.customGang.skills || {};
   const preset = GANG_PRESETS.find(g => g.id === gang.gangId);
   return preset ? preset.skills : {};
+};
+
+export const getGangSkills = (gang) => {
+  if (!gang || !gang.gangId) return {};
+  if (gang.isOwner) return getGangMaxSkills(gang);
+  const maxSkills = getGangMaxSkills(gang);
+  const personal = gang.personalSkills || {};
+  const result = {};
+  for (const skill of GANG_SKILLS) {
+    const cap = maxSkills[skill.id] || 0;
+    const cur = personal[skill.id] || 0;
+    result[skill.id] = Math.min(cur, cap);
+  }
+  return result;
 };
 
 export const getGangWarLevel = (targetGang) => {
@@ -202,12 +216,16 @@ export const generateCafeRecruits = () => {
   return recruits;
 };
 
+export const PERSONAL_SKILL_COST_MULT = [1, 2, 3, 5, 8];
+export const PERSONAL_SKILL_BASE_COST = 50;
+
 export const DEFAULT_GANG_STATE = {
   gangId: null,
   isOwner: false,
   customGang: null,
   contribution: 0,
   rank: 'member',
+  personalSkills: {},
   dailyCounts: {
     salary: false,
     warCount: 0,
