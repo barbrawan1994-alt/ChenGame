@@ -82,7 +82,7 @@ const ACHIEVEMENTS = [
 
   // ===== 成长类 (15) =====
   { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: { gold: 800 } },
-  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部13枚道馆徽章',        check: s => s.badgeCount >= 13,     reward: { gold: 15000, title: '全徽章训练家' } },
+  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部17枚道馆徽章',        check: s => s.badgeCount >= 17,     reward: { gold: 15000, title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { gold: 10000, title: '联赛冠军' } },
   { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { gold: 50000, title: '联赛之王' } },
   { id: 'sect_first',      cat: 'GROWTH', rarity: 'UNCOMMON',  name: '门派弟子',     desc: '击败第一位门派掌门',          check: s => s.sectChiefsDefeated >= 1, reward: { gold: 3000 } },

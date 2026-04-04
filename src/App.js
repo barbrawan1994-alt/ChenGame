@@ -3547,28 +3547,26 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   </div>
                 );
               })}
-              {marriage.spouse && (
-                <>
-                  <div style={{fontWeight:'bold', fontSize:'14px', color:'#E91E63', margin:'20px 0 12px', display:'flex', alignItems:'center', gap:'6px'}}>💕 主题婚房 <span style={{fontSize:'11px', color:'#999', fontWeight:'normal'}}>结婚后解锁</span></div>
-                  {HOUSE_TYPES.filter(h => h.requireMarriage).map(h => {
-                    const isOwned = housing.currentHouse === h.id;
-                    const canBuy = !isOwned && gold >= h.price;
-                    return (
-                      <div key={h.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(233,30,99,0.08)', border: isOwned ? '2px solid #E91E63' : '1px solid #F8BBD0'}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                          <span style={{fontSize:'36px'}}>{h.icon}</span>
-                          <div style={{flex:1}}>
-                            <div style={{fontWeight:'bold', fontSize:'16px'}}>{h.name} {isOwned && <span style={{color:'#E91E63', fontSize:'12px'}}>✓ 当前</span>}</div>
-                            <div style={{fontSize:'12px', color:'#888'}}>精灵槽: {h.slots} | 家具槽: {h.furnitureSlots} | 花园槽: {h.gardenSlots}</div>
-                            <div style={{fontSize:'11px', color:'#E91E63', marginTop:'2px'}}>{h.desc}</div>
-                          </div>
-                          {!isOwned && <button onClick={() => buyHouse(h)} style={{padding:'8px 20px', borderRadius:'20px', border:'none', background: canBuy ? 'linear-gradient(135deg,#E91E63,#F06292)' : '#e0e0e0', color: canBuy ? '#fff' : '#999', fontWeight:'bold', cursor: canBuy ? 'pointer' : 'not-allowed', fontSize:'13px'}} disabled={!canBuy}>💰 {h.price}</button>}
-                        </div>
+              <div style={{fontWeight:'bold', fontSize:'14px', color:'#E91E63', margin:'20px 0 12px', display:'flex', alignItems:'center', gap:'6px'}}>💕 主题婚房 <span style={{fontSize:'11px', color:'#999', fontWeight:'normal'}}>{marriage.spouse ? '已解锁' : '🔒 需要结婚后解锁'}</span></div>
+              {HOUSE_TYPES.filter(h => h.requireMarriage).map(h => {
+                const isOwned = housing.currentHouse === h.id;
+                const isMarried = !!marriage.spouse;
+                const canBuy = isMarried && !isOwned && gold >= h.price;
+                return (
+                  <div key={h.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(233,30,99,0.08)', border: isOwned ? '2px solid #E91E63' : '1px solid #F8BBD0', opacity: isMarried ? 1 : 0.6, position:'relative'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                      <span style={{fontSize:'36px'}}>{h.icon}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:'bold', fontSize:'16px'}}>{h.name} {isOwned && <span style={{color:'#E91E63', fontSize:'12px'}}>✓ 当前</span>}</div>
+                        <div style={{fontSize:'12px', color:'#888'}}>精灵槽: {h.slots} | 家具槽: {h.furnitureSlots} | 花园槽: {h.gardenSlots}</div>
+                        <div style={{fontSize:'11px', color:'#E91E63', marginTop:'2px'}}>{h.desc}</div>
+                        {!isMarried && <div style={{fontSize:'11px', color:'#999', marginTop:'4px'}}>🔒 需要先结婚才能购买</div>}
                       </div>
-                    );
-                  })}
-                </>
-              )}
+                      {isMarried && !isOwned && <button onClick={() => buyHouse(h)} style={{padding:'8px 20px', borderRadius:'20px', border:'none', background: canBuy ? 'linear-gradient(135deg,#E91E63,#F06292)' : '#e0e0e0', color: canBuy ? '#fff' : '#999', fontWeight:'bold', cursor: canBuy ? 'pointer' : 'not-allowed', fontSize:'13px'}} disabled={!canBuy}>💰 {h.price?.toLocaleString()}</button>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -4366,20 +4364,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const renderLeague = () => {
     const isUnlocked = storyProgress >= 12;
 
-    if (!isUnlocked) {
-        return (
-            <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', flexDirection:'column'}}>
-                <div style={{fontSize:'60px', marginBottom:'20px', filter:'drop-shadow(0 0 15px rgba(255,215,0,0.3))'}}>🔒</div>
-                <div style={{fontSize:'20px', fontWeight:'bold'}}>战斗联盟尚未开放</div>
-                <div style={{fontSize:'13px', color:'#9E9E9E', marginTop:'10px'}}>需通关【冠军之路】剧情后解锁</div>
-                <button onClick={() => setView('grid_map')}
-                    style={{marginTop:'30px', color:'#fff', background:'linear-gradient(135deg,#304FFE,#536DFE)', border:'none', padding:'12px 30px', borderRadius:'25px', cursor:'pointer', fontWeight:'bold', fontSize:'14px', boxShadow:'0 4px 15px rgba(48,79,254,0.4)'}}>
-                    返回
-                </button>
-            </div>
-        );
-    }
-
     const rounds = [
         { id: 1, name: '16强赛', icon: '⚔️', teamSize: 4, level: 85, desc: '4只精灵 · Lv.85' },
         { id: 2, name: '8强赛',  icon: '🗡️', teamSize: 5, level: 90, desc: '5只精灵 · Lv.90' },
@@ -4403,6 +4387,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         </div>
 
         <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'20px', overflowY:'auto', zIndex:5}}>
+
+          {!isUnlocked && (
+            <div style={{width:'100%', maxWidth:'420px', background:'linear-gradient(135deg, rgba(255,152,0,0.15), rgba(255,87,34,0.1))', border:'1px solid rgba(255,152,0,0.3)', borderRadius:'14px', padding:'16px', marginBottom:'16px', textAlign:'center'}}>
+              <div style={{fontSize:'28px', marginBottom:'6px'}}>🔒</div>
+              <div style={{fontSize:'15px', fontWeight:'bold', color:'#FFB74D'}}>联盟尚未开放</div>
+              <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginTop:'6px'}}>需完成第12章【冠军之路】主线剧情后解锁</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>当前进度: 第{storyProgress + 1}章 / 13章</div>
+            </div>
+          )}
 
           <div style={{textAlign:'center', marginBottom:'24px', padding:'20px'}}>
             <div style={{fontSize:'64px', filter:'drop-shadow(0 0 20px rgba(255,215,0,0.4))', marginBottom:'12px'}}>🏆</div>
@@ -4464,15 +4457,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
             {leagueRound === 0 ? (
               <button onClick={() => {
+                if (!isUnlocked) { alert('需通关【冠军之路】剧情后解锁战斗联盟'); return; }
                 if(party.length < 1) { alert("请先携带精灵！"); return; }
                 setLeagueRound(1);
               }} style={{
                 width:'100%', padding:'16px', borderRadius:'25px', border:'none',
-                background: 'linear-gradient(135deg, #FFD700, #FFA000)',
-                color:'#1a1a2e', fontSize:'16px', fontWeight:'900', cursor:'pointer',
-                boxShadow: '0 6px 20px rgba(255,215,0,0.3)', letterSpacing:'1px',
+                background: isUnlocked ? 'linear-gradient(135deg, #FFD700, #FFA000)' : 'linear-gradient(135deg, #555, #777)',
+                color: isUnlocked ? '#1a1a2e' : '#aaa', fontSize:'16px', fontWeight:'900',
+                cursor: isUnlocked ? 'pointer' : 'not-allowed',
+                boxShadow: isUnlocked ? '0 6px 20px rgba(255,215,0,0.3)' : 'none', letterSpacing:'1px',
               }}>
-                报名参赛
+                {isUnlocked ? '报名参赛' : '🔒 通关冠军之路后解锁'}
               </button>
             ) : (
               <button onClick={() => startBattle(null, 'league')} style={{
