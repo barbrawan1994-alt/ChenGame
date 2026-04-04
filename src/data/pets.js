@@ -1016,15 +1016,89 @@ const GODS_610 = [
   { id: 610, name: '永夜之主',   type: 'DARK',  emoji: '🌑', hp: 140, atk: 135, def: 130, spd: 105, desc: '能让世界陷入永夜的恐怖存在。' },
 ];
 
+// --- 56只新精灵 (ID 611-666) - 数码兽系列 ---
+const DIGIMON_PETS = [
+  // === 进化链1: 亚古兽系 (FIRE) ===
+  { id: 611, name: '亚古兽',   type: 'FIRE',   emoji: '🦎', hp: 55, atk: 58, def: 45, spd: 50, evo: 612, evoLvl: 16, desc: '好战的小型爬虫数码兽，口中能喷出小火球。' },
+  { id: 612, name: '暴龙兽',   type: 'FIRE',   emoji: '🦖', hp: 75, atk: 85, def: 60, spd: 55, evo: 613, evoLvl: 36, desc: '亚古兽进化而来的巨型恐龙，拥有毁灭性的火焰吐息。' },
+  { id: 613, name: '钢铁暴龙兽', type: 'FIRE', emoji: '🤖', hp: 90, atk: 115, def: 80, spd: 65, evo: 614, evoLvl: 55, desc: '身披机械铠甲的暴龙兽，左臂装载强力导弹。' },
+  { id: 614, name: '战斗暴龙兽', type: 'FIRE', emoji: '🐉', hp: 105, atk: 155, def: 105, spd: 120, desc: '究极体龙战士，勇气之力的化身，背负龙杀者之盾。' },
+  // === 进化链2: 加布兽系 (ICE) ===
+  { id: 615, name: '加布兽',   type: 'ICE',    emoji: '🐺', hp: 55, atk: 48, def: 55, spd: 52, evo: 616, evoLvl: 16, desc: '头戴兽皮的胆小数码兽，寒冷环境下格外活跃。' },
+  { id: 616, name: '加鲁鲁兽', type: 'ICE',    emoji: '🐺', hp: 70, atk: 75, def: 65, spd: 75, evo: 617, evoLvl: 36, desc: '优雅的银狼，奔跑速度极快，口吐寒冰。' },
+  { id: 617, name: '人狼兽',   type: 'ICE',    emoji: '🐺', hp: 85, atk: 100, def: 75, spd: 105, evo: 618, evoLvl: 55, desc: '直立行走的狼人战士，格斗与冰系双修。' },
+  { id: 618, name: '钢铁加鲁鲁兽', type: 'ICE', emoji: '🐺', hp: 100, atk: 130, def: 120, spd: 135, desc: '全身机械化的究极狼兽，装备寒冰导弹和激光炮。' },
+  // === 进化链3: 基尔兽系 (DRAGON) ===
+  { id: 619, name: '基尔兽',   type: 'DRAGON', emoji: '🔴', hp: 60, atk: 65, def: 45, spd: 42, evo: 620, evoLvl: 18, desc: '病毒种的小型龙兽，本性善良但战斗力惊人。' },
+  { id: 620, name: '大基尔兽', type: 'DRAGON', emoji: '🔴', hp: 80, atk: 95, def: 60, spd: 50, evo: 621, evoLvl: 40, desc: '基尔兽的成长期形态，双臂上的刀刃锋利无比。' },
+  { id: 621, name: '巨大基尔兽', type: 'DRAGON', emoji: '🔴', hp: 95, atk: 125, def: 80, spd: 60, evo: 622, evoLvl: 55, desc: '完全体的巨龙兽，背上的巨翼可引发风暴。' },
+  { id: 622, name: '红莲骑士兽', type: 'DRAGON', emoji: '⚔️', hp: 110, atk: 160, def: 110, spd: 105, desc: '身穿红莲铠甲的圣骑士，十三皇家骑士之一。' },
+  // === 进化链4: 妖狐兽系 (PSYCHIC) ===
+  { id: 623, name: '妖狐兽',   type: 'PSYCHIC', emoji: '🦊', hp: 50, atk: 45, def: 40, spd: 65, evo: 624, evoLvl: 18, desc: '优雅的狐型数码兽，擅长幻术和咒术。' },
+  { id: 624, name: '九尾狐兽', type: 'PSYCHIC', emoji: '🦊', hp: 70, atk: 70, def: 55, spd: 90, evo: 625, evoLvl: 40, desc: '九条尾巴中蕴含强大灵力的妖狐。' },
+  { id: 625, name: '道士兽',   type: 'PSYCHIC', emoji: '🦊', hp: 85, atk: 90, def: 75, spd: 105, evo: 626, evoLvl: 55, desc: '精通东方法术的道士型数码兽。' },
+  { id: 626, name: '花仙兽·樱', type: 'PSYCHIC', emoji: '🌸', hp: 100, atk: 125, def: 100, spd: 130, desc: '妖狐兽究极进化的巫女战士，拥有净化之力。' },
+  // === 进化链5: 大耳兽系 (WIND) ===
+  { id: 627, name: '大耳兽',   type: 'WIND',   emoji: '🐰', hp: 50, atk: 40, def: 45, spd: 60, evo: 628, evoLvl: 16, desc: '长着大耳朵的小型兽，性格温顺但潜力无限。' },
+  { id: 628, name: '加尔哥兽', type: 'WIND',   emoji: '🐰', hp: 70, atk: 70, def: 55, spd: 80, evo: 629, evoLvl: 36, desc: '装备枪械的战斗型兽人，动作敏捷。' },
+  { id: 629, name: '急速兽',   type: 'WIND',   emoji: '🐰', hp: 85, atk: 95, def: 75, spd: 120, evo: 630, evoLvl: 55, desc: '全身金色铠甲的高速战士，速度惊人。' },
+  { id: 630, name: '圣加尔哥兽', type: 'WIND', emoji: '🐰', hp: 105, atk: 120, def: 105, spd: 140, desc: '究极体巨型兽人，双臂装载终极火力。' },
+  // === 进化链6: V仔兽系 (FIGHT) ===
+  { id: 631, name: 'V仔兽',    type: 'FIGHT',  emoji: '💙', hp: 55, atk: 60, def: 45, spd: 55, evo: 632, evoLvl: 18, desc: '古代种的小龙兽，性格开朗好斗。' },
+  { id: 632, name: 'XV兽',     type: 'FIGHT',  emoji: '💙', hp: 75, atk: 90, def: 60, spd: 65, evo: 633, evoLvl: 40, desc: 'V仔兽进化的龙人战士，飞行速度极快。' },
+  { id: 633, name: '机甲龙兽', type: 'FIGHT',  emoji: '💙', hp: 90, atk: 115, def: 80, spd: 80, evo: 634, evoLvl: 55, desc: '与刺虫兽合体后的强力龙兽。' },
+  { id: 634, name: '帝皇龙兽', type: 'DRAGON', emoji: '💙', hp: 115, atk: 155, def: 110, spd: 115, desc: '传说中的究极龙战士，拥有毁天灭地之力。' },
+  // === 进化链7: 甲虫兽系 (BUG) ===
+  { id: 635, name: '甲虫兽',   type: 'BUG',    emoji: '🪲', hp: 50, atk: 45, def: 50, spd: 55, evo: 636, evoLvl: 16, desc: '好奇心旺盛的昆虫型数码兽。' },
+  { id: 636, name: '比多兽',   type: 'BUG',    emoji: '🪲', hp: 70, atk: 75, def: 65, spd: 65, evo: 637, evoLvl: 36, desc: '巨型甲虫兽，坚硬的外壳可抵御大部分攻击。' },
+  { id: 637, name: '超比多兽', type: 'BUG',    emoji: '🪲', hp: 85, atk: 100, def: 85, spd: 75, evo: 638, evoLvl: 55, desc: '完全体的巨大甲虫，角上集中了电磁能量。' },
+  { id: 638, name: '究极比多兽', type: 'BUG',  emoji: '🪲', hp: 100, atk: 130, def: 120, spd: 90, desc: '最强的昆虫型数码兽，甲壳硬度堪比金刚石。' },
+  // === 进化链8: 巴鲁兽系 (GRASS) ===
+  { id: 639, name: '巴鲁兽',   type: 'GRASS',  emoji: '🌱', hp: 55, atk: 42, def: 48, spd: 45, evo: 640, evoLvl: 16, desc: '头顶长着嫩芽的植物型数码兽。' },
+  { id: 640, name: '仙人掌兽', type: 'GRASS',  emoji: '🌵', hp: 75, atk: 70, def: 70, spd: 50, evo: 641, evoLvl: 36, desc: '戴着拳击手套的仙人掌，出拳速度极快。' },
+  { id: 641, name: '花仙兽',   type: 'GRASS',  emoji: '🌺', hp: 85, atk: 85, def: 75, spd: 75, evo: 642, evoLvl: 55, desc: '美丽的花精灵，掌控植物生长之力。' },
+  { id: 642, name: '蔷薇兽',   type: 'GRASS',  emoji: '🌹', hp: 100, atk: 120, def: 95, spd: 110, desc: '优雅绝美的究极花之女王，荆棘是她的武器。' },
+  // === 进化链9: 海兽系 (WATER) ===
+  { id: 643, name: '海狮兽',   type: 'WATER',  emoji: '🦭', hp: 60, atk: 45, def: 50, spd: 48, evo: 644, evoLvl: 16, desc: '活泼好动的海洋哺乳数码兽。' },
+  { id: 644, name: '海象兽',   type: 'WATER',  emoji: '🦭', hp: 80, atk: 65, def: 80, spd: 45, evo: 645, evoLvl: 36, desc: '忠实可靠的海象兽，巨角可击碎冰山。' },
+  { id: 645, name: '祖顿兽',   type: 'WATER',  emoji: '🦭', hp: 95, atk: 95, def: 100, spd: 50, evo: 646, evoLvl: 55, desc: '手持雷神之锤的海兽战士。' },
+  { id: 646, name: '维京兽',   type: 'WATER',  emoji: '🦭', hp: 115, atk: 125, def: 130, spd: 65, desc: '海洋的霸主，拥有操控北冰洋的力量。' },
+  // === 进化链10: 天使兽系 (LIGHT) ===
+  { id: 647, name: '巴达兽',   type: 'LIGHT',  emoji: '🐷', hp: 50, atk: 40, def: 40, spd: 55, evo: 648, evoLvl: 16, desc: '扇着小翅膀的可爱数码兽，蕴含希望之力。' },
+  { id: 648, name: '天使兽',   type: 'LIGHT',  emoji: '👼', hp: 70, atk: 80, def: 65, spd: 75, evo: 649, evoLvl: 36, desc: '六翼天使型数码兽，光之拳可净化邪恶。' },
+  { id: 649, name: '神圣天使兽', type: 'LIGHT', emoji: '👼', hp: 90, atk: 110, def: 85, spd: 90, evo: 650, evoLvl: 55, desc: '八翼大天使，手持净化之剑。' },
+  { id: 650, name: '炽天使兽', type: 'LIGHT',  emoji: '👼', hp: 110, atk: 145, def: 115, spd: 110, desc: '十翼炽天使，天堂三大天使之一。' },
+  // === 进化链11: 迪路兽系 (FAIRY) ===
+  { id: 651, name: '迪路兽',   type: 'FAIRY',  emoji: '🐱', hp: 48, atk: 55, def: 42, spd: 68, evo: 652, evoLvl: 18, desc: '圣洁的小猫型数码兽，戴着神圣之戒。' },
+  { id: 652, name: '天女兽',   type: 'FAIRY',  emoji: '👸', hp: 75, atk: 85, def: 70, spd: 85, evo: 653, evoLvl: 40, desc: '八翼天女，光之弓矢可射穿黑暗。' },
+  { id: 653, name: '神圣龙兽', type: 'FAIRY',  emoji: '🐉', hp: 95, atk: 115, def: 95, spd: 100, evo: 654, evoLvl: 55, desc: '闪耀着圣光的神龙，守护数码世界的秩序。' },
+  { id: 654, name: '座天使兽', type: 'FAIRY',  emoji: '👸', hp: 110, atk: 140, def: 120, spd: 115, desc: '天堂三大天使之一，以慈悲之心庇护万物。' },
+  // === 进化链12: 虫虫兽系 (POISON) ===
+  { id: 655, name: '虫虫兽',   type: 'POISON', emoji: '🐛', hp: 50, atk: 42, def: 40, spd: 50, evo: 656, evoLvl: 16, desc: '弱小但坚韧的幼虫数码兽。' },
+  { id: 656, name: '刺虫兽',   type: 'POISON', emoji: '🦟', hp: 70, atk: 75, def: 60, spd: 70, evo: 657, evoLvl: 36, desc: '飞行型昆虫战士，尾刺含有猛毒。' },
+  { id: 657, name: '恐虫兽',   type: 'POISON', emoji: '🪲', hp: 85, atk: 105, def: 75, spd: 85, evo: 658, evoLvl: 55, desc: '恐怖的巨型甲虫，剪刀般的大颚威力惊人。' },
+  { id: 658, name: '究极锹形兽', type: 'POISON', emoji: '🪲', hp: 100, atk: 140, def: 90, spd: 100, desc: '昆虫数码兽的最终进化，甲壳反射一切攻击。' },
+  // === 进化链13: 鹰兽系 (FLYING) ===
+  { id: 659, name: '鹰兽',     type: 'FLYING', emoji: '🦅', hp: 52, atk: 50, def: 42, spd: 60, evo: 660, evoLvl: 18, desc: '有着锐利眼神的猛禽型数码兽。' },
+  { id: 660, name: '天鹰兽',   type: 'FLYING', emoji: '🦅', hp: 72, atk: 80, def: 60, spd: 82, evo: 661, evoLvl: 40, desc: '展翅高飞的巨鹰，利爪可撕裂钢铁。' },
+  { id: 661, name: '人马兽',   type: 'FLYING', emoji: '🦅', hp: 88, atk: 100, def: 75, spd: 95, evo: 662, evoLvl: 55, desc: '人鹰合体的神秘战士。' },
+  { id: 662, name: '瓦尔基里兽', type: 'FLYING', emoji: '🦅', hp: 105, atk: 130, def: 100, spd: 120, desc: '北欧神话中的战女神，掌管天空战场。' },
+  // === 进化链14: 穿山甲兽系 (STEEL) ===
+  { id: 663, name: '穿山甲兽', type: 'STEEL',  emoji: '🛡️', hp: 58, atk: 42, def: 65, spd: 35, evo: 664, evoLvl: 18, desc: '全身覆盖坚硬鳞甲的防御型数码兽。' },
+  { id: 664, name: '甲龙兽',   type: 'STEEL',  emoji: '🛡️', hp: 80, atk: 65, def: 95, spd: 40, evo: 665, evoLvl: 40, desc: '尾巴上的铁球可粉碎巨石。' },
+  { id: 665, name: '合体兽',   type: 'STEEL',  emoji: '🛡️', hp: 95, atk: 80, def: 120, spd: 50, evo: 666, evoLvl: 55, desc: '天使与龙合体的神秘铁壁战士。' },
+  { id: 666, name: '维京海盗兽', type: 'STEEL', emoji: '🛡️', hp: 110, atk: 110, def: 145, spd: 60, desc: '不屈不挠的钢铁巨人，拥有最坚固的防御。' },
+];
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
     UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600,
-    ...GODS_610
+    ...GODS_610, ...DIGIMON_PETS
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 610);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 666);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
@@ -1034,4 +1108,4 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610 };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS };

@@ -80,7 +80,7 @@ import {
 } from './data/marriage';
 import {
   DEVIL_FRUITS, FRUIT_RARITY_CONFIG, FRUIT_CATEGORY_NAMES,
-  getRandomFruit, getFruitById, getAllFruits, getFruitIcon,
+  getRandomFruit, getFruitById, getAllFruits, getFruitIcon, FRUIT_IMAGE_URLS,
 } from './data/devilfruits';
 import {
   GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
@@ -290,7 +290,7 @@ export default function RPG(props) {
   // 环境与天气系统
   const [weather, setWeather] = useState('CLEAR');    
   const [mapWeathers, setMapWeathers] = useState({}); 
-  const [timePhase, setTimePhase] = useState('DAY');
+  const [timePhase, setTimePhase] = useState('DAY'); 
   useEffect(() => {
     const wk = mapWeathers[currentMapId] || 'CLEAR';
     if (weather !== wk) setWeather(wk);
@@ -803,7 +803,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
    const [evoAnim, setEvoAnim] = useState(null); // { oldPet, newPet, targetIdx, step: 0-3 }
   const [beautyState, setBeautyState] = useState({ round: 1, appeal: 0, history: [], log: [] });
   const [activityModal, setActivityModal] = useState(null); 
-  const [battleTooltip, setBattleTooltip] = useState(null);
+  const [battleTooltip, setBattleTooltip] = useState(null); 
   const [guideSearch, setGuideSearch] = useState('');
   const [guideExpanded, setGuideExpanded] = useState({});
   const [guideCat, setGuideCat] = useState(null);
@@ -1042,7 +1042,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
       if (used) {
         setInventory(prev => ({ ...prev, cursed: { ...(prev.cursed || {}), [itemKey]: ((prev.cursed || {})[itemKey] || 0) - 1 } }));
-      }
+        }
     }
 
     if (used) {
@@ -1087,7 +1087,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     // 4. 进入第一张地图 (触发剧情对话)
     enterMap(1);
-
+    
     // 5. 成就：选择初始精灵
     updateAchStat({ starterChosen: true, totalCaught: 1 });
     
@@ -1192,7 +1192,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     };
 
     let finalCrit = Math.floor((baseStats.crit||5) + (ivs.crit||0) + (evs.crit||0) + (pet.level * 0.2));
-    if (chiefBonus.crit) finalCrit += chiefBonus.crit;
+    if (chiefBonus.crit) finalCrit += chiefBonus.crit; 
     (pet.equips||[]).forEach(equip => {
       if (!equip) return;
       const accData = typeof equip === 'string' ? ACCESSORY_DB.find(c=>c.id===equip) : equip;
@@ -4387,7 +4387,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'15px', fontWeight:'bold', color:'#FFB74D'}}>联盟尚未开放</div>
               <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginTop:'6px'}}>需完成第12章【冠军之路】主线剧情后解锁</div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>当前进度: 第{storyProgress + 1}章 / 13章</div>
-            </div>
+                </div>
           )}
 
           <div style={{textAlign:'center', marginBottom:'24px', padding:'20px'}}>
@@ -4395,18 +4395,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div style={{fontSize:'14px', color:'rgba(255,255,255,0.5)', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'8px'}}>Champion Record</div>
             <div style={{fontSize:'36px', fontWeight:'900', color:'#FFD700', textShadow:'0 0 20px rgba(255,215,0,0.3)'}}>{leagueWins}</div>
             <div style={{fontSize:'12px', color:'rgba(255,255,255,0.4)', marginTop:'8px'}}>我方平均等级: Lv.{avgLv} · 队伍 {party.length} 只</div>
-          </div>
+            </div>
 
           <div style={{width:'100%', maxWidth:'420px', display:'flex', flexDirection:'column', gap:'12px'}}>
-            {rounds.map(r => {
-              const isCurrent = leagueRound === r.id;
-              const isPassed = leagueRound > r.id;
-              const isFuture = leagueRound < r.id && leagueRound !== 0;
+                {rounds.map(r => {
+                    const isCurrent = leagueRound === r.id;
+                    const isPassed = leagueRound > r.id;
+                    const isFuture = leagueRound < r.id && leagueRound !== 0;
               const colors = { 1: '#3F51B5', 2: '#1E88E5', 3: '#E65100', 4: '#FFD700' };
               const accent = colors[r.id];
 
-              return (
-                <div key={r.id} style={{
+                    return (
+                        <div key={r.id} style={{
                   background: isCurrent ? `linear-gradient(135deg, ${accent}33, ${accent}11)` : 'rgba(255,255,255,0.04)',
                   border: isCurrent ? `2px solid ${accent}` : isPassed ? '2px solid #4CAF50' : '1px solid rgba(255,255,255,0.08)',
                   borderRadius: '16px', padding: '16px 20px',
@@ -4416,27 +4416,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   transition: 'all 0.3s ease',
                   boxShadow: isCurrent ? `0 4px 20px ${accent}30` : 'none',
                 }}>
-                  <div style={{
+                                <div style={{
                     width:'42px', height:'42px', borderRadius:'12px',
                     background: isPassed ? 'linear-gradient(135deg,#4CAF50,#66BB6A)' : isCurrent ? `linear-gradient(135deg,${accent},${accent}CC)` : 'rgba(255,255,255,0.06)',
                     display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0,
                     boxShadow: isPassed || isCurrent ? '0 4px 12px rgba(0,0,0,0.3)' : 'none',
                   }}>
                     {isPassed ? '✓' : r.icon}
-                  </div>
+                                </div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:'bold', fontSize:'15px', color: isCurrent ? accent : isPassed ? '#4CAF50' : '#fff'}}>
-                      {r.name}
-                    </div>
+                                    {r.name}
+                                </div>
                     <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>{r.desc}</div>
-                  </div>
+                            </div>
                   <div style={{fontSize:'11px', fontWeight:'bold', color: isCurrent ? accent : isPassed ? '#4CAF50' : 'rgba(255,255,255,0.3)'}}>
                     {isCurrent ? '当前' : isPassed ? '已晋级' : '—'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
 
           <div style={{marginTop:'24px', width:'100%', maxWidth:'420px'}}>
             <div style={{background:'rgba(255,255,255,0.04)', borderRadius:'14px', padding:'16px', marginBottom:'16px', border:'1px solid rgba(255,255,255,0.06)'}}>
@@ -4448,12 +4448,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               </div>
             </div>
 
-            {leagueRound === 0 ? (
-              <button onClick={() => {
+                {leagueRound === 0 ? (
+                    <button onClick={() => {
                 if (!isUnlocked) { alert('需通关【冠军之路】剧情后解锁战斗联盟'); return; }
-                if(party.length < 1) { alert("请先携带精灵！"); return; }
-                setLeagueRound(1);
-              }} style={{
+                        if(party.length < 1) { alert("请先携带精灵！"); return; }
+                        setLeagueRound(1);
+                    }} style={{
                 width:'100%', padding:'16px', borderRadius:'25px', border:'none',
                 background: isUnlocked ? 'linear-gradient(135deg, #FFD700, #FFA000)' : 'linear-gradient(135deg, #555, #777)',
                 color: isUnlocked ? '#1a1a2e' : '#aaa', fontSize:'16px', fontWeight:'900',
@@ -4461,25 +4461,25 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 boxShadow: isUnlocked ? '0 6px 20px rgba(255,215,0,0.3)' : 'none', letterSpacing:'1px',
               }}>
                 {isUnlocked ? '报名参赛' : '🔒 通关冠军之路后解锁'}
-              </button>
-            ) : (
-              <button onClick={() => startBattle(null, 'league')} style={{
+                    </button>
+                ) : (
+                    <button onClick={() => startBattle(null, 'league')} style={{
                 width:'100%', padding:'16px', borderRadius:'25px', border:'none',
                 background: 'linear-gradient(135deg, #F44336, #C62828)',
                 color:'#fff', fontSize:'16px', fontWeight:'900', cursor:'pointer',
                 boxShadow: '0 6px 20px rgba(244,67,54,0.4)', letterSpacing:'1px',
               }}>
                 ⚔️ 开始 {rounds.find(r=>r.id===leagueRound)?.name || '比赛'}
-              </button>
-            )}
-
-            {leagueRound > 0 && (
+                    </button>
+                )}
+                
+                {leagueRound > 0 && (
               <div style={{textAlign:'center', marginTop:'12px', fontSize:'12px', color:'rgba(255,255,255,0.3)', cursor:'pointer'}}
                 onClick={() => { if(confirm("确定要弃权吗？当前进度将丢失。")) setLeagueRound(0); }}>
                 弃权退赛
-              </div>
-            )}
-          </div>
+                    </div>
+                )}
+            </div>
         </div>
       </div>
     );
@@ -5517,7 +5517,7 @@ const useGrowthItem = (petIndex, itemId) => {
           addLog(`发现恶魔果实: ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]!`);
           alert(`发现了 ${fruit.name} [${FRUIT_CATEGORY_NAMES[fruit.category]}]!\n${fruit.desc}`);
         }
-        return;
+        return; 
       }
 
       // ------------------------------------------------
@@ -5701,7 +5701,7 @@ const useGrowthItem = (petIndex, itemId) => {
       // 增加地图探索度
       setMapProgress(prev => ({ ...prev, [currentMapId]: Math.min(100, (prev[currentMapId]||0) + 1) }));
       updateAchStat({ totalSteps: 1 });
-
+      
       const roll = Math.random();
       const mapInfo = MAPS.find(m => m.id === currentMapId);
       const progress = mapProgress[currentMapId] || 0;
@@ -5976,7 +5976,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 pool = i >= teamSize - 2 ? [...FINAL_GOD_IDS, ...NEW_GOD_IDS] : [...HIGH_TIER_POOL, ...LEGENDARY_POOL];
             }
             const enemyId = _.sample(pool);
-            const isShiny = leagueRound === 4;
+            const isShiny = leagueRound === 4; 
             enemyParty.push(createPet(enemyId, roundLv, true, isShiny));
         }
     }
@@ -6465,8 +6465,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const aiAction = getPvPAIAction(prev);
           const finalActions = { p1: p1Action, p2: aiAction };
           setTimeout(() => resolvePvPRound(finalActions), 300);
-          return {
-              ...prev,
+              return {
+                  ...prev,
               pvpActions: finalActions,
               phase: 'busy',
               logs: [`已行动，AI 对手正在思考...`, ...prev.logs]
@@ -6527,11 +6527,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       else {
           if (p1.fruitFirstStrike && !p2.fruitFirstStrike) { first = 'p1'; p1.fruitFirstStrike = false; }
           else if (p2.fruitFirstStrike && !p1.fruitFirstStrike) { first = 'p2'; p2.fruitFirstStrike = false; }
-          else {
-              const s1 = getStats(p1, p1.stages).spd;
-              const s2 = getStats(p2, p2.stages).spd;
-              if (s2 > s1) first = 'p2';
-              else if (s1 === s2 && Math.random() < 0.5) first = 'p2';
+      else {
+          const s1 = getStats(p1, p1.stages).spd;
+          const s2 = getStats(p2, p2.stages).spd;
+          if (s2 > s1) first = 'p2';
+          else if (s1 === s2 && Math.random() < 0.5) first = 'p2';
               if (p1.fruitFirstStrike) p1.fruitFirstStrike = false;
               if (p2.fruitFirstStrike) p2.fruitFirstStrike = false;
           }
@@ -7933,13 +7933,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkState.volatiles.confused <= 0) {
             addLog(`${attacker.name} 的混乱解除了!`);
         } else {
-            addLog(`${attacker.name} 混乱了!`);
-            setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
+        addLog(`${attacker.name} 混乱了!`);
+        setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
             await wait(1000); setAnimEffect(null);
-            if (Math.random() < 0.33) {
-                addLog(`它攻击了自己!`);
-                const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
-                attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
+        if (Math.random() < 0.33) {
+            addLog(`它攻击了自己!`);
+            const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
+            attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
                 return false;
             }
         }
@@ -8157,7 +8157,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         rawDmg *= typeMod;
         const isSTAB = (move.t === attacker.type || move.t === attacker.secondaryType);
         if (isSTAB) rawDmg *= 1.5;
-        rawDmg *= (0.9 + Math.random() * 0.2);
+        rawDmg *= (0.9 + Math.random() * 0.2); 
 
         atkEquipFx.forEach(fx => {
           if (fx.id === 'type_boost' && move.t === fx.moveType) rawDmg *= (1 + fx.val);
@@ -8288,7 +8288,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         dmg = Math.floor(rawDmg);
         if (!isImmune && !isDodged) {
-          dmg = Math.max(1, dmg);
+        dmg = Math.max(1, dmg); 
         }
 
         if (isCrit && !isImmune && !isDodged) {
@@ -8300,11 +8300,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (isImmune || isDodged) {
           addLog(`造成 0 伤害`);
         } else {
-          let msg = `造成 ${dmg} 伤害`;
-          if (isCrit) msg += ` (暴击!)`;
-          if (typeMod > 1.2) msg += ` 效果拔群!`;
-          if (typeMod < 0.9) msg += ` 收效甚微...`;
-          addLog(msg);
+        let msg = `造成 ${dmg} 伤害`;
+        if (isCrit) msg += ` (暴击!)`;
+        if (typeMod > 1.2) msg += ` 效果拔群!`;
+        if (typeMod < 0.9) msg += ` 收效甚微...`;
+        addLog(msg);
         }
 
         if (source === 'player' && !isImmune && !isDodged) {
@@ -8688,7 +8688,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const isActive = index === bState.activeIdx;
       if (pet.currentHp <= 0 && !isActive) return pet;
-      const shareRatio = isActive ? 1.0 : 0.5;
+      const shareRatio = isActive ? 1.0 : 0.5; 
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
       const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost) * (1 + gangExpBonus / 100));
@@ -8739,7 +8739,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               meetsCondition = true;
               const defaultEvoData = POKEDEX.find(p => p.id === pet.evo);
               const condition = defaultEvoData?.evoCondition;
-              if (condition) {
+            if (condition) {
                 if (condition.time && condition.time !== timePhase) meetsCondition = false;
                 if (condition.weather && condition.weather !== weather) meetsCondition = false;
                 if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) meetsCondition = false;
@@ -8965,7 +8965,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       } catch (storyErr) { console.error("[Story] Error in story progression:", storyErr); }
     }
     // ★★★ 剧情推进逻辑结束 ★★★
-
+    
     let totalBattleExp = 0;
     enemyParty.forEach(e => {
       totalBattleExp += Math.floor(e.level * 50 * (isTrainer ? 1.5 : 1));
@@ -9465,45 +9465,45 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setStoryProgress(nextProgress);
           }
           setStoryStep(0); 
-    }
-
-    if (['eclipse_grunt', 'eclipse_executive'].includes(battle.type)) {
-      setMapGrid(prev => {
-          const newGrid = prev.map(row => [...row]);
-          const { x, y } = playerPos; 
-          for(let i=-2; i<=2; i++) {
-              for(let j=-2; j<=2; j++) {
-                  const ty = y + j;
-                  const tx = x + i;
-                  if (ty >= 0 && ty < GRID_H && tx >= 0 && tx < GRID_W) {
-                      if (newGrid[ty][tx] === 11 || newGrid[ty][tx] === 12) {
-                          newGrid[ty][tx] = 2; 
-                          if(ty > 0 && newGrid[ty-1][tx] === 1) newGrid[ty-1][tx] = 2;
-                          if(ty < GRID_H-1 && newGrid[ty+1][tx] === 1) newGrid[ty+1][tx] = 2;
-                      }
-                  }
-              }
           }
-          return newGrid;
-      });
-      setTimeout(() => alert("敌人撤退了！道路已打通。"), 500);
-    }
-    if (battle.type === 'eclipse_leader') {
-      setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
-      const rewardPet = createPet(341, 50); 
-      rewardPet.name = "暗黑超梦";
+          
+          if (['eclipse_grunt', 'eclipse_executive'].includes(battle.type)) {
+            setMapGrid(prev => {
+                const newGrid = prev.map(row => [...row]);
+                const { x, y } = playerPos; 
+                for(let i=-2; i<=2; i++) {
+                    for(let j=-2; j<=2; j++) {
+                        const ty = y + j;
+                        const tx = x + i;
+                        if (ty >= 0 && ty < GRID_H && tx >= 0 && tx < GRID_W) {
+                            if (newGrid[ty][tx] === 11 || newGrid[ty][tx] === 12) {
+                                newGrid[ty][tx] = 2; 
+                                if(ty > 0 && newGrid[ty-1][tx] === 1) newGrid[ty-1][tx] = 2;
+                                if(ty < GRID_H-1 && newGrid[ty+1][tx] === 1) newGrid[ty+1][tx] = 2;
+                            }
+                        }
+                    }
+                }
+                return newGrid;
+            });
+            setTimeout(() => alert("敌人撤退了！道路已打通。"), 500);
+          }
+          if (battle.type === 'eclipse_leader') {
+            setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
+            const rewardPet = createPet(341, 50); 
+            rewardPet.name = "暗黑超梦";
       rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
       if (party.length < 6) setParty([...updatedParty, rewardPet]);
-      else {
+            else {
           setParty(updatedParty);
-          setBox(prev => [...prev, rewardPet]);
-      }
-      setCaughtDex(prev => [...prev, 341]);
-      alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
+                setBox(prev => [...prev, rewardPet]);
+            }
+            setCaughtDex(prev => [...prev, 341]);
+            alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
       setBattle(null);
       setView('grid_map');
-      return; 
-    }
+            return; 
+          }
 
     try { checkTreasureUnlock('explore', { mapId }); } catch(e) {}
     
@@ -9625,7 +9625,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else {
       if (!isDialogVisible) setView('grid_map');
       setBattle(null);
-    }
+      }
        } catch (e) {
          console.error("HandleWin Error:", e);
          setBattle(null);
@@ -10277,7 +10277,7 @@ const renderNameInput = () => {
   const showStarters = nameReady && starterOptions.length > 0;
 
   return (
-    <div className="screen" style={{
+  <div className="screen" style={{
       background: 'radial-gradient(ellipse at 20% 50%, #1a1a2e 0%, #16213e 40%, #0f3460 100%)',
       display:'flex', flexDirection:'column', alignItems:'center',
       minHeight:'100vh', position:'relative', overflow:'auto', padding:'40px 16px 60px'
@@ -10300,7 +10300,7 @@ const renderNameInput = () => {
       </div>
 
       {/* 名字输入卡片 */}
-      <div style={{
+    <div style={{
         width:'100%', maxWidth:'420px', borderRadius:'24px', overflow:'hidden',
         background:'rgba(255,255,255,0.06)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
         border:'1px solid rgba(255,255,255,0.1)', boxShadow:'0 20px 60px rgba(0,0,0,0.3)',
@@ -10308,7 +10308,7 @@ const renderNameInput = () => {
       }}>
         {/* 博士头像 + 对话 */}
         <div style={{padding:'24px 24px 0', display:'flex', gap:'14px', alignItems:'flex-start'}}>
-          <div style={{
+        <div style={{
             width:'52px', height:'52px', borderRadius:'50%', flexShrink:0,
             background:'linear-gradient(135deg,#667eea,#764ba2)',
             display:'flex', alignItems:'center', justifyContent:'center',
@@ -10326,7 +10326,7 @@ const renderNameInput = () => {
 
         {/* 名字输入区 */}
         <div style={{padding:'16px 24px 20px'}}>
-          <div style={{
+        <div style={{
             display:'flex', alignItems:'center', gap:'10px',
             background:'rgba(255,255,255,0.08)', borderRadius:'16px',
             padding:'4px 4px 4px 16px',
@@ -10335,21 +10335,21 @@ const renderNameInput = () => {
             boxShadow: tempName.trim() ? '0 0 20px rgba(102,126,234,0.15)' : 'none'
           }}>
             <span style={{fontSize:'16px', opacity:0.5}}>✏️</span>
-            <input
+            <input 
               type="text" placeholder="输入你的名字..." value={tempName}
               onChange={e => setTempName(e.target.value)} maxLength={8}
               onKeyDown={e => { if (e.key === 'Enter' && tempName.trim() && starterOptions.length === 0) { setTrainerName(tempName); generateStarterOptions(); } }}
-              style={{
+                style={{
                 flex:1, padding:'12px 0', border:'none', background:'transparent',
                 fontSize:'15px', fontWeight:'600', color:'#fff', outline:'none',
                 letterSpacing:'1px'
-              }}
+                }}
             />
             {!showStarters && (
-              <button onClick={() => {
+        <button onClick={() => { 
                 if (!tempName.trim()) { alert('名字不能为空！'); return; }
                 setTrainerName(tempName); generateStarterOptions();
-              }} style={{
+        }} style={{
                 padding:'10px 20px', borderRadius:'12px', border:'none',
                 background: nameReady ? 'linear-gradient(135deg,#667eea,#764ba2)' : 'rgba(255,255,255,0.1)',
                 color: nameReady ? '#fff' : 'rgba(255,255,255,0.3)',
@@ -10361,9 +10361,9 @@ const renderNameInput = () => {
             {showStarters && (
               <div style={{padding:'8px 14px', borderRadius:'12px', background:'rgba(76,175,80,0.2)', border:'1px solid rgba(76,175,80,0.3)'}}>
                 <span style={{fontSize:'12px', color:'#81C784', fontWeight:'600'}}>✓ {tempName}</span>
-              </div>
+    </div>
             )}
-          </div>
+  </div>
         </div>
       </div>
 
@@ -10373,13 +10373,13 @@ const renderNameInput = () => {
           <div style={{textAlign:'center', marginBottom:'20px'}}>
             <div style={{fontSize:'12px', letterSpacing:'4px', color:'rgba(255,255,255,0.35)', textTransform:'uppercase'}}>Choose Your Partner</div>
             <div style={{fontSize:'20px', fontWeight:'800', color:'#fff', marginTop:'4px', textShadow:'0 2px 10px rgba(0,0,0,0.3)'}}>选择你的命运伙伴</div>
-          </div>
-
+        </div>
+        
           <div style={{display:'flex', gap:'16px', justifyContent:'center', flexWrap:'wrap', padding:'0 8px'}}>
-            {starterOptions.map((p, i) => {
-              const stats = getStats(p);
-              const typeConfig = TYPES[p.type] || TYPES.NORMAL;
-              const natureName = NATURE_DB[p.nature]?.name || '未知';
+          {starterOptions.map((p, i) => {
+            const stats = getStats(p);
+            const typeConfig = TYPES[p.type] || TYPES.NORMAL;
+            const natureName = NATURE_DB[p.nature]?.name || '未知';
               const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
               const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
               const diversity = (baseInfo.id % 5) * 2 - 4;
@@ -10390,8 +10390,8 @@ const renderNameInput = () => {
               const bstSDef = Math.floor((baseInfo.def || 50) * bias.s);
               const bstSpd = baseInfo.spd || (40 + (baseInfo.id * 7 % 70));
               const bst = bstHp + bstPAtk + bstPDef + bstSAtk + bstSDef + bstSpd;
-
-              return (
+            
+            return (
                 <div key={i} style={{
                   width:'260px', borderRadius:'20px', overflow:'hidden', cursor:'pointer',
                   background:'rgba(255,255,255,0.05)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
@@ -10400,24 +10400,24 @@ const renderNameInput = () => {
                   transition:'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
                   animation:`popIn 0.5s ease-out ${0.15+i*0.12}s backwards`,
                   position:'relative'
-                }}
-                onMouseEnter={e => {
+                   }}
+                   onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-10px) scale(1.03)';
                   e.currentTarget.style.boxShadow = `0 25px 60px ${typeConfig.color}40, 0 0 30px ${typeConfig.color}20`;
                   e.currentTarget.style.borderColor = `${typeConfig.color}60`;
-                }}
-                onMouseLeave={e => {
+                   }}
+                   onMouseLeave={e => {
                   e.currentTarget.style.transform = '';
                   e.currentTarget.style.boxShadow = '0 15px 40px rgba(0,0,0,0.25)';
                   e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                }}
+                   }}
                 onClick={() => confirmStarter(p)}
-                >
+              >
                   {/* 顶部渐变 + 精灵形象 */}
-                  <div style={{
+                <div style={{
                     height:'140px', position:'relative', overflow:'hidden',
                     background:`linear-gradient(135deg, ${typeConfig.color}cc, ${typeConfig.color}66)`
-                  }}>
+                }}>
                     <div style={{
                       position:'absolute', inset:0,
                       background:'radial-gradient(circle at 30% 80%, rgba(255,255,255,0.15) 0%, transparent 60%)'
@@ -10432,9 +10432,9 @@ const renderNameInput = () => {
                       filter:'drop-shadow(0 8px 20px rgba(0,0,0,0.3))',
                       animation:`float 3.5s ease-in-out infinite`, animationDelay:`${i*0.3}s`
                     }}>
-                      {renderAvatar(p)}
+                        {renderAvatar(p)}
                     </div>
-                  </div>
+                </div>
 
                   {/* 信息区 */}
                   <div style={{padding:'16px'}}>
@@ -10463,7 +10463,7 @@ const renderNameInput = () => {
                         { l:'物防', v:stats.p_def,  c:'#42A5F5', max:250 },
                         { l:'特攻', v:stats.s_atk,  c:'#AB47BC', max:250 },
                         { l:'特防', v:stats.s_def,  c:'#5C6BC0', max:250 },
-                      ].map((s, idx) => (
+                        ].map((s, idx) => (
                         <div key={idx} style={{display:'flex', alignItems:'center', gap:'6px'}}>
                           <span style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'26px'}}>{s.l}</span>
                           <div style={{flex:1, height:'4px', background:'rgba(255,255,255,0.08)', borderRadius:'2px', overflow:'hidden'}}>
@@ -10474,8 +10474,8 @@ const renderNameInput = () => {
                             }} />
                           </div>
                           <span style={{fontSize:'11px', color:s.c, fontWeight:'800', width:'30px', textAlign:'right'}}>{s.v}</span>
-                        </div>
-                      ))}
+                            </div>
+                        ))}
                     </div>
 
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px',
@@ -10491,20 +10491,20 @@ const renderNameInput = () => {
                       boxShadow:`0 4px 15px ${typeConfig.color}40`,
                       transition:'all 0.2s', letterSpacing:'2px'
                     }}>就决定是你了！</button>
-                  </div>
                 </div>
-              );
-            })}
-          </div>
-
+              </div>
+            );
+          })}
+        </div>
+        
           <div style={{textAlign:'center', marginTop:'24px'}}>
             <span style={{fontSize:'11px', color:'rgba(255,255,255,0.3)'}}>* 数值受性格与个体值影响 · 所见即所得</span>
-          </div>
+        </div>
         </div>
       )}
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
 
   const renderStarterSelect = () => renderNameInput();
@@ -10652,9 +10652,9 @@ const renderNameInput = () => {
             {filteredDex.map(pet => {
               const isCaught = caughtDex.includes(pet.id);
               return (
-                <div key={pet.id} className={`dex-item ${isCaught ? 'caught' : 'missing'}`} onClick={() => isCaught && setSelectedDexId(pet.id)}>
+                <div key={pet.id} className={`dex-item ${isCaught ? 'caught' : 'missing'}`} onClick={() => setSelectedDexId(pet.id)} style={{cursor:'pointer'}}>
                   <div className="dex-item-id">#{String(pet.id).padStart(3, '0')}</div>
-                  <div className="dex-item-icon">{renderAvatar(pet)}</div>
+                  <div className="dex-item-icon" style={!isCaught ? {filter:'brightness(0) opacity(0.3)'} : {}}>{renderAvatar(pet)}</div>
                   <div className="dex-item-name">{isCaught ? pet.name : '???'}</div>
                   {isCaught && <div className="dex-type-dot" style={{background: TYPES[pet.type]?.color || '#999'}}></div>}
                 </div>
@@ -10669,7 +10669,6 @@ const renderNameInput = () => {
             background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
             backdropFilter: 'blur(5px)'
           }}>
-            {/* 🔥 核心修改：宽度改为 340px，增加圆角和阴影，去除 overflow:hidden 以允许头像突出 */}
             <div className="dex-modal-card" onClick={e => e.stopPropagation()} style={{
               width: '340px', background: '#fff', borderRadius: '24px', overflow: 'visible', 
               position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -10677,8 +10676,50 @@ const renderNameInput = () => {
               maxHeight: '90vh', overflowY: 'auto'
             }}>
               
-              {(() => {
-                  // 1. 寻找最强精灵逻辑 (保持不变)
+              {!caughtDex.includes(selectedPet.id) ? (
+                <>
+                  <div style={{
+                    width: '100%', height: '110px', flexShrink: 0,
+                    background: 'linear-gradient(180deg, #9E9E9E 0%, #E0E0E0 100%)', 
+                    borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                    position: 'absolute', top: 0, left: 0, zIndex: 0
+                  }}></div>
+                  <div style={{
+                    width: '90px', height: '90px', background: '#eee', borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px',
+                    marginTop: '65px', zIndex: 1, position: 'relative',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.1)', overflow: 'hidden', padding: '5px',
+                    filter: 'brightness(0) opacity(0.15)'
+                  }}>
+                    {renderAvatar(selectedPet)}
+                  </div>
+                  <div style={{textAlign: 'center', marginTop: '10px', zIndex: 1, width: '100%', padding: '0 30px'}}>
+                    <div style={{color: '#999', fontSize: '13px', fontWeight: '600', letterSpacing: '1px'}}>
+                      #{String(selectedPet.id).padStart(3, '0')}
+                    </div>
+                    <div style={{fontSize: '24px', fontWeight: '800', color: '#ccc', margin: '4px 0'}}>???</div>
+                    <div style={{
+                      display: 'inline-block', background: '#bbb', color: '#fff',
+                      padding: '4px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
+                    }}>未知属性</div>
+                  </div>
+                  <div style={{
+                    width: '100%', padding: '30px', textAlign: 'center', color: '#999'
+                  }}>
+                    <div style={{fontSize: '48px', marginBottom: '12px'}}>🔒</div>
+                    <div style={{fontSize: '16px', fontWeight: '700', color: '#666', marginBottom: '8px'}}>该精灵尚未获得</div>
+                    <div style={{fontSize: '13px', lineHeight: 1.6}}>
+                      在野外探索、战斗或完成任务后<br/>有机会遇到并捕获这只精灵
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedDexId(null)} style={{
+                    padding: '8px 32px', borderRadius: '20px', border: 'none',
+                    background: '#9E9E9E', color: '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
+                  }}>关闭</button>
+                </>
+              ) : null}
+
+              {caughtDex.includes(selectedPet.id) && (() => {
                   const allCaught = [...party, ...box].filter(p => p.id === selectedPet.id);
                   let bestPet = null;
                   let bestScore = -1;
@@ -10813,12 +10854,11 @@ const renderNameInput = () => {
                   );
               })()}
 
-              <div style={{fontSize:'10px', color:'#ccc', marginBottom:'10px'}}>
+              {caughtDex.includes(selectedPet.id) && <div style={{fontSize:'10px', color:'#ccc', marginBottom:'10px'}}>
                  *金色部分代表因闪光/性格/个体值获得的突破属性
-              </div>
+              </div>}
 
-              {/* 进化家族 (紧凑横向版) */}
-              {(() => {
+              {caughtDex.includes(selectedPet.id) && (() => {
                   const family = getFamilyTree(selectedPet.id);
                   if (!family || (family.stage1.length === 0)) return null;
 
@@ -10876,8 +10916,7 @@ const renderNameInput = () => {
                   );
               })()}
 
-              {/* 底部关闭按钮 */}
-              <button 
+              {caughtDex.includes(selectedPet.id) && <button 
                 onClick={() => setSelectedDexId(null)} 
                 style={{
                   width: '85%', padding: '12px', background: '#F5F7FA', border: 'none', borderRadius: '12px',
@@ -10888,7 +10927,7 @@ const renderNameInput = () => {
                 onMouseOut={(e) => e.target.style.background = '#F5F7FA'}
               >
                 关闭
-              </button>
+              </button>}
 
             </div>
           </div>
@@ -10951,8 +10990,8 @@ const renderNameInput = () => {
             {Object.keys(TYPES).map(t => (
               <button key={t} onClick={()=>setSkillFilter(t)} style={{padding:'5px 10px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter===t ? TYPES[t].color : 'rgba(255,255,255,0.06)', color: skillFilter===t ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>{TYPES[t].name}</button>
             ))}
-          </div>
         </div>
+              </div>
 
         {/* 技能列表 */}
         <div style={{flex:1, overflowY:'auto', padding:'0 16px 16px'}}>
@@ -10981,7 +11020,7 @@ const renderNameInput = () => {
                     <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
                       <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>{skill.name}</span>
                       <span style={{fontSize:'9px', padding:'2px 8px', borderRadius:'8px', background:typeColor, color:'#fff', fontWeight:'600'}}>{TYPES[skill.t]?.name || '变化'}</span>
-                    </div>
+            </div>
 
                     {/* 数据行 */}
                     <div style={{display:'flex', gap:'12px', fontSize:'11px', marginBottom: skill.desc ? '8px' : '0'}}>
@@ -11184,8 +11223,27 @@ const renderItemIcon = (category, itemId, size = 36, tmType) => {
   return null;
 };
 
-// 恶魔果实 CSS 图标渲染
 const renderFruitCSSIcon = (fruitId, size = 44) => {
+  const imgUrl = FRUIT_IMAGE_URLS[fruitId];
+  if (imgUrl) {
+    return (
+      <div style={{
+        width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+        background: 'linear-gradient(135deg, #2c1810, #5d3a1a)', position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 0 8px rgba(255,200,100,0.2)', flexShrink: 0,
+        border: '2px solid rgba(255,180,50,0.4)'
+      }}>
+        <img src={imgUrl} alt="" style={{
+          width: '85%', height: '85%', objectFit: 'contain',
+          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
+        }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+        <span style={{display:'none', position:'absolute', fontWeight:'900',
+          fontSize: `${Math.round(size * 0.42)}px`, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.3)'
+        }}>{getFruitIcon(fruitId).symbol}</span>
+      </div>
+    );
+  }
   const icon = getFruitIcon(fruitId);
   return (
     <div style={{
@@ -11495,7 +11553,7 @@ const renderMenu = () => {
       }}>
 
         {/* 顶部横幅 - 版本主题 */}
-        <div style={{
+          <div style={{
           position:'relative', padding:'32px 32px 28px', overflow:'hidden',
           background:'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(255,140,0,0.12) 30%, rgba(168,85,247,0.1) 70%, rgba(59,130,246,0.12) 100%)',
           borderBottom:'1px solid rgba(255,255,255,0.06)'
@@ -11505,9 +11563,9 @@ const renderMenu = () => {
           <div style={{position:'relative', textAlign:'center'}}>
             <div style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'3px 14px', borderRadius:'20px', background:'rgba(255,165,0,0.15)', border:'1px solid rgba(255,165,0,0.25)', marginBottom:'14px'}}>
               <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.0</span>
-            </div>
+          </div>
             
-            <div style={{
+          <div style={{
               fontSize:'40px', fontWeight:'900', letterSpacing:'3px',
               background:'linear-gradient(135deg, #ffd700 0%, #ff8c00 25%, #ff4500 50%, #ff6347 75%, #ffd700 100%)',
               backgroundSize:'300% 300%', animation:'title-shimmer 3s ease infinite',
@@ -11543,13 +11601,13 @@ const renderMenu = () => {
               <div style={{flex:1}}>
                 <div style={{fontSize:'12px', fontWeight:'700', color:'#ffa500'}}>{gangName}</div>
                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
-              </div>
+          </div>
               <div style={{fontSize:'18px', opacity:0.6}}>🏴</div>
-            </div>
+        </div>
           )}
 
           {/* 主按钮 - 开始游戏 */}
-          <button onClick={handleStartGame} style={{
+        <button onClick={handleStartGame} style={{
             width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
             background:'linear-gradient(135deg, #dc2626 0%, #ea580c 40%, #f59e0b 100%)',
             cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
@@ -11567,14 +11625,14 @@ const renderMenu = () => {
             </div>
             <div style={{textAlign:'left', flex:1}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
-                {hasSave ? '继续冒险' : '开始新游戏'}
-              </div>
+                    {hasSave ? '继续冒险' : '开始新游戏'}
+                </div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.75)', fontWeight:'400', marginTop:'1px'}}>
                 {hasSave ? '读取上次的冒险进度' : '踏上全新的传说旅途'}
-              </div>
+                </div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
+        </button>
 
           {/* 存档信息条 */}
           {hasSave && (
@@ -11620,7 +11678,7 @@ const renderMenu = () => {
                 <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{btn.emoji}</span>
                 <div style={{fontSize:'12px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
                 <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>{btn.sub}</div>
-              </button>
+            </button>
             ))}
           </div>
         </div>
@@ -11786,11 +11844,11 @@ const renderMenu = () => {
                 <div style={{width:44, height:44, borderRadius:'14px', background:'linear-gradient(135deg,#667eea,#764ba2)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(102,126,234,0.3)'}}>
                     <span style={{fontSize:'22px'}}>{timeInfo.icon}</span>
                 </div>
-                <div>
+                    <div>
                     <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'1.5px'}}>World Time</div>
                     <div style={{fontSize:'16px', fontWeight:'700', color:'#1e293b'}}>{timeInfo.name}</div>
+                    </div>
                 </div>
-            </div>
             <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
               <div style={{fontSize:'11px', color:'#64748b', fontStyle:'italic', textAlign:'right', maxWidth:'160px'}}>
                 {timePhase === 'DAY' ? '阳光明媚，适合冒险' : (timePhase === 'DUSK' ? '天色渐晚，注意安全' : '深夜是幽灵活跃的时刻...')}
@@ -11957,8 +12015,8 @@ const renderMenu = () => {
                            <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
                                color:'#fff', padding:'3px 10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'3px',
                                border:'1px solid rgba(255,255,255,0.12)', fontWeight:'500', backdropFilter:'blur(4px)'}}>
-                               {mapWeatherInfo.icon} {mapWeatherInfo.name}
-                           </span>
+                                   {mapWeatherInfo.icon} {mapWeatherInfo.name}
+                               </span>
                         </div>
                     </div>
                     {isCleared && (
@@ -11973,7 +12031,7 @@ const renderMenu = () => {
                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
                       <span style={{width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.15)'}}>👑</span>
                       <span style={{fontSize:'12px', fontWeight:'600', textShadow:'0 1px 4px rgba(0,0,0,0.2)'}}>馆主 · {m.gymName || '???'}</span>
-                    </div>
+                </div>
                     <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>Lv.{m.gymLvl}</span>
                 </div>
 
@@ -14354,8 +14412,8 @@ const renderMenu = () => {
             if (!cItem) return;
             if (cItem.type === 'CE_MAX_UP') {
               const idxStr = prompt(`请选择精灵 (1-${party.length}) 使用 ${cItem.name}:`, "1");
-              const idx = parseInt(idxStr) - 1;
-              if (!isNaN(idx) && idx >= 0 && idx < party.length) {
+             const idx = parseInt(idxStr) - 1;
+             if (!isNaN(idx) && idx >= 0 && idx < party.length) {
                 party[idx].maxCE = (party[idx].maxCE || 0) + cItem.val;
                 setInventory(inv => ({ ...inv, cursed: { ...inv.cursed, [selectedBagItem.id]: inv.cursed[selectedBagItem.id] - 1 } }));
                 alert(`${party[idx].name} 的咒力上限永久提升 +${cItem.val}!`);
@@ -14426,7 +14484,7 @@ const renderMenu = () => {
                       }}>
                         <span style={{fontSize:'16px',filter:isActive?'none':'grayscale(0.5) opacity(0.6)'}}>{tab.icon}</span>
                         <span style={{fontSize:'12px',fontWeight:isActive?'700':'500',color:isActive?'#fff':'rgba(255,255,255,0.45)',transition:'all 0.2s'}}>{tab.label}</span>
-                      </div>
+                    </div>
                     );
                   })}
                 </div>
@@ -14446,16 +14504,16 @@ const renderMenu = () => {
                         <span style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.06)',padding:'2px 10px',borderRadius:'10px'}}>{currentItems.length}种 · {totalItems}件</span>
                     </div>
                 </div>
-
+                
                 {/* 物品网格 */}
                 <div style={{flex:1,padding:'16px 20px',overflowY:'auto'}}>
-                  {currentItems.length === 0 ? (
+                    {currentItems.length === 0 ? (
                     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.2)'}}>
                       <div style={{fontSize:'48px',marginBottom:'12px',opacity:0.4}}>📦</div>
                       <div style={{fontSize:'14px',fontWeight:'600'}}>暂无此类物品</div>
                       <div style={{fontSize:'11px',marginTop:'4px',color:'rgba(255,255,255,0.15)'}}>可通过商店购买、战斗掉落或活动获取</div>
-                    </div>
-                  ) : (
+                        </div>
+                    ) : (
                     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'10px',alignContent:'start'}}>
                       {currentItems.map((item,idx)=>{
                         const isFruit = currentCat === 'fruit';
@@ -14474,11 +14532,11 @@ const renderMenu = () => {
                             <div style={{fontSize:'11px',fontWeight:'700',color:'#fff',textAlign:'center',lineHeight:'1.3',height:'28px',overflow:'hidden',wordBreak:'break-all'}}>{item.name}</div>
                             {isFruit && <div style={{fontSize:'8px',color:rarityColor,fontWeight:'600',marginTop:'2px'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label}</div>}
                             {currentCat==='tm'&&item.type&&<div style={{fontSize:'8px',color:TYPES[item.type]?.color||'#888',fontWeight:'600',marginTop:'2px'}}>威力{item.p}</div>}
-                          </div>
+                            </div>
                         );
                       })}
                     </div>
-                  )}
+                    )}
                 </div>
             </div>
         </div>
@@ -14520,10 +14578,10 @@ const renderMenu = () => {
                 <button onClick={()=>setSelectedBagItem(null)} style={{flex:1,padding:'11px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',borderRadius:'12px',cursor:'pointer',color:'rgba(255,255,255,0.6)',fontWeight:'600',fontSize:'12px'}}>关闭</button>
                 {['meds','tm','growth','acc','stone','cursed'].includes(selectedBagItem.category) && (
                   <button onClick={handleUseBtn} style={{flex:1,padding:'11px',border:'none',background:`linear-gradient(135deg,${activeTab.color},${activeTab.color}cc)`,borderRadius:'12px',fontWeight:'700',color:'#fff',cursor:'pointer',fontSize:'12px',boxShadow:`0 4px 12px ${activeTab.color}40`}}>使用</button>
-                )}
-              </div>
+                        )}
+                    </div>
+                </div>
             </div>
-          </div>
         )}
       </div>
     );
@@ -14813,7 +14871,7 @@ const renderMenu = () => {
                         <div>
                             <div style={{fontSize:'15px', fontWeight:'800', color:s.color}}>{s.name}心法</div>
                             <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)'}}>当前境界: 第{lv}层</div>
-                        </div>
+                    </div>
                     </div>
                     <div style={{lineHeight:'1.7', color:'#ddd', fontSize:'11px'}}>{effectText}</div>
                     <button onClick={() => setBattleTooltip(null)} style={{
@@ -15309,7 +15367,7 @@ const renderMenu = () => {
                 })}
 
                 {/* ====== 战场地面 - 渐变色底面 ====== */}
-                <div style={{
+                    <div style={{
                     position:'absolute', bottom:0, left:0, width:'100%', height:'45%',
                     background:'linear-gradient(180deg, transparent 0%, rgba(76,175,80,0.12) 20%, rgba(56,142,60,0.25) 100%)',
                     pointerEvents:'none', zIndex:2
@@ -15356,7 +15414,7 @@ const renderMenu = () => {
                     }}>
                       {battle.activeDomain.ownerSide === 'player' ? '我方' : '敌方'} · 剩余{battle.activeDomain.turnsLeft}回合
                     </span>
-                  </div>
+                </div>
                 )}
 
                 {/* ====== 中央对战标记 ====== */}
@@ -15365,7 +15423,7 @@ const renderMenu = () => {
                   zIndex:3, pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center'
                 }}>
                   {/* 能量涟漪 */}
-                  <div style={{
+                    <div style={{
                     width:80, height:80, borderRadius:'50%',
                     border:'1px solid rgba(255,255,255,0.08)',
                     boxShadow:'0 0 30px rgba(255,255,255,0.03), inset 0 0 20px rgba(255,255,255,0.02)',
@@ -15382,7 +15440,7 @@ const renderMenu = () => {
                   <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%) rotate(20deg)', width:160, height:1,
                     background:'linear-gradient(90deg, transparent, rgba(76,175,80,0.12), rgba(255,255,255,0.08), rgba(244,67,54,0.12), transparent)', filter:'blur(1px)'}} />
                 </div>
-
+                
                 {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角) */}
                 {/* ========================================== */}
@@ -15617,38 +15675,38 @@ const renderMenu = () => {
                     )}
                     {/* 技能网格 - 占满上方空间 */}
                     <div className="moves-grid-v2">
-                        {(() => {
+                            {(() => {
                             const activeMoves = p?.combatMoves || [];
-                            return activeMoves.map((m, i) => (
-                                <EnhancedMoveButton
-                                    key={i}
-                                    move={{
-                                        t: m.t || 'NORMAL',
-                                        name: m.name,
-                                        power: m.p || 0,
-                                        pp: m.pp,
+                                return activeMoves.map((m, i) => (
+                                    <EnhancedMoveButton
+                                        key={i}
+                                        move={{
+                                            t: m.t || 'NORMAL',
+                                            name: m.name,
+                                            power: m.p || 0,
+                                            pp: m.pp,
                                         maxPp: m.maxPP || 15,
                                         acc: m.acc,
                                         desc: m.desc || '',
                                         isCursed: m.isCursed,
                                         ceCost: m.ceCost,
                                         isExtra: m.isExtra,
-                                    }}
-                                    onClick={() => { 
-                                        if (battle.isPvP) {
+                                        }}
+                                        onClick={() => { 
+                                            if (battle.isPvP) {
                                             handlePvPInput(1, 'move', i);
-                                        } else {
-                                            executeTurn(i);
-                                        }
-                                    }}
+                                            } else {
+                                                executeTurn(i);
+                                            }
+                                        }}
                                     disabled={m.isCursed ? ((p.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
-                                    index={i}
-                                />
-                            ));
-                        })()}
-                    </div>
+                                        index={i}
+                                    />
+                                ));
+                            })()}
+                        </div>
                     {/* 底部操作按钮 - 横向排列 */}
-                    {!battle.isPvP ? (
+                        {!battle.isPvP ? (
                         <div className="actions-bar-h">
                             <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}>背包</button>
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}>交换</button>
@@ -15671,12 +15729,12 @@ const renderMenu = () => {
                               const canCombo = canUseCombo(battle);
                               return <button className="action-btn-h" style={{background: canCombo ? 'linear-gradient(135deg,#E91E63,#FF6090)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canCombo ? 1 : 0.7}} onClick={() => canCombo ? executeComboAttack() : alert(`协作技需要回合 ≥ 3\n当前回合: ${battle.turnCount || 0}`)} disabled={!canCombo}>{canCombo ? '协作' : `协作(${3-(battle.turnCount||0)}回合)`}</button>;
                             })()}
-                        </div>
-                    ) : (
+                            </div>
+                        ) : (
                         <div className="actions-bar-h">
                             <button className="action-btn-h" style={{background:'#673AB7'}} onClick={() => { const team = battle.playerCombatStates; const input = prompt("输入要交换的精灵序号 (1-6):"); const idx = parseInt(input) - 1; if (!isNaN(idx) && idx >= 0 && idx < team.length && team[idx]?.currentHp > 0 && idx !== battle.activeIdx) { handlePvPInput(1, 'switch', idx); } }}>换人</button>
-                        </div>
-                    )}
+                            </div>
+                        )}
                 </div>
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
@@ -15987,9 +16045,9 @@ const renderMenu = () => {
     const availAcc = accByTier[tier];
 
     const renderShopCard = (key, icon, name, desc, unitPrice, buyType, extra) => {
-      const count = buyCounts[key] || 1;
+                const count = buyCounts[key] || 1;
       const totalPrice = unitPrice * count;
-      return (
+                return (
         <div key={key} style={{
           background:'linear-gradient(145deg, #ffffff, #f8f9ff)', borderRadius:'16px',
           padding:'18px 14px 14px', display:'flex', flexDirection:'column', alignItems:'center',
@@ -16009,14 +16067,14 @@ const renderMenu = () => {
             <div onClick={()=>updateBuyCount(key,-1)} style={{width:'24px',height:'24px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'14px',userSelect:'none'}}>-</div>
             <span style={{fontSize:'13px',fontWeight:'700',minWidth:'20px'}}>{count}</span>
             <div onClick={()=>updateBuyCount(key,1)} style={{width:'24px',height:'24px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'14px',userSelect:'none'}}>+</div>
-          </div>
+                    </div>
           <button onClick={()=>buyItemPro(key,unitPrice,buyType)} disabled={gold < totalPrice}
             style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=totalPrice?'pointer':'not-allowed',
               background:gold>=totalPrice?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
               color:gold>=totalPrice?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=totalPrice?'0 3px 8px rgba(0,0,0,0.15)':'none'
           }}>购买</button>
-        </div>
-      );
+                  </div>
+                );
     };
 
     const tabs = [
@@ -16030,14 +16088,14 @@ const renderMenu = () => {
       ...(showSpecial?[{id:'special',label:'特殊',icon:'✨'}]:[]),
     ];
 
-    return (
+                return (
       <div className="modal-overlay">
         <div className="shop-modal-pro" style={{background:'linear-gradient(180deg,#f8f9ff,#eef1ff)',borderRadius:'20px'}}>
           <div className="shop-nav-sidebar" style={{background:'linear-gradient(180deg,#1a1a2e,#16213e)',borderRight:'none',padding:'0',borderRadius:'20px 0 0 20px'}}>
             <div style={{padding:'18px 12px',textAlign:'center',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
               <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',fontWeight:'600',marginBottom:'4px'}}>{mapInfo.name}</div>
               <div style={{fontSize:'14px',fontWeight:'800',color:tierColor,letterSpacing:'1px'}}>{tierName}</div>
-            </div>
+                    </div>
             {tabs.map(t=>(
               <div key={t.id} className={`shop-nav-item ${shopTab===t.id?'active':''}`}
                 style={{padding:'12px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',fontWeight:'600',
@@ -16047,14 +16105,14 @@ const renderMenu = () => {
                   transition:'all 0.2s'}}
                 onClick={()=>setShopTab(t.id)}>
                 <span style={{fontSize:'16px'}}>{t.icon}</span>{t.label}
-              </div>
+                  </div>
             ))}
             <div style={{marginTop:'auto',padding:'14px',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
               <div style={{textAlign:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>持有金币</div>
               <div style={{textAlign:'center',fontSize:'18px',fontWeight:'900',color:'#FFD54F'}}>💰 {gold.toLocaleString()}</div>
-            </div>
+                    </div>
             <button style={{margin:'8px 12px 14px',padding:'8px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.7)',fontSize:'12px',fontWeight:'600',cursor:'pointer'}} onClick={()=>setShopMode(false)}>关闭商店</button>
-          </div>
+                  </div>
 
           <div className="shop-content-area" style={{padding:'20px',overflowY:'auto'}}>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:'14px'}}>
@@ -16072,7 +16130,7 @@ const renderMenu = () => {
                 const tierLabel = tm.tier===1?'基础':tm.tier===2?'进阶':'高级';
                 const tierTagColor = tm.tier===1?'#78909C':tm.tier===2?'#43A047':'#FB8C00';
                 const typeColor = TYPES[tm.type]?.color||'#888';
-                return (
+                        return (
                   <div key={tmId} style={{
                     background: alreadyOwned?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg, #ffffff, #f8f9ff)',borderRadius:'16px',
                     padding:'18px 14px 14px',display:'flex',flexDirection:'column',alignItems:'center',
@@ -16097,9 +16155,9 @@ const renderMenu = () => {
                           color:gold>=tm.price?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=tm.price?'0 3px 8px rgba(0,0,0,0.15)':'none'
                         }}>购买</button>
                     )}
-                  </div>
-                );
-              })}
+                        </div>
+                        );
+                    })}
               {shopTab==='stones' && Object.keys(EVO_STONES).map(key=>{
                 const item=EVO_STONES[key];
                 return renderShopCard(key,renderStoneCSS(key,36)||<span style={{fontSize:30}}>{item.icon}</span>,item.name,item.desc,item.price,'stone',{borderColor:'#9C27B0'});
@@ -16112,7 +16170,7 @@ const renderMenu = () => {
               {shopTab==='accessories' && availAcc.map(accId=>{
                 const acc=ACCESSORY_DB.find(a=>a.id===accId); if(!acc) return null;
                 const accOwned = accessories.filter(a=>a===accId).length + party.reduce((s,p)=>s+((p.equips||[]).filter(e=>e===accId).length),0);
-                return (
+                        return (
                   <div key={accId} style={{
                     background:accOwned>0?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg,#ffffff,#f8f9ff)',borderRadius:'16px',
                     padding:'18px 14px 14px',display:'flex',flexDirection:'column',alignItems:'center',
@@ -16136,9 +16194,9 @@ const renderMenu = () => {
                           color:gold>=acc.price?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=acc.price?'0 3px 8px rgba(0,0,0,0.15)':'none'
                         }}>购买</button>
                     )}
-                  </div>
-                );
-              })}
+                        </div>
+                        );
+                    })}
               {shopTab==='cursed' && Object.keys(CURSED_ITEMS).map(key=>{
                 const item=CURSED_ITEMS[key]; if(!item||item.price<=0) return null;
                 return renderShopCard(key,<span style={{fontSize:30}}>{item.icon}</span>,item.name,item.desc,item.price,'cursed',{borderColor:'#4A148C'});
@@ -16148,7 +16206,7 @@ const renderMenu = () => {
                   {renderShopCard(MISC_ITEMS.rebirth_pill.id,renderMiscCSS(36),MISC_ITEMS.rebirth_pill.name,MISC_ITEMS.rebirth_pill.desc,MISC_ITEMS.rebirth_pill.price,'item',{tag:'特殊',tagColor:'#E91E63',borderColor:'#E91E63'})}
                 </>
               )}
-            </div>
+                    </div>
           </div>
         </div>
       </div>
@@ -17201,7 +17259,7 @@ const renderMenu = () => {
         );
       })()}
 
-      {renderEvolutionScene()}
+      {renderEvolutionScene()} 
 
       {/* 恶魔果实选择弹窗 */}
       {fruitPickModal && (() => {

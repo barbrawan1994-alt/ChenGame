@@ -88,6 +88,21 @@ const ID_TO_DIGIMON = {
   607: 'Alphamon',            // 创世之光(LIGHT) → 阿尔法兽
   608: 'Beelzebumon',          // 冥渊魔王(DARK) → 堕天地狱兽
   609: 'Piemon',               // 暗影刺客(DARK) → 小丑皇
+  // 56 new Digimon creatures (611-666)
+  611: 'Agumon', 612: 'Greymon', 613: 'Metal_Greymon', 614: 'War_Greymon',
+  615: 'Gabumon', 616: 'Garurumon', 617: 'Were_Garurumon', 618: 'Metal_Garurumon',
+  619: 'Guilmon', 620: 'Growmon', 621: 'Megalo_Growmon', 622: 'Dukemon',
+  623: 'Renamon', 624: 'Kyubimon', 625: 'Taomon', 626: 'Sakuyamon',
+  627: 'Terriermon', 628: 'Galgomon', 629: 'Rapidmon_Armor', 630: 'Saint_Galgomon',
+  631: 'V-mon', 632: 'XV-mon', 633: 'Paildramon', 634: 'Imperialdramon(Fighter_Mode)',
+  635: 'Tentomon', 636: 'Kabuterimon', 637: 'Atlur_Kabuterimon_(Blue)', 638: 'Herakle_Kabuterimon',
+  639: 'Palmon', 640: 'Togemon', 641: 'Lilimon', 642: 'Rosemon',
+  643: 'Gomamon', 644: 'Ikkakumon', 645: 'Zudomon', 646: 'Vikemon',
+  647: 'Patamon', 648: 'Angemon', 649: 'Holy_Angemon', 650: 'Seraphimon',
+  651: 'Tailmon', 652: 'Angewomon', 653: 'Holydramon', 654: 'Ofanimon',
+  655: 'Wormmon', 656: 'Stingmon', 657: 'Dinobeemon', 658: 'Gran_Kuwagamon',
+  659: 'Hawkmon', 660: 'Aquilamon', 661: 'Silphymon', 662: 'Valkyrimon',
+  663: 'Armadimon', 664: 'Ankylomon', 665: 'Shakkoumon', 666: 'Gankoomon',
 };
 
 // Trainer character sprites (Pokemon Showdown - open source)
