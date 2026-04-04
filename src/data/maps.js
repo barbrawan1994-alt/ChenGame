@@ -68,22 +68,22 @@ export const MAPS = [
     drop: 600, boss: 150, type: 'sky', color: '#FFE0B2', gymLeader: 138, gymLvl: 95, badge: '👑', icon: '☁️', gymName: '龙之长老' 
   },
   { 
-    id: 9, name: '极寒冻土', lvl: [60, 85], 
+    id: 9, name: '极寒冻土', lvl: [80, 98], 
     // 新增: 394(星光海豹), 426(登山雪人)
     pool: [86, 87, 90, 91, 124, 131, 144, 187, 188, 197, 199, 203, 204, 234, 243, 287, 387, 394, 419, 426, 495], 
-    drop: 550, type: 'ice', color: '#E0F7FA', gymLeader: 199, gymLvl: 88, badge: '❄️', icon: '🏔️', gymName: '哈奇库' 
+    drop: 650, type: 'ice', color: '#E0F7FA', gymLeader: 199, gymLvl: 96, badge: '❄️', icon: '🏔️', gymName: '哈奇库' 
   },
   { 
-    id: 10, name: '流沙荒漠', lvl: [45, 70], 
+    id: 10, name: '流沙荒漠', lvl: [83, 99], 
     // 新增: 381(时之沙), 391(沙丘虫), 428(陶土偶)
     pool: [27, 28, 50, 51, 74, 75, 76, 95, 99, 104, 105, 111, 112, 184, 185, 186, 190, 195, 219, 220, 248, 223, 252, 355, 381, 391, 428, 478, 494], 
-    drop: 420, type: 'ground', color: '#FFE082', gymLeader: 184, gymLvl: 72, badge: '🏜️', icon: '🐪', gymName: '菊子' 
+    drop: 720, type: 'ground', color: '#FFE082', gymLeader: 184, gymLvl: 97, badge: '🏜️', icon: '🐪', gymName: '菊子' 
   },
   { 
-    id: 11, name: '糖果王国', lvl: [35, 60], 
+    id: 11, name: '糖果王国', lvl: [85, 99], 
     // 新增: 403(破布偶)
     pool: [35, 36, 39, 40, 48, 113, 122, 124, 147, 173, 174, 183, 194, 217, 218, 299, 403, 456], 
-    drop: 380, type: 'fairy', color: '#F8BBD0', gymLeader: 194, gymLvl: 62, badge: '🍭', icon: '🏰', gymName: '玛绣' 
+    drop: 760, type: 'fairy', color: '#F8BBD0', gymLeader: 194, gymLvl: 98, badge: '🍭', icon: '🏰', gymName: '玛绣' 
   },
   { 
     id: 12, name: '银河空间站', lvl: [80, 99], 

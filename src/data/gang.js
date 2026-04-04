@@ -16,7 +16,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 12}, (_, i) => ({
       name: RECRUIT_NAMES[i % RECRUIT_NAMES.length], level: 40 + i * 3, contribution: 100 + i * 50,
     })),
-    skills: { gs_atk: 3, gs_def: 1, gs_hp: 2, gs_spd: 0, gs_gold: 1, gs_exp: 1 },
+    skills: { gs_atk: 2, gs_def: 1, gs_hp: 1, gs_spd: 0, gs_gold: 1, gs_exp: 1 },
     wins: 24,
     teamPool: [6, 9, 65, 94, 130, 143, 149, 168, 199, 241],
   },
@@ -27,7 +27,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 10}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 5) % RECRUIT_NAMES.length], level: 35 + i * 3, contribution: 80 + i * 40,
     })),
-    skills: { gs_atk: 1, gs_def: 0, gs_hp: 1, gs_spd: 3, gs_gold: 1, gs_exp: 2 },
+    skills: { gs_atk: 1, gs_def: 0, gs_hp: 1, gs_spd: 2, gs_gold: 1, gs_exp: 1 },
     wins: 18,
     teamPool: [3, 18, 33, 94, 138, 190, 206, 241, 434, 437],
   },
@@ -38,7 +38,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 14}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 10) % RECRUIT_NAMES.length], level: 45 + i * 3, contribution: 120 + i * 55,
     })),
-    skills: { gs_atk: 1, gs_def: 4, gs_hp: 3, gs_spd: 0, gs_gold: 1, gs_exp: 1 },
+    skills: { gs_atk: 1, gs_def: 2, gs_hp: 2, gs_spd: 0, gs_gold: 1, gs_exp: 1 },
     wins: 30,
     teamPool: [9, 65, 69, 134, 135, 136, 139, 169, 190, 225],
   },
@@ -49,7 +49,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 8}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 15) % RECRUIT_NAMES.length], level: 30 + i * 4, contribution: 60 + i * 35,
     })),
-    skills: { gs_atk: 2, gs_def: 0, gs_hp: 1, gs_spd: 2, gs_gold: 0, gs_exp: 1 },
+    skills: { gs_atk: 1, gs_def: 0, gs_hp: 1, gs_spd: 2, gs_gold: 0, gs_exp: 1 },
     wins: 12,
     teamPool: [3, 18, 130, 143, 160, 182, 446, 449, 455, 459],
   },
@@ -60,7 +60,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 11}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 20) % RECRUIT_NAMES.length], level: 38 + i * 3, contribution: 90 + i * 45,
     })),
-    skills: { gs_atk: 1, gs_def: 2, gs_hp: 3, gs_spd: 1, gs_gold: 1, gs_exp: 1 },
+    skills: { gs_atk: 1, gs_def: 1, gs_hp: 2, gs_spd: 1, gs_gold: 1, gs_exp: 1 },
     wins: 22,
     teamPool: [6, 9, 140, 149, 168, 199, 443, 452, 461, 465],
   },
@@ -71,7 +71,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 10}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 2) % RECRUIT_NAMES.length], level: 36 + i * 3, contribution: 85 + i * 42,
     })),
-    skills: { gs_atk: 2, gs_def: 1, gs_hp: 1, gs_spd: 1, gs_gold: 1, gs_exp: 2 },
+    skills: { gs_atk: 1, gs_def: 1, gs_hp: 1, gs_spd: 1, gs_gold: 1, gs_exp: 1 },
     wins: 20,
     teamPool: [33, 65, 94, 138, 139, 182, 206, 437, 463, 467],
   },
@@ -82,7 +82,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 6}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 8) % RECRUIT_NAMES.length], level: 25 + i * 4, contribution: 40 + i * 30,
     })),
-    skills: { gs_atk: 1, gs_def: 0, gs_hp: 1, gs_spd: 1, gs_gold: 0, gs_exp: 2 },
+    skills: { gs_atk: 1, gs_def: 0, gs_hp: 1, gs_spd: 1, gs_gold: 0, gs_exp: 1 },
     wins: 6,
     teamPool: [3, 6, 18, 33, 69, 130, 143, 160, 168, 199],
   },
@@ -93,28 +93,30 @@ export const GANG_PRESETS = [
     members: Array.from({length: 15}, (_, i) => ({
       name: RECRUIT_NAMES[(i + 12) % RECRUIT_NAMES.length], level: 50 + i * 3, contribution: 150 + i * 60,
     })),
-    skills: { gs_atk: 1, gs_def: 1, gs_hp: 2, gs_spd: 1, gs_gold: 4, gs_exp: 2 },
+    skills: { gs_atk: 1, gs_def: 1, gs_hp: 1, gs_spd: 1, gs_gold: 2, gs_exp: 1 },
     wins: 35,
     teamPool: [9, 65, 94, 130, 139, 149, 190, 206, 241, 443],
   },
 ];
 
 export const GANG_RANKS = [
-  { id: 'member',      name: '帮众',   minContribution: 0,    salary: 500,   icon: '👤', privileges: '基础任务' },
-  { id: 'elite',       name: '精英',   minContribution: 200,  salary: 1200,  icon: '⭐', privileges: '解锁帮战参与' },
-  { id: 'hall_master', name: '堂主',   minContribution: 600,  salary: 2500,  icon: '🏛️', privileges: '可招募NPC' },
-  { id: 'guardian',    name: '护法',   minContribution: 1500, salary: 5000,  icon: '🛡️', privileges: '解锁高级帮派技能' },
-  { id: 'vice_leader', name: '副帮主', minContribution: 3000, salary: 8000,  icon: '🌟', privileges: '可发起帮战' },
-  { id: 'leader',      name: '帮主',   minContribution: -1,   salary: 12000, icon: '👑', privileges: '最高权限' },
+  { id: 'member',      name: '帮众',   minContribution: 0,    salary: 300,   icon: '👤', privileges: '基础任务' },
+  { id: 'elite',       name: '精英',   minContribution: 200,  salary: 700,   icon: '⭐', privileges: '解锁帮战参与' },
+  { id: 'hall_master', name: '堂主',   minContribution: 600,  salary: 1500,  icon: '🏛️', privileges: '可招募NPC' },
+  { id: 'guardian',    name: '护法',   minContribution: 1500, salary: 3000,  icon: '🛡️', privileges: '解锁高级帮派技能' },
+  { id: 'vice_leader', name: '副帮主', minContribution: 3000, salary: 5000,  icon: '🌟', privileges: '可发起帮战' },
+  { id: 'leader',      name: '帮主',   minContribution: -1,   salary: 8000,  icon: '👑', privileges: '最高权限' },
 ];
 
+export const GANG_SKILL_COST_MULT = [1, 2, 3, 5, 8];
+
 export const GANG_SKILLS = [
-  { id: 'gs_atk',  name: '战意昂扬', desc: '全队物攻+{val}%',  maxLv: 5, costPerLv: 5000, valPerLv: 3,  icon: '⚔️' },
-  { id: 'gs_def',  name: '坚守阵线', desc: '全队物防+{val}%',  maxLv: 5, costPerLv: 5000, valPerLv: 3,  icon: '🛡️' },
-  { id: 'gs_hp',   name: '生命之源', desc: '全队HP上限+{val}%', maxLv: 5, costPerLv: 6000, valPerLv: 4,  icon: '❤️' },
-  { id: 'gs_spd',  name: '疾风之势', desc: '全队速度+{val}%',   maxLv: 5, costPerLv: 5000, valPerLv: 2,  icon: '💨' },
-  { id: 'gs_gold', name: '聚财之道', desc: '战斗金币+{val}%',   maxLv: 5, costPerLv: 4000, valPerLv: 5,  icon: '💰' },
-  { id: 'gs_exp',  name: '经验共享', desc: '战斗经验+{val}%',   maxLv: 5, costPerLv: 4000, valPerLv: 4,  icon: '📖' },
+  { id: 'gs_atk',  name: '战意昂扬', desc: '全队物攻+{val}%',  maxLv: 5, costPerLv: 5000, valPerLv: 2,  icon: '⚔️' },
+  { id: 'gs_def',  name: '坚守阵线', desc: '全队物防+{val}%',  maxLv: 5, costPerLv: 5000, valPerLv: 2,  icon: '🛡️' },
+  { id: 'gs_hp',   name: '生命之源', desc: '全队HP上限+{val}%', maxLv: 5, costPerLv: 6000, valPerLv: 2,  icon: '❤️' },
+  { id: 'gs_spd',  name: '疾风之势', desc: '全队速度+{val}%',   maxLv: 5, costPerLv: 5000, valPerLv: 1,  icon: '💨' },
+  { id: 'gs_gold', name: '聚财之道', desc: '战斗金币+{val}%',   maxLv: 5, costPerLv: 4000, valPerLv: 3,  icon: '💰' },
+  { id: 'gs_exp',  name: '经验共享', desc: '战斗经验+{val}%',   maxLv: 5, costPerLv: 4000, valPerLv: 3,  icon: '📖' },
 ];
 
 export const GANG_TASKS = [
@@ -153,12 +155,12 @@ export const getGangRank = (contribution, isOwner) => {
 export const getGangSkillBonus = (skills) => {
   if (!skills) return { atk: 0, def: 0, hp: 0, spd: 0, gold: 0, exp: 0 };
   return {
-    atk:  (skills.gs_atk || 0) * 3,
-    def:  (skills.gs_def || 0) * 3,
-    hp:   (skills.gs_hp || 0) * 4,
-    spd:  (skills.gs_spd || 0) * 2,
-    gold: (skills.gs_gold || 0) * 5,
-    exp:  (skills.gs_exp || 0) * 4,
+    atk:  (skills.gs_atk || 0) * 2,
+    def:  (skills.gs_def || 0) * 2,
+    hp:   (skills.gs_hp || 0) * 2,
+    spd:  (skills.gs_spd || 0) * 1,
+    gold: (skills.gs_gold || 0) * 3,
+    exp:  (skills.gs_exp || 0) * 3,
   };
 };
 

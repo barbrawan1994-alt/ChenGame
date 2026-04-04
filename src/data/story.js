@@ -375,23 +375,23 @@ export const STORY_SCRIPT = [
     ],
     tasks: [
       { step: 0, x: 5, y: 5, type: 'battle', enemyId: 76, name: '领地意识的 冰海豹', text: "（它不是敌人——它在阻止你靠近危险区域。但唯一的路就在它身后。）", emoji: '🦭',
-        eliteParty: [{ id: 76, level: 62 }, { id: 199, level: 60 }, { id: 131, level: 58 }, { id: 142, level: 57 }, { id: 87, level: 59 }]
+        eliteParty: [{ id: 76, level: 84 }, { id: 199, level: 82 }, { id: 131, level: 80 }, { id: 142, level: 79 }, { id: 87, level: 81 }]
       },
       { step: 1, x: 15, y: 10, type: 'dialog', name: '日蚀队 逃兵', text: "别去了！副首领·霜疯了！她唤醒的那个东西...不是精灵，是灾难！我们的人已经被冻成冰雕了！", emoji: '😱' },
       { step: 2, x: 25, y: 15, type: 'battle', enemyId: 199, name: '狂暴 象牙猪', text: "吼！！！（被远古寒气激活的远古巨兽，獠牙闪着寒冰之光）", emoji: '🐗',
-        eliteParty: [{ id: 199, level: 65 }, { id: 76, level: 63 }, { id: 131, level: 62 }, { id: 253, level: 60 }, { id: 130, level: 59 }]
+        eliteParty: [{ id: 199, level: 87 }, { id: 76, level: 85 }, { id: 131, level: 84 }, { id: 253, level: 82 }, { id: 130, level: 81 }]
       },
       { step: 3, x: 16, y: 8, type: 'battle', enemyId: 131, name: '日蚀队 副首领·霜', text: "冰之力量才是永恒的...在绝对零度面前，一切都将停止。包括时间本身！", emoji: '❄️',
-        eliteParty: [{ id: 131, level: 68 }, { id: 199, level: 66 }, { id: 76, level: 65 }, { id: 253, level: 64 }, { id: 142, level: 63 }]
+        eliteParty: [{ id: 131, level: 90 }, { id: 199, level: 88 }, { id: 76, level: 87 }, { id: 253, level: 86 }, { id: 142, level: 85 }]
       },
       { step: 4, x: 10, y: 4, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: "（寒风中，那个熟悉的身影再次出现）又见面了。上次只用了三成——这次，我用六成。你能活下来吗？", emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 65, devilFruit: 'df_yami' },
-          { id: 609, level: 63 },
-          { id: 610, level: 62 },
-          { id: 603, level: 61 },
-          { id: 94, level: 60 },
-          { id: 604, level: 59 }
+          { id: 608, level: 88, devilFruit: 'df_yami' },
+          { id: 609, level: 86 },
+          { id: 610, level: 85 },
+          { id: 603, level: 84 },
+          { id: 94, level: 83 },
+          { id: 604, level: 82 }
         ]
       }
     ],
@@ -405,7 +405,7 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "获得奖励：精灵【雪球海豹】加入了队伍！" },
       { name: "系统", text: "暗影执行者·厌晚再次出现...她的实力远超想象。最终对决，即将到来。" }
     ],
-    reward: { gold: 10000, items: [{id:'vit_pdef', count:5}], pokemon: {id: 76, level: 50} }
+    reward: { gold: 15000, items: [{id:'vit_pdef', count:5}], pokemon: {id: 76, level: 80} }
   },
 
   // ===== 第十章：流沙荒漠 =====
@@ -421,24 +421,24 @@ export const STORY_SCRIPT = [
     ],
     tasks: [
       { step: 0, x: 5, y: 15, type: 'battle', enemyId: 68, name: '潜伏的 穿山甲', text: "（突然从沙地里钻出！沙暴让它变得异常暴躁）", emoji: '🦔',
-        eliteParty: [{ id: 68, level: 66 }, { id: 185, level: 64 }, { id: 248, level: 62 }, { id: 142, level: 61 }, { id: 112, level: 63 }]
+        eliteParty: [{ id: 68, level: 87 }, { id: 185, level: 85 }, { id: 248, level: 84 }, { id: 142, level: 83 }, { id: 112, level: 84 }]
       },
       { step: 1, x: 15, y: 8, type: 'dialog', name: '竞争对手·苍', text: "你来了...（浑身是伤）日蚀计划的真相——首领要用收集的所有能量，打开次元裂缝，召唤虚空之神。虚空之神...它不是创造者，而是毁灭者。", emoji: '🩸' },
       { step: 2, x: 10, y: 12, type: 'dialog', name: '仙剑大侠·李逍遥', text: "（沙暴中，一道清光划开迷雾）...我追踪虚空能量来到这里。你的朋友就在前方——我能感应到他的灵力。走，我为你开路。（李逍遥剑指前方，御剑劈开沙暴）再说一件事...我在仙灵界见过类似虚空的力量，它叫'魔界之气'。最终决战时...或许我能帮上忙。", emoji: '⚔️' },
       { step: 3, x: 25, y: 5, type: 'battle', enemyId: 185, name: '剧毒 龙王蝎', text: "（虚空能量让它的毒性增强了百倍，一击就能让人石化）", emoji: '🦂',
-        eliteParty: [{ id: 185, level: 69 }, { id: 68, level: 67 }, { id: 248, level: 66 }, { id: 142, level: 64 }, { id: 253, level: 63 }]
+        eliteParty: [{ id: 185, level: 90 }, { id: 68, level: 88 }, { id: 248, level: 87 }, { id: 142, level: 86 }, { id: 253, level: 85 }]
       },
       { step: 4, x: 20, y: 15, type: 'battle', enemyId: 248, name: '日蚀队 副首领·砂', text: "苍！你这个叛徒！首领给了你一切——力量、地位、复仇的机会！你却为了一个陌生人背叛我们？", emoji: '🦂',
-        eliteParty: [{ id: 248, level: 72 }, { id: 185, level: 70 }, { id: 68, level: 69 }, { id: 253, level: 68 }, { id: 142, level: 67 }]
+        eliteParty: [{ id: 248, level: 93 }, { id: 185, level: 91 }, { id: 68, level: 90 }, { id: 253, level: 89 }, { id: 142, level: 88 }]
       },
       { step: 5, x: 5, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（沙暴中她的身影若隐若现）副首领·砂也不过如此。苍...你选错了阵营。不过没关系，反正最后——所有人都要面对我。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 70, devilFruit: 'df_yami' },
-          { id: 609, level: 68, devilFruit: 'df_supa' },
-          { id: 94, level: 66 },
-          { id: 604, level: 65 },
-          { id: 610, level: 64 },
-          { id: 603, level: 63 }
+          { id: 608, level: 92, devilFruit: 'df_yami' },
+          { id: 609, level: 90, devilFruit: 'df_supa' },
+          { id: 94, level: 88 },
+          { id: 604, level: 87 },
+          { id: 610, level: 86 },
+          { id: 603, level: 85 }
         ]
       }
     ],
@@ -450,7 +450,7 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "获得奖励：精灵【幼鲨】加入了队伍！" },
       { name: "系统", text: "苍正式成为你的同伴！日蚀计划的真相终于浮出水面..." }
     ],
-    reward: { gold: 15000, balls: { master: 2 }, pokemon: {id: 82, level: 55} }
+    reward: { gold: 20000, balls: { master: 2 }, pokemon: {id: 82, level: 85} }
   },
 
   // ===== 第十一章：糖果王国 =====
@@ -466,23 +466,23 @@ export const STORY_SCRIPT = [
     ],
     tasks: [
       { step: 0, x: 15, y: 5, type: 'battle', enemyId: 48, name: '诡异的 粉粉球', text: "来玩吧...这里没有痛苦，没有战斗...永远快乐...永远留下来...", emoji: '🧶',
-        eliteParty: [{ id: 48, level: 72 }, { id: 178, level: 70 }, { id: 150, level: 68 }, { id: 146, level: 67 }, { id: 93, level: 69 }]
+        eliteParty: [{ id: 48, level: 90 }, { id: 178, level: 88 }, { id: 150, level: 87 }, { id: 146, level: 86 }, { id: 93, level: 87 }]
       },
       { step: 1, x: 8, y: 12, type: 'dialog', name: '幻境中的你', text: "（你看到了自己的幻象——在一个没有日蚀队的世界里，和所有精灵在草原上奔跑。那么平静，那么美好...但你知道这不是真的。）", emoji: '💭' },
       { step: 2, x: 5, y: 15, type: 'battle', enemyId: 178, name: '梦境守门人', text: "醒来干什么？现实只有痛苦和战斗...在这里，你可以拥有一切...", emoji: '🧙',
-        eliteParty: [{ id: 178, level: 75 }, { id: 48, level: 73 }, { id: 146, level: 72 }, { id: 248, level: 70 }, { id: 142, level: 69 }]
+        eliteParty: [{ id: 178, level: 93 }, { id: 48, level: 91 }, { id: 146, level: 90 }, { id: 248, level: 89 }, { id: 142, level: 88 }]
       },
       { step: 3, x: 10, y: 12, type: 'battle', enemyId: 146, name: '噩梦核心 达克莱伊', text: "你居然能抵抗理想世界的诱惑？那我就让你体验真正的噩梦！比现实更可怕的深渊！", emoji: '🌑',
-        eliteParty: [{ id: 146, level: 78 }, { id: 178, level: 76 }, { id: 150, level: 75 }, { id: 253, level: 74 }, { id: 248, level: 72 }]
+        eliteParty: [{ id: 146, level: 95 }, { id: 178, level: 93 }, { id: 150, level: 92 }, { id: 253, level: 91 }, { id: 248, level: 90 }]
       },
       { step: 4, x: 20, y: 3, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: '（幻境崩碎的裂缝中，厌晚的身影从梦境的残片里走出）梦？现实？对我来说没有区别——因为无论在哪个世界，我都是最强的。来吧，在你清醒的时候再打一次。', emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 76, devilFruit: 'df_yami' },
-          { id: 609, level: 74, devilFruit: 'df_supa' },
-          { id: 610, level: 73, devilFruit: 'df_hie' },
-          { id: 603, level: 72 },
-          { id: 94, level: 71 },
-          { id: 604, level: 70 }
+          { id: 608, level: 95, devilFruit: 'df_yami' },
+          { id: 609, level: 93, devilFruit: 'df_supa' },
+          { id: 610, level: 92, devilFruit: 'df_hie' },
+          { id: 603, level: 91 },
+          { id: 94, level: 90 },
+          { id: 604, level: 89 }
         ]
       }
     ],
@@ -494,7 +494,7 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "获得奖励：精灵【星之子】加入了队伍！" },
       { name: "系统", text: "最终决战的时刻即将来临。目标：银河空间站。" }
     ],
-    reward: { gold: 20000, items: [{id:'vit_crit', count:3}], pokemon: {id: 60, level: 60} }
+    reward: { gold: 25000, items: [{id:'vit_crit', count:3}], pokemon: {id: 60, level: 88} }
   },
 
   // ===== 第十二章：银河空间站（终章前篇） =====

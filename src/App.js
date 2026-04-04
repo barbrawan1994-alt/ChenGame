@@ -83,7 +83,7 @@ import {
   getRandomFruit, getFruitById, getAllFruits, getFruitIcon,
 } from './data/devilfruits';
 import {
-  GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_TASKS, GANG_WAR_CONFIG,
+  GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
   GANG_ICONS, GANG_CREATE_COST, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
   getGangRank, getGangSkillBonus, getGangSkills, getGangWarLevel, getGangWarReward,
   generateCafeRecruits, DEFAULT_GANG_STATE,
@@ -1137,13 +1137,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
             chiefBonus = config.stats; 
         }
     }
-const CHARM_RANK_COLORS = {
-    '万人迷': '#FF4081', // 亮粉色
-    '人气王': '#FFD700', // 金色
-    '可爱鬼': '#2196F3', // 蓝色
-    '呆萌':   '#8BC34A', // 绿色
-    '凶萌':   '#9E9E9E'  // 灰色
-};
     const calc = (base, ivKey, evKey, isHp = false) => {
         const iv = ivs[ivKey] || 0;
         const ev = evs[evKey] || 0;
@@ -4784,7 +4777,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           {GANG_SKILLS.map((skill, idx) => {
             const currentLv = skills[skill.id] || 0;
             const val = currentLv * skill.valPerLv;
-            const nextCost = (currentLv + 1) * skill.costPerLv;
+            const nextCost = currentLv < skill.maxLv ? skill.costPerLv * (GANG_SKILL_COST_MULT[currentLv] || 1) : 0;
             const isAdvanced = idx >= 4;
             return (
               <div key={skill.id} style={{...cardStyle, opacity: isAdvanced && !canLearnAdvanced && !isOwner ? 0.5 : 1}}>
@@ -6165,7 +6158,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }
          let enemyId;
          let level = _.random(context.lvl[0], context.lvl[1]);
-         const canMeetLegend = currentMapId >= 6;
+         const canMeetLegend = badges.length >= 6;
          if (canMeetLegend && Math.random() < 0.005) {
             enemyId = _.sample(LEGENDARY_POOL);
             const mapMaxLvl = context.lvl ? context.lvl[1] : 70;
@@ -15739,7 +15732,8 @@ const renderMenu = () => {
       const renderShop = () => {
     if (!shopMode) return null;
     const mapInfo = MAPS.find(m => m.id === currentMapId) || MAPS[0];
-    const tier = currentMapId <= 3 ? 1 : currentMapId <= 6 ? 2 : currentMapId <= 9 ? 3 : 4;
+    const gymLvl = mapInfo.gymLvl || 15;
+    const tier = gymLvl <= 42 ? 1 : gymLvl <= 68 ? 2 : gymLvl <= 88 ? 3 : 4;
     const tierName = ['', '初级商店', '进阶商店', '高级商店', '顶级商店'][tier];
     const tierColor = ['', '#78909C', '#2196F3', '#9C27B0', '#FF6F00'][tier];
 
