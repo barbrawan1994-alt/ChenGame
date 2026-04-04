@@ -1729,8 +1729,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 .pet-avatar-digimon {
-  mix-blend-mode: multiply;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)) contrast(1.15) saturate(1.2);
+  filter: url(#remove-white-bg) drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 .pet-avatar-pixel {
   width: 100%; height: 100%; object-fit: contain;

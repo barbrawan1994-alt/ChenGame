@@ -17068,6 +17068,25 @@ const renderMenu = () => {
 
  return (
     <div className="cute-theme">
+      {/* SVG滤镜：去除数码宝贝精灵白色背景 */}
+      <svg style={{position:'absolute',width:0,height:0,overflow:'hidden'}}>
+        <defs>
+          <filter id="remove-white-bg" colorInterpolationFilters="sRGB">
+            <feComponentTransfer result="thresh">
+              <feFuncR type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
+              <feFuncG type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
+              <feFuncB type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
+            </feComponentTransfer>
+            <feColorMatrix type="matrix" in="thresh" result="alpha_mask" values="
+              0 0 0 0 0
+              0 0 0 0 0
+              0 0 0 0 0
+              1 1 1 0 0
+            "/>
+            <feComposite in="SourceGraphic" in2="alpha_mask" operator="in"/>
+          </filter>
+        </defs>
+      </svg>
          {/* 🎵 [新增] 隐藏的音频元素 */}
       <audio ref={audioRef} loop />
 
