@@ -442,6 +442,73 @@ export const DAILY_DATE_LIMIT = 3;
 export const DAILY_GIFT_LIMIT = 2;
 export const DIVORCE_COOLDOWN_DAYS = 7;
 
+export const PROPOSAL_QUESTS = {
+  sakura: {
+    name: '小樱的心愿',
+    steps: [
+      { id: 'collect_flowers', desc: '在花园中种植并收获3次植物', type: 'garden_harvest', target: 3, icon: '🌸' },
+      { id: 'win_battles', desc: '和小樱一起赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
+      { id: 'gift_favorite', desc: '送给小樱3份她喜欢的礼物', type: 'gift_favorite', target: 3, icon: '🎁' },
+    ],
+  },
+  xingchen: {
+    name: '星辰的占卜',
+    steps: [
+      { id: 'catch_pokemon', desc: '捕捉3只不同的精灵', type: 'catch', target: 3, icon: '🔮' },
+      { id: 'win_battles', desc: '在星辰的注视下赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
+      { id: 'earn_gold', desc: '累计获得20000金币', type: 'earn_gold', target: 20000, icon: '💰' },
+    ],
+  },
+  sherry: {
+    name: '雪莉的甜点派对',
+    steps: [
+      { id: 'brew_drinks', desc: '在咖啡厅酿造3杯饮品', type: 'brew', target: 3, icon: '☕' },
+      { id: 'win_battles', desc: '一起赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
+      { id: 'gift_favorite', desc: '送给雪莉3份她喜欢的礼物', type: 'gift_favorite', target: 3, icon: '🎁' },
+    ],
+  },
+  raiko: {
+    name: '雷光的试炼',
+    steps: [
+      { id: 'level_up', desc: '将任意精灵提升5个等级', type: 'level_up', target: 5, icon: '⬆️' },
+      { id: 'win_battles', desc: '赢得8场战斗证明实力', type: 'battle_win', target: 8, icon: '⚔️' },
+      { id: 'train_intimacy', desc: '将1只精灵亲密度提升到100', type: 'intimacy', target: 100, icon: '💕' },
+    ],
+  },
+  yuehua: {
+    name: '月华的祝福',
+    steps: [
+      { id: 'heal_pokemon', desc: '在家园中让精灵恢复HP 5次', type: 'housing_heal', target: 5, icon: '💚' },
+      { id: 'win_battles', desc: '一起赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
+      { id: 'gift_favorite', desc: '送给月华3份她喜欢的礼物', type: 'gift_favorite', target: 3, icon: '🎁' },
+    ],
+  },
+  canglan: {
+    name: '苍岚的冒险',
+    steps: [
+      { id: 'explore_maps', desc: '探索3张不同的地图', type: 'explore', target: 3, icon: '🗺️' },
+      { id: 'win_battles', desc: '赢得8场激烈战斗', type: 'battle_win', target: 8, icon: '⚔️' },
+      { id: 'open_chests', desc: '打开5个宝箱', type: 'chest', target: 5, icon: '📦' },
+    ],
+  },
+  liuli: {
+    name: '琉璃的品鉴',
+    steps: [
+      { id: 'furniture', desc: '放置5件家具装饰家园', type: 'place_furniture', target: 5, icon: '🪑' },
+      { id: 'win_battles', desc: '一起赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
+      { id: 'home_score', desc: '家园评分达到200', type: 'home_score', target: 200, icon: '⭐' },
+    ],
+  },
+  lingshuang: {
+    name: '凌霜的剑道',
+    steps: [
+      { id: 'win_streak', desc: '连续赢得3场战斗', type: 'win_streak', target: 3, icon: '🗡️' },
+      { id: 'win_battles', desc: '赢得10场战斗', type: 'battle_win', target: 10, icon: '⚔️' },
+      { id: 'catch_shiny', desc: '拥有1只闪光精灵', type: 'own_shiny', target: 1, icon: '✨' },
+    ],
+  },
+};
+
 export const DEFAULT_MARRIAGE_STATE = {
   spouse: null,
   affections: {},
@@ -449,6 +516,8 @@ export const DEFAULT_MARRIAGE_STATE = {
   weddingDate: null,
   marriageLevel: 0,
   divorceDate: null,
+  questProgress: {},
+  pendingPropose: null,
 };
 
 export const getSpouseBonus = (candidate, marriageLevel) => {

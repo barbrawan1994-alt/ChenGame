@@ -153,6 +153,127 @@ export const FURNITURE_DB = [
     icon: '🎹', shopPrice: null, dropSource: 'battle' },
   { id: 'hot_spring', name: '露天温泉', category: 'REST', baseEffect: { hpRegen: 15, intimacyBonus: 5 },
     icon: '♨️', shopPrice: null, dropSource: 'battle' },
+
+  // --- 新增家具 (50种) ---
+  // REST — battle
+  { id: 'rest_starlight_cot', name: '星屑睡榻', category: 'REST', baseEffect: { hpRegen: 16 },
+    icon: '🌠', shopPrice: null, dropSource: 'battle' },
+  { id: 'rest_comet_blanket', name: '彗星绒毯', category: 'REST', baseEffect: { hpRegen: 15 },
+    icon: '☄️', shopPrice: null, dropSource: 'battle' },
+  { id: 'rest_dawn_hearth', name: '黎明暖炉', category: 'REST', baseEffect: { hpRegen: 14, scoreBonus: 8 },
+    icon: '🔆', shopPrice: null, dropSource: 'battle' },
+  { id: 'rest_legend_bell', name: '传说接待铃', category: 'REST', baseEffect: { hpRegen: 17 },
+    icon: '🛎️', shopPrice: null, dropSource: 'battle' },
+  // REST — pickup
+  { id: 'rest_dew_bottle', name: '朝露润瓶', category: 'REST', baseEffect: { hpRegen: 5 },
+    icon: '🧴', shopPrice: null, dropSource: 'pickup' },
+  { id: 'rest_autumn_leaf', name: '落叶软垫', category: 'REST', baseEffect: { hpRegen: 4 },
+    icon: '🍂', shopPrice: null, dropSource: 'pickup' },
+  { id: 'rest_picnic_hamper', name: '野餐篮床', category: 'REST', baseEffect: { hpRegen: 5 },
+    icon: '🧺', shopPrice: null, dropSource: 'pickup' },
+  { id: 'rest_hedgehog_den', name: '刺刺午睡窝', category: 'REST', baseEffect: { hpRegen: 6 },
+    icon: '🦔', shopPrice: null, dropSource: 'pickup' },
+  // REST — shop
+  { id: 'rest_wicker_stool', name: '藤编圆凳', category: 'REST', baseEffect: { hpRegen: 2 },
+    icon: '🪑', shopPrice: 200, dropSource: 'shop' },
+  { id: 'rest_spa_lather', name: '泡沫皂角', category: 'REST', baseEffect: { hpRegen: 3 },
+    icon: '🧼', shopPrice: 650, dropSource: 'shop' },
+
+  // TRAIN — battle
+  { id: 'train_arcade_pod', name: '街机修行舱', category: 'TRAIN', baseEffect: { expBonus: 0.18 },
+    icon: '🎮', shopPrice: null, dropSource: 'battle' },
+  { id: 'train_sage_puzzle', name: '智慧拼图碑', category: 'TRAIN', baseEffect: { expBonus: 0.19 },
+    icon: '🧩', shopPrice: null, dropSource: 'battle' },
+  { id: 'train_sky_ladder', name: '天梯木架', category: 'TRAIN', baseEffect: { expBonus: 0.20 },
+    icon: '🪜', shopPrice: null, dropSource: 'battle' },
+  // TRAIN — pickup
+  { id: 'train_route_signpost', name: '路牌训练架', category: 'TRAIN', baseEffect: { expBonus: 0.08 },
+    icon: '🪧', shopPrice: null, dropSource: 'pickup' },
+  { id: 'train_compass_roost', name: '罗盘定向台', category: 'TRAIN', baseEffect: { expBonus: 0.07 },
+    icon: '🧭', shopPrice: null, dropSource: 'pickup' },
+  { id: 'train_card_spread', name: '卡牌演武台', category: 'TRAIN', baseEffect: { expBonus: 0.09 },
+    icon: '🃏', shopPrice: null, dropSource: 'pickup' },
+  { id: 'train_lucky_dice', name: '骰子特训场', category: 'TRAIN', baseEffect: { expBonus: 0.08 },
+    icon: '🎲', shopPrice: null, dropSource: 'pickup' },
+  // TRAIN — shop
+  { id: 'train_rhythm_drum', name: '节拍鼓阵', category: 'TRAIN', baseEffect: { expBonus: 0.05 },
+    icon: '🥁', shopPrice: 500, dropSource: 'shop' },
+  { id: 'train_melody_guitar', name: '旋律吉他架', category: 'TRAIN', baseEffect: { expBonus: 0.06 },
+    icon: '🎸', shopPrice: 1100, dropSource: 'shop' },
+  { id: 'train_yoyo_dojo', name: '溜溜球道场', category: 'TRAIN', baseEffect: { expBonus: 0.04 },
+    icon: '🪀', shopPrice: 380, dropSource: 'shop' },
+
+  // PLAY — battle
+  { id: 'play_circus_tent', name: '马戏团大帐篷', category: 'PLAY', baseEffect: { intimacyBonus: 14, scoreBonus: 10 },
+    icon: '🎪', shopPrice: null, dropSource: 'battle' },
+  { id: 'play_carousel_mini', name: '迷你旋转木马', category: 'PLAY', baseEffect: { intimacyBonus: 15 },
+    icon: '🎠', shopPrice: null, dropSource: 'battle' },
+  { id: 'play_coaster_bits', name: '迷你过山车轨', category: 'PLAY', baseEffect: { intimacyBonus: 16 },
+    icon: '🎢', shopPrice: null, dropSource: 'battle' },
+  { id: 'play_teddy_throne', name: '绒毛王座', category: 'PLAY', baseEffect: { intimacyBonus: 13 },
+    icon: '🧸', shopPrice: null, dropSource: 'battle' },
+  // PLAY — pickup
+  { id: 'play_kite_lane', name: '风筝跑道', category: 'PLAY', baseEffect: { intimacyBonus: 5 },
+    icon: '🪁', shopPrice: null, dropSource: 'pickup' },
+  { id: 'play_confetti_pit', name: '彩纸池', category: 'PLAY', baseEffect: { intimacyBonus: 4 },
+    icon: '🎊', shopPrice: null, dropSource: 'pickup' },
+  { id: 'play_balloon_arch', name: '气球拱门', category: 'PLAY', baseEffect: { intimacyBonus: 5 },
+    icon: '🎈', shopPrice: null, dropSource: 'pickup' },
+  // PLAY — shop
+  { id: 'play_violin_corner', name: '小提琴角', category: 'PLAY', baseEffect: { intimacyBonus: 3, scoreBonus: 8 },
+    icon: '🎻', shopPrice: 750, dropSource: 'shop' },
+  { id: 'play_juice_bar', name: '能量果汁吧', category: 'PLAY', baseEffect: { intimacyBonus: 3 },
+    icon: '🧃', shopPrice: 420, dropSource: 'shop' },
+  { id: 'play_sunbask_rock', name: '日浴蜥蜴台', category: 'PLAY', baseEffect: { intimacyBonus: 2 },
+    icon: '🦎', shopPrice: 280, dropSource: 'shop' },
+
+  // DECO — battle
+  { id: 'deco_beetle_sconce', name: '甲虫壁灯', category: 'DECO', baseEffect: { scoreBonus: 38 },
+    icon: '🪲', shopPrice: null, dropSource: 'battle' },
+  { id: 'deco_toy_train', name: '蒸汽小火车景', category: 'DECO', baseEffect: { scoreBonus: 40 },
+    icon: '🚂', shopPrice: null, dropSource: 'battle' },
+  { id: 'deco_rune_stone', name: '符文立石', category: 'DECO', baseEffect: { scoreBonus: 42, expBonus: 0.05 },
+    icon: '🪨', shopPrice: null, dropSource: 'battle' },
+  // DECO — pickup
+  { id: 'deco_butterfly_mobile', name: '蝶翼风铃架', category: 'DECO', baseEffect: { scoreBonus: 18 },
+    icon: '🦋', shopPrice: null, dropSource: 'pickup' },
+  { id: 'deco_beehive_lamp', name: '蜂窝暖灯', category: 'DECO', baseEffect: { scoreBonus: 16 },
+    icon: '🐝', shopPrice: null, dropSource: 'pickup' },
+  { id: 'deco_chipmunk_shelf', name: '花栗鼠置物架', category: 'DECO', baseEffect: { scoreBonus: 14 },
+    icon: '🐿️', shopPrice: null, dropSource: 'pickup' },
+  { id: 'deco_seashell_frame', name: '贝壳相框墙', category: 'DECO', baseEffect: { scoreBonus: 17 },
+    icon: '🐚', shopPrice: null, dropSource: 'pickup' },
+  // DECO — shop
+  { id: 'deco_red_packet', name: '红包墙饰', category: 'DECO', baseEffect: { scoreBonus: 9 },
+    icon: '🧧', shopPrice: 220, dropSource: 'shop' },
+  { id: 'deco_maple_garland', name: '枫叶花环', category: 'DECO', baseEffect: { scoreBonus: 10 },
+    icon: '🍁', shopPrice: 480, dropSource: 'shop' },
+  { id: 'deco_coral_corner', name: '珊瑚角饰', category: 'DECO', baseEffect: { scoreBonus: 11 },
+    icon: '🪸', shopPrice: 1550, dropSource: 'shop' },
+
+  // SPECIAL — battle
+  { id: 'spec_mala_beads', name: '念珠咒链', category: 'SPECIAL', baseEffect: { ceRegen: 8, scoreBonus: 32 },
+    icon: '📿', shopPrice: null, dropSource: 'battle' },
+  { id: 'spec_nazar_amulet', name: '邪眼护符', category: 'SPECIAL', baseEffect: { ceRegen: 7, expBonus: 0.06 },
+    icon: '🧿', shopPrice: null, dropSource: 'battle' },
+  { id: 'spec_hamsa_table', name: '法蒂玛壁挂', category: 'SPECIAL', baseEffect: { ceRegen: 9, intimacyBonus: 4 },
+    icon: '🪬', shopPrice: null, dropSource: 'battle' },
+  // SPECIAL — pickup
+  { id: 'spec_wish_candle', name: '许愿蜡烛阵', category: 'SPECIAL', baseEffect: { ceRegen: 4, hpRegen: 3 },
+    icon: '🕯️', shopPrice: null, dropSource: 'pickup' },
+  { id: 'spec_mycelium_altar', name: '菌丝祭坛', category: 'SPECIAL', baseEffect: { ceRegen: 5, scoreBonus: 15 },
+    icon: '🍄', shopPrice: null, dropSource: 'pickup' },
+  // SPECIAL — shop
+  { id: 'spec_diya_lamp', name: '排灯小灯台', category: 'SPECIAL', baseEffect: { ceRegen: 3 },
+    icon: '🪔', shopPrice: 1400, dropSource: 'shop' },
+  { id: 'spec_char_tooth_cup', name: '咒纹洗漱杯架', category: 'SPECIAL', baseEffect: { ceRegen: 2 },
+    icon: '🪥', shopPrice: 320, dropSource: 'shop' },
+  { id: 'spec_ice_cluster', name: '冰咒晶簇', category: 'SPECIAL', baseEffect: { ceRegen: 4 },
+    icon: '🧊', shopPrice: 2200, dropSource: 'shop' },
+  { id: 'spec_ce_battery', name: '蓄咒电池', category: 'SPECIAL', baseEffect: { ceRegen: 3, expBonus: 0.03 },
+    icon: '🔋', shopPrice: 900, dropSource: 'shop' },
+  { id: 'spec_curse_urn', name: '咒纹陶罐', category: 'SPECIAL', baseEffect: { ceRegen: 2, scoreBonus: 11 },
+    icon: '🏺', shopPrice: 780, dropSource: 'shop' },
 ];
 
 // 套装系统

@@ -149,13 +149,13 @@ export const CONTEST_CONFIG = {
   bug: {
     id: 'contest_bug',
     name: '捕虫大会',
-    desc: '在当前地图捕捉虫系精灵，分数由种族值和个体值综合评定。高分非常稀有！',
-    entryFee: 3000,
-    pool: [110, 38, 293, 252], 
+    desc: '在当前地图捕捉虫系精灵，分数由种族值和个体值综合评定。',
+    entryFee: 2000,
+    pool: [110, 38, 293, 252],
     tiers: [
-      { min: 950, id: 327, name: '虫群主宰', level: 5, shiny: false, ivs: 3, msg: '🏆 传说级捕获！虫族之王认可了你！' },
-      { min: 700, id: 252, name: '圣甲虫', level: 5, shiny: false, ivs: 2, msg: '🥇 冠军！这只甲虫实力非凡！' },
-      { min: 450, id: 112, name: '巴大蝶', level: 5, shiny: false, ivs: 1, msg: '🥈 优胜！这只蝴蝶翅膀很漂亮！' },
+      { min: 500, id: 327, name: '虫群主宰', level: 5, shiny: false, ivs: 3, msg: '🏆 传说级捕获！虫族之王认可了你！' },
+      { min: 350, id: 252, name: '圣甲虫', level: 5, shiny: false, ivs: 2, msg: '🥇 冠军！这只甲虫实力非凡！' },
+      { min: 200, id: 112, name: '巴大蝶', level: 5, shiny: false, ivs: 1, msg: '🥈 优胜！这只蝴蝶翅膀很漂亮！' },
       { min: 0,   id: 110, name: '绿毛虫', level: 5, shiny: false, ivs: 0, msg: '🥉 参与奖。继续加油！' }
     ]
   },
@@ -163,13 +163,13 @@ export const CONTEST_CONFIG = {
   fishing: {
     id: 'contest_fishing',
     name: '钓鱼王杯',
-    desc: '钓起大鱼！体重与鱼种和运气有关，顶级大鱼极其罕见！',
-    entryFee: 3000,
-    pool: [7, 24, 26, 173], 
+    desc: '钓起大鱼！体重与鱼种和运气有关，后期徽章越多鱼越大！',
+    entryFee: 2000,
+    pool: [7, 24, 26, 173],
     tiers: [
-      { min: 250.0, id: 410, name: '海啸领主', level: 5, shiny: false, ivs: 3, msg: '🏆 钓鱼之神！你钓到了传说级巨鱼！' },
-      { min: 120.0, id: 235, name: '海啸王', level: 5, shiny: false, ivs: 2, msg: '🥇 冠军！这条大鱼分量十足！' },
-      { min: 50.0,  id: 22,  name: '激流鲨', level: 5, shiny: false, ivs: 1, msg: '🥈 亚军！这条鲨鱼很凶猛！' },
+      { min: 120.0, id: 410, name: '海啸领主', level: 5, shiny: false, ivs: 3, msg: '🏆 钓鱼之神！你钓到了传说级巨鱼！' },
+      { min: 60.0,  id: 235, name: '海啸王', level: 5, shiny: false, ivs: 2, msg: '🥇 冠军！这条大鱼分量十足！' },
+      { min: 25.0,  id: 22,  name: '激流鲨', level: 5, shiny: false, ivs: 1, msg: '🥈 亚军！这条鲨鱼很凶猛！' },
       { min: 0,     id: 7,   name: '泡泡鱼', level: 5, shiny: false, ivs: 0, msg: '🥉 只有一条泡泡鱼... 拿去煲汤吧。' }
     ]
   },
@@ -177,11 +177,11 @@ export const CONTEST_CONFIG = {
     id: 'contest_beauty',
     name: '华丽大赛',
     desc: '展示精灵的魅力！策略性选择技能，高分需要技巧和运气！',
-    entryFee: 2000,
+    entryFee: 1500,
     tiers: [
-      { min: 280, id: 369, name: '仙子伊布', level: 5, shiny: false, ivs: 3, msg: '🏆 完美演出！全场为你欢呼！' },
-      { min: 200, id: 329, name: '樱花女神', level: 5, shiny: false, ivs: 2, msg: '🥇 优胜！最美的精灵归你了！' },
-      { min: 120, id: 61,  name: '星光舞者', level: 5, shiny: false, ivs: 1, msg: '🥈 表现不错！舞姿很优美。' },
+      { min: 220, id: 369, name: '仙子伊布', level: 5, shiny: false, ivs: 3, msg: '🏆 完美演出！全场为你欢呼！' },
+      { min: 150, id: 329, name: '樱花女神', level: 5, shiny: false, ivs: 2, msg: '🥇 优胜！最美的精灵归你了！' },
+      { min: 80,  id: 61,  name: '星光舞者', level: 5, shiny: false, ivs: 1, msg: '🥈 表现不错！舞姿很优美。' },
       { min: 0,   id: 48,  name: '粉粉球', level: 5, shiny: false, ivs: 0, msg: '🥉 还需要练习哦。' }
     ]
   }

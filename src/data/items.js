@@ -135,6 +135,40 @@ export const ACCESSORY_DB = [
   { id: 'a49', name: '灭世之瞳',   type: 'CRIT', val: 20,  icon: '🔮', price: 60000, tier: 4, desc: '暴击+20%，暴击伤害+40%', effect: { id: 'crit_dmg', val: 0.40 } },
 
   // =========================================
+  // Tier 2-4 - 活动/战斗掉落专属饰品 (30种)
+  // =========================================
+  { id: 'a59', name: '般若鬼面',   type: 'ATK',  val: 22,  icon: '👺', price: 12500, tier: 2, desc: '攻+22，恶系伤害+12%', effect: { id: 'type_boost', moveType: 'DARK', val: 0.12 } },
+  { id: 'a60', name: '玄铁护心镜', type: 'DEF',  val: 32,  icon: '🪞', price: 14000, tier: 2, desc: '防+32，反弹7%受到伤害', effect: { id: 'reflect', val: 0.07 } },
+  { id: 'a61', name: '蓬莱玉枝',   type: 'SATK', val: 28,  icon: '🎋', price: 13500, tier: 2, desc: '特攻+28，草系伤害+12%', effect: { id: 'type_boost', moveType: 'GRASS', val: 0.12 } },
+  { id: 'a62', name: '返魂香囊',   type: 'HP',   val: 85,  icon: '📿', price: 15500, tier: 2, desc: 'HP+85，每回合恢复3%HP', effect: { id: 'heal_turn', val: 0.03 } },
+  { id: 'a63', name: '神行草履',   type: 'SPD',  val: 22,  icon: '🥿', price: 11800, tier: 2, desc: '速度+22，6%闪避', effect: { id: 'dodge', val: 0.06 } },
+  { id: 'a64', name: '千本樱坠',   type: 'CRIT', val: 8,   icon: '🎴', price: 13000, tier: 2, desc: '暴击+8%，暴击伤害+18%', effect: { id: 'crit_dmg', val: 0.18 } },
+  { id: 'a65', name: '镇魂铃',     type: 'SDEF', val: 30,  icon: '📯', price: 14500, tier: 2, desc: '特防+30，免疫麻痹', effect: { id: 'status_immune', val: 'PAR' } },
+  { id: 'a66', name: '雷兽牙',     type: 'ATK',  val: 18,  icon: '🔋', price: 13200, tier: 2, desc: '攻+18，电系伤害+14%', effect: { id: 'type_boost', moveType: 'ELECTRIC', val: 0.14 } },
+  { id: 'a67', name: '冰心玉',     type: 'DEF',  val: 28,  icon: '💠', price: 13800, tier: 2, desc: '防+28，冰系伤害+12%', effect: { id: 'type_boost', moveType: 'ICE', val: 0.12 } },
+  { id: 'a68', name: '鲛人泪珠',   type: 'HP',   val: 70,  icon: '🐚', price: 14800, tier: 2, desc: 'HP+70，水系伤害+12%', effect: { id: 'type_boost', moveType: 'WATER', val: 0.12 } },
+  { id: 'a69', name: '刹那足袋',   type: 'SPD',  val: 18,  icon: '🧦', price: 14200, tier: 2, desc: '速度+18，7%概率先手', effect: { id: 'priority', val: 0.07 } },
+  { id: 'a70', name: '破军印',     type: 'ATK',  val: 25,  icon: '🔱', price: 15200, tier: 2, desc: '攻+25，无视6%防御', effect: { id: 'ignore_def', val: 0.06 } },
+  { id: 'a71', name: '明镜止水佩', type: 'SDEF', val: 32,  icon: '🫧', price: 16800, tier: 3, desc: '特防+32，特殊伤害减免7%', effect: { id: 'reduce_special', val: 0.07 } },
+  { id: 'a72', name: '朱雀翎',     type: 'SATK', val: 38,  icon: '🍁', price: 24500, tier: 3, desc: '特攻+38，火系伤害+16%', effect: { id: 'type_boost', moveType: 'FIRE', val: 0.16 } },
+  { id: 'a73', name: '玄武甲片',   type: 'DEF',  val: 42,  icon: '🐢', price: 27000, tier: 3, desc: '防+42，反弹9%受到伤害', effect: { id: 'reflect', val: 0.09 } },
+  { id: 'a74', name: '青龙逆鳞',   type: 'ATK',  val: 35,  icon: '🎍', price: 28500, tier: 3, desc: '攻+35，龙系伤害+16%', effect: { id: 'type_boost', moveType: 'DRAGON', val: 0.16 } },
+  { id: 'a75', name: '白虎獠牙',   type: 'CRIT', val: 12,  icon: '🐯', price: 25500, tier: 3, desc: '暴击+12%，暴击伤害+22%', effect: { id: 'crit_dmg', val: 0.22 } },
+  { id: 'a76', name: '续命青灯',   type: 'HP',   val: 100, icon: '🏮', price: 31000, tier: 3, desc: 'HP+100，致命时以1HP存活(每场1次)', effect: { id: 'endure', val: 1 } },
+  { id: 'a77', name: '风神羽衣',   type: 'SPD',  val: 32,  icon: '🎐', price: 26500, tier: 3, desc: '速度+32，风系伤害+15%', effect: { id: 'type_boost', moveType: 'WIND', val: 0.15 } },
+  { id: 'a78', name: '罗刹骨链',   type: 'ATK',  val: 28,  icon: '🦴', price: 27500, tier: 3, desc: '攻+28，攻击吸血10%', effect: { id: 'lifesteal', val: 0.10 } },
+  { id: 'a79', name: '大岳丸盔',   type: 'DEF',  val: 38,  icon: '⛓️', price: 25000, tier: 3, desc: '防+38，钢系伤害+14%', effect: { id: 'type_boost', moveType: 'STEEL', val: 0.14 } },
+  { id: 'a80', name: '玉藻前簪',   type: 'SATK', val: 35,  icon: '🦊', price: 26800, tier: 3, desc: '特攻+35，超能系伤害+15%', effect: { id: 'type_boost', moveType: 'PSYCHIC', val: 0.15 } },
+  { id: 'a81', name: '黄泉彼岸花', type: 'HP',   val: 95,  icon: '🥀', price: 29000, tier: 3, desc: 'HP+95，毒系伤害+15%', effect: { id: 'type_boost', moveType: 'POISON', val: 0.15 } },
+  { id: 'a82', name: '天照御魂',   type: 'SATK', val: 30,  icon: '☀️', price: 29500, tier: 3, desc: '特攻+30，光系伤害+15%', effect: { id: 'type_boost', moveType: 'LIGHT', val: 0.15 } },
+  { id: 'a83', name: '不动明王镯', type: 'SDEF', val: 45,  icon: '🧿', price: 28000, tier: 3, desc: '特防+45，免疫灼伤', effect: { id: 'status_immune', val: 'BRN' } },
+  { id: 'a84', name: '毗沙门天铠', type: 'DEF',  val: 55,  icon: '🏯', price: 48000, tier: 4, desc: '防+55，地面系伤害+14%', effect: { id: 'type_boost', moveType: 'GROUND', val: 0.14 } },
+  { id: 'a85', name: '八岐大蛇瞳', type: 'CRIT', val: 16,  icon: '👁', price: 52000, tier: 4, desc: '暴击+16%，暴击伤害+32%', effect: { id: 'crit_dmg', val: 0.32 } },
+  { id: 'a86', name: '须佐之臂',   type: 'ATK',  val: 48,  icon: '🌩️', price: 50000, tier: 4, desc: '攻+48，无视10%防御', effect: { id: 'ignore_def', val: 0.10 } },
+  { id: 'a87', name: '高天原羽衣', type: 'SPD',  val: 42,  icon: '🪽', price: 51000, tier: 4, desc: '速度+42，额外速度+18', effect: { id: 'bonus_spd', val: 18 } },
+  { id: 'a88', name: '黄泉津印',   type: 'HP',   val: 140, icon: '🪦', price: 54000, tier: 4, desc: 'HP+140，幽灵系伤害+14%', effect: { id: 'type_boost', moveType: 'GHOST', val: 0.14 } },
+
+  // =========================================
   //  传说饰品 - 非卖品(只能通过特殊途径获得)
   // =========================================
   { id: 'trophy',         name: '冠军奖杯',   type: 'ATK',  val: 200, icon: '🏆', price: 99999, tier: 5, desc: '至高荣誉，攻击+200' },

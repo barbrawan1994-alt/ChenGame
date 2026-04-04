@@ -73,7 +73,7 @@ import {
 import {
   MARRIAGE_CANDIDATES, AFFECTION_STAGES, MARRIAGE_LEVELS,
   getAffectionStage, getMarriageLevel, getSpouseBonus,
-  DATE_EVENTS, WEDDING_DIALOGUE,
+  DATE_EVENTS, WEDDING_DIALOGUE, PROPOSAL_QUESTS,
   PROPOSE_COST, WEDDING_COST, DATE_COST,
   DAILY_DATE_LIMIT, DAILY_GIFT_LIMIT, DIVORCE_COOLDOWN_DAYS,
   DEFAULT_MARRIAGE_STATE, getDailyGift,
@@ -2931,6 +2931,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const itemName = (item.name || item.type || '').toLowerCase();
     if (candidate.favoriteGifts.some(g => itemName.includes(g) || (item.category || '').includes(g) || (item.tags || []).includes(g))) {
       gain = 20; reaction = '哇！我最喜欢的！谢谢你！';
+      if (marriage.pendingPropose === candidateId) updateQuestProgress(candidateId, 'gift_favorite', 1);
     } else if (candidate.hatedGifts.some(g => itemName.includes(g) || (item.category || '').includes(g) || (item.tags || []).includes(g))) {
       gain = -10; reaction = '这个...我不太喜欢...';
     }
@@ -2944,6 +2945,38 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       dailyCounts: { ...prev.dailyCounts, gifts: prev.dailyCounts.gifts + 1 },
     }));
     alert(`${candidate.icon} ${candidate.name}：「${reaction}」\n\n💗 好感度 ${gain >= 0 ? '+' : ''}${gain}`);
+  };
+
+  const getQuestProgress = (candidateId) => {
+    const quest = PROPOSAL_QUESTS[candidateId];
+    if (!quest) return { quest: null, steps: [], allDone: false };
+    const progress = marriage.questProgress?.[candidateId] || {};
+    const steps = quest.steps.map(s => ({
+      ...s,
+      current: progress[s.id] || 0,
+      done: (progress[s.id] || 0) >= s.target,
+    }));
+    return { quest, steps, allDone: steps.every(s => s.done) };
+  };
+
+  const updateQuestProgress = (candidateId, stepId, amount = 1) => {
+    if (!marriage.pendingPropose || marriage.pendingPropose !== candidateId) return;
+    const quest = PROPOSAL_QUESTS[candidateId];
+    if (!quest) return;
+    const step = quest.steps.find(s => s.id === stepId);
+    if (!step) return;
+    setMarriage(prev => {
+      const cp = prev.questProgress?.[candidateId] || {};
+      const cur = cp[stepId] || 0;
+      if (cur >= step.target) return prev;
+      return {
+        ...prev,
+        questProgress: {
+          ...prev.questProgress,
+          [candidateId]: { ...cp, [stepId]: Math.min(step.target, cur + amount) },
+        },
+      };
+    });
   };
 
   const handlePropose = (candidateId) => {
@@ -2960,12 +2993,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     setGold(g => g - PROPOSE_COST);
     const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
-    alert(`💍 你向${candidate.name}求婚了！\n\n${candidate.icon}「我...我愿意！」\n\n接下来请举办婚礼~`);
-    setMarriage(prev => ({ ...prev, pendingPropose: candidateId }));
+    const quest = PROPOSAL_QUESTS[candidateId];
+    alert(`💍 你向${candidate.name}求婚了！\n\n${candidate.icon}「我...我愿意！但在婚礼之前，我希望你能完成一些事情...」\n\n📋 开启任务：${quest?.name || '完成考验'}`);
+    setMarriage(prev => ({ ...prev, pendingPropose: candidateId, questProgress: { ...prev.questProgress, [candidateId]: {} } }));
   };
 
   const handleWedding = () => {
     if (!marriage.pendingPropose) { return; }
+    const { allDone } = getQuestProgress(marriage.pendingPropose);
+    if (!allDone) { alert('请先完成所有求婚任务！'); return; }
     if (gold < WEDDING_COST) { alert(`举办婚礼需要 ${WEDDING_COST} 金币~`); return; }
     setGold(g => g - WEDDING_COST);
     const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.pendingPropose);
@@ -3865,19 +3901,48 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 );
               })()}
 
-              {/* 待婚礼 */}
+              {/* 待婚礼 + 任务链 */}
               {marriage.pendingPropose && !marriage.spouse && (() => {
                 const pp = MARRIAGE_CANDIDATES.find(c => c.id === marriage.pendingPropose);
+                const { quest, steps, allDone } = getQuestProgress(marriage.pendingPropose);
                 return (
-                  <div style={{background:'linear-gradient(135deg,#FF6F00,#FFA726)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px', textAlign:'center'}}>
-                    <div style={{fontSize:'40px', marginBottom:'8px'}}>💍</div>
-                    <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'4px'}}>{pp.name}已经答应了你的求婚！</div>
-                    <div style={{fontSize:'12px', opacity:0.85, marginBottom:'16px'}}>举办婚礼需要 💰 {WEDDING_COST} 金币</div>
-                    <button onClick={handleWedding} disabled={gold < WEDDING_COST} style={{
-                      padding:'12px 30px', borderRadius:'25px', border:'none', fontWeight:'bold', fontSize:'14px',
-                      background: gold < WEDDING_COST ? '#ccc' : '#fff', color: gold < WEDDING_COST ? '#999' : '#E91E63',
-                      cursor: gold < WEDDING_COST ? 'not-allowed' : 'pointer', boxShadow:'0 4px 15px rgba(0,0,0,0.2)'
-                    }}>🎊 举办婚礼</button>
+                  <div style={{background:'linear-gradient(135deg,#FF6F00,#FFA726)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px'}}>
+                    <div style={{textAlign:'center'}}>
+                      <div style={{fontSize:'40px', marginBottom:'8px'}}>💍</div>
+                      <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'4px'}}>{pp.name}已经答应了你的求婚！</div>
+                      <div style={{fontSize:'12px', opacity:0.85, marginBottom:'12px'}}>完成考验后即可举办婚礼</div>
+                    </div>
+                    {quest && (
+                      <div style={{background:'rgba(0,0,0,0.15)', borderRadius:'12px', padding:'14px', marginBottom:'14px'}}>
+                        <div style={{fontWeight:'bold', fontSize:'13px', marginBottom:'10px'}}>📋 {quest.name}</div>
+                        {steps.map(s => (
+                          <div key={s.id} style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
+                            <span style={{fontSize:'16px'}}>{s.done ? '✅' : s.icon}</span>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:'12px', opacity: s.done ? 0.7 : 1}}>{s.desc}</div>
+                              <div style={{width:'100%', height:'4px', background:'rgba(0,0,0,0.2)', borderRadius:'2px', marginTop:'3px'}}>
+                                <div style={{width:`${Math.min(100, s.current / s.target * 100)}%`, height:'100%', background: s.done ? '#4CAF50' : '#fff', borderRadius:'2px', transition:'width 0.3s'}} />
+                              </div>
+                            </div>
+                            <span style={{fontSize:'11px', fontWeight:'bold', opacity:0.8}}>{s.current}/{s.target}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{textAlign:'center'}}>
+                      {allDone ? (
+                        <>
+                          <div style={{fontSize:'12px', opacity:0.85, marginBottom:'12px'}}>所有考验已完成！举办婚礼需要 💰 {WEDDING_COST} 金币</div>
+                          <button onClick={handleWedding} disabled={gold < WEDDING_COST} style={{
+                            padding:'12px 30px', borderRadius:'25px', border:'none', fontWeight:'bold', fontSize:'14px',
+                            background: gold < WEDDING_COST ? '#ccc' : '#fff', color: gold < WEDDING_COST ? '#999' : '#E91E63',
+                            cursor: gold < WEDDING_COST ? 'not-allowed' : 'pointer', boxShadow:'0 4px 15px rgba(0,0,0,0.2)'
+                          }}>🎊 举办婚礼</button>
+                        </>
+                      ) : (
+                        <div style={{fontSize:'12px', opacity:0.7}}>完成所有考验后才能举办婚礼</div>
+                      )}
+                    </div>
                   </div>
                 );
               })()}
@@ -4244,148 +4309,134 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // [修复] 战斗联盟界面 (修复了未解锁状态的语法错误)
   // ==========================================
   const renderLeague = () => {
-    // 检查解锁条件 (通关冠军之路后解锁)
     const isUnlocked = storyProgress >= 12;
 
-    // --- 1. 未解锁状态 (显示锁定提示) ---
     if (!isUnlocked) {
         return (
-            <div className="screen" style={{background:'#263238', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', flexDirection:'column'}}>
-                <div style={{fontSize:'50px', marginBottom:'20px'}}>🔒</div>
-                <div>战斗联盟尚未开放</div>
-                <div style={{fontSize:'12px', color:'#999', marginTop:'10px'}}>需通关【冠军之路】剧情后解锁</div>
-                
-                {/* 返回按钮 */}
-                <button 
-                    style={{
-                        marginTop:'30px', color:'#fff', background:'#304FFE',
-                        border:'1px solid #fff', padding:'10px 30px', 
-                        borderRadius:'20px', cursor:'pointer', fontWeight:'bold'
-                    }} 
-                    onClick={() => setView('grid_map')} // 返回地图
-                >
-                    🔙 返回
+            <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', flexDirection:'column'}}>
+                <div style={{fontSize:'60px', marginBottom:'20px', filter:'drop-shadow(0 0 15px rgba(255,215,0,0.3))'}}>🔒</div>
+                <div style={{fontSize:'20px', fontWeight:'bold'}}>战斗联盟尚未开放</div>
+                <div style={{fontSize:'13px', color:'#9E9E9E', marginTop:'10px'}}>需通关【冠军之路】剧情后解锁</div>
+                <button onClick={() => setView('grid_map')}
+                    style={{marginTop:'30px', color:'#fff', background:'linear-gradient(135deg,#304FFE,#536DFE)', border:'none', padding:'12px 30px', borderRadius:'25px', cursor:'pointer', fontWeight:'bold', fontSize:'14px', boxShadow:'0 4px 15px rgba(48,79,254,0.4)'}}>
+                    返回
                 </button>
             </div>
         );
     }
 
-    // --- 2. 已解锁状态 (显示联盟主界面) ---
     const rounds = [
-        { id: 1, name: '16强赛', opponents: 16 },
-        { id: 2, name: '8强赛', opponents: 8 },
-        { id: 3, name: '半决赛', opponents: 4 },
-        { id: 4, name: '总决赛', opponents: 2 }
+        { id: 1, name: '16强赛', icon: '⚔️', teamSize: 4, level: 85, desc: '4只精灵 · Lv.85' },
+        { id: 2, name: '8强赛',  icon: '🗡️', teamSize: 5, level: 90, desc: '5只精灵 · Lv.90' },
+        { id: 3, name: '半决赛', icon: '🔥', teamSize: 6, level: 95, desc: '6只精灵 · Lv.95 · 含神兽' },
+        { id: 4, name: '总决赛', icon: '👑', teamSize: 6, level: 100, desc: '6只闪光 · Lv.100 · 全神兽' },
     ];
 
+    const avgLv = party.length > 0 ? Math.floor(party.reduce((s,p)=>s+p.level,0)/party.length) : 0;
+
     return (
-      <div className="screen" style={{background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)', color:'#fff', display:'flex', flexDirection:'column'}}>
-        <div className="nav-header glass-panel" style={{background:'rgba(0,0,0,0.3)', borderBottom:'none'}}>
-          <button className="btn-back" 
-            style={{
-                color:'#fff', 
-                background:'#304FFE', 
-                border:'1px solid #fff', 
-                padding:'5px 15px', 
-                borderRadius:'20px', 
-                cursor:'pointer',
-                fontWeight: 'bold'
-            }} 
-            onClick={() => setView('grid_map')}
-          >
-            🔙 退出联盟
+      <div className="screen" style={{background:'linear-gradient(135deg,#0d1b2a,#1b2838,#0d1b2a)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
+        <div style={{position:'absolute', inset:0, background:'radial-gradient(circle at 50% 0%, rgba(255,215,0,0.05) 0%, transparent 60%)'}} />
+
+        <div className="nav-header glass-panel" style={{background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5}}>
+          <button className="btn-back" onClick={() => setView('grid_map')}
+            style={{color:'#fff', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'6px 16px', borderRadius:'20px', cursor:'pointer', fontWeight:'bold', fontSize:'12px', backdropFilter:'blur(8px)'}}>
+            ⬅ 退出
           </button>
-          <div className="nav-title">🏆 世界战斗联盟</div>
+          <div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>🏆 世界战斗联盟</div>
           <div style={{width:60}}></div>
         </div>
 
-        <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'20px', overflowY:'auto'}}>
-            
-            {/* 冠军奖杯展示 */}
-            <div style={{textAlign:'center', marginBottom:'30px'}}>
-                <div style={{fontSize:'60px', filter:'drop-shadow(0 0 10px gold)'}}>🏆</div>
-                <div style={{fontSize:'24px', fontWeight:'bold', margin:'10px 0'}}>
-                    历史夺冠次数: <span style={{color:'#FFD700', fontSize:'32px'}}>{leagueWins}</span>
-                </div>
-                <div style={{fontSize:'12px', opacity:0.8}}>与世界各地的顶尖训练家一决高下！</div>
-            </div>
+        <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'20px', overflowY:'auto', zIndex:5}}>
 
-            {/* 赛程进度 */}
-            <div style={{width:'100%', maxWidth:'400px', display:'flex', flexDirection:'column', gap:'15px'}}>
-                {rounds.map(r => {
-                    const isCurrent = leagueRound === r.id;
-                    const isPassed = leagueRound > r.id;
-                    const isFuture = leagueRound < r.id && leagueRound !== 0;
-                    
-                    let statusColor = '#5c6bc0'; // 默认蓝
-                    if (isCurrent) statusColor = '#FFD700'; // 当前金
-                    else if (isPassed) statusColor = '#4CAF50'; // 已过绿
-                    else if (leagueRound === 0) statusColor = '#78909c'; // 未开始灰
+          <div style={{textAlign:'center', marginBottom:'24px', padding:'20px'}}>
+            <div style={{fontSize:'64px', filter:'drop-shadow(0 0 20px rgba(255,215,0,0.4))', marginBottom:'12px'}}>🏆</div>
+            <div style={{fontSize:'14px', color:'rgba(255,255,255,0.5)', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'8px'}}>Champion Record</div>
+            <div style={{fontSize:'36px', fontWeight:'900', color:'#FFD700', textShadow:'0 0 20px rgba(255,215,0,0.3)'}}>{leagueWins}</div>
+            <div style={{fontSize:'12px', color:'rgba(255,255,255,0.4)', marginTop:'8px'}}>我方平均等级: Lv.{avgLv} · 队伍 {party.length} 只</div>
+          </div>
 
-                    return (
-                        <div key={r.id} style={{
-                            background: isCurrent ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
-                            border: `2px solid ${statusColor}`,
-                            borderRadius: '12px', padding: '15px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            opacity: isFuture ? 0.5 : 1,
-                            transform: isCurrent ? 'scale(1.05)' : 'scale(1)',
-                            transition: '0.3s'
-                        }}>
-                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                <div style={{
-                                    width:'30px', height:'30px', borderRadius:'50%', 
-                                    background: statusColor, color: isCurrent?'#000':'#fff',
-                                    display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'bold'
-                                }}>
-                                    {isPassed ? '✓' : r.id}
-                                </div>
-                                <div style={{fontWeight:'bold', fontSize:'16px', color: isCurrent?'#FFD700':'#fff'}}>
-                                    {r.name}
-                                </div>
-                            </div>
-                            <div style={{fontSize:'12px', opacity:0.7}}>
-                                {isCurrent ? '正在进行' : (isPassed ? '已晋级' : '等待中')}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+          <div style={{width:'100%', maxWidth:'420px', display:'flex', flexDirection:'column', gap:'12px'}}>
+            {rounds.map(r => {
+              const isCurrent = leagueRound === r.id;
+              const isPassed = leagueRound > r.id;
+              const isFuture = leagueRound < r.id && leagueRound !== 0;
+              const colors = { 1: '#3F51B5', 2: '#1E88E5', 3: '#E65100', 4: '#FFD700' };
+              const accent = colors[r.id];
 
-            {/* 操作按钮 */}
-            <div style={{marginTop:'auto', width:'100%', maxWidth:'300px', paddingTop:'20px'}}>
-                {leagueRound === 0 ? (
-                    <button onClick={() => {
-                        if(party.length < 1) { alert("请先携带精灵！"); return; }
-                        setLeagueRound(1);
-                    }} style={{
-                        width:'100%', padding:'15px', borderRadius:'30px', border:'none',
-                        background: 'linear-gradient(90deg, #FFC107, #FF9800)',
-                        color:'#fff', fontSize:'18px', fontWeight:'bold', cursor:'pointer',
-                        boxShadow: '0 5px 15px rgba(255, 152, 0, 0.4)'
-                    }}>
-                        报名参赛
-                    </button>
-                ) : (
-                    <button onClick={() => startBattle(null, 'league')} style={{
-                        width:'100%', padding:'15px', borderRadius:'30px', border:'none',
-                        background: 'linear-gradient(90deg, #F44336, #D32F2F)',
-                        color:'#fff', fontSize:'18px', fontWeight:'bold', cursor:'pointer',
-                        boxShadow: '0 5px 15px rgba(211, 47, 47, 0.4)',
-                        animation: 'pulse 1.5s infinite'
-                    }}>
-                        ⚔️ 开始比赛
-                    </button>
-                )}
-                
-                {leagueRound > 0 && (
-                    <div style={{textAlign:'center', marginTop:'10px', fontSize:'12px', color:'#aaa', cursor:'pointer', textDecoration:'underline'}}
-                         onClick={() => { if(confirm("确定要弃权吗？进度将丢失。")) setLeagueRound(0); }}>
-                        放弃比赛
+              return (
+                <div key={r.id} style={{
+                  background: isCurrent ? `linear-gradient(135deg, ${accent}33, ${accent}11)` : 'rgba(255,255,255,0.04)',
+                  border: isCurrent ? `2px solid ${accent}` : isPassed ? '2px solid #4CAF50' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '16px', padding: '16px 20px',
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  opacity: isFuture ? 0.4 : 1,
+                  transform: isCurrent ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'all 0.3s ease',
+                  boxShadow: isCurrent ? `0 4px 20px ${accent}30` : 'none',
+                }}>
+                  <div style={{
+                    width:'42px', height:'42px', borderRadius:'12px',
+                    background: isPassed ? 'linear-gradient(135deg,#4CAF50,#66BB6A)' : isCurrent ? `linear-gradient(135deg,${accent},${accent}CC)` : 'rgba(255,255,255,0.06)',
+                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0,
+                    boxShadow: isPassed || isCurrent ? '0 4px 12px rgba(0,0,0,0.3)' : 'none',
+                  }}>
+                    {isPassed ? '✓' : r.icon}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:'bold', fontSize:'15px', color: isCurrent ? accent : isPassed ? '#4CAF50' : '#fff'}}>
+                      {r.name}
                     </div>
-                )}
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>{r.desc}</div>
+                  </div>
+                  <div style={{fontSize:'11px', fontWeight:'bold', color: isCurrent ? accent : isPassed ? '#4CAF50' : 'rgba(255,255,255,0.3)'}}>
+                    {isCurrent ? '当前' : isPassed ? '已晋级' : '—'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{marginTop:'24px', width:'100%', maxWidth:'420px'}}>
+            <div style={{background:'rgba(255,255,255,0.04)', borderRadius:'14px', padding:'16px', marginBottom:'16px', border:'1px solid rgba(255,255,255,0.06)'}}>
+              <div style={{fontSize:'12px', fontWeight:'bold', color:'rgba(255,255,255,0.5)', marginBottom:'8px'}}>奖励说明</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', lineHeight:1.8}}>
+                每轮胜利奖励 💰 8,000~14,000 金币<br/>
+                夺冠奖励：🍬 神奇糖果 + 随机精灵（30%闪光/30%异色）<br/>
+                连续夺冠5次获得称号「传奇霸主」
+              </div>
             </div>
 
+            {leagueRound === 0 ? (
+              <button onClick={() => {
+                if(party.length < 1) { alert("请先携带精灵！"); return; }
+                setLeagueRound(1);
+              }} style={{
+                width:'100%', padding:'16px', borderRadius:'25px', border:'none',
+                background: 'linear-gradient(135deg, #FFD700, #FFA000)',
+                color:'#1a1a2e', fontSize:'16px', fontWeight:'900', cursor:'pointer',
+                boxShadow: '0 6px 20px rgba(255,215,0,0.3)', letterSpacing:'1px',
+              }}>
+                报名参赛
+              </button>
+            ) : (
+              <button onClick={() => startBattle(null, 'league')} style={{
+                width:'100%', padding:'16px', borderRadius:'25px', border:'none',
+                background: 'linear-gradient(135deg, #F44336, #C62828)',
+                color:'#fff', fontSize:'16px', fontWeight:'900', cursor:'pointer',
+                boxShadow: '0 6px 20px rgba(244,67,54,0.4)', letterSpacing:'1px',
+              }}>
+                ⚔️ 开始 {rounds.find(r=>r.id===leagueRound)?.name || '比赛'}
+              </button>
+            )}
+
+            {leagueRound > 0 && (
+              <div style={{textAlign:'center', marginTop:'12px', fontSize:'12px', color:'rgba(255,255,255,0.3)', cursor:'pointer'}}
+                onClick={() => { if(confirm("确定要弃权吗？当前进度将丢失。")) setLeagueRound(0); }}>
+                弃权退赛
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -4401,7 +4452,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (p.evo) evolvedIds.add(p.evo);
     });
 
-    // 2. 动态筛选合法的初始精灵(排除进化型、神兽、高级、种族值>450)
+    // 2. 动态筛选合法的初始精灵(排除进化型、神兽、高级、种族值>=500)
     const validStarters = POKEDEX.filter(p => {
       if (!p || !p.id) return false;
       if (evolvedIds.has(p.id)) return false;
@@ -4411,7 +4462,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const bias = TYPE_BIAS[p.type] || { p: 1.0, s: 1.0 };
       const div = (p.id % 5) * 2 - 4;
       const bst = (p.hp || 60) + Math.floor((p.atk || 50) * bias.p) + div + Math.floor((p.def || 50) * bias.p) + Math.floor((p.atk || 50) * bias.s) - div + Math.floor((p.def || 50) * bias.s) + (p.spd || (40 + (p.id * 7 % 70)));
-      if (bst > 450) return false;
+      if (bst >= 500) return false;
       return true;
     });
 
@@ -5326,18 +5377,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
         dropGold = 5000;
     } 
     // -------------------------------------------------
-    // 2. 战斗联盟
+    // 2. 战斗联盟 (渐进式难度)
     // -------------------------------------------------
     else if (type === 'league') {
         const roundNames = ['16强赛', '8强赛', '半决赛', '总决赛'];
+        const roundLevels = [85, 90, 95, 100];
+        const roundTeamSize = [4, 5, 6, 6];
         const currentRoundName = roundNames[leagueRound - 1] || '比赛';
+        const roundLv = roundLevels[leagueRound - 1] || 100;
+        const teamSize = roundTeamSize[leagueRound - 1] || 6;
         trainerName = `联盟选手 (${currentRoundName})`;
-        dropGold = 5000 + (leagueRound * 2000);
-        for(let i=0; i<6; i++) {
-            const pool = i === 5 ? [...FINAL_GOD_IDS, ...NEW_GOD_IDS] : [...HIGH_TIER_POOL, ...LEGENDARY_POOL]; 
+        dropGold = 5000 + (leagueRound * 3000);
+        for(let i=0; i<teamSize; i++) {
+            let pool;
+            if (leagueRound <= 2) {
+                pool = i === teamSize - 1 ? [...LEGENDARY_POOL] : [...HIGH_TIER_POOL];
+            } else {
+                pool = i >= teamSize - 2 ? [...FINAL_GOD_IDS, ...NEW_GOD_IDS] : [...HIGH_TIER_POOL, ...LEGENDARY_POOL];
+            }
             const enemyId = _.sample(pool);
-            const isShiny = leagueRound === 4; 
-            enemyParty.push(createPet(enemyId, 100, true, isShiny));
+            const isShiny = leagueRound === 4;
+            enemyParty.push(createPet(enemyId, roundLv, true, isShiny));
         }
     }
     // -------------------------------------------------
@@ -8718,6 +8778,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try { checkTreasureUnlock('explore', { mapId }); } catch(e) {}
     
     addLog(`胜利! 总经验+${totalBattleExp} / 金币+${goldGain}`);
+
+    // 求婚任务 - 战斗胜利追踪
+    if (marriage.pendingPropose) {
+      updateQuestProgress(marriage.pendingPropose, 'win_battles', 1);
+      updateQuestProgress(marriage.pendingPropose, 'win_streak', 1);
+    }
 
     // 成就追踪 - 战斗胜利
     const winAchUpdates = { battlesWon: 1, totalGoldEarned: goldGain };
@@ -15096,10 +15162,10 @@ const renderMenu = () => {
       4: ['vit_hp','vit_patk','vit_pdef','vit_satk','vit_sdef','vit_spd','vit_crit','exp_candy','max_candy'],
     };
     const accByTier = {
-      1: ['a1','a3','a10','a22','a24'],
-      2: ['a1','a3','a10','a11','a28','a23'],
-      3: ['a2','a8','a4','a12','a13'],
-      4: ['a2','a8','a7','a14','a15'],
+      1: ['a1','a3','a10'],
+      2: ['a1','a3','a10','a11'],
+      3: ['a22','a23','a24'],
+      4: ['a28','a12'],
     };
     const showStones = tier >= 3;
     const showCursed = tier >= 3;
