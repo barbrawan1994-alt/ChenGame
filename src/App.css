@@ -4702,6 +4702,9 @@ button:active {
   z-index: 2; position: relative;
   animation: player-bob 2s ease-in-out infinite;
 }
+.player-pet-img.pet-avatar-digimon {
+  filter: url(#remove-white-bg) drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+}
 .player-fallback {
   width: 44px; height: 44px; border-radius: 50%;
   background: rgba(255,255,255,0.95); border: 3px solid #42A5F5;

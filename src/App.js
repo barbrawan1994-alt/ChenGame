@@ -10379,6 +10379,15 @@ const renderNameInput = () => {
           <div style={{textAlign:'center', marginBottom:'20px'}}>
             <div style={{fontSize:'12px', letterSpacing:'4px', color:'rgba(255,255,255,0.35)', textTransform:'uppercase'}}>Choose Your Partner</div>
             <div style={{fontSize:'20px', fontWeight:'800', color:'#fff', marginTop:'4px', textShadow:'0 2px 10px rgba(0,0,0,0.3)'}}>选择你的命运伙伴</div>
+            <button onClick={() => generateStarterOptions()} style={{
+              marginTop:'12px', padding:'8px 28px', borderRadius:'25px', border:'1px solid rgba(255,255,255,0.2)',
+              background:'rgba(255,255,255,0.08)', backdropFilter:'blur(8px)', color:'rgba(255,255,255,0.7)',
+              fontSize:'13px', fontWeight:'600', cursor:'pointer', transition:'all 0.3s',
+              letterSpacing:'1px'
+            }}
+            onMouseEnter={e => { e.target.style.background='rgba(255,255,255,0.18)'; e.target.style.color='#fff'; }}
+            onMouseLeave={e => { e.target.style.background='rgba(255,255,255,0.08)'; e.target.style.color='rgba(255,255,255,0.7)'; }}
+            >🎲 重新随机</button>
         </div>
         
           <div style={{display:'flex', gap:'16px', justifyContent:'center', flexWrap:'wrap', padding:'0 8px'}}>
