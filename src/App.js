@@ -12271,8 +12271,8 @@ const renderMenu = () => {
           <div style={{background:'rgba(255,255,255,0.88)', backdropFilter:'blur(16px)', padding:'5px', borderRadius:'50px', boxShadow:'0 4px 24px rgba(0,0,0,0.06)', border:'1px solid rgba(255,255,255,0.5)', display:'flex', gap:'4px'}}>
             {[
               { id: 'maps', icon: '🗺️', label: '区域探索', color: '#3b82f6' },
-              { id: 'dungeons', icon: '⚔️', label: '特殊副本', color: '#8b5cf6' },
-              { id: 'challenges', icon: '🔥', label: '挑战之路', color: '#ef4444' },
+              { id: 'dungeons', icon: '⚔️', label: '秘境探险', color: '#8b5cf6' },
+              { id: 'challenges', icon: '🔥', label: '图鉴试炼塔', color: '#ef4444' },
               { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#14b8a6' },
               { id: 'housing', icon: '🏡', label: '精灵家园', color: '#a78bfa' }
             ].map(tab => {
@@ -12449,138 +12449,243 @@ const renderMenu = () => {
           })}
         </div>
 
-        {/* --- 特殊副本列表 (重新设计) --- */}
-        <div className="dungeon-list-v2" style={{display: mapTab==='dungeons'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(420px, 1fr))', gap:'16px', padding:'4px'}}>
-             {[...DUNGEONS, HYAKKI_DUNGEON, ...EXTRA_DUNGEONS].map(d => {
-             const difficultyStars = '★'.repeat(d.stars || (d.recLvl >= 80 ? 5 : d.recLvl >= 60 ? 4 : d.recLvl >= 40 ? 3 : d.recLvl >= 20 ? 2 : 1));
-             const tierLabel = d.rarity || (d.recLvl >= 80 ? '传说' : d.recLvl >= 60 ? '史诗' : d.recLvl >= 40 ? '精英' : '普通');
-             const tierColor = tierLabel === '传说' ? '#FF6B35' : tierLabel === '史诗' ? '#9C27B0' : tierLabel === '稀有' ? '#2196F3' : '#4CAF50';
-
-             return (
-             <div key={d.id} className="dungeon-card-v2" onClick={() => enterDungeon(d)}
-               style={{
-                 position:'relative', overflow:'hidden', borderRadius:'20px', cursor:'pointer',
-                 background:'#fff', boxShadow:'0 8px 30px rgba(0,0,0,0.08)',
-                 transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)',
-                 border:'1px solid rgba(0,0,0,0.04)'
-               }}
-               onMouseOver={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow=`0 16px 40px ${d.color}30`; }}
-               onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'; }}
-             >
-               {/* 顶部渐变横幅 */}
-               <div style={{
-                 background:`linear-gradient(135deg, ${d.color}, ${d.color}bb)`,
-                 padding:'16px 20px 14px', position:'relative', overflow:'hidden'
-               }}>
-                 {/* 装饰光效 */}
-                 <div style={{position:'absolute', top:'-30px', right:'-30px', width:'100px', height:'100px', borderRadius:'50%', background:'rgba(255,255,255,0.15)'}} />
-                 <div style={{position:'absolute', bottom:'-20px', left:'30%', width:'60px', height:'60px', borderRadius:'50%', background:'rgba(255,255,255,0.08)'}} />
-                 
-                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative', zIndex:1}}>
-                   <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                     <div style={{
-                       width:'48px', height:'48px', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center',
-                       fontSize:'24px', background:'rgba(255,255,255,0.25)', backdropFilter:'blur(8px)',
-                       boxShadow:'0 4px 12px rgba(0,0,0,0.1)'
-                     }}>{d.icon}</div>
-                     <div>
-                       <div style={{fontSize:'17px', fontWeight:'800', color:'#fff', textShadow:'0 1px 3px rgba(0,0,0,0.2)', letterSpacing:'0.5px'}}>{d.name}</div>
-                       <div style={{fontSize:'12px', color:'rgba(255,255,255,0.85)', marginTop:'3px', lineHeight:'1.3'}}>{d.desc}</div>
-               </div>
-               </div>
-                   <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px'}}>
-                     <span style={{
-                       fontSize:'10px', fontWeight:'700', color:'#fff', background:'rgba(0,0,0,0.2)',
-                       padding:'3px 10px', borderRadius:'20px', letterSpacing:'1px'
-                     }}>{tierLabel}</span>
-                     <span style={{fontSize:'11px', color:'rgba(255,255,255,0.9)', letterSpacing:'2px'}}>{difficultyStars}</span>
-                   </div>
-                 </div>
-               </div>
-               
-               {/* 内容区域 */}
-               <div style={{padding:'14px 20px 16px'}}>
-                 {/* 推荐等级 + 限制条件 */}
-                 <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px'}}>
-                   <span style={{
-                     fontSize:'11px', fontWeight:'600', color:tierColor, background:`${tierColor}15`,
-                     padding:'4px 10px', borderRadius:'8px', border:`1px solid ${tierColor}30`
-                   }}>Lv.{d.recLvl}+</span>
-                  {(() => {
-                    const req = d.reqBadges || { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 10, hyakki: 6, catch: 12 }[d.type] || 0;
-                    return req > 0 ? <span style={{fontSize:'10px', color: badges.length >= req ? '#4CAF50' : '#F44336', background: badges.length >= req ? '#E8F5E9' : '#FFF3F0', padding:'3px 8px', borderRadius:'6px', border: badges.length >= req ? '1px solid #C8E6C9' : '1px solid #FFCDD2'}}>🏅 {badges.length}/{req}徽章</span> : null;
-                  })()}
-                  {d.restriction && d.restriction !== 'none' && (
-                    <span style={{
-                      fontSize:'10px', color:'#F44336', background:'#FFF3F0',
-                      padding:'3px 8px', borderRadius:'6px', border:'1px solid #FFCDD2'
-                    }}>
-                      {d.restriction === 'min_lvl_60' ? '🔒 全队Lv.60+' :
-                       d.restriction === 'solo_run' ? '🎯 单挑模式' :
-                       d.restriction === 'entry_fee' ? `💰 门票${5000 + badges.length * 500}G` :
-                       d.restriction === 'lucky_nature' ? '🍀 需幸运性格' : ''}
-                    </span>
-                  )}
-                  {d.isJJK && <span style={{fontSize:'10px', color:'#7B1FA2', background:'#F3E5F5', padding:'3px 8px', borderRadius:'6px', border:'1px solid #CE93D8'}}>🔮 咒术</span>}
-                  {(() => {
-                    const cd = dungeonCooldowns[d.id];
-                    if (cd && cd.count >= 3) {
-                      const elapsed = Date.now() - cd.lastTime;
-                      if (elapsed < 5 * 60 * 1000) return <span style={{fontSize:'10px', color:'#FF9800', background:'#FFF8E1', padding:'3px 8px', borderRadius:'6px', border:'1px solid #FFE0B2'}}>⏰ 冷却中</span>;
-                    }
-                    return cd ? <span style={{fontSize:'10px', color:'#666', background:'#F5F5F5', padding:'3px 8px', borderRadius:'6px'}}>{cd.count}/3次</span> : null;
-                  })()}
-                 </div>
-                 
-                 {/* 奖励展示 */}
-                 <div style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
-                   <span style={{fontSize:'10px', color:'#aaa', fontWeight:'700', letterSpacing:'0.5px', marginRight:'4px'}}>奖励</span>
-                   {d.rewards && d.rewards.map((r, idx) => (
-                     <div key={idx} style={{
-                       background:`linear-gradient(135deg, ${d.color}08, ${d.color}15)`,
-                       padding:'5px 12px', borderRadius:'10px', fontSize:'11px',
-                       color:'#555', border:`1px solid ${d.color}25`,
-                       display:'flex', alignItems:'center', gap:'5px', fontWeight:'600'
-                     }}>
-                       <span style={{fontSize:'13px'}}>{r.icon}</span>
-                       <span>{r.text}</span>
-                     </div>
-                   ))}
-                 </div>
-                 
-                 {/* 进入按钮 */}
-                 <button onClick={(e) => { e.stopPropagation(); enterDungeon(d); }} style={{
-                   width:'100%', marginTop:'14px', padding:'11px', border:'none',
-                   background:`linear-gradient(135deg, ${d.color}, ${d.color}cc)`,
-                   color:'#fff', fontWeight:'700', cursor:'pointer', fontSize:'13px',
-                   borderRadius:'12px', letterSpacing:'1px',
-                   boxShadow:`0 4px 15px ${d.color}35`,
-                   transition:'all 0.2s'
-                 }}
-                 onMouseOver={e => { e.currentTarget.style.transform='scale(1.02)'; e.currentTarget.style.boxShadow=`0 6px 20px ${d.color}50`; }}
-                 onMouseOut={e => { e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow=`0 4px 15px ${d.color}35`; }}
-                 >进入副本</button>
-               </div>
-             </div>
-           )})}
-        </div>
-
-        {/* --- 挑战之路 (保持不变) --- */}
-        <div className="challenge-grid-new" style={{display: mapTab==='challenges'?'grid':'none', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px'}}>
-          {[...CHALLENGES, ...JJK_CHALLENGES].map(c => {
-            const currentCaught = caughtDex.length;
-            const isUnlocked = currentCaught >= c.req;
-            const isCleared = completedChallenges.includes(c.id);
-            const progressPct = Math.min(100, (currentCaught / c.req) * 100);
-            const bossInfo = POKEDEX.find(p => p.id === c.boss);
+        {/* --- 秘境探险 --- */}
+        <div style={{display: mapTab==='dungeons'?'block':'none', padding:'0 4px'}}>
+          {[
+            { tier: 1, title: '初阶秘境', subtitle: '适合刚起步的训练师', gradient: 'linear-gradient(135deg, #43A047, #66BB6A)', icon: '🌿' },
+            { tier: 2, title: '进阶秘境', subtitle: '实力经受考验的舞台', gradient: 'linear-gradient(135deg, #1976D2, #42A5F5)', icon: '⚔️' },
+            { tier: 3, title: '精英秘境', subtitle: '只有精英训练师才能涉足', gradient: 'linear-gradient(135deg, #7B1FA2, #AB47BC)', icon: '💎' },
+            { tier: 4, title: '终极秘境', subtitle: '传说中的终极挑战', gradient: 'linear-gradient(135deg, #E65100, #FF8F00)', icon: '👑' },
+          ].map(tierGroup => {
+            const tierDungeons = [...DUNGEONS, HYAKKI_DUNGEON, ...EXTRA_DUNGEONS].filter(d => {
+              if (d.tier) return d.tier === tierGroup.tier;
+              const t = d.tier || (d.recLvl >= 85 ? 4 : d.recLvl >= 65 ? 3 : d.recLvl >= 35 ? 2 : 1);
+              return t === tierGroup.tier;
+            });
+            if (tierDungeons.length === 0) return null;
             return (
-              <div key={c.id} className="chal-card-pro hover-scale" style={{opacity: isUnlocked ? 1 : 0.8}}>
-                <div className="chal-pro-header"><div style={{fontWeight:'bold', color: isUnlocked ? c.color : '#999', fontSize:'15px'}}>{c.isJJK && '🔮 '}{c.title}</div>{isCleared ? (<span style={{fontSize:'10px', background:'#4CAF50', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>✅ 已通关</span>) : (<span style={{fontSize:'10px', background: isUnlocked ? '#FF9800' : '#ddd', color:'#fff', padding:'2px 8px', borderRadius:'10px'}}>{isUnlocked ? '🔥 进行中' : '🔒 未解锁'}</span>)}</div>
-                <div className="chal-pro-body"><div className="chal-boss-box" style={{borderColor: c.color}}>{bossInfo ? renderAvatar(bossInfo) : null}</div><div style={{flex:1}}><div style={{fontSize:'12px', color:'#666', marginBottom:'8px', lineHeight:'1.4'}}>{c.desc}</div><div style={{fontSize:'10px', display:'flex', justifyContent:'space-between', color:'#888', marginBottom:'2px'}}><span>解锁进度</span><span>{currentCaught}/{c.req}</span></div><div className="chal-progress-bar"><div className="chal-progress-fill" style={{width: `${progressPct}%`, background: isUnlocked ? c.color : '#ccc'}}></div></div></div></div>
-                <button onClick={() => isUnlocked && startBattle(null, 'challenge', c.id)} disabled={!isUnlocked} style={{width:'100%', padding:'12px', border:'none', background: isUnlocked ? `linear-gradient(90deg, ${c.color}, ${c.color}dd)` : '#f0f0f0', color: isUnlocked ? '#fff' : '#aaa', fontWeight: 'bold', cursor: isUnlocked ? 'pointer' : 'not-allowed', marginTop: 'auto'}}>{isUnlocked ? (isCleared ? '再次挑战' : '开始挑战') : `需收集 ${c.req} 只精灵`}</button>
+              <div key={tierGroup.tier} style={{marginBottom:'24px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 18px', background: tierGroup.gradient, borderRadius:'16px', position:'relative', overflow:'hidden'}}>
+                  <div style={{position:'absolute', right:'-10px', top:'-10px', fontSize:'60px', opacity:0.12, pointerEvents:'none'}}>{tierGroup.icon}</div>
+                  <span style={{fontSize:'28px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{tierGroup.icon}</span>
+                  <div>
+                    <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'1px', textShadow:'0 1px 3px rgba(0,0,0,0.2)'}}>{tierGroup.title}</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', marginTop:'2px'}}>{tierGroup.subtitle}</div>
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'12px'}}>
+                  {tierDungeons.map(d => {
+                    const req = d.reqBadges || 0;
+                    const isLocked = badges.length < req;
+                    const cd = dungeonCooldowns[d.id];
+                    const isCooling = cd && cd.count >= 3 && (Date.now() - cd.lastTime) < 5 * 60 * 1000;
+                    return (
+                      <div key={d.id} onClick={() => !isLocked && enterDungeon(d)}
+                        style={{
+                          position:'relative', borderRadius:'16px', cursor: isLocked ? 'not-allowed' : 'pointer',
+                          background: isLocked ? '#f5f5f5' : '#fff',
+                          border: isLocked ? '1px solid #e0e0e0' : `1px solid ${d.color}20`,
+                          boxShadow: isLocked ? 'none' : `0 4px 20px ${d.color}15`,
+                          transition:'all 0.25s ease', overflow:'hidden',
+                          opacity: isLocked ? 0.6 : 1,
+                        }}
+                        onMouseOver={e => { if(!isLocked) { e.currentTarget.style.transform='translateY(-3px) scale(1.01)'; e.currentTarget.style.boxShadow=`0 8px 28px ${d.color}25`; }}}
+                        onMouseOut={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= isLocked ? 'none' : `0 4px 20px ${d.color}15`; }}
+                      >
+                        <div style={{display:'flex', alignItems:'stretch'}}>
+                          <div style={{
+                            width:'56px', minHeight:'100%', background:`linear-gradient(180deg, ${d.color}, ${d.color}cc)`,
+                            display:'flex', alignItems:'center', justifyContent:'center', fontSize:'26px', flexShrink:0,
+                            position:'relative', overflow:'hidden'
+                          }}>
+                            <div style={{position:'absolute', top:0, left:0, right:0, bottom:0, background:'rgba(255,255,255,0.1)'}} />
+                            <span style={{position:'relative', zIndex:1, filter:'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'}}>{d.icon}</span>
+                          </div>
+                          <div style={{flex:1, padding:'12px 14px'}}>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
+                              <span style={{fontSize:'14px', fontWeight:'700', color: isLocked ? '#999' : '#333'}}>{d.name}</span>
+                              <div style={{display:'flex', gap:'4px', alignItems:'center'}}>
+                                <span style={{fontSize:'10px', color: d.color, letterSpacing:'1px'}}>{'★'.repeat(d.stars || 1)}</span>
+                                {isLocked && <span style={{fontSize:'16px'}}>🔒</span>}
+                                {isCooling && <span style={{fontSize:'9px', color:'#FF9800', background:'#FFF8E1', padding:'1px 5px', borderRadius:'4px'}}>冷却中</span>}
+                              </div>
+                            </div>
+                            <div style={{fontSize:'11px', color:'#888', lineHeight:'1.3', marginBottom:'6px'}}>{d.desc}</div>
+                            <div style={{display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap'}}>
+                              <span style={{fontSize:'10px', fontWeight:'700', color:'#fff', background: d.color, padding:'2px 7px', borderRadius:'4px'}}>Lv.{d.recLvl}+</span>
+                              {req > 0 && <span style={{fontSize:'10px', color: isLocked ? '#e53935' : '#4caf50', fontWeight:'600'}}>🏅{req}徽章</span>}
+                              {d.restriction && d.restriction !== 'none' && (
+                                <span style={{fontSize:'9px', color:'#F57C00', background:'#FFF3E0', padding:'1px 5px', borderRadius:'4px'}}>
+                                  {d.restriction === 'solo_run' ? '单挑' : d.restriction === 'entry_fee' ? '需门票' : d.restriction === 'lucky_nature' ? '幸运性格' : '特殊'}
+                                </span>
+                              )}
+                              {d.rewards && d.rewards.slice(0,2).map((r,i) => (
+                                <span key={i} style={{fontSize:'9px', color:'#666', background:'#f5f5f5', padding:'1px 5px', borderRadius:'4px'}}>{r.icon} {r.text}</span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
+        </div>
+
+        {/* --- 图鉴试炼塔 --- */}
+        <div style={{display: mapTab==='challenges'?'block':'none'}}>
+          {/* 总进度概览 */}
+          {(() => {
+            const currentCaught = caughtDex.length;
+            const allChallenges = [...CHALLENGES, ...JJK_CHALLENGES];
+            const cleared = allChallenges.filter(c => completedChallenges.includes(c.id)).length;
+            const totalPct = Math.min(100, (currentCaught / 700) * 100);
+            return (
+              <div style={{margin:'0 0 20px', padding:'16px 22px', background:'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', borderRadius:'18px', color:'#fff', position:'relative', overflow:'hidden'}}>
+                <div style={{position:'absolute', top:'-20px', right:'20px', fontSize:'80px', opacity:0.06, pointerEvents:'none'}}>🏆</div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
+                  <div>
+                    <div style={{fontSize:'11px', color:'#94a3b8', fontWeight:'600', letterSpacing:'1px', textTransform:'uppercase'}}>图鉴收集进度</div>
+                    <div style={{fontSize:'28px', fontWeight:'800', marginTop:'2px'}}>{currentCaught} <span style={{fontSize:'14px', color:'#64748b', fontWeight:'400'}}>/ 700</span></div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:'11px', color:'#94a3b8'}}>试炼通关</div>
+                    <div style={{fontSize:'22px', fontWeight:'700', color:'#fbbf24'}}>{cleared} <span style={{fontSize:'12px', color:'#64748b'}}>/ {allChallenges.length}</span></div>
+                  </div>
+                </div>
+                <div style={{height:'6px', background:'rgba(255,255,255,0.1)', borderRadius:'3px', overflow:'hidden'}}>
+                  <div style={{width:`${totalPct}%`, height:'100%', background:'linear-gradient(90deg, #fbbf24, #f59e0b)', borderRadius:'3px', transition:'width 0.5s ease'}} />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 普通挑战 */}
+          <div style={{marginBottom:'16px', padding:'0 2px'}}>
+            <div style={{fontSize:'13px', fontWeight:'700', color:'#475569', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px'}}>
+              <span style={{width:'3px', height:'16px', background:'linear-gradient(180deg, #ef4444, #f97316)', borderRadius:'2px'}} />
+              精灵收集试炼 · {CHALLENGES.length} 座
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'10px'}}>
+              {CHALLENGES.map((c, idx) => {
+                const currentCaught = caughtDex.length;
+                const isUnlocked = currentCaught >= c.req;
+                const isCleared = completedChallenges.includes(c.id);
+                const progressPct = Math.min(100, (currentCaught / c.req) * 100);
+                const bossInfo = POKEDEX.find(p => p.id === c.boss);
+                const tierIdx = idx < 4 ? 0 : idx < 8 ? 1 : idx < 12 ? 2 : idx < 15 ? 3 : 4;
+                const tierColors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
+                const tierNames = ['入门', '中级', '高级', '大师', '传说'];
+                const tc = tierColors[tierIdx];
+                return (
+                  <div key={c.id}
+                    onClick={() => isUnlocked && startBattle(null, 'challenge', c.id)}
+                    style={{
+                      borderRadius:'14px', overflow:'hidden', cursor: isUnlocked ? 'pointer' : 'default',
+                      background: isCleared ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : isUnlocked ? '#fff' : '#fafafa',
+                      border: isCleared ? '1px solid #86efac' : isUnlocked ? `1px solid ${tc}30` : '1px solid #e5e7eb',
+                      transition:'all 0.2s ease', position:'relative',
+                      boxShadow: isUnlocked && !isCleared ? `0 2px 12px ${tc}15` : 'none',
+                    }}
+                    onMouseOver={e => { if(isUnlocked) e.currentTarget.style.transform='translateY(-2px)'; }}
+                    onMouseOut={e => { e.currentTarget.style.transform='none'; }}
+                  >
+                    <div style={{padding:'12px 14px'}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                          <div style={{
+                            width:'38px', height:'38px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center',
+                            background: isCleared ? '#dcfce7' : `${tc}12`, fontSize:'20px', border: `1px solid ${isCleared ? '#86efac' : tc + '25'}`,
+                            overflow:'hidden', position:'relative'
+                          }}>
+                            {isCleared ? <span>✅</span> : bossInfo ? <div style={{transform:'scale(0.65)'}}>{renderAvatar(bossInfo)}</div> : <span style={{fontSize:'16px'}}>?</span>}
+                          </div>
+                          <div>
+                            <div style={{fontSize:'13px', fontWeight:'700', color: isUnlocked ? '#1e293b' : '#94a3b8', lineHeight:'1.2'}}>{c.title}</div>
+                            <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'1px'}}>{c.desc}</div>
+                          </div>
+                        </div>
+                        <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'2px'}}>
+                          <span style={{fontSize:'9px', fontWeight:'700', color:'#fff', background: tc, padding:'1px 6px', borderRadius:'4px'}}>{tierNames[tierIdx]}</span>
+                          <span style={{fontSize:'9px', color:'#94a3b8'}}>Lv.{c.bossLvl}</span>
+                        </div>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                        <div style={{flex:1, height:'4px', background:'#e5e7eb', borderRadius:'2px', overflow:'hidden'}}>
+                          <div style={{width:`${progressPct}%`, height:'100%', background: isCleared ? '#22c55e' : isUnlocked ? tc : '#d1d5db', borderRadius:'2px', transition:'width 0.5s'}} />
+                        </div>
+                        <span style={{fontSize:'10px', fontWeight:'600', color: isUnlocked ? tc : '#94a3b8', minWidth:'50px', textAlign:'right'}}>
+                          {isCleared ? '✓ 通关' : `${currentCaught}/${c.req}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 咒术挑战 */}
+          {JJK_CHALLENGES.length > 0 && (
+            <div style={{padding:'0 2px'}}>
+              <div style={{fontSize:'13px', fontWeight:'700', color:'#475569', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px'}}>
+                <span style={{width:'3px', height:'16px', background:'linear-gradient(180deg, #7c3aed, #a78bfa)', borderRadius:'2px'}} />
+                🔮 咒术回战试炼 · {JJK_CHALLENGES.length} 座
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'10px'}}>
+                {JJK_CHALLENGES.map(c => {
+                  const currentCaught = caughtDex.length;
+                  const isUnlocked = currentCaught >= c.req;
+                  const isCleared = completedChallenges.includes(c.id);
+                  const progressPct = Math.min(100, (currentCaught / c.req) * 100);
+                  const bossInfo = POKEDEX.find(p => p.id === c.boss);
+                  return (
+                    <div key={c.id}
+                      onClick={() => isUnlocked && startBattle(null, 'challenge', c.id)}
+                      style={{
+                        borderRadius:'14px', overflow:'hidden', cursor: isUnlocked ? 'pointer' : 'default',
+                        background: isCleared ? 'linear-gradient(135deg, #faf5ff, #f3e8ff)' : isUnlocked ? '#fff' : '#fafafa',
+                        border: isCleared ? '1px solid #c084fc' : isUnlocked ? '1px solid #7c3aed30' : '1px solid #e5e7eb',
+                        transition:'all 0.2s ease', position:'relative',
+                        boxShadow: isUnlocked && !isCleared ? '0 2px 12px rgba(124,58,237,0.1)' : 'none',
+                      }}
+                      onMouseOver={e => { if(isUnlocked) e.currentTarget.style.transform='translateY(-2px)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform='none'; }}
+                    >
+                      <div style={{padding:'12px 14px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                            <div style={{
+                              width:'38px', height:'38px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center',
+                              background: isCleared ? '#f3e8ff' : '#7c3aed12', fontSize:'20px', border:'1px solid #7c3aed25',
+                              overflow:'hidden'
+                            }}>
+                              {isCleared ? <span>✅</span> : bossInfo ? <div style={{transform:'scale(0.65)'}}>{renderAvatar(bossInfo)}</div> : <span>🔮</span>}
+                            </div>
+                            <div>
+                              <div style={{fontSize:'13px', fontWeight:'700', color: isUnlocked ? '#1e293b' : '#94a3b8', lineHeight:'1.2'}}>🔮 {c.title}</div>
+                              <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'1px'}}>{c.desc}</div>
+                            </div>
+                          </div>
+                          <span style={{fontSize:'9px', color:'#94a3b8'}}>Lv.{c.bossLvl}</span>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                          <div style={{flex:1, height:'4px', background:'#e5e7eb', borderRadius:'2px', overflow:'hidden'}}>
+                            <div style={{width:`${progressPct}%`, height:'100%', background: isCleared ? '#a855f7' : isUnlocked ? '#7c3aed' : '#d1d5db', borderRadius:'2px', transition:'width 0.5s'}} />
+                          </div>
+                          <span style={{fontSize:'10px', fontWeight:'600', color: isUnlocked ? '#7c3aed' : '#94a3b8', minWidth:'50px', textAlign:'right'}}>
+                            {isCleared ? '✓ 通关' : `${currentCaught}/${c.req}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
