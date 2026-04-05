@@ -5429,6 +5429,20 @@ const useGrowthItem = (petIndex, itemId) => {
         if (newGrid[fty][ftx] === 2) newGrid[fty][ftx] = 14;
     }
 
+    // 随机放置神秘祭坛 (每张地图 0~1 个, 40%概率出现)
+    if (Math.random() < 0.4) {
+        const ax = _.random(3, GRID_W - 4);
+        const ay = _.random(3, GRID_H - 4);
+        if (newGrid[ay][ax] === 2) newGrid[ay][ax] = 15;
+    }
+
+    // 随机放置野外旅商 (每张地图 0~1 个, 35%概率出现)
+    if (Math.random() < 0.35) {
+        const mx = _.random(3, GRID_W - 4);
+        const my = _.random(3, GRID_H - 4);
+        if (newGrid[my][mx] === 2) newGrid[my][mx] = 16;
+    }
+
     setMapGrid(newGrid);
     setView('grid_map');
   };
@@ -5588,40 +5602,167 @@ const useGrowthItem = (petIndex, itemId) => {
       // ------------------------------------------------
       // 5. 特殊地形交互 (水域/岩石)
       // ------------------------------------------------
-      // 水域 (Tile 3) - 需要 4 个徽章
+      // 水域 (Tile 3) - 冲浪探索系统
       if (tileType === 3) {
         if (badges.length < 4) {
           alert(`前方是深水区！\n需要获得 4 枚徽章才能使用【冲浪】通过。`);
           setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy }));
           return;
         } else {
-           // 有徽章可以通过，30%概率遇敌
-           if (Math.random() < 0.3) setTimeout(() => startBattle(null, 'water_special'), 200);
+           const surfRoll = Math.random();
+           if (surfRoll < 0.05) {
+              const bottleMsgs = [
+                { title:'🍶 漂流瓶 · 藏宝图', gold: _.random(3000, 8000), desc:'瓶中有一张褪色的藏宝图，指引你找到了' },
+                { title:'🍶 漂流瓶 · 求救信', gold: _.random(1000, 3000), desc:'远方训练家的求救信附带感谢金' },
+                { title:'🍶 漂流瓶 · 情书', gold: 0, heal: true, desc:'一封温暖的情书...全队精灵被治愈了' },
+                { title:'🍶 漂流瓶 · 古老配方', gold: _.random(2000, 5000), desc:'瓶中的古老配方价值不菲' },
+              ];
+              const bottle = _.sample(bottleMsgs);
+              if (bottle.gold > 0) setGold(g => g + bottle.gold);
+              if (bottle.heal) {
+                const newP = [...party];
+                newP.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; });
+                setParty(newP);
+              }
+              setEventData({ type:'LOOT', title: bottle.title, desc: `${bottle.desc}${bottle.gold > 0 ? `\n获得 ${bottle.gold} 金币！` : '\n全队HP回满，异常状态解除！'}`, reward:{ gold: bottle.gold || 0 } });
+              setView('event');
+           } else if (surfRoll < 0.15) {
+              const pearlGold = _.random(1500, 5000);
+              setGold(g => g + pearlGold);
+              setEventData({ type:'LOOT', title:'🫧 水底宝箱', desc:`你在水底发现了一个古老宝箱！\n里面有珍珠和金币，价值 ${pearlGold} 金币！`, reward:{ gold: pearlGold } });
+              setView('event');
+           } else if (surfRoll < 0.30) {
+              setTimeout(() => startBattle(null, 'water_special'), 200);
+           }
         }
       }
 
-      // 岩石 (Tile 6) - 需要 2 个徽章
+      // 岩石 (Tile 6) - 探矿系统
       if (tileType === 6) {
         if (badges.length < 2) {
           alert(`巨大的岩石挡住了去路！\n需要获得 2 枚徽章才能使用【碎岩】通过。`);
           setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy }));
           return;
         } else {
-           // 碎岩成功：清除岩石
            setMapGrid(prev => {
                const newGrid = prev.map(row => [...row]);
                newGrid[y][x] = 2;
                return newGrid;
            });
-           
-           if (Math.random() < 0.5) {
+           const mineRoll = Math.random();
+           const mapLv = Math.min(100, 10 + badges.length * 7);
+           if (mineRoll < 0.10) {
+              const gemGold = _.random(2000, 8000);
+              setGold(g => g + gemGold);
+              setEventData({ type:'LOOT', title:'💎 稀有宝石！', desc:`岩石中藏着一颗闪耀的宝石！\n卖出获得 ${gemGold} 金币！`, reward:{ gold: gemGold } });
+              setView('event');
+           } else if (mineRoll < 0.30) {
+              const stoneNames = ['火之石','水之石','雷之石','月之石','太阳石','暗之石','光之石','冰之石'];
+              const stone = _.sample(stoneNames);
+              const stoneGold = _.random(500, 1500);
+              setGold(g => g + stoneGold);
+              setEventData({ type:'LOOT', title:`🪨 发现${stone}！`, desc:`岩石深处藏着一颗${stone}！\n（折算为 ${stoneGold} 金币）`, reward:{ gold: stoneGold } });
+              setView('event');
+           } else if (mineRoll < 0.50) {
+              const fossilNames = ['远古化石','覆盖化石','盖子化石','羽毛化石','颚化石','鳍化石'];
+              const fossil = _.sample(fossilNames);
+              const fossilGold = _.random(1000, 3000);
+              setGold(g => g + fossilGold);
+              setEventData({ type:'LOOT', title:`🦴 发掘${fossil}！`, desc:`你在岩石中发掘出了${fossil}！\n（折算为 ${fossilGold} 金币）`, reward:{ gold: fossilGold } });
+              setView('event');
+           } else if (mineRoll < 0.70) {
+              const mineralGold = _.random(300, 1000);
+              setGold(g => g + mineralGold);
+              setEventData({ type:'LOOT', title:'⛏️ 采集矿物', desc:`碎岩后获得一些矿物碎片。\n卖出获得 ${mineralGold} 金币。`, reward:{ gold: mineralGold } });
+              setView('event');
+           } else if (mineRoll < 0.85) {
               setTimeout(() => startBattle(null, 'rock_special'), 200);
            } else {
-              setEventData({ type: 'LOOT', title: '碎岩成功', desc: '你粉碎了岩石！', reward: {} });
+              const healAmt = 30;
+              const newParty = [...party];
+              newParty.forEach(p => { const maxHp = getStats(p).maxHp; p.currentHp = Math.min(maxHp, p.currentHp + Math.floor(maxHp * healAmt / 100)); });
+              setParty(newParty);
+              setEventData({ type:'LOOT', title:'♨️ 发现温泉！', desc:'岩石下方涌出温泉！\n全队精灵恢复了 30% 生命值！', reward:{} });
               setView('event');
            }
            return; 
         }
+      }
+
+      // ------------------------------------------------
+      // 5b. 神秘祭坛 (Tile 15)
+      // ------------------------------------------------
+      if (tileType === 15) {
+        setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
+        const altarRoll = Math.random();
+        if (altarRoll < 0.25) {
+          const newP = [...party];
+          newP.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; p.moves.forEach(m => { m.pp = m.maxPP || 15; }); });
+          setParty(newP);
+          setEventData({ type:'LOOT', title:'🌟 祭坛祝福 · 全体恢复', desc:'祭坛散发出温暖的光芒...\n\n全队精灵 HP 回满、异常解除、PP 恢复！', reward:{} });
+          setView('event');
+        } else if (altarRoll < 0.45) {
+          const blessingGold = _.random(3000, 10000);
+          setGold(g => g + blessingGold);
+          setEventData({ type:'LOOT', title:'✨ 祭坛祝福 · 黄金雨', desc:`祭坛中涌出大量金币！\n获得 ${blessingGold} 金币！`, reward:{ gold: blessingGold } });
+          setView('event');
+        } else if (altarRoll < 0.60) {
+          const ballReward = Math.random() < 0.3 ? { master: 1 } : { ultra: _.random(3, 5) };
+          const ballName = ballReward.master ? '大师球 ×1' : `超级球 ×${ballReward.ultra}`;
+          setBalls(prev => ({ ...prev, ...Object.fromEntries(Object.entries(ballReward).map(([k, v]) => [k, (prev[k] || 0) + v])) }));
+          setEventData({ type:'LOOT', title:'🔮 祭坛祝福 · 神秘供品', desc:`祭坛上出现了供品！\n获得 ${ballName}！`, reward:{} });
+          setView('event');
+        } else if (altarRoll < 0.75) {
+          const potionAmt = _.random(3, 8);
+          setInventory(prev => ({ ...prev, meds: { ...prev.meds, potion: (prev.meds.potion || 0) + potionAmt, ether: (prev.meds.ether || 0) + Math.floor(potionAmt / 2) } }));
+          setEventData({ type:'LOOT', title:'🧪 祭坛祝福 · 补给物资', desc:`祭坛周围散落着补给品！\n获得 伤药 ×${potionAmt} 和 PP补剂 ×${Math.floor(potionAmt / 2)}！`, reward:{} });
+          setView('event');
+        } else if (altarRoll < 0.88) {
+          const curseGold = _.random(500, 2000);
+          setGold(g => Math.max(0, g - curseGold));
+          setEventData({ type:'LOOT', title:'💀 祭坛诅咒！', desc:`你触碰了禁忌的祭坛...\n一阵黑雾涌出，损失了 ${curseGold} 金币！\n\n下次小心...不是每个祭坛都是友好的。`, reward:{} });
+          setView('event');
+        } else {
+          const mapLv = Math.min(100, 10 + badges.length * 7);
+          const godPool = LEGENDARY_POOL.filter(id => id < 600);
+          const godId = _.sample(godPool);
+          setEventData({ type:'LOOT', title:'⚡ 祭坛召唤！', desc:'祭坛爆发出强烈的能量！\n一只传说中的精灵被召唤了出来！', reward:{} });
+          setView('event');
+          setTimeout(() => startBattle({ id: godId, name: '被祭坛召唤的神兽', lvl: [mapLv, mapLv], pool: [godId], drop: 5000 }, 'wild_god'), 1500);
+        }
+        return;
+      }
+
+      // ------------------------------------------------
+      // 5c. 野外旅商 (Tile 16)
+      // ------------------------------------------------
+      if (tileType === 16) {
+        setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
+        const merchantItems = [
+          { name:'大师球', cost: 50000, action: () => setBalls(prev => ({...prev, master: (prev.master||0)+1})) },
+          { name:'高级球 ×10', cost: 5000, action: () => setBalls(prev => ({...prev, ultra: (prev.ultra||0)+10})) },
+          { name:'全队回满', cost: 3000, action: () => { const np = [...party]; np.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; }); setParty(np); } },
+          { name:'伤药 ×20', cost: 2000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, potion:(prev.meds.potion||0)+20}})) },
+          { name:'PP补剂 ×10', cost: 3000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+10}})) },
+          { name:'神秘礼包（随机奖励）', cost: 8000, action: () => { const r = Math.random(); if(r<0.3) { setBalls(prev=>({...prev,master:(prev.master||0)+2})); alert('🎁 获得 大师球 ×2！'); } else if(r<0.6) { setGold(g=>g+20000); alert('🎁 获得 20000 金币！'); } else { const np=[...party]; np.forEach(p=>{p.currentHp=getStats(p).maxHp; p.moves.forEach(m=>{m.pp=m.maxPP||15;});}); setParty(np); alert('🎁 全队完全恢复！'); } } },
+        ];
+        const selectedItems = _.sampleSize(merchantItems, 3);
+        const itemList = selectedItems.map(it => `${it.name} — ${it.cost} 金币`).join('\n');
+        const choice = prompt(`🧳 旅行商人\n"嘿，旅行者！看看我的好东西吧！"\n\n${itemList}\n\n输入序号购买 (1-3)，取消则离开：`);
+        if (choice) {
+          const idx = parseInt(choice) - 1;
+          if (idx >= 0 && idx < selectedItems.length) {
+            const item = selectedItems[idx];
+            if (gold >= item.cost) {
+              setGold(g => g - item.cost);
+              item.action();
+              alert(`✅ 购买成功：${item.name}！`);
+            } else {
+              alert(`❌ 金币不足！需要 ${item.cost} 金币。`);
+            }
+          }
+        }
+        return;
       }
 
       // ------------------------------------------------
@@ -6232,11 +6373,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
            trainerName = "???";
        } else if (type === 'rock_special') {
            enemyId = _.sample(ROCK_POOL);
-           level = _.random(20, 50);
+           level = _.random(Math.max(10, badges.length * 6), Math.min(100, 20 + badges.length * 7));
            alert("🪨 岩石碎裂，有什么东西钻出来了！");
        } else {
            enemyId = _.sample(WATER_POOL);
-           level = _.random(30, 60);
+           level = _.random(Math.max(15, badges.length * 6), Math.min(100, 25 + badges.length * 7));
            alert("🌊 水面泛起涟漪，野生精灵出现了！");
        }
        enemyParty.push(createPet(enemyId, level, true));
@@ -12607,9 +12748,12 @@ const renderMenu = () => {
           <div style={{display:'flex', flexWrap:'wrap', gap:'8px', justifyContent:'center'}}>
             <LegendItem icon={theme.obstacle} label="障碍" />
             <LegendItem icon={theme.water} label="水域" />
+            <LegendItem icon="🪨" label="矿石" />
             <LegendItem icon="🎁" label="宝箱" />
             <LegendItem icon="🏥" label="中心" />
             <LegendItem icon="🏪" label="商店" />
+            <LegendItem icon="🔮" label="祭坛" />
+            <LegendItem icon="🧳" label="旅商" />
           </div>
         </div>
       </div>
@@ -14020,6 +14164,24 @@ const renderMenu = () => {
                   } else if (type === 14) {
                     tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
                     content = (<div className="fruit-tree-icon"><div className="tree-crown" style={{background:'radial-gradient(circle, #FF6F00 30%, #388E3C 60%)', boxShadow:'0 0 8px rgba(255,111,0,0.4)'}}/><div className="tree-trunk" /></div>);
+                  } else if (type === 15) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:20,height:22,position:'relative'}}>
+                        <div style={{width:20,height:4,background:'linear-gradient(90deg,#6D4C41,#8D6E63)',borderRadius:2,position:'absolute',bottom:0}}/>
+                        <div style={{width:4,height:14,background:'linear-gradient(180deg,#FFD54F,#FFA726)',borderRadius:'2px 2px 0 0',position:'absolute',bottom:4,left:8,boxShadow:'0 0 6px rgba(255,213,79,0.8)'}}/>
+                        <div style={{width:8,height:8,background:'radial-gradient(circle,#FFE082,#FF8F00)',borderRadius:'50%',position:'absolute',bottom:12,left:6,boxShadow:'0 0 10px rgba(255,143,0,0.6)',animation:'pulse 2s infinite'}}/>
+                      </div>
+                    </div>);
+                  } else if (type === 16) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:18,height:20,position:'relative'}}>
+                        <div style={{width:18,height:12,background:'linear-gradient(180deg,#5C6BC0,#3949AB)',borderRadius:'3px 3px 2px 2px',position:'absolute',bottom:0,boxShadow:'0 1px 4px rgba(0,0,0,0.3)'}}/>
+                        <div style={{width:14,height:4,background:'linear-gradient(90deg,#E8D44D,#FBC02D)',borderRadius:'4px 4px 0 0',position:'absolute',bottom:12,left:2}}/>
+                        <div style={{fontSize:8,position:'absolute',bottom:2,left:0,width:'100%',textAlign:'center'}}>🧳</div>
+                      </div>
+                    </div>);
                   }
 
                   cells.push(
