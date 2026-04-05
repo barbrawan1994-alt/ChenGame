@@ -20,6 +20,8 @@ export const TYPES = {
   WIND: { name: '风', color: '#81D4FA', bg: '#E1F5FE' },
   LIGHT: { name: '光', color: '#FFD54F', bg: '#FFFDE7' },
   HEAL: { name: '治愈', color: '#81C784', bg: '#E8F5E9' },
+  COSMIC: { name: '宇宙', color: '#1A237E', bg: '#E8EAF6' },
+  SOUND: { name: '音波', color: '#AD1457', bg: '#FCE4EC' },
   GOD: { name: '神', color: '#333333', bg: '#D7CCC8' }
 };
 // ==========================================
@@ -47,7 +49,9 @@ export const TYPE_CHARM_BASE = {
   POISON: 10,  // 毒：危险
   DARK: 20,    // 恶：阴暗
   WIND: 45,    // 风：飘逸
-  LIGHT: 55    // 光：圣洁
+  LIGHT: 55,   // 光：圣洁
+  COSMIC: 60,  // 宇宙：神秘深邃
+  SOUND: 35    // 音波：韵律
 };
 
 export const TYPE_BIAS = {
@@ -72,5 +76,7 @@ export const TYPE_BIAS = {
   WIND:    { p: 0.9, s: 1.2 },  // 偏特攻/速度
   LIGHT:   { p: 0.8, s: 1.3 },  // 偏特攻
   HEAL:    { p: 0.5, s: 1.0 },
+  COSMIC:  { p: 0.9, s: 1.3 },  // 偏特攻
+  SOUND:   { p: 1.0, s: 1.1 },  // 略偏特攻
   GOD:     { p: 1.5, s: 1.5 }   // 神
 };

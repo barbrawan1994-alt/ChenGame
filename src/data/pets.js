@@ -1137,6 +1137,102 @@ const EXTRA_PETS_700 = [
   { id: 700, name: '宇宙意志', type: 'GOD',    emoji: '🌟', hp: 130, atk: 130, def: 130, spd: 130, desc: '超越时空的宇宙终极意志，万象之源。' },
 ];
 
+// ==========================================
+// 双属性映射表 (id -> type2)
+// ==========================================
+const DUAL_TYPE_MAP = {
+  // === 火系 ===
+  6:'DARK', 14:'ROCK', 17:'FLYING', 20:'NORMAL', 93:'FLYING', 97:'FLYING',
+  106:'FIGHT', 157:'FIGHT', 233:'LIGHT', 242:'FLYING', 256:'LIGHT',
+  275:'GROUND', 286:'GHOST', 302:'DARK', 314:'FIGHT', 362:'STEEL',
+  425:'STEEL', 496:'GROUND', 544:'DRAGON', 614:'STEEL',
+  // === 水系 ===
+  9:'DRAGON', 25:'STEEL', 100:'FAIRY', 126:'FAIRY', 160:'WATER',
+  235:'DRAGON', 260:'DARK', 315:'DARK', 335:'DRAGON', 351:'PSYCHIC',
+  395:'FAIRY', 410:'DRAGON', 483:'PSYCHIC', 646:'ICE',
+  // === 草系 ===
+  3:'DRAGON', 10:'POISON', 103:'DRAGON', 117:'POISON', 147:'PSYCHIC',
+  191:'POISON', 264:'FAIRY', 318:'POISON', 398:'FIRE', 486:'HEAL',
+  // === 电系 ===
+  33:'NORMAL', 35:'STEEL', 39:'BUG', 92:'FLYING', 168:'NORMAL',
+  189:'STEEL', 262:'LIGHT', 305:'FLYING', 334:'DRAGON',
+  385:'SOUND', 487:'FIGHT',
+  // === 冰系 ===
+  30:'WATER', 74:'ROCK', 78:'WATER', 91:'FLYING', 187:'GRASS',
+  199:'GROUND', 234:'DRAGON', 263:'DARK', 289:'ICE', 303:'WATER',
+  313:'FAIRY', 322:'DRAGON', 387:'STEEL', 427:'FIGHT', 489:'FAIRY',
+  // === 格斗系 ===
+  63:'NORMAL', 71:'STEEL', 183:'STEEL', 186:'POISON', 214:'NORMAL',
+  251:'ROCK', 270:'PSYCHIC', 298:'GROUND', 353:'ROCK', 382:'LIGHT',
+  490:'NORMAL', 693:'STEEL', 669:'FIRE',
+  // === 毒系 ===
+  27:'WATER', 113:'FLYING', 114:'FLYING', 185:'DARK', 268:'DARK',
+  277:'BUG', 295:'DARK', 317:'FLYING', 333:'GHOST', 494:'GROUND',
+  697:'DARK', 675:'DARK',
+  // === 地面系 ===
+  69:'STEEL', 75:'POISON', 99:'ROCK', 184:'WATER', 198:'FLYING',
+  259:'ROCK', 310:'STEEL', 337:'ROCK', 393:'ROCK', 485:'FAIRY', 678:'FIRE',
+  // === 飞行系 ===
+  43:'NORMAL', 96:'WATER', 163:'NORMAL', 179:'DARK', 228:'NORMAL',
+  249:'SOUND', 261:'DRAGON', 276:'ELECTRIC', 336:'DRAGON',
+  344:'SOUND', 423:'ELECTRIC', 584:'WATER', 685:'ELECTRIC', 662:'FIRE',
+  // === 超能力系 ===
+  29:'WATER', 53:'FAIRY', 58:'COSMIC', 94:'FIGHT', 129:'LIGHT',
+  145:'FAIRY', 149:'COSMIC', 151:'FAIRY', 200:'COSMIC', 222:'FIGHT',
+  266:'COSMIC', 267:'COSMIC', 279:'GHOST', 292:'COSMIC', 332:'COSMIC',
+  354:'COSMIC', 400:'FAIRY', 412:'COSMIC', 429:'GROUND', 482:'COSMIC',
+  500:'DARK', 672:'COSMIC', 699:'COSMIC',
+  // === 虫系 ===
+  112:'FLYING', 195:'FLYING', 239:'POISON', 252:'GROUND', 280:'DARK',
+  316:'PSYCHIC', 346:'FIRE', 638:'ELECTRIC', 690:'FAIRY',
+  // === 岩石系 ===
+  15:'FIRE', 65:'GROUND', 133:'WATER', 134:'WATER', 136:'WATER',
+  139:'DARK', 169:'DRAGON', 190:'GROUND', 226:'FAIRY', 250:'COSMIC',
+  278:'STEEL', 311:'FLYING', 325:'WATER', 345:'COSMIC', 492:'COSMIC',
+  // === 幽灵系 ===
+  56:'DARK', 130:'DARK', 144:'DRAGON', 146:'DARK', 236:'WATER',
+  255:'DARK', 265:'FLYING', 274:'DARK', 338:'DARK', 390:'STEEL',
+  484:'PSYCHIC', 498:'WATER', 694:'DARK',
+  // === 龙系 ===
+  81:'FLYING', 84:'GROUND', 98:'FLYING', 138:'FLYING', 141:'PSYCHIC',
+  142:'STEEL', 143:'WATER', 182:'GROUND', 216:'DARK', 244:'FAIRY',
+  300:'FAIRY', 340:'DARK', 449:'FLYING', 599:'COSMIC', 622:'FIRE', 634:'FIGHT',
+  696:'STEEL',
+  // === 钢系 ===
+  40:'ELECTRIC', 86:'PSYCHIC', 89:'FIGHT', 140:'PSYCHIC', 148:'PSYCHIC',
+  170:'ROCK', 206:'DRAGON', 224:'BUG', 253:'ELECTRIC', 269:'LIGHT',
+  272:'ELECTRIC', 281:'FIGHT', 306:'ELECTRIC', 331:'PSYCHIC',
+  361:'PSYCHIC', 402:'FAIRY', 416:'FIRE', 477:'FIGHT', 488:'ROCK',
+  600:'FAIRY', 666:'FIGHT', 686:'DARK', 698:'COSMIC',
+  // === 妖精系 ===
+  49:'HEAL', 61:'LIGHT', 194:'FLYING', 218:'PSYCHIC', 257:'PSYCHIC',
+  273:'PSYCHIC', 339:'LIGHT', 369:'NORMAL', 414:'SOUND', 446:'GRASS',
+  481:'LIGHT', 654:'LIGHT', 683:'ROCK', 695:'STEEL',
+  // === 恶系 ===
+  383:'POISON', 434:'GHOST', 452:'FIGHT', 463:'FLYING', 471:'POISON',
+  480:'DRAGON', 533:'GHOST', 540:'FIGHT', 608:'GHOST', 609:'FIGHT',
+  610:'COSMIC', 681:'WATER', 687:'FIGHT', 692:'COSMIC',
+  // === 风系 ===
+  503:'NORMAL', 506:'FIRE', 511:'POISON', 512:'BUG', 515:'FAIRY',
+  601:'COSMIC', 602:'FIRE', 603:'DARK', 630:'FIGHT',
+  // === 光系 ===
+  518:'BUG', 521:'FIRE', 525:'STEEL', 527:'FAIRY', 530:'FIRE',
+  604:'FIRE', 605:'FAIRY', 606:'STEEL', 607:'COSMIC',
+  650:'FAIRY', 691:'FIRE',
+  // === 治愈系 ===
+  282:'FAIRY', 405:'FAIRY', 469:'GRASS',
+  // === 宇宙/音波系 (新属性作为主属性的) ===
+  // 暂无，新属性主要作为type2分配
+  // === 神系 ===
+  283:'COSMIC', 431:'COSMIC', 700:'COSMIC',
+};
+
+// 主属性重分配 (少量修正)
+const TYPE_OVERRIDES = {
+  150: 'GOD',   // 创世神: NORMAL → GOD
+  160: 'STEEL', // 帝王拿波: 保持STEEL
+};
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
@@ -1149,7 +1245,10 @@ const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 700);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
-    POKEDEX.push(existing);
+    const entry = { ...existing };
+    if (TYPE_OVERRIDES[i]) entry.type = TYPE_OVERRIDES[i];
+    if (DUAL_TYPE_MAP[i]) entry.type2 = DUAL_TYPE_MAP[i];
+    POKEDEX.push(entry);
   } else {
     POKEDEX.push({ id: i, name: `野生精灵#${i}`, type: 'NORMAL', emoji: '🐾', hp: 50, atk: 50, def: 50 });
   }

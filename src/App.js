@@ -238,6 +238,7 @@ export default function RPG(props) {
   const [fruitDexSelected, setFruitDexSelected] = useState(null);
   const [vowModal, setVowModal] = useState(false);
   const [battleFruitDetail, setBattleFruitDetail] = useState(null);
+  const [battleGangDetail, setBattleGangDetail] = useState(null);
   const sectBadgeRef = React.useRef(null);
 
   // 游戏进度
@@ -1525,6 +1526,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                                     <div style={{fontWeight: 'bold', color: '#fff', fontSize: '14px'}}>{pet.name}</div>
                                     <div style={{display:'flex', gap:'5px', marginTop:'4px'}}>
                                         <span style={{fontSize: '10px', background: TYPES[pet.type]?.color, padding: '1px 6px', borderRadius: '4px'}}>{TYPES[pet.type]?.name}</span>
+                                        {pet.secondaryType && <span style={{fontSize: '10px', background: TYPES[pet.secondaryType]?.color, padding: '1px 6px', borderRadius: '4px', color:'#fff'}}>{TYPES[pet.secondaryType]?.name}</span>}
                                         {/* 修复后的等级标签 */}
 <span style={{
     fontSize: '10px', 
@@ -1950,6 +1952,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       charmRank: charmRank,
       intimacy: intimacy,
       curseTalent: curseTalent,
+      secondaryType: base.type2 || null,
     };
 
     // --- 技能生成逻辑 ---
@@ -2412,16 +2415,19 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // 3. 决定是否异色 (20%)
     const isFusedShiny = Math.random() < 0.2;
 
-    // 4. 决定是否双属性 (20%)
+    // 4. 决定是否双属性 (20%) — 若觉醒成功，用对方主属性覆盖子代第二属性；否则保留父本第二属性 / 图鉴 type2
     const isDualType = Math.random() < 0.2;
     const primaryType = baseParent.type;
-    let secondaryType = null;
+    const dexForBase = POKEDEX.find(d => d.id === baseParent.id) || POKEDEX[0];
+    let fusionGrantedSecondary = null;
     if (isDualType) {
         const otherParent = baseParent.uid === p1.uid ? p2 : p1;
         if (otherParent.type !== primaryType) {
-            secondaryType = otherParent.type;
+            fusionGrantedSecondary = otherParent.type;
         }
     }
+    const secondaryType =
+        fusionGrantedSecondary ?? baseParent.secondaryType ?? dexForBase.type2 ?? null;
 
     // 5. 种族值混合算法
     // 获取父母当前的种族值 (如果是融合过的，取 customBaseStats；如果是原版，查表)
@@ -2510,7 +2516,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // 11. 提示信息
     let msg = `🌀 融合成功！\n获得了 Lv.${newPet.level} ${newPet.name}！`;
     if (isFusedShiny) msg += "\n✨ 发生突变！是异色闪光精灵！";
-    if (isDualType) msg += `\n⚡ 觉醒了双重属性：${TYPES[primaryType].name} / ${TYPES[secondaryType].name}`;
+    if (fusionGrantedSecondary) {
+        msg += `\n⚡ 觉醒了双重属性：${TYPES[primaryType].name} / ${TYPES[fusionGrantedSecondary].name}`;
+    }
     
     alert(msg);
     setAnimEffect({ type: 'EVOLUTION', target: 'player' }); 
@@ -2533,10 +2541,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const isFusedShiny = Math.random() < 0.2;
 
     const isDualType = Math.random() < 0.2;
-    let secondaryType = null;
+    const dexForBase = POKEDEX.find(d => d.id === baseParent.id) || POKEDEX[0];
+    let fusionGrantedSecondary = null;
     if (isDualType && otherParent.type !== baseParent.type) {
-        secondaryType = otherParent.type;
+        fusionGrantedSecondary = otherParent.type;
     }
+    const secondaryType =
+        fusionGrantedSecondary ?? baseParent.secondaryType ?? dexForBase.type2 ?? null;
 
     const getBase = (pet) => pet.customBaseStats || (POKEDEX.find(d=>d.id===pet.id) || POKEDEX[0]);
     const b1 = getBase(p1);
@@ -2592,7 +2603,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
     let msg = `🧬 融合成功！\n获得了 Lv.${newPet.level} ${newPet.name}！`;
     if (isFusedShiny) msg += "\n✨ 发生突变！是异色闪光精灵！(全属性+35%)";
-    if (isDualType && secondaryType) msg += `\n⚡ 觉醒了双重属性：${TYPES[baseParent.type]?.name||baseParent.type} / ${TYPES[secondaryType]?.name||secondaryType}`;
+    if (fusionGrantedSecondary) {
+        msg += `\n⚡ 觉醒了双重属性：${TYPES[baseParent.type]?.name || baseParent.type} / ${TYPES[fusionGrantedSecondary]?.name || fusionGrantedSecondary}`;
+    }
     msg += `\n📊 种族值由父母双方混合产生`;
     alert(msg);
   };
@@ -7819,21 +7832,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
       WATER:   { weak: ['GRASS', 'ELECTRIC'], strong: ['FIRE', 'GROUND', 'ROCK'] },
       GRASS:   { weak: ['FIRE', 'ICE', 'POISON', 'FLYING', 'BUG'], strong: ['WATER', 'GROUND', 'ROCK'] },
       ELECTRIC:{ weak: ['GROUND'], strong: ['WATER', 'FLYING'] },
-      ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'] },
+      ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL', 'SOUND'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'] },
       FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'STEEL', 'DARK'] },
       POISON:  { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'] },
-      GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL'] },
-      FLYING:  { weak: ['ELECTRIC', 'ICE', 'ROCK'], strong: ['GRASS', 'FIGHT', 'BUG'] },
-      PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK'], strong: ['FIGHT', 'POISON'] },
+      GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'] },
+      FLYING:  { weak: ['ELECTRIC', 'ICE', 'ROCK', 'COSMIC'], strong: ['GRASS', 'FIGHT', 'BUG'] },
+      PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'] },
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'] },
-      ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG'] },
-      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST'] },
-      DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY'], strong: ['DRAGON'] },
-      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST'] },
-      STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY'] },
-      FAIRY:   { weak: ['POISON', 'STEEL'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
+      ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'] },
+      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'] },
+      DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'] },
+      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'] },
+      STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'] },
+      FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
       WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'] },
       LIGHT:   { weak: ['DARK', 'GHOST'], strong: ['DARK', 'GHOST', 'POISON'] },
+      COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING'] },
+      SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC'] },
     };
 
     const info = chart[moveType];
@@ -8150,6 +8165,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         });
 
         let typeMod = getTypeMod(move.t, defender.type);
+        if (defender.secondaryType) typeMod *= getTypeMod(move.t, defender.secondaryType);
         const levelBase = attacker.level * 0.8 + 5;
         const movePower = move.p || 40;
         const powerFactor = movePower * 0.5 + 10;
@@ -8308,8 +8324,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         } else {
         let msg = `造成 ${dmg} 伤害`;
         if (isCrit) msg += ` (暴击!)`;
-        if (typeMod > 1.2) msg += ` 效果拔群!`;
-        if (typeMod < 0.9) msg += ` 收效甚微...`;
+        if (typeMod >= 2.0) msg += ` 双重效果拔群!`;
+        else if (typeMod > 1.2) msg += ` 效果拔群!`;
+        if (typeMod <= 0.65) msg += ` 双重抵抗，收效甚微...`;
+        else if (typeMod < 0.9) msg += ` 收效甚微...`;
         addLog(msg);
         }
 
@@ -10394,6 +10412,7 @@ const renderNameInput = () => {
           {starterOptions.map((p, i) => {
             const stats = getStats(p);
             const typeConfig = TYPES[p.type] || TYPES.NORMAL;
+            const typeConfig2 = p.secondaryType ? (TYPES[p.secondaryType] || TYPES.NORMAL) : null;
             const natureName = NATURE_DB[p.nature]?.name || '未知';
               const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
               const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
@@ -10431,7 +10450,9 @@ const renderNameInput = () => {
                   {/* 顶部渐变 + 精灵形象 */}
                 <div style={{
                     height:'140px', position:'relative', overflow:'hidden',
-                    background:`linear-gradient(135deg, ${typeConfig.color}cc, ${typeConfig.color}66)`
+                    background: typeConfig2
+                      ? `linear-gradient(135deg, ${typeConfig.color}cc, ${typeConfig2.color}88)`
+                      : `linear-gradient(135deg, ${typeConfig.color}cc, ${typeConfig.color}66)`
                 }}>
                     <div style={{
                       position:'absolute', inset:0,
@@ -10463,6 +10484,12 @@ const renderNameInput = () => {
                         background:`${typeConfig.color}25`, color:typeConfig.color, padding:'3px 10px',
                         borderRadius:'8px', fontSize:'10px', fontWeight:'700', border:`1px solid ${typeConfig.color}40`
                       }}>{typeConfig.name}</span>
+                      {typeConfig2 && (
+                      <span style={{
+                        background:`${typeConfig2.color}25`, color:typeConfig2.color, padding:'3px 10px',
+                        borderRadius:'8px', fontSize:'10px', fontWeight:'700', border:`1px solid ${typeConfig2.color}40`
+                      }}>{typeConfig2.name}</span>
+                      )}
                       <span style={{
                         background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.6)', padding:'3px 10px',
                         borderRadius:'8px', fontSize:'10px', fontWeight:'600'
@@ -10676,7 +10703,7 @@ const renderNameInput = () => {
                   <div className="dex-item-id">#{String(pet.id).padStart(3, '0')}</div>
                   <div className="dex-item-icon" style={!isCaught ? {filter:'brightness(0.4) saturate(0)'} : {}}>{renderAvatar(pet)}</div>
                   <div className="dex-item-name">{pet.name}</div>
-                  <div className="dex-type-dot" style={{background: TYPES[pet.type]?.color || '#999'}}></div>
+                  <div style={{display:'flex', gap:'2px'}}><div className="dex-type-dot" style={{background: TYPES[pet.type]?.color || '#999'}}></div>{pet.type2 && <div className="dex-type-dot" style={{background: TYPES[pet.type2]?.color || '#999'}}></div>}</div>
                 </div>
               );
             })}
@@ -10728,10 +10755,16 @@ const renderNameInput = () => {
                       #{String(selectedPet.id).padStart(3, '0')}
                     </div>
                     <div style={{fontSize: '24px', fontWeight: '800', color: '#555', margin: '4px 0'}}>{selectedPet.name}</div>
+                    <div style={{display:'flex', gap:'6px', justifyContent:'center'}}>
                     <div style={{
                       display: 'inline-block', background: tc, color: '#fff',
                       padding: '4px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
                     }}>{TYPES[selectedPet.type]?.name || selectedPet.type}</div>
+                    {selectedPet.type2 && <div style={{
+                      display: 'inline-block', background: TYPES[selectedPet.type2]?.color || '#666', color: '#fff',
+                      padding: '4px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
+                    }}>{TYPES[selectedPet.type2]?.name}</div>}
+                    </div>
                   </div>
                   {selectedPet.desc && <div style={{width:'100%', padding:'12px 30px 0', textAlign:'center'}}>
                     <div style={{fontSize:'12px', color:'#888', fontStyle:'italic', lineHeight:1.5}}>"{selectedPet.desc}"</div>
@@ -10827,13 +10860,23 @@ const renderNameInput = () => {
                             <div style={{fontSize: '24px', fontWeight: '800', color: '#333', margin: '4px 0'}}>
                             {selectedPet.name}
                             </div>
-                            <div style={{
-                                display: 'inline-block', 
-                                background: TYPES[selectedPet.type]?.color || '#7038F8', 
-                                color: '#fff', padding: '4px 16px', borderRadius: '20px', 
-                                fontSize: '12px', fontWeight: 'bold'
-                            }}>
-                                {TYPES[selectedPet.type]?.name}
+                            <div style={{display:'flex', gap:'6px', justifyContent:'center'}}>
+                                <div style={{
+                                    display: 'inline-block', 
+                                    background: TYPES[selectedPet.type]?.color || '#7038F8', 
+                                    color: '#fff', padding: '4px 16px', borderRadius: '20px', 
+                                    fontSize: '12px', fontWeight: 'bold'
+                                }}>
+                                    {TYPES[selectedPet.type]?.name}
+                                </div>
+                                {selectedPet.type2 && <div style={{
+                                    display: 'inline-block', 
+                                    background: TYPES[selectedPet.type2]?.color || '#7038F8', 
+                                    color: '#fff', padding: '4px 16px', borderRadius: '20px', 
+                                    fontSize: '12px', fontWeight: 'bold'
+                                }}>
+                                    {TYPES[selectedPet.type2]?.name}
+                                </div>}
                             </div>
                             {allCaught.length > 0 && (
                                 <div style={{fontSize:'10px', color:'#666', marginTop:'5px'}}>
@@ -11591,7 +11634,7 @@ const renderMenu = () => {
           
           <div style={{position:'relative', textAlign:'center'}}>
             <div style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'3px 14px', borderRadius:'20px', background:'rgba(255,165,0,0.15)', border:'1px solid rgba(255,165,0,0.25)', marginBottom:'14px'}}>
-              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.2</span>
+              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.3</span>
           </div>
             
           <div style={{
@@ -11718,7 +11761,7 @@ const renderMenu = () => {
           background:'rgba(0,0,0,0.15)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.2 · {POKEDEX.length} Creatures · Gang Wars</span>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.3 · {POKEDEX.length} Creatures · Gang Wars</span>
           <span style={{fontSize:'10px', color:'rgba(255,255,255,0.15)'}}>Legends RPG</span>
         </div>
       </div>
@@ -15500,7 +15543,7 @@ const renderMenu = () => {
                             ) : null}
                             {renderSectBadge(e, 'enemy')}
                             {battle.trainerGang && (
-                              <span style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(255,143,0,0.8), rgba(255,111,0,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)'}}>
+                              <span onClick={(ev) => { ev.stopPropagation(); const eb = battleState.trainerGangBonus || getGangSkillBonus(battle.trainerGang.skills); setBattleGangDetail({name: battle.trainerGang.name, icon: battle.trainerGang.icon, bonus: eb, side:'enemy'}); }} style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(255,143,0,0.8), rgba(255,111,0,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer'}}>
                                 {battle.trainerGang.icon}{battle.trainerGang.name}
                               </span>
                             )}
@@ -15646,7 +15689,7 @@ const renderMenu = () => {
                             {gang?.gangId && (() => {
                               const gi = getGangInfo();
                               return gi ? (
-                                <span style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(76,175,80,0.8), rgba(56,142,60,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)'}}>
+                                <span onClick={(ev) => { ev.stopPropagation(); const pb = getGangSkillBonus(getGangSkills(gang)); setBattleGangDetail({name: gi.name, icon: gi.icon, bonus: pb, side:'player'}); }} style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(76,175,80,0.8), rgba(56,142,60,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer'}}>
                                   {gi.icon}{gi.name}
                                 </span>
                               ) : null;
@@ -17079,14 +17122,14 @@ const renderMenu = () => {
 
  return (
     <div className="cute-theme">
-      {/* SVG滤镜：去除数码宝贝精灵白色背景 */}
+      {/* SVG滤镜：去除数码宝贝精灵白色背景（50桶阈值=0.98，仅移除近纯白） */}
       <svg style={{position:'absolute',width:0,height:0,overflow:'hidden'}}>
         <defs>
           <filter id="remove-white-bg" colorInterpolationFilters="sRGB">
             <feComponentTransfer result="thresh">
-              <feFuncR type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
-              <feFuncG type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
-              <feFuncB type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
+              <feFuncR type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
+              <feFuncG type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
+              <feFuncB type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0"/>
             </feComponentTransfer>
             <feColorMatrix type="matrix" in="thresh" result="alpha_mask" values="
               0 0 0 0 0
@@ -17202,6 +17245,58 @@ const renderMenu = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 战斗帮派加成详情弹窗 */}
+      {battleGangDetail && (() => {
+        const gd = battleGangDetail;
+        const b = gd.bonus;
+        const statItems = [
+          { label: '物攻', val: b.atk, icon: '⚔️', color: '#ef5350' },
+          { label: '物防', val: b.def, icon: '🛡️', color: '#42a5f5' },
+          { label: '特攻', val: b.s_atk, icon: '🔮', color: '#ab47bc' },
+          { label: '特防', val: b.s_def, icon: '🧿', color: '#26a69a' },
+          { label: 'HP', val: b.hp, icon: '❤️', color: '#ec407a' },
+          { label: '速度', val: b.spd, icon: '💨', color: '#ffa726' },
+          { label: '金币', val: b.gold, icon: '💰', color: '#ffee58' },
+          { label: '经验', val: b.exp, icon: '📖', color: '#66bb6a' },
+        ];
+        const sideColor = gd.side === 'player' ? '#4CAF50' : '#FF9800';
+        return (
+          <div onClick={() => setBattleGangDetail(null)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center', zIndex:10600
+          }}>
+            <div onClick={ev => ev.stopPropagation()} style={{
+              background:'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius:'16px',
+              padding:'24px', maxWidth:'380px', width:'90%', color:'#fff', border:`2px solid ${sideColor}`,
+              boxShadow:`0 0 30px ${sideColor}40`
+            }}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                  <span style={{fontSize:'28px'}}>{gd.icon}</span>
+                  <div>
+                    <div style={{fontSize:'18px', fontWeight:'bold'}}>{gd.name}</div>
+                    <div style={{fontSize:'12px', color: sideColor, fontWeight:'bold'}}>{gd.side === 'player' ? '我方帮派' : '敌方帮派'}</div>
+                  </div>
+                </div>
+                <button onClick={() => setBattleGangDetail(null)} style={{background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:'32px', height:'32px', borderRadius:'50%', fontSize:'16px', cursor:'pointer'}}>×</button>
+              </div>
+              <div style={{fontSize:'13px', fontWeight:'bold', color:'#64b5f6', marginBottom:'10px'}}>帮派属性加成</div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px'}}>
+                {statItems.map(s => (
+                  <div key={s.label} style={{background:'rgba(255,255,255,0.05)', borderRadius:'8px', padding:'8px 10px', display:'flex', alignItems:'center', gap:'6px'}}>
+                    <span style={{fontSize:'16px'}}>{s.icon}</span>
+                    <span style={{fontSize:'12px', color:'#aaa', minWidth:'28px'}}>{s.label}</span>
+                    <span style={{fontSize:'14px', fontWeight:'bold', color: s.val > 0 ? s.color : '#555'}}>
+                      {s.val > 0 ? `+${s.val}%` : '--'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
