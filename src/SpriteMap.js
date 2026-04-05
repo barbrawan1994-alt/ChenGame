@@ -20,19 +20,19 @@ const ID_TO_DIGIMON = {
   512: 'Snimon',              // 风刃螳螂(WIND) → 螳螂兽
   513: 'Lopmon',              // 气旋松鼠(WIND) → 洛普兽
   514: 'Yatagaramon',         // 风行者(WIND) → 八咫鸦兽
-  515: 'Darcmon',             // 暴风天使(WIND) → 达尔克兽
+  // 515: removed Darcmon (light angel), falls to NatDex
   517: 'Flymon',              // 光辉蛾(LIGHT)
   518: 'Butterflamon',         // 圣光帝蛾(LIGHT) → 蝴蝶兽
-  519: 'Mikemon',             // 晨光猫(LIGHT) → 三花猫兽
-  520: 'Nefertimon',          // 日光猫(LIGHT) → 天马兽
+  // 519: removed Mikemon (white body → transparency issue), falls to NatDex
+  // 520: removed Nefertimon (light body), falls to NatDex
   521: 'Liamon',              // 太阳狮(LIGHT) → 狮子兽
-  522: 'Starmon',             // 棱镜水晶(LIGHT) → 星星兽
-  523: 'Superstarmon',         // 虹光宝石(LIGHT) → 超级星星兽
+  // 522: removed Starmon (light/white), falls to NatDex
+  // 523: removed Superstarmon (light/white), falls to NatDex
   524: 'Guardromon',          // 光子精灵(LIGHT) → 守卫兽
   525: 'Giromon',             // 光束战士(LIGHT) → 手里剑兽
   526: 'Renamon',             // 极光狐(LIGHT) → 妖狐兽
-  527: 'Unimon',              // 圣光独角兽(LIGHT) → 独角兽
-  529: 'Sorcermon',            // 光之精灵(LIGHT) → 魔术师兽
+  // 527: removed Unimon (white body), falls to NatDex
+  // 529: removed Sorcermon (white body), falls to NatDex
   531: 'Gazimon',              // 暗影鼠(DARK) → 加兹兽
   532: 'Were_Garurumon_(Black)', // 暗夜狼(DARK)
   534: 'Pico_Devimon',        // 黑雾蝙蝠(DARK) → 小恶魔兽
@@ -46,7 +46,7 @@ const ID_TO_DIGIMON = {
   544: 'Megidramon',          // 赤炎飞龙(FIRE) → 默示录兽
   545: 'Blue_Meramon',         // 灼热仙人掌(FIRE) → 蓝焰兽
   548: 'Whamon',              // 深海鲸(WATER) → 鲸鱼兽
-  549: 'Shakomon',            // 珊瑚精灵(WATER)
+  // 549: removed Shakomon (white body), falls to NatDex
   552: 'Seadramon',           // 海马骑士(WATER) → 海龙兽
   553: 'Tanemon',             // 种子球(GRASS) → 种子兽
   554: 'Vegimon',              // 花丛兽(GRASS) → 蔬菜兽
@@ -54,10 +54,10 @@ const ID_TO_DIGIMON = {
   560: 'Thunderballmon',       // 雷暴兽(ELECTRIC) → 雷球兽
   562: 'Kokuwamon',            // 闪电鸟(ELECTRIC) → 甲虫兽
   563: 'Blitz_Greymon',       // 电浆兽(ELECTRIC)
-  565: 'Mojyamon',            // 冰霜麋鹿(ICE) → 毛人兽
-  566: 'Yukidarumon',         // 雪花精灵(ICE) → 雪人兽
+  // 565: removed Mojyamon (white yeti), falls to NatDex
+  // 566: removed Yukidarumon (white snowman), falls to NatDex
   567: 'Mammon',              // 冰川巨人(ICE) → 猛犸兽
-  568: 'Frigimon',             // 寒霜狐(ICE) → 冰雪兽
+  // 568: removed Frigimon (white snowman), falls to NatDex
   572: 'Ganimon',             // 铁拳蟹(FIGHT) → 螃蟹兽
   573: 'Etemon',              // 相扑力士(FIGHT) → 猿猴兽
   574: 'Mushmon',             // 毒菇(POISON) → 蘑菇兽
@@ -97,9 +97,9 @@ const ID_TO_DIGIMON = {
   631: 'V-mon', 632: 'XV-mon', 633: 'Paildramon', 634: 'Imperialdramon(Fighter_Mode)',
   635: 'Tentomon', 636: 'Kabuterimon', 637: 'Atlur_Kabuterimon_(Blue)', 638: 'Herakle_Kabuterimon',
   639: 'Palmon', 640: 'Togemon', 641: 'Lilimon', 642: 'Rosemon',
-  643: 'Gomamon', 644: 'Ikkakumon', 645: 'Zudomon', 646: 'Vikemon',
-  647: 'Patamon', 648: 'Angemon', 649: 'Holy_Angemon', 650: 'Seraphimon',
-  651: 'Tailmon', 652: 'Angewomon', 653: 'Holydramon', 654: 'Ofanimon',
+  645: 'Zudomon', 646: 'Vikemon',
+  649: 'Holy_Angemon', 650: 'Seraphimon',
+  653: 'Holydramon',
   655: 'Wormmon', 656: 'Stingmon', 657: 'Dinobeemon', 658: 'Gran_Kuwagamon',
   659: 'Hawkmon', 660: 'Aquilamon', 661: 'Silphymon', 662: 'Valkyrimon',
   663: 'Armadimon', 664: 'Ankylomon', 665: 'Shakkoumon', 666: 'Gankoomon',
@@ -324,6 +324,8 @@ const ID_TO_NATDEX = {
   601:446, 602:240, 603:645, 604:480, 605:716,
   // 神兽续: 棱镜圣兽→Silvally, 创世之光→Arceus, 冥渊魔王→Giratina, 暗影刺客→Darkrai, 永夜之主→Yveltal
   606:773, 607:360, 608:357, 609:358, 610:717,
+  // 浅色数码宝贝替换为PokeAPI (白色身体透明问题)
+  643:728, 644:729, 647:627, 648:629, 651:573, 652:764, 654:778,
   // 新精灵 667-700 (PokeAPI fallback)
   667:403, 668:448, 669:475, 670:344, 671:376, 672:373,
   673:453, 674:452, 675:454, 676:58, 677:464, 678:445,
