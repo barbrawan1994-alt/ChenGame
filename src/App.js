@@ -55,6 +55,7 @@ import {
   ROCK_POOL,
   WATER_POOL,
   JJK_CHALLENGES,
+  ATTR_CHALLENGES,
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
 } from './data';
@@ -6040,7 +6041,8 @@ const useGrowthItem = (petIndex, itemId) => {
       if (roll < 0.08) {
           setTimeout(() => startBattle(mapInfo, 'trainer'), 200); 
       } else if (roll < 0.08 + encounterRate) {
-          setTimeout(() => startBattle(mapInfo, 'wild'), 200);
+          const isDouble = party.filter(p => p.currentHp > 0).length >= 2 && Math.random() < 0.2;
+          setTimeout(() => startBattle(mapInfo, isDouble ? 'wild_double' : 'wild'), 200);
       }
     }
   }, [playerPos, mapGrid, currentMapId, mapProgress, badges, inventory, storyProgress, storyStep]);
@@ -6236,10 +6238,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
      setIsDialogVisible(false); 
-    const isBoss = type === 'boss' || type === 'challenge' || type === 'story_mid' || type === 'story_task' || type === 'eclipse_leader';
-    const isGym = type === 'gym';
-    const isStory = type === 'story_mid' || type === 'story_task';
-    const isTrainer = type === 'trainer' || isGym || isStory || type === 'league' || type === 'pvp' || type === 'sect_challenge' || type === 'gang_war' || type.startsWith('eclipse_');
+    const isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
+    const actualType = type === 'wild_double' ? 'wild' : type === 'trainer_double' ? 'trainer' : type;
+    const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
+    const isGym = actualType === 'gym';
+    const isStory = actualType === 'story_mid' || actualType === 'story_task';
+    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6303,7 +6307,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 3. 挑战塔
     // -------------------------------------------------
     else if (type === 'challenge') {
-      const challenge = [...CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
+      const challenge = [...CHALLENGES, ...ATTR_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
       if (!challenge) { alert("挑战数据未找到"); return; }
       const bossIsShiny = challenge.bossLvl >= 80;
       enemyParty.push(createPet(challenge.boss, challenge.bossLvl, true, bossIsShiny));
@@ -6550,6 +6554,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             enemyId = _.sample(context.pool);
          }
          enemyParty.push(createPet(enemyId, level, isBoss));
+         if (isDouble) {
+           const enemyId2 = _.sample(context.pool);
+           const level2 = _.random(context.lvl[0], context.lvl[1]);
+           enemyParty.push(createPet(enemyId2, level2, false));
+         }
     }
 
     // --- 统一后续处理 ---
@@ -6701,30 +6710,38 @@ const grantContestReward = (config, score, subjectPet = null) => {
       battleEnemyParty[1].bondPoints = bondBase;
     }
 
+    const doubleActiveIdxs = isDouble ? [activeIdx, battlePlayerParty.findIndex((p, i) => i !== activeIdx && p.currentHp > 0)] : null;
+    const doubleEnemyIdxs = isDouble ? [0, battleEnemyParty.length > 1 ? 1 : 0] : null;
+
     setBattle({
       enemyParty: battleEnemyParty,
       playerCombatStates: battlePlayerParty,
       enemyActiveIdx: 0, 
       activeIdx, 
-      phase: type === 'pvp' ? 'input' : 'input', 
-      logs: [type === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`)],
+      phase: actualType === 'pvp' ? 'input' : 'input', 
+      logs: [isDouble ? `遭遇了 ${enemyParty[0].name} 和 ${enemyParty.length > 1 ? enemyParty[1].name : ''}！双打战斗！` : (actualType === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`))],
       mapId: context?.id,
       drop: dropGold,
       isBoss,
       isTrainer,
       isGym,
       isStory,
-      isChallenge: type === 'challenge',
-      isPvP: type === 'pvp',
+      isChallenge: actualType === 'challenge',
+      isPvP: actualType === 'pvp',
       challengeId,
       showSwitch: false,
       trainerName,
       pvpActions: { p1: null, p2: null },
-      type: type,
+      type: actualType,
       activeDomain: null,
       activeVows: { player: null, enemy: null },
       turnCount: 0,
       enemyComboUsed: false,
+      isDouble,
+      activeIdxs: doubleActiveIdxs,
+      enemyActiveIdxs: doubleEnemyIdxs,
+      doubleSlot: 0,
+      doubleActions: [],
       ...extraBattleData,
     });
     
@@ -7005,7 +7022,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [修复版] 玩家回合 (修复升级UI不刷新)
   // ==========================================
   const executeTurn = async (moveIdx) => {
-  if (!battle || battle.phase !== 'input') return;
+  if (!battle) return;
+  if (battle.isDouble) return executeDoubleTurn(moveIdx);
+  if (battle.phase !== 'input') return;
     setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
 
     try {
@@ -7111,6 +7130,185 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
   };
 
+
+  // ==========================================
+  // 双打战斗回合 (Double Battle Turn)
+  // ==========================================
+  const executeDoubleTurn = async (moveIdx) => {
+    if (!battle || !battle.isDouble) return;
+    const phase = battle.phase;
+    if (phase !== 'input' && phase !== 'double_input_2') return;
+
+    const currentSlot = battle.doubleSlot || 0;
+    const currentActiveIdx = battle.activeIdxs[currentSlot];
+    const p = battle.playerCombatStates[currentActiveIdx];
+    if (!p || p.currentHp <= 0) return;
+
+    const move = p.combatMoves[moveIdx];
+    if (move.isCursed && (p.cursedEnergy || 0) < (move.ceCost || 0)) {
+      alert("咒力不足！"); return;
+    }
+    if (!move.isCursed && move.pp <= 0) {
+      alert("PP不足！"); return;
+    }
+
+    const newActions = [...(battle.doubleActions || [])];
+    newActions[currentSlot] = { moveIdx, activeIdx: currentActiveIdx };
+
+    if (currentSlot === 0) {
+      const secondIdx = battle.activeIdxs[1];
+      const secondPet = secondIdx >= 0 ? battle.playerCombatStates[secondIdx] : null;
+      if (secondPet && secondPet.currentHp > 0) {
+        setBattle(prev => ({
+          ...prev,
+          phase: 'double_input_2',
+          doubleSlot: 1,
+          doubleActions: newActions,
+          activeIdx: secondIdx,
+        }));
+        return;
+      }
+    }
+
+    setBattle(prev => ({ ...prev, phase: 'busy', doubleActions: newActions }));
+    await executeDoubleRound(newActions);
+  };
+
+  const executeDoubleRound = async (playerActions) => {
+    try {
+      let tempBattle = _.cloneDeep(battle);
+      tempBattle.doubleActions = playerActions;
+
+      const actions = [];
+
+      playerActions.forEach((action, slotIdx) => {
+        if (!action) return;
+        const pIdx = action.activeIdx;
+        const pet = tempBattle.playerCombatStates[pIdx];
+        if (!pet || pet.currentHp <= 0) return;
+        const move = pet.combatMoves[action.moveIdx];
+        const spd = getStats(pet).spd * (pet.stages?.spd >= 0 ? (1 + pet.stages.spd * 0.25) : (1 / (1 + Math.abs(pet.stages.spd) * 0.25)));
+        const targetEnemySlot = slotIdx < tempBattle.enemyActiveIdxs.length ? tempBattle.enemyActiveIdxs[slotIdx] : tempBattle.enemyActiveIdxs[0];
+        actions.push({ side: 'player', petIdx: pIdx, move, speed: spd, targetIdx: targetEnemySlot, slotIdx });
+      });
+
+      tempBattle.enemyActiveIdxs.forEach((eIdx, slotIdx) => {
+        const enemy = tempBattle.enemyParty[eIdx];
+        if (!enemy || enemy.currentHp <= 0) return;
+        const availMoves = (enemy.combatMoves || []).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
+        if (availMoves.length === 0) return;
+        const move = _.sample(availMoves);
+        const spd = getStats(enemy).spd * (enemy.stages?.spd >= 0 ? (1 + enemy.stages.spd * 0.25) : (1 / (1 + Math.abs(enemy.stages.spd) * 0.25)));
+        const targetPlayerSlot = slotIdx < tempBattle.activeIdxs.length ? tempBattle.activeIdxs[slotIdx] : tempBattle.activeIdxs[0];
+        actions.push({ side: 'enemy', petIdx: eIdx, move, speed: spd, targetIdx: targetPlayerSlot, slotIdx });
+      });
+
+      actions.sort((a, b) => b.speed - a.speed + (Math.random() - 0.5) * 0.01);
+
+      for (const action of actions) {
+        let attacker, defender;
+        if (action.side === 'player') {
+          attacker = tempBattle.playerCombatStates[action.petIdx];
+          let tIdx = action.targetIdx;
+          if (!tempBattle.enemyParty[tIdx] || tempBattle.enemyParty[tIdx].currentHp <= 0) {
+            tIdx = tempBattle.enemyActiveIdxs.find(i => tempBattle.enemyParty[i]?.currentHp > 0);
+            if (tIdx === undefined) tIdx = tempBattle.enemyParty.findIndex(e => e.currentHp > 0);
+          }
+          if (tIdx === undefined || tIdx < 0) continue;
+          defender = tempBattle.enemyParty[tIdx];
+        } else {
+          attacker = tempBattle.enemyParty[action.petIdx];
+          let tIdx = action.targetIdx;
+          if (!tempBattle.playerCombatStates[tIdx] || tempBattle.playerCombatStates[tIdx].currentHp <= 0) {
+            tIdx = tempBattle.activeIdxs.find(i => tempBattle.playerCombatStates[i]?.currentHp > 0);
+            if (tIdx === undefined) tIdx = tempBattle.playerCombatStates.findIndex(p => p.currentHp > 0);
+          }
+          if (tIdx === undefined || tIdx < 0) continue;
+          defender = tempBattle.playerCombatStates[tIdx];
+        }
+
+        if (!attacker || attacker.currentHp <= 0 || !defender) continue;
+
+        const side = action.side;
+        const animTarget = side === 'player' ? 'enemy' : 'player';
+        addLog(`${attacker.name} 使用了 ${action.move.name}！`);
+        setAnimEffect({ type: action.move.t || 'NORMAL', target: animTarget });
+        await wait(400);
+
+        await performAction(attacker, defender, action.move, side, tempBattle);
+
+        setBattle(prev => ({
+          ...prev,
+          playerCombatStates: tempBattle.playerCombatStates,
+          enemyParty: tempBattle.enemyParty,
+        }));
+        setAnimEffect(null);
+        await wait(600);
+      }
+
+      const allEnemiesDead = tempBattle.enemyParty.every(e => e.currentHp <= 0);
+      const allPlayersDead = tempBattle.playerCombatStates.filter((_, i) => i < party.length).every(p => p.currentHp <= 0);
+
+      if (allEnemiesDead) {
+        let currentParty = party;
+        for (const enemy of tempBattle.enemyParty) {
+          const { newParty, logMsg } = processDefeatedEnemy(enemy, currentParty, tempBattle);
+          currentParty = newParty;
+          addLog(logMsg);
+        }
+        setParty(currentParty);
+        await wait(800);
+        handleWin(currentParty);
+        return;
+      }
+
+      if (allPlayersDead) {
+        await handleDefeat();
+        return;
+      }
+
+      const newActiveIdxs = tempBattle.activeIdxs.map(idx => {
+        if (tempBattle.playerCombatStates[idx]?.currentHp > 0) return idx;
+        const next = tempBattle.playerCombatStates.findIndex((p, i) =>
+          p.currentHp > 0 && !tempBattle.activeIdxs.includes(i)
+        );
+        if (next >= 0) {
+          addLog(`${tempBattle.playerCombatStates[next].name} 加入战斗！`);
+          return next;
+        }
+        return idx;
+      });
+
+      const newEnemyIdxs = tempBattle.enemyActiveIdxs.map(idx => {
+        if (tempBattle.enemyParty[idx]?.currentHp > 0) return idx;
+        const next = tempBattle.enemyParty.findIndex((e, i) =>
+          e.currentHp > 0 && !tempBattle.enemyActiveIdxs.includes(i)
+        );
+        if (next >= 0) {
+          addLog(`野生 ${tempBattle.enemyParty[next].name} 加入战斗！`);
+          return next;
+        }
+        return idx;
+      });
+
+      setBattle(prev => ({
+        ...prev,
+        playerCombatStates: tempBattle.playerCombatStates,
+        enemyParty: tempBattle.enemyParty,
+        activeIdxs: newActiveIdxs,
+        enemyActiveIdxs: newEnemyIdxs,
+        activeIdx: newActiveIdxs[0],
+        doubleSlot: 0,
+        doubleActions: [],
+        phase: 'input',
+        turnCount: (prev.turnCount || 0) + 1,
+      }));
+
+    } catch (e) {
+      console.error("Double Battle Error:", e);
+      setBattle(prev => prev ? ({ ...prev, phase: 'input', doubleSlot: 0, doubleActions: [] }) : null);
+    }
+  };
 
   // ==========================================
   // 咒术系统 - 蓄力 (消耗一回合, 回复咒力)
@@ -9520,7 +9718,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          setCompletedChallenges(prev => [...prev, challengeId]);
          try { checkTreasureUnlock('challenge', { challengeId }); } catch(e) {}
          
-         const cInfo = [...CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
+         const cInfo = [...CHALLENGES, ...ATTR_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
          const cBossLv = cInfo ? cInfo.bossLvl : 50;
          const cTier = cBossLv <= 35 ? 1 : cBossLv <= 60 ? 2 : cBossLv <= 85 ? 3 : 4;
          
@@ -11888,85 +12086,97 @@ const renderMenu = () => {
   return (
     <div className="screen" style={{
       display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background:'linear-gradient(160deg, #020818 0%, #0a1628 20%, #0d1f3c 40%, #111340 60%, #1a0a30 80%, #020818 100%)',
+      background:'linear-gradient(160deg, #0a0a0a 0%, #1a0505 20%, #2d0a0a 40%, #1a1030 60%, #0a0a1a 80%, #050510 100%)',
       position:'relative', overflow:'hidden'
     }}>
-      {/* 星空背景 */}
-      <div style={{position:'absolute', inset:0, background:'radial-gradient(1.5px 1.5px at 10% 15%, rgba(100,200,255,0.5), transparent), radial-gradient(1px 1px at 25% 35%, rgba(180,130,255,0.4), transparent), radial-gradient(2px 2px at 40% 10%, rgba(255,220,100,0.35), transparent), radial-gradient(1px 1px at 55% 60%, rgba(100,255,218,0.3), transparent), radial-gradient(1.5px 1.5px at 70% 25%, rgba(255,100,200,0.35), transparent), radial-gradient(1px 1px at 85% 50%, rgba(120,180,255,0.3), transparent), radial-gradient(2px 2px at 30% 75%, rgba(200,150,255,0.25), transparent), radial-gradient(1px 1px at 60% 85%, rgba(100,220,255,0.3), transparent), radial-gradient(1.5px 1.5px at 90% 80%, rgba(255,180,100,0.25), transparent), radial-gradient(1px 1px at 15% 90%, rgba(150,255,200,0.2), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 30s ease infinite', opacity:0.8}} />
+      {/* 战斗火焰粒子背景 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 8% 20%, rgba(255,120,50,0.6), transparent), radial-gradient(1.5px 1.5px at 22% 45%, rgba(255,200,50,0.4), transparent), radial-gradient(2px 2px at 38% 12%, rgba(255,80,80,0.5), transparent), radial-gradient(1px 1px at 52% 65%, rgba(255,150,0,0.35), transparent), radial-gradient(1.5px 1.5px at 68% 30%, rgba(255,100,100,0.4), transparent), radial-gradient(1px 1px at 82% 55%, rgba(255,180,50,0.3), transparent), radial-gradient(2px 2px at 28% 80%, rgba(255,120,80,0.3), transparent), radial-gradient(1px 1px at 58% 88%, rgba(255,200,100,0.3), transparent), radial-gradient(1.5px 1.5px at 88% 75%, rgba(255,100,0,0.3), transparent), radial-gradient(1px 1px at 12% 92%, rgba(255,150,100,0.25), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 20s ease infinite', opacity:0.7}} />
 
-      {/* 双属性光环 */}
-      <div style={{position:'absolute', top:'-30%', left:'-20%', width:'70%', height:'70%', borderRadius:'50%', background:'radial-gradient(circle, rgba(26,35,126,0.2) 0%, rgba(100,150,255,0.08) 40%, transparent 70%)', filter:'blur(60px)', animation:'float 10s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'-25%', right:'-15%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(173,20,87,0.15) 0%, rgba(255,100,180,0.06) 40%, transparent 70%)', filter:'blur(60px)', animation:'float 12s ease-in-out infinite reverse'}} />
-      <div style={{position:'absolute', top:'15%', right:'5%', width:'45%', height:'45%', borderRadius:'50%', background:'radial-gradient(circle, rgba(0,200,180,0.08) 0%, transparent 60%)', filter:'blur(50px)', animation:'float 14s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'20%', left:'10%', width:'35%', height:'35%', borderRadius:'50%', background:'radial-gradient(circle, rgba(120,80,220,0.1) 0%, transparent 60%)', filter:'blur(40px)', animation:'float 8s ease-in-out infinite reverse'}} />
+      {/* 交叉光芒 - 双打VS主题 */}
+      <div style={{position:'absolute', top:'40%', left:'50%', width:'200%', height:'2px', transform:'translate(-50%,-50%) rotate(-25deg)', background:'linear-gradient(90deg, transparent, rgba(255,120,0,0.15), rgba(255,200,50,0.2), rgba(255,120,0,0.15), transparent)', filter:'blur(2px)', animation:'btn-shine 4s ease infinite'}} />
+      <div style={{position:'absolute', top:'40%', left:'50%', width:'200%', height:'2px', transform:'translate(-50%,-50%) rotate(25deg)', background:'linear-gradient(90deg, transparent, rgba(255,50,50,0.15), rgba(255,100,100,0.2), rgba(255,50,50,0.15), transparent)', filter:'blur(2px)', animation:'btn-shine 5s ease infinite'}} />
 
-      {/* 漂浮精灵剪影 */}
+      {/* 战斗光环 */}
+      <div style={{position:'absolute', top:'-25%', left:'-15%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,100,0,0.12) 0%, rgba(255,60,0,0.04) 40%, transparent 70%)', filter:'blur(50px)', animation:'float 8s ease-in-out infinite'}} />
+      <div style={{position:'absolute', bottom:'-20%', right:'-10%', width:'55%', height:'55%', borderRadius:'50%', background:'radial-gradient(circle, rgba(200,50,50,0.1) 0%, rgba(255,50,100,0.04) 40%, transparent 70%)', filter:'blur(50px)', animation:'float 10s ease-in-out infinite reverse'}} />
+      <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'40%', height:'40%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,0,0.06) 0%, transparent 60%)', filter:'blur(40px)', animation:'float 12s ease-in-out infinite'}} />
+
+      {/* 漂浮精灵剪影 - 对战排列 */}
       {titleSprites.map((url, i) => (
         <div key={i} style={{
           position:'absolute',
-          left: `${3 + (i % 7) * 14}%`,
-          top: i < 6 ? `${5 + i * 6}%` : `${52 + (i-6) * 7}%`,
-          width: `${35 + (i % 4) * 12}px`,
-          height: `${35 + (i % 4) * 12}px`,
-          opacity: 0.04 + (i % 3) * 0.015,
-          animation: `float ${6 + i * 0.8}s ease-in-out infinite`,
-          animationDelay: `${i * 0.6}s`,
-          filter:'grayscale(1) brightness(2.5)',
+          left: i < 5 ? `${2 + i * 6}%` : `${62 + (i-5) * 6}%`,
+          top: `${10 + (i % 5) * 16}%`,
+          width: `${30 + (i % 3) * 10}px`,
+          height: `${30 + (i % 3) * 10}px`,
+          opacity: 0.05 + (i % 3) * 0.02,
+          animation: `float ${5 + i * 0.6}s ease-in-out infinite`,
+          animationDelay: `${i * 0.4}s`,
+          filter: i < 5 ? 'grayscale(1) brightness(2) sepia(1) hue-rotate(330deg)' : 'grayscale(1) brightness(2) sepia(1) hue-rotate(200deg)',
+          transform: i >= 5 ? 'scaleX(-1)' : 'none',
           pointerEvents:'none'
         }}>
           <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => e.target.style.display='none'} />
         </div>
       ))}
 
+      {/* 中央VS标志 */}
+      <div style={{position:'absolute', top:'18%', left:'50%', transform:'translate(-50%,-50%)', zIndex:5, pointerEvents:'none'}}>
+        <div style={{fontSize:'48px', fontWeight:'900', color:'rgba(255,255,255,0.04)', letterSpacing:'12px', fontFamily:'"Inter", sans-serif'}}>VS</div>
+      </div>
+
       {/* 主卡片 */}
       <div style={{
         position:'relative', zIndex:10, width:'92%', maxWidth:'480px',
-        background:'linear-gradient(145deg, rgba(10,18,40,0.88), rgba(15,10,35,0.92))',
+        background:'linear-gradient(145deg, rgba(20,8,8,0.92), rgba(10,5,20,0.95))',
         backdropFilter:'blur(30px)',
-        border:'1px solid rgba(100,180,255,0.08)',
+        border:'1px solid rgba(255,120,0,0.12)',
         borderRadius:'24px', padding:'0', overflow:'hidden',
-        boxShadow:'0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(26,35,126,0.1), inset 0 1px 0 rgba(255,255,255,0.06)',
+        boxShadow:'0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(255,80,0,0.06), inset 0 1px 0 rgba(255,200,100,0.06)',
         animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
 
-        {/* 顶部横幅 - 双属性主题 */}
-          <div style={{
+        {/* 顶部横幅 - 双打大战主题 */}
+        <div style={{
           position:'relative', padding:'36px 32px 30px', overflow:'hidden',
-          background:'linear-gradient(135deg, rgba(26,35,126,0.2) 0%, rgba(100,150,255,0.1) 25%, rgba(173,20,87,0.12) 50%, rgba(120,80,220,0.1) 75%, rgba(0,200,180,0.08) 100%)',
-          borderBottom:'1px solid rgba(100,180,255,0.08)'
+          background:'linear-gradient(135deg, rgba(200,50,0,0.15) 0%, rgba(255,120,0,0.08) 25%, rgba(255,180,0,0.06) 50%, rgba(200,50,50,0.1) 75%, rgba(150,30,0,0.12) 100%)',
+          borderBottom:'1px solid rgba(255,120,0,0.1)'
         }}>
-          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%)', animation:'btn-shine 5s ease infinite'}} />
-          <div style={{position:'absolute', top:'50%', left:'50%', width:'120%', height:'1px', transform:'translate(-50%,-50%) rotate(-3deg)', background:'linear-gradient(90deg, transparent, rgba(100,200,255,0.15), rgba(255,100,200,0.12), transparent)', animation:'btn-shine 6s ease infinite'}} />
+          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,200,100,0.03) 50%, transparent 100%)', animation:'btn-shine 4s ease infinite'}} />
+          <div style={{position:'absolute', top:'30%', left:'10%', width:'35%', height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,120,0,0.25), transparent)', animation:'btn-shine 5s ease infinite'}} />
+          <div style={{position:'absolute', top:'30%', right:'10%', width:'35%', height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,50,50,0.2), transparent)', animation:'btn-shine 6s ease infinite'}} />
           
           <div style={{position:'relative', textAlign:'center'}}>
-            <div style={{display:'inline-flex', alignItems:'center', gap:'8px', padding:'4px 16px', borderRadius:'20px', background:'linear-gradient(135deg, rgba(26,35,126,0.25), rgba(173,20,87,0.2))', border:'1px solid rgba(100,180,255,0.2)', marginBottom:'16px'}}>
-              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#64b5f6', boxShadow:'0 0 8px rgba(100,181,246,0.5)'}} />
-              <span style={{fontSize:'10px', color:'#90caf9', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 5.0</span>
-              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#f48fb1', boxShadow:'0 0 8px rgba(244,143,177,0.5)'}} />
-          </div>
+            <div style={{display:'inline-flex', alignItems:'center', gap:'8px', padding:'4px 16px', borderRadius:'20px', background:'linear-gradient(135deg, rgba(255,80,0,0.2), rgba(255,50,50,0.15))', border:'1px solid rgba(255,150,50,0.25)', marginBottom:'16px'}}>
+              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#ff9800', boxShadow:'0 0 8px rgba(255,152,0,0.6)'}} />
+              <span style={{fontSize:'10px', color:'#ffcc80', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 6.0</span>
+              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#f44336', boxShadow:'0 0 8px rgba(244,67,54,0.6)'}} />
+            </div>
             
-          <div style={{
-              fontSize:'36px', fontWeight:'900', letterSpacing:'4px',
-              background:'linear-gradient(135deg, #90caf9 0%, #ce93d8 20%, #f48fb1 40%, #80cbc4 60%, #b39ddb 80%, #90caf9 100%)',
-              backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite',
+            <div style={{
+              fontSize:'38px', fontWeight:'900', letterSpacing:'6px',
+              background:'linear-gradient(135deg, #ff9800 0%, #ff5722 20%, #f44336 40%, #ffb74d 60%, #ff7043 80%, #ff9800 100%)',
+              backgroundSize:'300% 300%', animation:'title-shimmer 3s ease infinite',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
               lineHeight:1.15, marginBottom:'8px',
-              filter:'drop-shadow(0 2px 12px rgba(100,150,255,0.25))'
-            }}>双属性精灵降临</div>
+              filter:'drop-shadow(0 2px 16px rgba(255,100,0,0.35))'
+            }}>双打大战</div>
             
             <div style={{
-              fontSize:'18px', fontWeight:'800', letterSpacing:'10px',
-              background:'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(200,200,220,0.5) 50%, rgba(255,255,255,0.7) 100%)',
-              backgroundSize:'200% 200%', animation:'title-shimmer 6s ease infinite',
+              fontSize:'16px', fontWeight:'800', letterSpacing:'8px',
+              background:'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,200,150,0.6) 50%, rgba(255,255,255,0.8) 100%)',
+              backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               marginBottom:'10px'
-            }}>DUAL TYPE ERA</div>
+            }}>DOUBLE BATTLE</div>
 
-            <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
-              <div style={{height:'1px', width:'30px', background:'linear-gradient(90deg, transparent, rgba(100,180,255,0.3))'}} />
-              <span style={{fontSize:'9px', color:'rgba(180,200,255,0.4)', letterSpacing:'3px', fontWeight:'500'}}>LEGENDS RPG · 24 TYPES</span>
-              <div style={{height:'1px', width:'30px', background:'linear-gradient(90deg, rgba(255,100,180,0.3), transparent)'}} />
+            <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginTop:'4px'}}>
+              <span style={{fontSize:'16px'}}>⚔️</span>
+              <div style={{height:'1px', width:'25px', background:'linear-gradient(90deg, transparent, rgba(255,150,0,0.3))'}} />
+              <span style={{fontSize:'9px', color:'rgba(255,200,150,0.45)', letterSpacing:'2px', fontWeight:'600'}}>2v2 · LEGENDS RPG</span>
+              <div style={{height:'1px', width:'25px', background:'linear-gradient(90deg, rgba(255,80,50,0.3), transparent)'}} />
+              <span style={{fontSize:'16px'}}>⚔️</span>
             </div>
           </div>
         </div>
@@ -11974,56 +12184,68 @@ const renderMenu = () => {
         {/* 内容区域 */}
         <div style={{padding:'24px 28px 28px'}}>
 
-          {/* 帮派信息条（有帮派时显示） */}
+          {/* 帮派信息条 */}
           {gangName && (
             <div style={{
               display:'flex', alignItems:'center', gap:'10px', padding:'10px 16px', borderRadius:'12px',
-              background:'linear-gradient(135deg, rgba(100,150,255,0.06), rgba(173,20,87,0.04))',
-              border:'1px solid rgba(100,150,255,0.12)', marginBottom:'16px'
+              background:'linear-gradient(135deg, rgba(255,120,0,0.06), rgba(255,50,50,0.04))',
+              border:'1px solid rgba(255,120,0,0.12)', marginBottom:'16px'
             }}>
               <span style={{fontSize:'20px'}}>{gangIcon}</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:'12px', fontWeight:'700', color:'#90caf9'}}>{gangName}</div>
+                <div style={{fontSize:'12px', fontWeight:'700', color:'#ffcc80'}}>{gangName}</div>
                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
-          </div>
+              </div>
               <div style={{fontSize:'18px', opacity:0.6}}>🏴</div>
-        </div>
+            </div>
           )}
 
-          {/* 主按钮 - 开始游戏 */}
-        <button onClick={handleStartGame} style={{
+          {/* 新特性提示 */}
+          <div style={{
+            padding:'10px 16px', borderRadius:'12px', marginBottom:'14px',
+            background:'linear-gradient(135deg, rgba(255,152,0,0.08), rgba(255,87,34,0.06))',
+            border:'1px solid rgba(255,152,0,0.15)',
+            display:'flex', alignItems:'center', gap:'10px'
+          }}>
+            <span style={{fontSize:'20px'}}>⚡</span>
+            <div>
+              <div style={{fontSize:'11px', fontWeight:'700', color:'#ffb74d'}}>6.0 新特性 · 双打战斗系统</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'1px'}}>野外遇敌有概率触发2v2双打 · 派出2只精灵同时战斗!</div>
+            </div>
+          </div>
+
+          {/* 主按钮 */}
+          <button onClick={handleStartGame} style={{
             width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
-            background:'linear-gradient(135deg, #1a237e 0%, #4a148c 35%, #ad1457 70%, #1a237e 100%)',
-            backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
+            background:'linear-gradient(135deg, #bf360c 0%, #e65100 35%, #ff6f00 70%, #bf360c 100%)',
+            backgroundSize:'200% 200%', animation:'title-shimmer 4s ease infinite',
             cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
             transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden',
-            boxShadow:'0 8px 28px rgba(26,35,126,0.4), 0 0 20px rgba(173,20,87,0.15)'
+            boxShadow:'0 8px 28px rgba(191,54,12,0.4), 0 0 20px rgba(255,111,0,0.15)'
           }}
-          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(26,35,126,0.5), 0 0 30px rgba(173,20,87,0.2)'; }}
-          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(26,35,126,0.4), 0 0 20px rgba(173,20,87,0.15)'; }}
+          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(191,54,12,0.5), 0 0 30px rgba(255,111,0,0.25)'; }}
+          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(191,54,12,0.4), 0 0 20px rgba(255,111,0,0.15)'; }}
           onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
           onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
           >
-            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
-            <div style={{width:'40px', height:'40px', borderRadius:'12px', background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid rgba(255,255,255,0.1)'}}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="white"/></svg>
+            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
+            <div style={{width:'40px', height:'40px', borderRadius:'12px', background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid rgba(255,255,255,0.15)'}}>
+              <span style={{fontSize:'20px'}}>⚔️</span>
             </div>
             <div style={{textAlign:'left', flex:1}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
-                    {hasSave ? '继续冒险' : '开始新游戏'}
-                </div>
+                {hasSave ? '继续冒险' : '开始新游戏'}
+              </div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'1px'}}>
-                {hasSave ? '读取上次的冒险进度' : '探索双属性精灵的世界'}
-                </div>
+                {hasSave ? '读取上次的冒险进度' : '体验全新双打战斗系统'}
+              </div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
+          </button>
 
-          {/* 存档信息条 */}
+          {/* 存档信息 */}
           {hasSave && (
-            <div style={{
-              display:'flex', justifyContent:'center', gap:'20px', marginTop:'12px', padding:'8px 0',
-            }}>
+            <div style={{display:'flex', justifyContent:'center', gap:'20px', marginTop:'12px', padding:'8px 0'}}>
               {[
                 { icon:'⚡', val:`Lv.${party[0]?.level || '?'}`, label:'等级' },
                 { icon:'📖', val:caughtDex.length, label:'图鉴' },
@@ -12038,44 +12260,43 @@ const renderMenu = () => {
             </div>
           )}
 
-          {/* 分隔线 */}
-          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(100,150,255,0.1), rgba(200,100,200,0.08), transparent)', margin:'14px 0'}} />
+          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,120,0,0.1), rgba(255,50,50,0.08), transparent)', margin:'14px 0'}} />
 
-          {/* 功能按钮 - 3列紧凑网格 */}
+          {/* 功能网格 */}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
             {[
-              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#64b5f6' },
-              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#ce93d8' },
-              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#f48fb1' },
-              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#80cbc4' },
-              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#b39ddb' },
+              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#ff9800' },
+              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#ff5722' },
+              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#f44336' },
+              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#ffb74d' },
+              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#ff7043' },
               { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#78909c', action: resetGame },
             ].map(btn => (
               <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
-                padding:'14px 8px', borderRadius:'12px', border:'1px solid rgba(100,150,255,0.05)',
+                padding:'14px 8px', borderRadius:'12px', border:'1px solid rgba(255,120,0,0.05)',
                 background:'rgba(255,255,255,0.02)', color:'#fff', cursor:'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
                 transition:'all 0.25s', textAlign:'center'
               }}
               onMouseOver={e => { e.currentTarget.style.background=`${btn.color}12`; e.currentTarget.style.borderColor=`${btn.color}30`; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor='rgba(100,150,255,0.05)'; e.currentTarget.style.transform='none'; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor='rgba(255,120,0,0.05)'; e.currentTarget.style.transform='none'; }}
               >
                 <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{btn.emoji}</span>
                 <div style={{fontSize:'12px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
                 <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>{btn.sub}</div>
-            </button>
+              </button>
             ))}
           </div>
         </div>
 
         {/* 底部版权区 */}
         <div style={{
-          padding:'12px 28px', borderTop:'1px solid rgba(100,150,255,0.05)',
-          background:'rgba(0,0,0,0.15)',
+          padding:'12px 28px', borderTop:'1px solid rgba(255,120,0,0.06)',
+          background:'rgba(0,0,0,0.2)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(180,200,255,0.2)', letterSpacing:'1px'}}>v5.0 · {POKEDEX.length} Creatures · Dual Type Era</span>
-          <span style={{fontSize:'10px', color:'rgba(180,200,255,0.15)'}}>Legends RPG</span>
+          <span style={{fontSize:'10px', color:'rgba(255,200,150,0.2)', letterSpacing:'1px'}}>v6.0 · {POKEDEX.length} Creatures · Double Battle</span>
+          <span style={{fontSize:'10px', color:'rgba(255,200,150,0.15)'}}>Legends RPG</span>
         </div>
       </div>
     </div>
@@ -12211,9 +12432,12 @@ const renderMenu = () => {
       }
       // --- 双打擂台 ---
       else if (dungeon.type === 'double') {
+        if (party.filter(p => p.currentHp > 0).length < 2) {
+          alert("⚠️ 双打擂台需要至少2只存活的精灵！"); return;
+        }
         const dbLvl = Math.min(party[0].level + 5, 95);
-        alert("⚔️ 双打擂台！\n2v2 双打模式！\n需要更灵活的属性搭配和策略！");
-        startBattle({ id: 988, name: '双打擂台', lvl: [dbLvl - 5, dbLvl], pool: [...HIGH_TIER_POOL], drop: 3000 }, 'wild');
+        alert("⚔️ 双打擂台！\n2v2 双打模式！\n你将派出2只精灵同时战斗！");
+        startBattle({ id: 988, name: '双打擂台', lvl: [dbLvl - 5, dbLvl], pool: [...HIGH_TIER_POOL], drop: 3000, isDouble: true }, 'wild_double');
       }
       // --- 极限试炼 ---
       else if (dungeon.type === 'extreme') {
@@ -12232,9 +12456,9 @@ const renderMenu = () => {
     const timeInfo = TIME_PHASES[timePhase];
 
     return (
-      <div className="screen map-screen" style={{background:'linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%)', minHeight:'100vh'}}>
+      <div className="screen map-screen" style={{background:'linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%)', minHeight:'100vh', overflow:'auto'}}>
         {/* 顶部导航 */}
-        <div className="nav-header" style={{background:'rgba(255,255,255,0.95)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(0,0,0,0.06)', boxShadow:'0 1px 12px rgba(0,0,0,0.04)'}}>
+        <div className="nav-header" style={{background:'rgba(255,255,255,0.95)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(0,0,0,0.06)', boxShadow:'0 1px 12px rgba(0,0,0,0.04)', position:'sticky', top:0, zIndex:100}}>
           <button className="btn-back" onClick={() => setView(mapGrid.length > 0 ? 'grid_map' : 'menu')}>⬅ {mapGrid.length > 0 ? '返回地图' : '返回'}</button>
           <div className="nav-title" style={{fontSize:'17px', fontWeight:'700', letterSpacing:'1px'}}>冒险地图</div>
           <div className="nav-coin" style={{background:'linear-gradient(135deg,#ffd54f,#ffb300)', color:'#5d4037', padding:'4px 12px', borderRadius:'20px', fontWeight:'bold', fontSize:'13px'}}>💰 {gold}</div>
@@ -12450,7 +12674,7 @@ const renderMenu = () => {
         </div>
 
         {/* --- 秘境探险 --- */}
-        <div style={{display: mapTab==='dungeons'?'block':'none', padding:'0 4px'}}>
+        <div style={{display: mapTab==='dungeons'?'block':'none', padding:'0 4px', paddingBottom:'40px'}}>
           {[
             { tier: 1, title: '初阶秘境', subtitle: '适合刚起步的训练师', gradient: 'linear-gradient(135deg, #43A047, #66BB6A)', icon: '🌿' },
             { tier: 2, title: '进阶秘境', subtitle: '实力经受考验的舞台', gradient: 'linear-gradient(135deg, #1976D2, #42A5F5)', icon: '⚔️' },
@@ -12535,11 +12759,11 @@ const renderMenu = () => {
         </div>
 
         {/* --- 图鉴试炼塔 --- */}
-        <div style={{display: mapTab==='challenges'?'block':'none'}}>
+        <div style={{display: mapTab==='challenges'?'block':'none', paddingBottom:'40px'}}>
           {/* 总进度概览 */}
           {(() => {
             const currentCaught = caughtDex.length;
-            const allChallenges = [...CHALLENGES, ...JJK_CHALLENGES];
+            const allChallenges = [...CHALLENGES, ...ATTR_CHALLENGES, ...JJK_CHALLENGES];
             const cleared = allChallenges.filter(c => completedChallenges.includes(c.id)).length;
             const totalPct = Math.min(100, (currentCaught / 700) * 100);
             return (
@@ -12626,6 +12850,71 @@ const renderMenu = () => {
               })}
             </div>
           </div>
+
+          {/* 属性试炼 */}
+          {ATTR_CHALLENGES.length > 0 && (
+            <div style={{marginBottom:'16px', padding:'0 2px'}}>
+              <div style={{fontSize:'13px', fontWeight:'700', color:'#475569', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px'}}>
+                <span style={{width:'3px', height:'16px', background:'linear-gradient(180deg, #f59e0b, #ef4444)', borderRadius:'2px'}} />
+                ⚡ 属性大师试炼 · {ATTR_CHALLENGES.length} 座
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'10px'}}>
+                {ATTR_CHALLENGES.map((c) => {
+                  const currentCaught = caughtDex.length;
+                  const isUnlocked = currentCaught >= c.req;
+                  const isCleared = completedChallenges.includes(c.id);
+                  const progressPct = Math.min(100, (currentCaught / c.req) * 100);
+                  const bossInfo = POKEDEX.find(p => p.id === c.boss);
+                  const typeInfo = TYPES[c.attrType];
+                  const tc = typeInfo ? typeInfo.color : '#6b7280';
+                  return (
+                    <div key={c.id}
+                      onClick={() => isUnlocked && startBattle(null, 'challenge', c.id)}
+                      style={{
+                        borderRadius:'14px', overflow:'hidden', cursor: isUnlocked ? 'pointer' : 'default',
+                        background: isCleared ? 'linear-gradient(135deg, #fefce8, #fef9c3)' : isUnlocked ? '#fff' : '#fafafa',
+                        border: isCleared ? '1px solid #fbbf24' : isUnlocked ? `1px solid ${tc}30` : '1px solid #e5e7eb',
+                        transition:'all 0.2s ease', position:'relative',
+                        boxShadow: isUnlocked && !isCleared ? `0 2px 12px ${tc}20` : 'none',
+                      }}
+                      onMouseOver={e => { if(isUnlocked) e.currentTarget.style.transform='translateY(-2px)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform='none'; }}
+                    >
+                      <div style={{padding:'12px 14px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                            <div style={{
+                              width:'38px', height:'38px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center',
+                              background: isCleared ? '#fef9c3' : `${tc}15`, fontSize:'20px', border: `1px solid ${isCleared ? '#fbbf24' : tc + '30'}`,
+                              overflow:'hidden', position:'relative'
+                            }}>
+                              {isCleared ? <span>✅</span> : bossInfo ? <div style={{transform:'scale(0.65)'}}>{renderAvatar(bossInfo)}</div> : <span style={{fontSize:'16px'}}>?</span>}
+                            </div>
+                            <div>
+                              <div style={{fontSize:'13px', fontWeight:'700', color: isUnlocked ? '#1e293b' : '#94a3b8', lineHeight:'1.2'}}>{c.title}</div>
+                              <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'1px'}}>{c.desc}</div>
+                            </div>
+                          </div>
+                          <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'2px'}}>
+                            {typeInfo && <span style={{fontSize:'9px', fontWeight:'700', color:'#fff', background: tc, padding:'1px 6px', borderRadius:'4px'}}>{typeInfo.name}</span>}
+                            <span style={{fontSize:'9px', color:'#94a3b8'}}>Lv.{c.bossLvl}</span>
+                          </div>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                          <div style={{flex:1, height:'4px', background:'#e5e7eb', borderRadius:'2px', overflow:'hidden'}}>
+                            <div style={{width:`${progressPct}%`, height:'100%', background: isCleared ? '#f59e0b' : isUnlocked ? tc : '#d1d5db', borderRadius:'2px', transition:'width 0.5s'}} />
+                          </div>
+                          <span style={{fontSize:'10px', fontWeight:'600', color: isUnlocked ? tc : '#94a3b8', minWidth:'50px', textAlign:'right'}}>
+                            {isCleared ? '✓ 通关' : `${currentCaught}/${c.req}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 咒术挑战 */}
           {JJK_CHALLENGES.length > 0 && (
@@ -15460,11 +15749,19 @@ const renderMenu = () => {
   const renderBattle = () => {
     if (!battle) return null;
     
+    const isDoubleBattle = battle.isDouble;
     const p = battle.playerCombatStates?.[battle.activeIdx];
-    const e = battle.enemyParty?.[battle.enemyActiveIdx];
+    const e = isDoubleBattle
+      ? battle.enemyParty?.[battle.enemyActiveIdxs?.[0]]
+      : battle.enemyParty?.[battle.enemyActiveIdx];
     if (!p || !e) return null;
     const pStats = getStats(p);
     const eStats = getStats(e);
+    
+    const p2 = isDoubleBattle && battle.activeIdxs?.[1] >= 0 ? battle.playerCombatStates?.[battle.activeIdxs[1]] : null;
+    const e2 = isDoubleBattle && battle.enemyActiveIdxs?.[1] >= 0 ? battle.enemyParty?.[battle.enemyActiveIdxs[1]] : null;
+    const p2Stats = p2 ? getStats(p2) : null;
+    const e2Stats = e2 ? getStats(e2) : null;
     
     // --- 辅助函数 ---
     const renderStatusBadges = (unit) => {
@@ -16092,6 +16389,24 @@ const renderMenu = () => {
                 </div>
                 )}
 
+                {/* ====== 双打战斗标识 ====== */}
+                {isDoubleBattle && (
+                  <div style={{
+                    position:'absolute', top: battle.activeDomain ? '42px' : '8px', left:'50%', transform:'translateX(-50%)', zIndex:12,
+                    background:'linear-gradient(135deg, rgba(255,152,0,0.9), rgba(255,87,34,0.9))',
+                    padding:'4px 16px', borderRadius:'16px',
+                    boxShadow:'0 0 16px rgba(255,152,0,0.4)',
+                    display:'flex', alignItems:'center', gap:'6px',
+                    border:'1px solid rgba(255,255,255,0.3)'
+                  }}>
+                    <span style={{fontSize:'14px'}}>⚔️</span>
+                    <span style={{color:'#fff', fontSize:'11px', fontWeight:'bold', letterSpacing:'1px'}}>双打战斗</span>
+                    <span style={{background:'rgba(255,255,255,0.2)', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'8px', fontWeight:'bold'}}>
+                      {(battle.phase === 'input' || battle.phase === 'double_input_2') ? `选择精灵${(battle.doubleSlot || 0) + 1}的行动` : '回合进行中...'}
+                    </span>
+                  </div>
+                )}
+
                 {/* ====== 中央对战标记 ====== */}
                 <div style={{
                   position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)',
@@ -16117,9 +16432,9 @@ const renderMenu = () => {
                 </div>
                 
                 {/* ========================================== */}
-                {/* 1. 敌方区域 (右上角) */}
+                {/* 1. 敌方区域 (右上角 / 双打时偏右) */}
                 {/* ========================================== */}
-                <div className="enemy-zone-v2" style={{position: 'absolute', top: '2%', right: '4%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
+                <div className="enemy-zone-v2" style={{position: 'absolute', top: '2%', right: isDoubleBattle ? '2%' : '4%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', transform: isDoubleBattle ? 'scale(0.8)' : 'none', transformOrigin:'top right'}}>
                     
                     {/* 敌方 HUD */}
                     <div className="hud-card hud-enemy" style={{marginBottom: '8px'}}>
@@ -16223,9 +16538,35 @@ const renderMenu = () => {
                 </div>
 
                 {/* ========================================== */}
+                {/* 1b. 敌方区域2 (左上角, 仅双打) */}
+                {/* ========================================== */}
+                {isDoubleBattle && e2 && e2.currentHp > 0 && (
+                  <div style={{position:'absolute', top:'2%', left:'30%', display:'flex', flexDirection:'column', alignItems:'flex-start', transform:'scale(0.75)', transformOrigin:'top left', zIndex:5}}>
+                    <div className="hud-card hud-enemy" style={{marginBottom:'6px', minWidth:'160px'}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
+                        <span style={{fontSize:'12px', fontWeight:'bold', wordBreak:'break-all'}}>{e2.name}</span>
+                        <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'3px', flexWrap:'wrap', marginBottom:'3px', justifyContent:'flex-end'}}>
+                        {e2.isShiny && <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'7px', padding:'1px 4px', borderRadius:'6px', fontWeight:'bold'}}>✨闪光</span>}
+                        {renderStatusBadges(e2)}
+                      </div>
+                      <EnhancedHPBar current={e2.currentHp} max={e2Stats.maxHp} label="" />
+                    </div>
+                    <div className="sprite-wrapper" style={{position:'relative'}}>
+                      <div className="battle-platform battle-platform-enemy" style={{transform:'scale(0.85)'}} />
+                      <div className={`sprite-v2 ${e2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'}`}
+                        style={{filter:'drop-shadow(0 8px 12px rgba(0,0,0,0.2))', transform:'scale(0.9)'}}>
+                        {renderAvatar(e2, true)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========================================== */}
                 {/* 2. 我方区域 (左下角) */}
                 {/* ========================================== */}
-                <div className="player-zone-v2" style={{position: 'absolute', bottom: '4%', left: '3%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                <div className="player-zone-v2" style={{position: 'absolute', bottom: '4%', left: isDoubleBattle ? '1%' : '3%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', transform: isDoubleBattle ? 'scale(0.8)' : 'none', transformOrigin:'bottom left'}}>
                     
                     {/* 我方精灵 */}
                     <div className={`sprite-wrapper player-sprite-wrapper ${p.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginBottom: '6px', marginLeft: '5px'}}>
@@ -16268,9 +16609,12 @@ const renderMenu = () => {
                     </div>
 
                     {/* 我方 HUD */}
-                    <div className="hud-card hud-player">
+                    <div className="hud-card hud-player" style={isDoubleBattle ? {border: battle.doubleSlot === 0 && (battle.phase === 'input') ? '2px solid #FF9800' : undefined, boxShadow: battle.doubleSlot === 0 && battle.phase === 'input' ? '0 0 12px rgba(255,152,0,0.5)' : undefined} : undefined}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                            <span style={{fontSize:'14px', fontWeight:'bold', wordBreak:'break-all'}}>{p.name}</span>
+                            <span style={{fontSize:'14px', fontWeight:'bold', wordBreak:'break-all'}}>
+                              {isDoubleBattle && battle.doubleSlot === 0 && battle.phase === 'input' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
+                              {p.name}
+                            </span>
                             <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{p.level}</span>
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px'}}>
@@ -16315,6 +16659,37 @@ const renderMenu = () => {
                     </div>
                 </div>
 
+                {/* ========================================== */}
+                {/* 2b. 我方区域2 (右下角, 仅双打) */}
+                {/* ========================================== */}
+                {isDoubleBattle && p2 && p2.currentHp > 0 && (
+                  <div style={{position:'absolute', bottom:'4%', right:'20%', display:'flex', flexDirection:'column', alignItems:'flex-end', transform:'scale(0.75)', transformOrigin:'bottom right', zIndex:5}}>
+                    <div className="sprite-wrapper" style={{position:'relative', marginBottom:'6px'}}>
+                      <div className="battle-platform battle-platform-player" style={{transform:'scale(0.85)'}} />
+                      <div style={{transform:'scaleX(-1)'}}>
+                        <div className={`sprite-v2 ${p2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'}`}
+                          style={{filter:'drop-shadow(0 8px 12px rgba(0,0,0,0.2))', transform:'scale(0.9)'}}>
+                          {renderAvatar(p2)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="hud-card hud-player" style={{minWidth:'160px', border: battle.doubleSlot === 1 && (battle.phase === 'input' || battle.phase === 'double_input_2') ? '2px solid #FF9800' : undefined, boxShadow: battle.doubleSlot === 1 && battle.phase === 'double_input_2' ? '0 0 12px rgba(255,152,0,0.5)' : undefined}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
+                        <span style={{fontSize:'12px', fontWeight:'bold', wordBreak:'break-all'}}>
+                          {battle.doubleSlot === 1 && battle.phase === 'double_input_2' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
+                          {p2.name}
+                        </span>
+                        <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{p2.level}</span>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'3px', flexWrap:'wrap', marginBottom:'3px'}}>
+                        {p2.isShiny && <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'7px', padding:'1px 4px', borderRadius:'6px', fontWeight:'bold'}}>✨闪光</span>}
+                        {renderStatusBadges(p2)}
+                      </div>
+                      <EnhancedHPBar current={p2.currentHp} max={p2Stats.maxHp} label="" />
+                    </div>
+                  </div>
+                )}
+
             </div>
 
 
@@ -16341,11 +16716,19 @@ const renderMenu = () => {
 
         {/* 底部操作栏 */}
         <div className="battle-panel-v2">
-            {(battle.phase === 'input' || battle.phase === 'input_p1') ? (
+            {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'double_input_2') ? (
               <div className="controls-area-v2">
                     {battle.isPvP && (
                         <div style={{textAlign:'center', background: '#2196F3', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
                             🎮 PvP对战 · 对手由AI控制
+                        </div>
+                    )}
+                    {isDoubleBattle && (
+                        <div style={{textAlign:'center', background:'linear-gradient(135deg,#FF9800,#FF5722)', color:'#fff', fontWeight:'bold', padding:'5px 8px', fontSize:'12px', flexShrink:0, borderRadius:'8px', margin:'0 0 6px', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
+                          <span>⚔️ 双打</span>
+                          <span style={{background:'rgba(255,255,255,0.25)', padding:'2px 10px', borderRadius:'10px', fontSize:'11px'}}>
+                            {battle.phase === 'double_input_2' ? `🔶 选择 ${p.name} 的技能` : `🔷 选择 ${p.name} 的技能`}
+                          </span>
                         </div>
                     )}
                     {/* 技能网格 - 占满上方空间 */}
@@ -16383,8 +16766,8 @@ const renderMenu = () => {
                     {/* 底部操作按钮 - 横向排列 */}
                         {!battle.isPvP ? (
                         <div className="actions-bar-h">
-                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }}>背包</button>
-                            <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch}>交换</button>
+                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle}>背包</button>
+                            <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle}>交换</button>
                             <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory}>逃跑</button>
                             {p.devilFruit && !p.fruitUsed && !p.fruitTransformed && (() => {
                               const turnOk = battle.turnCount >= 3;
