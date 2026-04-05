@@ -2251,7 +2251,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (p) types.add(p.type);
       });
       next.typesCollected = types.size;
-      next.houseLevel = (['tent','cabin','house','mansion','castle'].indexOf(housing?.houseType || 'tent'));
+      next.houseLevel = (['tent','cabin','house','mansion','castle'].indexOf(housing?.currentHouse || housing?.houseType || 'tent'));
       next.furnitureCount = (housing?.furniture || []).length;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
       // 隐藏成就：队伍属性多样性
@@ -2265,9 +2265,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       // 50级以上精灵数量
       const allP = [...(party || []), ...(box || [])];
       next.lv50PetCount = allP.filter(p => (p?.level || 0) >= 50).length;
+      if (gang?.gangId) {
+        const rank = getGangRank(gang.contribution, gang.isOwner);
+        next.gangRank = rank?.level || 99;
+      }
+      if (marriage?.spouse) next.marriageComplete = 1;
       return next;
     });
-  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress]);
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress, gang, marriage]);
 
   useEffect(() => {
     syncAchStats();
@@ -2585,6 +2590,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         isFusedShiny: isFusedShiny,
         isShiny: isFusedShiny,
         equip: null,
+        equips: [null, null],
         ivs: { hp: randIV(), p_atk: randIV(), p_def: randIV(),
                s_atk: randIV(), s_def: randIV(), spd: randIV(), crit: Math.floor(Math.random()*10) },
         evs: {},
@@ -3089,6 +3095,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         setUnlockedTitles(prev => [...prev, '新婚快乐']);
       }
       setWeddingScene(null);
+      updateAchStat({ marriageComplete: 1 });
       alert('🎊 婚礼圆满结束！恭喜你们！\n已获得称号「新婚快乐」\n新的主题房屋已解锁购买！');
       return;
     }
@@ -6468,7 +6475,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (m.pp <= 0) return;
           let score = (m.p || 0);
           if (player) {
-              const typeMod = getTypeMod(m.t, player.type);
+              let typeMod = getTypeMod(m.t, player.type);
+              if (player.secondaryType && player.secondaryType !== player.type) typeMod *= getTypeMod(m.t, player.secondaryType);
               score *= typeMod;
           }
           score += Math.random() * 20;
@@ -6929,8 +6937,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const atk = combo.cat === 'special' ? pStats.s_atk : pStats.p_atk;
       const def = combo.cat === 'special' ? eStats.s_def : eStats.p_def;
-      const stab = (combo.type === p.type || combo.type === pt.type) ? 1.5 : 1;
-      const typeMod = getTypeMod(combo.type, e.type);
+      const stab = (combo.type === p.type || combo.type === p.secondaryType || combo.type === pt.type || combo.type === pt.secondaryType) ? 1.5 : 1;
+      let typeMod = getTypeMod(combo.type, e.type);
+      if (e.secondaryType && e.secondaryType !== e.type) typeMod *= getTypeMod(combo.type, e.secondaryType);
       const isCrit = combo.effect?.crit || Math.random() < 0.1;
       const critMult = isCrit ? 1.5 : 1;
       let dmg = Math.max(1, Math.floor(((p.level * 2 / 5 + 2) * power * atk / def / 50 + 2) * stab * typeMod * critMult * (0.85 + Math.random() * 0.15)));
@@ -7552,8 +7561,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
           const eAtk = eCombo.cat === 'special' ? eStats.s_atk : eStats.p_atk;
           const pDef = eCombo.cat === 'special' ? pStats.s_def : pStats.p_def;
-          const eStab = (eCombo.type === enemy.type || eCombo.type === ePt.type) ? 1.5 : 1;
-          const eTypeMod = getTypeMod(eCombo.type, player.type);
+          const eStab = (eCombo.type === enemy.type || eCombo.type === enemy.secondaryType || eCombo.type === ePt.type || eCombo.type === ePt.secondaryType) ? 1.5 : 1;
+          let eTypeMod = getTypeMod(eCombo.type, player.type);
+          if (player.secondaryType && player.secondaryType !== player.type) eTypeMod *= getTypeMod(eCombo.type, player.secondaryType);
           const eIsCrit = eCombo.effect?.crit || Math.random() < 0.1;
           const eCritMult = eIsCrit ? 1.5 : 1;
           let eDmg = Math.max(1, Math.floor(((enemy.level * 2 / 5 + 2) * ePower * eAtk / pDef / 50 + 2) * eStab * eTypeMod * eCritMult * (0.85 + Math.random() * 0.15)));
@@ -7679,11 +7689,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let weatherDmg = 0;
         const maxHp = getStats(unit).maxHp;
 
-        if (weather === 'SAND' && !['ROCK','GROUND','STEEL'].includes(unit.type)) {
+        const unitTypes = [unit.type, unit.secondaryType].filter(Boolean);
+        if (weather === 'SAND' && !unitTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) {
             weatherDmg = Math.floor(maxHp / 16);
             addLog(`${unit.name} 受到沙暴伤害！`);
         }
-        if (weather === 'SNOW' && unit.type !== 'ICE') {
+        if (weather === 'SNOW' && !unitTypes.includes('ICE')) {
             weatherDmg = Math.floor(maxHp / 16);
             addLog(`${unit.name} 受到冰雹伤害！`);
         }
@@ -7954,13 +7965,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkState.volatiles.confused <= 0) {
             addLog(`${attacker.name} 的混乱解除了!`);
         } else {
-        addLog(`${attacker.name} 混乱了!`);
-        setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
+            addLog(`${attacker.name} 混乱了!`);
+            setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
             await wait(1000); setAnimEffect(null);
-        if (Math.random() < 0.33) {
-            addLog(`它攻击了自己!`);
-            const selfDmg = Math.floor(getStats(attacker).maxHp * 0.15);
-            attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
+            if (Math.random() < 0.5) {
+                addLog(`它在混乱中攻击了自己!`);
+                const selfDmg = Math.floor(getStats(attacker).maxHp * 0.12);
+                attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
                 return false;
             }
         }
@@ -8165,7 +8176,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         });
 
         let typeMod = getTypeMod(move.t, defender.type);
-        if (defender.secondaryType) typeMod *= getTypeMod(move.t, defender.secondaryType);
+        if (defender.secondaryType && defender.secondaryType !== defender.type) typeMod *= getTypeMod(move.t, defender.secondaryType);
         const levelBase = attacker.level * 0.8 + 5;
         const movePower = move.p || 40;
         const powerFactor = movePower * 0.5 + 10;
@@ -8217,12 +8228,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (move.t === 'FIRE') { rawDmg *= 1.5; addLog('☀️ 烈日增强了火系威力！'); }
             if (move.t === 'WATER') { rawDmg *= 0.5; }
         }
-        if (weather === 'SAND' && ['ROCK','GROUND','STEEL'].includes(attacker.type)) {
-             // 沙暴下岩地钢系特防加成，这里简化为伤害减免
+        const atkTypes = [attacker.type, attacker.secondaryType].filter(Boolean);
+        if (weather === 'SAND' && atkTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) {
              if (category === 'special') rawDmg *= 0.8; 
         }
-        if (weather === 'SNOW' && attacker.type === 'ICE') {
-             // 冰雹下冰系防御加成
+        if (weather === 'SNOW' && atkTypes.includes('ICE')) {
              if (category === 'physical') rawDmg *= 0.8;
         }
         if (timePhase === 'NIGHT' && (move.t === 'GHOST' || move.t === 'DARK')) {
@@ -8567,6 +8577,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                      setAnimEffect({ type: eff.type, target: targetSide });
                  } else if (eff.type === 'STATUS' && !targetState.status) {
                      targetState.status = eff.status;
+                     if (eff.status === 'SLP') { defState.volatiles = { ...(defState.volatiles || {}), sleepTurns: 2 + Math.floor(Math.random() * 2) }; }
                      addLog(`追加效果: ${targetName} 陷入了异常状态!`);
                      setAnimEffect({ type: eff.status, target: targetSide });
                  }
@@ -8674,9 +8685,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const atkDiedFromDot = applyDot(attacker, atkState);
         const defDiedFromDot = applyDot(defender, defState);
 
-        if (source === 'player' && defDiedFromDot) isDead = true;
-        if (source === 'enemy' && atkDiedFromDot) isDead = true;
-        if (source === 'enemy' && defDiedFromDot) isDead = true;
+        if (defDiedFromDot) isDead = true;
     }
 
     return isDead;
@@ -10153,13 +10162,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const totalCost = price * count;
     
     if (gold >= totalCost) {
+      if (type === 'tm' && (inventory.tms?.[id]||0) > 0) { alert('❌ 每本技能书只能购买一次！'); return; }
+      if (type === 'acc') {
+        const alreadyOwned = accessories.filter(a => a === id).length + party.reduce((s,p) => s + ((p.equips||[]).filter(e => e === id).length), 0);
+        if (alreadyOwned > 0) { alert('❌ 每种饰品只能购买一个！'); return; }
+      }
+
       setGold(g => g - totalCost);
       
       let itemName = '';
 
       // --- 1. 购买精灵球 ---
       if (type === 'ball') {
-         const ballType = id.split('_')[1]; // 例如 'ball_net' -> 'net'
+         const ballType = id.split('_')[1];
          setInventory(i => ({
              ...i, 
              balls: {
@@ -10170,7 +10185,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
          itemName = BALLS[ballType].name;
       } 
       else if (type === 'tm') {
-         if ((inventory.tms?.[id]||0) > 0) { alert('❌ 每本技能书只能购买一次！'); return; }
          setInventory(i => ({
              ...i, 
              tms: { ...i.tms, [id]: (i.tms[id] || 0) + 1 }
@@ -10214,8 +10228,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
       } 
 
       else if (type === 'acc') {
-         const alreadyOwned = accessories.filter(a => a === id).length + party.reduce((s,p) => s + ((p.equips||[]).filter(e => e === id).length), 0);
-         if (alreadyOwned > 0) { alert('❌ 每种饰品只能购买一个！'); return; }
          setAccessories(prev => [...prev, id]);
          const acc = ACCESSORY_DB.find(a => a.id === id);
          itemName = acc ? acc.name : '饰品';
@@ -11583,17 +11595,17 @@ const renderMenu = () => {
   return (
     <div className="screen" style={{
       display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background:'linear-gradient(160deg, #0a0a1a 0%, #12122d 25%, #1a0a2e 50%, #0d1b3e 75%, #0a0a1a 100%)',
+      background:'linear-gradient(160deg, #020818 0%, #0a1628 20%, #0d1f3c 40%, #111340 60%, #1a0a30 80%, #020818 100%)',
       position:'relative', overflow:'hidden'
     }}>
-      {/* 动态背景粒子 */}
-      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 15% 25%, rgba(255,165,0,0.4), transparent), radial-gradient(1.5px 1.5px at 35% 65%, rgba(239,68,68,0.3), transparent), radial-gradient(2px 2px at 55% 15%, rgba(99,102,241,0.35), transparent), radial-gradient(1px 1px at 75% 45%, rgba(255,215,0,0.25), transparent), radial-gradient(1.5px 1.5px at 85% 75%, rgba(236,72,153,0.3), transparent), radial-gradient(1px 1px at 25% 85%, rgba(34,211,238,0.25), transparent), radial-gradient(2px 2px at 65% 55%, rgba(255,140,0,0.2), transparent), radial-gradient(1px 1px at 45% 35%, rgba(168,85,247,0.3), transparent)', backgroundSize:'250% 250%', animation:'battle-bg-shift 25s ease infinite', opacity:0.9}} />
+      {/* 星空背景 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(1.5px 1.5px at 10% 15%, rgba(100,200,255,0.5), transparent), radial-gradient(1px 1px at 25% 35%, rgba(180,130,255,0.4), transparent), radial-gradient(2px 2px at 40% 10%, rgba(255,220,100,0.35), transparent), radial-gradient(1px 1px at 55% 60%, rgba(100,255,218,0.3), transparent), radial-gradient(1.5px 1.5px at 70% 25%, rgba(255,100,200,0.35), transparent), radial-gradient(1px 1px at 85% 50%, rgba(120,180,255,0.3), transparent), radial-gradient(2px 2px at 30% 75%, rgba(200,150,255,0.25), transparent), radial-gradient(1px 1px at 60% 85%, rgba(100,220,255,0.3), transparent), radial-gradient(1.5px 1.5px at 90% 80%, rgba(255,180,100,0.25), transparent), radial-gradient(1px 1px at 15% 90%, rgba(150,255,200,0.2), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 30s ease infinite', opacity:0.8}} />
 
-      {/* 战火光晕效果 */}
-      <div style={{position:'absolute', top:'-25%', left:'-15%', width:'65%', height:'65%', borderRadius:'50%', background:'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 70%)', filter:'blur(80px)', animation:'float 8s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'-20%', right:'-15%', width:'55%', height:'55%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,165,0,0.1) 0%, transparent 70%)', filter:'blur(70px)', animation:'float 10s ease-in-out infinite reverse'}} />
-      <div style={{position:'absolute', top:'20%', right:'10%', width:'40%', height:'40%', borderRadius:'50%', background:'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', filter:'blur(60px)', animation:'float 12s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'30%', left:'5%', width:'35%', height:'35%', borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%)', filter:'blur(50px)', animation:'float 9s ease-in-out infinite reverse'}} />
+      {/* 双属性光环 */}
+      <div style={{position:'absolute', top:'-30%', left:'-20%', width:'70%', height:'70%', borderRadius:'50%', background:'radial-gradient(circle, rgba(26,35,126,0.2) 0%, rgba(100,150,255,0.08) 40%, transparent 70%)', filter:'blur(60px)', animation:'float 10s ease-in-out infinite'}} />
+      <div style={{position:'absolute', bottom:'-25%', right:'-15%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(173,20,87,0.15) 0%, rgba(255,100,180,0.06) 40%, transparent 70%)', filter:'blur(60px)', animation:'float 12s ease-in-out infinite reverse'}} />
+      <div style={{position:'absolute', top:'15%', right:'5%', width:'45%', height:'45%', borderRadius:'50%', background:'radial-gradient(circle, rgba(0,200,180,0.08) 0%, transparent 60%)', filter:'blur(50px)', animation:'float 14s ease-in-out infinite'}} />
+      <div style={{position:'absolute', bottom:'20%', left:'10%', width:'35%', height:'35%', borderRadius:'50%', background:'radial-gradient(circle, rgba(120,80,220,0.1) 0%, transparent 60%)', filter:'blur(40px)', animation:'float 8s ease-in-out infinite reverse'}} />
 
       {/* 漂浮精灵剪影 */}
       {titleSprites.map((url, i) => (
@@ -11616,46 +11628,53 @@ const renderMenu = () => {
       {/* 主卡片 */}
       <div style={{
         position:'relative', zIndex:10, width:'92%', maxWidth:'480px',
-        background:'linear-gradient(145deg, rgba(20,20,40,0.85), rgba(15,15,35,0.92))',
+        background:'linear-gradient(145deg, rgba(10,18,40,0.88), rgba(15,10,35,0.92))',
         backdropFilter:'blur(30px)',
-        border:'1px solid rgba(255,255,255,0.06)',
+        border:'1px solid rgba(100,180,255,0.08)',
         borderRadius:'24px', padding:'0', overflow:'hidden',
-        boxShadow:'0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08)',
+        boxShadow:'0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(26,35,126,0.1), inset 0 1px 0 rgba(255,255,255,0.06)',
         animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
 
-        {/* 顶部横幅 - 版本主题 */}
-          <div style={{
-          position:'relative', padding:'32px 32px 28px', overflow:'hidden',
-          background:'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(255,140,0,0.12) 30%, rgba(168,85,247,0.1) 70%, rgba(59,130,246,0.12) 100%)',
-          borderBottom:'1px solid rgba(255,255,255,0.06)'
+        {/* 顶部横幅 - 双属性主题 */}
+        <div style={{
+          position:'relative', padding:'36px 32px 30px', overflow:'hidden',
+          background:'linear-gradient(135deg, rgba(26,35,126,0.2) 0%, rgba(100,150,255,0.1) 25%, rgba(173,20,87,0.12) 50%, rgba(120,80,220,0.1) 75%, rgba(0,200,180,0.08) 100%)',
+          borderBottom:'1px solid rgba(100,180,255,0.08)'
         }}>
-          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%)', animation:'btn-shine 4s ease infinite'}} />
+          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%)', animation:'btn-shine 5s ease infinite'}} />
+          <div style={{position:'absolute', top:'50%', left:'50%', width:'120%', height:'1px', transform:'translate(-50%,-50%) rotate(-3deg)', background:'linear-gradient(90deg, transparent, rgba(100,200,255,0.15), rgba(255,100,200,0.12), transparent)', animation:'btn-shine 6s ease infinite'}} />
           
           <div style={{position:'relative', textAlign:'center'}}>
-            <div style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'3px 14px', borderRadius:'20px', background:'rgba(255,165,0,0.15)', border:'1px solid rgba(255,165,0,0.25)', marginBottom:'14px'}}>
-              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.3</span>
-          </div>
-            
-          <div style={{
-              fontSize:'40px', fontWeight:'900', letterSpacing:'3px',
-              background:'linear-gradient(135deg, #ffd700 0%, #ff8c00 25%, #ff4500 50%, #ff6347 75%, #ffd700 100%)',
-              backgroundSize:'300% 300%', animation:'title-shimmer 3s ease infinite',
-              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
-              lineHeight:1.1, marginBottom:'6px',
-              filter:'drop-shadow(0 2px 8px rgba(255,140,0,0.3))'
-            }}>帮派大战</div>
+            <div style={{display:'inline-flex', alignItems:'center', gap:'8px', padding:'4px 16px', borderRadius:'20px', background:'linear-gradient(135deg, rgba(26,35,126,0.25), rgba(173,20,87,0.2))', border:'1px solid rgba(100,180,255,0.2)', marginBottom:'16px'}}>
+              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#64b5f6', boxShadow:'0 0 8px rgba(100,181,246,0.5)'}} />
+              <span style={{fontSize:'10px', color:'#90caf9', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 5.0</span>
+              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#f48fb1', boxShadow:'0 0 8px rgba(244,143,177,0.5)'}} />
+            </div>
             
             <div style={{
-              fontSize:'22px', fontWeight:'800', letterSpacing:'8px',
-              background:'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #e2e8f0 100%)',
-              backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
+              fontSize:'36px', fontWeight:'900', letterSpacing:'4px',
+              background:'linear-gradient(135deg, #90caf9 0%, #ce93d8 20%, #f48fb1 40%, #80cbc4 60%, #b39ddb 80%, #90caf9 100%)',
+              backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite',
+              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
+              lineHeight:1.15, marginBottom:'8px',
+              filter:'drop-shadow(0 2px 12px rgba(100,150,255,0.25))'
+            }}>双属性精灵降临</div>
+            
+            <div style={{
+              fontSize:'18px', fontWeight:'800', letterSpacing:'10px',
+              background:'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(200,200,220,0.5) 50%, rgba(255,255,255,0.7) 100%)',
+              backgroundSize:'200% 200%', animation:'title-shimmer 6s ease infinite',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               marginBottom:'10px'
-            }}>POKEMON</div>
+            }}>DUAL TYPE ERA</div>
 
-            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', letterSpacing:'4px', fontWeight:'500'}}>LEGENDS RPG · GANG WARS</div>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
+              <div style={{height:'1px', width:'30px', background:'linear-gradient(90deg, transparent, rgba(100,180,255,0.3))'}} />
+              <span style={{fontSize:'9px', color:'rgba(180,200,255,0.4)', letterSpacing:'3px', fontWeight:'500'}}>LEGENDS RPG · 24 TYPES</span>
+              <div style={{height:'1px', width:'30px', background:'linear-gradient(90deg, rgba(255,100,180,0.3), transparent)'}} />
+            </div>
           </div>
         </div>
 
@@ -11666,45 +11685,46 @@ const renderMenu = () => {
           {gangName && (
             <div style={{
               display:'flex', alignItems:'center', gap:'10px', padding:'10px 16px', borderRadius:'12px',
-              background:'linear-gradient(135deg, rgba(255,165,0,0.08), rgba(255,140,0,0.04))',
-              border:'1px solid rgba(255,165,0,0.15)', marginBottom:'16px'
+              background:'linear-gradient(135deg, rgba(100,150,255,0.06), rgba(173,20,87,0.04))',
+              border:'1px solid rgba(100,150,255,0.12)', marginBottom:'16px'
             }}>
               <span style={{fontSize:'20px'}}>{gangIcon}</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:'12px', fontWeight:'700', color:'#ffa500'}}>{gangName}</div>
+                <div style={{fontSize:'12px', fontWeight:'700', color:'#90caf9'}}>{gangName}</div>
                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
-          </div>
+              </div>
               <div style={{fontSize:'18px', opacity:0.6}}>🏴</div>
-        </div>
+            </div>
           )}
 
           {/* 主按钮 - 开始游戏 */}
-        <button onClick={handleStartGame} style={{
+          <button onClick={handleStartGame} style={{
             width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
-            background:'linear-gradient(135deg, #dc2626 0%, #ea580c 40%, #f59e0b 100%)',
+            background:'linear-gradient(135deg, #1a237e 0%, #4a148c 35%, #ad1457 70%, #1a237e 100%)',
+            backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
             cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
             transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden',
-            boxShadow:'0 8px 28px rgba(220,38,38,0.3)'
+            boxShadow:'0 8px 28px rgba(26,35,126,0.4), 0 0 20px rgba(173,20,87,0.15)'
           }}
-          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(220,38,38,0.45)'; }}
-          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(220,38,38,0.3)'; }}
+          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(26,35,126,0.5), 0 0 30px rgba(173,20,87,0.2)'; }}
+          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(26,35,126,0.4), 0 0 20px rgba(173,20,87,0.15)'; }}
           onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
           onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
           >
-            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
-            <div style={{width:'40px', height:'40px', borderRadius:'12px', background:'rgba(0,0,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
+            <div style={{width:'40px', height:'40px', borderRadius:'12px', background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid rgba(255,255,255,0.1)'}}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="white"/></svg>
             </div>
             <div style={{textAlign:'left', flex:1}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
-                    {hasSave ? '继续冒险' : '开始新游戏'}
-                </div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.75)', fontWeight:'400', marginTop:'1px'}}>
-                {hasSave ? '读取上次的冒险进度' : '踏上全新的传说旅途'}
-                </div>
+                {hasSave ? '继续冒险' : '开始新游戏'}
+              </div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'1px'}}>
+                {hasSave ? '读取上次的冒险进度' : '探索双属性精灵的世界'}
+              </div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
+          </button>
 
           {/* 存档信息条 */}
           {hasSave && (
@@ -11726,43 +11746,43 @@ const renderMenu = () => {
           )}
 
           {/* 分隔线 */}
-          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)', margin:'14px 0'}} />
+          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(100,150,255,0.1), rgba(200,100,200,0.08), transparent)', margin:'14px 0'}} />
 
           {/* 功能按钮 - 3列紧凑网格 */}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
             {[
-              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#f59e0b' },
-              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#3b82f6' },
-              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#dc2626' },
-              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#a855f7' },
-              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#26a69a' },
-              { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#6b7280', action: resetGame },
+              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#64b5f6' },
+              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#ce93d8' },
+              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#f48fb1' },
+              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#80cbc4' },
+              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#b39ddb' },
+              { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#78909c', action: resetGame },
             ].map(btn => (
               <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
-                padding:'14px 8px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.05)',
-                background:'rgba(255,255,255,0.03)', color:'#fff', cursor:'pointer',
+                padding:'14px 8px', borderRadius:'12px', border:'1px solid rgba(100,150,255,0.05)',
+                background:'rgba(255,255,255,0.02)', color:'#fff', cursor:'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
                 transition:'all 0.25s', textAlign:'center'
               }}
               onMouseOver={e => { e.currentTarget.style.background=`${btn.color}12`; e.currentTarget.style.borderColor=`${btn.color}30`; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.05)'; e.currentTarget.style.transform='none'; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor='rgba(100,150,255,0.05)'; e.currentTarget.style.transform='none'; }}
               >
                 <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{btn.emoji}</span>
                 <div style={{fontSize:'12px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
                 <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>{btn.sub}</div>
-            </button>
+              </button>
             ))}
           </div>
         </div>
 
         {/* 底部版权区 */}
         <div style={{
-          padding:'12px 28px', borderTop:'1px solid rgba(255,255,255,0.04)',
+          padding:'12px 28px', borderTop:'1px solid rgba(100,150,255,0.05)',
           background:'rgba(0,0,0,0.15)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.3 · {POKEDEX.length} Creatures · Gang Wars</span>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.15)'}}>Legends RPG</span>
+          <span style={{fontSize:'10px', color:'rgba(180,200,255,0.2)', letterSpacing:'1px'}}>v5.0 · {POKEDEX.length} Creatures · Dual Type Era</span>
+          <span style={{fontSize:'10px', color:'rgba(180,200,255,0.15)'}}>Legends RPG</span>
         </div>
       </div>
     </div>

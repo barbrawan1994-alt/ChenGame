@@ -9,82 +9,82 @@ const DIGIMON_BASE = 'https://digi-api.com/images/digimon/w/';
 const ID_TO_DIGIMON = {
   168: 'Elecmon',             // 伦琴猫(ELECTRIC) → 电气兽
   182: 'Coredramon_(Blue)',   // 烈咬陆鲨(DRAGON) → 核龙兽
-  183: 'Leomon',              // 路卡利欧(FIGHT) → 狮子兽
-  504: 'Hawkmon',             // 风铃鸟(WIND)
-  505: 'Aquilamon',           // 疾风隼(WIND)
-  506: 'Hououmon',             // 风暴凤凰(WIND) → 凤凰兽
+  183: 'Panjyamon',            // 路卡利欧(FIGHT) → 冰狮子兽
+  504: 'Birdramon',            // 风铃鸟(WIND) → 巨鸟兽
+  505: 'Piyomon',             // 疾风隼(WIND) → 比丘兽
+  506: 'Sinduramon',          // 风暴凤凰(WIND) → 真达罗兽
   507: 'Marin_Devimon',       // 浮空水母(WIND)
   508: 'Gesomon',             // 风暴水母(WIND)
-  509: 'Lilimon',             // 蒲公英精(WIND) → 花仙兽
-  510: 'Rosemon',             // 风花仙子(WIND) → 蔷薇兽
+  509: 'Kiwimon',             // 蒲公英精(WIND) → 奇异果兽
+  510: 'Lilamon',             // 风花仙子(WIND) → 丁香兽
   512: 'Snimon',              // 风刃螳螂(WIND) → 螳螂兽
-  513: 'Terriermon',          // 气旋松鼠(WIND) → 大耳兽
-  514: 'Garudamon',           // 风行者(WIND) → 迦楼达兽
-  515: 'Angewomon',           // 暴风天使(WIND) → 神圣天女兽
+  513: 'Lopmon',              // 气旋松鼠(WIND) → 洛普兽
+  514: 'Yatagaramon',         // 风行者(WIND) → 八咫鸦兽
+  515: 'Darcmon',             // 暴风天使(WIND) → 达尔克兽
   517: 'Flymon',              // 光辉蛾(LIGHT)
   518: 'Butterflamon',         // 圣光帝蛾(LIGHT) → 蝴蝶兽
-  519: 'Tailmon',             // 晨光猫(LIGHT) → 迪路兽
+  519: 'Mikemon',             // 晨光猫(LIGHT) → 三花猫兽
   520: 'Nefertimon',          // 日光猫(LIGHT) → 天马兽
   521: 'Liamon',              // 太阳狮(LIGHT) → 狮子兽
   522: 'Starmon',             // 棱镜水晶(LIGHT) → 星星兽
   523: 'Superstarmon',         // 虹光宝石(LIGHT) → 超级星星兽
   524: 'Guardromon',          // 光子精灵(LIGHT) → 守卫兽
-  525: 'Andromon',            // 光束战士(LIGHT) → 安卓兽
+  525: 'Giromon',             // 光束战士(LIGHT) → 手里剑兽
   526: 'Renamon',             // 极光狐(LIGHT) → 妖狐兽
   527: 'Unimon',              // 圣光独角兽(LIGHT) → 独角兽
-  529: 'Lucemon',             // 光之精灵(LIGHT) → 路西法兽
+  529: 'Sorcermon',            // 光之精灵(LIGHT) → 魔术师兽
   531: 'Gazimon',              // 暗影鼠(DARK) → 加兹兽
   532: 'Were_Garurumon_(Black)', // 暗夜狼(DARK)
   534: 'Pico_Devimon',        // 黑雾蝙蝠(DARK) → 小恶魔兽
-  535: 'Devimon',             // 暗翼魔蝠(DARK) → 恶魔兽
+  535: 'Myotismon',            // 暗翼魔蝠(DARK) → 吸血魔兽
   537: 'Black_Tailmon',       // 幽暗豹(DARK) → 黑迪路兽
   538: 'Sandiramon',           // 诡计蛇(DARK) → 蛇兽
   539: 'Dagomon',             // 深渊鱼(DARK)
   540: 'Dark_Knightmon',      // 暗影武士(DARK) → 暗黑骑士兽
   542: 'Fladramon',            // 烈焰巨蜥(FIRE) → 烈焰兽
-  543: 'Guilmon',             // 火山幼龙(FIRE) → 基尔兽
+  543: 'Tyranomon',            // 火山幼龙(FIRE) → 暴龙兽
   544: 'Megidramon',          // 赤炎飞龙(FIRE) → 默示录兽
-  545: 'Meramon',             // 灼热仙人掌(FIRE) → 火焰兽
+  545: 'Blue_Meramon',         // 灼热仙人掌(FIRE) → 蓝焰兽
   548: 'Whamon',              // 深海鲸(WATER) → 鲸鱼兽
   549: 'Shakomon',            // 珊瑚精灵(WATER)
   552: 'Seadramon',           // 海马骑士(WATER) → 海龙兽
   553: 'Tanemon',             // 种子球(GRASS) → 种子兽
-  554: 'Togemon',             // 花丛兽(GRASS) → 仙人掌兽
+  554: 'Vegimon',              // 花丛兽(GRASS) → 蔬菜兽
   559: 'Pulsemon',             // 电火花(ELECTRIC) → 脉冲兽
   560: 'Thunderballmon',       // 雷暴兽(ELECTRIC) → 雷球兽
-  562: 'Thunderbirmon',       // 闪电鸟(ELECTRIC)
+  562: 'Kokuwamon',            // 闪电鸟(ELECTRIC) → 甲虫兽
   563: 'Blitz_Greymon',       // 电浆兽(ELECTRIC)
   565: 'Mojyamon',            // 冰霜麋鹿(ICE) → 毛人兽
   566: 'Yukidarumon',         // 雪花精灵(ICE) → 雪人兽
   567: 'Mammon',              // 冰川巨人(ICE) → 猛犸兽
-  568: 'Gabumon',             // 寒霜狐(ICE) → 加布兽
+  568: 'Frigimon',             // 寒霜狐(ICE) → 冰雪兽
   572: 'Ganimon',             // 铁拳蟹(FIGHT) → 螃蟹兽
   573: 'Etemon',              // 相扑力士(FIGHT) → 猿猴兽
   574: 'Mushmon',             // 毒菇(POISON) → 蘑菇兽
   575: 'Woodmon',             // 瘴气菇王(POISON) → 树木兽
   576: 'Tonosama_Gekomon',    // 剧毒蛙(POISON) → 蛙王兽
   578: 'Drimogemon',          // 钻地鼹(GROUND) → 钻头兽
-  579: 'Armadimon',            // 地震犰狳(GROUND) → 犰狳兽
+  579: 'Monochromon',          // 地震犰狳(GROUND) → 角龙兽
   580: 'Kunemon',             // 沙丘虫(GROUND) → 电子虫
   581: 'Hangyomon',           // 大地鲶鱼(GROUND) → 半鱼人兽
-  582: 'Patamon',             // 气球鸟(FLYING) → 巴达兽
+  582: 'Falcomon',             // 气球鸟(FLYING) → 鹰兽
   583: 'Hippogriffomon',       // 风暴鹰(FLYING) → 骏鹰兽
   584: 'Airdramon',           // 天空鲸(FLYING) → 飞龙兽
   586: 'Wizarmon',            // 心灵术士(PSYCHIC) → 巫师兽
-  588: 'Kabuterimon',         // 宝石甲虫(BUG) → 比多兽
+  588: 'Kuwagamon',            // 宝石甲虫(BUG) → 锹形虫兽
   589: 'Okuwamon',            // 钻石独角仙(BUG) → 锹形虫兽
   591: 'Gottsumon',            // 小石头(ROCK) → 岩石兽
   592: 'Golemon',             // 巨岩兽(ROCK) → 岩浆兽
-  593: 'Megadramon',          // 化石翼龙(ROCK) → 百万龙
+  593: 'Pteramon',             // 化石翼龙(ROCK) → 翼龙兽
   594: 'Bakemon',             // 蜡烛幽灵(GHOST) → 幽灵兽
   595: 'Deathmon',             // 灯笼鬼(GHOST) → 死亡兽
   597: 'Hackmon',             // 小飞龙(DRAGON) → 黑客兽
   598: 'Coredramon_(Green)',  // 翡翠龙(DRAGON) → 核龙兽绿
-  599: 'Examon',              // 星辰龙(DRAGON) → 究极X兽
+  599: 'Breakdramon',          // 星辰龙(DRAGON) → 碎裂龙兽
   600: 'Mugendramon',          // 机械天使(STEEL) → 无限龙兽
   601: 'Valdurmon',           // 岚神·风伯(WIND) → 瓦尔杜兽
   602: 'Zhuqiaomon',          // 苍穹凤凰(WIND) → 朱雀兽
-  604: 'Seraphimon',          // 天照大神(LIGHT) → 炽天使兽
+  604: 'Cherubimon',           // 天照大神(LIGHT) → 基路比兽
   607: 'Alphamon',            // 创世之光(LIGHT) → 阿尔法兽
   608: 'Beelzebumon',          // 冥渊魔王(DARK) → 堕天地狱兽
   609: 'Piemon',               // 暗影刺客(DARK) → 小丑皇
@@ -104,19 +104,19 @@ const ID_TO_DIGIMON = {
   659: 'Hawkmon', 660: 'Aquilamon', 661: 'Silphymon', 662: 'Valkyrimon',
   663: 'Armadimon', 664: 'Ankylomon', 665: 'Shakkoumon', 666: 'Gankoomon',
   // 34 new creatures (667-700)
-  667: 'Leomon',          668: 'Saber_Leomon',     669: 'Durandamon',
-  670: 'Lucemon',         671: 'Dynasmon',         672: 'Susanoomon',
+  667: 'Bancho_Leomon',   668: 'Saber_Leomon',     669: 'Durandamon',
+  670: 'Lucemon_Falldown_Mode', 671: 'Dynasmon', 672: 'Susanoomon',
   673: 'Gaomon',          674: 'Gaogamon',         675: 'Mach_Gaogamon',
-  676: 'Meramon',         677: 'Triceramon',       678: 'Megadramon',
-  679: 'Gomamon',         680: 'Mega_Seadramon',   681: 'Leviamon',
+  676: 'Skull_Meramon',   677: 'Triceramon',       678: 'Gigadramon',
+  679: 'Otamamon',        680: 'Mega_Seadramon',   681: 'Leviamon',
   682: 'Mamemon',         683: 'Magnamon',
-  684: 'Thunderbirmon',   685: 'Garudamon',
-  686: 'Andromon',        687: 'Devimon',          688: 'Ryudamon',
+  684: 'Parrotmon',       685: 'Karatenmon',
+  686: 'Hi_Andromon',     687: 'Neo_Devimon',      688: 'Ryudamon',
   689: 'Monzaemon',       690: 'Sleipmon',
-  691: 'Hououmon',        692: 'Mirage_Gaogamon',  693: 'Shine_Greymon',
+  691: 'Ornithmon',       692: 'Mirage_Gaogamon',  693: 'Shine_Greymon',
   694: 'Apocalymon',      695: 'Craniummon',       696: 'Omegamon',
   697: 'Demon',           698: 'Chaosdramon',      699: 'Barbamon',
-  700: 'Examon',
+  700: 'Imperialdramon',
 };
 
 // Trainer character sprites (Pokemon Showdown - open source)
