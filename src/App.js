@@ -671,6 +671,13 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
     { time: '系统', msg: '请使用方向键或 WASD 移动。' }
   ]);
    const [messageBox, setMessageBox] = useState(null); 
+   const [mapToast, setMapToast] = useState(null);
+   const mapToastTimer = useRef(null);
+   const showMapToast = (icon, title, desc, duration = 2500) => {
+     if (mapToastTimer.current) clearTimeout(mapToastTimer.current);
+     setMapToast({ icon, title, desc, key: Date.now() });
+     mapToastTimer.current = setTimeout(() => setMapToast(null), duration);
+   };
   // ✨ 新增：全局键盘监听 (空格键关闭弹窗/返回)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -5461,6 +5468,16 @@ const useGrowthItem = (petIndex, itemId) => {
     placeRandom(15, mapTier >= 3 ? _.random(1, 2) : (Math.random() < 0.5 ? 1 : 0));
     // 旅行商人
     placeRandom(16, mapTier >= 2 ? 1 : (Math.random() < 0.4 ? 1 : 0));
+    // 陷阱（隐藏，看起来像普通地面）
+    placeRandom(17, _.random(1, 1 + mapTier));
+    // 传送阵 (中后期地图)
+    if (mapTier >= 2) placeRandom(18, 1);
+    // 恢复泉 (每张地图 0~1 个)
+    if (Math.random() < 0.45) placeRandom(19, 1);
+    // 精英训练家 (中后期)
+    if (mapTier >= 2) placeRandom(23, _.random(1, mapTier - 1));
+    // 赏金猎人 (后期)
+    if (mapTier >= 3) placeRandom(24, _.random(1, mapTier - 2));
 
     setMapGrid(newGrid);
     setView('grid_map');
@@ -5596,7 +5613,7 @@ const useGrowthItem = (petIndex, itemId) => {
             return g;
           });
           addLog(`🏠 捡到家具: ${def.icon} ${def.name} (${qualInfo.name})`);
-          alert(`🏠 发现了 ${def.icon} ${def.name} (${qualInfo.name})!`);
+          showMapToast('🏠', '发现家具', `${def.icon} ${def.name} (${qualInfo.name})`);
         }
         return; 
       }
@@ -5613,7 +5630,7 @@ const useGrowthItem = (petIndex, itemId) => {
             return g;
           });
           addLog(`发现恶魔果实: ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]!`);
-          alert(`发现了 ${fruit.name} [${FRUIT_CATEGORY_NAMES[fruit.category]}]!\n${fruit.desc}`);
+          showMapToast('🍎', fruit.name, `${FRUIT_CATEGORY_NAMES[fruit.category]} · ${fruit.desc}`, 3000);
         }
         return; 
       }
@@ -5755,7 +5772,7 @@ const useGrowthItem = (petIndex, itemId) => {
           { name:'全队回满', cost: 3000, action: () => { const np = [...party]; np.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; }); setParty(np); } },
           { name:'伤药 ×20', cost: 2000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, potion:(prev.meds.potion||0)+20}})) },
           { name:'PP补剂 ×10', cost: 3000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+10}})) },
-          { name:'神秘礼包（随机奖励）', cost: 8000, action: () => { const r = Math.random(); if(r<0.3) { setBalls(prev=>({...prev,master:(prev.master||0)+2})); alert('🎁 获得 大师球 ×2！'); } else if(r<0.6) { setGold(g=>g+20000); alert('🎁 获得 20000 金币！'); } else { const np=[...party]; np.forEach(p=>{p.currentHp=getStats(p).maxHp; p.moves.forEach(m=>{m.pp=m.maxPP||15;});}); setParty(np); alert('🎁 全队完全恢复！'); } } },
+          { name:'神秘礼包（随机奖励）', cost: 8000, action: () => { const r = Math.random(); if(r<0.3) { setBalls(prev=>({...prev,master:(prev.master||0)+2})); showMapToast('🎁', '神秘礼包', '获得 大师球 ×2！'); } else if(r<0.6) { setGold(g=>g+20000); showMapToast('🎁', '神秘礼包', '获得 20000 金币！'); } else { const np=[...party]; np.forEach(p=>{p.currentHp=getStats(p).maxHp; p.moves.forEach(m=>{m.pp=m.maxPP||15;});}); setParty(np); showMapToast('🎁', '神秘礼包', '全队完全恢复！'); } } },
         ];
         const selectedItems = _.sampleSize(merchantItems, 3);
         const itemList = selectedItems.map(it => `${it.name} — ${it.cost} 金币`).join('\n');
@@ -5767,11 +5784,98 @@ const useGrowthItem = (petIndex, itemId) => {
             if (gold >= item.cost) {
               setGold(g => g - item.cost);
               item.action();
-              alert(`✅ 购买成功：${item.name}！`);
+              showMapToast('✅', '购买成功', item.name);
             } else {
-              alert(`❌ 金币不足！需要 ${item.cost} 金币。`);
+              showMapToast('❌', '金币不足', `需要 ${item.cost} 金币`);
             }
           }
+        }
+        return;
+      }
+
+      // ------------------------------------------------
+      // 5d. 陷阱 (Tile 17) - 随机负面效果
+      // ------------------------------------------------
+      if (tileType === 17) {
+        setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
+        const trapRoll = Math.random();
+        if (trapRoll < 0.35) {
+          const dmgPct = _.random(10, 25);
+          const np = [...party]; np.forEach(p => { if(p.currentHp > 0) p.currentHp = Math.max(1, p.currentHp - Math.floor(getStats(p).maxHp * dmgPct / 100)); }); setParty(np);
+          showMapToast('💥', '踩到陷阱！', `全队受到 ${dmgPct}% 伤害！`, 3000);
+        } else if (trapRoll < 0.55) {
+          const np = [...party]; const target = np.find(p => p.currentHp > 0 && !p.status);
+          if (target) { target.status = _.sample(['PSN','PAR','BRN']); showMapToast('☠️', '毒气陷阱！', `${target.name} 中了状态异常！`, 3000); }
+          else showMapToast('💨', '毒气陷阱', '但队伍安然无恙');
+          setParty(np);
+        } else if (trapRoll < 0.75) {
+          const lostGold = _.random(200, 1000);
+          setGold(g => Math.max(0, g - lostGold));
+          showMapToast('💰', '偷金陷阱！', `掉落了 ${lostGold} 金币！`, 3000);
+        } else {
+          const bonusGold = _.random(1000, 5000);
+          setGold(g => g + bonusGold);
+          showMapToast('🎉', '假陷阱！', `是个宝箱！获得 ${bonusGold} 金币！`, 3000);
+        }
+        return;
+      }
+
+      // ------------------------------------------------
+      // 5e. 传送阵 (Tile 18) - 随机传送
+      // ------------------------------------------------
+      if (tileType === 18) {
+        const candidates = [];
+        for (let ty = 2; ty < GRID_H - 2; ty++) {
+          for (let tx = 2; tx < GRID_W - 2; tx++) {
+            if (mapGrid[ty][tx] === 2 && (Math.abs(tx - x) > 5 || Math.abs(ty - y) > 5)) candidates.push({x: tx, y: ty});
+          }
+        }
+        if (candidates.length > 0) {
+          const dest = _.sample(candidates);
+          setPlayerPos({ x: dest.x, y: dest.y, intent: false });
+          showMapToast('🌀', '传送阵！', '你被传送到了地图的另一端！', 2500);
+        }
+        return;
+      }
+
+      // ------------------------------------------------
+      // 5f. 恢复泉 (Tile 19) - 免费恢复
+      // ------------------------------------------------
+      if (tileType === 19) {
+        setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
+        const np = [...party]; 
+        np.forEach(p => { 
+          p.currentHp = getStats(p).maxHp; 
+          if(p.status) p.status = null;
+          p.moves.forEach(m => { m.pp = m.maxPP || 15; });
+        }); 
+        setParty(np);
+        showMapToast('💎', '治愈之泉', '全队 HP 回满！状态解除！PP 恢复！', 3000);
+        return;
+      }
+
+      // ------------------------------------------------
+      // 5g. 精英训练家 (Tile 23) - 固定强敌
+      // ------------------------------------------------
+      if (tileType === 23) {
+        setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
+        const mapInfo = MAPS.find(m => m.id === currentMapId);
+        if (mapInfo) {
+          showMapToast('⚔️', '精英训练家！', '前方有一位强大的训练家！');
+          setTimeout(() => startBattle(mapInfo, 'trainer'), 300);
+        }
+        return;
+      }
+
+      // ------------------------------------------------
+      // 5h. 野外猎人 (Tile 24) - 赏金战斗（高风险高回报）
+      // ------------------------------------------------
+      if (tileType === 24) {
+        setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
+        const mapInfo = MAPS.find(m => m.id === currentMapId);
+        if (mapInfo) {
+          showMapToast('🏴', '赏金猎人！', '击败他可获得双倍金币和经验！');
+          setTimeout(() => startBattle(mapInfo, 'trainer'), 300);
         }
         return;
       }
@@ -5869,7 +5973,7 @@ const useGrowthItem = (petIndex, itemId) => {
         const storyNeedsThisGym = currentChapter && currentChapter.mapId === currentMapId;
         
         if (badges.includes(mapInfo.badge) && !storyNeedsThisGym) { 
-          alert("你已经战胜过这里的馆主了！"); 
+          showMapToast('🏆', '道馆', '你已经战胜过这里的馆主了！'); 
           setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy })); 
           return; 
         }
@@ -5877,7 +5981,7 @@ const useGrowthItem = (petIndex, itemId) => {
         if (storyNeedsThisGym && currentChapter.tasks) {
             const unfinishedTask = currentChapter.tasks.find(t => t.step >= storyStep);
             if (unfinishedTask) {
-                alert(`⛔ 无法进入道馆！\n\n必须先完成剧情任务：\n${currentChapter.objective}`);
+                showMapToast('⛔', '无法进入道馆', `必须先完成剧情任务`, 3000);
                 setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy })); 
                 return;
             }
@@ -5899,7 +6003,7 @@ const useGrowthItem = (petIndex, itemId) => {
               currentHp: getStats(p).maxHp, 
               moves: p.moves.map(m=>({...m, pp: m.maxPP || 15})) 
           })));
-          alert("队伍已完全恢复！");
+          showMapToast('💚', '精灵中心', '队伍已完全恢复！');
         }
         setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy })); 
         return;
@@ -6383,11 +6487,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
        } else if (type === 'rock_special') {
            enemyId = _.sample(ROCK_POOL);
            level = _.random(Math.max(10, badges.length * 6), Math.min(100, 20 + badges.length * 7));
-           alert("🪨 岩石碎裂，有什么东西钻出来了！");
+           showMapToast('🪨', '岩石碎裂', '有什么东西钻出来了！');
        } else {
            enemyId = _.sample(WATER_POOL);
            level = _.random(Math.max(15, badges.length * 6), Math.min(100, 25 + badges.length * 7));
-           alert("🌊 水面泛起涟漪，野生精灵出现了！");
+           showMapToast('🌊', '水面涟漪', '野生精灵出现了！');
        }
        enemyParty.push(createPet(enemyId, level, true));
        dropGold = 1000;
@@ -12763,6 +12867,9 @@ const renderMenu = () => {
             <LegendItem icon="🏪" label="商店" />
             <LegendItem icon="🔮" label="祭坛" />
             <LegendItem icon="🧳" label="旅商" />
+            <LegendItem icon="🌀" label="传送" />
+            <LegendItem icon="💎" label="泉水" />
+            <LegendItem icon="⚔️" label="精英" />
           </div>
         </div>
       </div>
@@ -14191,6 +14298,24 @@ const renderMenu = () => {
                         <div style={{fontSize:8,position:'absolute',bottom:2,left:0,width:'100%',textAlign:'center'}}>🧳</div>
                       </div>
                     </div>);
+                  } else if (type === 17) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                  } else if (type === 18) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:16,height:16,borderRadius:'50%',background:'radial-gradient(circle,#CE93D8 20%,#7B1FA2 70%,transparent 100%)',boxShadow:'0 0 10px rgba(156,39,176,0.6)',animation:'pulse 1.5s infinite'}}/>
+                    </div>);
+                  } else if (type === 19) {
+                    tileClass = 'mt-water';
+                    content = (<div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{fontSize:12,textShadow:'0 0 6px rgba(0,150,136,0.8)'}}>💎</div>
+                    </div>);
+                  } else if (type === 23) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="npc-icon npc-enemy npc-lv2"><div className="npc-head" /><div className="npc-body" /><div className="npc-bubble" style={{background:'#E91E63'}}>⚔</div></div>);
+                  } else if (type === 24) {
+                    tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
+                    content = (<div className="npc-icon npc-enemy npc-lv3"><div className="npc-head" /><div className="npc-body" /><div className="npc-bubble" style={{background:'#FF9800'}}>💰</div></div>);
                   }
 
                   cells.push(
@@ -17830,6 +17955,24 @@ const renderMenu = () => {
           </div>
         );
       })()}
+      {/* 地图Toast通知 */}
+      {mapToast && (
+        <div key={mapToast.key} style={{
+          position:'fixed', top:'60px', left:'50%', transform:'translateX(-50%)', zIndex:9998,
+          background:'linear-gradient(135deg,rgba(30,30,50,0.95),rgba(20,20,40,0.98))',
+          borderRadius:'16px', padding:'14px 22px', minWidth:'240px', maxWidth:'340px',
+          boxShadow:'0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)',
+          display:'flex', alignItems:'center', gap:'14px',
+          animation:'slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+          backdropFilter:'blur(16px)', pointerEvents:'none'
+        }}>
+          <div style={{fontSize:'28px', flexShrink:0}}>{mapToast.icon}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#fff',marginBottom:'3px',textShadow:'0 1px 2px rgba(0,0,0,0.3)'}}>{mapToast.title}</div>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.7)',lineHeight:1.4}}>{mapToast.desc}</div>
+          </div>
+        </div>
+      )}
       {/* 全局消息弹窗 */}
       {messageBox && (
         <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.2s'}} onClick={() => { if(messageBox.callback) messageBox.callback(); setMessageBox(null); }}>

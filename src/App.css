@@ -1061,6 +1061,11 @@ button:active { transform: scale(0.96); }
   to { transform: translate(-50%, 0); opacity: 1; }
 }
 
+@keyframes slideDown {
+  from { transform: translate(-50%, -80px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
 .dialog-box {
   background: rgba(0, 0, 0, 0.85);
   border: 2px solid #fff;
