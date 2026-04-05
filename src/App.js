@@ -4137,38 +4137,54 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         })).filter(cat => cat.sections.length > 0)
       : filtered;
 
+    const guideFormatContent = (text) => {
+      return text.split('\n').map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} style={{height:'6px'}} />;
+        const isBullet = /^[·•\-①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬]/.test(trimmed);
+        const isLabel = /^[🔥☠️⚡❄️😴🟢🔵🟣🟠🔴⬜🟧🟪★⭐🌀🐲🕳️🌈⚙️💎🏅🏆🗺️🐉🎪🌸🔮🍰💕🌙💰🗡️☁️🌳🏖️🌺👤⚔️🛡️🌟👑🧿❤️💨📖🐾🪲🎣✨]/.test(trimmed);
+        const isHeading = /^[攻击型|防御型|辅助型|恢复类|增伤类|防御类|状态类|超人系|动物系|自然系]/.test(trimmed) && trimmed.length < 30;
+        if (isHeading) return <div key={i} style={{fontWeight:'700', color:'rgba(255,255,255,0.95)', marginTop:i > 0 ? '6px' : '0', fontSize:'11.5px'}}>{trimmed}</div>;
+        if (isBullet || isLabel) return <div key={i} style={{paddingLeft:'4px', lineHeight:'1.8'}}>{trimmed}</div>;
+        return <div key={i} style={{lineHeight:'1.8'}}>{trimmed}</div>;
+      });
+    };
+
     return (
-      <div style={{position:'fixed', inset:0, background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)', zIndex:9999, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+      <div style={{position:'fixed', inset:0, background:'linear-gradient(160deg,#0a0a1a 0%,#1a1040 40%,#0d1f3c 70%,#0a1628 100%)', zIndex:9999, display:'flex', flexDirection:'column', overflow:'hidden'}}>
         {/* 顶栏 */}
-        <div style={{padding:'16px 20px 12px', flexShrink:0, borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
+        <div style={{padding:'14px 16px 10px', flexShrink:0, background:'rgba(0,0,0,0.2)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px'}}>
             <button onClick={() => { setView(party.length > 0 ? getBackToMapView() : 'menu'); setGuideSearch(''); setGuideCat(null); }}
-              style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'10px', padding:'6px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600'}}>
-              返回
+              style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', borderRadius:'8px', padding:'5px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600', backdropFilter:'blur(10px)'}}>
+              ← 返回
             </button>
-            <div style={{fontSize:'18px', fontWeight:'800', color:'#fff', letterSpacing:'1px'}}>游戏说明</div>
-            <div style={{width:'60px'}} />
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>游 戏 说 明</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>v5.0 双属性精灵降临</div>
+            </div>
+            <div style={{width:'56px'}} />
           </div>
           {/* 搜索栏 */}
-          <div style={{position:'relative', marginBottom:'10px'}}>
+          <div style={{position:'relative', marginBottom:'8px'}}>
             <input
-              type="text" placeholder="搜索规则/系统..."
+              type="text" placeholder="搜索关键词..."
               value={guideSearch} onChange={e => setGuideSearch(e.target.value)}
-              style={{width:'100%', padding:'8px 12px 8px 32px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.06)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box'}}
+              style={{width:'100%', padding:'8px 12px 8px 34px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.05)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box', backdropFilter:'blur(10px)'}}
             />
-            <span style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.3)', fontSize:'14px'}}>&#128269;</span>
+            <span style={{position:'absolute', left:'11px', top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.25)', fontSize:'14px'}}>🔍</span>
           </div>
           {/* 分类标签 */}
-          <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none'}}>
+          <div style={{display:'flex', gap:'5px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none', WebkitOverflowScrolling:'touch'}}>
             <button onClick={() => setGuideCat(null)}
-              style={{padding:'4px 12px', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.1)', fontSize:'11px', fontWeight:'600', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
-                background: !guideCat ? 'rgba(255,255,255,0.15)' : 'transparent', color: !guideCat ? '#fff' : 'rgba(255,255,255,0.5)'}}>
-              全部
+              style={{padding:'5px 12px', borderRadius:'16px', border:'1px solid rgba(255,255,255,0.12)', fontSize:'11px', fontWeight:'700', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
+                background: !guideCat ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.03)', color: !guideCat ? '#fff' : 'rgba(255,255,255,0.45)', transition:'all 0.2s'}}>
+              📋 全部
             </button>
             {GAME_GUIDE.map(g => (
               <button key={g.id} onClick={() => setGuideCat(g.id)}
-                style={{padding:'4px 12px', borderRadius:'20px', border:`1px solid ${guideCat === g.id ? g.color+'60' : 'rgba(255,255,255,0.1)'}`, fontSize:'11px', fontWeight:'600', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
-                  background: guideCat === g.id ? g.color+'25' : 'transparent', color: guideCat === g.id ? g.color : 'rgba(255,255,255,0.5)'}}>
+                style={{padding:'5px 12px', borderRadius:'16px', border:`1px solid ${guideCat === g.id ? g.color+'50' : 'rgba(255,255,255,0.08)'}`, fontSize:'11px', fontWeight:'700', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
+                  background: guideCat === g.id ? g.color+'20' : 'rgba(255,255,255,0.03)', color: guideCat === g.id ? g.color : 'rgba(255,255,255,0.45)', transition:'all 0.2s'}}>
                 {g.icon} {g.title}
               </button>
             ))}
@@ -4176,63 +4192,84 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         </div>
 
         {/* 内容区 */}
-        <div style={{flex:1, overflowY:'auto', padding:'12px 16px', scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.15) transparent'}}>
+        <div style={{flex:1, overflowY:'auto', padding:'10px 12px 24px', scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.12) transparent'}}>
           {results.length === 0 && (
             <div style={{textAlign:'center', padding:'60px 20px', color:'rgba(255,255,255,0.3)'}}>
-              <div style={{fontSize:'40px', marginBottom:'12px'}}>&#128270;</div>
+              <div style={{fontSize:'40px', marginBottom:'12px'}}>🔍</div>
               <div style={{fontSize:'14px'}}>没有找到匹配的内容</div>
             </div>
           )}
-          {results.map(cat => {
+          {results.map((cat, ci) => {
             const isExpanded = guideExpanded[cat.id] !== false;
             return (
-              <div key={cat.id} style={{marginBottom:'16px'}}>
-                {/* 分类标题 */}
+              <div key={cat.id} style={{marginBottom:'12px'}}>
+                {/* 分类标题卡片 */}
                 <div
                   onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}
-                  style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderRadius:'12px', cursor:'pointer',
-                    background:`linear-gradient(135deg, ${cat.color}15, ${cat.color}08)`, border:`1px solid ${cat.color}30`,
-                    transition:'all 0.2s'}}>
-                  <span style={{fontSize:'22px'}}>{cat.icon}</span>
-                  <span style={{flex:1, fontSize:'15px', fontWeight:'700', color:'#fff', letterSpacing:'0.5px'}}>{cat.title}</span>
-                  <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginRight:'4px'}}>{cat.sections.length}项</span>
-                  <span style={{color:'rgba(255,255,255,0.3)', fontSize:'12px', transition:'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none'}}>&#9654;</span>
+                  style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 14px', borderRadius:'14px', cursor:'pointer',
+                    background:`linear-gradient(135deg, ${cat.color}18 0%, ${cat.color}08 100%)`,
+                    border:`1px solid ${cat.color}25`, boxShadow: isExpanded ? `0 4px 20px ${cat.color}15` : 'none',
+                    transition:'all 0.25s ease'}}>
+                  <div style={{width:'36px', height:'36px', borderRadius:'10px', background:`linear-gradient(135deg, ${cat.color}30, ${cat.color}15)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0}}>
+                    {cat.icon}
+                  </div>
+                  <div style={{flex:1, minWidth:0}}>
+                    <div style={{fontSize:'14px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>{cat.title}</div>
+                    {cat.desc && <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{cat.desc}</div>}
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:'6px', flexShrink:0}}>
+                    <span style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', background:'rgba(255,255,255,0.06)', padding:'2px 6px', borderRadius:'8px'}}>{cat.sections.length} 节</span>
+                    <span style={{color:'rgba(255,255,255,0.25)', fontSize:'10px', transition:'transform 0.25s ease', transform: isExpanded ? 'rotate(90deg)' : 'none'}}>▶</span>
+                  </div>
                 </div>
-                {/* 子条目 - 支持sub二级折叠 */}
+                {/* 展开内容 */}
                 {isExpanded && (
-                  <div style={{marginTop:'6px', marginLeft:'8px', borderLeft:`2px solid ${cat.color}30`, paddingLeft:'12px'}}>
+                  <div style={{marginTop:'4px', paddingLeft:'4px'}}>
                     {cat.sections.map((sec, si) => {
                       const secKey = `${cat.id}_${si}`;
                       const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
                       const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : false);
                       const hasSub = sec.sub && sec.sub.length > 0;
                       return (
-                        <div key={si} style={{marginBottom:'4px'}}>
+                        <div key={si} style={{marginBottom:'3px'}}>
+                          {/* 小节标题 */}
                           <div
                             onClick={() => hasSub && setGuideExpanded(prev => ({...prev, [secKey]: !secOpen}))}
-                            style={{padding:'10px 12px', borderRadius:'8px', background: secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.04)', cursor: hasSub ? 'pointer' : 'default', transition:'background 0.15s', display:'flex', alignItems:'center', gap:'8px'}}
-                            onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-                            onMouseOut={e => { e.currentTarget.style.background= secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'; }}>
-                            <span style={{width:'6px', height:'6px', borderRadius:'50%', background:cat.color, flexShrink:0}} />
-                            <span style={{flex:1, fontSize:'13px', fontWeight:'700', color:'rgba(255,255,255,0.92)'}}>{sec.title}</span>
-                            {hasSub && <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginRight:'2px'}}>{sec.sub.length}条</span>}
-                            {hasSub && <span style={{color:'rgba(255,255,255,0.3)', fontSize:'10px', transition:'transform 0.2s', transform: secOpen ? 'rotate(90deg)' : 'none'}}>▶</span>}
+                            style={{padding:'9px 12px', borderRadius:'10px',
+                              background: secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                              border: secOpen ? `1px solid ${cat.color}20` : '1px solid rgba(255,255,255,0.03)',
+                              cursor: hasSub ? 'pointer' : 'default', transition:'all 0.2s', display:'flex', alignItems:'center', gap:'8px'}}
+                            onMouseOver={e => { if (hasSub) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
+                            onMouseOut={e => { e.currentTarget.style.background= secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)'; }}>
+                            <span style={{width:'3px', height:'16px', borderRadius:'2px', background: secOpen ? cat.color : cat.color+'60', flexShrink:0, transition:'background 0.2s'}} />
+                            <span style={{flex:1, fontSize:'12.5px', fontWeight:'700', color: secOpen ? '#fff' : 'rgba(255,255,255,0.85)'}}>{sec.title}</span>
+                            {hasSub && <span style={{fontSize:'9px', color:'rgba(255,255,255,0.25)'}}>{sec.sub.length} 条</span>}
+                            {hasSub && <span style={{color:'rgba(255,255,255,0.2)', fontSize:'9px', transition:'transform 0.2s', transform: secOpen ? 'rotate(90deg)' : 'none'}}>▶</span>}
                           </div>
+                          {/* 展开的子条目 */}
                           {hasSub && secOpen && (
-                            <div style={{marginLeft:'16px', marginTop:'4px', display:'flex', flexDirection:'column', gap:'3px'}}>
+                            <div style={{marginLeft:'12px', marginTop:'3px', display:'flex', flexDirection:'column', gap:'3px'}}>
                               {sec.sub.map((item, idx) => (
-                                <div key={idx} style={{padding:'8px 12px', borderRadius:'6px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'}}>
-                                  <div style={{fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.95)', marginBottom:'4px'}}>{item.t}</div>
-                                  <div style={{fontSize:'11.5px', lineHeight:'1.75', color:'rgba(255,255,255,0.85)', whiteSpace:'pre-line'}}>
-                                    {q ? highlightSearch(item.c, q) : item.c}
+                                <div key={idx} style={{padding:'8px 12px', borderRadius:'8px',
+                                  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)',
+                                  transition:'background 0.15s'}}
+                                  onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,0.05)'; }}
+                                  onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; }}>
+                                  <div style={{fontSize:'11.5px', fontWeight:'700', color: cat.color, marginBottom:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
+                                    <span style={{width:'4px', height:'4px', borderRadius:'50%', background:cat.color, flexShrink:0, opacity:0.7}} />
+                                    {item.t}
+                                  </div>
+                                  <div style={{fontSize:'11px', lineHeight:'1.75', color:'rgba(255,255,255,0.82)', paddingLeft:'8px'}}>
+                                    {q ? highlightSearch(item.c, q) : guideFormatContent(item.c)}
                                   </div>
                                 </div>
                               ))}
                             </div>
                           )}
+                          {/* 纯文本内容 */}
                           {!hasSub && sec.content && (
-                            <div style={{padding:'4px 12px 8px 20px', fontSize:'12px', lineHeight:'1.7', color:'rgba(255,255,255,0.88)', whiteSpace:'pre-line'}}>
-                              {q ? highlightSearch(sec.content, q) : sec.content}
+                            <div style={{padding:'6px 12px 8px 18px', fontSize:'11px', lineHeight:'1.75', color:'rgba(255,255,255,0.82)'}}>
+                              {q ? highlightSearch(sec.content, q) : guideFormatContent(sec.content)}
                             </div>
                           )}
                         </div>
