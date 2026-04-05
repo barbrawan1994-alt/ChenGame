@@ -56,7 +56,7 @@ const ACHIEVEMENTS = [
   { id: 'crit_king',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '暴击之王',     desc: '在单场战斗中触发8次暴击',     check: s => s.maxCritsInBattle >= 8, reward: { gold: 3000 } },
   { id: 'clutch_win',      cat: 'BATTLE', rarity: 'RARE',      name: '绝地反击',     desc: '在精灵HP低于10%时赢得战斗',   check: s => s.clutchWins >= 1,      reward: { gold: 8000, title: '绝境逢生' } },
   { id: 'perfect_win',     cat: 'BATTLE', rarity: 'RARE',      name: '完美胜利',     desc: '在不损失HP的情况下赢得战斗',  check: s => s.perfectWins >= 1,     reward: { gold: 10000 } },
-  { id: 'sweep_win',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '全队存活',     desc: '训练家对战中全队无一阵亡',    check: s => s.sweepWins >= 1,       reward: { gold: 5000 } },
+  { id: 'sweep_win',       cat: 'BATTLE', rarity: 'RARE',      name: '全队存活',     desc: '携带6只精灵对战训练家，全员生还',  check: s => s.sweepWins >= 1,       reward: { gold: 5000 } },
   { id: 'underdog',        cat: 'BATTLE', rarity: 'RARE',      name: '以弱胜强',     desc: '击败等级高出20级以上的对手',   check: s => s.underdogWins >= 1,    reward: { gold: 8000, title: '越级挑战者' } },
   { id: 'ko_streak_10',    cat: 'BATTLE', rarity: 'UNCOMMON',  name: '连胜达人',     desc: '达成15场连胜',                check: s => s.maxWinStreak >= 15,   reward: { gold: 5000 } },
   { id: 'ko_streak_30',    cat: 'BATTLE', rarity: 'EPIC',      name: '不败传说',     desc: '达成50场连胜',                check: s => s.maxWinStreak >= 50,   reward: { gold: 30000, title: '不败传说' } },
@@ -73,6 +73,10 @@ const ACHIEVEMENTS = [
   { id: 'win_streak_20',    cat: 'BATTLE', rarity: 'RARE',      name: '二十连胜',     desc: '连续赢得20场战斗',            check: s => s.maxWinStreak >= 20,   reward: { gold: 15000, title: '连胜之王' } },
   { id: 'underdog_win',     cat: 'BATTLE', rarity: 'RARE',      name: '后发制人',     desc: '用等级低10级以上的精灵赢得战斗', check: s => s.underdogLowLevelWins >= 1, reward: { gold: 10000 } },
   { id: 'one_hit_ko',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '一击必杀',     desc: '一击秒杀50只精灵',            check: s => s.oneHitKOs >= 50,       reward: { gold: 5000 } },
+  { id: 'double_first',     cat: 'BATTLE', rarity: 'UNCOMMON',  name: '双打初体验',   desc: '赢得第一场双打战斗',           check: s => s.doubleWins >= 1,       reward: { gold: 3000 } },
+  { id: 'double_10',        cat: 'BATTLE', rarity: 'RARE',      name: '双打达人',     desc: '赢得10场双打战斗',             check: s => s.doubleWins >= 10,      reward: { gold: 10000, title: '双打达人' } },
+  { id: 'double_50',        cat: 'BATTLE', rarity: 'EPIC',      name: '双打大师',     desc: '赢得50场双打战斗',             check: s => s.doubleWins >= 50,      reward: { gold: 30000, title: '双打大师' } },
+  { id: 'double_no_faint',  cat: 'BATTLE', rarity: 'RARE',      name: '双打完封',     desc: '双打战斗中4只精灵全部生还',    check: s => s.doublePerfectWins >= 1, reward: { gold: 8000 } },
 
   // ===== 探索类 (17) =====
   { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '旅行者',       desc: '探索6个不同的地图',           check: s => s.mapsVisited >= 6,     reward: { gold: 800 } },

@@ -56,6 +56,7 @@ import {
   WATER_POOL,
   JJK_CHALLENGES,
   ATTR_CHALLENGES,
+  DOUBLE_CHALLENGES,
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
 } from './data';
@@ -643,7 +644,6 @@ const [pendingTask, setPendingTask] = useState(null);
   const [equipModalOpen, setEquipModalOpen] = useState(false);
   const [targetEquipSlot, setTargetEquipSlot] = useState({ petIdx: 0, slotIdx: 0 });
 
-  // 初始精灵三选一
   const [starterOptions, setStarterOptions] = useState([]);
 const [fusionParent, setFusionParent] = useState(null); // 融合父本
   const [fusionChild, setFusionChild] = useState(null);   // 融合母本
@@ -4200,7 +4200,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </button>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>游 戏 说 明</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>v5.0 双属性精灵降临</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>v6.0 双打大战</div>
             </div>
             <div style={{width:'56px'}} />
           </div>
@@ -5135,29 +5135,22 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (p.evo) evolvedIds.add(p.evo);
     });
 
-    // 2. 动态筛选合法的初始精灵(排除进化型、神兽、高级、种族值>=500)
     const validStarters = POKEDEX.filter(p => {
       if (!p || !p.id) return false;
       if (evolvedIds.has(p.id)) return false;
       if (LEGENDARY_POOL.includes(p.id)) return false;
       if (HIGH_TIER_POOL.includes(p.id)) return false;
       if (NEW_GOD_IDS.includes(p.id)) return false;
-      const bias = TYPE_BIAS[p.type] || { p: 1.0, s: 1.0 };
-      const div = (p.id % 5) * 2 - 4;
-      const bst = (p.hp || 60) + Math.floor((p.atk || 50) * bias.p) + div + Math.floor((p.def || 50) * bias.p) + Math.floor((p.atk || 50) * bias.s) - div + Math.floor((p.def || 50) * bias.s) + (p.spd || (40 + (p.id * 7 % 70)));
-      if (bst >= 500) return false;
+      if (FINAL_GOD_IDS.includes(p.id)) return false;
+      if (p.id > 600) return false;
+      const rawBst = (p.hp || 60) + (p.atk || 50) + (p.def || 50) + (p.spd || 50);
+      if (rawBst > 260) return false;
       return true;
     });
 
-    // 3. 随机取 3 个，并立即实例化 (生成性格/个体值)
     const shuffled = _.shuffle(validStarters);
-    const selectedBase = shuffled.slice(0, 3);
-    
-    // 🔥 关键修改：在这里直接 createPet，锁定数值
-    const fullyFormedStarters = selectedBase.map(base => {
-        return createPet(base.id, 5); // 生成 5 级精灵
-    });
-    
+    const selectedBase = shuffled.slice(0, 5);
+    const fullyFormedStarters = selectedBase.map(base => createPet(base.id, 5));
     setStarterOptions(fullyFormedStarters);
   };
 
@@ -6238,7 +6231,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
      setIsDialogVisible(false); 
-    const isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
+    let isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
     const actualType = type === 'wild_double' ? 'wild' : type === 'trainer_double' ? 'trainer' : type;
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
     const isGym = actualType === 'gym';
@@ -6306,9 +6299,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     // 3. 挑战塔
     // -------------------------------------------------
-    else if (type === 'challenge') {
-      const challenge = [...CHALLENGES, ...ATTR_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
+    else if (actualType === 'challenge') {
+      const challenge = [...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
       if (!challenge) { alert("挑战数据未找到"); return; }
+      if (challenge.isDouble) {
+        if (party.filter(p => p.currentHp > 0).length < 2) { alert("⚠️ 双打试炼需要至少2只存活精灵！"); return; }
+        isDouble = true;
+      }
       const bossIsShiny = challenge.bossLvl >= 80;
       enemyParty.push(createPet(challenge.boss, challenge.bossLvl, true, bossIsShiny));
       const targetSize = challenge.teamSize || 6;
@@ -7142,7 +7139,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const currentSlot = battle.doubleSlot || 0;
     const currentActiveIdx = battle.activeIdxs[currentSlot];
     const p = battle.playerCombatStates[currentActiveIdx];
-    if (!p || p.currentHp <= 0) return;
+    if (!p || p.currentHp <= 0) {
+      if (currentSlot === 0) {
+        const secondIdx = battle.activeIdxs[1];
+        const secondPet = secondIdx >= 0 ? battle.playerCombatStates[secondIdx] : null;
+        if (secondPet && secondPet.currentHp > 0) {
+          const skipActions = [{ moveIdx: -1, activeIdx: currentActiveIdx }];
+          setBattle(prev => ({ ...prev, doubleSlot: 1, doubleActions: skipActions, phase: 'double_input_2' }));
+          return;
+        }
+      }
+      return;
+    }
 
     const move = p.combatMoves[moveIdx];
     if (move.isCursed && (p.cursedEnergy || 0) < (move.ceCost || 0)) {
@@ -7267,24 +7275,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
       }
 
+      const usedPlayerIdxs = new Set();
       const newActiveIdxs = tempBattle.activeIdxs.map(idx => {
-        if (tempBattle.playerCombatStates[idx]?.currentHp > 0) return idx;
+        if (tempBattle.playerCombatStates[idx]?.currentHp > 0) { usedPlayerIdxs.add(idx); return idx; }
         const next = tempBattle.playerCombatStates.findIndex((p, i) =>
-          p.currentHp > 0 && !tempBattle.activeIdxs.includes(i)
+          p.currentHp > 0 && !tempBattle.activeIdxs.includes(i) && !usedPlayerIdxs.has(i)
         );
         if (next >= 0) {
+          usedPlayerIdxs.add(next);
           addLog(`${tempBattle.playerCombatStates[next].name} 加入战斗！`);
           return next;
         }
         return idx;
       });
 
+      const usedEnemyIdxs = new Set();
       const newEnemyIdxs = tempBattle.enemyActiveIdxs.map(idx => {
-        if (tempBattle.enemyParty[idx]?.currentHp > 0) return idx;
+        if (tempBattle.enemyParty[idx]?.currentHp > 0) { usedEnemyIdxs.add(idx); return idx; }
         const next = tempBattle.enemyParty.findIndex((e, i) =>
-          e.currentHp > 0 && !tempBattle.enemyActiveIdxs.includes(i)
+          e.currentHp > 0 && !tempBattle.enemyActiveIdxs.includes(i) && !usedEnemyIdxs.has(i)
         );
         if (next >= 0) {
+          usedEnemyIdxs.add(next);
           addLog(`野生 ${tempBattle.enemyParty[next].name} 加入战斗！`);
           return next;
         }
@@ -9210,7 +9222,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         });
     }
 
-      const isActive = index === bState.activeIdx;
+      const isActive = bState.isDouble ? (bState.activeIdxs?.includes(index)) : (index === bState.activeIdx);
       if (pet.currentHp <= 0 && !isActive) return pet;
       const shareRatio = isActive ? 1.0 : 0.5; 
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
@@ -9552,7 +9564,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         
         // 1. 亲密度增长 (Intimacy 0-255)
         // 基础：出战+3，后台+1
-        let intGain = (index === battle.activeIdx) ? 3 : 1;
+        const wasActive = battle.isDouble ? (battle.activeIdxs?.includes(index)) : (index === battle.activeIdx);
+        let intGain = wasActive ? 3 : 1;
         
         // 加成：道馆/Boss/挑战塔/联盟 翻倍
         if (isGym || type === 'boss' || isChallenge || type === 'league') {
@@ -9566,9 +9579,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         // 2. 魅力值增长 (Charm 0-100)
         // 只有出战的精灵，在击败 馆主/Boss/联盟 时增加
-        if (index === battle.activeIdx) {
+        if (wasActive) {
             if (isGym || type === 'boss' || type === 'league' || type === 'eclipse_leader') {
-                // 随机增加 1-2 点
                 const charmGain = Math.random() < 0.5 ? 1 : 2;
                 newPet.charm = Math.min(100, (newPet.charm || 0) + charmGain);
             }
@@ -9718,7 +9730,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          setCompletedChallenges(prev => [...prev, challengeId]);
          try { checkTreasureUnlock('challenge', { challengeId }); } catch(e) {}
          
-         const cInfo = [...CHALLENGES, ...ATTR_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
+         const cInfo = [...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
          const cBossLv = cInfo ? cInfo.bossLvl : 50;
          const cTier = cBossLv <= 35 ? 1 : cBossLv <= 60 ? 2 : cBossLv <= 85 ? 3 : 4;
          
@@ -10072,14 +10084,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (activePet.currentHp >= maxHp) winAchUpdates.perfectWins = 1;
     }
     if (isTrainer && battle.playerCombatStates) {
-      const allAlive = battle.playerCombatStates.every(p => p && p.currentHp > 0);
-      if (allAlive) winAchUpdates.sweepWins = 1;
+      const combatTeam = battle.playerCombatStates.filter(p => p);
+      if (combatTeam.length >= 6 && combatTeam.every(p => p.currentHp > 0)) {
+        winAchUpdates.sweepWins = 1;
+      }
     }
     const eMaxLv = Math.max(0, ...enemyParty.map(e => e?.level || 0));
     const pMinLv = Math.min(Infinity, ...(party || []).map(p => p?.level || 999));
     if (eMaxLv - pMinLv >= 20) winAchUpdates.underdogWins = 1;
     if (battle.turnCount && battle.turnCount <= 3) winAchUpdates.quickWins = 1;
     if (type === 'pvp') winAchUpdates.pvpWins = 1;
+    if (battle.isDouble) {
+      winAchUpdates.doubleWins = 1;
+      const allDoubleAlive = battle.activeIdxs?.every(idx => battle.playerCombatStates?.[idx]?.currentHp > 0);
+      if (allDoubleAlive) winAchUpdates.doublePerfectWins = 1;
+    }
     // 隐藏成就追踪
     if (battle.turnCount) winAchUpdates.longestBattle = battle.turnCount;
     if (isTrainer && battle.turnCount && battle.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
@@ -12763,7 +12782,7 @@ const renderMenu = () => {
           {/* 总进度概览 */}
           {(() => {
             const currentCaught = caughtDex.length;
-            const allChallenges = [...CHALLENGES, ...ATTR_CHALLENGES, ...JJK_CHALLENGES];
+            const allChallenges = [...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES];
             const cleared = allChallenges.filter(c => completedChallenges.includes(c.id)).length;
             const totalPct = Math.min(100, (currentCaught / 700) * 100);
             return (
@@ -12905,6 +12924,73 @@ const renderMenu = () => {
                             <div style={{width:`${progressPct}%`, height:'100%', background: isCleared ? '#f59e0b' : isUnlocked ? tc : '#d1d5db', borderRadius:'2px', transition:'width 0.5s'}} />
                           </div>
                           <span style={{fontSize:'10px', fontWeight:'600', color: isUnlocked ? tc : '#94a3b8', minWidth:'50px', textAlign:'right'}}>
+                            {isCleared ? '✓ 通关' : `${currentCaught}/${c.req}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 双打试炼 */}
+          {DOUBLE_CHALLENGES.length > 0 && (
+            <div style={{marginBottom:'16px', padding:'0 2px'}}>
+              <div style={{fontSize:'13px', fontWeight:'700', color:'#475569', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px'}}>
+                <span style={{width:'3px', height:'16px', background:'linear-gradient(180deg, #ff9800, #ff5722)', borderRadius:'2px'}} />
+                ⚔️ 双打试炼 · {DOUBLE_CHALLENGES.length} 座
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'10px'}}>
+                {DOUBLE_CHALLENGES.map((c) => {
+                  const currentCaught = caughtDex.length;
+                  const isUnlocked = currentCaught >= c.req;
+                  const isCleared = completedChallenges.includes(c.id);
+                  const progressPct = Math.min(100, (currentCaught / c.req) * 100);
+                  const bossInfo = POKEDEX.find(p => p.id === c.boss);
+                  return (
+                    <div key={c.id}
+                      onClick={() => {
+                        if (!isUnlocked) return;
+                        if (party.filter(p => p.currentHp > 0).length < 2) { alert("⚠️ 双打试炼需要至少2只存活精灵！"); return; }
+                        startBattle(null, 'challenge', c.id);
+                      }}
+                      style={{
+                        borderRadius:'14px', overflow:'hidden', cursor: isUnlocked ? 'pointer' : 'default',
+                        background: isCleared ? 'linear-gradient(135deg, #fff8e1, #ffecb3)' : isUnlocked ? '#fff' : '#fafafa',
+                        border: isCleared ? '1px solid #ff9800' : isUnlocked ? '1px solid #ff572230' : '1px solid #e5e7eb',
+                        transition:'all 0.2s ease', position:'relative',
+                        boxShadow: isUnlocked && !isCleared ? '0 2px 12px rgba(255,87,34,0.12)' : 'none',
+                      }}
+                      onMouseOver={e => { if(isUnlocked) e.currentTarget.style.transform='translateY(-2px)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform='none'; }}
+                    >
+                      <div style={{padding:'12px 14px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                            <div style={{
+                              width:'38px', height:'38px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center',
+                              background: isCleared ? '#ffecb3' : '#ff572212', fontSize:'20px', border: isCleared ? '1px solid #ff9800' : '1px solid #ff572225',
+                              overflow:'hidden', position:'relative'
+                            }}>
+                              {isCleared ? <span>✅</span> : bossInfo ? <div style={{transform:'scale(0.65)'}}>{renderAvatar(bossInfo)}</div> : <span>⚔️</span>}
+                            </div>
+                            <div>
+                              <div style={{fontSize:'13px', fontWeight:'700', color: isUnlocked ? '#1e293b' : '#94a3b8', lineHeight:'1.2'}}>⚔️ {c.title}</div>
+                              <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'1px'}}>{c.desc}</div>
+                            </div>
+                          </div>
+                          <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'2px'}}>
+                            <span style={{fontSize:'9px', fontWeight:'700', color:'#fff', background:'#ff5722', padding:'1px 6px', borderRadius:'4px'}}>双打</span>
+                            <span style={{fontSize:'9px', color:'#94a3b8'}}>Lv.{c.bossLvl}</span>
+                          </div>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                          <div style={{flex:1, height:'4px', background:'#e5e7eb', borderRadius:'2px', overflow:'hidden'}}>
+                            <div style={{width:`${progressPct}%`, height:'100%', background: isCleared ? '#ff9800' : isUnlocked ? '#ff5722' : '#d1d5db', borderRadius:'2px', transition:'width 0.5s'}} />
+                          </div>
+                          <span style={{fontSize:'10px', fontWeight:'600', color: isUnlocked ? '#ff5722' : '#94a3b8', minWidth:'50px', textAlign:'right'}}>
                             {isCleared ? '✓ 通关' : `${currentCaught}/${c.req}`}
                           </span>
                         </div>
@@ -16776,9 +16862,9 @@ const renderMenu = () => {
                               const hint = !turnOk && !hpOk ? `回合≥3(还需${3-battle.turnCount}回合) 且 HP<50%` : !turnOk ? `回合≥3(还需${3-battle.turnCount}回合)` : 'HP<50%';
                               return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : alert(`变身条件未满足！\n需要同时满足：\n① 战斗回合 ≥ 3\n② 当前HP < 50%\n\n未满足: ${hint}`)} disabled={!canUse}>变身{!canUse ? `(${hint})` : ''}</button>;
                             })()}
-                            {p.maxCE > 0 && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button>}
-                            {p.hasDomain && !p.usedDomain && !battle.activeDomain && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}>领域</button>}
-                            {p.maxCE > 0 && !p.activeVow && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button>}
+                            {p.maxCE > 0 && !isDoubleBattle && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button>}
+                            {p.hasDomain && !p.usedDomain && !battle.activeDomain && !isDoubleBattle && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(p.cursedEnergy||0) < (DOMAINS[p.domainType]?.ceCost||999)}>领域</button>}
+                            {p.maxCE > 0 && !p.activeVow && !isDoubleBattle && <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button>}
                             {(() => {
                               const ap = battle.playerCombatStates?.[battle.activeIdx];
                               const hasPartner = ap?.partnerId && battle.playerCombatStates?.find(pp => (pp.uid || pp.id) === ap.partnerId && pp.currentHp > 0);

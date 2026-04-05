@@ -103,6 +103,30 @@ export const ATTR_CHALLENGES = [
     req: 200, boss: 604, bossLvl: 95, teamSize: 6, rewardId: 604, attrType: 'LIGHT',
     bg: 'linear-gradient(135deg, #FF8F00 0%, #FFD54F 100%)', color: '#FF6F00' },
 ];
+
+export const DOUBLE_CHALLENGES = [
+  { id: 'dc1', title: '双打入门战', desc: '体验2v2双打的基础对决',
+    req: 10, boss: 1, bossLvl: 20, teamSize: 2, rewardId: 1, isDouble: true,
+    bg: 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)', color: '#E65100' },
+  { id: 'dc2', title: '火水交锋', desc: '火与水的双打协作战',
+    req: 30, boss: 97, bossLvl: 40, teamSize: 2, rewardId: 97, isDouble: true,
+    bg: 'linear-gradient(135deg, #FF5722 0%, #2196F3 100%)', color: '#BF360C' },
+  { id: 'dc3', title: '雷电双子', desc: '双电属性精灵的闪电攻势',
+    req: 60, boss: 89, bossLvl: 55, teamSize: 2, rewardId: 89, isDouble: true,
+    bg: 'linear-gradient(135deg, #FFC107 0%, #FF9800 100%)', color: '#F57F17' },
+  { id: 'dc4', title: '龙凤呈祥', desc: '龙系与妖精系的终极对决',
+    req: 100, boss: 182, bossLvl: 70, teamSize: 2, rewardId: 182, isDouble: true,
+    bg: 'linear-gradient(135deg, #7B1FA2 0%, #EC407A 100%)', color: '#4A148C' },
+  { id: 'dc5', title: '光暗双煞', desc: '光与暗的双打终极审判',
+    req: 150, boss: 254, bossLvl: 85, teamSize: 2, rewardId: 254, isDouble: true,
+    bg: 'linear-gradient(135deg, #FFD54F 0%, #37474F 100%)', color: '#263238' },
+  { id: 'dc6', title: '创世双神', desc: '挑战双神兽的究极双打',
+    req: 250, boss: 340, bossLvl: 95, teamSize: 2, rewardId: 340, isDouble: true,
+    bg: 'linear-gradient(135deg, #D32F2F 0%, #FF6F00 100%)', color: '#B71C1C' },
+  { id: 'dc7', title: '万界双打至尊', desc: '双打模式的最终证明',
+    req: 400, boss: 700, bossLvl: 100, teamSize: 2, rewardId: 700, isDouble: true,
+    bg: 'linear-gradient(135deg, #000000 0%, #FF6F00 50%, #000000 100%)', color: '#FF6F00' },
+];
 export const CONTEST_CONFIG = {
   bug: {
     id: 'contest_bug',
