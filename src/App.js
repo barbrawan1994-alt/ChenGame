@@ -2290,7 +2290,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (currentCount >= 100) unlockTitle('图鉴达人');
       if (currentCount >= 250) unlockTitle('博学大师');
       if (currentCount >= 450) unlockTitle('全图鉴霸主');
-      if (currentCount >= 666) unlockTitle('传说收藏家');
+      if (currentCount >= 700) unlockTitle('传说收藏家');
   };
 
   const handleStartGame = () => {
@@ -10700,7 +10700,7 @@ const renderNameInput = () => {
                 const tc = TYPES[selectedPet.type]?.color || '#999';
                 const preEvo = POKEDEX.find(p => p.evo === selectedPet.id);
                 const spawnMaps = MAPS.filter(m => m.pool && m.pool.includes(selectedPet.id));
-                const isGod = selectedPet.id >= 601 && selectedPet.id <= 610;
+                const isGod = (selectedPet.id >= 601 && selectedPet.id <= 610) || (selectedPet.id >= 691 && selectedPet.id <= 700);
                 let howToGet = [];
                 if (preEvo) howToGet.push(`由 ${preEvo.name}(#${preEvo.id}) ${preEvo.evoLvl ? `Lv.${preEvo.evoLvl}` : '使用进化石'}进化`);
                 if (spawnMaps.length > 0) howToGet.push(`野外出没: ${spawnMaps.map(m => m.name).join('、')}`);
@@ -11591,7 +11591,7 @@ const renderMenu = () => {
           
           <div style={{position:'relative', textAlign:'center'}}>
             <div style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'3px 14px', borderRadius:'20px', background:'rgba(255,165,0,0.15)', border:'1px solid rgba(255,165,0,0.25)', marginBottom:'14px'}}>
-              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.1</span>
+              <span style={{fontSize:'10px', color:'#ffa500', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase'}}>Version 4.2</span>
           </div>
             
           <div style={{
@@ -11718,7 +11718,7 @@ const renderMenu = () => {
           background:'rgba(0,0,0,0.15)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.1 · {POKEDEX.length} Creatures · Gang Wars</span>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.2)', letterSpacing:'1px'}}>v4.2 · {POKEDEX.length} Creatures · Gang Wars</span>
           <span style={{fontSize:'10px', color:'rgba(255,255,255,0.15)'}}>Legends RPG</span>
         </div>
       </div>

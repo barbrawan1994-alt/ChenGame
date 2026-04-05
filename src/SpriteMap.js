@@ -103,6 +103,20 @@ const ID_TO_DIGIMON = {
   655: 'Wormmon', 656: 'Stingmon', 657: 'Dinobeemon', 658: 'Gran_Kuwagamon',
   659: 'Hawkmon', 660: 'Aquilamon', 661: 'Silphymon', 662: 'Valkyrimon',
   663: 'Armadimon', 664: 'Ankylomon', 665: 'Shakkoumon', 666: 'Gankoomon',
+  // 34 new creatures (667-700)
+  667: 'Leomon',          668: 'Saber_Leomon',     669: 'Durandamon',
+  670: 'Lucemon',         671: 'Dynasmon',         672: 'Susanoomon',
+  673: 'Gaomon',          674: 'Gaogamon',         675: 'Mach_Gaogamon',
+  676: 'Meramon',         677: 'Triceramon',       678: 'Megadramon',
+  679: 'Gomamon',         680: 'Mega_Seadramon',   681: 'Leviamon',
+  682: 'Mamemon',         683: 'Magnamon',
+  684: 'Thunderbirmon',   685: 'Garudamon',
+  686: 'Andromon',        687: 'Devimon',          688: 'Ryudamon',
+  689: 'Monzaemon',       690: 'Sleipmon',
+  691: 'Hououmon',        692: 'Mirage_Gaogamon',  693: 'Shine_Greymon',
+  694: 'Apocalymon',      695: 'Craniummon',       696: 'Omegamon',
+  697: 'Demon',           698: 'Chaosdramon',      699: 'Barbamon',
+  700: 'Examon',
 };
 
 // Trainer character sprites (Pokemon Showdown - open source)
@@ -310,6 +324,13 @@ const ID_TO_NATDEX = {
   601:446, 602:240, 603:645, 604:480, 605:716,
   // 神兽续: 棱镜圣兽→Silvally, 创世之光→Arceus, 冥渊魔王→Giratina, 暗影刺客→Darkrai, 永夜之主→Yveltal
   606:773, 607:360, 608:357, 609:358, 610:717,
+  // 新精灵 667-700 (PokeAPI fallback)
+  667:403, 668:448, 669:475, 670:344, 671:376, 672:373,
+  673:453, 674:452, 675:454, 676:58, 677:464, 678:445,
+  679:349, 680:350, 681:130, 682:299, 683:719, 684:587,
+  685:628, 686:376, 687:571, 688:362, 689:530, 690:637,
+  691:250, 692:491, 693:257, 694:487, 695:638, 696:384,
+  697:452, 698:483, 699:482, 700:493,
 };
 
 const TYPE_FALLBACK = {

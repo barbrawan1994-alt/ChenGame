@@ -1090,15 +1090,62 @@ const DIGIMON_PETS = [
   { id: 666, name: '钢铁巨神', type: 'STEEL',  emoji: '🛡️', hp: 105, atk: 100, def: 135, spd: 55, desc: '不屈不挠的钢铁巨人，拥有最坚固的防御。' },
 ];
 
+// --- 34只新精灵 (ID 667-700) - 混合系列(含神兽) ---
+const EXTRA_PETS_700 = [
+  // === 进化链15: 狮魂系 (FIGHT) 3段 ===
+  { id: 667, name: '烈焰幼狮', type: 'FIGHT',  emoji: '🦁', hp: 55, atk: 60, def: 45, spd: 52, evo: 668, evoLvl: 22, desc: '鬃毛中蕴含火焰的幼狮，战意高昂。' },
+  { id: 668, name: '狮魂剑士', type: 'FIGHT',  emoji: '🦁', hp: 78, atk: 95, def: 65, spd: 70, evo: 669, evoLvl: 45, desc: '手持双剑的狮人战士，信奉武道精神。' },
+  { id: 669, name: '百兽帝王', type: 'FIGHT',  emoji: '🦁', hp: 100, atk: 128, def: 90, spd: 88, desc: '万兽之王，咆哮可令群山震颤。' },
+  // === 进化链16: 星辰系 (PSYCHIC) 3段 ===
+  { id: 670, name: '星辉精灵', type: 'PSYCHIC', emoji: '⭐', hp: 48, atk: 42, def: 45, spd: 62, evo: 671, evoLvl: 24, desc: '夜空中飘浮的小型星光精灵。' },
+  { id: 671, name: '星云法师', type: 'PSYCHIC', emoji: '🌟', hp: 70, atk: 80, def: 62, spd: 85, evo: 672, evoLvl: 48, desc: '操控星云能量的念力法师。' },
+  { id: 672, name: '星河贤者', type: 'PSYCHIC', emoji: '🌌', hp: 92, atk: 115, def: 85, spd: 105, desc: '洞悉银河奥秘的究极贤者。' },
+  // === 进化链17: 毒焰系 (POISON) 3段 ===
+  { id: 673, name: '腐蚀幼蛙', type: 'POISON', emoji: '🐸', hp: 52, atk: 48, def: 42, spd: 55, evo: 674, evoLvl: 20, desc: '皮肤分泌腐蚀液的小型毒蛙。' },
+  { id: 674, name: '剧毒蟾王', type: 'POISON', emoji: '🐸', hp: 72, atk: 78, def: 65, spd: 72, evo: 675, evoLvl: 42, desc: '身上的毒腺可喷射致命酸液。' },
+  { id: 675, name: '瘴毒巫蛙', type: 'POISON', emoji: '🐸', hp: 95, atk: 108, def: 88, spd: 90, desc: '操控毒雾与瘴气的巫术蛙王。' },
+  // === 进化链18: 熔岩系 (FIRE→GROUND) 3段 ===
+  { id: 676, name: '岩浆幼犬', type: 'FIRE',   emoji: '🐕', hp: 50, atk: 55, def: 50, spd: 48, evo: 677, evoLvl: 25, desc: '体温极高的小型火犬，脚印会留下焦痕。' },
+  { id: 677, name: '熔岩猎犬', type: 'FIRE',   emoji: '🐕', hp: 75, atk: 88, def: 72, spd: 65, evo: 678, evoLvl: 46, desc: '奔跑时身后拖曳岩浆尾迹的烈焰猎犬。' },
+  { id: 678, name: '火山巨兽', type: 'GROUND', emoji: '🌋', hp: 105, atk: 118, def: 108, spd: 55, desc: '背上的火山口不断喷发的大地巨兽。' },
+  // === 进化链19: 深海系 (WATER→DARK) 3段 ===
+  { id: 679, name: '深渊灯鱼', type: 'WATER',  emoji: '🐟', hp: 45, atk: 40, def: 38, spd: 58, evo: 680, evoLvl: 22, desc: '深海中发光引诱猎物的小型灯笼鱼。' },
+  { id: 680, name: '暗潮鲛人', type: 'WATER',  emoji: '🧜', hp: 68, atk: 75, def: 55, spd: 80, evo: 681, evoLvl: 44, desc: '半人半鱼的深海猎手，歌声令人迷失。' },
+  { id: 681, name: '深渊海龙', type: 'DARK',   emoji: '🐉', hp: 98, atk: 120, def: 82, spd: 95, desc: '栖息在海沟最深处的漆黑海龙。' },
+  // === 进化链20: 晶石系 (ROCK→FAIRY) 2段 ===
+  { id: 682, name: '棱晶石',   type: 'ROCK',   emoji: '💎', hp: 55, atk: 42, def: 68, spd: 35, evo: 683, evoLvl: 35, desc: '七彩光芒折射的活体水晶。' },
+  { id: 683, name: '虹光宝石', type: 'FAIRY',  emoji: '💎', hp: 88, atk: 75, def: 115, spd: 52, desc: '折射出七色极光的究极宝石精灵。' },
+  // === 进化链21: 雷鸟系 (ELECTRIC→FLYING) 2段 ===
+  { id: 684, name: '闪电雏鸟', type: 'ELECTRIC', emoji: '🐣', hp: 48, atk: 52, def: 40, spd: 65, evo: 685, evoLvl: 32, desc: '羽翼带电的雷属性雏鸟。' },
+  { id: 685, name: '雷鸣神鹫', type: 'FLYING', emoji: '🦅', hp: 85, atk: 105, def: 72, spd: 110, desc: '展翅即引雷霆，传说中的雷鸟化身。' },
+  // === 单体精灵 ===
+  { id: 686, name: '机械朋克', type: 'STEEL',  emoji: '🤖', hp: 82, atk: 90, def: 95, spd: 58, desc: '由废弃零件自我组装的朋克风格机器人。' },
+  { id: 687, name: '暗影刺客', type: 'DARK',   emoji: '🗡️', hp: 72, atk: 115, def: 55, spd: 108, desc: '在黑暗中一击必杀的冷酷刺客。' },
+  { id: 688, name: '极地雪狐', type: 'ICE',    emoji: '🦊', hp: 68, atk: 78, def: 60, spd: 95, desc: '毛色纯白如雪，在暴风雪中来去自如。' },
+  { id: 689, name: '大地陶偶', type: 'GROUND', emoji: '🏺', hp: 92, atk: 72, def: 105, spd: 38, desc: '远古文明遗留的活体陶俑守护者。' },
+  { id: 690, name: '虹彩蝶仙', type: 'BUG',   emoji: '🦋', hp: 65, atk: 55, def: 50, spd: 100, desc: '翅膀散发七彩鳞粉的梦幻蝴蝶。' },
+  // === 神兽 (691-700) 10只新神兽 ===
+  { id: 691, name: '天照金凰', type: 'LIGHT',  emoji: '🔆', hp: 110, atk: 140, def: 100, spd: 115, desc: '沐浴在永恒圣光中的黄金凤凰，万物因其而生。' },
+  { id: 692, name: '月读银狼', type: 'DARK',   emoji: '🌙', hp: 100, atk: 145, def: 90, spd: 130, desc: '在月光下化身的银色巨狼，掌管夜之支配。' },
+  { id: 693, name: '须佐战神', type: 'FIGHT',  emoji: '⚔️', hp: 120, atk: 160, def: 110, spd: 95, desc: '挥舞天丛云剑的绝世战神。' },
+  { id: 694, name: '混沌终焉', type: 'GHOST',  emoji: '💀', hp: 130, atk: 150, def: 105, spd: 100, desc: '吞噬万物的终极虚空存在，混沌的化身。' },
+  { id: 695, name: '圣域守护', type: 'FAIRY',  emoji: '🛡️', hp: 140, atk: 110, def: 150, spd: 85, desc: '守护世界结界的圣域骑士，防御无可匹敌。' },
+  { id: 696, name: '奥米加兽', type: 'DRAGON', emoji: '🐉', hp: 120, atk: 155, def: 120, spd: 110, desc: '融合勇气与友情之力的究极龙骑士。' },
+  { id: 697, name: '灾厄魔神', type: 'POISON', emoji: '☠️', hp: 115, atk: 135, def: 115, spd: 105, desc: '七大灾厄的集合体，所到之处万物凋零。' },
+  { id: 698, name: '创世巨神', type: 'STEEL',  emoji: '⚙️', hp: 150, atk: 120, def: 140, spd: 75, desc: '据说曾铸造这个世界的远古机械神明。' },
+  { id: 699, name: '幻梦之主', type: 'PSYCHIC', emoji: '🔮', hp: 105, atk: 140, def: 95, spd: 135, desc: '操控所有生物梦境的幻梦支配者。' },
+  { id: 700, name: '宇宙意志', type: 'GOD',    emoji: '🌟', hp: 130, atk: 130, def: 130, spd: 130, desc: '超越时空的宇宙终极意志，万象之源。' },
+];
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
     UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600,
-    ...GODS_610, ...DIGIMON_PETS
+    ...GODS_610, ...DIGIMON_PETS, ...EXTRA_PETS_700
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 666);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 700);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
@@ -1108,4 +1155,4 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS, EXTRA_PETS_700 };
