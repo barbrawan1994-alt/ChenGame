@@ -180,6 +180,7 @@ const SIDE_STORY_LINES = [
   { id: 'jjk',     name: '咒术回战篇', icon: '⛩️', startIdx: 13, endIdx: 15, chapters: 3, unlockBadges: 5, desc: '觉醒咒术之力，对决诅咒之王' },
   { id: 'lycoris', name: '莉可莉丝篇', icon: '🎀', startIdx: 16, endIdx: 18, chapters: 3, unlockBadges: 4, desc: '搭档羁绊之旅，解锁搭档系统' },
   { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 19, endIdx: 27, chapters: 9, unlockBadges: 8, desc: '十二门派与厌晚的史诗篇章' },
+  { id: 'crossworld', name: '异界征途篇', icon: '🌍', startIdx: 28, endIdx: 45, chapters: 18, unlockBadges: 13, desc: '次元裂隙降临，跨越七界的史诗冒险' },
 ];
 
 const inferCompletedSideStories = (sp) => {
@@ -187,6 +188,7 @@ const inferCompletedSideStories = (sp) => {
   if (sp >= 16) done.push('jjk');
   if (sp >= 19) done.push('lycoris');
   if (sp >= 28) done.push('sect');
+  if (sp >= 46) done.push('crossworld');
   return done;
 };
 
