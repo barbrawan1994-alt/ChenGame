@@ -7965,13 +7965,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkState.volatiles.confused <= 0) {
             addLog(`${attacker.name} 的混乱解除了!`);
         } else {
-            addLog(`${attacker.name} 混乱了!`);
-            setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
+        addLog(`${attacker.name} 混乱了!`);
+        setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
             await wait(1000); setAnimEffect(null);
             if (Math.random() < 0.5) {
                 addLog(`它在混乱中攻击了自己!`);
                 const selfDmg = Math.floor(getStats(attacker).maxHp * 0.12);
-                attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
+            attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
                 return false;
             }
         }
@@ -10873,13 +10873,13 @@ const renderNameInput = () => {
                             {selectedPet.name}
                             </div>
                             <div style={{display:'flex', gap:'6px', justifyContent:'center'}}>
-                                <div style={{
-                                    display: 'inline-block', 
-                                    background: TYPES[selectedPet.type]?.color || '#7038F8', 
-                                    color: '#fff', padding: '4px 16px', borderRadius: '20px', 
-                                    fontSize: '12px', fontWeight: 'bold'
-                                }}>
-                                    {TYPES[selectedPet.type]?.name}
+                            <div style={{
+                                display: 'inline-block', 
+                                background: TYPES[selectedPet.type]?.color || '#7038F8', 
+                                color: '#fff', padding: '4px 16px', borderRadius: '20px', 
+                                fontSize: '12px', fontWeight: 'bold'
+                            }}>
+                                {TYPES[selectedPet.type]?.name}
                                 </div>
                                 {selectedPet.type2 && <div style={{
                                     display: 'inline-block', 
@@ -11637,7 +11637,7 @@ const renderMenu = () => {
       }}>
 
         {/* 顶部横幅 - 双属性主题 */}
-        <div style={{
+          <div style={{
           position:'relative', padding:'36px 32px 30px', overflow:'hidden',
           background:'linear-gradient(135deg, rgba(26,35,126,0.2) 0%, rgba(100,150,255,0.1) 25%, rgba(173,20,87,0.12) 50%, rgba(120,80,220,0.1) 75%, rgba(0,200,180,0.08) 100%)',
           borderBottom:'1px solid rgba(100,180,255,0.08)'
@@ -11650,9 +11650,9 @@ const renderMenu = () => {
               <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#64b5f6', boxShadow:'0 0 8px rgba(100,181,246,0.5)'}} />
               <span style={{fontSize:'10px', color:'#90caf9', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 5.0</span>
               <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#f48fb1', boxShadow:'0 0 8px rgba(244,143,177,0.5)'}} />
-            </div>
+          </div>
             
-            <div style={{
+          <div style={{
               fontSize:'36px', fontWeight:'900', letterSpacing:'4px',
               background:'linear-gradient(135deg, #90caf9 0%, #ce93d8 20%, #f48fb1 40%, #80cbc4 60%, #b39ddb 80%, #90caf9 100%)',
               backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite',
@@ -11692,13 +11692,13 @@ const renderMenu = () => {
               <div style={{flex:1}}>
                 <div style={{fontSize:'12px', fontWeight:'700', color:'#90caf9'}}>{gangName}</div>
                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
-              </div>
+          </div>
               <div style={{fontSize:'18px', opacity:0.6}}>🏴</div>
-            </div>
+        </div>
           )}
 
           {/* 主按钮 - 开始游戏 */}
-          <button onClick={handleStartGame} style={{
+        <button onClick={handleStartGame} style={{
             width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
             background:'linear-gradient(135deg, #1a237e 0%, #4a148c 35%, #ad1457 70%, #1a237e 100%)',
             backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
@@ -11717,14 +11717,14 @@ const renderMenu = () => {
             </div>
             <div style={{textAlign:'left', flex:1}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
-                {hasSave ? '继续冒险' : '开始新游戏'}
-              </div>
+                    {hasSave ? '继续冒险' : '开始新游戏'}
+                </div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'1px'}}>
                 {hasSave ? '读取上次的冒险进度' : '探索双属性精灵的世界'}
-              </div>
+                </div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
+        </button>
 
           {/* 存档信息条 */}
           {hasSave && (
@@ -11770,7 +11770,7 @@ const renderMenu = () => {
                 <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{btn.emoji}</span>
                 <div style={{fontSize:'12px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
                 <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>{btn.sub}</div>
-              </button>
+            </button>
             ))}
           </div>
         </div>

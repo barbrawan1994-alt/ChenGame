@@ -428,15 +428,15 @@ button:active { transform: scale(0.96); }
   position: absolute; top: 0; left: 0; width: 100%;
   height: calc(100% - 180px);
   z-index: 1;
-  background:
+  background: 
     radial-gradient(ellipse at 50% 0%, rgba(135,206,250,0.6) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 100%, rgba(144,238,144,0.4) 0%, transparent 45%),
     linear-gradient(180deg, #87CEEB 0%, #a8e6cf 50%, #6abf69 100%);
   overflow: hidden;
 }
 
-.battle-stage-v2.bg-grass {
-  background:
+.battle-stage-v2.bg-grass { 
+  background: 
     radial-gradient(ellipse at 50% 0%, rgba(135,206,250,0.5) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 100%, rgba(144,238,144,0.35) 0%, transparent 45%),
     linear-gradient(135deg, #84fab0 0%, #8fd3f4 50%, #a8edea 100%);
@@ -444,29 +444,29 @@ button:active { transform: scale(0.96); }
   background-position: center top, center bottom, 0% 0%;
 }
 
-.battle-stage-v2.bg-fire {
-  background:
+.battle-stage-v2.bg-fire { 
+  background: 
     radial-gradient(ellipse at 50% 0%, rgba(255,183,77,0.5) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 100%, rgba(255,138,101,0.35) 0%, transparent 45%),
     linear-gradient(180deg, #f9a825 0%, #ef6c00 40%, #bf360c 100%);
 }
 
 .battle-stage-v2.bg-water {
-  background:
+  background: 
     radial-gradient(ellipse at 50% 0%, rgba(129,212,250,0.5) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 100%, rgba(77,182,172,0.35) 0%, transparent 45%),
     linear-gradient(180deg, #81d4fa 0%, #4fc3f7 40%, #0288d1 100%);
 }
 
 .battle-stage-v2.bg-city {
-  background:
+  background: 
     radial-gradient(ellipse at 50% 0%, rgba(176,190,197,0.5) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 100%, rgba(144,164,174,0.3) 0%, transparent 45%),
     linear-gradient(180deg, #cfd8dc 0%, #90a4ae 40%, #546e7a 100%);
 }
 
 .battle-stage-v2.bg-cave {
-  background:
+  background: 
     radial-gradient(ellipse at 50% 0%, rgba(149,117,205,0.4) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 100%, rgba(69,39,160,0.35) 0%, transparent 45%),
     linear-gradient(180deg, #7e57c2 0%, #512da8 40%, #311b92 100%);
@@ -713,15 +713,15 @@ button:active { transform: scale(0.96); }
 }
 
 /* 敌我区域 - 调整位置和大小体现远近感 */
-.enemy-zone-v2 {
-  position: absolute;
+.enemy-zone-v2 { 
+  position: absolute; 
   top: 2%; right: 4%;
   display: flex; flex-direction: column; align-items: flex-end;
   gap: 6px; z-index: 10;
 }
 
-.player-zone-v2 {
-  position: absolute;
+.player-zone-v2 { 
+  position: absolute; 
   bottom: 4%; left: 3%;
   display: flex; flex-direction: column; align-items: flex-start;
   gap: 6px; z-index: 10;
@@ -742,25 +742,25 @@ button:active { transform: scale(0.96); }
 
 /* 我方精灵 - 大而近 */
 .player-zone-v2 .sprite-v2,
-.player-sprite-wrapper .sprite-v2 {
+.player-sprite-wrapper .sprite-v2 { 
   width: 340px; height: 340px;
 }
 
 /* 敌方精灵 - 远处透视 */
 .enemy-zone-v2 .sprite-v2,
-.enemy-sprite-wrapper .sprite-v2 {
+.enemy-sprite-wrapper .sprite-v2 { 
   width: 280px; height: 280px;
-  filter:
+  filter: 
     drop-shadow(0 8px 16px rgba(0,0,0,0.3))
     brightness(0.97);
 }
 
 @keyframes float-enhanced {
-  0%, 100% {
+  0%, 100% { 
     transform: translateY(0);
     filter: drop-shadow(0 10px 20px rgba(0,0,0,0.35));
   }
-  50% {
+  50% { 
     transform: translateY(-8px);
     filter: drop-shadow(0 16px 28px rgba(0,0,0,0.4));
   }
@@ -4350,7 +4350,7 @@ button:active {
   font-family: 'Arial Black', 'Impact', sans-serif;
   color: #fff;
   -webkit-text-stroke: 2px rgba(0,0,0,0.6);
-  text-shadow:
+  text-shadow: 
     0 2px 4px rgba(0,0,0,0.8),
     0 0 12px var(--dmg-glow, rgba(255,82,82,0.7));
   animation: dmg-pop-v3 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;

@@ -20,23 +20,23 @@ const ID_TO_DIGIMON = {
   512: 'Snimon',              // 风刃螳螂(WIND) → 螳螂兽
   513: 'Lopmon',              // 气旋松鼠(WIND) → 洛普兽
   514: 'Yatagaramon',         // 风行者(WIND) → 八咫鸦兽
-  // 515: removed Darcmon (light angel), falls to NatDex
+  515: 'Shutumon',             // 暴风天使(WIND) → 风战士兽
   517: 'Flymon',              // 光辉蛾(LIGHT)
   518: 'Butterflamon',         // 圣光帝蛾(LIGHT) → 蝴蝶兽
-  // 519: removed Mikemon (white body → transparency issue), falls to NatDex
-  // 520: removed Nefertimon (light body), falls to NatDex
+  519: 'Meicoomon',            // 晨光猫(LIGHT) → 猫咪兽
+  520: 'Plotmon',              // 日光猫(LIGHT) → 小狗兽
   521: 'Liamon',              // 太阳狮(LIGHT) → 狮子兽
   // 522: removed Starmon (light/white), falls to NatDex
   // 523: removed Superstarmon (light/white), falls to NatDex
   524: 'Guardromon',          // 光子精灵(LIGHT) → 守卫兽
   525: 'Giromon',             // 光束战士(LIGHT) → 手里剑兽
-  526: 'Renamon',             // 极光狐(LIGHT) → 妖狐兽
+  526: 'Kudamon',              // 极光狐(LIGHT) → 光明兽
   // 527: removed Unimon (white body), falls to NatDex
   // 529: removed Sorcermon (white body), falls to NatDex
   531: 'Gazimon',              // 暗影鼠(DARK) → 加兹兽
   532: 'Were_Garurumon_(Black)', // 暗夜狼(DARK)
   534: 'Pico_Devimon',        // 黑雾蝙蝠(DARK) → 小恶魔兽
-  535: 'Myotismon',            // 暗翼魔蝠(DARK) → 吸血魔兽
+  535: 'Vamdemon',             // 暗翼魔蝠(DARK) → 吸血魔兽
   537: 'Black_Tailmon',       // 幽暗豹(DARK) → 黑迪路兽
   538: 'Sandiramon',           // 诡计蛇(DARK) → 蛇兽
   539: 'Dagomon',             // 深渊鱼(DARK)
@@ -75,7 +75,7 @@ const ID_TO_DIGIMON = {
   589: 'Okuwamon',            // 钻石独角仙(BUG) → 锹形虫兽
   591: 'Gottsumon',            // 小石头(ROCK) → 岩石兽
   592: 'Golemon',             // 巨岩兽(ROCK) → 岩浆兽
-  593: 'Pteramon',             // 化石翼龙(ROCK) → 翼龙兽
+  593: 'Pteranomon',            // 化石翼龙(ROCK) → 翼龙兽
   594: 'Bakemon',             // 蜡烛幽灵(GHOST) → 幽灵兽
   595: 'Deathmon',             // 灯笼鬼(GHOST) → 死亡兽
   597: 'Hackmon',             // 小飞龙(DRAGON) → 黑客兽
@@ -84,7 +84,7 @@ const ID_TO_DIGIMON = {
   600: 'Mugendramon',          // 机械天使(STEEL) → 无限龙兽
   601: 'Valdurmon',           // 岚神·风伯(WIND) → 瓦尔杜兽
   602: 'Zhuqiaomon',          // 苍穹凤凰(WIND) → 朱雀兽
-  604: 'Cherubimon',           // 天照大神(LIGHT) → 基路比兽
+  604: 'Cherubimon_(Virtue)',   // 天照大神(LIGHT) → 基路比兽(善)
   607: 'Alphamon',            // 创世之光(LIGHT) → 阿尔法兽
   608: 'Beelzebumon',          // 冥渊魔王(DARK) → 堕天地狱兽
   609: 'Piemon',               // 暗影刺客(DARK) → 小丑皇
@@ -98,25 +98,28 @@ const ID_TO_DIGIMON = {
   635: 'Tentomon', 636: 'Kabuterimon', 637: 'Atlur_Kabuterimon_(Blue)', 638: 'Herakle_Kabuterimon',
   639: 'Palmon', 640: 'Togemon', 641: 'Lilimon', 642: 'Rosemon',
   645: 'Zudomon', 646: 'Vikemon',
+  648: 'Mastemon',              // 圣光天使 → 双面天使兽
   649: 'Holy_Angemon', 650: 'Seraphimon',
+  652: 'Bastemon',              // 光辉天女 → 猫女王兽
   653: 'Holydramon',
+  654: 'Ofanimon',              // 天使圣母 → 座天使兽
   655: 'Wormmon', 656: 'Stingmon', 657: 'Dinobeemon', 658: 'Gran_Kuwagamon',
   659: 'Hawkmon', 660: 'Aquilamon', 661: 'Silphymon', 662: 'Valkyrimon',
   663: 'Armadimon', 664: 'Ankylomon', 665: 'Shakkoumon', 666: 'Gankoomon',
   // 34 new creatures (667-700)
   667: 'Bancho_Leomon',   668: 'Saber_Leomon',     669: 'Durandamon',
-  670: 'Lucemon_Falldown_Mode', 671: 'Dynasmon', 672: 'Susanoomon',
+  670: 'Bagramon',            671: 'Dynasmon', 672: 'Susanoomon',
   673: 'Gaomon',          674: 'Gaogamon',         675: 'Mach_Gaogamon',
-  676: 'Skull_Meramon',   677: 'Triceramon',       678: 'Gigadramon',
+  676: 'Death_Meramon',   677: 'Triceramon',       678: 'Gigadramon',
   679: 'Otamamon',        680: 'Mega_Seadramon',   681: 'Leviamon',
   682: 'Mamemon',         683: 'Magnamon',
   684: 'Parrotmon',       685: 'Karatenmon',
   686: 'Hi_Andromon',     687: 'Neo_Devimon',      688: 'Ryudamon',
   689: 'Monzaemon',       690: 'Sleipmon',
-  691: 'Ornithmon',       692: 'Mirage_Gaogamon',  693: 'Shine_Greymon',
+  691: 'Crossmon',        692: 'Mirage_Gaogamon',  693: 'Shine_Greymon',
   694: 'Apocalymon',      695: 'Craniummon',       696: 'Omegamon',
   697: 'Demon',           698: 'Chaosdramon',      699: 'Barbamon',
-  700: 'Imperialdramon',
+  700: 'Examon',
 };
 
 // Trainer character sprites (Pokemon Showdown - open source)
@@ -284,22 +287,22 @@ const ID_TO_NATDEX = {
   516:313, 517:264, 518:439, 519:326, 520:216,
   // 光系续: 太阳狮→Pyroar, 棱镜水晶→Carbink, 虹光宝石→Diancie, 光子→Porygon, 光束战士→Porygon-Z
   521:449, 522:456, 523:458, 524:161, 525:348,
-  // 光系续: 极光狐→Ninetales, 圣光独角兽→Rapidash, 日轮鸟→Fletchinder, 光之精灵→Jirachi, 天照使者→Solgaleo
-  526:7, 527:103, 528:662, 529:314, 530:791,
+  // 光系续: 极光狐→Ninetales, 圣光独角兽→Keldeo, 日轮鸟→Fletchinder, 光之精灵→Jirachi, 天照使者→Solgaleo
+  526:7, 527:647, 528:662, 529:314, 530:791,
   // 恶系 531-540: 暗影鼠→Rattata, 暗夜狼→Mightyena, 冥王狼→Zoroark, 黑雾蝙蝠→Zubat, 暗翼魔蝠→Crobat
   531:4, 532:245, 533:571, 534:8, 535:195,
   // 恶系续: 暗影猫→Purrloin, 幽暗豹→Liepard, 诡计蛇→Arbok, 深渊鱼→Carvanha, 暗影武士→Bisharp
   536:509, 537:367, 538:5, 539:276, 540:432,
   // 火系 541-546: 火焰蜥→Salandit, 烈焰巨蜥→Salazzle, 火山幼龙→Bagon, 赤炎飞龙→Salamence, 仙人掌→Camerupt, 舞者→Oricorio
   541:757, 542:463, 543:293, 544:294, 545:280, 546:741,
-  // 水系 547-552: 泡泡鱼→Luvdisc, 深海鲸→Wailord, 珊瑚→Corsola, 海礁兽→Barbaracle, 雨滴精→Castform, 海马骑士→Kingdra
-  547:370, 548:278, 549:234, 550:689, 551:351, 552:235,
+  // 水系 547-552: 泡泡鱼→Luvdisc, 深海鲸→Wailord, 珊瑚精灵→Mareanie, 海礁兽→Barbaracle, 雨滴精→Castform, 海马骑士→Kingdra
+  547:370, 548:278, 549:747, 550:689, 551:351, 552:235,
   // 草系 553-558: 种子球→Sunkern, 花丛兽→Grotle, 森之守护→Trevenant, 蘑菇→Shroomish, 仙人球→Cacnea, 莲叶蛙→Lombre
   553:210, 554:315, 555:709, 556:285, 557:331, 558:271,
   // 电系 559-563: 电火花→Mareep, 雷暴兽→Manectric, 电磁章鱼→Eelektross, 闪电鸟→Zapdos, 电浆兽→Galvantula
   559:206, 560:273, 561:604, 562:172, 563:414,
-  // 冰系 564-568: 冰晶兔→Bunnelby, 冰霜麋鹿→Sawsbuck, 雪花精灵→Froslass, 冰川巨人→Avalugg, 寒霜狐→Glaceon
-  564:659, 565:402, 566:350, 567:457, 568:347,
+  // 冰系 564-568: 冰晶兔→Bunnelby, 冰霜麋鹿→Wyrdeer, 雪花精灵→Froslass, 冰川巨人→Avalugg, 寒霜狐→Zorua
+  564:659, 565:899, 566:350, 567:457, 568:570,
   // 格斗 569-573: 拳击猴→Mankey, 格斗猩猩→Passimian, 武道家→Sawk, 铁拳蟹→Kingler, 相扑力士→Hariyama
   569:56, 570:766, 571:539, 572:109, 573:272,
   // 毒系 574-577: 毒菇→Foongus, 瘴气菇王→Amoonguss, 剧毒蛙→Toxicroak, 毒刺海胆→Toxapex
@@ -324,8 +327,8 @@ const ID_TO_NATDEX = {
   601:446, 602:240, 603:645, 604:480, 605:716,
   // 神兽续: 棱镜圣兽→Silvally, 创世之光→Arceus, 冥渊魔王→Giratina, 暗影刺客→Darkrai, 永夜之主→Yveltal
   606:773, 607:360, 608:357, 609:358, 610:717,
-  // 浅色数码宝贝替换为PokeAPI (白色身体透明问题)
-  643:728, 644:729, 647:627, 648:629, 651:573, 652:764, 654:778,
+  // 浅色数码宝贝替换为PokeAPI (白色身体透明问题, 已有Digimon映射的不需要NatDex)
+  643:728, 644:729, 647:627, 651:573,
   // 新精灵 667-700 (PokeAPI fallback)
   667:403, 668:448, 669:475, 670:344, 671:376, 672:373,
   673:453, 674:452, 675:454, 676:58, 677:464, 678:445,
