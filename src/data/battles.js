@@ -1,149 +1,59 @@
 export const TRAINER_NAMES = ['小智', '小霞', '捕虫少年', '短裤小子', '精英训练师', '火箭队手下', '阿金', '希罗娜', '大吾', '赤红', 'N', '露西', '短裙少女', '登山大叔', '钓鱼佬', '超能力者', '空手道王', '暴走族', '研究员', '富家少爷', '双子星'];
 export const CHALLENGES = [
-  { 
-    id: 'c1', 
-    title: '闪光伊布的试炼', 
-    desc: '初级训练师的入门战', 
-    req: 5, 
-    boss: 125, // 伊布
-    bossLvl: 20, 
-    teamSize: 3, 
-    rewardId: 125, 
-    bg: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)', 
-    color: '#E65100'
-  },
-  { 
-    id: 'c2', 
-    title: '燃烧的九尾', 
-    desc: '对抗火焰的精英小队', 
-    req: 20, 
-    boss: 11, 
-    bossLvl: 35, 
-    teamSize: 4, 
-    rewardId: 11, 
-    bg: 'linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)', 
-    color: '#C62828'
-  },
-  { 
-    id: 'c3', 
-    title: '深海巨兽', 
-    desc: '海洋霸主与其护卫', 
-    req: 40, 
-    boss: 123, 
-    bossLvl: 50, 
-    teamSize: 4, 
-    rewardId: 123, 
-    bg: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)', 
-    color: '#1565C0'
-  },
-  { 
-    id: 'c4', 
-    title: '合金风暴', 
-    desc: '坚不可摧的钢铁防线', 
-    req: 60, 
-    boss: 140, 
-    bossLvl: 60, 
-    teamSize: 5, 
-    rewardId: 140, 
-    bg: 'linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%)', 
-    color: '#455A64'
-  },
-  { 
-    id: 'c5', 
-    title: '龙之逆鳞', 
-    desc: '准神兽的满员战队', 
-    req: 80, 
-    boss: 182, 
-    bossLvl: 70, 
-    teamSize: 6, 
-    rewardId: 182, 
-    bg: 'linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)', 
-    color: '#6A1B9A'
-  },
-  { 
-    id: 'c6', 
-    title: '绝对零度', 
-    desc: '传说中的急冻鸟', 
-    req: 100, 
-    boss: 91, 
-    bossLvl: 80, 
-    teamSize: 6, 
-    rewardId: 91, 
-    bg: 'linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%)', 
-    color: '#00838F'
-  },
-  { 
-    id: 'c7', 
-    title: '雷霆主宰', 
-    desc: '传说中的闪电鸟', 
-    req: 120, 
-    boss: 92, 
-    bossLvl: 85, 
-    teamSize: 6, 
-    rewardId: 92, 
-    bg: 'linear-gradient(135deg, #FFFDE7 0%, #FFF9C4 100%)', 
-    color: '#F9A825'
-  },
-  { 
-    id: 'c8', 
-    title: '创世降临', 
-    desc: '挑战宝可梦之神', 
-    req: 150, 
-    boss: 150, 
-    bossLvl: 99, 
-    teamSize: 6, 
-    rewardId: 150, 
-    bg: 'linear-gradient(135deg, #F3E5F5 0%, #CE93D8 100%)', 
-    color: '#4A148C'
-  },
-   { 
-    id: 'c9', 
-    title: '超能念力场', 
-    desc: '对抗精神力量的极致', 
-    req: 180, // 需要收集 180 只
-    boss: 94, // 超能主宰 (超梦原型)
-    bossLvl: 85, 
-    teamSize: 6, 
-    rewardId: 94, 
-    bg: 'linear-gradient(135deg, #F3E5F5 0%, #CE93D8 100%)', 
-    color: '#8E24AA'
-  },
-  { 
-    id: 'c10', 
-    title: '钢铁长城', 
-    desc: '无法被攻破的绝对防御', 
-    req: 200, 
-    boss: 206, // 合金暴龙
-    bossLvl: 90, 
-    teamSize: 6, 
-    rewardId: 206, 
-    bg: 'linear-gradient(135deg, #ECEFF1 0%, #B0BEC5 100%)', 
-    color: '#455A64'
-  },
-  { 
-    id: 'c11', 
-    title: '远古巨兽', 
-    desc: '来自史前的原始力量', 
-    req: 220, 
-    boss: 259, // 大地泰坦
-    bossLvl: 95, 
-    teamSize: 6, 
-    rewardId: 259, 
-    bg: 'linear-gradient(135deg, #EFEBE9 0%, #A1887F 100%)', 
-    color: '#5D4037'
-  },
-  { 
-    id: 'c12', 
-    title: '光与暗之歌', 
-    desc: '同时面对光神与暗神', 
-    req: 250, 
-    boss: 254, // 起源之光 (实际上会在战斗逻辑里生成双Boss或强力Boss)
-    bossLvl: 99, 
-    teamSize: 6, 
-    rewardId: 255, // 终焉之暗
-    bg: 'linear-gradient(135deg, #212121 0%, #000000 100%)', 
-    color: '#FFD700'
-  }
+  { id: 'c1', title: '闪光伊布的试炼', desc: '初级训练师的入门战',
+    req: 5, boss: 125, bossLvl: 15, teamSize: 3, rewardId: 125,
+    bg: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)', color: '#E65100' },
+  { id: 'c2', title: '燃烧的九尾', desc: '对抗火焰的精英小队',
+    req: 20, boss: 11, bossLvl: 30, teamSize: 4, rewardId: 11,
+    bg: 'linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)', color: '#C62828' },
+  { id: 'c3', title: '深海巨兽', desc: '海洋霸主与其护卫',
+    req: 50, boss: 123, bossLvl: 45, teamSize: 4, rewardId: 123,
+    bg: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)', color: '#1565C0' },
+  { id: 'c4', title: '合金风暴', desc: '坚不可摧的钢铁防线',
+    req: 80, boss: 140, bossLvl: 55, teamSize: 5, rewardId: 140,
+    bg: 'linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%)', color: '#455A64' },
+  { id: 'c5', title: '龙之逆鳞', desc: '准神兽的满员战队',
+    req: 120, boss: 182, bossLvl: 65, teamSize: 6, rewardId: 182,
+    bg: 'linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)', color: '#6A1B9A' },
+  { id: 'c6', title: '绝对零度', desc: '传说中的急冻鸟',
+    req: 160, boss: 91, bossLvl: 75, teamSize: 6, rewardId: 91,
+    bg: 'linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%)', color: '#00838F' },
+  { id: 'c7', title: '雷霆主宰', desc: '传说中的闪电鸟',
+    req: 200, boss: 92, bossLvl: 80, teamSize: 6, rewardId: 92,
+    bg: 'linear-gradient(135deg, #FFFDE7 0%, #FFF9C4 100%)', color: '#F9A825' },
+  { id: 'c8', title: '超能念力场', desc: '对抗精神力量的极致',
+    req: 240, boss: 94, bossLvl: 85, teamSize: 6, rewardId: 94,
+    bg: 'linear-gradient(135deg, #F3E5F5 0%, #CE93D8 100%)', color: '#8E24AA' },
+  { id: 'c9', title: '创世降临', desc: '挑战宝可梦之神',
+    req: 280, boss: 150, bossLvl: 88, teamSize: 6, rewardId: 150,
+    bg: 'linear-gradient(135deg, #F3E5F5 0%, #CE93D8 100%)', color: '#4A148C' },
+  { id: 'c10', title: '钢铁长城', desc: '无法被攻破的绝对防御',
+    req: 320, boss: 206, bossLvl: 90, teamSize: 6, rewardId: 206,
+    bg: 'linear-gradient(135deg, #ECEFF1 0%, #B0BEC5 100%)', color: '#455A64' },
+  { id: 'c11', title: '远古巨兽', desc: '来自史前的原始力量',
+    req: 360, boss: 259, bossLvl: 92, teamSize: 6, rewardId: 259,
+    bg: 'linear-gradient(135deg, #EFEBE9 0%, #A1887F 100%)', color: '#5D4037' },
+  { id: 'c12', title: '光与暗之歌', desc: '同时面对光神与暗神',
+    req: 400, boss: 254, bossLvl: 95, teamSize: 6, rewardId: 255,
+    bg: 'linear-gradient(135deg, #212121 0%, #424242 100%)', color: '#FFD700' },
+  { id: 'c13', title: '十神降世', desc: '终极神兽的集结号',
+    req: 440, boss: 340, bossLvl: 96, teamSize: 6, rewardId: 340,
+    bg: 'linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%)', color: '#EA80FC' },
+  { id: 'c14', title: '异界征服者', desc: '异界兽的终极挑战',
+    req: 480, boss: 610, bossLvl: 97, teamSize: 6, rewardId: 610,
+    bg: 'linear-gradient(135deg, #1A237E 0%, #3949AB 100%)', color: '#82B1FF' },
+  { id: 'c15', title: '数码暴龙觉醒', desc: '数码世界的王者之战',
+    req: 520, boss: 666, bossLvl: 98, teamSize: 6, rewardId: 666,
+    bg: 'linear-gradient(135deg, #006064 0%, #00897B 100%)', color: '#A7FFEB' },
+  { id: 'c16', title: '万界审判', desc: '次元霸主的终极审判',
+    req: 560, boss: 700, bossLvl: 99, teamSize: 6, rewardId: 700,
+    bg: 'linear-gradient(135deg, #BF360C 0%, #FF6F00 100%)', color: '#FFD180' },
+  { id: 'c17', title: '诸神黄昏', desc: '挑战所有终极神兽的合体之力',
+    req: 620, boss: 696, bossLvl: 100, teamSize: 6, rewardId: 696,
+    bg: 'linear-gradient(135deg, #311B92 0%, #651FFF 100%)', color: '#B388FF' },
+  { id: 'c18', title: '创世之巅', desc: '700精灵图鉴大师的最终证明',
+    req: 680, boss: 700, bossLvl: 100, teamSize: 6, rewardId: 691,
+    bg: 'linear-gradient(135deg, #000000 0%, #FFD700 50%, #000000 100%)', color: '#FFD700' },
 ];
 export const CONTEST_CONFIG = {
   bug: {
@@ -187,73 +97,118 @@ export const CONTEST_CONFIG = {
   }
 };
 // ==========================================
-// [修改] 特殊副本数据 (添加 rewards 字段)
+// 特殊副本体系 — 按难度分层
 // ==========================================
 export const DUNGEONS = [
-  { 
-    id: 'gold_rush', name: '黄金矿洞', desc: '矿洞中散落着金币 (需2徽章)', type: 'gold', color: '#FFD700', icon: '💰', recLvl: 30,
-    rarity: '普通', stars: 2,
+  // === Tier 1: 入门级 (1~3徽章) ===
+  { id: 'exp_paradise', name: '经验乐园', desc: '经验加速训练场 (需1徽章)',
+    type: 'exp', color: '#00E676', icon: '🎓', recLvl: 10,
+    rarity: '普通', stars: 1, tier: 1, reqBadges: 1,
     rewards: [
-        { icon: '💰', text: '400 金币/场' },
-        { icon: '⏰', text: '每日上限5场' }
-    ]
-  },
-  { 
-    id: 'exp_paradise', name: '经验乐园', desc: '经验加速区 (需1徽章)', type: 'exp', color: '#00E676', icon: '🎓', recLvl: 20,
-    rarity: '普通', stars: 1,
+      { icon: '🍬', text: '等级匹配的经验' },
+      { icon: '⏰', text: '3场后冷却5分钟' }
+    ] },
+  { id: 'gold_rush', name: '黄金矿洞', desc: '矿洞中散落着金币 (需2徽章)',
+    type: 'gold', color: '#FFD700', icon: '💰', recLvl: 20,
+    rarity: '普通', stars: 2, tier: 1, reqBadges: 2,
     rewards: [
-        { icon: '🍬', text: '等级匹配的经验' },
-        { icon: '⏰', text: '3场后冷却5分钟' }
-    ]
-  },
-  { 
-    id: 'safari_zone', name: '狩猎地带', desc: '神兽出没！(需Lv.100 + 12徽章)', type: 'catch', color: '#FF7043', icon: '🐾', recLvl: 100,
-    rarity: '传说', stars: 5,
+      { icon: '💰', text: '400 金币/场' },
+      { icon: '⏰', text: '每日上限5场' }
+    ] },
+  { id: 'type_challenge', name: '属性试炼场', desc: '指定属性限定战 (需3徽章)',
+    type: 'type_challenge', color: '#1976D2', icon: '🎯', recLvl: 25,
+    rarity: '普通', stars: 2, tier: 1, reqBadges: 3,
     rewards: [
-        { icon: '🐲', text: '随机神兽' },
-        { icon: '🔴', text: '红色品质装备' }
-    ]
-  },
-  { 
-    id: 'stone_tower', name: '元素之塔', desc: '进化石掉落 (需5徽章+全队Lv.60)', type: 'stone', color: '#7B1FA2', icon: '🔮', recLvl: 60, restriction: 'min_lvl_60',
-    rarity: '稀有', stars: 3,
+      { icon: '📖', text: '属性专精TM' },
+      { icon: '💰', text: '1500 金币' }
+    ] },
+  // === Tier 2: 进阶级 (4~6徽章) ===
+  { id: 'boss_rush', name: '连战Boss塔', desc: '连续挑战3个Boss (需4徽章)',
+    type: 'boss_rush', color: '#D32F2F', icon: '🗼', recLvl: 35,
+    rarity: '稀有', stars: 3, tier: 2, reqBadges: 4,
     rewards: [
-        { icon: '⚡', text: '随机进化石' },
-        { icon: '⏰', text: '3场后冷却5分钟' }
-    ]
-  },
-  { 
-    id: 'hero_trial', name: '英雄试炼', desc: '属性增强剂 (需5徽章+单挑)', type: 'stat', color: '#F44336', icon: '💪', recLvl: 60, restriction: 'solo_run',
-    rarity: '稀有', stars: 3,
+      { icon: '🏆', text: '通关奖金5000' },
+      { icon: '🎁', text: '随机稀有道具' }
+    ] },
+  { id: 'stone_tower', name: '元素之塔', desc: '进化石掉落 (需5徽章)',
+    type: 'stone', color: '#7B1FA2', icon: '🔮', recLvl: 45,
+    rarity: '稀有', stars: 3, tier: 2, reqBadges: 5,
     rewards: [
-        { icon: '💪', text: '随机增强剂' },
-        { icon: '🏅', text: '仅限单挑' }
-    ]
-  },
-  { 
-    id: 'rich_man', name: '豪宅金库', desc: '高回报金库 (需6徽章+门票)', type: 'gold_pro', color: '#FFC107', icon: '🏦', recLvl: 50, restriction: 'entry_fee',
-    rarity: '史诗', stars: 4,
+      { icon: '⚡', text: '随机进化石' },
+      { icon: '⏰', text: '3场后冷却5分钟' }
+    ] },
+  { id: 'hero_trial', name: '英雄试炼', desc: '1v1单挑赢取增强剂 (需5徽章)',
+    type: 'stat', color: '#F44336', icon: '💪', recLvl: 50, restriction: 'solo_run',
+    rarity: '稀有', stars: 3, tier: 2, reqBadges: 5,
     rewards: [
-        { icon: '💰', text: '8000 金币/场' },
-        { icon: '🎫', text: '门票随徽章递增' }
-    ]
-  },
-  { 
-    id: 'shiny_valley', name: '闪光山谷', desc: '高闪光率 (需8徽章+幸运性格)', type: 'shiny_hunt', color: '#00E676', icon: '✨', recLvl: 80, restriction: 'lucky_nature',
-    rarity: '史诗', stars: 4,
+      { icon: '💪', text: '随机增强剂' },
+      { icon: '🏅', text: '仅限单挑' }
+    ] },
+  { id: 'rich_man', name: '豪宅金库', desc: '高回报金库 (需6徽章+门票)',
+    type: 'gold_pro', color: '#FFC107', icon: '🏦', recLvl: 55, restriction: 'entry_fee',
+    rarity: '史诗', stars: 4, tier: 2, reqBadges: 6,
     rewards: [
-        { icon: '✨', text: '高闪光概率' },
-        { icon: '🍀', text: '幸运加成' }
-    ]
-  },
-  { 
-    id: 'infinity_castle', name: '无限城', desc: 'Roguelike模式 (需8徽章)', type: 'infinity', color: '#7B1FA2', icon: '🏯', recLvl: 80, restriction: 'none',
-    rarity: '传说', stars: 5,
+      { icon: '💰', text: '8000 金币/场' },
+      { icon: '🎫', text: '门票随徽章递增' }
+    ] },
+  // === Tier 3: 精英级 (7~10徽章) ===
+  { id: 'survival_arena', name: '生存竞技场', desc: '无尽波次生存挑战 (需7徽章)',
+    type: 'survival', color: '#FF6F00', icon: '🏟️', recLvl: 65,
+    rarity: '史诗', stars: 4, tier: 3, reqBadges: 7,
     rewards: [
-        { icon: '👹', text: '鬼杀队遗物' },
-        { icon: '⚔️', text: '呼吸法秘籍' }
-    ]
-  }
+      { icon: '🏅', text: '按存活回合奖励' },
+      { icon: '💎', text: '高回合高品质装备' }
+    ] },
+  { id: 'shiny_valley', name: '闪光山谷', desc: '高闪光率捕捉 (需8徽章)',
+    type: 'shiny_hunt', color: '#00E676', icon: '✨', recLvl: 70, restriction: 'lucky_nature',
+    rarity: '史诗', stars: 4, tier: 3, reqBadges: 8,
+    rewards: [
+      { icon: '✨', text: '高闪光概率' },
+      { icon: '🍀', text: '幸运加成' }
+    ] },
+  { id: 'reverse_world', name: '逆位空间', desc: '属性克制全部反转 (需9徽章)',
+    type: 'reverse', color: '#880E4F', icon: '🔄', recLvl: 78,
+    rarity: '史诗', stars: 4, tier: 3, reqBadges: 9,
+    rewards: [
+      { icon: '🔄', text: '反转世界的挑战' },
+      { icon: '💰', text: '5000 金币 + 稀有道具' }
+    ] },
+  { id: 'double_arena', name: '双打擂台', desc: '2v2双打模式 (需9徽章)',
+    type: 'double', color: '#E65100', icon: '⚔️', recLvl: 75,
+    rarity: '史诗', stars: 4, tier: 3, reqBadges: 9,
+    rewards: [
+      { icon: '⚔️', text: '2v2双打奖励' },
+      { icon: '🎁', text: '协作技强化石' }
+    ] },
+  // === Tier 4: 终极级 (11~13徽章) ===
+  { id: 'infinity_castle', name: '无限城', desc: 'Roguelike无尽挑战 (需10徽章)',
+    type: 'infinity', color: '#7B1FA2', icon: '🏯', recLvl: 85,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 10,
+    rewards: [
+      { icon: '👹', text: '鬼杀队遗物' },
+      { icon: '⚔️', text: '呼吸法秘籍' }
+    ] },
+  { id: 'safari_zone', name: '狩猎地带', desc: '传说/神兽高概率出没 (需12徽章)',
+    type: 'catch', color: '#FF7043', icon: '🐾', recLvl: 95,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 12,
+    rewards: [
+      { icon: '🐲', text: '随机神兽' },
+      { icon: '🔴', text: '传说品质装备' }
+    ] },
+  { id: 'extreme_trial', name: '极限试炼', desc: '每波随机Debuff (需13徽章)',
+    type: 'extreme', color: '#B71C1C', icon: '☠️', recLvl: 100,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 13,
+    rewards: [
+      { icon: '☠️', text: '最高难度挑战' },
+      { icon: '👑', text: '冠军级装备+大师球' }
+    ] },
+  { id: 'treasure_maze', name: '宝藏迷宫', desc: '随机房间探索 (需11徽章)',
+    type: 'treasure', color: '#FF8F00', icon: '🗝️', recLvl: 90,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 11,
+    rewards: [
+      { icon: '🗝️', text: '每房间随机宝箱' },
+      { icon: '💎', text: '深层出现神兽蛋' }
+    ] },
 ];
 export const MOON_DEMONS = {
   LOWER: [94, 146, 208, 236, 265, 274], // 下弦 (耿鬼, 噩梦神等)
@@ -329,33 +284,5 @@ export const HYAKKI_DUNGEON = {
   ]
 };
 
-// 新活动副本
-export const EXTRA_DUNGEONS = [
-  {
-    id: 'boss_rush', name: '连战Boss塔', desc: '连续挑战3个Boss (需4徽章)',
-    type: 'boss_rush', color: '#D32F2F', icon: '🗼', recLvl: 40,
-    rarity: '稀有', stars: 3,
-    rewards: [
-      { icon: '🏆', text: '通关奖金5000' },
-      { icon: '🎁', text: '随机稀有道具' }
-    ]
-  },
-  {
-    id: 'type_challenge', name: '属性试炼场', desc: '指定属性限定战 (需3徽章)',
-    type: 'type_challenge', color: '#1976D2', icon: '🎯', recLvl: 30,
-    rarity: '普通', stars: 2,
-    rewards: [
-      { icon: '📖', text: '属性专精TM' },
-      { icon: '💰', text: '1500 金币' }
-    ]
-  },
-  {
-    id: 'survival_arena', name: '生存竞技场', desc: '尽可能存活更多回合 (需7徽章)',
-    type: 'survival', color: '#FF6F00', icon: '🏟️', recLvl: 70,
-    rarity: '史诗', stars: 4,
-    rewards: [
-      { icon: '🏅', text: '按存活回合奖励' },
-      { icon: '💎', text: '高回合高品质装备' }
-    ]
-  }
-];
+// EXTRA_DUNGEONS 已合并入主 DUNGEONS 数组
+export const EXTRA_DUNGEONS = [];

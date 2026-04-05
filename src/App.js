@@ -12124,9 +12124,8 @@ const renderMenu = () => {
       // 基础门槛检查
       if (party[0].level < dungeon.recLvl) { alert(`⛔ 等级不足！\n需要首发精灵达到 Lv.${dungeon.recLvl}`); return; }
 
-      // 徽章门槛（根据难度要求不同徽章数）
-      const badgeReqs = { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 8, hyakki: 6 };
-      const reqBadges = badgeReqs[dungeon.type] || 0;
+      // 徽章门槛
+      const reqBadges = dungeon.reqBadges || { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 10, hyakki: 6 }[dungeon.type] || 0;
       if (badges.length < reqBadges) { alert(`⛔ 徽章不足！\n需要 ${reqBadges} 枚徽章。当前: ${badges.length}/${reqBadges}`); return; }
 
       // 特殊限制
@@ -12203,6 +12202,29 @@ const renderMenu = () => {
         const survLvl = Math.min(party[0].level + 10, 100);
         alert("🏟️ 生存竞技场！\n敌人将不断变强，坚持越久奖励越好！\n每击败一只，下一只等级+2！");
         startBattle({ id: 990, name: '生存竞技场', lvl: [survLvl - 10, survLvl], pool: [...HIGH_TIER_POOL], drop: 500, survivalWave: 1 }, 'survival');
+      }
+      // --- 逆位空间 ---
+      else if (dungeon.type === 'reverse') {
+        const revLvl = Math.min(party[0].level + 5, 100);
+        alert("🔄 逆位空间！\n这里的属性克制完全反转！\n原本克制的属性变为被克制，请重新思考你的策略！");
+        startBattle({ id: 989, name: '逆位空间', lvl: [revLvl - 8, revLvl], pool: [...HIGH_TIER_POOL, ...LEGENDARY_POOL.slice(0, 20)], drop: 5000, isReversed: true }, 'wild');
+      }
+      // --- 双打擂台 ---
+      else if (dungeon.type === 'double') {
+        const dbLvl = Math.min(party[0].level + 5, 95);
+        alert("⚔️ 双打擂台！\n2v2 双打模式！\n需要更灵活的属性搭配和策略！");
+        startBattle({ id: 988, name: '双打擂台', lvl: [dbLvl - 5, dbLvl], pool: [...HIGH_TIER_POOL], drop: 3000 }, 'wild');
+      }
+      // --- 极限试炼 ---
+      else if (dungeon.type === 'extreme') {
+        alert("☠️ 极限试炼！\n每波战斗都附带随机Debuff！\n连续击败5波获得冠军级奖励！");
+        startBattle({ id: 987, name: '极限试炼 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL], drop: 8000, survivalWave: 1 }, 'survival');
+      }
+      // --- 宝藏迷宫 ---
+      else if (dungeon.type === 'treasure') {
+        const mazeLvl = Math.min(party[0].level + 5, 100);
+        alert("🗝️ 宝藏迷宫！\n每层随机宝箱+守卫！\n越深层越有好东西，但也越危险！");
+        startBattle({ id: 986, name: '宝藏迷宫 第1层', lvl: [mazeLvl - 10, mazeLvl], pool: [...HIGH_TIER_POOL], drop: 3000, bossRushWave: 1 }, 'boss_rush');
       }
     };
 
@@ -12485,8 +12507,7 @@ const renderMenu = () => {
                      padding:'4px 10px', borderRadius:'8px', border:`1px solid ${tierColor}30`
                    }}>Lv.{d.recLvl}+</span>
                   {(() => {
-                    const badgeReqs = { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 8, hyakki: 6, catch: 13, boss_rush: 4, type_challenge: 3, survival: 7 };
-                    const req = badgeReqs[d.type] || 0;
+                    const req = d.reqBadges || { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 10, hyakki: 6, catch: 12 }[d.type] || 0;
                     return req > 0 ? <span style={{fontSize:'10px', color: badges.length >= req ? '#4CAF50' : '#F44336', background: badges.length >= req ? '#E8F5E9' : '#FFF3F0', padding:'3px 8px', borderRadius:'6px', border: badges.length >= req ? '1px solid #C8E6C9' : '1px solid #FFCDD2'}}>🏅 {badges.length}/{req}徽章</span> : null;
                   })()}
                   {d.restriction && d.restriction !== 'none' && (
@@ -12967,10 +12988,13 @@ const renderMenu = () => {
                             <span style={{marginLeft:'6px', background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'10px', padding:'2px 8px', borderRadius:'8px', fontWeight:'bold', verticalAlign:'middle'}}>✨ 闪光</span>
                           ) : null}
                         </div>
-                        <div style={{display:'flex', gap:'6px', marginTop:'5px'}}>
+                        <div style={{display:'flex', gap:'6px', marginTop:'5px', flexWrap:'wrap'}}>
                         <span style={{background: TYPES[viewStatPet.type]?.color, color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
                             {TYPES[viewStatPet.type]?.name}
                         </span>
+                        {viewStatPet.secondaryType && <span style={{background: TYPES[viewStatPet.secondaryType]?.color, color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
+                            {TYPES[viewStatPet.secondaryType]?.name}
+                        </span>}
                         <span style={{background:'#333', color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
                             Lv.{viewStatPet.level}
                         </span>
@@ -12998,6 +13022,116 @@ const renderMenu = () => {
                         </div>
                     </div>
                     <button onClick={() => setViewStatPet(null)} style={{marginLeft:'auto', border:'none', background:'transparent', fontSize:'24px', color:'#999'}}>×</button>
+                </div>
+
+                {/* 1.5 属性克制信息 */}
+                <div style={{margin:'0 20px 10px', background:'#f9f9f9', borderRadius:'10px', padding:'10px 12px', border:'1px solid #eee'}}>
+                  {(() => {
+                    const chart = {
+                      NORMAL:  { weak: ['ROCK', 'STEEL'], strong: [] },
+                      FIRE:    { weak: ['WATER', 'ROCK', 'GROUND'], strong: ['GRASS', 'ICE', 'BUG', 'STEEL'] },
+                      WATER:   { weak: ['GRASS', 'ELECTRIC'], strong: ['FIRE', 'GROUND', 'ROCK'] },
+                      GRASS:   { weak: ['FIRE', 'ICE', 'POISON', 'FLYING', 'BUG'], strong: ['WATER', 'GROUND', 'ROCK'] },
+                      ELECTRIC:{ weak: ['GROUND'], strong: ['WATER', 'FLYING'] },
+                      ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL', 'SOUND'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'] },
+                      FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'STEEL', 'DARK'] },
+                      POISON:  { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'] },
+                      GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'] },
+                      FLYING:  { weak: ['ELECTRIC', 'ICE', 'ROCK', 'COSMIC'], strong: ['GRASS', 'FIGHT', 'BUG'] },
+                      PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'] },
+                      BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'] },
+                      ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'] },
+                      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'] },
+                      DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'] },
+                      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'] },
+                      STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'] },
+                      FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
+                      WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'] },
+                      LIGHT:   { weak: ['DARK', 'GHOST'], strong: ['DARK', 'GHOST', 'POISON'] },
+                      COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING'] },
+                      SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC'] },
+                    };
+                    const t1 = viewStatPet.type;
+                    const t2 = viewStatPet.secondaryType;
+                    const info1 = chart[t1] || { weak: [], strong: [] };
+                    const info2 = t2 ? (chart[t2] || { weak: [], strong: [] }) : null;
+
+                    const weakTo = new Set([...(info1.weak || []), ...(info2 ? info2.weak : [])]);
+                    const strongAgainst = new Set();
+                    const allTypes = Object.keys(chart);
+                    allTypes.forEach(atkType => {
+                      const ai = chart[atkType];
+                      if (!ai) return;
+                      let mod = 1.0;
+                      if (ai.strong && ai.strong.includes(t1)) mod *= 1.5;
+                      if (ai.weak && ai.weak.includes(t1)) mod *= 0.8;
+                      if (t2) {
+                        if (ai.strong && ai.strong.includes(t2)) mod *= 1.5;
+                        if (ai.weak && ai.weak.includes(t2)) mod *= 0.8;
+                      }
+                      if (mod > 1.2) weakTo.add(atkType);
+                    });
+
+                    allTypes.forEach(defType => {
+                      let mod = 1.0;
+                      if (info1.strong && info1.strong.includes(defType)) mod *= 1.5;
+                      if (info1.weak && info1.weak.includes(defType)) mod *= 0.8;
+                      if (info2) {
+                        if (info2.strong && info2.strong.includes(defType)) mod *= 1.5;
+                        if (info2.weak && info2.weak.includes(defType)) mod *= 0.8;
+                      }
+                      if (mod > 1.2) strongAgainst.add(defType);
+                    });
+
+                    const resistTo = new Set();
+                    allTypes.forEach(atkType => {
+                      const ai = chart[atkType];
+                      if (!ai) return;
+                      let mod = 1.0;
+                      if (ai.strong && ai.strong.includes(t1)) mod *= 1.5;
+                      if (ai.weak && ai.weak.includes(t1)) mod *= 0.8;
+                      if (t2) {
+                        if (ai.strong && ai.strong.includes(t2)) mod *= 1.5;
+                        if (ai.weak && ai.weak.includes(t2)) mod *= 0.8;
+                      }
+                      if (mod < 0.9) resistTo.add(atkType);
+                    });
+
+                    const renderTypePills = (types, style) => [...types].filter(tt => TYPES[tt]).map(tt => (
+                      <span key={tt} style={{
+                        background: TYPES[tt]?.color, color:'#fff', padding:'1px 6px',
+                        borderRadius:'4px', fontSize:'9px', fontWeight:'bold', ...style
+                      }}>{TYPES[tt]?.name}</span>
+                    ));
+
+                    return (
+                      <div>
+                        <div style={{fontSize:'11px', fontWeight:'bold', color:'#555', marginBottom:'6px', display:'flex', alignItems:'center', gap:'4px'}}>
+                          ⚔️ 属性克制 {t2 && <span style={{fontSize:'9px', color:'#999', fontWeight:'normal'}}>({TYPES[t1]?.name}+{TYPES[t2]?.name} 双属性综合)</span>}
+                        </div>
+                        <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
+                          <div style={{display:'flex', alignItems:'flex-start', gap:'6px'}}>
+                            <span style={{fontSize:'10px', color:'#E53935', minWidth:'50px', fontWeight:'bold', flexShrink:0}}>⬆️ 克制</span>
+                            <div style={{display:'flex', gap:'3px', flexWrap:'wrap'}}>
+                              {strongAgainst.size > 0 ? renderTypePills(strongAgainst) : <span style={{fontSize:'9px', color:'#999'}}>无特殊克制</span>}
+                            </div>
+                          </div>
+                          <div style={{display:'flex', alignItems:'flex-start', gap:'6px'}}>
+                            <span style={{fontSize:'10px', color:'#1E88E5', minWidth:'50px', fontWeight:'bold', flexShrink:0}}>⬇️ 弱点</span>
+                            <div style={{display:'flex', gap:'3px', flexWrap:'wrap'}}>
+                              {weakTo.size > 0 ? renderTypePills(weakTo) : <span style={{fontSize:'9px', color:'#999'}}>无明显弱点</span>}
+                            </div>
+                          </div>
+                          <div style={{display:'flex', alignItems:'flex-start', gap:'6px'}}>
+                            <span style={{fontSize:'10px', color:'#43A047', minWidth:'50px', fontWeight:'bold', flexShrink:0}}>🛡️ 抵抗</span>
+                            <div style={{display:'flex', gap:'3px', flexWrap:'wrap'}}>
+                              {resistTo.size > 0 ? renderTypePills(resistTo) : <span style={{fontSize:'9px', color:'#999'}}>无特殊抵抗</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 2. 属性对比区域 */}
