@@ -1792,6 +1792,37 @@ const [viewStatPet, setViewStatPet] = useState(null);
             consumed = true;
             msg = `不可思议！${pet.name} 瞬间升到了 Lv.100！`;
             setInventory(prev => ({...prev, [item.id]: prev[item.id] - 1}));
+        } else if (item.id === 'exp_candy') {
+            if (pet.level >= 100) { alert("它已经达到等级上限了！"); return; }
+
+            const oldLv = pet.level;
+            pet.level = Math.min(100, pet.level + 1);
+            pet.exp = 0;
+            pet.nextExp = pet.level * pet.level * 5;
+
+            const newStats = getStats(pet);
+            const hpDiff = newStats.maxHp - getStats({...pet, level: oldLv}).maxHp;
+            pet.currentHp = Math.min(newStats.maxHp, pet.currentHp + Math.max(0, hpDiff));
+
+            const pokedex = POKEDEX.find(p => p.id === pet.id);
+            if (pokedex?.evo && pet.level >= (pokedex.evoLvl || 30) && !pet.isEvolved) {
+                const evoDex = POKEDEX.find(p => p.id === pokedex.evo);
+                if (evoDex) {
+                    pet.id = evoDex.id;
+                    pet.name = pet.isShiny ? `✨${evoDex.name}` : evoDex.name;
+                    pet.type = evoDex.type;
+                    if (evoDex.secondaryType) pet.secondaryType = evoDex.secondaryType;
+                    pet.isEvolved = true;
+                    msg = `🎉 ${pet.name} 进化了！Lv.${oldLv} → Lv.${pet.level}！`;
+                } else {
+                    msg = `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
+                }
+            } else {
+                msg = `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
+            }
+
+            consumed = true;
+            setInventory(prev => ({...prev, [item.id]: prev[item.id] - 1}));
         } else {
             if (!pet.evs) pet.evs = {};
             if (!pet.evs[item.stat]) pet.evs[item.stat] = 0;
@@ -5378,7 +5409,8 @@ const useGrowthItem = (petIndex, itemId) => {
         newGrid[1][1] = 8; 
         newGrid[1][2] = 10; 
         newGrid[GRID_H-2][GRID_W-2] = 9; 
-        for(let i=0; i<5; i++) {
+        const chestCount = Math.min(12, 5 + Math.floor(mapId / 3));
+        for(let i=0; i<chestCount; i++) {
           let rx, ry;
           do { rx = _.random(1, GRID_W-2); ry = _.random(1, GRID_H-2); } while(newGrid[ry][rx] !== 2);
           newGrid[ry][rx] = 4;
@@ -5411,37 +5443,24 @@ const useGrowthItem = (petIndex, itemId) => {
             activityTiles.forEach(tile => placeActivity(tile));
         }
 
-    // 随机放置家具拾取点 (2-3个, 25%概率出现)
-    const furnitureCount = _.random(2, 3);
-    for (let fi = 0; fi < furnitureCount; fi++) {
-        if (Math.random() < 0.25) continue;
-        const fx = _.random(2, GRID_W - 3);
-        const fy = _.random(2, GRID_H - 3);
-        if (newGrid[fy][fx] === 2) newGrid[fy][fx] = FURNITURE_TILE;
-    }
+    // 地图丰富度随地图编号递增
+    const mapTier = Math.min(4, Math.floor(mapId / 4) + 1);
+    const placeRandom = (tileId, count) => {
+      for (let i = 0; i < count; i++) {
+        const px = _.random(2, GRID_W - 3);
+        const py = _.random(2, GRID_H - 3);
+        if (newGrid[py][px] === 2) newGrid[py][px] = tileId;
+      }
+    };
 
-    // 随机放置果实树 (1-2棵, 30%概率)
-    const fruitTreeCount = _.random(1, 2);
-    for (let ft = 0; ft < fruitTreeCount; ft++) {
-        if (Math.random() < 0.3) continue;
-        const ftx = _.random(2, GRID_W - 3);
-        const fty = _.random(2, GRID_H - 3);
-        if (newGrid[fty][ftx] === 2) newGrid[fty][ftx] = 14;
-    }
-
-    // 随机放置神秘祭坛 (每张地图 0~1 个, 40%概率出现)
-    if (Math.random() < 0.4) {
-        const ax = _.random(3, GRID_W - 4);
-        const ay = _.random(3, GRID_H - 4);
-        if (newGrid[ay][ax] === 2) newGrid[ay][ax] = 15;
-    }
-
-    // 随机放置野外旅商 (每张地图 0~1 个, 35%概率出现)
-    if (Math.random() < 0.35) {
-        const mx = _.random(3, GRID_W - 4);
-        const my = _.random(3, GRID_H - 4);
-        if (newGrid[my][mx] === 2) newGrid[my][mx] = 16;
-    }
+    // 家具拾取点
+    placeRandom(FURNITURE_TILE, _.random(1, 1 + mapTier));
+    // 果实树
+    placeRandom(14, _.random(1, mapTier));
+    // 神秘祭坛
+    placeRandom(15, mapTier >= 3 ? _.random(1, 2) : (Math.random() < 0.5 ? 1 : 0));
+    // 旅行商人
+    placeRandom(16, mapTier >= 2 ? 1 : (Math.random() < 0.4 ? 1 : 0));
 
     setMapGrid(newGrid);
     setView('grid_map');
@@ -5604,11 +5623,7 @@ const useGrowthItem = (petIndex, itemId) => {
       // ------------------------------------------------
       // 水域 (Tile 3) - 冲浪探索系统
       if (tileType === 3) {
-        if (badges.length < 4) {
-          alert(`前方是深水区！\n需要获得 4 枚徽章才能使用【冲浪】通过。`);
-          setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy }));
-          return;
-        } else {
+        {
            const surfRoll = Math.random();
            if (surfRoll < 0.05) {
               const bottleMsgs = [
@@ -5639,11 +5654,7 @@ const useGrowthItem = (petIndex, itemId) => {
 
       // 岩石 (Tile 6) - 探矿系统
       if (tileType === 6) {
-        if (badges.length < 2) {
-          alert(`巨大的岩石挡住了去路！\n需要获得 2 枚徽章才能使用【碎岩】通过。`);
-          setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy }));
-          return;
-        } else {
+        {
            setMapGrid(prev => {
                const newGrid = prev.map(row => [...row]);
                newGrid[y][x] = 2;
@@ -5922,11 +5933,9 @@ const useGrowthItem = (petIndex, itemId) => {
       let encounterRate = 0.05; 
       if (tileType === 7) encounterRate = 0.25; 
       
-      if (roll < 0.02) {
-          // 训练家战斗
+      if (roll < 0.08) {
           setTimeout(() => startBattle(mapInfo, 'trainer'), 200); 
-      } else if (roll < 0.02 + encounterRate) {
-          // 野生精灵战斗
+      } else if (roll < 0.08 + encounterRate) {
           setTimeout(() => startBattle(mapInfo, 'wild'), 200);
       }
     }
