@@ -91,6 +91,14 @@ import {
   generateCafeRecruits, DEFAULT_GANG_STATE, PERSONAL_SKILL_COST_MULT, PERSONAL_SKILL_BASE_COST,
 } from './data/gang';
 import {
+  FACTIONS, FACTION_IDS, INITIAL_TERRITORIES, WAR_MAP_IDS,
+  MILITARY_RANKS, getMilitaryRank, FACTION_TRAINER_NAMES, TOKEN_SHOP,
+  SEASON_CONFIG, WAR_TICK_CONFIG, DEFAULT_KINGDOM_WAR,
+  initTerritories, calcFactionPower, getFactionTerritoryCount,
+  executeWarTick, checkSeasonEnd, applySeasonRewards, resetKingdomDailyCounts,
+  KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS,
+} from './data/kingdom';
+import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
   SAME_TYPE_COMBO, DEFAULT_COMBO, BOND_PER_TURN, BOND_PER_KO,
   CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE, DRINK_LOOT_TABLES,
@@ -275,6 +283,16 @@ export default function RPG(props) {
   // 帮派系统
   const [gang, setGang] = useState(savedData.gang || { ...DEFAULT_GANG_STATE });
   const [gangTab, setGangTab] = useState('overview');
+
+  // 国战系统
+  const [kingdomWar, setKingdomWar] = useState(() => {
+    const saved = savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR };
+    if (!saved.territories || Object.keys(saved.territories).length === 0) {
+      saved.territories = initTerritories();
+    }
+    return saved;
+  });
+  const [kwTab, setKwTab] = useState('overview');
 
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
@@ -883,6 +901,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (enemy.status === 'SLP' || enemy.status === 'FRZ') baseRate *= 2.0;
       else if (enemy.status === 'PAR' || enemy.status === 'BRN' || enemy.status === 'PSN') baseRate *= 1.5;
 
+      // 帮派+阵营捕获率加成
+      const gangCatchBonus = getGangSkillBonus(getGangSkills(gang)).catchRate || 0;
+      const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
+      baseRate *= (1 + (gangCatchBonus + kwCatchBonus) / 100);
+
       return Math.min(baseRate, 0.95);
   };
 
@@ -1224,18 +1247,22 @@ const [viewStatPet, setViewStatPet] = useState(null);
     }
 
     const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
-    const applyGB = (val, pct) => pct > 0 ? Math.floor(val * (1 + pct / 100)) : val;
+    const kwBonus = (gangBonusOverride === undefined && kingdomWar?.faction) ? (FACTIONS[kingdomWar.faction]?.bonus || {}) : {};
+    const applyGB = (val, pct, kwPct) => {
+      let total = (pct || 0) + (kwPct || 0);
+      return total > 0 ? Math.floor(val * (1 + total / 100)) : val;
+    };
 
     return {
-      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), gangBonus.hp),
-      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk),
-      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def),
-      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), gangBonus.s_atk),
-      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), gangBonus.s_def),
-      spd:   applyGB(finalSpd, gangBonus.spd),
+      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), gangBonus.hp, kwBonus.hp),
+      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk, kwBonus.atk),
+      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def, kwBonus.def),
+      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), gangBonus.s_atk, kwBonus.s_atk),
+      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), gangBonus.s_def, kwBonus.s_def),
+      spd:   applyGB(finalSpd, gangBonus.spd, kwBonus.spd),
       crit:  finalCrit,
-      atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk), 
-      def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def)
+      atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk, kwBonus.atk), 
+      def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def, kwBonus.def)
     };
   }
 
@@ -2206,6 +2233,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        cafe,
        marriage,
        gang,
+       kingdomWar,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -2311,9 +2339,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         next.gangRank = rank?.level || 99;
       }
       if (marriage?.spouse) next.marriageComplete = 1;
+      if (kingdomWar?.faction) {
+        next.kwJoined = true;
+        const rankIdx = MILITARY_RANKS.findIndex(r => r.id === (kingdomWar.militaryRank || 'civilian'));
+        next.kwRankIdx = rankIdx >= 0 ? rankIdx : 0;
+        next.kwFactionTerritories = getFactionTerritoryCount(kingdomWar.faction, kingdomWar.territories || {});
+      }
       return next;
     });
-  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress, gang, marriage]);
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress, gang, marriage, kingdomWar]);
 
   useEffect(() => {
     syncAchStats();
@@ -4200,7 +4234,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </button>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>游 戏 说 明</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>v6.0 双打大战</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>v7.0 三国争霸</div>
             </div>
             <div style={{width:'56px'}} />
           </div>
@@ -4643,6 +4677,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   id: gangId, name: name.trim(), icon: GANG_ICONS[iconIdx],
                   level: 1, funds: 0, members: [], skills: {}, wins: 0,
                   color: '#FF6F00', power: 100, desc: '玩家自建帮派',
+                  faction: kingdomWar.faction || null,
                 },
                 contribution: 0, rank: 'leader', personalSkills: {},
                 dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
@@ -4652,15 +4687,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </button>
 
             <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px', color:'#FFD700'}}>— 或加入已有帮派 —</div>
+            {kingdomWar.faction && <div style={{fontSize:'11px', color:'#90CAF9', marginBottom:'8px', textAlign:'center'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName || ''}，仅显示同阵营帮派</div>}
             <div style={{width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
-              {GANG_PRESETS.map(g => (
+              {GANG_PRESETS.filter(g => !kingdomWar.faction || g.faction === kingdomWar.faction).map(g => (
                 <div key={g.id} style={{...cardStyle, transition:'transform 0.2s'}}>
                   <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
                     <span style={{fontSize:'24px'}}>{g.icon}</span>
                     <span style={{fontWeight:'bold', fontSize:'14px'}}>{g.name}</span>
-                    <span style={{fontSize:'11px', color:'#9E9E9E', marginLeft:'auto'}}>Lv.{g.level}</span>
+                    <span style={{fontSize:'11px', color: FACTIONS[g.faction]?.color || '#9E9E9E', marginLeft:'auto'}}>{FACTIONS[g.faction]?.name || ''} Lv.{g.level}</span>
                   </div>
                   <div style={{fontSize:'11px', color:'#aaa', marginBottom:'4px'}}>{g.desc}</div>
+                  {g.perkDesc && <div style={{fontSize:'10px', color:'#66BB6A', marginBottom:'4px'}}>🎁 {g.perkDesc}</div>}
                   <div style={{fontSize:'11px', color:'#FFD700', marginBottom:'8px'}}>帮主: {g.leader} · 成员 {g.members.length}人</div>
                   <button onClick={() => {
                     if (!canJoinGang) { alert(`退帮冷却中，还需等待约 ${leaveHoursLeft} 小时`); return; }
@@ -4702,6 +4739,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'18px', fontWeight:'bold'}}>{gangInfo?.name || '未知帮派'}</div>
               <div style={{fontSize:'12px', color:'#aaa', marginTop:'2px'}}>{gangInfo?.desc}</div>
               <div style={{fontSize:'12px', color:'#FFD700', marginTop:'4px'}}>帮派等级: Lv.{gangInfo?.level || 1} · 战力 {gangInfo?.power || 0}</div>
+              {gangInfo?.perkDesc && <div style={{fontSize:'11px', color:'#66BB6A', marginTop:'3px'}}>🎁 帮派特色: {gangInfo.perkDesc}</div>}
             </div>
           </div>
 
@@ -4897,7 +4935,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const maxSkills = getGangMaxSkills(gang);
       const personalSk = gang.personalSkills || {};
       const rankIdx = GANG_RANKS.findIndex(r => r.id === (gang.rank || 'member'));
-      const canLearnAdvanced = rankIdx >= 3;
       return (
         <div>
           <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>📖 帮派技能</div>
@@ -4910,13 +4947,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             const gangMaxLv = maxSkills[skill.id] || 0;
             const myLv = isOwner ? gangMaxLv : Math.min(personalSk[skill.id] || 0, gangMaxLv);
             const myVal = myLv * skill.valPerLv;
-            const isAdvanced = idx >= 6;
             const gangUpgradeCost = gangMaxLv < skill.maxLv ? skill.costPerLv * (GANG_SKILL_COST_MULT[gangMaxLv] || 1) : 0;
             const personalUpgradeCost = myLv < gangMaxLv ? PERSONAL_SKILL_BASE_COST * (PERSONAL_SKILL_COST_MULT[myLv] || 1) : 0;
-            const canUpgradePersonal = !isOwner && myLv < gangMaxLv && (!isAdvanced || canLearnAdvanced);
+            const canUpgradePersonal = !isOwner && myLv < gangMaxLv;
 
             return (
-              <div key={skill.id} style={{...cardStyle, opacity: isAdvanced && !canLearnAdvanced && !isOwner ? 0.5 : 1}}>
+              <div key={skill.id} style={cardStyle}>
                 <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
                   <span style={{fontSize:'20px'}}>{skill.icon}</span>
                   <div style={{flex:1}}>
@@ -4973,10 +5009,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           })}
           <div style={{...cardStyle, background:'rgba(76,175,80,0.1)', border:'1px solid rgba(76,175,80,0.2)'}}>
             <div style={{fontSize:'12px', fontWeight:'bold', color:'#66BB6A', marginBottom:'4px'}}>你的实际加成</div>
-            <div style={{fontSize:'11px', color:'#aaa', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
-              <span>物攻 +{bonus.atk}%</span><span>物防 +{bonus.def}%</span><span>特攻 +{bonus.s_atk}%</span>
-              <span>特防 +{bonus.s_def}%</span><span>HP +{bonus.hp}%</span><span>速度 +{bonus.spd}%</span>
-              <span>金币 +{bonus.gold}%</span><span>经验 +{bonus.exp}%</span>
+            <div style={{fontSize:'11px', color:'#aaa', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px'}}>
+              <span>💰 金币 +{bonus.gold}%</span><span>📖 经验 +{bonus.exp}%</span>
+              <span>⚔️ 国战贡献 +{bonus.contrib}%</span><span>🏰 领地防御 +{bonus.territory}/tick</span>
+              <span>🐫 商队收入 {bonus.trade}金/日</span><span>🎯 捕获率 +{bonus.catchRate}%</span>
             </div>
           </div>
         </div>
@@ -6027,6 +6063,18 @@ const useGrowthItem = (petIndex, itemId) => {
         return; 
       }
 
+      // 国战遭遇：敌方/交战地图上额外概率遇到敌国训练师
+      if (kingdomWar.faction && WAR_MAP_IDS.includes(currentMapId)) {
+        const terr = kingdomWar.territories[currentMapId];
+        if (terr && terr.owner !== kingdomWar.faction && terr.owner !== 'neutral') {
+          const kwRate = terr.contested ? 0.12 : 0.06;
+          if (Math.random() < kwRate) {
+            setTimeout(() => startBattle(mapInfo, 'kingdom_war'), 200);
+            return;
+          }
+        }
+      }
+
       // 草丛 (Tile 7) 遇敌率更高
       let encounterRate = 0.05; 
       if (tileType === 7) encounterRate = 0.25; 
@@ -6236,7 +6284,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6528,6 +6576,46 @@ const grantContestReward = (config, score, subjectPet = null) => {
             enemyParty.push(createPet(eid, lv, true, i === 5));
         }
         extraBattleData.gangWarTarget = target;
+    }
+    // -------------------------------------------------
+    // 15c. 国战遭遇
+    // -------------------------------------------------
+    else if (type === 'kingdom_war') {
+        const terr = kingdomWar.territories[currentMapId];
+        const enemyFaction = terr ? terr.owner : (FACTION_IDS.find(f => f !== kingdomWar.faction) || 'wei');
+        const factionData = FACTIONS[enemyFaction];
+        const namePool = FACTION_TRAINER_NAMES[enemyFaction] || ['战士'];
+        const nameChoice = namePool[Math.floor(Math.random() * namePool.length)];
+        trainerName = `[${factionData.fullName}]${nameChoice}`;
+        const mapLvMax = context.lvl ? context.lvl[1] : 50;
+        const kwLv = Math.min(100, mapLvMax + 5);
+        dropGold = (context.drop || 400) * 2;
+        const factionGangs = GANG_PRESETS.filter(g => g.faction === enemyFaction);
+        const combinedPool = factionGangs.flatMap(g => g.teamPool || []);
+        const pool = combinedPool.length > 0 ? combinedPool : HIGH_TIER_POOL;
+        for (let i = 0; i < 6; i++) {
+            const eid = pool[Math.floor(Math.random() * pool.length)];
+            const lv = Math.max(20, kwLv - Math.floor(Math.random() * 6));
+            enemyParty.push(createPet(eid, lv, true, i === 5));
+        }
+        extraBattleData.kwEnemyFaction = enemyFaction;
+    }
+    // -------------------------------------------------
+    // 15d. 国战战役副本
+    // -------------------------------------------------
+    else if (type === 'kw_campaign') {
+        const campaign = context.campaignData;
+        trainerName = campaign.bossName;
+        dropGold = campaign.reward.gold;
+        const bossId = campaign.boss;
+        const bossLvl = campaign.bossLvl;
+        const pool = campaign.pool;
+        for (let i = 0; i < 6; i++) {
+            const eid = i === 5 ? bossId : pool[Math.floor(Math.random() * pool.length)];
+            const lv = i === 5 ? bossLvl : Math.max(bossLvl - 15, bossLvl - Math.floor(Math.random() * 10));
+            enemyParty.push(createPet(eid, lv, true, i === 5));
+        }
+        extraBattleData.campaignData = campaign;
     }
     // -------------------------------------------------
     // 16. 普通野怪 (兜底逻辑)
@@ -7534,6 +7622,65 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const interval = setInterval(cafeTick, 60000);
     return () => clearInterval(interval);
   }, [cafeTick]);
+
+  // 国战 War Tick
+  useEffect(() => {
+    if (!kingdomWar.faction) return;
+    const avgLv = party.length > 0 ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50;
+
+    // 离线追赶
+    if (kingdomWar.lastTick) {
+      const elapsed = Date.now() - kingdomWar.lastTick;
+      const missedTicks = Math.min(WAR_TICK_CONFIG.maxCatchupTicks, Math.floor(elapsed / WAR_TICK_CONFIG.intervalMs));
+      if (missedTicks > 0) {
+        let terr = { ...kingdomWar.territories };
+        let allLogs = [];
+        for (let i = 0; i < missedTicks; i++) {
+          const result = executeWarTick(terr, GANG_PRESETS, kingdomWar.faction, avgLv, false);
+          terr = result.territories;
+          allLogs = [...allLogs, ...result.log];
+        }
+        const trimmedLog = [...(kingdomWar.warLog || []), ...allLogs].slice(-20);
+        setKingdomWar(prev => {
+          let next = { ...prev, territories: terr, warLog: trimmedLog, lastTick: Date.now() };
+          const seasonResult = checkSeasonEnd(next);
+          if (seasonResult) {
+            const rewarded = applySeasonRewards(next, seasonResult);
+            setGold(g => g + (rewarded.goldReward || 0));
+            next = { ...rewarded, factionTokens: (next.factionTokens || 0) + (rewarded.tokenReward || 0) };
+            delete next.goldReward; delete next.tokenReward;
+          }
+          return next;
+        });
+      }
+    }
+
+    const warInterval = setInterval(() => {
+      setKingdomWar(prev => {
+        if (!prev.faction) return prev;
+        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, avgLv, prev.attackBuff);
+        const gangTerrBonus = getGangSkillBonus(getGangSkills(gang)).territory || 0;
+        const tickTerr = { ...result.territories };
+        if (gangTerrBonus > 0) {
+          for (const mid of WAR_MAP_IDS) {
+            if (tickTerr[mid] && tickTerr[mid].owner === prev.faction) {
+              tickTerr[mid] = { ...tickTerr[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, tickTerr[mid].strength + gangTerrBonus) };
+            }
+          }
+        }
+        const trimmedLog = [...(prev.warLog || []), ...result.log].slice(-20);
+        let next = { ...prev, territories: tickTerr, warLog: trimmedLog, lastTick: Date.now(), attackBuff: false };
+        const seasonResult = checkSeasonEnd(next);
+        if (seasonResult) {
+          const rewarded = applySeasonRewards(next, seasonResult);
+          next = { ...rewarded, factionTokens: (next.factionTokens || 0) + (rewarded.tokenReward || 0) };
+          delete next.goldReward; delete next.tokenReward;
+        }
+        return next;
+      });
+    }, WAR_TICK_CONFIG.intervalMs);
+    return () => clearInterval(warInterval);
+  }, [kingdomWar.faction]);
 
   const buyCafe = () => {
     if (cafe.owned) { alert('已拥有咖啡厅！'); return; }
@@ -9227,7 +9374,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const shareRatio = isActive ? 1.0 : 0.5; 
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
-      const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost) * (1 + gangExpBonus / 100));
+      const kwExpBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.exp || 0) : 0;
+      const kwExpBuff = (kingdomWar?.expBuffBattles > 0) ? 50 : 0;
+      const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff) / 100));
       
       pet.exp += expGain;
       if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
@@ -9508,7 +9657,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     });
 
     const gangGoldBonus = getGangSkillBonus(getGangSkills(gang)).gold;
-    const goldGain = Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * (1 + gangGoldBonus / 100));
+    const kwGoldBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.gold || 0) : 0;
+    const goldGain = Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * (1 + (gangGoldBonus + kwGoldBonus) / 100));
     setGold(g => g + goldGain);
 
     // 家具掉落 (战斗获得, 20%基础概率, Boss/Gym 50%)
@@ -9932,6 +10082,65 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
+    // 9b. 国战胜利
+    if (battle.type === 'kingdom_war') {
+        const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
+        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + gangBonusContrib / 100));
+        const tokenGain = 2 + Math.floor(Math.random() * 3);
+        setKingdomWar(prev => {
+            const next = { ...prev, warContribution: (prev.warContribution || 0) + contribGain, factionTokens: (prev.factionTokens || 0) + tokenGain };
+            next.dailyCounts = { ...next.dailyCounts, kills: (next.dailyCounts.kills || 0) + 1 };
+            next.militaryRank = getMilitaryRank(next.warContribution).id;
+            const mapId = currentMapId;
+            if (next.territories[mapId]) {
+                const t = { ...next.territories[mapId] };
+                if (t.owner === prev.faction) {
+                    t.strength = Math.min(WAR_TICK_CONFIG.maxStrength, t.strength + WAR_TICK_CONFIG.playerKillStrengthBonus);
+                } else {
+                    t.strength = Math.max(WAR_TICK_CONFIG.minStrength, t.strength - WAR_TICK_CONFIG.playerKillAttackBonus);
+                }
+                next.territories = { ...next.territories, [mapId]: t };
+            }
+            return next;
+        });
+        updateAchStat({ kwKills: 1 });
+        updateGangTaskProgress('kw_kill', 1);
+        updateGangTaskProgress('battle_win', 1);
+        const factionData = FACTIONS[battle.kwEnemyFaction] || { fullName: '敌国' };
+        alert(`⚔️ 国战胜利！击败${factionData.fullName}训练师！\n\n获得：\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}\n💰 金币已结算`);
+        setParty(updatedParty);
+        setBattle(null);
+        setView('grid_map');
+        return;
+    }
+
+    // 9c. 国战战役副本胜利
+    if (battle.type === 'kw_campaign') {
+        const campaign = battle.campaignData;
+        const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
+        const contribGain = Math.floor(campaign.reward.contribution * (1 + gangBonusContrib / 100));
+        const tokenGain = campaign.reward.tokens;
+        setKingdomWar(prev => {
+            const next = {
+              ...prev,
+              warContribution: (prev.warContribution || 0) + contribGain,
+              factionTokens: (prev.factionTokens || 0) + tokenGain,
+              completedCampaigns: [...new Set([...(prev.completedCampaigns || []), campaign.id])],
+            };
+            next.militaryRank = getMilitaryRank(next.warContribution).id;
+            return next;
+        });
+        updateAchStat({ kwKills: 1 });
+        updateGangTaskProgress('kw_campaign', 1);
+        updateGangTaskProgress('battle_win', 1);
+        alert(`⚔️ 战役通关！${campaign.name}\n\nBoss: ${campaign.bossName}\n\n获得：\n💰 ${campaign.reward.gold.toLocaleString()} 金币\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}`);
+        setParty(updatedParty);
+        setBattle(null);
+        setMapTab('kingdom');
+        setView('map-screen');
+        return;
+    }
+
     // 9. 道馆逻辑
     const storyChapter = STORY_SCRIPT[storyProgress];
     if (isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
@@ -10054,8 +10263,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 帮派任务 - 战斗胜利追踪
     updateGangTaskProgress('battle_win', 1);
 
+    // 国战经验Buff计数递减
+    if (kingdomWar.expBuffBattles > 0) {
+      setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+    }
+
     // 帮派招募 - 无帮派训练家可邀请入帮
-    if (battle.canInviteToGang && !battle.trainerGang && isTrainer && battle.type !== 'gang_war'
+    if (battle.canInviteToGang && !battle.trainerGang && isTrainer && battle.type !== 'gang_war' && battle.type !== 'kingdom_war' && battle.type !== 'kw_campaign'
         && !isStory && !isGym && gang.isOwner && gang.customGang) {
       const maxM = GANG_MAX_MEMBERS(gang.customGang.level || 1);
       if ((gang.customGang.members || []).length < maxM) {
@@ -12155,7 +12369,7 @@ const renderMenu = () => {
         animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
 
-        {/* 顶部横幅 - 双打大战主题 */}
+        {/* 顶部横幅 - 三国争霸主题 */}
         <div style={{
           position:'relative', padding:'36px 32px 30px', overflow:'hidden',
           background:'linear-gradient(135deg, rgba(200,50,0,0.15) 0%, rgba(255,120,0,0.08) 25%, rgba(255,180,0,0.06) 50%, rgba(200,50,50,0.1) 75%, rgba(150,30,0,0.12) 100%)',
@@ -12168,7 +12382,7 @@ const renderMenu = () => {
           <div style={{position:'relative', textAlign:'center'}}>
             <div style={{display:'inline-flex', alignItems:'center', gap:'8px', padding:'4px 16px', borderRadius:'20px', background:'linear-gradient(135deg, rgba(255,80,0,0.2), rgba(255,50,50,0.15))', border:'1px solid rgba(255,150,50,0.25)', marginBottom:'16px'}}>
               <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#ff9800', boxShadow:'0 0 8px rgba(255,152,0,0.6)'}} />
-              <span style={{fontSize:'10px', color:'#ffcc80', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 6.0</span>
+              <span style={{fontSize:'10px', color:'#ffcc80', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 7.0</span>
               <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#f44336', boxShadow:'0 0 8px rgba(244,67,54,0.6)'}} />
             </div>
             
@@ -12180,7 +12394,7 @@ const renderMenu = () => {
               fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
               lineHeight:1.15, marginBottom:'8px',
               filter:'drop-shadow(0 2px 16px rgba(255,100,0,0.35))'
-            }}>双打大战</div>
+            }}>三国争霸</div>
             
             <div style={{
               fontSize:'16px', fontWeight:'800', letterSpacing:'8px',
@@ -12188,7 +12402,7 @@ const renderMenu = () => {
               backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               marginBottom:'10px'
-            }}>DOUBLE BATTLE</div>
+            }}>KINGDOM WAR</div>
 
             <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginTop:'4px'}}>
               <span style={{fontSize:'16px'}}>⚔️</span>
@@ -12228,8 +12442,8 @@ const renderMenu = () => {
           }}>
             <span style={{fontSize:'20px'}}>⚡</span>
             <div>
-              <div style={{fontSize:'11px', fontWeight:'700', color:'#ffb74d'}}>6.0 新特性 · 双打战斗系统</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'1px'}}>野外遇敌有概率触发2v2双打 · 派出2只精灵同时战斗!</div>
+              <div style={{fontSize:'11px', fontWeight:'700', color:'#ffb74d'}}>7.0 新特性 · 国战系统</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'1px'}}>魏蜀吴三国争霸 · 争夺领土 · 赛季对抗!</div>
             </div>
           </div>
 
@@ -12256,7 +12470,7 @@ const renderMenu = () => {
                 {hasSave ? '继续冒险' : '开始新游戏'}
               </div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'1px'}}>
-                {hasSave ? '读取上次的冒险进度' : '体验全新双打战斗系统'}
+                {hasSave ? '读取上次的冒险进度' : '体验全新三国争霸系统'}
               </div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -12314,7 +12528,7 @@ const renderMenu = () => {
           background:'rgba(0,0,0,0.2)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(255,200,150,0.2)', letterSpacing:'1px'}}>v6.0 · {POKEDEX.length} Creatures · Double Battle</span>
+          <span style={{fontSize:'10px', color:'rgba(255,200,150,0.2)', letterSpacing:'1px'}}>v7.0 · {POKEDEX.length} Creatures · Kingdom War</span>
           <span style={{fontSize:'10px', color:'rgba(255,200,150,0.15)'}}>Legends RPG</span>
         </div>
       </div>
@@ -12516,6 +12730,7 @@ const renderMenu = () => {
               { id: 'maps', icon: '🗺️', label: '区域探索', color: '#3b82f6' },
               { id: 'dungeons', icon: '⚔️', label: '秘境探险', color: '#8b5cf6' },
               { id: 'challenges', icon: '🔥', label: '图鉴试炼塔', color: '#ef4444' },
+              { id: 'kingdom', icon: '🏴', label: '国战', color: '#B71C1C' },
               { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#14b8a6' },
               { id: 'housing', icon: '🏡', label: '精灵家园', color: '#a78bfa' }
             ].map(tab => {
@@ -12669,11 +12884,32 @@ const renderMenu = () => {
                                </span>
                         </div>
                     </div>
-                    {isCleared && (
-                      <div style={{background:'rgba(255,255,255,0.95)', color:'#16a34a', padding:'4px 10px', borderRadius:'10px', fontSize:'10px', fontWeight:'800', letterSpacing:'1px', boxShadow:'0 2px 8px rgba(0,0,0,0.1)'}}>
-                        ✓ CLEAR
-                      </div>
-                    )}
+                    <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px'}}>
+                      {isCleared && (
+                        <div style={{background:'rgba(255,255,255,0.95)', color:'#16a34a', padding:'4px 10px', borderRadius:'10px', fontSize:'10px', fontWeight:'800', letterSpacing:'1px', boxShadow:'0 2px 8px rgba(0,0,0,0.1)'}}>
+                          ✓ CLEAR
+                        </div>
+                      )}
+                      {kingdomWar.faction && WAR_MAP_IDS.includes(m.id) && (() => {
+                        const t = kingdomWar.territories[m.id];
+                        if (!t) return null;
+                        const ownerF = FACTIONS[t.owner];
+                        const isMine = t.owner === kingdomWar.faction;
+                        const isNeutral = t.owner === 'neutral';
+                        return (
+                          <div style={{
+                            background: isNeutral ? 'rgba(150,150,150,0.85)' : `${ownerF?.color || '#666'}dd`,
+                            padding:'3px 8px', borderRadius:'8px', fontSize:'9px', fontWeight:'700',
+                            color:'#fff', display:'flex', alignItems:'center', gap:'3px',
+                            boxShadow:'0 1px 4px rgba(0,0,0,0.2)',
+                          }}>
+                            {t.contested && <span style={{animation:'pulse 1.5s infinite'}}>⚔️</span>}
+                            {isNeutral ? '中立' : `${ownerF?.icon || ''} ${ownerF?.name || ''}`}
+                            {isMine && ' ✅'}
+                          </div>
+                        );
+                      })()}
+                    </div>
                 </div>
                 
                 {/* 底部区域：馆主信息 */}
@@ -12900,6 +13136,581 @@ const renderMenu = () => {
             </>);
           })()}
         </div>
+
+        {/* --- 国战 --- */}
+        <div style={{display: mapTab==='kingdom'?'block':'none', paddingBottom:'40px'}}>
+          {(() => {
+            const kw = kingdomWar;
+            const hasJoined = !!kw.faction;
+            const canJoin = badges.length >= 3;
+
+            if (!hasJoined) {
+              return (
+                <div style={{padding:'20px', textAlign:'center'}}>
+                  <div style={{fontSize:'40px', marginBottom:'16px'}}>🏴</div>
+                  <div style={{fontSize:'22px', fontWeight:'800', color:'#1e293b', marginBottom:'8px'}}>三国争霸 · 国战系统</div>
+                  <div style={{fontSize:'13px', color:'#64748b', marginBottom:'24px'}}>魏蜀吴三国争夺13张主地图的归属权<br/>选择阵营，建功立业！</div>
+                  {!canJoin ? (
+                    <div style={{padding:'16px', background:'rgba(239,68,68,0.1)', borderRadius:'12px', color:'#ef4444', fontSize:'13px', fontWeight:'600'}}>
+                      需要获得至少3个道馆徽章才能参加国战<br/>当前徽章: {badges.length}/3
+                    </div>
+                  ) : (
+                    <div style={{display:'grid', gap:'16px'}}>
+                      {FACTION_IDS.map(fid => {
+                        const f = FACTIONS[fid];
+                        return (
+                          <div key={fid} style={{
+                            background:`linear-gradient(135deg, ${f.darkColor}, ${f.color})`,
+                            borderRadius:'16px', padding:'20px', color:'#fff', cursor:'pointer',
+                            transition:'transform 0.2s, box-shadow 0.2s',
+                            boxShadow:'0 4px 15px rgba(0,0,0,0.2)',
+                          }}
+                          onClick={() => {
+                            if (!window.confirm(`确定加入${f.fullName}吗？\n\n主公: ${f.lord}\n天赋: ${f.bonusDesc}\n\n阵营一旦选择无法更改！`)) return;
+                            setKingdomWar(prev => ({
+                              ...prev,
+                              faction: fid,
+                              territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(),
+                              lastTick: Date.now(),
+                              seasonStartDate: prev.seasonStartDate || new Date().toISOString(),
+                              dailyCounts: { ...prev.dailyCounts, resetDate: new Date().toISOString().slice(0,10) },
+                            }));
+                          }}
+                          onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 25px ${f.color}60`; }}
+                          onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)'; }}
+                          >
+                            <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px'}}>
+                              <span style={{fontSize:'36px'}}>{f.icon}</span>
+                              <div>
+                                <div style={{fontSize:'20px', fontWeight:'800'}}>{f.fullName}</div>
+                                <div style={{fontSize:'12px', opacity:0.8}}>{f.motto}</div>
+                              </div>
+                            </div>
+                            <div style={{fontSize:'12px', opacity:0.9, marginBottom:'8px'}}>{f.desc}</div>
+                            <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                              <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>主公: {f.lord}</span>
+                              <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>天赋: {f.bonusDesc}</span>
+                            </div>
+                            <div style={{fontSize:'11px', marginTop:'8px', opacity:0.7}}>
+                              帮派: {GANG_PRESETS.filter(g => g.faction === fid).map(g => g.name).join('、') || '无'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // 已加入阵营 - 国战主界面
+            const myFaction = FACTIONS[kw.faction];
+            const rank = getMilitaryRank(kw.warContribution || 0);
+            const nextRank = MILITARY_RANKS.find(r => r.minContribution > (kw.warContribution || 0));
+            const terrCounts = {};
+            FACTION_IDS.forEach(fid => { terrCounts[fid] = getFactionTerritoryCount(fid, kw.territories); });
+            terrCounts.neutral = Object.values(kw.territories).filter(t => t.owner === 'neutral').length;
+            const myTerrCount = terrCounts[kw.faction] || 0;
+            const totalWarMaps = WAR_MAP_IDS.length;
+            const seasonDaysLeft = kw.seasonStartDate ? Math.max(0, SEASON_CONFIG.durationDays - Math.floor((Date.now() - new Date(kw.seasonStartDate).getTime()) / 86400000)) : 7;
+
+            const today = new Date().toISOString().slice(0,10);
+            const dailyReset = kw.dailyCounts.resetDate !== today;
+            const canClaimIncome = dailyReset || !kw.dailyCounts.income;
+
+            const kwSubTabs = [
+              { id: 'overview', label: '概览', icon: '📊' },
+              { id: 'campaigns', label: '战役', icon: '⚔️' },
+              { id: 'capital', label: '都城', icon: '🏯' },
+              { id: 'territory', label: '领土', icon: '🗺️' },
+              { id: 'warlog', label: '战报', icon: '📜' },
+              { id: 'shop', label: '商店', icon: '🏪' },
+              { id: 'season', label: '赛季', icon: '🏆' },
+            ];
+
+            return (
+              <div style={{padding:'0 12px'}}>
+                {/* 阵营横幅 */}
+                <div style={{
+                  background:`linear-gradient(135deg, ${myFaction.darkColor}, ${myFaction.color})`,
+                  borderRadius:'16px', padding:'16px', color:'#fff', marginBottom:'12px',
+                  boxShadow:`0 4px 15px ${myFaction.color}40`,
+                }}>
+                  <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px'}}>
+                    <span style={{fontSize:'28px'}}>{myFaction.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:'16px', fontWeight:'800'}}>{myFaction.fullName} · {rank.name} {rank.icon}</div>
+                      <div style={{fontSize:'11px', opacity:0.8}}>战功: {(kw.warContribution||0).toLocaleString()}{nextRank ? ` (距${nextRank.name}: ${nextRank.minContribution - (kw.warContribution||0)})` : ' (最高军衔)'}</div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:'14px', fontWeight:'bold'}}>🎖️ {(kw.factionTokens||0)}</div>
+                      <div style={{fontSize:'10px', opacity:0.7}}>令牌</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'11px'}}>
+                    <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px'}}>领地: {myTerrCount}/{totalWarMaps}</span>
+                    <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px'}}>赛季S{kw.season || 1} · 剩余{seasonDaysLeft}天</span>
+                    <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px'}}>今日击杀: {kw.dailyCounts?.kills || 0}</span>
+                  </div>
+                </div>
+
+                {/* 子Tab */}
+                <div style={{display:'flex', gap:'6px', marginBottom:'12px', overflowX:'auto', paddingBottom:'4px'}}>
+                  {kwSubTabs.map(tab => (
+                    <button key={tab.id} onClick={() => setKwTab(tab.id)}
+                      style={{
+                        background: kwTab === tab.id ? myFaction.color : '#f1f5f9',
+                        color: kwTab === tab.id ? '#fff' : '#64748b',
+                        border:'none', borderRadius:'10px', padding:'8px 14px', fontSize:'12px', fontWeight:'600',
+                        cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.2s',
+                      }}>
+                      {tab.icon} {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 概览 */}
+                {kwTab === 'overview' && (
+                  <div style={{display:'grid', gap:'12px'}}>
+                    {/* 三国势力对比 */}
+                    <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                      <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>三国势力对比</div>
+                      {FACTION_IDS.map(fid => {
+                        const f = FACTIONS[fid];
+                        const cnt = terrCounts[fid] || 0;
+                        const pct = totalWarMaps > 0 ? (cnt / totalWarMaps * 100) : 0;
+                        const isMine = fid === kw.faction;
+                        return (
+                          <div key={fid} style={{marginBottom:'10px'}}>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
+                              <span style={{fontSize:'12px', fontWeight: isMine ? '800' : '500', color: isMine ? f.color : '#475569'}}>
+                                {f.icon} {f.fullName} {isMine ? '(我方)' : ''}
+                              </span>
+                              <span style={{fontSize:'11px', color:'#94a3b8', fontWeight:'600'}}>{cnt} 领地</span>
+                            </div>
+                            <div style={{height:'8px', background:'#f1f5f9', borderRadius:'4px', overflow:'hidden'}}>
+                              <div style={{width:`${pct}%`, height:'100%', background: f.color, borderRadius:'4px', transition:'width 0.5s'}} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 每日收入 */}
+                    <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                      <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>每日领地收入</div>
+                      {(() => {
+                        const map13Value = (kw.territories[13]?.owner === kw.faction) ? 1 : 0;
+                        const incomeBase = (myTerrCount + map13Value) * 400;
+                        const incomeTotal = Math.floor(incomeBase * rank.incomeMultiplier);
+                        const tokenIncome = (myTerrCount + map13Value) * 2;
+                        return (
+                          <div>
+                            <div style={{fontSize:'12px', color:'#64748b', marginBottom:'8px'}}>
+                              {myTerrCount} 领地 x 400 x {rank.incomeMultiplier} (军衔加成) = <b style={{color:'#f59e0b'}}>{incomeTotal.toLocaleString()} 金币</b> + <b style={{color: myFaction.color}}>{tokenIncome} 令牌</b>
+                            </div>
+                            <button onClick={() => {
+                              if (!canClaimIncome) { alert('今日已领取！'); return; }
+                              const m13v = (kw.territories[13]?.owner === kw.faction) ? 1 : 0;
+                              const base = (myTerrCount + m13v) * 400;
+                              const total = Math.floor(base * rank.incomeMultiplier);
+                              const tokens = (myTerrCount + m13v) * 2;
+                              setGold(g => g + total);
+                              setKingdomWar(prev => ({
+                                ...prev,
+                                factionTokens: (prev.factionTokens || 0) + tokens,
+                                dailyCounts: { ...prev.dailyCounts, income: true, resetDate: new Date().toISOString().slice(0,10) },
+                              }));
+                              alert(`领取成功！\n💰 ${total.toLocaleString()} 金币\n🎖️ ${tokens} 阵营令牌`);
+                            }}
+                            style={{
+                              width:'100%', padding:'10px', borderRadius:'10px', border:'none', fontSize:'13px', fontWeight:'700',
+                              background: canClaimIncome ? `linear-gradient(135deg, ${myFaction.color}, ${myFaction.lightColor})` : '#e2e8f0',
+                              color: canClaimIncome ? '#fff' : '#94a3b8', cursor: canClaimIncome ? 'pointer' : 'not-allowed',
+                            }}>
+                              {canClaimIncome ? `领取 ${incomeTotal.toLocaleString()} 金币 + ${tokenIncome} 令牌` : '今日已领取'}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* 军衔信息 */}
+                    <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                      <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'10px'}}>军衔进度</div>
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'6px'}}>
+                        {MILITARY_RANKS.map(r => {
+                          const isCurrentOrPast = (kw.warContribution || 0) >= r.minContribution;
+                          const isCurrent = r.id === rank.id;
+                          return (
+                            <div key={r.id} style={{
+                              padding:'8px', borderRadius:'10px', textAlign:'center',
+                              background: isCurrent ? `${myFaction.color}15` : isCurrentOrPast ? '#f0fdf4' : '#f8fafc',
+                              border: isCurrent ? `2px solid ${myFaction.color}` : '1px solid #e2e8f0',
+                            }}>
+                              <div style={{fontSize:'18px'}}>{r.icon}</div>
+                              <div style={{fontSize:'11px', fontWeight: isCurrent ? '800' : '500', color: isCurrent ? myFaction.color : '#475569'}}>{r.name}</div>
+                              <div style={{fontSize:'9px', color:'#94a3b8'}}>{r.minContribution}+</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 战役副本 */}
+                {kwTab === 'campaigns' && (
+                  <div>
+                    <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>⚔️ {myFaction.fullName} · 历史战役</div>
+                    <div style={{fontSize:'11px', color:'#64748b', marginBottom:'16px'}}>与三国名将并肩作战！通关战役可获得大量战功、令牌和金币。</div>
+                    <div style={{display:'grid', gap:'12px'}}>
+                      {KINGDOM_CAMPAIGNS.filter(c => c.faction === kw.faction).map(campaign => {
+                        const isCompleted = (kw.completedCampaigns || []).includes(campaign.id);
+                        const avgLv = party.length > 0 ? Math.floor(party.reduce((s,p) => s + p.level, 0) / party.length) : 1;
+                        const tooWeak = avgLv < campaign.lvl - 15;
+                        return (
+                          <div key={campaign.id} style={{
+                            background: campaign.bg, borderRadius:'14px', padding:'16px', color:'#fff',
+                            opacity: tooWeak ? 0.6 : 1, position:'relative', overflow:'hidden',
+                            boxShadow:'0 4px 15px rgba(0,0,0,0.3)',
+                          }}>
+                            {isCompleted && <div style={{position:'absolute', top:'8px', right:'8px', background:'rgba(76,175,80,0.9)', padding:'2px 8px', borderRadius:'8px', fontSize:'10px', fontWeight:'700'}}>✅ 已通关</div>}
+                            <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px'}}>
+                              <span style={{fontSize:'28px'}}>{campaign.icon}</span>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:'16px', fontWeight:'800'}}>{campaign.name}</div>
+                                <div style={{fontSize:'11px', opacity:0.85}}>推荐等级 Lv.{campaign.lvl} · {campaign.teamSize}v6</div>
+                              </div>
+                            </div>
+                            <div style={{fontSize:'12px', opacity:0.9, marginBottom:'8px', lineHeight:'1.5'}}>{campaign.desc}</div>
+                            <div style={{fontSize:'11px', opacity:0.75, fontStyle:'italic', marginBottom:'10px', borderLeft:'2px solid rgba(255,255,255,0.3)', paddingLeft:'8px'}}>{campaign.lore}</div>
+                            <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'10px'}}>
+                              <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 8px', borderRadius:'6px', fontSize:'10px'}}>💰 {campaign.reward.gold.toLocaleString()}</span>
+                              <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 8px', borderRadius:'6px', fontSize:'10px'}}>🎖️ {campaign.reward.tokens} 令牌</span>
+                              <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 8px', borderRadius:'6px', fontSize:'10px'}}>⭐ {campaign.reward.contribution} 战功</span>
+                            </div>
+                            <button
+                              disabled={tooWeak}
+                              onClick={() => {
+                                if (party.length < 1) { alert('至少需要1只精灵才能战斗！'); return; }
+                                startBattle({ ...campaign, campaignData: campaign }, 'kw_campaign');
+                              }}
+                              style={{
+                                width:'100%', padding:'10px', background: tooWeak ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
+                                border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', color:'#fff',
+                                fontSize:'13px', fontWeight:'700', cursor: tooWeak ? 'not-allowed' : 'pointer',
+                                transition:'all 0.2s',
+                              }}
+                              onMouseOver={e => { if (!tooWeak) e.currentTarget.style.background = 'rgba(255,255,255,0.4)'; }}
+                              onMouseOut={e => { if (!tooWeak) e.currentTarget.style.background = 'rgba(255,255,255,0.25)'; }}
+                            >
+                              {tooWeak ? `等级不足 (推荐Lv.${campaign.lvl})` : isCompleted ? '🔁 再次挑战' : '⚔️ 出征！'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 都城 */}
+                {kwTab === 'capital' && (() => {
+                  const capitalMapId = CAPITAL_MAP_IDS[kw.faction];
+                  const capitalMap = MAPS.find(m => m.id === capitalMapId);
+                  const gangBonus = getGangSkillBonus(getGangSkills(gang));
+                  const tradeIncome = gangBonus.trade || 0;
+                  const territoryDefBonus = gangBonus.territory || 0;
+                  const capitalDailyGold = Math.floor(200 + myTerrCount * 80 + tradeIncome);
+                  const hasClaimedCapitalReward = kw.dailyCounts?.capitalReward;
+                  const capitalFeatures = [
+                    { icon: '💰', name: '国库领俸', desc: `每日领取${capitalDailyGold}金币 (基于领土数+商队)`, action: 'treasury',
+                      disabled: hasClaimedCapitalReward, btnText: hasClaimedCapitalReward ? '已领取' : '领取俸禄' },
+                    { icon: '🏋️', name: '校场练兵', desc: '挑战都城精英训练师，获得额外战功+经验', action: 'training',
+                      disabled: false, btnText: '前往校场' },
+                    { icon: '🗺️', name: '都城探索', desc: `进入${capitalMap?.name || '都城'}探索，捕捉独特精灵`, action: 'explore',
+                      disabled: false, btnText: '进入都城' },
+                    { icon: '🔮', name: '军师府', desc: '查看全局战况分析和战略建议', action: 'advisor',
+                      disabled: false, btnText: '请教军师' },
+                  ];
+                  return (
+                    <div>
+                      <div style={{
+                        background: `linear-gradient(135deg, ${myFaction.darkColor}, ${myFaction.color})`,
+                        borderRadius:'14px', padding:'16px', color:'#fff', marginBottom:'16px',
+                        boxShadow:`0 4px 15px ${myFaction.color}40`,
+                      }}>
+                        <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px'}}>
+                          <span style={{fontSize:'32px'}}>{capitalMap?.icon || '🏯'}</span>
+                          <div>
+                            <div style={{fontSize:'18px', fontWeight:'800'}}>{capitalMap?.name || '都城'}</div>
+                            <div style={{fontSize:'11px', opacity:0.8}}>{capitalMap?.desc || ''}</div>
+                          </div>
+                        </div>
+                        <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'11px'}}>
+                          <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px'}}>🏰 领地防御加成: +{territoryDefBonus}/tick</span>
+                          <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px'}}>🐫 商队日收入: {tradeIncome}金</span>
+                        </div>
+                      </div>
+                      <div style={{display:'grid', gap:'10px'}}>
+                        {capitalFeatures.map(feat => (
+                          <div key={feat.action} style={{
+                            background:'#fff', borderRadius:'12px', padding:'14px', border:'1px solid #e2e8f0',
+                            display:'flex', alignItems:'center', gap:'12px',
+                          }}>
+                            <span style={{fontSize:'28px'}}>{feat.icon}</span>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b'}}>{feat.name}</div>
+                              <div style={{fontSize:'11px', color:'#64748b', marginTop:'2px'}}>{feat.desc}</div>
+                            </div>
+                            <button
+                              disabled={feat.disabled}
+                              onClick={() => {
+                                if (feat.action === 'treasury') {
+                                  setGold(prev => prev + capitalDailyGold);
+                                  setKingdomWar(prev => ({
+                                    ...prev,
+                                    dailyCounts: { ...prev.dailyCounts, capitalReward: true },
+                                  }));
+                                  alert(`💰 领取国库俸禄 ${capitalDailyGold} 金币！\n\n基础: 200\n领地加成: ${myTerrCount * 80}\n商队收入: ${tradeIncome}`);
+                                } else if (feat.action === 'training') {
+                                  if (party.length < 1) { alert('至少需要1只精灵！'); return; }
+                                  startBattle({
+                                    id: capitalMapId, name: `${capitalMap?.name || '都城'}校场`,
+                                    lvl: [50, 70], pool: capitalMap?.pool || [], drop: 800,
+                                  }, 'kingdom_war');
+                                } else if (feat.action === 'explore') {
+                                  if (party.length < 1) { alert('至少需要1只精灵！'); return; }
+                                  setCurrentMapId(capitalMapId);
+                                  setView('grid_map');
+                                } else if (feat.action === 'advisor') {
+                                  const strongest = FACTION_IDS.slice().sort((a,b) => (terrCounts[b]||0) - (terrCounts[a]||0));
+                                  const contested = Object.entries(kw.territories).filter(([,t]) => t.contested).length;
+                                  let advice = '【军师分析】\n\n';
+                                  advice += `🏴 当前局势:\n`;
+                                  strongest.forEach((fid, i) => { advice += `  ${i+1}. ${FACTIONS[fid].fullName}: ${terrCounts[fid]||0}块领地\n`; });
+                                  advice += `  中立: ${terrCounts.neutral||0}块\n\n`;
+                                  advice += `⚔️ 交战中: ${contested}块领地\n\n`;
+                                  if (myTerrCount >= 6) advice += '💡 建议: 我方领地较多，注意防守，避免过度扩张导致兵力分散。\n';
+                                  else if (myTerrCount <= 3) advice += '💡 建议: 我方领地偏少，应集中力量进攻敌方薄弱领地，扭转战局！\n';
+                                  else advice += '💡 建议: 局势均衡，可伺机进攻交战中的领地，扩大优势。\n';
+                                  advice += '\n🎯 前往敌方/交战领地可遇到敌国训练师，击败可增加战功并削弱敌方领地！';
+                                  alert(advice);
+                                }
+                              }}
+                              style={{
+                                padding:'8px 16px', background: feat.disabled ? '#e2e8f0' : myFaction.color,
+                                color: feat.disabled ? '#94a3b8' : '#fff', border:'none', borderRadius:'10px',
+                                fontSize:'12px', fontWeight:'600', cursor: feat.disabled ? 'not-allowed' : 'pointer',
+                                whiteSpace:'nowrap',
+                              }}
+                            >
+                              {feat.btnText}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 领土 */}
+                {kwTab === 'territory' && (
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'10px'}}>
+                    {WAR_MAP_IDS.map(mapId => {
+                      const map = MAPS.find(m => m.id === mapId);
+                      if (!map) return null;
+                      const t = kw.territories[mapId] || { owner: 'neutral', strength: 50 };
+                      const ownerFaction = FACTIONS[t.owner];
+                      const isMine = t.owner === kw.faction;
+                      const isNeutral = t.owner === 'neutral';
+                      const borderColor = isNeutral ? '#94a3b8' : (ownerFaction?.color || '#94a3b8');
+                      return (
+                        <div key={mapId} style={{
+                          background:'#fff', borderRadius:'12px', padding:'12px',
+                          border: `2px solid ${borderColor}`,
+                          boxShadow: t.contested ? `0 0 10px ${borderColor}50` : '0 2px 6px rgba(0,0,0,0.04)',
+                          position:'relative', overflow:'hidden',
+                        }}>
+                          {t.contested && (
+                            <div style={{position:'absolute', top:'4px', right:'4px', fontSize:'14px', animation:'pulse 1.5s infinite'}}>
+                              ⚔️
+                            </div>
+                          )}
+                          <div style={{fontSize:'18px', marginBottom:'4px'}}>{map.icon}</div>
+                          <div style={{fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'2px'}}>{map.name}</div>
+                          <div style={{fontSize:'10px', color: borderColor, fontWeight:'600', marginBottom:'6px'}}>
+                            {isNeutral ? '中立' : `${ownerFaction?.icon || ''} ${ownerFaction?.fullName || t.owner}`}
+                            {isMine && ' (我方)'}
+                          </div>
+                          <div style={{height:'4px', background:'#f1f5f9', borderRadius:'2px', overflow:'hidden', marginBottom:'4px'}}>
+                            <div style={{width:`${t.strength}%`, height:'100%', background: borderColor, borderRadius:'2px'}} />
+                          </div>
+                          <div style={{fontSize:'9px', color:'#94a3b8'}}>防御: {t.strength}/100</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 战报 */}
+                {kwTab === 'warlog' && (
+                  <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                    <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>最近战报</div>
+                    {(!kw.warLog || kw.warLog.length === 0) ? (
+                      <div style={{textAlign:'center', color:'#94a3b8', padding:'20px', fontSize:'13px'}}>暂无战报</div>
+                    ) : (
+                      <div style={{display:'flex', flexDirection:'column', gap:'8px', maxHeight:'400px', overflowY:'auto'}}>
+                        {[...(kw.warLog || [])].reverse().map((log, i) => {
+                          const mapInfo = MAPS.find(m => m.id === log.mapId);
+                          const isCapture = log.type === 'capture';
+                          return (
+                            <div key={i} style={{
+                              padding:'10px', borderRadius:'10px', fontSize:'12px',
+                              background: isCapture ? 'rgba(239,68,68,0.05)' : '#f8fafc',
+                              borderLeft: `3px solid ${isCapture ? '#ef4444' : '#22c55e'}`,
+                            }}>
+                              <div style={{fontWeight:'600', color: isCapture ? '#dc2626' : '#16a34a', marginBottom:'2px'}}>
+                                {isCapture ? '⚔️ 领土易主' : '🛡️ 防守成功'}{mapInfo ? ` · ${mapInfo.name}` : ''}
+                              </div>
+                              <div style={{color:'#64748b', fontSize:'11px'}}>{log.msg}</div>
+                              <div style={{color:'#94a3b8', fontSize:'9px', marginTop:'2px'}}>{new Date(log.time).toLocaleString()}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 商店 */}
+                {kwTab === 'shop' && (
+                  <div style={{display:'grid', gap:'10px'}}>
+                    <div style={{fontSize:'12px', color:'#64748b', textAlign:'center', marginBottom:'4px'}}>当前令牌: <b style={{color: myFaction.color}}>{kw.factionTokens || 0}</b></div>
+                    {TOKEN_SHOP.map(item => {
+                      const canAfford = (kw.factionTokens || 0) >= item.cost;
+                      return (
+                        <div key={item.id} style={{
+                          background:'#fff', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 6px rgba(0,0,0,0.04)',
+                          display:'flex', alignItems:'center', gap:'12px',
+                        }}>
+                          <span style={{fontSize:'28px'}}>{item.icon}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b'}}>{item.name}</div>
+                            <div style={{fontSize:'11px', color:'#64748b'}}>{item.desc}</div>
+                          </div>
+                          <button onClick={() => {
+                            if (!canAfford) { alert('令牌不足！'); return; }
+                            if (!window.confirm(`确定花费 ${item.cost} 令牌购买「${item.name}」？`)) return;
+                            // 处理购买
+                            if (item.id === 'heal_all') {
+                              setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
+                            } else if (item.id === 'exp_buff') {
+                              setKingdomWar(prev => ({ ...prev, expBuffBattles: (prev.expBuffBattles || 0) + 10 }));
+                            } else if (item.id === 'siege') {
+                              const enemyTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner && kw.territories[mid].owner !== kw.faction && kw.territories[mid].owner !== 'neutral');
+                              if (enemyTerrs.length === 0) { alert('没有可攻击的敌方领地！'); return; }
+                              const targetId = enemyTerrs[Math.floor(Math.random() * enemyTerrs.length)];
+                              const targetMap = MAPS.find(m => m.id === targetId);
+                              setKingdomWar(prev => {
+                                const newT = { ...prev.territories };
+                                newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - 10) };
+                                return { ...prev, territories: newT };
+                              });
+                              alert(`攻城投石命中 ${targetMap?.name || '目标'}！防御 -10`);
+                            } else if (item.id === 'war_ball') {
+                              setKingdomWar(prev => ({ ...prev, warBalls: (prev.warBalls || 0) + 1 }));
+                            } else if (item.id === 'flag') {
+                              const myTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner === kw.faction);
+                              if (myTerrs.length === 0) { alert('没有己方领地！'); return; }
+                              const weakest = myTerrs.sort((a, b) => (kw.territories[a]?.strength || 0) - (kw.territories[b]?.strength || 0))[0];
+                              const wMap = MAPS.find(m => m.id === weakest);
+                              setKingdomWar(prev => {
+                                const newT = { ...prev.territories };
+                                newT[weakest] = { ...newT[weakest], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (newT[weakest]?.strength || 50) + 15) };
+                                return { ...prev, territories: newT };
+                              });
+                              alert(`阵营旗帜已插在 ${wMap?.name || '领地'}！防御 +15`);
+                            } else if (item.id === 'tiger_seal') {
+                              setKingdomWar(prev => ({ ...prev, attackBuff: true }));
+                            } else if (item.id === 'war_armor') {
+                              const armor = { id: `kw_armor_${Date.now()}`, baseId: 'kw_armor', name: `${myFaction.fullName}战甲`, displayName: `${myFaction.fullName}战甲`, stat: 'p_atk', value: 8, rarity: 3, desc: `${myFaction.fullName}国战专属战甲 (ATK/DEF +8%)` };
+                              setAccessories(prev => [...prev, armor]);
+                              alert(`获得 ${myFaction.fullName}战甲！`);
+                            } else if (item.id === 'jade_seal') {
+                              const seal = { id: `kw_jade_${Date.now()}`, baseId: 'kw_jade', name: '传国玉玺', displayName: '传国玉玺', stat: 'all', value: 5, rarity: 5, desc: '传说中的传国玉玺 (全属性+5%)' };
+                              setAccessories(prev => [...prev, seal]);
+                              unlockTitle('乱世霸主');
+                              alert(`获得传国玉玺！并解锁称号「乱世霸主」`);
+                            }
+                            setKingdomWar(prev => ({ ...prev, factionTokens: (prev.factionTokens || 0) - item.cost }));
+                          }}
+                          style={{
+                            padding:'8px 14px', borderRadius:'10px', border:'none', fontSize:'12px', fontWeight:'700',
+                            background: canAfford ? myFaction.color : '#e2e8f0',
+                            color: canAfford ? '#fff' : '#94a3b8',
+                            cursor: canAfford ? 'pointer' : 'not-allowed',
+                            whiteSpace:'nowrap',
+                          }}>
+                            {item.cost} 🎖️
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 赛季 */}
+                {kwTab === 'season' && (
+                  <div style={{display:'grid', gap:'12px'}}>
+                    <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                      <div style={{fontSize:'16px', fontWeight:'800', color:'#1e293b', marginBottom:'8px'}}>赛季 S{kw.season || 1}</div>
+                      <div style={{fontSize:'12px', color:'#64748b', marginBottom:'12px'}}>剩余 {seasonDaysLeft} 天结算</div>
+                      <div style={{display:'grid', gap:'8px'}}>
+                        {FACTION_IDS.slice().sort((a, b) => (terrCounts[b] || 0) - (terrCounts[a] || 0)).map((fid, idx) => {
+                          const f = FACTIONS[fid];
+                          const cnt = terrCounts[fid] || 0;
+                          const reward = SEASON_CONFIG.rewards[idx + 1];
+                          return (
+                            <div key={fid} style={{
+                              display:'flex', alignItems:'center', gap:'10px', padding:'10px', borderRadius:'10px',
+                              background: fid === kw.faction ? `${f.color}10` : '#f8fafc',
+                              border: fid === kw.faction ? `1px solid ${f.color}40` : '1px solid #e2e8f0',
+                            }}>
+                              <span style={{fontSize:'18px', fontWeight:'900', color: idx === 0 ? '#f59e0b' : '#94a3b8'}}>#{idx + 1}</span>
+                              <span style={{fontSize:'20px'}}>{f.icon}</span>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b'}}>{f.fullName} {fid === kw.faction ? '(我方)' : ''}</div>
+                                <div style={{fontSize:'11px', color:'#64748b'}}>{cnt} 领地</div>
+                              </div>
+                              {reward && (
+                                <div style={{textAlign:'right', fontSize:'10px', color:'#94a3b8'}}>
+                                  <div>{reward.gold}G + {reward.tokens}T</div>
+                                  {reward.title && <div style={{color:'#f59e0b'}}>"{reward.title}"</div>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {kw.seasonTitles && kw.seasonTitles.length > 0 && (
+                      <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                        <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>历史荣誉</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                          {kw.seasonTitles.map((t, i) => (
+                            <span key={i} style={{background:'#fef3c7', color:'#92400e', padding:'4px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+
       </div>
     );
   };
@@ -14543,7 +15354,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
@@ -14830,6 +15641,7 @@ const renderMenu = () => {
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
               { id: 'gang', icon: '🏴', label: '帮派', action: () => setView('gang') },
+              { id: 'kingdom', icon: kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.icon || '🏰' : '🏰', label: '国战', action: () => { handleExitAndSave(); setMapTab('kingdom'); } },
               { id: 'housing', icon: '🏡', label: '家园', action: () => setView('housing') },
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (

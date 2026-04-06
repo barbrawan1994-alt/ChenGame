@@ -234,6 +234,14 @@ const ACHIEVEMENTS = [
     desc: '拥有5对Lv3搭档',
     hint: '提示：当五对精灵都达到完美默契…你就是真正的搭档大师',
     check: s => s.maxBondLv3Pairs >= 5, reward: { gold: 20000, title: '完美默契' }, hidden: true },
+
+  // ===== 国战成就 (6) =====
+  { id: 'kw_join',          cat: 'SOCIAL',   rarity: 'COMMON',    name: '投身乱世',     desc: '选择阵营，加入国战',                     check: s => s.kwJoined,               reward: { gold: 500 } },
+  { id: 'kw_kill_10',       cat: 'BATTLE',   rarity: 'COMMON',    name: '初立战功',     desc: '在国战中击败10名敌国训练师',             check: s => s.kwKills >= 10,           reward: { gold: 3000 } },
+  { id: 'kw_kill_100',      cat: 'BATTLE',   rarity: 'RARE',      name: '百战铁军',     desc: '在国战中击败100名敌国训练师',            check: s => s.kwKills >= 100,          reward: { gold: 20000, title: '百战铁军' } },
+  { id: 'kw_general',       cat: 'SOCIAL',   rarity: 'RARE',      name: '封将拜印',     desc: '国战军衔达到将军',                       check: s => s.kwRankIdx >= 3,          reward: { gold: 15000, title: '沙场将军' } },
+  { id: 'kw_territory_5',   cat: 'EXPLORE',  rarity: 'EPIC',      name: '版图扩张',     desc: '己方阵营同时控制5块以上领地',           check: s => s.kwFactionTerritories >= 5, reward: { gold: 30000 } },
+  { id: 'kw_king',          cat: 'SOCIAL',   rarity: 'LEGENDARY', name: '一统天下',     desc: '国战军衔达到国主',                       check: s => s.kwRankIdx >= 5,          reward: { gold: 80000, title: '乱世霸主' } },
 ];
 
 export const DEFAULT_ACH_STATS = {
@@ -322,6 +330,10 @@ export const DEFAULT_ACH_STATS = {
   cosmicGodKills: 0,
   maxSingleDamage: 0,
   uniquePartyTypes: 0,
+  kwJoined: false,
+  kwKills: 0,
+  kwRankIdx: 0,
+  kwFactionTerritories: 0,
 };
 
 export default ACHIEVEMENTS;
