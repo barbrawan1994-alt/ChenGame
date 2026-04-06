@@ -246,7 +246,19 @@ export default function RPG(props) {
     balls: { poke: 10, great: 0, ultra: 0, master: 0, net:0, dusk:0, quick:0, timer:0, heal:0 }, 
     meds: {}, tms: {}, misc: {}, stones: {}, berries: 0 
   };
-  const [inventory, setInventory] = useState({ ...defaultInventory, ...(savedData.inventory || {}) });
+  const [inventory, setInventory] = useState(() => {
+    const saved = savedData.inventory || {};
+    return {
+      balls: { ...defaultInventory.balls, ...(saved.balls || {}) },
+      meds: { ...defaultInventory.meds, ...(saved.meds || {}) },
+      tms: { ...defaultInventory.tms, ...(saved.tms || {}) },
+      misc: { ...defaultInventory.misc, ...(saved.misc || {}) },
+      stones: { ...defaultInventory.stones, ...(saved.stones || {}) },
+      berries: saved.berries || defaultInventory.berries,
+      exp_candy: saved.exp_candy || 0,
+      max_candy: saved.max_candy || 0,
+    };
+  });
   const [fruitInventory, setFruitInventory] = useState(savedData.fruitInventory || []);
   const [fruitDexCatFilter, setFruitDexCatFilter] = useState('ALL');
   const [fruitDexRarFilter, setFruitDexRarFilter] = useState('ALL');
@@ -857,6 +869,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const calculateCatchRate = (ballType, enemy) => {
       if (ballType === 'master') return 1.0;
       const ball = BALLS[ballType];
+      if (!ball) return 0.1;
       let rate = ball.rate;
       
       if (!battle) return 0.5;
@@ -968,7 +981,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         return;
     }
 
-    setInventory(prev => ({...prev, tms: {...prev.tms, [tmId]: prev.tms[tmId] - 1}}));
+    setInventory(prev => ({...prev, tms: {...prev.tms, [tmId]: (prev.tms[tmId] || 0) - 1}}));
     const newMove = { name: tm.name, p: tm.p, t: tm.type, pp: tm.pp, maxPP: tm.pp, desc: tm.desc };
     
     if (pet.moves.length < 4) {
@@ -1717,7 +1730,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             
             if (targetPetInfo) {
                 // 1. 扣除石头
-                setInventory(prev => ({...prev, stones: {...prev.stones, [stoneId]: prev.stones[stoneId] - 1}}));
+                setInventory(prev => ({...prev, stones: {...prev.stones, [stoneId]: (prev.stones[stoneId] || 0) - 1}}));
                 
                 // 2. 🔥 触发动画
                 setEvoAnim({
@@ -2438,9 +2451,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     
     if (accIndex > -1) {
         newAccessories.splice(accIndex, 1);
+    } else {
+        alert('❌ 背包中未找到该装备！'); return;
     }
 
-    // 3. 装备
     pet.equips[slotIdx] = accOrId;
 
     setParty(newParty);
@@ -2962,7 +2976,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   const resetGangDailyCounts = () => {
     const today = new Date().toISOString().slice(0, 10);
-    if (gang.dailyCounts.resetDate !== today) {
+    if (!gang.dailyCounts || gang.dailyCounts.resetDate !== today) {
       const newDC = { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: today };
       setGang(prev => ({ ...prev, dailyCounts: newDC }));
       return newDC;
@@ -5217,7 +5231,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     setParty(t);
-    setInventory(prev => ({...prev, berries: prev.berries - 1}));
+    setInventory(prev => ({...prev, berries: (prev.berries || 0) - 1}));
     
     // 提示变化
     if (p.intimacy > oldInt) {
@@ -5248,7 +5262,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     
     setInventory(prev => ({
         ...prev, 
-        meds: { ...prev.meds, potion: prev.meds.potion - 1 }
+        meds: { ...prev.meds, potion: (prev.meds.potion || 0) - 1 }
     }));
     alert(`使用了伤药，${p.name} 恢复了体力！(亲密度 +1)`);
   };
@@ -5282,7 +5296,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // 修改点：扣除 inventory.meds.ether
     setInventory(prev => ({
         ...prev, 
-        meds: { ...prev.meds, ether: prev.meds.ether - 1 }
+        meds: { ...prev.meds, ether: (prev.meds.ether || 0) - 1 }
     }));
     alert(`${p.name} 的技能 PP 得到了恢复！(亲密度 +1)`);
   };
@@ -5680,13 +5694,11 @@ const useGrowthItem = (petIndex, itemId) => {
                 newP.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; });
                 setParty(newP);
               }
-              setEventData({ type:'LOOT', title: bottle.title, desc: `${bottle.desc}${bottle.gold > 0 ? `\n获得 ${bottle.gold} 金币！` : '\n全队HP回满，异常状态解除！'}`, reward:{ gold: bottle.gold || 0 } });
-              setView('event');
+              showMapToast('🍶', bottle.title, `${bottle.desc}${bottle.gold > 0 ? ` +${bottle.gold}金` : ' 全队恢复！'}`, 2500);
            } else if (surfRoll < 0.15) {
               const pearlGold = _.random(1500, 5000);
               setGold(g => g + pearlGold);
-              setEventData({ type:'LOOT', title:'🫧 水底宝箱', desc:`你在水底发现了一个古老宝箱！\n里面有珍珠和金币，价值 ${pearlGold} 金币！`, reward:{ gold: pearlGold } });
-              setView('event');
+              showMapToast('🫧', '水底宝箱', `发现古老宝箱！+${pearlGold} 金币`, 2500);
            } else if (surfRoll < 0.30) {
               setTimeout(() => startBattle(null, 'water_special'), 200);
            }
@@ -5706,27 +5718,23 @@ const useGrowthItem = (petIndex, itemId) => {
            if (mineRoll < 0.10) {
               const gemGold = _.random(2000, 8000);
               setGold(g => g + gemGold);
-              setEventData({ type:'LOOT', title:'💎 稀有宝石！', desc:`岩石中藏着一颗闪耀的宝石！\n卖出获得 ${gemGold} 金币！`, reward:{ gold: gemGold } });
-              setView('event');
+              showMapToast('💎', '稀有宝石', `闪耀宝石！+${gemGold} 金币`, 2500);
            } else if (mineRoll < 0.30) {
               const stoneNames = ['火之石','水之石','雷之石','月之石','太阳石','暗之石','光之石','冰之石'];
               const stone = _.sample(stoneNames);
               const stoneGold = _.random(500, 1500);
               setGold(g => g + stoneGold);
-              setEventData({ type:'LOOT', title:`🪨 发现${stone}！`, desc:`岩石深处藏着一颗${stone}！\n（折算为 ${stoneGold} 金币）`, reward:{ gold: stoneGold } });
-              setView('event');
+              showMapToast('🪨', `发现${stone}`, `+${stoneGold} 金币`, 2500);
            } else if (mineRoll < 0.50) {
               const fossilNames = ['远古化石','覆盖化石','盖子化石','羽毛化石','颚化石','鳍化石'];
               const fossil = _.sample(fossilNames);
               const fossilGold = _.random(1000, 3000);
               setGold(g => g + fossilGold);
-              setEventData({ type:'LOOT', title:`🦴 发掘${fossil}！`, desc:`你在岩石中发掘出了${fossil}！\n（折算为 ${fossilGold} 金币）`, reward:{ gold: fossilGold } });
-              setView('event');
+              showMapToast('🦴', `发掘${fossil}`, `+${fossilGold} 金币`, 2500);
            } else if (mineRoll < 0.70) {
               const mineralGold = _.random(300, 1000);
               setGold(g => g + mineralGold);
-              setEventData({ type:'LOOT', title:'⛏️ 采集矿物', desc:`碎岩后获得一些矿物碎片。\n卖出获得 ${mineralGold} 金币。`, reward:{ gold: mineralGold } });
-              setView('event');
+              showMapToast('⛏️', '采集矿物', `矿物碎片 +${mineralGold} 金币`, 2500);
            } else if (mineRoll < 0.85) {
               setTimeout(() => startBattle(null, 'rock_special'), 200);
            } else {
@@ -5734,8 +5742,7 @@ const useGrowthItem = (petIndex, itemId) => {
               const newParty = [...party];
               newParty.forEach(p => { const maxHp = getStats(p).maxHp; p.currentHp = Math.min(maxHp, p.currentHp + Math.floor(maxHp * healAmt / 100)); });
               setParty(newParty);
-              setEventData({ type:'LOOT', title:'♨️ 发现温泉！', desc:'岩石下方涌出温泉！\n全队精灵恢复了 30% 生命值！', reward:{} });
-              setView('event');
+              showMapToast('♨️', '发现温泉', '全队精灵恢复 30% HP！', 2500);
            }
            return; 
         }
@@ -5751,35 +5758,29 @@ const useGrowthItem = (petIndex, itemId) => {
           const newP = [...party];
           newP.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; p.moves.forEach(m => { m.pp = m.maxPP || 15; }); });
           setParty(newP);
-          setEventData({ type:'LOOT', title:'🌟 祭坛祝福 · 全体恢复', desc:'祭坛散发出温暖的光芒...\n\n全队精灵 HP 回满、异常解除、PP 恢复！', reward:{} });
-          setView('event');
+          showMapToast('🌟', '祭坛祝福', '全队HP回满、异常解除、PP恢复！', 2500);
         } else if (altarRoll < 0.45) {
           const blessingGold = _.random(3000, 10000);
           setGold(g => g + blessingGold);
-          setEventData({ type:'LOOT', title:'✨ 祭坛祝福 · 黄金雨', desc:`祭坛中涌出大量金币！\n获得 ${blessingGold} 金币！`, reward:{ gold: blessingGold } });
-          setView('event');
+          showMapToast('✨', '祭坛祝福·黄金雨', `获得 ${blessingGold} 金币！`, 2500);
         } else if (altarRoll < 0.60) {
           const ballReward = Math.random() < 0.3 ? { master: 1 } : { ultra: _.random(3, 5) };
           const ballName = ballReward.master ? '大师球 ×1' : `超级球 ×${ballReward.ultra}`;
-          setBalls(prev => ({ ...prev, ...Object.fromEntries(Object.entries(ballReward).map(([k, v]) => [k, (prev[k] || 0) + v])) }));
-          setEventData({ type:'LOOT', title:'🔮 祭坛祝福 · 神秘供品', desc:`祭坛上出现了供品！\n获得 ${ballName}！`, reward:{} });
-          setView('event');
+          setInventory(prev => ({ ...prev, balls: { ...prev.balls, ...Object.fromEntries(Object.entries(ballReward).map(([k, v]) => [k, (prev.balls[k] || 0) + v])) } }));
+          showMapToast('🔮', '祭坛祝福·供品', `获得 ${ballName}！`, 2500);
         } else if (altarRoll < 0.75) {
           const potionAmt = _.random(3, 8);
           setInventory(prev => ({ ...prev, meds: { ...prev.meds, potion: (prev.meds.potion || 0) + potionAmt, ether: (prev.meds.ether || 0) + Math.floor(potionAmt / 2) } }));
-          setEventData({ type:'LOOT', title:'🧪 祭坛祝福 · 补给物资', desc:`祭坛周围散落着补给品！\n获得 伤药 ×${potionAmt} 和 PP补剂 ×${Math.floor(potionAmt / 2)}！`, reward:{} });
-          setView('event');
+          showMapToast('🧪', '祭坛祝福·补给', `伤药 ×${potionAmt} + PP补剂 ×${Math.floor(potionAmt / 2)}`, 2500);
         } else if (altarRoll < 0.88) {
           const curseGold = _.random(500, 2000);
           setGold(g => Math.max(0, g - curseGold));
-          setEventData({ type:'LOOT', title:'💀 祭坛诅咒！', desc:`你触碰了禁忌的祭坛...\n一阵黑雾涌出，损失了 ${curseGold} 金币！\n\n下次小心...不是每个祭坛都是友好的。`, reward:{} });
-          setView('event');
+          showMapToast('💀', '祭坛诅咒！', `黑雾涌出，损失 ${curseGold} 金币！`, 2500);
         } else {
           const mapLv = Math.min(100, 10 + badges.length * 7);
           const godPool = LEGENDARY_POOL.filter(id => id < 600);
           const godId = _.sample(godPool);
-          setEventData({ type:'LOOT', title:'⚡ 祭坛召唤！', desc:'祭坛爆发出强烈的能量！\n一只传说中的精灵被召唤了出来！', reward:{} });
-          setView('event');
+          showMapToast('⚡', '祭坛召唤！', '强烈能量爆发！传说精灵出现！', 2000);
           setTimeout(() => startBattle({ id: godId, name: '被祭坛召唤的神兽', lvl: [mapLv, mapLv], pool: [godId], drop: 5000 }, 'wild_god'), 1500);
         }
         return;
@@ -5791,12 +5792,12 @@ const useGrowthItem = (petIndex, itemId) => {
       if (tileType === 16) {
         setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
         const merchantItems = [
-          { name:'大师球', cost: 50000, action: () => setBalls(prev => ({...prev, master: (prev.master||0)+1})) },
-          { name:'高级球 ×10', cost: 5000, action: () => setBalls(prev => ({...prev, ultra: (prev.ultra||0)+10})) },
+          { name:'大师球', cost: 50000, action: () => setInventory(prev => ({...prev, balls: {...prev.balls, master: (prev.balls.master||0)+1}})) },
+          { name:'高级球 ×10', cost: 5000, action: () => setInventory(prev => ({...prev, balls: {...prev.balls, ultra: (prev.balls.ultra||0)+10}})) },
           { name:'全队回满', cost: 3000, action: () => { const np = [...party]; np.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; }); setParty(np); } },
           { name:'伤药 ×20', cost: 2000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, potion:(prev.meds.potion||0)+20}})) },
           { name:'PP补剂 ×10', cost: 3000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+10}})) },
-          { name:'神秘礼包（随机奖励）', cost: 8000, action: () => { const r = Math.random(); if(r<0.3) { setBalls(prev=>({...prev,master:(prev.master||0)+2})); showMapToast('🎁', '神秘礼包', '获得 大师球 ×2！'); } else if(r<0.6) { setGold(g=>g+20000); showMapToast('🎁', '神秘礼包', '获得 20000 金币！'); } else { const np=[...party]; np.forEach(p=>{p.currentHp=getStats(p).maxHp; p.moves.forEach(m=>{m.pp=m.maxPP||15;});}); setParty(np); showMapToast('🎁', '神秘礼包', '全队完全恢复！'); } } },
+          { name:'神秘礼包（随机奖励）', cost: 8000, action: () => { const r = Math.random(); if(r<0.3) { setInventory(prev=>({...prev,balls:{...prev.balls,master:(prev.balls.master||0)+2}})); showMapToast('🎁', '神秘礼包', '获得 大师球 ×2！'); } else if(r<0.6) { setGold(g=>g+20000); showMapToast('🎁', '神秘礼包', '获得 20000 金币！'); } else { const np=[...party]; np.forEach(p=>{p.currentHp=getStats(p).maxHp; p.moves.forEach(m=>{m.pp=m.maxPP||15;});}); setParty(np); showMapToast('🎁', '神秘礼包', '全队完全恢复！'); } } },
         ];
         const selectedItems = _.sampleSize(merchantItems, 3);
         const itemList = selectedItems.map(it => `${it.name} — ${it.cost} 金币`).join('\n');
@@ -5928,10 +5929,10 @@ const useGrowthItem = (petIndex, itemId) => {
         } else if (rand < 0.55) {
             // 25% 树果或普通球
             if (Math.random() < 0.5) {
-                setInventory(prev => ({...prev, berries: prev.berries + 3}));
+                setInventory(prev => ({...prev, berries: (prev.berries || 0) + 3}));
                 rewardTitle = "采集成功"; rewardDesc = "获得 树果 x3";
             } else {
-                setInventory(prev => ({...prev, balls: {...prev.balls, poke: prev.balls.poke + 3}}));
+                setInventory(prev => ({...prev, balls: {...prev.balls, poke: (prev.balls.poke || 0) + 3}}));
                 rewardTitle = "发现遗失物"; rewardDesc = "获得 精灵球 x3";
             }
         } else if (rand < 0.7) {
@@ -5961,7 +5962,7 @@ const useGrowthItem = (petIndex, itemId) => {
             const specialBalls = ['net', 'dusk', 'quick', 'timer', 'heal', 'ultra'];
             const ballKey = _.sample(specialBalls);
             const ball = BALLS[ballKey];
-            setInventory(prev => ({...prev, balls: {...prev.balls, [ballKey]: prev.balls[ballKey] + 1}}));
+            setInventory(prev => ({...prev, balls: {...prev.balls, [ballKey]: (prev.balls[ballKey] || 0) + 1}}));
             rewardTitle = "发现珍贵球"; rewardDesc = `获得 ${ball.icon} ${ball.name}`;
         } else if (rand < 0.98) {
             // 5% 技能书
@@ -5981,8 +5982,7 @@ const useGrowthItem = (petIndex, itemId) => {
         }
         
         addGlobalLog(rewardDesc);
-        setEventData({ type: 'LOOT', title: rewardTitle, desc: rewardDesc, reward: {} });
-        setView('event');
+        showMapToast('🎁', rewardTitle, rewardDesc, 2000);
         return;
       }
 
@@ -6075,13 +6075,13 @@ const useGrowthItem = (petIndex, itemId) => {
         }
       }
 
-      // 草丛 (Tile 7) 遇敌率更高
-      let encounterRate = 0.05; 
-      if (tileType === 7) encounterRate = 0.25; 
+      let trainerRate = 0.03;
+      let encounterRate = 0.08;
+      if (tileType === 7) { trainerRate = 0.04; encounterRate = 0.28; }
       
-      if (roll < 0.08) {
+      if (roll < trainerRate) {
           setTimeout(() => startBattle(mapInfo, 'trainer'), 200); 
-      } else if (roll < 0.08 + encounterRate) {
+      } else if (roll < trainerRate + encounterRate) {
           const isDouble = party.filter(p => p.currentHp > 0).length >= 2 && Math.random() < 0.2;
           setTimeout(() => startBattle(mapInfo, isDouble ? 'wild_double' : 'wild'), 200);
       }
@@ -6241,7 +6241,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         } 
         // 4. 默认树果
         else {
-            setInventory(prev => ({...prev, berries: prev.berries + count}));
+            setInventory(prev => ({...prev, berries: (prev.berries || 0) + count}));
             rewardInfo = { name: `树果 x${count}`, icon: '🍒', type: 'ITEM' };
         }
     }
@@ -10106,7 +10106,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         if (Math.random() < 0.25) {
             const candyCount = 1 + Math.floor(Math.random() * 2);
-            setInventory(prev => ({ ...prev, expCandy: (prev.expCandy || 0) + candyCount }));
+            setInventory(prev => ({ ...prev, exp_candy: (prev.exp_candy || 0) + candyCount }));
             chestRewards.push(`🍬 经验糖果 x${candyCount}`);
         }
         if (Math.random() < 0.2) {
@@ -10692,7 +10692,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: Math.max(0, (prev.balls[ballType] || 0) - 1) } }));
     setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
-    addLog(`去吧! ${BALLS[ballType].name}!`);
+    addLog(`去吧! ${(BALLS[ballType] || {}).name || '精灵球'}!`);
     
     await wait(1000);
 
@@ -13108,7 +13108,7 @@ const renderMenu = () => {
             }
 
             const themeClass = `theme-bg-${m.type}`;
-            const isContestedActive = m.isContested && kingdomWar.faction;
+            const isContestedActive = m.isContested;
             const contestOwner = isContestedActive ? kingdomWar.territories?.[m.id]?.owner : null;
 
             return (
@@ -13151,12 +13151,12 @@ const renderMenu = () => {
                           ✓ CLEAR
                         </div>
                       )}
-                      {kingdomWar.faction && (WAR_MAP_IDS.includes(m.id) || m.isCapital) && (() => {
+                      {(WAR_MAP_IDS.includes(m.id) || m.isCapital) && (() => {
                         const t = kingdomWar.territories?.[m.id];
                         if (!t && !m.isCapital) return null;
                         const owner = m.isCapital ? m.capitalFaction : t?.owner;
                         const ownerF = FACTIONS[owner];
-                        const isMine = owner === kingdomWar.faction;
+                        const isMine = kingdomWar.faction && owner === kingdomWar.faction;
                         const isNeutral = owner === 'neutral';
                         const isContested = m.isContested && !isNeutral;
                         return (
@@ -16409,7 +16409,7 @@ const renderMenu = () => {
              const idx = parseInt(idxStr) - 1;
              if (!isNaN(idx) && idx >= 0 && idx < party.length) {
                 party[idx].maxCE = (party[idx].maxCE || 0) + cItem.val;
-                setInventory(inv => ({ ...inv, cursed: { ...inv.cursed, [selectedBagItem.id]: inv.cursed[selectedBagItem.id] - 1 } }));
+                setInventory(inv => ({ ...inv, cursed: { ...inv.cursed, [selectedBagItem.id]: (inv.cursed?.[selectedBagItem.id] || 0) - 1 } }));
                 alert(`${party[idx].name} 的咒力上限永久提升 +${cItem.val}!`);
               }
             } else { alert(`${cItem.name} 只能在战斗中使用。`); }
