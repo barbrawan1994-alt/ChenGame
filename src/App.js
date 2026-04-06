@@ -6113,7 +6113,6 @@ const useGrowthItem = (petIndex, itemId) => {
   }, [view, handleMove, shopMode, pcMode, party]);
 
   const handleEventConfirm = () => {
-    if (eventData.reward.gold) setGold(g => g + eventData.reward.gold);
     setEventData(null);
     setView('grid_map');
   };
@@ -6606,7 +6605,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     else if (type === 'kw_campaign') {
         const campaign = context.campaignData;
         trainerName = campaign.bossName;
-        dropGold = campaign.reward.gold;
+        dropGold = 0;
         const bossId = campaign.boss;
         const bossLvl = campaign.bossLvl;
         const pool = campaign.pool;
@@ -10120,6 +10119,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
         const contribGain = Math.floor(campaign.reward.contribution * (1 + gangBonusContrib / 100));
         const tokenGain = campaign.reward.tokens;
+        const campaignGold = campaign.reward.gold;
+        setGold(g => g + campaignGold);
         setKingdomWar(prev => {
             const next = {
               ...prev,
@@ -10133,7 +10134,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateAchStat({ kwKills: 1 });
         updateGangTaskProgress('kw_campaign', 1);
         updateGangTaskProgress('battle_win', 1);
-        alert(`⚔️ 战役通关！${campaign.name}\n\nBoss: ${campaign.bossName}\n\n获得：\n💰 ${campaign.reward.gold.toLocaleString()} 金币\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}`);
+        alert(`⚔️ 战役通关！${campaign.name}\n\nBoss: ${campaign.bossName}\n\n获得：\n💰 ${campaignGold.toLocaleString()} 金币\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}`);
         setParty(updatedParty);
         setBattle(null);
         setMapTab('kingdom');
@@ -13421,7 +13422,7 @@ const renderMenu = () => {
                   const gangBonus = getGangSkillBonus(getGangSkills(gang));
                   const tradeIncome = gangBonus.trade || 0;
                   const territoryDefBonus = gangBonus.territory || 0;
-                  const capitalDailyGold = Math.floor(200 + myTerrCount * 80 + tradeIncome);
+                  const capitalDailyGold = Math.floor(150 + myTerrCount * 50 + tradeIncome);
                   const hasClaimedCapitalReward = kw.dailyCounts?.capitalReward;
                   const capitalFeatures = [
                     { icon: '💰', name: '国库领俸', desc: `每日领取${capitalDailyGold}金币 (基于领土数+商队)`, action: 'treasury',
@@ -13481,8 +13482,7 @@ const renderMenu = () => {
                                   }, 'kingdom_war');
                                 } else if (feat.action === 'explore') {
                                   if (party.length < 1) { alert('至少需要1只精灵！'); return; }
-                                  setCurrentMapId(capitalMapId);
-                                  setView('grid_map');
+                                  enterMap(capitalMapId);
                                 } else if (feat.action === 'advisor') {
                                   const strongest = FACTION_IDS.slice().sort((a,b) => (terrCounts[b]||0) - (terrCounts[a]||0));
                                   const contested = Object.entries(kw.territories).filter(([,t]) => t.contested).length;
