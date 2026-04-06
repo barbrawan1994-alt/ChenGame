@@ -318,6 +318,8 @@ export default function RPG(props) {
     return saved;
   });
   const [kwTab, setKwTab] = useState('overview');
+  const [genDexFilter, setGenDexFilter] = useState({ faction: 'all', rarity: 'all', search: '' });
+  const [genDexDetail, setGenDexDetail] = useState(null);
 
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
@@ -1292,22 +1294,18 @@ const [viewStatPet, setViewStatPet] = useState(null);
     }
 
     const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
-    const genBonus = (kingdomWar?.recruitedGenerals || []).reduce((acc, g) => {
-      if (g.bonus) { Object.keys(g.bonus).forEach(k => { acc[k] = (acc[k]||0) + (g.bonus[k]||0); }); }
-      return acc;
-    }, {});
     const applyGB = (val, pct) => {
       let total = (pct || 0);
       return total > 0 ? Math.floor(val * (1 + total / 100)) : val;
     };
 
     return {
-      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), (gangBonus.hp||0) + (genBonus.hp||0)),
-      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), (gangBonus.atk||0) + (genBonus.atk||0)),
-      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), (gangBonus.def||0) + (genBonus.def||0)),
-      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk||0) + (genBonus.s_atk||0)),
-      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def||0) + (genBonus.s_def||0)),
-      spd:   applyGB(finalSpd, (gangBonus.spd||0) + (genBonus.spd||0)),
+      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), (gangBonus.hp||0)),
+      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), (gangBonus.atk||0)),
+      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), (gangBonus.def||0)),
+      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk||0)),
+      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def||0)),
+      spd:   applyGB(finalSpd, (gangBonus.spd||0)),
       crit:  finalCrit,
       atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk), 
       def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def)
@@ -6941,13 +6939,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const enemyGens = generateEnemyGenerals(avgLv, enemyFac);
       if (enemyGens.length > 0) {
         extraBattleData.enemyGenerals = enemyGens;
-        const eGenBonus = calcGeneralsTotalBonus(enemyGens);
-        const atkMult = 1 + (eGenBonus.atk || 0) / 100;
-        const defMult = 1 + (eGenBonus.def || 0) / 100;
-        const spdMult = 1 + (eGenBonus.spd || 0) / 100;
-        enemyParty.forEach(p => {
-          p.customStatMult = (p.customStatMult || 1) * Math.max(1, (atkMult + defMult + spdMult) / 3);
-        });
       }
     }
 
@@ -10377,8 +10368,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const alreadyHave = recruited.some(g => g.id === gen.id);
       if (!alreadyHave && recruited.length < MAX_RECRUITED_GENERALS) {
         const sameFaction = gen.faction === kingdomWar?.faction;
+        const genRecruitDiscount = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.recruit||0), 0);
         const costMult = sameFaction ? 0.6 : (gen.faction === 'neutral' ? 0.8 : 1.2);
-        const finalCost = Math.floor(gen.recruitCost * costMult);
+        const finalCost = Math.floor(gen.recruitCost * costMult * Math.max(0.5, 1 - genRecruitDiscount / 100));
         const rarityLabel = GENERAL_RARITY_CONFIG[gen.rarity]?.label || '将';
         if (window.confirm(
           '⚔️ 名将降临！\n\n' +
@@ -10386,9 +10378,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           gen.name + ' [' + gen.title + '] (' + rarityLabel + ')\n' +
           '📖 ' + gen.desc + '\n\n' +
           '💰 招募费用: ' + finalCost.toLocaleString() + ' 金币' +
-          (sameFaction ? ' (同阵营优惠40%!)' : gen.faction === 'neutral' ? ' (中立势力优惠20%)' : ' (敌方阵营加价20%)') + '\n' +
-          '📊 加成: ' + Object.entries(gen.bonus).filter(([,v])=>v>0).map(([k,v])=>{
-            const labels = {atk:'攻击',def:'防御',spd:'速度',gold:'金币',exp:'经验',contrib:'贡献',catchRate:'捕获率'};
+          (sameFaction ? ' (同阵营优惠40%!)' : gen.faction === 'neutral' ? ' (中立势力优惠20%)' : ' (敌方阵营加价20%)') +
+          (genRecruitDiscount > 0 ? ' (名将减免' + Math.min(genRecruitDiscount, 50) + '%)' : '') + '\n' +
+          '📊 奖励加成: ' + Object.entries(gen.bonus).filter(([,v])=>v>0).map(([k,v])=>{
+            const labels = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
             return (labels[k]||k)+'+'+v+'%';
           }).join(', ') + '\n\n' +
           '是否招募？(' + recruited.length + '/' + MAX_RECRUITED_GENERALS + ')'
@@ -10457,7 +10450,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battle.type === 'kingdom_war') {
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
         const kwContribBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.contribution || 0) : 0;
-        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + (gangBonusContrib + kwContribBonus) / 100));
+        const genContribBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.contrib||0), 0);
+        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + (gangBonusContrib + kwContribBonus + genContribBonus) / 100));
         const tokenGain = 2 + Math.floor(Math.random() * 3);
         setKingdomWar(prev => {
             const next = { ...prev, warContribution: (prev.warContribution || 0) + contribGain, factionTokens: (prev.factionTokens || 0) + tokenGain };
@@ -13832,12 +13826,12 @@ const renderMenu = () => {
                     if (g.bonus) Object.keys(g.bonus).forEach(k => { acc[k] = (acc[k]||0) + (g.bonus[k]||0); });
                     return acc;
                   }, {});
-                  const bonusLabels = {atk:'攻击',def:'防御',spd:'速度',gold:'金币',exp:'经验',contrib:'贡献',catchRate:'捕获率'};
+                  const bonusLabels = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
                   return (
                     <div style={{display:'grid', gap:'12px'}}>
                       <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                         <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b', marginBottom:'4px'}}>⚔️ 麾下将领 ({recruited.length}/{MAX_RECRUITED_GENERALS})</div>
-                        <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>在野外遭遇三国名将，击败后可花费金币招募。将领提供永久属性加成。</div>
+                        <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>在野外遭遇三国名将，击败后可花费金币招募。将领提供奖励加成（金币、经验、贡献等），不影响战斗属性。</div>
                         {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
                           <div style={{display:'flex', flexWrap:'wrap', gap:'6px', padding:'8px 10px', background:'#f8fafc', borderRadius:'10px', border:'1px solid #e2e8f0'}}>
                             <span style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600'}}>总加成:</span>
@@ -13898,31 +13892,105 @@ const renderMenu = () => {
                           })}
                         </div>
                       )}
-                      {/* 名将图鉴 */}
+                      {/* 名将图鉴 — 完整系统 */}
                       <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
-                        <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'10px'}}>📖 名将图鉴 ({recruited.length}/{SANGUO_GENERALS.length})</div>
-                        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(80px, 1fr))', gap:'6px'}}>
-                          {SANGUO_GENERALS.map(gen => {
-                            const isRecruited = recruited.some(g => g.id === gen.id);
-                            const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
-                            const portrait = getGeneralPortrait(gen);
-                            return (
-                              <div key={gen.id} style={{textAlign:'center', padding:'6px 4px', borderRadius:'8px', background: isRecruited ? 'rgba(255,255,255,0.95)' : '#f8fafc', border:'1px solid '+(isRecruited ? rc.color+'30' : '#e2e8f0'), opacity: isRecruited ? 1 : 0.4}}>
-                                <div style={{
-                                  width:'32px', height:'32px', borderRadius:'50%', margin:'0 auto',
-                                  background: isRecruited ? portrait.bg : '#d1d5db',
-                                  display:'flex', alignItems:'center', justifyContent:'center',
-                                  fontSize:'16px', fontWeight:'900', color: isRecruited ? portrait.textColor : '#9ca3af',
-                                  textShadow: isRecruited ? '1px 1px 2px rgba(0,0,0,0.4)' : 'none',
-                                  border: `2px solid ${isRecruited ? portrait.border : '#ccc'}`,
-                                  boxShadow: isRecruited && gen.rarity === 'SSR' ? `0 0 6px ${portrait.border}50` : 'none',
-                                }}>{isRecruited ? portrait.surname : '?'}</div>
-                                <div style={{fontSize:'9px', fontWeight:'700', color: isRecruited ? '#1e293b' : '#94a3b8', marginTop:'3px'}}>{isRecruited ? gen.name : '???'}</div>
-                                <div style={{fontSize:'7px', color: rc.color||'#94a3b8'}}>{rc.label||''}</div>
+                        {(() => {
+                          const recruitedIds = new Set(recruited.map(g => g.id));
+                          const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', neutral:'群雄' };
+                          const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', neutral:'#616161' };
+                          const rarityNames = { all:'全部', SSR:'SSR', SR:'SR', R:'R' };
+                          const filteredGens = SANGUO_GENERALS.filter(g => {
+                            if (genDexFilter.faction !== 'all' && g.faction !== genDexFilter.faction) return false;
+                            if (genDexFilter.rarity !== 'all' && g.rarity !== genDexFilter.rarity) return false;
+                            if (genDexFilter.search && !g.name.includes(genDexFilter.search) && !g.title.includes(genDexFilter.search)) return false;
+                            return true;
+                          });
+                          const totalRecruited = SANGUO_GENERALS.filter(g => recruitedIds.has(g.id)).length;
+                          const filteredRecruited = filteredGens.filter(g => recruitedIds.has(g.id)).length;
+                          const factionStats = ['wei','shu','wu','neutral'].map(f => {
+                            const all = SANGUO_GENERALS.filter(g => g.faction === f);
+                            const got = all.filter(g => recruitedIds.has(g.id));
+                            return { f, total: all.length, got: got.length };
+                          });
+                          return (
+                            <div>
+                              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
+                                <div style={{fontSize:'14px', fontWeight:'800', color:'#1e293b'}}>📖 三国名将图鉴</div>
+                                <div style={{fontSize:'11px', color:'#64748b', fontWeight:'600'}}>{totalRecruited}/{SANGUO_GENERALS.length} 已收集</div>
                               </div>
-                            );
-                          })}
-                        </div>
+                              <div style={{display:'flex', gap:'4px', marginBottom:'10px', background:'#f1f5f9', borderRadius:'8px', padding:'3px'}}>
+                                {factionStats.map(({f, total, got}) => (
+                                  <div key={f} style={{flex:1, textAlign:'center', padding:'6px 2px', borderRadius:'6px', cursor:'pointer',
+                                    background: (genDexFilter.faction === f || (genDexFilter.faction === 'all' && f === 'wei' && false)) ? '#fff' : 'transparent',
+                                    border: genDexFilter.faction === f ? '1px solid #e2e8f0' : '1px solid transparent',
+                                    boxShadow: genDexFilter.faction === f ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                  }} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}>
+                                    <div style={{fontSize:'10px', fontWeight:'700', color: factionColors[f]||'#666'}}>{factionNames[f]}</div>
+                                    <div style={{fontSize:'8px', color:'#94a3b8', marginTop:'1px'}}>{got}/{total}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div style={{display:'flex', gap:'6px', marginBottom:'10px', alignItems:'center'}}>
+                                <div style={{display:'flex', gap:'3px'}}>
+                                  {['all','SSR','SR','R'].map(r => (
+                                    <button key={r} onClick={() => setGenDexFilter(p => ({...p, rarity: r}))}
+                                      style={{fontSize:'9px', fontWeight:'700', padding:'3px 8px', borderRadius:'5px', border:'1px solid', cursor:'pointer',
+                                        background: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.bgColor||'#1e293b') : '#f8fafc',
+                                        color: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : '#64748b',
+                                        borderColor: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#1e293b') : '#e2e8f0',
+                                      }}>{rarityNames[r]}</button>
+                                  ))}
+                                </div>
+                                <input type="text" placeholder="搜索名将..." value={genDexFilter.search}
+                                  onChange={e => setGenDexFilter(p => ({...p, search: e.target.value}))}
+                                  style={{flex:1, fontSize:'11px', padding:'4px 8px', borderRadius:'6px', border:'1px solid #e2e8f0', outline:'none'}} />
+                              </div>
+                              <div style={{background:'linear-gradient(135deg, #f8fafc, #e2e8f0)', borderRadius:'10px', padding:'8px', marginBottom:'10px'}}>
+                                <div style={{display:'flex', gap:'3px', justifyContent:'center'}}>
+                                  {Array.from({length: 20}, (_, i) => {
+                                    const pct = totalRecruited / SANGUO_GENERALS.length;
+                                    const filled = i < Math.floor(pct * 20);
+                                    return <div key={i} style={{width:'12px', height:'6px', borderRadius:'2px', background: filled ? myFaction.color : '#d1d5db'}} />;
+                                  })}
+                                </div>
+                                <div style={{textAlign:'center', fontSize:'10px', color:'#64748b', marginTop:'4px', fontWeight:'600'}}>{Math.floor(totalRecruited/SANGUO_GENERALS.length*100)}% 收集进度</div>
+                              </div>
+                              <div style={{fontSize:'10px', color:'#94a3b8', marginBottom:'6px', fontWeight:'600'}}>
+                                显示 {filteredGens.length} 位名将 {genDexFilter.faction !== 'all' || genDexFilter.rarity !== 'all' || genDexFilter.search ? `(已收集 ${filteredRecruited})` : ''}
+                              </div>
+                              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:'6px', maxHeight:'400px', overflowY:'auto'}}>
+                                {filteredGens.map(gen => {
+                                  const isR = recruitedIds.has(gen.id);
+                                  const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+                                  const pt = getGeneralPortrait(gen);
+                                  return (
+                                    <div key={gen.id} onClick={() => isR && setGenDexDetail(gen)} style={{
+                                      textAlign:'center', padding:'8px 4px', borderRadius:'10px', cursor: isR ? 'pointer' : 'default',
+                                      background: isR ? '#fff' : '#f8fafc', border:`1px solid ${isR ? rc.color+'30' : '#e2e8f0'}`,
+                                      opacity: isR ? 1 : 0.35, transition:'all 0.2s',
+                                    }}>
+                                      <div style={{
+                                        width:'36px', height:'36px', borderRadius:'50%', margin:'0 auto',
+                                        background: isR ? pt.bg : '#d1d5db',
+                                        display:'flex', alignItems:'center', justifyContent:'center',
+                                        fontSize:'18px', fontWeight:'900', color: isR ? pt.textColor : '#9ca3af',
+                                        textShadow: isR ? '1px 1px 2px rgba(0,0,0,0.4)' : 'none',
+                                        border: `2px solid ${isR ? pt.border : '#ccc'}`,
+                                        boxShadow: isR && gen.rarity === 'SSR' ? `0 0 8px ${pt.border}60` : 'none',
+                                        position:'relative',
+                                      }}>
+                                        {isR ? pt.surname : '?'}
+                                        <div style={{position:'absolute', bottom:-2, right:-2, fontSize:'7px', background:rc.bgColor||'#333', color:rc.color||'#999', padding:'0 2px', borderRadius:'3px', fontWeight:'800', lineHeight:'1.3'}}>{rc.label?.charAt(0)}</div>
+                                      </div>
+                                      <div style={{fontSize:'10px', fontWeight:'700', color: isR ? '#1e293b' : '#94a3b8', marginTop:'4px'}}>{isR ? gen.name : '???'}</div>
+                                      <div style={{fontSize:'8px', color: isR ? '#64748b' : '#cbd5e1', marginTop:'1px'}}>{isR ? gen.title : '—'}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -14191,8 +14259,9 @@ const renderMenu = () => {
                   const capitalMapId = CAPITAL_MAP_IDS[kw.faction];
                   const capitalMap = MAPS.find(m => m.id === capitalMapId);
                   const gangBonus = getGangSkillBonus(getGangSkills(gang));
-                  const tradeIncome = gangBonus.trade || 0;
-                  const territoryDefBonus = gangBonus.territory || 0;
+                  const genTotalBonus = calcGeneralsTotalBonus(kw.recruitedGenerals);
+                  const tradeIncome = (gangBonus.trade || 0) + (genTotalBonus.trade || 0);
+                  const territoryDefBonus = (gangBonus.territory || 0) + (genTotalBonus.territory || 0);
                   const capitalDailyGold = Math.floor(150 + myTerrCount * 50 + tradeIncome);
                   const hasClaimedCapitalReward = !dailyReset && kw.dailyCounts?.capitalReward;
                   const capitalFeatures = [
@@ -19854,12 +19923,64 @@ const renderMenu = () => {
         );
       })()}
 
+      {/* 名将图鉴详情弹窗 */}
+      {genDexDetail && (() => {
+        const gen = genDexDetail;
+        const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+        const pt = getGeneralPortrait(gen);
+        const fData = gen.faction !== 'neutral' ? FACTIONS[gen.faction] : null;
+        const fLabel = fData ? fData.fullName : '群雄';
+        const bonusLabelsD = {gold:'金币奖励',exp:'经验奖励',contrib:'国战贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
+        return (
+          <div onClick={() => setGenDexDetail(null)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.6)', zIndex:20000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'}}>
+            <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:'20px', width:'100%', maxWidth:'340px', overflow:'hidden'}}>
+              <div style={{background: pt.bg, padding:'24px 20px', textAlign:'center', position:'relative'}}>
+                <div style={{
+                  width:'72px', height:'72px', borderRadius:'50%', margin:'0 auto', background:'rgba(255,255,255,0.15)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:'36px', fontWeight:'900', color: pt.textColor,
+                  textShadow:'2px 2px 4px rgba(0,0,0,0.5)',
+                  border:`3px solid rgba(255,255,255,0.3)`,
+                  boxShadow: gen.rarity === 'SSR' ? '0 0 20px rgba(255,255,255,0.3)' : 'none',
+                }}>{pt.surname}</div>
+                <div style={{marginTop:'10px', fontSize:'20px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}</div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.8)', marginTop:'4px'}}>{gen.title}</div>
+                <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
+                  <span style={{fontSize:'10px', fontWeight:'700', color: rc.color, background: rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
+                  <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fLabel}</span>
+                </div>
+              </div>
+              <div style={{padding:'16px 20px'}}>
+                <div style={{fontSize:'12px', color:'#64748b', lineHeight:'1.6', marginBottom:'14px', fontStyle:'italic'}}>「{gen.desc}」</div>
+                <div style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>将领加成（奖励型）</div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', marginBottom:'14px'}}>
+                  {Object.entries(gen.bonus||{}).filter(([,v])=>v>0).map(([k,v]) => (
+                    <div key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0'}}>
+                      <span style={{fontSize:'10px', color:'#64748b'}}>{bonusLabelsD[k]||k}</span>
+                      <span style={{fontSize:'11px', fontWeight:'800', color: myFaction?.color || '#4CAF50'}}>+{v}%</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex', gap:'8px', fontSize:'10px', color:'#94a3b8'}}>
+                  <span>Lv.{gen.teamLevel}</span>
+                  <span>队伍{gen.teamSize}人</span>
+                  <span>招募费{(gen.recruitCost/1000).toFixed(0)}K金</span>
+                </div>
+              </div>
+              <div style={{padding:'0 20px 16px', textAlign:'center'}}>
+                <button onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: myFaction?.color || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 战斗名将详情弹窗 */}
       {battleGeneralDetail && (() => {
         const gd = battleGeneralDetail;
         const isPlayer = gd.side === 'player';
         const sideColor = isPlayer ? '#4CAF50' : '#FF9800';
-        const bonusLabelsGen = {atk:'攻击',def:'防御',spd:'速度',gold:'金币',exp:'经验',contrib:'贡献',catchRate:'捕获率'};
+        const bonusLabelsGen = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
         return (
           <div onClick={() => setBattleGeneralDetail(null)} style={{
             position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)',
