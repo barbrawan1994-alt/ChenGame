@@ -12711,11 +12711,11 @@ const renderMenu = () => {
           {/* 功能网格 - 2x3古风卷轴 */}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
             {[
-              { key:'pokedex', label:'精灵志', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📜', color:'#d4a853' },
-              { key:'skill_dex', label:'兵法', sub:`${allSkills.length}种`, emoji:'⚔️', color:'#c49640' },
-              { key:'fruit_dex', label:'天赋', sub:`${getAllFruits().length}种`, emoji:'🍑', color:'#b8860b' },
-              { key:'achievements', label:'功勋', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#daa520' },
-              { key:'guide', label:'兵书', sub:'攻略', emoji:'📖', color:'#cd853f' },
+              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#d4a853' },
+              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#c49640' },
+              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#b8860b' },
+              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#daa520' },
+              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#cd853f' },
               { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#78909c', action: resetGame },
             ].map(btn => (
               <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
