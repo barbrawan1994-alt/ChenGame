@@ -120,6 +120,8 @@ export const DEFAULT_KINGDOM_WAR = {
   dailyCounts: { income: false, kills: 0, capitalReward: false, resetDate: null },
   territories: {},
   warLog: [],
+  collectedGeneralIds: [],
+  generalDraws: 0,
   lastTick: null,
   season: 1,
   seasonStartDate: null,
@@ -293,6 +295,7 @@ export const applySeasonRewards = (kw, result) => {
   const playerRank = result.rankings.indexOf(kw.faction) + 1;
   const reward = SEASON_CONFIG.rewards[playerRank] || SEASON_CONFIG.rewards[3];
   const newContribution = Math.floor(kw.warContribution * SEASON_CONFIG.contributionCarryover);
+  const drawCount = playerRank === 1 ? 3 : playerRank === 2 ? 2 : 1;
 
   return {
     ...kw,
@@ -309,6 +312,7 @@ export const applySeasonRewards = (kw, result) => {
     attackBuff: false,
     goldReward: reward.gold,
     tokenReward: reward.tokens,
+    generalDraws: drawCount,
     seasonTitles: reward.title
       ? [...(kw.seasonTitles || []), `S${result.season}${reward.title}`]
       : (kw.seasonTitles || []),

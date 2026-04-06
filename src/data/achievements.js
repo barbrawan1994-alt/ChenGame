@@ -245,12 +245,16 @@ const ACHIEVEMENTS = [
   { id: 'kw_king',          cat: 'SOCIAL',   rarity: 'LEGENDARY', name: '一统天下',     desc: '国战军衔达到国主',                       check: s => s.kwRankIdx >= 5,          reward: { gold: 80000, title: '乱世霸主' } },
 
   // ===== 国战进阶成就 (18) =====
-  // — 名将招募 —
+  // — 名将收集 —
   { id: 'kw_gen_first',     cat: 'SOCIAL',   rarity: 'COMMON',    name: '招贤纳士',     desc: '招募第一位三国名将',                     check: s => s.kwGenerals >= 1,         reward: { gold: 2000 } },
   { id: 'kw_gen_5',         cat: 'SOCIAL',   rarity: 'RARE',      name: '五虎上将',     desc: '同时拥有5位名将',                       check: s => s.kwGenerals >= 5,         reward: { gold: 15000, title: '知人善任' } },
-  { id: 'kw_gen_max',       cat: 'SOCIAL',   rarity: 'EPIC',      name: '八方来投',     desc: '名将招募达到上限(8位)',                  check: s => s.kwGenerals >= 8,         reward: { gold: 30000, title: '礼贤下士' } },
+  { id: 'kw_gen_max',       cat: 'SOCIAL',   rarity: 'EPIC',      name: '满门英杰',     desc: '名将招募达到上限(12位)',                 check: s => s.kwGenerals >= 12,        reward: { gold: 40000, title: '礼贤下士' } },
   { id: 'kw_gen_ssr3',      cat: 'MASTERY',  rarity: 'LEGENDARY', name: '三国鼎立',     desc: '同时拥有3位SSR传世名将',                check: s => s.kwSSRGenerals >= 3,      reward: { gold: 60000, title: '天命所归' } },
   { id: 'kw_gen_allfac',    cat: 'MASTERY',  rarity: 'EPIC',      name: '不分敌我',     desc: '同时拥有来自魏蜀吴三国的名将',          check: s => s.kwGenFactions >= 3,      reward: { gold: 25000 } },
+  { id: 'kw_gen_dex30',     cat: 'EXPLORE',  rarity: 'RARE',      name: '名将猎人',     desc: '图鉴中收集过30位不同名将',              check: s => s.kwGenDexTotal >= 30,     reward: { gold: 20000, title: '求贤若渴' } },
+  { id: 'kw_gen_dex60',     cat: 'EXPLORE',  rarity: 'EPIC',      name: '半壁江山',     desc: '图鉴中收集过60位不同名将',              check: s => s.kwGenDexTotal >= 60,     reward: { gold: 50000, title: '伯乐再世' } },
+  { id: 'kw_gen_dex100',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '群英荟萃',     desc: '图鉴中收集过100位不同名将',             check: s => s.kwGenDexTotal >= 100,    reward: { gold: 100000, title: '群英荟萃' } },
+  { id: 'kw_gen_dex120',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '一统天下名将', desc: '收集全部120位三国名将',                  check: s => s.kwGenDexTotal >= 120,    reward: { gold: 200000, title: '千古一帝' }, hidden: true },
 
   // — 历史名战 —
   { id: 'hb_first',         cat: 'BATTLE',   rarity: 'COMMON',    name: '初涉战场',     desc: '通关第一场历史名战',                     check: s => s.hbCompleted >= 1,        reward: { gold: 3000 } },
@@ -363,6 +367,7 @@ export const DEFAULT_ACH_STATS = {
   kwGenerals: 0,
   kwSSRGenerals: 0,
   kwGenFactions: 0,
+  kwGenDexTotal: 0,
   kwContribution: 0,
   kwCampaignsCleared: 0,
   hbCompleted: 0,

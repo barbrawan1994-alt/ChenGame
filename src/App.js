@@ -320,6 +320,7 @@ export default function RPG(props) {
   const [kwTab, setKwTab] = useState('overview');
   const [genDexFilter, setGenDexFilter] = useState({ faction: 'all', rarity: 'all', search: '' });
   const [genDexDetail, setGenDexDetail] = useState(null);
+  const [generalDrawResult, setGeneralDrawResult] = useState(null);
 
   // 成就系统
   const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
@@ -2398,6 +2399,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         next.kwGenerals = rg.length;
         next.kwSSRGenerals = rg.filter(g => g.rarity === 'SSR').length;
         next.kwGenFactions = new Set(rg.map(g => g.faction).filter(f => f && f !== 'neutral')).size;
+        next.kwGenDexTotal = (kingdomWar.collectedGeneralIds || []).length;
         next.kwContribution = kingdomWar.warContribution || 0;
         next.kwCampaignsCleared = (kingdomWar.completedCampaigns || []).length;
         const chb = kingdomWar.completedHistoricalBattles || [];
@@ -7956,6 +7958,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     return () => clearInterval(warInterval);
   }, [kingdomWar.faction]);
 
+  const doGeneralDraw = () => {
+    if (!kingdomWar?.generalDraws || kingdomWar.generalDraws <= 0) return;
+    const gen = SANGUO_GENERALS[Math.floor(Math.random() * SANGUO_GENERALS.length)];
+    const recruited = kingdomWar.recruitedGenerals || [];
+    const alreadyHave = recruited.some(g => g.id === gen.id);
+    const atMax = recruited.length >= MAX_RECRUITED_GENERALS;
+    const gotNew = !alreadyHave && !atMax;
+    setGeneralDrawResult({ gen, gotNew, alreadyHave, atMax });
+    setKingdomWar(prev => {
+      const next = { ...prev, generalDraws: Math.max(0, (prev.generalDraws || 0) - 1) };
+      if (gotNew) {
+        next.recruitedGenerals = [...(prev.recruitedGenerals || []), { id: gen.id, name: gen.name, title: gen.title, faction: gen.faction, rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon }];
+        const ids = new Set(prev.collectedGeneralIds || []);
+        ids.add(gen.id);
+        next.collectedGeneralIds = [...ids];
+      }
+      return next;
+    });
+  };
+
   const buyCafe = () => {
     if (cafe.owned) { alert('已拥有咖啡厅！'); return; }
     if (gold < CAFE_BUILDING.price) { alert(`金币不足！需要 ${CAFE_BUILDING.price} 金币`); return; }
@@ -10388,13 +10410,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
         )) {
           if ((gold || 0) >= finalCost) {
             setGold(g => g - finalCost);
-            setKingdomWar(prev => ({
-              ...prev,
-              recruitedGenerals: [...(prev.recruitedGenerals || []), {
-                id: gen.id, name: gen.name, title: gen.title, faction: gen.faction,
-                rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon, recruitTime: Date.now(),
-              }],
-            }));
+            setKingdomWar(prev => {
+              const ids = new Set(prev.collectedGeneralIds || []);
+              ids.add(gen.id);
+              return {
+                ...prev,
+                recruitedGenerals: [...(prev.recruitedGenerals || []), {
+                  id: gen.id, name: gen.name, title: gen.title, faction: gen.faction,
+                  rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon, recruitTime: Date.now(),
+                }],
+                collectedGeneralIds: [...ids],
+              };
+            });
             addLog('⚔️ 成功招募名将【' + gen.name + '】！');
           } else {
             alert('金币不足！需要 ' + finalCost.toLocaleString() + ' 金币');
@@ -12552,6 +12579,150 @@ const renderFruitCSSIcon = (fruitId, size = 44) => {
 // ==========================================
 // 恶魔果实图鉴
 // ==========================================
+
+// ==========================================
+// 三国名将图鉴 (独立页面)
+// ==========================================
+const renderGeneralDex = () => {
+  const kw = kingdomWar || {};
+  const recruited = kw.recruitedGenerals || [];
+  const recruitedIds = new Set(recruited.map(g => g.id));
+  const myFac = kw.faction ? FACTIONS[kw.faction] : null;
+  const themeColor = myFac?.color || '#B71C1C';
+  const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', neutral:'群雄' };
+  const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', neutral:'#616161' };
+  const rarityNames = { all:'全部', SSR:'SSR', SR:'SR', R:'R' };
+  const bonusLabels = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
+  const filteredGens = SANGUO_GENERALS.filter(g => {
+    if (genDexFilter.faction !== 'all' && g.faction !== genDexFilter.faction) return false;
+    if (genDexFilter.rarity !== 'all' && g.rarity !== genDexFilter.rarity) return false;
+    if (genDexFilter.search && !g.name.includes(genDexFilter.search) && !g.title.includes(genDexFilter.search)) return false;
+    return true;
+  });
+  const totalR = SANGUO_GENERALS.filter(g => recruitedIds.has(g.id)).length;
+  const filteredR = filteredGens.filter(g => recruitedIds.has(g.id)).length;
+  const fStats = ['wei','shu','wu','neutral'].map(f => {
+    const all = SANGUO_GENERALS.filter(g => g.faction === f);
+    return { f, total: all.length, got: all.filter(g => recruitedIds.has(g.id)).length };
+  });
+  const draws = kw.generalDraws || 0;
+  const totalBonus = recruited.reduce((acc, g) => {
+    if (g.bonus) Object.keys(g.bonus).forEach(k => { acc[k] = (acc[k]||0) + (g.bonus[k]||0); });
+    return acc;
+  }, {});
+
+  return (
+    <div style={{position:'fixed', inset:0, background:'linear-gradient(160deg, #0a0a1a 0%, #1a0a0a 40%, #1f0d0d 70%, #0a1628 100%)', zIndex:9999, overflow:'auto'}}>
+      <div style={{maxWidth:'480px', margin:'0 auto', padding:'16px 12px 80px'}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px'}}>
+          <button onClick={() => setView('grid_map')} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', padding:'6px 14px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', fontWeight:'600'}}>← 返回</button>
+          <div style={{fontSize:'18px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>📜 三国名将图鉴</div>
+          <div style={{width:'60px'}}></div>
+        </div>
+
+        {/* 收集进度总览 */}
+        <div style={{background:'rgba(255,255,255,0.06)', borderRadius:'14px', padding:'14px', marginBottom:'12px', border:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+            <span style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>收集进度</span>
+            <span style={{fontSize:'13px', fontWeight:'700', color: themeColor}}>{totalR} / {SANGUO_GENERALS.length}</span>
+          </div>
+          <div style={{display:'flex', gap:'3px', marginBottom:'8px'}}>
+            {Array.from({length: 30}, (_, i) => (
+              <div key={i} style={{flex:1, height:'6px', borderRadius:'3px', background: i < Math.floor(totalR / SANGUO_GENERALS.length * 30) ? themeColor : 'rgba(255,255,255,0.1)'}} />
+            ))}
+          </div>
+          <div style={{display:'flex', gap:'6px', justifyContent:'center', flexWrap:'wrap'}}>
+            {fStats.map(({f, total, got}) => (
+              <span key={f} style={{fontSize:'10px', color: factionColors[f], fontWeight:'700', background:'rgba(255,255,255,0.06)', padding:'2px 8px', borderRadius:'6px'}}>
+                {factionNames[f]} {got}/{total}
+              </span>
+            ))}
+          </div>
+          {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
+            <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'8px', padding:'6px 8px', background:'rgba(255,255,255,0.04)', borderRadius:'8px'}}>
+              <span style={{fontSize:'9px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'100%'}}>总奖励加成:</span>
+              {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
+                <span key={k} style={{fontSize:'9px', fontWeight:'700', color: themeColor, background: themeColor+'15', padding:'2px 6px', borderRadius:'4px'}}>{bonusLabels[k]||k}+{v}%</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 赛季抽将 */}
+        {draws > 0 && (
+          <div style={{background:'linear-gradient(135deg, #B71C1C, #D32F2F)', borderRadius:'14px', padding:'14px', marginBottom:'12px', textAlign:'center', cursor:'pointer', boxShadow:'0 4px 15px rgba(183,28,28,0.4)'}} onClick={doGeneralDraw}>
+            <div style={{fontSize:'24px', marginBottom:'4px'}}>🎴</div>
+            <div style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>赛季名将抽卡</div>
+            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', marginTop:'2px'}}>剩余 {draws} 次抽卡机会，点击抽取！</div>
+          </div>
+        )}
+
+        {/* 筛选 */}
+        <div style={{display:'flex', gap:'4px', marginBottom:'8px', background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'4px'}}>
+          {['all','wei','shu','wu','neutral'].map(f => (
+            <button key={f} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}
+              style={{flex:1, fontSize:'10px', fontWeight:'700', padding:'5px 2px', borderRadius:'6px', border:'none', cursor:'pointer',
+                background: genDexFilter.faction === f ? 'rgba(255,255,255,0.12)' : 'transparent',
+                color: genDexFilter.faction === f ? (factionColors[f]||'#fff') : 'rgba(255,255,255,0.4)',
+              }}>{factionNames[f]}</button>
+          ))}
+        </div>
+        <div style={{display:'flex', gap:'4px', marginBottom:'10px', alignItems:'center'}}>
+          {['all','SSR','SR','R'].map(r => (
+            <button key={r} onClick={() => setGenDexFilter(p => ({...p, rarity: r}))}
+              style={{fontSize:'9px', fontWeight:'700', padding:'3px 8px', borderRadius:'5px', border:'1px solid', cursor:'pointer',
+                background: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.bgColor||'rgba(255,255,255,0.15)') : 'transparent',
+                color: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.4)',
+                borderColor: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.1)',
+              }}>{rarityNames[r]}</button>
+          ))}
+          <input type="text" placeholder="搜索..." value={genDexFilter.search}
+            onChange={e => setGenDexFilter(p => ({...p, search: e.target.value}))}
+            style={{flex:1, fontSize:'11px', padding:'4px 8px', borderRadius:'6px', border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.06)', color:'#fff', outline:'none'}} />
+        </div>
+
+        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginBottom:'8px'}}>
+          显示 {filteredGens.length} 位 ({filteredR} 已收集)
+        </div>
+
+        {/* 名将网格 */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(85px, 1fr))', gap:'8px'}}>
+          {filteredGens.map(gen => {
+            const isR = recruitedIds.has(gen.id);
+            const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+            const pt = getGeneralPortrait(gen);
+            return (
+              <div key={gen.id} onClick={() => isR && setGenDexDetail(gen)} style={{
+                textAlign:'center', padding:'10px 4px', borderRadius:'12px', cursor: isR ? 'pointer' : 'default',
+                background: isR ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                border:`1px solid ${isR ? (rc.color||'#fff')+'30' : 'rgba(255,255,255,0.05)'}`,
+                opacity: isR ? 1 : 0.3, transition:'all 0.2s',
+              }}>
+                <div style={{
+                  width:'40px', height:'40px', borderRadius:'50%', margin:'0 auto',
+                  background: isR ? pt.bg : 'rgba(255,255,255,0.1)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:'20px', fontWeight:'900', color: isR ? pt.textColor : 'rgba(255,255,255,0.3)',
+                  textShadow: isR ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none',
+                  border: `2px solid ${isR ? pt.border : 'rgba(255,255,255,0.15)'}`,
+                  boxShadow: isR && gen.rarity === 'SSR' ? `0 0 10px ${pt.border}50` : 'none',
+                  position:'relative',
+                }}>
+                  {isR ? pt.surname : '?'}
+                  <div style={{position:'absolute', bottom:-2, right:-2, fontSize:'7px', background:rc.bgColor||'rgba(255,255,255,0.1)', color:rc.color||'rgba(255,255,255,0.5)', padding:'0 3px', borderRadius:'3px', fontWeight:'800', lineHeight:'1.3'}}>{rc.label?.charAt(0)}</div>
+                </div>
+                <div style={{fontSize:'10px', fontWeight:'700', color: isR ? '#fff' : 'rgba(255,255,255,0.3)', marginTop:'5px'}}>{isR ? gen.name : '???'}</div>
+                <div style={{fontSize:'8px', color: isR ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)', marginTop:'1px'}}>{isR ? gen.title : '—'}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
 const renderFruitDex = () => {
   const allFruits = getAllFruits();
   const categories = ['ALL', 'PARAMECIA', 'ZOAN', 'LOGIA'];
@@ -13734,6 +13905,16 @@ const renderMenu = () => {
                 {/* 概览 */}
                 {kwTab === 'overview' && (
                   <div style={{display:'grid', gap:'12px'}}>
+                    {/* 赛季抽卡提示 */}
+                    {(kw.generalDraws || 0) > 0 && (
+                      <div onClick={() => setView('general_dex')} style={{background:`linear-gradient(135deg, ${myFaction.color}, ${myFaction.darkColor || myFaction.color})`, borderRadius:'14px', padding:'14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}>
+                        <div style={{fontSize:'32px'}}>🎴</div>
+                        <div>
+                          <div style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>赛季名将抽卡 x{kw.generalDraws}</div>
+                          <div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', marginTop:'2px'}}>点击前往名将图鉴使用抽卡机会</div>
+                        </div>
+                      </div>
+                    )}
                     {/* 三国势力对比 */}
                     <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                       <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>三国势力对比</div>
@@ -16472,13 +16653,15 @@ const renderMenu = () => {
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
               { id: 'gang', icon: '🏴', label: '帮派', action: () => setView('gang') },
               { id: 'kingdom', icon: kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.icon || '🏰' : '🏰', label: '国战', action: () => { handleExitAndSave(); setMapTab('kingdom'); } },
+              { id: 'general_dex', icon: '📜', label: '名将', badge: (kingdomWar?.generalDraws || 0), action: () => setView('general_dex') },
               { id: 'housing', icon: '🏡', label: '家园', action: () => setView('housing') },
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
-                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
+                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer', position:'relative'}}>
                   <div style={{fontSize: '24px', lineHeight: '1'}}>{btn.icon}</div>
                   <div style={{fontSize: '12px', fontWeight: 'bold', color:'#555'}}>{btn.label}</div>
+                  {btn.badge > 0 && <div style={{position:'absolute', top:'-2px', right:'-2px', width:'16px', height:'16px', borderRadius:'50%', background:'#E53935', color:'#fff', fontSize:'9px', fontWeight:'800', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #fff'}}>{btn.badge}</div>}
               </button>
             ))}
             <div className="dock-divider-v" style={{width:'2px', height:'35px', background:'#eee', margin:'0 10px'}}></div>
@@ -19771,6 +19954,7 @@ const renderMenu = () => {
       {view === 'pokedex' && renderPokedex()}
       {view === 'skill_dex' && renderSkillDex()}
       {view === 'fruit_dex' && renderFruitDex()}
+      {view === 'general_dex' && renderGeneralDex()}
       {view === 'world_map' && renderWorldMap()}
       {view === 'bag' && renderBag()}
       {view === 'grid_map' && renderGridMap()}
@@ -19923,6 +20107,57 @@ const renderMenu = () => {
         );
       })()}
 
+      {/* 赛季名将抽卡结果 */}
+      {generalDrawResult && (() => {
+        const dr = generalDrawResult;
+        const gen = dr.gen;
+        const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+        const pt = getGeneralPortrait(gen);
+        const fData = gen.faction !== 'neutral' ? FACTIONS[gen.faction] : null;
+        return (
+          <div onClick={() => setGeneralDrawResult(null)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.8)', zIndex:20001, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'}}>
+            <div onClick={e => e.stopPropagation()} style={{background:'#1a1a2e', borderRadius:'20px', width:'100%', maxWidth:'320px', overflow:'hidden', border:`2px solid ${rc.color||'#666'}40`}}>
+              <div style={{background: pt.bg, padding:'30px 20px', textAlign:'center'}}>
+                <div style={{fontSize:'14px', color:'rgba(255,255,255,0.7)', marginBottom:'8px', fontWeight:'600'}}>🎴 赛季抽卡</div>
+                <div style={{
+                  width:'80px', height:'80px', borderRadius:'50%', margin:'0 auto', background:'rgba(255,255,255,0.15)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:'40px', fontWeight:'900', color: pt.textColor,
+                  textShadow:'2px 2px 4px rgba(0,0,0,0.5)',
+                  border:'3px solid rgba(255,255,255,0.3)',
+                  boxShadow: gen.rarity === 'SSR' ? '0 0 25px rgba(255,255,255,0.3)' : 'none',
+                  animation: gen.rarity === 'SSR' ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                }}>{pt.surname}</div>
+                <div style={{marginTop:'12px', fontSize:'22px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}</div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.7)', marginTop:'4px'}}>{gen.title}</div>
+                <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
+                  <span style={{fontSize:'10px', fontWeight:'700', color:rc.color, background:rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
+                  {fData && <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fData.icon}{fData.fullName}</span>}
+                </div>
+              </div>
+              <div style={{padding:'16px 20px', textAlign:'center'}}>
+                {dr.gotNew ? (
+                  <div style={{fontSize:'14px', fontWeight:'800', color:'#4CAF50'}}>🎉 成功招募！</div>
+                ) : dr.alreadyHave ? (
+                  <div style={{fontSize:'13px', fontWeight:'700', color:'#FF9800'}}>已拥有此将领，抽卡作废</div>
+                ) : (
+                  <div style={{fontSize:'13px', fontWeight:'700', color:'#FF5252'}}>将领已满({MAX_RECRUITED_GENERALS}位)，无法招募</div>
+                )}
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'6px'}}>剩余抽卡次数: {kingdomWar?.generalDraws || 0}</div>
+                <div style={{display:'flex', gap:'8px', marginTop:'12px'}}>
+                  {(kingdomWar?.generalDraws || 0) > 0 && (
+                    <button onClick={(e) => { e.stopPropagation(); setGeneralDrawResult(null); setTimeout(doGeneralDraw, 100); }}
+                      style={{flex:1, padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background:'#B71C1C', border:'none', borderRadius:'10px', cursor:'pointer'}}>继续抽卡</button>
+                  )}
+                  <button onClick={() => setGeneralDrawResult(null)}
+                    style={{flex:1, padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 名将图鉴详情弹窗 */}
       {genDexDetail && (() => {
         const gen = genDexDetail;
@@ -19957,7 +20192,7 @@ const renderMenu = () => {
                   {Object.entries(gen.bonus||{}).filter(([,v])=>v>0).map(([k,v]) => (
                     <div key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0'}}>
                       <span style={{fontSize:'10px', color:'#64748b'}}>{bonusLabelsD[k]||k}</span>
-                      <span style={{fontSize:'11px', fontWeight:'800', color: myFaction?.color || '#4CAF50'}}>+{v}%</span>
+                      <span style={{fontSize:'11px', fontWeight:'800', color: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50'}}>+{v}%</span>
                     </div>
                   ))}
                 </div>
@@ -19968,7 +20203,7 @@ const renderMenu = () => {
                 </div>
               </div>
               <div style={{padding:'0 20px 16px', textAlign:'center'}}>
-                <button onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: myFaction?.color || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
+                <button onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
               </div>
             </div>
           </div>
