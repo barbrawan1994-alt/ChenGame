@@ -11,3 +11,4 @@ export * from './battles';
 export * from './jujutsu';
 export * from './housing';
 export * from './lycoris';
+export * from './kwEquipment';

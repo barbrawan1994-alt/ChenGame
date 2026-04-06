@@ -60,6 +60,7 @@ import {
   DOUBLE_CHALLENGES,
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
+  KW_EQUIPMENT,
 } from './data';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
@@ -1193,7 +1194,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             else if (typeof equip === 'object') accData = equip; 
 
             if (accData) {
-                 const aType = accData.type || accData.stat; 
+                 const aType = accData.type === 'HYBRID' ? (accData.stat || 'ATK') : (accData.type || accData.stat); 
                  if (isHp && aType === 'HP') val += accData.val;
                  if ((ivKey === 'p_atk' || ivKey === 's_atk') && aType === 'ATK') val += accData.val;
                  if (ivKey === 's_atk' && aType === 'SATK') val += accData.val;
@@ -1251,22 +1252,21 @@ const [viewStatPet, setViewStatPet] = useState(null);
     }
 
     const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
-    const kwBonus = (gangBonusOverride === undefined && kingdomWar?.faction) ? (FACTIONS[kingdomWar.faction]?.bonus || {}) : {};
-    const applyGB = (val, pct, kwPct) => {
-      let total = (pct || 0) + (kwPct || 0);
+    const applyGB = (val, pct) => {
+      let total = (pct || 0);
       return total > 0 ? Math.floor(val * (1 + total / 100)) : val;
     };
 
     return {
-      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), gangBonus.hp, kwBonus.hp),
-      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk, kwBonus.atk),
-      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def, kwBonus.def),
-      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), gangBonus.s_atk, kwBonus.s_atk),
-      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), gangBonus.s_def, kwBonus.s_def),
-      spd:   applyGB(finalSpd, gangBonus.spd, kwBonus.spd),
+      maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), gangBonus.hp),
+      p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk),
+      p_def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def),
+      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), gangBonus.s_atk),
+      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), gangBonus.s_def),
+      spd:   applyGB(finalSpd, gangBonus.spd),
       crit:  finalCrit,
-      atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk, kwBonus.atk), 
-      def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def, kwBonus.def)
+      atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk), 
+      def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def)
     };
   }
 
@@ -1902,20 +1902,20 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // ==========================================
   // [新增] 生成随机技能装备
   // ==========================================
-  const createUniqueEquip = (baseId) => {
-    const base = RANDOM_EQUIP_DB.find(i => i.id === baseId);
+  const createUniqueEquip = (baseId, customBase = null) => {
+    const base = customBase || RANDOM_EQUIP_DB.find(i => i.id === baseId);
     if (!base) return null;
 
-    // 随机抽取一个技能 (过滤掉太弱的，威力<40且非变化技能排除)
     const validSkills = allSkills.filter(s => s.category === 'status' || s.p >= 40);
     const randomSkill = _.sample(validSkills);
 
     return {
       ...base,
-      uid: Date.now() + Math.random(), // 唯一标识，允许拥有多个同名装备
-      isUnique: true, // 标记为特殊装备
-      extraSkill: randomSkill, // 附带的技能数据
-      // 动态生成名字，例如：[喷射火焰] 古老卷轴
+      type: base.stat || base.type,
+      val: base.val || 0,
+      uid: Date.now() + Math.random(),
+      isUnique: true,
+      extraSkill: randomSkill,
       displayName: `[${randomSkill.name}] ${base.name}`
     };
   };
@@ -6591,35 +6591,49 @@ const grantContestReward = (config, score, subjectPet = null) => {
         extraBattleData.kwEnemyFaction = enemyFaction;
     }
     // -------------------------------------------------
-    // 15d2a. 都城攻防战
+    // 15d2a. 都城攻防战 (多场制)
     // -------------------------------------------------
     else if (type === 'capital_siege') {
         const siegeFaction = context.siegeTarget;
         const sf = FACTIONS[siegeFaction];
-        trainerName = `[${sf.fullName}] 禁卫军统领`;
-        dropGold = context.drop || 2000;
+        const wave = context.wave || 1;
+        const totalWaves = context.totalWaves || 3;
+        const waveNames = ['前锋军', '精锐卫队', '禁卫军统领'];
+        trainerName = `[${sf.fullName}] ${waveNames[wave - 1] || '守军'} (第${wave}/${totalWaves}波)`;
+        dropGold = Math.floor((context.drop || 2000) / totalWaves);
         const pool = context.pool || HIGH_TIER_POOL;
-        for (let i = 0; i < 6; i++) {
+        const teamSize = wave === totalWaves ? 6 : 4;
+        const baseLv = 75 + wave * 5;
+        for (let i = 0; i < teamSize; i++) {
             const eid = pool[Math.floor(Math.random() * pool.length)];
-            const lv = Math.max(80, 95 - Math.floor(Math.random() * 8));
-            enemyParty.push(createPet(eid, lv, true, i === 5));
+            const lv = Math.max(baseLv, baseLv + Math.floor(Math.random() * 8));
+            enemyParty.push(createPet(eid, lv, true, i === teamSize - 1));
         }
         extraBattleData.siegeTarget = siegeFaction;
+        extraBattleData.wave = wave;
+        extraBattleData.totalWaves = totalWaves;
+        extraBattleData.siegeContext = context;
     }
     // -------------------------------------------------
     // 15d2. 争夺城池战
     // -------------------------------------------------
     else if (type === 'contest_war') {
         const cm = context.contestMap;
-        trainerName = `[${cm.name}] 守军`;
-        dropGold = cm.drop || 800;
+        const wave = context.wave || 1;
+        const totalWaves = 2;
+        trainerName = `[${cm.name}] ${wave === 1 ? '守军前哨' : '城防主将'} (${wave}/${totalWaves}波)`;
+        dropGold = Math.floor((cm.drop || 800) / totalWaves);
         const pool = cm.pool;
-        for (let i = 0; i < 4; i++) {
+        const teamSize = wave === 1 ? 3 : 5;
+        for (let i = 0; i < teamSize; i++) {
             const eid = pool[Math.floor(Math.random() * pool.length)];
-            const lv = Math.max(40, cm.lvl[0] + Math.floor(Math.random() * (cm.lvl[1] - cm.lvl[0])));
-            enemyParty.push(createPet(eid, lv, true, i === 3));
+            const lv = Math.max(40, cm.lvl[0] + wave * 5 + Math.floor(Math.random() * (cm.lvl[1] - cm.lvl[0])));
+            enemyParty.push(createPet(eid, lv, true, i === teamSize - 1));
         }
         extraBattleData.contestMapId = cm.id;
+        extraBattleData.wave = wave;
+        extraBattleData.totalWaves = totalWaves;
+        extraBattleData.contestContext = context;
     }
     // -------------------------------------------------
     // 15d. 国战战役副本
@@ -6657,11 +6671,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
             dropGold = 5000;
             alert("⚠️ 传说中的神兽降临了！");
          } else {
-            enemyId = _.sample(context.pool);
+            const fullPool = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+            if (context.exclusivePool && Math.random() < 0.08) {
+              enemyId = _.sample(context.exclusivePool);
+            } else {
+              enemyId = _.sample(fullPool);
+            }
          }
          enemyParty.push(createPet(enemyId, level, isBoss));
          if (isDouble) {
-           const enemyId2 = _.sample(context.pool);
+           const fullPool2 = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+           const enemyId2 = _.sample(fullPool2);
            const level2 = _.random(context.lvl[0], context.lvl[1]);
            enemyParty.push(createPet(enemyId2, level2, false));
          }
@@ -10109,7 +10129,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 9b. 国战胜利
     if (battle.type === 'kingdom_war') {
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
-        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + gangBonusContrib / 100));
+        const kwContribBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.contribution || 0) : 0;
+        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + (gangBonusContrib + kwContribBonus) / 100));
         const tokenGain = 2 + Math.floor(Math.random() * 3);
         setKingdomWar(prev => {
             const next = { ...prev, warContribution: (prev.warContribution || 0) + contribGain, factionTokens: (prev.factionTokens || 0) + tokenGain };
@@ -10139,10 +10160,30 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
-    // 9b1. 都城攻防战胜利
+    // 9b1. 都城攻防战胜利 (多波次)
     if (battle.type === 'capital_siege') {
         const siegeTarget = battle.siegeTarget;
         const sf = FACTIONS[siegeTarget];
+        const currentWave = battle.wave || 1;
+        const totalWaves = battle.totalWaves || 3;
+        updateAchStat({ kwKills: 1 });
+        updateGangTaskProgress('kw_kill', 1);
+        updateGangTaskProgress('battle_win', 1);
+
+        if (currentWave < totalWaves) {
+          alert(`⚔️ 第${currentWave}波攻城战胜利！\n\n敌军还有${totalWaves - currentWave}波防线，继续进攻！\n你的队伍将保持当前状态。`);
+          setParty(updatedParty);
+          setBattle(null);
+          setTimeout(() => {
+            startBattle({
+              ...battle.siegeContext,
+              wave: currentWave + 1,
+              totalWaves,
+            }, 'capital_siege');
+          }, 500);
+          return;
+        }
+
         const siegeGold = 5000;
         const siegeContrib = 100;
         const siegeTokens = 20;
@@ -10154,10 +10195,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
           militaryRank: getMilitaryRank((prev.warContribution || 0) + siegeContrib).id,
           capitalSiegeWins: [...(prev.capitalSiegeWins || []), { target: siegeTarget, season: prev.season }],
         }));
-        updateAchStat({ kwKills: 1 });
-        updateGangTaskProgress('kw_kill', 1);
-        updateGangTaskProgress('battle_win', 1);
-        alert(`🏰 攻城大捷！成功攻破${sf.fullName}都城！\n\n🎉 获得丰厚战利品：\n💰 ${siegeGold.toLocaleString()} 金币\n⭐ 战功 +${siegeContrib}\n🎖️ 阵营令牌 +${siegeTokens}\n\n现在可以进入${sf.fullName}都城地图探索了！`);
+        const kwEquipDrop = Math.random() < 0.3 ? KW_EQUIPMENT[Math.floor(Math.random() * KW_EQUIPMENT.length)] : null;
+        if (kwEquipDrop) {
+          setAccessories(prev => [...prev, { ...kwEquipDrop, uid: Date.now() + Math.random() }]);
+        }
+        alert(`🏰 攻城大捷！${totalWaves}波攻城战全部胜利，成功攻破${sf.fullName}都城！\n\n🎉 获得丰厚战利品：\n💰 ${siegeGold.toLocaleString()} 金币\n⭐ 战功 +${siegeContrib}\n🎖️ 阵营令牌 +${siegeTokens}${kwEquipDrop ? `\n🎁 装备: ${kwEquipDrop.name}` : ''}\n\n现在可以进入${sf.fullName}都城地图探索了！`);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
@@ -10167,10 +10209,29 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
-    // 9b2. 争夺城池胜利
+    // 9b2. 争夺城池胜利 (多波次)
     if (battle.type === 'contest_war') {
         const cMapId = battle.contestMapId;
         const contestMap = MAPS.find(m => m.id === cMapId);
+        const currentWave = battle.wave || 1;
+        const totalWaves = battle.totalWaves || 2;
+        updateAchStat({ kwKills: 1 });
+        updateGangTaskProgress('kw_kill', 1);
+        updateGangTaskProgress('battle_win', 1);
+
+        if (currentWave < totalWaves) {
+          alert(`⚔️ 第${currentWave}波争夺战胜利！\n\n城防还有主将坐镇，继续进攻！\n你的队伍将保持当前状态。`);
+          setParty(updatedParty);
+          setBattle(null);
+          setTimeout(() => {
+            startBattle({
+              ...battle.contestContext,
+              wave: currentWave + 1,
+            }, 'contest_war');
+          }, 500);
+          return;
+        }
+
         const contribGain = 25 + Math.floor(Math.random() * 16);
         const tokenGain = 3;
         const pts = 10 + Math.floor(Math.random() * 6);
@@ -10193,10 +10254,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
               territories: newTerr,
             };
         });
-        updateAchStat({ kwKills: 1 });
-        updateGangTaskProgress('kw_kill', 1);
-        updateGangTaskProgress('battle_win', 1);
-        alert(`🏰 争夺战胜利！\n\n${contestMap?.name || '城池'} 占领值 +${pts}\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}`);
+        const kwEquipDrop = Math.random() < 0.15 ? KW_EQUIPMENT[Math.floor(Math.random() * KW_EQUIPMENT.length)] : null;
+        if (kwEquipDrop) {
+          setAccessories(prev => [...prev, { ...kwEquipDrop, uid: Date.now() + Math.random() }]);
+        }
+        alert(`🏰 争夺战${totalWaves}波全胜！\n\n${contestMap?.name || '城池'} 占领值 +${pts}\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}${kwEquipDrop ? `\n🎁 装备: ${kwEquipDrop.name}` : ''}`);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
@@ -13346,7 +13408,7 @@ const renderMenu = () => {
                           }}
                           onClick={() => {
                             if (!canJoin) { alert(`需要获得至少3个道馆徽章才能加入阵营\n当前徽章: ${badges.length}/3`); return; }
-                            if (!window.confirm(`确定加入${f.fullName}吗？\n\n主公: ${f.lord}\n天赋: ${f.bonusDesc}\n\n阵营一旦选择无法更改！`)) return;
+                            if (!window.confirm(`确定加入${f.fullName}吗？\n\n主公: ${f.lord}\n国运加成: ${f.bonusDesc}\n\n阵营一旦选择无法更改！`)) return;
                             setKingdomWar(prev => ({
                               ...prev,
                               faction: fid,
@@ -13369,7 +13431,7 @@ const renderMenu = () => {
                             <div style={{fontSize:'12px', opacity:0.9, marginBottom:'8px'}}>{f.desc}</div>
                             <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
                               <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>主公: {f.lord}</span>
-                              <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>天赋: {f.bonusDesc}</span>
+                              <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>国运: {f.bonusDesc}</span>
                             </div>
                             <div style={{fontSize:'11px', marginTop:'8px', opacity:0.7}}>
                               帮派: {GANG_PRESETS.filter(g => g.faction === fid).map(g => g.name).join('、') || '无'}
@@ -13658,12 +13720,9 @@ const renderMenu = () => {
                               </div>
                               {/* 加成说明 */}
                               <div style={{background:'#f8fafc', borderRadius:'8px', padding:'8px 10px', fontSize:'11px', color:'#475569', marginBottom:'10px'}}>
-                                {cm.contestBonus.gold && <span>💰 领地日收 +{cm.contestBonus.gold}%　</span>}
+                                {cm.contestBonus.gold && <span>💰 金币 +{cm.contestBonus.gold}%　</span>}
                                 {cm.contestBonus.exp && <span>⭐ 经验 +{cm.contestBonus.exp}%　</span>}
                                 {cm.contestBonus.catchRate && <span>🎯 捕捉率 +{cm.contestBonus.catchRate}%　</span>}
-                                {cm.contestBonus.atk && <span>⚔️ 攻击 +{cm.contestBonus.atk}%　</span>}
-                                {cm.contestBonus.def && <span>🛡️ 防御 +{cm.contestBonus.def}%　</span>}
-                                {cm.contestBonus.territory && <span>🗺️ 领地防御 +{cm.contestBonus.territory}%　</span>}
                                 {cm.contestBonus.contribution && <span>🎖️ 战功 +{cm.contestBonus.contribution}%</span>}
                               </div>
                               {/* 挑战按钮 */}
@@ -13675,7 +13734,7 @@ const renderMenu = () => {
                                   cp[`${cm.id}_attempts_${today}`] = (cp[`${cm.id}_attempts_${today}`] || 0) + 1;
                                   return { ...prev, contestProgress: cp };
                                 });
-                                setTimeout(() => startBattle({ contestMap: cm, drop: cm.drop }, 'contest_war'), 200);
+                                setTimeout(() => startBattle({ contestMap: cm, drop: cm.drop, wave: 1 }, 'contest_war'), 200);
                               }} style={{
                                 ...btnPrimary, width:'100%', fontSize:'13px', padding:'10px 0',
                                 background: canChallenge ? myFaction.color : '#94a3b8', opacity: canChallenge ? 1 : 0.6,
@@ -13982,6 +14041,44 @@ const renderMenu = () => {
                         </div>
                       );
                     })}
+
+                    {/* 三国装备兑换 */}
+                    <div style={{marginTop:'16px', paddingTop:'16px', borderTop:'2px solid #e2e8f0'}}>
+                      <div style={{fontSize:'14px', fontWeight:'800', color:'#1e293b', marginBottom:'10px'}}>🗡️ 三国装备兑换</div>
+                      <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>国战活动专属装备，也可通过争夺战/攻城战随机获得</div>
+                      <div style={{display:'grid', gap:'8px'}}>
+                        {KW_EQUIPMENT.filter(e => e.tier <= 3).slice(0, 10).map(equip => {
+                          const equipCost = equip.tier === 2 ? 30 : equip.tier === 3 ? 60 : 120;
+                          const canBuy = (kw.factionTokens || 0) >= equipCost;
+                          return (
+                            <div key={equip.id} style={{
+                              background:'#f8fafc', borderRadius:'10px', padding:'10px 12px',
+                              display:'flex', alignItems:'center', gap:'10px', border:'1px solid #e2e8f0',
+                            }}>
+                              <span style={{fontSize:'22px'}}>{equip.icon}</span>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{equip.name} <span style={{fontSize:'10px', color:'#94a3b8'}}>T{equip.tier}</span></div>
+                                <div style={{fontSize:'10px', color:'#64748b'}}>{equip.desc}</div>
+                              </div>
+                              <button onClick={() => {
+                                if (!canBuy) { alert('令牌不足！'); return; }
+                                if (!window.confirm(`花费 ${equipCost} 令牌购买「${equip.name}」？`)) return;
+                                const newEquip = equip.type === 'HYBRID' ? createUniqueEquip(null, equip) : { ...equip, uid: Date.now() + Math.random() };
+                                setAccessories(prev => [...prev, newEquip || { ...equip, uid: Date.now() }]);
+                                setKingdomWar(prev => ({ ...prev, factionTokens: (prev.factionTokens || 0) - equipCost }));
+                                alert(`获得装备: ${equip.name}！`);
+                              }} style={{
+                                padding:'6px 10px', borderRadius:'8px', border:'none', fontSize:'11px', fontWeight:'700',
+                                background: canBuy ? myFaction.color : '#e2e8f0',
+                                color: canBuy ? '#fff' : '#94a3b8', whiteSpace:'nowrap',
+                              }}>
+                                {equipCost} 🎖️
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )}
 
