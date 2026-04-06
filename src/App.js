@@ -5170,10 +5170,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             const factionData = gangInfo?.faction ? FACTIONS[gangInfo.faction] : null;
             const myRank = getCurrentGangRank();
             const leaderLv = (gangInfo?.level || 1) * 15 + 50;
+            const basePool = gangInfo?.teamPool || [];
+            const genMemberTeam = (seed, lv) => {
+              const team = [];
+              const used = new Set();
+              let s = seed;
+              for (let k = 0; k < 6; k++) {
+                s = (s * 1103515245 + 12345) & 0x7fffffff;
+                const range = Math.max(1, Math.min(POKEDEX.length, Math.floor(lv * 8)));
+                let pid = (s % range) + 1;
+                let tries = 0;
+                while (used.has(pid) && tries < 20) { s = (s * 1103515245 + 12345) & 0x7fffffff; pid = (s % range) + 1; tries++; }
+                if (basePool.length > 0 && k < 2) pid = basePool[s % basePool.length];
+                used.add(pid);
+                team.push(pid);
+              }
+              return team;
+            };
             const allMembers = [
-              { name: gangInfo?.leader || '帮主', level: leaderLv, contribution: 99999, isLeader: true, team: (gangInfo?.teamPool || []).slice(0, 6) },
+              { name: gangInfo?.leader || '帮主', level: leaderLv, contribution: 99999, isLeader: true, team: genMemberTeam(7919, leaderLv) },
               { name: trainerName || '我', level: party[0]?.level || 1, contribution: gang.contribution || 0, isPlayer: true, team: party.slice(0, 6) },
-              ...npcMembers.map((m, i) => ({ ...m, team: (gangInfo?.teamPool || []).slice(i % 5, i % 5 + 4) })),
+              ...npcMembers.map((m, i) => ({ ...m, team: genMemberTeam(i * 2654435761 + (m.name || '').charCodeAt(0) || 0, m.level || 40) })),
             ].sort((a, b) => b.contribution - a.contribution);
             const viewMember = viewGangMember;
             const setViewMember = setViewGangMember;
@@ -5198,27 +5215,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                           </div>
                           <div style={{fontSize:'9px', color:'#777', marginTop:'1px'}}>Lv.{m.level} · 帮贡 {m.isLeader ? '---' : m.contribution}</div>
                         </div>
-                        <div style={{display:'flex', gap:'2px'}}>
-                          {(isMe ? party.slice(0,3) : m.team?.slice(0,3) || []).map((p, j) => {
+                        <div style={{display:'flex', gap:'3px'}}>
+                          {(isMe ? party.slice(0,6) : m.team?.slice(0,6) || []).map((p, j) => {
                             const pm = isMe ? p : POKEDEX.find(x => x.id === p);
-                            return pm ? <div key={j} style={{width:'22px', height:'22px', borderRadius:'50%', background:'rgba(255,255,255,0.04)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.08)'}}>{renderAvatar(pm)}</div> : null;
+                            return pm ? <div key={j} style={{width:'28px', height:'28px', borderRadius:'50%', background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', border:'1px solid rgba(255,255,255,0.1)'}}>{renderAvatar(pm)}</div> : null;
                           })}
                         </div>
                         <span style={{fontSize:'10px', color:'#555', transform: viewMember===i ? 'rotate(180deg)' : 'none', transition:'transform 0.2s'}}>▼</span>
                       </div>
                       {viewMember === i && (
-                        <div style={{marginTop:'8px', padding:'8px 10px', background:'rgba(0,0,0,0.2)', borderRadius:'8px'}}>
-                          <div style={{fontSize:'10px', color:'#aaa', marginBottom:'6px', fontWeight:'600'}}>精灵阵容</div>
-                          <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                        <div style={{marginTop:'8px', padding:'10px 12px', background:'rgba(0,0,0,0.2)', borderRadius:'8px'}}>
+                          <div style={{fontSize:'10px', color:'#aaa', marginBottom:'8px', fontWeight:'600'}}>精灵阵容</div>
+                          <div style={{display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:'8px'}}>
                             {(isMe ? party : (m.team || []).map(pid => { const base = POKEDEX.find(x => x.id === pid); return base ? createPet(base.id, m.level || 50) : null; }).filter(Boolean)).map((pet, j) => (
-                              <div key={j} style={{textAlign:'center', width:'56px'}}>
-                                <div style={{fontSize:'28px', marginBottom:'2px'}}>{renderAvatar(pet)}</div>
-                                <div style={{fontSize:'8px', color:'#ccc', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{pet.name}</div>
-                                <div style={{fontSize:'7px', color:'#777'}}>Lv.{pet.level}</div>
+                              <div key={j} style={{textAlign:'center'}}>
+                                <div style={{width:'48px', height:'48px', margin:'0 auto 4px', borderRadius:'10px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'32px'}}>{renderAvatar(pet)}</div>
+                                <div style={{fontSize:'9px', color:'#ccc', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{pet.name}</div>
+                                <div style={{fontSize:'8px', color:'#777'}}>Lv.{pet.level}</div>
                               </div>
                             ))}
                           </div>
-                          {isMe && <div style={{fontSize:'9px', color:'#64B5F6', marginTop:'6px'}}>职位特权: {mRank?.privileges || '基础任务'}</div>}
+                          {isMe && <div style={{fontSize:'9px', color:'#64B5F6', marginTop:'8px'}}>职位特权: {mRank?.privileges || '基础任务'}</div>}
                         </div>
                       )}
                     </div>
