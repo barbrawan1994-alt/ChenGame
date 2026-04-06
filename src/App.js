@@ -301,13 +301,13 @@ export default function RPG(props) {
   const [achCatFilter, setAchCatFilter] = useState('ALL');
   const [fruitPickModal, setFruitPickModal] = useState(null);
 
-  // 存档状态标记 (关键！直接根据是否读到金币来判断是否有存档)
-  const [hasSave, setHasSave] = useState(!!savedData.gold); 
-  const [loaded, setLoaded] = useState(true); // 直接设为加载完成，不需要 useEffect 等待
+  // 存档状态标记
+  const [hasSave, setHasSave] = useState(!!savedData.trainerName); 
+  const [loaded, setLoaded] = useState(true);
 
-  // 临时状态 (不需要存入 savedData 的部分)
+  // 临时状态
   const [activityRecords, setActivityRecords] = useState({ bug: 0, fishing: 0, beauty: 0 });
-  const [dungeonCooldowns, setDungeonCooldowns] = useState({});
+  const [dungeonCooldowns, setDungeonCooldowns] = useState(savedData.dungeonCooldowns || {});
   const [resultData, setResultData] = useState(null); 
 
   // 环境与天气系统
@@ -2234,6 +2234,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        marriage,
        gang,
        kingdomWar,
+       dungeonCooldowns,
      };
      localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
      setHasSave(true);
@@ -4627,6 +4628,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 帮派系统 - 完整UI
   // ==========================================
   const renderGang = () => {
+    resetGangDailyCounts();
     const gangInfo = getGangInfo();
     const rank = getCurrentGangRank();
     const dc = gang.dailyCounts || {};
@@ -7678,6 +7680,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const seasonResult = checkSeasonEnd(next);
         if (seasonResult) {
           const rewarded = applySeasonRewards(next, seasonResult);
+          setGold(g => g + (rewarded.goldReward || 0));
           next = { ...rewarded, factionTokens: (next.factionTokens || 0) + (rewarded.tokenReward || 0) };
           delete next.goldReward; delete next.tokenReward;
         }
@@ -10080,7 +10083,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
         const chestText = chestRewards.length > 0 ? `\n\n🎰 帮战宝箱:\n${chestRewards.join('\n')}` : '';
-        alert(`⚔️ 帮战胜利！\n\n获得：\n💰 ${reward.funds} 帮派资金\n⭐ ${reward.contribution} 帮贡${chestText}`);
+        const fundsText = (gang.isOwner && gang.customGang) ? `\n💰 ${reward.funds} 帮派资金` : '';
+        alert(`⚔️ 帮战胜利！\n\n获得：${fundsText}\n⭐ ${reward.contribution} 帮贡${chestText}`);
+        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
         setView('gang');
@@ -10113,6 +10118,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateGangTaskProgress('battle_win', 1);
         const factionData = FACTIONS[battle.kwEnemyFaction] || { fullName: '敌国' };
         alert(`⚔️ 国战胜利！击败${factionData.fullName}训练师！\n\n获得：\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}\n💰 金币已结算`);
+        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
         setView('grid_map');
@@ -10141,6 +10147,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateGangTaskProgress('kw_campaign', 1);
         updateGangTaskProgress('battle_win', 1);
         alert(`⚔️ 战役通关！${campaign.name}\n\nBoss: ${campaign.bossName}\n\n获得：\n💰 ${campaignGold.toLocaleString()} 金币\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}`);
+        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
         setMapTab('kingdom');
@@ -12322,170 +12329,222 @@ const renderMenu = () => {
   const titleSprites = titleSpriteUrls;
   const gangName = gang?.gangId ? (gang.isOwner ? gang.customGang?.name : GANG_PRESETS.find(g=>g.id===gang.gangId)?.name) : null;
   const gangIcon = gang?.gangId ? (gang.isOwner ? gang.customGang?.icon : GANG_PRESETS.find(g=>g.id===gang.gangId)?.icon) : null;
+  const playerFaction = kingdomWar?.faction ? FACTIONS[kingdomWar.faction] : null;
+  const playerRank = kingdomWar?.faction ? getMilitaryRank(kingdomWar.warContribution || 0) : null;
+  const myTerrCountMenu = kingdomWar?.faction ? getFactionTerritoryCount(kingdomWar.faction, kingdomWar.territories || {}) : 0;
+
+  const factionColors = {
+    wei: { primary: '#1565C0', dark: '#0D47A1', glow: 'rgba(21,101,192,0.4)' },
+    shu: { primary: '#2E7D32', dark: '#1B5E20', glow: 'rgba(46,125,50,0.4)' },
+    wu: { primary: '#C62828', dark: '#B71C1C', glow: 'rgba(198,40,40,0.4)' },
+  };
+  const fc = playerFaction ? factionColors[kingdomWar.faction] : { primary: '#bf360c', dark: '#7f2608', glow: 'rgba(191,54,12,0.4)' };
 
   return (
     <div className="screen" style={{
       display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background:'linear-gradient(160deg, #0a0a0a 0%, #1a0505 20%, #2d0a0a 40%, #1a1030 60%, #0a0a1a 80%, #050510 100%)',
+      background:'linear-gradient(160deg, #050508 0%, #0a0812 20%, #12080a 40%, #0c0615 60%, #080a14 80%, #030308 100%)',
       position:'relative', overflow:'hidden'
     }}>
-      {/* 战斗火焰粒子背景 */}
-      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 8% 20%, rgba(255,120,50,0.6), transparent), radial-gradient(1.5px 1.5px at 22% 45%, rgba(255,200,50,0.4), transparent), radial-gradient(2px 2px at 38% 12%, rgba(255,80,80,0.5), transparent), radial-gradient(1px 1px at 52% 65%, rgba(255,150,0,0.35), transparent), radial-gradient(1.5px 1.5px at 68% 30%, rgba(255,100,100,0.4), transparent), radial-gradient(1px 1px at 82% 55%, rgba(255,180,50,0.3), transparent), radial-gradient(2px 2px at 28% 80%, rgba(255,120,80,0.3), transparent), radial-gradient(1px 1px at 58% 88%, rgba(255,200,100,0.3), transparent), radial-gradient(1.5px 1.5px at 88% 75%, rgba(255,100,0,0.3), transparent), radial-gradient(1px 1px at 12% 92%, rgba(255,150,100,0.25), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 20s ease infinite', opacity:0.7}} />
+      {/* 水墨山水背景 */}
+      <div style={{position:'absolute', inset:0, opacity:0.06, background:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'400\'%3E%3Cdefs%3E%3CradialGradient id=\'m\' cx=\'50%25\' cy=\'100%25\' r=\'80%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%23fff\' stop-opacity=\'0.3\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%23fff\' stop-opacity=\'0\'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx=\'100\' cy=\'360\' rx=\'180\' ry=\'60\' fill=\'url(%23m)\'/%3E%3Cellipse cx=\'320\' cy=\'380\' rx=\'120\' ry=\'40\' fill=\'url(%23m)\'/%3E%3Cpath d=\'M60 360Q90 280 140 300Q180 260 200 310Q230 250 260 290Q300 240 320 300Q350 270 380 340\' fill=\'none\' stroke=\'rgba(255,255,255,0.15)\' stroke-width=\'1\'/%3E%3Cpath d=\'M0 370Q50 320 100 340Q160 290 200 330Q250 280 300 320Q350 290 400 350\' fill=\'none\' stroke=\'rgba(255,255,255,0.1)\' stroke-width=\'0.5\'/%3E%3C/svg%3E") center bottom/cover no-repeat'}} />
 
-      {/* 交叉光芒 - 双打VS主题 */}
-      <div style={{position:'absolute', top:'40%', left:'50%', width:'200%', height:'2px', transform:'translate(-50%,-50%) rotate(-25deg)', background:'linear-gradient(90deg, transparent, rgba(255,120,0,0.15), rgba(255,200,50,0.2), rgba(255,120,0,0.15), transparent)', filter:'blur(2px)', animation:'btn-shine 4s ease infinite'}} />
-      <div style={{position:'absolute', top:'40%', left:'50%', width:'200%', height:'2px', transform:'translate(-50%,-50%) rotate(25deg)', background:'linear-gradient(90deg, transparent, rgba(255,50,50,0.15), rgba(255,100,100,0.2), rgba(255,50,50,0.15), transparent)', filter:'blur(2px)', animation:'btn-shine 5s ease infinite'}} />
+      {/* 战旗飘动粒子 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(1.5px 1.5px at 15% 25%, rgba(255,200,100,0.5), transparent), radial-gradient(1px 1px at 35% 50%, rgba(200,160,80,0.3), transparent), radial-gradient(1.5px 1.5px at 55% 18%, rgba(255,180,80,0.4), transparent), radial-gradient(1px 1px at 75% 42%, rgba(220,170,60,0.3), transparent), radial-gradient(1px 1px at 85% 70%, rgba(255,200,100,0.25), transparent), radial-gradient(1px 1px at 25% 78%, rgba(200,150,50,0.2), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 25s ease infinite', opacity:0.5}} />
 
-      {/* 战斗光环 */}
-      <div style={{position:'absolute', top:'-25%', left:'-15%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,100,0,0.12) 0%, rgba(255,60,0,0.04) 40%, transparent 70%)', filter:'blur(50px)', animation:'float 8s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'-20%', right:'-10%', width:'55%', height:'55%', borderRadius:'50%', background:'radial-gradient(circle, rgba(200,50,50,0.1) 0%, rgba(255,50,100,0.04) 40%, transparent 70%)', filter:'blur(50px)', animation:'float 10s ease-in-out infinite reverse'}} />
-      <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'40%', height:'40%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,0,0.06) 0%, transparent 60%)', filter:'blur(40px)', animation:'float 12s ease-in-out infinite'}} />
+      {/* 三国旗帜光柱 */}
+      <div style={{position:'absolute', top:0, left:'12%', width:'2px', height:'45%', background:'linear-gradient(180deg, rgba(21,101,192,0.3), rgba(21,101,192,0.05), transparent)', filter:'blur(3px)', animation:'float 6s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:0, left:'50%', width:'2px', height:'50%', background:'linear-gradient(180deg, rgba(46,125,50,0.3), rgba(46,125,50,0.05), transparent)', filter:'blur(3px)', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />
+      <div style={{position:'absolute', top:0, right:'12%', width:'2px', height:'45%', background:'linear-gradient(180deg, rgba(198,40,40,0.3), rgba(198,40,40,0.05), transparent)', filter:'blur(3px)', animation:'float 8s ease-in-out infinite', animationDelay:'2s'}} />
 
-      {/* 漂浮精灵剪影 - 对战排列 */}
+      {/* 龙纹光环 */}
+      <div style={{position:'absolute', top:'-20%', left:'-20%', width:'70%', height:'70%', borderRadius:'50%', background:`radial-gradient(circle, ${fc.glow.replace('0.4','0.08')} 0%, transparent 60%)`, filter:'blur(60px)', animation:'float 10s ease-in-out infinite'}} />
+      <div style={{position:'absolute', bottom:'-15%', right:'-15%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,80,0.05) 0%, transparent 60%)', filter:'blur(50px)', animation:'float 12s ease-in-out infinite reverse'}} />
+
+      {/* 漂浮精灵剪影 */}
       {titleSprites.map((url, i) => (
         <div key={i} style={{
           position:'absolute',
-          left: i < 5 ? `${2 + i * 6}%` : `${62 + (i-5) * 6}%`,
-          top: `${10 + (i % 5) * 16}%`,
-          width: `${30 + (i % 3) * 10}px`,
-          height: `${30 + (i % 3) * 10}px`,
-          opacity: 0.05 + (i % 3) * 0.02,
-          animation: `float ${5 + i * 0.6}s ease-in-out infinite`,
-          animationDelay: `${i * 0.4}s`,
-          filter: i < 5 ? 'grayscale(1) brightness(2) sepia(1) hue-rotate(330deg)' : 'grayscale(1) brightness(2) sepia(1) hue-rotate(200deg)',
-          transform: i >= 5 ? 'scaleX(-1)' : 'none',
-          pointerEvents:'none'
+          left: i < 5 ? `${1 + i * 5}%` : `${65 + (i-5) * 5}%`,
+          top: `${8 + (i % 5) * 17}%`,
+          width: `${28 + (i % 3) * 8}px`, height: `${28 + (i % 3) * 8}px`,
+          opacity: 0.04 + (i % 3) * 0.015,
+          animation: `float ${6 + i * 0.5}s ease-in-out infinite`,
+          animationDelay: `${i * 0.3}s`,
+          filter: 'grayscale(1) brightness(1.8) sepia(0.5)',
+          transform: i >= 5 ? 'scaleX(-1)' : 'none', pointerEvents:'none'
         }}>
           <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => e.target.style.display='none'} />
         </div>
       ))}
 
-      {/* 中央VS标志 */}
-      <div style={{position:'absolute', top:'18%', left:'50%', transform:'translate(-50%,-50%)', zIndex:5, pointerEvents:'none'}}>
-        <div style={{fontSize:'48px', fontWeight:'900', color:'rgba(255,255,255,0.04)', letterSpacing:'12px', fontFamily:'"Inter", sans-serif'}}>VS</div>
-      </div>
-
       {/* 主卡片 */}
       <div style={{
         position:'relative', zIndex:10, width:'92%', maxWidth:'480px',
-        background:'linear-gradient(145deg, rgba(20,8,8,0.92), rgba(10,5,20,0.95))',
+        background:'linear-gradient(150deg, rgba(15,10,8,0.95), rgba(8,5,15,0.97))',
         backdropFilter:'blur(30px)',
-        border:'1px solid rgba(255,120,0,0.12)',
-        borderRadius:'24px', padding:'0', overflow:'hidden',
-        boxShadow:'0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(255,80,0,0.06), inset 0 1px 0 rgba(255,200,100,0.06)',
+        border:`1px solid ${playerFaction ? fc.primary+'20' : 'rgba(200,160,80,0.12)'}`,
+        borderRadius:'20px', padding:'0', overflow:'hidden',
+        boxShadow:`0 30px 80px rgba(0,0,0,0.8), 0 0 40px ${fc.glow.replace('0.4','0.04')}, inset 0 1px 0 rgba(255,220,150,0.05)`,
         animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
 
-        {/* 顶部横幅 - 三国争霸主题 */}
+        {/* 顶部 - 三国卷轴风格 */}
         <div style={{
-          position:'relative', padding:'36px 32px 30px', overflow:'hidden',
-          background:'linear-gradient(135deg, rgba(200,50,0,0.15) 0%, rgba(255,120,0,0.08) 25%, rgba(255,180,0,0.06) 50%, rgba(200,50,50,0.1) 75%, rgba(150,30,0,0.12) 100%)',
-          borderBottom:'1px solid rgba(255,120,0,0.1)'
+          position:'relative', padding:'32px 28px 26px', overflow:'hidden',
+          background:`linear-gradient(135deg, ${fc.dark}18 0%, rgba(40,30,20,0.3) 30%, rgba(30,25,15,0.2) 60%, ${fc.primary}10 100%)`,
+          borderBottom:`1px solid ${playerFaction ? fc.primary+'18' : 'rgba(200,160,80,0.08)'}`
         }}>
-          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,200,100,0.03) 50%, transparent 100%)', animation:'btn-shine 4s ease infinite'}} />
-          <div style={{position:'absolute', top:'30%', left:'10%', width:'35%', height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,120,0,0.25), transparent)', animation:'btn-shine 5s ease infinite'}} />
-          <div style={{position:'absolute', top:'30%', right:'10%', width:'35%', height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,50,50,0.2), transparent)', animation:'btn-shine 6s ease infinite'}} />
-          
+          {/* 卷轴纹理 */}
+          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent, rgba(255,220,150,0.02), transparent)', animation:'btn-shine 5s ease infinite'}} />
+          <div style={{position:'absolute', top:0, left:0, right:0, height:'1px', background:`linear-gradient(90deg, transparent, ${playerFaction ? fc.primary+'40' : 'rgba(200,160,80,0.2)'}, transparent)`}} />
+
           <div style={{position:'relative', textAlign:'center'}}>
-            <div style={{display:'inline-flex', alignItems:'center', gap:'8px', padding:'4px 16px', borderRadius:'20px', background:'linear-gradient(135deg, rgba(255,80,0,0.2), rgba(255,50,50,0.15))', border:'1px solid rgba(255,150,50,0.25)', marginBottom:'16px'}}>
-              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#ff9800', boxShadow:'0 0 8px rgba(255,152,0,0.6)'}} />
-              <span style={{fontSize:'10px', color:'#ffcc80', fontWeight:'700', letterSpacing:'2.5px', textTransform:'uppercase'}}>Version 7.0</span>
-              <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#f44336', boxShadow:'0 0 8px rgba(244,67,54,0.6)'}} />
+            {/* 三国旗帜装饰 */}
+            <div style={{display:'flex', justifyContent:'center', gap:'6px', marginBottom:'14px'}}>
+              {FACTION_IDS.map(fid => {
+                const f = FACTIONS[fid];
+                const isPlayer = kingdomWar?.faction === fid;
+                return (
+                  <div key={fid} style={{
+                    padding:'3px 10px', borderRadius:'4px', fontSize:'10px', fontWeight:'700',
+                    background: isPlayer ? `${f.color}30` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isPlayer ? f.color+'50' : 'rgba(255,255,255,0.06)'}`,
+                    color: isPlayer ? f.lightColor : 'rgba(255,255,255,0.2)',
+                    letterSpacing:'1px', transition:'all 0.3s',
+                    boxShadow: isPlayer ? `0 0 12px ${f.color}20` : 'none'
+                  }}>
+                    {f.icon} {f.name}
+                  </div>
+                );
+              })}
             </div>
-            
+
             <div style={{
-              fontSize:'38px', fontWeight:'900', letterSpacing:'6px',
-              background:'linear-gradient(135deg, #ff9800 0%, #ff5722 20%, #f44336 40%, #ffb74d 60%, #ff7043 80%, #ff9800 100%)',
-              backgroundSize:'300% 300%', animation:'title-shimmer 3s ease infinite',
+              fontSize:'42px', fontWeight:'900', letterSpacing:'10px',
+              background:`linear-gradient(135deg, #ffd54f 0%, #ffb300 20%, #ff8f00 40%, #ffd54f 60%, #ffb300 80%, #ffd54f 100%)`,
+              backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
-              lineHeight:1.15, marginBottom:'8px',
-              filter:'drop-shadow(0 2px 16px rgba(255,100,0,0.35))'
+              lineHeight:1.1, marginBottom:'6px',
+              filter:'drop-shadow(0 3px 12px rgba(255,180,0,0.3))'
             }}>三国争霸</div>
             
             <div style={{
-              fontSize:'16px', fontWeight:'800', letterSpacing:'8px',
-              background:'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,200,150,0.6) 50%, rgba(255,255,255,0.8) 100%)',
-              backgroundSize:'200% 200%', animation:'title-shimmer 5s ease infinite',
+              fontSize:'13px', fontWeight:'700', letterSpacing:'6px',
+              background:'linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,220,150,0.4), rgba(255,255,255,0.5))',
+              backgroundSize:'200% 200%', animation:'title-shimmer 6s ease infinite',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              marginBottom:'10px'
+              marginBottom:'8px'
             }}>KINGDOM WAR</div>
 
-            <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginTop:'4px'}}>
-              <span style={{fontSize:'16px'}}>⚔️</span>
-              <div style={{height:'1px', width:'25px', background:'linear-gradient(90deg, transparent, rgba(255,150,0,0.3))'}} />
-              <span style={{fontSize:'9px', color:'rgba(255,200,150,0.45)', letterSpacing:'2px', fontWeight:'600'}}>2v2 · LEGENDS RPG</span>
-              <div style={{height:'1px', width:'25px', background:'linear-gradient(90deg, rgba(255,80,50,0.3), transparent)'}} />
-              <span style={{fontSize:'16px'}}>⚔️</span>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', marginTop:'2px'}}>
+              <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.25))'}} />
+              <span style={{fontSize:'9px', color:'rgba(200,160,80,0.35)', letterSpacing:'3px', fontWeight:'600'}}>700精灵 · 24属性 · 三国争霸</span>
+              <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, rgba(200,160,80,0.25), transparent)'}} />
             </div>
           </div>
         </div>
 
         {/* 内容区域 */}
-        <div style={{padding:'24px 28px 28px'}}>
+        <div style={{padding:'20px 24px 24px'}}>
+
+          {/* 阵营状态条 */}
+          {playerFaction && (
+            <div style={{
+              display:'flex', alignItems:'center', gap:'12px', padding:'12px 16px', borderRadius:'14px',
+              background:`linear-gradient(135deg, ${fc.primary}12, ${fc.dark}08)`,
+              border:`1px solid ${fc.primary}20`, marginBottom:'12px'
+            }}>
+              <div style={{
+                width:'42px', height:'42px', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center',
+                background:`linear-gradient(135deg, ${fc.primary}30, ${fc.dark}20)`,
+                border:`1px solid ${fc.primary}30`, fontSize:'22px'
+              }}>{playerFaction.icon}</div>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                  <span style={{fontSize:'13px', fontWeight:'800', color:playerFaction.lightColor}}>{playerFaction.fullName}</span>
+                  <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'4px', background:`${fc.primary}25`, color:playerFaction.lightColor, fontWeight:'600'}}>{playerRank?.icon} {playerRank?.name}</span>
+                </div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>
+                  领地 {myTerrCountMenu}/13 · 战功 {kingdomWar.warContribution || 0} · 令牌 {kingdomWar.factionTokens || 0}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 帮派信息条 */}
           {gangName && (
             <div style={{
-              display:'flex', alignItems:'center', gap:'10px', padding:'10px 16px', borderRadius:'12px',
-              background:'linear-gradient(135deg, rgba(255,120,0,0.06), rgba(255,50,50,0.04))',
-              border:'1px solid rgba(255,120,0,0.12)', marginBottom:'16px'
+              display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderRadius:'12px',
+              background:'linear-gradient(135deg, rgba(200,160,80,0.05), rgba(150,120,60,0.03))',
+              border:'1px solid rgba(200,160,80,0.1)', marginBottom:'12px'
             }}>
-              <span style={{fontSize:'20px'}}>{gangIcon}</span>
+              <span style={{fontSize:'18px'}}>{gangIcon}</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:'12px', fontWeight:'700', color:'#ffcc80'}}>{gangName}</div>
-                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
+                <div style={{fontSize:'11px', fontWeight:'700', color:'#d4a853'}}>{gangName}</div>
+                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
               </div>
-              <div style={{fontSize:'18px', opacity:0.6}}>🏴</div>
+              <div style={{fontSize:'16px', opacity:0.4}}>🏴</div>
             </div>
           )}
 
-          {/* 新特性提示 */}
-          <div style={{
-            padding:'10px 16px', borderRadius:'12px', marginBottom:'14px',
-            background:'linear-gradient(135deg, rgba(255,152,0,0.08), rgba(255,87,34,0.06))',
-            border:'1px solid rgba(255,152,0,0.15)',
-            display:'flex', alignItems:'center', gap:'10px'
-          }}>
-            <span style={{fontSize:'20px'}}>⚡</span>
-            <div>
-              <div style={{fontSize:'11px', fontWeight:'700', color:'#ffb74d'}}>7.0 新特性 · 国战系统</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'1px'}}>魏蜀吴三国争霸 · 争夺领土 · 赛季对抗!</div>
+          {/* 三国战况速报 */}
+          {playerFaction && (
+            <div style={{
+              padding:'10px 14px', borderRadius:'10px', marginBottom:'12px',
+              background:'rgba(255,255,255,0.02)', border:'1px solid rgba(200,160,80,0.06)'
+            }}>
+              <div style={{fontSize:'9px', fontWeight:'700', color:'rgba(200,160,80,0.5)', letterSpacing:'2px', marginBottom:'8px'}}>天下大势</div>
+              <div style={{display:'flex', gap:'4px', height:'6px', borderRadius:'3px', overflow:'hidden', background:'rgba(0,0,0,0.3)'}}>
+                {FACTION_IDS.map(fid => {
+                  const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
+                  return <div key={fid} style={{flex: Math.max(count, 0.5), background:FACTIONS[fid].color, transition:'flex 0.8s ease', borderRadius:'3px'}} />;
+                })}
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', marginTop:'5px'}}>
+                {FACTION_IDS.map(fid => {
+                  const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
+                  return <span key={fid} style={{fontSize:'9px', color: kingdomWar.faction === fid ? FACTIONS[fid].lightColor : 'rgba(255,255,255,0.25)', fontWeight: kingdomWar.faction === fid ? '700' : '400'}}>{FACTIONS[fid].name} {count}</span>;
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 主按钮 */}
           <button onClick={handleStartGame} style={{
             width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
-            background:'linear-gradient(135deg, #bf360c 0%, #e65100 35%, #ff6f00 70%, #bf360c 100%)',
+            background: playerFaction
+              ? `linear-gradient(135deg, ${fc.dark} 0%, ${fc.primary} 50%, ${fc.dark} 100%)`
+              : 'linear-gradient(135deg, #8B6914 0%, #C5991A 50%, #8B6914 100%)',
             backgroundSize:'200% 200%', animation:'title-shimmer 4s ease infinite',
             cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
             transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden',
-            boxShadow:'0 8px 28px rgba(191,54,12,0.4), 0 0 20px rgba(255,111,0,0.15)'
+            boxShadow:`0 8px 28px ${fc.glow.replace('0.4','0.3')}, 0 0 20px ${fc.glow.replace('0.4','0.1')}`
           }}
-          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(191,54,12,0.5), 0 0 30px rgba(255,111,0,0.25)'; }}
-          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(191,54,12,0.4), 0 0 20px rgba(255,111,0,0.15)'; }}
+          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow=`0 16px 40px ${fc.glow.replace('0.4','0.4')}`; }}
+          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow=`0 8px 28px ${fc.glow.replace('0.4','0.3')}`; }}
           onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
           onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
           >
-            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
-            <div style={{width:'40px', height:'40px', borderRadius:'12px', background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid rgba(255,255,255,0.15)'}}>
-              <span style={{fontSize:'20px'}}>⚔️</span>
+            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
+            <div style={{width:'42px', height:'42px', borderRadius:'12px', background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid rgba(255,255,255,0.12)'}}>
+              <span style={{fontSize:'20px'}}>{playerFaction ? playerFaction.icon : '⚔️'}</span>
             </div>
             <div style={{textAlign:'left', flex:1}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
-                {hasSave ? '继续冒险' : '开始新游戏'}
+                {hasSave ? '继续征战' : '开始征途'}
               </div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)', fontWeight:'400', marginTop:'1px'}}>
-                {hasSave ? '读取上次的冒险进度' : '体验全新三国争霸系统'}
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.65)', fontWeight:'400', marginTop:'1px'}}>
+                {hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name} · 征战天下` : '读取上次的冒险进度') : '魏蜀吴三国争霸 · 逐鹿中原'}
               </div>
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.5}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
 
           {/* 存档信息 */}
           {hasSave && (
-            <div style={{display:'flex', justifyContent:'center', gap:'20px', marginTop:'12px', padding:'8px 0'}}>
+            <div style={{display:'flex', justifyContent:'center', gap:'16px', marginTop:'10px', padding:'6px 0'}}>
               {[
                 { icon:'⚡', val:`Lv.${party[0]?.level || '?'}`, label:'等级' },
                 { icon:'📖', val:caughtDex.length, label:'图鉴' },
@@ -12493,50 +12552,50 @@ const renderMenu = () => {
                 { icon:'🎖️', val:badges.length, label:'徽章' },
               ].map((s,i) => (
                 <div key={i} style={{textAlign:'center'}}>
-                  <div style={{fontSize:'13px', fontWeight:'800', color:'rgba(255,255,255,0.8)'}}>{s.icon} {s.val}</div>
-                  <div style={{fontSize:'9px', color:'rgba(255,255,255,0.25)', marginTop:'1px'}}>{s.label}</div>
+                  <div style={{fontSize:'12px', fontWeight:'800', color:'rgba(255,255,255,0.7)'}}>{s.icon} {s.val}</div>
+                  <div style={{fontSize:'8px', color:'rgba(255,255,255,0.2)', marginTop:'1px'}}>{s.label}</div>
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,120,0,0.1), rgba(255,50,50,0.08), transparent)', margin:'14px 0'}} />
+          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.08), transparent)', margin:'12px 0'}} />
 
-          {/* 功能网格 */}
+          {/* 功能网格 - 2x3古风卷轴 */}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
             {[
-              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#ff9800' },
-              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#ff5722' },
-              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#f44336' },
-              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#ffb74d' },
-              { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#ff7043' },
+              { key:'pokedex', label:'精灵志', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📜', color:'#d4a853' },
+              { key:'skill_dex', label:'兵法', sub:`${allSkills.length}种`, emoji:'⚔️', color:'#c49640' },
+              { key:'fruit_dex', label:'天赋', sub:`${getAllFruits().length}种`, emoji:'🍑', color:'#b8860b' },
+              { key:'achievements', label:'功勋', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#daa520' },
+              { key:'guide', label:'兵书', sub:'攻略', emoji:'📖', color:'#cd853f' },
               { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#78909c', action: resetGame },
             ].map(btn => (
               <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
-                padding:'14px 8px', borderRadius:'12px', border:'1px solid rgba(255,120,0,0.05)',
-                background:'rgba(255,255,255,0.02)', color:'#fff', cursor:'pointer',
+                padding:'14px 8px', borderRadius:'10px', border:'1px solid rgba(200,160,80,0.05)',
+                background:'rgba(255,255,255,0.015)', color:'#fff', cursor:'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
-                transition:'all 0.25s', textAlign:'center'
+                transition:'all 0.3s', textAlign:'center'
               }}
-              onMouseOver={e => { e.currentTarget.style.background=`${btn.color}12`; e.currentTarget.style.borderColor=`${btn.color}30`; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor='rgba(255,120,0,0.05)'; e.currentTarget.style.transform='none'; }}
+              onMouseOver={e => { e.currentTarget.style.background='rgba(200,160,80,0.06)'; e.currentTarget.style.borderColor='rgba(200,160,80,0.15)'; e.currentTarget.style.transform='translateY(-2px)'; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.015)'; e.currentTarget.style.borderColor='rgba(200,160,80,0.05)'; e.currentTarget.style.transform='none'; }}
               >
-                <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{btn.emoji}</span>
-                <div style={{fontSize:'12px', fontWeight:'700', lineHeight:1.2}}>{btn.label}</div>
-                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>{btn.sub}</div>
+                <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'}}>{btn.emoji}</span>
+                <div style={{fontSize:'11px', fontWeight:'700', lineHeight:1.2, color:'rgba(255,240,200,0.8)'}}>{btn.label}</div>
+                <div style={{fontSize:'9px', color:'rgba(200,160,80,0.3)'}}>{btn.sub}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* 底部版权区 */}
+        {/* 底部卷轴收尾 */}
         <div style={{
-          padding:'12px 28px', borderTop:'1px solid rgba(255,120,0,0.06)',
-          background:'rgba(0,0,0,0.2)',
+          padding:'10px 24px', borderTop:'1px solid rgba(200,160,80,0.05)',
+          background:'rgba(0,0,0,0.25)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'10px', color:'rgba(255,200,150,0.2)', letterSpacing:'1px'}}>v7.0 · {POKEDEX.length} Creatures · Kingdom War</span>
-          <span style={{fontSize:'10px', color:'rgba(255,200,150,0.15)'}}>Legends RPG</span>
+          <span style={{fontSize:'9px', color:'rgba(200,160,80,0.18)', letterSpacing:'1.5px'}}>v7.0 · {POKEDEX.length} Creatures</span>
+          <span style={{fontSize:'9px', color:'rgba(200,160,80,0.12)', letterSpacing:'1px'}}>三国志 · Legends RPG</span>
         </div>
       </div>
     </div>
@@ -13222,6 +13281,9 @@ const renderMenu = () => {
             const seasonDaysLeft = kw.seasonStartDate ? Math.max(0, SEASON_CONFIG.durationDays - Math.floor((Date.now() - new Date(kw.seasonStartDate).getTime()) / 86400000)) : 7;
 
             const today = new Date().toISOString().slice(0,10);
+            if (kw.dailyCounts.resetDate !== today) {
+              setKingdomWar(prev => resetKingdomDailyCounts(prev));
+            }
             const dailyReset = kw.dailyCounts.resetDate !== today;
             const canClaimIncome = dailyReset || !kw.dailyCounts.income;
 
@@ -13307,10 +13369,9 @@ const renderMenu = () => {
                     <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                       <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>每日领地收入</div>
                       {(() => {
-                        const map13Value = (kw.territories[13]?.owner === kw.faction) ? 1 : 0;
-                        const incomeBase = (myTerrCount + map13Value) * 400;
+                        const incomeBase = myTerrCount * 400;
                         const incomeTotal = Math.floor(incomeBase * rank.incomeMultiplier);
-                        const tokenIncome = (myTerrCount + map13Value) * 2;
+                        const tokenIncome = myTerrCount * 2;
                         return (
                           <div>
                             <div style={{fontSize:'12px', color:'#64748b', marginBottom:'8px'}}>
@@ -13318,10 +13379,9 @@ const renderMenu = () => {
                             </div>
                             <button onClick={() => {
                               if (!canClaimIncome) { alert('今日已领取！'); return; }
-                              const m13v = (kw.territories[13]?.owner === kw.faction) ? 1 : 0;
-                              const base = (myTerrCount + m13v) * 400;
+                              const base = myTerrCount * 400;
                               const total = Math.floor(base * rank.incomeMultiplier);
-                              const tokens = (myTerrCount + m13v) * 2;
+                              const tokens = myTerrCount * 2;
                               setGold(g => g + total);
                               setKingdomWar(prev => ({
                                 ...prev,
@@ -15360,7 +15420,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar, dungeonCooldowns };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };

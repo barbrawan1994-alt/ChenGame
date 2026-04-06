@@ -282,12 +282,15 @@ export const checkSeasonEnd = (kw) => {
 };
 
 export const applySeasonRewards = (kw, result) => {
+  if (!kw.faction) return kw;
   const playerRank = result.rankings.indexOf(kw.faction) + 1;
   const reward = SEASON_CONFIG.rewards[playerRank] || SEASON_CONFIG.rewards[3];
+  const newContribution = Math.floor(kw.warContribution * SEASON_CONFIG.contributionCarryover);
 
   return {
     ...kw,
-    warContribution: Math.floor(kw.warContribution * SEASON_CONFIG.contributionCarryover),
+    warContribution: newContribution,
+    militaryRank: getMilitaryRank(newContribution).id,
     territories: initTerritories(),
     season: kw.season + 1,
     seasonStartDate: new Date().toISOString(),

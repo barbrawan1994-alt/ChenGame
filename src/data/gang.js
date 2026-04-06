@@ -238,7 +238,6 @@ export const getGangMaxSkills = (gang) => {
 
 export const getGangSkills = (gang) => {
   if (!gang || !gang.gangId) return {};
-  if (gang.isOwner) return getGangMaxSkills(gang);
   const maxSkills = getGangMaxSkills(gang);
   const personal = gang.personalSkills || {};
   const result = {};
