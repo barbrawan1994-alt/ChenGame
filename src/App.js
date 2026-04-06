@@ -103,7 +103,8 @@ import {
 } from './data/kingdom';
 import {
   SANGUO_GENERALS, GENERAL_RARITY_CONFIG, MAX_RECRUITED_GENERALS,
-  getGeneralById, getRandomGeneralForEncounter,
+  FACTION_PORTRAIT_COLORS, getGeneralById, getRandomGeneralForEncounter,
+  getGeneralPortrait, generateEnemyGenerals, calcGeneralsTotalBonus,
 } from './data/generals';
 import {
   HISTORICAL_BATTLES, HISTORICAL_BATTLE_ERAS, getHistoricalBattlesByEra,
@@ -273,6 +274,7 @@ export default function RPG(props) {
   const [vowModal, setVowModal] = useState(false);
   const [battleFruitDetail, setBattleFruitDetail] = useState(null);
   const [battleGangDetail, setBattleGangDetail] = useState(null);
+  const [battleGeneralDetail, setBattleGeneralDetail] = useState(null);
   const sectBadgeRef = React.useRef(null);
 
   // 游戏进度
@@ -6925,6 +6927,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
         extraBattleData.canInviteToGang = !gang.isOwner ? false : true;
       } else {
         extraBattleData.canInviteToGang = gang.isOwner;
+      }
+    }
+
+    // 双方名将信息
+    const myRecruitedGenerals = kingdomWar?.recruitedGenerals || [];
+    if (myRecruitedGenerals.length > 0) {
+      extraBattleData.playerGenerals = myRecruitedGenerals;
+    }
+    if (isTrainer && !extraBattleData.generalEncounter && actualType !== 'general') {
+      const avgLv = enemyParty.length > 0 ? Math.round(enemyParty.reduce((s, p) => s + p.level, 0) / enemyParty.length) : 50;
+      const enemyFac = extraBattleData.trainerGang ? (GANG_PRESETS.find(g => g.id === extraBattleData.trainerGang.id)?.faction || 'neutral') : 'neutral';
+      const enemyGens = generateEnemyGenerals(avgLv, enemyFac);
+      if (enemyGens.length > 0) {
+        extraBattleData.enemyGenerals = enemyGens;
+        const eGenBonus = calcGeneralsTotalBonus(enemyGens);
+        const atkMult = 1 + (eGenBonus.atk || 0) / 100;
+        const defMult = 1 + (eGenBonus.def || 0) / 100;
+        const spdMult = 1 + (eGenBonus.spd || 0) / 100;
+        enemyParty.forEach(p => {
+          p.customStatMult = (p.customStatMult || 1) * Math.max(1, (atkMult + defMult + spdMult) / 3);
+        });
       }
     }
 
@@ -13835,10 +13858,22 @@ const renderMenu = () => {
                           {recruited.map((gen, i) => {
                             const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
                             const fData = gen.faction !== 'neutral' ? FACTIONS[gen.faction] : null;
+                            const portrait = getGeneralPortrait(gen);
                             return (
-                              <div key={i} style={{background:'#fff', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 6px rgba(0,0,0,0.04)', border:'1px solid #e2e8f0', borderLeft:'4px solid '+(rc.color||'#ccc')}}>
+                              <div key={i} style={{background:'#fff', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 6px rgba(0,0,0,0.04)', border:'1px solid #e2e8f0', borderLeft:`4px solid ${rc.color||'#ccc'}`}}>
                                 <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                  <div style={{width:'40px', height:'40px', borderRadius:'50%', background:rc.bgColor||'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', border:'2px solid '+(rc.color||'#ccc')+'40'}}>{gen.icon}</div>
+                                  <div style={{
+                                    width:'44px', height:'44px', borderRadius:'50%', background: portrait.bg,
+                                    display:'flex', alignItems:'center', justifyContent:'center',
+                                    fontSize:'22px', fontWeight:'900', color: portrait.textColor,
+                                    textShadow:'1px 1px 2px rgba(0,0,0,0.5)',
+                                    border: `2px solid ${portrait.border}`,
+                                    boxShadow: gen.rarity === 'SSR' ? `0 0 10px ${portrait.border}60` : 'none',
+                                    flexShrink: 0, position:'relative',
+                                  }}>
+                                    {portrait.surname}
+                                    <div style={{position:'absolute', bottom:-1, right:-1, fontSize:'8px', background:rc.bgColor||'#333', color:rc.color||'#999', padding:'0 3px', borderRadius:'3px', fontWeight:'800', border:`1px solid ${rc.color||'#666'}30`}}>{rc.label?.charAt(0)}</div>
+                                  </div>
                                   <div style={{flex:1}}>
                                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
                                       <span style={{fontWeight:'800', fontSize:'14px', color:'#1e293b'}}>{gen.name}</span>
@@ -13870,10 +13905,19 @@ const renderMenu = () => {
                           {SANGUO_GENERALS.map(gen => {
                             const isRecruited = recruited.some(g => g.id === gen.id);
                             const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+                            const portrait = getGeneralPortrait(gen);
                             return (
-                              <div key={gen.id} style={{textAlign:'center', padding:'6px 4px', borderRadius:'8px', background: isRecruited ? rc.bgColor||'#f1f5f9' : '#f8fafc', border:'1px solid '+(isRecruited ? rc.color+'30' : '#e2e8f0'), opacity: isRecruited ? 1 : 0.4}}>
-                                <div style={{fontSize:'16px'}}>{isRecruited ? gen.icon : '❓'}</div>
-                                <div style={{fontSize:'9px', fontWeight:'700', color: isRecruited ? '#1e293b' : '#94a3b8', marginTop:'2px'}}>{isRecruited ? gen.name : '???'}</div>
+                              <div key={gen.id} style={{textAlign:'center', padding:'6px 4px', borderRadius:'8px', background: isRecruited ? 'rgba(255,255,255,0.95)' : '#f8fafc', border:'1px solid '+(isRecruited ? rc.color+'30' : '#e2e8f0'), opacity: isRecruited ? 1 : 0.4}}>
+                                <div style={{
+                                  width:'32px', height:'32px', borderRadius:'50%', margin:'0 auto',
+                                  background: isRecruited ? portrait.bg : '#d1d5db',
+                                  display:'flex', alignItems:'center', justifyContent:'center',
+                                  fontSize:'16px', fontWeight:'900', color: isRecruited ? portrait.textColor : '#9ca3af',
+                                  textShadow: isRecruited ? '1px 1px 2px rgba(0,0,0,0.4)' : 'none',
+                                  border: `2px solid ${isRecruited ? portrait.border : '#ccc'}`,
+                                  boxShadow: isRecruited && gen.rarity === 'SSR' ? `0 0 6px ${portrait.border}50` : 'none',
+                                }}>{isRecruited ? portrait.surname : '?'}</div>
+                                <div style={{fontSize:'9px', fontWeight:'700', color: isRecruited ? '#1e293b' : '#94a3b8', marginTop:'3px'}}>{isRecruited ? gen.name : '???'}</div>
                                 <div style={{fontSize:'7px', color: rc.color||'#94a3b8'}}>{rc.label||''}</div>
                               </div>
                             );
@@ -13996,6 +14040,22 @@ const renderMenu = () => {
                                       </div>
                                       <div style={{fontSize:'12px', opacity:0.9, marginBottom:'4px', fontWeight:'600'}}>{hb.desc}</div>
                                       <div style={{fontSize:'10px', opacity:0.7, marginBottom:'8px', fontStyle:'italic', borderLeft:'2px solid rgba(255,255,255,0.3)', paddingLeft:'6px', lineHeight:'1.4'}}>{hb.lore}</div>
+                                      <div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px', alignItems:'center'}}>
+                                        <span style={{fontSize:'9px', opacity:0.7, marginRight:'2px'}}>参战将领:</span>
+                                        {hb.waves.flatMap(w => w.generalIds).filter((v,i,a) => a.indexOf(v) === i).map(gid => {
+                                          const gen = getGeneralById(gid);
+                                          if (!gen) return null;
+                                          const portrait = getGeneralPortrait(gen);
+                                          return (
+                                            <div key={gid} title={`${gen.name} · ${gen.title}`} style={{
+                                              width:'24px', height:'24px', borderRadius:'50%', background: portrait.bg,
+                                              border: `1.5px solid ${portrait.border}`, display:'flex', alignItems:'center', justifyContent:'center',
+                                              fontSize:'12px', fontWeight:'900', color: portrait.textColor,
+                                              textShadow:'1px 1px 1px rgba(0,0,0,0.4)',
+                                            }}>{portrait.surname}</div>
+                                          );
+                                        })}
+                                      </div>
                                       <div style={{display:'flex', gap:'5px', flexWrap:'wrap', marginBottom:'8px'}}>
                                         <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 6px', borderRadius:'5px', fontSize:'9px'}}>💰 {hb.reward.gold.toLocaleString()}</span>
                                         <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 6px', borderRadius:'5px', fontSize:'9px'}}>🎖️ {hb.reward.tokens}</span>
@@ -17200,6 +17260,61 @@ const renderMenu = () => {
     const p2Stats = p2 ? getStats(p2) : null;
     const e2Stats = e2 ? getStats(e2) : null;
     
+    // --- 名将头像组件 ---
+    const GeneralPortraitIcon = ({gen, size = 36, showName = false, onClick}) => {
+      const p = getGeneralPortrait(gen);
+      const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+      const isSSR = gen.rarity === 'SSR';
+      return (
+        <div onClick={onClick} style={{display:'inline-flex', flexDirection:'column', alignItems:'center', gap:'2px', cursor: onClick ? 'pointer' : 'default'}}>
+          <div style={{
+            width: size, height: size, borderRadius: '50%', background: p.bg,
+            border: `2px solid ${p.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: Math.floor(size * 0.5), fontWeight: '900', color: p.textColor,
+            textShadow: '1px 1px 2px rgba(0,0,0,0.5)', position: 'relative',
+            boxShadow: isSSR ? `0 0 8px ${p.border}80, inset 0 -2px 4px rgba(0,0,0,0.3)` : `inset 0 -2px 4px rgba(0,0,0,0.3)`,
+          }}>
+            {p.surname}
+            <div style={{
+              position:'absolute', bottom: -2, right: -2, fontSize: Math.max(8, Math.floor(size * 0.22)),
+              background: rc.bgColor || '#333', color: rc.color || '#999', padding: '0 3px',
+              borderRadius: '4px', fontWeight: '800', lineHeight: '1.3', border: `1px solid ${rc.color || '#666'}40`,
+            }}>{rc.label?.charAt(0) || '将'}</div>
+          </div>
+          {showName && <span style={{fontSize:'9px', fontWeight:'700', color:'#1e293b', maxWidth: size + 10, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{gen.name}</span>}
+        </div>
+      );
+    };
+
+    // --- 战斗名将徽章 ---
+    const renderBattleGeneralsBadge = (generals, side) => {
+      if (!generals || generals.length === 0) return null;
+      const isPlayer = side === 'player';
+      const totalBonus = calcGeneralsTotalBonus(generals);
+      const bgColor = isPlayer ? 'rgba(76,175,80,0.85)' : 'rgba(255,143,0,0.85)';
+      return (
+        <span onClick={(ev) => { ev.stopPropagation(); setBattleGeneralDetail({ generals, side, totalBonus }); }}
+          style={{
+            display:'inline-flex', alignItems:'center', gap:'3px',
+            background: bgColor, color:'#fff', fontSize:'9px', padding:'1px 6px',
+            borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap',
+            border:'1px solid rgba(255,255,255,0.25)', cursor:'pointer',
+          }}>
+          ⚔️{generals.length}将
+          {generals.slice(0, 2).map((g, i) => (
+            <span key={i} style={{
+              display:'inline-flex', alignItems:'center', justifyContent:'center',
+              width:'14px', height:'14px', borderRadius:'50%',
+              background: (FACTION_PORTRAIT_COLORS[g.faction] || FACTION_PORTRAIT_COLORS.neutral).bg,
+              fontSize:'8px', fontWeight:'900', color:'#fff', textShadow:'0 1px 1px rgba(0,0,0,0.5)',
+              border:'1px solid rgba(255,255,255,0.3)',
+            }}>{g.name.charAt(0)}</span>
+          ))}
+          {generals.length > 2 && <span style={{fontSize:'8px', opacity:0.8}}>+{generals.length - 2}</span>}
+        </span>
+      );
+    };
+
     // --- 辅助函数 ---
     const renderStatusBadges = (unit) => {
         const badges = [];
@@ -17572,6 +17687,27 @@ const renderMenu = () => {
       );
     };
     const getTrainerAvatar = (name) => {
+      if (battle.generalEncounter) {
+        const gen = battle.generalEncounter;
+        const portrait = getGeneralPortrait(gen);
+        const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+        return (
+          <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', position:'relative'}}>
+            <div style={{
+              width:'120px', height:'120px', borderRadius:'50%', background: portrait.bg,
+              border: `4px solid ${portrait.border}`, display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:'60px', fontWeight:'900', color: portrait.textColor,
+              textShadow:'2px 2px 6px rgba(0,0,0,0.6)',
+              boxShadow: gen.rarity === 'SSR' ? `0 0 20px ${portrait.border}60, 0 0 40px ${portrait.border}30` : `0 0 12px rgba(0,0,0,0.3)`,
+            }}>
+              {portrait.surname}
+            </div>
+            <div style={{position:'absolute', bottom:'8px', left:'50%', transform:'translateX(-50%)', background:rc.bgColor||'#333', color:rc.color||'#999', fontSize:'12px', fontWeight:'800', padding:'2px 10px', borderRadius:'6px', whiteSpace:'nowrap', border:`1px solid ${rc.color||'#666'}40`}}>
+              {gen.name} · {gen.title}
+            </div>
+          </div>
+        );
+      }
       const spriteUrl = getNpcSprite(name, battle);
       return <img src={spriteUrl} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => { e.target.style.display='none'; }} />;
     };
@@ -17893,6 +18029,7 @@ const renderMenu = () => {
                                 {battle.trainerGang.icon}{battle.trainerGang.name}
                               </span>
                             )}
+                            {renderBattleGeneralsBadge(battle.enemyGenerals, 'enemy')}
                             {renderStatusBadges(e)}
                             {e.devilFruit && (() => { const df = getFruitById(e.devilFruit); return df ? (
                               <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
@@ -18069,6 +18206,7 @@ const renderMenu = () => {
                                 </span>
                               ) : null;
                             })()}
+                            {renderBattleGeneralsBadge(battle.playerGenerals, 'player')}
                             {renderStatusBadges(p)}
                             {p.devilFruit && (() => { const df = getFruitById(p.devilFruit); return df ? (
                               <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
@@ -19710,6 +19848,84 @@ const renderMenu = () => {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 战斗名将详情弹窗 */}
+      {battleGeneralDetail && (() => {
+        const gd = battleGeneralDetail;
+        const isPlayer = gd.side === 'player';
+        const sideColor = isPlayer ? '#4CAF50' : '#FF9800';
+        const bonusLabelsGen = {atk:'攻击',def:'防御',spd:'速度',gold:'金币',exp:'经验',contrib:'贡献',catchRate:'捕获率'};
+        return (
+          <div onClick={() => setBattleGeneralDetail(null)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center', zIndex:10600
+          }}>
+            <div onClick={ev => ev.stopPropagation()} style={{
+              background:'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius:'16px',
+              padding:'24px', maxWidth:'420px', width:'92%', color:'#fff', border:`2px solid ${sideColor}`,
+              boxShadow:`0 0 30px ${sideColor}40`, maxHeight:'80vh', overflowY:'auto'
+            }}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                  <span style={{fontSize:'24px'}}>⚔️</span>
+                  <div>
+                    <div style={{fontSize:'18px', fontWeight:'bold'}}>{isPlayer ? '我方' : '敌方'}名将 ({gd.generals.length}人)</div>
+                    <div style={{fontSize:'12px', color: sideColor, fontWeight:'bold'}}>{isPlayer ? '麾下将领提供战斗加成' : '敌方招募的名将'}</div>
+                  </div>
+                </div>
+                <button onClick={() => setBattleGeneralDetail(null)} style={{background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:'32px', height:'32px', borderRadius:'50%', fontSize:'16px', cursor:'pointer'}}>×</button>
+              </div>
+
+              <div style={{display:'grid', gap:'8px', marginBottom:'16px'}}>
+                {gd.generals.map((gen, i) => {
+                  const portrait = getGeneralPortrait(gen);
+                  const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
+                  return (
+                    <div key={i} style={{background:'rgba(255,255,255,0.06)', borderRadius:'12px', padding:'10px 12px', display:'flex', alignItems:'center', gap:'10px', borderLeft:`3px solid ${rc.color || '#666'}`}}>
+                      <div style={{
+                        width: 42, height: 42, borderRadius: '50%', background: portrait.bg,
+                        border: `2px solid ${portrait.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '20px', fontWeight: '900', color: portrait.textColor,
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.5)', flexShrink: 0,
+                        boxShadow: gen.rarity === 'SSR' ? `0 0 8px ${portrait.border}80` : 'none',
+                      }}>{portrait.surname}</div>
+                      <div style={{flex:1, minWidth:0}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
+                          <span style={{fontWeight:'800', fontSize:'14px'}}>{gen.name}</span>
+                          <span style={{fontSize:'9px', fontWeight:'700', color:rc.color, background:rc.bgColor, padding:'1px 5px', borderRadius:'4px'}}>{rc.label}</span>
+                        </div>
+                        <div style={{fontSize:'11px', color:'#9ca3af', marginTop:'2px'}}>{gen.title}</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'3px', marginTop:'4px'}}>
+                          {Object.entries(gen.bonus || {}).filter(([,v]) => v > 0).map(([k,v]) => (
+                            <span key={k} style={{fontSize:'8px', padding:'1px 4px', borderRadius:'3px', background:'rgba(255,255,255,0.08)', color:'#d1d5db', fontWeight:'600'}}>{bonusLabelsGen[k]||k}+{v}%</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{background:'rgba(255,255,255,0.06)', borderRadius:'10px', padding:'12px'}}>
+                <div style={{fontSize:'12px', fontWeight:'bold', color: sideColor, marginBottom:'8px'}}>总加成</div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px'}}>
+                  {Object.entries(gd.totalBonus).filter(([,v]) => v > 0).map(([k,v]) => {
+                    const iconMap = {atk:'⚔️',def:'🛡️',spd:'💨',gold:'💰',exp:'📖',contrib:'🏰',catchRate:'🎯'};
+                    const colorMap = {atk:'#ef5350',def:'#42a5f5',spd:'#ffa726',gold:'#ffee58',exp:'#66bb6a',contrib:'#ab47bc',catchRate:'#26a69a'};
+                    return (
+                      <div key={k} style={{display:'flex', alignItems:'center', gap:'6px', background:'rgba(255,255,255,0.04)', borderRadius:'6px', padding:'6px 8px'}}>
+                        <span style={{fontSize:'14px'}}>{iconMap[k]||'📊'}</span>
+                        <span style={{fontSize:'11px', color:'#aaa', minWidth:'32px'}}>{bonusLabelsGen[k]||k}</span>
+                        <span style={{fontSize:'13px', fontWeight:'bold', color: colorMap[k] || '#fff'}}>+{v}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

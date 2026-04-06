@@ -215,6 +215,47 @@ export function getGeneralsByFaction(faction) {
   return SANGUO_GENERALS.filter((g) => g.faction === faction);
 }
 
+export const FACTION_PORTRAIT_COLORS = {
+  wei: { bg: 'linear-gradient(135deg, #1565C0, #0D47A1)', border: '#42A5F5', text: '#E3F2FD' },
+  shu: { bg: 'linear-gradient(135deg, #2E7D32, #1B5E20)', border: '#66BB6A', text: '#E8F5E9' },
+  wu: { bg: 'linear-gradient(135deg, #E65100, #BF360C)', border: '#FF7043', text: '#FBE9E7' },
+  neutral: { bg: 'linear-gradient(135deg, #616161, #424242)', border: '#9E9E9E', text: '#F5F5F5' },
+};
+
+export function getGeneralPortrait(general) {
+  const fc = FACTION_PORTRAIT_COLORS[general.faction] || FACTION_PORTRAIT_COLORS.neutral;
+  const rc = GENERAL_RARITY_CONFIG[general.rarity] || {};
+  const surname = general.name.charAt(0);
+  return { surname, bg: fc.bg, border: fc.border, textColor: fc.text, rarityColor: rc.color || '#999', rarityBg: rc.bgColor || '#333' };
+}
+
+export function generateEnemyGenerals(enemyLevel, enemyFaction) {
+  if (enemyLevel < 40) return [];
+  const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+  const count = enemyLevel >= 80 ? rand(2, 4) : enemyLevel >= 60 ? rand(1, 3) : rand(0, 2);
+  if (count === 0) return [];
+  const fac = ['wei', 'shu', 'wu'].includes(enemyFaction) ? enemyFaction : 'neutral';
+  const pool = SANGUO_GENERALS.filter(g => Math.abs(g.teamLevel - enemyLevel) <= 20);
+  if (pool.length === 0) return [];
+  const result = [];
+  const used = new Set();
+  for (let i = 0; i < count && i < pool.length; i++) {
+    const fPool = pool.filter(g => !used.has(g.id) && (g.faction === fac || g.faction === 'neutral'));
+    const pick = fPool.length > 0 ? fPool[Math.floor(Math.random() * fPool.length)] : pool.filter(g => !used.has(g.id))[0];
+    if (!pick) break;
+    used.add(pick.id);
+    result.push({ id: pick.id, name: pick.name, title: pick.title, faction: pick.faction, rarity: pick.rarity, bonus: pick.bonus, icon: pick.icon });
+  }
+  return result;
+}
+
+export function calcGeneralsTotalBonus(generals) {
+  return (generals || []).reduce((acc, g) => {
+    if (g.bonus) Object.keys(g.bonus).forEach(k => { acc[k] = (acc[k]||0) + (g.bonus[k]||0); });
+    return acc;
+  }, {});
+}
+
 /**
  * Weighted random encounter: level-appropriate, map faction bias, rarity skew, excludes recruited.
  * @param {number} playerLevel
