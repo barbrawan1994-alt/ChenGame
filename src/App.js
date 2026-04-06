@@ -5159,10 +5159,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (FINAL_GOD_IDS.includes(p.id)) return false;
       if (p.id > 600) return false;
       if (['GOD','COSMIC'].includes(p.type)) return false;
-      if (calcFullBst(p) > 350) return false;
+      if (calcFullBst(p) > 500) return false;
       if (p.evo) {
         const et = POKEDEX.find(e => e.id === p.evo);
-        if (et && (['GOD','COSMIC'].includes(et.type) || calcFullBst(et) > 500)) return false;
+        if (et && ['GOD','COSMIC'].includes(et.type)) return false;
       }
       return true;
     });
@@ -12482,203 +12482,125 @@ const renderMenu = () => {
     }
   };
 
-  const titleSprites = titleSpriteUrls;
   const gangName = gang?.gangId ? (gang.isOwner ? gang.customGang?.name : GANG_PRESETS.find(g=>g.id===gang.gangId)?.name) : null;
   const gangIcon = gang?.gangId ? (gang.isOwner ? gang.customGang?.icon : GANG_PRESETS.find(g=>g.id===gang.gangId)?.icon) : null;
   const playerFaction = kingdomWar?.faction ? FACTIONS[kingdomWar.faction] : null;
   const playerRank = kingdomWar?.faction ? getMilitaryRank(kingdomWar.warContribution || 0) : null;
   const myTerrCountMenu = kingdomWar?.faction ? getFactionTerritoryCount(kingdomWar.faction, kingdomWar.territories || {}) : 0;
-
-  const factionColors = {
-    wei: { primary: '#1565C0', dark: '#0D47A1', glow: 'rgba(21,101,192,0.4)' },
-    shu: { primary: '#2E7D32', dark: '#1B5E20', glow: 'rgba(46,125,50,0.4)' },
-    wu: { primary: '#C62828', dark: '#B71C1C', glow: 'rgba(198,40,40,0.4)' },
-  };
-  const fc = playerFaction ? factionColors[kingdomWar.faction] : { primary: '#bf360c', dark: '#7f2608', glow: 'rgba(191,54,12,0.4)' };
+  const fc = playerFaction ? {primary: playerFaction.color, dark: playerFaction.darkColor} : {primary:'#8B6914', dark:'#5a4510'};
 
   return (
     <div className="screen" style={{
       display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background: playerFaction
-        ? `linear-gradient(160deg, ${fc.dark}e0 0%, #1a1520 30%, #0f1a28 50%, ${fc.dark}80 70%, #15121d 100%)`
-        : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #1a1a2e 75%, #16213e 100%)',
-      position:'relative', overflow:'hidden'
+      background:'#0a0e17', position:'relative', overflow:'hidden', minHeight:'100vh',
     }}>
-      {/* 水墨山水背景 */}
-      <div style={{position:'absolute', inset:0, opacity:0.25, backgroundImage:'url("https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?w=1200&q=80")', backgroundSize:'cover', backgroundPosition:'center bottom', filter:'grayscale(100%) contrast(1.2) brightness(0.4)'}} />
-      <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(15,20,30,0.8) 0%, rgba(15,20,30,0.3) 40%, rgba(15,20,30,0.6) 70%, rgba(15,20,30,0.95) 100%)'}} />
-
-      {/* 水墨晕染效果 */}
-      <div style={{position:'absolute', inset:0, opacity:0.08, backgroundImage:'radial-gradient(ellipse at 20% 80%, rgba(255,255,255,0.3), transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(255,255,255,0.2), transparent 50%), radial-gradient(ellipse at 50% 90%, rgba(255,255,255,0.25), transparent 40%)'}} />
-
-      {/* 淡墨山峦剪影 */}
-      <svg style={{position:'absolute', bottom:0, left:0, right:0, height:'45%', opacity:0.15}} viewBox="0 0 1200 400" preserveAspectRatio="none">
-        <path d="M0 400 L0 280 Q60 200 120 240 Q180 160 240 200 Q300 120 360 180 Q420 100 480 150 Q540 80 600 130 Q660 60 720 120 Q780 80 840 140 Q900 100 960 160 Q1020 130 1080 180 Q1140 160 1200 200 L1200 400 Z" fill="rgba(255,255,255,0.08)"/>
-        <path d="M0 400 L0 320 Q80 260 160 290 Q240 220 320 270 Q400 200 480 250 Q560 180 640 230 Q720 190 800 240 Q880 210 960 260 Q1040 240 1120 270 L1200 300 L1200 400 Z" fill="rgba(255,255,255,0.05)"/>
-        <path d="M0 400 L0 350 Q100 310 200 330 Q300 290 400 320 Q500 280 600 310 Q700 270 800 300 Q900 280 1000 310 Q1100 300 1200 330 L1200 400 Z" fill="rgba(255,255,255,0.03)"/>
+      {/* 水墨山水背景层 */}
+      <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #0d1520 0%, #0a1628 30%, #091420 50%, #0d1118 80%, #0a0e14 100%)'}} />
+      
+      {/* 远山剪影 - 三层 */}
+      <svg style={{position:'absolute', bottom:0, left:0, right:0, height:'60%', opacity:0.12}} viewBox="0 0 1400 500" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="mist1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.15"/>
+            <stop offset="100%" stopColor="#fff" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0 500 L0 300 Q70 180 140 220 Q210 120 280 180 Q350 80 420 140 Q490 60 560 120 Q630 40 700 100 Q770 30 840 90 Q910 50 980 110 Q1050 70 1120 130 Q1190 90 1260 150 Q1330 120 1400 180 L1400 500 Z" fill="url(#mist1)"/>
+        <path d="M0 500 L0 370 Q100 290 200 320 Q300 240 400 280 Q500 200 600 260 Q700 180 800 240 Q900 200 1000 260 Q1100 230 1200 270 Q1300 250 1400 290 L1400 500 Z" fill="rgba(255,255,255,0.06)"/>
+        <path d="M0 500 L0 420 Q120 370 240 390 Q360 340 480 370 Q600 320 720 350 Q840 310 960 340 Q1080 320 1200 350 Q1320 340 1400 360 L1400 500 Z" fill="rgba(255,255,255,0.03)"/>
       </svg>
 
-      {/* 墨点飞溅装饰 */}
-      <div style={{position:'absolute', top:'15%', left:'8%', width:'4px', height:'4px', borderRadius:'50%', background:'rgba(255,220,150,0.15)', boxShadow:'0 0 20px 8px rgba(255,220,150,0.05)', animation:'float 8s ease-in-out infinite'}} />
-      <div style={{position:'absolute', top:'25%', right:'12%', width:'3px', height:'3px', borderRadius:'50%', background:'rgba(255,200,100,0.12)', boxShadow:'0 0 15px 6px rgba(255,200,100,0.04)', animation:'float 10s ease-in-out infinite reverse'}} />
-      <div style={{position:'absolute', bottom:'30%', left:'15%', width:'5px', height:'5px', borderRadius:'50%', background:'rgba(200,160,80,0.1)', boxShadow:'0 0 25px 10px rgba(200,160,80,0.03)', animation:'float 12s ease-in-out infinite'}} />
+      {/* 飘动粒子 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(1.5px 1.5px at 15% 25%, rgba(255,220,150,0.4), transparent), radial-gradient(1px 1px at 35% 50%, rgba(200,180,120,0.3), transparent), radial-gradient(2px 2px at 55% 18%, rgba(255,200,100,0.35), transparent), radial-gradient(1px 1px at 75% 40%, rgba(240,190,80,0.25), transparent), radial-gradient(1.5px 1.5px at 88% 55%, rgba(255,210,130,0.3), transparent)', opacity:0.5, animation:'battle-bg-shift 25s ease infinite'}} />
 
-      {/* 三国光柱 */}
-      <div style={{position:'absolute', top:0, left:'12%', width:'2px', height:'40%', background:'linear-gradient(180deg, rgba(21,101,192,0.4), transparent)', filter:'blur(3px)', animation:'float 6s ease-in-out infinite'}} />
-      <div style={{position:'absolute', top:0, left:'50%', width:'2px', height:'45%', background:'linear-gradient(180deg, rgba(46,125,50,0.4), transparent)', filter:'blur(3px)', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />
-      <div style={{position:'absolute', top:0, right:'12%', width:'2px', height:'40%', background:'linear-gradient(180deg, rgba(198,40,40,0.4), transparent)', filter:'blur(3px)', animation:'float 8s ease-in-out infinite', animationDelay:'2s'}} />
+      {/* 三色光柱 */}
+      <div style={{position:'absolute', top:0, left:'15%', width:'1px', height:'35%', background:'linear-gradient(180deg, rgba(21,101,192,0.5), transparent)', filter:'blur(2px)', animation:'float 7s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:0, left:'50%', width:'1px', height:'40%', background:'linear-gradient(180deg, rgba(46,125,50,0.5), transparent)', filter:'blur(2px)', animation:'float 8s ease-in-out infinite', animationDelay:'1s'}} />
+      <div style={{position:'absolute', top:0, right:'15%', width:'1px', height:'35%', background:'linear-gradient(180deg, rgba(198,40,40,0.5), transparent)', filter:'blur(2px)', animation:'float 9s ease-in-out infinite', animationDelay:'2s'}} />
 
-      {/* 云雾飘动 */}
-      <div style={{position:'absolute', top:'20%', left:'-20%', width:'60%', height:'30%', background:'radial-gradient(ellipse, rgba(255,255,255,0.03), transparent)', filter:'blur(40px)', animation:'float 15s ease-in-out infinite'}} />
-      <div style={{position:'absolute', top:'40%', right:'-10%', width:'40%', height:'20%', background:'radial-gradient(ellipse, rgba(255,255,255,0.02), transparent)', filter:'blur(30px)', animation:'float 18s ease-in-out infinite reverse'}} />
-
-      {/* 漂浮精灵剪影 */}
-      {titleSprites.map((url, i) => (
-        <div key={i} style={{
-          position:'absolute',
-          left: i < 5 ? `${1 + i * 5}%` : `${65 + (i-5) * 5}%`,
-          top: `${8 + (i % 5) * 17}%`,
-          width: `${28 + (i % 3) * 8}px`, height: `${28 + (i % 3) * 8}px`,
-          opacity: 0.06 + (i % 3) * 0.02,
-          animation: `float ${6 + i * 0.5}s ease-in-out infinite`,
-          animationDelay: `${i * 0.3}s`,
-          filter: 'brightness(1.5) sepia(0.3) saturate(0.4)',
-          transform: i >= 5 ? 'scaleX(-1)' : 'none', pointerEvents:'none'
-        }}>
-          <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => e.target.style.display='none'} />
-        </div>
-      ))}
+      {/* 云雾层 */}
+      <div style={{position:'absolute', top:'25%', left:'-15%', width:'50%', height:'20%', background:'radial-gradient(ellipse, rgba(255,255,255,0.025), transparent)', filter:'blur(30px)', animation:'float 20s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:'45%', right:'-10%', width:'40%', height:'15%', background:'radial-gradient(ellipse, rgba(255,255,255,0.015), transparent)', filter:'blur(25px)', animation:'float 25s ease-in-out infinite reverse'}} />
 
       {/* 主卡片 */}
       <div style={{
-        position:'relative', zIndex:10, width:'92%', maxWidth:'480px',
-        background: playerFaction
-          ? `linear-gradient(150deg, ${fc.dark}e8, rgba(20,15,30,0.92), ${fc.dark}90)`
-          : 'linear-gradient(150deg, rgba(26,26,46,0.95), rgba(22,33,62,0.93), rgba(15,52,96,0.9))',
-        backdropFilter:'blur(30px)',
-        border:`1px solid ${playerFaction ? fc.primary+'35' : 'rgba(100,140,200,0.2)'}`,
-        borderRadius:'20px', padding:'0', overflow:'hidden',
-        boxShadow:`0 30px 80px rgba(0,0,0,0.5), 0 0 50px ${fc.glow.replace('0.4','0.08')}, inset 0 1px 0 rgba(255,220,150,0.08)`,
-        animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+        position:'relative', zIndex:10, width:'420px', maxWidth:'92vw',
+        background:'linear-gradient(145deg, rgba(15,22,36,0.95) 0%, rgba(20,30,50,0.92) 50%, rgba(12,18,30,0.95) 100%)',
+        borderRadius:'24px', overflow:'hidden',
+        border:'1px solid rgba(200,160,80,0.12)',
+        boxShadow:'0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(200,160,80,0.05), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}>
+        {/* 顶部装饰线 */}
+        <div style={{height:'2px', background:'linear-gradient(90deg, transparent 5%, rgba(200,160,80,0.3) 30%, rgba(255,215,0,0.5) 50%, rgba(200,160,80,0.3) 70%, transparent 95%)'}} />
+        
+        {/* 标题区 */}
+        <div style={{padding:'28px 24px 20px', textAlign:'center', position:'relative'}}>
+          {/* 水墨纹理叠加 */}
+          <div style={{position:'absolute', inset:0, opacity:0.03, backgroundImage:'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.3), transparent 60%)'}} />
 
-        {/* 顶部 - 三国卷轴风格 */}
-        <div style={{
-          position:'relative', padding:'32px 28px 26px', overflow:'hidden',
-          background:`linear-gradient(135deg, ${fc.dark}18 0%, rgba(40,30,20,0.3) 30%, rgba(30,25,15,0.2) 60%, ${fc.primary}10 100%)`,
-          borderBottom:`1px solid ${playerFaction ? fc.primary+'18' : 'rgba(200,160,80,0.08)'}`
-        }}>
-          {/* 卷轴纹理 */}
-          <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent, rgba(255,220,150,0.02), transparent)', animation:'btn-shine 5s ease infinite'}} />
-          <div style={{position:'absolute', top:0, left:0, right:0, height:'1px', background:`linear-gradient(90deg, transparent, ${playerFaction ? fc.primary+'40' : 'rgba(200,160,80,0.2)'}, transparent)`}} />
+          {/* 三国旗帜 */}
+          <div style={{display:'flex', justifyContent:'center', gap:'6px', marginBottom:'16px'}}>
+            {FACTION_IDS.map(fid => {
+              const f = FACTIONS[fid];
+              const isP = kingdomWar?.faction === fid;
+              return (<div key={fid} style={{padding:'3px 10px', borderRadius:'4px', fontSize:'10px', fontWeight:'700', background: isP ? f.color+'30' : 'rgba(255,255,255,0.03)', border: '1px solid ' + (isP ? f.color+'50' : 'rgba(255,255,255,0.06)'), color: isP ? f.lightColor : 'rgba(255,255,255,0.2)', letterSpacing:'1px', transition:'all 0.3s', boxShadow: isP ? '0 0 12px '+f.color+'20' : 'none'}}>{f.icon} {f.name}</div>);
+            })}
+          </div>
 
-          <div style={{position:'relative', textAlign:'center'}}>
-            {/* 三国旗帜装饰 */}
-            <div style={{display:'flex', justifyContent:'center', gap:'6px', marginBottom:'14px'}}>
-              {FACTION_IDS.map(fid => {
-                const f = FACTIONS[fid];
-                const isPlayer = kingdomWar?.faction === fid;
-                return (
-                  <div key={fid} style={{
-                    padding:'3px 10px', borderRadius:'4px', fontSize:'10px', fontWeight:'700',
-                    background: isPlayer ? `${f.color}30` : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${isPlayer ? f.color+'50' : 'rgba(255,255,255,0.06)'}`,
-                    color: isPlayer ? f.lightColor : 'rgba(255,255,255,0.2)',
-                    letterSpacing:'1px', transition:'all 0.3s',
-                    boxShadow: isPlayer ? `0 0 12px ${f.color}20` : 'none'
-                  }}>
-                    {f.icon} {f.name}
-                  </div>
-                );
-              })}
-            </div>
+          {/* 主标题 */}
+          <div style={{fontSize:'38px', fontWeight:'900', letterSpacing:'8px', background:'linear-gradient(135deg, #ffd54f 0%, #ffb300 25%, #ff8f00 50%, #ffd54f 75%, #ffb300 100%)', backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1.1, marginBottom:'4px', filter:'drop-shadow(0 3px 10px rgba(255,180,0,0.25))'}}>三国争霸</div>
+          
+          <div style={{fontSize:'11px', fontWeight:'700', letterSpacing:'5px', background:'linear-gradient(90deg, rgba(255,255,255,0.4), rgba(255,220,150,0.35))', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', marginBottom:'10px'}}>KINGDOM WAR v8.0</div>
 
-            <div style={{
-              fontSize:'42px', fontWeight:'900', letterSpacing:'10px',
-              background:`linear-gradient(135deg, #ffd54f 0%, #ffb300 20%, #ff8f00 40%, #ffd54f 60%, #ffb300 80%, #ffd54f 100%)`,
-              backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite',
-              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              fontFamily:'"Inter", "SF Pro Display", -apple-system, sans-serif',
-              lineHeight:1.1, marginBottom:'6px',
-              filter:'drop-shadow(0 3px 12px rgba(255,180,0,0.3))'
-            }}>三国争霸</div>
-            
-            <div style={{
-              fontSize:'13px', fontWeight:'700', letterSpacing:'6px',
-              background:'linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,220,150,0.4), rgba(255,255,255,0.5))',
-              backgroundSize:'200% 200%', animation:'title-shimmer 6s ease infinite',
-              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              marginBottom:'8px'
-            }}>KINGDOM WAR</div>
-
-            <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', marginTop:'2px'}}>
-              <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.25))'}} />
-              <span style={{fontSize:'9px', color:'rgba(200,160,80,0.35)', letterSpacing:'3px', fontWeight:'600'}}>800精灵 · 24属性 · 三国争霸</span>
-              <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, rgba(200,160,80,0.25), transparent)'}} />
-            </div>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
+            <div style={{height:'1px', width:'50px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.2))'}} />
+            <span style={{fontSize:'9px', color:'rgba(200,160,80,0.3)', letterSpacing:'2px'}}>{POKEDEX.length} 精灵 · 24 属性 · 三国争霸</span>
+            <div style={{height:'1px', width:'50px', background:'linear-gradient(90deg, rgba(200,160,80,0.2), transparent)'}} />
           </div>
         </div>
 
-        {/* 内容区域 */}
-        <div style={{padding:'20px 24px 24px'}}>
+        {/* 内容区 */}
+        <div style={{padding:'0 20px 20px'}}>
 
-          {/* 阵营状态条 */}
+          {/* 阵营状态 */}
           {playerFaction && (
-            <div style={{
-              display:'flex', alignItems:'center', gap:'12px', padding:'12px 16px', borderRadius:'14px',
-              background:`linear-gradient(135deg, ${fc.primary}12, ${fc.dark}08)`,
-              border:`1px solid ${fc.primary}20`, marginBottom:'12px'
-            }}>
-              <div style={{
-                width:'42px', height:'42px', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center',
-                background:`linear-gradient(135deg, ${fc.primary}30, ${fc.dark}20)`,
-                border:`1px solid ${fc.primary}30`, fontSize:'22px'
-              }}>{playerFaction.icon}</div>
+            <div style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderRadius:'12px', background:'linear-gradient(135deg, '+fc.primary+'12, '+fc.dark+'08)', border:'1px solid '+fc.primary+'20', marginBottom:'10px'}}>
+              <div style={{width:'36px', height:'36px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', background:fc.primary+'25', border:'1px solid '+fc.primary+'30', fontSize:'18px'}}>{playerFaction.icon}</div>
               <div style={{flex:1, minWidth:0}}>
-                <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                  <span style={{fontSize:'13px', fontWeight:'800', color:playerFaction.lightColor}}>{playerFaction.fullName}</span>
-                  <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'4px', background:`${fc.primary}25`, color:playerFaction.lightColor, fontWeight:'600'}}>{playerRank?.icon} {playerRank?.name}</span>
+                <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                  <span style={{fontSize:'12px', fontWeight:'800', color:playerFaction.lightColor}}>{playerFaction.fullName}</span>
+                  <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'3px', background:fc.primary+'25', color:playerFaction.lightColor, fontWeight:'600'}}>{playerRank?.icon} {playerRank?.name}</span>
                 </div>
-                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>
-                  领地 {myTerrCountMenu}/{WAR_MAP_IDS.length} · 战功 {kingdomWar.warContribution || 0} · 令牌 {kingdomWar.factionTokens || 0}
-                </div>
+                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', marginTop:'1px'}}>领地 {myTerrCountMenu}/{WAR_MAP_IDS.length} · 战功 {kingdomWar.warContribution || 0}</div>
               </div>
             </div>
           )}
 
-          {/* 帮派信息条 */}
+          {/* 帮派 */}
           {gangName && (
-            <div style={{
-              display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderRadius:'12px',
-              background:'linear-gradient(135deg, rgba(200,160,80,0.05), rgba(150,120,60,0.03))',
-              border:'1px solid rgba(200,160,80,0.1)', marginBottom:'12px'
-            }}>
-              <span style={{fontSize:'18px'}}>{gangIcon}</span>
+            <div style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 12px', borderRadius:'10px', background:'rgba(200,160,80,0.04)', border:'1px solid rgba(200,160,80,0.08)', marginBottom:'10px'}}>
+              <span style={{fontSize:'16px'}}>{gangIcon}</span>
               <div style={{flex:1}}>
                 <div style={{fontSize:'11px', fontWeight:'700', color:'#d4a853'}}>{gangName}</div>
-                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>帮贡 {gang.contribution || 0} · {getGangRank(gang.contribution, gang.isOwner)?.name || '帮众'}</div>
+                <div style={{fontSize:'8px', color:'rgba(255,255,255,0.25)'}}>帮贡 {gang.contribution || 0}</div>
               </div>
-              <div style={{fontSize:'16px', opacity:0.4}}>🏴</div>
             </div>
           )}
 
-          {/* 三国战况速报 */}
+          {/* 天下大势 */}
           {playerFaction && (
-            <div style={{
-              padding:'10px 14px', borderRadius:'10px', marginBottom:'12px',
-              background:'rgba(255,255,255,0.02)', border:'1px solid rgba(200,160,80,0.06)'
-            }}>
-              <div style={{fontSize:'9px', fontWeight:'700', color:'rgba(200,160,80,0.5)', letterSpacing:'2px', marginBottom:'8px'}}>天下大势</div>
-              <div style={{display:'flex', gap:'4px', height:'6px', borderRadius:'3px', overflow:'hidden', background:'rgba(0,0,0,0.3)'}}>
+            <div style={{padding:'8px 12px', borderRadius:'8px', marginBottom:'10px', background:'rgba(255,255,255,0.015)', border:'1px solid rgba(200,160,80,0.05)'}}>
+              <div style={{fontSize:'8px', fontWeight:'700', color:'rgba(200,160,80,0.4)', letterSpacing:'2px', marginBottom:'6px'}}>天下大势</div>
+              <div style={{display:'flex', gap:'3px', height:'5px', borderRadius:'3px', overflow:'hidden', background:'rgba(0,0,0,0.3)'}}>
                 {FACTION_IDS.map(fid => {
                   const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
                   return <div key={fid} style={{flex: Math.max(count, 0.5), background:FACTIONS[fid].color, transition:'flex 0.8s ease', borderRadius:'3px'}} />;
                 })}
               </div>
-              <div style={{display:'flex', justifyContent:'space-between', marginTop:'5px'}}>
+              <div style={{display:'flex', justifyContent:'space-between', marginTop:'4px'}}>
                 {FACTION_IDS.map(fid => {
                   const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
-                  return <span key={fid} style={{fontSize:'9px', color: kingdomWar.faction === fid ? FACTIONS[fid].lightColor : 'rgba(255,255,255,0.25)', fontWeight: kingdomWar.faction === fid ? '700' : '400'}}>{FACTIONS[fid].name} {count}</span>;
+                  return <span key={fid} style={{fontSize:'9px', color: kingdomWar.faction === fid ? FACTIONS[fid].lightColor : 'rgba(255,255,255,0.2)', fontWeight: kingdomWar.faction === fid ? '700' : '400'}}>{FACTIONS[fid].name} {count}</span>;
                 })}
               </div>
             </div>
@@ -12686,90 +12608,76 @@ const renderMenu = () => {
 
           {/* 主按钮 */}
           <button onClick={handleStartGame} style={{
-            width:'100%', padding:'16px 24px', borderRadius:'14px', border:'none',
-            background: playerFaction
-              ? `linear-gradient(135deg, ${fc.dark} 0%, ${fc.primary} 50%, ${fc.dark} 100%)`
-              : 'linear-gradient(135deg, #8B6914 0%, #C5991A 50%, #8B6914 100%)',
+            width:'100%', padding:'14px 20px', borderRadius:'14px', border:'none',
+            background:'linear-gradient(135deg, '+fc.dark+' 0%, '+fc.primary+' 50%, '+fc.dark+' 100%)',
             backgroundSize:'200% 200%', animation:'title-shimmer 4s ease infinite',
-            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
-            transition:'all 0.3s cubic-bezier(0.4,0,0.2,1)', position:'relative', overflow:'hidden',
-            boxShadow:`0 8px 28px ${fc.glow.replace('0.4','0.3')}, 0 0 20px ${fc.glow.replace('0.4','0.1')}`
+            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'12px',
+            transition:'all 0.3s', position:'relative', overflow:'hidden',
+            boxShadow:'0 6px 24px rgba(0,0,0,0.4), 0 0 15px '+fc.primary+'15',
           }}
-          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow=`0 16px 40px ${fc.glow.replace('0.4','0.4')}`; }}
-          onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow=`0 8px 28px ${fc.glow.replace('0.4','0.3')}`; }}
-          onMouseDown={e => e.currentTarget.style.transform='scale(0.98)'}
-          onMouseUp={e => e.currentTarget.style.transform='translateY(-2px)'}
+          onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 36px rgba(0,0,0,0.5)'; }}
+          onMouseOut={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,0.4)'; }}
           >
-            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
-            <div style={{width:'42px', height:'42px', borderRadius:'12px', background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid rgba(255,255,255,0.12)'}}>
-              <span style={{fontSize:'20px'}}>{playerFaction ? playerFaction.icon : '⚔️'}</span>
+            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
+            <div style={{width:'38px', height:'38px', borderRadius:'10px', background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid rgba(255,255,255,0.1)'}}>
+              <span style={{fontSize:'18px'}}>{playerFaction ? playerFaction.icon : '⚔️'}</span>
             </div>
             <div style={{textAlign:'left', flex:1}}>
-              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>
-                {hasSave ? '继续征战' : '开始征途'}
-              </div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.65)', fontWeight:'400', marginTop:'1px'}}>
-                {hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name} · 征战天下` : '读取上次的冒险进度') : '魏蜀吴三国争霸 · 逐鹿中原'}
-              </div>
+              <div style={{fontSize:'15px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>{hasSave ? '继续征战' : '开始征途'}</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.55)', marginTop:'1px'}}>{hasSave ? (playerFaction ? playerFaction.fullName+' · '+playerRank?.name+' · 征战天下' : '读取上次的冒险进度') : '魏蜀吴三国争霸 · 逐鹿中原'}</div>
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.5}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{opacity:0.4}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
 
-          {/* 存档信息 */}
+          {/* 存档快速信息 */}
           {hasSave && (
-            <div style={{display:'flex', justifyContent:'center', gap:'16px', marginTop:'10px', padding:'6px 0'}}>
-              {[
-                { icon:'⚡', val:`Lv.${party[0]?.level || '?'}`, label:'等级' },
-                { icon:'📖', val:caughtDex.length, label:'图鉴' },
-                { icon:'💰', val:`${(gold||0) >= 10000 ? Math.floor((gold||0)/10000)+'万' : (gold||0).toLocaleString()}`, label:'金币' },
-                { icon:'🎖️', val:badges.length, label:'徽章' },
-              ].map((s,i) => (
+            <div style={{display:'flex', justifyContent:'center', gap:'16px', marginTop:'8px', padding:'4px 0'}}>
+              {[{icon:'⚡', val:'Lv.'+((party[0]||{}).level||'?'), label:'等级'}, {icon:'📖', val:caughtDex.length, label:'图鉴'}, {icon:'💰', val:(gold||0)>=10000?Math.floor((gold||0)/10000)+'万':(gold||0).toLocaleString(), label:'金币'}, {icon:'🎖️', val:badges.length, label:'徽章'}].map((s,i) => (
                 <div key={i} style={{textAlign:'center'}}>
-                  <div style={{fontSize:'12px', fontWeight:'800', color:'rgba(255,255,255,0.7)'}}>{s.icon} {s.val}</div>
-                  <div style={{fontSize:'8px', color:'rgba(255,255,255,0.2)', marginTop:'1px'}}>{s.label}</div>
+                  <div style={{fontSize:'11px', fontWeight:'800', color:'rgba(255,255,255,0.6)'}}>{s.icon} {s.val}</div>
+                  <div style={{fontSize:'7px', color:'rgba(255,255,255,0.18)', marginTop:'1px'}}>{s.label}</div>
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.08), transparent)', margin:'12px 0'}} />
+          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.06), transparent)', margin:'10px 0'}} />
 
-          {/* 功能网格 - 2x3古风卷轴 */}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
+          {/* 功能网格 */}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'6px'}}>
             {[
-              { key:'pokedex', label:'图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, emoji:'📚', color:'#d4a853' },
-              { key:'skill_dex', label:'技能', sub:`${allSkills.length}种`, emoji:'⚡', color:'#c49640' },
-              { key:'fruit_dex', label:'果实', sub:`${getAllFruits().length}种`, emoji:'🍎', color:'#b8860b' },
-              { key:'achievements', label:'成就', sub:`${unlockedAchs.length}/${ACHIEVEMENTS.length}`, emoji:'🏆', color:'#daa520' },
+              { key:'pokedex', label:'图鉴', sub:caughtDex.length+'/'+POKEDEX.length, emoji:'📚', color:'#d4a853' },
+              { key:'skill_dex', label:'技能', sub:allSkills.length+'种', emoji:'⚡', color:'#c49640' },
+              { key:'fruit_dex', label:'果实', sub:getAllFruits().length+'种', emoji:'🍎', color:'#b8860b' },
+              { key:'achievements', label:'成就', sub:unlockedAchs.length+'/'+ACHIEVEMENTS.length, emoji:'🏆', color:'#daa520' },
               { key:'guide', label:'说明', sub:'攻略', emoji:'📖', color:'#cd853f' },
               { key:null, label:'重置', sub:'存档', emoji:'🔄', color:'#78909c', action: resetGame },
             ].map(btn => (
               <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
-                padding:'14px 8px', borderRadius:'10px', border:'1px solid rgba(200,160,80,0.05)',
-                background:'rgba(255,255,255,0.015)', color:'#fff', cursor:'pointer',
-                display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
+                padding:'14px 6px', borderRadius:'10px', border:'1px solid rgba(200,160,80,0.04)',
+                background:'rgba(255,255,255,0.012)', color:'#fff', cursor:'pointer',
+                display:'flex', flexDirection:'column', alignItems:'center', gap:'3px',
                 transition:'all 0.3s', textAlign:'center'
               }}
-              onMouseOver={e => { e.currentTarget.style.background='rgba(200,160,80,0.06)'; e.currentTarget.style.borderColor='rgba(200,160,80,0.15)'; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.015)'; e.currentTarget.style.borderColor='rgba(200,160,80,0.05)'; e.currentTarget.style.transform='none'; }}
+              onMouseOver={e => { e.currentTarget.style.background='rgba(200,160,80,0.05)'; e.currentTarget.style.borderColor='rgba(200,160,80,0.12)'; e.currentTarget.style.transform='translateY(-2px)'; }}
+              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.012)'; e.currentTarget.style.borderColor='rgba(200,160,80,0.04)'; e.currentTarget.style.transform='none'; }}
               >
-                <span style={{fontSize:'22px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'}}>{btn.emoji}</span>
-                <div style={{fontSize:'11px', fontWeight:'700', lineHeight:1.2, color:'rgba(255,240,200,0.8)'}}>{btn.label}</div>
-                <div style={{fontSize:'9px', color:'rgba(200,160,80,0.3)'}}>{btn.sub}</div>
+                <span style={{fontSize:'20px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'}}>{btn.emoji}</span>
+                <div style={{fontSize:'11px', fontWeight:'700', lineHeight:1.2, color:'rgba(255,240,200,0.75)'}}>{btn.label}</div>
+                <div style={{fontSize:'8px', color:'rgba(200,160,80,0.25)'}}>{btn.sub}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* 底部卷轴收尾 */}
-        <div style={{
-          padding:'10px 24px', borderTop:'1px solid rgba(200,160,80,0.05)',
-          background:'rgba(0,0,0,0.25)',
-          display:'flex', justifyContent:'space-between', alignItems:'center'
-        }}>
-          <span style={{fontSize:'9px', color:'rgba(200,160,80,0.18)', letterSpacing:'1.5px'}}>v8.0 · {POKEDEX.length} Creatures</span>
-          <span style={{fontSize:'9px', color:'rgba(200,160,80,0.12)', letterSpacing:'1px'}}>三国志 · Legends RPG</span>
+        {/* 底部 */}
+        <div style={{padding:'8px 20px', borderTop:'1px solid rgba(200,160,80,0.04)', background:'rgba(0,0,0,0.2)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <span style={{fontSize:'8px', color:'rgba(200,160,80,0.15)', letterSpacing:'1px'}}>v8.0 · {POKEDEX.length} Creatures</span>
+          <span style={{fontSize:'8px', color:'rgba(200,160,80,0.1)', letterSpacing:'1px'}}>三国志 · Pokemon RPG</span>
         </div>
+
+        {/* 底部金线 */}
+        <div style={{height:'1px', background:'linear-gradient(90deg, transparent 5%, rgba(200,160,80,0.15) 30%, rgba(255,215,0,0.25) 50%, rgba(200,160,80,0.15) 70%, transparent 95%)'}} />
       </div>
     </div>
   );
