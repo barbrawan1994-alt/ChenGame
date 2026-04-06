@@ -939,7 +939,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
       baseRate *= (1 + (gangCatchBonus + kwCatchBonus) / 100);
 
-      return Math.min(baseRate, 0.95);
+      const etype = (POKEDEX.find(p => p.id === eid) || {}).type;
+      if (FINAL_GOD_IDS?.includes(eid) || etype === 'COSMIC' || etype === 'GOD') return Math.min(baseRate, 0.15);
+      if (NEW_GOD_IDS?.includes(eid) || LEGENDARY_POOL?.includes(eid)) return Math.min(baseRate, 0.35);
+      if (HIGH_TIER_POOL?.includes(eid)) return Math.min(baseRate, 0.55);
+      return Math.min(baseRate, 0.85);
   };
 
   // 2. 使用洗练药
@@ -1164,6 +1168,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
   };
 
     // ==========================================
+  function calcNextExp(lv, expMod = 1.0) {
+    const lateBonus = lv > 80 ? (lv - 80) * (lv - 80) * 8 : (lv > 50 ? (lv - 50) * (lv - 50) * 3 : 0);
+    return Math.floor((lv * 100 + lateBonus) * expMod);
+  }
+
   // [核心] 属性计算函数 (含特性修正)
   // ==========================================
   function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
@@ -2385,6 +2394,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const rankIdx = MILITARY_RANKS.findIndex(r => r.id === (kingdomWar.militaryRank || 'civilian'));
         next.kwRankIdx = rankIdx >= 0 ? rankIdx : 0;
         next.kwFactionTerritories = getFactionTerritoryCount(kingdomWar.faction, kingdomWar.territories || {});
+        const rg = kingdomWar.recruitedGenerals || [];
+        next.kwGenerals = rg.length;
+        next.kwSSRGenerals = rg.filter(g => g.rarity === 'SSR').length;
+        next.kwGenFactions = new Set(rg.map(g => g.faction).filter(f => f && f !== 'neutral')).size;
+        next.kwContribution = kingdomWar.warContribution || 0;
+        next.kwCampaignsCleared = (kingdomWar.completedCampaigns || []).length;
+        const chb = kingdomWar.completedHistoricalBattles || [];
+        next.hbCompleted = chb.length;
+        next.hbEra1 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era1')).length;
+        next.hbEra2 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era2')).length;
+        next.hbEra3 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era3')).length;
+        next.hbEra4 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era4')).length;
       }
       return next;
     });
@@ -5388,9 +5409,7 @@ const useGrowthItem = (petIndex, itemId) => {
     if (item.stat === 'level_up') {
       if (pet.level >= 100) { alert('已满级！'); return; }
       pet.level = Math.min(100, pet.level + 1);
-      const nKey = pet.nature || 'docile';
-      const expMod = NATURE_DB[nKey]?.exp || 1.0;
-      pet.nextExp = Math.floor(pet.level * 100 * expMod);
+      pet.nextExp = calcNextExp(pet.level, NATURE_DB[pet.nature || 'docile']?.exp || 1.0);
       pet.exp = 0;
       pet.currentHp = getStats(pet).maxHp;
       pet.moves.forEach(m => m.pp = m.maxPP || 15);
@@ -5402,9 +5421,7 @@ const useGrowthItem = (petIndex, itemId) => {
     if (item.stat === 'level_max') {
       if (pet.level >= 100) { alert('已满级！'); return; }
       pet.level = 100;
-      const nKey = pet.nature || 'docile';
-      const expMod = NATURE_DB[nKey]?.exp || 1.0;
-      pet.nextExp = Math.floor(pet.level * 100 * expMod);
+      pet.nextExp = calcNextExp(100, NATURE_DB[pet.nature || 'docile']?.exp || 1.0);
       pet.exp = 0;
       pet.currentHp = getStats(pet).maxHp;
       pet.moves.forEach(m => m.pp = m.maxPP || 15);
@@ -6431,7 +6448,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             const enemyId = _.sample(pool);
             const isShiny = leagueRound === 4; 
-            enemyParty.push(createPet(enemyId, roundLv, true, isShiny));
+            const lPet = createPet(enemyId, roundLv, true, isShiny);
+            if (leagueRound >= 3) lPet.customStatMult = 1.1 + (leagueRound - 3) * 0.1;
+            enemyParty.push(lPet);
         }
     }
     // -------------------------------------------------
@@ -6529,12 +6548,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const aceBonus = Math.floor(mapIndex * 0.8); 
       const aceLvl = maxWild + aceBonus;
 
+      const isHardGym = mapIndex >= 9;
       for(let i=0; i < 5; i++) {
         const step = (aceLvl - startLvl) / 5; 
         const currentLvl = Math.floor(startLvl + step * i);
-        enemyParty.push(createPet(_.sample(context.pool), currentLvl));
+        const gPet = createPet(_.sample(context.pool), currentLvl, isHardGym);
+        if (isHardGym) gPet.customStatMult = 1.05;
+        enemyParty.push(gPet);
       }
       const leaderPet = createPet(context.gymLeader, aceLvl, true);
+      if (isHardGym) leaderPet.customStatMult = 1.15;
       enemyParty.push(leaderPet);
       trainerName = `馆主 ${context.gymName || context.name.slice(0,2)}`;
     }
@@ -6578,7 +6601,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         });
         for (let i = 0; i < wave.minionCount; i++) {
-          enemyParty.push(createPet(_.sample(wave.minionPool || [6,9,65,94,130]), wave.lvl + _.random(-3, 1), true));
+          const minion = createPet(_.sample(wave.minionPool || [6,9,65,94,130]), wave.lvl + _.random(-3, 1), true);
+          if (wave.lvl >= 80) minion.customStatMult = 1.1;
+          else if (wave.lvl >= 65) minion.customStatMult = 1.05;
+          enemyParty.push(minion);
         }
         trainerName = `📜 ${hbData.name} · ${wave.name}`;
         dropGold = 0;
@@ -6592,11 +6618,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 9b. 普通训练家
     // -------------------------------------------------
     else if (type === 'trainer') {
-      const count = _.random(2, 3);
+      const mapIdx = MAPS.findIndex(m => m.id === context.id);
+      const isLateGame = mapIdx >= 9;
+      const isElite = isLateGame && Math.random() < 0.25;
+      const count = isElite ? _.random(4, 5) : _.random(2, 3);
       for(let i=0; i<count; i++) {
-        enemyParty.push(createPet(_.sample(context.pool), _.random(context.lvl[0], context.lvl[1])));
+        const lv = _.random(context.lvl[0], context.lvl[1]) + (isElite ? _.random(2, 5) : 0);
+        const pet = createPet(_.sample(context.pool), Math.min(lv, 100), isElite);
+        if (isElite) pet.customStatMult = 1.1;
+        enemyParty.push(pet);
       }
-      trainerName = _.sample(TRAINER_NAMES);
+      trainerName = isElite ? '精英训练家 ' + _.sample(TRAINER_NAMES) : _.sample(TRAINER_NAMES);
+      if (isElite) dropGold = Math.floor(dropGold * 2);
     }
     // -------------------------------------------------
     // 10. 狩猎地带
@@ -6733,11 +6766,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const factionGangs = GANG_PRESETS.filter(g => g.faction === enemyFaction);
         const combinedPool = factionGangs.flatMap(g => g.teamPool || []);
         const pool = combinedPool.length > 0 ? combinedPool : HIGH_TIER_POOL;
+        const kwElite = kwLv >= 90 && Math.random() < 0.3;
         for (let i = 0; i < 6; i++) {
             const eid = pool[Math.floor(Math.random() * pool.length)];
             const lv = Math.max(20, kwLv - Math.floor(Math.random() * 6));
-            enemyParty.push(createPet(eid, lv, true, i === 5));
+            const pet = createPet(eid, lv, true, i === 5);
+            if (kwElite) pet.customStatMult = 1.15;
+            enemyParty.push(pet);
         }
+        if (kwElite) { trainerName = '⭐' + trainerName; dropGold = Math.floor(dropGold * 1.5); }
         extraBattleData.kwEnemyFaction = enemyFaction;
     }
     // -------------------------------------------------
@@ -9595,7 +9632,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         
         const nKey = pet.nature || 'docile';
         const expMod = NATURE_DB[nKey]?.exp || 1.0;
-        pet.nextExp = Math.floor(pet.level * 100 * expMod); 
+        pet.nextExp = calcNextExp(pet.level, expMod); 
         pet.currentHp = getStats(pet).maxHp; 
         pet.moves.forEach(m => m.pp = m.maxPP || 15);
         
@@ -9699,8 +9736,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const floor = infinityState.floor;
     let enemyPool = [];
     
-    // 1. 等级曲线：80级起步，每5层升1级，100层时达到100级 (封顶100)
     let enemyLvl = Math.min(100, 80 + Math.floor(floor / 5)); 
+    const beyondMult = floor > 100 ? 1 + (floor - 100) * 0.015 : 1;
 
     let bossName = null;
     let isBoss = false;
@@ -9723,6 +9760,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemyId = _.sample(enemyPool);
     // 创建基础敌人
     const enemy = createPet(enemyId, enemyLvl, true, isBoss); 
+    if (beyondMult > 1) enemy.customStatMult = beyondMult;
     if (bossName) enemy.name = bossName;
 
     // ▼▼▼▼▼▼▼▼▼▼ 核心强化逻辑 ▼▼▼▼▼▼▼▼▼▼

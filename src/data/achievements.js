@@ -236,13 +236,38 @@ const ACHIEVEMENTS = [
     hint: '提示：当五对精灵都达到完美默契…你就是真正的搭档大师',
     check: s => s.maxBondLv3Pairs >= 5, reward: { gold: 20000, title: '完美默契' }, hidden: true },
 
-  // ===== 国战成就 (6) =====
+  // ===== 国战成就 (6 基础) =====
   { id: 'kw_join',          cat: 'SOCIAL',   rarity: 'COMMON',    name: '投身乱世',     desc: '选择阵营，加入国战',                     check: s => s.kwJoined,               reward: { gold: 500 } },
   { id: 'kw_kill_10',       cat: 'BATTLE',   rarity: 'COMMON',    name: '初立战功',     desc: '在国战中击败10名敌国训练师',             check: s => s.kwKills >= 10,           reward: { gold: 3000 } },
   { id: 'kw_kill_100',      cat: 'BATTLE',   rarity: 'RARE',      name: '百战铁军',     desc: '在国战中击败100名敌国训练师',            check: s => s.kwKills >= 100,          reward: { gold: 20000, title: '百战铁军' } },
   { id: 'kw_general',       cat: 'SOCIAL',   rarity: 'RARE',      name: '封将拜印',     desc: '国战军衔达到将军',                       check: s => s.kwRankIdx >= 3,          reward: { gold: 15000, title: '沙场将军' } },
   { id: 'kw_territory_5',   cat: 'EXPLORE',  rarity: 'EPIC',      name: '版图扩张',     desc: '己方阵营同时控制5块以上领地',           check: s => s.kwFactionTerritories >= 5, reward: { gold: 30000 } },
   { id: 'kw_king',          cat: 'SOCIAL',   rarity: 'LEGENDARY', name: '一统天下',     desc: '国战军衔达到国主',                       check: s => s.kwRankIdx >= 5,          reward: { gold: 80000, title: '乱世霸主' } },
+
+  // ===== 国战进阶成就 (18) =====
+  // — 名将招募 —
+  { id: 'kw_gen_first',     cat: 'SOCIAL',   rarity: 'COMMON',    name: '招贤纳士',     desc: '招募第一位三国名将',                     check: s => s.kwGenerals >= 1,         reward: { gold: 2000 } },
+  { id: 'kw_gen_5',         cat: 'SOCIAL',   rarity: 'RARE',      name: '五虎上将',     desc: '同时拥有5位名将',                       check: s => s.kwGenerals >= 5,         reward: { gold: 15000, title: '知人善任' } },
+  { id: 'kw_gen_max',       cat: 'SOCIAL',   rarity: 'EPIC',      name: '八方来投',     desc: '名将招募达到上限(8位)',                  check: s => s.kwGenerals >= 8,         reward: { gold: 30000, title: '礼贤下士' } },
+  { id: 'kw_gen_ssr3',      cat: 'MASTERY',  rarity: 'LEGENDARY', name: '三国鼎立',     desc: '同时拥有3位SSR传世名将',                check: s => s.kwSSRGenerals >= 3,      reward: { gold: 60000, title: '天命所归' } },
+  { id: 'kw_gen_allfac',    cat: 'MASTERY',  rarity: 'EPIC',      name: '不分敌我',     desc: '同时拥有来自魏蜀吴三国的名将',          check: s => s.kwGenFactions >= 3,      reward: { gold: 25000 } },
+
+  // — 历史名战 —
+  { id: 'hb_first',         cat: 'BATTLE',   rarity: 'COMMON',    name: '初涉战场',     desc: '通关第一场历史名战',                     check: s => s.hbCompleted >= 1,        reward: { gold: 3000 } },
+  { id: 'hb_era1',          cat: 'BATTLE',   rarity: 'RARE',      name: '平定黄巾',     desc: '通关群雄割据时代全部5场名战',            check: s => s.hbEra1 >= 5,            reward: { gold: 20000, title: '乱世先锋' } },
+  { id: 'hb_era2',          cat: 'BATTLE',   rarity: 'RARE',      name: '赤壁风云',     desc: '通关三分天下时代全部5场名战',            check: s => s.hbEra2 >= 5,            reward: { gold: 25000, title: '天下三分' } },
+  { id: 'hb_era3',          cat: 'BATTLE',   rarity: 'EPIC',      name: '鼎足之势',     desc: '通关鼎足而立时代全部5场名战',            check: s => s.hbEra3 >= 5,            reward: { gold: 35000, title: '铁壁将军' } },
+  { id: 'hb_era4',          cat: 'BATTLE',   rarity: 'EPIC',      name: '终结乱世',     desc: '通关天下归一时代全部5场名战',            check: s => s.hbEra4 >= 5,            reward: { gold: 50000, title: '一统天下' } },
+  { id: 'hb_all',           cat: 'MASTERY',  rarity: 'LEGENDARY', name: '千古名战',     desc: '通关全部20场三国历史名战',               check: s => s.hbCompleted >= 20,       reward: { gold: 100000, title: '千古一帝' } },
+
+  // — 国战深度 —
+  { id: 'kw_kill_500',      cat: 'BATTLE',   rarity: 'EPIC',      name: '千刀万斩',     desc: '在国战中击败500名敌国训练师',            check: s => s.kwKills >= 500,          reward: { gold: 50000, title: '修罗战神' } },
+  { id: 'kw_kill_1000',     cat: 'BATTLE',   rarity: 'LEGENDARY', name: '万人敌',       desc: '在国战中击败1000名敌国训练师',           check: s => s.kwKills >= 1000,         reward: { gold: 120000, title: '万人敌' } },
+  { id: 'kw_grand_general', cat: 'SOCIAL',   rarity: 'EPIC',      name: '位极人臣',     desc: '国战军衔达到大将军',                     check: s => s.kwRankIdx >= 4,          reward: { gold: 40000, title: '大将军' } },
+  { id: 'kw_territory_10',  cat: 'EXPLORE',  rarity: 'LEGENDARY', name: '全境制霸',     desc: '己方阵营同时控制10块以上领地',           check: s => s.kwFactionTerritories >= 10, reward: { gold: 80000, title: '天下无双' } },
+  { id: 'kw_campaign_all',  cat: 'BATTLE',   rarity: 'EPIC',      name: '战役达人',     desc: '通关本阵营全部6个战役副本',              check: s => s.kwCampaignsCleared >= 6, reward: { gold: 35000, title: '常胜将军' } },
+  { id: 'kw_contrib_5000',  cat: 'GROWTH',   rarity: 'EPIC',      name: '劳苦功高',     desc: '累计获得5000点战功',                     check: s => s.kwContribution >= 5000,  reward: { gold: 40000 } },
+  { id: 'kw_contrib_20000', cat: 'MASTERY',  rarity: 'LEGENDARY', name: '功盖三国',     desc: '累计获得20000点战功',                    check: s => s.kwContribution >= 20000, reward: { gold: 150000, title: '功盖三国' } },
 ];
 
 export const DEFAULT_ACH_STATS = {
@@ -335,6 +360,16 @@ export const DEFAULT_ACH_STATS = {
   kwKills: 0,
   kwRankIdx: 0,
   kwFactionTerritories: 0,
+  kwGenerals: 0,
+  kwSSRGenerals: 0,
+  kwGenFactions: 0,
+  kwContribution: 0,
+  kwCampaignsCleared: 0,
+  hbCompleted: 0,
+  hbEra1: 0,
+  hbEra2: 0,
+  hbEra3: 0,
+  hbEra4: 0,
 };
 
 export default ACHIEVEMENTS;
