@@ -106,6 +106,9 @@ import {
   getGeneralById, getRandomGeneralForEncounter,
 } from './data/generals';
 import {
+  HISTORICAL_BATTLES, HISTORICAL_BATTLE_ERAS, getHistoricalBattlesByEra,
+} from './data/historicalBattles';
+import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
   SAME_TYPE_COMBO, DEFAULT_COMBO, BOND_PER_TURN, BOND_PER_KO,
   CAFE_BUILDING, CAFE_LEVELS, getCafeLevel, CAFE_DRINKS, DEFAULT_CAFE_STATE, DRINK_LOOT_TABLES,
@@ -5139,52 +5142,60 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           {gangTab === 'overview' && renderGangOverview()}
           {gangTab === 'tasks' && renderGangTasks()}
           {gangTab === 'members' && (() => {
-            const members = gangInfo?.members || [];
+            const npcMembers = gangInfo?.members || [];
             const factionData = gangInfo?.faction ? FACTIONS[gangInfo.faction] : null;
-            const gangRanks = ['帮众','精英','堂主','护法','副帮主'];
+            const myRank = getCurrentGangRank();
+            const leaderLv = (gangInfo?.level || 1) * 15 + 50;
+            const allMembers = [
+              { name: gangInfo?.leader || '帮主', level: leaderLv, contribution: 99999, isLeader: true, team: (gangInfo?.teamPool || []).slice(0, 6) },
+              { name: trainerName || '我', level: party[0]?.level || 1, contribution: gang.contribution || 0, isPlayer: true, team: party.slice(0, 6) },
+              ...npcMembers.map((m, i) => ({ ...m, team: (gangInfo?.teamPool || []).slice(i % 5, i % 5 + 4) })),
+            ].sort((a, b) => b.contribution - a.contribution);
+            const [viewMember, setViewMember] = React.useState(null);
             return (
               <div>
-                <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px'}}>👥 帮派成员 ({members.length}人)</div>
-                {factionData && <div style={{padding:'8px 12px', borderRadius:'8px', background:factionData.color+'10', border:'1px solid '+factionData.color+'20', marginBottom:'12px', fontSize:'11px', color:factionData.lightColor}}>阵营: {factionData.icon} {factionData.fullName}</div>}
-                {/* 帮主 */}
-                <div style={{...cardStyle, background:'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,143,0,0.04))', border:'1px solid rgba(255,215,0,0.2)'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                    <div style={{width:'44px', height:'44px', borderRadius:'50%', background:'linear-gradient(135deg, #FFD700, #FF8F00)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', border:'2px solid rgba(255,215,0,0.4)'}}>👑</div>
-                    <div style={{flex:1}}>
-                      <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                        <span style={{fontWeight:'bold', fontSize:'14px', color:'#FFD700'}}>{gangInfo?.leader || '帮主'}</span>
-                        <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(255,215,0,0.15)', color:'#FFD700', fontWeight:'700'}}>帮主</span>
-                      </div>
-                      <div style={{fontSize:'10px', color:'#aaa', marginTop:'2px'}}>Lv.{(gangInfo?.level || 1) * 15 + 50} · 帮派创始人</div>
-                    </div>
-                    <div style={{display:'flex', gap:'2px'}}>
-                      {(gangInfo?.teamPool || []).slice(0, 3).map((pid, j) => {
-                        const pm = POKEDEX.find(p => p.id === pid);
-                        return pm ? <div key={j} style={{width:'24px', height:'24px', borderRadius:'50%', background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', border:'1px solid rgba(255,255,255,0.1)'}}>{renderAvatar(pm)}</div> : null;
-                      })}
-                    </div>
-                  </div>
-                </div>
-                {/* 普通成员 */}
-                {members.map((m, i) => {
-                  const memberRank = gangRanks[Math.min(Math.floor(m.contribution / 200), gangRanks.length - 1)];
-                  const memberTeam = (gangInfo?.teamPool || []).slice(i % 4, i % 4 + 3);
+                <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>👥 帮派成员 ({allMembers.length}人)</div>
+                {factionData && <div style={{padding:'6px 12px', borderRadius:'8px', background:factionData.color+'10', border:'1px solid '+factionData.color+'20', marginBottom:'8px', fontSize:'11px', color:factionData.lightColor}}>阵营: {factionData.icon} {factionData.fullName}</div>}
+                {allMembers.map((m, i) => {
+                  const mRank = m.isLeader ? GANG_RANKS[GANG_RANKS.length-1] : m.isPlayer ? myRank : getGangRank(m.contribution, false);
+                  const isLeader = m.isLeader;
+                  const isMe = m.isPlayer;
+                  const bgStyle = isLeader ? {background:'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,143,0,0.04))', border:'1px solid rgba(255,215,0,0.2)'} : isMe ? {background:'linear-gradient(135deg, rgba(100,181,246,0.08), rgba(66,165,245,0.04))', border:'1px solid rgba(100,181,246,0.2)'} : {background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'};
                   return (
-                    <div key={i} style={{...cardStyle, display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px'}}>
-                      <div style={{width:'36px', height:'36px', borderRadius:'50%', background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', border:'1px solid rgba(255,255,255,0.08)', flexShrink:0}}>⚔️</div>
-                      <div style={{flex:1, minWidth:0}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                          <span style={{fontWeight:'bold', fontSize:'12px', color:'#fff'}}>{m.name}</span>
-                          <span style={{fontSize:'8px', padding:'1px 5px', borderRadius:'3px', background:'rgba(255,255,255,0.08)', color:'#aaa', fontWeight:'600'}}>{memberRank}</span>
+                    <div key={i} onClick={() => setViewMember(viewMember === i ? null : i)} style={{...bgStyle, borderRadius:'10px', padding:'8px 12px', marginBottom:'4px', cursor:'pointer', transition:'all 0.2s'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                        <div style={{width:'34px', height:'34px', borderRadius:'50%', background: isLeader ? 'linear-gradient(135deg, #FFD700, #FF8F00)' : isMe ? 'linear-gradient(135deg, #42A5F5, #1E88E5)' : 'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', border:'1px solid '+(isLeader ? 'rgba(255,215,0,0.4)' : isMe ? 'rgba(66,165,245,0.4)' : 'rgba(255,255,255,0.08)'), flexShrink:0}}>{mRank?.icon || '👤'}</div>
+                        <div style={{flex:1, minWidth:0}}>
+                          <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                            <span style={{fontWeight:'bold', fontSize:'12px', color: isLeader ? '#FFD700' : isMe ? '#64B5F6' : '#fff'}}>{m.name}</span>
+                            {isMe && <span style={{fontSize:'7px', padding:'1px 4px', borderRadius:'3px', background:'rgba(100,181,246,0.2)', color:'#64B5F6', fontWeight:'700'}}>你</span>}
+                            <span style={{fontSize:'8px', padding:'1px 5px', borderRadius:'3px', background: isLeader ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)', color: isLeader ? '#FFD700' : '#aaa', fontWeight:'600'}}>{mRank?.name || '帮众'}</span>
+                          </div>
+                          <div style={{fontSize:'9px', color:'#777', marginTop:'1px'}}>Lv.{m.level} · 帮贡 {m.isLeader ? '---' : m.contribution}</div>
                         </div>
-                        <div style={{fontSize:'9px', color:'#777', marginTop:'2px'}}>Lv.{m.level} · 帮贡 {m.contribution}</div>
+                        <div style={{display:'flex', gap:'2px'}}>
+                          {(isMe ? party.slice(0,3) : m.team?.slice(0,3) || []).map((p, j) => {
+                            const pm = isMe ? p : POKEDEX.find(x => x.id === p);
+                            return pm ? <div key={j} style={{width:'22px', height:'22px', borderRadius:'50%', background:'rgba(255,255,255,0.04)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.08)'}}>{renderAvatar(pm)}</div> : null;
+                          })}
+                        </div>
+                        <span style={{fontSize:'10px', color:'#555', transform: viewMember===i ? 'rotate(180deg)' : 'none', transition:'transform 0.2s'}}>▼</span>
                       </div>
-                      <div style={{display:'flex', gap:'2px'}}>
-                        {memberTeam.map((pid, j) => {
-                          const pm = POKEDEX.find(p => p.id === pid);
-                          return pm ? <div key={j} style={{width:'22px', height:'22px', borderRadius:'50%', background:'rgba(255,255,255,0.03)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.06)'}}>{renderAvatar(pm)}</div> : null;
-                        })}
-                      </div>
+                      {viewMember === i && (
+                        <div style={{marginTop:'8px', padding:'8px 10px', background:'rgba(0,0,0,0.2)', borderRadius:'8px'}}>
+                          <div style={{fontSize:'10px', color:'#aaa', marginBottom:'6px', fontWeight:'600'}}>精灵阵容</div>
+                          <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                            {(isMe ? party : (m.team || []).map(pid => { const base = POKEDEX.find(x => x.id === pid); return base ? createPet(base.id, m.level || 50) : null; }).filter(Boolean)).map((pet, j) => (
+                              <div key={j} style={{textAlign:'center', width:'56px'}}>
+                                <div style={{fontSize:'28px', marginBottom:'2px'}}>{renderAvatar(pet)}</div>
+                                <div style={{fontSize:'8px', color:'#ccc', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{pet.name}</div>
+                                <div style={{fontSize:'7px', color:'#777'}}>Lv.{pet.level}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {isMe && <div style={{fontSize:'9px', color:'#64B5F6', marginTop:'6px'}}>职位特权: {mRank?.privileges || '基础任务'}</div>}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -6359,7 +6370,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || actualType === 'general' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6538,6 +6549,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
         trainerName = fTag + gen.name + ' · ' + gen.title;
         dropGold = Math.floor(gen.recruitCost * 0.05);
         extraBattleData.generalEncounter = gen;
+      }
+    }
+    // -------------------------------------------------
+    // 9b-pre. 历史名战
+    // -------------------------------------------------
+    else if (type === 'historical_battle') {
+      const hbData = challengeId?.hbData;
+      const waveIdx = challengeId?.waveIdx || 0;
+      if (hbData && hbData.waves[waveIdx]) {
+        const wave = hbData.waves[waveIdx];
+        wave.generalIds.forEach(gid => {
+          const gen = getGeneralById(gid);
+          if (gen) {
+            const pet = createPet(_.sample(context?.pool || [6,9,65,94,130,143,149,168,199,241]), wave.lvl + _.random(-1, 2), true);
+            const fData = gen.faction !== 'neutral' ? FACTIONS[gen.faction] : null;
+            pet.name = gen.name;
+            if (gen.rarity === 'SSR') {
+              pet.customStatMult = 1.3;
+            } else if (gen.rarity === 'SR') {
+              pet.customStatMult = 1.15;
+            }
+            enemyParty.push(pet);
+          }
+        });
+        for (let i = 0; i < wave.minionCount; i++) {
+          enemyParty.push(createPet(_.sample(wave.minionPool || [6,9,65,94,130]), wave.lvl + _.random(-3, 1), true));
+        }
+        trainerName = `📜 ${hbData.name} · ${wave.name}`;
+        dropGold = Math.floor((hbData.reward.gold || 5000) / hbData.waves.length);
+        extraBattleData.historicalBattle = hbData;
+        extraBattleData.currentWave = waveIdx;
+        extraBattleData.totalWaves = hbData.waves.length;
+        extraBattleData.carryOverParty = challengeId?.carryOverParty || null;
       }
     }
     // -------------------------------------------------
@@ -6911,6 +6955,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const battleEnemyParty = enemyParty.map(initBattleState);
     const battlePlayerParty = party.map(initBattleState); 
+
+    if (extraBattleData.carryOverParty && actualType === 'historical_battle') {
+      const co = extraBattleData.carryOverParty;
+      battlePlayerParty.forEach((p, i) => {
+        if (co[i]) {
+          const maxHp = getStats(p).maxHp;
+          p.currentHp = Math.min(Math.max(1, Math.floor(maxHp * co[i].hpRatio)), maxHp);
+        }
+      });
+    }
 
     // ▼▼▼ [新增] 预先计算威吓 (Intimidate) 效果 ▼▼▼
     // 直接修改初始数据，确保第一回合状态正确
@@ -10276,6 +10330,47 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
 
+    // 9a-3. 历史名战波次/胜利处理
+    if (battle.type === 'historical_battle' && battle.historicalBattle) {
+      const hb = battle.historicalBattle;
+      const currentWave = battle.currentWave || 0;
+      const totalWaves = battle.totalWaves || hb.waves.length;
+      if (currentWave < totalWaves - 1) {
+        const hpSnapshot = battle.playerCombatStates.map(p => ({
+          hpRatio: p.currentHp / (getStats(p).maxHp || 1),
+        }));
+        addLog(`📜 ${hb.name} — 第${currentWave + 1}/${totalWaves}波胜利！下一波即将开始...`);
+        setTimeout(() => {
+          startBattle(
+            MAPS.find(m => m.id === currentMapId) || MAPS[0],
+            'historical_battle',
+            { hbData: hb, waveIdx: currentWave + 1, carryOverParty: hpSnapshot }
+          );
+        }, 1200);
+        setBattle(null);
+        return;
+      }
+      const completed = kingdomWar?.completedHistoricalBattles || [];
+      const isFirstClear = !completed.includes(hb.id);
+      const rewardMult = isFirstClear ? 1 : 0.3;
+      const goldReward = Math.floor((hb.reward.gold || 5000) * rewardMult);
+      const tokenReward = Math.floor((hb.reward.tokens || 5) * rewardMult);
+      const contribReward = Math.floor((hb.reward.contribution || 20) * rewardMult);
+      setGold(g => g + goldReward);
+      setKingdomWar(prev => {
+        const next = { ...prev };
+        next.factionTokens = (next.factionTokens || 0) + tokenReward;
+        next.warContribution = (next.warContribution || 0) + contribReward;
+        next.militaryRank = getMilitaryRank(next.warContribution).id;
+        if (isFirstClear) {
+          next.completedHistoricalBattles = [...completed, hb.id];
+        }
+        return next;
+      });
+      setGang(prev => ({ ...prev, contribution: (prev.contribution || 0) + contribReward }));
+      addLog(`🏆 ${hb.name} ${isFirstClear ? '首次通关' : '再次通关'}！+${goldReward}金 +${tokenReward}令牌 +${contribReward}帮贡` + (isFirstClear ? '' : ' (重复30%)'));
+    }
+
     // 9b. 国战胜利
     if (battle.type === 'kingdom_war') {
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
@@ -13510,6 +13605,7 @@ const renderMenu = () => {
               { id: 'overview', label: '概览', icon: '📊' },
               { id: 'generals', label: '将领', icon: '⚔️' },
               { id: 'campaigns', label: '战役', icon: '🗡️' },
+              { id: 'history', label: '名战', icon: '📜' },
               { id: 'contested', label: '争夺', icon: '🏰' },
               { id: 'capital', label: '都城', icon: '🏯' },
               { id: 'territory', label: '领土', icon: '🗺️' },
@@ -13783,6 +13879,103 @@ const renderMenu = () => {
                     </div>
                   </div>
                 )}
+
+                {/* 历史名战 */}
+                {kwTab === 'history' && (() => {
+                  const completed = kw.completedHistoricalBattles || [];
+                  const avgLv = party.length > 0 ? Math.floor(party.reduce((s,p) => s + p.level, 0) / party.length) : 1;
+                  return (
+                    <div>
+                      <div style={{background:'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius:'14px', padding:'16px', color:'#fff', marginBottom:'14px', position:'relative', overflow:'hidden'}}>
+                        <div style={{position:'absolute', top:0, right:0, bottom:0, width:'40%', background:'linear-gradient(90deg, transparent, rgba(255,215,0,0.05))'}} />
+                        <div style={{fontSize:'18px', fontWeight:'800', marginBottom:'4px'}}>📜 三国名战录</div>
+                        <div style={{fontSize:'12px', opacity:0.8, marginBottom:'8px'}}>纵横三国，重现经典战役。多波次Boss连战，HP延续，策略为王！</div>
+                        <div style={{display:'flex', gap:'10px', fontSize:'11px'}}>
+                          <span style={{background:'rgba(255,215,0,0.15)', padding:'3px 10px', borderRadius:'8px', color:'#FFD700'}}>已通关 {completed.length}/{HISTORICAL_BATTLES.length}</span>
+                          <span style={{background:'rgba(100,181,246,0.15)', padding:'3px 10px', borderRadius:'8px', color:'#64B5F6'}}>队伍 Lv.{avgLv}</span>
+                        </div>
+                      </div>
+                      {HISTORICAL_BATTLE_ERAS.map(era => {
+                        const eraBattles = getHistoricalBattlesByEra(era.id);
+                        const eraCompleted = eraBattles.filter(b => completed.includes(b.id)).length;
+                        const prevEra = HISTORICAL_BATTLE_ERAS[HISTORICAL_BATTLE_ERAS.indexOf(era) - 1];
+                        const prevEraBattles = prevEra ? getHistoricalBattlesByEra(prevEra.id) : [];
+                        const prevEraCompleted = prevEraBattles.filter(b => completed.includes(b.id)).length;
+                        const eraUnlocked = !prevEra || prevEraCompleted >= 3;
+                        return (
+                          <div key={era.id} style={{marginBottom:'16px'}}>
+                            <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px', padding:'8px 12px', background: eraUnlocked ? 'linear-gradient(90deg, rgba(255,215,0,0.08), transparent)' : '#f5f5f5', borderRadius:'10px', border:'1px solid '+(eraUnlocked ? 'rgba(255,215,0,0.2)' : '#e0e0e0')}}>
+                              <span style={{fontSize:'22px'}}>{era.icon}</span>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:'14px', fontWeight:'700', color: eraUnlocked ? '#1e293b' : '#999'}}>{era.name}</div>
+                                <div style={{fontSize:'10px', color:'#64748b'}}>{era.desc} · Lv.{era.lvRange[0]}-{era.lvRange[1]}</div>
+                              </div>
+                              <div style={{fontSize:'11px', fontWeight:'700', color: eraCompleted === eraBattles.length ? '#4caf50' : '#f59e0b'}}>{eraCompleted}/{eraBattles.length}</div>
+                            </div>
+                            {!eraUnlocked ? (
+                              <div style={{textAlign:'center', padding:'16px', color:'#999', fontSize:'12px', background:'#fafafa', borderRadius:'10px', border:'1px dashed #ddd'}}>🔒 需通关上一时代至少3场战役</div>
+                            ) : (
+                              <div style={{display:'grid', gap:'10px'}}>
+                                {eraBattles.map(hb => {
+                                  const isCleared = completed.includes(hb.id);
+                                  const isLocked = hb.unlockReq && !completed.includes(hb.unlockReq);
+                                  const tooWeak = avgLv < hb.lvl - 15;
+                                  const disabled = isLocked || tooWeak;
+                                  return (
+                                    <div key={hb.id} style={{
+                                      background: hb.bg, borderRadius:'12px', padding:'14px', color:'#fff',
+                                      opacity: disabled ? 0.55 : 1, position:'relative', overflow:'hidden',
+                                      boxShadow:'0 3px 12px rgba(0,0,0,0.25)', transition:'transform 0.2s',
+                                    }}>
+                                      {isCleared && <div style={{position:'absolute', top:'6px', right:'8px', background:'rgba(76,175,80,0.9)', padding:'2px 8px', borderRadius:'6px', fontSize:'9px', fontWeight:'700'}}>✅ 已通关</div>}
+                                      <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
+                                        <span style={{fontSize:'24px'}}>{hb.icon}</span>
+                                        <div style={{flex:1}}>
+                                          <div style={{fontSize:'14px', fontWeight:'800'}}>{hb.name}</div>
+                                          <div style={{fontSize:'10px', opacity:0.85}}>Lv.{hb.lvl} · {hb.waves.length}波 · {'⭐'.repeat(hb.difficulty)}</div>
+                                        </div>
+                                      </div>
+                                      <div style={{fontSize:'12px', opacity:0.9, marginBottom:'4px', fontWeight:'600'}}>{hb.desc}</div>
+                                      <div style={{fontSize:'10px', opacity:0.7, marginBottom:'8px', fontStyle:'italic', borderLeft:'2px solid rgba(255,255,255,0.3)', paddingLeft:'6px', lineHeight:'1.4'}}>{hb.lore}</div>
+                                      <div style={{display:'flex', gap:'5px', flexWrap:'wrap', marginBottom:'8px'}}>
+                                        <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 6px', borderRadius:'5px', fontSize:'9px'}}>💰 {hb.reward.gold.toLocaleString()}</span>
+                                        <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 6px', borderRadius:'5px', fontSize:'9px'}}>🎖️ {hb.reward.tokens}</span>
+                                        <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 6px', borderRadius:'5px', fontSize:'9px'}}>⭐ +{hb.reward.contribution}</span>
+                                        {isCleared && <span style={{background:'rgba(255,255,255,0.15)', padding:'2px 6px', borderRadius:'5px', fontSize:'9px', opacity:0.7}}>重复30%</span>}
+                                      </div>
+                                      <button
+                                        disabled={disabled}
+                                        onClick={() => {
+                                          if (party.length < 1) { alert('至少需要1只精灵！'); return; }
+                                          if (window.confirm(`📜 ${hb.name}\n\n${hb.lore}\n\n推荐等级: Lv.${hb.lvl} | 共${hb.waves.length}波\nHP在波次间延续，请备好回复道具！\n\n${isCleared ? '(重复挑战奖励为30%)' : ''}\n\n是否出征？`)) {
+                                            startBattle(
+                                              MAPS.find(m => m.id === currentMapId) || MAPS[0],
+                                              'historical_battle',
+                                              { hbData: hb, waveIdx: 0 }
+                                            );
+                                          }
+                                        }}
+                                        style={{
+                                          width:'100%', padding:'8px', background: disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)',
+                                          border:'1px solid rgba(255,255,255,0.25)', borderRadius:'8px', color:'#fff',
+                                          fontSize:'12px', fontWeight:'700', cursor: disabled ? 'not-allowed' : 'pointer', transition:'all 0.2s',
+                                        }}
+                                        onMouseOver={e => { if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.35)'; }}
+                                        onMouseOut={e => { if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+                                      >
+                                        {isLocked ? `🔒 需先通关 ${HISTORICAL_BATTLES.find(b=>b.id===hb.unlockReq)?.name || '前置战役'}` : tooWeak ? `等级不足 (推荐Lv.${hb.lvl})` : isCleared ? '🔁 再次挑战' : '⚔️ 出征！'}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 {/* 都城 */}
                 {/* 争夺城池 */}
