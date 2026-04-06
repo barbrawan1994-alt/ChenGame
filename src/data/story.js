@@ -1782,3 +1782,357 @@ export const STORY_SCRIPT = [
     reward: { gold: 200000, balls: { master: 5 } }
   }
 ];
+
+// ==========================================
+// 三国志篇 — 通关主线（第13章地图）后解锁 · chapter 索引 13–24
+// ==========================================
+export const SANGUO_STORY = [
+  {
+    chapter: 13,
+    mapId: 204,
+    title: "第一章：讨伐董卓·群雄会盟",
+    objective: "于洛阳天子城会盟诸侯，冲破董军防线，击败飞将吕布，动摇董卓暴政。",
+    isSanguo: true,
+    intro: [
+      { name: "曹操", text: "洛阳宫阙之上，董卓倒行逆施，天下切齿。今日十八路诸侯会盟——正是讨贼之机！" },
+      { name: "袁绍", text: "盟主在此！谁愿为先锋，先挫董贼锐气？若能直捣虎牢，天下人心可复！" },
+      { name: "王允", text: "宫中密报：董贼遣吕布镇守外郭，其人骑射无双，切不可轻敌……" },
+      { name: "刘备", text: "天下苦董久矣。义军既起，我等虽兵微，亦当与天下人共赴此战！" }
+    ],
+    tasks: [
+      { step: 0, x: 10, y: 8, type: 'battle', enemyId: 701, name: '董军先锋·李傕部曲', text: "奉太师令！擅闯会盟者——格杀勿论！", emoji: '⚔️',
+        eliteParty: [{ id: 701, level: 52 }, { id: 703, level: 51 }, { id: 704, level: 50 }]
+      },
+      { step: 1, x: 16, y: 6, type: 'dialog', name: '曹操', text: "好！前军已破，士气可用。昔年温酒之事不必再提——今日之吕布，仍在阵前！", emoji: '🍶' },
+      { step: 2, x: 22, y: 10, type: 'battle', enemyId: 707, name: '董军骁骑·郭汜亲兵', text: "虎牢飞将之名，岂容尔等玷污！杀！", emoji: '🐎',
+        eliteParty: [{ id: 707, level: 54 }, { id: 705, level: 53 }, { id: 706, level: 52 }]
+      }
+    ],
+    midEvent: { enemyId: 727, name: '飞将·吕布' },
+    outro: [
+      { name: "曹操", text: "吕布虽勇，亦难独支倾颓之势……董卓暴政，天怒人怨，此战只是开端。" },
+      { name: "刘备", text: "天下大势，自此波澜再起。望诸公莫忘今日之盟——为民，为止戈。" },
+      { name: "系统", text: "三国志篇开启：群雄逐鹿的烽火，已在中原点燃。" }
+    ],
+    reward: { gold: 8000, items: [{ id: 'hyper_potion', count: 5 }] }
+  },
+  {
+    chapter: 14,
+    mapId: 205,
+    title: "第二章：刘备借荆州",
+    objective: "在荆州要塞周旋孙刘曹三方，立契借地，为蜀汉争得立足之机。",
+    isSanguo: true,
+    intro: [
+      { name: "刘备", text: "江夏新败，将士思归。若无立足之地，何以安民？" },
+      { name: "诸葛亮", text: "荆州北据汉沔，利尽南海，东连吴会，西通巴蜀……主公欲成大业，必先借荆州为基。" },
+      { name: "鲁肃", text: "孙刘唇齿相依，共抗北方强敌。借地之事，容我回建业禀明吴侯，再定盟书条款。" },
+      { name: "周瑜", text: "刘备枭雄也，诸葛孔明更是人杰——借地？哼，须防养虎为患！" }
+    ],
+    tasks: [
+      { step: 0, x: 8, y: 12, type: 'dialog', name: '鲁肃', text: "子敬愿为担保：盟书在此，借南郡以屯兵，共御曹操。但若背盟……吴军铁骑亦非虚设。", emoji: '📜' },
+      { step: 1, x: 14, y: 9, type: 'battle', enemyId: 712, name: '曹军斥候·荆州前线', text: "江北营寨闻孙刘往来频繁——宁可错杀，不可放过！", emoji: '🏹',
+        eliteParty: [{ id: 712, level: 56 }, { id: 713, level: 55 }, { id: 714, level: 54 }]
+      },
+      { step: 2, x: 20, y: 7, type: 'battle', enemyId: 715, name: '江夏疑兵·蔡瑁旧部', text: "荆州水脉我熟！外人休想在此立脚！", emoji: '🌊',
+        eliteParty: [{ id: 715, level: 58 }, { id: 716, level: 57 }, { id: 717, level: 56 }]
+      }
+    ],
+    midEvent: { enemyId: 718, name: '大都督·周瑜' },
+    outro: [
+      { name: "诸葛亮", text: "盟成。荆州暂借，如跨有荆益之策，方可二分天下，以图中原。" },
+      { name: "刘备", text: "先生之言，备铭记于心。荆州之民，备必以仁政安之。" },
+      { name: "系统", text: "孙刘联盟的张力与共同敌人，将牵动后续无数战局。" }
+    ],
+    reward: { gold: 12000, items: [{ id: 'hyper_potion', count: 6 }] }
+  },
+  {
+    chapter: 15,
+    mapId: 201,
+    title: "第三章：挟天子以令诸侯",
+    objective: "深入许昌魏都，见证曹操迎驾之策，冲破忠于汉室与魏武两派的暗斗。",
+    isSanguo: true,
+    intro: [
+      { name: "曹操", text: "天子蒙尘，孤迎驾许昌，非为私也——为令天下知正统所在。" },
+      { name: "荀彧", text: "明公奉天子以讨不臣，四方之士望风而归。然……尊王与建制，须慎之又慎。" },
+      { name: "献帝（旁白）", text: "深宫之中，诏书可出，亦可不出。许昌一城，已成天下政令所出之地。" },
+      { name: "司马懿", text: "时势如此。能借势而行者，方能转乾坤于指掌之间。" }
+    ],
+    tasks: [
+      { step: 0, x: 6, y: 10, type: 'battle', enemyId: 719, name: '许都卫尉·司马系校尉', text: "无令擅入宫城者——视同谋逆！", emoji: '🛡️',
+        eliteParty: [{ id: 719, level: 60 }, { id: 720, level: 59 }, { id: 721, level: 58 }]
+      },
+      { step: 1, x: 12, y: 8, type: 'dialog', name: '荀彧', text: "望君知：挟天子以令诸侯，与挟天子以废汉室，只在一念之间。", emoji: '⚖️' },
+      { step: 2, x: 18, y: 11, type: 'battle', enemyId: 722, name: '虎贲甲士·典韦旧部', text: "魏公威震中原！逆命者，虽近必诛！", emoji: '🔥',
+        eliteParty: [{ id: 722, level: 62 }, { id: 723, level: 61 }, { id: 724, level: 60 }]
+      }
+    ],
+    midEvent: { enemyId: 725, name: '魏武亲军·典韦' },
+    outro: [
+      { name: "曹操", text: "天下汹汹，非战无以止乱。孤之所行，后世自有评说。" },
+      { name: "司马懿", text: "……大势已成。接下来，只看各方如何落子。" },
+      { name: "系统", text: "许昌的诏令与兵锋，将成为北方争霸的核心轴心。" }
+    ],
+    reward: { gold: 16000, items: [{ id: 'hyper_potion', count: 7 }] }
+  },
+  {
+    chapter: 16,
+    mapId: 206,
+    title: "第四章：汉中争夺战",
+    objective: "穿越蜀道咽喉，随刘备军与曹魏名将争夺汉中，定益州北门。",
+    isSanguo: true,
+    intro: [
+      { name: "刘备", text: "汉中若失，益州门户洞开。此战，关系基业存亡！" },
+      { name: "黄忠", text: "老夫虽年迈，尚能开弓！定军山前，誓取曹军上将之首级！" },
+      { name: "法正", text: "山路迂回，可出奇制胜。主公依计而行，汉中可图。" },
+      { name: "夏侯渊", text: "汉中乃西陲咽喉，魏军重兵在此——蜀道再险，也挡不住铁骑！" }
+    ],
+    tasks: [
+      { step: 0, x: 9, y: 9, type: 'battle', enemyId: 726, name: '汉中隘口·曹魏偏师', text: "蜀道难？难不过魏武军令！", emoji: '⛰️',
+        eliteParty: [{ id: 726, level: 64 }, { id: 727, level: 63 }, { id: 728, level: 62 }]
+      },
+      { step: 1, x: 15, y: 6, type: 'dialog', name: '赵云', text: "子龙在此！主公先行，某当殿后——一人一骑，亦可当千军。", emoji: '🐉' },
+      { step: 2, x: 21, y: 12, type: 'battle', enemyId: 729, name: '定军斥候·曹魏弓骑', text: "山雾起处，便是埋兵之所……休想越过！", emoji: '🏹',
+        eliteParty: [{ id: 729, level: 66 }, { id: 730, level: 65 }, { id: 731, level: 64 }]
+      }
+    ],
+    midEvent: { enemyId: 732, name: '征西将军·夏侯渊' },
+    outro: [
+      { name: "黄忠", text: "哈哈哈！今日方知老当益壮！汉中震动，曹军胆寒！" },
+      { name: "刘备", text: "汉中既下，益州可安。然曹操岂会甘休？北境仍不可懈。" },
+      { name: "系统", text: "蜀道与汉中的得失，将反复牵动三国疆界。" }
+    ],
+    reward: { gold: 20000, items: [{ id: 'hyper_potion', count: 8 }] }
+  },
+  {
+    chapter: 17,
+    mapId: 202,
+    title: "第五章：入蜀建国",
+    objective: "于成都完成益州整合，直面刘璋旧势与蜀中民心，奠基蜀汉。",
+    isSanguo: true,
+    intro: [
+      { name: "庞统", text: "益州富庶，刘季玉暗弱，取之有道，亦可安民——主公勿疑。" },
+      { name: "刘备", text: "同宗相争，非我所愿。然百姓苦于苛役久矣，若得蜀中，当与民休息。" },
+      { name: "诸葛亮", text: "先取益州，再图中原。隆中之策，今见其半。" },
+      { name: "马超", text: "西凉旧怨未了，今日愿为先锋，以报主公知遇！" }
+    ],
+    tasks: [
+      { step: 0, x: 7, y: 7, type: 'battle', enemyId: 733, name: '蜀中豪族·私兵', text: "益州乃吾等根基，岂容外来者轻取！", emoji: '🏯',
+        eliteParty: [{ id: 733, level: 68 }, { id: 731, level: 67 }, { id: 732, level: 66 }]
+      },
+      { step: 1, x: 13, y: 10, type: 'dialog', name: '张飞', text: "大哥心善，俺可不耐烦！挡路者——燕人张翼德在此！", emoji: '⚔️' },
+      { step: 2, x: 19, y: 5, type: 'battle', enemyId: 734, name: '剑阁守将·刘璋麾下', text: "剑阁天险，一夫当关！欲入成都，先问手中枪！", emoji: '⚔️',
+        eliteParty: [{ id: 734, level: 70 }, { id: 735, level: 69 }, { id: 736, level: 68 }]
+      }
+    ],
+    midEvent: { enemyId: 737, name: '西凉骁骑·马超' },
+    outro: [
+      { name: "诸葛亮", text: "益州既定，内修政理，外结孙权，北伐方可从容。" },
+      { name: "刘备", text: "今日起，愿与蜀中父老共守此土，同承汉祚。" },
+      { name: "系统", text: "蜀汉立国之势成，天下三分之局愈明。" }
+    ],
+    reward: { gold: 24000, items: [{ id: 'hyper_potion', count: 9 }] }
+  },
+  {
+    chapter: 18,
+    mapId: 205,
+    title: "第六章：关羽水淹七军",
+    objective: "于荆州江岸迎战曹魏七军，水涨城崩之际，再现威震华夏之名。",
+    isSanguo: true,
+    intro: [
+      { name: "关羽", text: "樊城之下，七军云集。天象有变，水势将起——此天助我也！" },
+      { name: "关平", text: "父亲小心！东吴虽盟，吕蒙陆逊之辈，不可不防！" },
+      { name: "庞德", text: "关羽何足惧！魏王麾下勇士在此，宁为鬼雄，不为降虏！" },
+      { name: "于禁", text: "七军既出，当速战速决……这、这水涨得不对！" }
+    ],
+    tasks: [
+      { step: 0, x: 11, y: 11, type: 'battle', enemyId: 738, name: '汉水急湍·曹魏舟师', text: "水势异变！快撤——啊！", emoji: '🌊',
+        eliteParty: [{ id: 738, level: 70 }, { id: 736, level: 69 }, { id: 737, level: 68 }]
+      },
+      { step: 1, x: 17, y: 8, type: 'dialog', name: '关羽', text: "舟楫既覆，七军成擒。此非独关某之能，亦天时也。", emoji: '🐉' },
+      { step: 2, x: 23, y: 6, type: 'battle', enemyId: 739, name: '樊城残垒·曹魏死士', text: "城在人在！魏王之恩，以死相报！", emoji: '🔥',
+        eliteParty: [{ id: 739, level: 72 }, { id: 740, level: 71 }, { id: 741, level: 70 }]
+      }
+    ],
+    midEvent: { enemyId: 742, name: '白马将军·庞德' },
+    outro: [
+      { name: "关羽", text: "威震华夏，名不虚传。然骄兵必败——后世当以为戒。" },
+      { name: "关平", text: "父亲威名已立，回师江陵，尚需防备东吴……" },
+      { name: "系统", text: "大水无情，胜负亦无情；荆州之局，暗流更烈。" }
+    ],
+    reward: { gold: 28000, items: [{ id: 'hyper_potion', count: 10 }] }
+  },
+  {
+    chapter: 19,
+    mapId: 203,
+    title: "第七章：东吴崛起·赤壁之战",
+    objective: "在建业外水寨与长江前线，联吴抗曹，火攻破曹军连环舟楫。",
+    isSanguo: true,
+    intro: [
+      { name: "孙权", text: "曹操挟百万之众南下，江东存亡在此一战！孤意已决——战！" },
+      { name: "周瑜", text: "曹军不习水战，又染疫病，连环舟虽固，亦可一火焚之！" },
+      { name: "诸葛亮", text: "借东风之事，自有天数与人谋。亮愿助公瑾一臂之力。" },
+      { name: "黄盖", text: "苦肉之计已备，只待诈降入营——老夫这把老骨头，尚能点火！" }
+    ],
+    tasks: [
+      { step: 0, x: 8, y: 6, type: 'battle', enemyId: 743, name: '曹军水寨·连环舟前卫', text: "铁索连环，如履平地！江东鼠辈，何敢来犯？", emoji: '⛓️',
+        eliteParty: [{ id: 743, level: 74 }, { id: 742, level: 73 }, { id: 741, level: 72 }]
+      },
+      { step: 1, x: 14, y: 9, type: 'dialog', name: '黄盖', text: "粮船已近——点火！", emoji: '🔥' },
+      { step: 2, x: 20, y: 11, type: 'battle', enemyId: 744, name: '赤壁火海·曹军溃阵', text: "火！全是火！这是天亡我也！", emoji: '🌋',
+        eliteParty: [{ id: 744, level: 76 }, { id: 745, level: 75 }, { id: 746, level: 74 }]
+      }
+    ],
+    midEvent: { enemyId: 747, name: '水军都督·周瑜' },
+    outro: [
+      { name: "孙权", text: "赤壁之后，三分之势乃成。江东子弟，不负父兄基业！" },
+      { name: "甘宁", text: "百骑劫营何足道！往后更有大战，甘宁愿为先锋！" },
+      { name: "系统", text: "长江一炬，烧尽北军锐气；天下格局，自此改写。" }
+    ],
+    reward: { gold: 32000, items: [{ id: 'hyper_potion', count: 11 }] }
+  },
+  {
+    chapter: 20,
+    mapId: 204,
+    title: "第八章：三国鼎立·洛阳攻防",
+    objective: "洛阳天子城再起兵戈，魏蜀吴三方角力正统与要塞，试炼鼎足之局。",
+    isSanguo: true,
+    intro: [
+      { name: "司马懿", text: "洛阳天下之中，四战之地。鼎立之势虽成，此地仍是最烈之炉。" },
+      { name: "陆逊", text: "吴军据东南，未必不能北上争锋——先取实利，再论名分。" },
+      { name: "赵云", text: "一身是胆，何惧攻城？为汉室社稷，虽白发亦当先登。" },
+      { name: "荀彧（追忆）", text: "昔日奉天子……今日之城，已非旧时之城。（叹息）" }
+    ],
+    tasks: [
+      { step: 0, x: 9, y: 8, type: 'battle', enemyId: 748, name: '洛阳外郭·魏军重步', text: "洛阳城高池深，进得来，未必出得去！", emoji: '🏰',
+        eliteParty: [{ id: 748, level: 78 }, { id: 746, level: 77 }, { id: 747, level: 76 }]
+      },
+      { step: 1, x: 15, y: 5, type: 'dialog', name: '貂蝉', text: "乱世浮沉，红颜如絮。英雄们争的是天下，妾身只盼……少些焚城之火。", emoji: '🌸' },
+      { step: 2, x: 21, y: 10, type: 'battle', enemyId: 749, name: '宫阙夹道·三方混战斥候', text: "魏旗蜀帜吴舟影——杀错一个，便是两国之怨！", emoji: '⚔️',
+        eliteParty: [{ id: 749, level: 80 }, { id: 750, level: 79 }, { id: 751, level: 78 }]
+      }
+    ],
+    midEvent: { enemyId: 752, name: '洛阳督军·陆逊' },
+    outro: [
+      { name: "司马懿", text: "攻守之间，胜负未可轻言。然洛阳一动，天下皆知三国无弱者。" },
+      { name: "赵云", text: "今日之战，非为私怨。只愿百姓少受刀兵之苦。" },
+      { name: "系统", text: "鼎立非静止，而在彼此牵制中延续。" }
+    ],
+    reward: { gold: 36000, items: [{ id: 'hyper_potion', count: 12 }] }
+  },
+  {
+    chapter: 21,
+    mapId: 201,
+    title: "第九章：司马懿夺权",
+    objective: "许昌宫廷暗涌再起，高平陵阴影笼罩，见证司马氏代魏之机的关键一弈。",
+    isSanguo: true,
+    intro: [
+      { name: "司马懿", text: "魏室栋梁？还是权臣？史笔如刀，后人自断。今日，只问成败。" },
+      { name: "曹爽", text: "先帝托孤于我，司马懿老矣——何足惧哉？" },
+      { name: "司马昭", text: "父亲隐忍多年，一朝收网。天下将知：司马之名，不在人后。" },
+      { name: "荀顗（旁白）", text: "宫门深锁，诏命往来无声。许昌一城，风向已变。" }
+    ],
+    tasks: [
+      { step: 0, x: 6, y: 9, type: 'dialog', name: '曹爽', text: "禁军听令！谁敢擅动——呃，你、你们……", emoji: '😰' },
+      { step: 1, x: 12, y: 11, type: 'battle', enemyId: 753, name: '高平陵卫·司马死士', text: "奉令清君侧！阻者——与逆党同罪！", emoji: '🗡️',
+        eliteParty: [{ id: 753, level: 82 }, { id: 754, level: 81 }, { id: 755, level: 80 }]
+      },
+      { step: 2, x: 18, y: 7, type: 'battle', enemyId: 756, name: '许昌城门·曹爽亲卫', text: "护大将军！宁可巷战至死！", emoji: '🛡️',
+        eliteParty: [{ id: 756, level: 84 }, { id: 757, level: 83 }, { id: 758, level: 82 }]
+      }
+    ],
+    midEvent: { enemyId: 759, name: '冢虎·司马懿' },
+    outro: [
+      { name: "司马懿", text: "天下归心非一日之功。魏室气数……各安天命。" },
+      { name: "司马昭", text: "父亲今日之举，只是序章。" },
+      { name: "系统", text: "权臣与宗室的博弈，将为晋室铺路。" }
+    ],
+    reward: { gold: 40000, items: [{ id: 'hyper_potion', count: 13 }] }
+  },
+  {
+    chapter: 22,
+    mapId: 206,
+    title: "第十章：诸葛亮北伐",
+    objective: "自汉中再出祁山，与曹魏名将周旋，体验「鞠躬尽瘁」的北伐之志。",
+    isSanguo: true,
+    intro: [
+      { name: "诸葛亮", text: "先帝托孤，臣敢不竭股肱之力？今当北伐，以图中原，非好战也——为止战。" },
+      { name: "姜维", text: "丞相！维愿为前驱，虽九死犹未悔！" },
+      { name: "魏延", text: "兵贵神速，何不另辟蹊径？若用吾计……（话音未落，众议纷纷）" },
+      { name: "司马懿", text: "诸葛孔明善攻，我善守。祁山久战，且看粮道与人心谁先断。" }
+    ],
+    tasks: [
+      { step: 0, x: 10, y: 10, type: 'battle', enemyId: 760, name: '祁山前哨·魏军游骑', text: "蜀军又至！守住营栅！", emoji: '🏕️',
+        eliteParty: [{ id: 760, level: 84 }, { id: 758, level: 83 }, { id: 759, level: 82 }]
+      },
+      { step: 1, x: 16, y: 6, type: 'dialog', name: '诸葛亮', text: "木牛流马，运粮于险道。天时不如地利，地利不如人和——人和，在民心与军纪。", emoji: '📦' },
+      { step: 2, x: 22, y: 9, type: 'battle', enemyId: 761, name: '栈道夜袭·魏军弩营', text: "暗夜放箭！休让蜀军过线！", emoji: '🌙',
+        eliteParty: [{ id: 761, level: 86 }, { id: 762, level: 85 }, { id: 763, level: 84 }]
+      }
+    ],
+    midEvent: { enemyId: 764, name: '蜀汉丞相·诸葛亮' },
+    outro: [
+      { name: "姜维", text: "丞相之志，维必继承——纵使千难万险！" },
+      { name: "诸葛亮", text: "出师未捷身先死……亦不过是尽人事，听天命。后人莫以成败论英雄。" },
+      { name: "系统", text: "北伐的火焰，将在史卷中长明。" }
+    ],
+    reward: { gold: 44000, items: [{ id: 'hyper_potion', count: 14 }] }
+  },
+  {
+    chapter: 23,
+    mapId: 202,
+    title: "第十一章：蜀汉危机",
+    objective: "成都风雨飘摇，姜维力撑残局，抵御魏军压境，为蜀汉争最后一线气数。",
+    isSanguo: true,
+    intro: [
+      { name: "姜维", text: "丞相既逝，维岂敢忘托孤之重？今魏军压境，益州疲弊——唯有死战！" },
+      { name: "刘禅", text: "诸卿……朕、朕当如何……" },
+      { name: "陆逊（遗策回响）", text: "三国之争，终在国力与民心。蜀道难，守更难。" },
+      { name: "邓艾", text: "阴平小道，可出奇兵。蜀中若乱，一鼓可下！" }
+    ],
+    tasks: [
+      { step: 0, x: 7, y: 8, type: 'battle', enemyId: 765, name: '剑阁余烬·魏军锐卒', text: "蜀汉气数将尽，何不早降！", emoji: '⚔️',
+        eliteParty: [{ id: 765, level: 92 }, { id: 766, level: 91 }, { id: 767, level: 90 }]
+      },
+      { step: 1, x: 13, y: 5, type: 'dialog', name: '刘禅', text: "朕……朕只愿满城百姓，少受屠戮……", emoji: '😢' },
+      { step: 2, x: 19, y: 12, type: 'battle', enemyId: 768, name: '成都外郭·魏军云梯', text: "先登者赏千金！破城！", emoji: '🪜',
+        eliteParty: [{ id: 768, level: 94 }, { id: 769, level: 93 }, { id: 770, level: 92 }]
+      }
+    ],
+    midEvent: { enemyId: 771, name: '阴平奇袭·邓艾' },
+    outro: [
+      { name: "姜维", text: "臣等正欲死战，陛下何故先降……（泪下）史笔如刀，维心可昭。" },
+      { name: "系统", text: "气数有尽时，忠义无绝期。" },
+      { name: "系统", text: "蜀汉篇章落幕，而天下一统的终局已在门外。" }
+    ],
+    reward: { gold: 47000, items: [{ id: 'hyper_potion', count: 15 }] }
+  },
+  {
+    chapter: 24,
+    mapId: 204,
+    title: "第十二章：天下归一",
+    objective: "于洛阳天子城迎来终局之战，终结百年纷争，见证三分归一统的宿命与新生。",
+    isSanguo: true,
+    intro: [
+      { name: "司马懿", text: "三分归一，非一人一姓之功，乃天下厌乱已久。" },
+      { name: "陆逊", text: "江东烟火渐熄，英雄之名，终归尘土与青史。" },
+      { name: "诸葛亮（魂音）", text: "鞠躬尽瘁，死而后已。若天下一统，百姓得息——亮，无憾。" },
+      { name: "曹操（追忆）", text: "对酒当歌，人生几何？譬如朝露，去日苦多……（余音散尽）" }
+    ],
+    tasks: [
+      { step: 0, x: 10, y: 7, type: 'battle', enemyId: 772, name: '洛阳决战·禁军总阵', text: "最后一战！天下归属，尽在此役！", emoji: '⚔️',
+        eliteParty: [{ id: 772, level: 98 }, { id: 773, level: 97 }, { id: 774, level: 96 }]
+      },
+      { step: 1, x: 16, y: 10, type: 'dialog', name: '孙权', text: "江东孙氏，愿以民为先。战止，才是赢家。", emoji: '🐯' },
+      { step: 2, x: 22, y: 6, type: 'battle', enemyId: 775, name: '天命坛前·三国英魂执念', text: "我等未竟之志……汇于此身！", emoji: '👁️',
+        eliteParty: [{ id: 775, level: 100 }, { id: 776, level: 99 }, { id: 777, level: 98 }]
+      }
+    ],
+    midEvent: { enemyId: 800, name: '归一之龙·棱镜古龙' },
+    outro: [
+      { name: "系统", text: "兵戈止息，洛阳晨光破晓。旧史翻篇，新章待书。" },
+      { name: "系统", text: "三国志篇完结：英雄去矣，而山河仍在，故事永在人间口耳之间。" },
+      { name: "系统", text: "获得丰厚终章奖励——愿你在精灵与天下的旅途上，继续书写自己的传说。" }
+    ],
+    reward: { gold: 50000, items: [{ id: 'hyper_potion', count: 20 }] }
+  }
+];

@@ -313,6 +313,18 @@ export const applySeasonRewards = (kw, result) => {
   };
 };
 
+// 检查阵营是否只剩都城
+export const isFactionCapitalOnly = (faction, territories) => {
+  const normalMaps = WAR_MAP_IDS.filter(id => id < 200);
+  const factionTerritories = normalMaps.filter(id => territories[id]?.owner === faction);
+  return factionTerritories.length === 0;
+};
+
+// 获取可发起都城攻防战的敌方阵营
+export const getCapitalSiegeTargets = (playerFaction, territories) => {
+  return FACTION_IDS.filter(fid => fid !== playerFaction && isFactionCapitalOnly(fid, territories));
+};
+
 // ==========================================
 // 三国历史战役副本 (每国6个)
 // ==========================================

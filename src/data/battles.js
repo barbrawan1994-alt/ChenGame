@@ -51,8 +51,8 @@ export const CHALLENGES = [
   { id: 'c17', title: '诸神黄昏', desc: '挑战所有终极神兽的合体之力',
     req: 620, boss: 696, bossLvl: 100, teamSize: 6, rewardId: 696,
     bg: 'linear-gradient(135deg, #311B92 0%, #651FFF 100%)', color: '#B388FF' },
-  { id: 'c18', title: '创世之巅', desc: '700精灵图鉴大师的最终证明',
-    req: 680, boss: 700, bossLvl: 100, teamSize: 6, rewardId: 691,
+  { id: 'c18', title: '创世之巅', desc: '800精灵图鉴大师的最终证明',
+    req: 780, boss: 800, bossLvl: 100, teamSize: 6, rewardId: 691,
     bg: 'linear-gradient(135deg, #000000 0%, #FFD700 50%, #000000 100%)', color: '#FFD700' },
 ];
 

@@ -43,6 +43,7 @@ import {
   WEATHERS,
   MAPS,
   STORY_SCRIPT,
+  SANGUO_STORY,
   TRAINER_NAMES,
   CHALLENGES,
   CONTEST_CONFIG,
@@ -97,6 +98,7 @@ import {
   initTerritories, calcFactionPower, getFactionTerritoryCount,
   executeWarTick, checkSeasonEnd, applySeasonRewards, resetKingdomDailyCounts,
   KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS, CONTESTED_MAP_IDS,
+  getCapitalSiegeTargets,
 } from './data/kingdom';
 import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
@@ -413,6 +415,8 @@ useEffect(() => {
   const [skillSearchTerm, setSkillSearchTerm] = useState('');
  const [storyProgress, setStoryProgress] = useState(savedData.storyProgress || 0);
   const [storyStep, setStoryStep] = useState(savedData.storyStep || 0);
+  const [sanguoProgress, setSanguoProgress] = useState(savedData.sanguoProgress || 0);
+  const [sanguoStep, setSanguoStep] = useState(savedData.sanguoStep || 0);
   const [completedSideStories, setCompletedSideStories] = useState(() => {
     if (savedData.completedSideStories) return new Set(savedData.completedSideStories);
     return new Set(inferCompletedSideStories(savedData.storyProgress || 0));
@@ -2225,6 +2229,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
        unlockedAchs,
        storyProgress,
        storyStep,
+       sanguoProgress,
+       sanguoStep,
        completedSideStories: [...completedSideStories],
        activeSideStory,
        mainStoryProgress,
@@ -2375,6 +2381,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (currentCount >= 250) unlockTitle('博学大师');
       if (currentCount >= 450) unlockTitle('全图鉴霸主');
       if (currentCount >= 700) unlockTitle('传说收藏家');
+      if (currentCount >= 800) unlockTitle('图鉴完成者');
   };
 
   const handleStartGame = () => {
@@ -6267,7 +6274,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6582,6 +6589,22 @@ const grantContestReward = (config, score, subjectPet = null) => {
             enemyParty.push(createPet(eid, lv, true, i === 5));
         }
         extraBattleData.kwEnemyFaction = enemyFaction;
+    }
+    // -------------------------------------------------
+    // 15d2a. 都城攻防战
+    // -------------------------------------------------
+    else if (type === 'capital_siege') {
+        const siegeFaction = context.siegeTarget;
+        const sf = FACTIONS[siegeFaction];
+        trainerName = `[${sf.fullName}] 禁卫军统领`;
+        dropGold = context.drop || 2000;
+        const pool = context.pool || HIGH_TIER_POOL;
+        for (let i = 0; i < 6; i++) {
+            const eid = pool[Math.floor(Math.random() * pool.length)];
+            const lv = Math.max(80, 95 - Math.floor(Math.random() * 8));
+            enemyParty.push(createPet(eid, lv, true, i === 5));
+        }
+        extraBattleData.siegeTarget = siegeFaction;
     }
     // -------------------------------------------------
     // 15d2. 争夺城池战
@@ -10116,6 +10139,34 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
+    // 9b1. 都城攻防战胜利
+    if (battle.type === 'capital_siege') {
+        const siegeTarget = battle.siegeTarget;
+        const sf = FACTIONS[siegeTarget];
+        const siegeGold = 5000;
+        const siegeContrib = 100;
+        const siegeTokens = 20;
+        setGold(g => g + siegeGold);
+        setKingdomWar(prev => ({
+          ...prev,
+          warContribution: (prev.warContribution || 0) + siegeContrib,
+          factionTokens: (prev.factionTokens || 0) + siegeTokens,
+          militaryRank: getMilitaryRank((prev.warContribution || 0) + siegeContrib).id,
+          capitalSiegeWins: [...(prev.capitalSiegeWins || []), { target: siegeTarget, season: prev.season }],
+        }));
+        updateAchStat({ kwKills: 1 });
+        updateGangTaskProgress('kw_kill', 1);
+        updateGangTaskProgress('battle_win', 1);
+        alert(`🏰 攻城大捷！成功攻破${sf.fullName}都城！\n\n🎉 获得丰厚战利品：\n💰 ${siegeGold.toLocaleString()} 金币\n⭐ 战功 +${siegeContrib}\n🎖️ 阵营令牌 +${siegeTokens}\n\n现在可以进入${sf.fullName}都城地图探索了！`);
+        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+        setParty(updatedParty);
+        setBattle(null);
+        setMapTab('kingdom');
+        setKwTab('capital');
+        setView('world_map');
+        return;
+    }
+
     // 9b2. 争夺城池胜利
     if (battle.type === 'contest_war') {
         const cMapId = battle.contestMapId;
@@ -12373,19 +12424,21 @@ const renderMenu = () => {
   return (
     <div className="screen" style={{
       display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background:'linear-gradient(160deg, #050508 0%, #0a0812 20%, #12080a 40%, #0c0615 60%, #080a14 80%, #030308 100%)',
+      background: playerFaction
+        ? `linear-gradient(160deg, ${fc.dark}e0 0%, #1a1520 30%, #0f1a28 50%, ${fc.dark}80 70%, #15121d 100%)`
+        : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #1a1a2e 75%, #16213e 100%)',
       position:'relative', overflow:'hidden'
     }}>
-      {/* 水墨山水背景 */}
-      <div style={{position:'absolute', inset:0, opacity:0.06, background:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'400\'%3E%3Cdefs%3E%3CradialGradient id=\'m\' cx=\'50%25\' cy=\'100%25\' r=\'80%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%23fff\' stop-opacity=\'0.3\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%23fff\' stop-opacity=\'0\'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx=\'100\' cy=\'360\' rx=\'180\' ry=\'60\' fill=\'url(%23m)\'/%3E%3Cellipse cx=\'320\' cy=\'380\' rx=\'120\' ry=\'40\' fill=\'url(%23m)\'/%3E%3Cpath d=\'M60 360Q90 280 140 300Q180 260 200 310Q230 250 260 290Q300 240 320 300Q350 270 380 340\' fill=\'none\' stroke=\'rgba(255,255,255,0.15)\' stroke-width=\'1\'/%3E%3Cpath d=\'M0 370Q50 320 100 340Q160 290 200 330Q250 280 300 320Q350 290 400 350\' fill=\'none\' stroke=\'rgba(255,255,255,0.1)\' stroke-width=\'0.5\'/%3E%3C/svg%3E") center bottom/cover no-repeat'}} />
+      {/* 水墨山水 + 雾气背景 */}
+      <div style={{position:'absolute', inset:0, opacity:0.12, background:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'400\'%3E%3Cdefs%3E%3CradialGradient id=\'m\' cx=\'50%25\' cy=\'100%25\' r=\'80%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%23fff\' stop-opacity=\'0.4\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%23fff\' stop-opacity=\'0\'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx=\'100\' cy=\'350\' rx=\'200\' ry=\'80\' fill=\'url(%23m)\'/%3E%3Cellipse cx=\'320\' cy=\'370\' rx=\'150\' ry=\'60\' fill=\'url(%23m)\'/%3E%3Cpath d=\'M40 350Q80 270 130 290Q170 240 210 300Q250 230 280 280Q320 220 350 290Q380 260 400 330\' fill=\'none\' stroke=\'rgba(255,255,255,0.2)\' stroke-width=\'1.5\'/%3E%3Cpath d=\'M0 360Q60 310 120 330Q180 280 240 320Q300 270 360 310Q390 290 400 340\' fill=\'none\' stroke=\'rgba(255,255,255,0.12)\' stroke-width=\'0.8\'/%3E%3C/svg%3E") center bottom/cover no-repeat'}} />
 
-      {/* 战旗飘动粒子 */}
-      <div style={{position:'absolute', inset:0, background:'radial-gradient(1.5px 1.5px at 15% 25%, rgba(255,200,100,0.5), transparent), radial-gradient(1px 1px at 35% 50%, rgba(200,160,80,0.3), transparent), radial-gradient(1.5px 1.5px at 55% 18%, rgba(255,180,80,0.4), transparent), radial-gradient(1px 1px at 75% 42%, rgba(220,170,60,0.3), transparent), radial-gradient(1px 1px at 85% 70%, rgba(255,200,100,0.25), transparent), radial-gradient(1px 1px at 25% 78%, rgba(200,150,50,0.2), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 25s ease infinite', opacity:0.5}} />
+      {/* 星光粒子 */}
+      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 10% 20%, rgba(255,220,150,0.6), transparent), radial-gradient(1.5px 1.5px at 30% 45%, rgba(200,180,120,0.4), transparent), radial-gradient(2px 2px at 50% 15%, rgba(255,200,100,0.5), transparent), radial-gradient(1px 1px at 70% 35%, rgba(240,190,80,0.35), transparent), radial-gradient(1.5px 1.5px at 85% 60%, rgba(255,210,130,0.4), transparent), radial-gradient(1px 1px at 20% 75%, rgba(220,170,90,0.3), transparent), radial-gradient(1.5px 1.5px at 65% 80%, rgba(255,200,100,0.25), transparent), radial-gradient(1px 1px at 90% 15%, rgba(200,160,80,0.3), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 20s ease infinite', opacity:0.6}} />
 
       {/* 三国旗帜光柱 */}
-      <div style={{position:'absolute', top:0, left:'12%', width:'2px', height:'45%', background:'linear-gradient(180deg, rgba(21,101,192,0.3), rgba(21,101,192,0.05), transparent)', filter:'blur(3px)', animation:'float 6s ease-in-out infinite'}} />
-      <div style={{position:'absolute', top:0, left:'50%', width:'2px', height:'50%', background:'linear-gradient(180deg, rgba(46,125,50,0.3), rgba(46,125,50,0.05), transparent)', filter:'blur(3px)', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />
-      <div style={{position:'absolute', top:0, right:'12%', width:'2px', height:'45%', background:'linear-gradient(180deg, rgba(198,40,40,0.3), rgba(198,40,40,0.05), transparent)', filter:'blur(3px)', animation:'float 8s ease-in-out infinite', animationDelay:'2s'}} />
+      <div style={{position:'absolute', top:0, left:'12%', width:'3px', height:'50%', background:'linear-gradient(180deg, rgba(21,101,192,0.5), rgba(21,101,192,0.1), transparent)', filter:'blur(4px)', animation:'float 6s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:0, left:'50%', width:'3px', height:'55%', background:'linear-gradient(180deg, rgba(46,125,50,0.5), rgba(46,125,50,0.1), transparent)', filter:'blur(4px)', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />
+      <div style={{position:'absolute', top:0, right:'12%', width:'3px', height:'50%', background:'linear-gradient(180deg, rgba(198,40,40,0.5), rgba(198,40,40,0.1), transparent)', filter:'blur(4px)', animation:'float 8s ease-in-out infinite', animationDelay:'2s'}} />
 
       {/* 龙纹光环 */}
       <div style={{position:'absolute', top:'-20%', left:'-20%', width:'70%', height:'70%', borderRadius:'50%', background:`radial-gradient(circle, ${fc.glow.replace('0.4','0.08')} 0%, transparent 60%)`, filter:'blur(60px)', animation:'float 10s ease-in-out infinite'}} />
@@ -12398,10 +12451,10 @@ const renderMenu = () => {
           left: i < 5 ? `${1 + i * 5}%` : `${65 + (i-5) * 5}%`,
           top: `${8 + (i % 5) * 17}%`,
           width: `${28 + (i % 3) * 8}px`, height: `${28 + (i % 3) * 8}px`,
-          opacity: 0.04 + (i % 3) * 0.015,
+          opacity: 0.06 + (i % 3) * 0.02,
           animation: `float ${6 + i * 0.5}s ease-in-out infinite`,
           animationDelay: `${i * 0.3}s`,
-          filter: 'grayscale(1) brightness(1.8) sepia(0.5)',
+          filter: 'brightness(1.5) sepia(0.3) saturate(0.4)',
           transform: i >= 5 ? 'scaleX(-1)' : 'none', pointerEvents:'none'
         }}>
           <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => e.target.style.display='none'} />
@@ -12411,11 +12464,13 @@ const renderMenu = () => {
       {/* 主卡片 */}
       <div style={{
         position:'relative', zIndex:10, width:'92%', maxWidth:'480px',
-        background:'linear-gradient(150deg, rgba(15,10,8,0.95), rgba(8,5,15,0.97))',
+        background: playerFaction
+          ? `linear-gradient(150deg, ${fc.dark}e8, rgba(20,15,30,0.92), ${fc.dark}90)`
+          : 'linear-gradient(150deg, rgba(26,26,46,0.95), rgba(22,33,62,0.93), rgba(15,52,96,0.9))',
         backdropFilter:'blur(30px)',
-        border:`1px solid ${playerFaction ? fc.primary+'20' : 'rgba(200,160,80,0.12)'}`,
+        border:`1px solid ${playerFaction ? fc.primary+'35' : 'rgba(100,140,200,0.2)'}`,
         borderRadius:'20px', padding:'0', overflow:'hidden',
-        boxShadow:`0 30px 80px rgba(0,0,0,0.8), 0 0 40px ${fc.glow.replace('0.4','0.04')}, inset 0 1px 0 rgba(255,220,150,0.05)`,
+        boxShadow:`0 30px 80px rgba(0,0,0,0.5), 0 0 50px ${fc.glow.replace('0.4','0.08')}, inset 0 1px 0 rgba(255,220,150,0.08)`,
         animation:'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
       }}>
 
@@ -12624,7 +12679,7 @@ const renderMenu = () => {
           background:'rgba(0,0,0,0.25)',
           display:'flex', justifyContent:'space-between', alignItems:'center'
         }}>
-          <span style={{fontSize:'9px', color:'rgba(200,160,80,0.18)', letterSpacing:'1.5px'}}>v7.0 · {POKEDEX.length} Creatures</span>
+          <span style={{fontSize:'9px', color:'rgba(200,160,80,0.18)', letterSpacing:'1.5px'}}>v8.0 · {POKEDEX.length} Creatures</span>
           <span style={{fontSize:'9px', color:'rgba(200,160,80,0.12)', letterSpacing:'1px'}}>三国志 · Legends RPG</span>
         </div>
       </div>
@@ -12932,10 +12987,13 @@ const renderMenu = () => {
             let isLocked = false;
             let lockReason = "";
             
-            // 都城地图：加入对应阵营即可开放
+            // 都城地图：本国直接开放，敌方需攻城战胜利
             if (m.isCapital) {
               if (!kingdomWar.faction) { isLocked = true; lockReason = '需加入国战阵营后开放'; }
-              else if (m.capitalFaction !== kingdomWar.faction) { isLocked = true; lockReason = `需通关【${FACTIONS[m.capitalFaction]?.fullName || ''}都城】`; }
+              else if (m.capitalFaction !== kingdomWar.faction) {
+                const hasSiegeWin = (kingdomWar.capitalSiegeWins || []).some(w => w.target === m.capitalFaction && w.season === kingdomWar.season);
+                if (!hasSiegeWin) { isLocked = true; lockReason = `需在国战·都城中发起攻城战并胜利`; }
+              }
             }
             // 中立争夺城池：加入任意阵营即可探索
             else if (m.isContested) {
@@ -12962,9 +13020,19 @@ const renderMenu = () => {
             }
 
             const themeClass = `theme-bg-${m.type}`;
+            const isContestedActive = m.isContested && kingdomWar.faction;
+            const contestOwner = isContestedActive ? kingdomWar.territories?.[m.id]?.owner : null;
 
             return (
-              <div key={m.id} className={`map-card-pro ${themeClass}`} style={isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined} onClick={() => { if (isLocked) alert(`🔒 该区域尚未解锁！\n\n${lockReason}`); else enterMap(m.id); }}>
+              <div key={m.id} className={`map-card-pro ${themeClass}`} style={{
+                ...(isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined),
+                ...(isContestedActive && !isLocked ? {boxShadow: `0 0 12px ${contestOwner && contestOwner !== 'neutral' ? FACTIONS[contestOwner]?.color+'60' : 'rgba(255,200,0,0.3)'}`, border: '1px solid rgba(255,200,0,0.3)'} : {}),
+              }} onClick={() => { if (isLocked) alert(`🔒 该区域尚未解锁！\n\n${lockReason}`); else enterMap(m.id); }}>
+                {isContestedActive && !isLocked && (
+                  <div style={{position:'absolute', inset:0, borderRadius:'inherit', overflow:'hidden', pointerEvents:'none', zIndex:1}}>
+                    <div style={{position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg, transparent, rgba(255,200,0,0.6), transparent)', animation:'warFlash 2s ease-in-out infinite'}} />
+                  </div>
+                )}
                 {isLocked && (
                   <div className="map-lock-mask">
                     <span style={{fontSize:'14px'}}>🔒</span>
@@ -12995,20 +13063,23 @@ const renderMenu = () => {
                           ✓ CLEAR
                         </div>
                       )}
-                      {kingdomWar.faction && WAR_MAP_IDS.includes(m.id) && (() => {
-                        const t = kingdomWar.territories[m.id];
-                        if (!t) return null;
-                        const ownerF = FACTIONS[t.owner];
-                        const isMine = t.owner === kingdomWar.faction;
-                        const isNeutral = t.owner === 'neutral';
+                      {kingdomWar.faction && (WAR_MAP_IDS.includes(m.id) || m.isCapital) && (() => {
+                        const t = kingdomWar.territories?.[m.id];
+                        if (!t && !m.isCapital) return null;
+                        const owner = m.isCapital ? m.capitalFaction : t?.owner;
+                        const ownerF = FACTIONS[owner];
+                        const isMine = owner === kingdomWar.faction;
+                        const isNeutral = owner === 'neutral';
+                        const isContested = m.isContested && !isNeutral;
                         return (
                           <div style={{
                             background: isNeutral ? 'rgba(150,150,150,0.85)' : `${ownerF?.color || '#666'}dd`,
                             padding:'3px 8px', borderRadius:'8px', fontSize:'9px', fontWeight:'700',
                             color:'#fff', display:'flex', alignItems:'center', gap:'3px',
-                            boxShadow:'0 1px 4px rgba(0,0,0,0.2)',
+                            boxShadow: isContested ? `0 1px 8px ${ownerF?.color || '#666'}80` : '0 1px 4px rgba(0,0,0,0.2)',
+                            animation: isContested ? 'pulse 2s infinite' : 'none',
                           }}>
-                            {t.contested && <span style={{animation:'pulse 1.5s infinite'}}>⚔️</span>}
+                            {(t?.contested || m.isContested) && <span style={{animation:'pulse 1.5s infinite'}}>⚔️</span>}
                             {isNeutral ? '中立' : `${ownerF?.icon || ''} ${ownerF?.name || ''}`}
                             {isMine && ' ✅'}
                           </div>
@@ -13017,13 +13088,15 @@ const renderMenu = () => {
                     </div>
                 </div>
                 
-                {/* 底部区域：馆主信息 */}
+                {/* 底部区域：馆主/君主/守将信息 */}
                 <div style={{marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                      <span style={{width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.15)'}}>👑</span>
-                      <span style={{fontSize:'12px', fontWeight:'600', textShadow:'0 1px 4px rgba(0,0,0,0.2)'}}>馆主 · {m.gymName || '???'}</span>
+                      <span style={{width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.15)'}}>{m.isCapital ? '🐲' : m.isContested ? '⚔️' : '👑'}</span>
+                      <span style={{fontSize:'12px', fontWeight:'600', textShadow:'0 1px 4px rgba(0,0,0,0.2)'}}>
+                        {m.isCapital ? `君主 · ${m.lordName || '???'}` : m.isContested ? `守将 · ${(() => { const t = kingdomWar.territories?.[m.id]; return t && t.owner !== 'neutral' ? FACTIONS[t.owner]?.name + '军' : '无'; })()}` : `馆主 · ${m.gymName || '???'}`}
+                      </span>
                 </div>
-                    <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>Lv.{m.gymLvl}</span>
+                    <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>{m.isCapital ? `${m.lordTitle}` : m.isContested ? `Lv.${m.lvl[0]}-${m.lvl[1]}` : `Lv.${m.gymLvl}`}</span>
                 </div>
 
                 {/* 装饰性背景图标 */}
@@ -13711,6 +13784,57 @@ const renderMenu = () => {
                           </div>
                         ))}
                       </div>
+
+                      {/* 都城攻防战 */}
+                      {(() => {
+                        const siegeTargets = getCapitalSiegeTargets(kw.faction, kw.territories);
+                        if (siegeTargets.length === 0) return null;
+                        return (
+                          <div style={{marginTop:'16px'}}>
+                            <div style={{fontSize:'14px', fontWeight:'800', color:'#C62828', marginBottom:'10px'}}>🔥 都城攻防战</div>
+                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营已失去所有领地，仅剩都城！发起攻城战，攻破都城可获得丰厚赛季额外奖励！</div>
+                            {siegeTargets.map(fid => {
+                              const ef = FACTIONS[fid];
+                              const eCapitalMap = MAPS.find(m => m.id === CAPITAL_MAP_IDS[fid]);
+                              const siegeCooldown = kw.lastSiegeTime?.[fid] ? Math.max(0, 6 * 60 * 60 * 1000 - (Date.now() - kw.lastSiegeTime[fid])) : 0;
+                              const canSiege = siegeCooldown <= 0;
+                              return (
+                                <div key={fid} style={{background:'#fff', borderRadius:'12px', padding:'14px', border:`2px solid ${ef.color}40`, marginBottom:'8px'}}>
+                                  <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px'}}>
+                                    <span style={{fontSize:'24px'}}>{eCapitalMap?.icon || '🏯'}</span>
+                                    <div style={{flex:1}}>
+                                      <div style={{fontSize:'14px', fontWeight:'700', color:ef.color}}>攻打 {eCapitalMap?.name || ef.fullName + '都城'}</div>
+                                      <div style={{fontSize:'11px', color:'#64748b'}}>君主: {eCapitalMap?.lordName} · {eCapitalMap?.lordTitle}</div>
+                                    </div>
+                                  </div>
+                                  <div style={{fontSize:'11px', color:'#475569', marginBottom:'8px'}}>
+                                    攻城胜利奖励: 💰 5000金 · ⭐ 战功+100 · 🎖️ 令牌+20
+                                  </div>
+                                  <button disabled={!canSiege} onClick={() => {
+                                    if (!party.some(p => p && p.hp > 0)) { alert('你的队伍已全灭！'); return; }
+                                    if (!window.confirm(`确定要对${ef.fullName}都城发起攻城战吗？\n\n这将是高难度的6v6战斗！`)) return;
+                                    setKingdomWar(prev => ({
+                                      ...prev,
+                                      lastSiegeTime: { ...(prev.lastSiegeTime || {}), [fid]: Date.now() },
+                                    }));
+                                    startBattle({
+                                      id: CAPITAL_MAP_IDS[fid],
+                                      name: `${eCapitalMap?.name || '敌都'}`,
+                                      lvl: [80, 100], pool: eCapitalMap?.pool || [],
+                                      drop: 2000, siegeTarget: fid,
+                                    }, 'capital_siege');
+                                  }} style={{
+                                    ...btnPrimary, width:'100%', fontSize:'13px', padding:'10px 0',
+                                    background: canSiege ? '#C62828' : '#94a3b8',
+                                  }}>
+                                    {canSiege ? '⚔️ 发起攻城战' : `冷却中 (${Math.ceil(siegeCooldown / 3600000)}h)`}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
@@ -15555,7 +15679,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar, dungeonCooldowns };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, sanguoProgress, sanguoStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar, dungeonCooldowns };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };
