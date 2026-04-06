@@ -1942,6 +1942,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         const info = POKEDEX.find(p => p.id === finalId);
         if (!info) break; 
         if (info.evo && level >= info.evoLvl) {
+            if (info.evoCondition) break;
             finalId = info.evo; 
         } else {
             break; 
@@ -3076,25 +3077,43 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setDateEvent(null);
   };
 
-  const handleGift = (candidateId, itemIndex) => {
+  const getGiftableItems = () => {
+    const items = [];
+    if (inventory.berries > 0) items.push({ key:'berries', name:'树果', icon:'🍇', count: inventory.berries, category:'food' });
+    Object.entries(inventory.meds || {}).forEach(([k, v]) => {
+      if (v > 0) { const m = MEDICINES[k]; if (m) items.push({ key:'meds.'+k, name:m.name, icon:m.icon, count:v, category:'medicine' }); }
+    });
+    Object.entries(inventory.misc || {}).forEach(([k, v]) => {
+      if (v > 0) { const m = MISC_ITEMS[k]; if (m) items.push({ key:'misc.'+k, name:m.name, icon:m.icon, count:v, category:'misc' }); }
+    });
+    Object.entries(inventory.stones || {}).forEach(([k, v]) => {
+      if (v > 0) items.push({ key:'stones.'+k, name:k+'之石', icon:'💎', count:v, category:'stone' });
+    });
+    return items;
+  };
+  const handleGift = (candidateId, giftKey) => {
     const dc = resetMarriageDailyCounts();
     if (dc.gifts >= DAILY_GIFT_LIMIT) { alert(`今天已经送了${DAILY_GIFT_LIMIT}次礼物，明天再来吧~`); return; }
-    if (!inventory[itemIndex]) { return; }
-    const item = inventory[itemIndex];
+    const giftItems = getGiftableItems();
+    const item = giftItems.find(g => g.key === giftKey);
+    if (!item || item.count <= 0) return;
     const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
     let gain = 5;
     let reaction = '还可以吧...';
-    const itemName = (item.name || item.type || '').toLowerCase();
-    if (candidate.favoriteGifts.some(g => itemName.includes(g) || (item.category || '').includes(g) || (item.tags || []).includes(g))) {
+    const itemName = (item.name || '').toLowerCase();
+    if (candidate.favoriteGifts.some(g => itemName.includes(g) || (item.category||'').includes(g))) {
       gain = 20; reaction = '哇！我最喜欢的！谢谢你！';
       if (marriage.pendingPropose === candidateId) updateQuestProgress(candidateId, 'gift_favorite', 1);
-    } else if (candidate.hatedGifts.some(g => itemName.includes(g) || (item.category || '').includes(g) || (item.tags || []).includes(g))) {
+    } else if (candidate.hatedGifts.some(g => itemName.includes(g) || (item.category||'').includes(g))) {
       gain = -10; reaction = '这个...我不太喜欢...';
     }
-    const newInv = [...inventory];
-    if ((newInv[itemIndex].count || 1) > 1) { newInv[itemIndex] = { ...newInv[itemIndex], count: newInv[itemIndex].count - 1 }; }
-    else { newInv.splice(itemIndex, 1); }
-    setInventory(newInv);
+    setInventory(prev => {
+      const next = { ...prev };
+      const [cat, subKey] = giftKey.split('.');
+      if (cat === 'berries') next.berries = Math.max(0, (next.berries||0) - 1);
+      else if (subKey) { next[cat] = { ...next[cat], [subKey]: Math.max(0, (next[cat]?.[subKey]||0) - 1) }; }
+      return next;
+    });
     setMarriage(prev => ({
       ...prev,
       affections: { ...prev.affections, [candidateId]: Math.max(0, (prev.affections[candidateId] || 0) + gain) },
@@ -4153,18 +4172,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             {marriageView === c.id && (
                               <div style={{marginTop:'12px', padding:'12px', background:'#f9f9f9', borderRadius:'12px', border:'1px solid #eee'}}>
                                 <div style={{fontWeight:'bold', fontSize:'12px', marginBottom:'8px', color:'#666'}}>🎁 选择礼物 (今日 {marriage.dailyCounts.gifts}/{DAILY_GIFT_LIMIT})</div>
-                                {inventory.length === 0 ? (
+                                {(() => { const gifts = getGiftableItems(); return gifts.length === 0 ? (
                                   <div style={{fontSize:'11px', color:'#999', padding:'10px', textAlign:'center'}}>背包是空的~</div>
                                 ) : (
                                   <div style={{display:'flex', flexWrap:'wrap', gap:'6px', maxHeight:'150px', overflow:'auto'}}>
-                                    {inventory.map((item, idx) => (
-                                      <button key={idx} onClick={() => { handleGift(c.id, idx); setMarriageView(null); }}
+                                    {gifts.map(item => (
+                                      <button key={item.key} onClick={() => { handleGift(c.id, item.key); setMarriageView(null); }}
                                         style={{padding:'6px 10px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', fontSize:'11px', cursor:'pointer', color:'#333'}}>
-                                        {item.name || item.type} {(item.count||1) > 1 ? `x${item.count}` : ''}
+                                        {item.icon} {item.name} {item.count > 1 ? `x${item.count}` : ''}
                                       </button>
                                     ))}
                                   </div>
-                                )}
+                                ); })()}
                                 <button onClick={() => setMarriageView(null)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'10px', border:'1px solid #ddd', background:'#fff', fontSize:'10px', cursor:'pointer', color:'#999'}}>关闭</button>
                               </div>
                             )}
@@ -5150,12 +5169,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // [修改] 初始精灵生成 (预先生成完整个体，保证所见即所得)
   // ==========================================
   const generateStarterOptions = () => {
-    // 1. 找出所有“是进化型”的ID
     const evolvedIds = new Set();
-    POKEDEX.forEach(p => {
-      if (p.evo) evolvedIds.add(p.evo);
-    });
-
+    POKEDEX.forEach(p => { if (p.evo) evolvedIds.add(p.evo); });
+    const calcFullBst = (p) => {
+      const b = TYPE_BIAS[p.type] || { p: 1.0, s: 1.0 };
+      const d = (p.id % 5) * 2 - 4;
+      return (p.hp||60) + Math.floor((p.atk||50)*b.p)+d + Math.floor((p.def||50)*b.p)
+        + Math.floor((p.atk||50)*b.s)-d + Math.floor((p.def||50)*b.s) + (p.spd||(40+(p.id*7%70)));
+    };
     const validStarters = POKEDEX.filter(p => {
       if (!p || !p.id) return false;
       if (evolvedIds.has(p.id)) return false;
@@ -5164,15 +5185,20 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (NEW_GOD_IDS.includes(p.id)) return false;
       if (FINAL_GOD_IDS.includes(p.id)) return false;
       if (p.id > 600) return false;
-      const rawBst = (p.hp || 60) + (p.atk || 50) + (p.def || 50) + (p.spd || 50);
-      if (rawBst > 260) return false;
+      if (['GOD','COSMIC'].includes(p.type)) return false;
+      if (calcFullBst(p) > 350) return false;
+      if (p.evo) {
+        const et = POKEDEX.find(e => e.id === p.evo);
+        if (et && (['GOD','COSMIC'].includes(et.type) || calcFullBst(et) > 500)) return false;
+      }
       return true;
     });
-
-    const shuffled = _.shuffle(validStarters);
-    const selectedBase = shuffled.slice(0, 5);
-    const fullyFormedStarters = selectedBase.map(base => createPet(base.id, 5));
-    setStarterOptions(fullyFormedStarters);
+    const shuffled = _.shuffle(validStarters).slice(0, 8);
+    const created = shuffled.map(base => createPet(base.id, 5)).filter(pet => {
+      const bi = POKEDEX.find(d => d.id === pet.id) || {};
+      return calcFullBst(bi) <= 500 && !['GOD','COSMIC'].includes(bi.type);
+    });
+    setStarterOptions(created.slice(0, 5));
   };
 
    // ----------------------------------------
@@ -5211,7 +5237,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
 
    const useBerry = (petIdx) => {
-    if (inventory.berries <= 0) return;
+    if (!inventory.berries || inventory.berries <= 0) return;
     const t = [...party];
     const p = t[petIdx];
     const stats = getStats(p);
@@ -5309,18 +5335,42 @@ const useGrowthItem = (petIndex, itemId) => {
     const newParty = [...party];
     const pet = newParty[petIndex];
 
-    // 初始化培养加成记录 (evs)
+    if (item.stat === 'level_up') {
+      if (pet.level >= 100) { alert('已满级！'); return; }
+      pet.level = Math.min(100, pet.level + 1);
+      const nKey = pet.nature || 'docile';
+      const expMod = NATURE_DB[nKey]?.exp || 1.0;
+      pet.nextExp = Math.floor(pet.level * 100 * expMod);
+      pet.exp = 0;
+      pet.currentHp = getStats(pet).maxHp;
+      pet.moves.forEach(m => m.pp = m.maxPP || 15);
+      setParty(newParty);
+      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) - 1 }));
+      alert(`${pet.name} 升到了 Lv.${pet.level}！`);
+      return;
+    }
+    if (item.stat === 'level_max') {
+      if (pet.level >= 100) { alert('已满级！'); return; }
+      pet.level = 100;
+      const nKey = pet.nature || 'docile';
+      const expMod = NATURE_DB[nKey]?.exp || 1.0;
+      pet.nextExp = Math.floor(pet.level * 100 * expMod);
+      pet.exp = 0;
+      pet.currentHp = getStats(pet).maxHp;
+      pet.moves.forEach(m => m.pp = m.maxPP || 15);
+      setParty(newParty);
+      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) - 1 }));
+      alert(`${pet.name} 升到了 Lv.100！`);
+      return;
+    }
+
     if (!pet.evs) pet.evs = {};
     if (!pet.evs[item.stat]) pet.evs[item.stat] = 0;
-
-    // 增加属性
     pet.evs[item.stat] += item.val;
     
-    // 扣除道具
     const newInv = { ...inventory };
     newInv[itemId]--;
 
-    // 如果是HP道具，顺便回点血
     if (item.stat === 'maxHp') {
         pet.currentHp += item.val;
     }
@@ -9424,7 +9474,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
 
       // 升级逻辑
-      while (pet.exp >= pet.nextExp) {
+      while (pet.exp >= pet.nextExp && pet.level < 100) {
         pet.exp -= pet.nextExp;
         pet.level++;
         
@@ -12614,7 +12664,7 @@ const renderMenu = () => {
                   <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'4px', background:`${fc.primary}25`, color:playerFaction.lightColor, fontWeight:'600'}}>{playerRank?.icon} {playerRank?.name}</span>
                 </div>
                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>
-                  领地 {myTerrCountMenu}/13 · 战功 {kingdomWar.warContribution || 0} · 令牌 {kingdomWar.factionTokens || 0}
+                  领地 {myTerrCountMenu}/{WAR_MAP_IDS.length} · 战功 {kingdomWar.warContribution || 0} · 令牌 {kingdomWar.factionTokens || 0}
                 </div>
               </div>
             </div>
@@ -13385,62 +13435,188 @@ const renderMenu = () => {
             const canJoin = badges.length >= 3;
 
             if (!hasJoined) {
+              const factionDetails = {
+                wei: { generals: '张辽、夏侯惇、许褚、典韦', strategy: '铁骑破阵', capital: '洛阳', stronghold: '兵精粮足，铁骑天下' },
+                shu: { generals: '关羽、张飞、赵云、马超', strategy: '仁义为先', capital: '成都', stronghold: '卧龙凤雏，天下归心' },
+                wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
+              };
               return (
-                <div style={{padding:'20px', textAlign:'center'}}>
-                  <div style={{fontSize:'40px', marginBottom:'16px'}}>🏴</div>
-                  <div style={{fontSize:'22px', fontWeight:'800', color:'#1e293b', marginBottom:'8px'}}>三国争霸 · 国战系统</div>
-                  <div style={{fontSize:'13px', color:'#64748b', marginBottom:'24px'}}>魏蜀吴三国争夺16张地图的归属权<br/>选择阵营，建功立业！</div>
+                <div style={{padding:'0', position:'relative', minHeight:'500px'}}>
+                  {/* 顶部标题区域 */}
+                  <div style={{
+                    textAlign:'center', padding:'40px 20px 30px', position:'relative',
+                    background:'linear-gradient(180deg, rgba(139,69,19,0.15) 0%, transparent 100%)',
+                  }}>
+                    <div style={{position:'absolute', top:0, left:0, right:0, bottom:0, opacity:0.05,
+                      backgroundImage:'repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(139,69,19,0.3) 20px, rgba(139,69,19,0.3) 21px)',
+                    }} />
+                    <div style={{position:'relative', zIndex:1}}>
+                      <div style={{fontSize:'14px', letterSpacing:'8px', color:'#8B6914', fontWeight:'500', marginBottom:'8px'}}>
+                        ━━ 天 下 三 分 ━━
+                      </div>
+                      <div style={{
+                        fontSize:'32px', fontWeight:'900', color:'#1e293b',
+                        textShadow:'0 2px 4px rgba(0,0,0,0.1)',
+                        background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)',
+                        WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                        letterSpacing:'6px',
+                      }}>三国争霸</div>
+                      <div style={{fontSize:'12px', color:'#94a3b8', marginTop:'10px', lineHeight:'1.8'}}>
+                        魏蜀吴三国并立，争夺天下十六城<br/>择一阵营，征战四方，建功立业
+                      </div>
+                    </div>
+                  </div>
+
                   {!canJoin && (
-                    <div style={{padding:'16px', background:'rgba(239,68,68,0.1)', borderRadius:'12px', color:'#ef4444', fontSize:'13px', fontWeight:'600', marginBottom:'16px'}}>
-                      需要获得至少3个道馆徽章才能加入阵营<br/>当前徽章: {badges.length}/3
+                    <div style={{
+                      margin:'0 20px 20px', padding:'16px 20px', borderRadius:'12px',
+                      background:'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04))',
+                      border:'1px solid rgba(239,68,68,0.2)',
+                      display:'flex', alignItems:'center', gap:'12px',
+                    }}>
+                      <span style={{fontSize:'24px'}}>⚠️</span>
+                      <div>
+                        <div style={{fontSize:'13px', fontWeight:'700', color:'#dc2626'}}>尚未达到参战条件</div>
+                        <div style={{fontSize:'12px', color:'#ef4444', opacity:0.8, marginTop:'2px'}}>
+                          需获得至少3枚道馆徽章 · 当前: {badges.length}/3
+                        </div>
+                      </div>
                     </div>
                   )}
-                  {/* 三国势力预览（所有玩家可见） */}
-                  <div style={{display:'grid', gap:'16px'}}>
-                    {FACTION_IDS.map(fid => {
-                        const f = FACTIONS[fid];
-                        return (
-                          <div key={fid} style={{
-                            background:`linear-gradient(135deg, ${f.darkColor}, ${f.color})`,
-                            borderRadius:'16px', padding:'20px', color:'#fff', cursor:'pointer',
-                            transition:'transform 0.2s, box-shadow 0.2s',
-                            boxShadow:'0 4px 15px rgba(0,0,0,0.2)',
-                          }}
-                          onClick={() => {
-                            if (!canJoin) { alert(`需要获得至少3个道馆徽章才能加入阵营\n当前徽章: ${badges.length}/3`); return; }
-                            if (!window.confirm(`确定加入${f.fullName}吗？\n\n主公: ${f.lord}\n国运加成: ${f.bonusDesc}\n\n阵营一旦选择无法更改！`)) return;
-                            setKingdomWar(prev => ({
-                              ...prev,
-                              faction: fid,
-                              territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(),
-                              lastTick: Date.now(),
-                              seasonStartDate: prev.seasonStartDate || new Date().toISOString(),
-                              dailyCounts: { ...prev.dailyCounts, resetDate: new Date().toISOString().slice(0,10) },
-                            }));
-                          }}
-                          onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 25px ${f.color}60`; }}
-                          onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)'; }}
-                          >
-                            <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px'}}>
-                              <span style={{fontSize:'36px'}}>{f.icon}</span>
-                              <div>
-                                <div style={{fontSize:'20px', fontWeight:'800'}}>{f.fullName}</div>
-                                <div style={{fontSize:'12px', opacity:0.8}}>{f.motto}</div>
+
+                  {/* 势力选择卡片 */}
+                  <div style={{display:'flex', flexDirection:'column', gap:'16px', padding:'0 16px 24px'}}>
+                    {FACTION_IDS.map((fid, idx) => {
+                      const f = FACTIONS[fid];
+                      const detail = factionDetails[fid];
+                      const gangs = GANG_PRESETS.filter(g => g.faction === fid);
+                      const decorBorders = {
+                        wei: 'linear-gradient(135deg, #1565C0, #42A5F5, #1565C0)',
+                        shu: 'linear-gradient(135deg, #2E7D32, #66BB6A, #2E7D32)',
+                        wu: 'linear-gradient(135deg, #C62828, #EF5350, #C62828)',
+                      };
+                      return (
+                        <div key={fid} style={{
+                          position:'relative', borderRadius:'20px', overflow:'hidden',
+                          background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)',
+                          border:'2px solid transparent',
+                          backgroundClip:'padding-box',
+                          cursor: canJoin ? 'pointer' : 'not-allowed',
+                          opacity: canJoin ? 1 : 0.7,
+                          transition:'all 0.4s cubic-bezier(0.25,0.8,0.25,1)',
+                          animation: 'popIn 0.5s ease-out ' + (0.1 + idx * 0.15) + 's backwards',
+                        }}
+                        onClick={() => {
+                          if (!canJoin) { alert('需要获得至少3个道馆徽章才能加入阵营\n当前徽章: ' + badges.length + '/3'); return; }
+                          if (!window.confirm('确定加入' + f.fullName + '吗？\n\n👑 主公: ' + f.lord + '\n📍 国都: ' + detail.capital + '\n💫 国运: ' + f.bonusDesc + '\n\n⚠️ 阵营一旦选择无法更改！')) return;
+                          setKingdomWar(prev => ({
+                            ...prev,
+                            faction: fid,
+                            territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(),
+                            lastTick: Date.now(),
+                            seasonStartDate: prev.seasonStartDate || new Date().toISOString(),
+                            dailyCounts: { ...prev.dailyCounts, resetDate: new Date().toISOString().slice(0,10) },
+                          }));
+                        }}
+                        onMouseEnter={e => {
+                          if (!canJoin) return;
+                          e.currentTarget.style.transform = 'translateY(-6px) scale(1.01)';
+                          e.currentTarget.style.boxShadow = '0 12px 40px ' + f.color + '30';
+                          e.currentTarget.style.borderColor = f.color + '80';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = '';
+                          e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                          e.currentTarget.style.borderColor = 'transparent';
+                        }}
+                        >
+                          {/* 顶部国旗横幅 */}
+                          <div style={{
+                            background: decorBorders[fid],
+                            padding:'20px 24px', position:'relative', overflow:'hidden',
+                          }}>
+                            <div style={{position:'absolute', top:0, right:0, bottom:0, width:'120px',
+                              background:'radial-gradient(ellipse at right, rgba(255,255,255,0.2), transparent)',
+                            }} />
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative', zIndex:1}}>
+                              <div style={{display:'flex', alignItems:'center', gap:'14px'}}>
+                                <div style={{
+                                  width:'52px', height:'52px', borderRadius:'14px',
+                                  background:'rgba(255,255,255,0.2)', backdropFilter:'blur(8px)',
+                                  display:'flex', alignItems:'center', justifyContent:'center',
+                                  fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)',
+                                }}>{f.icon}</div>
+                                <div>
+                                  <div style={{fontSize:'24px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>
+                                    {f.fullName}
+                                  </div>
+                                  <div style={{fontSize:'12px', color:'rgba(255,255,255,0.85)', fontStyle:'italic', marginTop:'2px'}}>
+                                    「{f.motto}」
+                                  </div>
+                                </div>
+                              </div>
+                              <div style={{textAlign:'right'}}>
+                                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)'}}>国都</div>
+                                <div style={{fontSize:'16px', fontWeight:'700', color:'#fff'}}>{detail.capital}</div>
                               </div>
                             </div>
-                            <div style={{fontSize:'12px', opacity:0.9, marginBottom:'8px'}}>{f.desc}</div>
-                            <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
-                              <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>主公: {f.lord}</span>
-                              <span style={{background:'rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:'8px', fontSize:'11px', fontWeight:'600'}}>国运: {f.bonusDesc}</span>
+                          </div>
+
+                          {/* 内容区域 */}
+                          <div style={{padding:'18px 22px 20px'}}>
+                            {/* 描述 */}
+                            <div style={{fontSize:'13px', color:'#475569', lineHeight:'1.7', marginBottom:'14px'}}>
+                              {f.desc}
                             </div>
-                            <div style={{fontSize:'11px', marginTop:'8px', opacity:0.7}}>
-                              帮派: {GANG_PRESETS.filter(g => g.faction === fid).map(g => g.name).join('、') || '无'}
+
+                            {/* 信息网格 */}
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'14px'}}>
+                              <div style={{background:'rgba(0,0,0,0.02)', borderRadius:'10px', padding:'10px 12px'}}>
+                                <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'4px'}}>👑 君主</div>
+                                <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b'}}>{f.lord}</div>
+                              </div>
+                              <div style={{background:'rgba(0,0,0,0.02)', borderRadius:'10px', padding:'10px 12px'}}>
+                                <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'4px'}}>🎯 战略</div>
+                                <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b'}}>{detail.strategy}</div>
+                              </div>
+                              <div style={{background:'rgba(0,0,0,0.02)', borderRadius:'10px', padding:'10px 12px', gridColumn:'1 / -1'}}>
+                                <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'4px'}}>⚔️ 名将</div>
+                                <div style={{fontSize:'13px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div>
+                              </div>
+                            </div>
+
+                            {/* 国运加成 */}
+                            <div style={{
+                              background: f.color + '10', borderRadius:'10px', padding:'10px 14px',
+                              border: '1px solid ' + f.color + '20', marginBottom:'12px',
+                            }}>
+                              <div style={{fontSize:'10px', color: f.color, fontWeight:'700', marginBottom:'4px'}}>💫 国运加成</div>
+                              <div style={{fontSize:'12px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div>
+                            </div>
+
+                            {/* 帮派列表 */}
+                            <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                              {gangs.map(g => (
+                                <span key={g.id} style={{
+                                  background:'rgba(0,0,0,0.04)', padding:'4px 10px', borderRadius:'20px',
+                                  fontSize:'11px', color:'#64748b', fontWeight:'500',
+                                }}>{g.icon} {g.name}</span>
+                              ))}
+                            </div>
+
+                            {/* 底部口号 */}
+                            <div style={{
+                              textAlign:'center', marginTop:'14px', paddingTop:'12px',
+                              borderTop:'1px solid rgba(0,0,0,0.06)',
+                              fontSize:'12px', color: f.color, fontWeight:'600', letterSpacing:'1px',
+                            }}>
+                              {detail.stronghold}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             }

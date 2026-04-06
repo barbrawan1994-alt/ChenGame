@@ -195,7 +195,7 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     if (!t) continue;
     const ownerCount = getFactionTerritoryCount(t.owner, newTerritories);
     const decay = (t.owner !== 'neutral' && ownerCount >= cfg.overextendThreshold)
-      ? cfg.strengthDecayMultiplier
+      ? cfg.overextendDecayMultiplier
       : cfg.strengthDecayPerTick;
     t.strength = Math.max(cfg.minStrength, t.strength - decay);
   }
@@ -315,9 +315,8 @@ export const applySeasonRewards = (kw, result) => {
 
 // 检查阵营是否只剩都城
 export const isFactionCapitalOnly = (faction, territories) => {
-  const normalMaps = WAR_MAP_IDS.filter(id => id < 200);
-  const factionTerritories = normalMaps.filter(id => territories[id]?.owner === faction);
-  return factionTerritories.length === 0;
+  const ownedMaps = WAR_MAP_IDS.filter(id => territories[id]?.owner === faction);
+  return ownedMaps.length === 0;
 };
 
 // 获取可发起都城攻防战的敌方阵营
