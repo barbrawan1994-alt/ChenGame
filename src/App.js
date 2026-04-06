@@ -819,6 +819,12 @@ const [infinityState, setInfinityState] = useState(null);
 
   // 引用，用于地图滚动
   const mapContainerRef = useRef(null);
+  const marriageRef = useRef(marriage);
+  marriageRef.current = marriage;
+  const partyRef = useRef(party);
+  partyRef.current = party;
+  const gangRef = useRef(gang);
+  gangRef.current = gang;
   const handleMove = useCallback((dx, dy) => {
   setPlayerPos(prevPos => {
     const nx = prevPos.x + dx;
@@ -923,7 +929,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const newParty = [...party];
     const pet = newParty[petIdx];
 
-    setInventory(prev => ({...prev, misc: {...prev.misc, rebirth_pill: prev.misc.rebirth_pill - 1}}));
+    setInventory(prev => ({...prev, misc: {...prev.misc, rebirth_pill: (prev.misc.rebirth_pill || 0) - 1}}));
 
     const randIV = () => Math.floor(Math.random() * 32); 
     pet.ivs = { hp: randIV(), p_atk: randIV(), p_def: randIV(), s_atk: randIV(), s_def: randIV(), spd: randIV(), crit: Math.floor(Math.random() * 10) };
@@ -2997,7 +3003,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   const resetMarriageDailyCounts = () => {
     const today = new Date().toISOString().slice(0, 10);
-    if (marriage.dailyCounts.resetDate !== today) {
+    if (!marriage.dailyCounts || marriage.dailyCounts.resetDate !== today) {
       setMarriage(prev => ({ ...prev, dailyCounts: { dates: 0, gifts: 0, chats: {}, resetDate: today } }));
       return { dates: 0, gifts: 0, chats: {}, resetDate: today };
     }
@@ -4672,54 +4678,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const canJoinGang = leaveCooldown <= 0;
 
     if (!gang.gangId) {
-      return (
-        <div className="screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
-          <div className="nav-header glass-panel" style={headerStyle}>
-            <button className="btn-back" onClick={() => setView('grid_map')} style={{...btnSecondary}}>⬅ 返回</button>
-            <div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>🏴 帮派系统</div>
-            <div style={{width:60}} />
-          </div>
-          <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'24px', overflowY:'auto'}}>
-            {!canJoinGang && (
-              <div style={{width:'100%', padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}>
-                <div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div>
-                <div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div>
-              </div>
-            )}
-            <div style={{fontSize:'50px', marginBottom:'12px', filter:'drop-shadow(0 0 20px rgba(255,150,0,0.3))'}}>🏴</div>
-            <div style={{fontSize:'20px', fontWeight:'bold', marginBottom:'6px'}}>加入一个帮派</div>
-            <div style={{fontSize:'13px', color:'#9E9E9E', marginBottom:'24px', textAlign:'center'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>每个阵营各有4个特色帮派可供选择</div>
-
-            <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px', color:'#FFD700'}}>— 选择你的帮派 —</div>
-            {kingdomWar.faction && <div style={{fontSize:'11px', color:'#90CAF9', marginBottom:'8px', textAlign:'center'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName || ''}，仅显示同阵营帮派</div>}
-            <div style={{width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
-              {GANG_PRESETS.filter(g => !kingdomWar.faction || g.faction === kingdomWar.faction).map(g => (
-                <div key={g.id} style={{...cardStyle, transition:'transform 0.2s'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
-                    <span style={{fontSize:'24px'}}>{g.icon}</span>
-                    <span style={{fontWeight:'bold', fontSize:'14px'}}>{g.name}</span>
-                    <span style={{fontSize:'11px', color: FACTIONS[g.faction]?.color || '#9E9E9E', marginLeft:'auto'}}>{FACTIONS[g.faction]?.name || ''} Lv.{g.level}</span>
-                  </div>
-                  <div style={{fontSize:'11px', color:'#aaa', marginBottom:'4px'}}>{g.desc}</div>
-                  {g.perkDesc && <div style={{fontSize:'10px', color:'#66BB6A', marginBottom:'4px'}}>🎁 {g.perkDesc}</div>}
-                  <div style={{fontSize:'11px', color:'#FFD700', marginBottom:'8px'}}>帮主: {g.leader} · 成员 {g.members.length}人</div>
-                  <button onClick={() => {
-                    if (!canJoinGang) { alert(`退帮冷却中，还需等待约 ${leaveHoursLeft} 小时`); return; }
-                    if (!window.confirm(`确定要加入「${g.name}」吗？`)) return;
-                    setGang({
-                      gangId: g.id, isOwner: false, customGang: null,
-                      contribution: 0, rank: 'member', personalSkills: {},
-                      dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
-                    });
-                  }} style={{...btnPrimary, width:'100%', fontSize:'12px', padding:'8px 0'}}>
-                    加入帮派
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
+      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div className="nav-header glass-panel" style={headerStyle}><button className="btn-back" onClick={() => setView('grid_map')} style={{...btnSecondary}}>⬅ 返回</button><div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { alert('退帮冷却中，还需等待约 '+leaveHoursLeft+' 小时'); return; } if (!window.confirm('确定要加入「'+g.name+'」吗？\n\n'+faction.fullName+'阵营 · '+g.style+'\n'+(g.perkDesc||''))) return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:new Date().toISOString().slice(0,10)}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
     }
 
     // 有帮派
@@ -7679,8 +7638,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const ticks = Math.floor(elapsed / CAFE_BUILDING.tickInterval);
         if (ticks > 0) {
           const lvData = getCafeLevel(prev.totalWorkCount);
-          const spCafeBonus = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).cafeGold || 0) : 0;
-          const spCafeBase = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).cafeGoldBase || 0) : 0;
+          const _m = marriageRef.current;
+          const spCafeBonus = _m.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === _m.spouse), (getMarriageLevel(_m.affections[_m.spouse] || 0)).level).cafeGold || 0) : 0;
+          const spCafeBase = _m.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === _m.spouse), (getMarriageLevel(_m.affections[_m.spouse] || 0)).level).cafeGoldBase || 0) : 0;
           const cafeGoldMult = 1 + spCafeBonus + spCafeBase;
           const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult * cafeGoldMult);
           setGold(g => g + goldEarned);
@@ -7717,7 +7677,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // 国战 War Tick
   useEffect(() => {
     if (!kingdomWar.faction) return;
-    const avgLv = party.length > 0 ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50;
+    const _party = partyRef.current;
+    const avgLv = _party.length > 0 ? Math.floor(_party.reduce((s, p) => s + (p?.level || 1), 0) / _party.length) : 50;
 
     // 离线追赶
     if (kingdomWar.lastTick) {
@@ -7749,8 +7710,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const warInterval = setInterval(() => {
       setKingdomWar(prev => {
         if (!prev.faction) return prev;
-        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, avgLv, prev.attackBuff);
-        const gangTerrBonus = getGangSkillBonus(getGangSkills(gang)).territory || 0;
+        const _p = partyRef.current;
+        const freshAvgLv = _p.length > 0 ? Math.floor(_p.reduce((s, p) => s + (p?.level || 1), 0) / _p.length) : 50;
+        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, freshAvgLv, prev.attackBuff);
+        const gangTerrBonus = getGangSkillBonus(getGangSkills(gangRef.current)).territory || 0;
         const tickTerr = { ...result.territories };
         if (gangTerrBonus > 0) {
           for (const mid of WAR_MAP_IDS) {
@@ -10013,7 +9976,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
            if (equip) { setAccessories(prev => [...prev, equip]); rewardAlertLines.push(`3. 🎁 ${equip.displayName}`); }
            addLog(`🎉 挑战完成！获得 超级球x3 + ${rewardPet.name}！`);
          } else {
-           setInventory(prev => ({...prev, balls: {...prev.balls, master: prev.balls.master + 1}}));
+           setInventory(prev => ({...prev, balls: {...prev.balls, master: (prev.balls.master || 0) + 1}}));
            rewardAlertLines.push('1. 🔮 大师球 x1');
            const rewardLv = Math.min(cBossLv - 5, 70);
            const rewardPet = createPet(cInfo?.rewardId || _.random(1,500), rewardLv, false, true);
@@ -10722,7 +10685,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const handleCatch = async (ballType) => {
     setShowBallMenu(false);
     if (battle.isTrainer || battle.isGym || battle.isChallenge) return addLog("训练家的精灵不能捕捉！");
-    if (inventory.balls[ballType] <= 0) return addLog("球不足！");
+    if ((inventory.balls[ballType] || 0) <= 0) return addLog("球不足！");
     try {
     
     // 1. 扣球并播放投掷动画
@@ -12541,20 +12504,33 @@ const renderMenu = () => {
         : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #1a1a2e 75%, #16213e 100%)',
       position:'relative', overflow:'hidden'
     }}>
-      {/* 水墨山水 + 雾气背景 */}
-      <div style={{position:'absolute', inset:0, opacity:0.12, background:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'400\'%3E%3Cdefs%3E%3CradialGradient id=\'m\' cx=\'50%25\' cy=\'100%25\' r=\'80%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%23fff\' stop-opacity=\'0.4\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%23fff\' stop-opacity=\'0\'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx=\'100\' cy=\'350\' rx=\'200\' ry=\'80\' fill=\'url(%23m)\'/%3E%3Cellipse cx=\'320\' cy=\'370\' rx=\'150\' ry=\'60\' fill=\'url(%23m)\'/%3E%3Cpath d=\'M40 350Q80 270 130 290Q170 240 210 300Q250 230 280 280Q320 220 350 290Q380 260 400 330\' fill=\'none\' stroke=\'rgba(255,255,255,0.2)\' stroke-width=\'1.5\'/%3E%3Cpath d=\'M0 360Q60 310 120 330Q180 280 240 320Q300 270 360 310Q390 290 400 340\' fill=\'none\' stroke=\'rgba(255,255,255,0.12)\' stroke-width=\'0.8\'/%3E%3C/svg%3E") center bottom/cover no-repeat'}} />
+      {/* 水墨山水背景 */}
+      <div style={{position:'absolute', inset:0, opacity:0.25, backgroundImage:'url("https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?w=1200&q=80")', backgroundSize:'cover', backgroundPosition:'center bottom', filter:'grayscale(100%) contrast(1.2) brightness(0.4)'}} />
+      <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(15,20,30,0.8) 0%, rgba(15,20,30,0.3) 40%, rgba(15,20,30,0.6) 70%, rgba(15,20,30,0.95) 100%)'}} />
 
-      {/* 星光粒子 */}
-      <div style={{position:'absolute', inset:0, background:'radial-gradient(2px 2px at 10% 20%, rgba(255,220,150,0.6), transparent), radial-gradient(1.5px 1.5px at 30% 45%, rgba(200,180,120,0.4), transparent), radial-gradient(2px 2px at 50% 15%, rgba(255,200,100,0.5), transparent), radial-gradient(1px 1px at 70% 35%, rgba(240,190,80,0.35), transparent), radial-gradient(1.5px 1.5px at 85% 60%, rgba(255,210,130,0.4), transparent), radial-gradient(1px 1px at 20% 75%, rgba(220,170,90,0.3), transparent), radial-gradient(1.5px 1.5px at 65% 80%, rgba(255,200,100,0.25), transparent), radial-gradient(1px 1px at 90% 15%, rgba(200,160,80,0.3), transparent)', backgroundSize:'200% 200%', animation:'battle-bg-shift 20s ease infinite', opacity:0.6}} />
+      {/* 水墨晕染效果 */}
+      <div style={{position:'absolute', inset:0, opacity:0.08, backgroundImage:'radial-gradient(ellipse at 20% 80%, rgba(255,255,255,0.3), transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(255,255,255,0.2), transparent 50%), radial-gradient(ellipse at 50% 90%, rgba(255,255,255,0.25), transparent 40%)'}} />
 
-      {/* 三国旗帜光柱 */}
-      <div style={{position:'absolute', top:0, left:'12%', width:'3px', height:'50%', background:'linear-gradient(180deg, rgba(21,101,192,0.5), rgba(21,101,192,0.1), transparent)', filter:'blur(4px)', animation:'float 6s ease-in-out infinite'}} />
-      <div style={{position:'absolute', top:0, left:'50%', width:'3px', height:'55%', background:'linear-gradient(180deg, rgba(46,125,50,0.5), rgba(46,125,50,0.1), transparent)', filter:'blur(4px)', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />
-      <div style={{position:'absolute', top:0, right:'12%', width:'3px', height:'50%', background:'linear-gradient(180deg, rgba(198,40,40,0.5), rgba(198,40,40,0.1), transparent)', filter:'blur(4px)', animation:'float 8s ease-in-out infinite', animationDelay:'2s'}} />
+      {/* 淡墨山峦剪影 */}
+      <svg style={{position:'absolute', bottom:0, left:0, right:0, height:'45%', opacity:0.15}} viewBox="0 0 1200 400" preserveAspectRatio="none">
+        <path d="M0 400 L0 280 Q60 200 120 240 Q180 160 240 200 Q300 120 360 180 Q420 100 480 150 Q540 80 600 130 Q660 60 720 120 Q780 80 840 140 Q900 100 960 160 Q1020 130 1080 180 Q1140 160 1200 200 L1200 400 Z" fill="rgba(255,255,255,0.08)"/>
+        <path d="M0 400 L0 320 Q80 260 160 290 Q240 220 320 270 Q400 200 480 250 Q560 180 640 230 Q720 190 800 240 Q880 210 960 260 Q1040 240 1120 270 L1200 300 L1200 400 Z" fill="rgba(255,255,255,0.05)"/>
+        <path d="M0 400 L0 350 Q100 310 200 330 Q300 290 400 320 Q500 280 600 310 Q700 270 800 300 Q900 280 1000 310 Q1100 300 1200 330 L1200 400 Z" fill="rgba(255,255,255,0.03)"/>
+      </svg>
 
-      {/* 龙纹光环 */}
-      <div style={{position:'absolute', top:'-20%', left:'-20%', width:'70%', height:'70%', borderRadius:'50%', background:`radial-gradient(circle, ${fc.glow.replace('0.4','0.08')} 0%, transparent 60%)`, filter:'blur(60px)', animation:'float 10s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'-15%', right:'-15%', width:'60%', height:'60%', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,80,0.05) 0%, transparent 60%)', filter:'blur(50px)', animation:'float 12s ease-in-out infinite reverse'}} />
+      {/* 墨点飞溅装饰 */}
+      <div style={{position:'absolute', top:'15%', left:'8%', width:'4px', height:'4px', borderRadius:'50%', background:'rgba(255,220,150,0.15)', boxShadow:'0 0 20px 8px rgba(255,220,150,0.05)', animation:'float 8s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:'25%', right:'12%', width:'3px', height:'3px', borderRadius:'50%', background:'rgba(255,200,100,0.12)', boxShadow:'0 0 15px 6px rgba(255,200,100,0.04)', animation:'float 10s ease-in-out infinite reverse'}} />
+      <div style={{position:'absolute', bottom:'30%', left:'15%', width:'5px', height:'5px', borderRadius:'50%', background:'rgba(200,160,80,0.1)', boxShadow:'0 0 25px 10px rgba(200,160,80,0.03)', animation:'float 12s ease-in-out infinite'}} />
+
+      {/* 三国光柱 */}
+      <div style={{position:'absolute', top:0, left:'12%', width:'2px', height:'40%', background:'linear-gradient(180deg, rgba(21,101,192,0.4), transparent)', filter:'blur(3px)', animation:'float 6s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:0, left:'50%', width:'2px', height:'45%', background:'linear-gradient(180deg, rgba(46,125,50,0.4), transparent)', filter:'blur(3px)', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />
+      <div style={{position:'absolute', top:0, right:'12%', width:'2px', height:'40%', background:'linear-gradient(180deg, rgba(198,40,40,0.4), transparent)', filter:'blur(3px)', animation:'float 8s ease-in-out infinite', animationDelay:'2s'}} />
+
+      {/* 云雾飘动 */}
+      <div style={{position:'absolute', top:'20%', left:'-20%', width:'60%', height:'30%', background:'radial-gradient(ellipse, rgba(255,255,255,0.03), transparent)', filter:'blur(40px)', animation:'float 15s ease-in-out infinite'}} />
+      <div style={{position:'absolute', top:'40%', right:'-10%', width:'40%', height:'20%', background:'radial-gradient(ellipse, rgba(255,255,255,0.02), transparent)', filter:'blur(30px)', animation:'float 18s ease-in-out infinite reverse'}} />
 
       {/* 漂浮精灵剪影 */}
       {titleSprites.map((url, i) => (
@@ -13435,190 +13411,12 @@ const renderMenu = () => {
             const canJoin = badges.length >= 3;
 
             if (!hasJoined) {
-              const factionDetails = {
+              const fd = {
                 wei: { generals: '张辽、夏侯惇、许褚、典韦', strategy: '铁骑破阵', capital: '洛阳', stronghold: '兵精粮足，铁骑天下' },
                 shu: { generals: '关羽、张飞、赵云、马超', strategy: '仁义为先', capital: '成都', stronghold: '卧龙凤雏，天下归心' },
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
               };
-              return (
-                <div style={{padding:'0', position:'relative', minHeight:'500px'}}>
-                  {/* 顶部标题区域 */}
-                  <div style={{
-                    textAlign:'center', padding:'40px 20px 30px', position:'relative',
-                    background:'linear-gradient(180deg, rgba(139,69,19,0.15) 0%, transparent 100%)',
-                  }}>
-                    <div style={{position:'absolute', top:0, left:0, right:0, bottom:0, opacity:0.05,
-                      backgroundImage:'repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(139,69,19,0.3) 20px, rgba(139,69,19,0.3) 21px)',
-                    }} />
-                    <div style={{position:'relative', zIndex:1}}>
-                      <div style={{fontSize:'14px', letterSpacing:'8px', color:'#8B6914', fontWeight:'500', marginBottom:'8px'}}>
-                        ━━ 天 下 三 分 ━━
-                      </div>
-                      <div style={{
-                        fontSize:'32px', fontWeight:'900', color:'#1e293b',
-                        textShadow:'0 2px 4px rgba(0,0,0,0.1)',
-                        background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)',
-                        WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-                        letterSpacing:'6px',
-                      }}>三国争霸</div>
-                      <div style={{fontSize:'12px', color:'#94a3b8', marginTop:'10px', lineHeight:'1.8'}}>
-                        魏蜀吴三国并立，争夺天下十六城<br/>择一阵营，征战四方，建功立业
-                      </div>
-                    </div>
-                  </div>
-
-                  {!canJoin && (
-                    <div style={{
-                      margin:'0 20px 20px', padding:'16px 20px', borderRadius:'12px',
-                      background:'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04))',
-                      border:'1px solid rgba(239,68,68,0.2)',
-                      display:'flex', alignItems:'center', gap:'12px',
-                    }}>
-                      <span style={{fontSize:'24px'}}>⚠️</span>
-                      <div>
-                        <div style={{fontSize:'13px', fontWeight:'700', color:'#dc2626'}}>尚未达到参战条件</div>
-                        <div style={{fontSize:'12px', color:'#ef4444', opacity:0.8, marginTop:'2px'}}>
-                          需获得至少3枚道馆徽章 · 当前: {badges.length}/3
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 势力选择卡片 */}
-                  <div style={{display:'flex', flexDirection:'column', gap:'16px', padding:'0 16px 24px'}}>
-                    {FACTION_IDS.map((fid, idx) => {
-                      const f = FACTIONS[fid];
-                      const detail = factionDetails[fid];
-                      const gangs = GANG_PRESETS.filter(g => g.faction === fid);
-                      const decorBorders = {
-                        wei: 'linear-gradient(135deg, #1565C0, #42A5F5, #1565C0)',
-                        shu: 'linear-gradient(135deg, #2E7D32, #66BB6A, #2E7D32)',
-                        wu: 'linear-gradient(135deg, #C62828, #EF5350, #C62828)',
-                      };
-                      return (
-                        <div key={fid} style={{
-                          position:'relative', borderRadius:'20px', overflow:'hidden',
-                          background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)',
-                          border:'2px solid transparent',
-                          backgroundClip:'padding-box',
-                          cursor: canJoin ? 'pointer' : 'not-allowed',
-                          opacity: canJoin ? 1 : 0.7,
-                          transition:'all 0.4s cubic-bezier(0.25,0.8,0.25,1)',
-                          animation: 'popIn 0.5s ease-out ' + (0.1 + idx * 0.15) + 's backwards',
-                        }}
-                        onClick={() => {
-                          if (!canJoin) { alert('需要获得至少3个道馆徽章才能加入阵营\n当前徽章: ' + badges.length + '/3'); return; }
-                          if (!window.confirm('确定加入' + f.fullName + '吗？\n\n👑 主公: ' + f.lord + '\n📍 国都: ' + detail.capital + '\n💫 国运: ' + f.bonusDesc + '\n\n⚠️ 阵营一旦选择无法更改！')) return;
-                          setKingdomWar(prev => ({
-                            ...prev,
-                            faction: fid,
-                            territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(),
-                            lastTick: Date.now(),
-                            seasonStartDate: prev.seasonStartDate || new Date().toISOString(),
-                            dailyCounts: { ...prev.dailyCounts, resetDate: new Date().toISOString().slice(0,10) },
-                          }));
-                        }}
-                        onMouseEnter={e => {
-                          if (!canJoin) return;
-                          e.currentTarget.style.transform = 'translateY(-6px) scale(1.01)';
-                          e.currentTarget.style.boxShadow = '0 12px 40px ' + f.color + '30';
-                          e.currentTarget.style.borderColor = f.color + '80';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.transform = '';
-                          e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
-                          e.currentTarget.style.borderColor = 'transparent';
-                        }}
-                        >
-                          {/* 顶部国旗横幅 */}
-                          <div style={{
-                            background: decorBorders[fid],
-                            padding:'20px 24px', position:'relative', overflow:'hidden',
-                          }}>
-                            <div style={{position:'absolute', top:0, right:0, bottom:0, width:'120px',
-                              background:'radial-gradient(ellipse at right, rgba(255,255,255,0.2), transparent)',
-                            }} />
-                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative', zIndex:1}}>
-                              <div style={{display:'flex', alignItems:'center', gap:'14px'}}>
-                                <div style={{
-                                  width:'52px', height:'52px', borderRadius:'14px',
-                                  background:'rgba(255,255,255,0.2)', backdropFilter:'blur(8px)',
-                                  display:'flex', alignItems:'center', justifyContent:'center',
-                                  fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)',
-                                }}>{f.icon}</div>
-                                <div>
-                                  <div style={{fontSize:'24px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>
-                                    {f.fullName}
-                                  </div>
-                                  <div style={{fontSize:'12px', color:'rgba(255,255,255,0.85)', fontStyle:'italic', marginTop:'2px'}}>
-                                    「{f.motto}」
-                                  </div>
-                                </div>
-                              </div>
-                              <div style={{textAlign:'right'}}>
-                                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.7)'}}>国都</div>
-                                <div style={{fontSize:'16px', fontWeight:'700', color:'#fff'}}>{detail.capital}</div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 内容区域 */}
-                          <div style={{padding:'18px 22px 20px'}}>
-                            {/* 描述 */}
-                            <div style={{fontSize:'13px', color:'#475569', lineHeight:'1.7', marginBottom:'14px'}}>
-                              {f.desc}
-                            </div>
-
-                            {/* 信息网格 */}
-                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'14px'}}>
-                              <div style={{background:'rgba(0,0,0,0.02)', borderRadius:'10px', padding:'10px 12px'}}>
-                                <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'4px'}}>👑 君主</div>
-                                <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b'}}>{f.lord}</div>
-                              </div>
-                              <div style={{background:'rgba(0,0,0,0.02)', borderRadius:'10px', padding:'10px 12px'}}>
-                                <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'4px'}}>🎯 战略</div>
-                                <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b'}}>{detail.strategy}</div>
-                              </div>
-                              <div style={{background:'rgba(0,0,0,0.02)', borderRadius:'10px', padding:'10px 12px', gridColumn:'1 / -1'}}>
-                                <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'4px'}}>⚔️ 名将</div>
-                                <div style={{fontSize:'13px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div>
-                              </div>
-                            </div>
-
-                            {/* 国运加成 */}
-                            <div style={{
-                              background: f.color + '10', borderRadius:'10px', padding:'10px 14px',
-                              border: '1px solid ' + f.color + '20', marginBottom:'12px',
-                            }}>
-                              <div style={{fontSize:'10px', color: f.color, fontWeight:'700', marginBottom:'4px'}}>💫 国运加成</div>
-                              <div style={{fontSize:'12px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div>
-                            </div>
-
-                            {/* 帮派列表 */}
-                            <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-                              {gangs.map(g => (
-                                <span key={g.id} style={{
-                                  background:'rgba(0,0,0,0.04)', padding:'4px 10px', borderRadius:'20px',
-                                  fontSize:'11px', color:'#64748b', fontWeight:'500',
-                                }}>{g.icon} {g.name}</span>
-                              ))}
-                            </div>
-
-                            {/* 底部口号 */}
-                            <div style={{
-                              textAlign:'center', marginTop:'14px', paddingTop:'12px',
-                              borderTop:'1px solid rgba(0,0,0,0.06)',
-                              fontSize:'12px', color: f.color, fontWeight:'600', letterSpacing:'1px',
-                            }}>
-                              {detail.stronghold}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
+              return (<div style={{padding:'0'}}><div style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 天 下 三 分 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>三国争霸</div><div style={{fontSize:'11px', color:'#94a3b8', marginTop:'8px'}}>魏蜀吴三国并立，争夺天下十六城 · 择一阵营，建功立业</div></div>{!canJoin && (<div style={{margin:'0 16px 16px', padding:'12px 16px', borderRadius:'10px', background:'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04))', border:'1px solid rgba(239,68,68,0.2)', display:'flex', alignItems:'center', gap:'10px'}}><span style={{fontSize:'20px'}}>⚠️</span><div><div style={{fontSize:'12px', fontWeight:'700', color:'#dc2626'}}>尚未达到参战条件</div><div style={{fontSize:'11px', color:'#ef4444', opacity:0.8}}>需获得至少3枚道馆徽章 · 当前: {badges.length}/3</div></div></div>)}<div style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{FACTION_IDS.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid]; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor: canJoin ? 'pointer' : 'not-allowed', opacity: canJoin ? 1 : 0.65, transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { if (!canJoin) { alert('需要获得至少3个道馆徽章才能加入阵营\n当前徽章: '+badges.length+'/3'); return; } if (!window.confirm('确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！')) return; setKingdomWar(prev => ({...prev, faction: fid, territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(), lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: {...prev.dailyCounts, resetDate: new Date().toISOString().slice(0,10)}})); }} onMouseEnter={e => { if (!canJoin) return; e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -14320,128 +14118,110 @@ const renderMenu = () => {
     const leader = party[0];
     const stats = leader ? getStats(leader) : null;
     const hpPercent = leader ? (leader.currentHp / stats.maxHp) * 100 : 0;
-    
-    // 获取当前首发精灵的属性颜色 (如果没有则默认灰色)
     const typeColor = leader && TYPES[leader.type] ? TYPES[leader.type].color : '#9E9E9E';
+    const expPercent = leader ? Math.min(100, (leader.exp / leader.nextExp) * 100) : 0;
+    const weatherInfo = WEATHERS ? WEATHERS[currentWeatherKey] : null;
 
     return (
-      <div className="side-panel left-panel" style={{display:'flex', flexDirection:'column', gap:'15px'}}>
-         
-         {/* 1. 训练家卡片 (已修复重复问题) */}
-         <div className="panel-card" style={{
-             textAlign:'center', padding:'20px 15px', background:'#fff', 
-             borderRadius:'16px', boxShadow:'0 4px 12px rgba(0,0,0,0.05)'
-         }}>
-            {/* 头像区域 */}
-            <div style={{position:'relative', width:'70px', height:'70px', margin:'0 auto 10px'}}>
-                <div 
-                    onClick={() => setShowAvatarSelector(true)}
-                    style={{
-                        width:'100%', height:'100%', cursor:'pointer', 
-                        background:'#f8f9fa', borderRadius:'50%', 
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        fontSize:'40px', border:'3px solid #fff',
-                        boxShadow:'0 4px 10px rgba(0,0,0,0.1)',
-                        transition:'transform 0.2s, border-color 0.2s',
-                        overflow:'hidden'
-                    }}
-                    onMouseOver={e => {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.borderColor = '#FF9800';
-                    }}
-                    onMouseOut={e => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.borderColor = '#fff';
-                    }}
-                    title="点击更换形象"
-                >
-                    {renderAvatarImg(trainerAvatar, 64)}
-                </div>
-                <div style={{
-                    position:'absolute', bottom:'0', right:'0', 
-                    background:'#FF9800', color:'#fff', borderRadius:'50%', 
-                    width:'20px', height:'20px', fontSize:'12px', 
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    border:'2px solid #fff', pointerEvents:'none'
-                }}>✏</div>
+      <div className="side-panel left-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+        {/* 训练家卡片 */}
+        <div className="panel-card" style={{padding:'16px', background:'linear-gradient(135deg, #fff 0%, #f8f6f0 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+          <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+            <div onClick={() => setShowAvatarSelector(true)} style={{width:'56px', height:'56px', cursor:'pointer', background:'#f0ede6', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #e8e0d0', boxShadow:'0 2px 8px rgba(0,0,0,0.08)', overflow:'hidden', transition:'all 0.2s', flexShrink:0}} onMouseOver={e => { e.currentTarget.style.borderColor='#d4a853'; }} onMouseOut={e => { e.currentTarget.style.borderColor='#e8e0d0'; }} title="点击更换形象">{renderAvatarImg(trainerAvatar, 52)}</div>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{fontWeight:'800', fontSize:'15px', color:'#2c2417', marginBottom:'3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{trainerName || '训练家'}</div>
+              <div style={{fontSize:'10px', background:'linear-gradient(135deg, #d4a853, #b8860b)', color:'#fff', padding:'2px 8px', borderRadius:'8px', display:'inline-block', fontWeight:'700'}}>{currentTitle || '新手上路'}</div>
             </div>
-
-            <div style={{fontWeight:'800', fontSize:'18px', color:'#333', marginBottom:'4px'}}>{trainerName || '训练家'}</div>
-            <div style={{
-                fontSize:'11px', background:'linear-gradient(90deg, #FF9800, #FF5722)', 
-                color:'#fff', padding:'3px 10px', borderRadius:'12px', 
-                display:'inline-block', fontWeight:'bold', boxShadow:'0 2px 5px rgba(255,87,34,0.3)'
-            }}>
-                {currentTitle || '新手上路'}
-            </div>
+          </div>
+          <div style={{display:'flex', gap:'6px', marginTop:'10px'}}>
+            {[{icon:'🎖️', val:badges.length, label:'徽章'}, {icon:'📖', val:caughtDex.length, label:'图鉴'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}].map((s,i) => (
+              <div key={i} style={{flex:1, textAlign:'center', padding:'6px 4px', background:'rgba(0,0,0,0.02)', borderRadius:'8px'}}>
+                <div style={{fontSize:'14px', fontWeight:'800', color:'#2c2417'}}>{s.icon} {s.val}</div>
+                <div style={{fontSize:'8px', color:'#999', marginTop:'1px'}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* 2. 首发精灵卡片 */}
+        {/* 首发精灵 */}
         {leader && (
-            <div className="panel-card" style={{
-                padding:'0', background:'#fff', borderRadius:'16px', 
-                overflow:'hidden', boxShadow:'0 4px 12px rgba(0,0,0,0.05)'
-            }}>
-                {/* 顶部属性条 */}
-                <div style={{height:'8px', background: typeColor}}></div>
-                
-                <div style={{padding:'15px', textAlign:'center'}}>
-                    <div style={{fontSize:'48px', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.1))', animation:'float 3s ease-in-out infinite'}}>
-                        {renderAvatar(leader)}
-                    </div>
-                    <div style={{fontWeight:'bold', fontSize:'16px', marginTop:'5px', color:'#333'}}>
-                        {leader.name}
-                    </div>
-                    <div style={{marginTop:'5px', marginBottom:'10px'}}>
-                        <span style={{background:'#333', color:'#fff', fontSize:'10px', padding:'2px 6px', borderRadius:'4px'}}>
-                            Lv.{leader.level}
-                        </span>
-                    </div>
-
-                    {/* HP 条 */}
-                    <div style={{display:'flex', alignItems:'center', gap:'5px', fontSize:'10px', color:'#666', fontWeight:'bold'}}>
-                        <span>HP</span>
-                        <div style={{flex:1, height:'8px', background:'#eee', borderRadius:'4px', overflow:'hidden'}}>
-                            <div style={{
-                                width: `${hpPercent}%`, height:'100%', 
-                                background: hpPercent > 50 ? '#4CAF50' : (hpPercent > 20 ? '#FF9800' : '#F44336'),
-                                transition: 'width 0.3s ease'
-                            }}></div>
-                        </div>
-                        <span>{Math.floor(leader.currentHp)}/{stats.maxHp}</span>
-                    </div>
+          <div className="panel-card" style={{padding:'0', background:'#fff', borderRadius:'14px', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+            <div style={{height:'4px', background:`linear-gradient(90deg, ${typeColor}, ${typeColor}80)`}} />
+            <div style={{padding:'14px', textAlign:'center'}}>
+              <div style={{fontSize:'52px', filter:'drop-shadow(0 3px 6px rgba(0,0,0,0.12))', animation:'float 3s ease-in-out infinite', lineHeight:1}}>{renderAvatar(leader)}</div>
+              <div style={{fontWeight:'800', fontSize:'14px', color:'#2c2417', marginTop:'6px'}}>{leader.name} {leader.isShiny && '✨'}</div>
+              <div style={{display:'flex', justifyContent:'center', gap:'4px', marginTop:'4px', marginBottom:'8px'}}>
+                <span style={{background:typeColor, color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'700'}}>{TYPES[leader.type]?.name || leader.type}</span>
+                {leader.type2 && <span style={{background:TYPES[leader.type2]?.color || '#999', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'700'}}>{TYPES[leader.type2]?.name || leader.type2}</span>}
+                <span style={{background:'#333', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'700'}}>Lv.{leader.level}</span>
+              </div>
+              <div style={{marginBottom:'6px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#666', fontWeight:'600'}}>
+                  <span style={{color:'#4CAF50'}}>HP</span>
+                  <div style={{flex:1, height:'7px', background:'#eee', borderRadius:'4px', overflow:'hidden'}}>
+                    <div style={{width:hpPercent+'%', height:'100%', background:hpPercent > 50 ? 'linear-gradient(90deg, #4CAF50, #66BB6A)' : hpPercent > 20 ? 'linear-gradient(90deg, #FF9800, #FFA726)' : 'linear-gradient(90deg, #F44336, #EF5350)', transition:'width 0.3s ease', borderRadius:'4px'}} />
+                  </div>
+                  <span style={{fontSize:'9px', minWidth:'60px', textAlign:'right'}}>{Math.floor(leader.currentHp)}/{stats.maxHp}</span>
                 </div>
+              </div>
+              <div>
+                <div style={{display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#666', fontWeight:'600'}}>
+                  <span style={{color:'#2196F3'}}>EXP</span>
+                  <div style={{flex:1, height:'5px', background:'#eee', borderRadius:'3px', overflow:'hidden'}}>
+                    <div style={{width:expPercent+'%', height:'100%', background:'linear-gradient(90deg, #2196F3, #42A5F5)', transition:'width 0.3s ease', borderRadius:'3px'}} />
+                  </div>
+                  <span style={{fontSize:'9px', minWidth:'60px', textAlign:'right'}}>{leader.exp}/{leader.nextExp}</span>
+                </div>
+              </div>
             </div>
+          </div>
         )}
 
-        {/* 3. 背包预览 */}
-        <div className="panel-card" style={{padding:'15px', background:'#fff', borderRadius:'16px', boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
-            <div style={{fontSize:'12px', color:'#999', marginBottom:'10px', fontWeight:'bold', letterSpacing:'1px'}}>🎒 背包概览</div>
-            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
-                <div style={{background:'#f9f9f9', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center', gap:'5px', fontSize:'13px', fontWeight:'bold', color:'#555'}}>
-                    <span>🔴</span> {inventory.balls.poke}
+        {/* 队伍预览 */}
+        <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+          <div style={{fontSize:'10px', color:'#999', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🛡️ 队伍 ({party.length}/6)</div>
+          <div style={{display:'flex', gap:'4px'}}>
+            {party.map((p, i) => {
+              const pStats = getStats(p);
+              const pHp = (p.currentHp / pStats.maxHp) * 100;
+              return (
+                <div key={i} style={{flex:1, textAlign:'center', padding:'4px 2px', borderRadius:'8px', background: i === 0 ? 'rgba(255,152,0,0.08)' : 'rgba(0,0,0,0.02)', border: i === 0 ? '1px solid rgba(255,152,0,0.2)' : '1px solid transparent'}}>
+                  <div style={{fontSize:'18px', lineHeight:1}}>{renderAvatar(p)}</div>
+                  <div style={{height:'3px', borderRadius:'2px', background:'#eee', margin:'3px 2px 0', overflow:'hidden'}}>
+                    <div style={{width:pHp+'%', height:'100%', background:pHp > 50 ? '#4CAF50' : pHp > 20 ? '#FF9800' : '#F44336', borderRadius:'2px'}} />
+                  </div>
                 </div>
-                <div style={{background:'#f9f9f9', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center', gap:'5px', fontSize:'13px', fontWeight:'bold', color:'#555'}}>
-                    <span>💊</span> {inventory.meds.potion || 0}
-                </div>
-                <div style={{gridColumn:'span 2', background:'#FFF8E1', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center', gap:'5px', fontSize:'13px', fontWeight:'bold', color:'#F57C00'}}>
-                    <span>💰</span> {gold.toLocaleString()}
-                </div>
-            </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* 4. 任务目标 */}
-        <div className="panel-card" style={{padding:'15px', background:'#fff', borderRadius:'16px', boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
-             <div style={{fontSize:'12px', color:'#999', marginBottom:'5px', fontWeight:'bold', letterSpacing:'1px'}}>🏆 当前目标</div>
-             <div style={{fontSize:'14px', fontWeight:'bold', color:'#333', display:'flex', alignItems:'center', gap:'5px'}}>
-                {badges.length < 13 ? (
-                    <><span>收集徽章:</span> <span style={{color:'#2196F3'}}>{badges.length} / {MAPS.length}</span></>
-                ) : badges.length < MAPS.length ? (
-                    <><span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！</span> <span style={{color:'#999', fontSize:'11px'}}>({badges.length}/{MAPS.length})</span></>
-                ) : (
-                    <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
-                )}
-             </div>
+        {/* 背包 + 金币 */}
+        <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+          <div style={{fontSize:'10px', color:'#999', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🎒 背包</div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'6px'}}>
+            {[{icon:'🔴', val:inventory.balls?.poke||0, label:'精灵球'}, {icon:'🔵', val:inventory.balls?.great||0, label:'超级球'}, {icon:'💊', val:inventory.meds?.potion||0, label:'伤药'}, {icon:'🍇', val:inventory.berries||0, label:'树果'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}, {icon:'🎖️', val:badges.length, label:'徽章'}].map((item,i) => (
+              <div key={i} style={{background:'#f9f7f2', padding:'6px', borderRadius:'8px', textAlign:'center'}}>
+                <div style={{fontSize:'14px'}}>{item.icon}</div>
+                <div style={{fontSize:'11px', fontWeight:'700', color:'#2c2417'}}>{item.val}</div>
+                <div style={{fontSize:'7px', color:'#aaa'}}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 当前目标 */}
+        <div className="panel-card" style={{padding:'12px', background:'linear-gradient(135deg, #fff 0%, #fffdf5 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(212,168,83,0.15)'}}>
+          <div style={{fontSize:'10px', color:'#d4a853', fontWeight:'700', marginBottom:'5px', letterSpacing:'1px'}}>🏆 当前目标</div>
+          <div style={{fontSize:'12px', fontWeight:'700', color:'#2c2417'}}>
+            {badges.length < 13 ? (
+              <>收集徽章: <span style={{color:'#2196F3'}}>{badges.length} / 30</span></>
+            ) : badges.length < MAPS.length ? (
+              <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！ <span style={{color:'#999', fontSize:'10px'}}>({badges.length}/{MAPS.length})</span></span>
+            ) : (
+              <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -14453,171 +14233,87 @@ const renderMenu = () => {
   const renderRightPanel = () => {
     const currentMap = MAPS.find(m => m.id === currentMapId) || MAPS[0];
     const theme = THEME_CONFIG[currentMap.type] || THEME_CONFIG.grass;
-    
-    // 获取当前地图的精灵分布 (使用 pool 字段)
     const encounters = currentMap.pool || [];
     const totalCount = encounters.length;
     const caughtCount = encounters.filter(id => caughtDex.includes(id)).length;
     const progressPercent = totalCount > 0 ? (caughtCount / totalCount) * 100 : 0;
+    const mapOwner = kingdomWar?.territories?.[currentMapId]?.owner;
+    const ownerFaction = mapOwner && mapOwner !== 'neutral' ? FACTIONS[mapOwner] : null;
 
     return (
-      <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'15px'}}>
-        
-        {/* 1. 地图概况卡片 */}
-        <div className="panel-card" style={{
-            padding:'20px', background:'#fff', borderRadius:'16px', 
-            boxShadow:'0 4px 12px rgba(0,0,0,0.05)', position:'relative', overflow:'hidden',
-            borderLeft: `5px solid ${theme.color || '#4CAF50'}`
-        }}>
-           {/* 背景装饰图标 */}
-           <div style={{
-               position:'absolute', top:'-10px', right:'-10px', fontSize:'80px', 
-               opacity:0.05, pointerEvents:'none', transform:'rotate(-20deg)'
-           }}>
-               {currentMap.icon}
-           </div>
-           
-           <div style={{position:'relative', zIndex:2}}>
-               <div style={{fontSize:'12px', color: theme.color, fontWeight:'bold', letterSpacing:'1px', marginBottom:'5px', textTransform:'uppercase'}}>
-                   Current Location
-               </div>
-               <div style={{fontSize:'22px', fontWeight:'800', color:'#333', display:'flex', alignItems:'center', gap:'8px'}}>
-                   {currentMap.name}
-               </div>
-               <div style={{marginTop:'8px', display:'flex', gap:'8px'}}>
-                   <span style={{fontSize:'11px', background:'#f0f2f5', color:'#666', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold'}}>
-                       建议 Lv.{currentMap.lvl[0]}-{currentMap.lvl[1]}
-                   </span>
-                   <span style={{fontSize:'11px', background: theme.bg, color:'#555', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', border:`1px solid ${theme.color}44`}}>
-                       {theme.name || '野外区域'}
-                   </span>
-               </div>
-           </div>
-        </div>
-
-        {/* 2. 📍 区域生态 (新增功能) */}
-        <div className="panel-card" style={{padding:'15px', background:'#fff', borderRadius:'16px', boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
-            {/* 标题与进度 */}
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px'}}>
-                <div style={{fontSize:'13px', color:'#333', fontWeight:'bold', display:'flex', alignItems:'center', gap:'5px'}}>
-                    <span>🔎</span> 区域生态
-                </div>
-                <div style={{fontSize:'11px', fontWeight:'bold', color: caughtCount===totalCount ? '#4CAF50' : '#666'}}>
-                    {caughtCount} / {totalCount}
-                </div>
+      <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+        {/* 地图信息 */}
+        <div className="panel-card" style={{padding:'16px', background:'linear-gradient(135deg, #fff 0%, #f8f6f0 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)', position:'relative', overflow:'hidden', borderLeft: `4px solid ${theme.color || '#4CAF50'}`}}>
+          <div style={{position:'absolute', top:'-8px', right:'-8px', fontSize:'60px', opacity:0.06, pointerEvents:'none', transform:'rotate(-15deg)'}}>{currentMap.icon}</div>
+          <div style={{position:'relative', zIndex:2}}>
+            <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>Current Location</div>
+            <div style={{fontSize:'18px', fontWeight:'900', color:'#2c2417', marginBottom:'6px'}}>{currentMap.name}</div>
+            <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl[0]}-{currentMap.lvl[1]}</span>
+              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
+              {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
-            
-            {/* 进度条 */}
-            <div style={{height:'4px', background:'#f0f0f0', borderRadius:'2px', marginBottom:'12px', overflow:'hidden'}}>
-                <div style={{width:`${progressPercent}%`, background: theme.color || '#4CAF50', height:'100%', transition:'width 0.5s'}}></div>
-            </div>
-
-            {encounters.length === 0 ? (
-                <div style={{textAlign:'center', padding:'10px', color:'#999', fontSize:'12px', fontStyle:'italic'}}>
-                    这里似乎很安静...
-                </div>
-            ) : (
-                <div style={{
-                    display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(42px, 1fr))', gap:'8px'
-                }}>
-                    {encounters.map(pokeId => {
-                        const poke = POKEDEX.find(p => p.id === pokeId);
-                        if (!poke) return null;
-                        const isCaught = caughtDex.includes(pokeId);
-                        const typeColor = TYPES[poke.type]?.color || '#ccc';
-
-                        return (
-                            <div key={pokeId} 
-                                title={isCaught ? `${poke.name} [${TYPES[poke.type]?.name}]` : "???"}
-                                style={{
-                                    aspectRatio:'1/1', borderRadius:'10px',
-                                    background: isCaught ? '#fff' : '#f5f5f5',
-                                    border: isCaught ? `1px solid ${typeColor}40` : '1px solid #eee',
-                                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                                    position:'relative', cursor:'help', overflow:'hidden',
-                                    transition:'transform 0.2s',
-                                    boxShadow: isCaught ? `0 2px 5px ${typeColor}20` : 'none'
-                                }}
-                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-                            >
-                                {/* 精灵图标 */}
-                                <div style={{
-                                    fontSize:'22px', 
-                                    filter: isCaught ? 'none' : 'grayscale(100%) opacity(0.3) blur(0.5px)',
-                                    transition: '0.3s',
-                                    // 如果是未发现的，稍微缩小一点增加神秘感
-                                    transform: isCaught ? 'scale(1)' : 'scale(0.8)'
-                                }}>
-                                    {renderAvatar(poke)}
-                                </div>
-
-                                {/* 已捕捉标记 (右上角小勾) */}
-                                {isCaught && (
-                                    <div style={{
-                                        position:'absolute', top:'1px', right:'2px', 
-                                        fontSize:'8px', color: typeColor
-                                    }}>
-                                        ✓
-                                    </div>
-                                )}
-                                
-                                {/* 底部属性条 (仅已捕捉显示) */}
-                                {isCaught && (
-                                    <div style={{
-                                        position:'absolute', bottom:0, left:0, right:0, 
-                                        height:'3px', background: typeColor
-                                    }}></div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-
-        {/* 3. 探索日志 */}
-        <div className="panel-card" style={{
-            padding:'15px', background:'#fff', borderRadius:'16px', 
-            boxShadow:'0 4px 12px rgba(0,0,0,0.05)', flex:1, display:'flex', flexDirection:'column', minHeight:'150px'
-        }}>
-          <div style={{fontSize:'12px', color:'#999', marginBottom:'10px', fontWeight:'bold', letterSpacing:'1px', display:'flex', justifyContent:'space-between'}}>
-              <span>📜 探索日志</span>
-              <span style={{fontSize:'10px', cursor:'pointer', color:'#2196F3'}} onClick={() => setGlobalLogs([])}>清空</span>
           </div>
-          
-          <div className="log-list-container" style={{
-              flex:1, overflowY:'auto', maxHeight:'200px', 
-              background:'#f8fafc', borderRadius:'8px', padding:'8px',
-              border:'1px solid #edf2f7', fontSize:'11px', lineHeight:'1.6'
-          }}>
+        </div>
+
+        {/* 区域生态 */}
+        <div className="panel-card" style={{padding:'14px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+            <div style={{fontSize:'11px', color:'#2c2417', fontWeight:'700'}}>🔎 发现生态</div>
+            <div style={{fontSize:'10px', fontWeight:'700', color: caughtCount===totalCount ? '#4CAF50' : '#888'}}>{caughtCount}/{totalCount}</div>
+          </div>
+          <div style={{height:'4px', background:'#f0f0f0', borderRadius:'2px', marginBottom:'10px', overflow:'hidden'}}>
+            <div style={{width:progressPercent+'%', background:`linear-gradient(90deg, ${theme.color || '#4CAF50'}, ${theme.color || '#4CAF50'}80)`, height:'100%', transition:'width 0.5s', borderRadius:'2px'}} />
+          </div>
+          {encounters.length === 0 ? (
+            <div style={{textAlign:'center', padding:'8px', color:'#bbb', fontSize:'11px'}}>这里似乎很安静...</div>
+          ) : (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(38px, 1fr))', gap:'5px'}}>
+              {encounters.map(pokeId => {
+                const poke = POKEDEX.find(p => p.id === pokeId);
+                if (!poke) return null;
+                const isCaught = caughtDex.includes(pokeId);
+                const tc = TYPES[poke.type]?.color || '#ccc';
+                return (
+                  <div key={pokeId} title={isCaught ? `${poke.name} [${TYPES[poke.type]?.name}]` : '???'} style={{aspectRatio:'1/1', borderRadius:'8px', background: isCaught ? '#fff' : '#f5f5f5', border: isCaught ? `1px solid ${tc}35` : '1px solid #eee', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', cursor:'help', overflow:'hidden', transition:'transform 0.2s', boxShadow: isCaught ? `0 1px 4px ${tc}15` : 'none'}} onMouseOver={e => e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform=''}>
+                    <div style={{fontSize:'20px', filter: isCaught ? 'none' : 'grayscale(100%) opacity(0.3) blur(0.5px)', transform: isCaught ? 'scale(1)' : 'scale(0.8)'}}>{renderAvatar(poke)}</div>
+                    {isCaught && <div style={{position:'absolute', top:'1px', right:'2px', fontSize:'7px', color:tc}}>✓</div>}
+                    {isCaught && <div style={{position:'absolute', bottom:0, left:0, right:0, height:'2px', background:tc}} />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 探索日志 */}
+        <div className="panel-card" style={{padding:'14px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)', flex:1, display:'flex', flexDirection:'column', minHeight:'120px'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+            <span style={{fontSize:'11px', color:'#2c2417', fontWeight:'700'}}>📜 冒险日志</span>
+            <span style={{fontSize:'9px', cursor:'pointer', color:'#999', fontWeight:'600'}} onClick={() => setGlobalLogs([])}>清空</span>
+          </div>
+          <div className="log-list-container" style={{flex:1, overflowY:'auto', maxHeight:'200px', background:'#faf9f5', borderRadius:'8px', padding:'8px', border:'1px solid #f0ede6', fontSize:'11px', lineHeight:'1.6'}}>
             {globalLogs.length === 0 ? (
-                <div style={{textAlign:'center', color:'#ccc', marginTop:'20px'}}>暂无日志</div>
+              <div style={{textAlign:'center', color:'#ccc', marginTop:'15px', fontSize:'10px'}}>暂无日志</div>
             ) : (
-                globalLogs.map((log, i) => (
-                <div key={i} style={{marginBottom:'6px', borderBottom:'1px dashed #e2e8f0', paddingBottom:'4px', display:'flex'}}>
-                    <span style={{color:'#94a3b8', marginRight:'6px', minWidth:'35px'}}>[{log.time}]</span>
-                    <span style={{color:'#475569'}}>{log.msg}</span>
+              globalLogs.map((log, i) => (
+                <div key={i} style={{marginBottom:'4px', borderBottom:'1px dashed #ede8dc', paddingBottom:'3px', display:'flex'}}>
+                  <span style={{color:'#b8a88a', marginRight:'5px', minWidth:'32px', fontSize:'10px'}}>[{log.time}]</span>
+                  <span style={{color:'#5a4e3c'}}>{log.msg}</span>
                 </div>
-                ))
+              ))
             )}
           </div>
         </div>
 
-        {/* 4. 图例说明 (精简版) */}
-        <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'16px'}}>
-          <div style={{display:'flex', flexWrap:'wrap', gap:'8px', justifyContent:'center'}}>
-            <LegendItem icon={theme.obstacle} label="障碍" />
-            <LegendItem icon={theme.water} label="水域" />
-            <LegendItem icon="🪨" label="矿石" />
-            <LegendItem icon="🎁" label="宝箱" />
-            <LegendItem icon="🏥" label="中心" />
-            <LegendItem icon="🏪" label="商店" />
-            <LegendItem icon="🔮" label="祭坛" />
-            <LegendItem icon="🧳" label="旅商" />
-            <LegendItem icon="🌀" label="传送" />
-            <LegendItem icon="💎" label="泉水" />
-            <LegendItem icon="⚔️" label="精英" />
+        {/* 图例 */}
+        <div className="panel-card" style={{padding:'10px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+          <div style={{display:'flex', flexWrap:'wrap', gap:'4px', justifyContent:'center'}}>
+            {[{i:theme.obstacle, l:'障碍'}, {i:theme.water, l:'水域'}, {i:'🪨', l:'矿石'}, {i:'🎁', l:'宝箱'}, {i:'🏥', l:'中心'}, {i:'🏪', l:'商店'}, {i:'🔮', l:'祭坛'}, {i:'🧳', l:'旅商'}, {i:'🌀', l:'传送'}, {i:'💎', l:'泉水'}, {i:'⚔️', l:'精英'}].map((item,idx) => (
+              <div key={idx} style={{display:'flex', alignItems:'center', gap:'2px', fontSize:'9px', color:'#888', background:'#f8f6f0', padding:'2px 6px', borderRadius:'8px', border:'1px solid rgba(0,0,0,0.03)'}}>
+                <span>{item.i}</span> {item.l}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -16624,7 +16320,7 @@ const renderMenu = () => {
     // 1. 扣除道具
     setInventory(prev => ({
         ...prev, 
-        misc: { ...prev.misc, rebirth_pill: prev.misc.rebirth_pill - cost }
+        misc: { ...prev.misc, rebirth_pill: (prev.misc.rebirth_pill || 0) - cost }
     }));
 
     // 2. 基于原版生成新数据
