@@ -86,7 +86,7 @@ import {
 } from './data/devilfruits';
 import {
   GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
-  GANG_ICONS, GANG_CREATE_COST, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
+  GANG_ICONS, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
   getGangRank, getGangSkillBonus, getGangSkills, getGangMaxSkills, getGangWarLevel, getGangWarReward,
   generateCafeRecruits, DEFAULT_GANG_STATE, PERSONAL_SKILL_COST_MULT, PERSONAL_SKILL_BASE_COST,
 } from './data/gang';
@@ -96,7 +96,7 @@ import {
   SEASON_CONFIG, WAR_TICK_CONFIG, DEFAULT_KINGDOM_WAR,
   initTerritories, calcFactionPower, getFactionTerritoryCount,
   executeWarTick, checkSeasonEnd, applySeasonRewards, resetKingdomDailyCounts,
-  KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS,
+  KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS, CONTESTED_MAP_IDS,
 } from './data/kingdom';
 import {
   BOND_LEVELS, getBondLevel, PARTNER_COMBOS, getPartnerComboKey,
@@ -4662,33 +4662,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             )}
             <div style={{fontSize:'50px', marginBottom:'12px', filter:'drop-shadow(0 0 20px rgba(255,150,0,0.3))'}}>🏴</div>
             <div style={{fontSize:'20px', fontWeight:'bold', marginBottom:'6px'}}>加入一个帮派</div>
-            <div style={{fontSize:'13px', color:'#9E9E9E', marginBottom:'24px', textAlign:'center'}}>加入帮派后可领俸禄、做任务、打帮战、学技能</div>
+            <div style={{fontSize:'13px', color:'#9E9E9E', marginBottom:'24px', textAlign:'center'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>每个阵营各有4个特色帮派可供选择</div>
 
-            <button onClick={() => {
-              if (!canJoinGang) { alert(`退帮冷却中，还需等待约 ${leaveHoursLeft} 小时`); return; }
-              if (gold < GANG_CREATE_COST) { alert(`创建帮派需要 ${GANG_CREATE_COST.toLocaleString()} 金币`); return; }
-              const name = prompt('给你的帮派起个名字吧:');
-              if (!name || !name.trim()) return;
-              const iconIdx = Math.floor(Math.random() * GANG_ICONS.length);
-              setGold(g => g - GANG_CREATE_COST);
-              const gangId = 'custom_' + Date.now();
-              setGang({
-                gangId,
-                isOwner: true,
-                customGang: {
-                  id: gangId, name: name.trim(), icon: GANG_ICONS[iconIdx],
-                  level: 1, funds: 0, members: [], skills: {}, wins: 0,
-                  color: '#FF6F00', power: 100, desc: '玩家自建帮派',
-                  faction: kingdomWar.faction || null,
-                },
-                contribution: 0, rank: 'leader', personalSkills: {},
-                dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: new Date().toISOString().slice(0,10) },
-              });
-            }} style={{...btnPrimary, width:'80%', marginBottom:'16px', fontSize:'15px', padding:'14px 0'}}>
-              🏗️ 创建帮派（{GANG_CREATE_COST.toLocaleString()} 金币）
-            </button>
-
-            <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px', color:'#FFD700'}}>— 或加入已有帮派 —</div>
+            <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px', color:'#FFD700'}}>— 选择你的帮派 —</div>
             {kingdomWar.faction && <div style={{fontSize:'11px', color:'#90CAF9', marginBottom:'8px', textAlign:'center'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName || ''}，仅显示同阵营帮派</div>}
             <div style={{width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
               {GANG_PRESETS.filter(g => !kingdomWar.faction || g.faction === kingdomWar.faction).map(g => (
@@ -6291,7 +6267,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6606,6 +6582,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
             enemyParty.push(createPet(eid, lv, true, i === 5));
         }
         extraBattleData.kwEnemyFaction = enemyFaction;
+    }
+    // -------------------------------------------------
+    // 15d2. 争夺城池战
+    // -------------------------------------------------
+    else if (type === 'contest_war') {
+        const cm = context.contestMap;
+        trainerName = `[${cm.name}] 守军`;
+        dropGold = cm.drop || 800;
+        const pool = cm.pool;
+        for (let i = 0; i < 4; i++) {
+            const eid = pool[Math.floor(Math.random() * pool.length)];
+            const lv = Math.max(40, cm.lvl[0] + Math.floor(Math.random() * (cm.lvl[1] - cm.lvl[0])));
+            enemyParty.push(createPet(eid, lv, true, i === 3));
+        }
+        extraBattleData.contestMapId = cm.id;
     }
     // -------------------------------------------------
     // 15d. 国战战役副本
@@ -10125,6 +10116,45 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
+    // 9b2. 争夺城池胜利
+    if (battle.type === 'contest_war') {
+        const cMapId = battle.contestMapId;
+        const contestMap = MAPS.find(m => m.id === cMapId);
+        const contribGain = 25 + Math.floor(Math.random() * 16);
+        const tokenGain = 3;
+        const pts = 10 + Math.floor(Math.random() * 6);
+        setKingdomWar(prev => {
+            const cp = { ...(prev.contestProgress || {}) };
+            const mapProg = { ...(cp[cMapId] || { wei: 0, shu: 0, wu: 0 }) };
+            mapProg[prev.faction] = (mapProg[prev.faction] || 0) + pts;
+            cp[cMapId] = mapProg;
+            const maxFaction = FACTION_IDS.reduce((best, fid) => (mapProg[fid] || 0) > (mapProg[best] || 0) ? fid : best, 'wei');
+            const newTerr = { ...prev.territories };
+            if (newTerr[cMapId]) {
+                newTerr[cMapId] = { ...newTerr[cMapId], owner: (mapProg[maxFaction] || 0) >= 20 ? maxFaction : 'neutral' };
+            }
+            return {
+              ...prev,
+              warContribution: (prev.warContribution || 0) + contribGain,
+              factionTokens: (prev.factionTokens || 0) + tokenGain,
+              militaryRank: getMilitaryRank((prev.warContribution || 0) + contribGain).id,
+              contestProgress: cp,
+              territories: newTerr,
+            };
+        });
+        updateAchStat({ kwKills: 1 });
+        updateGangTaskProgress('kw_kill', 1);
+        updateGangTaskProgress('battle_win', 1);
+        alert(`🏰 争夺战胜利！\n\n${contestMap?.name || '城池'} 占领值 +${pts}\n⭐ 战功 +${contribGain}\n🎖️ 阵营令牌 +${tokenGain}`);
+        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+        setParty(updatedParty);
+        setBattle(null);
+        setMapTab('kingdom');
+        setKwTab('contested');
+        setView('world_map');
+        return;
+    }
+
     // 9c. 国战战役副本胜利
     if (battle.type === 'kw_campaign') {
         const campaign = battle.campaignData;
@@ -12440,7 +12470,7 @@ const renderMenu = () => {
 
             <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', marginTop:'2px'}}>
               <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, transparent, rgba(200,160,80,0.25))'}} />
-              <span style={{fontSize:'9px', color:'rgba(200,160,80,0.35)', letterSpacing:'3px', fontWeight:'600'}}>700精灵 · 24属性 · 三国争霸</span>
+              <span style={{fontSize:'9px', color:'rgba(200,160,80,0.35)', letterSpacing:'3px', fontWeight:'600'}}>800精灵 · 24属性 · 三国争霸</span>
               <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, rgba(200,160,80,0.25), transparent)'}} />
             </div>
           </div>
@@ -12902,7 +12932,16 @@ const renderMenu = () => {
             let isLocked = false;
             let lockReason = "";
             
-            if (m.id === 99) {
+            // 都城地图：加入对应阵营即可开放
+            if (m.isCapital) {
+              if (!kingdomWar.faction) { isLocked = true; lockReason = '需加入国战阵营后开放'; }
+              else if (m.capitalFaction !== kingdomWar.faction) { isLocked = true; lockReason = `需通关【${FACTIONS[m.capitalFaction]?.fullName || ''}都城】`; }
+            }
+            // 中立争夺城池：加入任意阵营即可探索
+            else if (m.isContested) {
+              if (!kingdomWar.faction) { isLocked = true; lockReason = '需加入国战阵营后开放'; }
+            }
+            else if (m.id === 99) {
                 if (completedChallenges.includes('ECLIPSE_HQ_CLEARED')) {
                     return (
                         <div key={m.id} className="map-card-pro theme-bg-locked" style={{filter:'grayscale(1)', opacity:0.5, cursor:'not-allowed'}}>
@@ -13215,14 +13254,15 @@ const renderMenu = () => {
                 <div style={{padding:'20px', textAlign:'center'}}>
                   <div style={{fontSize:'40px', marginBottom:'16px'}}>🏴</div>
                   <div style={{fontSize:'22px', fontWeight:'800', color:'#1e293b', marginBottom:'8px'}}>三国争霸 · 国战系统</div>
-                  <div style={{fontSize:'13px', color:'#64748b', marginBottom:'24px'}}>魏蜀吴三国争夺13张主地图的归属权<br/>选择阵营，建功立业！</div>
-                  {!canJoin ? (
-                    <div style={{padding:'16px', background:'rgba(239,68,68,0.1)', borderRadius:'12px', color:'#ef4444', fontSize:'13px', fontWeight:'600'}}>
-                      需要获得至少3个道馆徽章才能参加国战<br/>当前徽章: {badges.length}/3
+                  <div style={{fontSize:'13px', color:'#64748b', marginBottom:'24px'}}>魏蜀吴三国争夺16张地图的归属权<br/>选择阵营，建功立业！</div>
+                  {!canJoin && (
+                    <div style={{padding:'16px', background:'rgba(239,68,68,0.1)', borderRadius:'12px', color:'#ef4444', fontSize:'13px', fontWeight:'600', marginBottom:'16px'}}>
+                      需要获得至少3个道馆徽章才能加入阵营<br/>当前徽章: {badges.length}/3
                     </div>
-                  ) : (
-                    <div style={{display:'grid', gap:'16px'}}>
-                      {FACTION_IDS.map(fid => {
+                  )}
+                  {/* 三国势力预览（所有玩家可见） */}
+                  <div style={{display:'grid', gap:'16px'}}>
+                    {FACTION_IDS.map(fid => {
                         const f = FACTIONS[fid];
                         return (
                           <div key={fid} style={{
@@ -13232,6 +13272,7 @@ const renderMenu = () => {
                             boxShadow:'0 4px 15px rgba(0,0,0,0.2)',
                           }}
                           onClick={() => {
+                            if (!canJoin) { alert(`需要获得至少3个道馆徽章才能加入阵营\n当前徽章: ${badges.length}/3`); return; }
                             if (!window.confirm(`确定加入${f.fullName}吗？\n\n主公: ${f.lord}\n天赋: ${f.bonusDesc}\n\n阵营一旦选择无法更改！`)) return;
                             setKingdomWar(prev => ({
                               ...prev,
@@ -13290,6 +13331,7 @@ const renderMenu = () => {
             const kwSubTabs = [
               { id: 'overview', label: '概览', icon: '📊' },
               { id: 'campaigns', label: '战役', icon: '⚔️' },
+              { id: 'contested', label: '争夺', icon: '🏰' },
               { id: 'capital', label: '都城', icon: '🏯' },
               { id: 'territory', label: '领土', icon: '🗺️' },
               { id: 'warlog', label: '战报', icon: '📜' },
@@ -13482,6 +13524,99 @@ const renderMenu = () => {
                 )}
 
                 {/* 都城 */}
+                {/* 争夺城池 */}
+                {kwTab === 'contested' && (() => {
+                  const contestedMaps = MAPS.filter(m => m.isContested);
+                  const contestData = kw.contestProgress || {};
+                  const today = new Date().toISOString().slice(0, 10);
+                  return (
+                    <div style={{display:'grid', gap:'12px'}}>
+                      <div style={{background:'linear-gradient(135deg, #FFD700, #FF8F00)', borderRadius:'14px', padding:'16px', color:'#fff'}}>
+                        <div style={{fontSize:'16px', fontWeight:'800', marginBottom:'6px'}}>🏰 天下争夺战</div>
+                        <div style={{fontSize:'12px', opacity:0.9}}>三大名城，天下共逐。完成争夺副本为本国积累占领值，占领值最高的阵营控制该城。<br/>控制城池可获得全阵营加成！</div>
+                      </div>
+                      {contestedMaps.map(cm => {
+                        const territory = kw.territories[cm.id];
+                        const owner = territory?.owner || 'neutral';
+                        const ownerF = FACTIONS[owner];
+                        const isOurs = owner === kw.faction;
+                        const progress = contestData[cm.id] || { wei: 0, shu: 0, wu: 0 };
+                        const totalPts = Math.max(1, progress.wei + progress.shu + progress.wu);
+                        const dailyAttempts = contestData[`${cm.id}_attempts_${today}`] || 0;
+                        const maxDailyAttempts = 3;
+                        const canChallenge = dailyAttempts < maxDailyAttempts;
+                        return (
+                          <div key={cm.id} style={{background:'#fff', borderRadius:'14px', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.08)'}}>
+                            <div style={{
+                              background: isOurs ? `linear-gradient(135deg, ${myFaction.color}, ${myFaction.darkColor})`
+                                : owner !== 'neutral' ? `linear-gradient(135deg, ${ownerF?.color || '#666'}, ${ownerF?.darkColor || '#333'})`
+                                : 'linear-gradient(135deg, #78909C, #546E7A)',
+                              padding:'14px 16px', color:'#fff',
+                            }}>
+                              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                <span style={{fontSize:'28px'}}>{cm.icon}</span>
+                                <div style={{flex:1}}>
+                                  <div style={{fontSize:'15px', fontWeight:'800'}}>{cm.name}</div>
+                                  <div style={{fontSize:'11px', opacity:0.85}}>{cm.desc}</div>
+                                </div>
+                                <div style={{textAlign:'right'}}>
+                                  <div style={{fontSize:'12px', fontWeight:'700'}}>{owner === 'neutral' ? '⚪ 中立' : `${ownerF?.icon} ${ownerF?.name}`}</div>
+                                  <div style={{fontSize:'10px', opacity:0.7}}>Lv.{cm.lvl[0]}-{cm.lvl[1]}</div>
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{padding:'14px 16px'}}>
+                              {/* 三国占领值柱状图 */}
+                              <div style={{fontSize:'12px', fontWeight:'600', color:'#1e293b', marginBottom:'8px'}}>占领态势</div>
+                              <div style={{display:'flex', borderRadius:'6px', overflow:'hidden', height:'20px', background:'#e2e8f0', marginBottom:'8px'}}>
+                                {FACTION_IDS.map(fid => {
+                                  const pts = progress[fid] || 0;
+                                  const pct = (pts / totalPts) * 100;
+                                  if (pct < 1) return null;
+                                  return <div key={fid} style={{width:`${pct}%`, background:FACTIONS[fid].color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', color:'#fff', fontWeight:'700', minWidth: pct > 5 ? '0' : '18px'}}>{pts}</div>;
+                                })}
+                              </div>
+                              <div style={{display:'flex', gap:'8px', justifyContent:'space-around', marginBottom:'10px'}}>
+                                {FACTION_IDS.map(fid => (
+                                  <div key={fid} style={{textAlign:'center', fontSize:'10px', color: fid === kw.faction ? FACTIONS[fid].color : '#64748b'}}>
+                                    {FACTIONS[fid].icon} {FACTIONS[fid].name}: {progress[fid] || 0}
+                                  </div>
+                                ))}
+                              </div>
+                              {/* 加成说明 */}
+                              <div style={{background:'#f8fafc', borderRadius:'8px', padding:'8px 10px', fontSize:'11px', color:'#475569', marginBottom:'10px'}}>
+                                {cm.contestBonus.gold && <span>💰 领地日收 +{cm.contestBonus.gold}%　</span>}
+                                {cm.contestBonus.exp && <span>⭐ 经验 +{cm.contestBonus.exp}%　</span>}
+                                {cm.contestBonus.catchRate && <span>🎯 捕捉率 +{cm.contestBonus.catchRate}%　</span>}
+                                {cm.contestBonus.atk && <span>⚔️ 攻击 +{cm.contestBonus.atk}%　</span>}
+                                {cm.contestBonus.def && <span>🛡️ 防御 +{cm.contestBonus.def}%　</span>}
+                                {cm.contestBonus.territory && <span>🗺️ 领地防御 +{cm.contestBonus.territory}%　</span>}
+                                {cm.contestBonus.contribution && <span>🎖️ 战功 +{cm.contestBonus.contribution}%</span>}
+                              </div>
+                              {/* 挑战按钮 */}
+                              <button onClick={() => {
+                                if (!canChallenge) { alert('今日争夺次数已用完 (每日3次)'); return; }
+                                if (!party.some(p => p && p.hp > 0)) { alert('你的队伍已全灭，无法挑战！'); return; }
+                                setKingdomWar(prev => {
+                                  const cp = { ...(prev.contestProgress || {}) };
+                                  cp[`${cm.id}_attempts_${today}`] = (cp[`${cm.id}_attempts_${today}`] || 0) + 1;
+                                  return { ...prev, contestProgress: cp };
+                                });
+                                setTimeout(() => startBattle({ contestMap: cm, drop: cm.drop }, 'contest_war'), 200);
+                              }} style={{
+                                ...btnPrimary, width:'100%', fontSize:'13px', padding:'10px 0',
+                                background: canChallenge ? myFaction.color : '#94a3b8', opacity: canChallenge ? 1 : 0.6,
+                              }}>
+                                ⚔️ 争夺战 ({dailyAttempts}/{maxDailyAttempts})
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
                 {kwTab === 'capital' && (() => {
                   const capitalMapId = CAPITAL_MAP_IDS[kw.faction];
                   const capitalMap = MAPS.find(m => m.id === capitalMapId);

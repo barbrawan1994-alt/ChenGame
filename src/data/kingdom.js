@@ -37,10 +37,14 @@ export const INITIAL_TERRITORIES = {
   5:  'wei', 6:  'shu', 7:  'wu',  8:  'wu',
   9:  'wu',  10: 'wei', 11: 'shu', 12: 'wei',
   13: 'neutral',
+  204: 'neutral', 205: 'neutral', 206: 'neutral',
 };
 
-// 参战地图ID列表
-export const WAR_MAP_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+// 参战地图ID列表（含3张中立争夺城池）
+export const WAR_MAP_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 204, 205, 206];
+
+// 中立争夺城池ID
+export const CONTESTED_MAP_IDS = [204, 205, 206];
 
 // 军衔
 export const MILITARY_RANKS = [
@@ -124,6 +128,7 @@ export const DEFAULT_KINGDOM_WAR = {
   warBalls: 0,
   seasonTitles: [],
   completedCampaigns: [],
+  contestProgress: {},
 };
 
 export const initTerritories = () => {

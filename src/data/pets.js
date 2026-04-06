@@ -1233,25 +1233,148 @@ const TYPE_OVERRIDES = {
   160: 'STEEL', // 帝王拿波: 保持STEEL
 };
 
+// === 新精灵 701-800 三国·仙侠系列 ===
+const SANGUO_PETS = [
+  // 进化链1：青焰兵 → 燎原督 → 赤帝龙胄
+  { id: 701, name: '青焰芽卒', type: 'GRASS', type2: 'FIRE', emoji: '🌱', hp: 48, atk: 52, def: 45, evo: 702, evoLvl: 20 },
+  { id: 702, name: '燎原督尉', type: 'GRASS', type2: 'FIRE', emoji: '🔥', hp: 62, atk: 72, def: 58, evo: 703, evoLvl: 38 },
+  { id: 703, name: '赤帝龙胄', type: 'FIRE', type2: 'DRAGON', emoji: '🐉', hp: 78, atk: 88, def: 80 },
+  // 进化链2：寒江鲛 → 冰封帅
+  { id: 704, name: '寒江鲛童', type: 'WATER', type2: 'ICE', emoji: '🧊', hp: 52, atk: 48, def: 50, evo: 705, evoLvl: 22 },
+  { id: 705, name: '冰封江帅', type: 'WATER', type2: 'ICE', emoji: '❄️', hp: 72, atk: 75, def: 78 },
+  // 进化链3：蛊甲虫线
+  { id: 706, name: '蛊甲幼虫', type: 'BUG', type2: 'POISON', emoji: '🐛', hp: 44, atk: 46, def: 42, evo: 707, evoLvl: 18 },
+  { id: 707, name: '毒罡军蜂', type: 'BUG', type2: 'POISON', emoji: '🐝', hp: 58, atk: 68, def: 55, evo: 708, evoLvl: 36 },
+  { id: 708, name: '噬甲魔帅', type: 'BUG', type2: 'POISON', emoji: '☠️', hp: 72, atk: 85, def: 70 },
+  // 进化链4：游侠 → 镖王
+  { id: 709, name: '游侠少年', type: 'NORMAL', type2: 'FIGHT', emoji: '🥋', hp: 50, atk: 55, def: 44, evo: 710, evoLvl: 28 },
+  { id: 710, name: '铁拳镖王', type: 'NORMAL', type2: 'FIGHT', emoji: '👊', hp: 74, atk: 88, def: 68 },
+  // 进化链5：雷楔 → 霆铠
+  { id: 711, name: '雷楔侍从', type: 'ELECTRIC', type2: 'STEEL', emoji: '⚡', hp: 46, atk: 50, def: 52, evo: 712, evoLvl: 20 },
+  { id: 712, name: '磁锋武卫', type: 'ELECTRIC', type2: 'STEEL', emoji: '🧲', hp: 62, atk: 78, def: 72, evo: 713, evoLvl: 40 },
+  { id: 713, name: '霆铠神匠', type: 'ELECTRIC', type2: 'STEEL', emoji: '🛡️', hp: 82, atk: 95, def: 88 },
+  // 进化链6：岩垒 → 山岳
+  { id: 714, name: '岩垒戍卒', type: 'ROCK', type2: 'GROUND', emoji: '🪨', hp: 55, atk: 48, def: 62, evo: 715, evoLvl: 32 },
+  { id: 715, name: '山岳巨垒', type: 'ROCK', type2: 'GROUND', emoji: '⛰️', hp: 78, atk: 82, def: 95 },
+  // 进化链7：灵筮 → 玄凰天女
+  { id: 716, name: '灵筮童子', type: 'PSYCHIC', type2: 'FAIRY', emoji: '🔮', hp: 46, atk: 42, def: 44, evo: 717, evoLvl: 22 },
+  { id: 717, name: '心镜仙子', type: 'PSYCHIC', type2: 'FAIRY', emoji: '🪞', hp: 62, atk: 70, def: 65, evo: 718, evoLvl: 42 },
+  { id: 718, name: '玄凰天女', type: 'PSYCHIC', type2: 'FAIRY', emoji: '👸', hp: 78, atk: 88, def: 82 },
+  // 进化链8：夜啼 → 幽冥帅
+  { id: 719, name: '夜啼影魅', type: 'DARK', type2: 'GHOST', emoji: '🌑', hp: 48, atk: 52, def: 40, evo: 720, evoLvl: 30 },
+  { id: 720, name: '幽冥鬼帅', type: 'DARK', type2: 'GHOST', emoji: '👻', hp: 74, atk: 95, def: 68 },
+  // 进化链9：青鸢 → 寰宇风神
+  { id: 721, name: '青鸢童羽', type: 'FLYING', type2: 'WIND', emoji: '🪶', hp: 50, atk: 54, def: 42, evo: 722, evoLvl: 24 },
+  { id: 722, name: '朔风飞将', type: 'FLYING', type2: 'WIND', emoji: '🌪️', hp: 68, atk: 82, def: 62, evo: 723, evoLvl: 44 },
+  { id: 723, name: '寰宇风神', type: 'FLYING', type2: 'WIND', emoji: '🌀', hp: 88, atk: 100, def: 78 },
+  // 进化链10：砂铁 → 镇岳
+  { id: 724, name: '砂铁游侠', type: 'GROUND', type2: 'STEEL', emoji: '⚙️', hp: 56, atk: 50, def: 64, evo: 725, evoLvl: 34 },
+  { id: 725, name: '镇岳铁卫', type: 'GROUND', type2: 'STEEL', emoji: '🗡️', hp: 82, atk: 92, def: 100 },
+  // 进化链11：霜铃 → 璇玑雪女
+  { id: 726, name: '霜铃小妖', type: 'ICE', type2: 'FAIRY', emoji: '🔔', hp: 44, atk: 40, def: 45, evo: 727, evoLvl: 20 },
+  { id: 727, name: '寒冰铃姬', type: 'ICE', type2: 'FAIRY', emoji: '❄️', hp: 62, atk: 68, def: 62, evo: 728, evoLvl: 38 },
+  { id: 728, name: '璇玑雪女', type: 'ICE', type2: 'FAIRY', emoji: '🧚', hp: 82, atk: 90, def: 85 },
+  // 进化链12：古弦 → 裂空魔音
+  { id: 729, name: '古弦琴灵', type: 'SOUND', type2: 'PSYCHIC', emoji: '🎵', hp: 46, atk: 44, def: 40, evo: 730, evoLvl: 26 },
+  { id: 730, name: '裂空魔音', type: 'SOUND', type2: 'PSYCHIC', emoji: '🎶', hp: 80, atk: 98, def: 75 },
+  // 进化链13：萤火书虫 → 万卷天书
+  { id: 731, name: '萤火书虫', type: 'BUG', type2: 'LIGHT', emoji: '📜', hp: 42, atk: 38, def: 40, evo: 732, evoLvl: 18 },
+  { id: 732, name: '纸蝶墨仙', type: 'BUG', type2: 'LIGHT', emoji: '🦋', hp: 58, atk: 65, def: 58, evo: 733, evoLvl: 36 },
+  { id: 733, name: '万卷天书灵', type: 'BUG', type2: 'LIGHT', emoji: '📖', hp: 76, atk: 84, def: 80 },
+  // 进化链14：赤霄剑胚 → 龙渊剑魂
+  { id: 734, name: '赤霄剑胚', type: 'STEEL', type2: 'DRAGON', emoji: '⚔️', hp: 54, atk: 58, def: 66, evo: 735, evoLvl: 36 },
+  { id: 735, name: '龙渊剑魂', type: 'STEEL', type2: 'DRAGON', emoji: '🗡️', hp: 88, atk: 102, def: 95 },
+  // 进化链15：铜人 → 明王
+  { id: 736, name: '铜人罗汉', type: 'FIGHT', type2: 'ROCK', emoji: '🪷', hp: 50, atk: 62, def: 58, evo: 737, evoLvl: 24 },
+  { id: 737, name: '金刚武僧', type: 'FIGHT', type2: 'ROCK', emoji: '🧘', hp: 68, atk: 88, def: 82, evo: 738, evoLvl: 42 },
+  { id: 738, name: '不动明王将', type: 'FIGHT', type2: 'ROCK', emoji: '✊', hp: 88, atk: 108, def: 102 },
+  // 独立精灵 739-750
+  { id: 739, name: '杏林小童', type: 'HEAL', type2: 'FAIRY', emoji: '🌿', hp: 58, atk: 52, def: 55 },
+  { id: 740, name: '陨星碑灵', type: 'COSMIC', type2: 'ROCK', emoji: '☄️', hp: 62, atk: 60, def: 72 },
+  { id: 741, name: '祠堂灯魁', type: 'LIGHT', type2: 'GHOST', emoji: '🏮', hp: 55, atk: 68, def: 50 },
+  { id: 742, name: '雷蛊毒使', type: 'POISON', type2: 'ELECTRIC', emoji: '⚡', hp: 60, atk: 82, def: 55 },
+  { id: 743, name: '赤壁苍龙', type: 'DRAGON', type2: 'WATER', emoji: '🐲', hp: 72, atk: 88, def: 70 },
+  { id: 744, name: '古战场魂', type: 'GHOST', type2: 'FIGHT', emoji: '⚔️', hp: 65, atk: 92, def: 58 },
+  { id: 745, name: '织梦星娥', type: 'FAIRY', type2: 'COSMIC', emoji: '✨', hp: 62, atk: 70, def: 65 },
+  { id: 746, name: '八卦阵眼', type: 'PSYCHIC', type2: 'GROUND', emoji: '☯️', hp: 68, atk: 75, def: 82 },
+  { id: 747, name: '朝阳信鸽', type: 'NORMAL', type2: 'LIGHT', emoji: '🕊️', hp: 58, atk: 62, def: 52 },
+  { id: 748, name: '清风医仙', type: 'WIND', type2: 'HEAL', emoji: '💨', hp: 70, atk: 65, def: 62 },
+  { id: 749, name: '蝉鸣暗刃', type: 'SOUND', type2: 'DARK', emoji: '🎼', hp: 64, atk: 90, def: 55 },
+  { id: 750, name: '竹节铁螂', type: 'BUG', type2: 'STEEL', emoji: '🪲', hp: 66, atk: 78, def: 80 },
+  // === 强者 751-780 ===
+  { id: 751, name: '竹林隐士', type: 'GRASS', type2: 'DARK', emoji: '🎋', hp: 78, atk: 88, def: 82 },
+  { id: 752, name: '水火鼎灵', type: 'FIRE', type2: 'WATER', emoji: '♨️', hp: 82, atk: 92, def: 76 },
+  { id: 753, name: '雷神江兽', type: 'WATER', type2: 'ELECTRIC', emoji: '🌊', hp: 90, atk: 95, def: 88 },
+  { id: 754, name: '银翼雷将', type: 'ELECTRIC', type2: 'FLYING', emoji: '🦅', hp: 76, atk: 110, def: 72 },
+  { id: 755, name: '寒铁玄兵', type: 'ICE', type2: 'STEEL', emoji: '🧊', hp: 88, atk: 85, def: 105 },
+  { id: 756, name: '拳毒刺客', type: 'FIGHT', type2: 'POISON', emoji: '🗡️', hp: 72, atk: 115, def: 70 },
+  { id: 757, name: '妖花蛊后', type: 'POISON', type2: 'FAIRY', emoji: '🌺', hp: 80, atk: 88, def: 92 },
+  { id: 758, name: '熔砂战象', type: 'GROUND', type2: 'FIRE', emoji: '🐘', hp: 98, atk: 100, def: 95 },
+  { id: 759, name: '翔龙翼将', type: 'FLYING', type2: 'DRAGON', emoji: '🐉', hp: 84, atk: 105, def: 78 },
+  { id: 760, name: '念甲虫师', type: 'PSYCHIC', type2: 'BUG', emoji: '🐜', hp: 74, atk: 95, def: 80 },
+  { id: 761, name: '琥珀甲虫', type: 'BUG', type2: 'ROCK', emoji: '💎', hp: 78, atk: 90, def: 98 },
+  { id: 762, name: '玉山灵石', type: 'ROCK', type2: 'FAIRY', emoji: '🗿', hp: 85, atk: 82, def: 110 },
+  { id: 763, name: '镜中铠魄', type: 'GHOST', type2: 'STEEL', emoji: '🪞', hp: 76, atk: 98, def: 88 },
+  { id: 764, name: '地脉龙骑', type: 'DRAGON', type2: 'GROUND', emoji: '🐲', hp: 92, atk: 108, def: 95 },
+  { id: 765, name: '慈悲医甲', type: 'STEEL', type2: 'HEAL', emoji: '⚕️', hp: 88, atk: 80, def: 108 },
+  { id: 766, name: '舞戟天女', type: 'FAIRY', type2: 'FIGHT', emoji: '🔱', hp: 82, atk: 112, def: 85 },
+  { id: 767, name: '黑风寨主', type: 'DARK', type2: 'WIND', emoji: '🏴', hp: 80, atk: 108, def: 82 },
+  { id: 768, name: '清风圣使', type: 'WIND', type2: 'LIGHT', emoji: '✨', hp: 78, atk: 95, def: 88 },
+  { id: 769, name: '星河明灯', type: 'LIGHT', type2: 'COSMIC', emoji: '🌟', hp: 84, atk: 100, def: 86 },
+  { id: 770, name: '龙涎灵医', type: 'HEAL', type2: 'DRAGON', emoji: '💚', hp: 96, atk: 82, def: 100 },
+  { id: 771, name: '虚空游魂', type: 'COSMIC', type2: 'GHOST', emoji: '🌌', hp: 78, atk: 105, def: 80 },
+  { id: 772, name: '钟鸣岩将', type: 'SOUND', type2: 'ROCK', emoji: '🔔', hp: 88, atk: 92, def: 102 },
+  { id: 773, name: '卜算书生', type: 'NORMAL', type2: 'PSYCHIC', emoji: '📿', hp: 72, atk: 88, def: 75 },
+  { id: 774, name: '溺海归魂', type: 'WATER', type2: 'GHOST', emoji: '👻', hp: 86, atk: 98, def: 84 },
+  { id: 775, name: '冰火丹尊', type: 'FIRE', type2: 'ICE', emoji: '❄️', hp: 80, atk: 118, def: 78 },
+  { id: 776, name: '地雷元帅', type: 'ELECTRIC', type2: 'GROUND', emoji: '💥', hp: 90, atk: 102, def: 92 },
+  { id: 777, name: '机关藤兵', type: 'GRASS', type2: 'STEEL', emoji: '🤖', hp: 82, atk: 95, def: 96 },
+  { id: 778, name: '冰川风鹰', type: 'ICE', type2: 'FLYING', emoji: '🦅', hp: 76, atk: 100, def: 78 },
+  { id: 779, name: '明光武圣', type: 'FIGHT', type2: 'LIGHT', emoji: '☀️', hp: 94, atk: 115, def: 90 },
+  { id: 780, name: '千毒魔君', type: 'POISON', type2: 'DARK', emoji: '☠️', hp: 88, atk: 118, def: 86 },
+  // === 精英 / 传说 781-795 ===
+  { id: 781, name: '天启龙皇', type: 'DRAGON', type2: 'LIGHT', emoji: '🐉', hp: 110, atk: 135, def: 105 },
+  { id: 782, name: '诸葛星象', type: 'PSYCHIC', type2: 'COSMIC', emoji: '🌠', hp: 98, atk: 128, def: 95 },
+  { id: 783, name: '铁甲真龙', type: 'STEEL', type2: 'DRAGON', emoji: '🛡️', hp: 115, atk: 120, def: 130 },
+  { id: 784, name: '银河海皇', type: 'WATER', type2: 'COSMIC', emoji: '🌌', hp: 120, atk: 118, def: 110 },
+  { id: 785, name: '焚星炎帝', type: 'FIRE', type2: 'COSMIC', emoji: '🔥', hp: 108, atk: 145, def: 98 },
+  { id: 786, name: '幽冥龙魂', type: 'GHOST', type2: 'DRAGON', emoji: '💀', hp: 105, atk: 132, def: 102 },
+  { id: 787, name: '九天玄女', type: 'FAIRY', type2: 'LIGHT', emoji: '🧚', hp: 112, atk: 125, def: 108 },
+  { id: 788, name: '雷霆天君', type: 'ELECTRIC', type2: 'COSMIC', emoji: '⚡', hp: 102, atk: 140, def: 100 },
+  { id: 789, name: '极寒冰魄', type: 'ICE', type2: 'COSMIC', emoji: '❄️', hp: 118, atk: 115, def: 120 },
+  { id: 790, name: '达摩金身', type: 'FIGHT', type2: 'HEAL', emoji: '🙏', hp: 125, atk: 128, def: 115 },
+  { id: 791, name: '九天风龙', type: 'WIND', type2: 'DRAGON', emoji: '🐲', hp: 108, atk: 130, def: 105 },
+  { id: 792, name: '堕魔伪神', type: 'DARK', type2: 'GOD', emoji: '😈', hp: 115, atk: 138, def: 105 },
+  { id: 793, name: '星泉医圣', type: 'HEAL', type2: 'COSMIC', emoji: '💫', hp: 128, atk: 110, def: 125 },
+  { id: 794, name: '天籁圣音', type: 'SOUND', type2: 'LIGHT', emoji: '🎼', hp: 104, atk: 125, def: 112 },
+  { id: 795, name: '虫族圣母', type: 'BUG', type2: 'GOD', emoji: '🦋', hp: 112, atk: 122, def: 118 },
+  // === 神域 796-800 ===
+  { id: 796, name: '伏羲龙祖', type: 'GOD', type2: 'DRAGON', emoji: '☯️', hp: 138, atk: 155, def: 125 },
+  { id: 797, name: '盘古星河', type: 'GOD', type2: 'COSMIC', emoji: '🌌', hp: 142, atk: 148, def: 130 },
+  { id: 798, name: '昊天金乌', type: 'GOD', type2: 'LIGHT', emoji: '☀️', hp: 135, atk: 152, def: 128 },
+  { id: 799, name: '太上玄灵', type: 'GOD', type2: 'PSYCHIC', emoji: '🔯', hp: 130, atk: 160, def: 120 },
+  { id: 800, name: '女娲慈灵', type: 'GOD', type2: 'HEAL', emoji: '🌸', hp: 150, atk: 145, def: 140 },
+];
+
 // Build POKEDEX
 const POKEDEX = [];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
     UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600,
-    ...GODS_610, ...DIGIMON_PETS, ...EXTRA_PETS_700
+    ...GODS_610, ...DIGIMON_PETS, ...EXTRA_PETS_700, ...SANGUO_PETS
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 700);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 800);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
     const entry = { ...existing };
     if (TYPE_OVERRIDES[i]) entry.type = TYPE_OVERRIDES[i];
-    if (DUAL_TYPE_MAP[i]) entry.type2 = DUAL_TYPE_MAP[i];
+    if (DUAL_TYPE_MAP[i] && !entry.type2) entry.type2 = DUAL_TYPE_MAP[i];
     POKEDEX.push(entry);
   } else {
     POKEDEX.push({ id: i, name: `野生精灵#${i}`, type: 'NORMAL', emoji: '🐾', hp: 50, atk: 50, def: 50 });
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS, EXTRA_PETS_700 };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS, EXTRA_PETS_700, SANGUO_PETS };
