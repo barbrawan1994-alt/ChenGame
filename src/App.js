@@ -5169,7 +5169,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             const npcMembers = gangInfo?.members || [];
             const factionData = gangInfo?.faction ? FACTIONS[gangInfo.faction] : null;
             const myRank = getCurrentGangRank();
-            const leaderLv = (gangInfo?.level || 1) * 15 + 50;
+            const leaderLv = Math.min(100, (gangInfo?.level || 1) * 15 + 50);
             const basePool = gangInfo?.teamPool || [];
             const genMemberTeam = (seed, lv) => {
               const team = [];
@@ -5227,7 +5227,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         <div style={{marginTop:'8px', padding:'10px 12px', background:'rgba(0,0,0,0.2)', borderRadius:'8px'}}>
                           <div style={{fontSize:'10px', color:'#aaa', marginBottom:'8px', fontWeight:'600'}}>精灵阵容</div>
                           <div style={{display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:'8px'}}>
-                            {(isMe ? party : (m.team || []).map(pid => { const base = POKEDEX.find(x => x.id === pid); return base ? createPet(base.id, m.level || 50) : null; }).filter(Boolean)).map((pet, j) => (
+                            {(isMe ? party : (m.team || []).map(pid => { const base = POKEDEX.find(x => x.id === pid); return base ? createPet(base.id, Math.min(100, m.level || 50)) : null; }).filter(Boolean)).map((pet, j) => (
                               <div key={j} style={{textAlign:'center'}}>
                                 <div style={{width:'48px', height:'48px', margin:'0 auto 4px', borderRadius:'10px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'32px'}}>{renderAvatar(pet)}</div>
                                 <div style={{fontSize:'9px', color:'#ccc', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{pet.name}</div>
