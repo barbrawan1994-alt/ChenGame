@@ -12614,81 +12614,82 @@ const renderGeneralDex = () => {
   }, {});
 
   return (
-    <div style={{position:'fixed', inset:0, background:'linear-gradient(160deg, #0a0a1a 0%, #1a0a0a 40%, #1f0d0d 70%, #0a1628 100%)', zIndex:9999, overflow:'auto'}}>
-      <div style={{maxWidth:'480px', margin:'0 auto', padding:'16px 12px 80px'}}>
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px'}}>
-          <button onClick={() => setView('grid_map')} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', padding:'6px 14px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', fontWeight:'600'}}>← 返回</button>
-          <div style={{fontSize:'18px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>📜 三国名将图鉴</div>
-          <div style={{width:'60px'}}></div>
+    <div style={{position:'fixed', inset:0, background:'linear-gradient(160deg, #0a0a1a 0%, #12081a 40%, #1a0d0d 70%, #0a1628 100%)', zIndex:9999, overflow:'auto'}}>
+      <div style={{maxWidth:'1100px', margin:'0 auto', padding:'24px 32px 60px'}}>
+
+        {/* 顶部栏 */}
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px'}}>
+          <button onClick={() => setView('grid_map')} style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#ccc', padding:'8px 20px', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+          <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>📜 三国名将图鉴</div>
+          <div style={{fontSize:'13px', color:'rgba(255,255,255,0.5)', fontWeight:'600'}}>{filteredGens.length} 位 · {filteredR} 已收集</div>
         </div>
 
-        {/* 收集进度总览 */}
-        <div style={{background:'rgba(255,255,255,0.06)', borderRadius:'14px', padding:'14px', marginBottom:'12px', border:'1px solid rgba(255,255,255,0.08)'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
-            <span style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>收集进度</span>
-            <span style={{fontSize:'13px', fontWeight:'700', color: themeColor}}>{totalR} / {SANGUO_GENERALS.length}</span>
-          </div>
-          <div style={{display:'flex', gap:'3px', marginBottom:'8px'}}>
-            {Array.from({length: 30}, (_, i) => (
-              <div key={i} style={{flex:1, height:'6px', borderRadius:'3px', background: i < Math.floor(totalR / SANGUO_GENERALS.length * 30) ? themeColor : 'rgba(255,255,255,0.1)'}} />
-            ))}
-          </div>
-          <div style={{display:'flex', gap:'6px', justifyContent:'center', flexWrap:'wrap'}}>
-            {fStats.map(({f, total, got}) => (
-              <span key={f} style={{fontSize:'10px', color: factionColors[f], fontWeight:'700', background:'rgba(255,255,255,0.06)', padding:'2px 8px', borderRadius:'6px'}}>
-                {factionNames[f]} {got}/{total}
-              </span>
-            ))}
-          </div>
-          {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
-            <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'8px', padding:'6px 8px', background:'rgba(255,255,255,0.04)', borderRadius:'8px'}}>
-              <span style={{fontSize:'9px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'100%'}}>总奖励加成:</span>
-              {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
-                <span key={k} style={{fontSize:'9px', fontWeight:'700', color: themeColor, background: themeColor+'15', padding:'2px 6px', borderRadius:'4px'}}>{bonusLabels[k]||k}+{v}%</span>
+        {/* 信息栏：进度 + 抽卡 */}
+        <div style={{display:'flex', gap:'16px', marginBottom:'20px', flexWrap:'wrap'}}>
+          {/* 进度 */}
+          <div style={{flex:'1 1 400px', background:'rgba(255,255,255,0.04)', borderRadius:'14px', padding:'16px 20px', border:'1px solid rgba(255,255,255,0.06)'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
+              <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>收集进度</span>
+              <span style={{fontSize:'16px', fontWeight:'800', color: themeColor}}>{totalR} / {SANGUO_GENERALS.length}</span>
+            </div>
+            <div style={{height:'8px', borderRadius:'4px', background:'rgba(255,255,255,0.08)', marginBottom:'12px', overflow:'hidden'}}>
+              <div style={{height:'100%', width:`${(totalR / SANGUO_GENERALS.length * 100).toFixed(1)}%`, background:`linear-gradient(90deg, ${themeColor}, ${themeColor}cc)`, borderRadius:'4px', transition:'width 0.3s'}} />
+            </div>
+            <div style={{display:'flex', gap:'8px', justifyContent:'center', flexWrap:'wrap'}}>
+              {fStats.map(({f, total, got}) => (
+                <span key={f} style={{fontSize:'12px', color: factionColors[f], fontWeight:'700', background:'rgba(255,255,255,0.06)', padding:'3px 12px', borderRadius:'6px'}}>
+                  {factionNames[f]} {got}/{total}
+                </span>
               ))}
+            </div>
+            {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
+              <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px', padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}>
+                <span style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'100%'}}>名将总加成:</span>
+                {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
+                  <span key={k} style={{fontSize:'11px', fontWeight:'700', color: themeColor, background: themeColor+'18', padding:'3px 8px', borderRadius:'5px'}}>{bonusLabels[k]||k}+{v}%</span>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* 赛季抽卡 */}
+          {draws > 0 && (
+            <div onClick={doGeneralDraw} style={{flex:'0 0 220px', background:'linear-gradient(135deg, #B71C1C, #D32F2F)', borderRadius:'14px', padding:'20px', textAlign:'center', cursor:'pointer', boxShadow:'0 4px 20px rgba(183,28,28,0.4)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+              <div style={{fontSize:'36px', marginBottom:'6px'}}>🎴</div>
+              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff'}}>赛季抽卡</div>
+              <div style={{fontSize:'13px', color:'rgba(255,255,255,0.85)', marginTop:'4px'}}>剩余 <b>{draws}</b> 次</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.6)', marginTop:'2px'}}>点击抽取名将</div>
             </div>
           )}
         </div>
 
-        {/* 赛季抽将 */}
-        {draws > 0 && (
-          <div style={{background:'linear-gradient(135deg, #B71C1C, #D32F2F)', borderRadius:'14px', padding:'14px', marginBottom:'12px', textAlign:'center', cursor:'pointer', boxShadow:'0 4px 15px rgba(183,28,28,0.4)'}} onClick={doGeneralDraw}>
-            <div style={{fontSize:'24px', marginBottom:'4px'}}>🎴</div>
-            <div style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>赛季名将抽卡</div>
-            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', marginTop:'2px'}}>剩余 {draws} 次抽卡机会，点击抽取！</div>
+        {/* 筛选栏 */}
+        <div style={{display:'flex', gap:'8px', marginBottom:'20px', alignItems:'center', flexWrap:'wrap'}}>
+          <div style={{display:'flex', gap:'4px', background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'4px'}}>
+            {['all','wei','shu','wu','neutral'].map(f => (
+              <button key={f} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}
+                style={{fontSize:'13px', fontWeight:'700', padding:'6px 14px', borderRadius:'6px', border:'none', cursor:'pointer',
+                  background: genDexFilter.faction === f ? 'rgba(255,255,255,0.12)' : 'transparent',
+                  color: genDexFilter.faction === f ? (factionColors[f]||'#fff') : 'rgba(255,255,255,0.35)',
+                }}>{factionNames[f]}</button>
+            ))}
           </div>
-        )}
-
-        {/* 筛选 */}
-        <div style={{display:'flex', gap:'4px', marginBottom:'8px', background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'4px'}}>
-          {['all','wei','shu','wu','neutral'].map(f => (
-            <button key={f} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}
-              style={{flex:1, fontSize:'10px', fontWeight:'700', padding:'5px 2px', borderRadius:'6px', border:'none', cursor:'pointer',
-                background: genDexFilter.faction === f ? 'rgba(255,255,255,0.12)' : 'transparent',
-                color: genDexFilter.faction === f ? (factionColors[f]||'#fff') : 'rgba(255,255,255,0.4)',
-              }}>{factionNames[f]}</button>
-          ))}
-        </div>
-        <div style={{display:'flex', gap:'4px', marginBottom:'10px', alignItems:'center'}}>
-          {['all','SSR','SR','R'].map(r => (
-            <button key={r} onClick={() => setGenDexFilter(p => ({...p, rarity: r}))}
-              style={{fontSize:'9px', fontWeight:'700', padding:'3px 8px', borderRadius:'5px', border:'1px solid', cursor:'pointer',
-                background: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.bgColor||'rgba(255,255,255,0.15)') : 'transparent',
-                color: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.4)',
-                borderColor: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.1)',
-              }}>{rarityNames[r]}</button>
-          ))}
-          <input type="text" placeholder="搜索..." value={genDexFilter.search}
+          <div style={{display:'flex', gap:'4px'}}>
+            {['all','SSR','SR','R'].map(r => (
+              <button key={r} onClick={() => setGenDexFilter(p => ({...p, rarity: r}))}
+                style={{fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'6px', border:'1px solid', cursor:'pointer',
+                  background: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.bgColor||'rgba(255,255,255,0.15)') : 'transparent',
+                  color: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.35)',
+                  borderColor: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.1)',
+                }}>{rarityNames[r]}</button>
+            ))}
+          </div>
+          <input type="text" placeholder="搜索名将..." value={genDexFilter.search}
             onChange={e => setGenDexFilter(p => ({...p, search: e.target.value}))}
-            style={{flex:1, fontSize:'11px', padding:'4px 8px', borderRadius:'6px', border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.06)', color:'#fff', outline:'none'}} />
+            style={{width:'180px', fontSize:'13px', padding:'6px 12px', borderRadius:'8px', border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.06)', color:'#fff', outline:'none'}} />
         </div>
 
-        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginBottom:'8px'}}>
-          显示 {filteredGens.length} 位 ({filteredR} 已收集)
-        </div>
-
-        {/* 名将列表 */}
-        <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
+        {/* 名将卡片网格 - PC端大卡片 */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'12px'}}>
           {filteredGens.map(gen => {
             const isR = recruitedIds.has(gen.id);
             const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
@@ -12696,31 +12697,35 @@ const renderGeneralDex = () => {
             const facColor = factionColors[gen.faction] || '#666';
             return (
               <div key={gen.id} onClick={() => isR && setGenDexDetail(gen)} style={{
-                display:'flex', alignItems:'center', gap:'10px', padding:'8px 10px', borderRadius:'10px',
+                textAlign:'center', padding:'16px 8px 12px', borderRadius:'14px',
                 cursor: isR ? 'pointer' : 'default',
-                background: isR ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)',
-                borderLeft: `3px solid ${isR ? facColor : 'rgba(255,255,255,0.06)'}`,
-                opacity: isR ? 1 : 0.5, transition:'all 0.2s',
-              }}>
+                background: isR ? `linear-gradient(180deg, ${facColor}18, rgba(255,255,255,0.03))` : 'rgba(255,255,255,0.02)',
+                border:`1px solid ${isR ? facColor+'40' : 'rgba(255,255,255,0.05)'}`,
+                opacity: isR ? 1 : 0.45, transition:'all 0.25s',
+                position:'relative',
+              }}
+              onMouseEnter={e => { if (isR) { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow=`0 8px 24px ${facColor}30`; }}}
+              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}>
+                {/* 稀有度角标 */}
+                <div style={{position:'absolute', top:'6px', right:'6px', fontSize:'9px', fontWeight:'800', color:rc.color||'#888', background:(rc.bgColor||'rgba(255,255,255,0.08)'), padding:'2px 6px', borderRadius:'4px', lineHeight:'1.3'}}>{rc.label||gen.rarity}</div>
+                {/* 头像 */}
                 <div style={{
-                  width:'36px', height:'36px', borderRadius:'50%', flexShrink:0,
-                  background: isR ? pt.bg : 'rgba(255,255,255,0.08)',
+                  width:'56px', height:'56px', borderRadius:'50%', margin:'0 auto 8px',
+                  background: isR ? pt.bg : 'rgba(255,255,255,0.06)',
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'18px', fontWeight:'900', color: isR ? pt.textColor : 'rgba(255,255,255,0.25)',
-                  textShadow: isR ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none',
-                  border: `2px solid ${isR ? pt.border : 'rgba(255,255,255,0.1)'}`,
-                  boxShadow: isR && gen.rarity === 'SSR' ? `0 0 8px ${pt.border}40` : 'none',
+                  fontSize:'28px', fontWeight:'900', color: isR ? pt.textColor : 'rgba(255,255,255,0.2)',
+                  textShadow: isR ? '1px 1px 3px rgba(0,0,0,0.6)' : 'none',
+                  border: `3px solid ${isR ? pt.border : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: isR && gen.rarity === 'SSR' ? `0 0 14px ${pt.border}50` : 'none',
                 }}>{isR ? pt.surname : '?'}</div>
-                <div style={{flex:1, minWidth:0}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                    <span style={{fontSize:'13px', fontWeight:'800', color: isR ? '#fff' : 'rgba(255,255,255,0.3)'}}>{gen.name}</span>
-                    <span style={{fontSize:'8px', fontWeight:'700', color:rc.color||'#888', background:(rc.bgColor||'rgba(255,255,255,0.08)'), padding:'1px 5px', borderRadius:'3px', lineHeight:'1.4'}}>{rc.label||gen.rarity}</span>
-                  </div>
-                  <div style={{fontSize:'10px', color: isR ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)', marginTop:'1px'}}>{gen.title} · {factionNames[gen.faction]||'群雄'}</div>
-                </div>
-                {isR && (
-                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', flexShrink:0}}>✓</div>
-                )}
+                {/* 名字 */}
+                <div style={{fontSize:'14px', fontWeight:'800', color: isR ? '#fff' : 'rgba(255,255,255,0.35)', lineHeight:'1.3'}}>{gen.name}</div>
+                {/* 称号 */}
+                <div style={{fontSize:'10px', color: isR ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)', marginTop:'3px'}}>{gen.title}</div>
+                {/* 阵营 */}
+                <div style={{fontSize:'9px', color: facColor, fontWeight:'700', marginTop:'4px', opacity: isR ? 0.8 : 0.4}}>{factionNames[gen.faction]||'群雄'}</div>
+                {/* 已收集标记 */}
+                {isR && <div style={{position:'absolute', top:'6px', left:'6px', fontSize:'10px', color:'#4CAF50'}}>✓</div>}
               </div>
             );
           })}
