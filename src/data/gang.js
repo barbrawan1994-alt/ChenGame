@@ -2,46 +2,56 @@
 // 帮派系统 v2.0 - 国战联动·实用增益
 // ==========================================
 
-const RECRUIT_NAMES = [
-  '赵云','李白','王刚','陈风','周海','吴铭','郑远','孙亮','马超','杨威',
-  '黄峰','林静','刘勇','张翼','徐达','高远','韩冰','唐龙','朱雀','罗刹',
-  '萧寒','楚天','秦明','宋江','卫庄','沈浪','燕青','霍去病','花木兰','穆桂英',
-  '甘宁','吕蒙','陆逊','太史慈','关羽','张飞','典韦','许褚','黄忠','魏延',
+const WEI_GENERALS = [
+  '曹操','夏侯惇','夏侯渊','张辽','徐晃','张郃','于禁','乐进','李典','曹仁',
+  '曹洪','曹纯','典韦','许褚','荀彧','荀攸','郭嘉','贾诩','程昱','司马懿',
+  '庞德','王朗','钟繇','蔡瑁','张绣','曹丕','曹植','邓艾','钟会','满宠',
 ];
+const SHU_GENERALS = [
+  '刘备','关羽','张飞','赵云','马超','黄忠','诸葛亮','庞统','法正','姜维',
+  '魏延','严颜','马岱','王平','张翼','廖化','关兴','张苞','李严','吴懿',
+  '糜竺','简雍','孙乾','马良','马谡','费祎','蒋琬','董允','黄权','刘封',
+];
+const WU_GENERALS = [
+  '孙坚','孙策','孙权','周瑜','鲁肃','吕蒙','陆逊','甘宁','太史慈','黄盖',
+  '程普','韩当','周泰','凌统','丁奉','徐盛','蒋钦','潘璋','朱然','陆抗',
+  '诸葛瑾','张昭','顾雍','步骘','全琮','吕范','贺齐','孙桓','孙翊','朱桓',
+];
+const RECRUIT_NAMES = [...WEI_GENERALS, ...SHU_GENERALS, ...WU_GENERALS];
 
 export const GANG_PRESETS = [
   // === 魏国 (4) ===
   {
-    id: 'dragon_fang', name: '龙牙会', icon: '🐲', leader: '龙牙老大',
+    id: 'dragon_fang', name: '龙牙会', icon: '🐲', leader: '夏侯惇',
     style: '攻城拔寨', level: 5, power: 3200, desc: '崇尚力量的格斗帮派，攻城略地所向披靡', faction: 'wei',
     color: '#D32F2F',
     perkDesc: '国战贡献+20%, 金币+4%',
     members: Array.from({length: 12}, (_, i) => ({
-      name: RECRUIT_NAMES[i % RECRUIT_NAMES.length], level: 40 + i * 3, contribution: 100 + i * 50,
+      name: WEI_GENERALS[i % WEI_GENERALS.length], level: 40 + i * 3, contribution: 100 + i * 50,
     })),
     skills: { gs_gold: 2, gs_exp: 1, gs_contrib: 2, gs_territory: 0, gs_trade: 1, gs_catch: 0 },
     wins: 24,
     teamPool: [6, 9, 65, 94, 130, 143, 149, 168, 199, 241],
   },
   {
-    id: 'shadow_guild', name: '暗影公会', icon: '🌑', leader: '影主',
+    id: 'shadow_guild', name: '暗影公会', icon: '🌑', leader: '郭嘉',
     style: '侦察暗杀', level: 4, power: 2800, desc: '行踪诡秘的暗杀组织，擅长情报与精灵捕获', faction: 'wei',
     color: '#37474F',
     perkDesc: '捕获率+2%, 经验+4%',
     members: Array.from({length: 10}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 5) % RECRUIT_NAMES.length], level: 35 + i * 3, contribution: 80 + i * 40,
+      name: WEI_GENERALS[(i + 10) % WEI_GENERALS.length], level: 35 + i * 3, contribution: 80 + i * 40,
     })),
     skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 0, gs_territory: 1, gs_trade: 0, gs_catch: 2 },
     wins: 18,
     teamPool: [3, 18, 33, 94, 138, 190, 206, 241, 434, 437],
   },
   {
-    id: 'iron_wall', name: '铁壁盟', icon: '🛡️', leader: '铁壁将军',
+    id: 'iron_wall', name: '铁壁盟', icon: '🛡️', leader: '曹仁',
     style: '领地防御', level: 6, power: 3500, desc: '固若金汤的防御联盟，领地一旦到手绝不松手', faction: 'wei',
     color: '#455A64',
     perkDesc: '领地防御+6, 商队收入高',
     members: Array.from({length: 14}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 10) % RECRUIT_NAMES.length], level: 45 + i * 3, contribution: 120 + i * 55,
+      name: WEI_GENERALS[(i + 5) % WEI_GENERALS.length], level: 45 + i * 3, contribution: 120 + i * 55,
     })),
     skills: { gs_gold: 0, gs_exp: 0, gs_contrib: 1, gs_territory: 3, gs_trade: 2, gs_catch: 0 },
     wins: 30,
@@ -53,7 +63,7 @@ export const GANG_PRESETS = [
     color: '#1565C0',
     perkDesc: '国战贡献+30%, 经验+2%',
     members: Array.from({length: 12}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 30) % RECRUIT_NAMES.length], level: 42 + i * 3, contribution: 110 + i * 50,
+      name: WEI_GENERALS[(i + 15) % WEI_GENERALS.length], level: 42 + i * 3, contribution: 110 + i * 50,
     })),
     skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 0, gs_catch: 1 },
     wins: 28,
@@ -62,48 +72,48 @@ export const GANG_PRESETS = [
 
   // === 蜀国 (4) ===
   {
-    id: 'storm_riders', name: '风暴骑士团', icon: '⚡', leader: '雷霆统帅',
+    id: 'storm_riders', name: '风暴骑士团', icon: '⚡', leader: '姜维',
     style: '快速成长', level: 3, power: 2400, desc: '追求极速成长的精锐骑士，经验获取遥遥领先', faction: 'shu',
     color: '#F57F17',
     perkDesc: '经验+6%, 捕获率+1%',
     members: Array.from({length: 8}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 15) % RECRUIT_NAMES.length], level: 30 + i * 4, contribution: 60 + i * 35,
+      name: SHU_GENERALS[(i + 10) % SHU_GENERALS.length], level: 30 + i * 4, contribution: 60 + i * 35,
     })),
     skills: { gs_gold: 0, gs_exp: 3, gs_contrib: 1, gs_territory: 0, gs_trade: 1, gs_catch: 1 },
     wins: 12,
     teamPool: [3, 18, 130, 143, 160, 182, 446, 449, 455, 459],
   },
   {
-    id: 'phoenix_order', name: '凤凰社', icon: '🔥', leader: '凤凰长老',
+    id: 'phoenix_order', name: '凤凰社', icon: '🔥', leader: '诸葛亮',
     style: '后勤支援', level: 5, power: 3000, desc: '以治愈与补给闻名，商队遍布天下', faction: 'shu',
     color: '#E64A19',
     perkDesc: '商队收入高, 金币+4%',
     members: Array.from({length: 11}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 20) % RECRUIT_NAMES.length], level: 38 + i * 3, contribution: 90 + i * 45,
+      name: SHU_GENERALS[(i + 5) % SHU_GENERALS.length], level: 38 + i * 3, contribution: 90 + i * 45,
     })),
     skills: { gs_gold: 2, gs_exp: 0, gs_contrib: 0, gs_territory: 1, gs_trade: 3, gs_catch: 0 },
     wins: 22,
     teamPool: [6, 9, 140, 149, 168, 199, 443, 452, 461, 465],
   },
   {
-    id: 'wild_pack', name: '野狼帮', icon: '🐺', leader: '头狼',
+    id: 'wild_pack', name: '野狼帮', icon: '🐺', leader: '马超',
     style: '野外猎手', level: 2, power: 1800, desc: '野性十足的冒险者，精灵捕获率极高', faction: 'shu',
     color: '#6D4C41',
     perkDesc: '捕获率+3%, 经验+2%',
     members: Array.from({length: 6}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 8) % RECRUIT_NAMES.length], level: 25 + i * 4, contribution: 40 + i * 30,
+      name: SHU_GENERALS[(i + 20) % SHU_GENERALS.length], level: 25 + i * 4, contribution: 40 + i * 30,
     })),
     skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 0, gs_territory: 0, gs_trade: 1, gs_catch: 3 },
     wins: 6,
     teamPool: [3, 6, 18, 33, 69, 130, 143, 160, 168, 199],
   },
   {
-    id: 'white_ear', name: '白耳精锐', icon: '🦅', leader: '陈到',
+    id: 'white_ear', name: '白耳精锐', icon: '🦅', leader: '赵云',
     style: '忠义护卫', level: 5, power: 3100, desc: '刘备亲卫白耳兵传承，国战攻防均衡', faction: 'shu',
     color: '#2E7D32',
     perkDesc: '国战贡献+20%, 领地防御+4',
     members: Array.from({length: 11}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 34) % RECRUIT_NAMES.length], level: 40 + i * 3, contribution: 95 + i * 48,
+      name: SHU_GENERALS[(i + 15) % SHU_GENERALS.length], level: 40 + i * 3, contribution: 95 + i * 48,
     })),
     skills: { gs_gold: 1, gs_exp: 0, gs_contrib: 2, gs_territory: 2, gs_trade: 1, gs_catch: 0 },
     wins: 20,
@@ -112,24 +122,24 @@ export const GANG_PRESETS = [
 
   // === 吴国 (4) ===
   {
-    id: 'star_alliance', name: '星辰联盟', icon: '⭐', leader: '星主',
+    id: 'star_alliance', name: '星辰联盟', icon: '⭐', leader: '陆逊',
     style: '均衡发展', level: 4, power: 2900, desc: '智者联盟，各方面均衡发展', faction: 'wu',
     color: '#1565C0',
     perkDesc: '经验+4%, 金币+2%, 贡献+10%',
     members: Array.from({length: 10}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 2) % RECRUIT_NAMES.length], level: 36 + i * 3, contribution: 85 + i * 42,
+      name: WU_GENERALS[(i + 5) % WU_GENERALS.length], level: 36 + i * 3, contribution: 85 + i * 42,
     })),
     skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 1, gs_territory: 1, gs_trade: 0, gs_catch: 1 },
     wins: 20,
     teamPool: [33, 65, 94, 138, 139, 182, 206, 437, 463, 467],
   },
   {
-    id: 'golden_lotus', name: '金莲堂', icon: '🪷', leader: '莲主',
+    id: 'golden_lotus', name: '金莲堂', icon: '🪷', leader: '鲁肃',
     style: '财源广进', level: 7, power: 4000, desc: '富可敌国的商业帮会，金币收入无人能比', faction: 'wu',
     color: '#FF8F00',
     perkDesc: '金币+6%, 商队收入最高',
     members: Array.from({length: 15}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 12) % RECRUIT_NAMES.length], level: 50 + i * 3, contribution: 150 + i * 60,
+      name: WU_GENERALS[(i + 10) % WU_GENERALS.length], level: 50 + i * 3, contribution: 150 + i * 60,
     })),
     skills: { gs_gold: 3, gs_exp: 0, gs_contrib: 0, gs_territory: 0, gs_trade: 3, gs_catch: 0 },
     wins: 35,
@@ -141,7 +151,7 @@ export const GANG_PRESETS = [
     color: '#00838F',
     perkDesc: '国战贡献+30%, 捕获率+1%',
     members: Array.from({length: 12}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 32) % RECRUIT_NAMES.length], level: 38 + i * 3, contribution: 100 + i * 50,
+      name: WU_GENERALS[i % WU_GENERALS.length], level: 38 + i * 3, contribution: 100 + i * 50,
     })),
     skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 0, gs_catch: 1 },
     wins: 26,
@@ -153,7 +163,7 @@ export const GANG_PRESETS = [
     color: '#AD1457',
     perkDesc: '领地防御+4, 经验+2%, 金币+2%',
     members: Array.from({length: 9}, (_, i) => ({
-      name: RECRUIT_NAMES[(i + 36) % RECRUIT_NAMES.length], level: 34 + i * 3, contribution: 75 + i * 40,
+      name: WU_GENERALS[(i + 20) % WU_GENERALS.length], level: 34 + i * 3, contribution: 75 + i * 40,
     })),
     skills: { gs_gold: 1, gs_exp: 1, gs_contrib: 1, gs_territory: 2, gs_trade: 1, gs_catch: 0 },
     wins: 16,

@@ -6075,9 +6075,9 @@ const useGrowthItem = (petIndex, itemId) => {
         }
       }
 
-      let trainerRate = 0.03;
-      let encounterRate = 0.08;
-      if (tileType === 7) { trainerRate = 0.04; encounterRate = 0.28; }
+      let trainerRate = 0.06;
+      let encounterRate = 0.12;
+      if (tileType === 7) { trainerRate = 0.08; encounterRate = 0.30; }
       
       if (roll < trainerRate) {
           setTimeout(() => startBattle(mapInfo, 'trainer'), 200); 
@@ -14086,15 +14086,16 @@ const renderMenu = () => {
           </div>
         )}
 
-        {/* 队伍预览 */}
+        {/* 队伍预览 - 跳过首发避免重复 */}
+        {party.length > 1 && (
         <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
-          <div style={{fontSize:'10px', color:'#999', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🛡️ 队伍 ({party.length}/6)</div>
+          <div style={{fontSize:'10px', color:'#999', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🛡️ 后备队伍 ({party.length - 1})</div>
           <div style={{display:'flex', gap:'4px'}}>
-            {party.map((p, i) => {
+            {party.slice(1).map((p, i) => {
               const pStats = getStats(p);
               const pHp = (p.currentHp / pStats.maxHp) * 100;
               return (
-                <div key={i} style={{flex:1, textAlign:'center', padding:'4px 2px', borderRadius:'8px', background: i === 0 ? 'rgba(255,152,0,0.08)' : 'rgba(0,0,0,0.02)', border: i === 0 ? '1px solid rgba(255,152,0,0.2)' : '1px solid transparent'}}>
+                <div key={i} style={{flex:1, textAlign:'center', padding:'4px 2px', borderRadius:'8px', background:'rgba(0,0,0,0.02)', border:'1px solid transparent'}}>
                   <div style={{fontSize:'18px', lineHeight:1}}>{renderAvatar(p)}</div>
                   <div style={{height:'3px', borderRadius:'2px', background:'#eee', margin:'3px 2px 0', overflow:'hidden'}}>
                     <div style={{width:pHp+'%', height:'100%', background:pHp > 50 ? '#4CAF50' : pHp > 20 ? '#FF9800' : '#F44336', borderRadius:'2px'}} />
@@ -14104,6 +14105,7 @@ const renderMenu = () => {
             })}
           </div>
         </div>
+        )}
 
         {/* 背包 + 金币 */}
         <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
@@ -17391,7 +17393,7 @@ const renderMenu = () => {
                             ) : null}
                             {renderSectBadge(e, 'enemy')}
                             {battle.trainerGang && (
-                              <span onClick={(ev) => { ev.stopPropagation(); const eb = battleState.trainerGangBonus || getGangSkillBonus(battle.trainerGang.skills); setBattleGangDetail({name: battle.trainerGang.name, icon: battle.trainerGang.icon, bonus: eb, side:'enemy'}); }} style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(255,143,0,0.8), rgba(255,111,0,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer'}}>
+                              <span onClick={(ev) => { ev.stopPropagation(); const eb = battle.trainerGangBonus || getGangSkillBonus(battle.trainerGang.skills || {}); setBattleGangDetail({name: battle.trainerGang.name, icon: battle.trainerGang.icon, bonus: eb, side:'enemy'}); }} style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(255,143,0,0.8), rgba(255,111,0,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer'}}>
                                 {battle.trainerGang.icon}{battle.trainerGang.name}
                               </span>
                             )}
