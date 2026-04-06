@@ -14028,7 +14028,8 @@ const renderMenu = () => {
     const hpPercent = leader ? (leader.currentHp / stats.maxHp) * 100 : 0;
     const typeColor = leader && TYPES[leader.type] ? TYPES[leader.type].color : '#9E9E9E';
     const expPercent = leader ? Math.min(100, (leader.exp / leader.nextExp) * 100) : 0;
-    const weatherInfo = WEATHERS ? WEATHERS[currentWeatherKey] : null;
+    const currentWeatherKeyLocal = mapWeathers[currentMapId] || 'CLEAR';
+    const weatherInfo = WEATHERS ? WEATHERS[currentWeatherKeyLocal] : null;
 
     return (
       <div className="side-panel left-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
