@@ -128,6 +128,8 @@ export const DEFAULT_KINGDOM_WAR = {
   warBalls: 0,
   seasonTitles: [],
   completedCampaigns: [],
+  completedHistoricalBattles: [],
+  recruitedGenerals: [],
   contestProgress: {},
 };
 

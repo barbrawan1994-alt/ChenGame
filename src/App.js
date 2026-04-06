@@ -305,6 +305,7 @@ export default function RPG(props) {
   // 帮派系统
   const [gang, setGang] = useState(savedData.gang || { ...DEFAULT_GANG_STATE });
   const [gangTab, setGangTab] = useState('overview');
+  const [viewGangMember, setViewGangMember] = useState(null);
 
   // 国战系统
   const [kingdomWar, setKingdomWar] = useState(() => {
@@ -336,10 +337,6 @@ export default function RPG(props) {
   const [weather, setWeather] = useState('CLEAR');    
   const [mapWeathers, setMapWeathers] = useState({}); 
   const [timePhase, setTimePhase] = useState('DAY'); 
-  useEffect(() => {
-    const wk = mapWeathers[currentMapId] || 'CLEAR';
-    if (weather !== wk) setWeather(wk);
-  }, [currentMapId, mapWeathers]); 
   const [gameTime, setGameTime] = useState(0);
 
   
@@ -701,6 +698,11 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
   const [currentMapId, setCurrentMapId] = useState(1);
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
   const [mapGrid, setMapGrid] = useState([]); // 随机生成的网格数据
+
+  useEffect(() => {
+    const wk = mapWeathers[currentMapId] || 'CLEAR';
+    if (weather !== wk) setWeather(wk);
+  }, [currentMapId, mapWeathers]);
 
   const [leagueRound, setLeagueRound] = useState(0); // 当前轮次: 0=未参加, 1=16强, 2=8强, 3=半决赛, 4=决赛
   // 在 RPG 组件内部
@@ -1179,13 +1181,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const diversity = (pet.diversityRng !== undefined) ? pet.diversityRng : ((baseInfo.id % 5) * 2 - 4);
     const fallbackSpeed = (pet.speedRng !== undefined) ? pet.speedRng : (40 + (baseInfo.id * 7 % 70));
 
+    const statMult = pet.customStatMult || 1;
     const baseStats = pet.customBaseStats || {
-        hp: baseInfo.hp || 60,
-        p_atk: Math.floor((baseInfo.atk || 50) * bias.p) + diversity,
-        p_def: Math.floor((baseInfo.def || 50) * bias.p),
-        s_atk: Math.floor((baseInfo.atk || 50) * bias.s) - diversity,
-        s_def: Math.floor((baseInfo.def || 50) * bias.s),
-        spd: baseInfo.spd || fallbackSpeed, 
+        hp: Math.floor((baseInfo.hp || 60) * statMult),
+        p_atk: Math.floor(((baseInfo.atk || 50) * bias.p + diversity) * statMult),
+        p_def: Math.floor(((baseInfo.def || 50) * bias.p) * statMult),
+        s_atk: Math.floor(((baseInfo.atk || 50) * bias.s - diversity) * statMult),
+        s_def: Math.floor(((baseInfo.def || 50) * bias.s) * statMult),
+        spd: Math.floor((baseInfo.spd || fallbackSpeed) * statMult), 
         crit: 5
     };
 
@@ -2374,7 +2377,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.lv50PetCount = allP.filter(p => (p?.level || 0) >= 50).length;
       if (gang?.gangId) {
         const rank = getGangRank(gang.contribution, gang.isOwner);
-        next.gangRank = rank?.level || 99;
+        next.gangRank = rank ? GANG_RANKS.indexOf(rank) : 99;
       }
       if (marriage?.spouse) next.marriageComplete = 1;
       if (kingdomWar?.faction) {
@@ -5128,7 +5131,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
         <div style={{display:'flex', gap:'0', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0}}>
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setGangTab(tab.id)} style={{
+            <button key={tab.id} onClick={() => { setGangTab(tab.id); setViewGangMember(null); }} style={{
               flex:1, padding:'10px 0', background: gangTab === tab.id ? 'rgba(255,215,0,0.1)' : 'transparent',
               border:'none', borderBottom: gangTab === tab.id ? '2px solid #FFD700' : '2px solid transparent',
               color: gangTab === tab.id ? '#FFD700' : '#999', cursor:'pointer', fontSize:'12px', fontWeight:'bold',
@@ -5151,7 +5154,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               { name: trainerName || '我', level: party[0]?.level || 1, contribution: gang.contribution || 0, isPlayer: true, team: party.slice(0, 6) },
               ...npcMembers.map((m, i) => ({ ...m, team: (gangInfo?.teamPool || []).slice(i % 5, i % 5 + 4) })),
             ].sort((a, b) => b.contribution - a.contribution);
-            const [viewMember, setViewMember] = React.useState(null);
+            const viewMember = viewGangMember;
+            const setViewMember = setViewGangMember;
             return (
               <div>
                 <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>👥 帮派成员 ({allMembers.length}人)</div>
@@ -6577,7 +6581,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           enemyParty.push(createPet(_.sample(wave.minionPool || [6,9,65,94,130]), wave.lvl + _.random(-3, 1), true));
         }
         trainerName = `📜 ${hbData.name} · ${wave.name}`;
-        dropGold = Math.floor((hbData.reward.gold || 5000) / hbData.waves.length);
+        dropGold = 0;
         extraBattleData.historicalBattle = hbData;
         extraBattleData.currentWave = waveIdx;
         extraBattleData.totalWaves = hbData.waves.length;
@@ -12786,7 +12790,7 @@ const renderMenu = () => {
             <div style={{height:'1px', width:'40px', background:'linear-gradient(90deg, rgba(255,215,0,0.3), transparent)'}} />
           </div>
 
-          <div style={{fontSize:'10px', fontWeight:'600', letterSpacing:'4px', color:'rgba(255,255,255,0.2)', marginBottom:'12px'}}>KINGDOM WAR · v8.0</div>
+          <div style={{fontSize:'10px', fontWeight:'600', letterSpacing:'4px', color:'rgba(255,255,255,0.2)', marginBottom:'12px'}}>KINGDOM WAR · v9.0</div>
 
           {/* 三国旗帜 */}
           <div style={{display:'flex', justifyContent:'center', gap:'8px'}}>
@@ -12928,7 +12932,7 @@ const renderMenu = () => {
 
         {/* 底部 */}
         <div style={{padding:'8px 22px', borderTop:'1px solid rgba(255,255,255,0.02)', background:'rgba(0,0,0,0.2)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-          <span style={{fontSize:'8px', color:'rgba(255,255,255,0.1)', letterSpacing:'1px'}}>v8.0 · {POKEDEX.length} Pokémon</span>
+          <span style={{fontSize:'8px', color:'rgba(255,255,255,0.1)', letterSpacing:'1px'}}>v9.0 · {POKEDEX.length} Pokémon</span>
           <span style={{fontSize:'8px', color:'rgba(255,255,255,0.08)', letterSpacing:'1px'}}>三国志 · Pokémon RPG</span>
         </div>
 
