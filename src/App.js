@@ -12687,34 +12687,40 @@ const renderGeneralDex = () => {
           显示 {filteredGens.length} 位 ({filteredR} 已收集)
         </div>
 
-        {/* 名将网格 */}
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(85px, 1fr))', gap:'8px'}}>
+        {/* 名将列表 */}
+        <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
           {filteredGens.map(gen => {
             const isR = recruitedIds.has(gen.id);
             const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
             const pt = getGeneralPortrait(gen);
+            const facColor = factionColors[gen.faction] || '#666';
             return (
               <div key={gen.id} onClick={() => isR && setGenDexDetail(gen)} style={{
-                textAlign:'center', padding:'10px 4px', borderRadius:'12px', cursor: isR ? 'pointer' : 'default',
-                background: isR ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                border:`1px solid ${isR ? (rc.color||'#fff')+'30' : 'rgba(255,255,255,0.05)'}`,
-                opacity: isR ? 1 : 0.3, transition:'all 0.2s',
+                display:'flex', alignItems:'center', gap:'10px', padding:'8px 10px', borderRadius:'10px',
+                cursor: isR ? 'pointer' : 'default',
+                background: isR ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)',
+                borderLeft: `3px solid ${isR ? facColor : 'rgba(255,255,255,0.06)'}`,
+                opacity: isR ? 1 : 0.5, transition:'all 0.2s',
               }}>
                 <div style={{
-                  width:'40px', height:'40px', borderRadius:'50%', margin:'0 auto',
-                  background: isR ? pt.bg : 'rgba(255,255,255,0.1)',
+                  width:'36px', height:'36px', borderRadius:'50%', flexShrink:0,
+                  background: isR ? pt.bg : 'rgba(255,255,255,0.08)',
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'20px', fontWeight:'900', color: isR ? pt.textColor : 'rgba(255,255,255,0.3)',
+                  fontSize:'18px', fontWeight:'900', color: isR ? pt.textColor : 'rgba(255,255,255,0.25)',
                   textShadow: isR ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none',
-                  border: `2px solid ${isR ? pt.border : 'rgba(255,255,255,0.15)'}`,
-                  boxShadow: isR && gen.rarity === 'SSR' ? `0 0 10px ${pt.border}50` : 'none',
-                  position:'relative',
-                }}>
-                  {isR ? pt.surname : '?'}
-                  <div style={{position:'absolute', bottom:-2, right:-2, fontSize:'7px', background:rc.bgColor||'rgba(255,255,255,0.1)', color:rc.color||'rgba(255,255,255,0.5)', padding:'0 3px', borderRadius:'3px', fontWeight:'800', lineHeight:'1.3'}}>{rc.label?.charAt(0)}</div>
+                  border: `2px solid ${isR ? pt.border : 'rgba(255,255,255,0.1)'}`,
+                  boxShadow: isR && gen.rarity === 'SSR' ? `0 0 8px ${pt.border}40` : 'none',
+                }}>{isR ? pt.surname : '?'}</div>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                    <span style={{fontSize:'13px', fontWeight:'800', color: isR ? '#fff' : 'rgba(255,255,255,0.3)'}}>{gen.name}</span>
+                    <span style={{fontSize:'8px', fontWeight:'700', color:rc.color||'#888', background:(rc.bgColor||'rgba(255,255,255,0.08)'), padding:'1px 5px', borderRadius:'3px', lineHeight:'1.4'}}>{rc.label||gen.rarity}</span>
+                  </div>
+                  <div style={{fontSize:'10px', color: isR ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)', marginTop:'1px'}}>{gen.title} · {factionNames[gen.faction]||'群雄'}</div>
                 </div>
-                <div style={{fontSize:'10px', fontWeight:'700', color: isR ? '#fff' : 'rgba(255,255,255,0.3)', marginTop:'5px'}}>{isR ? gen.name : '???'}</div>
-                <div style={{fontSize:'8px', color: isR ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)', marginTop:'1px'}}>{isR ? gen.title : '—'}</div>
+                {isR && (
+                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', flexShrink:0}}>✓</div>
+                )}
               </div>
             );
           })}
@@ -14424,7 +14430,8 @@ const renderMenu = () => {
                                 });
                                 setTimeout(() => startBattle({ contestMap: cm, drop: cm.drop, wave: 1 }, 'contest_war'), 200);
                               }} style={{
-                                ...btnPrimary, width:'100%', fontSize:'13px', padding:'10px 0',
+                                color:'#fff', border:'none', borderRadius:'20px', cursor:'pointer', fontWeight:'bold',
+                                width:'100%', fontSize:'13px', padding:'10px 0',
                                 background: canChallenge ? myFaction.color : '#94a3b8', opacity: canChallenge ? 1 : 0.6,
                               }}>
                                 ⚔️ 争夺战 ({dailyAttempts}/{maxDailyAttempts})
@@ -14572,7 +14579,8 @@ const renderMenu = () => {
                                       drop: 2000, siegeTarget: fid,
                                     }, 'capital_siege');
                                   }} style={{
-                                    ...btnPrimary, width:'100%', fontSize:'13px', padding:'10px 0',
+                                    color:'#fff', border:'none', borderRadius:'20px', cursor:'pointer', fontWeight:'bold',
+                                    width:'100%', fontSize:'13px', padding:'10px 0',
                                     background: canSiege ? '#C62828' : '#94a3b8',
                                   }}>
                                     {canSiege ? '⚔️ 发起攻城战' : `冷却中 (${Math.ceil(siegeCooldown / 3600000)}h)`}
