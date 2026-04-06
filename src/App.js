@@ -5999,6 +5999,12 @@ const useGrowthItem = (petIndex, itemId) => {
       if (tileType === 9) {
         const mapInfo = MAPS.find(m => m.id === currentMapId);
         
+        if (!mapInfo || !mapInfo.gymLeader) {
+          showMapToast('🏯', '都城建筑', '这里是都城的练兵场！');
+          setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy }));
+          return;
+        }
+        
         const currentChapter = STORY_SCRIPT[storyProgress];
         const storyNeedsThisGym = currentChapter && currentChapter.mapId === currentMapId;
         
@@ -10138,7 +10144,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setParty(updatedParty);
         setBattle(null);
         setMapTab('kingdom');
-        setView('map-screen');
+        setView('world_map');
         return;
     }
 
@@ -13423,7 +13429,7 @@ const renderMenu = () => {
                   const tradeIncome = gangBonus.trade || 0;
                   const territoryDefBonus = gangBonus.territory || 0;
                   const capitalDailyGold = Math.floor(150 + myTerrCount * 50 + tradeIncome);
-                  const hasClaimedCapitalReward = kw.dailyCounts?.capitalReward;
+                  const hasClaimedCapitalReward = !dailyReset && kw.dailyCounts?.capitalReward;
                   const capitalFeatures = [
                     { icon: '💰', name: '国库领俸', desc: `每日领取${capitalDailyGold}金币 (基于领土数+商队)`, action: 'treasury',
                       disabled: hasClaimedCapitalReward, btnText: hasClaimedCapitalReward ? '已领取' : '领取俸禄' },
@@ -13471,9 +13477,9 @@ const renderMenu = () => {
                                   setGold(prev => prev + capitalDailyGold);
                                   setKingdomWar(prev => ({
                                     ...prev,
-                                    dailyCounts: { ...prev.dailyCounts, capitalReward: true },
+                                    dailyCounts: { ...prev.dailyCounts, capitalReward: true, resetDate: new Date().toISOString().slice(0,10) },
                                   }));
-                                  alert(`💰 领取国库俸禄 ${capitalDailyGold} 金币！\n\n基础: 200\n领地加成: ${myTerrCount * 80}\n商队收入: ${tradeIncome}`);
+                                  alert(`💰 领取国库俸禄 ${capitalDailyGold} 金币！\n\n基础: 150\n领地加成: ${myTerrCount * 50}\n商队收入: ${tradeIncome}`);
                                 } else if (feat.action === 'training') {
                                   if (party.length < 1) { alert('至少需要1只精灵！'); return; }
                                   startBattle({
