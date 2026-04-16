@@ -7506,16 +7506,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   // 双打战斗回合 (Double Battle Turn)
   // ==========================================
-  const executeDoubleTurn = async (moveIdx) => {
+  const executeDoubleTurn = async (moveIdx, targetEnemyIdx) => {
     if (!battle || !battle.isDouble) return;
     const phase = battle.phase;
     if (phase !== 'input' && phase !== 'double_input_2') return;
 
     const currentSlot = battle.doubleSlot || 0;
-    const currentActiveIdx = battle.activeIdxs[currentSlot];
+    const currentActiveIdx = battle.activeIdxs?.[currentSlot];
+    if (currentActiveIdx === undefined) return;
     const p = battle.playerCombatStates[currentActiveIdx];
     if (!p || p.currentHp <= 0) {
-      if (currentSlot === 0) {
+      if (currentSlot === 0 && battle.activeIdxs?.length > 1) {
         const secondIdx = battle.activeIdxs[1];
         const secondPet = secondIdx >= 0 ? battle.playerCombatStates[secondIdx] : null;
         if (secondPet && secondPet.currentHp > 0) {
@@ -7528,6 +7529,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     const move = p.combatMoves[moveIdx];
+    if (!move) return;
     if (move.isCursed && (p.cursedEnergy || 0) < (move.ceCost || 0)) {
       alert("咒力不足！"); return;
     }
@@ -7535,10 +7537,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
       alert("PP不足！"); return;
     }
 
-    const newActions = [...(battle.doubleActions || [])];
-    newActions[currentSlot] = { moveIdx, activeIdx: currentActiveIdx };
+    const resolvedTarget = targetEnemyIdx !== undefined ? targetEnemyIdx : battle.enemyActiveIdxs?.[0];
 
-    if (currentSlot === 0) {
+    const newActions = [...(battle.doubleActions || [])];
+    newActions[currentSlot] = { moveIdx, activeIdx: currentActiveIdx, targetEnemyIdx: resolvedTarget };
+
+    if (currentSlot === 0 && battle.activeIdxs?.length > 1) {
       const secondIdx = battle.activeIdxs[1];
       const secondPet = secondIdx >= 0 ? battle.playerCombatStates[secondIdx] : null;
       if (secondPet && secondPet.currentHp > 0) {
@@ -7547,6 +7551,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           phase: 'double_input_2',
           doubleSlot: 1,
           doubleActions: newActions,
+          pendingDoubleMove: undefined,
         }));
         return;
       }
@@ -7573,14 +7578,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const actions = [];
 
       playerActions.forEach((action, slotIdx) => {
-        if (!action) return;
+        if (!action || action.moveIdx < 0) return;
         const pIdx = action.activeIdx;
         const pet = tempBattle.playerCombatStates[pIdx];
         if (!pet || pet.currentHp <= 0) return;
         const move = pet.combatMoves[action.moveIdx];
-        const spd = getStats(pet).spd * (pet.stages?.spd >= 0 ? (1 + pet.stages.spd * 0.25) : (1 / (1 + Math.abs(pet.stages.spd) * 0.25)));
-        const targetEnemySlot = slotIdx < tempBattle.enemyActiveIdxs.length ? tempBattle.enemyActiveIdxs[slotIdx] : tempBattle.enemyActiveIdxs[0];
-        actions.push({ side: 'player', petIdx: pIdx, move, speed: spd, targetIdx: targetEnemySlot, slotIdx });
+        if (!move) return;
+        const spd = getStats(pet, pet.stages, pet.status).spd || 1;
+        const targetEnemyIdx = action.targetEnemyIdx !== undefined ? action.targetEnemyIdx : (slotIdx < tempBattle.enemyActiveIdxs.length ? tempBattle.enemyActiveIdxs[slotIdx] : tempBattle.enemyActiveIdxs[0]);
+        actions.push({ side: 'player', petIdx: pIdx, move, speed: spd, targetIdx: targetEnemyIdx, slotIdx });
       });
 
       tempBattle.enemyActiveIdxs.forEach((eIdx, slotIdx) => {
@@ -7589,12 +7595,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const availMoves = (enemy.combatMoves || []).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
         if (availMoves.length === 0) return;
         const move = _.sample(availMoves);
-        const spd = getStats(enemy).spd * (enemy.stages?.spd >= 0 ? (1 + enemy.stages.spd * 0.25) : (1 / (1 + Math.abs(enemy.stages.spd) * 0.25)));
+        const spd = getStats(enemy, enemy.stages, enemy.status).spd || 1;
         const targetPlayerSlot = slotIdx < tempBattle.activeIdxs.length ? tempBattle.activeIdxs[slotIdx] : tempBattle.activeIdxs[0];
         actions.push({ side: 'enemy', petIdx: eIdx, move, speed: spd, targetIdx: targetPlayerSlot, slotIdx });
       });
 
-      actions.sort((a, b) => b.speed - a.speed + (Math.random() - 0.5) * 0.01);
+      actions.sort((a, b) => {
+        const diff = (b.speed || 0) - (a.speed || 0);
+        if (Math.abs(diff) < 1) return Math.random() - 0.5;
+        return diff;
+      });
 
       for (const action of actions) {
         let attacker, defender, resolvedDefIdx;
@@ -7628,8 +7638,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         const side = action.side;
         const animTarget = side === 'player' ? 'enemy' : 'player';
+        const animSlot = side === 'player' ? tempBattle.enemyActiveIdxs.indexOf(resolvedDefIdx) : tempBattle.activeIdxs.indexOf(resolvedDefIdx);
         addLog(`${attacker.name} 使用了 ${action.move.name}！`);
-        setAnimEffect({ type: action.move.t || 'NORMAL', target: animTarget });
+        setAnimEffect({ type: action.move.t || 'NORMAL', target: animTarget, slot: animSlot >= 0 ? animSlot : 0 });
         await wait(400);
 
         await performAction(attacker, defender, action.move, side, tempBattle);
@@ -7735,13 +7746,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
         enemyActiveIdx: newEnemyIdxs[0] ?? 0,
         doubleSlot: 0,
         doubleActions: [],
+        pendingDoubleMove: undefined,
         phase: 'input',
         turnCount: (prev.turnCount || 0) + 1,
       }));
 
     } catch (e) {
       console.error("Double Battle Error:", e);
-      setBattle(prev => prev ? ({ ...prev, phase: 'input', doubleSlot: 0, doubleActions: [] }) : null);
+      setBattle(prev => prev ? ({ ...prev, phase: 'input', doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined }) : null);
     }
   };
 
@@ -18438,7 +18450,7 @@ const renderMenu = () => {
                                     GSAPAnimations.petEntry(el, 0.2);
                                 }
                             }}
-                            className={`sprite-v2 ${e.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                            className={`sprite-v2 ${e.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && (!isDoubleBattle || animEffect?.slot === 0 || animEffect?.slot === undefined) && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                             style={{
                                 filter: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type)
                                   ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2) saturate(0.3)' 
@@ -18491,7 +18503,7 @@ const renderMenu = () => {
                     </div>
                     <div className="sprite-wrapper" style={{position:'relative'}}>
                       <div className="battle-platform battle-platform-enemy" style={{transform:'scale(0.85)'}} />
-                      <div className={`sprite-v2 ${e2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'}`}
+                      <div className={`sprite-v2 ${e2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && animEffect?.slot === 1 && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
                         style={{filter:'drop-shadow(0 8px 12px rgba(0,0,0,0.2))', transform:'scale(0.9)'}}>
                         {renderAvatar(e2, true)}
                       </div>
@@ -18516,7 +18528,7 @@ const renderMenu = () => {
                                      GSAPAnimations.petEntry(el, 0);
                                  }
                              }}
-                             className={`sprite-v2 ${p.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                             className={`sprite-v2 ${p.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && (!isDoubleBattle || animEffect?.slot === 0 || animEffect?.slot === undefined) && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
                              style={{
                                  filter: p.isFusedShiny
                                    ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)'
@@ -18604,7 +18616,7 @@ const renderMenu = () => {
                     <div className="sprite-wrapper" style={{position:'relative', marginBottom:'6px'}}>
                       <div className="battle-platform battle-platform-player" style={{transform:'scale(0.85)'}} />
                       <div style={{transform:'scaleX(-1)'}}>
-                        <div className={`sprite-v2 ${p2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'}`}
+                        <div className={`sprite-v2 ${p2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && animEffect?.slot === 1 && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
                           style={{filter:'drop-shadow(0 8px 12px rgba(0,0,0,0.2))', transform:'scale(0.9)'}}>
                           {renderAvatar(p2)}
                         </div>
@@ -18664,11 +18676,45 @@ const renderMenu = () => {
                         <div style={{textAlign:'center', background:'linear-gradient(135deg,#FF9800,#FF5722)', color:'#fff', fontWeight:'bold', padding:'5px 8px', fontSize:'12px', flexShrink:0, borderRadius:'8px', margin:'0 0 6px', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
                           <span>⚔️ 双打</span>
                           <span style={{background:'rgba(255,255,255,0.25)', padding:'2px 10px', borderRadius:'10px', fontSize:'11px'}}>
-                            {battle.phase === 'double_input_2' ? `🔶 选择 ${doubleCurrentPet?.name || p2?.name || '?'} 的技能` : `🔷 选择 ${doubleCurrentPet?.name || p?.name || '?'} 的技能`}
+                            {battle.pendingDoubleMove !== undefined
+                              ? '🎯 选择攻击目标'
+                              : (battle.phase === 'double_input_2' ? `🔶 选择 ${doubleCurrentPet?.name || p2?.name || '?'} 的技能` : `🔷 选择 ${doubleCurrentPet?.name || p?.name || '?'} 的技能`)}
                           </span>
                         </div>
                     )}
+                    {/* 双打目标选择 */}
+                    {isDoubleBattle && battle.pendingDoubleMove !== undefined && (() => {
+                      const aliveEnemies = (battle.enemyActiveIdxs || []).filter(idx => battle.enemyParty?.[idx]?.currentHp > 0);
+                      return (
+                        <div style={{display:'flex', gap:'8px', justifyContent:'center', margin:'0 0 8px', flexWrap:'wrap'}}>
+                          {aliveEnemies.map(eIdx => {
+                            const ep = battle.enemyParty[eIdx];
+                            return (
+                              <button key={eIdx} onClick={() => {
+                                const mi = battle.pendingDoubleMove;
+                                setBattle(prev => ({ ...prev, pendingDoubleMove: undefined }));
+                                executeDoubleTurn(mi, eIdx);
+                              }} style={{
+                                flex:1, minWidth:'100px', maxWidth:'200px', padding:'10px 12px', borderRadius:'12px',
+                                background:'linear-gradient(135deg, #E53935, #FF7043)', color:'#fff', border:'2px solid rgba(255,255,255,0.3)',
+                                fontWeight:'bold', fontSize:'13px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
+                                boxShadow:'0 2px 8px rgba(229,57,53,0.4)', transition:'transform 0.15s'
+                              }}>
+                                <span>🎯</span>
+                                <span>{ep.name}</span>
+                                <span style={{fontSize:'10px', opacity:0.8}}>Lv.{ep.level}</span>
+                              </button>
+                            );
+                          })}
+                          <button onClick={() => setBattle(prev => ({ ...prev, pendingDoubleMove: undefined }))} style={{
+                            padding:'8px 16px', borderRadius:'10px', background:'rgba(255,255,255,0.1)', color:'#aaa',
+                            border:'1px solid rgba(255,255,255,0.2)', fontSize:'12px', cursor:'pointer'
+                          }}>取消</button>
+                        </div>
+                      );
+                    })()}
                     {/* 技能网格 - 占满上方空间 */}
+                    {(!isDoubleBattle || battle.pendingDoubleMove === undefined) && (
                     <div className="moves-grid-v2">
                             {(() => {
                             const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
@@ -18690,7 +18736,14 @@ const renderMenu = () => {
                                         }}
                                         onClick={() => { 
                                             if (battle.isPvP) {
-                                            handlePvPInput(1, 'move', i);
+                                              handlePvPInput(1, 'move', i);
+                                            } else if (isDoubleBattle) {
+                                              const aliveEnemies = (battle.enemyActiveIdxs || []).filter(idx => battle.enemyParty?.[idx]?.currentHp > 0);
+                                              if (aliveEnemies.length > 1) {
+                                                setBattle(prev => ({ ...prev, pendingDoubleMove: i }));
+                                              } else {
+                                                executeDoubleTurn(i, aliveEnemies[0]);
+                                              }
                                             } else {
                                                 executeTurn(i);
                                             }
@@ -18701,6 +18754,7 @@ const renderMenu = () => {
                                 ));
                             })()}
                         </div>
+                    )}
                     {/* 底部操作按钮 - 横向排列 */}
                         {!battle.isPvP ? (
                         <div className="actions-bar-h">
