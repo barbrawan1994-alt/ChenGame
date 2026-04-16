@@ -7547,7 +7547,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
           phase: 'double_input_2',
           doubleSlot: 1,
           doubleActions: newActions,
-          activeIdx: secondIdx,
         }));
         return;
       }
@@ -7561,6 +7560,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try {
       let tempBattle = _.cloneDeep(battle);
       tempBattle.doubleActions = playerActions;
+
+      for (const pIdx of tempBattle.activeIdxs) {
+        const ps = tempBattle.playerCombatStates[pIdx];
+        if (ps?.volatiles) ps.volatiles.protected = false;
+      }
+      for (const eIdx of tempBattle.enemyActiveIdxs) {
+        const es = tempBattle.enemyParty[eIdx];
+        if (es?.volatiles) es.volatiles.protected = false;
+      }
 
       const actions = [];
 
@@ -7589,7 +7597,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       actions.sort((a, b) => b.speed - a.speed + (Math.random() - 0.5) * 0.01);
 
       for (const action of actions) {
-        let attacker, defender;
+        let attacker, defender, resolvedDefIdx;
         if (action.side === 'player') {
           attacker = tempBattle.playerCombatStates[action.petIdx];
           let tIdx = action.targetIdx;
@@ -7599,6 +7607,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           if (tIdx === undefined || tIdx < 0) continue;
           defender = tempBattle.enemyParty[tIdx];
+          resolvedDefIdx = tIdx;
+          tempBattle.activeIdx = action.petIdx;
+          tempBattle.enemyActiveIdx = tIdx;
         } else {
           attacker = tempBattle.enemyParty[action.petIdx];
           let tIdx = action.targetIdx;
@@ -7608,6 +7619,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           if (tIdx === undefined || tIdx < 0) continue;
           defender = tempBattle.playerCombatStates[tIdx];
+          resolvedDefIdx = tIdx;
+          tempBattle.enemyActiveIdx = action.petIdx;
+          tempBattle.activeIdx = tIdx;
         }
 
         if (!attacker || attacker.currentHp <= 0 || !defender) continue;
@@ -7622,11 +7636,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         setBattle(prev => ({
           ...prev,
-          playerCombatStates: tempBattle.playerCombatStates,
-          enemyParty: tempBattle.enemyParty,
+          playerCombatStates: [...tempBattle.playerCombatStates],
+          enemyParty: [...tempBattle.enemyParty],
+          activeIdxs: [...tempBattle.activeIdxs],
+          enemyActiveIdxs: [...tempBattle.enemyActiveIdxs],
         }));
         setAnimEffect(null);
         await wait(600);
+      }
+
+      for (const pIdx of tempBattle.activeIdxs) {
+        const ps = tempBattle.playerCombatStates[pIdx];
+        if (ps && ps.currentHp > 0) {
+          const logs = checkEffectExpiration(ps, ps);
+          logs.forEach(l => addLog(l));
+        }
+      }
+      for (const eIdx of tempBattle.enemyActiveIdxs) {
+        const es = tempBattle.enemyParty[eIdx];
+        if (es && es.currentHp > 0) {
+          const logs = checkEffectExpiration(es, es);
+          logs.forEach(l => addLog(l));
+        }
       }
 
       const allEnemiesDead = tempBattle.enemyParty.every(e => e.currentHp <= 0);
@@ -7651,40 +7682,57 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
 
       const usedPlayerIdxs = new Set();
-      const newActiveIdxs = tempBattle.activeIdxs.map(idx => {
-        if (tempBattle.playerCombatStates[idx]?.currentHp > 0) { usedPlayerIdxs.add(idx); return idx; }
-        const next = tempBattle.playerCombatStates.findIndex((p, i) =>
-          p.currentHp > 0 && !tempBattle.activeIdxs.includes(i) && !usedPlayerIdxs.has(i)
-        );
-        if (next >= 0) {
-          usedPlayerIdxs.add(next);
-          addLog(`${tempBattle.playerCombatStates[next].name} 加入战斗！`);
-          return next;
+      const newActiveIdxs = [];
+      for (const idx of tempBattle.activeIdxs) {
+        if (tempBattle.playerCombatStates[idx]?.currentHp > 0) {
+          usedPlayerIdxs.add(idx);
+          newActiveIdxs.push(idx);
+        } else {
+          const next = tempBattle.playerCombatStates.findIndex((pp, i) =>
+            pp.currentHp > 0 && !tempBattle.activeIdxs.includes(i) && !usedPlayerIdxs.has(i) && !newActiveIdxs.includes(i)
+          );
+          if (next >= 0) {
+            usedPlayerIdxs.add(next);
+            newActiveIdxs.push(next);
+            addLog(`${tempBattle.playerCombatStates[next].name} 加入战斗！`);
+          }
         }
-        return idx;
-      });
+      }
+      if (newActiveIdxs.length === 0) {
+        const anyAlive = tempBattle.playerCombatStates.findIndex(pp => pp.currentHp > 0);
+        if (anyAlive >= 0) newActiveIdxs.push(anyAlive);
+      }
 
       const usedEnemyIdxs = new Set();
-      const newEnemyIdxs = tempBattle.enemyActiveIdxs.map(idx => {
-        if (tempBattle.enemyParty[idx]?.currentHp > 0) { usedEnemyIdxs.add(idx); return idx; }
-        const next = tempBattle.enemyParty.findIndex((e, i) =>
-          e.currentHp > 0 && !tempBattle.enemyActiveIdxs.includes(i) && !usedEnemyIdxs.has(i)
-        );
-        if (next >= 0) {
-          usedEnemyIdxs.add(next);
-          addLog(`野生 ${tempBattle.enemyParty[next].name} 加入战斗！`);
-          return next;
+      const newEnemyIdxs = [];
+      for (const idx of tempBattle.enemyActiveIdxs) {
+        if (tempBattle.enemyParty[idx]?.currentHp > 0) {
+          usedEnemyIdxs.add(idx);
+          newEnemyIdxs.push(idx);
+        } else {
+          const next = tempBattle.enemyParty.findIndex((ee, i) =>
+            ee.currentHp > 0 && !tempBattle.enemyActiveIdxs.includes(i) && !usedEnemyIdxs.has(i) && !newEnemyIdxs.includes(i)
+          );
+          if (next >= 0) {
+            usedEnemyIdxs.add(next);
+            newEnemyIdxs.push(next);
+            addLog(`${tempBattle.enemyParty[next].name} 加入了战斗！`);
+          }
         }
-        return idx;
-      });
+      }
+      if (newEnemyIdxs.length === 0) {
+        const anyAlive = tempBattle.enemyParty.findIndex(ee => ee.currentHp > 0);
+        if (anyAlive >= 0) newEnemyIdxs.push(anyAlive);
+      }
 
       setBattle(prev => ({
         ...prev,
-        playerCombatStates: tempBattle.playerCombatStates,
-        enemyParty: tempBattle.enemyParty,
+        playerCombatStates: [...tempBattle.playerCombatStates],
+        enemyParty: [...tempBattle.enemyParty],
         activeIdxs: newActiveIdxs,
         enemyActiveIdxs: newEnemyIdxs,
-        activeIdx: newActiveIdxs[0],
+        activeIdx: newActiveIdxs[0] ?? 0,
+        enemyActiveIdx: newEnemyIdxs[0] ?? 0,
         doubleSlot: 0,
         doubleActions: [],
         phase: 'input',
@@ -17558,7 +17606,9 @@ const renderMenu = () => {
     if (!battle) return null;
     
     const isDoubleBattle = battle.isDouble;
-    const p = battle.playerCombatStates?.[battle.activeIdx];
+    const p = isDoubleBattle
+      ? battle.playerCombatStates?.[battle.activeIdxs?.[0]]
+      : battle.playerCombatStates?.[battle.activeIdx];
     const e = isDoubleBattle
       ? battle.enemyParty?.[battle.enemyActiveIdxs?.[0]]
       : battle.enemyParty?.[battle.enemyActiveIdx];
@@ -17570,6 +17620,7 @@ const renderMenu = () => {
     const e2 = isDoubleBattle && battle.enemyActiveIdxs?.[1] >= 0 ? battle.enemyParty?.[battle.enemyActiveIdxs[1]] : null;
     const p2Stats = p2 ? getStats(p2) : null;
     const e2Stats = e2 ? getStats(e2) : null;
+    const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.doubleSlot || 0]] : null;
     
     // --- 名将头像组件 ---
     const GeneralPortraitIcon = ({gen, size = 36, showName = false, onClick}) => {
@@ -17684,8 +17735,8 @@ const renderMenu = () => {
         if (!battleTooltip || !battleTooltip.endsWith('_sect')) return null;
         const side = battleTooltip.replace('_sect', '');
         const pet = side === 'player' 
-            ? battle.playerCombatStates?.[battle.activeIdx]
-            : battle.enemyParty?.[battle.enemyActiveIdx];
+            ? battle.playerCombatStates?.[battle.isDouble ? battle.activeIdxs?.[0] : battle.activeIdx]
+            : battle.enemyParty?.[battle.isDouble ? battle.enemyActiveIdxs?.[0] : battle.enemyActiveIdx];
         if (!pet) return null;
         const s = SECT_DB[pet.sectId || 1];
         const lv = pet.sectLevel || 1;
@@ -18380,7 +18431,7 @@ const renderMenu = () => {
                         <div className="battle-platform battle-platform-enemy" />
                         
                         <div 
-                            key={`enemy-sprite-${battle.enemyActiveIdx}-${e.id}`}
+                            key={`enemy-sprite-${isDoubleBattle ? battle.enemyActiveIdxs?.[0] : battle.enemyActiveIdx}-${e.id}`}
                             ref={(el) => {
                                 if (el && !el.dataset.animated) {
                                     el.dataset.animated = 'true';
@@ -18458,7 +18509,7 @@ const renderMenu = () => {
                         <div className="battle-platform battle-platform-player" />
                          <div style={{transform: 'scaleX(-1)'}}>
                          <div 
-                             key={`player-sprite-${battle.activeIdx}-${p.id}`}
+                             key={`player-sprite-${isDoubleBattle ? battle.activeIdxs?.[0] : battle.activeIdx}-${p.id}`}
                              ref={(el) => {
                                  if (el && !el.dataset.animated) {
                                      el.dataset.animated = 'true';
@@ -18613,14 +18664,15 @@ const renderMenu = () => {
                         <div style={{textAlign:'center', background:'linear-gradient(135deg,#FF9800,#FF5722)', color:'#fff', fontWeight:'bold', padding:'5px 8px', fontSize:'12px', flexShrink:0, borderRadius:'8px', margin:'0 0 6px', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
                           <span>⚔️ 双打</span>
                           <span style={{background:'rgba(255,255,255,0.25)', padding:'2px 10px', borderRadius:'10px', fontSize:'11px'}}>
-                            {battle.phase === 'double_input_2' ? `🔶 选择 ${p.name} 的技能` : `🔷 选择 ${p.name} 的技能`}
+                            {battle.phase === 'double_input_2' ? `🔶 选择 ${doubleCurrentPet?.name || p2?.name || '?'} 的技能` : `🔷 选择 ${doubleCurrentPet?.name || p?.name || '?'} 的技能`}
                           </span>
                         </div>
                     )}
                     {/* 技能网格 - 占满上方空间 */}
                     <div className="moves-grid-v2">
                             {(() => {
-                            const activeMoves = p?.combatMoves || [];
+                            const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
+                            const activeMoves = skillPet?.combatMoves || [];
                                 return activeMoves.map((m, i) => (
                                     <EnhancedMoveButton
                                         key={i}
@@ -18643,7 +18695,7 @@ const renderMenu = () => {
                                                 executeTurn(i);
                                             }
                                         }}
-                                    disabled={m.isCursed ? ((p.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
+                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
                                         index={i}
                                     />
                                 ));
