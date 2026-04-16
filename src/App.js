@@ -911,8 +911,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
       }
 
       const maxHp = getStats(enemy).maxHp;
-      const hpRate = enemy.currentHp / maxHp;
-      let baseRate = ((1 - hpRate) * 0.8 + 0.1) * rate;
+      const hpRate = Math.max(0, Math.min(1, enemy.currentHp / maxHp));
+      let baseRate = Math.max(0.01, ((1 - hpRate) * 0.8 + 0.1) * rate);
 
       // 稀有度惩罚：神兽/高阶精灵大幅降低捕获率
       const eid = enemy.id;
@@ -1754,7 +1754,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             
             if (targetPetInfo) {
                 // 1. 扣除石头
-                setInventory(prev => ({...prev, stones: {...prev.stones, [stoneId]: (prev.stones[stoneId] || 0) - 1}}));
+                setInventory(prev => ({...prev, stones: {...prev.stones, [stoneId]: Math.max(0, (prev.stones[stoneId] || 0) - 1)}}));
                 
                 // 2. 🔥 触发动画
                 setEvoAnim({
@@ -1843,13 +1843,13 @@ const [viewStatPet, setViewStatPet] = useState(null);
             pet.moves.push(newMove);
             consumed = true;
             msg = `📖 ${pet.name} 学会了 [${tm.name}]!`;
-            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: prev.tms[tm.id] - 1}}));
+            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 1) - 1)}}));
         } else {
             pet.pendingLearnMove = newMove;
             setParty(newParty);
             setLearningPetIdx(petIdx);
             setPendingMove(newMove);
-            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: prev.tms[tm.id] - 1}}));
+            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 1) - 1)}}));
             setUsingItem(null);
             setView('move_forget');
             return;
@@ -1873,14 +1873,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
             
             consumed = true;
             msg = `不可思议！${pet.name} 瞬间升到了 Lv.100！`;
-            setInventory(prev => ({...prev, [item.id]: prev[item.id] - 1}));
+            setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 1) - 1)}));
         } else if (item.id === 'exp_candy') {
             if (pet.level >= 100) { alert("它已经达到等级上限了！"); return; }
 
             const oldLv = pet.level;
             pet.level = Math.min(100, pet.level + 1);
             pet.exp = 0;
-            pet.nextExp = pet.level * pet.level * 5;
+            pet.nextExp = calcNextExp(pet.level, NATURE_DB[pet.nature || 'docile']?.exp || 1.0);
 
             const newStats = getStats(pet);
             const hpDiff = newStats.maxHp - getStats({...pet, level: oldLv}).maxHp;
@@ -1904,7 +1904,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             }
 
             consumed = true;
-            setInventory(prev => ({...prev, [item.id]: prev[item.id] - 1}));
+            setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 1) - 1)}));
         } else {
             if (!pet.evs) pet.evs = {};
             if (!pet.evs[item.stat]) pet.evs[item.stat] = 0;
@@ -2373,10 +2373,24 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.typesCollected = types.size;
       next.houseLevel = (['tent','cabin','house','mansion','castle'].indexOf(housing?.currentHouse || housing?.houseType || 'tent'));
       next.furnitureCount = (housing?.furniture || []).length;
+      next.housingScoreTier = getHousingScoreTier ? getHousingScoreTier(calcHouseScore ? calcHouseScore(housing) : 0) : 0;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
-      // 隐藏成就：队伍属性多样性
+      next.allMapsUnlocked = Object.keys(mapProgress || {}).length >= MAPS.length;
+      // 队伍属性多样性
       const partyTypes = new Set((party || []).map(p => p?.type).filter(Boolean));
       next.partyTypeDiv = partyTypes.size;
+      next.uniquePartyTypes = partyTypes.size;
+      // 双属性/宇宙/音波收藏统计
+      let dualCount = 0, cosmicCount = 0, soundCount = 0;
+      (caughtDex || []).forEach(id => {
+        const pk = POKEDEX.find(p => p.id === id);
+        if (pk?.type && pk?.secondaryType) dualCount++;
+        if (pk?.type === 'COSMIC' || pk?.secondaryType === 'COSMIC') cosmicCount++;
+        if (pk?.type === 'SOUND' || pk?.secondaryType === 'SOUND') soundCount++;
+      });
+      next.dualTypeCaught = dualCount;
+      next.cosmicCaught = cosmicCount;
+      next.soundCaught = soundCount;
       // 隐藏成就：全队闪光
       next.fullShinyTeam = (party || []).length >= 6 && (party || []).every(p => p?.isShiny || p?.isFusedShiny);
       // 队伍门派多样性
@@ -9019,15 +9033,45 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setAnimEffect({ type: eff.type, target: targetSide }); 
         } 
         else if (eff.type === 'STATUS') {
-            if (targetState.status) {
+            if (eff.status === 'CON') {
+                if (targetState.volatiles?.confused) {
+                    addLog(`但是 ${targetName} 已经处于混乱状态了!`);
+                } else if (Math.random() < (eff.chance || 1.0)) {
+                    targetState.volatiles = { ...(targetState.volatiles || {}), confused: 3 + Math.floor(Math.random() * 2) };
+                    addLog(`${targetName} 陷入了混乱!`);
+                    setAnimEffect({ type: 'CONFUSION', target: targetSide });
+                } else {
+                    addLog(`但是失败了!`);
+                }
+            } else if (targetState.status) {
                 addLog(`但是 ${targetName} 已经有异常状态了!`);
+            } else if ((eff.status === 'BRN' && (targetState.type === 'FIRE' || targetState.type2 === 'FIRE')) ||
+                       (eff.status === 'FRZ' && (targetState.type === 'ICE' || targetState.type2 === 'ICE')) ||
+                       (eff.status === 'PSN' && (targetState.type === 'POISON' || targetState.type2 === 'POISON' || targetState.type === 'STEEL' || targetState.type2 === 'STEEL')) ||
+                       (eff.status === 'PAR' && (targetState.type === 'ELECTRIC' || targetState.type2 === 'ELECTRIC'))) {
+                addLog(`但是对 ${targetName} 没有效果!`);
             } else if (Math.random() < (eff.chance || 1.0)) {
                 targetState.status = eff.status;
                 if (eff.status === 'SLP') targetState.volatiles.sleepTurns = _.random(2, 4);
-                addLog(`${targetName} 陷入了异常状态!`);
-                setAnimEffect({ type: eff.status, target: targetSide }); 
+                const statusNames = { BRN:'灼伤', PSN:'中毒', PAR:'麻痹', SLP:'睡眠', FRZ:'冰冻' };
+                addLog(`${targetName} ${statusNames[eff.status] ? '陷入了' + statusNames[eff.status] + '状态' : '陷入了异常状态'}!`);
+                setAnimEffect({ type: eff.status, target: targetSide });
             } else {
                 addLog(`但是失败了!`);
+            }
+            if (eff.sideEffect) {
+                const se = eff.sideEffect;
+                const seTarget = se.target === 'enemy' ? defState : atkState;
+                const seTargetName = se.target === 'enemy' ? defender.name : attacker.name;
+                const seTargetSide = se.target === 'enemy' ? (source === 'player' ? 'enemy' : 'player') : (source === 'player' ? 'player' : 'enemy');
+                if (se.type === 'BUFF' || se.type === 'DEBUFF') {
+                    const delta = se.type === 'BUFF' ? se.val : -se.val;
+                    seTarget.stages[se.stat] = Math.max(-6, Math.min(6, (seTarget.stages[se.stat] || 0) + delta));
+                    const statNames = { p_atk:'物攻', p_def:'物防', s_atk:'特攻', s_def:'特防', spd:'速度' };
+                    const degree = Math.abs(delta) > 1 ? '大幅' : '';
+                    addLog(`${seTargetName} 的 [${statNames[se.stat] || se.stat}] ${degree}${delta > 0 ? '提升' : '下降'}了!`);
+                    setAnimEffect({ type: se.type, target: seTargetSide });
+                }
             }
         }
          else if (eff.type === 'PROTECT') {
@@ -9440,8 +9484,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (defender.trait === 'static' && Math.random() < 0.3 && !attacker.status) {
                 attacker.status = 'PAR'; addLog(`${attacker.name} 触碰到静电，麻痹了！`);
             }
-            if (defender.trait === 'cute_charm' && Math.random() < 0.3 && !attacker.status) {
-                attacker.status = 'CON'; addLog(`${attacker.name} 被 ${defender.name} 迷住了！`);
+            if (defender.trait === 'cute_charm' && Math.random() < 0.3 && !atkState.volatiles?.confused) {
+                atkState.volatiles = { ...(atkState.volatiles || {}), confused: 3 };
+                addLog(`${attacker.name} 被 ${defender.name} 迷住了，陷入混乱！`);
             }
         }
 
@@ -11055,7 +11100,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const catchAchUpdates = { totalCaught: 1 };
       if (enemy.isShiny) catchAchUpdates.shinyCaught = 1;
       if (LEGENDARY_POOL && LEGENDARY_POOL.includes(enemy.id)) {
-        catchAchUpdates.legendCaught = 1;
+        const uniqueLegends = new Set([...(caughtDex || [])].filter(id => LEGENDARY_POOL.includes(id)));
+        uniqueLegends.add(enemy.id);
+        catchAchUpdates.legendCaught = () => uniqueLegends.size;
         try { checkTreasureUnlock('catch_legendary', {}); } catch(e) {}
       }
       if (ballType === 'master') catchAchUpdates.masterBallUsed = 1;
