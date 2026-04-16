@@ -16650,6 +16650,12 @@ const renderMenu = () => {
           <div className="map-dock-capsule" style={{
               whiteSpace: 'nowrap'
           }}>
+            <button className="dock-btn-capsule" onClick={manualSave}
+                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
+                <div style={{fontSize: '24px', lineHeight: '1'}}>💾</div>
+                <div style={{fontSize: '12px', fontWeight: 'bold', color:'#555'}}>存档</div>
+            </button>
+            <div className="dock-divider-v" style={{width:'2px', height:'35px', background:'#eee', margin:'0 10px'}}></div>
             {[
               { id: 'worldmap', icon: '🗺️', label: '地图', action: () => { handleExitAndSave(); setMapTab('maps'); } },
               { id: 'dungeons', icon: '⚔️', label: '副本', action: () => { handleExitAndSave(); setMapTab('dungeons'); } },
@@ -16678,12 +16684,6 @@ const renderMenu = () => {
                   {btn.badge > 0 && <div style={{position:'absolute', top:'-2px', right:'-2px', width:'16px', height:'16px', borderRadius:'50%', background:'#E53935', color:'#fff', fontSize:'9px', fontWeight:'800', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #fff'}}>{btn.badge}</div>}
               </button>
             ))}
-            <div className="dock-divider-v" style={{width:'2px', height:'35px', background:'#eee', margin:'0 10px'}}></div>
-            <button className="dock-btn-capsule" onClick={manualSave}
-                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
-                <div style={{fontSize: '24px', lineHeight: '1'}}>💾</div>
-                <div style={{fontSize: '12px', fontWeight: 'bold', color:'#555'}}>存档</div>
-            </button>
           </div>
         </div>
 
