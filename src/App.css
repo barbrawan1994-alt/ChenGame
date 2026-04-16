@@ -378,11 +378,19 @@ button:active { transform: scale(0.96); }
 
 .map-dock-capsule {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 12px; padding: 10px 20px;
+  display: flex; gap: 6px; padding: 10px 12px;
   background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(2px);
   border-radius: 40px; border: 2px solid rgba(255,255,255,0.2);
   box-shadow: none; z-index: 100;
   transition: all 0.35s ease;
+  max-width: calc(100% - 30px);
+  box-sizing: border-box;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.map-dock-capsule::-webkit-scrollbar {
+  display: none;
 }
 .map-dock-capsule:hover {
   transform: translateX(-50%) translateY(-3px);
@@ -408,8 +416,8 @@ button:active { transform: scale(0.96); }
 
 .dock-btn-capsule {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: transparent; border: none; cursor: pointer; padding: 5px 10px;
-  border-radius: 12px; transition: all 0.2s; min-width: 50px;
+  background: transparent; border: none; cursor: pointer; padding: 4px 6px;
+  border-radius: 12px; transition: all 0.2s; min-width: 0; flex-shrink: 1;
 }
 .dock-btn-capsule:hover { background: rgba(33, 150, 243, 0.1); transform: scale(1.1); }
 .dock-emoji { font-size: 24px; margin-bottom: 2px; }

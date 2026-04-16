@@ -16647,15 +16647,13 @@ const renderMenu = () => {
             <div className="map-vignette" />
           </div>
           {/* 底部菜单栏 (保持不变) */}
-          <div className="map-dock-capsule" style={{
-              whiteSpace: 'nowrap'
-          }}>
+          <div className="map-dock-capsule">
             <button className="dock-btn-capsule" onClick={manualSave}
-                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer'}}>
-                <div style={{fontSize: '24px', lineHeight: '1'}}>💾</div>
-                <div style={{fontSize: '12px', fontWeight: 'bold', color:'#555'}}>存档</div>
+                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor:'pointer', flexShrink:0}}>
+                <div style={{fontSize: '20px', lineHeight: '1'}}>💾</div>
+                <div style={{fontSize: '11px', fontWeight: 'bold', color:'#555', whiteSpace:'nowrap'}}>存档</div>
             </button>
-            <div className="dock-divider-v" style={{width:'2px', height:'35px', background:'#eee', margin:'0 10px'}}></div>
+            <div className="dock-divider-v" style={{width:'2px', height:'30px', background:'#eee', margin:'0 4px', flexShrink:0}}></div>
             {[
               { id: 'worldmap', icon: '🗺️', label: '地图', action: () => { handleExitAndSave(); setMapTab('maps'); } },
               { id: 'dungeons', icon: '⚔️', label: '副本', action: () => { handleExitAndSave(); setMapTab('dungeons'); } },
@@ -16678,9 +16676,9 @@ const renderMenu = () => {
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
             ].map(btn => (
               <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
-                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', background:'transparent', border:'none', cursor:'pointer', position:'relative'}}>
-                  <div style={{fontSize: '24px', lineHeight: '1'}}>{btn.icon}</div>
-                  <div style={{fontSize: '12px', fontWeight: 'bold', color:'#555'}}>{btn.label}</div>
+                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor:'pointer', position:'relative'}}>
+                  <div style={{fontSize: '20px', lineHeight: '1'}}>{btn.icon}</div>
+                  <div style={{fontSize: '11px', fontWeight: 'bold', color:'#555', whiteSpace:'nowrap'}}>{btn.label}</div>
                   {btn.badge > 0 && <div style={{position:'absolute', top:'-2px', right:'-2px', width:'16px', height:'16px', borderRadius:'50%', background:'#E53935', color:'#fff', fontSize:'9px', fontWeight:'800', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #fff'}}>{btn.badge}</div>}
               </button>
             ))}
