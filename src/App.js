@@ -1040,10 +1040,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
         if ((inventory.meds?.[itemKey] || 0) <= 0) return;
 
         if (item.type === 'HP') {
-            const max = getStats(p).maxHp;
-            if (p.currentHp >= max) { alert("体力已满！"); return; }
+            const max = getStats(pState, pState.stages, pState.status).maxHp;
+            if (pState.currentHp >= max) { alert("体力已满！"); return; }
             const heal = item.val === 9999 ? max : item.val;
-            p.currentHp = Math.min(max, p.currentHp + heal);
+            pState.currentHp = Math.min(max, pState.currentHp + heal);
             logMsg = `使用了 ${item.name}，恢复了体力！`;
             used = true;
         } else if (item.type === 'STATUS') {
@@ -1059,7 +1059,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                 used = true;
             }
         } else if (item.type && item.type.includes('PP')) {
-             (p.moves || []).forEach(m => m.pp = Math.min(m.maxPP||15, m.pp + item.val));
+             (pState.combatMoves || []).forEach(m => m.pp = Math.min(m.maxPP||15, m.pp + (item.val || 10)));
              logMsg = `使用了 ${item.name}，PP得到了恢复！`;
              used = true;
         } else if (item.type === 'REVIVE') {
@@ -1845,6 +1845,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             msg = `📖 ${pet.name} 学会了 [${tm.name}]!`;
             setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 1) - 1)}}));
         } else {
+            newMove._tmId = tm.id;
             pet.pendingLearnMove = newMove;
             setParty(newParty);
             setLearningPetIdx(petIdx);
@@ -2356,7 +2357,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.leagueWins = leagueWins;
       next.sectChiefsDefeated = (sectTitles || []).length;
       next.uniqueFruits = [...new Set(fruitInventory || [])].length;
-      next.challengesCompleted = (completedChallenges || []).filter(c => c && c.startsWith && c.startsWith('c')).length;
+      next.challengesCompleted = (completedChallenges || []).length;
       next.achievementCount = unlockedAchs.length;
       const allPets = [...(party || []), ...(box || [])];
       next.maxPetLevel = Math.max(0, ...allPets.map(p => p?.level || 0));
@@ -2371,9 +2372,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (p) types.add(p.type);
       });
       next.typesCollected = types.size;
-      next.houseLevel = (['tent','cabin','house','mansion','castle'].indexOf(housing?.currentHouse || housing?.houseType || 'tent'));
+      const houseTier = {'tent':1,'cabin':2,'house':3,'mansion':4,'castle':5,'beach_house':5,'world_tree':6,'sky_fortress':7};
+      next.houseLevel = houseTier[housing?.currentHouse || housing?.houseType || 'tent'] || 1;
       next.furnitureCount = (housing?.furniture || []).length;
-      next.housingScoreTier = getHousingScoreTier ? getHousingScoreTier(calcHouseScore ? calcHouseScore(housing) : 0) : 0;
+      const hsTier = getHousingScoreTier ? getHousingScoreTier(calcHouseScore ? calcHouseScore(housing?.furniture || housing) : 0) : 0;
+      next.housingScoreTier = typeof hsTier === 'object' ? (hsTier.tier || hsTier.level || 0) : (hsTier || 0);
       next.mapsVisited = Object.keys(mapProgress || {}).length;
       next.allMapsUnlocked = Object.keys(mapProgress || {}).length >= MAPS.length;
       // 队伍属性多样性
@@ -2403,6 +2406,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const rank = getGangRank(gang.contribution, gang.isOwner);
         next.gangRank = rank ? GANG_RANKS.indexOf(rank) : 99;
       }
+      next.maxIntimacy = Math.max(0, ...allPets.map(p => p?.intimacy || 0));
+      next.maxSkillCount = Math.max(0, ...allPets.map(p => (p?.moves || []).length));
       if (marriage?.spouse) next.marriageComplete = 1;
       if (kingdomWar?.faction) {
         next.kwJoined = true;
@@ -2429,7 +2434,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   useEffect(() => {
     syncAchStats();
-  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, party, box, housing, mapProgress]);
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, party, box, housing, mapProgress, unlockedAchs, gang, marriage, kingdomWar]);
 
   useEffect(() => {
     if (caughtDex.length > 0) checkDexTitles(caughtDex.length);
@@ -7064,9 +7069,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     };
     
-    // 双方互相威吓
-    applyIntimidate(battleEnemyParty[0], battlePlayerParty[activeIdx]);
-    applyIntimidate(battlePlayerParty[activeIdx], battleEnemyParty[0]);
+    // 双方互相威吓 (双打时所有上场精灵互相检查)
+    if (isDouble) {
+      const pIdxs = [activeIdx, battlePlayerParty.findIndex((pp, i) => i !== activeIdx && pp.currentHp > 0)].filter(i => i >= 0);
+      const eIdxs = [0, battleEnemyParty.length > 1 ? 1 : -1].filter(i => i >= 0);
+      for (const ei of eIdxs) {
+        for (const pi of pIdxs) {
+          applyIntimidate(battleEnemyParty[ei], battlePlayerParty[pi]);
+          applyIntimidate(battlePlayerParty[pi], battleEnemyParty[ei]);
+        }
+      }
+    } else {
+      applyIntimidate(battleEnemyParty[0], battlePlayerParty[activeIdx]);
+      applyIntimidate(battlePlayerParty[activeIdx], battleEnemyParty[0]);
+    }
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     let enemyComboUsed = false;
@@ -7336,6 +7352,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [修复版] 切换精灵 (含特性触发)
   // ==========================================
   const switchPokemon = async (newIdx) => {
+    if (battle?.isDouble) return;
     if (newIdx === battle.activeIdx) return;
     
     const combatStates = battle.playerCombatStates;
@@ -7594,10 +7611,22 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!enemy || enemy.currentHp <= 0) return;
         const availMoves = (enemy.combatMoves || []).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
         if (availMoves.length === 0) return;
-        const move = _.sample(availMoves);
         const spd = getStats(enemy, enemy.stages, enemy.status).spd || 1;
-        const targetPlayerSlot = slotIdx < tempBattle.activeIdxs.length ? tempBattle.activeIdxs[slotIdx] : tempBattle.activeIdxs[0];
-        actions.push({ side: 'enemy', petIdx: eIdx, move, speed: spd, targetIdx: targetPlayerSlot, slotIdx });
+        const alivePlayerIdxs = tempBattle.activeIdxs.filter(i => tempBattle.playerCombatStates[i]?.currentHp > 0);
+        if (alivePlayerIdxs.length === 0) return;
+        let bestMove = availMoves[0], bestTarget = alivePlayerIdxs[0], bestScore = -999;
+        for (const m of availMoves) {
+          for (const tIdx of alivePlayerIdxs) {
+            const target = tempBattle.playerCombatStates[tIdx];
+            let score = (m.p || 0) * getTypeMod(m.t, target.type);
+            if (target.type2) score *= getTypeMod(m.t, target.type2);
+            const hpRatio = target.currentHp / (getStats(target).maxHp || 1);
+            if (hpRatio < 0.3) score += 20;
+            score += (Math.random() * 15);
+            if (score > bestScore) { bestScore = score; bestMove = m; bestTarget = tIdx; }
+          }
+        }
+        actions.push({ side: 'enemy', petIdx: eIdx, move: bestMove, speed: spd, targetIdx: bestTarget, slotIdx });
       });
 
       actions.sort((a, b) => {
@@ -7638,9 +7667,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         const side = action.side;
         const animTarget = side === 'player' ? 'enemy' : 'player';
-        const animSlot = side === 'player' ? tempBattle.enemyActiveIdxs.indexOf(resolvedDefIdx) : tempBattle.activeIdxs.indexOf(resolvedDefIdx);
+        const defAnimSlot = side === 'player' ? tempBattle.enemyActiveIdxs.indexOf(resolvedDefIdx) : tempBattle.activeIdxs.indexOf(resolvedDefIdx);
+        const atkAnimSlot = side === 'player' ? tempBattle.activeIdxs.indexOf(action.petIdx) : tempBattle.enemyActiveIdxs.indexOf(action.petIdx);
+        tempBattle._doubleAnimCtx = { atkSlot: atkAnimSlot >= 0 ? atkAnimSlot : 0, defSlot: defAnimSlot >= 0 ? defAnimSlot : 0, source: side };
         addLog(`${attacker.name} 使用了 ${action.move.name}！`);
-        setAnimEffect({ type: action.move.t || 'NORMAL', target: animTarget, slot: animSlot >= 0 ? animSlot : 0 });
+        setAnimEffect({ type: action.move.t || 'NORMAL', target: animTarget, slot: defAnimSlot >= 0 ? defAnimSlot : 0 });
         await wait(400);
 
         await performAction(attacker, defender, action.move, side, tempBattle);
@@ -7668,6 +7699,56 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (es && es.currentHp > 0) {
           const logs = checkEffectExpiration(es, es);
           logs.forEach(l => addLog(l));
+        }
+      }
+
+      // 双打回合末：领域倒计时、果实倒计时、CE回复
+      if (tempBattle.activeDomain && tempBattle.activeDomain.turnsLeft > 0) {
+        tempBattle.activeDomain.turnsLeft--;
+        const dom = tempBattle.activeDomain;
+        if (dom.effect?.dot) {
+          const dotSide = dom.ownerSide === 'player' ? tempBattle.enemyActiveIdxs : tempBattle.activeIdxs;
+          const dotParty = dom.ownerSide === 'player' ? tempBattle.enemyParty : tempBattle.playerCombatStates;
+          for (const idx of dotSide) {
+            const u = dotParty[idx];
+            if (u && u.currentHp > 0) {
+              const dot = Math.floor(getStats(u).maxHp * dom.effect.dot);
+              u.currentHp = Math.max(0, u.currentHp - dot);
+              addLog(`🌀 ${u.name} 受到领域伤害 ${dot}!`);
+            }
+          }
+        }
+        if (dom.turnsLeft <= 0) {
+          addLog(`🌀 领域消散了！`);
+          tempBattle.activeDomain = null;
+        }
+      }
+      for (const pIdx of tempBattle.activeIdxs) {
+        const ps = tempBattle.playerCombatStates[pIdx];
+        if (ps && ps.currentHp > 0 && ps.fruitTransformed && ps.fruitTurnsLeft > 0) {
+          ps.fruitTurnsLeft--;
+          if (ps.fruitTurnsLeft <= 0) {
+            ps.fruitTransformed = false; ps.fruitEffects = null;
+            addLog(`${ps.name} 的果实变身结束了！`);
+          }
+        }
+        if (ps && ps.currentHp > 0 && ps.maxCE > 0) {
+          const regen = Math.floor(ps.maxCE * 0.08);
+          ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + regen);
+        }
+      }
+      for (const eIdx of tempBattle.enemyActiveIdxs) {
+        const es = tempBattle.enemyParty[eIdx];
+        if (es && es.currentHp > 0 && es.fruitTransformed && es.fruitTurnsLeft > 0) {
+          es.fruitTurnsLeft--;
+          if (es.fruitTurnsLeft <= 0) {
+            es.fruitTransformed = false; es.fruitEffects = null;
+            addLog(`${es.name} 的果实变身结束了！`);
+          }
+        }
+        if (es && es.currentHp > 0 && es.maxCE > 0) {
+          const regen = Math.floor(es.maxCE * 0.08);
+          es.cursedEnergy = Math.min(es.maxCE, (es.cursedEnergy || 0) + regen);
         }
       }
 
@@ -8257,7 +8338,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         addLog(`🌀 ${player.name} 展开领域——${domainDef.name}!`);
         addLog(`📖 ${domainDef.desc}`);
         const achUpdate = { domainsUsed: 1 };
-        if (tempBattle.activeDomain?.ownerSide === 'enemy') achUpdate.domainClash = 1;
+        if (state.activeDomain?.ownerSide === 'enemy') achUpdate.domainClash = 1;
         updateAchStat(achUpdate);
         setAnimEffect({ type: 'DOMAIN', target: 'player' });
         await wait(1500);
@@ -8944,7 +9025,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const performAction = async (attacker, defender, move, source, battleState) => {
     if (!battleState && !battle) return false;
     if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
-    setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
+    if (!battleState?.isDouble) setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
+
+    const _dCtx = battleState?._doubleAnimCtx;
+    const _setAnim = _dCtx
+      ? (animData) => {
+          if (!animData) { setAnimEffect(null); return; }
+          const slot = (animData.target === _dCtx.source) ? _dCtx.atkSlot : _dCtx.defSlot;
+          setAnimEffect({ ...animData, slot: slot >= 0 ? slot : 0 });
+        }
+      : setAnimEffect;
 
     const atkIdx = source === 'player' ? battleState.activeIdx : battleState.enemyActiveIdx;
     const defIdx = source === 'player' ? battleState.enemyActiveIdx : battleState.activeIdx;
@@ -8957,8 +9047,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         atkState.volatiles.sleepTurns--;
         if (atkState.volatiles.sleepTurns > 0) {
             addLog(`${attacker.name} 正在熟睡...`);
-            setAnimEffect({ type: 'SLEEP', target: source === 'player' ? 'player' : 'enemy' }); 
-            await wait(1200); setAnimEffect(null);
+            _setAnim({ type: 'SLEEP', target: source === 'player' ? 'player' : 'enemy' }); 
+            await wait(1200); _setAnim(null);
             return false; 
         } else {
             atkState.status = null;
@@ -8968,8 +9058,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (atkState.status === 'FRZ') {
         if (Math.random() < 0.8) {
             addLog(`${attacker.name} 被冻结了，无法动弹!`);
-            setAnimEffect({ type: 'FREEZE', target: source === 'player' ? 'player' : 'enemy' }); 
-            await wait(1200); setAnimEffect(null);
+            _setAnim({ type: 'FREEZE', target: source === 'player' ? 'player' : 'enemy' }); 
+            await wait(1200); _setAnim(null);
             return false; 
         } else {
             atkState.status = null;
@@ -8978,8 +9068,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     if (atkState.status === 'PAR' && Math.random() < 0.25) {
         addLog(`${attacker.name} 身体麻痹，无法行动!`);
-        setAnimEffect({ type: 'PARALYSIS', target: source === 'player' ? 'player' : 'enemy' }); 
-        await wait(1200); setAnimEffect(null);
+        _setAnim({ type: 'PARALYSIS', target: source === 'player' ? 'player' : 'enemy' }); 
+        await wait(1200); _setAnim(null);
         return false; 
     }
     if (atkState.volatiles && atkState.volatiles.confused > 0) {
@@ -8988,8 +9078,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${attacker.name} 的混乱解除了!`);
         } else {
         addLog(`${attacker.name} 混乱了!`);
-        setAnimEffect({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
-            await wait(1000); setAnimEffect(null);
+        _setAnim({ type: 'CONFUSION', target: source === 'player' ? 'player' : 'enemy' }); 
+            await wait(1000); _setAnim(null);
             if (Math.random() < 0.5) {
                 addLog(`它在混乱中攻击了自己!`);
                 const selfDmg = Math.floor(getStats(attacker).maxHp * 0.12);
@@ -9020,9 +9110,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self');
     if (defState.volatiles.protected && isAttackOrDebuff) {
         addLog(`✋ ${defender.name} 守住了攻击!`); 
-        setAnimEffect({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
+        _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
         await wait(1200); 
-        setAnimEffect(null);
+        _setAnim(null);
         return false;
     }
     
@@ -9063,9 +9153,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return false;
     }
 
-    setAnimEffect({ type: move.t, source: source, target: source === 'player' ? 'enemy' : 'player', isCrit: false });
+    _setAnim({ type: move.t, source: source, target: source === 'player' ? 'enemy' : 'player', isCrit: false });
     await wait(1000); 
-    setAnimEffect(null);
+    _setAnim(null);
 
     // 3. 伤害/效果结算
     let dmg = 0;
@@ -9083,6 +9173,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const statName = eff.stat;
             targetState.stages[statName] = Math.max(-6, Math.min(6, (targetState.stages[statName] || 0) + delta));
             if(eff.stat2) targetState.stages[eff.stat2] = Math.max(-6, Math.min(6, (targetState.stages[eff.stat2] || 0) + delta));
+            if(eff.stat3) targetState.stages[eff.stat3] = Math.max(-6, Math.min(6, (targetState.stages[eff.stat3] || 0) + delta));
             
             const statNames = { p_atk:'物攻', p_def:'物防', s_atk:'特攻', s_def:'特防', spd:'速度', acc:'命中', eva:'闪避', crit:'暴击' };
             const sName = statNames[statName] || statName;
@@ -9090,7 +9181,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const degree = Math.abs(delta) > 1 ? '大幅' : '';
             
             addLog(`${targetName} 的 [${sName}] ${degree}${action}了!`);
-            setAnimEffect({ type: eff.type, target: targetSide }); 
+            _setAnim({ type: eff.type, target: targetSide }); 
         } 
         else if (eff.type === 'STATUS') {
             if (eff.status === 'CON') {
@@ -9099,7 +9190,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 } else if (Math.random() < (eff.chance || 1.0)) {
                     targetState.volatiles = { ...(targetState.volatiles || {}), confused: 3 + Math.floor(Math.random() * 2) };
                     addLog(`${targetName} 陷入了混乱!`);
-                    setAnimEffect({ type: 'CONFUSION', target: targetSide });
+                    _setAnim({ type: 'CONFUSION', target: targetSide });
                 } else {
                     addLog(`但是失败了!`);
                 }
@@ -9115,7 +9206,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 if (eff.status === 'SLP') targetState.volatiles.sleepTurns = _.random(2, 4);
                 const statusNames = { BRN:'灼伤', PSN:'中毒', PAR:'麻痹', SLP:'睡眠', FRZ:'冰冻' };
                 addLog(`${targetName} ${statusNames[eff.status] ? '陷入了' + statusNames[eff.status] + '状态' : '陷入了异常状态'}!`);
-                setAnimEffect({ type: eff.status, target: targetSide });
+                _setAnim({ type: eff.status, target: targetSide });
             } else {
                 addLog(`但是失败了!`);
             }
@@ -9130,7 +9221,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                     const statNames = { p_atk:'物攻', p_def:'物防', s_atk:'特攻', s_def:'特防', spd:'速度' };
                     const degree = Math.abs(delta) > 1 ? '大幅' : '';
                     addLog(`${seTargetName} 的 [${statNames[se.stat] || se.stat}] ${degree}${delta > 0 ? '提升' : '下降'}了!`);
-                    setAnimEffect({ type: se.type, target: seTargetSide });
+                    _setAnim({ type: se.type, target: seTargetSide });
                 }
             }
         }
@@ -9146,14 +9237,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
             actualTargetState.volatiles.protected = true;
             addLog(`${actualTargetName} 摆出了防御架势!`);
-            setAnimEffect({ type: 'PROTECT', target: actualTargetSide });
+            _setAnim({ type: 'PROTECT', target: actualTargetSide });
         }
         else if (eff.type === 'HEAL') {
             const cap = Math.min(0.5, eff.val || 0.5); 
             const healAmount = Math.floor(getStats(attacker).maxHp * cap);
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + healAmount);
             addLog(`${attacker.name} 恢复了体力!`);
-            setAnimEffect({ type: 'HEAL', target: targetSide });
+            _setAnim({ type: 'HEAL', target: targetSide });
+        }
+        else if (eff.type === 'OHKO') {
+            if (Math.random() < (eff.chance || 0.3)) {
+              defender.currentHp = 0;
+              addLog(`💀 ${defender.name} 被一击必杀了！`);
+              _setAnim({ type: move.t || 'ICE', target: source === 'player' ? 'enemy' : 'player' });
+              isDead = true;
+            } else {
+              addLog(`但是没有命中！`);
+            }
         }
         else if (eff.type === 'RESET') {
              atkState.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
@@ -9165,12 +9266,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 const heal = Math.floor(getStats(attacker).maxHp * eff.healPercent);
                 attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
                 addLog(`🔮 ${attacker.name} 以反转术式恢复了 ${heal} HP!`);
-                setAnimEffect({ type: 'HEAL', target: source === 'player' ? 'player' : 'enemy' });
+                _setAnim({ type: 'HEAL', target: source === 'player' ? 'player' : 'enemy' });
             }
             if (eff.stat && eff.stages) {
                 atkState.stages[eff.stat] = Math.min(6, (atkState.stages[eff.stat] || 0) + eff.stages);
                 addLog(`🔮 ${attacker.name} 咒力强化! ${eff.stat === 'p_atk' ? '物攻' : eff.stat}+${eff.stages}!`);
-                setAnimEffect({ type: 'BUFF', target: source === 'player' ? 'player' : 'enemy' });
+                _setAnim({ type: 'BUFF', target: source === 'player' ? 'player' : 'enemy' });
             }
             if (eff.isolate) {
                 addLog(`🔮 ${attacker.name} 展开了帳! ${eff.turns}回合内双方无法换人!`);
@@ -9185,7 +9286,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 }
             }
         }
-        await wait(1000); setAnimEffect(null);
+        await wait(1000); _setAnim(null);
     } else {
         // === 伤害类技能 ===
         const noGang = { atk:0, def:0, s_atk:0, s_def:0, hp:0, spd:0, gold:0, exp:0 };
@@ -9300,7 +9401,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const eff = dom.effect;
             if (isOwner) {
                 if (eff.atkBoost) rawDmg *= eff.atkBoost;
-                if (eff.defBoost && !isOwner) rawDmg /= eff.defBoost;
             } else {
                 if (eff.enemyAtkDown) rawDmg *= eff.enemyAtkDown;
                 if (eff.enemyDefDown) rawDmg /= eff.enemyDefDown;
@@ -9344,6 +9444,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (defender.trait === 'levitate' && move.t === 'GROUND') {
             rawDmg = 0; isImmune = true; addLog(`${defender.name} 漂浮在空中，免疫了攻击！`);
         }
+        if (attacker.trait === 'flash_fire' && move.t === 'FIRE') {
+            rawDmg *= 1.5;
+        }
         if (defender.trait === 'flash_fire' && move.t === 'FIRE') {
             rawDmg = 0; isImmune = true; addLog(`${defender.name} 吸收了火焰！`);
         }
@@ -9376,9 +9479,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
 
         if (isCrit && !isImmune && !isDodged) {
-          setAnimEffect({ type: move.t, target: source === 'player' ? 'enemy' : 'player', isCrit: true });
+          _setAnim({ type: move.t, target: source === 'player' ? 'enemy' : 'player', isCrit: true });
           await wait(600);
-          setAnimEffect(null);
+          _setAnim(null);
         }
 
         if (isImmune || isDodged) {
@@ -9394,8 +9497,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
 
         if (source === 'player' && !isImmune && !isDodged) {
-          updateAchStat({ maxDamageDealt: dmg });
-          if (typeMod > 1.2) updateAchStat({ superEffectiveHits: 1 });
+          updateAchStat({ maxDamageDealt: dmg, maxSingleDamage: dmg });
+          if (typeMod > 1.2) updateAchStat({ superEffectiveHits: 1, doubleEffectiveHits: 1 });
+          if (isCrit) updateAchStat({ maxCritsInBattle: 1 });
+          if (defender.currentHp <= 0) updateAchStat({ oneHitKOs: 1 });
         }
 
         let equipDodged = false;
@@ -9627,46 +9732,46 @@ const grantContestReward = (config, score, subjectPet = null) => {
                      const statName = eff.stat;
                      targetState.stages[statName] = Math.max(-6, Math.min(6, (targetState.stages[statName] || 0) + delta));
                      addLog(`追加效果: ${targetName} 的能力变化了!`);
-                     setAnimEffect({ type: eff.type, target: targetSide });
+                     _setAnim({ type: eff.type, target: targetSide });
                  } else if (eff.type === 'STATUS' && !targetState.status) {
                      targetState.status = eff.status;
                      if (eff.status === 'SLP') { defState.volatiles = { ...(defState.volatiles || {}), sleepTurns: 2 + Math.floor(Math.random() * 2) }; }
                      addLog(`追加效果: ${targetName} 陷入了异常状态!`);
-                     setAnimEffect({ type: eff.status, target: targetSide });
+                     _setAnim({ type: eff.status, target: targetSide });
                  }
-                 await wait(800); setAnimEffect(null);
+                 await wait(800); _setAnim(null);
              }
 
              if (eff.confuse && !defState.volatiles?.confused && Math.random() < eff.confuse) {
                  defState.volatiles = { ...(defState.volatiles || {}), confused: 3 };
                  addLog(`😵 ${defender.name} 陷入了混乱!`);
-                 setAnimEffect({ type: 'CONFUSION', target: defSide }); await wait(800); setAnimEffect(null);
+                 _setAnim({ type: 'CONFUSION', target: defSide }); await wait(800); _setAnim(null);
              }
              if (eff.burn && !defState.status && Math.random() < eff.burn) {
                  defState.status = 'BRN';
                  addLog(`🔥 ${defender.name} 被灼伤了!`);
-                 setAnimEffect({ type: 'BRN', target: defSide }); await wait(800); setAnimEffect(null);
+                 _setAnim({ type: 'BRN', target: defSide }); await wait(800); _setAnim(null);
              }
              if (eff.paralyze && !defState.status && Math.random() < eff.paralyze) {
                  defState.status = 'PAR';
                  addLog(`⚡ ${defender.name} 被麻痹了!`);
-                 setAnimEffect({ type: 'PARALYSIS', target: defSide }); await wait(800); setAnimEffect(null);
+                 _setAnim({ type: 'PARALYSIS', target: defSide }); await wait(800); _setAnim(null);
              }
              if (eff.poison && !defState.status && (eff.poison === true ? true : Math.random() < eff.poison)) {
                  defState.status = 'PSN';
                  addLog(`☠️ ${defender.name} 中毒了!`);
-                 setAnimEffect({ type: 'POISON', target: defSide }); await wait(800); setAnimEffect(null);
+                 _setAnim({ type: 'POISON', target: defSide }); await wait(800); _setAnim(null);
              }
              if (eff.freeze && !defState.status && Math.random() < eff.freeze) {
                  defState.status = 'FRZ';
                  addLog(`🧊 ${defender.name} 被冰冻了!`);
-                 setAnimEffect({ type: 'FREEZE', target: defSide }); await wait(800); setAnimEffect(null);
+                 _setAnim({ type: 'FREEZE', target: defSide }); await wait(800); _setAnim(null);
              }
              if (eff.sleep && !defState.status && Math.random() < eff.sleep) {
                  defState.status = 'SLP';
                  defState.volatiles = { ...(defState.volatiles || {}), sleepTurns: 2 + Math.floor(Math.random() * 2) };
                  addLog(`😴 ${defender.name} 睡着了!`);
-                 setAnimEffect({ type: 'SLEEP', target: defSide }); await wait(800); setAnimEffect(null);
+                 _setAnim({ type: 'SLEEP', target: defSide }); await wait(800); _setAnim(null);
              }
              if (eff.healPercent) {
                  const heal = Math.floor(getStats(attacker).maxHp * eff.healPercent);
@@ -9739,6 +9844,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const defDiedFromDot = applyDot(defender, defState);
 
         if (defDiedFromDot) isDead = true;
+        if (atkDiedFromDot) addLog(`${attacker.name} 因状态伤害倒下了！`);
     }
 
     return isDead;
@@ -10148,6 +10254,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // --- 下面是原有的掉落和结算逻辑 (注意 setParty 使用 updatedParty) ---
 
+    if (['dungeon_stone','dungeon_stat','dungeon_shiny','boss_rush','type_challenge','survival'].includes(battle.type)) {
+      updateAchStat({ dungeonsCleared: 1 });
+    }
     // 1. 元素之塔 -> 掉落进化石
     if (battle.type === 'dungeon_stone') {
         const stoneKeys = Object.keys(EVO_STONES);
@@ -10918,6 +11027,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const eMaxLv = Math.max(0, ...enemyParty.map(e => e?.level || 0));
     const pMinLv = Math.min(Infinity, ...(party || []).map(p => p?.level || 999));
     if (eMaxLv - pMinLv >= 20) winAchUpdates.underdogWins = 1;
+    if (eMaxLv - pMinLv >= 30) winAchUpdates.underdogLowLevelWins = 1;
     if (battle.turnCount && battle.turnCount <= 3) winAchUpdates.quickWins = 1;
     if (type === 'pvp') winAchUpdates.pvpWins = 1;
     if (battle.isDouble) {
@@ -10926,7 +11036,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (allDoubleAlive) winAchUpdates.doublePerfectWins = 1;
     }
     // 隐藏成就追踪
-    if (battle.turnCount) winAchUpdates.longestBattle = battle.turnCount;
+    if (battle.turnCount) winAchUpdates.maxLongestBattle = battle.turnCount;
     if (isTrainer && battle.turnCount && battle.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
     if (activePet && activePet.activeVow && activePet.currentHp <= 1) winAchUpdates.clutchVowWin = 1;
     const playerHadFruit = battle.playerCombatStates?.some(p => p?.fruitUsed);
@@ -10944,6 +11054,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (usedDomain && usedVow && usedFruit) winAchUpdates.tripleSystemBattle = 1;
     // 身无分文
     if (gold === 0) winAchUpdates.zeroGoldWin = 1;
+    // 夜间探索/天气战斗
+    if (timePhase === 'NIGHT') winAchUpdates.nightExplores = 1;
+    if (weather && weather !== 'CLEAR') winAchUpdates.weatherBattleTypes = 1;
     updateAchStat(winAchUpdates);
 
     // 搭档羁绊累积（胜利时额外+10）
@@ -11051,8 +11164,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
-    const playerPet = party[battle.activeIdx];
-    const enemyPet = battle.enemyParty[battle.enemyActiveIdx];
+    const pIdx = battle.isDouble ? (battle.activeIdxs?.[0] ?? battle.activeIdx) : battle.activeIdx;
+    const eIdx = battle.isDouble ? (battle.enemyActiveIdxs?.[0] ?? battle.enemyActiveIdx) : battle.enemyActiveIdx;
+    const playerPet = party[pIdx];
+    const enemyPet = battle.enemyParty[eIdx];
 
     // 3. 计算逃跑概率
     let escapeChance = 0.8;
@@ -11116,7 +11231,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         await wait(500);
         if(screen) screen.classList.remove('anim-shake-screen');
 
-        await enemyTurn(); 
+        if (battle.isDouble) {
+          const skipActions = (battle.activeIdxs || []).map(idx => ({ moveIdx: -1, activeIdx: idx }));
+          await executeDoubleRound(skipActions);
+        } else {
+          await enemyTurn();
+        }
     }
   };
 
@@ -11126,7 +11246,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleCatch = async (ballType) => {
     setShowBallMenu(false);
-    if (battle.isTrainer || battle.isGym || battle.isChallenge) return addLog("训练家的精灵不能捕捉！");
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory) return addLog("训练家的精灵不能捕捉！");
     if ((inventory.balls[ballType] || 0) <= 0) return addLog("球不足！");
     try {
     
@@ -11598,6 +11718,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const newParty = [...party];
     const p = newParty[learningPetIdx];
     if (moveIndex === -1) {
+      if (pendingMove._tmId) {
+        setInventory(prev => ({...prev, tms: {...prev.tms, [pendingMove._tmId]: (prev.tms[pendingMove._tmId] || 0) + 1}}));
+      }
       alert(`${p.name} 放弃了学习 [${pendingMove.name}]。`);
     } else {
       const oldMoveName = p.moves[moveIndex].name;
@@ -18489,22 +18612,41 @@ const renderMenu = () => {
                 {/* 1b. 敌方区域2 (左上角, 仅双打) */}
                 {/* ========================================== */}
                 {isDoubleBattle && e2 && e2.currentHp > 0 && (
-                  <div style={{position:'absolute', top:'2%', left:'30%', display:'flex', flexDirection:'column', alignItems:'flex-start', transform:'scale(0.75)', transformOrigin:'top left', zIndex:5}}>
-                    <div className="hud-card hud-enemy" style={{marginBottom:'6px', minWidth:'160px'}}>
+                  <div className="enemy-zone-v2" style={{position:'absolute', top:'2%', left:'2%', display:'flex', flexDirection:'column', alignItems:'flex-start', transform:'scale(0.8)', transformOrigin:'top left', zIndex:5}}>
+                    <div className="hud-card hud-enemy" style={{marginBottom:'8px'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                        <span style={{fontSize:'12px', fontWeight:'bold', wordBreak:'break-all'}}>{e2.name}</span>
-                        <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
+                        <span style={{fontSize:'13px', fontWeight:'bold', wordBreak:'break-all'}}>{e2.name}</span>
+                        <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
                       </div>
-                      <div style={{display:'flex', alignItems:'center', gap:'3px', flexWrap:'wrap', marginBottom:'3px', justifyContent:'flex-end'}}>
-                        {e2.isShiny && <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'7px', padding:'1px 4px', borderRadius:'6px', fontWeight:'bold'}}>✨闪光</span>}
+                      <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
+                        {e2.isFusedShiny ? (
+                          <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
+                        ) : e2.isShiny ? (
+                          <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
+                        ) : null}
+                        {renderSectBadge(e2, 'enemy')}
                         {renderStatusBadges(e2)}
+                        {e2.devilFruit && (() => { const df = getFruitById(e2.devilFruit); return df ? (
+                          <span style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
+                            {df.name}{e2.fruitTransformed ? ` (${e2.fruitTurnsLeft})` : ''}
+                          </span>
+                        ) : null; })()}
                       </div>
                       <EnhancedHPBar current={e2.currentHp} max={e2Stats.maxHp} label="" />
+                      {e2.maxCE > 0 && (
+                        <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                          <span style={{fontSize:'9px', color: e2.curseGrade?.color || '#999', fontWeight:'bold'}}>🔮{e2.curseGrade?.name || ''}</span>
+                          <div style={{flex:1, height:'4px', background:'#333', borderRadius:'2px', overflow:'hidden'}}>
+                            <div style={{width:`${((e2.cursedEnergy||0)/e2.maxCE)*100}%`, height:'100%', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s'}}></div>
+                          </div>
+                          <span style={{fontSize:'9px', color:'#CE93D8'}}>{e2.cursedEnergy||0}/{e2.maxCE}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="sprite-wrapper" style={{position:'relative'}}>
-                      <div className="battle-platform battle-platform-enemy" style={{transform:'scale(0.85)'}} />
+                      <div className="battle-platform battle-platform-enemy" />
                       <div className={`sprite-v2 ${e2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && animEffect?.slot === 1 && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
-                        style={{filter:'drop-shadow(0 8px 12px rgba(0,0,0,0.2))', transform:'scale(0.9)'}}>
+                        style={{filter: e2.isFusedShiny ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)' : e2.isShiny ? 'drop-shadow(0 0 5px rgba(255,215,0,0.5))' : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))'}}>
                         {renderAvatar(e2, true)}
                       </div>
                     </div>
@@ -18612,29 +18754,48 @@ const renderMenu = () => {
                 {/* 2b. 我方区域2 (右下角, 仅双打) */}
                 {/* ========================================== */}
                 {isDoubleBattle && p2 && p2.currentHp > 0 && (
-                  <div style={{position:'absolute', bottom:'4%', right:'20%', display:'flex', flexDirection:'column', alignItems:'flex-end', transform:'scale(0.75)', transformOrigin:'bottom right', zIndex:5}}>
-                    <div className="sprite-wrapper" style={{position:'relative', marginBottom:'6px'}}>
-                      <div className="battle-platform battle-platform-player" style={{transform:'scale(0.85)'}} />
+                  <div className="player-zone-v2" style={{position:'absolute', bottom:'4%', right:'2%', display:'flex', flexDirection:'column', alignItems:'flex-end', transform:'scale(0.8)', transformOrigin:'bottom right', zIndex:5}}>
+                    <div className={`sprite-wrapper player-sprite-wrapper ${p2.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position:'relative', marginBottom:'6px'}}>
+                      <div className="battle-platform battle-platform-player" />
                       <div style={{transform:'scaleX(-1)'}}>
                         <div className={`sprite-v2 ${p2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && animEffect?.slot === 1 && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
-                          style={{filter:'drop-shadow(0 8px 12px rgba(0,0,0,0.2))', transform:'scale(0.9)'}}>
+                          style={{filter: p2.isFusedShiny ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)' : p2.isShiny ? 'drop-shadow(0 0 5px rgba(255,215,0,0.5))' : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))'}}>
                           {renderAvatar(p2)}
                         </div>
                       </div>
                     </div>
-                    <div className="hud-card hud-player" style={{minWidth:'160px', border: battle.doubleSlot === 1 && (battle.phase === 'input' || battle.phase === 'double_input_2') ? '2px solid #FF9800' : undefined, boxShadow: battle.doubleSlot === 1 && battle.phase === 'double_input_2' ? '0 0 12px rgba(255,152,0,0.5)' : undefined}}>
+                    <div className="hud-card hud-player" style={{border: battle.doubleSlot === 1 && (battle.phase === 'input' || battle.phase === 'double_input_2') ? '2px solid #FF9800' : undefined, boxShadow: battle.doubleSlot === 1 && battle.phase === 'double_input_2' ? '0 0 12px rgba(255,152,0,0.5)' : undefined}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                        <span style={{fontSize:'12px', fontWeight:'bold', wordBreak:'break-all'}}>
+                        <span style={{fontSize:'14px', fontWeight:'bold', wordBreak:'break-all'}}>
                           {battle.doubleSlot === 1 && battle.phase === 'double_input_2' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
                           {p2.name}
                         </span>
-                        <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{p2.level}</span>
+                        <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{p2.level}</span>
                       </div>
-                      <div style={{display:'flex', alignItems:'center', gap:'3px', flexWrap:'wrap', marginBottom:'3px'}}>
-                        {p2.isShiny && <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'7px', padding:'1px 4px', borderRadius:'6px', fontWeight:'bold'}}>✨闪光</span>}
+                      <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px'}}>
+                        {p2.isFusedShiny ? (
+                          <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
+                        ) : p2.isShiny ? (
+                          <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
+                        ) : null}
+                        {renderSectBadge(p2, 'player')}
                         {renderStatusBadges(p2)}
+                        {p2.devilFruit && (() => { const df = getFruitById(p2.devilFruit); return df ? (
+                          <span style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
+                            {df.name}{p2.fruitTransformed ? ` (${p2.fruitTurnsLeft})` : ''}
+                          </span>
+                        ) : null; })()}
                       </div>
                       <EnhancedHPBar current={p2.currentHp} max={p2Stats.maxHp} label="" />
+                      {p2.maxCE > 0 && (
+                        <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                          <span style={{fontSize:'9px', color: p2.curseGrade?.color || '#999', fontWeight:'bold'}}>🔮{p2.curseGrade?.name || ''}</span>
+                          <div style={{flex:1, height:'4px', background:'#333', borderRadius:'2px', overflow:'hidden'}}>
+                            <div style={{width:`${((p2.cursedEnergy||0)/p2.maxCE)*100}%`, height:'100%', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s'}}></div>
+                          </div>
+                          <span style={{fontSize:'9px', color:'#CE93D8'}}>{p2.cursedEnergy||0}/{p2.maxCE}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
