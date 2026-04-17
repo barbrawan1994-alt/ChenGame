@@ -456,7 +456,7 @@ export const PROPOSAL_QUESTS = {
     steps: [
       { id: 'catch_pokemon', desc: '捕捉3只不同的精灵', type: 'catch', target: 3, icon: '🔮' },
       { id: 'win_battles', desc: '在星辰的注视下赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
-      { id: 'earn_gold', desc: '累计获得20000金币', type: 'earn_gold', target: 20000, icon: '💰' },
+      { id: 'brew_drinks', desc: '在咖啡厅酿造5杯饮品', type: 'brew', target: 5, icon: '☕' },
     ],
   },
   sherry: {
@@ -472,13 +472,13 @@ export const PROPOSAL_QUESTS = {
     steps: [
       { id: 'level_up', desc: '将任意精灵提升5个等级', type: 'level_up', target: 5, icon: '⬆️' },
       { id: 'win_battles', desc: '赢得8场战斗证明实力', type: 'battle_win', target: 8, icon: '⚔️' },
-      { id: 'train_intimacy', desc: '将1只精灵亲密度提升到100', type: 'intimacy', target: 100, icon: '💕' },
+      { id: 'catch_pokemon', desc: '捕捉3只精灵展示实力', type: 'catch', target: 3, icon: '💕' },
     ],
   },
   yuehua: {
     name: '月华的祝福',
     steps: [
-      { id: 'heal_pokemon', desc: '在家园中让精灵恢复HP 5次', type: 'housing_heal', target: 5, icon: '💚' },
+      { id: 'garden_harvest', desc: '在花园中种植并收获5次植物', type: 'garden_harvest', target: 5, icon: '💚' },
       { id: 'win_battles', desc: '一起赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
       { id: 'gift_favorite', desc: '送给月华3份她喜欢的礼物', type: 'gift_favorite', target: 3, icon: '🎁' },
     ],
@@ -496,7 +496,7 @@ export const PROPOSAL_QUESTS = {
     steps: [
       { id: 'furniture', desc: '放置5件家具装饰家园', type: 'place_furniture', target: 5, icon: '🪑' },
       { id: 'win_battles', desc: '一起赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
-      { id: 'home_score', desc: '家园评分达到200', type: 'home_score', target: 200, icon: '⭐' },
+      { id: 'garden_harvest', desc: '在花园中种植并收获3次植物', type: 'garden_harvest', target: 3, icon: '⭐' },
     ],
   },
   lingshuang: {
@@ -504,7 +504,7 @@ export const PROPOSAL_QUESTS = {
     steps: [
       { id: 'win_streak', desc: '连续赢得3场战斗', type: 'win_streak', target: 3, icon: '🗡️' },
       { id: 'win_battles', desc: '赢得10场战斗', type: 'battle_win', target: 10, icon: '⚔️' },
-      { id: 'catch_shiny', desc: '拥有1只闪光精灵', type: 'own_shiny', target: 1, icon: '✨' },
+      { id: 'catch_pokemon', desc: '捕捉2只精灵', type: 'catch', target: 2, icon: '✨' },
     ],
   },
 };
