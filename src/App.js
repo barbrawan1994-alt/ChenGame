@@ -1952,8 +1952,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     pet.id = evoDex.id;
                     pet.name = pet.isShiny ? `✨${evoDex.name}` : evoDex.name;
                     pet.type = evoDex.type;
-                    if (evoDex.secondaryType) pet.secondaryType = evoDex.secondaryType;
+                    if (evoDex.type2) pet.secondaryType = evoDex.type2;
+                    else if (evoDex.secondaryType) pet.secondaryType = evoDex.secondaryType;
                     pet.isEvolved = true;
+                    pet.evo = evoDex.evo || null;
+                    pet.evoLvl = evoDex.evoLvl || null;
+                    pet.canEvolve = false;
+                    if (evoDex.hp) { pet.hp = evoDex.hp; pet.atk = evoDex.atk; pet.def = evoDex.def; pet.s_atk = evoDex.s_atk; pet.s_def = evoDex.s_def; pet.spd = evoDex.spd; }
+                    if (evoDex.trait) pet.trait = evoDex.trait;
                     msg = `🎉 ${pet.name} 进化了！Lv.${oldLv} → Lv.${pet.level}！`;
                 } else {
                     msg = `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
@@ -6462,15 +6468,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         // 4. 🔥 强制入队/入库逻辑 🔥
         // 使用函数式更新确保状态最新
-        if (party.length < 6) {
-            setParty(prev => [...prev, rewardPet]);
-            console.log("奖励精灵已加入队伍:", rewardPet.name);
-        } else {
-            setBox(prev => [...prev, rewardPet]);
-            console.log("奖励精灵已存入盒子:", rewardPet.name);
-            // 延迟提示，避免被结算弹窗遮挡
+        setParty(prev => {
+            if (prev.length < 6) return [...prev, rewardPet];
+            setBox(b => [...b, rewardPet]);
             setTimeout(() => alert(`📦 队伍已满，奖励 [${rewardPet.name}] 已发送到电脑盒子！`), 500);
-        }
+            return prev;
+        });
         
         // 5. 开图鉴
         if (!caughtDex.includes(rewardPet.id)) {
@@ -10021,7 +10024,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - 1);
             addLog(`⬇️ ${defender.name} 的物攻下降了！`);
           }
-          if (eff.recoil) {
+          if (eff.recoil && !isDead) {
             const recoilDmg = Math.floor(dmg * eff.recoil);
             attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
             addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
@@ -10190,6 +10193,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
+    // 3.4b 反伤在KO时也要生效
+    if (isDead && move.effect?.recoil && dmg > 0) {
+      const recoilDmg = Math.floor(dmg * move.effect.recoil);
+      attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
+      addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
+    }
+
     // 3.5 以命搏命等一次性缚誓: 无论使用了什么技能都立即失效
     const vowCheck = atkState.activeVow;
     if (vowCheck && (vowCheck.reward.atkMult || vowCheck.reward.nextMovePower)) {
@@ -10218,8 +10228,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       });
     }
 
-    // 4b. 回合结束结算 (灼伤/中毒) — 单打仅在敌方行动后结算一次，双打在回合末统一结算
-    if (!isDead && !battleState?.isDouble && source === 'enemy') {
+    // 4b. 回合结束结算 (灼伤/中毒) — 每次行动后结算，双打在回合末统一结算
+    if (!battleState?.isDouble) {
         const applyDot = (unit, state) => {
             if (unit.currentHp <= 0) return false;
             if (state.status === 'BRN' || state.status === 'PSN') {
@@ -10706,12 +10716,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // Boss Rush - 连战Boss塔
     if (battle.type === 'boss_rush') {
       const wave = battle.bossRushWave || 1;
-      if (wave < 3) {
+      const maxWaves = battle.dungeonId === 'ladder_trial' ? 5 : 3;
+      if (wave < maxWaves) {
         const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
         const nextLvlBase = Math.min(100, (battle.enemyParty?.[0]?.level || 50) + 5);
         const rushName = battle.rushName || battle.battleName?.replace(/第\d+层/, '').trim() || 'Boss塔';
         const dungeonId = battle.dungeonId;
         addLog(`🗼 ${rushName}第${wave}层通关！准备迎战第${wave + 1}层...`);
+        if (battle.dungeonId === 'ladder_trial') {
+          const ladderItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
+          setInventory(prev => ({ ...prev, [ladderItem.id]: (prev[ladderItem.id]||0) + 1 }));
+          addLog(`🪜 天梯奖励: ${ladderItem.emoji} ${ladderItem.name}!`);
+        }
         setParty(updatedParty);
         setBattle(null);
         setTimeout(() => {
@@ -10727,6 +10743,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
         addLog(`🎁 通关奖励: ${rewardItem.emoji} ${rewardItem.name}!`);
         
+        if (battle.dungeonId === 'ladder_trial') {
+          const stoneKeys = Object.keys(EVO_STONES);
+          const rndStone = _.sample(stoneKeys);
+          setInventory(prev => ({ ...prev, stones: { ...prev.stones, [rndStone]: (prev.stones?.[rndStone]||0) + 1 } }));
+          addLog(`🪜 天梯通关奖励: ${EVO_STONES[rndStone].icon} ${EVO_STONES[rndStone].name}!`);
+        }
         if (rushName === '宝藏迷宫') {
           const eggPool = Math.random() < 0.15 ? [...(LEGENDARY_POOL || []).slice(0, 20)] : [...HIGH_TIER_POOL];
           const eggSpecies = _.sample(eggPool) || 1;
@@ -11494,7 +11516,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const rewardPet = createPet(341, 50); 
             rewardPet.name = "暗黑超梦";
       rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
-      if (party.length < 6) setParty([...updatedParty, rewardPet]);
+      if (updatedParty.length < 6) setParty([...updatedParty, rewardPet]);
             else {
           setParty(updatedParty);
                 setBox(prev => [...prev, rewardPet]);
@@ -14108,7 +14130,7 @@ const renderMenu = () => {
         const allPool = chosenTypes.flatMap(t => typePools[t] || [1,2,3]);
         const trLv = Math.max(55, Math.min(85, party[0].level));
         alert(`🎰 属性轮盘！\n今日混合属性: ${chosenTypes.map(t => typeNames[t]).join('+')}系\n三种属性混战，考验你的全方位应对能力！`);
-        startBattle({ id: 989, name: '属性轮盘', lvl: [trLv - 5, trLv + 5], pool: allPool, drop: 2000, dungeonId: 'type_roulette' }, 'type_challenge');
+        startBattle({ id: 989, name: '属性轮盘', lvl: [trLv - 5, trLv + 5], pool: allPool, drop: 2000, dungeonId: 'type_roulette', challengeType: _.sample(chosenTypes) }, 'type_challenge');
       }
       // --- 诸神黄昏 (三波神兽军团) ---
       else if (dungeon.type === 'ragnarok') {
@@ -17219,7 +17241,7 @@ const renderMenu = () => {
     const weatherInfo = WEATHERS[currentWeatherKey];
 
     const handleExitAndSave = () => {
-      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, sanguoProgress, sanguoStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar, dungeonCooldowns };
+      const dataToSave = { trainerName, trainerAvatar, gold, party, box, accessories, inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros, unlockedTitles, currentTitle, leagueWins, sectTitles, housing, fruitInventory, achStats, unlockedAchs, storyProgress, storyStep, sanguoProgress, sanguoStep, completedSideStories: [...completedSideStories], activeSideStory, mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang, kingdomWar, dungeonCooldowns, activityRecords };
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
       setHasSave(true); setView('world_map');
     };

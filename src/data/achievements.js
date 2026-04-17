@@ -92,7 +92,7 @@ const ACHIEVEMENTS = [
   { id: 'steps_50k',       cat: 'EXPLORE', rarity: 'RARE',      name: '万里长征',     desc: '在地图上行走80000步',         check: s => s.totalSteps >= 80000,  reward: { title: '行者' } },
   { id: 'steps_100k',      cat: 'EXPLORE', rarity: 'EPIC',      name: '永不停歇',     desc: '在地图上行走150000步',        check: s => s.totalSteps >= 150000, reward: { title: '远行者' } },
   { id: 'dungeon_first',   cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '副本探险者',   desc: '完成第一个特殊副本',          check: s => s.dungeonsCleared >= 1, reward: {} },
-  { id: 'dungeon_all',     cat: 'EXPLORE', rarity: 'EPIC',      name: '副本征服者',   desc: '完成所有特殊副本',            check: s => s.dungeonsCleared >= 8, reward: { title: '副本之王' } },
+  { id: 'dungeon_all',     cat: 'EXPLORE', rarity: 'EPIC',      name: '副本征服者',   desc: '完成8个不同的特殊副本',       check: s => s.dungeonsCleared >= 8, reward: { title: '副本之王' } },
   { id: 'dungeon_no_damage', cat: 'EXPLORE', rarity: 'EPIC',    name: '无伤通关',     desc: '在秘境中不损失任何HP通关',    check: s => s.dungeonPerfectClears >= 1, reward: { title: '无瑕征服者' } },
   { id: 'all_tier4_dungeon', cat: 'EXPLORE', rarity: 'LEGENDARY', name: '终极秘境全通', desc: '通关所有5个终极秘境',        check: s => s.tier4DungeonsCleared >= 5, reward: { title: '秘境之王' } },
   { id: 'infinity_10',     cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '无尽攀登',     desc: '无限城堡到达第15层',          check: s => s.maxInfinityFloor >= 15, reward: {} },
@@ -106,7 +106,7 @@ const ACHIEVEMENTS = [
 
   // ===== 成长类 — 按徽章→联赛→门派→等级→挑战→金币→技能分组 =====
   { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: {} },
-  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得17枚道馆徽章',            check: s => s.badgeCount >= 17,     reward: { title: '全徽章训练家' } },
+  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部13枚道馆徽章',        check: s => s.badgeCount >= 13,     reward: { title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { title: '联赛冠军' } },
   { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { title: '联赛之王' } },
   { id: 'sect_first',      cat: 'GROWTH', rarity: 'UNCOMMON',  name: '门派弟子',     desc: '击败第一位门派掌门',          check: s => s.sectChiefsDefeated >= 1, reward: {} },
@@ -167,7 +167,7 @@ const ACHIEVEMENTS = [
     hint: '提示：极限的力量——缚誓、果实、属性克制叠加在一起会怎样？',
     check: s => s.maxDamageDealt >= 9999, reward: { title: '毁灭者' }, hidden: true },
   { id: 'secret_master_ball', cat: 'SECRET', rarity: 'RARE',
-    name: '大师球传说',  desc: '使用大师球捕捉5只不同神兽',
+    name: '大师球传说',  desc: '使用大师球成功捕捉5只精灵',
     hint: '提示：传说中的紫白之球——留给最值得的对手',
     check: s => s.masterBallUsed >= 5,  reward: {}, hidden: true },
   { id: 'secret_rich',       cat: 'SECRET', rarity: 'RARE',
