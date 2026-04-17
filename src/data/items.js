@@ -25,6 +25,8 @@ export const MEDICINES = {
   antidote:     { id: 'antidote',     name: '解毒药',    price: 100,  icon: '🤢', type: 'STATUS', val: 'PSN', desc: '治愈中毒状态' },
   paralyze_heal:{ id: 'paralyze_heal',name: '解麻药',    price: 100,  icon: '⚡', type: 'STATUS', val: 'PAR', desc: '治愈麻痹状态' },
   burn_heal:    { id: 'burn_heal',    name: '烧伤药',    price: 100,  icon: '🔥', type: 'STATUS', val: 'BRN', desc: '治愈灼伤状态' },
+  awakening:    { id: 'awakening',   name: '清醒药',    price: 150,  icon: '💤', type: 'STATUS', val: 'SLP', desc: '治愈睡眠状态' },
+  ice_heal:     { id: 'ice_heal',    name: '解冻药',    price: 150,  icon: '❄️', type: 'STATUS', val: 'FRZ', desc: '治愈冰冻状态' },
   full_heal:    { id: 'full_heal',    name: '万能药',    price: 400,  icon: '🌟', type: 'STATUS', val: 'ALL', desc: '治愈所有异常状态' },
   revive:       { id: 'revive',       name: '活力块',    price: 800, icon: '💎', type: 'REVIVE', val: 0.5, desc: '复活并恢复一半HP' },
   max_revive:   { id: 'max_revive',   name: '活力星',    price: 1200, icon: '🌟', type: 'REVIVE', val: 1.0, desc: '复活濒死精灵并恢复全部HP' },

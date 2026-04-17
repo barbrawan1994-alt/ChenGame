@@ -155,7 +155,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
           <span style={{
             fontSize:'9px', fontWeight:'600', flexShrink:0, lineHeight:1,
             color: ppRatio <= 0.2 ? '#F44336' : 'rgba(255,255,255,0.4)',
-          }}>{move.pp}/{move.maxPp}</span>
+          }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{move.pp}/{move.maxPp}</span>
           {move.isCursed && move.ceCost > 0 && (
             <span style={{
               fontSize:'8px', color:'#a78bfa', fontWeight:'600', flexShrink:0,
