@@ -7583,12 +7583,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
       let tempBattle = _.cloneDeep(battle);
       tempBattle.doubleActions = playerActions;
 
-      for (const pIdx of tempBattle.activeIdxs) {
-        const ps = tempBattle.playerCombatStates[pIdx];
+      for (const pIdx of (tempBattle.activeIdxs || [])) {
+        const ps = tempBattle.playerCombatStates?.[pIdx];
         if (ps?.volatiles) ps.volatiles.protected = false;
       }
-      for (const eIdx of tempBattle.enemyActiveIdxs) {
-        const es = tempBattle.enemyParty[eIdx];
+      for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
+        const es = tempBattle.enemyParty?.[eIdx];
         if (es?.volatiles) es.volatiles.protected = false;
       }
 
@@ -7597,22 +7597,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
       playerActions.forEach((action, slotIdx) => {
         if (!action || action.moveIdx < 0) return;
         const pIdx = action.activeIdx;
-        const pet = tempBattle.playerCombatStates[pIdx];
+        const pet = tempBattle.playerCombatStates?.[pIdx];
         if (!pet || pet.currentHp <= 0) return;
-        const move = pet.combatMoves[action.moveIdx];
+        const move = (pet.combatMoves || [])[action.moveIdx];
         if (!move) return;
         const spd = getStats(pet, pet.stages, pet.status).spd || 1;
-        const targetEnemyIdx = action.targetEnemyIdx !== undefined ? action.targetEnemyIdx : (slotIdx < tempBattle.enemyActiveIdxs.length ? tempBattle.enemyActiveIdxs[slotIdx] : tempBattle.enemyActiveIdxs[0]);
+        const eaIdxs = tempBattle.enemyActiveIdxs || [];
+        const targetEnemyIdx = action.targetEnemyIdx !== undefined ? action.targetEnemyIdx : (slotIdx < eaIdxs.length ? eaIdxs[slotIdx] : eaIdxs[0]);
         actions.push({ side: 'player', petIdx: pIdx, move, speed: spd, targetIdx: targetEnemyIdx, slotIdx });
       });
 
-      tempBattle.enemyActiveIdxs.forEach((eIdx, slotIdx) => {
-        const enemy = tempBattle.enemyParty[eIdx];
+      (tempBattle.enemyActiveIdxs || []).forEach((eIdx, slotIdx) => {
+        const enemy = tempBattle.enemyParty?.[eIdx];
         if (!enemy || enemy.currentHp <= 0) return;
         const availMoves = (enemy.combatMoves || []).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
         if (availMoves.length === 0) return;
         const spd = getStats(enemy, enemy.stages, enemy.status).spd || 1;
-        const alivePlayerIdxs = tempBattle.activeIdxs.filter(i => tempBattle.playerCombatStates[i]?.currentHp > 0);
+        const alivePlayerIdxs = (tempBattle.activeIdxs || []).filter(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
         if (alivePlayerIdxs.length === 0) return;
         let bestMove = availMoves[0], bestTarget = alivePlayerIdxs[0], bestScore = -999;
         for (const m of availMoves) {
@@ -7638,11 +7639,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       for (const action of actions) {
         let attacker, defender, resolvedDefIdx;
         if (action.side === 'player') {
-          attacker = tempBattle.playerCombatStates[action.petIdx];
+          attacker = tempBattle.playerCombatStates?.[action.petIdx];
           let tIdx = action.targetIdx;
-          if (!tempBattle.enemyParty[tIdx] || tempBattle.enemyParty[tIdx].currentHp <= 0) {
-            tIdx = tempBattle.enemyActiveIdxs.find(i => tempBattle.enemyParty[i]?.currentHp > 0);
-            if (tIdx === undefined) tIdx = tempBattle.enemyParty.findIndex(e => e.currentHp > 0);
+          if (!tempBattle.enemyParty?.[tIdx] || tempBattle.enemyParty[tIdx].currentHp <= 0) {
+            tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
+            if (tIdx === undefined) tIdx = (tempBattle.enemyParty || []).findIndex(e => e.currentHp > 0);
           }
           if (tIdx === undefined || tIdx < 0) continue;
           defender = tempBattle.enemyParty[tIdx];
@@ -7650,11 +7651,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
           tempBattle.activeIdx = action.petIdx;
           tempBattle.enemyActiveIdx = tIdx;
         } else {
-          attacker = tempBattle.enemyParty[action.petIdx];
+          attacker = tempBattle.enemyParty?.[action.petIdx];
           let tIdx = action.targetIdx;
-          if (!tempBattle.playerCombatStates[tIdx] || tempBattle.playerCombatStates[tIdx].currentHp <= 0) {
-            tIdx = tempBattle.activeIdxs.find(i => tempBattle.playerCombatStates[i]?.currentHp > 0);
-            if (tIdx === undefined) tIdx = tempBattle.playerCombatStates.findIndex(p => p.currentHp > 0);
+          if (!tempBattle.playerCombatStates?.[tIdx] || tempBattle.playerCombatStates[tIdx].currentHp <= 0) {
+            tIdx = (tempBattle.activeIdxs || []).find(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
+            if (tIdx === undefined) tIdx = (tempBattle.playerCombatStates || []).findIndex(p => p.currentHp > 0);
           }
           if (tIdx === undefined || tIdx < 0) continue;
           defender = tempBattle.playerCombatStates[tIdx];
@@ -7667,8 +7668,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         const side = action.side;
         const animTarget = side === 'player' ? 'enemy' : 'player';
-        const defAnimSlot = side === 'player' ? tempBattle.enemyActiveIdxs.indexOf(resolvedDefIdx) : tempBattle.activeIdxs.indexOf(resolvedDefIdx);
-        const atkAnimSlot = side === 'player' ? tempBattle.activeIdxs.indexOf(action.petIdx) : tempBattle.enemyActiveIdxs.indexOf(action.petIdx);
+        const defAnimSlot = side === 'player' ? (tempBattle.enemyActiveIdxs || []).indexOf(resolvedDefIdx) : (tempBattle.activeIdxs || []).indexOf(resolvedDefIdx);
+        const atkAnimSlot = side === 'player' ? (tempBattle.activeIdxs || []).indexOf(action.petIdx) : (tempBattle.enemyActiveIdxs || []).indexOf(action.petIdx);
         tempBattle._doubleAnimCtx = { atkSlot: atkAnimSlot >= 0 ? atkAnimSlot : 0, defSlot: defAnimSlot >= 0 ? defAnimSlot : 0, source: side };
         addLog(`${attacker.name} 使用了 ${action.move.name}！`);
         setAnimEffect({ type: action.move.t || 'NORMAL', target: animTarget, slot: defAnimSlot >= 0 ? defAnimSlot : 0 });
@@ -7678,24 +7679,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         setBattle(prev => ({
           ...prev,
-          playerCombatStates: [...tempBattle.playerCombatStates],
-          enemyParty: [...tempBattle.enemyParty],
-          activeIdxs: [...tempBattle.activeIdxs],
-          enemyActiveIdxs: [...tempBattle.enemyActiveIdxs],
+          playerCombatStates: [...(tempBattle.playerCombatStates || [])],
+          enemyParty: [...(tempBattle.enemyParty || [])],
+          activeIdxs: [...(tempBattle.activeIdxs || [])],
+          enemyActiveIdxs: [...(tempBattle.enemyActiveIdxs || [])],
         }));
         setAnimEffect(null);
         await wait(600);
       }
 
-      for (const pIdx of tempBattle.activeIdxs) {
-        const ps = tempBattle.playerCombatStates[pIdx];
+      for (const pIdx of (tempBattle.activeIdxs || [])) {
+        const ps = tempBattle.playerCombatStates?.[pIdx];
         if (ps && ps.currentHp > 0) {
           const logs = checkEffectExpiration(ps, ps);
           logs.forEach(l => addLog(l));
         }
       }
-      for (const eIdx of tempBattle.enemyActiveIdxs) {
-        const es = tempBattle.enemyParty[eIdx];
+      for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
+        const es = tempBattle.enemyParty?.[eIdx];
         if (es && es.currentHp > 0) {
           const logs = checkEffectExpiration(es, es);
           logs.forEach(l => addLog(l));
@@ -7707,7 +7708,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         tempBattle.activeDomain.turnsLeft--;
         const dom = tempBattle.activeDomain;
         if (dom.effect?.dot) {
-          const dotSide = dom.ownerSide === 'player' ? tempBattle.enemyActiveIdxs : tempBattle.activeIdxs;
+          const dotSide = dom.ownerSide === 'player' ? (tempBattle.enemyActiveIdxs || []) : (tempBattle.activeIdxs || []);
           const dotParty = dom.ownerSide === 'player' ? tempBattle.enemyParty : tempBattle.playerCombatStates;
           for (const idx of dotSide) {
             const u = dotParty[idx];
@@ -7723,8 +7724,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           tempBattle.activeDomain = null;
         }
       }
-      for (const pIdx of tempBattle.activeIdxs) {
-        const ps = tempBattle.playerCombatStates[pIdx];
+      for (const pIdx of (tempBattle.activeIdxs || [])) {
+        const ps = tempBattle.playerCombatStates?.[pIdx];
         if (ps && ps.currentHp > 0 && ps.fruitTransformed && ps.fruitTurnsLeft > 0) {
           ps.fruitTurnsLeft--;
           if (ps.fruitTurnsLeft <= 0) {
@@ -7737,8 +7738,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + regen);
         }
       }
-      for (const eIdx of tempBattle.enemyActiveIdxs) {
-        const es = tempBattle.enemyParty[eIdx];
+      for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
+        const es = tempBattle.enemyParty?.[eIdx];
         if (es && es.currentHp > 0 && es.fruitTransformed && es.fruitTurnsLeft > 0) {
           es.fruitTurnsLeft--;
           if (es.fruitTurnsLeft <= 0) {
@@ -7757,7 +7758,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       if (allEnemiesDead) {
         let currentParty = party;
-        for (const enemy of tempBattle.enemyParty) {
+        for (const enemy of (tempBattle.enemyParty || [])) {
           const { newParty, logMsg } = processDefeatedEnemy(enemy, currentParty, tempBattle);
           currentParty = newParty;
           addLog(logMsg);
@@ -7775,13 +7776,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const usedPlayerIdxs = new Set();
       const newActiveIdxs = [];
-      for (const idx of tempBattle.activeIdxs) {
-        if (tempBattle.playerCombatStates[idx]?.currentHp > 0) {
+      for (const idx of (tempBattle.activeIdxs || [])) {
+        if (tempBattle.playerCombatStates?.[idx]?.currentHp > 0) {
           usedPlayerIdxs.add(idx);
           newActiveIdxs.push(idx);
         } else {
-          const next = tempBattle.playerCombatStates.findIndex((pp, i) =>
-            pp.currentHp > 0 && !tempBattle.activeIdxs.includes(i) && !usedPlayerIdxs.has(i) && !newActiveIdxs.includes(i)
+          const next = (tempBattle.playerCombatStates || []).findIndex((pp, i) =>
+            pp.currentHp > 0 && !(tempBattle.activeIdxs || []).includes(i) && !usedPlayerIdxs.has(i) && !newActiveIdxs.includes(i)
           );
           if (next >= 0) {
             usedPlayerIdxs.add(next);
@@ -7797,13 +7798,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const usedEnemyIdxs = new Set();
       const newEnemyIdxs = [];
-      for (const idx of tempBattle.enemyActiveIdxs) {
-        if (tempBattle.enemyParty[idx]?.currentHp > 0) {
+      for (const idx of (tempBattle.enemyActiveIdxs || [])) {
+        if (tempBattle.enemyParty?.[idx]?.currentHp > 0) {
           usedEnemyIdxs.add(idx);
           newEnemyIdxs.push(idx);
         } else {
-          const next = tempBattle.enemyParty.findIndex((ee, i) =>
-            ee.currentHp > 0 && !tempBattle.enemyActiveIdxs.includes(i) && !usedEnemyIdxs.has(i) && !newEnemyIdxs.includes(i)
+          const next = (tempBattle.enemyParty || []).findIndex((ee, i) =>
+            ee.currentHp > 0 && !(tempBattle.enemyActiveIdxs || []).includes(i) && !usedEnemyIdxs.has(i) && !newEnemyIdxs.includes(i)
           );
           if (next >= 0) {
             usedEnemyIdxs.add(next);
@@ -7819,8 +7820,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       setBattle(prev => ({
         ...prev,
-        playerCombatStates: [...tempBattle.playerCombatStates],
-        enemyParty: [...tempBattle.enemyParty],
+        playerCombatStates: [...(tempBattle.playerCombatStates || [])],
+        enemyParty: [...(tempBattle.enemyParty || [])],
         activeIdxs: newActiveIdxs,
         enemyActiveIdxs: newEnemyIdxs,
         activeIdx: newActiveIdxs[0] ?? 0,
