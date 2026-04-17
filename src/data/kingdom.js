@@ -46,20 +46,70 @@ export const WAR_MAP_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 204, 205,
 // 中立争夺城池ID
 export const CONTESTED_MAP_IDS = [204, 205, 206];
 
-// 军衔
+// 军衔/官职系统（12级）
 export const MILITARY_RANKS = [
-  { id: 'civilian',  name: '百姓',  icon: '👤', minContribution: 0,     salary: 200,   incomeMultiplier: 1.0 },
-  { id: 'captain',   name: '校尉',  icon: '🎖️', minContribution: 100,   salary: 600,   incomeMultiplier: 1.2 },
-  { id: 'general_l', name: '偏将',  icon: '⚔️', minContribution: 400,   salary: 1500,  incomeMultiplier: 1.3 },
-  { id: 'general',   name: '将军',  icon: '🗡️', minContribution: 1200,  salary: 3000,  incomeMultiplier: 1.5 },
-  { id: 'grand_gen',  name: '大将军', icon: '🛡️', minContribution: 3500,  salary: 6000,  incomeMultiplier: 2.0 },
-  { id: 'king',      name: '国主',  icon: '👑', minContribution: 10000, salary: 12000, incomeMultiplier: 2.5 },
+  { id: 'civilian',    name: '百姓',    icon: '👤', minContribution: 0,       salary: 200,    incomeMultiplier: 1.0,  perk: null, perkDesc: null, maxGenerals: 3, tokenBonus: 0 },
+  { id: 'soldier',     name: '士卒',    icon: '🪖', minContribution: 50,      salary: 400,    incomeMultiplier: 1.05, perk: 'basic_scout', perkDesc: '解锁侦察：查看相邻领地强度', maxGenerals: 4, tokenBonus: 0 },
+  { id: 'captain',     name: '校尉',    icon: '🎖️', minContribution: 150,     salary: 800,    incomeMultiplier: 1.15, perk: 'recruit_discount', perkDesc: '名将招募费用 -10%', maxGenerals: 5, tokenBonus: 1 },
+  { id: 'commander',   name: '中郎将',  icon: '⚔️', minContribution: 400,     salary: 1500,   incomeMultiplier: 1.25, perk: 'war_rally', perkDesc: '每日可发动1次集结令（己方领地+5强度）', maxGenerals: 6, tokenBonus: 1 },
+  { id: 'general_l',   name: '偏将军',  icon: '🗡️', minContribution: 800,     salary: 2500,   incomeMultiplier: 1.35, perk: 'general_boost', perkDesc: '名将加成效果 +15%', maxGenerals: 7, tokenBonus: 2 },
+  { id: 'general',     name: '将军',    icon: '⚔️', minContribution: 1500,    salary: 4000,   incomeMultiplier: 1.5,  perk: 'territory_shield', perkDesc: '拥有的领地每回合额外+1强度', maxGenerals: 8, tokenBonus: 2 },
+  { id: 'general_h',   name: '征东将军', icon: '🏹', minContribution: 2800,    salary: 6000,   incomeMultiplier: 1.7,  perk: 'double_token', perkDesc: '所有战斗令牌收入 ×2', maxGenerals: 9, tokenBonus: 3 },
+  { id: 'grand_gen',   name: '大将军',  icon: '🛡️', minContribution: 5000,    salary: 9000,   incomeMultiplier: 2.0,  perk: 'siege_master', perkDesc: '攻城投石效果翻倍（-20强度）', maxGenerals: 10, tokenBonus: 4 },
+  { id: 'minister',    name: '丞相',    icon: '📜', minContribution: 8000,    salary: 12000,  incomeMultiplier: 2.3,  perk: 'tax_reform', perkDesc: '领地收入 +50%，帮派俸禄 +30%', maxGenerals: 11, tokenBonus: 5 },
+  { id: 'king',        name: '国主',    icon: '👑', minContribution: 12000,   salary: 16000,  incomeMultiplier: 2.5,  perk: 'royal_decree', perkDesc: '每日1次颁布王令（全阵营领地+3强度）', maxGenerals: 12, tokenBonus: 6 },
+  { id: 'hegemon',     name: '霸王',    icon: '🐉', minContribution: 20000,   salary: 22000,  incomeMultiplier: 3.0,  perk: 'hegemon_aura', perkDesc: '战斗中全队经验+25%，金币+25%', maxGenerals: 12, tokenBonus: 8 },
+  { id: 'emperor',     name: '天子',    icon: '🏯', minContribution: 35000,   salary: 30000,  incomeMultiplier: 3.5,  perk: 'mandate_of_heaven', perkDesc: '天命所归：全加成+30%，每赛季额外50令牌', maxGenerals: 12, tokenBonus: 12 },
 ];
 
-export const getMilitaryRank = (contribution) => {
+// 官职晋升挑战（达到战功门槛后需通过挑战才能晋升）
+export const RANK_PROMOTION_CHALLENGES = {
+  commander: { type: 'kill', desc: '击败20名敌国训练师', target: 20, stat: 'kills' },
+  general_l: { type: 'campaign', desc: '通关至少2个阵营战役', target: 2, stat: 'campaignsCleared' },
+  general: { type: 'territory', desc: '阵营控制至少5块领地', target: 5, stat: 'factionTerritories' },
+  general_h: { type: 'generals', desc: '招募至少5名名将', target: 5, stat: 'recruitedGenerals' },
+  grand_gen: { type: 'historical', desc: '通关至少10场历史名战', target: 10, stat: 'historicalBattles' },
+  minister: { type: 'contribution', desc: '单赛季内获得3000战功', target: 3000, stat: 'seasonContribution' },
+  king: { type: 'siege', desc: '成功参与3次都城攻防', target: 3, stat: 'capitalSieges' },
+  hegemon: { type: 'multi', desc: '通关全部阵营战役 + 拥有8名名将 + 控制7+领地', targets: { campaignsCleared: 8, recruitedGenerals: 8, factionTerritories: 7 } },
+  emperor: { type: 'ultimate', desc: '通关25场历史名战 + 战功35000 + 获得"霸主"赛季称号', targets: { historicalBattles: 25, totalContribution: 35000, hasHegemonTitle: true } },
+};
+
+// 官职特权详细效果
+export const RANK_PERK_EFFECTS = {
+  basic_scout: { scoutRange: 1 },
+  recruit_discount: { recruitCostMult: 0.9 },
+  war_rally: { rallyStrength: 5, rallyPerDay: 1 },
+  general_boost: { generalBonusMult: 1.15 },
+  territory_shield: { territoryStrengthPerTick: 1 },
+  double_token: { tokenMult: 2 },
+  siege_master: { siegeEffectMult: 2 },
+  tax_reform: { territoryIncomeMult: 1.5, gangSalaryMult: 1.3 },
+  royal_decree: { decreeStrength: 3, decreePerDay: 1 },
+  hegemon_aura: { battleExpMult: 1.25, battleGoldMult: 1.25 },
+  mandate_of_heaven: { allBonusMult: 1.3, seasonBonusTokens: 50 },
+};
+
+export const getMilitaryRank = (contribution, playerStats = null) => {
   let rank = MILITARY_RANKS[0];
   for (const r of MILITARY_RANKS) {
-    if (contribution >= r.minContribution) rank = r;
+    if (contribution < r.minContribution) continue;
+    if (playerStats && RANK_PROMOTION_CHALLENGES[r.id]) {
+      const ch = RANK_PROMOTION_CHALLENGES[r.id];
+      if (ch.type === 'multi') {
+        const allMet = Object.entries(ch.targets).every(([k, v]) => (playerStats[k] || 0) >= v);
+        if (!allMet) continue;
+      } else if (ch.type === 'ultimate') {
+        const allMet = Object.entries(ch.targets).every(([k, v]) => {
+          if (typeof v === 'boolean') return !!playerStats[k];
+          return (playerStats[k] || 0) >= v;
+        });
+        if (!allMet) continue;
+      } else {
+        if ((playerStats[ch.stat] || 0) < ch.target) continue;
+      }
+    }
+    rank = r;
   }
   return rank;
 };
@@ -290,38 +340,48 @@ export const checkSeasonEnd = (kw) => {
   };
 };
 
-export const applySeasonRewards = (kw, result) => {
+export const applySeasonRewards = (kw, result, rankStatsFn) => {
   if (!kw.faction) return kw;
   const playerRank = result.rankings.indexOf(kw.faction) + 1;
   const reward = SEASON_CONFIG.rewards[playerRank] || SEASON_CONFIG.rewards[3];
   const newContribution = Math.floor(kw.warContribution * SEASON_CONFIG.contributionCarryover);
   const drawCount = playerRank === 1 ? 3 : playerRank === 2 ? 2 : 1;
 
-  return {
+  const isMvp = (kw.warContribution || 0) >= 500;
+  const mvpTokens = isMvp ? SEASON_CONFIG.mvpBonus.tokens : 0;
+  const mvpTitle = isMvp ? SEASON_CONFIG.mvpBonus.title : null;
+
+  const titles = [...(kw.seasonTitles || [])];
+  if (reward.title) titles.push(`S${result.season}${reward.title}`);
+  if (mvpTitle) titles.push(`S${result.season}${mvpTitle}`);
+
+  const newState = {
     ...kw,
     warContribution: newContribution,
-    militaryRank: getMilitaryRank(newContribution).id,
+    seasonContribution: 0,
     territories: initTerritories(),
     contestProgress: {},
-    capitalSiegeWins: [],
     season: kw.season + 1,
+  };
+  const stats = rankStatsFn ? rankStatsFn(newState) : null;
+  newState.militaryRank = getMilitaryRank(newContribution, stats).id;
+
+  return {
+    ...newState,
     seasonStartDate: new Date().toISOString(),
     warLog: [{
       time: Date.now(), type: 'season_end',
-      msg: `第${result.season}赛季结束! ${FACTIONS[result.rankings[0]].fullName}获得霸主! 你的阵营排名第${playerRank}`,
+      msg: `第${result.season}赛季结束! ${FACTIONS[result.rankings[0]].fullName}获得霸主! 你的阵营排名第${playerRank}` + (isMvp ? ' 🏆你获得了战神称号!' : ''),
     }],
     lastTick: Date.now(),
     attackBuff: false,
     goldReward: reward.gold,
-    tokenReward: reward.tokens,
+    tokenReward: reward.tokens + mvpTokens,
     generalDraws: drawCount,
-    seasonTitles: reward.title
-      ? [...(kw.seasonTitles || []), `S${result.season}${reward.title}`]
-      : (kw.seasonTitles || []),
+    seasonTitles: titles,
   };
 };
 
-// 检查阵营是否只剩都城
 export const isFactionCapitalOnly = (faction, territories) => {
   const ownedMaps = WAR_MAP_IDS.filter(id => territories[id]?.owner === faction);
   return ownedMaps.length === 0;
@@ -362,6 +422,15 @@ export const KINGDOM_CAMPAIGNS = [
     pool: [9, 65, 94, 130, 149, 199, 241, 443], reward: { gold: 25000, tokens: 30, contribution: 150 },
     bg: 'linear-gradient(135deg, #0D47A1, #01579B)', lore: '白狼山之战，曹操亲征乌桓，一统北方大业终成！' },
 
+  { id: 'wei_changban_wei', faction: 'wei', name: '长坂追击', desc: '追击刘备于长坂！曹军精锐尽出。',
+    icon: '🐎', lvl: 70, teamSize: 6, boss: 182, bossLvl: 76, bossName: '赵云·白马银枪',
+    pool: [6, 9, 65, 94, 130, 143, 168, 199], reward: { gold: 11000, tokens: 13, contribution: 65 },
+    bg: 'linear-gradient(135deg, #1565C0, #0D47A1)', lore: '曹操亲率虎豹骑追击刘备，赵子龙七进七出阻挡追兵！' },
+  { id: 'wei_wuzhang_wei', faction: 'wei', name: '五丈原对峙', desc: '司马懿坚壁清野，与诸葛亮最后对决。',
+    icon: '⭐', lvl: 90, teamSize: 6, boss: 282, bossLvl: 96, bossName: '诸葛亮·卧龙',
+    pool: [9, 65, 94, 130, 149, 199, 241, 443], reward: { gold: 22000, tokens: 26, contribution: 120 },
+    bg: 'linear-gradient(135deg, #0D47A1, #1A237E)', lore: '五丈原秋风萧瑟，两大智者最后的对决，谁能笑到最后？' },
+
   // === 蜀国 ===
   { id: 'shu_sangu',    faction: 'shu', name: '三顾茅庐',   desc: '刘备三访隆中，诸葛亮出山！通过智谋考验。',
     icon: '🏠', lvl: 55, teamSize: 4, boss: 65, bossLvl: 60, bossName: '诸葛亮·卧龙',
@@ -388,6 +457,15 @@ export const KINGDOM_CAMPAIGNS = [
     pool: [9, 65, 94, 130, 149, 190, 206, 241], reward: { gold: 25000, tokens: 30, contribution: 150 },
     bg: 'linear-gradient(135deg, #1B5E20, #004D40)', lore: '出师未捷身先死，长使英雄泪满襟。鞠躬尽瘁，死而后已！' },
 
+  { id: 'shu_changban_shu', faction: 'shu', name: '长坂血战', desc: '赵子龙七进七出！救幼主于万军之中。',
+    icon: '🐎', lvl: 62, teamSize: 5, boss: 94, bossLvl: 68, bossName: '曹操·虎豹骑',
+    pool: [6, 9, 65, 94, 130, 143, 149, 168], reward: { gold: 10000, tokens: 12, contribution: 55 },
+    bg: 'linear-gradient(135deg, #2E7D32, #1B5E20)', lore: '赵云怀抱幼主阿斗，于百万曹军中杀出一条血路！' },
+  { id: 'shu_hanzhong_shu', faction: 'shu', name: '汉中争夺', desc: '刘备亲征汉中，与曹操争夺要地。',
+    icon: '⛰️', lvl: 76, teamSize: 6, boss: 149, bossLvl: 82, bossName: '曹操·魏王',
+    pool: [9, 65, 94, 130, 143, 168, 199, 241], reward: { gold: 14000, tokens: 17, contribution: 75 },
+    bg: 'linear-gradient(135deg, #1B5E20, #004D40)', lore: '法正运筹，黄忠斩将，刘备终于夺取汉中，进位汉中王！' },
+
   // === 吴国 ===
   { id: 'wu_jiangdong', faction: 'wu', name: '江东之虎',   desc: '孙策横扫江东六郡！奠定东吴基业。',
     icon: '🐯', lvl: 58, teamSize: 5, boss: 160, bossLvl: 63, bossName: '刘繇·扬州刺史',
@@ -413,6 +491,14 @@ export const KINGDOM_CAMPAIGNS = [
     icon: '🌴', lvl: 93, teamSize: 6, boss: 340, bossLvl: 98, bossName: '士燮·交州太守',
     pool: [3, 6, 18, 33, 69, 130, 143, 160], reward: { gold: 25000, tokens: 30, contribution: 150 },
     bg: 'linear-gradient(135deg, #B71C1C, #4A148C)', lore: '东吴铁骑南下交州，开疆拓土，吴国疆域达到鼎盛！' },
+  { id: 'wu_ruoxu', faction: 'wu', name: '濡须之战', desc: '据濡须坞坚守！让曹操发出"生子当如孙仲谋"之叹。',
+    icon: '🌊', lvl: 72, teamSize: 6, boss: 149, bossLvl: 78, bossName: '曹操·丞相',
+    pool: [6, 9, 65, 94, 130, 143, 149, 168], reward: { gold: 13000, tokens: 16, contribution: 72 },
+    bg: 'linear-gradient(135deg, #C62828, #E64A19)', lore: '曹操率大军南征，孙权据濡须坞死守，终使曹操退兵！' },
+  { id: 'wu_jianye', faction: 'wu', name: '建业保卫战', desc: '晋军六路伐吴！守卫东吴最后的荣光。',
+    icon: '🏰', lvl: 88, teamSize: 6, boss: 340, bossLvl: 94, bossName: '杜预·征南大将军',
+    pool: [9, 65, 94, 130, 139, 149, 190, 206], reward: { gold: 22000, tokens: 26, contribution: 120 },
+    bg: 'linear-gradient(135deg, #B71C1C, #880E4F)', lore: '晋军楼船下江东，这是保卫吴国都城的最终战役！' },
 ];
 
 // 都城地图ID

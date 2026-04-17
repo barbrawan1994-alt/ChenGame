@@ -539,14 +539,14 @@ export const getDailyGift = (candidate, marriageLevel) => {
   const gifts = [
     { type: 'gold', amount: 500 + marriageLevel * 200, text: `💰 ${candidate.name}给你准备了零花钱` },
     { type: 'gold', amount: 800 + marriageLevel * 300, text: `💰 ${candidate.name}卖了些东西换了钱给你` },
-    { type: 'item', item: 'potion', amount: 2 + marriageLevel, text: `🧪 ${candidate.name}给你准备了药品` },
-    { type: 'item', item: 'candy', amount: 1, text: `🍬 ${candidate.name}给你找到了一颗神奇糖果` },
+    { type: 'berries', amount: 3 + marriageLevel, text: `🍒 ${candidate.name}给你采了一些树果` },
+    { type: 'meds', item: 'potion', amount: 2 + marriageLevel, text: `🧪 ${candidate.name}给你准备了药品` },
   ];
   if (ml.level >= 2) {
-    gifts.push({ type: 'item', item: 'vitamin', amount: 1, text: `💊 ${candidate.name}给你买了维他命` });
+    gifts.push({ type: 'growth', item: 'exp_candy', amount: 1, text: `🍬 ${candidate.name}找到了一颗经验糖果` });
   }
   if (ml.level >= 3) {
-    gifts.push({ type: 'item', item: 'rare_candy', amount: 1, text: `⭐ ${candidate.name}找到了稀有物品` });
+    gifts.push({ type: 'growth', item: 'vit_hp', amount: 1, text: `💊 ${candidate.name}给你买了维他命` });
   }
   return gifts[Math.floor(Math.random() * gifts.length)];
 };

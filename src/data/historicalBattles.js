@@ -1,6 +1,6 @@
 // =====================================================================
-// 三国历史名战系统 — 20场跨时代战役
-// 4大时代 · 60名将全员参战 · 多波次战斗
+// 三国历史名战系统 — 30场跨时代战役
+// 4大时代 · 百名将参战 · 多波次战斗
 // =====================================================================
 
 export const HISTORICAL_BATTLE_ERAS = [
@@ -76,6 +76,40 @@ export const HISTORICAL_BATTLES = [
     bg: 'linear-gradient(135deg, #4A148C, #6A1B9A)',
   },
 
+  {
+    id: 'hb_beihai', era: 'era1', name: '北海之围', icon: '🏴', lvl: 38, difficulty: 1,
+    desc: '孔融被围北海，太史慈突围求援', lore: '黄巾余党围攻北海，孔融危在旦夕。太史慈单骑突围，搬来刘备援军，终解北海之危。',
+    waves: [
+      { name: '黄巾围城', generalIds: ['neu_zhang_bao_hj', 'neu_zhang_liang_hj'], minionPool: pool.common, minionCount: 4, lvl: 36 },
+      { name: '贼首管亥', generalIds: ['neu_zhang_jiao'], minionPool: pool.common, minionCount: 3, lvl: 39 },
+    ],
+    reward: { gold: 9000, tokens: 5, contribution: 22 },
+    unlockReq: 'hb_huangjin',
+    bg: 'linear-gradient(135deg, #4E342E, #795548)',
+  },
+  {
+    id: 'hb_jieqiao', era: 'era1', name: '界桥之战', icon: '🐴', lvl: 43, difficulty: 2,
+    desc: '白马义从对阵先登死士', lore: '公孙瓒的白马义从驰骋塞北，但在界桥遭遇袁绍的先登死士伏击，白马义从折损过半。',
+    waves: [
+      { name: '袁绍前锋', generalIds: ['neu_wen_chou'], minionPool: pool.common, minionCount: 4, lvl: 41 },
+      { name: '先登死士', generalIds: ['neu_yuan_shao', 'neu_yan_liang'], minionPool: pool.elite, minionCount: 3, lvl: 44 },
+    ],
+    reward: { gold: 10000, tokens: 6, contribution: 26 },
+    unlockReq: 'hb_dongzhuo',
+    bg: 'linear-gradient(135deg, #5D4037, #795548)',
+  },
+  {
+    id: 'hb_wancheng', era: 'era1', name: '宛城之战', icon: '🏯', lvl: 47, difficulty: 2,
+    desc: '张绣夜袭曹营，典韦死战断后', lore: '曹操纳张绣叔母，张绣怒而夜袭。典韦独守营门，以身殉主，悲壮万分。',
+    waves: [
+      { name: '张绣突袭', generalIds: ['neu_zhang_xiu'], minionPool: pool.common, minionCount: 4, lvl: 45 },
+      { name: '西凉骑兵', generalIds: ['neu_zhang_xiu', 'neu_li_jue'], minionPool: pool.elite, minionCount: 3, lvl: 48 },
+    ],
+    reward: { gold: 11500, tokens: 7, contribution: 28 },
+    unlockReq: 'hb_hulao',
+    bg: 'linear-gradient(135deg, #BF360C, #E64A19)',
+  },
+
   // ==================== Era 2: 三分天下 (Lv.55-70) ====================
   {
     id: 'hb_guandu', era: 'era2', name: '官渡之战', icon: '⚔️', lvl: 55, difficulty: 3,
@@ -135,13 +169,47 @@ export const HISTORICAL_BATTLES = [
     bg: 'linear-gradient(135deg, #01579B, #0277BD)',
   },
 
+  {
+    id: 'hb_bowang', era: 'era2', name: '博望坡之战', icon: '🪶', lvl: 57, difficulty: 3,
+    desc: '诸葛亮初出茅庐第一功', lore: '诸葛亮出山后首战，于博望坡设伏火攻，大破曹军夏侯惇部，一战成名。',
+    waves: [
+      { name: '曹军先锋', generalIds: ['wei_yu_jin', 'wei_le_jin'], minionPool: pool.common, minionCount: 4, lvl: 55 },
+      { name: '夏侯惇中伏', generalIds: ['wei_xiahou_dun', 'wei_li_dian'], minionPool: pool.elite, minionCount: 3, lvl: 58 },
+    ],
+    reward: { gold: 14000, tokens: 9, contribution: 38 },
+    unlockReq: 'hb_guandu',
+    bg: 'linear-gradient(135deg, #33691E, #558B2F)',
+  },
+  {
+    id: 'hb_xinye', era: 'era2', name: '新野之战', icon: '🔥', lvl: 60, difficulty: 3,
+    desc: '火烧新野，诸葛亮二度用火', lore: '曹操遣大军南征，诸葛亮于新野再用火计，焚烧曹军营寨，掩护刘备撤退。',
+    waves: [
+      { name: '曹军追击', generalIds: ['wei_cao_ren', 'wei_xu_huang'], minionPool: pool.common, minionCount: 4, lvl: 58 },
+      { name: '曹仁中计', generalIds: ['wei_cao_ren', 'wei_zhang_liao'], minionPool: pool.elite, minionCount: 3, lvl: 62 },
+    ],
+    reward: { gold: 15000, tokens: 10, contribution: 40 },
+    unlockReq: 'hb_bowang',
+    bg: 'linear-gradient(135deg, #BF360C, #D84315)',
+  },
+  {
+    id: 'hb_ruoxu', era: 'era2', name: '濡须之战', icon: '🌊', lvl: 66, difficulty: 3,
+    desc: '生子当如孙仲谋', lore: '曹操率大军南征，孙权据濡须坞坚守。曹操望见吴军军容齐整，叹曰："生子当如孙仲谋。"',
+    waves: [
+      { name: '魏军水师', generalIds: ['wei_zhang_liao', 'wei_xu_chu'], minionPool: pool.elite, minionCount: 3, lvl: 64 },
+      { name: '曹操亲征', generalIds: ['wei_cao_cao', 'wei_guo_jia'], minionPool: pool.elite, minionCount: 3, lvl: 68 },
+    ],
+    reward: { gold: 16000, tokens: 11, contribution: 43 },
+    unlockReq: 'hb_chibi',
+    bg: 'linear-gradient(135deg, #01579B, #0277BD)',
+  },
+
   // ==================== Era 3: 鼎足而立 (Lv.72-85) ====================
   {
     id: 'hb_hanzhong', era: 'era3', name: '汉中之战', icon: '⛰️', lvl: 72, difficulty: 4,
     desc: '刘备争夺汉中，立蜀之基', lore: '建安二十四年，刘备率军攻汉中。法正为军师，黄忠斩夏侯渊于定军山，刘备遂据汉中称王。',
     waves: [
       { name: '曹军前哨', generalIds: ['wei_xu_huang', 'wei_zhang_he'], minionPool: pool.elite, minionCount: 3, lvl: 70 },
-      { name: '夏侯渊防线', generalIds: ['wei_xiahou_dun', 'wei_cao_ren'], minionPool: pool.elite, minionCount: 3, lvl: 73 },
+      { name: '夏侯渊防线', generalIds: ['wei_xiahou_yuan', 'wei_cao_ren'], minionPool: pool.elite, minionCount: 3, lvl: 73 },
       { name: '曹操亲征', generalIds: ['wei_cao_cao', 'wei_sima_yi'], minionPool: pool.legend, minionCount: 2, lvl: 76 },
     ],
     reward: { gold: 20000, tokens: 13, contribution: 55 },
@@ -153,7 +221,7 @@ export const HISTORICAL_BATTLES = [
     desc: '黄忠斩夏侯渊，威震天下', lore: '老将黄忠居高临下，一鼓作气斩杀曹军主帅夏侯渊。蜀军士气大振，汉中之战由此逆转。',
     waves: [
       { name: '曹军守备', generalIds: ['wei_zhang_he', 'wei_xu_huang'], minionPool: pool.elite, minionCount: 3, lvl: 73 },
-      { name: '夏侯渊·妙才', generalIds: ['wei_xiahou_dun', 'wei_dian_wei'], minionPool: pool.elite, minionCount: 3, lvl: 77 },
+      { name: '夏侯渊·妙才', generalIds: ['wei_xiahou_yuan', 'wei_dian_wei'], minionPool: pool.elite, minionCount: 3, lvl: 77 },
     ],
     reward: { gold: 22000, tokens: 14, contribution: 58 },
     unlockReq: 'hb_hanzhong',
@@ -196,6 +264,30 @@ export const HISTORICAL_BATTLES = [
     bg: 'linear-gradient(135deg, #E65100, #F57C00)',
   },
 
+  {
+    id: 'hb_chencang', era: 'era3', name: '陈仓之战', icon: '🧱', lvl: 76, difficulty: 4,
+    desc: '郝昭千人守陈仓，退诸葛万军', lore: '诸葛亮第二次北伐，率数万大军攻陈仓。郝昭仅以千余守军，凭坚城固守二十余日，诸葛亮无功而返。',
+    waves: [
+      { name: '陈仓守军', generalIds: ['wei_hao_zhao'], minionPool: pool.elite, minionCount: 4, lvl: 74 },
+      { name: '魏军援军', generalIds: ['wei_zhang_he', 'wei_cao_zhen'], minionPool: pool.elite, minionCount: 3, lvl: 78 },
+    ],
+    reward: { gold: 22000, tokens: 14, contribution: 56 },
+    unlockReq: 'hb_hanzhong',
+    bg: 'linear-gradient(135deg, #455A64, #607D8B)',
+  },
+  {
+    id: 'hb_nanman', era: 'era3', name: '南蛮平定', icon: '🐘', lvl: 74, difficulty: 4,
+    desc: '七擒孟获，以德服人', lore: '诸葛亮率军南征，七擒七纵南蛮王孟获，使其心悦诚服，南方从此安定。',
+    waves: [
+      { name: '南蛮先锋', generalIds: ['neu_meng_huo', 'neu_zhu_rong'], minionPool: pool.common, minionCount: 4, lvl: 72 },
+      { name: '象兵冲锋', generalIds: ['neu_meng_huo'], minionPool: pool.elite, minionCount: 4, lvl: 75 },
+      { name: '孟获死战', generalIds: ['neu_meng_huo', 'neu_zhu_rong'], minionPool: pool.elite, minionCount: 3, lvl: 78 },
+    ],
+    reward: { gold: 21000, tokens: 13, contribution: 55 },
+    unlockReq: 'hb_hanzhong',
+    bg: 'linear-gradient(135deg, #1B5E20, #4CAF50)',
+  },
+
   // ==================== Era 4: 天下归一 (Lv.88-95) ====================
   {
     id: 'hb_wuzhang', era: 'era4', name: '五丈原之战', icon: '⭐', lvl: 88, difficulty: 5,
@@ -225,7 +317,7 @@ export const HISTORICAL_BATTLES = [
     desc: '姜维最后的北伐', lore: '诸葛亮去世后，姜维继承遗志九伐中原。铁笼山一役，姜维以寡敌众，虽败犹荣，不愧武侯传人。',
     waves: [
       { name: '魏军前锋', generalIds: ['wei_guo_jia', 'wei_jia_xu'], minionPool: pool.elite, minionCount: 3, lvl: 90 },
-      { name: '邓艾·钟会', generalIds: ['wei_zhang_he', 'wei_xu_chu'], minionPool: pool.legend, minionCount: 3, lvl: 92 },
+      { name: '邓艾·钟会', generalIds: ['wei_deng_ai', 'wei_zhong_hui'], minionPool: pool.legend, minionCount: 3, lvl: 92 },
       { name: '司马懿本阵', generalIds: ['wei_sima_yi', 'wei_cao_cao'], minionPool: pool.legend, minionCount: 3, lvl: 95 },
     ],
     reward: { gold: 35000, tokens: 22, contribution: 85 },
@@ -243,6 +335,30 @@ export const HISTORICAL_BATTLES = [
     reward: { gold: 38000, tokens: 23, contribution: 90 },
     unlockReq: 'hb_jieting',
     bg: 'linear-gradient(135deg, #004D40, #00695C)',
+  },
+  {
+    id: 'hb_mianshu', era: 'era4', name: '灭蜀之战', icon: '⛰️', lvl: 91, difficulty: 5,
+    desc: '邓艾偷渡阴平，奇兵灭蜀', lore: '邓艾率精兵偷渡阴平小道，翻越摩天岭，奇袭绵竹。诸葛瞻战死，刘禅出降，蜀汉灭亡。',
+    waves: [
+      { name: '蜀军阻击', generalIds: ['shu_jiang_wei', 'shu_zhang_yi'], minionPool: pool.elite, minionCount: 3, lvl: 89 },
+      { name: '绵竹决战', generalIds: ['shu_jiang_wei', 'shu_liao_hua'], minionPool: pool.elite, minionCount: 4, lvl: 92 },
+      { name: '诸葛瞻·死战', generalIds: ['shu_zhang_bao', 'shu_huo_yi'], minionPool: pool.legend, minionCount: 3, lvl: 94 },
+    ],
+    reward: { gold: 35000, tokens: 22, contribution: 88 },
+    unlockReq: 'hb_wuzhang',
+    bg: 'linear-gradient(135deg, #1B5E20, #004D40)',
+  },
+  {
+    id: 'hb_miewu', era: 'era4', name: '晋灭吴之战', icon: '⛵', lvl: 94, difficulty: 5,
+    desc: '王濬楼船下益州，金陵王气黯然收', lore: '晋军分六路伐吴，杜预攻荆州，王濬率楼船沿江而下。吴国最后的大将陆抗已逝，东吴就此覆灭。',
+    waves: [
+      { name: '吴军水寨', generalIds: ['wu_lu_kang', 'wu_shi_ji'], minionPool: pool.elite, minionCount: 3, lvl: 92 },
+      { name: '建业守军', generalIds: ['wu_ding_feng', 'wu_teng_yin'], minionPool: pool.elite, minionCount: 4, lvl: 94 },
+      { name: '孙皓末路', generalIds: ['wu_sun_hao', 'wu_zhu_ge_ke'], minionPool: pool.legend, minionCount: 3, lvl: 96 },
+    ],
+    reward: { gold: 40000, tokens: 24, contribution: 92 },
+    unlockReq: 'hb_shiting',
+    bg: 'linear-gradient(135deg, #C62828, #4A148C)',
   },
   {
     id: 'hb_unify', era: 'era4', name: '天下一统', icon: '🏆', lvl: 95, difficulty: 5,

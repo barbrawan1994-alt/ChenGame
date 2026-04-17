@@ -18,20 +18,20 @@ export const STORY_SCRIPT = [
     ],
     tasks: [
       { step: 0, x: 8, y: 6, type: 'battle', enemyId: 44, name: '狂暴的 贪吃鼠', text: '吱吱吱！！！（双眼发红，疯狂地向你扑来！黑色的雾气缠绕着它）', emoji: '🐀',
-        eliteParty: [{ id: 44, level: 10 }, { id: 38, level: 9 }, { id: 15, level: 7 }]
+        eliteParty: [{ id: 44, level: 6 }]
       },
       { step: 1, x: 14, y: 10, type: 'dialog', name: '受伤的护林员', text: "咳咳...谢谢你救了我。日蚀队在北边树林里放了一台奇怪的机器，那些黑雾就是从那里冒出来的！", emoji: '🧑‍🌾' },
       { step: 2, x: 20, y: 5, type: 'battle', enemyId: 101, name: '日蚀队 步兵', text: '哼，别想靠近污染装置！日蚀计划不会因为你而停下！', emoji: '😈',
-        eliteParty: [{ id: 101, level: 12 }, { id: 44, level: 10 }, { id: 48, level: 8 }]
+        eliteParty: [{ id: 101, level: 9 }, { id: 44, level: 7 }]
       },
       { step: 3, x: 20, y: 12, type: 'dialog', name: '被困的 叶苗苗', text: "（小家伙瑟瑟发抖地躲在倒塌的机器残骸后。你关掉了装置，黑雾逐渐消散。它感激地蹭了蹭你的腿。）", emoji: '🌱' },
       { step: 4, x: 15, y: 8, type: 'battle', enemyId: 118, name: '日蚀队 小队长', text: '可恶！装置被破坏了！首领会不高兴的...不过，先把你解决掉再说！', emoji: '😈',
-        eliteParty: [{ id: 118, level: 14 }, { id: 101, level: 12 }, { id: 66, level: 11 }]
+        eliteParty: [{ id: 118, level: 11 }, { id: 101, level: 9 }, { id: 66, level: 8 }]
       },
       { step: 5, x: 22, y: 14, type: 'battle', enemyId: 54, name: '神秘旁观者·厌晚', text: '（远处的树影下，一个黑衣女人静静注视着你。你发现她时，她微微勾唇）...有点意思。让我看看你值不值得关注。', emoji: '🌙',
         eliteParty: [
-          { id: 54, level: 13 },
-          { id: 93, level: 11 }
+          { id: 54, level: 11 },
+          { id: 93, level: 9 }
         ]
       }
     ],

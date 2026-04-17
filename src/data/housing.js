@@ -3,16 +3,16 @@
 // ==========================================
 
 export const HOUSE_TYPES = [
-  { id: 'tent',    name: '帐篷',     price: 1000,   slots: 1, furnitureSlots: 3,  gardenSlots: 1, icon: '⛺' },
-  { id: 'cabin',   name: '小木屋',   price: 5000,   slots: 2, furnitureSlots: 6,  gardenSlots: 2, icon: '🏠' },
-  { id: 'house',   name: '花园别墅', price: 20000,  slots: 4, furnitureSlots: 12, gardenSlots: 3, icon: '🏡' },
-  { id: 'mansion', name: '豪华庄园', price: 100000, slots: 6, furnitureSlots: 20, gardenSlots: 4, icon: '🏰' },
-  { id: 'castle',  name: '精灵城堡', price: 500000, slots: 10, furnitureSlots: 30, gardenSlots: 5, icon: '🏯' },
-  { id: 'beach_house',    name: '海滨小屋',   price: 60000,  slots: 4, furnitureSlots: 10, gardenSlots: 3, icon: '🏖️', requireMarriage: true, desc: '面朝大海的浪漫小屋', specialEffect: { waterIntimacy: 1.5 } },
-  { id: 'garden_villa',   name: '繁花庄园',   price: 80000,  slots: 4, furnitureSlots: 10, gardenSlots: 6, icon: '🌺', requireMarriage: true, desc: '被鲜花环绕的温馨庄园', specialEffect: { autoWater: true } },
-  { id: 'cloud_loft',     name: '云端阁楼',   price: 100000, slots: 5, furnitureSlots: 14, gardenSlots: 3, icon: '☁️', requireMarriage: true, desc: '建于云端之上的浪漫阁楼', specialEffect: { flyIntimacy: 1.5 } },
-  { id: 'crystal_palace', name: '水晶宫殿',   price: 200000, slots: 7, furnitureSlots: 23, gardenSlots: 4, icon: '💎', requireMarriage: true, desc: '用水晶打造的梦幻宫殿', specialEffect: { allEfficiency: 1.2 } },
-  { id: 'world_tree',     name: '世界树居',   price: 300000, slots: 10, furnitureSlots: 30, gardenSlots: 8, icon: '🌳', requireMarriage: true, desc: '古老世界树中的传说居所', specialEffect: { allEfficiency: 1.3, autoWater: true, giftQuality: 1 } },
+  { id: 'tent',    name: '帐篷',     price: 3000,   slots: 1, furnitureSlots: 3,  gardenSlots: 1, icon: '⛺' },
+  { id: 'cabin',   name: '小木屋',   price: 15000,  slots: 2, furnitureSlots: 6,  gardenSlots: 2, icon: '🏠' },
+  { id: 'house',   name: '花园别墅', price: 60000,  slots: 4, furnitureSlots: 12, gardenSlots: 3, icon: '🏡' },
+  { id: 'mansion', name: '豪华庄园', price: 200000, slots: 6, furnitureSlots: 20, gardenSlots: 4, icon: '🏰' },
+  { id: 'castle',  name: '精灵城堡', price: 800000, slots: 10, furnitureSlots: 30, gardenSlots: 5, icon: '🏯' },
+  { id: 'beach_house',    name: '海滨小屋',   price: 120000, slots: 4, furnitureSlots: 10, gardenSlots: 3, icon: '🏖️', requireMarriage: true, desc: '面朝大海的浪漫小屋', specialEffect: { waterIntimacy: 1.5 } },
+  { id: 'garden_villa',   name: '繁花庄园',   price: 180000, slots: 4, furnitureSlots: 10, gardenSlots: 6, icon: '🌺', requireMarriage: true, desc: '被鲜花环绕的温馨庄园', specialEffect: { autoWater: true } },
+  { id: 'cloud_loft',     name: '云端阁楼',   price: 250000, slots: 5, furnitureSlots: 14, gardenSlots: 3, icon: '☁️', requireMarriage: true, desc: '建于云端之上的浪漫阁楼', specialEffect: { flyIntimacy: 1.5 } },
+  { id: 'crystal_palace', name: '水晶宫殿',   price: 500000, slots: 7, furnitureSlots: 23, gardenSlots: 4, icon: '💎', requireMarriage: true, desc: '用水晶打造的梦幻宫殿', specialEffect: { allEfficiency: 1.2 } },
+  { id: 'world_tree',     name: '世界树居',   price: 1000000, slots: 10, furnitureSlots: 30, gardenSlots: 8, icon: '🌳', requireMarriage: true, desc: '古老世界树中的传说居所', specialEffect: { allEfficiency: 1.3, autoWater: true, giftQuality: 1 } },
 ];
 
 export const FURNITURE_QUALITY = {
