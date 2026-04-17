@@ -106,7 +106,7 @@ const ACHIEVEMENTS = [
   { id: 'activity_master', cat: 'EXPLORE', rarity: 'RARE',      name: '活动达人',     desc: '参加活动总计50次',            check: s => (s.fishingWins || 0) + (s.beautyWins || 0) + (s.bugContestWins || 0) >= 50, reward: {} },
 
   // ===== 成长类 — 按徽章→联赛→门派→等级→挑战→金币→技能分组 =====
-  { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: {} },
+  { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '徽章新手',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: {} },
   { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部13枚道馆徽章',        check: s => s.badgeCount >= 13,     reward: { title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { title: '联赛冠军' } },
   { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { title: '联赛之王' } },

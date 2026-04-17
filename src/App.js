@@ -206,13 +206,8 @@ const SIDE_STORY_LINES = [
   { id: 'crossworld', name: '异界征途篇', icon: '🌍', startIdx: 28, endIdx: 45, chapters: 18, unlockBadges: 13, desc: '次元裂隙降临，跨越七界的史诗冒险' },
 ];
 
-const inferCompletedSideStories = (sp) => {
-  const done = [];
-  if (sp >= 16) done.push('jjk');
-  if (sp >= 19) done.push('lycoris');
-  if (sp >= 28) done.push('sect');
-  if (sp >= 46) done.push('crossworld');
-  return done;
+const inferCompletedSideStories = () => {
+  return [];
 };
 
 export default function RPG(props) {
@@ -247,7 +242,7 @@ export default function RPG(props) {
   const [currentTitle, setCurrentTitle] = useState(savedData.currentTitle || '见习训练家');
 
   // 核心资产 (金币/背包/队伍)
-  const [gold, setGold] = useState(savedData.gold || 1000);
+  const [gold, setGold] = useState(savedData.gold !== undefined ? savedData.gold : 1000);
   const migrateCurseTalent = (pets) => (pets || []).map(p => p.curseTalent != null ? p : { ...p, curseTalent: generateCurseTalent() });
   const [party, setParty] = useState(migrateCurseTalent(savedData.party));
   const [box, setBox] = useState(migrateCurseTalent(savedData.box));
@@ -338,7 +333,7 @@ export default function RPG(props) {
 
   // 存档状态标记
   const [hasSave, setHasSave] = useState(!!(savedData.trainerName || (savedData.party && savedData.party.length > 0)));
-  const [loaded, setLoaded] = useState(true);
+  const [loaded] = useState(true);
   const [showCorruptWarning, setShowCorruptWarning] = useState(saveCorrupted);
 
   // 临时状态
@@ -514,8 +509,11 @@ useEffect(() => {
                 s_atk: base.atk, s_def: base.def, spd: base.spd, crit: 5
             };
         }
-        // 执行 Buff 函数 (修改 customBaseStats)
         buff.effect(newPet);
+        const cap = 999;
+        Object.keys(newPet.customBaseStats).forEach(k => {
+          newPet.customBaseStats[k] = Math.min(cap, newPet.customBaseStats[k]);
+        });
         return newPet;
       });
       setParty(newParty);
@@ -723,7 +721,7 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
     if (weather !== wk) setWeather(wk);
   }, [currentMapId, mapWeathers]);
 
-  const [leagueRound, setLeagueRound] = useState(0); // 当前轮次: 0=未参加, 1=16强, 2=8强, 3=半决赛, 4=决赛
+  const [leagueRound, setLeagueRound] = useState(savedData.leagueRound || 0);
   // 在 RPG 组件内部
 
 // 还需要一个控制头像选择弹窗的状态
@@ -790,6 +788,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [statTooltip, setStatTooltip] = React.useState(null); 
   // 筛选和详情
   const [dexFilter, setDexFilter] = useState('all'); 
+  const [dexSearchTerm, setDexSearchTerm] = useState('');
   const [selectedDexId, setSelectedDexId] = useState(null);
 const [infinityState, setInfinityState] = useState(null); 
   // 商店
@@ -1343,8 +1342,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
     }
 
     const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
+    const hsScore = typeof calcHouseScore === 'function' ? calcHouseScore(housing?.placedFurniture || []) : 0;
+    const hsTier = typeof getHousingScoreTier === 'function' ? getHousingScoreTier(hsScore) : null;
+    const housingAllStats = hsTier?.buff?.allStats || 0;
     const applyGB = (val, pct) => {
       let total = (pct || 0);
+      val += housingAllStats;
       return total > 0 ? Math.floor(val * (1 + total / 100)) : val;
     };
 
@@ -1795,6 +1798,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     // --- 进化石逻辑 ---
     if (usingItem.category === 'stone') {
         const stoneId = usingItem.id;
+        if (pet.isFusion) { alert("融合精灵无法使用进化石！"); return; }
         const rules = STONE_EVO_RULES[pet.id];
         
         if (rules && rules[stoneId]) {
@@ -1804,11 +1808,20 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (targetPetInfo) {
                 if (!window.confirm(`确认使用 ${usingItem.name || '进化石'} 将 ${pet.name} 进化为 ${targetPetInfo.name}？\n此操作不可撤销！`)) return;
                 setInventory(prev => ({...prev, stones: {...prev.stones, [stoneId]: Math.max(0, (prev.stones[stoneId] || 0) - 1)}}));
-                let usedStonesArr = []; try { usedStonesArr = JSON.parse(localStorage.getItem('usedStonesSet') || '[]'); } catch(e) { usedStonesArr = []; }
-                const usedStones = new Set(Array.isArray(usedStonesArr) ? usedStonesArr : []);
-                usedStones.add(stoneId);
-                localStorage.setItem('usedStonesSet', JSON.stringify([...usedStones]));
-                updateAchStat({ uniqueStonesUsed: p => usedStones.size });
+                updateAchStat({ 
+                  uniqueStonesUsed: prev => {
+                    const arr = Array.isArray(achStats.usedStonesList) ? achStats.usedStonesList : [];
+                    const s = new Set(arr);
+                    s.add(stoneId);
+                    return s.size;
+                  },
+                  usedStonesList: prev => {
+                    const arr = Array.isArray(prev) ? prev : [];
+                    const s = new Set(arr);
+                    s.add(stoneId);
+                    return [...s];
+                  }
+                });
                 
                 // 2. 🔥 触发动画
                 setEvoAnim({
@@ -2075,10 +2088,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     const base = POKEDEX.find(p => p.id === finalId) || POKEDEX[0];
     const spBs = getSpouseBonuses();
-    const baseShinyRate = 0.01 + (spBs.shinyRate || 0);
+    const baseShinyRate = 0.01 * (spBs.shinyRate || 1);
     const isShiny = forceShiny || (!isBoss && Math.random() < baseShinyRate);
     
-    const randIV = () => Math.floor(Math.random() * 32); 
+    const ivBoost = spBs.ivBoost || 0;
+    const randIV = () => Math.min(31, Math.floor(Math.random() * 32) + ivBoost); 
     const ivs = {
         hp: randIV(), p_atk: randIV(), p_def: randIV(),
         s_atk: randIV(), s_def: randIV(), spd: randIV(),
@@ -2334,7 +2348,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const buildSavePayload = () => ({
     trainerName, trainerAvatar, gold, party, box, accessories, sectTitles,
     inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros,
-    leagueWins, unlockedTitles, currentTitle, housing, fruitInventory, achStats,
+    leagueWins, leagueRound, unlockedTitles, currentTitle, housing, fruitInventory, achStats,
     unlockedAchs, storyProgress, storyStep, sanguoProgress, sanguoStep,
     completedSideStories: [...completedSideStories], activeSideStory,
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
@@ -2356,11 +2370,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const manualSave = () => persistSave(false);
 
+  const persistSaveRef = useRef(persistSave);
+  persistSaveRef.current = persistSave;
+  const partyLenRef = useRef(party.length);
+  partyLenRef.current = party.length;
   useEffect(() => {
-    const onBeforeUnload = () => { if (party.length > 0) persistSave(true); };
+    const onBeforeUnload = () => { if (partyLenRef.current > 0) persistSaveRef.current(true); };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  });
+  }, []);
   // ==========================================
   // 成就系统 - 核心函数
   // ==========================================
@@ -2450,7 +2468,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const hsTierObj = getHousingScoreTier ? getHousingScoreTier(hsScore) : null;
       next.housingScoreTier = hsTierObj ? HOUSING_SCORE_TIERS.indexOf(hsTierObj) : 0;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
-      next.allMapsUnlocked = Object.keys(mapProgress || {}).length >= MAPS.length;
+      const mainMapCount = MAPS.filter(m => !m.isCapital && m.id < 200).length;
+      next.allMapsUnlocked = Object.keys(mapProgress || {}).length >= mainMapCount;
       // 队伍属性多样性
       const partyTypes = new Set((party || []).map(p => p?.type).filter(Boolean));
       next.partyTypeDiv = partyTypes.size;
@@ -3051,6 +3070,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const handleDate = (candidateId) => {
+    if (marriage.spouse && marriage.spouse !== candidateId) { alert('已结婚状态下只能与伴侣约会哦~'); return; }
     const dc = resetMarriageDailyCounts();
     if (dc.dates >= DAILY_DATE_LIMIT) { alert(`今天已经约会了${DAILY_DATE_LIMIT}次，明天再来吧~`); return; }
     if (gold < DATE_COST) { alert(`约会需要 ${DATE_COST} 金币~`); return; }
@@ -4660,7 +4680,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div style={{background:'rgba(255,255,255,0.04)', borderRadius:'14px', padding:'16px', marginBottom:'16px', border:'1px solid rgba(255,255,255,0.06)'}}>
               <div style={{fontSize:'12px', fontWeight:'bold', color:'rgba(255,255,255,0.5)', marginBottom:'8px'}}>奖励说明</div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', lineHeight:1.8}}>
-                每轮胜利奖励 💰 8,000~14,000 金币<br/>
+                每轮胜利奖励 💰 5,000~17,000 金币(随轮次递增)<br/>
                 夺冠奖励：🍬 神奇糖果 + 随机精灵（30%闪光/30%异色）<br/>
                 连续夺冠5次获得称号「传奇霸主」
               </div>
@@ -5446,7 +5466,7 @@ const useGrowthItem = (petIndex, itemId) => {
           learn.forEach(ls => {
             const move = allSkills.find(s => s.id === ls.move);
             if (move && !pet.moves.some(m => m.id === move.id)) {
-              if (pet.moves.length < 8) {
+              if (pet.moves.length < 4) {
                 pet.moves.push({ ...move, pp: move.maxPP || 15 });
               } else if (!pet.pendingLearnMove) {
                 pet.pendingLearnMove = { ...move, pp: move.maxPP || 15 };
@@ -5487,6 +5507,14 @@ const useGrowthItem = (petIndex, itemId) => {
     const [leader] = newTeam.splice(index, 1);
     newTeam.unshift(leader);
     setParty(newTeam);
+  };
+  const swapPartySlots = (i, j) => {
+    if (i === j || i < 0 || j < 0 || i >= party.length || j >= party.length) return;
+    setParty(prev => {
+      const newTeam = [...prev];
+      [newTeam[i], newTeam[j]] = [newTeam[j], newTeam[i]];
+      return newTeam;
+    });
   };
 
       const enterMap = (mapId) => {
@@ -5691,6 +5719,15 @@ const useGrowthItem = (petIndex, itemId) => {
         return;
       }
       const tileType = mapGrid[y][x];
+
+      if (tileType !== 1) {
+        setInventory(prev => {
+          const eggs = prev.eggs || [];
+          if (eggs.length === 0) return prev;
+          const newEggs = eggs.map(egg => ({ ...egg, stepsLeft: Math.max(0, (egg.stepsLeft || 0) - 1) }));
+          return { ...prev, eggs: newEggs };
+        });
+      }
 
       // ------------------------------------------------
       // 2. 障碍物 (Tile 1)
@@ -6215,12 +6252,13 @@ const useGrowthItem = (petIndex, itemId) => {
       setInventory(prev => {
         const eggs = prev.eggs || [];
         if (eggs.length === 0) return prev;
-        const newEggs = eggs.map(egg => ({ ...egg, stepsLeft: Math.max(0, (egg.stepsLeft || 0) - 1) }));
-        const readyIdx = newEggs.findIndex(e => e.stepsLeft <= 0);
+        const newEggs = eggs;
+        const readyIdx = newEggs.findIndex(e => (e.stepsLeft || 0) <= 0);
         if (readyIdx >= 0) {
           const readyEgg = newEggs[readyIdx];
           const remaining = [...newEggs.slice(0, readyIdx), ...newEggs.slice(readyIdx + 1)];
-          const isShiny = Math.random() < 0.05;
+          const spBs = getSpouseBonuses();
+          const isShiny = Math.random() < (0.05 * (spBs.shinyRate || 1));
           const isLegend = LEGENDARY_POOL?.includes(readyEgg.speciesId);
           const hatchedPet = createPet(readyEgg.speciesId, readyEgg.level || 1, false, isShiny);
           hatchedPet.uid = Date.now();
@@ -6369,9 +6407,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const tierIdx = config.tiers.indexOf(rewardTier);
     const isTopFinish = tierIdx >= 0 && tierIdx <= 1;
-    if (typeKey === 'fishing') { if (isTopFinish) updateAchStat({ fishingWins: 1 }); try { checkTreasureUnlock('event', { eventType: 'fishing' }); } catch(e) {} }
-    if (typeKey === 'beauty') { if (isTopFinish) updateAchStat({ beautyWins: 1 }); try { checkTreasureUnlock('event', { eventType: 'contest' }); } catch(e) {} }
-    if (typeKey === 'bug') { if (isTopFinish) updateAchStat({ bugContestWins: 1 }); try { checkTreasureUnlock('event', { eventType: 'bug_catching' }); } catch(e) {} }
+    if (typeKey === 'fishing') { updateAchStat({ fishingWins: 1 }); try { checkTreasureUnlock('event', { eventType: 'fishing' }); } catch(e) {} }
+    if (typeKey === 'beauty') { updateAchStat({ beautyWins: 1 }); try { checkTreasureUnlock('event', { eventType: 'contest' }); } catch(e) {} }
+    if (typeKey === 'bug') { updateAchStat({ bugContestWins: 1 }); try { checkTreasureUnlock('event', { eventType: 'bug_catching' }); } catch(e) {} }
 
     // 3. 🔥 核心修复：智能判断奖励类型 🔥
     // 如果配置里写了 type='pet' 或者 ID 是数字，就当作精灵处理
@@ -7531,12 +7569,29 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const enemy = tempBattle.enemyParty[battle.enemyActiveIdx];
         const actualMove = useStruggle ? { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } } : move;
 
-        // 速度判定：决定先后手
-        const playerSpd = getStats(player, player.stages, player.status).spd;
-        const enemySpd = getStats(enemy, enemy.stages, enemy.status).spd;
+        let playerSpd = getStats(player, player.stages, player.status).spd;
+        let enemySpd = getStats(enemy, enemy.stages, enemy.status).spd;
+        const domSpd = battle.activeDomain;
+        if (domSpd && domSpd.turnsLeft > 0 && domSpd.effect) {
+          const playerIsOwner = domSpd.ownerSide === 'player';
+          if (playerIsOwner) {
+            if (domSpd.effect.spdBoost) playerSpd = Math.floor(playerSpd * domSpd.effect.spdBoost);
+            if (domSpd.effect.enemySpdDown) enemySpd = Math.floor(enemySpd * domSpd.effect.enemySpdDown);
+          } else {
+            if (domSpd.effect.spdBoost) enemySpd = Math.floor(enemySpd * domSpd.effect.spdBoost);
+            if (domSpd.effect.enemySpdDown) playerSpd = Math.floor(playerSpd * domSpd.effect.enemySpdDown);
+          }
+        }
+        const playerMovePriority = actualMove.priority || 0;
+        const enemyMovePriority = (tempBattle._enemySelectedMove?.priority) || 0;
         const priorityFx = getEquipEffects(party[battle.activeIdx] || {}).find(fx => fx.id === 'priority');
         const playerHasPriority = player.fruitFirstStrike || (priorityFx && Math.random() < (priorityFx.val || 0.08));
-        const playerFirst = playerHasPriority ? true : (playerSpd > enemySpd || (playerSpd === enemySpd && Math.random() < 0.5));
+        let playerFirst;
+        if (playerMovePriority !== enemyMovePriority) {
+          playerFirst = playerMovePriority > enemyMovePriority;
+        } else {
+          playerFirst = playerHasPriority ? true : (playerSpd > enemySpd || (playerSpd === enemySpd && Math.random() < 0.5));
+        }
 
         let enemyDied = false;
         let playerDiedFromSelfDmg = false;
@@ -8481,7 +8536,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return;
     }
 
-    const brewTime = calcBrewTimeMs(drink.tier, workerStats);
+    let brewTime = calcBrewTimeMs(drink.tier, workerStats);
+    const spBrew = getSpouseBonuses();
+    if (spBrew.brewCooldown && spBrew.brewCooldown < 1) brewTime = Math.floor(brewTime * spBrew.brewCooldown);
     const now = Date.now();
     setCafe(prev => ({
       ...prev,
@@ -9521,6 +9578,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 if (defEquipImmune) { addLog(`🌸 ${targetName} 的饰品抵御了异常状态！`); }
                 else if (Math.random() < (eff.chance || 1.0)) {
                 targetState.status = eff.status;
+                if (eff.status === 'PSN' && (eff.toxic || move.name === '剧毒')) {
+                  targetState.volatiles.badlyPoisoned = true;
+                  targetState.volatiles.badlyPoisonedTurns = 1;
+                }
                 if (eff.status === 'SLP') targetState.volatiles.sleepTurns = _.random(2, 4);
                 const statusNames = { BRN:'灼伤', PSN:'中毒', PAR:'麻痹', SLP:'睡眠', FRZ:'冰冻' };
                 addLog(`${targetName} ${statusNames[eff.status] ? '陷入了' + statusNames[eff.status] + '状态' : '陷入了异常状态'}!`);
@@ -9647,6 +9708,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const ceMoveEff = move.isCursed ? (move.effect || {}) : {};
         let critStage = (atkState.stages.crit || 0) + (move.name === '劈开' ? 1 : 0) + (ceMoveEff.critBoost || 0);
         if (atkFE && atkFE.critBoost) critStage += atkFE.critBoost;
+        const domForCrit = battleState.activeDomain;
+        if (domForCrit && domForCrit.turnsLeft > 0 && domForCrit.effect && domForCrit.ownerSide === source && domForCrit.effect.critBoost) critStage += domForCrit.effect.critBoost;
         let critChance = statsAtk.crit * (1 + critStage * 0.5);
         if (Math.random() * 100 < critChance) isCrit = true;
 
@@ -9701,9 +9764,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const isOwner = domForDmg.ownerSide === source;
           if (isOwner && domForDmg.effect.atkBoost) rawDmg *= domForDmg.effect.atkBoost;
           if (!isOwner && domForDmg.effect.enemyAtkDown) rawDmg *= domForDmg.effect.enemyAtkDown;
-          if (isOwner && domForDmg.effect.defBoost) defVal = Math.floor(defVal / domForDmg.effect.defBoost);
-          if (!isOwner && domForDmg.effect.enemyDefDown) defVal = Math.floor(defVal * domForDmg.effect.enemyDefDown);
-          if (isOwner && domForDmg.effect.critBoost) critStage += domForDmg.effect.critBoost;
+          if (isOwner && domForDmg.effect.defBoost) rawDmg *= domForDmg.effect.defBoost;
+          if (!isOwner && domForDmg.effect.enemyDefDown) rawDmg /= (domForDmg.effect.enemyDefDown || 1);
         }
 
         // 暗暗果实: 取消对手果实效果
@@ -9738,19 +9800,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
             rawDmg *= 1.1;
         }
 
-        const dom = battleState.activeDomain;
-        if (dom && dom.turnsLeft > 0) {
-            const isOwner = (dom.ownerSide === source);
-            const eff = dom.effect;
-            if (isOwner) {
-                if (eff.atkBoost) rawDmg *= eff.atkBoost;
-            } else {
-                if (eff.enemyAtkDown) rawDmg *= eff.enemyAtkDown;
-                if (eff.enemyDefDown && eff.enemyDefDown !== 0) rawDmg /= eff.enemyDefDown;
-                if (eff.defBoost && eff.defBoost !== 0) rawDmg /= eff.defBoost;
-            }
-        }
-
         const vow = atkState.activeVow;
         if (vow && vow.turnsLeft > 0) {
             if (vow.reward.atkMult) { rawDmg *= vow.reward.atkMult; vow.turnsLeft = 0; }
@@ -9781,7 +9830,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (attacker.trait === 'adaptability' && isSTAB) {
             rawDmg *= (2.0 / 1.5);
         }
-        if (isCrit && attacker.trait === 'sniper') rawDmg *= 1.5; 
+        if (isCrit && attacker.trait === 'sniper') rawDmg *= (2.25 / 1.5);
 
         let isImmune = false;
         if (defender.trait === 'levitate' && move.t === 'GROUND') {
@@ -10316,7 +10365,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const isActive = bState.isDouble ? (bState.activeIdxs?.includes(index)) : (index === bState.activeIdx);
       if (pet.currentHp <= 0 && !isActive) return pet;
-      const shareRatio = isActive ? 1.0 : 0.5; 
+      const activeCount = bState.isDouble ? (bState.activeIdxs?.length || 2) : 1;
+      const shareRatio = isActive ? (1.0 / activeCount) : 0.5; 
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
@@ -10327,10 +10377,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const rkPerk = getRankPerkEffects(kingdomWar);
       const expGain = Math.floor(baseExp * shareRatio * lvlPenalty * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100) * (rkPerk.battleExpMult || 1) * (rkPerk.allBonusMult || 1));
       
+      if (pet.level >= 100) { pet.exp = 0; return pet; }
       pet.exp += expGain;
       if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
 
-      // 升级逻辑
       while (pet.exp >= pet.nextExp && pet.level < 100 && pet.nextExp > 0) {
         pet.exp -= pet.nextExp;
         pet.level++;
@@ -10694,6 +10744,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (p.equips && p.equips.includes('a4')) intGain += 2;
 
         newPet.intimacy = Math.min(255, (newPet.intimacy || 0) + intGain);
+
+        newPet.status = null;
+        newPet.stages = {};
 
         // 2. 魅力值增长 (Charm 0-100)
         // 只有出战的精灵，在击败 馆主/Boss/联盟 时增加
@@ -11110,14 +11163,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 8. 战斗联盟逻辑
     if (battle.type === 'league') {
         if (leagueRound < 4) {
-           unlockTitle('联盟冠军');
-           if (leagueWins + 1 >= 5) unlockTitle('传奇霸主');
            setLeagueRound(prev => prev + 1);
-           alert(`🎉 胜利！\n恭喜晋级下一轮！`);
+           const roundNames = ['16强', '8强', '半决赛', '决赛'];
+           alert(`🎉 胜利！\n恭喜晋级${roundNames[leagueRound] || '下一轮'}！`);
            setBattle(null);
            setView('league'); 
            return; 
         } else {
+            unlockTitle('联盟冠军');
+            if (leagueWins + 1 >= 5) unlockTitle('传奇霸主');
             setLeagueWins(prev => prev + 1);
             setLeagueRound(0); 
             setCompletedChallenges(prev => [...prev, 'LEAGUE_CHAMPION']); 
@@ -11837,7 +11891,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleRun = async () => {
     // 1. 检查是否允许逃跑
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP) {
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.dungeonId) {
         addLog("⚠️ 这种战斗无法逃跑！必须决出胜负！");
         return;
     }
@@ -11924,7 +11978,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleCatch = async (ballType) => {
     setShowBallMenu(false);
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege') return addLog("训练家的精灵不能捕捉！");
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
     if ((inventory.balls[ballType] || 0) <= 0) return addLog("球不足！");
     try {
     
@@ -12849,7 +12903,15 @@ const renderNameInput = () => {
     const filteredDex = POKEDEX.filter(p => {
       if (dexFilter === 'caught') return caughtDex.includes(p.id);
       if (dexFilter === 'missing') return !caughtDex.includes(p.id);
+      if (dexFilter.startsWith('type_')) {
+        const t = dexFilter.replace('type_', '');
+        return p.type === t || p.type2 === t;
+      }
       return true;
+    }).filter(p => {
+      if (!dexSearchTerm) return true;
+      const term = dexSearchTerm.toLowerCase();
+      return p.name.toLowerCase().includes(term) || String(p.id).includes(term);
     });
 
     const selectedPet = selectedDexId ? POKEDEX.find(p => p.id === selectedDexId) : null;
@@ -12885,6 +12947,13 @@ const renderNameInput = () => {
             <div className={`filter-chip ${dexFilter==='all'?'active':''}`} onClick={()=>setDexFilter('all')}>全部</div>
             <div className={`filter-chip ${dexFilter==='caught'?'active':''}`} onClick={()=>setDexFilter('caught')}>已捕获</div>
             <div className={`filter-chip ${dexFilter==='missing'?'active':''}`} onClick={()=>setDexFilter('missing')}>未捕获</div>
+            <select value={dexFilter.startsWith('type_') ? dexFilter : ''} onChange={e => setDexFilter(e.target.value || 'all')} style={{padding:'4px 8px', borderRadius:'12px', border:'1px solid #ddd', fontSize:'11px', background:'#f8f8f8', cursor:'pointer'}}>
+              <option value="">按属性</option>
+              {Object.entries(TYPES).map(([k, v]) => <option key={k} value={`type_${k}`}>{v.name}</option>)}
+            </select>
+          </div>
+          <div style={{padding:'0 12px 8px'}}>
+            <input type="text" placeholder="🔍 搜索精灵名称或编号..." value={dexSearchTerm} onChange={e => setDexSearchTerm(e.target.value)} style={{width:'100%', padding:'8px 12px', borderRadius:'10px', border:'1px solid #e0e0e0', fontSize:'13px', outline:'none', boxSizing:'border-box'}} />
           </div>
           
                     <div className="dex-grid-refined">
@@ -16054,9 +16123,9 @@ const renderMenu = () => {
           <div style={{fontSize:'10px', color:'#d4a853', fontWeight:'700', marginBottom:'5px', letterSpacing:'1px'}}>🏆 当前目标</div>
           <div style={{fontSize:'12px', fontWeight:'700', color:'#2c2417'}}>
             {badges.length < 13 ? (
-              <>收集徽章: <span style={{color:'#2196F3'}}>{badges.length} / 30</span></>
-            ) : badges.length < MAPS.length ? (
-              <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！ <span style={{color:'#999', fontSize:'10px'}}>({badges.length}/{MAPS.length})</span></span>
+              <>收集徽章: <span style={{color:'#2196F3'}}>{badges.length} / 13</span> (主线)</>
+            ) : badges.length < 20 ? (
+              <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！ <span style={{color:'#999', fontSize:'10px'}}>({badges.length}枚)</span></span>
             ) : (
               <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
             )}
@@ -16986,7 +17055,7 @@ const renderMenu = () => {
                  <span>已学会技能</span>
                  <button 
                     onClick={() => {
-                      const currentCount = inventory.ethers || inventory.meds?.ether || 0;
+                      const currentCount = inventory.meds?.ether || 0;
                       if (currentCount <= 0) { alert("没有PP补剂了！请去商店购买。"); return; }
                       const pIndex = party.findIndex(p => p === viewStatPet || (p.id === viewStatPet.id && p.caughtDate === viewStatPet.caughtDate));
                       if (pIndex === -1) return;
@@ -17149,6 +17218,8 @@ const renderMenu = () => {
                                         <button onClick={(e) => { e.stopPropagation(); usePotion(i); }} title="快速治疗">💊</button>
                                         <button onClick={(e) => { e.stopPropagation(); useBerry(i); }} title="喂食树果">🍒</button>
                                         {i !== 0 && <button onClick={(e) => { e.stopPropagation(); setLeader(i); }} title="设为首发">⬆️</button>}
+                                        {i > 0 && <button onClick={(e) => { e.stopPropagation(); swapPartySlots(i, i-1); }} title="上移">🔼</button>}
+                                        {i < party.length - 1 && <button onClick={(e) => { e.stopPropagation(); swapPartySlots(i, i+1); }} title="下移">🔽</button>}
                                     </div>
                                 )}
                                 {isFainted && <div className="fainted-text">濒死状态</div>}
@@ -19394,6 +19465,8 @@ const renderMenu = () => {
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
                             <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
+                            <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.type]?.color || '#888', color:'#fff', fontWeight:'bold', marginLeft:'4px'}}>{TYPES[e.type]?.name || e.type}</span>
+                            {e.secondaryType && e.secondaryType !== e.type && <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.secondaryType]?.name || e.secondaryType}</span>}
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
                             {e.isFusedShiny ? (
@@ -19698,7 +19771,7 @@ const renderMenu = () => {
                     pointerEvents: 'none' 
                 }}>
                     <EnhancedBattleMessage 
-                        logs={battle.logs.slice(0, 6)}
+                        logs={battle.logs.slice(0, 12)}
                     />
                 </div>
             )}
@@ -19761,7 +19834,18 @@ const renderMenu = () => {
                             {(() => {
                             const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
                             const activeMoves = skillPet?.combatMoves || [];
-                                return activeMoves.map((m, i) => (
+                                const activeEnemy = battle.enemyParty?.[battle.enemyActiveIdx];
+                                return activeMoves.map((m, i) => {
+                                    let effLabel = '';
+                                    if (activeEnemy && m.p > 0) {
+                                      let mod = getTypeMod(m.t || 'NORMAL', activeEnemy.type);
+                                      if (activeEnemy.secondaryType && activeEnemy.secondaryType !== activeEnemy.type) mod *= getTypeMod(m.t || 'NORMAL', activeEnemy.secondaryType);
+                                      if (mod >= 4) effLabel = '⚡超克制';
+                                      else if (mod >= 2) effLabel = '✦克制';
+                                      else if (mod <= 0) effLabel = '✕免疫';
+                                      else if (mod < 1) effLabel = '△抵抗';
+                                    }
+                                    return (
                                     <EnhancedMoveButton
                                         key={i}
                                         move={{
@@ -19771,7 +19855,7 @@ const renderMenu = () => {
                                             pp: m.pp,
                                         maxPp: m.maxPP || 15,
                                         acc: m.acc,
-                                        desc: m.desc || '',
+                                        desc: effLabel ? `${effLabel} ${m.desc || ''}` : (m.desc || ''),
                                         isCursed: m.isCursed,
                                         ceCost: m.ceCost,
                                         isExtra: m.isExtra,
@@ -19793,7 +19877,7 @@ const renderMenu = () => {
                                     disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0)) : (m.pp <= 0)}
                                         index={i}
                                     />
-                                ));
+                                ); });
                             })()}
                         </div>
                     )}

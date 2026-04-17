@@ -100,12 +100,12 @@ export const MAPS = [
   // 日蚀要塞
   { 
     id: 99, name: '日蚀要塞', lvl: [80, 90], pool: [], 
-    drop: 0, type: 'factory', color: '#263238', gymLeader: 350, gymLvl: 95, badge: '💀', icon: '🏯', gymName: '日蚀首领' 
+    drop: 0, type: 'factory', color: '#263238', gymLeader: 350, gymLvl: 95, badge: '💀', icon: '🏯', gymName: '日蚀首领', desc: '日蚀队最终据点（⚠️ 无野外遭遇，仅剧情战斗）'
   },
   // 咒术回战 - 都立咒术高专
   {
     id: 100, name: '都立咒术高专', lvl: [40, 80],
-    pool: [92, 93, 94, 63, 65, 93, 130, 149, 150, 151],
+    pool: [92, 93, 94, 63, 65, 200, 130, 149, 150, 151],
     drop: 500, type: 'ghost', color: '#1A237E', gymLeader: 150, gymLvl: 80, badge: '🔮', icon: '⛩️',
     isJJK: true, unlockBadges: 5, desc: '东京都立咒术高等专门学校，术师们的训练基地', gymName: '五条悟'
   },
