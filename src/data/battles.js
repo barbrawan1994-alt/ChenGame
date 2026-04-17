@@ -176,19 +176,33 @@ export const CONTEST_CONFIG = {
 // ==========================================
 export const DUNGEONS = [
   // === Tier 1: 入门级 (1~3徽章) ===
-  { id: 'exp_paradise', name: '经验乐园', desc: '经验加速训练场 (需1徽章)',
-    type: 'exp', color: '#00E676', icon: '🎓', recLvl: 10,
+  { id: 'mist_forest', name: '迷雾森林', desc: '浓雾中的神秘遭遇，闪光精灵出没 (需1徽章)',
+    type: 'mist_forest', color: '#78909C', icon: '🌫️', recLvl: 15,
     rarity: '普通', stars: 1, tier: 1, reqBadges: 1,
     rewards: [
-      { icon: '🍬', text: '等级匹配的经验' },
-      { icon: '⏰', text: '3场后冷却5分钟' }
+      { icon: '✨', text: '高闪光率遭遇' },
+      { icon: '🔴', text: '随机精灵球奖励' }
     ] },
-  { id: 'gold_rush', name: '黄金矿洞', desc: '矿洞中散落着金币 (需2徽章)',
-    type: 'gold', color: '#FFD700', icon: '💰', recLvl: 20,
+  { id: 'speed_run', name: '竞速挑战', desc: '限时击败敌人，速度越快奖励越好 (需2徽章)',
+    type: 'speed_run', color: '#FF5722', icon: '⚡', recLvl: 20,
     rarity: '普通', stars: 2, tier: 1, reqBadges: 2,
     rewards: [
-      { icon: '💰', text: '600 金币/场' },
-      { icon: '⏰', text: '每日上限5场' }
+      { icon: '⚡', text: '速度类增强剂' },
+      { icon: '🏅', text: '3回合内通关额外奖励' }
+    ] },
+  { id: 'wild_survival', name: '野外求生', desc: '3波连战，HP不回复 (需2徽章)',
+    type: 'wild_survival', color: '#4CAF50', icon: '🏕️', recLvl: 25,
+    rarity: '普通', stars: 2, tier: 1, reqBadges: 2,
+    rewards: [
+      { icon: '🍇', text: '大量树果和药品' },
+      { icon: '🌿', text: 'HP不回复的紧张连战' }
+    ] },
+  { id: 'memory_trial', name: '回忆试炼', desc: '对战镜像队伍的自我挑战 (需3徽章)',
+    type: 'memory_trial', color: '#9C27B0', icon: '🪞', recLvl: 30,
+    rarity: '稀有', stars: 2, tier: 1, reqBadges: 3,
+    rewards: [
+      { icon: '📖', text: '随机TM技能' },
+      { icon: '🪞', text: '挑战自己的镜像' }
     ] },
   { id: 'type_challenge', name: '属性试炼场', desc: '指定属性限定战 (需3徽章)',
     type: 'type_challenge', color: '#1976D2', icon: '🎯', recLvl: 25,
@@ -219,12 +233,19 @@ export const DUNGEONS = [
       { icon: '💪', text: '随机增强剂' },
       { icon: '🏅', text: '仅限单挑' }
     ] },
-  { id: 'rich_man', name: '豪宅金库', desc: '高回报金库 (需6徽章+门票)',
-    type: 'gold_pro', color: '#FFC107', icon: '🏦', recLvl: 55, restriction: 'entry_fee',
-    rarity: '史诗', stars: 4, tier: 2, reqBadges: 6,
+  { id: 'ladder_trial', name: '天梯试炼', desc: '5层逐渐变强的Boss连战 (需5徽章)',
+    type: 'boss_rush', color: '#E91E63', icon: '🪜', recLvl: 50,
+    rarity: '史诗', stars: 3, tier: 2, reqBadges: 5,
     rewards: [
-      { icon: '💰', text: '8000 金币/场' },
-      { icon: '🎫', text: '门票随徽章递增' }
+      { icon: '💪', text: '每层掉落增强剂' },
+      { icon: '⚡', text: '通关获得进化石' }
+    ] },
+  { id: 'type_roulette', name: '属性轮盘', desc: '随机属性对决，考验全方位实力 (需6徽章)',
+    type: 'type_roulette', color: '#00BCD4', icon: '🎰', recLvl: 55,
+    rarity: '史诗', stars: 3, tier: 2, reqBadges: 6,
+    rewards: [
+      { icon: '📖', text: '稀有属性TM' },
+      { icon: '💪', text: '随机增强剂' }
     ] },
   // === Tier 3: 精英级 (7~10徽章) ===
   { id: 'survival_arena', name: '生存竞技场', desc: '无尽波次生存挑战 (需7徽章)',
@@ -263,12 +284,26 @@ export const DUNGEONS = [
       { icon: '👹', text: '鬼杀队遗物' },
       { icon: '⚔️', text: '呼吸法秘籍' }
     ] },
+  { id: 'treasure_maze', name: '宝藏迷宫', desc: '随机房间探索 (需11徽章)',
+    type: 'treasure', color: '#FF8F00', icon: '🗝️', recLvl: 90,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 11,
+    rewards: [
+      { icon: '🗝️', text: '每房间随机宝箱' },
+      { icon: '💎', text: '深层出现精灵蛋' }
+    ] },
   { id: 'safari_zone', name: '狩猎地带', desc: '传说/神兽高概率出没 (需13徽章)',
     type: 'catch', color: '#FF7043', icon: '🐾', recLvl: 95,
-    rarity: '传说', stars: 5, tier: 4, reqBadges: 12,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 13,
     rewards: [
       { icon: '🐲', text: '随机神兽' },
       { icon: '🔴', text: '传说品质装备' }
+    ] },
+  { id: 'ragnarok', name: '诸神黄昏', desc: '挑战三波神兽军团 (需13徽章)',
+    type: 'ragnarok', color: '#4A148C', icon: '⚔️', recLvl: 98,
+    rarity: '传说', stars: 5, tier: 4, reqBadges: 13,
+    rewards: [
+      { icon: '🌟', text: '保底闪光神兽' },
+      { icon: '🍬', text: '极限糖果+传说装备' }
     ] },
   { id: 'extreme_trial', name: '极限试炼', desc: '每波随机Debuff (需13徽章)',
     type: 'extreme', color: '#B71C1C', icon: '☠️', recLvl: 100,
@@ -276,13 +311,6 @@ export const DUNGEONS = [
     rewards: [
       { icon: '☠️', text: '最高难度挑战' },
       { icon: '👑', text: '冠军级装备+大师球' }
-    ] },
-  { id: 'treasure_maze', name: '宝藏迷宫', desc: '随机房间探索 (需11徽章)',
-    type: 'treasure', color: '#FF8F00', icon: '🗝️', recLvl: 90,
-    rarity: '传说', stars: 5, tier: 4, reqBadges: 11,
-    rewards: [
-      { icon: '🗝️', text: '每房间随机宝箱' },
-      { icon: '💎', text: '深层出现神兽蛋' }
     ] },
 ];
 export const MOON_DEMONS = {

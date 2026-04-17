@@ -1429,7 +1429,7 @@ export const STORY_SCRIPT = [
       { name: "仙剑大侠·李逍遥", text: "星落平原。那里的情报说——有一个沉默的剑客在独自对抗次元侵蚀。" },
       { name: "系统", text: "获得【次元钥匙·渊】！（3/7）" }
     ],
-    reward: { gold: 70000, items: [{id:'vit_spatk', count:5}] }
+    reward: { gold: 70000, items: [{id:'vit_satk', count:5}] }
   },
 
   // ===== 异界篇·玖：星辰陨落 (Map 106) =====
@@ -1494,7 +1494,7 @@ export const STORY_SCRIPT = [
       { name: "十三", text: "三刀。（纠正）" },
       { name: "林克", text: "...（举起大师之剑指向天空——封印被解除了。一道光柱直冲云霄。）" }
     ],
-    reward: { gold: 50000, items: [{id:'vit_spdef', count:5}] }
+    reward: { gold: 50000, items: [{id:'vit_sdef', count:5}] }
   },
 
   // ===== 异界篇·拾壹：星辰守护者 (Map 106) =====
@@ -1622,7 +1622,7 @@ export const STORY_SCRIPT = [
       { name: "仙剑大侠·李逍遥", text: "说得对。目标——机械王座！出发！" },
       { name: "系统", text: "获得【次元钥匙·虹】！（5/7）" }
     ],
-    reward: { gold: 80000, items: [{id:'vit_patk', count:5}, {id:'vit_spatk', count:5}] }
+    reward: { gold: 80000, items: [{id:'vit_patk', count:5}, {id:'vit_satk', count:5}] }
   },
 
   // ===== 异界篇·拾伍：机械遗迹 (Map 108) =====
@@ -1652,7 +1652,7 @@ export const STORY_SCRIPT = [
       { name: "马里奥", text: "（难得地安静了一会）...我在想，如果有一天我的世界也变成这样...不，不会的！因为有我在！嘿呀！" },
       { name: "仙剑大侠·李逍遥", text: "机械帝王——这里最后的看门人。它应该就在核心深处。" }
     ],
-    reward: { gold: 60000, items: [{id:'vit_pdef', count:5}, {id:'vit_spdef', count:5}] }
+    reward: { gold: 60000, items: [{id:'vit_pdef', count:5}, {id:'vit_sdef', count:5}] }
   },
 
   // ===== 异界篇·拾陆：机械帝王 (Map 108) =====
