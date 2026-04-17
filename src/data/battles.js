@@ -187,7 +187,7 @@ export const DUNGEONS = [
     type: 'gold', color: '#FFD700', icon: '💰', recLvl: 20,
     rarity: '普通', stars: 2, tier: 1, reqBadges: 2,
     rewards: [
-      { icon: '💰', text: '400 金币/场' },
+      { icon: '💰', text: '600 金币/场' },
       { icon: '⏰', text: '每日上限5场' }
     ] },
   { id: 'type_challenge', name: '属性试炼场', desc: '指定属性限定战 (需3徽章)',
@@ -263,7 +263,7 @@ export const DUNGEONS = [
       { icon: '👹', text: '鬼杀队遗物' },
       { icon: '⚔️', text: '呼吸法秘籍' }
     ] },
-  { id: 'safari_zone', name: '狩猎地带', desc: '传说/神兽高概率出没 (需12徽章)',
+  { id: 'safari_zone', name: '狩猎地带', desc: '传说/神兽高概率出没 (需13徽章)',
     type: 'catch', color: '#FF7043', icon: '🐾', recLvl: 95,
     rarity: '传说', stars: 5, tier: 4, reqBadges: 12,
     rewards: [

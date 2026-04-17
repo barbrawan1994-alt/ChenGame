@@ -1972,6 +1972,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // [核心修复] 创建精灵 (含特性/亲密度/宠物风魅力评级)
   // ==========================================
   function createPet(dexId, level, isBoss = false, forceShiny = false) {
+    level = Math.min(100, Math.max(1, level));
     let finalId = dexId;
 
     // --- 1. 向下回溯 (De-evolution) ---
@@ -6458,6 +6459,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let trainerName = null;
     let dropGold = context?.drop || 200;
     let extraBattleData = {};
+    if (context?.isReversed) extraBattleData.isReversed = true;
+    if (context?.isExtreme) extraBattleData.isExtreme = true;
 
     // -------------------------------------------------
     // 1. PvP 对战
@@ -7638,24 +7641,46 @@ const grantContestReward = (config, score, subjectPet = null) => {
       (tempBattle.enemyActiveIdxs || []).forEach((eIdx, slotIdx) => {
         const enemy = tempBattle.enemyParty?.[eIdx];
         if (!enemy || enemy.currentHp <= 0) return;
-        const availMoves = (enemy.combatMoves || []).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
-        if (availMoves.length === 0) return;
+        let availMoves = (enemy.combatMoves || []).filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.pp > 0);
         const spd = getStats(enemy, enemy.stages, enemy.status).spd || 1;
         const alivePlayerIdxs = (tempBattle.activeIdxs || []).filter(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
         if (alivePlayerIdxs.length === 0) return;
-        let bestMove = availMoves[0], bestTarget = alivePlayerIdxs[0], bestScore = -999;
-        for (const m of availMoves) {
-          for (const tIdx of alivePlayerIdxs) {
-            const target = tempBattle.playerCombatStates[tIdx];
-            let score = (m.p || 0) * getTypeMod(m.t, target.type);
-            if (target.type2) score *= getTypeMod(m.t, target.type2);
-            const hpRatio = target.currentHp / (getStats(target).maxHp || 1);
-            if (hpRatio < 0.3) score += 20;
-            score += (Math.random() * 15);
-            if (score > bestScore) { bestScore = score; bestMove = m; bestTarget = tIdx; }
+        const smartMoves = availMoves.filter(m => {
+          if (m.p > 0) return true;
+          if (m.effect) {
+            if (m.effect.type === 'STATUS') {
+              const anyWithout = alivePlayerIdxs.some(i => !tempBattle.playerCombatStates[i]?.status);
+              if (!anyWithout) return false;
+            }
+            if (m.effect.type === 'BUFF') {
+              const currentStage = enemy.stages?.[m.effect.stat] || 0;
+              if (currentStage >= 6) return false;
+            }
           }
+          return true;
+        });
+        if (smartMoves.length > 0) availMoves = smartMoves;
+        let chosenMove;
+        if (availMoves.length === 0) {
+          chosenMove = { name: '挣扎', p: 20, t: 'NORMAL', pp: 99 };
+        } else {
+          let bestMove = availMoves[0], bestTarget = alivePlayerIdxs[0], bestScore = -999;
+          for (const m of availMoves) {
+            for (const tIdx of alivePlayerIdxs) {
+              const target = tempBattle.playerCombatStates[tIdx];
+              let score = (m.p || 0) * getTypeMod(m.t, target.type);
+              if (target.type2) score *= getTypeMod(m.t, target.type2);
+              const hpRatio = target.currentHp / (getStats(target).maxHp || 1);
+              if (hpRatio < 0.3) score += 20;
+              score += (Math.random() * 15);
+              if (score > bestScore) { bestScore = score; bestMove = m; bestTarget = tIdx; }
+            }
+          }
+          chosenMove = bestMove;
+          actions.push({ side: 'enemy', petIdx: eIdx, move: chosenMove, speed: spd, targetIdx: (function(){ let bt = alivePlayerIdxs[0], bs = -999; for (const tIdx of alivePlayerIdxs) { const target = tempBattle.playerCombatStates[tIdx]; let s = (chosenMove.p || 0) * getTypeMod(chosenMove.t, target.type); if (target.type2) s *= getTypeMod(chosenMove.t, target.type2); s += (target.currentHp / (getStats(target).maxHp || 1) < 0.3 ? 20 : 0) + Math.random() * 15; if (s > bs) { bs = s; bt = tIdx; } } return bt; })(), slotIdx });
+          return;
         }
-        actions.push({ side: 'enemy', petIdx: eIdx, move: bestMove, speed: spd, targetIdx: bestTarget, slotIdx });
+        actions.push({ side: 'enemy', petIdx: eIdx, move: chosenMove, speed: spd, targetIdx: alivePlayerIdxs[0], slotIdx });
       });
 
       actions.sort((a, b) => {
@@ -7752,6 +7777,46 @@ const grantContestReward = (config, score, subjectPet = null) => {
           tempBattle.activeDomain = null;
         }
       }
+      // 双打回合末DOT (灼伤/中毒) — 每个在场精灵结算一次
+      const allDoubleActives = [
+        ...((tempBattle.activeIdxs || []).map(i => ({ u: tempBattle.playerCombatStates?.[i], s: tempBattle.playerCombatStates?.[i] }))),
+        ...((tempBattle.enemyActiveIdxs || []).map(i => ({ u: tempBattle.enemyParty?.[i], s: tempBattle.enemyParty?.[i] }))),
+      ];
+      for (const { u, s } of allDoubleActives) {
+        if (!u || !s || u.currentHp <= 0) continue;
+        if (s.status === 'BRN' || s.status === 'PSN') {
+          let dot;
+          if (s.status === 'PSN' && s.volatiles?.badlyPoisoned) {
+            s.volatiles.badlyPoisonedTurns = (s.volatiles.badlyPoisonedTurns || 1) + 1;
+            dot = Math.floor(getStats(u).maxHp * Math.min(0.5, s.volatiles.badlyPoisonedTurns / 16));
+          } else {
+            dot = Math.floor(getStats(u).maxHp / 8);
+          }
+          u.currentHp = Math.max(0, u.currentHp - dot);
+          addLog(`${u.name} 受到 ${s.status === 'BRN' ? '灼伤' : '中毒'} 伤害 ${dot}!`);
+        }
+      }
+
+      // 双打天气伤害 (沙暴/冰雹)
+      if (weather === 'SAND' || weather === 'SNOW') {
+        const weatherTargets = [
+          ...((tempBattle.activeIdxs || []).map(i => tempBattle.playerCombatStates?.[i])),
+          ...((tempBattle.enemyActiveIdxs || []).map(i => tempBattle.enemyParty?.[i])),
+        ];
+        for (const u of weatherTargets) {
+          if (!u || u.currentHp <= 0) continue;
+          const uTypes = [u.type, u.secondaryType].filter(Boolean);
+          let immune = false;
+          if (weather === 'SAND' && uTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) immune = true;
+          if (weather === 'SNOW' && uTypes.includes('ICE')) immune = true;
+          if (!immune) {
+            const wDmg = Math.floor(getStats(u).maxHp / 16);
+            u.currentHp = Math.max(0, u.currentHp - wDmg);
+            addLog(`${u.name} 受到${weather === 'SAND' ? '沙暴' : '冰雹'}伤害 ${wDmg}！`);
+          }
+        }
+      }
+
       for (const pIdx of (tempBattle.activeIdxs || [])) {
         const ps = tempBattle.playerCombatStates?.[pIdx];
         if (ps && ps.currentHp > 0 && ps.fruitTransformed && ps.fruitTurnsLeft > 0) {
@@ -7855,6 +7920,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         enemyActiveIdxs: newEnemyIdxs,
         activeIdx: newActiveIdxs[0] ?? 0,
         enemyActiveIdx: newEnemyIdxs[0] ?? 0,
+        activeDomain: tempBattle.activeDomain || null,
         doubleSlot: 0,
         doubleActions: [],
         pendingDoubleMove: undefined,
@@ -8998,8 +9064,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const info = chart[moveType];
     if (!info) return 1.0;
 
-    if (info.strong && info.strong.includes(targetType)) return 1.5; // 克制倍率降低
-    if (info.weak && info.weak.includes(targetType)) return 0.8;     // 抵抗倍率提升
+    const reversed = battle?.isReversed;
+    if (reversed) {
+      if (info.strong && info.strong.includes(targetType)) return 0.8;
+      if (info.weak && info.weak.includes(targetType)) return 1.5;
+    } else {
+      if (info.strong && info.strong.includes(targetType)) return 1.5;
+      if (info.weak && info.weak.includes(targetType)) return 0.8;
+    }
     return 1.0;
   };
   // ==========================================
@@ -9071,6 +9143,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
     
     const atkState = source === 'player' ? battleState.playerCombatStates[atkIdx] : battleState.enemyParty[atkIdx];
     const defState = source === 'player' ? battleState.enemyParty[defIdx] : battleState.playerCombatStates[defIdx];
+
+    // 0. 畏缩判定
+    if (atkState.volatiles?.flinched) {
+      atkState.volatiles.flinched = false;
+      addLog(`${attacker.name} 因畏缩无法行动！`);
+      await wait(800);
+      return false;
+    }
 
     // 1. 异常状态判定
     if (atkState.status === 'SLP') {
@@ -9608,7 +9688,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${attacker.name} 吸收了 ${heal} HP!`);
           }
           if (atkFE.multiHit) {
-            const extraHits = _.random(atkFE.multiHit[0], atkFE.multiHit[1]) - 1;
+            const mh = atkFE.multiHit;
+            const extraHits = (Array.isArray(mh) ? _.random(mh[0], mh[1]) : (typeof mh === 'number' ? mh : 2)) - 1;
             for (let h = 0; h < extraHits && defender.currentHp > 0; h++) {
               const extraDmg = Math.max(1, Math.floor(dmg * 0.6));
               defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
@@ -9745,6 +9826,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const heal = Math.floor(dmg * eff.drain);
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
             addLog(`${attacker.name} 吸取了 ${heal} HP！`);
+          }
+          if (eff.multiHit && !isDead) {
+            const mhVal = eff.multiHit;
+            const hits = (Array.isArray(mhVal) ? _.random(mhVal[0], mhVal[1]) : (typeof mhVal === 'number' ? mhVal : 2)) - 1;
+            for (let h = 0; h < hits && defender.currentHp > 0; h++) {
+              const extraDmg = Math.max(1, Math.floor(dmg * 0.6));
+              defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
+              addLog(`追加攻击! 造成 ${extraDmg} 伤害`);
+            }
+            isDead = defender.currentHp <= 0;
           }
         }
 
@@ -9915,8 +10006,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       });
     }
 
-    // 4b. 回合结束结算 (灼伤/中毒) — 每次行动后对行动方结算
-    if (!isDead) {
+    // 4b. 回合结束结算 (灼伤/中毒) — 单打每次行动后结算，双打在回合末统一结算
+    if (!isDead && !battleState?.isDouble) {
         const applyDot = (unit, state) => {
             if (unit.currentHp <= 0) return false;
             if (state.status === 'BRN' || state.status === 'PSN') {
@@ -10394,17 +10485,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (wave < 3) {
         const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
         const nextLvlBase = Math.min(100, (battle.enemyParty?.[0]?.level || 50) + 5);
-        addLog(`🗼 Boss塔第${wave}层通关！准备迎战第${wave + 1}层...`);
+        const rushName = battle.rushName || battle.name?.replace(/第\d+层/, '').trim() || 'Boss塔';
+        addLog(`🗼 ${rushName}第${wave}层通关！准备迎战第${wave + 1}层...`);
         setParty(updatedParty);
         setBattle(null);
         setTimeout(() => {
-          startBattle({ id: 992, name: `Boss塔 第${wave+1}层`, lvl: [nextLvlBase, nextLvlBase + 5], pool: bossPool, drop: 2000 + wave * 1000, bossRushWave: wave + 1 }, 'boss_rush');
+          startBattle({ id: 992, name: `${rushName} 第${wave+1}层`, lvl: [nextLvlBase, nextLvlBase + 5], pool: bossPool, drop: 2000 + wave * 1000, bossRushWave: wave + 1, rushName }, 'boss_rush');
         }, 1000);
         return;
       } else {
+        const rushName = battle.rushName || 'Boss塔';
         const bonusGold = 5000;
         setGold(g => g + bonusGold);
-        addLog(`🏆 Boss塔全部通关！额外奖励 ${bonusGold} 金币！`);
+        addLog(`🏆 ${rushName}全部通关！额外奖励 ${bonusGold} 金币！`);
         const rewardItem = _.sample(GROWTH_ITEMS);
         setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
         addLog(`🎁 通关奖励: ${rewardItem.emoji} ${rewardItem.name}!`);
@@ -10431,7 +10524,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setGold(g => g + bonusGold);
       addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
       const nextLvl = Math.min(100, (battle.enemyParty?.[0]?.level || 70) + 3);
-      if (confirm(`🏟️ 第${wave}波胜利！\n已累计奖金 ${bonusGold} 金币\n继续挑战第${wave+1}波？(敌人更强)`)) {
+      if (confirm(`🏟️ 第${wave}波胜利！\n本波奖金 ${bonusGold} 金币\n继续挑战第${wave+1}波？(敌人等级+3)`)) {
         setParty(updatedParty);
         setBattle(null);
         setTimeout(() => {
@@ -13625,21 +13718,26 @@ const renderMenu = () => {
       }
       if (dungeon.restriction === 'lucky_nature') { const lucky = ['naive', 'hasty', 'quirky', 'serious', 'hardy']; if (!lucky.includes(party[0].nature)) { alert("⛔ 首发精灵性格必须是幸运类(天真/急躁/浮躁/严肃/努力)"); return; } }
 
-      // 冷却检查
-      if (!checkDungeonCooldown(dungeon.id)) return;
-      recordDungeonEntry(dungeon.id);
-
       // --- 黄金矿洞 (低门槛, 限每日5场, 适度奖励) ---
       if (dungeon.type === 'gold') {
-        const goldCd = dungeonCooldowns[dungeon.id] || { count: 0, lastTime: 0 };
+        const goldDailyKey = `${dungeon.id}_daily`;
+        const goldCd = dungeonCooldowns[goldDailyKey] || { count: 0, lastTime: 0 };
         const todayStart = new Date(); todayStart.setHours(0,0,0,0);
         const isNewDay = goldCd.lastTime < todayStart.getTime();
         const dailyCount = isNewDay ? 0 : goldCd.count;
         if (dailyCount >= 5) { alert("⛔ 黄金矿洞今日次数已用完（每日上限5场）\n明天再来吧！"); return; }
+        if (!checkDungeonCooldown(dungeon.id)) return;
+        recordDungeonEntry(dungeon.id);
+        setDungeonCooldowns(prev => ({ ...prev, [goldDailyKey]: { count: dailyCount + 1, lastTime: Date.now() } }));
         startBattle({ id: 999, name: '黄金矿洞', lvl: [15, 25], pool: [52], drop: 600 }, 'wild');
+        return;
       }
+
+      // 冷却检查
+      if (!checkDungeonCooldown(dungeon.id)) return;
+      recordDungeonEntry(dungeon.id);
       // --- 经验乐园 (等级与玩家匹配, 合理经验) ---
-      else if (dungeon.type === 'exp') {
+      if (dungeon.type === 'exp') {
         const expLvlMin = Math.max(20, party[0].level - 5);
         const expLvlMax = Math.min(party[0].level + 5, 90);
         startBattle({ id: 998, name: '经验乐园', lvl: [expLvlMin, expLvlMax], pool: [113, 52, 125], drop: 100 }, 'wild');
@@ -13691,7 +13789,7 @@ const renderMenu = () => {
       // --- 生存竞技场 ---
       else if (dungeon.type === 'survival') {
         const survLvl = Math.min(party[0].level + 10, 100);
-        alert("🏟️ 生存竞技场！\n敌人将不断变强，坚持越久奖励越好！\n每击败一只，下一只等级+2！");
+        alert("🏟️ 生存竞技场！\n敌人将不断变强，坚持越久奖励越好！\n每击败一只，下一只等级+3！");
         startBattle({ id: 990, name: '生存竞技场', lvl: [survLvl - 10, survLvl], pool: [...HIGH_TIER_POOL], drop: 500, survivalWave: 1 }, 'survival');
       }
       // --- 逆位空间 ---
@@ -13718,7 +13816,7 @@ const renderMenu = () => {
       else if (dungeon.type === 'treasure') {
         const mazeLvl = Math.min(party[0].level + 5, 100);
         alert("🗝️ 宝藏迷宫！\n每层随机宝箱+守卫！\n越深层越有好东西，但也越危险！");
-        startBattle({ id: 986, name: '宝藏迷宫 第1层', lvl: [mazeLvl - 10, mazeLvl], pool: [...HIGH_TIER_POOL], drop: 3000, bossRushWave: 1 }, 'boss_rush');
+        startBattle({ id: 986, name: '宝藏迷宫 第1层', lvl: [mazeLvl - 10, mazeLvl], pool: [...HIGH_TIER_POOL], drop: 3000, bossRushWave: 1, rushName: '宝藏迷宫' }, 'boss_rush');
       }
     };
 
