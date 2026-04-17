@@ -237,7 +237,7 @@ export default function RPG(props) {
   const encounterTimerRef = useRef(null);
   
   // 玩家身份 (优先用存档里的名字，没有才用默认)
-  const [trainerName, setTrainerName] = useState(savedData.trainerName || '小智');
+  const [trainerName, setTrainerName] = useState((savedData.trainerName || '小智').slice(0, 8));
   const [trainerAvatar, setTrainerAvatar] = useState(savedData.trainerAvatar && savedData.trainerAvatar.startsWith('http') ? savedData.trainerAvatar : TRAINER_SPRITES[0].url);
   const [unlockedTitles, setUnlockedTitles] = useState(savedData.unlockedTitles || ['见习训练家']);
   const [currentTitle, setCurrentTitle] = useState(savedData.currentTitle || '见习训练家');
@@ -345,7 +345,12 @@ export default function RPG(props) {
   // 环境与天气系统
   const [weather, setWeather] = useState('CLEAR');    
   const [mapWeathers, setMapWeathers] = useState({}); 
-  const [timePhase, setTimePhase] = useState('DAY'); 
+  const [timePhase, setTimePhase] = useState('DAY');
+  const weatherParticles = React.useMemo(() => ({
+    rain: Array.from({length:40}, () => ({ left: Math.random()*100, top: Math.random()*20, h: 20+Math.random()*20, dur: 0.5+Math.random()*0.3, delay: Math.random() })),
+    snow: Array.from({length:30}, () => ({ left: Math.random()*100, top: Math.random()*20, size: 14+Math.random()*10, dotSize: 8+Math.random()*6, dur: 3+Math.random()*2, delay: Math.random()*3 })),
+    sand: Array.from({length:20}, () => ({ left: Math.random()*20, top: Math.random()*100, dur: 2+Math.random(), delay: Math.random()*2 })),
+  }), []);
   const [gameTime, setGameTime] = useState(0);
 
   
@@ -756,17 +761,30 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
         }
         
         // 2. 如果当前在“功能未开放”界面，相当于点击返回
+        if (isDialogVisible && dialogQueue.length > 0) {
+            e.preventDefault();
+            setCurrentDialogIndex(prev => {
+              if (prev >= dialogQueue.length - 1) {
+                setIsDialogVisible(false); setDialogQueue([]); return 0;
+              }
+              return prev + 1;
+            });
+            return;
+        }
+
         if (view === 'locked') {
             e.preventDefault();
             setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu');
             return;
         }
+
+        if (view === 'grid_map') { e.preventDefault(); }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [messageBox, view]);
+  }, [messageBox, view, isDialogVisible, dialogQueue]);
 
   // ✨ 辅助函数：用来替代 alert()
   // 用法：showMessage("岩石挡住了路！", () => { console.log("关闭了"); });
@@ -801,6 +819,7 @@ const [infinityState, setInfinityState] = useState(null);
 
   // 战斗与事件
   const [battle, setBattle] = useState(null);
+  const battleResultHandledRef = useRef(false);
    // 🎵 [新增] 音频控制 Ref 和 State
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false); // 静音状态
@@ -834,16 +853,18 @@ const [infinityState, setInfinityState] = useState(null);
     // 4. 执行播放逻辑
     const audio = audioRef.current;
 
+    if (isMuted) {
+        audio.pause();
+        return;
+    }
     if (targetSrc && targetSrc !== currentTrack) {
         setCurrentTrack(targetSrc);
         audio.src = targetSrc;
         audio.volume = 0.5;
+        audio.loop = true;
         audio.load();
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(() => {});
-        }
-    } else if (targetSrc === currentTrack && audio.paused && !isMuted) {
+        audio.play().catch(() => {});
+    } else if (targetSrc === currentTrack && audio.paused) {
         audio.play().catch(() => {});
     }
 
@@ -979,7 +1000,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const newParty = [...party];
     const pet = newParty[petIdx];
 
-    setInventory(prev => ({...prev, misc: {...prev.misc, rebirth_pill: (prev.misc.rebirth_pill || 0) - 1}}));
+    setInventory(prev => ({...prev, misc: {...prev.misc, rebirth_pill: Math.max(0, (prev.misc.rebirth_pill || 0) - 1)}}));
 
     const spBonuses = getSpouseBonuses();
     const ivMin = spBonuses.ivBoost || 0;
@@ -1024,7 +1045,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const newMove = { name: tm.name, p: tm.p, t: tm.type, pp: tm.pp, maxPP: tm.pp, desc: tm.desc, _tmId: tmId };
     
     if ((pet.moves || []).length < 4) {
-        setInventory(prev => ({...prev, tms: {...prev.tms, [tmId]: (prev.tms[tmId] || 0) - 1}}));
+        setInventory(prev => ({...prev, tms: {...prev.tms, [tmId]: Math.max(0, (prev.tms[tmId] || 0) - 1)}}));
         const newParty = [...party];
         newParty[petIdx] = {
             ...newParty[petIdx],
@@ -1033,7 +1054,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         setParty(newParty);
         alert(`📖 ${pet.name} 学会了 [${tm.name}]!`);
     } else {
-        setInventory(prev => ({...prev, tms: {...prev.tms, [tmId]: (prev.tms[tmId] || 0) - 1}}));
+        setInventory(prev => ({...prev, tms: {...prev.tms, [tmId]: Math.max(0, (prev.tms[tmId] || 0) - 1)}}));
         const newParty = [...party];
         newParty[petIdx] = {
             ...newParty[petIdx],
@@ -1048,7 +1069,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     // 4. 战斗中使用药品 (消耗回合)
   const useBattleItem = async (itemKey, category) => {
-    if (!battle) return;
+    if (!battle || (battle.phase !== 'input' && !battle.showSwitch)) return;
     const targetIdx = battle.isDouble ? (battle.activeIdxs?.[battle.doubleSlot ?? 0] ?? battle.activeIdx) : battle.activeIdx;
     const p = party[targetIdx];
     const pState = battle.playerCombatStates?.[targetIdx];
@@ -1072,13 +1093,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (item.val === 'ALL') {
                 if (!pState.status) { addLog("⚠️ 没有异常状态！"); return; }
                 pState.status = null;
-                if (pState.sleepTurns) pState.sleepTurns = 0;
+                if (pState.volatiles) { pState.volatiles.sleepTurns = 0; pState.volatiles.confused = 0; }
                 logMsg = `使用了 ${item.name}，状态恢复正常！`;
                 used = true;
             } else {
                 if (pState.status !== item.val) { addLog("⚠️ 药品对当前异常无效！"); return; }
                 pState.status = null;
-                if (item.val === 'SLP' && pState.sleepTurns) pState.sleepTurns = 0;
+                if (item.val === 'SLP' && pState.volatiles) pState.volatiles.sleepTurns = 0;
+                if (item.val === 'FRZ' && pState.volatiles) pState.volatiles.frozenTurns = 0;
                 logMsg = `使用了 ${item.name}，治愈了异常状态!`;
                 used = true;
             }
@@ -1097,14 +1119,24 @@ const [viewStatPet, setViewStatPet] = useState(null);
              logMsg = `使用了 ${item.name}，所有技能PP得到了恢复！`;
              used = true;
         } else if (item.type === 'REVIVE') {
-             // 战斗中通常不能对出战精灵用复活药(因为出战的肯定是活的)，除非是给替补用
-             // 但 useBattleItem 目前逻辑是针对 activeIdx 的
-             addLog("⚠️ 无法在战斗中对当前精灵使用活力块！");
-             return;
+             const faintedIdx = battle.playerCombatStates?.findIndex((cs, i) => i !== targetIdx && cs.currentHp <= 0);
+             if (faintedIdx >= 0 && faintedIdx < battle.playerCombatStates.length) {
+               const faintedState = battle.playerCombatStates[faintedIdx];
+               const maxHp = getStats(faintedState, faintedState.stages, faintedState.status).maxHp;
+               const healAmt = item.val === 9999 ? maxHp : Math.floor(maxHp * (item.val || 50) / 100);
+               faintedState.currentHp = Math.min(maxHp, healAmt);
+               faintedState.status = null;
+               if (faintedState.volatiles) faintedState.volatiles = {};
+               logMsg = `使用了 ${item.name}，${party[faintedIdx]?.name || '伙伴'} 恢复了战斗能力！`;
+               used = true;
+             } else {
+               addLog("⚠️ 没有需要复活的伙伴！");
+               return;
+             }
         }
 
         if (used) {
-            setInventory(prev => ({...prev, meds: {...(prev.meds||{}), [itemKey]: ((prev.meds||{})[itemKey] || 0) - 1}}));
+            setInventory(prev => ({...prev, meds: {...(prev.meds||{}), [itemKey]: Math.max(0, ((prev.meds||{})[itemKey] || 0) - 1)}}));
             p.intimacy = Math.min(255, (p.intimacy || 0) + 1);
         }
     }
@@ -1152,7 +1184,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       }
 
       if (used) {
-        setInventory(prev => ({ ...prev, cursed: { ...(prev.cursed || {}), [itemKey]: ((prev.cursed || {})[itemKey] || 0) - 1 } }));
+        setInventory(prev => ({ ...prev, cursed: { ...(prev.cursed || {}), [itemKey]: Math.max(0, ((prev.cursed || {})[itemKey] || 0) - 1) } }));
         }
     }
 
@@ -2090,7 +2122,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
         }
     }
 
-    const base = POKEDEX.find(p => p.id === finalId) || POKEDEX[0];
+    let base = POKEDEX.find(p => p.id === finalId);
+    if (!base) { console.warn(`[createPet] Unknown dexId: ${finalId}, falling back to POKEDEX[0]`); base = POKEDEX[0]; }
     const spBs = getSpouseBonuses();
     const baseShinyRate = 0.01 * (spBs.shinyRate || 1);
     const isShiny = forceShiny || (!isBoss && Math.random() < baseShinyRate);
@@ -2357,6 +2390,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     completedSideStories: [...completedSideStories], activeSideStory,
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
     kingdomWar, dungeonCooldowns, activityRecords,
+    infinityBestFloor: infinityState?.bestFloor || 0,
   });
 
   const persistSave = (silent = false) => {
@@ -2378,10 +2412,19 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   persistSaveRef.current = persistSave;
   const partyLenRef = useRef(party.length);
   partyLenRef.current = party.length;
+  const isResettingRef = useRef(false);
+  const [autoSaveMsg, setAutoSaveMsg] = useState('');
   useEffect(() => {
-    const onBeforeUnload = () => { if (partyLenRef.current > 0) persistSaveRef.current(true); };
+    const onBeforeUnload = () => { if (!isResettingRef.current && partyLenRef.current > 0) persistSaveRef.current(true); };
     window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    const autoSaveTimer = setInterval(() => {
+      if (!isResettingRef.current && partyLenRef.current > 0) {
+        persistSaveRef.current(true);
+        setAutoSaveMsg('已自动存档');
+        setTimeout(() => setAutoSaveMsg(''), 2000);
+      }
+    }, 120000);
+    return () => { window.removeEventListener('beforeunload', onBeforeUnload); clearInterval(autoSaveTimer); };
   }, []);
   // ==========================================
   // 成就系统 - 核心函数
@@ -2695,7 +2738,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       finalMoves2 = [{ ...fallbackSkill2, pp: fallbackSkill2.maxPP || 15 }];
     }
 
-    const avgLevel = Math.floor((p1.level + p2.level) / 2);
+    const avgLevel = Math.min(100, Math.floor((p1.level + p2.level) / 2));
     const natureData = NATURE_DB[baseParent.nature || 'docile'];
     const newNextExp = calcNextExp(avgLevel, natureData?.exp || 1.0);
 
@@ -2994,8 +3037,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 帮派系统 - 每日重置 & 工具函数
   // ==========================================
+  const getLocalDateStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
   const resetGangDailyCounts = () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateStr();
     if (!gang.dailyCounts || gang.dailyCounts.resetDate !== today) {
       const newDC = { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: today };
       setGang(prev => ({ ...prev, dailyCounts: newDC }));
@@ -3036,7 +3080,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 婚姻伴侣系统 - 核心函数
   // ==========================================
   const resetMarriageDailyCounts = () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateStr();
     if (!marriage.dailyCounts || marriage.dailyCounts.resetDate !== today) {
       setMarriage(prev => ({ ...prev, dailyCounts: { dates: 0, gifts: 0, chats: {}, resetDate: today } }));
       return { dates: 0, gifts: 0, chats: {}, resetDate: today };
@@ -3061,6 +3105,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const dc = resetMarriageDailyCounts();
     if (dc.chats?.[candidateId]) { alert('今天已经和TA聊过了~'); return; }
     const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+    if (!candidate) { alert('无效的对象！'); return; }
     const aff = marriage.affections[candidateId] || 0;
     const stage = getAffectionStage(aff);
     const pool = candidate.dialogues[stage.id] || candidate.dialogues.stranger;
@@ -3074,6 +3119,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const handleDate = (candidateId) => {
+    const dateCandidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+    if (!dateCandidate) { alert('无效的对象！'); return; }
     if (marriage.spouse && marriage.spouse !== candidateId) { alert('已结婚状态下只能与伴侣约会哦~'); return; }
     const dc = resetMarriageDailyCounts();
     if (dc.dates >= DAILY_DATE_LIMIT) { alert(`今天已经约会了${DAILY_DATE_LIMIT}次，明天再来吧~`); return; }
@@ -3232,7 +3279,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         ...prev,
         spouse: prev.pendingPropose,
         pendingPropose: null,
-        weddingDate: new Date().toISOString().slice(0, 10),
+        weddingDate: getLocalDateStr(),
         marriageLevel: 0,
       }));
       if (!unlockedTitles.includes('新婚快乐')) {
@@ -3265,7 +3312,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const claimSpouseGift = () => {
     if (!marriage.spouse) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateStr();
     if (marriage.lastSpouseGiftDate === today) { alert('今天已经领过配偶礼物了，明天再来吧~'); return; }
     const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
     if (!candidate) return;
@@ -3406,7 +3453,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     };
 
     const waterPlant = (plotIdx) => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getLocalDateStr();
       const key = `${plotIdx}_${today}`;
       if ((housing.garden?.waterLog || {})[key]) { alert('今天已经浇过水了！'); return; }
       setHousing(prev => {
@@ -3797,7 +3844,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         const totalGrowth = plot.adjustedGrowth || plantDef.growthMs;
                         const progress = Math.min(100, (elapsed / totalGrowth) * 100);
                         const isReady = elapsed >= totalGrowth;
-                        const today = new Date().toISOString().slice(0, 10);
+                        const today = getLocalDateStr();
                         const canWater = !((housing.garden?.waterLog || {})[`${idx}_${today}`]);
                         const remaining = Math.max(0, totalGrowth - elapsed);
                         const remMins = Math.floor(remaining / 60000);
@@ -4145,7 +4192,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     <div style={{display:'flex', gap:'8px', marginTop:'12px'}}>
                       <button onClick={() => handleChat(marriage.spouse)} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background:'rgba(255,255,255,0.2)', color:'#fff', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}>💬 聊天</button>
                       <button onClick={() => handleDate(marriage.spouse)} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background:'rgba(255,255,255,0.2)', color:'#fff', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}>☕ 约会</button>
-                      <button onClick={claimSpouseGift} disabled={marriage.lastSpouseGiftDate === new Date().toISOString().slice(0, 10)} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background: marriage.lastSpouseGiftDate === new Date().toISOString().slice(0, 10) ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.3)', color:'#fff', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}>🎁 {marriage.lastSpouseGiftDate === new Date().toISOString().slice(0, 10) ? '已领取' : '每日礼物'}</button>
+                      <button onClick={claimSpouseGift} disabled={marriage.lastSpouseGiftDate === getLocalDateStr()} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background: marriage.lastSpouseGiftDate === getLocalDateStr() ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.3)', color:'#fff', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}>🎁 {marriage.lastSpouseGiftDate === getLocalDateStr() ? '已领取' : '每日礼物'}</button>
                       <button onClick={handleDivorce} style={{padding:'8px 12px', borderRadius:'10px', border:'none', background:'rgba(0,0,0,0.2)', color:'rgba(255,255,255,0.6)', fontSize:'11px', cursor:'pointer'}}>离婚</button>
                     </div>
                   </div>
@@ -4733,7 +4780,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const renderGang = () => {
     const gangInfo = getGangInfo();
     const rank = getCurrentGangRank();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateStr();
     const rawDc = gang.dailyCounts || {};
     const dc = rawDc.resetDate === today ? rawDc : { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: rawDc.cafeRecruits || [], resetDate: today };
     const skills = getGangSkills(gang);
@@ -4804,7 +4851,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{color:'#66BB6A', fontSize:'13px'}}>✅ 今日已领取 {rank.salary.toLocaleString()} 金币</div>
             ) : (
               <button onClick={() => {
-                const todayStr = new Date().toISOString().slice(0, 10);
+                const todayStr = getLocalDateStr();
                 const curDc = gang.dailyCounts || {};
                 const isDayReset = curDc.resetDate !== todayStr;
                 if (!isDayReset && curDc.salary) { alert('今日已领取俸禄'); return; }
@@ -5375,7 +5422,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     setParty(t);
-    setInventory(prev => ({...prev, berries: (prev.berries || 0) - 1}));
+    setInventory(prev => ({...prev, berries: Math.max(0, (prev.berries || 0) - 1)}));
     
     // 提示变化
     if (p.intimacy > oldInt) {
@@ -5406,7 +5453,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     
     setInventory(prev => ({
         ...prev, 
-        meds: { ...prev.meds, potion: (prev.meds.potion || 0) - 1 }
+        meds: { ...prev.meds, potion: Math.max(0, (prev.meds.potion || 0) - 1) }
     }));
     if (infinityState) setInfinityState(prev => prev ? ({...prev, healUsed: true}) : prev);
     alert(`使用了伤药，${p.name} 恢复了体力！(亲密度 +1)`);
@@ -5441,7 +5488,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // 修改点：扣除 inventory.meds.ether
     setInventory(prev => ({
         ...prev, 
-        meds: { ...prev.meds, ether: (prev.meds.ether || 0) - 1 }
+        meds: { ...prev.meds, ether: Math.max(0, (prev.meds.ether || 0) - 1) }
     }));
     if (infinityState) setInfinityState(prev => prev ? ({...prev, healUsed: true}) : prev);
     alert(`${p.name} 的技能 PP 得到了恢复！(亲密度 +1)`);
@@ -5485,7 +5532,7 @@ const useGrowthItem = (petIndex, itemId) => {
         pet.canEvolve = true;
       }
       setParty(newParty);
-      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) - 1 }));
+      setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 0) - 1) }));
       if (marriage.pendingPropose) updateQuestProgress(marriage.pendingPropose, 'level_up', pet.level - oldLv);
       alert(`${pet.name} 升到了 Lv.${pet.level}！`);
       if (pet.pendingLearnMove) startLearningMove(petIndex);
@@ -5494,16 +5541,22 @@ const useGrowthItem = (petIndex, itemId) => {
 
     if (!pet.evs) pet.evs = {};
     if (!pet.evs[item.stat]) pet.evs[item.stat] = 0;
-    pet.evs[item.stat] = Math.max(0, pet.evs[item.stat] + item.val);
+    const EV_STAT_CAP = 252;
+    const EV_TOTAL_CAP = 510;
+    const totalEv = Object.values(pet.evs).reduce((s, v) => s + (v || 0), 0);
+    const statEv = pet.evs[item.stat] || 0;
+    const addable = Math.min(item.val, EV_STAT_CAP - statEv, EV_TOTAL_CAP - totalEv);
+    if (addable <= 0) { alert(`${pet.name} 的该项努力值已达上限！`); return; }
+    pet.evs[item.stat] = statEv + addable;
     
     if (item.stat === 'maxHp') {
-        pet.currentHp = Math.min(pet.currentHp + item.val, getStats(pet).maxHp);
+        pet.currentHp = Math.min(pet.currentHp + addable, getStats(pet).maxHp);
     }
 
     setParty(newParty);
     setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 0) - 1) }));
     
-    alert(`${pet.name} 使用了 ${item.name}！\n${item.desc} +${item.val}`);
+    alert(`${pet.name} 使用了 ${item.name}！\n${item.desc} +${addable}${addable < item.val ? ' (已达上限)' : ''}`);
   };
   const setLeader = (index) => {
     if (index === 0) return;
@@ -5729,6 +5782,31 @@ const useGrowthItem = (petIndex, itemId) => {
           const eggs = prev.eggs || [];
           if (eggs.length === 0) return prev;
           const newEggs = eggs.map(egg => ({ ...egg, stepsLeft: Math.max(0, (egg.stepsLeft || 0) - 1) }));
+          const readyIdx = newEggs.findIndex(e => (e.stepsLeft || 0) <= 0);
+          if (readyIdx >= 0) {
+            const readyEgg = newEggs[readyIdx];
+            const remaining = [...newEggs.slice(0, readyIdx), ...newEggs.slice(readyIdx + 1)];
+            const spBs = getSpouseBonuses();
+            const isShiny = Math.random() < (0.05 * (spBs.shinyRate || 1));
+            const isLegend = LEGENDARY_POOL?.includes(readyEgg.speciesId);
+            const hatchedPet = createPet(readyEgg.speciesId, readyEgg.level || 1, false, isShiny);
+            hatchedPet.uid = Date.now();
+            let addedToParty = false;
+            setParty(p => {
+              if (p.length < 6) { addedToParty = true; return [...p, hatchedPet]; }
+              return p;
+            });
+            setTimeout(() => {
+              if (!addedToParty) setBox(b => [...b, hatchedPet]);
+              setCaughtDex(d => d.includes(hatchedPet.id) ? d : [...d, hatchedPet.id]);
+              const achUpdate = { eggsHatched: 1 };
+              if (isLegend) achUpdate.legendEggsHatched = 1;
+              if (isShiny) achUpdate.shinyEggsHatched = 1;
+              updateAchStat(achUpdate);
+              alert(`🥚 精灵蛋孵化了！\n${isShiny ? '✨ 闪光！' : ''}${hatchedPet.name} 诞生了！\n${addedToParty ? '已加入队伍。' : '已发送到电脑。'}`);
+            }, 50);
+            return { ...prev, eggs: remaining };
+          }
           return { ...prev, eggs: newEggs };
         });
       }
@@ -5875,13 +5953,14 @@ const useGrowthItem = (petIndex, itemId) => {
       // 水域 (Tile 3) - 冲浪探索系统
       if (tileType === 3) {
         {
+           setMapGrid(prev => { const g = prev.map(r => [...r]); g[y][x] = 2; return g; });
            const surfRoll = Math.random();
            if (surfRoll < 0.05) {
               const bottleMsgs = [
-                { title:'🍶 漂流瓶 · 藏宝图', gold: _.random(3000, 8000), desc:'瓶中有一张褪色的藏宝图，指引你找到了' },
-                { title:'🍶 漂流瓶 · 求救信', gold: _.random(1000, 3000), desc:'远方训练家的求救信附带感谢金' },
+                { title:'🍶 漂流瓶 · 藏宝图', gold: _.random(500, 1500), desc:'瓶中有一张褪色的藏宝图，指引你找到了' },
+                { title:'🍶 漂流瓶 · 求救信', gold: _.random(200, 800), desc:'远方训练家的求救信附带感谢金' },
                 { title:'🍶 漂流瓶 · 情书', gold: 0, heal: true, desc:'一封温暖的情书...全队精灵被治愈了' },
-                { title:'🍶 漂流瓶 · 古老配方', gold: _.random(2000, 5000), desc:'瓶中的古老配方价值不菲' },
+                { title:'🍶 漂流瓶 · 古老配方', gold: _.random(300, 1000), desc:'瓶中的古老配方价值不菲' },
               ];
               const bottle = _.sample(bottleMsgs);
               if (bottle.gold > 0) setGold(g => g + bottle.gold);
@@ -5893,7 +5972,7 @@ const useGrowthItem = (petIndex, itemId) => {
               showMapToast('🍶', bottle.title, `${bottle.desc}${bottle.gold > 0 ? ` +${bottle.gold}金` : ' 全队恢复！'}`, 2500);
               return;
            } else if (surfRoll < 0.15) {
-              const pearlGold = _.random(1500, 5000);
+              const pearlGold = _.random(300, 1000);
               setGold(g => g + pearlGold);
               showMapToast('🫧', '水底宝箱', `发现古老宝箱！+${pearlGold} 金币`, 2500);
               return;
@@ -6228,13 +6307,14 @@ const useGrowthItem = (petIndex, itemId) => {
 
       // 宝可梦中心 (Tile 8)
       if (tileType === 8) {
+        const injuredCount = party.filter(p => p.currentHp < getStats(p).maxHp || p.status || (p.moves||[]).some(m => m.pp < (m.maxPP||15))).length;
         setParty(prev => prev.map(p => ({
             ...p, 
             currentHp: getStats(p).maxHp, 
             moves: (p.moves || []).map(m=>({...m, pp: m.maxPP || 15})),
             status: null
         })));
-        showMapToast('💚', '精灵中心', '队伍已完全恢复！', 1500);
+        showMapToast('💚', '精灵中心', injuredCount > 0 ? `${injuredCount}只精灵已完全恢复！（免费）` : '队伍状态良好！', 1500);
         setPlayerPos(prev => ({ x: prev.x - dx, y: prev.y - dy })); 
         return;
       }
@@ -6253,41 +6333,11 @@ const useGrowthItem = (petIndex, itemId) => {
       setMapProgress(prev => ({ ...prev, [currentMapId]: Math.min(100, (prev[currentMapId]||0) + 1) }));
       updateAchStat({ totalSteps: 1 });
       
-      setInventory(prev => {
-        const eggs = prev.eggs || [];
-        if (eggs.length === 0) return prev;
-        const newEggs = eggs;
-        const readyIdx = newEggs.findIndex(e => (e.stepsLeft || 0) <= 0);
-        if (readyIdx >= 0) {
-          const readyEgg = newEggs[readyIdx];
-          const remaining = [...newEggs.slice(0, readyIdx), ...newEggs.slice(readyIdx + 1)];
-          const spBs = getSpouseBonuses();
-          const isShiny = Math.random() < (0.05 * (spBs.shinyRate || 1));
-          const isLegend = LEGENDARY_POOL?.includes(readyEgg.speciesId);
-          const hatchedPet = createPet(readyEgg.speciesId, readyEgg.level || 1, false, isShiny);
-          hatchedPet.uid = Date.now();
-          let addedToParty = false;
-          setParty(p => {
-            if (p.length < 6) { addedToParty = true; return [...p, hatchedPet]; }
-            return p;
-          });
-          setTimeout(() => {
-            if (!addedToParty) setBox(b => [...b, hatchedPet]);
-            setCaughtDex(d => d.includes(hatchedPet.id) ? d : [...d, hatchedPet.id]);
-            const achUpdate = { eggsHatched: 1 };
-            if (isLegend) achUpdate.legendEggsHatched = 1;
-            if (isShiny) achUpdate.shinyEggsHatched = 1;
-            updateAchStat(achUpdate);
-            alert(`🥚 精灵蛋孵化了！\n${isShiny ? '✨ 闪光！' : ''}${hatchedPet.name} 诞生了！\n${addedToParty ? '已加入队伍。' : '已发送到电脑。'}`);
-          }, 50);
-          return { ...prev, eggs: remaining };
-        }
-        return { ...prev, eggs: newEggs };
-      });
+      // egg hatching已在tile步行区统一处理，此处不再重复
       
       const roll = Math.random();
       const mapInfo = MAPS.find(m => m.id === currentMapId);
-      if (!mapInfo) return;
+      if (!mapInfo) { setPlayerPos(prev => ({ x: prev.x - (playerPos.dx||0), y: prev.y - (playerPos.dy||0) })); return; }
       const progress = mapProgress[currentMapId] || 0;
       
       // 区域Boss (探索度满后触发: 首次必定, 之后5%概率)
@@ -6314,6 +6364,7 @@ const useGrowthItem = (petIndex, itemId) => {
       let trainerRate = 0.06;
       let encounterRate = 0.12;
       if (tileType === 7) { trainerRate = 0.08; encounterRate = 0.30; }
+      else if (tileType === 5) { trainerRate = 0.04; encounterRate = 0.08; }
       
       if (roll < trainerRate) {
           if (kingdomWar?.faction && Math.random() < 0.25) {
@@ -6525,7 +6576,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [核心修复] 启动战斗 (含特性触发与完整逻辑)
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
-     setIsDialogVisible(false); 
+     setIsDialogVisible(false);
+     battleResultHandledRef.current = false;
     let isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
     const actualType = type === 'wild_double' ? 'wild' : type === 'trainer_double' ? 'trainer' : type;
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
@@ -6570,7 +6622,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             };
         });
         trainerName = context.trainerName || "神秘挑战者";
-        dropGold = 5000;
+        dropGold = 2000;
     } 
     // -------------------------------------------------
     // 2. 战斗联盟 (渐进式难度)
@@ -6691,7 +6743,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     else if (isGym) {
       const mapIndex = MAPS.findIndex(m => m.id === context.id);
-      const progressRatio = mapIndex / (MAPS.length - 1); 
+      const gymMaps = MAPS.filter(m => m.gymLeader && m.id < 99);
+      const gymIndex = gymMaps.findIndex(m => m.id === context.id);
+      const progressRatio = Math.max(0, gymIndex) / Math.max(1, gymMaps.length - 1);
       const minWild = context.lvl[0];
       const maxWild = context.lvl[1];
       const mapAvg = Math.ceil((minWild + maxWild) / 2);
@@ -7481,6 +7535,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!battle) return;
     if (battle.isDouble) return;
     if (newIdx === battle.activeIdx) return;
+    const isForcedSwitchCheck = battle.playerCombatStates?.[battle.activeIdx]?.currentHp <= 0;
+    if (!isForcedSwitchCheck && battle.phase !== 'input' && !battle.showSwitch) return;
 
     const combatStates = battle.playerCombatStates;
     const currentPet = combatStates[battle.activeIdx];
@@ -7585,6 +7641,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   if (!battle) return;
   if (battle.isDouble) return executeDoubleTurn(moveIdx);
   if (battle.phase !== 'input') return;
+  const activeState = battle.playerCombatStates?.[battle.activeIdx];
+  if (!activeState || activeState.currentHp <= 0) return;
     setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
 
     try {
@@ -8541,7 +8599,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     });
   };
 
-  const getTodayStr = () => new Date().toISOString().slice(0, 10);
+  const getTodayStr = () => getLocalDateStr();
 
   const getWorkerStatTotal = () => {
     const allPets = [...party, ...box];
@@ -9507,6 +9565,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const performAction = async (attacker, defender, move, source, battleState) => {
     if (!battleState && !battle) return false;
     if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
+    if (attacker.currentHp <= 0) return false;
     if (!battleState?.isDouble) setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
 
     const _dCtx = battleState?._doubleAnimCtx;
@@ -10710,7 +10769,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const handleWin = (finalParty) => {
        try {
-         if (!battle) return;
+         if (!battle || battleResultHandledRef.current) return;
+         battleResultHandledRef.current = true;
          if (audioRef.current) {
         audioRef.current.src = BGM_SOURCES.VICTORY;
         audioRef.current.play().catch(() => {});
@@ -10792,8 +10852,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     
     let totalBattleExp = 0;
     const bountyExpMult = isBounty ? 2 : 1;
+    const gangExpBonusEst = getGangSkillBonus(getGangSkills(gang)).exp;
+    const kwExpBonusEst = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.exp || 0) : 0;
     enemyParty.forEach(e => {
-      totalBattleExp += Math.floor(e.level * 30 * (isTrainer ? 1.5 : 1) * bountyExpMult);
+      const bExp = Math.floor(e.level * 30 * (isTrainer ? 1.5 : 1) * bountyExpMult * (1 + (gangExpBonusEst + kwExpBonusEst) / 100));
+      totalBattleExp += bExp;
     });
 
     const gangGoldBonus = getGangSkillBonus(getGangSkills(gang)).gold;
@@ -10806,7 +10869,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const extraDrops = [];
 
     // 家具掉落 (战斗获得, 20%基础概率, Boss/Gym 50%)
-    const furnitureDropChance = (isBoss || isGym || isChallenge) ? 0.5 : 0.2;
+    const furnitureDropChance = (isBoss || isGym || isChallenge) ? 0.3 : 0.1;
     if (Math.random() < furnitureDropChance) {
         const battleFurniture = FURNITURE_DB.filter(f => f.dropSource === 'battle');
         if (battleFurniture.length > 0) {
@@ -11084,7 +11147,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 生存竞技场 - 每波递增，不断变强
     if (battle.type === 'survival') {
       const wave = battle.survivalWave || 1;
-      const bonusGold = wave * 800 + (wave >= 5 ? wave * 300 : 0);
+      const bonusGold = Math.floor(Math.min(wave, 10) * 500 + Math.max(0, wave - 10) * 200 + (wave >= 5 ? 500 : 0));
       setGold(g => g + bonusGold);
       addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
       const nextLvl = Math.min(100, (battle.enemyParty?.[0]?.level || 70) + 3);
@@ -11681,7 +11744,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setBadges(prev => {
               const newBadges = [...prev, mapBadge];
               const bc = newBadges.length;
-              const milestoneGold = bc * 1000;
+              const milestoneGold = bc * 500;
               setGold(g => g + milestoneGold);
               addLog(`🏅 获得第${bc}枚徽章！奖励 ${milestoneGold} 金币！`);
               if (bc === 3) {
@@ -11976,6 +12039,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
     const handleDefeat = async () => {
+    if (battleResultHandledRef.current) return;
+    battleResultHandledRef.current = true;
     addLog("所有伙伴都倒下了...");
     setAnimEffect({ type: 'BLACKOUT' }); 
     
@@ -12116,15 +12181,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try {
     
     // 1. 扣球并播放投掷动画
+    const enemy = battle.enemyParty[battle.enemyActiveIdx];
+    if (!enemy) return addLog("无效的目标！");
+    const catchChance = calculateCatchRate(ballType, enemy);
     setInventory(prev => ({ ...prev, balls: { ...prev.balls, [ballType]: Math.max(0, (prev.balls[ballType] || 0) - 1) } }));
     setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
     addLog(`去吧! ${(BALLS[ballType] || {}).name || '精灵球'}!`);
     
     await wait(1000);
-
-    const enemy = battle.enemyParty[battle.enemyActiveIdx];
-    const catchChance = calculateCatchRate(ballType, enemy);
     const roll = Math.random();
 
     // 1.5 球命中后摇晃（紧张感）
@@ -12231,7 +12296,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       deposited = prev[selectedPartyIdx];
       return prev.filter((_, i) => i !== selectedPartyIdx);
     });
-    if (!deposited) { alert("至少携带一只！"); return; }
+    if (!deposited) { alert("无法存放，队伍至少需要保留一只精灵！"); return; }
     setBox(prev => [...prev, deposited]);
     setSelectedPartyIdx(null);
   };
@@ -12253,15 +12318,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const releasePokemon = () => {
     if (selectedBoxIdx === null) return;
-    if (confirm("⚠️ 确定要放生这只精灵吗？它将回归大自然，无法找回！")) {
-      let releasedName = '';
-      setBox(prev => {
-        const p = prev[selectedBoxIdx];
-        releasedName = p?.name || '精灵';
-        return prev.filter((_, i) => i !== selectedBoxIdx);
-      });
-      setGold(g => g + 50); 
-      alert(`你放生了 ${releasedName}，获得了 50 金币作为补偿。`);
+    const pet = box[selectedBoxIdx];
+    if (!pet) return;
+    const lv = pet.level || 1;
+    const shinyMult = pet.isShiny ? 3 : 1;
+    const legendMult = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1);
+    const releaseGold = Math.floor((50 + lv * 10) * shinyMult * legendMult);
+    if (confirm(`⚠️ 确定要放生 ${pet.name} (Lv.${lv}) 吗？\n将获得 ${releaseGold} 金币补偿。\n它将回归大自然，无法找回！`)) {
+      setBox(prev => prev.filter((_, i) => i !== selectedBoxIdx));
+      setGold(g => g + releaseGold); 
+      alert(`你放生了 ${pet.name}，获得了 ${releaseGold} 金币作为补偿。`);
       setSelectedBoxIdx(null);
     }
   };
@@ -12588,6 +12654,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
          const cItem = CURSED_ITEMS[id];
          itemName = cItem ? cItem.name : '咒具';
       }
+      else {
+         setGold(g => g + totalCost);
+         alert('❌ 未知的商品类型！'); return;
+      }
       
       setBuyCounts(prev => ({...prev, [id]: 1}));
       
@@ -12788,6 +12858,13 @@ const renderNameInput = () => {
         </div>
         
           <div style={{display:'flex', gap:'16px', justifyContent:'center', flexWrap:'wrap', padding:'0 8px'}}>
+          {starterOptions.length === 0 && (
+            <div style={{textAlign:'center', padding:'40px', color:'rgba(255,255,255,0.5)'}}>
+              <div style={{fontSize:'40px', marginBottom:'12px'}}>🎲</div>
+              <div>正在生成初始伙伴...</div>
+              <button onClick={() => generateStarterOptions()} style={{marginTop:'16px', padding:'10px 24px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.3)', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:'14px'}}>点击重新生成</button>
+            </div>
+          )}
           {starterOptions.map((p, i) => {
             const stats = getStats(p);
             const typeConfig = TYPES[p.type] || TYPES.NORMAL;
@@ -14125,8 +14202,10 @@ const renderFruitDex = () => {
 const renderMenu = () => {
   const resetGame = () => {
     if (confirm("⚠️ 警告：确定要删除所有存档并重新开始吗？")) {
+      isResettingRef.current = true;
       localStorage.removeItem(SAVE_KEY);
-      window.location.reload();
+      localStorage.removeItem('weatherTypesSet');
+      window.location.replace(window.location.href);
     }
   };
 
@@ -14761,9 +14840,16 @@ const renderMenu = () => {
                             <span style={{fontSize:'24px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'}}>{m.icon}</span> {m.name}
                         </div>
                         <div style={{marginTop:'8px', display:'flex', gap:'6px', flexWrap:'wrap'}}>
-                           <span style={{fontSize:'11px', background:'rgba(255,255,255,0.2)', backdropFilter:'blur(4px)', padding:'3px 10px', borderRadius:'12px', color:'#fff', fontWeight:'600', border:'1px solid rgba(255,255,255,0.15)'}}>
-                               Lv.{m.lvl[0]}-{m.lvl[1]}
-                           </span>
+                           {(() => {
+                             const pLv = party[0]?.level || 1;
+                             const mapMid = (m.lvl[0] + m.lvl[1]) / 2;
+                             const diff = pLv - mapMid;
+                             const diffColor = diff < -15 ? '#ef4444' : diff < -5 ? '#f59e0b' : diff < 10 ? '#22c55e' : '#60a5fa';
+                             const diffLabel = diff < -15 ? '危险' : diff < -5 ? '挑战' : diff < 10 ? '适中' : '轻松';
+                             return <span style={{fontSize:'11px', background:`${diffColor}33`, backdropFilter:'blur(4px)', padding:'3px 10px', borderRadius:'12px', color:diffColor, fontWeight:'600', border:`1px solid ${diffColor}44`}}>
+                               Lv.{m.lvl[0]}-{m.lvl[1]} · {diffLabel}
+                             </span>;
+                           })()}
                            <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
                                color:'#fff', padding:'3px 10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'3px',
                                border:'1px solid rgba(255,255,255,0.12)', fontWeight:'500', backdropFilter:'blur(4px)'}}>
@@ -15668,7 +15754,7 @@ const renderMenu = () => {
                 {kwTab === 'contested' && (() => {
                   const contestedMaps = MAPS.filter(m => m.isContested);
                   const contestData = kw.contestProgress || {};
-                  const today = new Date().toISOString().slice(0, 10);
+                  const today = getLocalDateStr();
                   return (
                     <div style={{display:'grid', gap:'12px'}}>
                       <div style={{background:'linear-gradient(135deg, #FFD700, #FF8F00)', borderRadius:'14px', padding:'16px', color:'#fff'}}>
@@ -16719,6 +16805,20 @@ const renderMenu = () => {
                         });
                         })()}
                     </div>
+                    {/* 努力值 (EV) 显示 */}
+                    {viewStatPet.evs && Object.values(viewStatPet.evs).some(v => v > 0) && (
+                      <div style={{marginTop:'8px', padding:'8px', background:'#f0f7ff', borderRadius:'8px', border:'1px solid #d0e0f0'}}>
+                        <div style={{fontSize:'10px', color:'#1976D2', fontWeight:'bold', marginBottom:'4px'}}>
+                          努力值 (EV) — 总计 {Object.values(viewStatPet.evs).reduce((s,v)=>s+(v||0),0)}/510
+                        </div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'4px'}}>
+                          {[{k:'maxHp',n:'HP'},{k:'p_atk',n:'攻'},{k:'p_def',n:'防'},{k:'s_atk',n:'特攻'},{k:'s_def',n:'特防'},{k:'spd',n:'速'}].map(e => {
+                            const v = viewStatPet.evs[e.k] || 0;
+                            return v > 0 ? <span key={e.k} style={{fontSize:'10px', background:'#1976D2', color:'#fff', padding:'2px 6px', borderRadius:'4px'}}>{e.n}+{v}</span> : null;
+                          })}
+                        </div>
+                      </div>
+                    )}
                 </div>
                 </>
                 );
@@ -17383,7 +17483,7 @@ const renderMenu = () => {
       <div className="nav-header glass-panel">
         <button className="btn-back" onClick={() => {
             if (usingItem) { setUsingItem(null); setView('bag'); } 
-            else setView('grid_map');
+            else setView(getBackToMapView());
         }}>🔙 返回</button>
         <div className="nav-title">我的伙伴 ({party.length}/6)</div>
         <div style={{width: 60}}></div>
@@ -17588,17 +17688,17 @@ const renderMenu = () => {
         weatherNode = (
             <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
                 <div style={{position:'absolute', inset:0, background:'rgba(0,0,30,0.15)'}}></div> {/* 整体变暗 */}
-                {[...Array(40)].map((_,i) => (
+                {weatherParticles.rain.map((p,i) => (
                     <div key={i} style={{
                         position:'absolute', 
-                        left:`${Math.random()*100}%`, 
-                        top:`-${Math.random()*20}%`,
+                        left:`${p.left}%`, 
+                        top:`-${p.top}%`,
                         width:'2px', 
-                        height:`${20 + Math.random()*20}px`, 
-                        background:'rgba(60, 160, 255, 0.8)', // 🔥 改为明显的亮蓝色
+                        height:`${p.h}px`, 
+                        background:'rgba(60, 160, 255, 0.8)',
                         boxShadow: '0 0 2px rgba(255,255,255,0.5)',
-                        animation: `rain-drop ${0.5 + Math.random()*0.3}s linear infinite`, 
-                        animationDelay: `-${Math.random()}s`
+                        animation: `rain-drop ${p.dur}s linear infinite`, 
+                        animationDelay: `-${p.delay}s`
                     }}></div>
                 ))}
                 {/* 偶尔闪电特效 */}
@@ -17609,17 +17709,17 @@ const renderMenu = () => {
         weatherNode = (
             <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
                 <div style={{position:'absolute', inset:0, background:'rgba(255,255,255,0.1)'}}></div>
-                {[...Array(30)].map((_,i) => (
+                {weatherParticles.snow.map((p,i) => (
                     <div key={i} style={{
                         position:'absolute', 
-                        left:`${Math.random()*100}%`, 
-                        top:`-${Math.random()*20}%`,
+                        left:`${p.left}%`, 
+                        top:`-${p.top}%`,
                         color: '#fff',
-                        fontSize: `${14 + Math.random()*10}px`, // 🔥 加大雪花尺寸
-                        textShadow: '0 0 4px rgba(0,0,0,0.8)', // 🔥 加黑色阴影，保证在白背景下可见
-                        animation: `snow-fall ${3 + Math.random()*2}s linear infinite`, 
-                        animationDelay: `-${Math.random()*3}s`
-                    }}><div style={{width:8+Math.random()*6, height:8+Math.random()*6, background:'#fff', borderRadius:'50%', boxShadow:'0 0 4px #fff'}} /></div>
+                        fontSize: `${p.size}px`,
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                        animation: `snow-fall ${p.dur}s linear infinite`, 
+                        animationDelay: `-${p.delay}s`
+                    }}><div style={{width:p.dotSize, height:p.dotSize, background:'#fff', borderRadius:'50%', boxShadow:'0 0 4px #fff'}} /></div>
                 ))}
             </div>
         );
@@ -17627,17 +17727,17 @@ const renderMenu = () => {
         weatherNode = (
             <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
                 <div style={{position:'absolute', inset:0, background:'rgba(194, 178, 128, 0.4)', mixBlendMode:'multiply'}}></div>
-                {[...Array(20)].map((_,i) => (
+                {weatherParticles.sand.map((p,i) => (
                     <div key={i} style={{
                         position:'absolute', 
-                        left:`-${Math.random()*20}%`, 
-                        top:`${Math.random()*100}%`,
+                        left:`-${p.left}%`, 
+                        top:`${p.top}%`,
                         width:'200px', 
                         height:'3px', 
                         background:'rgba(139, 69, 19, 0.6)', // 🔥 改为深褐色沙尘
                         boxShadow: '0 0 5px rgba(139, 69, 19, 0.4)',
-                        animation: `sand-storm ${0.6 + Math.random()}s linear infinite`, 
-                        animationDelay: `-${Math.random()*2}s`
+                        animation: `sand-storm ${0.6 + p.dur}s linear infinite`, 
+                        animationDelay: `-${p.delay}s`
                     }}></div>
                 ))}
             </div>
@@ -21299,31 +21399,48 @@ const renderMenu = () => {
 
    
     const finishEvo = () => {
-        if (step < 3) return; // 动画没放完不能跳过
+        if (step < 3) return;
         
-        const newParty = [...party];
-        // 继承旧属性，覆盖新种族值
-        Object.assign(newParty[evoAnim.targetIdx], {
-            ...newPet,
-            uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
+        setParty(prev => {
+          const newParty = [...prev];
+          const idx = Math.min(evoAnim.targetIdx, newParty.length - 1);
+          if (idx < 0) return prev;
+          const target = newParty[idx];
+          if (!target || target.uid !== oldPet.uid) {
+            const realIdx = newParty.findIndex(p => p.uid === oldPet.uid);
+            if (realIdx < 0) return prev;
+            Object.assign(newParty[realIdx], {
+              ...newPet, uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
+              moves: oldPet.moves, equip: oldPet.equip, equips: oldPet.equips,
+              nature: oldPet.nature, ivs: oldPet.ivs, evs: oldPet.evs,
+              isShiny: oldPet.isShiny, isFusedShiny: oldPet.isFusedShiny,
+              intimacy: oldPet.intimacy, charm: oldPet.charm,
+              trait: newPet.trait || oldPet.trait,
+              secondaryType: newPet.type2 || (oldPet.customBaseStats ? oldPet.secondaryType : null),
+              sectId: oldPet.sectId, sectLevel: oldPet.sectLevel, devilFruit: oldPet.devilFruit,
+              diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
+              cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
+              customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
+            });
+            newParty[realIdx].currentHp = getStats(newParty[realIdx]).maxHp;
+            return newParty;
+          }
+          Object.assign(newParty[idx], {
+            ...newPet, uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
             moves: oldPet.moves, equip: oldPet.equip, equips: oldPet.equips,
             nature: oldPet.nature, ivs: oldPet.ivs, evs: oldPet.evs,
             isShiny: oldPet.isShiny, isFusedShiny: oldPet.isFusedShiny,
             intimacy: oldPet.intimacy, charm: oldPet.charm,
             trait: newPet.trait || oldPet.trait,
             secondaryType: newPet.type2 || (oldPet.customBaseStats ? oldPet.secondaryType : null),
-            sectId: oldPet.sectId, sectLevel: oldPet.sectLevel,
-            devilFruit: oldPet.devilFruit,
+            sectId: oldPet.sectId, sectLevel: oldPet.sectLevel, devilFruit: oldPet.devilFruit,
             diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
             cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
-            customBaseStats: oldPet.customBaseStats,
-            canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
+            customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
+          });
+          newParty[idx].currentHp = getStats(newParty[idx]).maxHp;
+          return newParty;
         });
-        // 进化后回满血
-        const stats = getStats(newParty[evoAnim.targetIdx]);
-        newParty[evoAnim.targetIdx].currentHp = stats.maxHp;
-        
-        setParty(newParty);
         
         // 开图鉴
         if (!caughtDex.includes(newPet.id)) setCaughtDex(prev => [...prev, newPet.id]);
@@ -22210,6 +22327,26 @@ const renderMenu = () => {
           </div>
         );
       })()}
+      {/* 自动存档提示 */}
+      {autoSaveMsg && (
+        <div style={{position:'fixed', bottom:'80px', right:'16px', zIndex:9997, background:'rgba(0,200,100,0.85)', color:'#fff', padding:'6px 14px', borderRadius:'8px', fontSize:'12px', fontWeight:'600', pointerEvents:'none', animation:'slideDown 0.3s ease'}}>
+          💾 {autoSaveMsg}
+        </div>
+      )}
+      {/* 移动端虚拟方向键 */}
+      {!shopMode && !pcMode && !isDialogVisible && !fusionMode && !teamMode && !activityModal && !merchantItems && (
+        <div style={{position:'fixed', bottom:'20px', left:'20px', zIndex:9990, display:'grid', gridTemplateColumns:'50px 50px 50px', gridTemplateRows:'50px 50px 50px', gap:'2px', opacity:0.6, userSelect:'none', WebkitUserSelect:'none'}}>
+          <div/>
+          <button onTouchStart={(e)=>{e.preventDefault();handleMove(0,-1)}} onMouseDown={()=>handleMove(0,-1)} style={{background:'rgba(255,255,255,0.25)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', fontSize:'20px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)'}}>▲</button>
+          <div/>
+          <button onTouchStart={(e)=>{e.preventDefault();handleMove(-1,0)}} onMouseDown={()=>handleMove(-1,0)} style={{background:'rgba(255,255,255,0.25)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', fontSize:'20px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)'}}>◀</button>
+          <div style={{background:'rgba(255,255,255,0.1)', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'rgba(255,255,255,0.4)'}}>●</div>
+          <button onTouchStart={(e)=>{e.preventDefault();handleMove(1,0)}} onMouseDown={()=>handleMove(1,0)} style={{background:'rgba(255,255,255,0.25)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', fontSize:'20px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)'}}>▶</button>
+          <div/>
+          <button onTouchStart={(e)=>{e.preventDefault();handleMove(0,1)}} onMouseDown={()=>handleMove(0,1)} style={{background:'rgba(255,255,255,0.25)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', fontSize:'20px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)'}}>▼</button>
+          <div/>
+        </div>
+      )}
       {/* 地图Toast通知 */}
       {mapToast && (
         <div key={mapToast.key} style={{
@@ -22254,7 +22391,7 @@ const renderMenu = () => {
       )}
       {/* 全局消息弹窗 */}
       {messageBox && (
-        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.2s'}} onClick={() => { if(messageBox.callback) messageBox.callback(); setMessageBox(null); }}>
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100000, display: 'flex', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.2s'}} onClick={() => { if(messageBox.callback) messageBox.callback(); setMessageBox(null); }}>
             <div style={{background: 'white', padding: '25px', borderRadius: '16px', maxWidth: '80%', width: '300px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', animation: 'scaleIn 0.2s'}} onClick={e => e.stopPropagation()}>
                 <div style={{fontSize: '40px', marginBottom: '15px'}}>💡</div>
                 <div style={{fontSize: '16px', color: '#333', lineHeight: '1.6', marginBottom: '25px'}}>{messageBox.text}</div>

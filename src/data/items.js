@@ -16,10 +16,10 @@ export const BALLS = {
 };
 
 export const MEDICINES = {
-  potion:       { id: 'potion',       name: '伤药',      price: 50,  icon: '💊', type: 'HP', val: 20, desc: '恢复20点HP' },
-  super_potion: { id: 'super_potion', name: '好伤药',    price: 100,  icon: '🧪', type: 'HP', val: 60, desc: '恢复60点HP' },
-  hyper_potion: { id: 'hyper_potion', name: '厉害伤药',  price: 300, icon: '💉', type: 'HP', val: 200, desc: '恢复200点HP' },
-  max_potion:   { id: 'max_potion',   name: '全满药',    price: 500, icon: '✨', type: 'HP', val: 9999, desc: '恢复全部HP' },
+  potion:       { id: 'potion',       name: '伤药',      price: 50,  icon: '💊', type: 'HP', val: 35, desc: '恢复35点HP' },
+  super_potion: { id: 'super_potion', name: '好伤药',    price: 150,  icon: '🧪', type: 'HP', val: 80, desc: '恢复80点HP' },
+  hyper_potion: { id: 'hyper_potion', name: '厉害伤药',  price: 400, icon: '💉', type: 'HP', val: 200, desc: '恢复200点HP' },
+  max_potion:   { id: 'max_potion',   name: '全满药',    price: 800, icon: '✨', type: 'HP', val: 9999, desc: '恢复全部HP' },
   ether:        { id: 'ether',        name: 'PP单补剂',  price: 200,  icon: '💧', type: 'PP', val: 10, desc: '恢复1个技能10点PP' },
   max_ether:    { id: 'max_ether',    name: 'PP全补剂',  price: 500, icon: '🌊', type: 'PP_ALL', val: 10, desc: '恢复所有技能10点PP' },
   antidote:     { id: 'antidote',     name: '解毒药',    price: 100,  icon: '🤢', type: 'STATUS', val: 'PSN', desc: '治愈中毒状态' },
@@ -58,6 +58,12 @@ export const TMS = [
   { id: 'tm_ice',    name: '暴风雪',   type: 'ICE',      p: 140, pp: 5,  price: 25000, desc: '冰系终极大招，绝对零度的暴风雪', tier: 4 },
   { id: 'tm_bolt',   name: '伏特攻击', type: 'ELECTRIC', p: 150, pp: 5,  price: 35000, desc: '电系究极物攻，极限电击带麻痹', tier: 4 },
   { id: 'tm_light',  name: '光子爆发', type: 'LIGHT',    p: 140, pp: 5,  price: 28000, desc: '光系终极大招，光子能量爆炸', tier: 4 },
+  { id: 'tm_cosmic1', name: '星云旋涡', type: 'COSMIC',  p: 75,  pp: 15, price: 3500,  desc: '宇宙系基础技能，卷起星云攻击', tier: 1, shopSell: true },
+  { id: 'tm_cosmic2', name: '银河射线', type: 'COSMIC',  p: 100, pp: 8,  price: 8500,  desc: '宇宙系进阶技能，贯穿银河', tier: 2, shopSell: true },
+  { id: 'tm_cosmic3', name: '虚空坍缩', type: 'COSMIC',  p: 140, pp: 3,  price: 28000, desc: '宇宙系终极大招，空间坍缩', tier: 4 },
+  { id: 'tm_sound1',  name: '共鸣爆破', type: 'SOUND',   p: 70,  pp: 15, price: 3000,  desc: '音波系基础技能，共鸣频率爆破', tier: 1, shopSell: true },
+  { id: 'tm_sound2',  name: '死亡咏叹', type: 'SOUND',   p: 100, pp: 8,  price: 8000,  desc: '音波系进阶技能，死亡之歌', tier: 2, shopSell: true },
+  { id: 'tm_sound3',  name: '寂灭之音', type: 'SOUND',   p: 130, pp: 3,  price: 25000, desc: '音波系终极大招，万物寂灭', tier: 4 },
 ];
 
 export const MISC_ITEMS = {
@@ -203,7 +209,7 @@ export const EVO_STONES = {
 };
 
 export const GROWTH_ITEMS = [
-  { id: 'vit_hp',   name: 'HP增强剂',   emoji: '🍏', price: 10000, desc: '永久HP+10', stat: 'maxHp', val: 10 },
+  { id: 'vit_hp',   name: 'HP增强剂',   emoji: '🍏', price: 10000, desc: '永久HP+8', stat: 'maxHp', val: 8 },
   { id: 'vit_patk', name: '力量精华',   emoji: '⚔️', price: 10000, desc: '永久物攻+5', stat: 'p_atk', val: 5 },
   { id: 'vit_pdef', name: '硬化涂层',   emoji: '🛡️', price: 10000, desc: '永久物防+5', stat: 'p_def', val: 5 },
   { id: 'vit_satk', name: '智慧水晶',   emoji: '🔮', price: 10000, desc: '永久特攻+5', stat: 's_atk', val: 5 },

@@ -40,7 +40,7 @@ export const TRAIT_DB = {
 // ==========================================
 export const NATURE_DB = {
   // --- 均衡与天才组 (属性加成少，但升级快) ---
-  hardy:   { name: '努力', desc: '全属性微增，升级极快', stats: { hp:1.02, p_atk:1.02, p_def:1.02, s_atk:1.02, s_def:1.02, spd:1.02 }, exp: 0.8 },
+  hardy:   { name: '努力', desc: '全属性微增，升级较快', stats: { hp:1.01, p_atk:1.01, p_def:1.01, s_atk:1.01, s_def:1.01, spd:1.01 }, exp: 0.9 },
   docile:  { name: '坦率', desc: '无属性修正，升级较快', stats: {}, exp: 0.85 },
   serious: { name: '严肃', desc: '速度微增，升级较快',   stats: { spd: 1.05 }, exp: 0.9 },
   bashful: { name: '害羞', desc: '特防微增，升级较快',   stats: { s_def: 1.05 }, exp: 0.9 },
@@ -64,8 +64,8 @@ export const NATURE_DB = {
   hasty:   { name: '急躁', desc: '速度++ / 物防--', stats: { spd: 1.15, p_def: 0.85 }, exp: 1.0 },
 
   // --- 防御与生存组 (肉盾首选，升级稍慢) ---
-  bold:    { name: '大胆', desc: '物防++ / 物攻--', stats: { p_def: 1.2, p_atk: 0.8 }, exp: 1.1 },
-  impish:  { name: '淘气', desc: '物防++ / 特攻--', stats: { p_def: 1.2, s_atk: 0.8 }, exp: 1.1 },
-  calm:    { name: '温和', desc: '特防++ / 物攻--', stats: { s_def: 1.2, p_atk: 0.8 }, exp: 1.1 },
-  careful: { name: '慎重', desc: '特防++ / 特攻--', stats: { s_def: 1.2, s_atk: 0.8 }, exp: 1.1 },
+  bold:    { name: '大胆', desc: '物防++ / 物攻--', stats: { p_def: 1.18, p_atk: 0.82 }, exp: 1.05 },
+  impish:  { name: '淘气', desc: '物防++ / 特攻--', stats: { p_def: 1.18, s_atk: 0.82 }, exp: 1.05 },
+  calm:    { name: '温和', desc: '特防++ / 物攻--', stats: { s_def: 1.18, p_atk: 0.82 }, exp: 1.05 },
+  careful: { name: '慎重', desc: '特防++ / 特攻--', stats: { s_def: 1.18, s_atk: 0.82 }, exp: 1.05 },
 };
