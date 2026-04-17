@@ -85,7 +85,7 @@ const ACHIEVEMENTS = [
 
   // ===== 探索类 — 按地图→步数→副本→无限城→宝箱→活动分组 =====
   { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '旅行者',       desc: '探索6个不同的地图',           check: s => s.mapsVisited >= 6,     reward: {} },
-  { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索所有地图区域',            check: s => s.mapsVisited >= 13,    reward: { title: '环游世界' } },
+  { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索13个不同地图区域',        check: s => s.mapsVisited >= 13,    reward: { title: '环游世界' } },
   { id: 'all_maps',        cat: 'EXPLORE', rarity: 'RARE',      name: '世界全图',     desc: '解锁所有地图',                check: s => s.allMapsUnlocked,      reward: { title: '世界旅行者' } },
   { id: 'steps_1k',        cat: 'EXPLORE', rarity: 'COMMON',    name: '散步者',       desc: '在地图上行走5000步',          check: s => s.totalSteps >= 5000,   reward: {} },
   { id: 'steps_10k',       cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '马拉松选手',   desc: '在地图上行走20000步',         check: s => s.totalSteps >= 20000,  reward: {} },
@@ -106,7 +106,7 @@ const ACHIEVEMENTS = [
 
   // ===== 成长类 — 按徽章→联赛→门派→等级→挑战→金币→技能分组 =====
   { id: 'badge_first',     cat: 'GROWTH', rarity: 'COMMON',    name: '首枚徽章',     desc: '获得3枚道馆徽章',             check: s => s.badgeCount >= 3,      reward: {} },
-  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部17枚道馆徽章',        check: s => s.badgeCount >= 17,     reward: { title: '全徽章训练家' } },
+  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得17枚道馆徽章',            check: s => s.badgeCount >= 17,     reward: { title: '全徽章训练家' } },
   { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { title: '联赛冠军' } },
   { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { title: '联赛之王' } },
   { id: 'sect_first',      cat: 'GROWTH', rarity: 'UNCOMMON',  name: '门派弟子',     desc: '击败第一位门派掌门',          check: s => s.sectChiefsDefeated >= 1, reward: {} },
@@ -116,7 +116,7 @@ const ACHIEVEMENTS = [
   { id: 'elite_team',      cat: 'GROWTH', rarity: 'RARE',      name: '精英队伍',     desc: '拥有满编6只50级以上精灵',     check: s => s.eliteTeamReady,       reward: { title: '精英训练家' } },
   { id: 'lv100',           cat: 'GROWTH', rarity: 'RARE',      name: '满级精灵',     desc: '培养一只精灵到100级',         check: s => s.maxPetLevel >= 100,   reward: {} },
   { id: 'full_lv100_team', cat: 'GROWTH', rarity: 'LEGENDARY', name: '满级天团',     desc: '6只精灵全部达到100级',        check: s => s.fullLv100Team,        reward: { title: '满级天团' } },
-  { id: 'stone_evo_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '进化石大师',   desc: '使用过所有种类的进化石',      check: s => s.uniqueStonesUsed >= 8, reward: { title: '进化大师' } },
+  { id: 'stone_evo_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '进化石大师',   desc: '使用过全部10种进化石',        check: s => s.uniqueStonesUsed >= 10, reward: { title: '进化大师' } },
   { id: 'challenge_6',     cat: 'GROWTH', rarity: 'UNCOMMON',  name: '挑战达人',     desc: '通关10座试炼塔',              check: s => s.challengesCompleted >= 10, reward: {} },
   { id: 'challenge_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '通关达人',     desc: '通关25座试炼塔',              check: s => s.challengesCompleted >= 25, reward: { title: '全塔征服者' } },
   { id: 'evo_master',      cat: 'GROWTH', rarity: 'RARE',      name: '进化达人',     desc: '累计进化精灵20次',            check: s => s.totalEvolutions >= 20, reward: {} },
@@ -207,7 +207,7 @@ const ACHIEVEMENTS = [
     hint: '提示：不依赖药品的勇气——深渊中只有战斗',
     check: s => s.infinityNoHeal30 >= 1, reward: { title: '深渊行者' }, hidden: true },
   { id: 'secret_all_sects',  cat: 'SECRET', rarity: 'LEGENDARY',
-    name: '十二门全通',  desc: '击败全部12位门派掌门且队伍中有12种不同门派的精灵',
+    name: '十二门全通',  desc: '击败全部12位门派掌门且队伍中有6种不同门派的精灵',
     hint: '提示：武林中有十二条路——你能全部走一遍吗？',
     check: s => s.sectChiefsDefeated >= 12 && s.partySectDiv >= 6, reward: { title: '武林至尊' }, hidden: true },
   { id: 'secret_triple_sys',  cat: 'SECRET', rarity: 'LEGENDARY',
@@ -259,7 +259,7 @@ const ACHIEVEMENTS = [
   { id: 'lycoris_combo_10',      cat: 'BATTLE', rarity: 'UNCOMMON', name: '协作高手',
     desc: '使用协作技10次', check: s => s.comboAttacks >= 10, reward: {} },
   { id: 'lycoris_cafe_max',      cat: 'SOCIAL', rarity: 'RARE',    name: '咖啡大师',
-    desc: '咖啡厅升到满级(Lv5)', check: s => s.cafeLevel >= 5, reward: { title: '咖啡大师' } },
+    desc: '咖啡厅升到满级(Lv5)', check: s => s.maxCafeLevel >= 5, reward: { title: '咖啡大师' } },
   { id: 'lycoris_clear',         cat: 'EXPLORE', rarity: 'RARE',   name: '莉可莉丝',
     desc: '通关莉可莉丝全部3章剧情', check: s => s.lycorisChaptersCleared >= 3, reward: { title: '秘密特工' } },
   { id: 'lycoris_perfect',       cat: 'SECRET', rarity: 'LEGENDARY', name: '完美搭档',
@@ -293,7 +293,7 @@ const ACHIEVEMENTS = [
   { id: 'hb_era2',          cat: 'BATTLE',   rarity: 'RARE',      name: '赤壁风云',     desc: '通关三分天下时代全部5场名战',            check: s => s.hbEra2 >= 5,            reward: { title: '天下三分' } },
   { id: 'hb_era3',          cat: 'BATTLE',   rarity: 'EPIC',      name: '鼎足之势',     desc: '通关鼎足而立时代全部5场名战',            check: s => s.hbEra3 >= 5,            reward: { title: '铁壁将军' } },
   { id: 'hb_era4',          cat: 'BATTLE',   rarity: 'EPIC',      name: '终结乱世',     desc: '通关天下归一时代全部5场名战',            check: s => s.hbEra4 >= 5,            reward: { title: '一统天下' } },
-  { id: 'hb_all',           cat: 'MASTERY',  rarity: 'LEGENDARY', name: '千古名战',     desc: '通关全部20场三国历史名战',               check: s => s.hbCompleted >= 20,       reward: { title: '千古一帝' } },
+  { id: 'hb_all',           cat: 'MASTERY',  rarity: 'LEGENDARY', name: '千古名战',     desc: '通关全部20场三国历史名战',               check: s => s.hbCompleted >= 20,       reward: { title: '战神无双' } },
 
   // — 国战深度 —
   { id: 'kw_kill_500',      cat: 'BATTLE',   rarity: 'EPIC',      name: '千刀万斩',     desc: '在国战中击败500名敌国训练师',            check: s => s.kwKills >= 500,          reward: { title: '修罗战神' } },
@@ -371,7 +371,7 @@ export const DEFAULT_ACH_STATS = {
   partnersFormed: 0,
   maxBondLevel: 0,
   comboAttacks: 0,
-  cafeLevel: 0,
+  maxCafeLevel: 0,
   lycorisChaptersCleared: 0,
   maxBondLv3Pairs: 0,
   dualTypeCaught: 0,

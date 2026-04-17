@@ -274,7 +274,7 @@ export const DUNGEONS = [
     rarity: '史诗', stars: 4, tier: 3, reqBadges: 9,
     rewards: [
       { icon: '⚔️', text: '2v2双打奖励' },
-      { icon: '🎁', text: '协作技强化石' }
+      { icon: '🎁', text: '随机装备 + 成长道具' }
     ] },
   // === Tier 4: 终极级 (11~13徽章) ===
   { id: 'infinity_castle', name: '无限城', desc: 'Roguelike无尽挑战 (需10徽章)',

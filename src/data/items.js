@@ -59,7 +59,7 @@ export const TMS = [
 ];
 
 export const MISC_ITEMS = {
-  rebirth_pill: { id: 'rebirth_pill', name: '洗练药', price: 10000, icon: '💊', desc: '随机重置个体值/性格/闪光(概率同野外)' }
+  rebirth_pill: { id: 'rebirth_pill', name: '洗练药', price: 10000, icon: '💊', desc: '随机重置个体值/性格/闪光(5%概率)' }
 };
 
 export const ACCESSORY_DB = [

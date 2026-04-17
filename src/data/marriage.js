@@ -528,8 +528,8 @@ export const getSpouseBonus = (candidate, marriageLevel) => {
   for (const key of Object.keys(bonus)) {
     if (typeof bonus[key] === 'number') bonus[key] *= mult;
   }
-  bonus.intimacyBoost = 0.1 * mult;
-  bonus.cafeGoldBase = 0.1 * mult;
+  if (!bonus.intimacyBoost) bonus.intimacyBoost = 0.1 * mult;
+  if (!bonus.cafeGoldBase) bonus.cafeGoldBase = 0.1 * mult;
   return bonus;
 };
 

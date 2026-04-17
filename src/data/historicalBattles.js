@@ -96,7 +96,7 @@ export const HISTORICAL_BATTLES = [
       { name: '曹军先锋', generalIds: ['wei_cao_ren', 'wei_le_jin'], minionPool: pool.common, minionCount: 4, lvl: 56 },
       { name: '虎豹骑追击', generalIds: ['wei_xu_chu', 'wei_dian_wei', 'wei_zhang_liao'], minionPool: pool.elite, minionCount: 2, lvl: 60 },
     ],
-    reward: { gold: 14000, tokens: 9, contribution: 38 },
+    reward: { gold: 16000, tokens: 11, contribution: 42 },
     unlockReq: 'hb_guandu',
     bg: 'linear-gradient(135deg, #1B5E20, #2E7D32)',
   },

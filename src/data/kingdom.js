@@ -303,7 +303,7 @@ export const applySeasonRewards = (kw, result) => {
     militaryRank: getMilitaryRank(newContribution).id,
     territories: initTerritories(),
     contestProgress: {},
-    capitalSiegeWins: {},
+    capitalSiegeWins: [],
     season: kw.season + 1,
     seasonStartDate: new Date().toISOString(),
     warLog: [{

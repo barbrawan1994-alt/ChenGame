@@ -7,7 +7,7 @@ export const SECT_DB = {
   2: { name: '少林寺', emoji: '🛡️', color: '#FFC107', desc: '金钟罩：减少受到的伤害', 
        effect: (lv) => `受到伤害减少 ${3 + lv * 2}%` },
   3: { name: '逍遥派', emoji: '💨', color: '#00BCD4', desc: '凌波微步：提升速度与闪避', 
-       effect: (lv) => `速度+${lv*2}，${2 + lv}% 概率完全闪避` },
+       effect: (lv) => `速度+${lv*2}%，${2 + lv}% 概率完全闪避` },
   4: { name: '唐门',   emoji: '🎯', color: '#9C27B0', desc: '暴雨梨花：提升暴击率与爆伤', 
        effect: (lv) => `暴击率+${lv}%，暴击伤害+${10 + lv * 5}%` },
   5: { name: '药王谷', emoji: '🌿', color: '#4CAF50', desc: '长生诀：每回合恢复体力', 

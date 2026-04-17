@@ -520,10 +520,7 @@ const injectStatusSkills = () => {
     if (!SKILL_DB[skill.t]) SKILL_DB[skill.t] = [];
     // 避免重复添加
     if (!SKILL_DB[skill.t].find(s => s.name === skill.name)) {
-        // 随机插入到该属性技能列表的中间位置，增加出现概率
-        const len = SKILL_DB[skill.t].length;
-        const insertIdx = Math.floor(Math.random() * len);
-        SKILL_DB[skill.t].splice(insertIdx, 0, skill);
+        SKILL_DB[skill.t].push(skill);
     }
   });
 };

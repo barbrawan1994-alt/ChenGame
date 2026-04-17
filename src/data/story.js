@@ -1272,7 +1272,7 @@ export const STORY_SCRIPT = [
       { name: "仙剑大侠·李逍遥", text: "龙...（眼中闪过战意）有意思。御剑术对龙族应该不差。走！" },
       { name: "系统", text: "获得【次元钥匙·幻】！（1/7）" }
     ],
-    reward: { gold: 50000, items: [{id:'master_ball', count:1}] }
+    reward: { gold: 50000, balls: { master: 1 } }
   },
 
   // ===== 异界篇·肆：龙之试炼 (Map 104) =====
