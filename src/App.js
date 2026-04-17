@@ -262,9 +262,11 @@ export default function RPG(props) {
       tms: { ...defaultInventory.tms, ...(saved.tms || {}) },
       misc: { ...defaultInventory.misc, ...(saved.misc || {}) },
       stones: { ...defaultInventory.stones, ...(saved.stones || {}) },
+      cursed: saved.cursed || {},
       berries: saved.berries || defaultInventory.berries,
       exp_candy: saved.exp_candy || 0,
       max_candy: saved.max_candy || 0,
+      ...(Object.fromEntries(Object.entries(saved).filter(([k]) => !['balls','meds','tms','misc','stones','cursed','berries','exp_candy','max_candy'].includes(k)))),
     };
   });
   const [fruitInventory, setFruitInventory] = useState(savedData.fruitInventory || []);
@@ -2377,8 +2379,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const houseTier = {'tent':1,'cabin':2,'house':3,'mansion':4,'castle':5,'beach_house':5,'world_tree':6,'sky_fortress':7,'palace':8};
       next.houseLevel = houseTier[housing?.currentHouse || housing?.houseType || 'tent'] || 1;
       next.furnitureCount = (housing?.furniture || []).length;
-      const hsTier = getHousingScoreTier ? getHousingScoreTier(calcHouseScore ? calcHouseScore(housing?.furniture || housing) : 0) : 0;
-      next.housingScoreTier = typeof hsTier === 'object' ? (hsTier.tier || hsTier.level || 0) : (hsTier || 0);
+      const hsScore = calcHouseScore ? calcHouseScore((housing?.furniture || []).filter(f => f?.placed)) : 0;
+      const hsTierObj = getHousingScoreTier ? getHousingScoreTier(hsScore) : null;
+      next.housingScoreTier = hsTierObj ? HOUSING_SCORE_TIERS.indexOf(hsTierObj) : 0;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
       next.allMapsUnlocked = Object.keys(mapProgress || {}).length >= MAPS.length;
       // 队伍属性多样性
@@ -4906,9 +4909,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               if (gold < 5000) { alert('金币不足5000'); return; }
               setGold(g => g - 5000);
               updateGangTaskProgress('donate_gold', 5000);
-              if (gang.isOwner && gang.customGang) {
-                setGang(prev => ({ ...prev, customGang: { ...prev.customGang, funds: (prev.customGang.funds || 0) + 5000 } }));
-              }
             }} style={{...btnSecondary, width:'100%', marginTop:'6px'}}>
               💰 捐献 5,000 金币
             </button>
@@ -5477,7 +5477,7 @@ const useGrowthItem = (petIndex, itemId) => {
       }
       setParty(newParty);
       setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) - 1 }));
-      updateAchStat({ totalEvolutions: 0 });
+      // totalEvolutions tracked in finishEvo
       alert(`${pet.name} 升到了 Lv.${pet.level}！`);
       if (pet.pendingLearnMove) startLearningMove(petIndex);
       return;
@@ -5510,7 +5510,16 @@ const useGrowthItem = (petIndex, itemId) => {
       const enterMap = (mapId) => {
     
     setCurrentMapId(mapId);
-    updateGangTaskProgress('explore_map', 1);
+    setGang(prev => {
+      if (!prev.gangId) return prev;
+      const visited = prev.dailyCounts?.exploredMaps || [];
+      if (!visited.includes(mapId)) {
+        const newVisited = [...visited, mapId];
+        updateGangTaskProgress('explore_map', 1);
+        return { ...prev, dailyCounts: { ...prev.dailyCounts, exploredMaps: newVisited } };
+      }
+      return prev;
+    });
 
     // 2. 剧情触发
     const currentChapter = STORY_SCRIPT[storyProgress];
@@ -7118,7 +7127,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     const doubleActiveIdxs = isDouble ? [activeIdx, battlePlayerParty.findIndex((p, i) => i !== activeIdx && p.currentHp > 0)] : null;
-    const doubleEnemyIdxs = isDouble ? [0, battleEnemyParty.length > 1 ? 1 : 0] : null;
+    const doubleEnemyIdxs = isDouble ? (battleEnemyParty.length > 1 ? [0, 1] : [0]) : null;
 
     setBattle({
       enemyParty: battleEnemyParty,
@@ -7778,6 +7787,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (allEnemiesDead) {
         let currentParty = party;
         for (const enemy of (tempBattle.enemyParty || [])) {
+          if (enemy.currentHp > 0) continue;
           const { newParty, logMsg } = processDefeatedEnemy(enemy, currentParty, tempBattle);
           currentParty = newParty;
           addLog(logMsg);
@@ -7893,7 +7903,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const isPartnerSystemUnlocked = () => badges.length >= 3;
 
   const setPartner = (petA, petB) => {
-    if (!isPartnerSystemUnlocked()) { alert('🔒 搭档羁绊系统尚未解锁！\n\n完成【莉可莉丝篇·第壹章：搭档的意义】后解锁。'); return; }
+    if (!isPartnerSystemUnlocked()) { alert('🔒 搭档羁绊系统尚未解锁！\n\n集齐 3 枚徽章后解锁。'); return; }
     const update = (list) => list.map(p => {
       const uid = p.uid || p.id;
       if (uid === (petA.uid || petA.id)) return { ...p, partnerId: petB.uid || petB.id, bondPoints: p.partnerId === (petB.uid || petB.id) ? (p.bondPoints || 0) : 0 };
@@ -9687,6 +9697,57 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
 
+        if (move.effect && dmg > 0 && !isDead && !isImmune && !isDodged) {
+          const eff = move.effect;
+          const _dt = defState.type, _dt2 = defState.type2;
+          if (eff.burn && !defState.status && !(_dt === 'FIRE' || _dt2 === 'FIRE') && Math.random() < eff.burn) {
+            defState.status = 'BRN'; addLog(`🔥 ${defender.name} 被灼伤了！`);
+          }
+          if (eff.paralyze && !defState.status && !(_dt === 'ELECTRIC' || _dt2 === 'ELECTRIC') && Math.random() < eff.paralyze) {
+            defState.status = 'PAR'; addLog(`⚡ ${defender.name} 被麻痹了！`);
+          }
+          if (eff.poison && !defState.status && !(_dt === 'POISON' || _dt2 === 'POISON' || _dt === 'STEEL' || _dt2 === 'STEEL') && Math.random() < (typeof eff.poison === 'number' ? eff.poison : 0.3)) {
+            defState.status = 'PSN'; addLog(`☠️ ${defender.name} 中毒了！`);
+          }
+          if (eff.freeze && !defState.status && !(_dt === 'ICE' || _dt2 === 'ICE') && Math.random() < eff.freeze) {
+            defState.status = 'FRZ'; addLog(`❄️ ${defender.name} 被冻结了！`);
+          }
+          if (eff.flinch && Math.random() < eff.flinch) {
+            defState.volatiles = { ...(defState.volatiles || {}), flinched: true };
+            addLog(`${defender.name} 畏缩了！`);
+          }
+          if (eff.confuse && !defState.volatiles?.confused && Math.random() < eff.confuse) {
+            defState.volatiles = { ...(defState.volatiles || {}), confused: 3 };
+            addLog(`${defender.name} 陷入了混乱！`);
+          }
+          if (eff.defDown && Math.random() < (eff.defDown > 1 ? 1 : eff.defDown)) {
+            defState.stages.p_def = Math.max(-6, (defState.stages.p_def || 0) - 1);
+            addLog(`⬇️ ${defender.name} 的物防下降了！`);
+          }
+          if (eff.sDefDown && Math.random() < (eff.sDefDown > 1 ? 1 : eff.sDefDown)) {
+            defState.stages.s_def = Math.max(-6, (defState.stages.s_def || 0) - 1);
+            addLog(`⬇️ ${defender.name} 的特防下降了！`);
+          }
+          if (eff.spdDown && Math.random() < (eff.spdDown > 1 ? 1 : eff.spdDown)) {
+            defState.stages.spd = Math.max(-6, (defState.stages.spd || 0) - 1);
+            addLog(`⬇️ ${defender.name} 的速度下降了！`);
+          }
+          if (eff.atkDown && Math.random() < (eff.atkDown > 1 ? 1 : eff.atkDown)) {
+            defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - 1);
+            addLog(`⬇️ ${defender.name} 的物攻下降了！`);
+          }
+          if (eff.recoil) {
+            const recoilDmg = Math.floor(dmg * eff.recoil);
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
+            addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
+          }
+          if (eff.drain) {
+            const heal = Math.floor(dmg * eff.drain);
+            attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
+            addLog(`${attacker.name} 吸取了 ${heal} HP！`);
+          }
+        }
+
         if (dom && dom.turnsLeft > 0 && dmg > 0 && dom.ownerSide === source) {
             if (dom.effect.hpDrain) {
                 const drainHeal = Math.floor(dmg * dom.effect.hpDrain);
@@ -10643,6 +10704,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const chestText = chestRewards.length > 0 ? `\n\n🎰 帮战宝箱:\n${chestRewards.join('\n')}` : '';
         const fundsText = (gang.isOwner && gang.customGang) ? `\n💰 ${reward.funds} 帮派资金` : '';
         alert(`⚔️ 帮战胜利！\n\n获得：${fundsText}\n⭐ ${reward.contribution} 帮贡${chestText}`);
+        updateGangTaskProgress('battle_win', 1);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
@@ -10751,7 +10813,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const next = { ...prev, warContribution: (prev.warContribution || 0) + contribGain, factionTokens: (prev.factionTokens || 0) + tokenGain };
             next.dailyCounts = { ...next.dailyCounts, kills: (next.dailyCounts.kills || 0) + 1 };
             next.militaryRank = getMilitaryRank(next.warContribution).id;
-            const mapId = currentMapId;
+            const mapId = battle.mapId || currentMapId;
             if (next.territories[mapId]) {
                 const t = { ...next.territories[mapId] };
                 if (t.owner === prev.faction) {
@@ -10855,7 +10917,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const mapProg = { ...(cp[cMapId] || { wei: 0, shu: 0, wu: 0 }) };
             mapProg[prev.faction] = (mapProg[prev.faction] || 0) + pts;
             cp[cMapId] = mapProg;
-            const maxFaction = FACTION_IDS.reduce((best, fid) => (mapProg[fid] || 0) > (mapProg[best] || 0) ? fid : best, 'wei');
+            const maxFaction = FACTION_IDS.reduce((best, fid) => (mapProg[fid] || 0) > (mapProg[best] || 0) ? fid : best, prev.faction);
             const newTerr = { ...prev.territories };
             if (newTerr[cMapId]) {
                 newTerr[cMapId] = { ...newTerr[cMapId], owner: (mapProg[maxFaction] || 0) >= 20 ? maxFaction : 'neutral' };
@@ -10886,10 +10948,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 9c. 国战战役副本胜利
     if (battle.type === 'kw_campaign') {
         const campaign = battle.campaignData;
+        const isFirstClear = !(kingdomWar.completedCampaigns || []).includes(campaign.id);
+        const rewardMult = isFirstClear ? 1.0 : 0.3;
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
-        const contribGain = Math.floor(campaign.reward.contribution * (1 + gangBonusContrib / 100));
-        const tokenGain = campaign.reward.tokens;
-        const campaignGold = campaign.reward.gold;
+        const contribGain = Math.floor(campaign.reward.contribution * rewardMult * (1 + gangBonusContrib / 100));
+        const tokenGain = Math.floor(campaign.reward.tokens * rewardMult);
+        const campaignGold = Math.floor(campaign.reward.gold * rewardMult);
+        if (!isFirstClear) addLog(`⚔️ 重复通关，奖励降为 30%`);
         setGold(g => g + campaignGold);
         setKingdomWar(prev => {
             const next = {
@@ -11111,7 +11176,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (isTrainer && battle.turnCount && battle.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
     if (activePet && activePet.activeVow && activePet.currentHp <= 1) winAchUpdates.clutchVowWin = 1;
     const playerHadFruit = battle.playerCombatStates?.some(p => p?.fruitUsed);
-    const enemyHadFruit = battle.enemyCombatStates?.some(e => e?.fruitUsed);
+    const enemyHadFruit = battle.enemyParty?.some(e => e?.fruitUsed || e?.fruitTransformed);
     if (playerHadFruit && enemyHadFruit) winAchUpdates.dualFruitBattle = 1;
     if (isGym && party?.filter(p => p?.currentHp > 0).length === 1) {
         const alivePets = (battle.playerCombatStates || []).filter(p => p && p.currentHp > 0);
@@ -14736,7 +14801,7 @@ const renderMenu = () => {
                               {/* 挑战按钮 */}
                               <button onClick={() => {
                                 if (!canChallenge) { alert('今日争夺次数已用完 (每日3次)'); return; }
-                                if (!party.some(p => p && p.hp > 0)) { alert('你的队伍已全灭，无法挑战！'); return; }
+                                if (!party.some(p => p && p.currentHp > 0)) { alert('你的队伍已全灭，无法挑战！'); return; }
                                 setKingdomWar(prev => {
                                   const cp = { ...(prev.contestProgress || {}) };
                                   cp[`${cm.id}_attempts_${today}`] = (cp[`${cm.id}_attempts_${today}`] || 0) + 1;
@@ -14880,7 +14945,7 @@ const renderMenu = () => {
                                     攻城胜利奖励: 💰 5000金 · ⭐ 战功+100 · 🎖️ 令牌+20
                                   </div>
                                   <button disabled={!canSiege} onClick={() => {
-                                    if (!party.some(p => p && p.hp > 0)) { alert('你的队伍已全灭！'); return; }
+                                    if (!party.some(p => p && p.currentHp > 0)) { alert('你的队伍已全灭！'); return; }
                                     if (!window.confirm(`确定要对${ef.fullName}都城发起攻城战吗？\n\n这将是高难度的6v6战斗！`)) return;
                                     setKingdomWar(prev => ({
                                       ...prev,
