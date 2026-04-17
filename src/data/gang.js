@@ -261,7 +261,7 @@ export const getGangSkills = (gang) => {
 
 export const getGangWarLevel = (targetGang) => {
   const lv = targetGang.level || 1;
-  return Math.min(100, 70 + lv * 4);
+  return Math.min(100, 50 + lv * 5);
 };
 
 export const getGangWarReward = (targetGang) => {

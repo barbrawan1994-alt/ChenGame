@@ -216,7 +216,7 @@ export const DUNGEONS = [
     type: 'boss_rush', color: '#D32F2F', icon: '🗼', recLvl: 35,
     rarity: '稀有', stars: 3, tier: 2, reqBadges: 4,
     rewards: [
-      { icon: '🏆', text: '通关奖金5000' },
+      { icon: '🏆', text: '通关奖金按难度(2500~12000)' },
       { icon: '🎁', text: '随机稀有道具' }
     ] },
   { id: 'stone_tower', name: '元素之塔', desc: '进化石掉落 (需5徽章)',

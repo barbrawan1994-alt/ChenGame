@@ -347,7 +347,7 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
   const newContribution = Math.floor(kw.warContribution * SEASON_CONFIG.contributionCarryover);
   const drawCount = playerRank === 1 ? 3 : playerRank === 2 ? 2 : 1;
 
-  const isMvp = (kw.warContribution || 0) >= 500;
+  const isMvp = (kw.seasonContribution ?? kw.warContribution ?? 0) >= 2000;
   const mvpTokens = isMvp ? SEASON_CONFIG.mvpBonus.tokens : 0;
   const mvpTitle = isMvp ? SEASON_CONFIG.mvpBonus.title : null;
 

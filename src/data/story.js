@@ -375,23 +375,23 @@ export const STORY_SCRIPT = [
     ],
     tasks: [
       { step: 0, x: 5, y: 5, type: 'battle', enemyId: 76, name: '领地意识的 冰海豹', text: "（它不是敌人——它在阻止你靠近危险区域。但唯一的路就在它身后。）", emoji: '🦭',
-        eliteParty: [{ id: 76, level: 84 }, { id: 199, level: 82 }, { id: 131, level: 80 }, { id: 142, level: 79 }, { id: 87, level: 81 }]
+        eliteParty: [{ id: 76, level: 68 }, { id: 199, level: 66 }, { id: 87, level: 65 }]
       },
       { step: 1, x: 15, y: 10, type: 'dialog', name: '日蚀队 逃兵', text: "别去了！副首领·霜疯了！她唤醒的那个东西...不是精灵，是灾难！我们的人已经被冻成冰雕了！", emoji: '😱' },
       { step: 2, x: 25, y: 15, type: 'battle', enemyId: 199, name: '狂暴 象牙猪', text: "吼！！！（被远古寒气激活的远古巨兽，獠牙闪着寒冰之光）", emoji: '🐗',
-        eliteParty: [{ id: 199, level: 87 }, { id: 76, level: 85 }, { id: 131, level: 84 }, { id: 253, level: 82 }, { id: 130, level: 81 }]
+        eliteParty: [{ id: 199, level: 72 }, { id: 76, level: 70 }, { id: 131, level: 69 }, { id: 130, level: 68 }]
       },
       { step: 3, x: 16, y: 8, type: 'battle', enemyId: 131, name: '日蚀队 副首领·霜', text: "冰之力量才是永恒的...在绝对零度面前，一切都将停止。包括时间本身！", emoji: '❄️',
-        eliteParty: [{ id: 131, level: 90 }, { id: 199, level: 88 }, { id: 76, level: 87 }, { id: 253, level: 86 }, { id: 142, level: 85 }]
+        eliteParty: [{ id: 131, level: 76 }, { id: 199, level: 74 }, { id: 76, level: 73 }, { id: 253, level: 72 }, { id: 142, level: 71 }]
       },
       { step: 4, x: 10, y: 4, type: 'battle', enemyId: 608, name: '暗影执行者·厌晚', text: "（寒风中，那个熟悉的身影再次出现）又见面了。上次只用了三成——这次，我用六成。你能活下来吗？", emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 88, devilFruit: 'df_yami' },
-          { id: 609, level: 86 },
-          { id: 610, level: 85 },
-          { id: 603, level: 84 },
-          { id: 94, level: 83 },
-          { id: 604, level: 82 }
+          { id: 608, level: 78, devilFruit: 'df_yami' },
+          { id: 609, level: 76 },
+          { id: 610, level: 75 },
+          { id: 603, level: 74 },
+          { id: 94, level: 73 },
+          { id: 604, level: 72 }
         ]
       }
     ],
@@ -405,7 +405,7 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "获得奖励：精灵【雪球海豹】加入了队伍！" },
       { name: "系统", text: "暗影执行者·厌晚再次出现...她的实力远超想象。最终对决，即将到来。" }
     ],
-    reward: { gold: 15000, items: [{id:'vit_pdef', count:5}], pokemon: {id: 76, level: 80} }
+    reward: { gold: 18000, items: [{id:'vit_pdef', count:5}, {id:'vit_spd', count:3}, {id:'exp_candy', count:3}], pokemon: {id: 76, level: 70} }
   },
 
   // ===== 第十章：流沙荒漠 =====
