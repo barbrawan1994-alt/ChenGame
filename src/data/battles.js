@@ -379,7 +379,7 @@ export const JJK_CHALLENGES = [
 export const HYAKKI_DUNGEON = {
   id: 'hyakki_yako', name: '百鬼夜行', desc: '对战强力咒灵 (需6徽章+Lv.80)',
   type: 'hyakki', color: '#4A148C', icon: '👹', recLvl: 80, restriction: 'none',
-  isJJK: true,
+  isJJK: true, tier: 3, reqBadges: 6,
   rarity: '史诗', stars: 4,
   rewards: [
     { icon: '👹', text: '3000 金币' },
