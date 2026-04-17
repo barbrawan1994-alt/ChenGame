@@ -190,6 +190,7 @@ const sampleWeightedAccessory = () => {
 };
 
 const getEquipEffects = (pet) => {
+  if (!pet) return [];
   const effects = [];
   (pet.equips || []).forEach(equip => {
     if (!equip) return;
@@ -7596,10 +7597,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let enemyDied = false;
         let playerDiedFromSelfDmg = false;
 
+        const syncBattleState = (extra = {}) => {
+          setBattle(prev => ({
+            ...prev,
+            playerCombatStates: tempBattle.playerCombatStates.map(p => ({...p})),
+            enemyParty: tempBattle.enemyParty.map(e => ({...e})),
+            ...extra,
+          }));
+        };
+
         if (playerFirst) {
           // 玩家先手
           enemyDied = await performAction(player, enemy, actualMove, 'player', tempBattle);
-          setBattle(prev => ({ ...prev, playerCombatStates: tempBattle.playerCombatStates, enemyParty: tempBattle.enemyParty }));
+          syncBattleState({ turnCount: (tempBattle.turnCount || 0) + 1 });
+          tempBattle.turnCount = (tempBattle.turnCount || 0) + 1;
           playerDiedFromSelfDmg = tempBattle.playerCombatStates[tempBattle.activeIdx]?.currentHp <= 0;
 
           if (!enemyDied && !playerDiedFromSelfDmg) {
@@ -7627,7 +7638,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           // 玩家后手
           enemyDied = await performAction(player, enemy, actualMove, 'player', tempBattle);
-          setBattle(prev => ({ ...prev, playerCombatStates: tempBattle.playerCombatStates, enemyParty: tempBattle.enemyParty }));
+          syncBattleState({ phase: 'input', turnCount: (battle.turnCount || 0) + 1 });
           playerDiedFromSelfDmg = tempBattle.playerCombatStates[tempBattle.activeIdx]?.currentHp <= 0;
         }
 
@@ -7894,8 +7905,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         setBattle(prev => ({
           ...prev,
-          playerCombatStates: [...(tempBattle.playerCombatStates || [])],
-          enemyParty: [...(tempBattle.enemyParty || [])],
+          playerCombatStates: (tempBattle.playerCombatStates || []).map(p => ({...p})),
+          enemyParty: (tempBattle.enemyParty || []).map(e => ({...e})),
           activeIdxs: [...(tempBattle.activeIdxs || [])],
           enemyActiveIdxs: [...(tempBattle.enemyActiveIdxs || [])],
         }));
@@ -8102,8 +8113,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       setBattle(prev => ({
         ...prev,
-        playerCombatStates: [...(tempBattle.playerCombatStates || [])],
-        enemyParty: [...(tempBattle.enemyParty || [])],
+        playerCombatStates: (tempBattle.playerCombatStates || []).map(p => ({...p})),
+        enemyParty: (tempBattle.enemyParty || []).map(e => ({...e})),
         activeIdxs: newActiveIdxs,
         enemyActiveIdxs: newEnemyIdxs,
         activeIdx: newActiveIdxs[0] ?? 0,
@@ -8278,8 +8289,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       setBattle(prev => ({
         ...prev,
-        playerCombatStates: tempBattle.playerCombatStates,
-        enemyParty: tempBattle.enemyParty,
+        playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
+        enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
         phase: 'busy',
       }));
       await wait(800);
@@ -8809,8 +8820,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (side === 'player') {
       setBattle(prev => ({
         ...prev,
-        playerCombatStates: tempBattle.playerCombatStates,
-        enemyParty: tempBattle.enemyParty,
+        playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
+        enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
       }));
       await wait(500);
       await enemyTurn(tempBattle);
@@ -8866,8 +8877,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setBattle(prev => ({
               ...prev, phase: 'input',
               turnCount: (prev?.turnCount || 0) + 1,
-              playerCombatStates: state.playerCombatStates,
-              enemyParty: state.enemyParty,
+              playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+              enemyParty: state.enemyParty.map(e => ({...e})),
               activeDomain: state.activeDomain,
             }));
             return;
@@ -8903,8 +8914,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setBattle(prev => ({
             ...prev, phase: 'input',
             turnCount: (prev?.turnCount || 0) + 1,
-            playerCombatStates: state.playerCombatStates,
-            enemyParty: state.enemyParty,
+            playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+            enemyParty: state.enemyParty.map(e => ({...e})),
           }));
           return;
         }
@@ -8953,8 +8964,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setBattle(prev => ({
               ...prev, phase: 'input',
               turnCount: (prev?.turnCount || 0) + 1,
-              playerCombatStates: state.playerCombatStates,
-              enemyParty: state.enemyParty,
+              playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+              enemyParty: state.enemyParty.map(e => ({...e})),
             }));
             return;
           }
@@ -8975,8 +8986,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setBattle(prev => ({
           ...prev, phase: 'input',
           turnCount: (prev?.turnCount || 0) + 1,
-          enemyParty: state.enemyParty,
-          playerCombatStates: state.playerCombatStates,
+          enemyParty: state.enemyParty.map(e => ({...e})),
+          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
         }));
         return;
       }
@@ -9027,8 +9038,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setBattle(prev => ({
             ...prev, phase: 'input', enemyComboUsed: true,
             turnCount: (prev?.turnCount || 0) + 1,
-            playerCombatStates: state.playerCombatStates,
-            enemyParty: state.enemyParty,
+            playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+            enemyParty: state.enemyParty.map(e => ({...e})),
           }));
           await wait(800);
           return;
@@ -9345,6 +9356,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const decayMinTurns = isHardBattle ? 3 : 2;
 
     // 1. 检查能力等级 (Buff/Debuff)
+    if (!state.stages) state.stages = {};
+    if (!state.turnCounters) state.turnCounters = { stages: {}, status: 0 };
+    if (!state.turnCounters.stages) state.turnCounters.stages = {};
     Object.keys(state.stages).forEach(stat => {
       if (state.stages[stat] !== 0) {
         state.turnCounters.stages[stat] = (state.turnCounters.stages[stat] || 0) + 1;
@@ -9764,8 +9778,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const isOwner = domForDmg.ownerSide === source;
           if (isOwner && domForDmg.effect.atkBoost) rawDmg *= domForDmg.effect.atkBoost;
           if (!isOwner && domForDmg.effect.enemyAtkDown) rawDmg *= domForDmg.effect.enemyAtkDown;
-          if (isOwner && domForDmg.effect.defBoost) rawDmg *= domForDmg.effect.defBoost;
-          if (!isOwner && domForDmg.effect.enemyDefDown) rawDmg /= (domForDmg.effect.enemyDefDown || 1);
+          if (isOwner && domForDmg.effect.defBoost) rawDmg /= domForDmg.effect.defBoost;
+          if (!isOwner && domForDmg.effect.enemyDefDown) rawDmg *= (domForDmg.effect.enemyDefDown || 1);
         }
 
         // 暗暗果实: 取消对手果实效果
@@ -9897,7 +9911,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (isCrit) {
             if (battleState) battleState._battleCrits = (battleState._battleCrits || 0) + 1;
           }
-          if (defender.currentHp <= 0 && defender._preHitHp >= getStats(defender).maxHp * 0.95) updateAchStat({ oneHitKOs: 1 });
         }
 
         let equipDodged = false;
@@ -9935,6 +9948,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (survivalMsg) addLog(survivalMsg);
         isDead = defender.currentHp <= 0;
         if (dmg > 0 && source === 'enemy' && battleState) battleState._playerTookDamage = true;
+        if (source === 'player' && isDead && defender._preHitHp >= getStats(defender).maxHp * 0.95) updateAchStat({ oneHitKOs: 1 });
 
         // 果实攻击附带效果
         if (atkFE && !isDead && dmg > 0) {
@@ -10159,6 +10173,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 }
             }
             if (ceMoveEff.confuse && Math.random() < ceMoveEff.confuse) {
+                if (!defState.volatiles) defState.volatiles = {};
                 defState.volatiles.confused = 3; addLog(`🌀 ${defender.name} 陷入了混乱!`);
             }
             if (ceMoveEff.spdDown) {
@@ -10388,10 +10403,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const nKey = pet.nature || 'docile';
         const expMod = NATURE_DB[nKey]?.exp || 1.0;
         pet.nextExp = calcNextExp(pet.level, expMod);
-        const oldMaxHp = pet.currentHp > 0 ? getStats({ ...pet, level: pet.level - 1 }).maxHp : 0;
+        const oldMaxHp = getStats({ ...pet, level: pet.level - 1 }).maxHp;
         const newMaxHp = getStats(pet).maxHp;
         const hpGain = Math.max(0, newMaxHp - oldMaxHp);
-        pet.currentHp = Math.min(newMaxHp, pet.currentHp + hpGain);
+        if (pet.currentHp > 0) {
+          pet.currentHp = Math.min(newMaxHp, pet.currentHp + hpGain);
+        }
         
         if (isActive) {
           levelUpLog += ` ${pet.name}升到了Lv.${pet.level}!`;
@@ -10747,6 +10764,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         newPet.status = null;
         newPet.stages = {};
+        newPet.volatiles = {};
 
         // 2. 魅力值增长 (Charm 0-100)
         // 只有出战的精灵，在击败 馆主/Boss/联盟 时增加
@@ -11850,7 +11868,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await wait(2500);
      if (battle && battle.type === 'infinity') {
         alert(`💀 你倒在了第 ${infinityState?.floor || 1} 层...\n\n虽然失败了，但你的勇气值得赞赏。\n(队伍已在城外复活)`);
-        setParty(prev => prev.map(p => ({...p, currentHp: getStats(p).maxHp}))); 
+        setParty(prev => prev.map(p => ({...p, currentHp: getStats(p).maxHp, status: null, stages: {}, volatiles: {}}))); 
         setInfinityState(null); 
         setAnimEffect(null);
         setBattle(null);
@@ -11867,6 +11885,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       moves: (p.moves || []).map(m => ({...m, pp: m.maxPP || 15})),
       status: null,
       stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
+      volatiles: {},
       intimacy: Math.max(0, (p.intimacy || 0) - 3)
     })));
     setComboUsedThisBattle(false);
