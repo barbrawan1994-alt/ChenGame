@@ -1174,7 +1174,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     // ==========================================
   function calcNextExp(lv, expMod = 1.0) {
-    const lateBonus = lv > 80 ? (lv - 80) * (lv - 80) * 8 : (lv > 50 ? (lv - 50) * (lv - 50) * 3 : 0);
+    let lateBonus = 0;
+    if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 3;
+    if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 8;
     return Math.floor((lv * 100 + lateBonus) * expMod);
   }
 
@@ -2051,7 +2053,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       uid: Date.now() + Math.random(),
       level,
       exp: 0,
-      nextExp: Math.floor(level * 100 * expMod),
+      nextExp: calcNextExp(level, expMod),
       nature: randomNature,
       equip: null,
       equips: [null, null],
@@ -6441,7 +6443,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6514,12 +6516,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
         isDouble = true;
       }
       const bossIsShiny = challenge.bossLvl >= 80;
-      enemyParty.push(createPet(challenge.boss, challenge.bossLvl, true, bossIsShiny));
+      const bossPet = createPet(challenge.boss, challenge.bossLvl, true, bossIsShiny);
+      if (challenge.bossLvl >= 90) bossPet.customStatMult = 1.2;
+      else if (challenge.bossLvl >= 75) bossPet.customStatMult = 1.1;
+      enemyParty.push(bossPet);
       const targetSize = challenge.teamSize || 6;
       while (enemyParty.length < targetSize) {
-        const randomDex = _.random(1, 500); 
+        const randomDex = _.random(1, 500);
         const minionLvl = Math.max(10, challenge.bossLvl - _.random(3, 10));
-        enemyParty.push(createPet(randomDex, minionLvl, true));
+        const minion = createPet(randomDex, minionLvl, true);
+        if (challenge.bossLvl >= 85) minion.customStatMult = 1.1;
+        enemyParty.push(minion);
       }
       trainerName = `[挑战] ${challenge.title}`;
       const challengeTier = challenge.bossLvl <= 35 ? 1 : challenge.bossLvl <= 60 ? 2 : challenge.bossLvl <= 85 ? 3 : 4;
@@ -9918,7 +9925,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
       const kwExpBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.exp || 0) : 0;
       const kwExpBuff = (kingdomWar?.expBuffBattles > 0) ? 50 : 0;
-      const expGain = Math.floor(baseExp * shareRatio * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100));
+      const lvlDiff = pet.level - deadEnemy.level;
+      const lvlPenalty = lvlDiff > 20 ? 0.2 : lvlDiff > 10 ? 0.5 : lvlDiff > 5 ? 0.8 : 1.0;
+      const expGain = Math.floor(baseExp * shareRatio * lvlPenalty * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100));
       
       pet.exp += expGain;
       if (!isActive && expGain > 0) levelUpLog += ` ${pet.name}+${expGain}exp`;
@@ -10303,7 +10312,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     // 2. 英雄试炼 -> 掉落属性增强剂
     if (battle.type === 'dungeon_stat') {
-        const growthItems = GROWTH_ITEMS;
+        const growthItems = GROWTH_ITEMS.filter(i => i.id !== 'max_candy');
         const rewardItem = _.sample(growthItems);
         
         setInventory(prev => ({
@@ -10357,11 +10366,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 生存竞技场 - 每波递增，不断变强
     if (battle.type === 'survival') {
       const wave = battle.survivalWave || 1;
-      const bonusGold = wave * 500;
+      const bonusGold = wave * 800 + (wave >= 5 ? wave * 300 : 0);
       setGold(g => g + bonusGold);
       addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
-      // 继续下一波，敌人等级+2
-      const nextLvl = Math.min(100, (battle.enemyParty?.[0]?.level || 70) + 2);
+      const nextLvl = Math.min(100, (battle.enemyParty?.[0]?.level || 70) + 3);
       if (confirm(`🏟️ 第${wave}波胜利！\n已累计奖金 ${bonusGold} 金币\n继续挑战第${wave+1}波？(敌人更强)`)) {
         setParty(updatedParty);
         setBattle(null);
@@ -10371,16 +10379,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
       } else {
         addLog(`🏟️ 竞技场结束，共坚持${wave}波！`);
-        if (wave >= 5) {
-          const rewardItem = _.sample(GROWTH_ITEMS);
+        if (wave >= 3) {
+          const rewardItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
           setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
-          addLog(`🏅 坚持5波以上！额外获得 ${rewardItem.emoji} ${rewardItem.name}!`);
+          addLog(`🏅 坚持${wave}波！额外获得 ${rewardItem.emoji} ${rewardItem.name}!`);
+        }
+        if (wave >= 7) {
+          const equip = createUniqueEquip(_.sample(RANDOM_EQUIP_DB).id);
+          setAccessories(prev => [...prev, equip]);
+          addLog(`🏆 ${wave}波壮举！获得 ${equip.icon} ${equip.displayName}!`);
+        }
+        if (wave >= 10) {
+          setInventory(prev => ({ ...prev, max_candy: (prev.max_candy || 0) + 1 }));
+          addLog(`👑 十连胜传说！获得 🌟 神奇糖果!`);
+          unlockTitle('竞技场之王');
         }
       }
     }
 
-    // 4. 随机装备掉落 (唯一装备 + 标准饰品)
-    const dropRate = isTrainer ? 0.1 : 0.02;
+    const avgEnemyLv = enemyParty.reduce((s, e) => s + (e.level || 0), 0) / Math.max(1, enemyParty.length);
+    const lvBonus = avgEnemyLv >= 90 ? 0.05 : avgEnemyLv >= 70 ? 0.03 : avgEnemyLv >= 50 ? 0.01 : 0;
+    const dropRate = (isTrainer ? 0.1 : 0.02) + lvBonus;
     if (Math.random() < dropRate) {
         const baseEquip = _.sample(RANDOM_EQUIP_DB);
         const newEquip = createUniqueEquip(baseEquip.id);
@@ -10900,7 +10919,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const mapBadge = MAPS.find(m=>m.id===mapId)?.badge;
           const isNewBadge = mapBadge && !badges.includes(mapBadge);
           if (isNewBadge) {
-            setBadges(prev => [...prev, mapBadge]);
+            setBadges(prev => {
+              const newBadges = [...prev, mapBadge];
+              const bc = newBadges.length;
+              const milestoneGold = bc * 1000;
+              setGold(g => g + milestoneGold);
+              addLog(`🏅 获得第${bc}枚徽章！奖励 ${milestoneGold} 金币！`);
+              if (bc === 3) {
+                setInventory(inv => ({ ...inv, balls: { ...inv.balls, great: (inv.balls.great || 0) + 10 } }));
+                addLog(`🎁 3徽章里程碑：获得 10 个高级球！`);
+              } else if (bc === 5) {
+                setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } }));
+                addLog(`🎁 5徽章里程碑：获得 5 个超级球！`);
+              } else if (bc === 8) {
+                setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + 3 }));
+                addLog(`🎁 8徽章里程碑：获得 3 个经验糖果！`);
+              } else if (bc === 13) {
+                setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } }));
+                addLog(`🎁 全徽章里程碑：获得 大师球！`);
+              }
+              return newBadges;
+            });
           }
           try { checkTreasureUnlock('gym', { mapId }); } catch(e) {}
           setDialogQueue(storyChapter.outro);
@@ -13542,19 +13581,22 @@ const renderMenu = () => {
       }
       // --- 元素之塔 (中门槛, 进化石) ---
       else if (dungeon.type === 'stone') {
-        startBattle({ id: 996, name: '元素之塔', lvl: [55, 65], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 }, 'dungeon_stone');
+        const stLv = Math.max(55, Math.min(90, party[0].level - 5));
+        startBattle({ id: 996, name: '元素之塔', lvl: [stLv, stLv + 10], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 + stLv * 5 }, 'dungeon_stone');
       }
       // --- 英雄试炼 (单挑, 增强剂) ---
       else if (dungeon.type === 'stat') {
-        startBattle({ id: 995, name: '英雄试炼', lvl: [60, 70], pool: [63, 106, 138, 183, 214, 270], drop: 500 }, 'dungeon_stat');
+        const htLv = Math.max(60, Math.min(95, party[0].level));
+        startBattle({ id: 995, name: '英雄试炼', lvl: [htLv - 5, htLv + 5], pool: [63, 106, 138, 183, 214, 270], drop: 500 + htLv * 5 }, 'dungeon_stat');
       }
-      // --- 豪宅金库 (高门票, 高风险高回报, 但有冷却限制) ---
       else if (dungeon.type === 'gold_pro') {
-        startBattle({ id: 994, name: '豪宅金库', lvl: [60, 75], pool: [118, 119, 364], drop: 8000 }, 'wild');
+        const goldDrop = 8000 + badges.length * 800;
+        startBattle({ id: 994, name: '豪宅金库', lvl: [55 + badges.length * 2, 70 + badges.length * 2], pool: [118, 119, 364], drop: goldDrop }, 'wild');
       }
       // --- 闪光山谷 (高门槛, 高闪光率) ---
       else if (dungeon.type === 'shiny_hunt') {
-        startBattle({ id: 993, name: '闪光山谷', lvl: [80, 90], pool: [147, 148, 151, 244, 299], drop: 1000 }, 'dungeon_shiny');
+        const shLv = Math.max(80, Math.min(98, party[0].level));
+        startBattle({ id: 993, name: '闪光山谷', lvl: [shLv - 5, shLv + 5], pool: [147, 148, 151, 244, 299], drop: 1000 + (shLv - 80) * 50 }, 'dungeon_shiny');
       }
       // --- 无限城 (终局内容) ---
       else if (dungeon.type === 'infinity') { enterInfinityCastle(); }
@@ -13562,7 +13604,8 @@ const renderMenu = () => {
       else if (dungeon.type === 'hyakki') {
         if (party[0].level < 80) { alert("⛔ 等级不足！\n百鬼夜行要求首发精灵 Lv.80 以上。"); return; }
         alert("👹 百鬼夜行开始！\n强大的咒灵将向你袭来！");
-        startBattle({ id: 998, name: '百鬼夜行', lvl: [75, 90], pool: [92, 93, 94, 130, 144, 146], drop: 3000 }, 'wild');
+        const hyLv = Math.max(75, Math.min(98, party[0].level - 2));
+        startBattle({ id: 998, name: '百鬼夜行', lvl: [hyLv - 5, hyLv + 5], pool: [92, 93, 94, 130, 144, 146], drop: 3000 + (hyLv - 75) * 100 }, 'wild');
       }
       // --- 连战Boss塔 ---
       else if (dungeon.type === 'boss_rush') {
@@ -13603,8 +13646,8 @@ const renderMenu = () => {
       }
       // --- 极限试炼 ---
       else if (dungeon.type === 'extreme') {
-        alert("☠️ 极限试炼！\n每波战斗都附带随机Debuff！\n连续击败5波获得冠军级奖励！");
-        startBattle({ id: 987, name: '极限试炼 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL], drop: 8000, survivalWave: 1 }, 'survival');
+        alert("☠️ 极限试炼！\n连续击败强敌，每波都更强！\n坚持越久奖励越丰厚！");
+        startBattle({ id: 987, name: '极限试炼 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL, ...FINAL_GOD_IDS], drop: 10000, survivalWave: 1, isExtreme: true }, 'survival');
       }
       // --- 宝藏迷宫 ---
       else if (dungeon.type === 'treasure') {
@@ -19280,7 +19323,7 @@ const renderMenu = () => {
       3: ['a22','a23','a24'],
       4: ['a28','a12'],
     };
-    const showStones = tier >= 3;
+    const showStones = tier >= 2;
     const showCursed = tier >= 3;
     const showSpecial = tier >= 4;
 
