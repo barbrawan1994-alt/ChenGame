@@ -2159,6 +2159,40 @@ const [viewStatPet, setViewStatPet] = useState(null);
   };
 
   // ==========================================
+  // [前置] 按等级生成技能 (createPet 依赖)
+  // ==========================================
+  const getMoveByLevel = (type, level) => {
+    const db = SKILL_DB[type] || SKILL_DB.NORMAL;
+    const index = Math.floor(level / 5); 
+    const template = db[index % db.length];
+    let name = template.name;
+    let power = (template.p !== undefined) ? template.p : 40;
+    let pp = template.pp || 15;
+    let acc = template.acc || 100; 
+    if (power >= 120) acc = 85;
+    if (power >= 150) acc = 75;
+    const tier = Math.floor(index / db.length);
+    if (power > 0) {
+        if (tier === 1) { name = `真·${name}`; power = Math.floor(power * 1.3); }
+        else if (tier === 2) { name = `超·${name}`; power = Math.floor(power * 1.6); }
+        else if (tier >= 3) { name = `神·${name}`; power = Math.floor(power * 2.2); }
+    }
+    return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, desc: template.desc || '' };
+  };
+
+  // ==========================================
+  // [前置] 伴侣加成 (createPet 依赖)
+  // ==========================================
+  const getSpouseBonuses = () => {
+    if (!marriage.spouse) return {};
+    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
+    if (!candidate) return {};
+    const aff = marriage.affections[marriage.spouse] || 0;
+    const ml = getMarriageLevel(aff);
+    return getSpouseBonus(candidate, ml.level);
+  };
+
+  // ==========================================
   // [核心修复] 创建精灵 (含特性/亲密度/宠物风魅力评级)
   // ==========================================
   function createPet(dexId, level, isBoss = false, forceShiny = false) {
@@ -3430,14 +3464,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     alert(gift.text);
   };
 
-  const getSpouseBonuses = () => {
-    if (!marriage.spouse) return {};
-    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
-    if (!candidate) return {};
-    const aff = marriage.affections[marriage.spouse] || 0;
-    const ml = getMarriageLevel(aff);
-    return getSpouseBonus(candidate, ml.level);
-  };
+  // getSpouseBonuses 已前置到 createPet 之前
 
   // ==========================================
   // 精灵家园系统 - 完整UI
@@ -5474,39 +5501,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setStarterOptions(created.slice(0, 5));
   };
 
-   // ----------------------------------------
-  // [修正] 动态技能生成 (添加 acc 命中率)
-  // ----------------------------------------
-  const getMoveByLevel = (type, level) => {
-    const db = SKILL_DB[type] || SKILL_DB.NORMAL;
-    const index = Math.floor(level / 5); 
-    
-    const template = db[index % db.length];
-    let name = template.name;
-    let power = (template.p !== undefined) ? template.p : 40;
-    let pp = template.pp || 15;
-    
-    // [Issue 2] 默认命中率 100，威力越大概率越低
-    let acc = template.acc || 100; 
-    if (power >= 120) acc = 85;
-    if (power >= 150) acc = 75; // 强力技能容易打空
-
-    const tier = Math.floor(index / db.length);
-    if (power > 0) {
-        if (tier === 1) {
-            name = `真·${name}`;
-            power = Math.floor(power * 1.3);
-        } else if (tier === 2) {
-            name = `超·${name}`;
-            power = Math.floor(power * 1.6);
-        } else if (tier >= 3) {
-            name = `神·${name}`;
-            power = Math.floor(power * 2.2);
-        }
-    }
-
-    return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, desc: template.desc || '' };
-  };
+   // getMoveByLevel 已前置到 createPet 之前
 
 
    const useBerry = (petIdx) => {
