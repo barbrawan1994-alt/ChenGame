@@ -49,7 +49,7 @@ export const DEVIL_FRUITS = {
       sAtkMult: 1.5, healPerTurn: 0.1, fixedDmgPercent: 0.15,
     },
     transformMove: { name: '伽马刀', t: 'PSYCHIC', p: 110, pp: 5, acc: 95, isFruitMove: true,
-      effect: { type: 'STATUS', status: 'BRN', chance: 0.4, target: 'enemy' } },
+      effect: { type: 'STAT', stat: 'p_def', stages: -2, chance: 0.5, target: 'enemy' } },
   },
   df_ito: {
     id: 'df_ito', name: '线线果实', category: 'PARAMECIA', rarity: 'EPIC',

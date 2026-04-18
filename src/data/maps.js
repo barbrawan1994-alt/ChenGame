@@ -107,7 +107,7 @@ export const MAPS = [
     id: 100, name: '都立咒术高专', lvl: [40, 80],
     pool: [92, 93, 94, 63, 65, 200, 130, 149, 150, 151],
     drop: 500, type: 'ghost', color: '#1A237E', gymLeader: 150, gymLvl: 80, badge: '🔮', icon: '⛩️',
-    isJJK: true, unlockBadges: 5, desc: '东京都立咒术高等专门学校，术师们的训练基地（推荐Lv.60+）', gymName: '五条悟'
+    isJJK: true, unlockBadges: 7, desc: '东京都立咒术高等专门学校，术师们的训练基地（推荐Lv.60+）', gymName: '五条悟'
   },
   // 莉可莉丝篇 - DA特务本部
   {

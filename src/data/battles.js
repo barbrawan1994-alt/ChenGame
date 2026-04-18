@@ -55,7 +55,7 @@ export const CHALLENGES = [
     req: 700, boss: 750, bossLvl: 100, teamSize: 6, rewardId: 750,
     bg: 'linear-gradient(135deg, #1A237E 0%, #00BCD4 100%)', color: '#80DEEA' },
   { id: 'c18', title: '创世之巅', desc: '800精灵图鉴大师的最终证明',
-    req: 780, boss: 800, bossLvl: 100, teamSize: 6, rewardId: 691,
+    req: 780, boss: 800, bossLvl: 100, teamSize: 6, rewardId: 800,
     bg: 'linear-gradient(135deg, #000000 0%, #FFD700 50%, #000000 100%)', color: '#FFD700' },
 ];
 

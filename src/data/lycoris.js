@@ -84,7 +84,7 @@ export const BOND_PER_KO = 5;
 export const CAFE_BUILDING = {
   id: 'lycoreco_cafe',
   name: 'LycoReco咖啡厅',
-  price: 15000,
+  price: 8000,
   workerSlots: 3,
   tickInterval: 300000,
   goldPerTick: 200,
