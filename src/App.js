@@ -761,20 +761,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
         // 2. 如果当前在“功能未开放”界面，相当于点击返回
         if (isDialogVisible && dialogQueue.length > 0) {
             e.preventDefault();
-            if (currentDialogIndex >= dialogQueue.length - 1) {
-              setIsDialogVisible(false); setDialogQueue([]); setCurrentDialogIndex(0);
-              if (pendingTask) {
-                if (pendingTask.type === 'battle') {
-                  startBattle({ id: 999, name: pendingTask.name, pool: [pendingTask.enemyId], eliteParty: pendingTask.eliteParty || null, storyTaskStep: pendingTask.step }, 'story_task');
-                } else {
-                  const nextStep = pendingTask.step + 1;
-                  setStoryStep(nextStep);
-                }
-                setPendingTask(null);
-              }
-            } else {
-              setCurrentDialogIndex(prev => prev + 1);
-            }
+            if (dialogNextRef.current) dialogNextRef.current();
             return;
         }
 
@@ -944,6 +931,7 @@ const [infinityState, setInfinityState] = useState(() => {
 
   // 引用，用于地图滚动
   const mapContainerRef = useRef(null);
+  const dialogNextRef = useRef(null);
   const marriageRef = useRef(marriage);
   marriageRef.current = marriage;
   const partyRef = useRef(party);
@@ -1816,8 +1804,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const renderDialogOverlay = () => {
     if (!isDialogVisible || dialogQueue.length === 0) return null;
 
-    const currentLine = dialogQueue[currentDialogIndex];
-    const isLastLine = currentDialogIndex === dialogQueue.length - 1;
+    const safeIdx = Math.min(currentDialogIndex, dialogQueue.length - 1);
+    const currentLine = dialogQueue[safeIdx];
+    if (!currentLine) return null;
+    const isLastLine = safeIdx === dialogQueue.length - 1;
 
     const handleNext = () => {
       if (isLastLine) {
@@ -1865,6 +1855,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         setCurrentDialogIndex(prev => prev + 1);
       }
     };
+    dialogNextRef.current = handleNext;
 
     return (
       <>
