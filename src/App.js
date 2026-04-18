@@ -1324,6 +1324,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // ==========================================
   function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
     if (!pet) return { maxHp: 1, p_atk: 1, p_def: 1, s_atk: 1, s_def: 1, spd: 1, crit: 5 };
+    const isPlayerPet = gangBonusOverride === undefined;
     const growth = 1 + (pet.level || 1) * 0.05; 
     const shinyMod = pet.isFusedShiny ? 1.25 : (pet.isShiny ? 1.1 : 1.0);
 
@@ -1438,7 +1439,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
     }
 
     const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
-    const isPlayerPet = gangBonusOverride === undefined;
     const hsScore = isPlayerPet && typeof calcHouseScore === 'function' ? calcHouseScore((housing?.furniture || []).filter(f => f.placed)) : 0;
     const hsTier = isPlayerPet && typeof getHousingScoreTier === 'function' ? getHousingScoreTier(hsScore) : null;
     const housingAllStats = hsTier?.buff?.allStats || 0;
