@@ -8,6 +8,13 @@
   --accent-color: #FF4081;
   --bg-color: #f0f4f8;
   --font-main: "Nunito", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --z-base: 1;
+  --z-sticky: 10;
+  --z-modal: 2000;
+  --z-dialog: 3000;
+  --z-toast: 5000;
+  --z-critical: 9000;
+  --z-debug: 9999;
   
   /* 按钮主题色 */
   --btn-primary: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -372,8 +379,8 @@ button:active { transform: scale(0.96); }
 
 .dock-btn-capsule {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: transparent; border: none; cursor: pointer; padding: 4px 6px;
-  border-radius: 12px; transition: all 0.2s; min-width: 0; flex-shrink: 1;
+  background: transparent; border: none; cursor: pointer; padding: 6px 8px;
+  border-radius: 12px; transition: all 0.2s; min-width: 40px; min-height: 44px; flex-shrink: 1;
 }
 .dock-btn-capsule:hover { background: rgba(33, 150, 243, 0.1); transform: scale(1.1); }
 .dock-emoji { font-size: 24px; margin-bottom: 2px; }

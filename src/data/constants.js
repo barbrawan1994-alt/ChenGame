@@ -32,7 +32,8 @@ export const THEME_CONFIG = {
   ice: { bg: '#E0F7FA', boardBg: '#E1F5FE', obstacle: '🧊', ground: '❄️', water: '🌊', rock: '🪨', deco: '⛄', cssClass: 'theme-ice' },
   ground: { bg: '#FFE082', boardBg: '#FFF8E1', obstacle: '🌵', ground: '🟨', water: '💧', rock: '🪨', deco: '💀', cssClass: 'theme-ground' },
   fairy: { bg: '#F8BBD0', boardBg: '#FCE4EC', obstacle: '🏰', ground: '🌸', water: '🍫', rock: '🧁', deco: '🍭', cssClass: 'theme-fairy' },
-  space: { bg: '#311B92', boardBg: '#4527A0', obstacle: '☄️', ground: '🌑', water: '🌌', rock: '🪐', deco: '⭐', cssClass: 'theme-space' }
+  space: { bg: '#311B92', boardBg: '#4527A0', obstacle: '☄️', ground: '🌑', water: '🌌', rock: '🪐', deco: '⭐', cssClass: 'theme-space' },
+  gold: { bg: '#FFF8E1', boardBg: '#FFFDE7', obstacle: '🏛️', ground: '🟡', water: '✨', rock: '🪙', deco: '👑', cssClass: 'theme-gold' }
 };
 
 export const TRAINER_AVATARS = [

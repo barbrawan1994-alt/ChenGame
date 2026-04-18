@@ -124,7 +124,7 @@ const BREATHING_BUFFS = [
   { id: 'spd_up', name: '⚡ 雷之呼吸', desc: '全队速度 +15%', effect: (p) => p.customBaseStats.spd = Math.floor(p.customBaseStats.spd * 1.15) },
   { id: 'heal_turn', name: '🌊 水之呼吸', desc: '每回合恢复 5% HP', type: 'passive' }, // 需要战斗逻辑支持，这里简化为进场加血上限
   { id: 'crit_up', name: '🐗 兽之呼吸', desc: '暴击率 +10%', effect: (p) => p.customBaseStats.crit += 10 },
-  { id: 'heal_all', name: '🦋 虫之呼吸', desc: '立即恢复全队 50% HP', type: 'instant', effect: (p) => p.currentHp = Math.min(getStats(p).maxHp, p.currentHp + getStats(p).maxHp * 0.5) }
+  { id: 'heal_all', name: '🦋 虫之呼吸', desc: '立即恢复全队 50% HP', type: 'instant' }
 ];
 const ALL_SKILL_TMS = (() => {
   const existingKeys = new Set(TMS.map(t => `${t.type}_${t.name}`));
@@ -493,29 +493,22 @@ useEffect(() => {
 
   // 2. 选择呼吸法 Buff
   const selectInfinityBuff = (buff) => {
-    // A. 如果是即时恢复类
     if (buff.type === 'instant') {
-      const newParty = party.map(p => {
+      setParty(prev => prev.map(p => {
         if (p.currentHp > 0) {
           const stats = getStats(p);
-          // 恢复 50% 血量
           const heal = Math.floor(stats.maxHp * 0.5);
           return { ...p, currentHp: Math.min(stats.maxHp, p.currentHp + heal) };
         }
         return p;
-      });
-      setParty(newParty);
+      }));
       showMapToast('✨', '呼吸法', '全队体力大幅恢复！', 2000);
     } 
-    // B. 如果是属性加成类 (修改 customBaseStats)
     else if (buff.effect) {
-      const newParty = party.map(p => {
-        // 复制对象
+      setParty(prev => prev.map(p => {
         const newPet = { ...p };
-        // 如果还没有自定义种族值，先锁定当前种族值
         if (!newPet.customBaseStats) {
             const base = POKEDEX.find(d => d.id === newPet.id) || POKEDEX[0];
-            // 简单的种族值快照
             newPet.customBaseStats = {
                 hp: base.hp, p_atk: base.atk, p_def: base.def, 
                 s_atk: base.atk, s_def: base.def, spd: base.spd, crit: 5
@@ -527,8 +520,7 @@ useEffect(() => {
           newPet.customBaseStats[k] = Math.min(cap, newPet.customBaseStats[k]);
         });
         return newPet;
-      });
-      setParty(newParty);
+      }));
       
       // 记录已获得的 Buff
       setInfinityState(prev => ({
@@ -769,18 +761,26 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
         // 2. 如果当前在“功能未开放”界面，相当于点击返回
         if (isDialogVisible && dialogQueue.length > 0) {
             e.preventDefault();
-            setCurrentDialogIndex(prev => {
-              if (prev >= dialogQueue.length - 1) {
-                setIsDialogVisible(false); setDialogQueue([]); return 0;
+            if (currentDialogIndex >= dialogQueue.length - 1) {
+              setIsDialogVisible(false); setDialogQueue([]); setCurrentDialogIndex(0);
+              if (pendingTask) {
+                if (pendingTask.type === 'battle') {
+                  startBattle({ id: 999, name: pendingTask.name, pool: [pendingTask.enemyId], eliteParty: pendingTask.eliteParty || null, storyTaskStep: pendingTask.step }, 'story_task');
+                } else {
+                  const nextStep = pendingTask.step + 1;
+                  setStoryStep(nextStep);
+                }
+                setPendingTask(null);
               }
-              return prev + 1;
-            });
+            } else {
+              setCurrentDialogIndex(prev => prev + 1);
+            }
             return;
         }
 
         if (view === 'locked') {
             e.preventDefault();
-            setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu');
+            setView(safeBack());
             return;
         }
 
@@ -875,8 +875,9 @@ const [infinityState, setInfinityState] = useState(() => {
     ];
     const reward = DAY_REWARDS[Math.min(newStreak - 1, DAY_REWARDS.length - 1)];
     setGold(g => g + reward.gold);
+    updateAchStat({ totalGoldEarned: reward.gold });
     if (reward.berries) setInventory(prev => ({...prev, berries: (prev.berries||0) + reward.berries}));
-    if (reward.meds) setInventory(prev => ({...prev, medicines: {...prev.medicines, super_potion: (prev.medicines?.super_potion||0) + (newStreak >= 7 ? 5 : 3)}}));
+    if (reward.meds) setInventory(prev => ({...prev, meds: {...(prev.meds||{}), super_potion: ((prev.meds||{}).super_potion||0) + (newStreak >= 7 ? 5 : 3)}}));
     setDailyLogin({ lastDate: today, streak: newStreak, totalDays: newTotal });
     setShowDailyReward({ streak: newStreak, desc: reward.desc, total: newTotal });
   }, [trainerName]); // eslint-disable-line
@@ -1292,8 +1293,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
         meds: { potion: 10, super_potion: 3 },
         stones: {},
         tms: {},  
-        misc: {}, 
-        berries: 8 
+        misc: {},
+        cursed: {},
+        eggs: [],
+        berries: 8,
+        exp_candy: 0,
+        max_candy: 0,
     });
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     
@@ -1309,7 +1314,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     updateAchStat({ starterChosen: true, totalCaught: 1 });
     
     // 6. 提示
-    alert(`🎉 恭喜！你获得了 ${newPet.name}！\n冒险开始了！`);
+    showMapToast('🎉', '冒险开始', `恭喜！你获得了 ${newPet.name}！冒险开始了！`, 3000);
   };
 
     // ==========================================
@@ -1509,6 +1514,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const openSectTeamDetail = (sectId) => {
       const teamIds = SECT_TEAMS[sectId] || [];
       const sectInfo = SECT_DB[sectId];
+      if (!sectInfo) { showMapToast('❌', '错误', '门派信息不存在', 1500); return; }
       
       // 模拟生成敌方配置 (与战斗逻辑一致)
       const previewTeam = teamIds.map((id, idx) => {
@@ -1547,7 +1553,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             alignItems: 'center',
             position: 'sticky', top: 0, zIndex: 10 // 保持在顶部
         }}>
-          <button className="btn-back" onClick={() => setView(getBackToMapView())} style={{
+          <button className="btn-back" onClick={() => setView(safeBack())} style={{
               color:'#fff', 
               background: '#333',
               border: '1px solid #555',
@@ -1848,7 +1854,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                   });
                   showMapToast('📍', '剧情推进', `下一目标: ${nextTask.name} (${nextTask.x},${nextTask.y}) ${nextTask.type === 'battle' ? '⚔️' : '💬'}`, 3000);
               } else {
-                  alert("🎉 本章剧情任务全部完成！\n现在可以去挑战道馆馆主了！");
+                  showMapToast('🎉', '剧情完成', '本章剧情任务全部完成！现在可以去挑战道馆馆主了！', 3000);
               }
            }
            setPendingTask(null);
@@ -2564,7 +2570,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           if (ach.reward.title) unlockTitle(ach.reward.title);
         }
       });
-      if (totalGoldReward > 0) setGold(g => g + totalGoldReward);
+      if (totalGoldReward > 0) { setGold(g => g + totalGoldReward); updateAchStat({ totalGoldEarned: totalGoldReward }); }
       setAchNotification(newUnlocks[0]);
       if (newUnlocks.length > 1) {
         let idx = 1;
@@ -3411,7 +3417,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
       setWeddingScene(null);
       updateAchStat({ marriageComplete: 1 });
-      alert('🎊 婚礼圆满结束！恭喜你们！\n已获得称号「新婚快乐」\n新的主题房屋已解锁购买！');
+      showMapToast('🎊', '婚礼圆满', '恭喜！已获得称号「新婚快乐」，新的主题房屋已解锁购买！', 3500);
       return;
     }
     setWeddingScene(prev => ({ ...prev, step: prev.step + 1 }));
@@ -3461,7 +3467,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         [gift.item]: (prev[gift.item] || 0) + gift.amount
       }));
     }
-    alert(gift.text);
+    showMapToast('🎁', '礼物', gift.text, 2500);
   };
 
   // getSpouseBonuses 已前置到 createPet 之前
@@ -3710,13 +3716,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         ...prev,
         furniture: [...prev.furniture, { baseId: def.id, quality, placed: false, slotIdx: null }],
       }));
-      alert(`🎉 获得 ${def.icon} ${def.name} (${FURNITURE_QUALITY[quality].name})`);
+      showMapToast('🎉', '获得家具', `${def.icon} ${def.name} (${FURNITURE_QUALITY[quality].name})`, 2500);
     };
 
     return (
       <div className="screen" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(getBackToMapView())}>⬅ 返回地图</button>
+          <button className="btn-back" onClick={() => setView(safeBack())}>⬅ 返回地图</button>
           <div className="nav-title">🏡 精灵家园</div>
           <div className="nav-coin">💰 {gold.toLocaleString()}</div>
         </div>
@@ -4512,7 +4518,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         {/* 顶栏 */}
         <div style={{padding:'14px 16px 10px', flexShrink:0, background:'rgba(0,0,0,0.2)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px'}}>
-            <button onClick={() => { setView(party.length > 0 ? getBackToMapView() : 'menu'); setGuideSearch(''); setGuideCat(null); }}
+            <button onClick={() => { setView(safeBack()); setGuideSearch(''); setGuideCat(null); }}
               style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', borderRadius:'8px', padding:'5px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600', backdropFilter:'blur(10px)'}}>
               ← 返回
             </button>
@@ -4666,7 +4672,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         {/* Header */}
         <div style={{padding:'20px 24px 16px', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
-            <button onClick={() => setView(getBackToMapView())} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+            <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>成就大厅</div>
               <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>{unlocked} / {total} 已解锁</div>
@@ -4768,7 +4774,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff'}}>
          <div style={{fontSize: '60px', marginBottom: '20px'}}>🔒</div>
          <h2 style={{marginBottom: '10px'}}>功能尚未开放</h2>
-         <button onClick={() => setView(hasSave && party.length > 0 ? getBackToMapView() : 'menu')} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
+         <button onClick={() => setView(safeBack())} style={{padding: '12px 40px', fontSize: '16px', borderRadius: '25px', border: 'none', cursor: 'pointer', background: '#fff', color: '#333', fontWeight: 'bold'}}>返回 (Space)</button>
       </div>
   );
 
@@ -4792,8 +4798,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="screen" style={{background:'linear-gradient(135deg,#0d1b2a,#1b2838,#0d1b2a)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
         <div style={{position:'absolute', inset:0, background:'radial-gradient(circle at 50% 0%, rgba(255,215,0,0.05) 0%, transparent 60%)'}} />
 
-        <div className="nav-header glass-panel" style={{background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5}}>
-          <button className="btn-back" onClick={() => setView(getBackToMapView())}
+        <div style={{background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}>
+          <button className="btn-back" onClick={() => setView(safeBack())}
             style={{color:'#fff', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'6px 16px', borderRadius:'20px', cursor:'pointer', fontWeight:'bold', fontSize:'12px', backdropFilter:'blur(8px)'}}>
             ⬅ 退出
           </button>
@@ -4930,7 +4936,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const canJoinGang = leaveCooldown <= 0;
 
     if (!gang.gangId) {
-      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div className="nav-header glass-panel" style={headerStyle}><button className="btn-back" onClick={() => setView(getBackToMapView())} style={{...btnSecondary}}>⬅ 返回</button><div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } if (!window.confirm('确定要加入「'+g.name+'」吗？')) return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:new Date().toISOString().slice(0,10)}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
+      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } if (!window.confirm('确定要加入「'+g.name+'」吗？')) return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:new Date().toISOString().slice(0,10)}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
     }
 
     // 有帮派
@@ -5353,9 +5359,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
     return (
       <div className="screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
-        <div className="nav-header glass-panel" style={headerStyle}>
-          <button className="btn-back" onClick={() => setView(getBackToMapView())} style={btnSecondary}>⬅ 返回</button>
-          <div className="nav-title" style={{fontSize:'16px', letterSpacing:'2px'}}>{gangInfo?.icon} {gangInfo?.name || '帮派'}</div>
+        <div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}>
+          <button onClick={() => setView(safeBack())} style={btnSecondary}>⬅ 返回</button>
+          <div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>{gangInfo?.icon} {gangInfo?.name || '帮派'}</div>
           <div style={{fontSize:'12px', color:'#FFD700'}}>{rank.icon} {rank.name}</div>
         </div>
 
@@ -6194,7 +6200,7 @@ const useGrowthItem = (petIndex, itemId) => {
         const merchantItems = [
           { name:'大师球', cost: 50000, action: () => setInventory(prev => ({...prev, balls: {...prev.balls, master: (prev.balls.master||0)+1}})) },
           { name:'高级球 ×10', cost: 5000, action: () => setInventory(prev => ({...prev, balls: {...prev.balls, ultra: (prev.balls.ultra||0)+10}})) },
-          { name:'全队回满', cost: 3000, action: () => { const np = [...party]; np.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; }); setParty(np); } },
+          { name:'全队回满', cost: 3000, action: () => { setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp, status: null }))); } },
           { name:'伤药 ×20', cost: 2000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, potion:(prev.meds.potion||0)+20}})) },
           { name:'PP补剂 ×10', cost: 3000, action: () => setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+10}})) },
           { name:'神秘礼包（随机奖励）', cost: 8000, action: () => { const r = Math.random(); if(r<0.15) { setInventory(prev=>({...prev,balls:{...prev.balls,ultra:(prev.balls.ultra||0)+5}})); showMapToast('🎁', '神秘礼包', '获得 高级球 ×5！'); } else if(r<0.4) { setGold(g=>g+5000); showMapToast('🎁', '神秘礼包', '获得 5000 金币！'); } else if(r<0.7) { const np=[...party]; np.forEach(p=>{p.currentHp=getStats(p).maxHp; (p.moves||[]).forEach(m=>{m.pp=m.maxPP||15;});}); setParty(np); showMapToast('🎁', '神秘礼包', '全队完全恢复！'); } else { const item = safeGrowthItem(); setInventory(prev=>({...prev,[item.id]:(prev[item.id]||0)+2})); showMapToast('🎁', '神秘礼包', `获得 ${item.name} ×2！`); } } },
@@ -6213,7 +6219,7 @@ const useGrowthItem = (petIndex, itemId) => {
         const trapRoll = Math.random();
         if (trapRoll < 0.35) {
           const dmgPct = _.random(10, 25);
-          const np = [...party]; np.forEach(p => { if(p.currentHp > 0) p.currentHp = Math.max(1, p.currentHp - Math.floor(getStats(p).maxHp * dmgPct / 100)); }); setParty(np);
+          setParty(prev => prev.map(p => p.currentHp > 0 ? { ...p, currentHp: Math.max(1, p.currentHp - Math.floor(getStats(p).maxHp * dmgPct / 100)) } : p));
           showMapToast('💥', '踩到陷阱！', `全队受到 ${dmgPct}% 伤害！`, 3000);
         } else if (trapRoll < 0.55) {
           const np = [...party]; const target = np.find(p => p.currentHp > 0 && !p.status);
@@ -6539,7 +6545,7 @@ const useGrowthItem = (petIndex, itemId) => {
 
   const handleEventConfirm = () => {
     setEventData(null);
-    setView(getBackToMapView());
+    setView(safeBack());
   };
 
     // (dead code removed - actual enterDungeon is in renderWorldMap)
@@ -7277,7 +7283,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     const activeIdx = party.findIndex(p => p.currentHp > 0);
-    if (activeIdx === -1) { showMapToast('⚠️', '全员战斗不能', '请先前往精灵中心治疗', 2500); setView(getBackToMapView()); return; }
+    if (activeIdx === -1) { showMapToast('⚠️', '全员战斗不能', '请先前往精灵中心治疗', 2500); setView(safeBack()); return; }
 
        // 初始化战斗状态的辅助函数
     const initBattleState = (p) => {
@@ -7463,7 +7469,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (battleEnemyParty[0]?.trait === 'intimidate') {
             addLog(`${battleEnemyParty[0].name} 的 [威吓] 降低了你的攻击！`);
         }
-        if (battlePlayerParty[activeIdx].trait === 'intimidate') {
+        if (battlePlayerParty[activeIdx]?.trait === 'intimidate') {
             addLog(`${battlePlayerParty[activeIdx].name} 的 [威吓] 降低了对手的攻击！`);
         }
     }, 500);
@@ -8435,6 +8441,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   // ==========================================
   const getBackToMapView = () => mapGrid.length > 0 ? 'grid_map' : 'world_map';
+  const safeBack = () => party.length > 0 ? getBackToMapView() : 'menu';
 
   // 搭档羁绊系统 - 核心逻辑
   // ==========================================
@@ -8763,7 +8770,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (gold < CAFE_BUILDING.price) { showMapToast('💰', '金币不足', `需要 ${CAFE_BUILDING.price} 金币`, 1500); return; }
     setGold(g => g - CAFE_BUILDING.price);
     setCafe(prev => ({ ...prev, owned: true, lastTickTime: Date.now() }));
-    alert('🎉 成功购买 LycoReco咖啡厅！');
+    showMapToast('🎉', '购买成功', '成功购买 LycoReco咖啡厅！', 2500);
   };
 
   const assignCafeWorker = (pet) => {
@@ -11416,7 +11423,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             unlockTitle(chiefInfo.title);
             const rewardEquip = createUniqueEquip(_.sample(RANDOM_EQUIP_DB).id);
             if (rewardEquip) { setAccessories(prev => [...prev, rewardEquip]); addLog(`获得战利品: ${rewardEquip.displayName}`); }
-            alert(`🏆 挑战成功！\n\n你击败了 ${chiefInfo.name}，夺得了【${chiefInfo.title}】的称号！\n\n🎁 宗师光环已获取：\n请在【训练家卡片】或【门派顶峰】界面佩戴该称号，\n即可激活全队${sectInfo.name}加成：\n✨ ${chiefInfo.buffName}: ${chiefInfo.buffDesc}`);
+            showMapToast('🏆', '挑战成功', `击败了 ${chiefInfo.name}，夺得【${chiefInfo.title}】称号！佩戴后激活全队${sectInfo.name}加成：${chiefInfo.buffName}`, 4000);
         } else {
             showMapToast('🥋', '切磋结束', `你仍是【${chiefInfo.title}】`, 2000);
         }
@@ -11539,7 +11546,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (currentFloor % 5 === 0 || currentFloor % 10 === 0) {
             const options = _.sampleSize(BREATHING_BUFFS, 3);
             setInfinityState(prev => ({ ...prev, status: 'buff_select', buffOptions: options }));
-            alert(`🎉 击败了强敌！\n请选择一种【呼吸法】强化自身！`);
+            showMapToast('🎉', '击败强敌', '请选择一种【呼吸法】强化自身！', 2500);
         } else {
             nextInfinityFloor();
         }
@@ -11556,7 +11563,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (leagueRound < 4) {
            setLeagueRound(prev => prev + 1);
            const roundNames = ['16强', '8强', '半决赛', '决赛'];
-           alert(`🎉 胜利！\n恭喜晋级${roundNames[leagueRound] || '下一轮'}！`);
+           showMapToast('🎉', '联盟晋级', `恭喜晋级${roundNames[leagueRound] || '下一轮'}！`, 3000);
            setBattle(null);
            setView('league'); 
            return; 
@@ -12018,7 +12025,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setStoryStep(mainStoryStep);
             setSideStoryStates(prev => { const n = {...prev}; delete n[finishedLine.id]; return n; });
             setActiveSideStory(null);
-            alert(`🎉 ${finishedLine.icon} ${finishedLine.name} 通关！已返回主线剧情。`);
+            showMapToast('🎉', '支线通关', `${finishedLine.icon} ${finishedLine.name} 通关！已返回主线剧情。`, 3000);
           } else {
             setStoryProgress(Math.min(nextProgress, STORY_SCRIPT.length - 1));
             setStoryStep(0);
@@ -12057,7 +12064,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 setBox(prev => [...prev, rewardPet]);
             }
             setCaughtDex(prev => [...prev, 341]);
-            alert("🏆 战胜了日蚀队首领！\n🎉 获得了传说中的精灵【暗黑超梦】！");
+            showMapToast('🏆', '传说降临', '战胜了日蚀队首领！获得了传说中的精灵【暗黑超梦】！', 4000);
       setBattle(null);
       setView('grid_map');
             return; 
@@ -12545,7 +12552,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         <div style={{position:'absolute', inset:0, opacity:0.1, backgroundImage:'radial-gradient(circle, #fff 2px, transparent 2.5px)', backgroundSize:'30px 30px'}}></div>
         
         <div className="nav-header glass-panel" style={{zIndex:10}}>
-            <button className="btn-back" onClick={() => { setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' }); setView(getBackToMapView()); }}>退出</button>
+            <button className="btn-back" onClick={() => { setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' }); setView(safeBack()); }}>退出</button>
             <div className="nav-title">🎣 钓鱼大赛</div>
         </div>
 
@@ -12622,9 +12629,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         {/* 聚光灯 */}
         <div style={{position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'300px', height:'600px', background:'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 80%)', clipPath:'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)', pointerEvents:'none'}}></div>
 
-        <div className="nav-header glass-panel" style={{zIndex:10, background:'rgba(0,0,0,0.3)'}}>
-            <button className="btn-back" onClick={() => setView(getBackToMapView())}>退出</button>
-            <div className="nav-title">🎀 华丽大赛</div>
+        <div style={{zIndex:10, background:'rgba(0,0,0,0.4)', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px', borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+            <button onClick={() => setView(safeBack())} style={{color:'#e2e8f0', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'6px 14px', borderRadius:'20px', fontWeight:'600', fontSize:'13px', cursor:'pointer'}}>⬅ 退出</button>
+            <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>🎀 华丽大赛</div>
+            <div style={{width:60}}/>
         </div>
 
         <div style={{flex:1, padding:'20px', display:'flex', flexDirection:'column', alignItems:'center', zIndex:5, position:'relative'}}>
@@ -12700,7 +12708,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000
       }}>
         <div style={{
-            width: '380px', background: '#fff', borderRadius: '24px', overflow: 'hidden',
+            width: '100%', maxWidth: '380px', background: '#fff', borderRadius: '24px', overflow: 'hidden',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             position: 'relative', animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
         }}>
@@ -12900,7 +12908,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const renderMoveForget = () => {
     const p = party[learningPetIdx];
-    if (!p) return <div className="screen" style={{background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><div>数据加载中...<button onClick={() => setView(getBackToMapView())} style={{marginLeft:12,padding:'6px 16px',borderRadius:8,border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}}>返回</button></div></div>;
+    if (!p) return <div className="screen" style={{background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><div>数据加载中...<button onClick={() => setView(safeBack())} style={{marginLeft:12,padding:'6px 16px',borderRadius:8,border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}}>返回</button></div></div>;
     const getMoveCategory = (m) => m.p > 0 ? (m.category === 'special' ? '特殊' : '物理') : '变化';
     return (
       <div className="screen" style={{background: 'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 3000}}>
@@ -13336,7 +13344,7 @@ const renderNameInput = () => {
     return (
       <div className="screen dex-screen">
         <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(party.length > 0 ? getBackToMapView() : 'menu')}>🔙 返回</button>
+          <button className="btn-back" onClick={() => setView(safeBack())}>🔙 返回</button>
           <div className="nav-title">精灵图鉴</div>
           <button className="btn-icon-only" onClick={syncDexData} style={{fontSize:'18px'}} title="修复图鉴数据">🔄</button>
         </div>
@@ -13394,7 +13402,7 @@ const renderNameInput = () => {
             backdropFilter: 'blur(5px)'
           }}>
             <div className="dex-modal-card" onClick={e => e.stopPropagation()} style={{
-              width: '340px', background: '#fff', borderRadius: '24px', overflow: 'visible', 
+              width: '100%', maxWidth: '340px', background: '#fff', borderRadius: '24px', overflow: 'visible', 
               position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
               boxShadow: '0 20px 40px rgba(0,0,0,0.2)', paddingBottom: '24px',
               maxHeight: '90vh', overflowY: 'auto'
@@ -13740,7 +13748,7 @@ const renderNameInput = () => {
       <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #0a0a1a 0%, #111133 50%, #0a0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
         {/* 顶栏 */}
         <div style={{padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, background:'rgba(0,0,0,0.3)', backdropFilter:'blur(12px)'}}>
-          <button onClick={() => setView(party.length > 0 ? getBackToMapView() : 'menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
+          <button onClick={() => setView(safeBack())} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
           <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'2px', background:'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>技能大百科</div>
           <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>{filteredSkills.length} 技能</div>
         </div>
@@ -14053,7 +14061,7 @@ const renderGeneralDex = () => {
 
         {/* 顶部栏 */}
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px'}}>
-          <button onClick={() => setView(getBackToMapView())} style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#ccc', padding:'8px 20px', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
+          <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#ccc', padding:'8px 20px', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
           <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>📜 三国名将图鉴</div>
           <div style={{fontSize:'13px', color:'rgba(255,255,255,0.5)', fontWeight:'600'}}>{filteredGens.length} 位 · {filteredR} 已收集</div>
         </div>
@@ -14237,7 +14245,7 @@ const renderFruitDex = () => {
     <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #1a0a0a 0%, #2d0f0f 40%, #0f0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
       {/* 头部 */}
       <div style={{padding:'16px 20px', display:'flex', alignItems:'center', gap:'12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0}}>
-        <button onClick={() => setView(party.length > 0 ? getBackToMapView() : 'menu')} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
+        <button onClick={() => setView(safeBack())} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
         <div>
           <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'1px'}}>恶魔果实图鉴</div>
           <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>共 {allFruits.length} 种 · 已拥有 {ownedFruitIds.size} 种</div>
@@ -17747,11 +17755,11 @@ const renderMenu = () => {
       <div className="nav-header glass-panel">
         <button className="btn-back" onClick={() => {
             if (usingItem) { setUsingItem(null); setView('bag'); } 
-            else setView(getBackToMapView());
+            else setView(safeBack());
         }}>🔙 返回</button>
         <div className="nav-title">我的伙伴 ({party.length}/6)</div>
         <button onClick={() => {
-          const meds = inventory.medicines || {};
+          const meds = {...(inventory.meds || {})};
           let healed = 0;
           const newParty = party.map(p => {
             const s = getStats(p); if (p.currentHp >= s.maxHp) return p;
@@ -17763,7 +17771,7 @@ const renderMenu = () => {
             }
             return pet;
           });
-          if (healed > 0) { setParty(newParty); setInventory(prev => ({...prev, medicines: {...prev.medicines, ...meds}})); showMapToast('💊','全队回复',`使用了 ${healed} 瓶药水`,1500); }
+          if (healed > 0) { setParty(newParty); setInventory(prev => ({...prev, meds: {...(prev.meds||{}), ...meds}})); showMapToast('💊','全队回复',`使用了 ${healed} 瓶药水`,1500); }
           else showMapToast('ℹ️','无需治疗','全队HP已满或无药品',1500);
         }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(76,175,80,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>💊全队</button>
         <button onClick={() => setParty(prev => [...prev].sort((a,b) => b.level - a.level))} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(33,150,243,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>排序</button>
@@ -21551,7 +21559,7 @@ const renderMenu = () => {
     const spouseName = marriage?.spouse ? (MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse)?.name) : null;
 
     return (
-      <div onClick={() => setView(getBackToMapView())} style={{
+      <div onClick={() => setView(safeBack())} style={{
           position: 'fixed', inset: 0,
           background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(16px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
@@ -21595,7 +21603,7 @@ const renderMenu = () => {
                 <div style={{fontSize:'10px', color:'#475569', marginTop:'4px'}}>ID: {Math.floor(party[0]?.uid || 9527).toString().slice(-8)} · {mapInfo?.name || '关都'}</div>
               </div>
             </div>
-            <button onClick={() => setView(getBackToMapView())} style={{
+            <button onClick={() => setView(safeBack())} style={{
               position:'absolute', top:'-28px', right:'16px', width:'32px', height:'32px', borderRadius:'50%',
               background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.15)',
               color:'#94a3b8', cursor:'pointer', fontSize:'16px', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)'
@@ -22086,7 +22094,7 @@ const renderMenu = () => {
         <div className="screen" style={{background:'linear-gradient(135deg,#2c1810,#4a2c17)', color:'#fff', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px'}}>
           <div style={{fontSize:'40px', marginBottom:'10px'}}>🧳</div>
           <div style={{fontSize:'14px', color:'#d4a574', marginBottom:'20px'}}>旅行商人已离开...</div>
-          <button className="btn-back" onClick={() => setView(getBackToMapView())} style={{padding:'8px 20px'}}>⬅ 返回</button>
+          <button className="btn-back" onClick={() => setView(safeBack())} style={{padding:'8px 20px'}}>⬅ 返回</button>
         </div>
       )}
       {view === 'merchant' && merchantItems && (
@@ -22095,7 +22103,8 @@ const renderMenu = () => {
           <div style={{fontSize:'18px', fontWeight:'bold', marginBottom:'4px'}}>旅行商人</div>
           <div style={{fontSize:'12px', color:'#d4a574', marginBottom:'20px'}}>"嘿，旅行者！看看我的好东西吧！"</div>
           <div style={{display:'flex', flexDirection:'column', gap:'10px', width:'100%', maxWidth:'340px'}}>
-            {merchantItems.map((item, i) => (
+            {(!merchantItems || merchantItems.length === 0) && <div style={{textAlign:'center',padding:'20px',color:'#999',fontSize:'13px'}}>今日暂无商品，改日再来吧！</div>}
+            {(merchantItems || []).map((item, i) => (
               <button key={i} onClick={() => {
                 if (gold >= item.cost) {
                   setGold(g => g - item.cost);
@@ -22112,7 +22121,7 @@ const renderMenu = () => {
               </button>
             ))}
           </div>
-          <button onClick={() => { setMerchantItems(null); setView(getBackToMapView()); }} style={{marginTop:'20px', padding:'10px 30px', borderRadius:'10px', border:'1px solid #666', background:'transparent', color:'#aaa', fontSize:'13px', cursor:'pointer'}}>离开</button>
+          <button onClick={() => { setMerchantItems(null); setView(safeBack()); }} style={{marginTop:'20px', padding:'10px 30px', borderRadius:'10px', border:'1px solid #666', background:'transparent', color:'#aaa', fontSize:'13px', cursor:'pointer'}}>离开</button>
         </div>
       )}
       {view === 'battle' && renderBattle()}
@@ -22132,10 +22141,10 @@ const renderMenu = () => {
       {view === 'guide' && renderGuide()}
       {view === 'settings' && (
         <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',color:'#fff',display:'flex',flexDirection:'column'}}>
-          <div className="nav-header glass-panel" style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
-            <button onClick={() => setView(getBackToMapView())} style={{background:'none',border:'none',color:'#fff',fontSize:'18px',cursor:'pointer',padding:'4px 8px'}}>⬅</button>
-            <div style={{flex:1,textAlign:'center',fontSize:'16px',fontWeight:'800',letterSpacing:'2px'}}>⚙️ 设置</div>
-            <div style={{width:40}}/>
+          <div style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',backdropFilter:'blur(12px)',flexShrink:0,height:'56px'}}>
+            <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.15)',color:'#e2e8f0',fontSize:'14px',cursor:'pointer',padding:'6px 14px',borderRadius:'20px',fontWeight:'600'}}>⬅ 返回</button>
+            <div style={{flex:1,textAlign:'center',fontSize:'16px',fontWeight:'800',letterSpacing:'2px',color:'#fff'}}>⚙️ 设置</div>
+            <div style={{width:60}}/>
           </div>
           <div style={{flex:1,overflowY:'auto',padding:'20px',maxWidth:'500px',margin:'0 auto',width:'100%'}}>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>

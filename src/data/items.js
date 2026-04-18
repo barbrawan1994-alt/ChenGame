@@ -46,7 +46,7 @@ export const TMS = [
   { id: 'tm_sludge', name: '污泥炸弹', type: 'POISON',   p: 90,  pp: 8,  price: 8500,  desc: '进阶毒系技能，高概率使目标中毒', tier: 2, shopSell: true },
   { id: 'tm_psy',    name: '精神强念', type: 'PSYCHIC',  p: 90,  pp: 8,  price: 8000,  desc: '进阶超能系技能，精神力集中攻击', tier: 2, shopSell: true },
   // ★★★ 高级/终极技能书 — 威力 100+, 不在商店出售, 只能通过掉落/奖励获得
-  { id: 'tm_eq',     name: '地震',     type: 'GROUND',   p: 110, pp: 8,  price: 12000, desc: '地面系高级技能，大地震动席卷全场', tier: 3 },
+  { id: 'tm_eq',     name: '地震',     type: 'GROUND',   p: 100, pp: 10, price: 12000, desc: '地面系高级技能，大地震动席卷全场', tier: 3 },
   { id: 'tm_dragon', name: '龙之波动', type: 'DRAGON',   p: 110, pp: 8,  price: 15000, desc: '龙系高级技能，龙族波动之力', tier: 3 },
   { id: 'tm_fight',  name: '近身战',   type: 'FIGHT',    p: 120, pp: 5,  price: 15000, desc: '格斗系高级技能，猛烈近战但降低双防', tier: 3 },
   { id: 'tm_dark',   name: '暗冥强击', type: 'DARK',     p: 110, pp: 5,  price: 12000, desc: '恶系高级技能，凝聚黑暗之力打击', tier: 3 },
@@ -217,7 +217,7 @@ export const GROWTH_ITEMS = [
   { id: 'vit_spd',  name: '极速之羽',   emoji: '🪶', price: 10000, desc: '永久速度+5', stat: 'spd', val: 5 },
   { id: 'vit_crit', name: '幸运四叶草', emoji: '🍀', price: 20000, desc: '永久暴击+2%', stat: 'crit', val: 2 },
    { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 3000, desc: '给宝可梦吃下后，等级提升1级', stat: 'level_up', val: 1 },
-  { id: 'max_candy', name: '神奇糖果', emoji: '🌟', price: 300000, desc: '瞬间升至 Lv.100 (仅限非满级精灵)', stat: 'level_max', val: 100 },
+  { id: 'max_candy', name: '神奇糖果', emoji: '🌟', price: 800000, desc: '瞬间升至 Lv.100 (仅限非满级精灵，需8徽章)', stat: 'level_max', val: 100 },
 ];
 
 // ==========================================
