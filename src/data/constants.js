@@ -1,7 +1,7 @@
 export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 export const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
-export const GRID_W = 40; 
-export const GRID_H = 28; 
+export const GRID_W = 32; 
+export const GRID_H = 22; 
 
 export const STARTER_POOL_IDS = [1, 4, 7, 10, 13, 16, 19, 21, 23, 25, 27, 29, 32, 35, 37, 39, 41, 43, 46, 48, 50, 52, 54, 56, 58, 60, 63, 66, 69, 72, 74, 77, 79, 81, 84, 86, 88, 90, 92, 96, 98, 100, 102, 104, 109, 111, 116, 118, 120, 129, 133, 147, 152, 155, 158, 161, 164, 166, 172];
 export const BGM_SOURCES = {
@@ -33,7 +33,9 @@ export const THEME_CONFIG = {
   ground: { bg: '#FFE082', boardBg: '#FFF8E1', obstacle: '🌵', ground: '🟨', water: '💧', rock: '🪨', deco: '💀', cssClass: 'theme-ground' },
   fairy: { bg: '#F8BBD0', boardBg: '#FCE4EC', obstacle: '🏰', ground: '🌸', water: '🍫', rock: '🧁', deco: '🍭', cssClass: 'theme-fairy' },
   space: { bg: '#311B92', boardBg: '#4527A0', obstacle: '☄️', ground: '🌑', water: '🌌', rock: '🪐', deco: '⭐', cssClass: 'theme-space' },
-  gold: { bg: '#FFF8E1', boardBg: '#FFFDE7', obstacle: '🏛️', ground: '🟡', water: '✨', rock: '🪙', deco: '👑', cssClass: 'theme-gold' }
+  gold: { bg: '#FFF8E1', boardBg: '#FFFDE7', obstacle: '🏛️', ground: '🟡', water: '✨', rock: '🪙', deco: '👑', cssClass: 'theme-gold' },
+  forest: { bg: '#A5D6A7', boardBg: '#C8E6C9', obstacle: '🌳', ground: '🍂', water: '💧', rock: '🪵', deco: '🍄', cssClass: 'theme-forest' },
+  rock: { bg: '#D7CCC8', boardBg: '#EFEBE9', obstacle: '⛰️', ground: '🪨', water: '💎', rock: '🗻', deco: '🦎', cssClass: 'theme-rock' }
 };
 
 export const TRAINER_AVATARS = [

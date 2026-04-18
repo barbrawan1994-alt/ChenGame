@@ -40,7 +40,7 @@ const ACHIEVEMENTS = [
   { id: 'catch_legend_5',  cat: 'COLLECTION', rarity: 'LEGENDARY', name: '神兽猎手',     desc: '捕捉5只不同的神兽',           check: s => s.legendCaught >= 5,    reward: { title: '神兽猎手', gold: 15000 } },
   { id: 'catch_egg_5',     cat: 'COLLECTION', rarity: 'RARE',      name: '孵蛋达人',     desc: '成功孵化5枚精灵蛋',           check: s => s.eggsHatched >= 5,      reward: { gold: 2000 } },
   { id: 'catch_egg_legend', cat: 'COLLECTION', rarity: 'LEGENDARY', name: '神兽诞生',     desc: '孵化出一只神兽',              check: s => s.legendEggsHatched >= 1, reward: { title: '生命缔造者' } },
-  { id: 'fruit_5',         cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '果实收藏家',   desc: '收集8种不同的恶魔果实',       check: s => s.uniqueFruits >= 8,    reward: { gold: 1500 } },
+  { id: 'fruit_collector',  cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '果实收藏家',   desc: '收集8种不同的恶魔果实',       check: s => s.uniqueFruits >= 8,    reward: { gold: 1500 } },
   { id: 'fruit_15',        cat: 'COLLECTION', rarity: 'RARE',      name: '果实鉴赏家',   desc: '收集20种不同的恶魔果实',      check: s => s.uniqueFruits >= 20,   reward: { gold: 3000 } },
   { id: 'fruit_30',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实鉴定师',   desc: '收集35种不同的恶魔果实',      check: s => s.uniqueFruits >= 35,   reward: { gold: 5000 } },
   { id: 'fruit_60',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实猎人',     desc: '收集60种不同的恶魔果实',      check: s => s.uniqueFruits >= 60,   reward: { title: '果实猎人' } },
@@ -156,7 +156,7 @@ const ACHIEVEMENTS = [
   { id: 'gold_5m',         cat: 'MASTERY', rarity: 'LEGENDARY', name: '黄金帝王',     desc: '战斗累计获得5,000,000金币',       check: s => s.totalGoldEarned >= 5000000, reward: { title: '黄金帝王' } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 12, reward: { title: '精灵大师' } },
   { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴700+全门派+联赛10+全副本+25座塔', check: s => s.dexCount >= 700 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 10 && (s.uniqueDungeonsCleared || 0) >= 8 && s.challengesCompleted >= 25, reward: { title: '真·大师' } },
-  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁160个成就',               check: s => s.achievementCount >= 160, reward: { title: '传说训练家' } },
+  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁90个成就',               check: s => s.achievementCount >= 90, reward: { title: '传说训练家' } },
 
   // ===== 隐藏成就 (18) =====
   { id: 'secret_solo_god',   cat: 'SECRET', rarity: 'LEGENDARY', name: '以一敌百',
@@ -306,6 +306,26 @@ const ACHIEVEMENTS = [
   { id: 'kw_campaign_all',  cat: 'BATTLE',   rarity: 'EPIC',      name: '战役达人',     desc: '通关本阵营全部8个战役副本',              check: s => s.kwCampaignsCleared >= 8, reward: { title: '常胜将军' } },
   { id: 'kw_contrib_5000',  cat: 'GROWTH',   rarity: 'EPIC',      name: '劳苦功高',     desc: '累计获得5000点战功',                     check: s => s.kwContribution >= 5000,  reward: {} },
   { id: 'kw_contrib_20000', cat: 'MASTERY',  rarity: 'LEGENDARY', name: '功盖三国',     desc: '累计获得20000点战功',                    check: s => s.kwContribution >= 20000, reward: { title: '功盖三国' } },
+
+  // ===== 活动中心 =====
+  { id: 'arena_10',         cat: 'BATTLE',   rarity: 'COMMON',    name: '竞技场新星',   desc: '竞技场累计获胜10场',          check: s => s.arenaWins >= 10,            reward: { gold: 1000 } },
+  { id: 'arena_50',         cat: 'BATTLE',   rarity: 'UNCOMMON',  name: '竞技场勇者',   desc: '竞技场累计获胜50场',          check: s => s.arenaWins >= 50,            reward: { gold: 3000 } },
+  { id: 'arena_gold',       cat: 'BATTLE',   rarity: 'RARE',      name: '黄金斗士',     desc: '竞技场晋升至黄金段位',        check: s => s.arenaMaxRank >= 2,          reward: { title: '黄金斗士' } },
+  { id: 'arena_legend',     cat: 'MASTERY',  rarity: 'LEGENDARY', name: '传说角斗士',   desc: '竞技场晋升至大师段位',        check: s => s.arenaMaxRank >= 5,          reward: { title: '传说角斗士' } },
+  { id: 'expedition_10',    cat: 'EXPLORE',  rarity: 'COMMON',    name: '探险新手',     desc: '完成10次远征探险',            check: s => s.expeditionsCompleted >= 10, reward: { gold: 1000 } },
+  { id: 'expedition_50',    cat: 'EXPLORE',  rarity: 'UNCOMMON',  name: '资深探险家',   desc: '完成50次远征探险',            check: s => s.expeditionsCompleted >= 50, reward: { gold: 5000, title: '资深探险家' } },
+  { id: 'mine_50',          cat: 'EXPLORE',  rarity: 'COMMON',    name: '矿工学徒',     desc: '累计挖掘50个矿石',           check: s => s.totalMined >= 50,           reward: { gold: 1000 } },
+  { id: 'mine_200',         cat: 'EXPLORE',  rarity: 'RARE',      name: '矿洞大师',     desc: '累计挖掘200个矿石',          check: s => s.totalMined >= 200,          reward: { gold: 5000, title: '矿洞大师' } },
+  { id: 'bounty_30',        cat: 'EXPLORE',  rarity: 'UNCOMMON',  name: '赏金猎人',     desc: '累计完成30条赏金任务',        check: s => s.bountiesCompleted >= 30,    reward: { gold: 3000, title: '赏金猎人' } },
+  { id: 'bounty_100',       cat: 'MASTERY',  rarity: 'EPIC',      name: '悬赏达人',     desc: '累计完成100条赏金任务',       check: s => s.bountiesCompleted >= 100,   reward: { gold: 8000 } },
+  { id: 'wheel_10',         cat: 'EXPLORE',  rarity: 'COMMON',    name: '手气不错',     desc: '幸运轮盘累计抽奖10次',       check: s => s.wheelSpins >= 10,           reward: { gold: 500 } },
+
+  // ===== 特训营 & 世界Boss (5) =====
+  { id: 'training_10',      cat: 'EXPLORE',  rarity: 'UNCOMMON',  name: '勤勉训练家',   desc: '完成10次精灵特训',             check: s => s.trainingSessions >= 10,     reward: { gold: 2000 } },
+  { id: 'training_50',      cat: 'MASTERY',  rarity: 'RARE',      name: '特训大师',     desc: '完成50次精灵特训',             check: s => s.trainingSessions >= 50,     reward: { gold: 5000, title: '特训大师' } },
+  { id: 'wb_first',         cat: 'BATTLE',   rarity: 'RARE',      name: '屠龙勇士',     desc: '首次击败世界Boss',             check: s => s.worldBossesDefeated >= 1,   reward: { gold: 5000 } },
+  { id: 'wb_10',            cat: 'MASTERY',  rarity: 'EPIC',      name: '世界猎人',     desc: '累计击败10次世界Boss',         check: s => s.worldBossesDefeated >= 10,  reward: { gold: 15000, title: '世界猎人' } },
+  { id: 'wb_damage_king',   cat: 'SECRET',   rarity: 'LEGENDARY', name: '伤害之王',     desc: '单次世界Boss战斗造成30000+伤害', hint: '提示：对世界Boss释放全力一击…', check: s => s.worldBossBestDamage >= 30000, reward: { title: '伤害之王' }, hidden: true },
 ];
 
 export const DEFAULT_ACH_STATS = {
@@ -426,6 +446,15 @@ export const DEFAULT_ACH_STATS = {
   shinyEggsHatched: 0,
   uniqueDungeonsCleared: 0,
   perfectBossKills: 0,
+  arenaWins: 0,
+  arenaMaxRank: 0,
+  expeditionsCompleted: 0,
+  totalMined: 0,
+  bountiesCompleted: 0,
+  wheelSpins: 0,
+  trainingSessions: 0,
+  worldBossesDefeated: 0,
+  worldBossBestDamage: 0,
 };
 
 export default ACHIEVEMENTS;

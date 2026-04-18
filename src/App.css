@@ -116,6 +116,26 @@ button:disabled:active { transform: none; }
   gap: 5px;
 }
 
+.btn-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-icon-only:hover {
+  background: rgba(255,255,255,0.12);
+  transform: scale(1.05);
+}
+
 /* =========================================
    [修复] 初始选择界面 (Starter Select)
    ========================================= */
@@ -1026,6 +1046,10 @@ button:disabled:active { transform: none; }
 @keyframes slideDown {
   from { transform: translate(-50%, -80px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
+}
+@keyframes lucky-wheel-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(1800deg); }
 }
 
 .dialog-box {
@@ -3030,7 +3054,7 @@ button:active {
 }
 
 /* 4. 太阳旋转 */
-@keyframes spin {
+@keyframes sun-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }

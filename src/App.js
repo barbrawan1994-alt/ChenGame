@@ -61,6 +61,12 @@ import {
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
   KW_EQUIPMENT,
+  ARENA_RANKS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, ARENA_SEASON_REWARDS,
+  EXPEDITION_ZONES, EXPEDITION_EVENTS, DEFAULT_EXPEDITIONS, calcExpeditionBonus,
+  MINE_ORES, MINE_TILES, MINE_EXCHANGE, MINE_GRID_SIZE, MINE_MAX_ENERGY, MINE_REGEN_INTERVAL, MINE_REQ_BADGES, DEFAULT_MINE_STATE, MINE_DEPTH_MILESTONES, generateMineGrid,
+  BOUNTY_TEMPLATES, generateDailyBounties, getMasterChestReward, DEFAULT_BOUNTY_BOARD,
+  TRAINING_CAMPS, TRAINING_TIERS, TRAINING_MAX_SLOTS, TRAINING_REQ_BADGES, TRAINING_EVENTS, DEFAULT_TRAINING_STATE, calcTrainingGain, TRAINING_MAX_EV, TRAINING_TOTAL_MAX_EV,
+  WORLD_BOSSES, WORLD_BOSS_MAX_ATTEMPTS, WORLD_BOSS_REQ_BADGES, DEFAULT_WORLD_BOSS_STATE, getTodayBoss, scaleBossHp, scaleBossLevel,
 } from './data';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
@@ -212,7 +218,7 @@ const SIDE_STORY_LINES = [
 ];
 
 const inferCompletedSideStories = (storyProg) => {
-  return SIDE_STORIES.filter(s => storyProg > s.endIdx).map(s => s.id);
+  return SIDE_STORY_LINES.filter(s => storyProg > s.endIdx).map(s => s.id);
 };
 
 export default function RPG(props) {
@@ -372,8 +378,11 @@ const generateWeatherForMap = (mapType) => {
     // 极寒冻土: 50%雪, 40%晴, 10%雨(冻雨)
     if (mapType === 'ice') return rand < 0.5 ? 'SNOW' : (rand < 0.9 ? 'CLEAR' : 'RAIN');
     
+    // 岩石山地: 30%沙暴, 50%晴, 20%大晴天
+    if (mapType === 'rock') return rand < 0.3 ? 'SAND' : (rand < 0.8 ? 'CLEAR' : 'SUN');
+    
     // 流沙荒漠: 40%沙暴, 40%晴, 20%大晴天(酷热)
-    if (mapType === 'ground' || mapType === 'rock') return rand < 0.4 ? 'SAND' : (rand < 0.8 ? 'CLEAR' : 'SUN');
+    if (mapType === 'ground') return rand < 0.4 ? 'SAND' : (rand < 0.8 ? 'CLEAR' : 'SUN');
     
     // 熔岩火山: 50%大晴天, 50%晴
     if (mapType === 'fire') return rand < 0.5 ? 'SUN' : 'CLEAR';
@@ -407,7 +416,7 @@ useEffect(() => {
             // --- B. 天气轮转逻辑 (各地区独立) ---
             // 每 300秒 (5分钟) 刷新一次全地图天气
             // 或者初始化时 (prev === 0) 立即刷新
-            if (prev === 0 || nextTime % 300 === 0) {
+            if (prev === 0 || nextTime % 600 === 0) {
                 const newWeathers = {};
                 MAPS.forEach(m => {
                     newWeathers[m.id] = generateWeatherForMap(m.type);
@@ -510,6 +519,14 @@ useEffect(() => {
       showMapToast('✨', '呼吸法', '全队体力大幅恢复！', 2000);
     } 
     else if (buff.effect) {
+      const MAX_BUFFS_PER_TYPE = 3;
+      const existingCount = (infinityState?.buffs || []).filter(b => b.id === buff.id).length;
+      if (existingCount >= MAX_BUFFS_PER_TYPE) {
+        showMapToast('⚠️', '呼吸法', `${buff.name} 已达到叠加上限(${MAX_BUFFS_PER_TYPE}次)！`, 2000);
+        nextInfinityFloor();
+        return;
+      }
+
       setParty(prev => prev.map(p => {
         const newPet = { ...p };
         if (!newPet.customBaseStats) {
@@ -527,7 +544,6 @@ useEffect(() => {
         return newPet;
       }));
       
-      // 记录已获得的 Buff
       setInfinityState(prev => ({
         ...prev,
         buffs: [...prev.buffs, buff]
@@ -772,7 +788,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
         if (view === 'locked') {
             e.preventDefault();
-            setView(safeBack());
+            setView(safeBackRef.current());
             return;
         }
 
@@ -797,6 +813,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   };  
   // 界面模态框状态
   const [teamMode, setTeamMode] = useState(false);
+  const [teamSortMode, setTeamSortMode] = useState('level');
   const [shopMode, setShopMode] = useState(false);
   const [merchantItems, setMerchantItems] = useState(null);
   const [pcMode, setPcMode] = useState(false);
@@ -856,7 +873,7 @@ const [infinityState, setInfinityState] = useState(() => {
     if (dailyLogin.lastDate === today) return;
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const isConsecutive = dailyLogin.lastDate === yesterday;
-    const newStreak = isConsecutive ? dailyLogin.streak + 1 : 1;
+    const newStreak = isConsecutive ? dailyLogin.streak + 1 : Math.max(1, Math.floor((dailyLogin.streak || 0) / 2));
     const newTotal = (dailyLogin.totalDays || 0) + 1;
     const DAY_REWARDS = [
       { gold: 500, desc: '💰 500金币' },
@@ -866,6 +883,13 @@ const [infinityState, setInfinityState] = useState(() => {
       { gold: 2000, berries: 8, desc: '💰 2000金币 + 🍒 8树果' },
       { gold: 3000, meds: true, desc: '💰 3000金币 + 🧪 超级药水×3' },
       { gold: 5000, meds: true, berry: 15, desc: '💰 5000金币 + 🧪 超级药水×5 + 🍒 15树果' },
+      { gold: 6000, berries: 20, desc: '💰 6000金币 + 🍒 20树果' },
+      { gold: 7000, meds: true, desc: '💰 7000金币 + 🧪 超级药水×5' },
+      { gold: 8000, berries: 25, desc: '💰 8000金币 + 🍒 25树果' },
+      { gold: 9000, meds: true, desc: '💰 9000金币 + 🧪 超级药水×8' },
+      { gold: 10000, berries: 30, desc: '💰 10000金币 + 🍒 30树果' },
+      { gold: 12000, meds: true, berry: 30, desc: '💰 12000金币 + 🧪 高级药水×5 + 🍒 30树果' },
+      { gold: 15000, meds: true, berry: 50, desc: '💰 15000金币 + 🧪 高级药水×10 + 🍒 50树果 + ⭐ 经验糖果' },
     ];
     const reward = DAY_REWARDS[Math.min(newStreak - 1, DAY_REWARDS.length - 1)];
     setGold(g => g + reward.gold);
@@ -1043,10 +1067,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
       baseRate *= (1 + (gangCatchBonus + kwCatchBonus) / 100);
 
       const etype = (POKEDEX.find(p => p.id === eid) || {}).type;
-      if (FINAL_GOD_IDS?.includes(eid) || etype === 'COSMIC' || etype === 'GOD') return Math.min(baseRate, 0.15);
-      if (NEW_GOD_IDS?.includes(eid) || LEGENDARY_POOL?.includes(eid)) return Math.min(baseRate, 0.35);
-      if (HIGH_TIER_POOL?.includes(eid)) return Math.min(baseRate, 0.55);
-      return Math.min(baseRate, 0.85);
+      if (FINAL_GOD_IDS?.includes(eid) || etype === 'COSMIC' || etype === 'GOD') return Math.min(baseRate, 0.12);
+      if (NEW_GOD_IDS?.includes(eid) || LEGENDARY_POOL?.includes(eid)) return Math.min(baseRate, 0.30);
+      if (HIGH_TIER_POOL?.includes(eid)) return Math.min(baseRate, 0.50);
+      return Math.min(baseRate, 0.75);
   };
 
   // 2. 使用洗练药
@@ -1070,7 +1094,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     
     const natureKeys = Object.keys(NATURE_DB);
     pet.nature = natureKeys[Math.floor(Math.random() * natureKeys.length)];
-    pet.isShiny = Math.random() < 0.05 * (spBonuses.shinyRate || 1); 
+    pet.isShiny = Math.random() < 0.03 * (spBonuses.shinyRate || 1); 
     
     // ▼▼▼ 新增：重置波动 ▼▼▼
     pet.diversityRng = Math.floor(Math.random() * 9) - 4;
@@ -1092,8 +1116,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const pet = party[petIdx];
     if (!pet) return;
 
-    if (pet.type !== tm.type && pet.secondaryType !== tm.type) {
-        showMapToast('❌', '无法学习', `${pet.name} 不是 ${TYPES[tm.type].name} 属性`, 2000);
+    const petTypes = [pet.type, pet.secondaryType].filter(Boolean);
+    if (!petTypes.includes(tm.type) && tm.type !== 'NORMAL') {
+        showMapToast('❌', '无法学习', `${pet.name} 不是 ${TYPES[tm.type]?.name || tm.type} 属性`, 2000);
         return;
     }
     if ((pet.moves || []).some(m => m.name === tm.name)) {
@@ -1175,6 +1200,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
                addLog("⚠️ 所有技能PP已满！"); return;
              }
         } else if (item.type === 'PP_ALL') {
+             const allFull = (pState.combatMoves || []).every(m => m.pp >= (m.maxPP || 15));
+             if (allFull) { addLog("⚠️ 所有技能PP已满！"); return; }
              (pState.combatMoves || []).forEach(m => m.pp = Math.min(m.maxPP||15, m.pp + (item.val || 10)));
              logMsg = `使用了 ${item.name}，所有技能PP得到了恢复！`;
              used = true;
@@ -1223,9 +1250,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
         logMsg = `使用了 ${cItem.name}，术式威力提升 ${cItem.val * 100}%!`;
         used = true;
       } else if (cItem.type === 'ANTI_DOMAIN') {
-        const state = battle;
-        if (state.activeDomain && state.activeDomain.ownerSide === 'enemy') {
-          state.activeDomain = null;
+        if (battle.activeDomain && battle.activeDomain.ownerSide === 'enemy') {
+          setBattle(prev => prev ? ({...prev, activeDomain: null}) : prev);
           logMsg = `使用了 ${cItem.name}，破除了敌方领域!`;
           used = true;
         } else { addLog("⚠️ 当前没有敌方领域！"); return; }
@@ -1233,7 +1259,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
         const enemy = battle.enemyParty?.[battle.enemyActiveIdx];
         if (enemy && !battle.isBoss) {
           if (Math.random() < cItem.val) {
-            enemy.currentHp = 0;
+            setBattle(prev => {
+              if (!prev) return prev;
+              const ep = [...prev.enemyParty];
+              ep[prev.enemyActiveIdx] = {...ep[prev.enemyActiveIdx], currentHp: 0};
+              return {...prev, enemyParty: ep};
+            });
             logMsg = `使用了 ${cItem.name}，成功封印了 ${enemy.name}!`;
             used = true;
           } else {
@@ -1283,12 +1314,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
     // 2. 初始化玩家状态
     setParty([newPet]);
     setCaughtDex([newPet.id]);
-    setGold(2500);
+    setGold(1500);
     
     // ▼▼▼▼▼▼▼▼▼▼ 核心修复点 ▼▼▼▼▼▼▼▼▼▼
     setInventory({ 
-        balls: { poke: 20, great: 3, ultra: 0, master: 0, net:0, dusk:0, quick:0, timer:0, heal:0 }, 
-        meds: { potion: 15, super_potion: 5 },
+        balls: { poke: 15, great: 2, ultra: 0, master: 0, net:0, dusk:0, quick:0, timer:0, heal:0 }, 
+        meds: { potion: 10, super_potion: 2 },
         stones: {},
         tms: {},  
         misc: {},
@@ -1368,9 +1399,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
             chiefBonus = config.stats; 
         }
     }
+    const totalEv = Object.values(evs).reduce((s, v) => s + (v || 0), 0);
+    const evScale = totalEv > 510 ? 510 / totalEv : 1;
     const calc = (base, ivKey, evKey, isHp = false) => {
         const iv = ivs[ivKey] || 0;
-        const ev = evs[evKey] || 0;
+        const rawEv = Math.min(252, evs[evKey] || 0);
+        const ev = Math.floor(rawEv * evScale);
         
         let val = Math.floor((base + iv) * growth * shinyMod);
         if (isHp) val = Math.floor(val * 2.5); 
@@ -1396,7 +1430,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             }
         });
 
-        val += ev;
+        val += Math.floor(ev / 4);
 
         if (chiefBonus[ivKey]) {
             val = Math.floor(val * chiefBonus[ivKey]);
@@ -1452,6 +1486,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
       return total > 0 ? Math.floor(val * (1 + total / 100)) : val;
     };
 
+    const clampedCrit = Math.min(75, Math.max(0, finalCrit));
+
     return {
       maxHp: applyGB(calc(baseStats.hp, 'hp', 'maxHp', true), (gangBonus.hp||0)),
       p_atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), (gangBonus.atk||0)),
@@ -1459,7 +1495,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk||0)),
       s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def||0)),
       spd:   applyGB(finalSpd, (gangBonus.spd||0)),
-      crit:  finalCrit,
+      crit:  clampedCrit,
       atk: applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), gangBonus.atk), 
       def: applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), gangBonus.def)
     };
@@ -1483,9 +1519,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const enemyParty = [];
       const teamIds = SECT_TEAMS[sectId] || [];
 
+      const playerMaxLv = Math.max(...party.map(p => p.level || 1));
+      const baseLv = Math.max(60, Math.min(95, playerMaxLv + 5));
+
       teamIds.forEach((petId, idx) => {
           const isAce = idx === 0;
-          const level = isAce ? 100 : 95;
+          const level = isAce ? Math.min(100, baseLv + 5) : baseLv;
           
           const pet = createPet(petId, level, true, isAce);
           pet.sectId = parseInt(sectId);
@@ -2000,7 +2039,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
         if (pet.currentHp <= 0) { showMapToast('❌', '提示', '晕厥的精灵无法学习技能！', 1500); return; }
         const tm = usingItem.data;
         if (!tm) { showMapToast('❌', '提示', '技能书数据异常！', 1500); return; }
-        if (pet.type !== tm.type && pet.secondaryType !== tm.type) {
+        const tmPetTypes = [pet.type, pet.secondaryType].filter(Boolean);
+        if (!tmPetTypes.includes(tm.type) && tm.type !== 'NORMAL') {
             showMapToast('❌', '无法学习', '属性不匹配', 1500); return;
         }
         if ((pet.moves || []).some(m => m.name === tm.name)) {
@@ -2170,13 +2210,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
     let power = (template.p !== undefined) ? template.p : 40;
     let pp = template.pp || 15;
     let acc = template.acc || 100; 
-    if (power >= 120) acc = 85;
-    if (power >= 150) acc = 75;
-    const tier = Math.floor(index / db.length);
-    if (power > 0) {
-        if (tier === 1) { name = `真·${name}`; power = Math.floor(power * 1.3); }
-        else if (tier === 2) { name = `超·${name}`; power = Math.floor(power * 1.6); }
-        else if (tier >= 3) { name = `神·${name}`; power = Math.floor(power * 2.2); }
+    if (power >= 120) acc = 90;
+    if (power >= 150) acc = 80;
+    const tier = Math.min(3, Math.floor(index / db.length));
+    if (power > 0 && tier > 0) {
+        const baseName = template.name;
+        if (tier === 1) { name = `真·${baseName}`; power = Math.floor(power * 1.3); }
+        else if (tier === 2) { name = `超·${baseName}`; power = Math.floor(power * 1.6); }
+        else if (tier >= 3) { name = `神·${baseName}`; power = Math.floor(power * 2.0); }
     }
     return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, desc: template.desc || '' };
   };
@@ -2398,7 +2439,8 @@ useEffect(() => {
 // [升级版] 0.5 雷达图组件 (支持自定义文字颜色)
 // ----------------------------------------------------------------
 const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(255,255,255,0.9)" }) => {
-  const maxVal = 150;
+  const rawMax = Math.max(stats.maxHp, stats.p_atk, stats.p_def, stats.s_atk, stats.s_def, stats.spd, 150);
+  const maxVal = Math.ceil(rawMax / 50) * 50;
   const center = size / 2;
   const radius = (size / 2) - 30; 
   
@@ -2492,7 +2534,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
     kingdomWar, dungeonCooldowns, activityRecords, dailyLogin, dailyChallenge, autoBattle,
     infinityBestFloor: infinityState?.bestFloor || 0,
-    infinityRunState: infinityState?.floor > 0 ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs } : null,
+    infinityRunState: infinityState?.floor > 0 ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null } : null,
+    arenaState, expeditions, mineState, bountyBoard, luckyWheel,
+    trainingState, worldBossState,
   });
 
   const persistSave = (silent = false) => {
@@ -2534,9 +2578,28 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (autoSaveMsgTimerRef.current) clearTimeout(autoSaveMsgTimerRef.current);
         autoSaveMsgTimerRef.current = setTimeout(() => setAutoSaveMsg(''), 2000);
       }
-    }, 120000);
+    }, 60000);
     return () => { window.removeEventListener('beforeunload', onBeforeUnload); clearInterval(autoSaveTimer); if (autoSaveMsgTimerRef.current) clearTimeout(autoSaveMsgTimerRef.current); };
   }, []);
+  // ==========================================
+  // 五大新玩法状态
+  // ==========================================
+  const [arenaState, setArenaState] = useState(() => ({ ...DEFAULT_ARENA_STATE, ...(savedData.arenaState || {}) }));
+  const [expeditions, setExpeditions] = useState(() => ({ ...DEFAULT_EXPEDITIONS, ...(savedData.expeditions || {}) }));
+  const [mineState, setMineState] = useState(() => ({ ...DEFAULT_MINE_STATE, ...(savedData.mineState || {}) }));
+  const [bountyBoard, setBountyBoard] = useState(() => ({ ...DEFAULT_BOUNTY_BOARD, ...(savedData.bountyBoard || {}) }));
+  const [luckyWheel, setLuckyWheel] = useState(() => ({ lastFreeDate: '', paidSpins: 0, totalSpins: 0, ...(savedData.luckyWheel || {}) }));
+  const [wheelSpinning, setWheelSpinning] = useState(false);
+  const [wheelResult, setWheelResult] = useState(null);
+  const [trainingState, setTrainingState] = useState(() => ({ ...DEFAULT_TRAINING_STATE, ...(savedData.trainingState || {}) }));
+  const [worldBossState, setWorldBossState] = useState(() => ({ ...DEFAULT_WORLD_BOSS_STATE, ...(savedData.worldBossState || {}) }));
+  const [trainingPicking, setTrainingPicking] = useState(null);
+  const [activityCenter, setActivityCenter] = useState(false);
+  const [expPicking, setExpPicking] = useState(null);
+  const [expSelectedPets, setExpSelectedPets] = useState([]);
+  const [mineTab, setMineTab] = useState('dig');
+  const [collectingExp, setCollectingExp] = useState(false);
+
   // ==========================================
   // 成就系统 - 核心函数
   // ==========================================
@@ -2593,7 +2656,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   useEffect(() => {
     checkAchievements();
-  }, [achStats, unlockedAchs.size]); // eslint-disable-line
+  }, [achStats, unlockedAchs.length]); // eslint-disable-line
 
   const syncAchStats = useCallback(() => {
     setAchStats(prev => {
@@ -2680,6 +2743,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         next.hbEra2 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era2')).length;
         next.hbEra3 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era3')).length;
         next.hbEra4 = chb.filter(id => id.startsWith('hb_') && HISTORICAL_BATTLES.find(b => b.id === id && b.era === 'era4')).length;
+      } else {
+        next.kwJoined = false;
+        next.kwRankIdx = 0;
+        next.kwFactionTerritories = 0;
+        next.kwGenerals = 0;
+        next.kwSSRGenerals = 0;
       }
       return next;
     });
@@ -2704,10 +2773,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   // [新增] 检查图鉴类称号 (每次捕获/进化后调用)
   const checkDexTitles = (currentCount) => {
+      if (currentCount >= 10) unlockTitle('初出茅庐');
+      if (currentCount >= 30) unlockTitle('见闻者');
       if (currentCount >= 50) unlockTitle('新手收藏家');
       if (currentCount >= 100) unlockTitle('图鉴达人');
+      if (currentCount >= 150) unlockTitle('探索先锋');
       if (currentCount >= 250) unlockTitle('博学大师');
+      if (currentCount >= 350) unlockTitle('百科行者');
       if (currentCount >= 450) unlockTitle('全图鉴霸主');
+      if (currentCount >= 550) unlockTitle('万物通晓');
       if (currentCount >= 700) unlockTitle('传说收藏家');
       if (currentCount >= 800) unlockTitle('图鉴完成者');
   };
@@ -2812,7 +2886,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const baseParent = Math.random() < 0.5 ? p1 : p2;
     const otherParent = baseParent.uid === p1.uid ? p2 : p1;
     
-    const isFusedShiny = Math.random() < 0.2;
+    const fusionAvgLevel = Math.floor((p1.level + p2.level) / 2);
+    const parentShinyBonus = (p1.isShiny ? 0.1 : 0) + (p2.isShiny ? 0.1 : 0);
+    const levelBonus = Math.min(0.15, fusionAvgLevel * 0.002);
+    const isFusedShiny = Math.random() < (0.15 + parentShinyBonus + levelBonus);
 
     const isDualType = Math.random() < 0.2;
     const dexForBase = POKEDEX.find(d => d.id === baseParent.id) || POKEDEX[0];
@@ -2876,6 +2953,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
     setGold(g => Math.max(0, g - 500));
     updateAchStat({ totalGoldSpent: 500 });
+    const returnedEquips = [];
+    [p1, p2].forEach(parent => {
+      if (parent.equips) {
+        parent.equips.forEach(eq => { if (eq) returnedEquips.push(eq); });
+      }
+    });
+    if (returnedEquips.length > 0) {
+      setAccessories(prev => [...prev, ...returnedEquips]);
+    }
     const newParty = party.filter(p => p.uid !== fusionParent.uid && p.uid !== fusionChild.uid);
     newParty.push(newPet);
     setParty(newParty);
@@ -2975,7 +3061,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     融合后父母将消失，生成一只全新的子代。
                 </div>
                 <div style={{marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                    <div>🧬 20% 概率变异为【异色】(属性大幅增强)</div>
+                    <div>🧬 15%+概率变异为【异色】(父母异色/高等级可加成)</div>
                     <div>⚡ 20% 概率觉醒【双属性】</div>
                 </div>
             </div>
@@ -3282,8 +3368,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const handleDateChoice = (optionIdx) => {
-    if (!dateEvent) return;
+    if (!dateEvent || !dateEvent.options) return;
     const option = dateEvent.options[optionIdx];
+    if (!option) return;
     const totalGain = 15 + option.affection;
     setMarriage(prev => ({
       ...prev,
@@ -3318,10 +3405,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     let reaction = '还可以吧...';
     const itemName = (item.name || '').toLowerCase();
     const giftAliases = { seed:'种子', berry:'树果', stone:'之石', protein:'增强', vitamin:'营养', ball:'精灵球', rare:'稀有', gem:'宝石', accessory:'饰品', tm:'技能', equipment:'装备', food:'食物', medicine:'药' };
-    if (candidate.favoriteGifts.some(g => itemName.includes(g) || (item.category||'').includes(g) || (giftAliases[g] && itemName.includes(giftAliases[g])))) {
+    if ((candidate.favoriteGifts || []).some(g => itemName.includes(g) || (item.category||'').includes(g) || (giftAliases[g] && itemName.includes(giftAliases[g])))) {
       gain = 20; reaction = '哇！我最喜欢的！谢谢你！';
       if (marriage.pendingPropose === candidateId) updateQuestProgress(candidateId, 'gift_favorite', 1);
-    } else if (candidate.hatedGifts.some(g => itemName.includes(g) || (item.category||'').includes(g))) {
+    } else if ((candidate.hatedGifts || []).some(g => itemName.includes(g) || (item.category||'').includes(g))) {
       gain = -10; reaction = '这个...我不太喜欢...';
     }
     setInventory(prev => {
@@ -3480,6 +3567,37 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // getSpouseBonuses 已前置到 createPet 之前
 
   // ==========================================
+  const checkTreasureUnlock = (condType, condData) => {
+    if (!condType) return;
+    const cd = condData || {};
+    const owned = housing.treasures || [];
+    const newTreasures = [];
+    for (const col of TREASURE_COLLECTIONS) {
+      for (const item of col.items) {
+        if (owned.includes(item.id)) continue;
+        if (item.condition === condType) {
+          if (condType === 'gym' && cd.mapId === item.mapId) newTreasures.push(item);
+          else if (condType === 'story' && cd.chapter >= item.chapter) newTreasures.push(item);
+          else if (condType === 'challenge' && cd.challengeId === item.challengeId) newTreasures.push(item);
+          else if (condType === 'explore' && cd.mapId === item.mapId) newTreasures.push(item);
+          else if (condType === 'event' && cd.eventType === item.eventType) newTreasures.push(item);
+          else if (condType === 'catch_legendary') newTreasures.push(item);
+          else if (condType === 'cafe_lv5' && item.condition === 'cafe_lv5') newTreasures.push(item);
+          else if (condType === 'housing_score' && item.condition === 'housing_score' && cd.score >= item.minScore) newTreasures.push(item);
+        }
+      }
+    }
+    if (newTreasures.length > 0) {
+      setHousing(prev => ({
+        ...prev,
+        treasures: [...(prev.treasures || []), ...newTreasures.map(t => t.id)],
+      }));
+      newTreasures.forEach(t => {
+        showMapToast('✨', '获得珍藏品', `${t.icon} ${t.name}！家园评分 +${t.score}`, 2500);
+      });
+    }
+  };
+
   // 精灵家园系统 - 完整UI
   // ==========================================
   const renderHousing = () => {
@@ -3684,35 +3802,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       updateAchStat({ gardenHarvests: 1 });
       if (marriage.pendingPropose) updateQuestProgress(marriage.pendingPropose, 'garden_harvest', 1);
       showMapToast(plantDef.icon || '🌾', '收获', `${plantDef.name} · ${rewardMsg}${bonusSeedMsg}`, 2500);
-    };
-
-    const checkTreasureUnlock = (condType, condData) => {
-      const owned = housing.treasures || [];
-      const newTreasures = [];
-      for (const col of TREASURE_COLLECTIONS) {
-        for (const item of col.items) {
-          if (owned.includes(item.id)) continue;
-          if (item.condition === condType) {
-            if (condType === 'gym' && condData.mapId === item.mapId) newTreasures.push(item);
-            else if (condType === 'story' && condData.chapter >= item.chapter) newTreasures.push(item);
-            else if (condType === 'challenge' && condData.challengeId === item.challengeId) newTreasures.push(item);
-            else if (condType === 'explore' && condData.mapId === item.mapId) newTreasures.push(item);
-            else if (condType === 'event' && condData.eventType === item.eventType) newTreasures.push(item);
-            else if (condType === 'catch_legendary') newTreasures.push(item);
-            else if (condType === 'cafe_lv5' && item.condition === 'cafe_lv5') newTreasures.push(item);
-            else if (condType === 'housing_score' && item.condition === 'housing_score' && condData.score >= item.minScore) newTreasures.push(item);
-          }
-        }
-      }
-      if (newTreasures.length > 0) {
-        setHousing(prev => ({
-          ...prev,
-          treasures: [...(prev.treasures || []), ...newTreasures.map(t => t.id)],
-        }));
-        newTreasures.forEach(t => {
-          showMapToast('✨', '获得珍藏品', `${t.icon} ${t.name}！家园评分 +${t.score}`, 2500);
-        });
-      }
     };
 
     const buyFurnitureFromShop = (def) => {
@@ -4444,7 +4533,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             {/* 送礼面板 */}
                             {marriageView === c.id && (
                               <div style={{marginTop:'12px', padding:'12px', background:'#f9f9f9', borderRadius:'12px', border:'1px solid #eee'}}>
-                                <div style={{fontWeight:'bold', fontSize:'12px', marginBottom:'8px', color:'#666'}}>🎁 选择礼物 (今日 {marriage.dailyCounts.gifts}/{DAILY_GIFT_LIMIT})</div>
+                                <div style={{fontWeight:'bold', fontSize:'12px', marginBottom:'8px', color:'#666'}}>🎁 选择礼物 (今日 {marriage.dailyCounts?.gifts || 0}/{DAILY_GIFT_LIMIT})</div>
                                 {(() => { const gifts = getGiftableItems(); return gifts.length === 0 ? (
                                   <div style={{fontSize:'11px', color:'#999', padding:'10px', textAlign:'center'}}>背包是空的~</div>
                                 ) : (
@@ -4494,6 +4583,1012 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 游戏说明
   // ==========================================
+
+  // ==========================================
+  // 🎪 五大新玩法 - 核心逻辑与UI
+  // ==========================================
+
+  const LUCKY_WHEEL_PRIZES = [
+    { id: 'gold_s', name: '500 金币', icon: '💰', color: '#FFD700', weight: 25, action: () => { setGold(g => g + 500); } },
+    { id: 'gold_m', name: '2000 金币', icon: '💰', color: '#FFA000', weight: 15, action: () => { setGold(g => g + 2000); } },
+    { id: 'gold_l', name: '8000 金币', icon: '💎', color: '#E65100', weight: 5, action: () => { setGold(g => g + 8000); } },
+    { id: 'potion', name: '伤药 ×5', icon: '💊', color: '#4CAF50', weight: 18, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, potion:(prev.meds.potion||0)+5}})); } },
+    { id: 'ether', name: 'PP补剂 ×3', icon: '🧪', color: '#2196F3', weight: 14, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+3}})); } },
+    { id: 'ball', name: '高级球 ×3', icon: '🔴', color: '#F44336', weight: 12, action: () => { setInventory(prev => ({...prev, balls:{...prev.balls, ultra:(prev.balls.ultra||0)+3}})); } },
+    { id: 'candy', name: '经验糖果', icon: '🍬', color: '#E91E63', weight: 6, action: () => { setInventory(prev => ({...prev, exp_candy:(prev.exp_candy||0)+1})); } },
+    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: prev.tickets + 1})); } },
+  ];
+
+  const spinWheel = (isPaid) => {
+    if (wheelSpinning) return;
+    const today = getLocalDateStr();
+    if (!isPaid && luckyWheel.lastFreeDate === today) { showMapToast('❌','提示','今日免费次数已用完',1500); return; }
+    if (isPaid && gold < 1000) { showMapToast('❌','金币不足','需要 1000 金币',1500); return; }
+    if (isPaid) { setGold(g => g - 1000); updateAchStat({ totalGoldSpent: 1000 }); advanceBounty('spend_gold', null, 1000); }
+    setWheelSpinning(true);
+    const totalSpins = (luckyWheel.totalSpins || 0) + 1;
+    const isPity = totalSpins > 0 && totalSpins % 10 === 0;
+    let picked;
+    if (isPity) {
+      const rarePrizes = [...LUCKY_WHEEL_PRIZES].sort((a, b) => a.weight - b.weight);
+      picked = rarePrizes[0] || LUCKY_WHEEL_PRIZES[LUCKY_WHEEL_PRIZES.length - 1];
+    } else {
+      const totalW = LUCKY_WHEEL_PRIZES.reduce((s,p) => s + p.weight, 0);
+      let roll = Math.random() * totalW;
+      picked = LUCKY_WHEEL_PRIZES[0];
+      for (const p of LUCKY_WHEEL_PRIZES) { roll -= p.weight; if (roll <= 0) { picked = p; break; } }
+    }
+    setTimeout(() => {
+      try { picked.action(); } catch(e) { console.error('Wheel reward error', e); }
+      if (!isPaid) setLuckyWheel(prev => ({...prev, lastFreeDate: today, totalSpins}));
+      else setLuckyWheel(prev => ({...prev, paidSpins: (prev.paidSpins || 0) + 1, totalSpins}));
+      updateAchStat({ wheelSpins: 1 });
+      setWheelResult(picked);
+      setWheelSpinning(false);
+      if (isPity) showMapToast('🌟', '保底触发！', `第 ${totalSpins} 次累计抽奖，保底稀有奖品！`, 3000);
+    }, 2500);
+  };
+
+  const refreshBounties = () => {
+    const today = getLocalDateStr();
+    if (bountyBoard.date !== today) {
+      const quests = generateDailyBounties(badges.length);
+      setBountyBoard({ date: today, quests, allCompleted: false, masterChestClaimed: false });
+    }
+  };
+
+  const claimBountyReward = (questIdx) => {
+    const q = bountyBoard.quests?.[questIdx];
+    if (!q || !q.completed || q.claimed) return;
+    const reward = q.reward;
+    if (reward.gold) setGold(g => g + reward.gold);
+    if (reward.tickets) setArenaState(a => ({...a, tickets: a.tickets + (reward.tickets || 0)}));
+    setBountyBoard(prev => {
+      const quests = prev.quests.map((qq,i) => i === questIdx ? {...qq, claimed: true} : qq);
+      const allDone = quests.every(qq => qq.claimed);
+      return {...prev, quests, allCompleted: allDone};
+    });
+    showMapToast('🎁', '赏金领取', `获得 ${reward.gold || 0} 金币${reward.tickets ? ` + ${reward.tickets} 竞技票` : ''}`, 2000);
+
+    setBountyBoard(prev => {
+      const claimedCount = prev.quests.filter(qq => qq.claimed).length;
+      if (claimedCount === 3) {
+        const bonus3 = Math.floor(500 + badges.length * 100);
+        setGold(g => g + bonus3);
+        setTimeout(() => showMapToast('🔥', '3连赏金!', `额外奖励 💰${bonus3} 金币！`, 2500), 600);
+      }
+      if (claimedCount === 5) {
+        const bonus5 = Math.floor(1500 + badges.length * 200);
+        setGold(g => g + bonus5);
+        setArenaState(a => ({...a, tickets: a.tickets + 1}));
+        setTimeout(() => showMapToast('🌟', '5连赏金!', `额外奖励 💰${bonus5} + 🎫1竞技票！`, 3000), 600);
+      }
+      return prev;
+    });
+  };
+
+  const claimMasterChest = () => {
+    setBountyBoard(prev => {
+      if (!prev.allCompleted || prev.masterChestClaimed) return prev;
+      const chest = getMasterChestReward(badges.length);
+      if (chest.gold) setGold(g => g + chest.gold);
+      if (chest.tickets) setArenaState(a => ({...a, tickets: a.tickets + chest.tickets}));
+      if (chest.berries) setInventory(inv => ({...inv, berries: (inv.berries||0) + chest.berries}));
+      showMapToast('🏆', '大师宝箱', `全部完成！${chest.desc}`, 3500);
+      updateAchStat({ totalGoldEarned: chest.gold || 0 });
+      return {...prev, masterChestClaimed: true};
+    });
+  };
+
+  const startMining = (row, col) => {
+    setMineState(prev => {
+      if (prev.energy <= 0) return prev;
+      if (prev.revealed.some(r => r[0]===row && r[1]===col)) return prev;
+      const tile = prev.grid?.[row]?.[col];
+      if (!tile) return prev;
+      const lastTile = prev._lastOre || null;
+      const comboCount = (tile === lastTile && MINE_ORES[tile]) ? (prev._comboCount || 0) + 1 : (MINE_ORES[tile] ? 1 : 0);
+      const next = {...prev, energy: prev.energy - 1, revealed: [...prev.revealed, [row,col]], totalMined: prev.totalMined + 1, _lastOre: MINE_ORES[tile] ? tile : null, _comboCount: comboCount};
+      const t = MINE_TILES[tile];
+      if (MINE_ORES[tile]) {
+        let amount = 1;
+        let comboMsg = '';
+        if (comboCount >= 3) { amount = 2; comboMsg = ` 🔥${comboCount}连锁x2`; }
+        if (comboCount >= 5) { amount = 3; comboMsg = ` 💎${comboCount}连锁x3`; }
+        next.minerals = {...next.minerals, [tile]: (next.minerals[tile]||0) + amount};
+        advanceBounty('mine');
+        updateAchStat({ totalMined: 1 });
+        showMapToast(t?.icon || '⛏️', '挖到矿石', `${t?.name || tile} +${amount}${comboMsg}`, 1500);
+      } else if (tile === 'chest') {
+        const bonus = 1000 + prev.depth * 200;
+        setGold(g => g + bonus);
+        showMapToast('🎁', '宝箱', `获得 ${bonus} 金币！`, 2000);
+      } else if (tile === 'trap_rock') {
+        next.energy = Math.max(0, next.energy - 2);
+        showMapToast('🪨', '碎石陷阱', '失去 2 点体力！', 1500);
+      } else if (tile === 'trap_gas') {
+        next.energy = Math.max(0, next.energy - 3);
+        showMapToast('☠️', '毒气陷阱', '失去 3 点体力！', 1500);
+      }
+      if (next.revealed.length >= MINE_GRID_SIZE * MINE_GRID_SIZE) {
+        next.depth += 1;
+        next.grid = generateMineGrid(next.depth);
+        next.revealed = [];
+        next._lastOre = null;
+        next._comboCount = 0;
+        const milestone = MINE_DEPTH_MILESTONES.find(m => m.depth === next.depth);
+        if (milestone) {
+          const r = milestone.reward;
+          if (r.type === 'gold') setGold(g => g + r.amount);
+          else if (r.type === 'mineral') { next.minerals = {...next.minerals, [r.id]: (next.minerals[r.id]||0) + r.amount}; }
+          else if (r.type === 'accessory') { const acc = sampleWeightedAccessory(true); if (acc) setAccessories(p => [...p, acc]); }
+          else if (r.type === 'legacy_stone') { next.legacyStones = (next.legacyStones||0) + r.amount; }
+          showMapToast('🏆', '里程碑', `${milestone.desc}`, 3000);
+        } else {
+          showMapToast('⬇️', '深入', `到达第 ${next.depth + 1} 层！`, 2000);
+        }
+      }
+      return next;
+    });
+  };
+
+  const exchangeMineral = (exchangeId) => {
+    const ex = MINE_EXCHANGE.find(e => e.id === exchangeId);
+    if (!ex) return;
+    setMineState(prev => {
+      const minerals = {...prev.minerals};
+      for (const [ore, need] of Object.entries(ex.cost)) {
+        if ((minerals[ore] || 0) < need) { showMapToast('❌','矿石不足',`${MINE_ORES[ore]?.name || ore} 不够`,1500); return prev; }
+      }
+      for (const [ore, need] of Object.entries(ex.cost)) minerals[ore] -= need;
+      if (ex.reward.type === 'gold') setGold(g => g + ex.reward.amount);
+      else if (ex.reward.type === 'item') setInventory(prev2 => ({...prev2, [ex.reward.id]: (prev2[ex.reward.id]||0) + ex.reward.amount}));
+      else if (ex.reward.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) setAccessories(p => [...p, acc]); }
+      else if (ex.reward.type === 'evo_stone') {
+        const stoneKeys = Object.keys(EVO_STONES);
+        const stoneId = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
+        setInventory(prev2 => ({...prev2, stones:{...(prev2.stones||{}), [stoneId]:((prev2.stones||{})[stoneId]||0)+(ex.reward.amount||1)}}));
+      }
+      else if (ex.reward.type === 'legacy_stone') {
+        setInventory(prev2 => ({...prev2, legacy_stone: (prev2.legacy_stone||0) + (ex.reward.amount || 1)}));
+      }
+      showMapToast('✅', '兑换成功', ex.desc, 2000);
+      return {...prev, minerals};
+    });
+  };
+
+  const sendExpedition = (zoneId, petIds) => {
+    const zone = EXPEDITION_ZONES.find(z => z.id === zoneId);
+    if (!zone) return;
+    if (petIds.length === 0) { showMapToast('❌','提示','请选择至少1只精灵',1500); return; }
+    if (expeditions.teams.length >= 3) { showMapToast('❌','队伍上限','最多同时派遣3支队伍',1500); return; }
+    setExpeditions(prev => ({...prev, teams: [...prev.teams, { zoneId, petUids: petIds.map(p => p.uid || p), startTime: Date.now(), duration: zone.duration }]}));
+    showMapToast('🗺️', '出发', `探险队前往${zone.name}！`, 2000);
+  };
+
+  const collectExpedition = (teamIdx) => {
+    if (collectingExp) return;
+    setCollectingExp(true);
+    setTimeout(() => setCollectingExp(false), 500);
+    setExpeditions(prev => {
+      const team = prev.teams[teamIdx];
+      if (!team) return prev;
+      if (Date.now() - team.startTime < team.duration) { showMapToast('⏳','进行中','探险队还没回来',1500); return prev; }
+      const zone = EXPEDITION_ZONES.find(z => z.id === team.zoneId);
+      if (!zone) return prev;
+
+      const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
+      const bonusMult = calcExpeditionBonus(teamPets, zone);
+
+      const rewardCount = 1 + Math.floor(Math.random() * 3);
+      let msg = [];
+      const eventText = EXPEDITION_EVENTS[Math.floor(Math.random() * EXPEDITION_EVENTS.length)];
+      msg.push(eventText);
+
+      for (let i = 0; i < rewardCount; i++) {
+        const totalW = zone.rewards.reduce((s,r) => s + r.weight, 0);
+        let roll = Math.random() * totalW;
+        let picked = zone.rewards[0];
+        for (const r of zone.rewards) { roll -= r.weight; if (roll <= 0) { picked = r; break; } }
+        if (picked.type === 'gold') { const amt = Math.floor((picked.min + Math.floor(Math.random() * (picked.max - picked.min))) * bonusMult); setGold(g => g + amt); msg.push(`💰 ${amt}金币`); }
+        else if (picked.type === 'med') { setInventory(p => ({...p, meds:{...p.meds, [picked.id]:(p.meds[picked.id]||0)+picked.count}})); msg.push(`🧪 ${picked.id} x${picked.count}`); }
+        else if (picked.type === 'stone') { setInventory(p => ({...p, stones:{...p.stones, [picked.id]:(p.stones[picked.id]||0)+picked.count}})); msg.push(`💎 进化石 x${picked.count}`); }
+        else if (picked.type === 'mineral') { const mCount = Math.floor(picked.count * bonusMult); setMineState(ms => ({...ms, minerals:{...ms.minerals, [picked.id]:(ms.minerals[picked.id]||0)+mCount}})); msg.push(`${MINE_ORES[picked.id]?.icon||'⛏️'} ${MINE_ORES[picked.id]?.name||picked.id} x${mCount}`); }
+        else if (picked.type === 'tm') { const tm = sampleWeightedTM(ALL_SKILL_TMS); if (tm) { setInventory(p => ({...p, tms:{...p.tms, [tm.id]:(p.tms[tm.id]||0)+1}})); msg.push(`📖 技能书 ${tm.name}`); } }
+        else if (picked.type === 'berry') { const bCount = Math.floor((picked.count || 5) * bonusMult); setInventory(p => ({...p, berries: (p.berries||0) + bCount})); msg.push(`🍒 树果 x${bCount}`); }
+        else if (picked.type === 'accessory_shard') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品碎片`); } }
+        else if (picked.type === 'egg' || picked.type === 'shiny_egg') { msg.push(`🥚 ${picked.type === 'shiny_egg' ? '闪光蛋' : '精灵蛋'}`); }
+        else msg.push('稀有物品');
+      }
+      if (bonusMult > 1.0) msg.push(`⭐ 属性加成 x${bonusMult.toFixed(1)}`);
+      showMapToast('🎁', '探险归来', msg.join(' | '), 4000);
+      addGlobalLog(`🗺️ 探险队从${zone.name}归来: ${msg.slice(1).join(', ')}`);
+      advanceBounty('expedition');
+      updateAchStat({ expeditionsCompleted: 1 });
+      const next = {...prev, teams: prev.teams.filter((_,i) => i !== teamIdx)};
+      return next;
+    });
+  };
+
+  // ==========================================
+  // 精灵特训营 — 核心逻辑
+  // ==========================================
+  const startTraining = (petUid, campId, tierIdx) => {
+    const camp = TRAINING_CAMPS.find(c => c.id === campId);
+    const tier = TRAINING_TIERS[tierIdx];
+    if (!camp || !tier) return;
+    if (badges.length < camp.reqBadges || badges.length < tier.reqBadges) {
+      showMapToast('🔒', '未解锁', `需要 ${Math.max(camp.reqBadges, tier.reqBadges)} 枚徽章`, 1500); return;
+    }
+    if (gold < tier.cost) { showMapToast('❌', '金币不足', `需要 ${tier.cost} 金币`, 1500); return; }
+    const today = getLocalDateStr();
+    setTrainingState(prev => {
+      const dc = prev.lastResetDate === today ? { ...prev.dailyCount } : {};
+      if (prev.slots.length >= TRAINING_MAX_SLOTS) { showMapToast('❌', '训练位已满', `最多同时训练 ${TRAINING_MAX_SLOTS} 只`, 1500); return prev; }
+      if (prev.slots.some(s => s.petUid === petUid)) { showMapToast('❌', '重复训练', '该精灵已在训练中', 1500); return prev; }
+      if ((dc[petUid] || 0) >= 1) { showMapToast('❌', '今日已训练', '每只精灵每天只能训练一次', 1500); return prev; }
+      setGold(g => g - tier.cost);
+      return {
+        ...prev,
+        slots: [...prev.slots, { petUid, campId, tierIdx, startTime: Date.now(), duration: tier.duration }],
+        dailyCount: { ...dc, [petUid]: (dc[petUid] || 0) + 1 },
+        lastResetDate: today,
+        totalSessions: (prev.totalSessions || 0) + 1,
+      };
+    });
+    showMapToast('🏋️', '开始训练', `${camp.name} · ${tier.name}`, 2000);
+  };
+
+  const collectTraining = (slotIdx) => {
+    setTrainingState(prev => {
+      const slot = prev.slots[slotIdx];
+      if (!slot) return prev;
+      if (Date.now() - slot.startTime < slot.duration) { showMapToast('⏳', '训练中', '还没完成', 1500); return prev; }
+      const camp = TRAINING_CAMPS.find(c => c.id === slot.campId);
+      const tier = TRAINING_TIERS[slot.tierIdx];
+      if (!camp || !tier) return prev;
+      const pet = [...party, ...box].find(p => p.uid === slot.petUid);
+      if (!pet) { return { ...prev, slots: prev.slots.filter((_, i) => i !== slotIdx) }; }
+
+      const gain = calcTrainingGain(pet, camp, tier, badges.length);
+      const evtText = TRAINING_EVENTS[Math.floor(Math.random() * TRAINING_EVENTS.length)];
+
+      const updatePetEVs = (p) => {
+        if (p.uid !== slot.petUid) return p;
+        const evs = { ...(p.evs || {}) };
+        evs[camp.stat] = (evs[camp.stat] || 0) + gain;
+        return { ...p, evs };
+      };
+      setParty(pr => pr.map(updatePetEVs));
+      setBox(bx => bx.map(updatePetEVs));
+
+      showMapToast('🎉', '训练完成', `${pet.name} ${camp.icon} ${camp.stat.toUpperCase()} +${gain}！${evtText}`, 3500);
+      updateAchStat({ trainingSessions: 1 });
+      advanceBounty('training');
+
+      return { ...prev, slots: prev.slots.filter((_, i) => i !== slotIdx) };
+    });
+  };
+
+  // ==========================================
+  // 世界Boss — 核心逻辑
+  // ==========================================
+  const refreshWorldBoss = () => {
+    const today = getLocalDateStr();
+    setWorldBossState(prev => {
+      if (prev.bossDate === today) return prev;
+      const boss = getTodayBoss(today);
+      return {
+        ...prev,
+        currentBossId: boss.id,
+        bossDate: today,
+        totalDamage: 0,
+        attempts: 0,
+        claimedMilestones: [],
+        defeated: false,
+      };
+    });
+  };
+
+  const startWorldBossFight = () => {
+    if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒', '未解锁', `需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`, 1500); return; }
+    if (party.length === 0) { showMapToast('❌', '无精灵', '队伍为空', 1500); return; }
+    refreshWorldBoss();
+    const today = getLocalDateStr();
+    const st = worldBossState.bossDate === today ? worldBossState : { ...DEFAULT_WORLD_BOSS_STATE, bossDate: today, currentBossId: getTodayBoss(today).id };
+    if (st.defeated) { showMapToast('🏆', '已击败', '今日Boss已被消灭！', 1500); return; }
+    if (st.attempts >= WORLD_BOSS_MAX_ATTEMPTS) { showMapToast('❌', '次数用尽', `今日最多 ${WORLD_BOSS_MAX_ATTEMPTS} 次`, 1500); return; }
+
+    const boss = WORLD_BOSSES.find(b => b.id === st.currentBossId) || getTodayBoss(today);
+    const bossLv = scaleBossLevel(boss, badges.length);
+    const bossHp = scaleBossHp(boss, badges.length);
+    const remainHp = Math.max(0, bossHp - st.totalDamage);
+
+    setWorldBossState(prev => ({ ...prev, attempts: (prev.attempts || 0) + 1 }));
+
+    const enemyPet = {
+      uid: 'world_boss_' + boss.id,
+      id: 999, name: boss.name, emoji: boss.emoji,
+      type: boss.type, level: bossLv, isShiny: false, isBoss: true,
+      hp: boss.baseStats.hp, atk: boss.baseStats.atk, def: boss.baseStats.def, spd: boss.baseStats.spd,
+      customBaseStats: boss.baseStats,
+      customStatMult: 1.5 + Math.max(0, badges.length - 6) * 0.1,
+      moves: [0,1,2,3].map(i => getMoveByLevel(boss.type, bossLv - i * 5)),
+      trait: boss.traits?.[0] || 'pressure',
+    };
+    const stats = getStats(enemyPet);
+    const enemyPartyMember = {
+      ...enemyPet, currentHp: remainHp, maxHp: bossHp,
+      stages: { p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 },
+      volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
+    };
+
+    startBattle({
+      customParty: [enemyPartyMember],
+      trainerName: boss.name,
+      drop: boss.rewards.gold,
+      worldBoss: boss,
+    }, 'world_boss');
+  };
+
+  const handleWorldBossResult = (totalDmgDealt) => {
+    const boss = WORLD_BOSSES.find(b => b.id === worldBossState.currentBossId);
+    if (!boss) return;
+    const bossHp = scaleBossHp(boss, badges.length);
+
+    setWorldBossState(prev => {
+      const newTotal = (prev.totalDamage || 0) + totalDmgDealt;
+      const defeated = newTotal >= bossHp;
+      const next = {
+        ...prev,
+        totalDamage: newTotal,
+        defeated,
+        bestDamage: Math.max(prev.bestDamage || 0, totalDmgDealt),
+        totalBossesDefeated: defeated ? (prev.totalBossesDefeated || 0) + 1 : (prev.totalBossesDefeated || 0),
+      };
+
+      const unclaimedMs = boss.milestones.filter(m => newTotal >= m.dmg && !(prev.claimedMilestones || []).includes(m.dmg));
+      if (unclaimedMs.length > 0) {
+        for (const ms of unclaimedMs) {
+          if (ms.reward.gold) setGold(g => g + ms.reward.gold);
+          if (ms.reward.tickets) setArenaState(a => ({ ...a, tickets: a.tickets + ms.reward.tickets }));
+          if (ms.reward.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + ms.reward.exp_candy }));
+          if (ms.reward.berries) setInventory(inv => ({ ...inv, berries: (inv.berries || 0) + ms.reward.berries }));
+          if (ms.reward.title) setUnlockedTitles(t => [...new Set([...t, ms.reward.title])]);
+        }
+        next.claimedMilestones = [...(prev.claimedMilestones || []), ...unclaimedMs.map(m => m.dmg)];
+        const lastMs = unclaimedMs[unclaimedMs.length - 1];
+        showMapToast('🏆', '里程碑达成', lastMs.desc, 3500);
+      }
+
+      if (defeated) {
+        updateAchStat({ worldBossesDefeated: 1 });
+        showMapToast('🎊', 'Boss击破！', `${boss.name} 已被击败！`, 4000);
+      }
+      updateAchStat({ worldBossBestDamage: (prev) => Math.max(prev || 0, totalDmgDealt) });
+      return next;
+    });
+  };
+
+  const startArenaFight = () => {
+    const rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
+    if (arenaState.tickets <= 0) { showMapToast('🎫','门票不足',`可花 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买门票`,1500); return; }
+    if (badges.length < rank.reqBadges) { showMapToast('❌','徽章不足',`需要 ${rank.reqBadges} 枚徽章`,1500); return; }
+    if (party.length === 0) { showMapToast('❌','无精灵','队伍为空',1500); return; }
+    const enemyLvl = rank.enemyLvl[0] + Math.floor(Math.random() * (rank.enemyLvl[1] - rank.enemyLvl[0]));
+    const enemyCount = rank.enemyCount || 3;
+    const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 800 && !p.name?.startsWith('野生精灵'));
+    if (enemyPool.length === 0) { showMapToast('❌','数据异常','无可用精灵池',1500); return; }
+    const enemyParty = [];
+    for (let i = 0; i < enemyCount; i++) {
+      const dex = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+      enemyParty.push(createPet(dex.id, Math.max(1, enemyLvl + Math.floor(Math.random() * 5))));
+    }
+    setArenaState(prev => ({...prev, tickets: prev.tickets - 1}));
+    startBattle({ customParty: enemyParty, trainerName: `${rank.name}段位挑战者`, drop: 500 + ARENA_RANKS.indexOf(rank) * 300 }, 'arena');
+  };
+
+  // 竞技场战斗结算钩子（在胜负判定后调用）
+  const handleArenaResult = (isWin) => {
+    setArenaState(prev => {
+      const rank = ARENA_RANKS.find(r => r.id === prev.rank) || ARENA_RANKS[0];
+      const rankIdx = ARENA_RANKS.indexOf(rank);
+      let next = {...prev, wins: prev.wins + (isWin ? 1 : 0), losses: prev.losses + (isWin ? 0 : 1)};
+      if (isWin) {
+        next.winStreak = (next.winStreak || 0) + 1;
+        next.bestStreak = Math.max(next.bestStreak || 0, next.winStreak);
+        next.stars = Math.min(rank.maxStars, (next.stars || 0) + 1);
+
+        if (rank.streakBonus) {
+          const streakKeys = Object.keys(rank.streakBonus).map(Number).sort((a,b) => b - a);
+          for (const threshold of streakKeys) {
+            if (next.winStreak === threshold) {
+              const sb = rank.streakBonus[threshold];
+              if (sb.gold) { setGold(g => g + sb.gold); showMapToast('🔥', `${next.winStreak}连胜！`, `获得 ${sb.gold.toLocaleString()} 金币`, 2500); }
+              if (sb.title) setUnlockedTitles(t => [...new Set([...t, sb.title])]);
+              break;
+            }
+          }
+        }
+
+        const rankOrder = ARENA_RANKS.map(r => r.id);
+        const curRankOrder = rankOrder.indexOf(next.rank);
+        const bestRankOrder = rankOrder.indexOf(next.seasonBestRank || 'bronze');
+        if (curRankOrder > bestRankOrder) next.seasonBestRank = next.rank;
+
+        if (next.stars >= rank.maxStars && rankIdx < ARENA_RANKS.length - 1) {
+          next.rank = ARENA_RANKS[rankIdx + 1].id;
+          next.stars = 0;
+          const firstR = ARENA_RANKS[rankIdx + 1].firstReward;
+          if (firstR && !next.rewardsClaimed.includes(ARENA_RANKS[rankIdx + 1].id)) {
+            if (firstR.gold) setGold(g => g + firstR.gold);
+            if (firstR.title) setUnlockedTitles(t => [...new Set([...t, firstR.title])]);
+            next.rewardsClaimed = [...next.rewardsClaimed, ARENA_RANKS[rankIdx + 1].id];
+            showMapToast('🏆', '段位晋级', `恭喜晋升 ${ARENA_RANKS[rankIdx + 1].name} 段位！`, 3000);
+          }
+          next.seasonBestRank = ARENA_RANKS[rankIdx + 1].id;
+        }
+      } else {
+        next.winStreak = 0;
+        if (!rank.noDropOnLoss && next.stars > 0) next.stars -= 1;
+      }
+      if (isWin) {
+        const finalRankIdx = ARENA_RANKS.findIndex(r => r.id === next.rank);
+        setTimeout(() => updateAchStat({ arenaWins: 1, arenaMaxRank: p => Math.max(p || 0, finalRankIdx >= 0 ? finalRankIdx : 0) }), 0);
+      }
+      return next;
+    });
+  };
+
+  const refreshArenaDaily = useCallback(() => {
+    const today = getLocalDateStr();
+    setArenaState(prev => {
+      if (prev.lastTicketDate === today) return prev;
+      const weekDay = new Date().getDay();
+      const ruleIdx = weekDay % ARENA_WEEKLY_RULES.length;
+      return {
+        ...prev,
+        tickets: Math.max(prev.tickets, ARENA_DAILY_FREE_TICKETS),
+        lastTicketDate: today,
+        weeklyRule: ARENA_WEEKLY_RULES[ruleIdx]?.id || 'normal',
+        lastRuleDate: today,
+      };
+    });
+  }, []);
+
+  useEffect(() => {
+    if (party.length > 0) refreshArenaDaily();
+  }, [party.length > 0]); // eslint-disable-line
+
+  // 活动中心渲染
+  const renderActivityCenter = () => {
+    if (!activityCenter) return null;
+    const today = getLocalDateStr();
+    const freeWheelAvail = luckyWheel.lastFreeDate !== today;
+    const pendingExpeditions = expeditions.teams.filter(t => Date.now() - t.startTime >= t.duration).length;
+    const unclaimedBounties = bountyBoard.date === today ? bountyBoard.quests.filter(q => q.completed && !q.claimed).length : 0;
+
+    const entries = [
+      { id:'arena', icon:'🏟️', name:'竞技场', desc:'段位排位赛', color:'#E53935', badge: arenaState.tickets, onClick: () => { setActivityCenter(false); setView('arena'); } },
+      { id:'expedition', icon:'🗺️', name:'远征探险', desc:'派遣队伍探险', color:'#2E7D32', badge: pendingExpeditions, onClick: () => { setActivityCenter(false); setView('expedition'); } },
+      { id:'mining', icon:'⛏️', name:'矿洞挖掘', desc:'挖矿收集矿石', color:'#795548', badge: 0, onClick: () => { setActivityCenter(false); if (badges.length < MINE_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${MINE_REQ_BADGES} 枚徽章`,1500); return; } if (!mineState.grid) setMineState(prev => ({...prev, grid: generateMineGrid(prev.depth)})); setView('mining'); } },
+      { id:'bounty', icon:'📋', name:'赏金任务', desc:'每日悬赏任务', color:'#FF8F00', badge: unclaimedBounties, onClick: () => { setActivityCenter(false); refreshBounties(); setView('bounty'); } },
+      { id:'wheel', icon:'🎡', name:'幸运轮盘', desc:'每日抽奖', color:'#7B1FA2', badge: freeWheelAvail ? 1 : 0, onClick: () => { setActivityCenter(false); setView('lucky_wheel'); } },
+      { id:'training', icon:'🏋️', name:'精灵特训', desc:'强化精灵能力', color:'#1565C0', badge: (Array.isArray(trainingState.slots) ? trainingState.slots : []).filter(s => Date.now() - s.startTime >= s.duration).length, onClick: () => { setActivityCenter(false); if (badges.length < TRAINING_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${TRAINING_REQ_BADGES} 枚徽章`,1500); return; } setView('training'); } },
+      { id:'world_boss', icon:'👹', name:'世界Boss', desc:'每日强敌挑战', color:'#B71C1C', badge: worldBossState.attempts < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
+    ];
+
+    return (
+      <div style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setActivityCenter(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{width:'420px',maxWidth:'92vw',background:'linear-gradient(145deg,#0f0c29,#302b63,#24243e)',borderRadius:'24px',padding:'28px',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.1)'}}>
+          <div style={{textAlign:'center',marginBottom:'24px'}}>
+            <div style={{fontSize:'28px',marginBottom:'6px'}}>🎪</div>
+            <div style={{fontSize:'20px',fontWeight:'800',color:'#fff',letterSpacing:'2px'}}>活动中心</div>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.4)',marginTop:'4px'}}>丰富玩法等你挑战</div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+            {entries.map(e => (
+              <button key={e.id} onClick={e.onClick} style={{position:'relative',background:`linear-gradient(135deg,${e.color}22,${e.color}08)`,border:`1px solid ${e.color}40`,borderRadius:'16px',padding:'16px 12px',cursor:'pointer',textAlign:'center',transition:'all 0.2s'}}>
+                <div style={{fontSize:'32px',marginBottom:'6px'}}>{e.icon}</div>
+                <div style={{fontSize:'14px',fontWeight:'700',color:'#fff'}}>{e.name}</div>
+                <div style={{fontSize:'10px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{e.desc}</div>
+                {e.badge > 0 && <div style={{position:'absolute',top:'6px',right:'6px',width:'20px',height:'20px',borderRadius:'50%',background:'#E53935',color:'#fff',fontSize:'10px',fontWeight:'800',display:'flex',alignItems:'center',justifyContent:'center'}}>{e.badge}</div>}
+              </button>
+            ))}
+          </div>
+          <button onClick={()=>setActivityCenter(false)} style={{width:'100%',marginTop:'16px',padding:'10px',borderRadius:'12px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.6)',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>关闭</button>
+        </div>
+      </div>
+    );
+  };
+
+  // 竞技场UI
+  const renderArena = () => {
+    const rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
+    const rankIdx = ARENA_RANKS.indexOf(rank);
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d1b1b,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
+          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🏟️ 竞技场</div>
+          <div style={{fontSize:'12px',color:'#FFD700'}}>🎫 {arenaState.tickets}</div>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
+          <div style={{textAlign:'center',padding:'24px',background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.08)',marginBottom:'20px'}}>
+            <div style={{fontSize:'48px',marginBottom:'8px'}}>{rank.icon}</div>
+            <div style={{fontSize:'22px',fontWeight:'800',color:rank.color}}>{rank.name}</div>
+            <div style={{display:'flex',justifyContent:'center',gap:'6px',marginTop:'8px'}}>
+              {Array.from({length: rank.maxStars}).map((_,i) => <span key={i} style={{fontSize:'20px'}}>{i < arenaState.stars ? '⭐' : '☆'}</span>)}
+            </div>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.4)',marginTop:'8px'}}>胜 {arenaState.wins} · 负 {arenaState.losses} · 连胜 {arenaState.winStreak}</div>
+            {arenaState.winStreak >= 3 && <div style={{marginTop:'6px',padding:'4px 12px',borderRadius:'20px',background:arenaState.winStreak>=10?'linear-gradient(90deg,#FF6D00,#F44336)':arenaState.winStreak>=5?'linear-gradient(90deg,#FFD700,#FF8F00)':'linear-gradient(90deg,#4CAF50,#2E7D32)',display:'inline-block',fontSize:'11px',fontWeight:'700'}}>🔥 {arenaState.winStreak}连胜{arenaState.winStreak>=10?' · 传说之火':arenaState.winStreak>=5?' · 势不可挡':''}</div>}
+          </div>
+          {(() => { const weekDay = new Date().getDay(); const rule = ARENA_WEEKLY_RULES?.[weekDay]; return rule ? (
+            <div style={{padding:'10px 14px',borderRadius:'12px',background:'rgba(255,152,0,0.08)',border:'1px solid rgba(255,152,0,0.15)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'10px'}}>
+              <span style={{fontSize:'20px'}}>📜</span>
+              <div><div style={{fontSize:'11px',fontWeight:'700',color:'#FF9800'}}>本周规则: {rule.name}</div><div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>{rule.desc || '特殊竞技规则生效中'}</div></div>
+            </div>
+          ) : null; })()}
+          <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+            <button onClick={startArenaFight} disabled={arenaState.tickets<=0 || party.length===0} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:'linear-gradient(135deg,#E53935,#C62828)',color:'#fff',fontSize:'16px',fontWeight:'800',cursor:'pointer',boxShadow:'0 4px 15px rgba(229,57,53,0.3)'}}>⚔️ 开始挑战</button>
+            <button onClick={()=>{if(gold<ARENA_TICKET_PRICE){showMapToast('❌','金币不足',`需要 ${ARENA_TICKET_PRICE} 金币`,1500);return;}setGold(g=>g-ARENA_TICKET_PRICE);setArenaState(p=>({...p,tickets:p.tickets+1}));showMapToast('🎫','购买成功','获得 1 张门票',1500);}} style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>买门票</button>
+          </div>
+          <div style={{padding:'10px 14px',borderRadius:'12px',background:'rgba(76,175,80,0.06)',border:'1px solid rgba(76,175,80,0.12)',marginBottom:'16px'}}>
+            <div style={{fontSize:'11px',fontWeight:'700',color:'#4CAF50',marginBottom:'4px'}}>🏆 赛季奖励预览</div>
+            {(ARENA_SEASON_REWARDS || []).slice(0, 4).map((sr, si) => <div key={si} style={{fontSize:'10px',color:'rgba(255,255,255,0.4)',marginBottom:'2px'}}>{ARENA_RANKS[si]?.icon||'🏅'} {ARENA_RANKS[si]?.name||''}: {sr.gold ? `💰${sr.gold}` : ''} {sr.title ? `📛${sr.title}` : ''}</div>)}
+          </div>
+          <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'10px'}}>🏆 段位一览</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+            {ARENA_RANKS.map((r,i) => (
+              <div key={r.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 14px',borderRadius:'12px',background:i===rankIdx?`linear-gradient(90deg,${r.color}22,transparent)`:'rgba(255,255,255,0.02)',border:i===rankIdx?`1px solid ${r.color}40`:'1px solid rgba(255,255,255,0.04)'}}>
+                <span style={{fontSize:'24px'}}>{r.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'14px',fontWeight:'700',color:r.color}}>{r.name}</div>
+                  <div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>Lv.{r.enemyLvl[0]}-{r.enemyLvl[1]} · {r.enemyCount}v{Math.min(6,party.length)}</div>
+                </div>
+                {i===rankIdx && <span style={{fontSize:'10px',color:'#4CAF50',fontWeight:'700',background:'rgba(76,175,80,0.15)',padding:'2px 8px',borderRadius:'8px'}}>当前</span>}
+                {i<rankIdx && <span style={{fontSize:'10px',color:'#FFD700',fontWeight:'700'}}>✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 远征探险UI
+  const renderExpedition = () => {
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#0d1f0d,#1a2e1a,#0d1f0d)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
+          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🗺️ 远征探险</div>
+          <div style={{fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>队伍 {expeditions.teams.length}/3 · 不影响出战</div>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
+          {expeditions.teams.length > 0 && (
+            <div style={{marginBottom:'20px'}}>
+              <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'10px'}}>📦 进行中的探险</div>
+              {expeditions.teams.map((team,ti) => {
+                const zone = EXPEDITION_ZONES.find(z => z.id === team.zoneId);
+                const elapsed = Date.now() - team.startTime;
+                const done = elapsed >= team.duration;
+                const pct = Math.min(100, Math.floor(elapsed / team.duration * 100));
+                return (
+                  <div key={ti} style={{padding:'14px',borderRadius:'14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',marginBottom:'10px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                      <div style={{fontSize:'14px',fontWeight:'700'}}>{zone?.icon} {zone?.name || '未知'}</div>
+                      <span style={{fontSize:'11px',color:done?'#4CAF50':'#FFD700',fontWeight:'600'}}>{done?'✅ 已完成':`${pct}% · ${Math.max(0,Math.ceil((team.duration - elapsed)/60000))}分钟`}</span>
+                    </div>
+                    <div style={{height:'4px',borderRadius:'2px',background:'rgba(255,255,255,0.1)',overflow:'hidden',marginBottom:'8px'}}>
+                      <div style={{width:`${pct}%`,height:'100%',background:done?'#4CAF50':'#FFD700',borderRadius:'2px',transition:'width 1s'}}/>
+                    </div>
+                    <button onClick={()=>collectExpedition(ti)} disabled={!done} style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',background:done?'linear-gradient(135deg,#4CAF50,#2E7D32)':'rgba(255,255,255,0.05)',color:done?'#fff':'rgba(255,255,255,0.3)',fontSize:'12px',fontWeight:'700',cursor:done?'pointer':'not-allowed'}}>{done?'🎁 领取奖励':'探险进行中...'}</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'10px'}}>🌍 探险区域</div>
+          {EXPEDITION_ZONES.filter(z => badges.length >= z.reqBadges).map(zone => (
+            <div key={zone.id} style={{padding:'14px',borderRadius:'14px',background:`linear-gradient(135deg,${zone.color}15,transparent)`,border:`1px solid ${zone.color}30`,marginBottom:'10px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+                <div style={{fontSize:'15px',fontWeight:'700'}}>{zone.icon} {zone.name}</div>
+                <span style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>{Math.floor(zone.duration/60000)}分钟</span>
+              </div>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'10px'}}>{zone.desc}</div>
+              {expPicking === zone.id ? (
+                <div>
+                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'6px'}}>选择派遣精灵（最多3只）:</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'4px',marginBottom:'8px'}}>
+                    {party.map((p,pi) => (
+                      <button key={pi} onClick={()=>setExpSelectedPets(prev=>prev.includes(pi)?prev.filter(x=>x!==pi):[...prev,pi].slice(0,3))} style={{padding:'4px 8px',borderRadius:'8px',fontSize:'11px',border:expSelectedPets.includes(pi)?'1px solid #4CAF50':'1px solid rgba(255,255,255,0.1)',background:expSelectedPets.includes(pi)?'rgba(76,175,80,0.2)':'rgba(255,255,255,0.05)',color:'#fff',cursor:'pointer',fontWeight:'600'}}>{p.emoji||'?'} {p.name?.slice(0,4)}</button>
+                    ))}
+                  </div>
+                  <div style={{display:'flex',gap:'6px'}}>
+                    <button onClick={()=>{sendExpedition(zone.id, expSelectedPets.map(i=>party[i]?.uid));setExpPicking(null);setExpSelectedPets([]);}} disabled={expSelectedPets.length===0||expeditions.teams.length>=3} style={{flex:1,padding:'8px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg,#2E7D32,#1B5E20)',color:'#fff',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🚀 出发</button>
+                    <button onClick={()=>{setExpPicking(null);setExpSelectedPets([]);}} style={{padding:'8px 14px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'rgba(255,255,255,0.5)',fontSize:'12px',cursor:'pointer'}}>取消</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={()=>{if(expeditions.teams.length>=3){showMapToast('❌','队伍已满','最多3支',1500);return;}setExpPicking(zone.id);setExpSelectedPets([]);}} disabled={expeditions.teams.length>=3} style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',background:expeditions.teams.length>=3?'rgba(255,255,255,0.05)':'linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05))',color:expeditions.teams.length>=3?'rgba(255,255,255,0.3)':'#fff',fontSize:'12px',fontWeight:'600',cursor:expeditions.teams.length>=3?'not-allowed':'pointer'}}>📤 派遣队伍</button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // 矿洞挖掘UI
+  const regenMineEnergy = useCallback(() => {
+    setMineState(prev => {
+      const elapsed = Date.now() - (prev.lastRegenTime || Date.now());
+      const ticks = Math.floor(elapsed / MINE_REGEN_INTERVAL);
+      if (ticks <= 0) return prev;
+      const newEnergy = Math.min(MINE_MAX_ENERGY, prev.energy + ticks);
+      return {...prev, energy: newEnergy, lastRegenTime: (prev.lastRegenTime || Date.now()) + ticks * MINE_REGEN_INTERVAL};
+    });
+  }, []);
+
+  useEffect(() => {
+    if (view === 'mining') regenMineEnergy();
+  }, [view, regenMineEnergy]);
+
+  // ==========================================
+  // 精灵特训营 — UI渲染
+  // ==========================================
+  const renderTraining = () => {
+    const today = getLocalDateStr();
+    const dc = trainingState.lastResetDate === today ? trainingState.dailyCount : {};
+    const availablePets = party.filter(p => !trainingState.slots.some(s => s.petUid === p.uid) && !(dc[p.uid] >= 1));
+
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#0d1b2a,#1b2838,#0d1b2a)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{padding:'16px 20px',background:'linear-gradient(135deg,#1565C0,#0D47A1)',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 20px rgba(21,101,192,0.4)'}}>
+          <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',padding:'8px 16px',borderRadius:'12px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>⬅ 返回</button>
+          <div style={{fontSize:'18px',fontWeight:'900',textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>🏋️ 精灵特训营</div>
+          <div style={{fontSize:'12px',color:'rgba(255,255,255,0.7)'}}>训练位 {trainingState.slots.length}/{TRAINING_MAX_SLOTS}</div>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
+          {trainingState.slots.length > 0 && (
+            <div style={{marginBottom:'16px'}}>
+              <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>⏳ 训练中</div>
+              {trainingState.slots.map((slot, si) => {
+                const pet = [...party, ...box].find(p => p.uid === slot.petUid);
+                const camp = TRAINING_CAMPS.find(c => c.id === slot.campId);
+                const tier = TRAINING_TIERS[slot.tierIdx];
+                const elapsed = Date.now() - slot.startTime;
+                const done = elapsed >= slot.duration;
+                const pct = Math.min(100, (elapsed / slot.duration) * 100);
+                const remain = done ? 0 : Math.ceil((slot.duration - elapsed) / 60000);
+                return (
+                  <div key={si} style={{padding:'14px',borderRadius:'14px',background:done?'linear-gradient(135deg,rgba(76,175,80,0.15),rgba(76,175,80,0.05))':'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))',border:done?'1px solid rgba(76,175,80,0.3)':'1px solid rgba(255,255,255,0.08)',marginBottom:'8px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                      <div style={{fontSize:'14px',fontWeight:'700'}}>{pet?.emoji||'?'} {pet?.name||'未知'} → {camp?.icon} {camp?.name}</div>
+                      <span style={{fontSize:'11px',color:done?'#4CAF50':'rgba(255,255,255,0.4)'}}>{done ? '✅ 完成' : `${remain}分钟`}</span>
+                    </div>
+                    <div style={{height:'6px',borderRadius:'3px',background:'rgba(255,255,255,0.1)',overflow:'hidden',marginBottom:'8px'}}>
+                      <div style={{height:'100%',width:`${pct}%`,borderRadius:'3px',background:done?'linear-gradient(90deg,#4CAF50,#66BB6A)':'linear-gradient(90deg,#1565C0,#42A5F5)',transition:'width 1s'}} />
+                    </div>
+                    {done && <button onClick={() => collectTraining(si)} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg,#4CAF50,#2E7D32)',color:'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>🎁 领取训练成果</button>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>📋 选择精灵训练</div>
+          {availablePets.length === 0 && <div style={{textAlign:'center',padding:'20px',color:'rgba(255,255,255,0.3)',fontSize:'13px'}}>当前没有可训练的精灵（已训练/今日次数用尽）</div>}
+          {availablePets.map(pet => {
+            const isPicking = trainingPicking?.uid === pet.uid;
+            return (
+            <div key={pet.uid} style={{padding:'12px',borderRadius:'12px',background:isPicking?'rgba(21,101,192,0.08)':'rgba(255,255,255,0.04)',border:isPicking?'1px solid rgba(21,101,192,0.3)':'1px solid rgba(255,255,255,0.06)',marginBottom:'8px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                <div style={{fontSize:'14px',fontWeight:'700'}}>{pet.emoji} {pet.name} <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Lv.{pet.level}</span></div>
+                {!isPicking && <button onClick={() => setTrainingPicking({uid:pet.uid,campId:null,tierIdx:0})} disabled={trainingState.slots.length >= TRAINING_MAX_SLOTS} style={{padding:'6px 14px',borderRadius:'8px',border:'none',background:trainingState.slots.length>=TRAINING_MAX_SLOTS?'rgba(255,255,255,0.05)':'linear-gradient(135deg,#1565C0,#0D47A1)',color:'#fff',fontSize:'11px',fontWeight:'700',cursor:trainingState.slots.length>=TRAINING_MAX_SLOTS?'not-allowed':'pointer'}}>训练</button>}
+              </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:'4px',marginBottom:'8px'}}>
+                {TRAINING_CAMPS.filter(c => badges.length >= c.reqBadges).map(camp => {
+                  const currentEV = (pet.evs || {})[camp.stat] || 0;
+                  const isSelected = isPicking && trainingPicking.campId === camp.id;
+                  return (
+                    <div key={camp.id} onClick={() => isPicking ? setTrainingPicking(p=>({...p,campId:camp.id})) : null} style={{flex:'1',minWidth:'75px',padding:'6px',borderRadius:'8px',background:isSelected?`${camp.color}30`:`${camp.color}10`,border:isSelected?`2px solid ${camp.color}`:`1px solid ${camp.color}20`,textAlign:'center',cursor:isPicking?'pointer':'default',transition:'all 0.2s'}}>
+                      <div style={{fontSize:'16px'}}>{camp.icon}</div>
+                      <div style={{fontSize:'10px',color:camp.color,fontWeight:'700'}}>{camp.name.replace('训练场','')}</div>
+                      <div style={{height:'3px',borderRadius:'2px',background:'rgba(255,255,255,0.06)',margin:'3px 0',overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${Math.round(currentEV/TRAINING_MAX_EV*100)}%`,background:camp.color,borderRadius:'2px'}}/>
+                      </div>
+                      <div style={{fontSize:'9px',color:'rgba(255,255,255,0.4)'}}>{currentEV}/{TRAINING_MAX_EV}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              {isPicking && (
+                <div>
+                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'6px'}}>选择训练强度:</div>
+                  <div style={{display:'flex',gap:'4px',flexWrap:'wrap',marginBottom:'8px'}}>
+                    {TRAINING_TIERS.filter(t => badges.length >= t.reqBadges).map((tier, ti) => (
+                      <button key={ti} onClick={() => setTrainingPicking(p=>({...p,tierIdx:ti}))} style={{flex:1,padding:'8px',borderRadius:'8px',border:trainingPicking.tierIdx===ti?'2px solid #1565C0':'1px solid rgba(255,255,255,0.1)',background:trainingPicking.tierIdx===ti?'rgba(21,101,192,0.2)':'rgba(255,255,255,0.04)',color:'#fff',fontSize:'11px',fontWeight:'600',cursor:'pointer'}}>
+                        {tier.name}<br/><span style={{fontSize:'9px',color:'rgba(255,255,255,0.4)'}}>{tier.cost}💰 {tier.duration/60000}分</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:'flex',gap:'6px'}}>
+                    <button onClick={() => { if (!trainingPicking.campId) { showMapToast('❌','提示','请先选择训练项目',1500); return; } startTraining(pet.uid, trainingPicking.campId, trainingPicking.tierIdx); setTrainingPicking(null); }} disabled={!trainingPicking.campId} style={{flex:1,padding:'10px',borderRadius:'10px',border:'none',background:trainingPicking.campId?'linear-gradient(135deg,#1565C0,#0D47A1)':'rgba(255,255,255,0.05)',color:trainingPicking.campId?'#fff':'rgba(255,255,255,0.3)',fontSize:'13px',fontWeight:'700',cursor:trainingPicking.campId?'pointer':'not-allowed'}}>🏋️ 开始训练</button>
+                    <button onClick={() => setTrainingPicking(null)} style={{padding:'10px 16px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'rgba(255,255,255,0.5)',fontSize:'12px',cursor:'pointer'}}>取消</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 世界Boss — UI渲染
+  // ==========================================
+  const renderWorldBoss = () => {
+    const today = getLocalDateStr();
+    const boss = getTodayBoss(today);
+    if (!boss) return <div className="screen" style={{background:'#1a0000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>Boss数据加载中...</div>;
+    const bossHp = scaleBossHp(boss, badges.length);
+    const bossLv = scaleBossLevel(boss, badges.length);
+    const needsRefresh = worldBossState.bossDate !== today;
+    const st = needsRefresh ? { ...DEFAULT_WORLD_BOSS_STATE, currentBossId: boss.id, bossDate: today } : worldBossState;
+    const hpPct = Math.max(0, Math.min(100, ((bossHp - st.totalDamage) / bossHp) * 100));
+    const remainHp = Math.max(0, bossHp - st.totalDamage);
+
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d0a0a,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{padding:'16px 20px',background:'linear-gradient(135deg,#B71C1C,#880E4F)',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 20px rgba(183,28,28,0.4)'}}>
+          <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',padding:'8px 16px',borderRadius:'12px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>⬅ 返回</button>
+          <div style={{fontSize:'18px',fontWeight:'900',textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>👹 世界Boss</div>
+          <div style={{fontSize:'12px',color:'rgba(255,255,255,0.7)'}}>⚔️ {st.attempts}/{WORLD_BOSS_MAX_ATTEMPTS}</div>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
+          <div style={{textAlign:'center',padding:'30px 20px',background:'linear-gradient(135deg,rgba(183,28,28,0.12),rgba(136,14,79,0.08))',borderRadius:'20px',border:'1px solid rgba(183,28,28,0.2)',marginBottom:'16px'}}>
+            <div style={{fontSize:'60px',marginBottom:'8px',filter:st.defeated?'grayscale(1)':'none'}}>{boss.emoji}</div>
+            <div style={{fontSize:'22px',fontWeight:'900',marginBottom:'4px',color:st.defeated?'rgba(255,255,255,0.3)':'#fff'}}>{boss.name}</div>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.5)',marginBottom:'12px'}}>Lv.{bossLv} · {TYPES?.[boss.type]?.name || boss.type}属性</div>
+            <div style={{height:'12px',borderRadius:'6px',background:'rgba(255,255,255,0.1)',overflow:'hidden',marginBottom:'6px',position:'relative'}}>
+              <div style={{height:'100%',width:`${hpPct}%`,borderRadius:'6px',background:st.defeated?'rgba(255,255,255,0.1)':hpPct>50?'linear-gradient(90deg,#4CAF50,#66BB6A)':hpPct>25?'linear-gradient(90deg,#FF9800,#FFC107)':'linear-gradient(90deg,#F44336,#E53935)',transition:'width 0.5s'}} />
+            </div>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>HP: {remainHp.toLocaleString()} / {bossHp.toLocaleString()}</div>
+            {st.defeated && <div style={{marginTop:'12px',fontSize:'16px',fontWeight:'700',color:'#4CAF50'}}>🎊 已击败！</div>}
+          </div>
+
+          <div style={{display:'flex',gap:'8px',marginBottom:'16px'}}>
+            <button onClick={startWorldBossFight} disabled={st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || party.length === 0} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS)?'rgba(255,255,255,0.05)':'linear-gradient(135deg,#B71C1C,#880E4F)',color:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS)?'rgba(255,255,255,0.3)':'#fff',fontSize:'16px',fontWeight:'800',cursor:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS)?'not-allowed':'pointer',boxShadow:st.defeated?'none':'0 4px 15px rgba(183,28,28,0.3)'}}>
+              {st.defeated ? '🎊 今日已击破' : st.attempts >= WORLD_BOSS_MAX_ATTEMPTS ? '❌ 次数用尽' : '⚔️ 开始挑战'}
+            </button>
+          </div>
+
+          <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>📊 伤害统计</div>
+          <div style={{display:'flex',gap:'8px',marginBottom:'16px'}}>
+            <div style={{flex:1,padding:'12px',borderRadius:'12px',background:'rgba(255,255,255,0.04)',textAlign:'center'}}>
+              <div style={{fontSize:'18px',fontWeight:'800',color:'#FF8A80'}}>{st.totalDamage?.toLocaleString() || 0}</div>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>累计伤害</div>
+            </div>
+            <div style={{flex:1,padding:'12px',borderRadius:'12px',background:'rgba(255,255,255,0.04)',textAlign:'center'}}>
+              <div style={{fontSize:'18px',fontWeight:'800',color:'#FFD740'}}>{st.bestDamage?.toLocaleString() || 0}</div>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>单次最高</div>
+            </div>
+            <div style={{flex:1,padding:'12px',borderRadius:'12px',background:'rgba(255,255,255,0.04)',textAlign:'center'}}>
+              <div style={{fontSize:'18px',fontWeight:'800',color:'#B388FF'}}>{st.totalBossesDefeated || 0}</div>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>历史击破</div>
+            </div>
+          </div>
+
+          <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>🏆 伤害里程碑</div>
+          {boss.milestones.map((ms, mi) => {
+            const claimed = (st.claimedMilestones || []).includes(ms.dmg);
+            const reached = st.totalDamage >= ms.dmg;
+            return (
+              <div key={mi} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 14px',borderRadius:'10px',background:claimed?'rgba(76,175,80,0.08)':reached?'rgba(255,215,0,0.08)':'rgba(255,255,255,0.02)',border:claimed?'1px solid rgba(76,175,80,0.2)':reached?'1px solid rgba(255,215,0,0.2)':'1px solid rgba(255,255,255,0.04)',marginBottom:'6px'}}>
+                <span style={{fontSize:'20px'}}>{claimed?'✅':reached?'🎁':'🔒'}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'12px',fontWeight:'700',color:claimed?'#4CAF50':reached?'#FFD700':'rgba(255,255,255,0.4)'}}>{ms.desc}</div>
+                  <div style={{height:'3px',borderRadius:'2px',background:'rgba(255,255,255,0.05)',marginTop:'4px'}}>
+                    <div style={{height:'100%',width:`${Math.min(100, (st.totalDamage / ms.dmg) * 100)}%`,borderRadius:'2px',background:claimed?'#4CAF50':reached?'#FFD700':'#1565C0'}} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {boss.phases && (
+            <div style={{marginTop:'16px'}}>
+              <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>⚠️ Boss阶段</div>
+              {boss.phases.map((ph, pi) => (
+                <div key={pi} style={{padding:'8px 12px',borderRadius:'8px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)',marginBottom:'4px',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
+                  <span style={{color:remainHp <= bossHp * ph.hpPct ? '#FF8A80' : 'inherit'}}>💀 HP≤{Math.floor(ph.hpPct * 100)}%: {ph.msg}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMining = () => {
+    const grid = mineState.grid || [];
+    const energyPct = mineState.energy / MINE_MAX_ENERGY * 100;
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#1a1209,#2d2015,#1a1209)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+            <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>⛏️ 矿洞 · 第{mineState.depth + 1}层</div>
+            {(mineState._comboCount || 0) >= 2 && <div style={{fontSize:'10px',color:'#FF9800',fontWeight:'700',marginTop:'2px'}}>🔥 连锁 x{mineState._comboCount} {mineState._comboCount >= 5 ? '· 产出x3' : mineState._comboCount >= 3 ? '· 产出x2' : ''}</div>}
+          </div>
+          <div style={{fontSize:'12px',color:'#FFD700'}}>⚡{mineState.energy}/{MINE_MAX_ENERGY}</div>
+        </div>
+        <div style={{display:'flex',gap:'4px',padding:'0 20px',marginTop:'12px'}}>
+          {['dig','exchange','bag'].map(t => (
+            <button key={t} onClick={()=>setMineTab(t)} style={{flex:1,padding:'8px',borderRadius:'10px',border:mineTab===t?'1px solid rgba(255,255,255,0.2)':'1px solid rgba(255,255,255,0.05)',background:mineTab===t?'rgba(255,255,255,0.1)':'transparent',color:mineTab===t?'#fff':'rgba(255,255,255,0.4)',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>
+              {t==='dig'?'⛏️ 挖掘':t==='exchange'?'🔄 兑换':'💎 矿石'}
+            </button>
+          ))}
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
+          {mineTab === 'dig' && (
+            <div>
+              <div style={{height:'6px',borderRadius:'3px',background:'rgba(255,255,255,0.08)',marginBottom:'16px',overflow:'hidden'}}>
+                <div style={{width:`${energyPct}%`,height:'100%',background:energyPct>50?'#4CAF50':energyPct>20?'#FF9800':'#F44336',borderRadius:'3px',transition:'width 0.3s'}}/>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:`repeat(${MINE_GRID_SIZE}, 1fr)`,gap:'6px',maxWidth:'320px',margin:'0 auto'}}>
+                {grid.map((row,ri) => row.map((tile,ci) => {
+                  const revealed = mineState.revealed.some(r => r[0]===ri && r[1]===ci);
+                  const t = MINE_TILES[tile];
+                  return (
+                    <button key={`${ri}-${ci}`} onClick={()=>startMining(ri,ci)} disabled={revealed||mineState.energy<=0} style={{
+                      width:'100%',aspectRatio:'1',borderRadius:'12px',fontSize:'24px',display:'flex',alignItems:'center',justifyContent:'center',cursor:revealed?'default':'pointer',
+                      background:revealed?'rgba(255,255,255,0.04)':'linear-gradient(135deg,#4a3728,#3d2d1f)',border:revealed?'1px solid rgba(255,255,255,0.04)':'2px solid rgba(255,215,0,0.15)',
+                      boxShadow:revealed?'none':'0 2px 8px rgba(0,0,0,0.3)',transition:'all 0.2s',
+                    }}>
+                      {revealed ? (t?.icon || '💨') : '❓'}
+                    </button>
+                  );
+                }))}
+              </div>
+            </div>
+          )}
+          {mineTab === 'exchange' && (
+            <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+              {MINE_EXCHANGE.map(ex => {
+                const canAfford = Object.entries(ex.cost).every(([ore,need]) => (mineState.minerals[ore]||0) >= need);
+                return (
+                  <div key={ex.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'12px',borderRadius:'12px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}>
+                    <div style={{flex:1,fontSize:'12px',color:'rgba(255,255,255,0.7)'}}>{ex.desc}</div>
+                    <button onClick={()=>exchangeMineral(ex.id)} disabled={!canAfford} style={{padding:'6px 14px',borderRadius:'8px',border:'none',background:canAfford?'linear-gradient(135deg,#FFD700,#FFA000)':'rgba(255,255,255,0.05)',color:canAfford?'#000':'rgba(255,255,255,0.3)',fontSize:'11px',fontWeight:'700',cursor:canAfford?'pointer':'not-allowed'}}>兑换</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {mineTab === 'bag' && (
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+              {Object.entries(MINE_ORES).map(([id, ore]) => (
+                <div key={id} style={{padding:'14px',borderRadius:'14px',background:`linear-gradient(135deg,${ore.color}15,transparent)`,border:`1px solid ${ore.color}30`,textAlign:'center'}}>
+                  <div style={{fontSize:'28px',marginBottom:'4px'}}>{ore.icon}</div>
+                  <div style={{fontSize:'13px',fontWeight:'700',color:ore.color}}>{ore.name}</div>
+                  <div style={{fontSize:'18px',fontWeight:'800',color:'#fff',marginTop:'4px'}}>{mineState.minerals[id] || 0}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // 赏金任务板UI
+  const renderBountyBoard = () => {
+    const today = getLocalDateStr();
+    const isToday = bountyBoard.date === today;
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#1a1400,#2d2200,#1a1400)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
+          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>📋 赏金任务</div>
+          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>{today}</div>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
+          {isToday && bountyBoard.quests.length > 0 ? (
+            <>
+              {bountyBoard.quests.map((q,qi) => {
+                const pct = Math.min(100, Math.floor((q.progress / q.target) * 100));
+                return (
+                  <div key={qi} style={{padding:'14px',borderRadius:'14px',background:q.claimed?'rgba(76,175,80,0.08)':q.completed?'rgba(255,215,0,0.08)':'rgba(255,255,255,0.03)',border:q.claimed?'1px solid rgba(76,175,80,0.2)':q.completed?'1px solid rgba(255,215,0,0.2)':'1px solid rgba(255,255,255,0.06)',marginBottom:'10px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+                      <div style={{fontSize:'13px',fontWeight:'700',color:q.claimed?'#4CAF50':'#fff'}}>{q.desc}</div>
+                      <span style={{fontSize:'11px',color:q.claimed?'#4CAF50':q.completed?'#FFD700':'rgba(255,255,255,0.4)',fontWeight:'600'}}>{q.claimed?'✅ 已领取':q.completed?'🎁 可领取':`${q.progress}/${q.target}`}</span>
+                    </div>
+                    <div style={{height:'4px',borderRadius:'2px',background:'rgba(255,255,255,0.08)',marginBottom:'8px',overflow:'hidden'}}>
+                      <div style={{width:`${pct}%`,height:'100%',background:q.claimed?'#4CAF50':q.completed?'#FFD700':'#2196F3',borderRadius:'2px',transition:'width 0.3s'}}/>
+                    </div>
+                    {q.completed && !q.claimed && (
+                      <button onClick={()=>claimBountyReward(qi)} style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg,#FFD700,#FFA000)',color:'#000',fontSize:'12px',fontWeight:'800',cursor:'pointer'}}>领取 · {q.reward.gold || 0} 金币</button>
+                    )}
+                  </div>
+                );
+              })}
+              {bountyBoard.allCompleted && !bountyBoard.masterChestClaimed && (
+                <button onClick={claimMasterChest} style={{width:'100%',padding:'14px',borderRadius:'14px',border:'2px solid rgba(255,215,0,0.4)',background:'linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,152,0,0.1))',color:'#FFD700',fontSize:'15px',fontWeight:'800',cursor:'pointer',marginTop:'8px'}}>🏆 领取大师宝箱</button>
+              )}
+              {bountyBoard.masterChestClaimed && (
+                <div style={{textAlign:'center',padding:'16px',color:'rgba(255,255,255,0.3)',fontSize:'13px'}}>🎉 今日全部任务已完成，明天再来！</div>
+              )}
+            </>
+          ) : (
+            <div style={{textAlign:'center',padding:'40px',color:'rgba(255,255,255,0.4)'}}>
+              <div style={{fontSize:'40px',marginBottom:'12px'}}>📋</div>
+              <div style={{fontSize:'14px',marginBottom:'16px'}}>今日赏金任务已刷新</div>
+              <button onClick={refreshBounties} style={{padding:'10px 24px',borderRadius:'12px',border:'none',background:'linear-gradient(135deg,#FF8F00,#E65100)',color:'#fff',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>查看任务</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // 幸运轮盘UI
+  const renderLuckyWheel = () => {
+    const today = getLocalDateStr();
+    const freeAvail = luckyWheel.lastFreeDate !== today;
+    const sliceAngle = 360 / LUCKY_WHEEL_PRIZES.length;
+    return (
+      <div className="screen" style={{background:'linear-gradient(135deg,#1a0033,#2d1b63,#1a0033)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <button onClick={()=>{setView(safeBack());setWheelResult(null);}} style={{...actBtnSecondary}}>⬅ 返回</button>
+          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🎡 幸运轮盘</div>
+          <div/>
+        </div>
+        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+          <div style={{position:'relative',width:'280px',height:'280px',marginBottom:'24px'}}>
+            <div style={{
+              width:'100%',height:'100%',borderRadius:'50%',
+              background:`conic-gradient(${LUCKY_WHEEL_PRIZES.map((p,i) => `${p.color} ${i*sliceAngle}deg ${(i+1)*sliceAngle}deg`).join(',')})`,
+              animation: wheelSpinning ? 'spin 2.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+              border:'4px solid rgba(255,255,255,0.2)',boxShadow:'0 0 40px rgba(128,0,255,0.3)',
+            }}>
+              {LUCKY_WHEEL_PRIZES.map((p,i) => {
+                const angle = (i + 0.5) * sliceAngle;
+                const rad = angle * Math.PI / 180;
+                const x = 50 + 32 * Math.sin(rad);
+                const y = 50 - 32 * Math.cos(rad);
+                return <div key={i} style={{position:'absolute',left:`${x}%`,top:`${y}%`,transform:'translate(-50%,-50%)',fontSize:'20px',textShadow:'0 1px 3px rgba(0,0,0,0.5)'}}>{p.icon}</div>;
+              })}
+            </div>
+            <div style={{position:'absolute',top:'-12px',left:'50%',transform:'translateX(-50%)',fontSize:'24px',zIndex:1,filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'}}>🔻</div>
+          </div>
+          {wheelResult && !wheelSpinning && (
+            <div style={{textAlign:'center',padding:'16px 24px',borderRadius:'16px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',marginBottom:'16px',animation:'slideDown 0.3s ease'}}>
+              <div style={{fontSize:'24px',marginBottom:'4px'}}>{wheelResult.icon}</div>
+              <div style={{fontSize:'16px',fontWeight:'700',color:'#FFD700'}}>{wheelResult.name}</div>
+            </div>
+          )}
+          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'8px'}}>累计抽奖: {luckyWheel.totalSpins || 0}次 · 保底: {10 - ((luckyWheel.totalSpins || 0) % 10)}次后触发</div>
+          <div style={{display:'flex',gap:'12px'}}>
+            <button onClick={()=>{setWheelResult(null);spinWheel(false);}} disabled={!freeAvail||wheelSpinning} style={{padding:'14px 28px',borderRadius:'14px',border:'none',background:freeAvail&&!wheelSpinning?'linear-gradient(135deg,#7B1FA2,#4A148C)':'rgba(255,255,255,0.05)',color:freeAvail?'#fff':'rgba(255,255,255,0.3)',fontSize:'14px',fontWeight:'800',cursor:freeAvail&&!wheelSpinning?'pointer':'not-allowed',boxShadow:freeAvail?'0 4px 15px rgba(123,31,162,0.3)':'none'}}>{freeAvail?'🎰 免费转一次':'今日已转'}</button>
+            <button onClick={()=>{setWheelResult(null);spinWheel(true);}} disabled={wheelSpinning||gold<1000} style={{padding:'14px 28px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'14px',fontWeight:'700',cursor:!wheelSpinning&&gold>=1000?'pointer':'not-allowed'}}>💰 1000金币</button>
+          </div>
+          <div style={{marginTop:'24px',display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:'8px',maxWidth:'320px'}}>
+            {LUCKY_WHEEL_PRIZES.map(p => (
+              <div key={p.id} style={{textAlign:'center',padding:'8px 4px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}>
+                <div style={{fontSize:'18px'}}>{p.icon}</div>
+                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{p.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderGuide = () => {
     const filtered = guideCat ? GAME_GUIDE.filter(g => g.id === guideCat) : GAME_GUIDE;
@@ -4948,7 +6043,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const canJoinGang = leaveCooldown <= 0;
 
     if (!gang.gangId) {
-      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } setConfirmModal({ title:'🏴 加入帮派', msg:'确定要加入「'+g.name+'」吗？', onOk: () => { setGang(prev => ({...prev, gangId: g.id, gangName: g.name, role:'member', joinDate: Date.now(), contribution:0})); showMapToast('🎉','加入成功','欢迎加入'+g.name+'！',1500); }}); return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:new Date().toISOString().slice(0,10)}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
+      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } setConfirmModal({ title:'🏴 加入帮派', msg:'确定要加入「'+g.name+'」吗？', onOk: () => { setGang(prev => ({...prev, gangId: g.id, gangName: g.name, role:'member', joinDate: Date.now(), contribution:0})); showMapToast('🎉','加入成功','欢迎加入'+g.name+'！',1500); }}); return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:getLocalDateStr()}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
     }
 
     // 有帮派
@@ -5026,16 +6121,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
           {/* 职位晋升提示 */}
           {(() => {
-            const nextRank = GANG_RANKS.find(r => r.minContribution > gang.contribution && r.minContribution >= 0);
+            const currentRankIdx = GANG_RANKS.findIndex(r => r.id === gang.rank);
+            const nextRank = currentRankIdx >= 0 && currentRankIdx < GANG_RANKS.length - 1 ? GANG_RANKS[currentRankIdx + 1] : null;
             if (!nextRank || gang.isOwner) return null;
+            const canPromote = gang.contribution >= nextRank.minContribution;
             return (
               <div style={cardStyle}>
                 <div style={{fontSize:'13px', fontWeight:'bold', marginBottom:'6px'}}>🎯 下一职位: {nextRank.icon} {nextRank.name}</div>
-                <div style={{fontSize:'12px', color:'#aaa'}}>还需 {nextRank.minContribution - gang.contribution} 帮贡</div>
+                <div style={{fontSize:'12px', color:'#aaa'}}>{canPromote ? '已满足晋升条件！' : `还需 ${nextRank.minContribution - gang.contribution} 帮贡`}</div>
                 <div style={{width:'100%', height:'6px', background:'rgba(255,255,255,0.1)', borderRadius:'3px', marginTop:'6px', overflow:'hidden'}}>
                   <div style={{height:'100%', width:`${Math.min(100, (gang.contribution / nextRank.minContribution) * 100)}%`, background:'linear-gradient(90deg,#FFD700,#FF8F00)', borderRadius:'3px'}} />
                 </div>
-                {gang.contribution >= nextRank.minContribution && (
+                {canPromote && (
                   <button onClick={() => setGang(prev => ({ ...prev, rank: nextRank.id }))} style={{...btnPrimary, marginTop:'8px', fontSize:'12px', padding:'8px 16px'}}>
                     晋升为 {nextRank.name}
                   </button>
@@ -5860,34 +6957,26 @@ const useGrowthItem = (petIndex, itemId) => {
             activityTiles.forEach(tile => placeActivity(tile));
         }
 
-    // 地图丰富度随地图编号递增
-    const mapTier = Math.min(4, Math.floor(mapId / 4) + 1);
-    const placeRandom = (tileId, count) => {
-      for (let i = 0; i < count; i++) {
-        const px = _.random(2, GRID_W - 3);
-        const py = _.random(2, GRID_H - 3);
-        if (newGrid[py][px] === 2) newGrid[py][px] = tileId;
-      }
-    };
-
-    // 家具拾取点
-    placeRandom(FURNITURE_TILE, _.random(1, 1 + mapTier));
-    // 果实树
-    placeRandom(14, _.random(1, mapTier));
-    // 神秘祭坛
-    placeRandom(15, mapTier >= 3 ? _.random(1, 2) : (Math.random() < 0.5 ? 1 : 0));
-    // 旅行商人
-    placeRandom(16, mapTier >= 2 ? 1 : (Math.random() < 0.4 ? 1 : 0));
-    // 陷阱（隐藏，看起来像普通地面）
-    placeRandom(17, _.random(1, 1 + mapTier));
-    // 传送阵 (中后期地图)
-    if (mapTier >= 2) placeRandom(18, 1);
-    // 恢复泉 (每张地图 0~1 个)
-    if (Math.random() < 0.45) placeRandom(19, 1);
-    // 精英训练家 (中后期)
-    if (mapTier >= 2) placeRandom(23, _.random(1, mapTier - 1));
-    // 赏金猎人 (后期)
-    if (mapTier >= 3) placeRandom(24, _.random(1, mapTier - 2));
+    const mapMeta = MAPS.find(m => m.id === mapId);
+    if (!mapMeta?.noEncounter) {
+      const mapTier = Math.min(4, Math.floor(mapId / 4) + 1);
+      const placeRandom = (tileId, count) => {
+        for (let i = 0; i < count; i++) {
+          const px = _.random(2, GRID_W - 3);
+          const py = _.random(2, GRID_H - 3);
+          if (newGrid[py][px] === 2) newGrid[py][px] = tileId;
+        }
+      };
+      placeRandom(FURNITURE_TILE, _.random(1, 1 + mapTier));
+      placeRandom(14, _.random(1, mapTier));
+      placeRandom(15, mapTier >= 3 ? _.random(1, 2) : (Math.random() < 0.5 ? 1 : 0));
+      placeRandom(16, mapTier >= 2 ? 1 : (Math.random() < 0.4 ? 1 : 0));
+      placeRandom(17, _.random(1, 1 + mapTier));
+      if (mapTier >= 2) placeRandom(18, 1);
+      if (Math.random() < 0.45) placeRandom(19, 1);
+      if (mapTier >= 2) placeRandom(23, _.random(1, mapTier - 1));
+      if (mapTier >= 3) placeRandom(24, _.random(1, mapTier - 2));
+    }
 
     setMapGrid(newGrid);
     setView('grid_map');
@@ -6337,8 +7426,8 @@ const useGrowthItem = (petIndex, itemId) => {
         });
         
         const rand = Math.random();
-        let rewardTitle = "";
-        let rewardDesc = "";
+        let rewardTitle = "意外之喜";
+        let rewardDesc = "获得 💰 200金币";
 
         if (rand < 0.3) {
             // 30% 金币
@@ -6469,14 +7558,12 @@ const useGrowthItem = (petIndex, itemId) => {
       // ------------------------------------------------
       // 8. 暗雷遇敌 (Tile 2, 5, 7)
       // ------------------------------------------------
-      // 增加地图探索度
       setMapProgress(prev => ({ ...prev, [currentMapId]: Math.min(100, (prev[currentMapId]||0) + 1) }));
       updateAchStat({ totalSteps: 1 });
-      
-      // egg hatching已在tile步行区统一处理，此处不再重复
-      
+
       const roll = Math.random();
       const mapInfo = MAPS.find(m => m.id === currentMapId);
+      if (mapInfo?.noEncounter) return;
       if (!mapInfo) { setPlayerPos(prev => ({ x: prev.x - (playerPos.dx||0), y: prev.y - (playerPos.dy||0) })); return; }
       const progress = mapProgress[currentMapId] || 0;
       
@@ -6505,7 +7592,7 @@ const useGrowthItem = (petIndex, itemId) => {
       let encounterRate = 0.12;
       if (tileType === 7) { trainerRate = 0.08; encounterRate = 0.30; }
       else if (tileType === 5) { trainerRate = 0.04; encounterRate = 0.08; }
-      if (storyProgress === 0 && storyStep === 0) { trainerRate *= 0.3; encounterRate *= 0.3; }
+      if (storyProgress === 0 && storyStep === 0) { trainerRate *= 0.6; encounterRate *= 0.6; }
       
       if (roll < trainerRate) {
           if (kingdomWar?.faction && Math.random() < 0.25) {
@@ -6748,10 +7835,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
      battleResultHandledRef.current = false;
     let isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
     const actualType = type === 'wild_double' ? 'wild' : type === 'trainer_double' ? 'trainer' : type;
-    const isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader';
+    let isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader' || actualType === 'world_boss';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType === 'arena' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -6797,6 +7884,25 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     // 2. 战斗联盟 (渐进式难度)
     // -------------------------------------------------
+    else if (type === 'arena') {
+        enemyParty = (context.customParty || []).map(p => {
+            const stats = getStats(p);
+            return {...p, currentHp: stats.maxHp, maxHp: stats.maxHp, status: null,
+              stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
+              volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 }};
+        });
+        trainerName = context.trainerName || '竞技场对手';
+        dropGold = context.drop || 1000;
+    }
+    else if (type === 'world_boss') {
+        enemyParty = (context.customParty || []).map(p => ({
+            ...p,
+            stages: p.stages || { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
+            volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
+        }));
+        trainerName = context.trainerName || '世界Boss';
+        dropGold = 0;
+    }
     else if (type === 'league') {
         const roundNames = ['16强赛', '8强赛', '半决赛', '总决赛'];
         const roundLevels = [85, 90, 95, 100];
@@ -6926,15 +8032,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const aceLvl = context.gymLvl ? Math.max(context.gymLvl, maxWild) : (maxWild + aceBonus);
 
       const isHardGym = mapIndex >= 9;
+      const isMidGym = mapIndex >= 5 && mapIndex < 9;
+      const gymStatMult = isHardGym ? 1.05 : isMidGym ? 1 + (mapIndex - 4) * 0.01 : 1.0;
+      const leaderStatMult = isHardGym ? 1.15 : isMidGym ? 1 + (mapIndex - 4) * 0.02 : 1.0;
       for(let i=0; i < 5; i++) {
         const step = (aceLvl - startLvl) / 5; 
         const currentLvl = Math.floor(startLvl + step * i);
-        const gPet = createPet(_.sample(context.pool), currentLvl, isHardGym);
-        if (isHardGym) gPet.customStatMult = 1.05;
+        const gPet = createPet(_.sample(context.pool), currentLvl, isHardGym || isMidGym);
+        if (gymStatMult > 1) gPet.customStatMult = gymStatMult;
         enemyParty.push(gPet);
       }
       const leaderPet = createPet(context.gymLeader, aceLvl, true);
-      if (isHardGym) leaderPet.customStatMult = 1.15;
+      if (leaderStatMult > 1) leaderPet.customStatMult = leaderStatMult;
       enemyParty.push(leaderPet);
       trainerName = `馆主 ${context.gymName || (context.name ? context.name.slice(0,2) : '???')}`;
     }
@@ -7239,7 +8348,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
          let enemyId;
          let level = _.random(context.lvl[0], context.lvl[1]);
          const canMeetLegend = badges.length >= 6;
-         if (canMeetLegend && Math.random() < 0.005) {
+         const legendRate = badges.length >= 12 ? 0.015 : badges.length >= 10 ? 0.012 : badges.length >= 8 ? 0.008 : 0.005;
+         if (canMeetLegend && Math.random() < legendRate) {
             enemyId = _.sample(LEGENDARY_POOL);
             const mapMaxLvl = context.lvl ? context.lvl[1] : 70;
             level = mapMaxLvl + _.random(1, 10);
@@ -7590,12 +8700,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
           if (action.type === 'switch') {
               const newIdx = action.index;
-              const newPet = source === 'player' ? state.playerCombatStates[newIdx] : state.enemyParty[newIdx];
+              const pool = source === 'player' ? state.playerCombatStates : state.enemyParty;
+              if (newIdx == null || newIdx < 0 || newIdx >= pool.length || !pool[newIdx] || pool[newIdx].currentHp <= 0) return false;
+              const newPet = pool[newIdx];
               
               if (source === 'player') state.activeIdx = newIdx;
               else state.enemyActiveIdx = newIdx;
               
-              // 同步更新 UI
               setBattle(prev => ({ 
                   ...prev, 
                   activeIdx: state.activeIdx, 
@@ -7608,7 +8719,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
               return false;
           } 
           else if (action.type === 'move') {
-              const move = attacker.combatMoves[action.index];
+              const move = attacker.combatMoves?.[action.index];
+              if (!move) return false;
               return await performAction(attacker, defender, move, source, state);
           }
       };
@@ -7620,14 +8732,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       else {
           if (p1.fruitFirstStrike && !p2.fruitFirstStrike) { first = 'p1'; p1.fruitFirstStrike = false; }
           else if (p2.fruitFirstStrike && !p1.fruitFirstStrike) { first = 'p2'; p2.fruitFirstStrike = false; }
-      else {
-          const s1 = getStats(p1, p1.stages, p1.status).spd;
-          const s2 = getStats(p2, p2.stages, p2.status).spd;
-          if (s2 > s1) first = 'p2';
-          else if (s1 === s2 && Math.random() < 0.5) first = 'p2';
-              if (p1.fruitFirstStrike) p1.fruitFirstStrike = false;
-              if (p2.fruitFirstStrike) p2.fruitFirstStrike = false;
+          else {
+              const s1 = getStats(p1, p1.stages, p1.status).spd;
+              const s2 = getStats(p2, p2.stages, p2.status).spd;
+              if (s2 > s1) first = 'p2';
+              else if (s1 === s2 && Math.random() < 0.5) first = 'p2';
           }
+          if (p1.fruitFirstStrike) p1.fruitFirstStrike = false;
+          if (p2.fruitFirstStrike) p2.fruitFirstStrike = false;
       }
 
       const firstActor = first === 'p1' ? p1 : p2;
@@ -7860,13 +8972,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
              setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
         }
         const player = tempPlayerState;
-        const enemy = tempBattle.enemyParty?.[battle.enemyActiveIdx];
+        const enemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
         if (!player || !enemy) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
         const actualMove = useStruggle ? { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } } : move;
 
         let playerSpd = getStats(player, player.stages, player.status).spd;
         let enemySpd = getStats(enemy, enemy.stages, enemy.status).spd;
-        const domSpd = battle.activeDomain;
+        const domSpd = tempBattle.activeDomain || battle?.activeDomain;
         if (domSpd && domSpd.turnsLeft > 0 && domSpd.effect) {
           const playerIsOwner = domSpd.ownerSide === 'player';
           if (playerIsOwner) {
@@ -7917,7 +9029,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
           if (!enemyDied && !playerDiedFromSelfDmg) {
             if (actualMove.effect?.type !== 'PROTECT') {
-              tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.protected = false;
+              if (tempBattle.playerCombatStates[tempBattle.activeIdx]?.volatiles) tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.protected = false;
             }
             await wait(1200);
             await enemyTurn(tempBattle);
@@ -7945,7 +9057,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // 结算
         if (enemyDied) {
             await wait(800);
-            const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(enemy, party, tempBattle);
+            const defeatedEnemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx] || enemy;
+            const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(defeatedEnemy, party, tempBattle);
             
             // 更新全局队伍
             setParty(newParty); 
@@ -8476,6 +9589,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const getBackToMapView = () => mapGrid.length > 0 ? 'grid_map' : 'world_map';
   const safeBack = () => party.length > 0 ? getBackToMapView() : 'menu';
+  const safeBackRef = useRef(safeBack);
+  safeBackRef.current = safeBack;
 
   // 搭档羁绊系统 - 核心逻辑
   // ==========================================
@@ -8549,7 +9664,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       let tempBattle = _.cloneDeep(battle);
       const p = tempBattle.playerCombatStates[battle.activeIdx];
       const pt = tempBattle.playerCombatStates[partnerIdx];
-      const e = tempBattle.enemyParty[tempBattle.enemyActiveIdx];
+      const e = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
+      if (!e || e.currentHp <= 0) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return; }
       const combo = getComboMove(p, pt);
 
       const basePower = combo.power * bl.powerMult * 0.8;
@@ -8623,7 +9739,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       let changed = { ...prev };
       const elapsed = now - (prev.lastTickTime || now);
       if (elapsed >= CAFE_BUILDING.tickInterval) {
-        const ticks = Math.floor(elapsed / CAFE_BUILDING.tickInterval);
+        const rawTicks = Math.floor(elapsed / CAFE_BUILDING.tickInterval);
+        const ticks = Math.min(rawTicks, 24);
         if (ticks > 0) {
           const newWorkCount = prev.totalWorkCount + ticks * prev.workers.length;
           changed = { ...changed, totalWorkCount: newWorkCount, lastTickTime: now, _pendingSideEffects: { ticks, workers: [...prev.workers], oldWorkCount: prev.totalWorkCount } };
@@ -8987,7 +10104,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const executeDomainExpansion = async () => {
     if (battle.phase !== 'input') return;
-    const domainIdx = battle.isDoubleBattle ? (battle.activeIdxs || [battle.activeIdx]).find(i => {
+    const domainIdx = battle.isDouble ? (battle.activeIdxs || [battle.activeIdx]).find(i => {
       const s = battle.playerCombatStates[i];
       return s && DOMAINS[s.domainType] && !s.usedDomain && (s.cursedEnergy || 0) >= (DOMAINS[s.domainType]?.ceCost || 999);
     }) ?? battle.activeIdx : battle.activeIdx;
@@ -9072,8 +10189,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (vow.sacrifice.defMult && vow.sacrifice.defMult < 1) {
             addLog(`📜 ${player.name} 缚誓代价: 防御降低至${vow.sacrifice.defMult * 100}%!`);
         }
-        if (vow.reward.spdMult) {
-            const spdBoost = Math.min(6, Math.round(Math.log2(vow.reward.spdMult) * 4));
+        if (vow.reward.spdMult && vow.reward.spdMult > 0) {
+            const spdBoost = Math.min(6, Math.max(0, Math.round(Math.log2(vow.reward.spdMult) * 4)));
             player.stages.spd = Math.min(6, (player.stages.spd || 0) + spdBoost);
             addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
         }
@@ -9307,8 +10424,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
               const cost = Math.floor((enemy.cursedEnergy || 0) * chosenVow.sacrifice.cePercent);
               enemy.cursedEnergy = Math.max(0, (enemy.cursedEnergy || 0) - cost);
             }
-            if (chosenVow.reward.spdMult) {
-              const spdBoost = Math.min(6, Math.round(Math.log2(chosenVow.reward.spdMult) * 4));
+            if (chosenVow.reward.spdMult && chosenVow.reward.spdMult > 0) {
+              const spdBoost = Math.min(6, Math.max(0, Math.round(Math.log2(chosenVow.reward.spdMult) * 4)));
               enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + spdBoost);
             }
             enemy.activeVow = JSON.parse(JSON.stringify({ ...chosenVow, turnsLeft: chosenVow.reward.turns, side: 'enemy' }));
@@ -9670,7 +10787,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          await handleDefeat();
        }
     } else {
-      state.enemyParty[state.enemyActiveIdx].volatiles.protected = false;
+      if (state.enemyParty[state.enemyActiveIdx]?.volatiles) state.enemyParty[state.enemyActiveIdx].volatiles.protected = false;
       if (state.isolateTurns > 0) state.isolateTurns--;
       setBattle(prev => ({ 
           ...prev, 
@@ -9908,6 +11025,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 果实属性免疫
     const defFE = defState.fruitTransformed ? defState.fruitEffects : null;
+    const atkFE_early = atkState.fruitTransformed ? atkState.fruitEffects : null;
     if (defFE && defFE.typeImmune && move.t === defFE.typeImmune && move.p > 0) {
         addLog(`${defender.name} 的果实能力免疫了 ${move.t} 属性攻击!`);
         await wait(1000);
@@ -9915,7 +11033,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 果实闪避加成 (攻击方ignoreEva可无视)
-    if (defFE && defFE.evaBoost && !(atkFE && atkFE.ignoreEva)) {
+    if (defFE && defFE.evaBoost && !(atkFE_early && atkFE_early.ignoreEva)) {
         const evaRoll = Math.random();
         if (evaRoll < defFE.evaBoost) {
             addLog(`${defender.name} 借助果实能力闪避了攻击!`);
@@ -10009,6 +11127,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 const seTargetSide = se.target === 'enemy' ? (source === 'player' ? 'enemy' : 'player') : (source === 'player' ? 'player' : 'enemy');
                 if (se.type === 'BUFF' || se.type === 'DEBUFF') {
                     const delta = se.type === 'BUFF' ? se.val : -se.val;
+                    if (!seTarget.stages) seTarget.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
                     seTarget.stages[se.stat] = Math.max(-6, Math.min(6, (seTarget.stages[se.stat] || 0) + delta));
                     const statNames = { p_atk:'物攻', p_def:'物防', s_atk:'特攻', s_def:'特防', spd:'速度' };
                     const degree = Math.abs(delta) > 1 ? '大幅' : '';
@@ -10253,13 +11372,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!isImmune && defender.trait === 'levitate' && move.t === 'GROUND') {
             rawDmg = 0; isImmune = true; addLog(`${defender.name} 漂浮在空中，免疫了攻击！`);
         }
-        if (!isImmune && attacker.trait === 'flash_fire' && move.t === 'FIRE' && attackerState?.flashFireActivated) {
+        if (!isImmune && attacker.trait === 'flash_fire' && move.t === 'FIRE' && atkState?.flashFireActivated) {
             rawDmg *= 1.5;
             addLog(`${attacker.name} 的引火特性增强了火焰威力！`);
         }
         if (!isImmune && defender.trait === 'flash_fire' && move.t === 'FIRE') {
             rawDmg = 0; isImmune = true;
-            if (defenderState) defenderState.flashFireActivated = true;
+            if (defState) defState.flashFireActivated = true;
             addLog(`${defender.name} 的引火特性吸收了火焰，火系攻击力提升！`);
         }
         if (defender.trait === 'multiscale' && defender.currentHp === statsDef.maxHp) {
@@ -10354,6 +11473,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (survivalMsg) addLog(survivalMsg);
         isDead = defender.currentHp <= 0;
         if (dmg > 0 && source === 'enemy' && battleState) battleState._playerTookDamage = true;
+        if (dmg > 0 && source === 'player' && battleState) battleState._worldBossDmgDealt = (battleState._worldBossDmgDealt || 0) + dmg;
         if (source === 'player' && isDead && defender._preHitHp >= getStats(defender).maxHp * 0.95) updateAchStat({ oneHitKOs: 1 });
         if (source === 'player' && isDead && weatherBoosted) updateAchStat({ weatherSweepKills: 1 });
 
@@ -10601,7 +11721,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 addLog(`🔮 ${defender.name} 的攻击下降了!`);
             }
             if (ceMoveEff.breakBarrier) {
-                defState.volatiles.protected = false;
+                if (defState?.volatiles) defState.volatiles.protected = false;
                 if (battleState.activeDomain && battleState.activeDomain.ownerSide !== source) {
                     battleState.activeDomain = null;
                     addLog(`🔮 天逆鉾破除了对方的领域!`);
@@ -10768,7 +11888,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const processDefeatedEnemy = (deadEnemy, currentParty, finalBattleState) => { 
   
     const bState = finalBattleState || battle;
-    const baseExp = Math.floor(deadEnemy.level * 30 * (bState.isTrainer ? 1.5 : 1));
+    const earlyBoost = (deadEnemy.level <= 20) ? 1.3 : (deadEnemy.level <= 35) ? 1.15 : 1.0;
+    const baseExp = Math.floor(deadEnemy.level * 30 * (bState.isTrainer ? 1.5 : 1) * earlyBoost);
     
     let levelUpLog = '';
     let hasPendingSkill = false;
@@ -11116,7 +12237,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setGold(g => g + goldGain);
     const extraDrops = [];
 
-    // 家具掉落 (战斗获得, 20%基础概率, Boss/Gym 50%)
+    // 家具掉落 (战斗获得, 10%基础概率, Boss/Gym/Challenge 30%)
     const furnitureDropChance = (isBoss || isGym || isChallenge) ? 0.3 : 0.1;
     if (Math.random() < furnitureDropChance) {
         const battleFurniture = FURNITURE_DB.filter(f => f.dropSource === 'battle');
@@ -11377,7 +12498,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battle.dungeonId === 'double_arena') {
       const rewardItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
       setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
-      const equip = createUniqueEquip(_.sample(RANDOM_EQUIP_DB).id);
+      const _eqSample = _.sample(RANDOM_EQUIP_DB);
+      const equip = _eqSample ? createUniqueEquip(_eqSample.id) : null;
       if (equip) { setAccessories(prev => [...prev, equip]); }
       addLog(`⚔️ 双打擂台奖励: ${rewardItem.emoji} ${rewardItem.name} + ${equip ? equip.icon + ' ' + equip.displayName : ''}！`);
     }
@@ -11404,7 +12526,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           addLog(`🏅 坚持${wave}波！额外获得 ${rewardItem.emoji} ${rewardItem.name}!`);
         }
         if (wave >= 7) {
-          const equip = createUniqueEquip(_.sample(RANDOM_EQUIP_DB).id);
+          const _eqS = _.sample(RANDOM_EQUIP_DB);
+          const equip = _eqS ? createUniqueEquip(_eqS.id) : null;
           if (equip) {
             setAccessories(prev => [...prev, equip]);
             addLog(`🏆 ${wave}波壮举！获得 ${equip.icon} ${equip.displayName}!`);
@@ -11466,7 +12589,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!sectTitles.includes(sectId)) {
             setSectTitles(prev => [...prev, sectId]);
             unlockTitle(chiefInfo.title);
-            const rewardEquip = createUniqueEquip(_.sample(RANDOM_EQUIP_DB).id);
+            const _eqS2 = _.sample(RANDOM_EQUIP_DB);
+            const rewardEquip = _eqS2 ? createUniqueEquip(_eqS2.id) : null;
             if (rewardEquip) { setAccessories(prev => [...prev, rewardEquip]); addLog(`获得战利品: ${rewardEquip.displayName}`); }
             showMapToast('🏆', '挑战成功', `击败了 ${chiefInfo.name}，夺得【${chiefInfo.title}】称号！佩戴后激活全队${sectInfo.name}加成：${chiefInfo.buffName}`, 4000);
         } else {
@@ -11619,8 +12743,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setLeagueWins(prev => prev + 1);
             setLeagueRound(0); 
             setCompletedChallenges(prev => [...prev, 'LEAGUE_CHAMPION']); 
-            const candyCount = 3;
-            const goldReward = 20000 + (leagueWins * 5000);
+            const candyCount = 3 + Math.min(5, Math.floor(leagueWins / 2));
+            const goldReward = 20000 + (leagueWins * 8000);
             setInventory(prev => ({...prev, max_candy: (prev.max_candy || 0) + candyCount}));
             setGold(g => g + goldReward);
             const rand = Math.random();
@@ -12157,6 +13281,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
 
+    // 竞技场结算
+    if (battle.type === 'arena') handleArenaResult(true);
+    // 世界Boss结算
+    if (battle.type === 'world_boss') {
+      const totalDmgDealt = battle._worldBossDmgDealt || 0;
+      handleWorldBossResult(totalDmgDealt);
+    }
+    // 赏金任务 - 战斗胜利计数
+    setBountyBoard(prev => {
+      const quests = prev.quests.map(q => {
+        if (q.completed || q.claimed) return q;
+        if (q.type === 'win_battle') return {...q, progress: Math.min(q.target, q.progress + 1), completed: q.progress + 1 >= q.target};
+        if (q.type === 'beat_trainer' && (isTrainer || isGym || battle.type === 'arena')) return {...q, progress: Math.min(q.target, q.progress + 1), completed: q.progress + 1 >= q.target};
+        return q;
+      });
+      return {...prev, quests};
+    });
     // 成就追踪 - 战斗胜利
     const winAchUpdates = { battlesWon: 1, totalGoldEarned: goldGain };
     const newStreak = (achStats.currentWinStreak || 0) + 1;
@@ -12175,7 +13316,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
     const eMaxLv = Math.max(0, ...enemyParty.map(e => e?.level || 0));
-    const pMinLv = Math.min(Infinity, ...(party || []).map(p => p?.level || 999));
+    const partyLevels = (party || []).map(p => p?.level || 999);
+    const pMinLv = partyLevels.length > 0 ? Math.min(...partyLevels) : 999;
     if (eMaxLv - pMinLv >= 20) winAchUpdates.underdogWins = 1;
     if (eMaxLv - pMinLv >= 30) winAchUpdates.underdogLowLevelWins = 1;
     if ((battle.turnCount ?? 0) <= 3) winAchUpdates.quickWins = 1;
@@ -12232,7 +13374,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     updateAchStat(winAchUpdates);
 
     // 每日挑战进度
-    if (dailyChallenge && dailyChallenge.date === new Date().toISOString().slice(0,10) && !dailyChallenge.completed) {
+    if (dailyChallenge && dailyChallenge.date === getLocalDateStr() && !dailyChallenge.completed) {
       const hasMatchingType = party.some(p => p && p.currentHp > 0 && (p.type === dailyChallenge.type || p.secondaryType === dailyChallenge.type));
       if (hasMatchingType) {
         const newWins = (dailyChallenge.wins || 0) + 1;
@@ -12329,7 +13471,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
-    setGold(g => { const penalty = Math.min(Math.floor(g * 0.1), 5000); return Math.max(0, g - penalty); });
+    const isArenaFight = battle?.type === 'arena';
+    const isWorldBoss = battle?.type === 'world_boss';
+    let penaltyAmount = 0;
+    if (!isArenaFight && !isWorldBoss) {
+      penaltyAmount = Math.min(Math.floor(gold * 0.1), 5000);
+      setGold(g => Math.max(0, g - penaltyAmount));
+    }
+    if (isWorldBoss) {
+      const totalDmgDealt = battle._worldBossDmgDealt || 0;
+      handleWorldBossResult(totalDmgDealt);
+    }
 
     setParty(prev => prev.map(p => ({
       ...p, 
@@ -12338,9 +13490,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       status: null,
       stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
       volatiles: {},
-      intimacy: Math.max(0, (p.intimacy || 0) - 3)
+      intimacy: Math.max(0, (p.intimacy || 0) - ((isArenaFight || isWorldBoss) ? 0 : 3))
     })));
     setComboUsedThisBattle(false);
+    if (isArenaFight) handleArenaResult(false);
     updateAchStat({ timesDefeated: 1, currentWinStreak: p => 0 });
     if (marriage.pendingPropose) {
       setMarriage(prev => {
@@ -12351,16 +13504,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     setAnimEffect(null);
     setBattle(null);
-    enterMap(currentMapId);
-    
-    showMapToast('💀', '战斗失败', `伙伴已恢复活力 | 💰-${goldPenalty.toLocaleString()} | 💔亲密度-3`, 3500);
+    if (isArenaFight) {
+      setView('arena');
+      showMapToast('💀', '竞技场落败', '段位星数 -1，继续努力！', 3000);
+    } else if (isWorldBoss) {
+      setView('world_boss');
+      const dmg = battle?._worldBossDmgDealt || 0;
+      showMapToast('⚔️', 'Boss挑战结束', `本次造成 ${dmg.toLocaleString()} 伤害！`, 3000);
+    } else {
+      enterMap(currentMapId);
+      showMapToast('💀', '战斗失败', `伙伴已恢复活力 | 💰-${penaltyAmount.toLocaleString()} | 💔亲密度-3`, 3500);
+    }
   };
 
   // ==========================================
   // [新增] 逃跑逻辑 (带概率计算 + PP同步)
   // ==========================================
   const handleRun = async () => {
-    // 1. 检查是否允许逃跑
+    if (!battle) return;
     if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.dungeonId) {
         addLog("⚠️ 这种战斗无法逃跑！必须决出胜负！");
         return;
@@ -12368,18 +13529,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const pIdx = battle.isDouble ? (battle.activeIdxs?.[0] ?? battle.activeIdx) : battle.activeIdx;
     const eIdx = battle.isDouble ? (battle.enemyActiveIdxs?.[0] ?? battle.enemyActiveIdx) : battle.enemyActiveIdx;
-    const playerPet = party[pIdx];
+    const playerPet = battle.playerCombatStates?.[pIdx] || party[pIdx];
     const enemyPet = battle.enemyParty?.[eIdx];
     if (!playerPet || !enemyPet) { addLog('⚠️ 战斗状态异常'); setBattle(null); setView('grid_map'); return; }
 
-    // 3. 计算逃跑概率
     let escapeChance = 0.8;
     if (enemyPet.level > playerPet.level) {
         const levelDiff = enemyPet.level - playerPet.level;
         escapeChance -= (levelDiff * 0.05);
     }
-    const pSpd = getStats(playerPet).spd;
-    const eSpd = getStats(enemyPet).spd;
+    const pSpd = getStats(playerPet, playerPet.stages, playerPet.status).spd;
+    const eSpd = getStats(enemyPet, enemyPet.stages, enemyPet.status).spd;
     if (pSpd > eSpd) escapeChance += 0.2;
     escapeChance = Math.max(0.2, Math.min(1.0, escapeChance));
 
@@ -12443,7 +13603,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleCatch = async (ballType) => {
     setShowBallMenu(false);
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
+    if (!battle) return;
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
     if ((inventory.balls[ballType] || 0) <= 0) return addLog("球不足！");
     try {
     
@@ -12502,7 +13663,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               if (!combatState) return p;
               let updatedPet = { ...p, currentHp: combatState.currentHp };
               updatedPet.moves = updatedPet.moves.map(m => {
-                  const cm = combatState.combatMoves.find(c => c.name === m.name && !c.isExtra);
+                  const cm = (combatState.combatMoves || []).find(c => c.name === m.name && !c.isExtra);
                   return cm ? { ...m, pp: cm.pp } : m;
               });
               return updatedPet;
@@ -12776,7 +13937,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }}>
             {/* 顶部光效 */}
             <div style={{height: '140px', background: `linear-gradient(135deg, ${themeColor}, #222)`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden'}}>
-                <div style={{position: 'absolute', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)', animation: 'spin 10s linear infinite'}}></div>
+                <div style={{position: 'absolute', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)', animation: 'sun-spin 10s linear infinite'}}></div>
                 <div style={{fontSize: '80px', zIndex: 2, filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))', animation: 'bounce 2s infinite'}}>
                     {rankIdx === 0 ? '🏆' : (rankIdx === 1 ? '🥈' : (rankIdx === 2 ? '🥉' : '🎗️'))}
                 </div>
@@ -15441,7 +16602,7 @@ const renderMenu = () => {
                 shu: { generals: '关羽、张飞、赵云、马超', strategy: '仁义为先', capital: '成都', stronghold: '卧龙凤雏，天下归心' },
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
               };
-              return (<div style={{padding:'0'}}><div style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 天 下 三 分 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>三国争霸</div><div style={{fontSize:'11px', color:'#94a3b8', marginTop:'8px'}}>魏蜀吴三国并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{FACTION_IDS.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid]; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => ({...prev, faction: fid, territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(), lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: {...prev.dailyCounts, resetDate: new Date().toISOString().slice(0,10)}})); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
+              return (<div style={{padding:'0'}}><div style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 天 下 三 分 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>三国争霸</div><div style={{fontSize:'11px', color:'#94a3b8', marginTop:'8px'}}>魏蜀吴三国并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{FACTION_IDS.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid]; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => ({...prev, faction: fid, territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(), lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: {...prev.dailyCounts, resetDate: getLocalDateStr()}})); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -15458,7 +16619,7 @@ const renderMenu = () => {
             const totalWarMaps = WAR_MAP_IDS.length;
             const seasonDaysLeft = kw.seasonStartDate ? Math.max(0, SEASON_CONFIG.durationDays - Math.floor((Date.now() - new Date(kw.seasonStartDate).getTime()) / 86400000)) : 7;
 
-            const today = new Date().toISOString().slice(0,10);
+            const today = getLocalDateStr();
             const dailyReset = kw.dailyCounts.resetDate !== today;
             const canClaimIncome = dailyReset || !kw.dailyCounts.income;
 
@@ -15657,8 +16818,8 @@ const renderMenu = () => {
                         const perkFxPreview = getRankPerkEffects(kw);
                         const taxMultPrev = perkFxPreview.territoryIncomeMult || 1;
                         const allMultPrev = perkFxPreview.allBonusMult || 1;
-                        const incomeBase = myTerrCount * 400;
-                        const incomeTotal = Math.floor((Math.floor(incomeBase * rank.incomeMultiplier * taxMultPrev) + (rank.salary || 0)) * allMultPrev);
+                        const incomeBase = Math.min(myTerrCount, 12) * 400;
+                        const incomeTotal = Math.floor(Math.min((Math.floor(incomeBase * rank.incomeMultiplier * taxMultPrev) + (rank.salary || 0)) * allMultPrev, 50000));
                         const tokenIncome = myTerrCount * 2 + (rank.tokenBonus || 0);
                         return (
                           <div>
@@ -15670,14 +16831,14 @@ const renderMenu = () => {
                               const perkFx = getRankPerkEffects(kw);
                               const taxMult = perkFx.territoryIncomeMult || 1;
                               const allMult = perkFx.allBonusMult || 1;
-                              const base = myTerrCount * 400;
-                              const total = Math.floor((Math.floor(base * rank.incomeMultiplier * taxMult) + (rank.salary || 0)) * allMult);
+                              const base = Math.min(myTerrCount, 12) * 400;
+                              const total = Math.floor(Math.min((Math.floor(base * rank.incomeMultiplier * taxMult) + (rank.salary || 0)) * allMult, 50000));
                               const tokens = myTerrCount * 2 + (rank.tokenBonus || 0);
                               setGold(g => g + total);
                               setKingdomWar(prev => ({
                                 ...prev,
                                 factionTokens: (prev.factionTokens || 0) + tokens,
-                                dailyCounts: { ...prev.dailyCounts, income: true, resetDate: new Date().toISOString().slice(0,10) },
+                                dailyCounts: { ...prev.dailyCounts, income: true, resetDate: getLocalDateStr() },
                               }));
                               showMapToast('✅', '领取成功', `${total.toLocaleString()} 金币 · 令牌 ${tokens}`, 2500);
                             }}
@@ -16210,7 +17371,7 @@ const renderMenu = () => {
                                   setGold(prev => prev + capitalDailyGold);
                                   setKingdomWar(prev => ({
                                     ...prev,
-                                    dailyCounts: { ...prev.dailyCounts, capitalReward: true, resetDate: new Date().toISOString().slice(0,10) },
+                                    dailyCounts: { ...prev.dailyCounts, capitalReward: true, resetDate: getLocalDateStr() },
                                   }));
                                   showMapToast('💰', '国库俸禄', `${capitalDailyGold.toLocaleString()} 金币`, 2500);
                                 } else if (feat.action === 'training') {
@@ -16306,11 +17467,7 @@ const renderMenu = () => {
                 {kwTab === 'territory' && (
                   <div>
                   <div style={{display:'flex', gap:'6px', marginBottom:'10px', flexWrap:'wrap'}}>
-                    {['all', kw.faction, 'neutral', ...Object.keys(FACTIONS).filter(f => f !== kw.faction)].filter(Boolean).map(f => (
-                      <button key={f} onClick={() => setTerritoryFilter?.(f)} style={{padding:'3px 10px', borderRadius:'8px', fontSize:'10px', fontWeight:600, border:'1px solid #ddd', background: f === 'all' ? '#e2e8f0' : (FACTIONS[f]?.color || '#94a3b8') + '22', color: FACTIONS[f]?.color || '#475569', cursor:'pointer'}}>
-                        {f === 'all' ? '全部' : f === 'neutral' ? '中立' : FACTIONS[f]?.icon + FACTIONS[f]?.shortName || f}
-                      </button>
-                    ))}
+                    <span style={{fontSize:'10px',color:'#64748b',fontWeight:600}}>🏰 领土一览</span>
                   </div>
                   <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'10px'}}>
                     {WAR_MAP_IDS.map(mapId => {
@@ -16700,7 +17857,7 @@ const renderMenu = () => {
             <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>Current Location</div>
             <div style={{fontSize:'18px', fontWeight:'900', color:'#2c2417', marginBottom:'6px'}}>{currentMap.name}</div>
             <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl[0]}-{currentMap.lvl[1]}</span>
+              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
               <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
               {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
@@ -16739,7 +17896,7 @@ const renderMenu = () => {
 
         {/* 每日挑战 */}
         {party.length > 0 && (() => {
-          const today = new Date().toISOString().slice(0,10);
+          const today = getLocalDateStr();
           const dc = dailyChallenge;
           const isToday = dc && dc.date === today;
           const completed = isToday && dc.completed;
@@ -17191,6 +18348,29 @@ const renderMenu = () => {
                                   <div style={{width:`${pct}%`,height:'100%',background:color,borderRadius:'2px'}}/>
                                 </div>
                                 <span style={{fontSize:'10px',fontWeight:'bold',color,width:'18px',textAlign:'right'}}>{v}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {viewStatPet.evs && Object.values(viewStatPet.evs).some(v => v > 0) && (
+                      <div style={{marginTop:'8px', padding:'8px', background:'#f0f9ff', borderRadius:'8px', border:'1px solid #b3e0ff'}}>
+                        <div style={{fontSize:'10px', color:'#1565C0', fontWeight:'bold', marginBottom:'6px'}}>
+                          努力值 (EV) — 总计 {Object.values(viewStatPet.evs).reduce((s,v)=>s+(v||0),0)}/{TRAINING_TOTAL_MAX_EV || 510}
+                        </div>
+                        <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'4px'}}>
+                          {[{k:'hp',n:'HP'},{k:'p_atk',n:'物攻'},{k:'p_def',n:'物防'},{k:'s_atk',n:'特攻'},{k:'s_def',n:'特防'},{k:'spd',n:'速度'}].map(e => {
+                            const v = viewStatPet.evs[e.k] || 0;
+                            const pct = Math.round(v / (TRAINING_MAX_EV || 252) * 100);
+                            const color = pct >= 90 ? '#FF6D00' : pct >= 50 ? '#1565C0' : pct >= 20 ? '#42A5F5' : '#90CAF9';
+                            return (
+                              <div key={e.k} style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                                <span style={{fontSize:'9px',color:'#666',width:'24px'}}>{e.n}</span>
+                                <div style={{flex:1,height:'4px',background:'#d0e8ff',borderRadius:'2px',overflow:'hidden'}}>
+                                  <div style={{width:`${pct}%`,height:'100%',background:color,borderRadius:'2px'}}/>
+                                </div>
+                                <span style={{fontSize:'10px',fontWeight:'bold',color,width:'22px',textAlign:'right'}}>{v}</span>
                               </div>
                             );
                           })}
@@ -17880,7 +19060,7 @@ const renderMenu = () => {
           if (healed > 0) { setParty(newParty); setInventory(prev => ({...prev, meds: {...(prev.meds||{}), ...meds}})); showMapToast('💊','全队回复',`使用了 ${healed} 瓶药水`,1500); }
           else showMapToast('ℹ️','无需治疗','全队HP已满或无药品',1500);
         }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(76,175,80,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>💊全队</button>
-        <button onClick={() => setParty(prev => [...prev].sort((a,b) => b.level - a.level))} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(33,150,243,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>排序</button>
+        <button onClick={() => { const sortModes = ['level', 'power', 'hp']; const nextI = (sortModes.indexOf(teamSortMode || 'level') + 1) % sortModes.length; setTeamSortMode(sortModes[nextI]); setParty(prev => { const sorted = [...prev]; if (sortModes[nextI] === 'power') sorted.sort((a,b) => { const sA = getStats(a); const sB = getStats(b); return (sB.p_atk + sB.s_atk + sB.spd) - (sA.p_atk + sA.s_atk + sA.spd); }); else if (sortModes[nextI] === 'hp') sorted.sort((a,b) => b.currentHp - a.currentHp); else sorted.sort((a,b) => b.level - a.level); return sorted; }); showMapToast('📊','排序',sortModes[nextI]==='power'?'按战力':'按'+(sortModes[nextI]==='hp'?'血量':'等级'),1000); }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(33,150,243,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>{teamSortMode==='power'?'⚔️战力':teamSortMode==='hp'?'❤️血量':'📊等级'}</button>
       </div>
       
       {/* 物品使用模式提示条 */}
@@ -18485,6 +19665,7 @@ const renderMenu = () => {
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
+              { id: 'activity', icon: '🎪', label: '活动', action: () => setActivityCenter(true) },
               { id: 'gang', icon: '🏴', label: '帮派', action: () => setView('gang') },
               { id: 'kingdom', icon: kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.icon || '🏰' : '🏰', label: '国战', action: () => { handleExitAndSave(); setMapTab('kingdom'); } },
               { id: 'general_dex', icon: '📜', label: '名将', badge: (kingdomWar?.generalDraws || 0), action: () => setView('general_dex') },
@@ -19080,7 +20261,9 @@ const renderMenu = () => {
                     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'10px',alignContent:'start'}}>
                       {currentItems.filter(item => !bagSearch || (item.name||'').toLowerCase().includes(bagSearch.toLowerCase()) || (item.desc||'').toLowerCase().includes(bagSearch.toLowerCase())).map((item,idx)=>{
                         const isFruit = currentCat === 'fruit';
-                        const rarityColor = isFruit && item.rarity ? (FRUIT_RARITY_CONFIG[item.rarity]?.color || '#666') : activeTab.color;
+                        const itemPrice = item.price || 0;
+                        const autoRarity = itemPrice >= 10000 ? '#FF6D00' : itemPrice >= 3000 ? '#AB47BC' : itemPrice >= 1000 ? '#42A5F5' : null;
+                        const rarityColor = isFruit && item.rarity ? (FRUIT_RARITY_CONFIG[item.rarity]?.color || '#666') : (autoRarity || activeTab.color);
                         return (
                           <div key={idx} onClick={()=>handleItemClick(item,currentCat)} style={{
                             background:'rgba(255,255,255,0.04)',borderRadius:'14px',padding:'14px 10px 12px',
@@ -19094,7 +20277,7 @@ const renderMenu = () => {
                             <div style={{marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',minHeight:36}}>{renderItemIcon(item,36)}</div>
                             <div style={{fontSize:'11px',fontWeight:'700',color:'#fff',textAlign:'center',lineHeight:'1.3',height:'28px',overflow:'hidden',wordBreak:'break-word',overflow:'hidden',textOverflow:'ellipsis'}}>{item.name}</div>
                             {isFruit && <div style={{fontSize:'8px',color:rarityColor,fontWeight:'600',marginTop:'2px'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label}</div>}
-                            {currentCat==='tm'&&item.type&&<div style={{fontSize:'8px',color:TYPES[item.type]?.color||'#888',fontWeight:'600',marginTop:'2px'}}>威力{item.p}</div>}
+                            {currentCat==='tm'&&item.type&&item.p>0&&<div style={{fontSize:'8px',color:TYPES[item.type]?.color||'#888',fontWeight:'600',marginTop:'2px'}}>威力{item.p}</div>}
                             </div>
                         );
                       })}
@@ -19303,7 +20486,7 @@ const renderMenu = () => {
           />
         ))}
         {/* 补齐 6 个球的空位 (显示为灰色) */}
-        {[...Array(6 - targetParty.length)].map((_, i) => (
+        {[...Array(Math.max(0, 6 - targetParty.length))].map((_, i) => (
            <div key={`empty-${i}`} className="party-ball" style={{background:'#ddd', opacity:0.3}}></div>
         ))}
       </div>
@@ -20163,6 +21346,7 @@ const renderMenu = () => {
                             <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
                             <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.type]?.color || '#888', color:'#fff', fontWeight:'bold', marginLeft:'4px'}}>{TYPES[e.type]?.name || e.type}</span>
                             {e.secondaryType && e.secondaryType !== e.type && <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.secondaryType]?.name || e.secondaryType}</span>}
+                            {(() => { const weakTypes = Object.keys(TYPES || {}).filter(t => { let mod = getTypeMod(t, e.type); if (e.secondaryType && e.secondaryType !== e.type) mod *= getTypeMod(t, e.secondaryType); return mod >= 2; }); return weakTypes.length > 0 ? <span style={{fontSize:'8px',padding:'1px 5px',borderRadius:'6px',background:'rgba(244,67,54,0.15)',color:'#EF5350',fontWeight:'700',marginLeft:'2px'}}>弱:{weakTypes.slice(0,3).map(t => TYPES[t]?.name || t).join('/')}</span> : null; })()}
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
                             {e.isFusedShiny ? (
@@ -20586,7 +21770,7 @@ const renderMenu = () => {
                                               const aliveEnemies = (battle.enemyActiveIdxs || []).filter(idx => battle.enemyParty?.[idx]?.currentHp > 0);
                                               if (aliveEnemies.length > 1) {
                                                 setBattle(prev => ({ ...prev, pendingDoubleMove: i }));
-                                              } else {
+                                              } else if (aliveEnemies.length === 1) {
                                                 executeDoubleTurn(i, aliveEnemies[0]);
                                               }
                                             } else {
@@ -20965,7 +22149,7 @@ const renderMenu = () => {
           <div style={{fontSize:'13px',fontWeight:'800',color:'#1a1a2e',marginBottom:'3px'}}>{name}</div>
           <div style={{fontSize:'10px',color:'#888',height:'28px',overflow:'hidden',lineHeight:'1.4',marginBottom:'4px'}}>{desc}</div>
           {buyType === 'ball' && <div style={{fontSize:'9px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.balls?.[key.replace('ball_','')]||0}</div>}
-          {buyType === 'item' && <div style={{fontSize:'9px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory[key]||0}</div>}
+          {buyType === 'item' && <div style={{fontSize:'9px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.meds?.[key] || inventory[key] || 0}</div>}
           <div style={{fontSize:'14px',fontWeight:'900',color:'#F57C00',marginBottom:'10px'}}>💰 {totalPrice.toLocaleString()}</div>
           <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px',background:'#f0f0f5',padding:'3px 6px',borderRadius:'16px'}}>
             <div onClick={()=>updateBuyCount(key,-1)} style={{width:'36px',height:'36px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'16px',userSelect:'none'}}>-</div>
@@ -22058,8 +23242,8 @@ const renderMenu = () => {
                 {step === 3 && (() => {
                     const oldBase = oldPet.customBaseStats || POKEDEX.find(p => p.id === oldPet.id)?.baseStats || {};
                     const newBase = newPet.customBaseStats || POKEDEX.find(p => p.id === newPet.id)?.baseStats || {};
-                    const stats = ['hp','atk','def','s_atk','s_def','spd'];
-                    const labels = ['HP','攻击','防御','特攻','特防','速度'];
+                    const stats = ['hp','atk','def','spd'];
+                    const labels = ['HP','攻击','防御','速度'];
                     const oldTotal = stats.reduce((s,k) => s + (oldBase[k]||0), 0);
                     const newTotal = stats.reduce((s,k) => s + (newBase[k]||0), 0);
                     return (
@@ -22263,6 +23447,14 @@ const renderMenu = () => {
       {view === 'gang' && renderGang()}
       {view === 'housing' && renderHousing()}
       {view === 'achievements' && renderAchievements()}
+      {view === 'arena' && renderArena()}
+      {view === 'expedition' && renderExpedition()}
+      {view === 'mining' && renderMining()}
+      {view === 'bounty' && renderBountyBoard()}
+      {view === 'lucky_wheel' && renderLuckyWheel()}
+      {view === 'training' && renderTraining()}
+      {view === 'world_boss' && renderWorldBoss()}
+      {renderActivityCenter()}
       {view === 'guide' && renderGuide()}
       {view === 'settings' && (
         <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',color:'#fff',display:'flex',flexDirection:'column'}}>

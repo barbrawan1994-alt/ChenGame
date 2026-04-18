@@ -65,9 +65,9 @@ export const TYPE_BIAS = {
   POISON:  { p: 1.0, s: 1.0 }, // 平衡
   GROUND:  { p: 1.2, s: 0.8 }, // 偏物攻
   FLYING:  { p: 1.1, s: 1.0 }, // 偏物攻
-  PSYCHIC: { p: 0.6, s: 1.4 }, // 极强特攻
+  PSYCHIC: { p: 0.7, s: 1.3 }, // 强特攻
   BUG:     { p: 1.1, s: 0.9 }, // 偏物攻
-  ROCK:    { p: 1.4, s: 0.6 }, // 强物攻
+  ROCK:    { p: 1.3, s: 0.7 }, // 偏物攻
   GHOST:   { p: 0.8, s: 1.3 }, // 强特攻
   DRAGON:  { p: 1.2, s: 1.2 }, // 种族强大
   STEEL:   { p: 1.2, s: 0.7 }, // 偏物攻
@@ -78,5 +78,5 @@ export const TYPE_BIAS = {
   HEAL:    { p: 0.5, s: 1.0 },
   COSMIC:  { p: 0.9, s: 1.3 },  // 偏特攻
   SOUND:   { p: 1.0, s: 1.1 },  // 略偏特攻
-  GOD:     { p: 1.5, s: 1.5 }   // 神
+  GOD:     { p: 1.3, s: 1.3 }   // 神 (强但不过分)
 };
