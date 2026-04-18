@@ -393,7 +393,7 @@ export const getCapitalSiegeTargets = (playerFaction, territories) => {
 };
 
 // ==========================================
-// 三国历史战役副本 (每国6个)
+// 三国历史战役副本 (每国8个)
 // ==========================================
 export const KINGDOM_CAMPAIGNS = [
   // === 魏国 ===

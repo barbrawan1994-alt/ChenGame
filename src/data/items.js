@@ -179,9 +179,9 @@ export const ACCESSORY_DB = [
   // =========================================
   //  传说饰品 - 非卖品(只能通过特殊途径获得)
   // =========================================
-  { id: 'trophy',         name: '冠军奖杯',   type: 'ATK',  val: 200, icon: '🏆', price: 99999, tier: 5, desc: '至高荣誉，攻击+200' },
+  { id: 'trophy',         name: '冠军奖杯',   type: 'ATK',  val: 80, icon: '🏆', price: 99999, tier: 5, desc: '至高荣誉，攻击+80' },
   { id: 'blue_lily',      name: '蓝色彼岸花', type: 'HP',   val: 300, icon: '🌺', price: 99999, tier: 5, desc: '无限城深处绽放的神秘花朵，HP+300' },
-  { id: 'nichirin_blade',name: '日轮刀',     type: 'ATK',  val: 250, icon: '⚔️', price: 99999, tier: 5, desc: '特殊矿石锻造的神刃，攻+250' },
+  { id: 'nichirin_blade',name: '日轮刀',     type: 'ATK',  val: 100, icon: '⚔️', price: 99999, tier: 5, desc: '特殊矿石锻造的神刃，攻+100' },
   { id: 'a50', name: '创世徽记',   type: 'ATK',  val: 50,  icon: '🌟', price: 99999, tier: 5, desc: '攻+50，每回合恢复3%HP', effect: { id: 'heal_turn', val: 0.03 } },
   { id: 'a51', name: '虚空之心',   type: 'ATK',  val: 100, icon: '🖤', price: 99999, tier: 5, desc: '攻+100，无视15%防御+吸血10%', effect: { id: 'void_heart', ignDef: 0.15, lifesteal: 0.10 } },
   { id: 'a52', name: '仙灵御剑',   type: 'ATK',  val: 80,  icon: '🗡️', price: 99999, tier: 5, desc: '攻+80，速+40(来自蜀山)', effect: { id: 'bonus_spd', val: 40 } },

@@ -45,6 +45,11 @@ button:active { transform: scale(0.96); }
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  animation: screenFadeIn 0.2s ease-out;
+}
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* 通用玻璃拟态面板 */
@@ -205,86 +210,7 @@ button:active { transform: scale(0.96); }
 /* =========================================
    [美化] 主菜单 (Menu Tile Design)
    ========================================= */
-.menu-screen-pro {
-  width: 100%; height: 100%;
-  background: radial-gradient(circle at 50% 100%, #1a2a6c, #b21f1f, #fdbb2d);
-  background-size: 200% 200%;
-  animation: gradientFlow 15s ease infinite;
-  display: flex; align-items: center; justify-content: center;
-}
-
-@keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.menu-content-pro {
-  width: 100%; max-width: 380px;
-  display: flex; flex-direction: column; gap: 30px; padding: 20px; z-index: 10;
-}
-
-.game-logo-main {
-  font-size: 56px; font-weight: 900; color: #FFD700; text-align: center;
-  text-shadow: 0 4px 0 #E65100, 0 8px 20px rgba(0,0,0,0.4);
-  letter-spacing: 2px; transform: skewX(-5deg) rotate(-2deg);
-  background: linear-gradient(to bottom, #FFFDE7, #FFC107);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  margin-bottom: 5px;
-}
-.game-logo-sub { 
-  font-size: 12px; color: rgba(255,255,255,0.8); letter-spacing: 8px; 
-  text-align: center; font-weight: bold; text-transform: uppercase;
-}
-
-/* 磁贴按钮容器 */
-.menu-grid-actions { display: flex; flex-direction: column; gap: 15px; }
-
-/* 磁贴按钮样式 */
-.menu-btn-tile {
-  width: 100%; padding: 20px; border-radius: 20px;
-  display: flex; align-items: center; gap: 20px;
-  cursor: pointer; position: relative; overflow: hidden;
-  transition: all 0.2s; text-align: left; border: none;
-  backdrop-filter: blur(10px);
-}
-.menu-btn-tile:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-.menu-btn-tile:active { transform: scale(0.98); }
-
-/* 主按钮 (开始游戏) */
-.menu-btn-tile.primary {
-  background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
-  color: #fff; box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
-}
-.menu-btn-tile.primary .tile-icon { font-size: 32px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); }
-
-/* 次级按钮 (图鉴/技能) */
-.menu-btn-tile.secondary {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff; border: 1px solid rgba(255,255,255,0.2);
-}
-.menu-btn-tile.secondary:hover { background: rgba(255, 255, 255, 0.25); border-color: #fff; }
-
-/* 危险按钮 (重置) */
-.menu-btn-tile.danger {
-  background: rgba(255, 82, 82, 0.15);
-  color: #FF8A80; border: 1px solid rgba(255, 82, 82, 0.3);
-}
-.menu-btn-tile.danger:hover { background: rgba(255, 82, 82, 0.25); border-color: #FF5252; }
-
-.tile-text .main { font-size: 18px; font-weight: 900; display: block; margin-bottom: 2px; }
-.tile-text .sub { font-size: 11px; opacity: 0.8; display: block; font-weight: normal; }
-
-.menu-row { display: flex; gap: 15px; }
-.menu-row .menu-btn-tile { padding: 15px; gap: 10px; } /* 小按钮紧凑点 */
-.menu-row .tile-icon { font-size: 24px; }
-.menu-row .tile-text .main { font-size: 14px; }
-
-/* 底部版权 */
-.menu-footer {
-  text-align: center; color: rgba(255,255,255,0.3); font-size: 10px;
-  margin-top: 20px; letter-spacing: 1px;
-}
+/* (已清理: 旧版menu-screen-pro/menu-btn-tile/game-logo等未使用的CSS) */
 
 /* =========================================
    3. 世界地图 (World Map)
@@ -303,15 +229,7 @@ button:active { transform: scale(0.96); }
   padding-bottom: 80px;
 }
 
-.map-card-rich {
-  position: relative; height: 160px; border-radius: 16px;
-  background: #fff; overflow: hidden; cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  transition: transform 0.3s;
-  display: flex; flex-direction: column; justify-content: space-between;
-}
-.map-card-rich:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
-.map-card-rich.locked { filter: grayscale(0.8); opacity: 0.8; cursor: not-allowed; }
+/* (已清理: 旧版map-card-rich未使用) */
 
 .map-card-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.4; z-index: 0; }
 .map-watermark { position: absolute; bottom: -20px; right: -20px; font-size: 100px; opacity: 0.15; z-index: 0; transform: rotate(-15deg); }
@@ -362,6 +280,14 @@ button:active { transform: scale(0.96); }
   .side-panel { display: none; }
   .game-ui-wrapper { padding: 0; }
   .center-area { border-radius: 0; padding: 0; background: transparent; }
+  .mobile-party-bar { display: flex !important; }
+}
+.mobile-party-bar {
+  display: none;
+  position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 9980; gap: 4px; padding: 4px 10px; border-radius: 20px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .grid-viewport { flex: 1; width: 100%; height: 100%; min-height: 0; display: flex; justify-content: center; align-items: center; padding: 8px; position: relative; overflow: auto; }
@@ -389,6 +315,14 @@ button:active { transform: scale(0.96); }
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+@media (max-width: 1000px) {
+  .map-dock-capsule {
+    bottom: 80px; padding: 6px 8px; gap: 3px;
+    border-radius: 24px; max-width: calc(100% - 80px);
+  }
+  .map-dock-capsule .dock-btn-capsule { font-size: 16px; padding: 4px 6px; opacity: 0.8; }
+  .map-dock-capsule .dock-divider-v { display: none; }
 }
 .map-dock-capsule::-webkit-scrollbar {
   display: none;
@@ -1760,7 +1694,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 }
 
 /* 确保所有模态框都在最上层 */
-.modal-overlay { z-index: 2000; }
+.modal-overlay { z-index: 2000; animation: modalFadeIn 0.25s ease-out; }
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .ball-menu-overlay { z-index: 2100; }
 .dialog-overlay { z-index: 3000; }
 .blackout-overlay { z-index: 9999; }
@@ -5072,4 +5010,15 @@ button:active {
 @keyframes slideUp {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+/* PC箱子移动端响应式 */
+@media (max-width: 640px) {
+  .pc-col-mid {
+    min-height: 200px !important;
+  }
+  .pc-box-grid-tech {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important;
+    gap: 6px !important;
+  }
 }

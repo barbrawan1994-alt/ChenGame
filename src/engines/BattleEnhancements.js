@@ -226,7 +226,7 @@ export const EnhancedHPBar = ({ current, max, label }) => {
           color: '#fff', fontSize: '9px', fontWeight: 'bold',
           textShadow: '0 1px 2px rgba(0,0,0,0.6)', whiteSpace: 'nowrap'
         }}>
-          {Math.floor(current)} / {max}
+          {Math.floor(current).toLocaleString()} / {max.toLocaleString()}
         </div>
       </div>
     </div>
@@ -237,11 +237,12 @@ export const EnhancedHPBar = ({ current, max, label }) => {
 // 战斗消息增强组件
 // =========================================
 export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => {
+  const [expanded, setExpanded] = useState(false);
   const allLogs = logs.length > 0 ? logs : (message ? [message] : []);
-  const displayLogs = allLogs.slice(0, 4);
+  const displayLogs = expanded ? allLogs.slice(0, 12) : allLogs.slice(0, 4);
 
   return (
-    <div className="battle-msg-queue">
+    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 4 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 4) setExpanded(e => !e); }}>
       {displayLogs.map((msg, i) => (
         <div key={`${msg}-${i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'}`}
           style={{ opacity: i === 0 ? 1 : Math.max(0.4, 1 - i * 0.25) }}
@@ -249,6 +250,7 @@ export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => 
           {msg}
         </div>
       ))}
+      {allLogs.length > 4 && <div style={{fontSize:'9px',textAlign:'center',color:'rgba(255,255,255,0.5)',padding:'2px 0'}}>{expanded ? '▲ 收起' : `▼ 展开全部 (${allLogs.length})`}</div>}
     </div>
   );
 };
@@ -272,7 +274,7 @@ export const AnimatedDamageNumber = ({ damage, x, y, isCritical = false, type = 
       style={{ left: x, top: y }}
     >
       {isCritical && 'CRIT! '}
-      {damage}
+      {typeof damage === 'number' ? damage.toLocaleString() : damage}
     </div>
   );
 };

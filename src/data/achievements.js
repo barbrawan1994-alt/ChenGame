@@ -63,7 +63,7 @@ const ACHIEVEMENTS = [
   { id: 'clutch_win',      cat: 'BATTLE', rarity: 'RARE',      name: '绝地反击',     desc: '在精灵HP低于10%时赢得战斗',   check: s => s.clutchWins >= 1,      reward: { title: '绝境逢生' } },
   { id: 'clutch_5',        cat: 'BATTLE', rarity: 'EPIC',      name: '绝境专家',     desc: '在HP低于10%时赢5场战斗',      check: s => s.clutchWins >= 5,      reward: { title: '绝境专家' } },
   { id: 'perfect_win',     cat: 'BATTLE', rarity: 'RARE',      name: '完美胜利',     desc: '在不损失HP的情况下赢得战斗',  check: s => s.perfectWins >= 1,     reward: { gold: 3000 } },
-  { id: 'perfect_10',      cat: 'BATTLE', rarity: 'EPIC',      name: '不沾一尘',     desc: '不受敌方伤害赢得战斗10次',    check: s => s.perfectWins >= 10,    reward: { gold: 8000 } },
+  { id: 'perfect_10',      cat: 'BATTLE', rarity: 'EPIC',      name: '不沾一尘',     desc: '在不损失HP的情况下赢得战斗10次',    check: s => s.perfectWins >= 10,    reward: { gold: 8000 } },
   { id: 'sweep_win',       cat: 'BATTLE', rarity: 'RARE',      name: '全队存活',     desc: '携带6只精灵对战训练家，全员生还',  check: s => s.sweepWins >= 1,       reward: { gold: 2000 } },
   { id: 'underdog',        cat: 'BATTLE', rarity: 'RARE',      name: '以弱胜强',     desc: '击败等级高出20级以上的对手',   check: s => s.underdogWins >= 1,    reward: { title: '越级挑战者' } },
   { id: 'underdog_win',    cat: 'BATTLE', rarity: 'RARE',      name: '后发制人',     desc: '用等级低30级以上的精灵赢得战斗', check: s => s.underdogLowLevelWins >= 1, reward: { gold: 3000 } },

@@ -550,7 +550,7 @@ export const DEVIL_FRUITS = {
   },
   df_kilo: {
     id: 'df_kilo', name: '轻飘飘果实', category: 'PARAMECIA', rarity: 'COMMON',
-    desc: '自由改变体重，速度大增，攻击附带地面属性',
+    desc: '自由改变体重，速度大增，变身技为地面属性',
     duration: 5,
     transform: { spdMult: 1.4, atkMult: 1.15 },
     transformMove: { name: '万吨压顶', t: 'GROUND', p: 85, pp: 8, acc: 90, isFruitMove: true },

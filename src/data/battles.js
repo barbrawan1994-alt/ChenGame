@@ -34,7 +34,7 @@ export const CHALLENGES = [
     req: 360, boss: 259, bossLvl: 92, teamSize: 6, rewardId: 259,
     bg: 'linear-gradient(135deg, #EFEBE9 0%, #A1887F 100%)', color: '#5D4037' },
   { id: 'c12', title: '光与暗之歌', desc: '同时面对光神与暗神',
-    req: 400, boss: 254, bossLvl: 95, teamSize: 6, rewardId: 255,
+    req: 400, boss: 254, bossLvl: 95, teamSize: 6, rewardId: 254,
     bg: 'linear-gradient(135deg, #212121 0%, #424242 100%)', color: '#FFD700' },
   { id: 'c13', title: '十神降世', desc: '终极神兽的集结号',
     req: 440, boss: 340, bossLvl: 96, teamSize: 6, rewardId: 340,
@@ -183,7 +183,7 @@ export const DUNGEONS = [
       { icon: '✨', text: '高闪光率遭遇' },
       { icon: '🔴', text: '随机精灵球奖励' }
     ] },
-  { id: 'speed_run', name: '竞速挑战', desc: '限时击败敌人，速度越快奖励越好 (需2徽章)',
+  { id: 'speed_run', name: '竞速挑战', desc: '以最少回合击败敌人，3回合内通关获稀有奖励 (需2徽章)',
     type: 'speed_run', color: '#FF5722', icon: '⚡', recLvl: 20,
     rarity: '普通', stars: 2, tier: 1, reqBadges: 2,
     rewards: [
@@ -267,7 +267,7 @@ export const DUNGEONS = [
     rarity: '史诗', stars: 4, tier: 3, reqBadges: 9,
     rewards: [
       { icon: '🔄', text: '反转世界的挑战' },
-      { icon: '💰', text: '5000 金币 + 稀有道具' }
+      { icon: '💰', text: '15000 金币 + 稀有道具' }
     ] },
   { id: 'double_arena', name: '双打擂台', desc: '2v2双打模式 (需9徽章)',
     type: 'double', color: '#E65100', icon: '⚔️', recLvl: 75,

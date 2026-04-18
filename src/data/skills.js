@@ -286,7 +286,7 @@ const STATUS_SKILLS_DB = [
   { name: '高速移动', t: 'PSYCHIC', p: 0, pp: 30, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 2 }, desc: '身体放松，速度大幅提升(+100%)' },
   { name: '龙之舞', t: 'DRAGON', p: 0, pp: 20, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, stat2: 'spd' }, desc: '神秘的舞蹈，物攻和速度同时提升(+50%)' },
   { name: '蝶舞', t: 'BUG', p: 0, pp: 20, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, stat2: 's_def', stat3: 'spd' }, desc: '特攻、特防、速度全部提升(+50%)' },
-  { name: '破壳', t: 'NORMAL', p: 0, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 2, stat2: 's_atk', stat3: 'spd' }, desc: '大幅提升双攻和速度(+100%)，但降低防御' },
+  { name: '破壳', t: 'NORMAL', p: 0, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 2, stat2: 's_atk', stat3: 'spd', selfDebuff: { stat: 'p_def', val: 1 } }, desc: '大幅提升双攻和速度(+100%)，但降低防御(-33%)' },
   { name: '聚气', t: 'NORMAL', p: 0, pp: 30, effect: { type: 'BUFF', target: 'self', stat: 'crit', val: 2 }, desc: '集中精神，暴击率大幅提升(+2级)' },
   { name: '变硬', t: 'NORMAL', p: 0, pp: 30, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1 }, desc: '全身用力，物防提升(+50%)' },
   { name: '生长', t: 'GRASS', p: 0, pp: 20, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, stat2: 's_atk' }, desc: '身体变大，物攻和特攻同时提升(+50%)' },
@@ -380,7 +380,7 @@ const SIDE_EFFECT_SKILLS = [
   // --- 6. 降攻系列 (降低物攻/特攻) ---
   { name: '嬉闹', t: 'FAIRY', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.1 }, desc: '10%降低物攻' },
   { name: '月亮之力', t: 'FAIRY', p: 95, pp: 15, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 0.3 }, desc: '30%降低特攻' },
-  { name: '大声咆哮', t: 'DARK', p: 55, pp: 15, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 1.0 }, desc: '100%降低特攻' },
+  { name: '暗黑咆哮', t: 'DARK', p: 55, pp: 15, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 1.0 }, desc: '暗属性冲击波，100%降低特攻' },
   { name: '广域破坏', t: 'DRAGON', p: 60, pp: 15, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '100%降低物攻' },
   { name: '虫之抵抗', t: 'BUG', p: 50, pp: 20, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 1.0 }, desc: '100%降低特攻' },
 
@@ -535,7 +535,7 @@ const ADVANCED_SKILLS = [
   { name: '龙魂爆裂', t: 'DRAGON', p: 140, pp: 3, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.4 }, desc: '龙之魂魄爆发，140威力+40%升攻' },
 
   // --- 冰系新增 (1) ---
-  { name: '绝对零度', t: 'ICE', p: 0, pp: 5, effect: { type: 'OHKO', chance: 0.3 }, desc: '绝对零度，30%概率一击必杀' },
+  { name: '极冰裁决', t: 'ICE', p: 0, pp: 5, effect: { type: 'OHKO', chance: 0.3 }, desc: '极寒领域之力，30%概率一击必杀' },
 ];
 
 // [自动注入] 将新技能合并到 SKILL_DB
