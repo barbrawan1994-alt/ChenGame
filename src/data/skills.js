@@ -12,7 +12,7 @@ const SKILL_DB = {
     { name: '舍身冲撞', p: 120, pp: 15, desc: '不顾一切的猛烈冲撞，附带反伤' },
     { name: '破坏死光', p: 150, pp: 5, desc: '释放强烈光束，下回合需蓄力' },
     { name: '终极冲击', p: 150, pp: 5, desc: '全力冲撞，下回合需休息' },
-    { name: '大爆炸', p: 250, pp: 1, desc: '引发大爆炸，自身濒死' }
+    { name: '大爆炸', p: 200, pp: 1, desc: '引发大爆炸，自身濒死' }
   ],
   FIRE: [
     { name: '火花', p: 40, pp: 25, desc: '喷出小火焰攻击对手' },
@@ -24,7 +24,7 @@ const SKILL_DB = {
     { name: '闪焰冲锋', p: 120, pp: 15, desc: '被火焰包裹猛烈冲锋，附带反伤' },
     { name: '过热', p: 130, pp: 5, desc: '全力释放火焰，之后特攻下降' },
     { name: '爆裂燃烧', p: 150, pp: 5, desc: '超高温爆裂燃烧一切' },
-    { name: 'V热焰', p: 180, pp: 5, desc: '以超极温火焰焚尽一切的究极招式' }
+    { name: 'V热焰', p: 150, pp: 5, desc: '以超极温火焰焚尽一切的究极招式，使用后特攻降低' }
   ],
   WATER: [
     { name: '水枪', p: 40, pp: 25, desc: '喷出水柱攻击对手' },
@@ -60,7 +60,7 @@ const SKILL_DB = {
     { name: '伏特攻击', p: 120, pp: 15, desc: '裹着电流猛冲，附带反伤' },
     { name: '电磁炮', p: 120, pp: 5, desc: '发射电磁加速炮弹轰击' },
     { name: '雷击', p: 130, pp: 5, desc: '从天空降下雷击打击对手' },
-    { name: '千万伏特', p: 195, pp: 1, desc: '皮卡丘的究极电击招式' }
+    { name: '千万伏特', p: 160, pp: 1, desc: '皮卡丘的究极电击招式，需蓄力' }
   ],
   ICE: [
     { name: '冰砾', p: 40, pp: 30, desc: '投掷冰块攻击对手' },
@@ -71,7 +71,7 @@ const SKILL_DB = {
     { name: '冰锤', p: 100, pp: 10, desc: '挥舞巨大冰锤猛砸' },
     { name: '暴风雪', p: 110, pp: 5, desc: '掀起猛烈暴风雪，可能冰冻' },
     { name: '冰封世界', p: 120, pp: 5, desc: '将周围冻结的极寒攻击' },
-    { name: '绝对零度', p: 200, pp: 1, desc: '释放绝对零度冷气，一击必杀' }
+    { name: '绝对零度', p: 200, pp: 1, acc: 30, desc: '释放绝对零度冷气，命中率极低但一击必杀' }
   ],
   FIGHT: [
     { name: '碎岩', p: 40, pp: 15, desc: '用拳头碎裂岩石般攻击' },
@@ -82,7 +82,7 @@ const SKILL_DB = {
     { name: '爆裂拳', p: 100, pp: 5, desc: '蓄力的重拳，可能混乱对手' },
     { name: '近身战', p: 120, pp: 5, desc: '贴身搏击，自身防御下降' },
     { name: '真气弹', p: 120, pp: 5, desc: '发射气功波攻击，命中率稍低' },
-    { name: '真气拳', p: 150, pp: 20, desc: '集中全身气力的致命一拳' }
+    { name: '真气拳', p: 150, pp: 5, acc: 90, desc: '集中全身气力的致命一拳，命中率稍低' }
   ],
   POISON: [
     { name: '溶解液', p: 40, pp: 30, desc: '喷出腐蚀液体攻击对手' },
@@ -102,7 +102,7 @@ const SKILL_DB = {
     { name: '十万马力', p: 95, pp: 10, desc: '用全力践踏对手' },
     { name: '地震', p: 100, pp: 10, desc: '引发地震攻击周围所有目标' },
     { name: '断崖之剑', p: 120, pp: 10, desc: '大地之王的断崖攻击' },
-    { name: '地裂', p: 200, pp: 1, desc: '使大地裂开将对手吞噬' }
+    { name: '地裂', p: 200, pp: 1, acc: 30, desc: '使大地裂开将对手吞噬，命中率极低' }
   ],
   FLYING: [
     { name: '起风', p: 40, pp: 35, desc: '扇动翅膀掀起狂风攻击' },
@@ -199,7 +199,7 @@ const SKILL_DB = {
     { name: '夜袭', p: 70, pp: 20, desc: '趁黑夜突袭，必定先手' },
     { name: '制裁光砾', p: 100, pp: 5, desc: '以制裁之力发射暗之光' },
     { name: '暗影突袭', p: 90, pp: 15, desc: '从暗影中发动突然袭击' },
-    { name: '恶意追击', p: 60, pp: 20, desc: '追击逃跑的对手，威力翻倍' },
+    { name: '恶意追击', p: 60, pp: 20, desc: '暗系追击技能，对低HP对手威力翻倍' },
     { name: '暗冥强击', p: 110, pp: 5, desc: '凝聚黑暗之力的致命一击' },
     { name: '无尽暗夜', p: 140, pp: 3, desc: '将对手拖入无尽的黑暗中' },
   ],
@@ -344,7 +344,7 @@ const SIDE_EFFECT_SKILLS = [
   { name: '火焰轮', t: 'FIRE', p: 60, pp: 25, effect: { type: 'STATUS', status: 'BRN', chance: 0.1 }, desc: '10%概率灼伤' },
   { name: '喷射火焰', t: 'FIRE', p: 90, pp: 15, effect: { type: 'STATUS', status: 'BRN', chance: 0.1 }, desc: '10%概率灼伤' },
   { name: '热风', t: 'FIRE', p: 95, pp: 10, effect: { type: 'STATUS', status: 'BRN', chance: 0.2 }, desc: '20%概率灼伤' },
-  { name: '炼狱', t: 'FIRE', p: 100, pp: 5, effect: { type: 'STATUS', status: 'BRN', chance: 1.0 }, desc: '100%必中灼伤，但命中率低' }, // 需配合命中逻辑
+  { name: '炼狱', t: 'FIRE', p: 100, pp: 5, acc: 50, effect: { type: 'STATUS', status: 'BRN', chance: 1.0 }, desc: '100%灼伤，命中率50%' },
   { name: '神圣之火', t: 'FIRE', p: 100, pp: 5, effect: { type: 'STATUS', status: 'BRN', chance: 0.5 }, desc: '50%概率灼伤' },
 
   // --- 2. 麻痹系列 (电/一般) ---
@@ -395,7 +395,7 @@ const SIDE_EFFECT_SKILLS = [
   { name: '水之波动', t: 'WATER', p: 60, pp: 20, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '20%概率混乱' },
   { name: '信号光束', t: 'BUG', p: 75, pp: 15, effect: { type: 'STATUS', status: 'CON', chance: 0.1 }, desc: '10%概率混乱' },
   { name: '暴风', t: 'FLYING', p: 110, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '30%概率混乱' },
-  { name: '爆裂拳', t: 'FIGHT', p: 100, pp: 5, effect: { type: 'STATUS', status: 'CON', chance: 1.0 }, desc: '100%混乱，但命中低' },
+  { name: '爆裂拳', t: 'FIGHT', p: 100, pp: 5, acc: 50, effect: { type: 'STATUS', status: 'CON', chance: 1.0 }, desc: '100%混乱，命中率50%' },
 
   // --- 9. 强化自身系列 (攻击同时提升自己) ---
   { name: '增强拳', t: 'FIGHT', p: 40, pp: 20, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '100%提升自身物攻' },

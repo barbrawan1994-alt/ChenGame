@@ -117,10 +117,10 @@ export const DRINK_BREW_BASE_MS = {
 
 export const DRINK_MIN_WORKER_STATS = {
   1: 0,
-  2: 150,
-  3: 280,
-  4: 350,
-  5: 450,
+  2: 100,
+  3: 200,
+  4: 300,
+  5: 380,
 };
 
 export const calcBrewTimeMs = (tier, workerStatTotal) => {

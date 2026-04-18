@@ -55,7 +55,7 @@ export const CHALLENGES = [
     req: 700, boss: 750, bossLvl: 100, teamSize: 6, rewardId: 750,
     bg: 'linear-gradient(135deg, #1A237E 0%, #00BCD4 100%)', color: '#80DEEA' },
   { id: 'c18', title: '创世之巅', desc: '800精灵图鉴大师的最终证明',
-    req: 780, boss: 800, bossLvl: 100, teamSize: 6, rewardId: 800,
+    req: 760, boss: 800, bossLvl: 100, teamSize: 6, rewardId: 800,
     bg: 'linear-gradient(135deg, #000000 0%, #FFD700 50%, #000000 100%)', color: '#FFD700' },
 ];
 
@@ -127,7 +127,7 @@ export const DOUBLE_CHALLENGES = [
     req: 250, boss: 340, bossLvl: 95, teamSize: 2, rewardId: 340, isDouble: true,
     bg: 'linear-gradient(135deg, #D32F2F 0%, #FF6F00 100%)', color: '#B71C1C' },
   { id: 'dc7', title: '万界双打至尊', desc: '双打模式的最终证明',
-    req: 400, boss: 700, bossLvl: 100, teamSize: 2, rewardId: 700, isDouble: true,
+    req: 550, boss: 700, bossLvl: 100, teamSize: 2, rewardId: 700, isDouble: true,
     bg: 'linear-gradient(135deg, #000000 0%, #FF6F00 50%, #000000 100%)', color: '#FF6F00' },
 ];
 export const CONTEST_CONFIG = {
@@ -284,7 +284,7 @@ export const DUNGEONS = [
       { icon: '💎', text: '高品质饰品+大量金币' },
       { icon: '📦', text: '稀有进化石+增强剂' }
     ] },
-  // === Tier 4: 终极级 (11~13徽章) ===
+  // === Tier 4: 终极级 (10+徽章) ===
   { id: 'infinity_castle', name: '无限城', desc: 'Roguelike无尽挑战 (需10徽章)',
     type: 'infinity', color: '#7B1FA2', icon: '🏯', recLvl: 85,
     rarity: '传说', stars: 5, tier: 4, reqBadges: 10,
@@ -378,16 +378,16 @@ export const JJK_CHALLENGES = [
   },
   {
     id: 'jjk_gojo_sparring', title: '五条悟的特训', desc: '最强术师亲自指导的特训',
-    req: 50, boss: 150, bossLvl: 80, teamSize: 4, rewardId: 65,
+    req: 55, boss: 150, bossLvl: 65, teamSize: 4, rewardId: 150,
     bg: 'linear-gradient(135deg, #0D47A1 0%, #1976D2 100%)', color: '#E3F2FD',
     isJJK: true, hasCE: true, npc: 'gojo',
   },
 ];
 
 export const HYAKKI_DUNGEON = {
-  id: 'hyakki_yako', name: '百鬼夜行', desc: '对战强力咒灵 (需6徽章+Lv.80)',
+  id: 'hyakki_yako', name: '百鬼夜行', desc: '对战强力咒灵 (需10徽章+Lv.80)',
   type: 'hyakki', color: '#4A148C', icon: '👹', recLvl: 80, restriction: 'none',
-  isJJK: true, tier: 3, reqBadges: 6,
+  isJJK: true, tier: 3, reqBadges: 10,
   rarity: '史诗', stars: 4,
   rewards: [
     { icon: '👹', text: '3000 金币' },

@@ -2,7 +2,7 @@ export const BALLS = {
   poke:   { id: 'poke',   name: '精灵球', rate: 1.0, price: 200, icon: '🔴', desc: '基础捕获球' },
   great:  { id: 'great',  name: '超级球', rate: 1.5, price: 600, icon: '🔵', desc: '中等概率捕获' },
   ultra:  { id: 'ultra',  name: '高级球', rate: 2.0, price: 1200, icon: '⚫', desc: '高概率捕获' },
-  master: { id: 'master', name: '大师球', rate: 255, price: 0,   icon: '🟣', desc: '必定捕获成功！' },
+  master: { id: 'master', name: '大师球', rate: 255, price: -1,  icon: '🟣', desc: '必定捕获成功！(不可购买)', shopHide: true },
   // 对应深蓝海域(Map4) 和 虫系精灵
   net:    { id: 'net',    name: '网纹球', rate: 3.5, price: 1000, icon: '🕸️', desc: '捕捉水系/虫系效果拔群' },
   // 对应遗迹工厂(Map3)、幽灵古堡(Map7)、银河空间站(Map12)
@@ -55,7 +55,7 @@ export const TMS = [
   { id: 'tm_water',  name: '水炮',     type: 'WATER',    p: 140, pp: 5,  price: 25000, desc: '水系终极大招，极限高压水炮', tier: 4 },
   { id: 'tm_grass',  name: '日光束',   type: 'GRASS',    p: 145, pp: 5,  price: 28000, desc: '草系终极大招，凝聚太阳之力', tier: 4 },
   { id: 'tm_elec',   name: '打雷',     type: 'ELECTRIC', p: 140, pp: 5,  price: 25000, desc: '电系终极大招，天降雷罚', tier: 4 },
-  { id: 'tm_ice',    name: '暴风雪',   type: 'ICE',      p: 140, pp: 5,  price: 25000, desc: '冰系终极大招，绝对零度的暴风雪', tier: 4 },
+  { id: 'tm_ice',    name: '暴风雪',   type: 'ICE',      p: 140, pp: 5,  price: 25000, desc: '冰系终极大招，极寒暴风雪席卷全场', tier: 4 },
   { id: 'tm_bolt',   name: '伏特攻击', type: 'ELECTRIC', p: 150, pp: 5,  price: 35000, desc: '电系究极物攻，极限电击带麻痹', tier: 4 },
   { id: 'tm_light',  name: '光子爆发', type: 'LIGHT',    p: 140, pp: 5,  price: 28000, desc: '光系终极大招，光子能量爆炸', tier: 4 },
   { id: 'tm_cosmic1', name: '星云旋涡', type: 'COSMIC',  p: 75,  pp: 15, price: 3500,  desc: '宇宙系基础技能，卷起星云攻击', tier: 1, shopSell: true },

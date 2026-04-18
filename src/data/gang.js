@@ -189,7 +189,7 @@ export const GANG_SKILLS = [
   { id: 'gs_territory', name: '领地守护', desc: '己方领地防御+{val}/tick', maxLv: 3, costPerLv: 7000, valPerLv: 2,  icon: '🏰' },
   { id: 'gs_trade',     name: '商队贸易', desc: '每日被动收入{val}金',     maxLv: 3, costPerLv: 6000, valPerLv: 500,icon: '🐫' },
   { id: 'gs_catch',     name: '精灵亲和', desc: '捕获率+{val}%',          maxLv: 3, costPerLv: 8000, valPerLv: 1,  icon: '🎯' },
-  { id: 'gs_power',    name: '武力精进', desc: '全队攻防+{val}%',        maxLv: 3, costPerLv: 8000, valPerLv: 2,  icon: '💪' },
+  { id: 'gs_power',    name: '武力精进', desc: '全队物攻/物防/特攻/特防+{val}%（PvE生效）', maxLv: 3, costPerLv: 8000, valPerLv: 2,  icon: '💪' },
 ];
 
 export const GANG_TASKS = [

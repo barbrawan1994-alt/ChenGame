@@ -116,7 +116,7 @@ export const DOMAINS = {
   FIRE: { name: '炼狱领域·焦热地狱', turns: 3, ceCost: 80,
           effect: { atkBoost: 1.5, enemyAccDown: 0.7, dot: 0.05 },
           desc: '灼热领域，攻击+50%，敌方命中-30%，每回合灼伤5%' },
-  WATER: { name: '真人领域·自闭圆顿裹', turns: 3, ceCost: 80,
+  WATER: { name: '深海领域·碧波净界', turns: 3, ceCost: 80,
            effect: { defBoost: 1.5, healPerTurn: 0.05, dot: 0 },
            desc: '水之领域，防御+50%，每回合恢复5%HP' },
   GRASS: { name: '千年森罗', turns: 3, ceCost: 75,

@@ -11,8 +11,8 @@ export const WEATHERS = {
   CLEAR: { name: '晴朗', desc: '无特殊效果', icon: '☀️' },
   RAIN:  { name: '下雨', desc: '水系威力↑ 火系威力↓', icon: '🌧️' },
   SUN:   { name: '大晴天', desc: '火系威力↑ 水系威力↓', icon: '🔥' },
-  SAND:  { name: '沙暴', desc: '岩/地/钢特防↑ 其他受伤害', icon: '🌪️' },
-  SNOW:  { name: '冰雹', desc: '冰系防御↑ 其他受伤害', icon: '❄️' }
+  SAND:  { name: '沙暴', desc: '岩/地/钢系受到的特殊伤害-20%，其他系每回合受沙暴伤害', icon: '🌪️' },
+  SNOW:  { name: '冰雹', desc: '冰系受到的物理伤害-20%，其他系每回合受冰雹伤害', icon: '❄️' }
 };
 
 // ==========================================
@@ -28,7 +28,7 @@ export const MAPS = [
   { 
     id: 2, name: '回声山谷', lvl: [8, 16], 
     pool: [6, 14, 31, 34, 38, 51, 62, 64, 66, 68, 70, 72, 111, 113, 121, 133, 135, 166, 169, 181, 198, 190, 213, 230, 245, 296, 372, 73, 205, 406, 424, 453, 458, 460, 492, 499, 502, 507, 511, 517, 522, 524, 532, 534, 538, 542, 549, 554, 557, 569, 575, 580, 589, 592, 597, 612, 616, 620, 624, 628, 632, 636, 640, 644, 648, 652, 656, 660, 664, 668, 674, 677, 682, 689], 
-    drop: 100, type: 'mountain', color: '#FFF9C4', gymLeader: 65, gymLvl: 20, badge: '🪨', icon: '⛰️', gymName: '小刚',
+    drop: 100, type: 'mountain', color: '#FFF9C4', gymLeader: 65, gymLvl: 18, badge: '🪨', icon: '⛰️', gymName: '小刚',
     trainerLvl: [10, 18], storyLvl: [15, 20]
   },
   { 
@@ -99,7 +99,7 @@ export const MAPS = [
   },
   // 日蚀要塞
   { 
-    id: 99, name: '日蚀要塞', lvl: [80, 90], pool: [], 
+    id: 99, name: '日蚀要塞', lvl: [80, 90], pool: [], noEncounter: true,
     drop: 0, type: 'factory', color: '#263238', gymLeader: 350, gymLvl: 95, badge: '💀', icon: '🏯', gymName: '日蚀首领', desc: '日蚀队最终据点（⚠️ 无野外遭遇，仅剧情战斗）'
   },
   // 咒术回战 - 都立咒术高专

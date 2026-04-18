@@ -26,8 +26,8 @@ export const ACH_RARITY = {
 const ACHIEVEMENTS = [
   // ===== 收集类 — 按图鉴→捕获→闪光→神兽→果实→属性分组，组内由易到难 =====
   { id: 'catch_first',     cat: 'COLLECTION', rarity: 'COMMON',    name: '初出茅庐',     desc: '累计捕捉10只精灵',            check: s => s.totalCaught >= 10,   reward: { gold: 500 } },
-  { id: 'catch_10',        cat: 'COLLECTION', rarity: 'COMMON',    name: '收藏爱好者',   desc: '图鉴中记录30种精灵',          check: s => s.dexCount >= 30,       reward: { gold: 800 } },
-  { id: 'catch_50',        cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '精灵猎人',     desc: '图鉴中记录80种精灵',          check: s => s.dexCount >= 80,       reward: { gold: 2000 } },
+  { id: 'dex_30',           cat: 'COLLECTION', rarity: 'COMMON',    name: '收藏爱好者',   desc: '图鉴中记录30种精灵',          check: s => s.dexCount >= 30,       reward: { gold: 800 } },
+  { id: 'dex_80',          cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '精灵猎人',     desc: '图鉴中记录80种精灵',          check: s => s.dexCount >= 80,       reward: { gold: 2000 } },
   { id: 'catch_200',       cat: 'COLLECTION', rarity: 'RARE',      name: '精灵收割者',   desc: '累计捕捉200只精灵',           check: s => s.totalCaught >= 200,   reward: { gold: 3000 } },
   { id: 'catch_100',       cat: 'COLLECTION', rarity: 'RARE',      name: '图鉴学者',     desc: '图鉴中记录150种精灵',         check: s => s.dexCount >= 150,      reward: { title: '图鉴学者', gold: 3000 } },
   { id: 'catch_250',       cat: 'COLLECTION', rarity: 'EPIC',      name: '精灵博士',     desc: '图鉴中记录300种精灵',         check: s => s.dexCount >= 300,      reward: { title: '精灵博士', gold: 5000 } },
@@ -44,7 +44,7 @@ const ACHIEVEMENTS = [
   { id: 'fruit_15',        cat: 'COLLECTION', rarity: 'RARE',      name: '果实鉴赏家',   desc: '收集20种不同的恶魔果实',      check: s => s.uniqueFruits >= 20,   reward: { gold: 3000 } },
   { id: 'fruit_30',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实鉴定师',   desc: '收集35种不同的恶魔果实',      check: s => s.uniqueFruits >= 35,   reward: { gold: 5000 } },
   { id: 'fruit_60',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实猎人',     desc: '收集60种不同的恶魔果实',      check: s => s.uniqueFruits >= 60,   reward: { title: '果实猎人' } },
-  { id: 'fruit_all',       cat: 'COLLECTION', rarity: 'LEGENDARY', name: '恶魔果实图鉴', desc: '收集全部98种恶魔果实',         check: s => s.uniqueFruits >= 98,   reward: { title: '果实之王' } },
+  { id: 'fruit_all',       cat: 'COLLECTION', rarity: 'LEGENDARY', name: '恶魔果实图鉴', desc: '收集全部100种恶魔果实',        check: s => s.uniqueFruits >= 100,  reward: { title: '果实之王' } },
   { id: 'catch_all_type',  cat: 'COLLECTION', rarity: 'EPIC',      name: '属性大师',     desc: '捕捉至少21种不同主属性的精灵', check: s => s.typesCollected >= 21, reward: { title: '属性大师' } },
   { id: 'dual_collector',  cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '双属性收藏家', desc: '拥有15只双属性精灵',          check: s => s.dualTypeCaught >= 15, reward: { gold: 1500 } },
   { id: 'dual_master',     cat: 'COLLECTION', rarity: 'RARE',      name: '双属性大师',   desc: '拥有50只双属性精灵',          check: s => s.dualTypeCaught >= 50, reward: { title: '双属性大师' } },
@@ -84,7 +84,7 @@ const ACHIEVEMENTS = [
   { id: 'fruit_50_trans',  cat: 'BATTLE', rarity: 'RARE',      name: '变身大师',     desc: '累计使用果实变身50次',        check: s => s.fruitTransforms >= 50, reward: { title: '变身大师' } },
 
   // ===== 探索类 — 按地图→步数→副本→无限城→宝箱→活动分组 =====
-  { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '六区旅行者',   desc: '探索6个不同的地图',           check: s => s.mapsVisited >= 6,     reward: { gold: 800 } },
+  { id: 'explore_3',       cat: 'EXPLORE', rarity: 'COMMON',    name: '多区域旅行者', desc: '到访6个不同的地图区域',        check: s => s.mapsVisited >= 6,     reward: { gold: 800 } },
   { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索20个不同地图区域',        check: s => s.mapsVisited >= 20,    reward: { title: '环游世界', gold: 3000 } },
   { id: 'all_maps',        cat: 'EXPLORE', rarity: 'RARE',      name: '世界全图',     desc: '解锁所有地图',                check: s => s.allMapsUnlocked,      reward: { title: '世界旅行者' } },
   { id: 'steps_1k',        cat: 'EXPLORE', rarity: 'COMMON',    name: '散步者',       desc: '在地图上行走5000步',          check: s => s.totalSteps >= 5000,   reward: { gold: 500 } },
@@ -133,7 +133,7 @@ const ACHIEVEMENTS = [
   { id: 'furniture_10',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '家具大师',     desc: '摆放20件家具',                check: s => s.furnitureCount >= 20, reward: { gold: 1500 } },
   { id: 'full_house',      cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '温馨满屋',     desc: '房子家具数量达到30件',        check: s => s.furnitureCount >= 30, reward: { gold: 2000 } },
   { id: 'furniture_50',    cat: 'SOCIAL', rarity: 'RARE',      name: '装潢大师',     desc: '摆放50件家具',                check: s => s.furnitureCount >= 50, reward: { title: '装潢大师' } },
-  { id: 'house_castle',    cat: 'SOCIAL', rarity: 'EPIC',      name: '城堡之主',     desc: '升级为城堡',                  check: s => s.houseLevel >= 5,      reward: { title: '城堡领主' } },
+  { id: 'house_castle',    cat: 'SOCIAL', rarity: 'EPIC',      name: '城堡之主',     desc: '拥有精灵城堡或更高等级的房屋', check: s => s.houseLevel >= 5,      reward: { title: '城堡领主' } },
   { id: 'legend_home',     cat: 'SOCIAL', rarity: 'LEGENDARY', name: '传说家园',     desc: '家园评分达到传说级别',         check: s => s.housingScoreTier >= 5, reward: { title: '传说家园主' } },
   { id: 'garden_harvest_50', cat: 'SOCIAL', rarity: 'UNCOMMON', name: '田园达人',   desc: '收获50次花园作物',            check: s => s.gardenHarvests >= 50, reward: { gold: 1500 } },
   { id: 'fishing_5',       cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '钓鱼达人',     desc: '钓鱼活动获胜10次',            check: s => s.fishingWins >= 10,    reward: { gold: 1500 } },
@@ -156,7 +156,7 @@ const ACHIEVEMENTS = [
   { id: 'gold_5m',         cat: 'MASTERY', rarity: 'LEGENDARY', name: '黄金帝王',     desc: '战斗累计获得5,000,000金币',       check: s => s.totalGoldEarned >= 5000000, reward: { title: '黄金帝王' } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 12, reward: { title: '精灵大师' } },
   { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴700+全门派+联赛10+全副本+25座塔', check: s => s.dexCount >= 700 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 10 && (s.uniqueDungeonsCleared || 0) >= 8 && s.challengesCompleted >= 25, reward: { title: '真·大师' } },
-  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁150个成就',               check: s => s.achievementCount >= 150, reward: { title: '传说训练家' } },
+  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁160个成就',               check: s => s.achievementCount >= 160, reward: { title: '传说训练家' } },
 
   // ===== 隐藏成就 (18) =====
   { id: 'secret_solo_god',   cat: 'SECRET', rarity: 'LEGENDARY', name: '以一敌百',
@@ -249,7 +249,7 @@ const ACHIEVEMENTS = [
     hint: '每一个秘境都值得探索...',
     check: s => s.uniqueDungeonsCleared >= 15, reward: { title: '全秘境之王' }, hidden: true },
   { id: 'secret_zero_damage_boss', cat: 'SECRET', rarity: 'LEGENDARY', name: '无敌Boss杀手',
-    desc: '不受任何伤害击败区域Boss',
+    desc: '不受任何伤害击败道馆馆主',
     hint: '完美的战术不需要承受痛苦',
     check: s => s.perfectBossKills >= 1, reward: { title: '无敌' }, hidden: true },
 
