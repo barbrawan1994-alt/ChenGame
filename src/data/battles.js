@@ -276,6 +276,14 @@ export const DUNGEONS = [
       { icon: '⚔️', text: '2v2双打奖励' },
       { icon: '🎁', text: '随机装备 + 成长道具' }
     ] },
+  { id: 'elite_rotation', name: '精英轮换', desc: '每日轮换高难挑战，奖励丰厚 (需9徽章)',
+    type: 'elite_rotation', color: '#FF1744', icon: '🔥', recLvl: 80,
+    rarity: '史诗', stars: 4, tier: 3, reqBadges: 9,
+    rewards: [
+      { icon: '🔥', text: '每日轮换强敌' },
+      { icon: '💎', text: '高品质饰品+大量金币' },
+      { icon: '📦', text: '稀有进化石+增强剂' }
+    ] },
   // === Tier 4: 终极级 (11~13徽章) ===
   { id: 'infinity_castle', name: '无限城', desc: 'Roguelike无尽挑战 (需10徽章)',
     type: 'infinity', color: '#7B1FA2', icon: '🏯', recLvl: 85,

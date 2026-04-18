@@ -57,7 +57,7 @@ const ACHIEVEMENTS = [
   { id: 'win_200',         cat: 'BATTLE', rarity: 'RARE',      name: '战神降世',     desc: '赢得300场战斗',               check: s => s.battlesWon >= 300,    reward: { title: '战神' } },
   { id: 'win_500',         cat: 'BATTLE', rarity: 'EPIC',      name: '千场勇士',     desc: '赢得800场战斗',               check: s => s.battlesWon >= 800,    reward: { title: '不败战神' } },
   { id: 'win_1000',        cat: 'BATTLE', rarity: 'LEGENDARY', name: '千战不灭',     desc: '赢得1500场战斗',              check: s => s.battlesWon >= 1500,   reward: { title: '千战之王' } },
-  { id: 'ko_streak_10',    cat: 'BATTLE', rarity: 'UNCOMMON',  name: '15连胜达人',   desc: '达成15场连胜',                check: s => s.maxWinStreak >= 15,   reward: { gold: 2000 } },
+  { id: 'ko_streak_15',    cat: 'BATTLE', rarity: 'UNCOMMON',  name: '15连胜达人',   desc: '达成15场连胜',                check: s => s.maxWinStreak >= 15,   reward: { gold: 2000 } },
   { id: 'win_streak_20',   cat: 'BATTLE', rarity: 'RARE',      name: '二十连胜',     desc: '连续赢得20场战斗',            check: s => s.maxWinStreak >= 20,   reward: { title: '连胜之王' } },
   { id: 'ko_streak_30',    cat: 'BATTLE', rarity: 'EPIC',      name: '不败传说',     desc: '达成50场连胜',                check: s => s.maxWinStreak >= 50,   reward: { title: '不败传说' } },
   { id: 'clutch_win',      cat: 'BATTLE', rarity: 'RARE',      name: '绝地反击',     desc: '在精灵HP低于10%时赢得战斗',   check: s => s.clutchWins >= 1,      reward: { title: '绝境逢生' } },

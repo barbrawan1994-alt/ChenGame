@@ -38,7 +38,7 @@ export const TMS = [
   { id: 'tm_aqua',   name: '水流喷射', type: 'WATER',    p: 65,  pp: 15, price: 3000,  desc: '基础水系攻击，高压水流冲击', tier: 1, shopSell: true },
   { id: 'tm_vine',   name: '飞叶快刀', type: 'GRASS',    p: 65,  pp: 15, price: 3000,  desc: '基础草系攻击，锋利叶刃切割', tier: 1, shopSell: true },
   { id: 'tm_shock',  name: '电击波',   type: 'ELECTRIC', p: 60,  pp: 15, price: 2500,  desc: '基础电系攻击，释放电流冲击', tier: 1, shopSell: true },
-  { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 50,  pp: 20, price: 3500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },
+  { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 50,  pp: 20, price: 2500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },
   // ★★ 进阶技能书 (Tier 2) — 威力 80-95, 适合中期 (商店可售)
   { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',     p: 90,  pp: 12, price: 8000,  desc: '进阶火系技能，稳定火焰攻击，可能灼伤', tier: 2, shopSell: true },
   { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',      p: 90,  pp: 10, price: 8000,  desc: '进阶冰系技能，冰冻光束，概率冻结', tier: 2, shopSell: true },

@@ -9,11 +9,32 @@
   --bg-color: #f0f4f8;
   --font-main: "Nunito", "PingFang SC", "Microsoft YaHei", sans-serif;
   
+  /* 按钮主题色 */
+  --btn-primary: linear-gradient(135deg, #3b82f6, #2563eb);
+  --btn-primary-shadow: rgba(59,130,246,0.3);
+  --btn-secondary: rgba(255,255,255,0.08);
+  --btn-secondary-border: rgba(255,255,255,0.2);
+  --btn-danger: linear-gradient(135deg, #ef4444, #dc2626);
+  --btn-danger-shadow: rgba(239,68,68,0.3);
+  --btn-success: linear-gradient(135deg, #22c55e, #16a34a);
+  --btn-success-shadow: rgba(34,197,94,0.3);
+  
   /* 地图格子颜色 */
   --tile-bg: #333;
   --tile-bg-alt: rgba(255,255,255,0.1);
   --water-color: rgba(33, 150, 243, 0.3);
 }
+
+.btn-game {
+  padding: 10px 20px; border-radius: 12px; border: none;
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  transition: all 0.2s ease; letter-spacing: 0.5px;
+}
+.btn-game:active { transform: scale(0.97); }
+.btn-game-primary { background: var(--btn-primary); color: #fff; box-shadow: 0 4px 12px var(--btn-primary-shadow); }
+.btn-game-secondary { background: var(--btn-secondary); color: #ccc; border: 1px solid var(--btn-secondary-border); }
+.btn-game-danger { background: var(--btn-danger); color: #fff; box-shadow: 0 4px 12px var(--btn-danger-shadow); }
+.btn-game-success { background: var(--btn-success); color: #fff; box-shadow: 0 4px 12px var(--btn-success-shadow); }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 input, textarea, .selectable-text, .glass-panel p, .glass-panel span { user-select: text; }
@@ -5020,5 +5041,29 @@ button:active {
   .pc-box-grid-tech {
     grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important;
     gap: 6px !important;
+  }
+}
+
+/* 战斗界面小屏适配 */
+@media (max-height: 680px) {
+  .battle-panel-v2 {
+    height: 220px !important;
+  }
+  .battle-stage-v2 {
+    height: calc(100% - 220px) !important;
+  }
+}
+@media (max-height: 560px) {
+  .battle-panel-v2 {
+    height: 180px !important;
+  }
+  .battle-stage-v2 {
+    height: calc(100% - 180px) !important;
+  }
+}
+@media (max-width: 400px) {
+  .move-btn-v2 {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
   }
 }
