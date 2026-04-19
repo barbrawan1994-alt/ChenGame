@@ -5352,8 +5352,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'world_boss', icon:'👹', name:'世界Boss', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
       { id:'naruto_exam', icon:'🍥', name:`中忍考试 ${getNinjaRank(narutoState?.examsCompleted||0)?.icon||''}`, desc:`忍者晋级 · ${getNinjaRank(narutoState?.examsCompleted||0)?.name||'学员'}`, color:'#FF6F00', badge: (() => { const td = getLocalDateStr(); return narutoState.lastExamDate !== td ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('naruto_exam'); } },
-      { id:'jutsu_codex', icon:'📖', name:'忍术图鉴', desc:`${JUTSU_DB.length}种忍术 · 精通系统`, color:'#E65100', badge: 0, onClick: () => { setActivityCenter(false); if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('jutsu_codex'); } },
-      { id:'naruto_story', icon:'📜', name:'火影主线剧情', desc: (() => { const cleared = NARUTO_STORY_CHAPTERS.filter(ch => (narutoState?.storyProgress || {})[ch.id]?.cleared).length; return `忍界传说 · 章节进度 ${cleared}/${NARUTO_STORY_CHAPTERS.length}`; })(), color:'#D84315', badge: (() => { const sp = narutoState?.storyProgress || {}; return NARUTO_STORY_CHAPTERS.filter(ch => badges.length >= ch.badgeReq && !sp[ch.id]?.cleared).length > 0 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('naruto_story'); } },
     ];
 
     return (
@@ -17413,13 +17411,14 @@ const renderMenu = () => {
               { key:'pokedex', label:'图鉴', sub:caughtDex.length+'/'+POKEDEX.length, emoji:'📚' },
               { key:'skill_dex', label:'技能', sub:allSkills.length+'种', emoji:'⚡' },
               { key:'fruit_dex', label:'果实', sub:getAllFruits().length+'种', emoji:'🍎' },
+              { key:'jutsu_codex', label:'忍术', sub:JUTSU_DB.length+'种', emoji:'🍥', lock: badges.length < 3 },
               { key:'general_dex', label:'名将', sub:collectedGenCount+'/200', emoji:'📜' },
               { key:'achievements', label:'成就', sub:Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)+'%', emoji:'🏆' },
               { key:'guide', label:'说明', sub:'攻略', emoji:'📖' },
               { key:'trainer_card', label:'卡片', sub:'信息', emoji:'🪪' },
               { key:null, label:'重置', sub:'存档', emoji:'🔄', action: resetGame },
             ].map(btn => (
-              <button key={btn.label} onClick={() => btn.action ? btn.action() : setView(btn.key)} style={{
+              <button key={btn.label} onClick={() => { if (btn.lock) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } btn.action ? btn.action() : setView(btn.key); }} style={{
                 padding:'12px 4px', minHeight:'50px', borderRadius:'10px', border:'1px solid rgba(255,100,0,0.04)',
                 background:'rgba(255,100,0,0.01)', color:'#fff', cursor:'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:'2px',
@@ -17791,6 +17790,31 @@ const renderMenu = () => {
                   })}
                 </div>
               )}
+            </div>
+          );
+        })()}
+
+        {/* 火影忍者剧情 */}
+        {mapTab === 'maps' && badges.length >= 3 && (() => {
+          const cleared = NARUTO_STORY_CHAPTERS.filter(ch => (narutoState?.storyProgress || {})[ch.id]?.cleared).length;
+          const total = NARUTO_STORY_CHAPTERS.length;
+          const hasNew = NARUTO_STORY_CHAPTERS.some(ch => badges.length >= ch.badgeReq && !(narutoState?.storyProgress || {})[ch.id]?.cleared);
+          return (
+            <div style={{margin:'0 20px 16px', padding:'16px 20px', background:'linear-gradient(135deg, rgba(255,111,0,0.12), rgba(255,87,34,0.10))', borderRadius:'16px', border:'1px solid rgba(255,111,0,0.2)'}}>
+              <div style={{fontSize:'14px', fontWeight:'700', color:'#FF6F00', marginBottom:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
+                <span style={{fontSize:'18px'}}>🍥</span>
+                {cleared >= total ? '忍界传说 · 全章通关！' : `忍界传说 · 火影主线剧情 (${cleared}/${total})`}
+                {hasNew && <span style={{fontSize:'9px', padding:'2px 6px', background:'#FF5722', color:'#fff', borderRadius:'8px', fontWeight:'bold'}}>NEW</span>}
+              </div>
+              <button onClick={() => setView('naruto_story')} style={{
+                padding:'12px 24px', borderRadius:'12px', border:'none', cursor:'pointer',
+                background:'linear-gradient(135deg, #E65100, #FF6F00)', color:'#fff',
+                fontSize:'13px', fontWeight:'700', boxShadow:'0 2px 8px rgba(255,111,0,0.3)',
+                transition:'all 0.2s'
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(255,111,0,0.4)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='0 2px 8px rgba(255,111,0,0.3)'; }}
+              >📜 进入忍界传说</button>
             </div>
           );
         })()}
@@ -21402,6 +21426,7 @@ const renderMenu = () => {
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
+              { id: 'jutsu_codex', icon: '🍥', label: '忍术', action: () => { if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('jutsu_codex'); } },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
               { id: 'activity', icon: '🎪', label: '活动', action: () => setActivityCenter(true) },
               { id: 'gang', icon: '🏴', label: '帮派', action: () => setView('gang') },
@@ -23134,6 +23159,16 @@ const renderMenu = () => {
                                 <span style={{fontSize:'9px', color:'#CE93D8'}}>{e.cursedEnergy||0}/{e.maxCE}</span>
                             </div>
                         )}
+                        {(e.maxChakra || 0) > 0 && (
+                            <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                                <span style={{fontSize:'10px', color:'#FF6F00', fontWeight:'bold'}}>🍥</span>
+                                <div style={{flex:1, height:'5px', background:'rgba(255,111,0,0.15)', borderRadius:'3px', overflow:'hidden', border:'1px solid rgba(255,111,0,0.2)'}}>
+                                    <div style={{width:`${Math.min(100, ((e.chakra||0)/Math.max(1,e.maxChakra))*100)}%`, height:'100%', background:'linear-gradient(90deg, #E65100, #FF6F00, #FFB74D)', transition:'width 0.3s', borderRadius:'3px', boxShadow:'0 0 4px rgba(255,111,0,0.4)'}}></div>
+                                </div>
+                                <span style={{fontSize:'9px', color:'#FFB74D', fontWeight:'700'}}>{e.chakra||0}/{e.maxChakra}</span>
+                                {e.bijuuTransformed && <span style={{fontSize:'8px', color:'#FF5722', fontWeight:'bold', animation:'shiny-flash 1.5s infinite'}}>🦊尾兽化</span>}
+                            </div>
+                        )}
                         {renderPartyIndicators(battle.enemyParty)}
                     </div>
 
@@ -23224,6 +23259,15 @@ const renderMenu = () => {
                             <div style={{width:`${Math.min(100, ((e2.cursedEnergy||0)/Math.max(1,e2.maxCE))*100)}%`, height:'100%', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s'}}></div>
                           </div>
                           <span style={{fontSize:'9px', color:'#CE93D8'}}>{e2.cursedEnergy||0}/{e2.maxCE}</span>
+                        </div>
+                      )}
+                      {(e2.maxChakra || 0) > 0 && (
+                        <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                          <span style={{fontSize:'10px', color:'#FF6F00', fontWeight:'bold'}}>🍥</span>
+                          <div style={{flex:1, height:'5px', background:'rgba(255,111,0,0.15)', borderRadius:'3px', overflow:'hidden', border:'1px solid rgba(255,111,0,0.2)'}}>
+                            <div style={{width:`${Math.min(100, ((e2.chakra||0)/Math.max(1,e2.maxChakra))*100)}%`, height:'100%', background:'linear-gradient(90deg, #E65100, #FF6F00, #FFB74D)', transition:'width 0.3s', borderRadius:'3px'}}></div>
+                          </div>
+                          <span style={{fontSize:'9px', color:'#FFB74D', fontWeight:'700'}}>{e2.chakra||0}/{e2.maxChakra}</span>
                         </div>
                       )}
                     </div>
