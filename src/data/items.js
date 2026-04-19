@@ -8,9 +8,9 @@ export const BALLS = {
   // 对应遗迹工厂(Map3)、幽灵古堡(Map7)、银河空间站(Map12)
   dusk:   { id: 'dusk',   name: '黑暗球', rate: 3.5, price: 1000, icon: '🌑', desc: '在工厂/古堡/宇宙或抓幽灵系时效果拔群' },
   // 适合开局直接扔
-  quick:  { id: 'quick',  name: '先机球', rate: 5.0, price: 1000, icon: '⚡', desc: '战斗前3回合使用效果极佳' },
+  quick:  { id: 'quick',  name: '先机球', rate: 5.0, price: 1500, icon: '⚡', desc: '战斗前3回合使用效果极佳' },
   // 适合打神兽/Boss战
-  timer:  { id: 'timer',  name: '计时球', rate: 1.0, price: 1000, icon: '⏳', desc: '回合数越多越容易捕捉(10回合后最大)' },
+  timer:  { id: 'timer',  name: '计时球', rate: 1.0, price: 1000, icon: '⏳', desc: '回合越多捕获率越高(最高5.0倍)；倍率1+回合×0.4，10回合封顶' },
   // 适合捕捉后直接用
   heal:   { id: 'heal',   name: '治愈球', rate: 1.0, price: 300,  icon: '💖', desc: '捕获后恢复满体力' }
 };
@@ -36,13 +36,13 @@ export const TMS = [
   // ★ 基础技能书 (Tier 1) — 威力 50-70, 适合前期 (商店可售)
   { id: 'tm_ember',  name: '火花冲击', type: 'FIRE',     p: 65,  pp: 15, price: 3000,  desc: '基础火系攻击，灼热的火焰冲击', tier: 1, shopSell: true },
   { id: 'tm_aqua',   name: '水流喷射', type: 'WATER',    p: 65,  pp: 15, price: 3000,  desc: '基础水系攻击，高压水流冲击', tier: 1, shopSell: true },
-  { id: 'tm_vine',   name: '飞叶快刀', type: 'GRASS',    p: 65,  pp: 15, price: 3000,  desc: '基础草系攻击，锋利叶刃切割', tier: 1, shopSell: true },
+  { id: 'tm_vine',   name: '飞叶快刀', type: 'GRASS',    p: 55,  pp: 25, price: 3000,  desc: '基础草系攻击，锋利叶刃切割', tier: 1, shopSell: true },
   { id: 'tm_shock',  name: '电击波',   type: 'ELECTRIC', p: 60,  pp: 15, price: 2500,  desc: '基础电系攻击，释放电流冲击', tier: 1, shopSell: true },
-  { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 50,  pp: 20, price: 2500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },
+  { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 40,  pp: 20, price: 2500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },
   // ★★ 进阶技能书 (Tier 2) — 威力 80-95, 适合中期 (商店可售)
   { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',     p: 90,  pp: 12, price: 8000,  desc: '进阶火系技能，稳定火焰攻击，可能灼伤', tier: 2, shopSell: true },
   { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',      p: 90,  pp: 10, price: 8000,  desc: '进阶冰系技能，冰冻光束，概率冻结', tier: 2, shopSell: true },
-  { id: 'tm_shadow', name: '暗影球',   type: 'GHOST',    p: 85,  pp: 10, price: 7500,  desc: '进阶幽灵系技能，凝聚暗影之力', tier: 2, shopSell: true },
+  { id: 'tm_shadow', name: '暗影球',   type: 'GHOST',    p: 80,  pp: 15, price: 7500,  desc: '进阶幽灵系技能，凝聚暗影之力', tier: 2, shopSell: true },
   { id: 'tm_sludge', name: '污泥炸弹', type: 'POISON',   p: 90,  pp: 8,  price: 8500,  desc: '进阶毒系技能，高概率使目标中毒', tier: 2, shopSell: true },
   { id: 'tm_psy',    name: '精神强念', type: 'PSYCHIC',  p: 90,  pp: 8,  price: 8000,  desc: '进阶超能系技能，精神力集中攻击', tier: 2, shopSell: true },
   // ★★★ 高级/终极技能书 — 威力 100+, 不在商店出售, 只能通过掉落/奖励获得
@@ -53,11 +53,11 @@ export const TMS = [
   { id: 'tm_wind',   name: '龙卷天降', type: 'WIND',     p: 110, pp: 5,  price: 12000, desc: '风系高级技能，召唤龙卷风横扫', tier: 3 },
   { id: 'tm_fire',   name: '大字爆炎', type: 'FIRE',     p: 110, pp: 5,  price: 25000, desc: '火系终极大招，毁灭性的爆炎之力', tier: 4 },
   { id: 'tm_water',  name: '水炮',     type: 'WATER',    p: 110, pp: 5,  price: 25000, desc: '水系终极大招，极限高压水炮', tier: 4 },
-  { id: 'tm_grass',  name: '日光束',   type: 'GRASS',    p: 120, pp: 10,  price: 28000, desc: '草系终极大招，凝聚太阳之力', tier: 4 },
-  { id: 'tm_elec',   name: '打雷',     type: 'ELECTRIC', p: 140, pp: 5,  price: 25000, desc: '电系终极大招，天降雷罚', tier: 4 },
+  { id: 'tm_grass',  name: '日光束',   type: 'GRASS',    p: 120, pp: 5,  price: 28000, desc: '草系终极大招，凝聚太阳之力', tier: 4 },
+  { id: 'tm_elec',   name: '打雷',     type: 'ELECTRIC', p: 110, pp: 10, price: 25000, desc: '电系终极大招，天降雷罚', tier: 4 },
   { id: 'tm_ice',    name: '暴风雪',   type: 'ICE',      p: 110, pp: 5,  price: 25000, desc: '冰系终极大招，极寒暴风雪席卷全场', tier: 4 },
-  { id: 'tm_bolt',   name: '伏特攻击', type: 'ELECTRIC', p: 150, pp: 5,  price: 35000, desc: '电系究极物攻，极限电击带麻痹', tier: 4 },
-  { id: 'tm_light',  name: '光子爆发', type: 'LIGHT',    p: 140, pp: 5,  price: 28000, desc: '光系终极大招，光子能量爆炸', tier: 4 },
+  { id: 'tm_bolt',   name: '伏特攻击', type: 'ELECTRIC', p: 120, pp: 5,  price: 35000, desc: '电系究极物攻，极限电击带麻痹', tier: 4 },
+  { id: 'tm_light',  name: '光子爆发', type: 'LIGHT',    p: 110, pp: 5,  price: 28000, desc: '光系终极大招，光子能量爆炸', tier: 4 },
   { id: 'tm_cosmic1', name: '星云旋涡', type: 'COSMIC',  p: 75,  pp: 15, price: 3500,  desc: '宇宙系基础技能，卷起星云攻击', tier: 1, shopSell: true },
   { id: 'tm_cosmic2', name: '银河射线', type: 'COSMIC',  p: 100, pp: 8,  price: 8500,  desc: '宇宙系进阶技能，贯穿银河', tier: 2, shopSell: true },
   { id: 'tm_cosmic3', name: '虚空坍缩', type: 'COSMIC',  p: 140, pp: 3,  price: 28000, desc: '宇宙系终极大招，空间坍缩', tier: 4 },
@@ -67,7 +67,8 @@ export const TMS = [
 ];
 
 export const MISC_ITEMS = {
-  rebirth_pill: { id: 'rebirth_pill', name: '洗练药', price: 10000, icon: '💊', desc: '随机重置个体值/性格/闪光(5%概率)' }
+  rebirth_pill: { id: 'rebirth_pill', name: '洗练药', price: 10000, icon: '💊', desc: '随机重置个体值/性格/闪光(5%概率)' },
+  legacy_stone: { id: 'legacy_stone', name: '传承石', price: -1, icon: '💎', desc: '精灵传承必需材料，Lv.80+导师传授技能给学徒（矿洞深层/兑换获取）', shopHide: true }
 };
 
 export const ACCESSORY_DB = [
@@ -209,14 +210,15 @@ export const EVO_STONES = {
 };
 
 export const GROWTH_ITEMS = [
-  { id: 'vit_hp',   name: 'HP增强剂',   emoji: '🍏', price: 10000, desc: '永久HP+8', stat: 'maxHp', val: 8 },
+  { id: 'vit_hp',   name: 'HP增强剂',   emoji: '🍏', price: 10000, desc: '永久HP+8', stat: 'hp', val: 8 },
   { id: 'vit_patk', name: '力量精华',   emoji: '⚔️', price: 10000, desc: '永久物攻+5', stat: 'p_atk', val: 5 },
   { id: 'vit_pdef', name: '硬化涂层',   emoji: '🛡️', price: 10000, desc: '永久物防+5', stat: 'p_def', val: 5 },
   { id: 'vit_satk', name: '智慧水晶',   emoji: '🔮', price: 10000, desc: '永久特攻+5', stat: 's_atk', val: 5 },
   { id: 'vit_sdef', name: '精神披风',   emoji: '🧩', price: 10000, desc: '永久特防+5', stat: 's_def', val: 5 },
   { id: 'vit_spd',  name: '极速之羽',   emoji: '🪶', price: 10000, desc: '永久速度+5', stat: 'spd', val: 5 },
-  { id: 'vit_crit', name: '幸运四叶草', emoji: '🍀', price: 20000, desc: '永久暴击+2%', stat: 'crit', val: 2 },
-   { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 3000, desc: '给宝可梦吃下后，等级提升1级', stat: 'level_up', val: 1 },
+  { id: 'vit_crit', name: '幸运四叶草', emoji: '🍀', price: 15000, desc: '永久暴击+2%', stat: 'crit', val: 2 },
+   { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 5000, desc: '给精灵吃下后，等级提升1级', stat: 'level_up', val: 1 },
+  { id: 'spd_candy', name: '速度糖果', emoji: '⚡', price: 5000, desc: '给精灵吃下后，永久速度+3', stat: 'spd', val: 3 },
   { id: 'max_candy', name: '神奇糖果', emoji: '🌟', price: 800000, desc: '瞬间升至 Lv.100 (仅限非满级精灵，需8徽章)', stat: 'level_max', val: 100 },
 ];
 

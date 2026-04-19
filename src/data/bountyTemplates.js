@@ -1,14 +1,11 @@
-const TYPES_FOR_BOUNTY = ['NORMAL', 'FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE', 'FIGHT', 'POISON', 'GROUND', 'FLYING', 'PSYCHIC', 'BUG', 'ROCK', 'GHOST', 'DRAGON', 'DARK', 'STEEL', 'FAIRY', 'WIND', 'LIGHT', 'COSMIC', 'SOUND', 'HEAL', 'GOD'];
+import { TYPES } from './types';
+
+const TYPES_FOR_BOUNTY = Object.keys(TYPES);
 
 function pickType() { return TYPES_FOR_BOUNTY[Math.floor(Math.random() * TYPES_FOR_BOUNTY.length)]; }
 
-const TYPE_NAMES = {
-  NORMAL: '一般', FIRE: '火', WATER: '水', GRASS: '草', ELECTRIC: '电', ICE: '冰',
-  FIGHT: '格斗', POISON: '毒', GROUND: '地面', FLYING: '飞行',
-  PSYCHIC: '超能', BUG: '虫', ROCK: '岩石', GHOST: '幽灵',
-  DRAGON: '龙', DARK: '恶', STEEL: '钢', FAIRY: '妖精',
-  WIND: '风', LIGHT: '光', COSMIC: '宇宙', SOUND: '音波', HEAL: '治愈', GOD: '神',
-};
+const TYPE_NAMES = {};
+Object.entries(TYPES).forEach(([k, v]) => { TYPE_NAMES[k] = v.name; });
 
 export { TYPE_NAMES };
 
@@ -63,10 +60,17 @@ export const BOUNTY_TEMPLATES = [
     }
   },
   {
+    id: 'training_camp', category: 'facility', icon: '🏋️',
+    generate: (badgeCount) => {
+      const n = 1 + Math.min(Math.floor(badgeCount / 5), 2);
+      return { id: `training_${n}`, desc: `完成特训营训练 ${n} 次`, type: 'training', target: n, progress: 0, reward: { gold: 2000 + badgeCount * 400 }, completed: false };
+    }
+  },
+  {
     id: 'spend_gold', category: 'economy', icon: '💰',
     generate: (badgeCount) => {
       const n = (3 + badgeCount) * 1000;
-      return { id: `spend_${n}`, desc: `消费 ${n.toLocaleString()} 金币`, type: 'spend_gold', target: n, progress: 0, reward: { gold: Math.floor(n * 0.3) }, completed: false };
+      return { id: `spend_${n}`, desc: `消费 ${n.toLocaleString()} 金币`, type: 'spend_gold', target: n, progress: 0, reward: { gold: Math.floor(n * 0.15) }, completed: false };
     }
   },
   {
@@ -83,22 +87,35 @@ export const BOUNTY_TEMPLATES = [
       return { id: `use_${t}_${n}`, desc: `使用 ${n} 次${TYPE_NAMES[t] || t}系技能`, type: 'use_type_move', targetType: t, target: n, progress: 0, reward: { gold: 1000 + badgeCount * 200, tickets: 1 }, completed: false };
     }
   },
+  {
+    id: 'jutsu_battle', category: 'battle', icon: '🍥',
+    generate: (badgeCount) => {
+      const n = 3 + Math.min(Math.floor(badgeCount / 2), 5);
+      return { id: `jutsu_win_${n}`, desc: `使用忍术技能赢得 ${n} 场战斗`, type: 'jutsu_win_battle', target: n, progress: 0, reward: { gold: 2500 + badgeCount * 400, tickets: 1 }, completed: false };
+    }
+  },
 ];
 
 export function generateDailyBounties(badgeCount) {
-  const shuffled = [...BOUNTY_TEMPLATES].sort(() => Math.random() - 0.5);
+  const pool = [...BOUNTY_TEMPLATES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
   const selected = [];
   const usedCategories = new Set();
-  for (const t of shuffled) {
+  for (const t of pool) {
     if (selected.length >= 5) break;
-    if (usedCategories.has(t.category) && selected.length < 4) continue;
+    if (usedCategories.has(t.category)) continue;
     selected.push(t);
     usedCategories.add(t.category);
   }
-  while (selected.length < 5) {
-    const remaining = shuffled.filter(t => !selected.includes(t));
-    if (remaining.length === 0) break;
-    selected.push(remaining[0]);
+  if (selected.length < 5) {
+    for (const t of pool) {
+      if (selected.length >= 5) break;
+      if (selected.includes(t)) continue;
+      selected.push(t);
+    }
   }
   return selected.map(t => t.generate(badgeCount));
 }

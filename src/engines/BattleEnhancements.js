@@ -42,6 +42,9 @@ const TYPE_NAMES = {
   DARK:'恶',NORMAL:'普',GOD:'神',HEAL:'回',WIND:'风',LIGHT:'光'
 };
 
+/** 火影忍术查克拉性质 → 与 CHAKRA_NATURE_MAP 一致的展示用 emoji */
+const JUTSU_NATURE_EMOJI = { FIRE: '🔥', WATER: '💧', LIGHTNING: '⚡', WIND: '🌀', EARTH: '🪨' };
+
 export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
   const [hovered, setHovered] = useState(false);
 
@@ -50,9 +53,13 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
   const ppRatio = move.maxPp > 0 ? move.pp / move.maxPp : 0;
   const ppColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
   const hasDesc = move.desc && move.desc.length > 0;
+  const jutsuNatureEmoji = move.isJutsu && move.nature ? (JUTSU_NATURE_EMOJI[move.nature] || '') : '';
+  const jutsuTooltipExtra = jutsuNatureEmoji ? `${jutsuNatureEmoji} 忍术` : '';
+  const buttonTitle = [move.name, jutsuTooltipExtra, move.desc].filter(Boolean).join('\n');
 
   return (
     <button
+      title={buttonTitle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => { if (!disabled && onClick) onClick(); }}
@@ -105,13 +112,13 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
             flex:1, minWidth:0,
             textShadow:'0 1px 2px rgba(0,0,0,0.3)',
           }}>{move.name}</span>
-          {(move.isCursed || move.isExtra) && (
+          {(move.isCursed || move.isExtra || move.isJutsu) && (
             <span style={{
               fontSize:'8px', padding:'1px 4px', borderRadius:'3px', flexShrink:0,
-              background: move.isCursed ? 'linear-gradient(135deg, #7c3aed, #9333ea)' : 'linear-gradient(135deg, #d97706, #f59e0b)',
+              background: move.isJutsu ? (move.isBijuu ? 'linear-gradient(135deg, #d84315, #ff6e40)' : 'linear-gradient(135deg, #e65100, #ff9100)') : move.isCursed ? 'linear-gradient(135deg, #7c3aed, #9333ea)' : 'linear-gradient(135deg, #d97706, #f59e0b)',
               color:'#fff', fontWeight:'700', lineHeight:'1.5',
-              boxShadow: move.isCursed ? '0 0 6px rgba(124,58,237,0.3)' : '0 0 6px rgba(217,119,6,0.3)',
-            }}>{move.isCursed ? '咒' : '果'}</span>
+              boxShadow: move.isJutsu ? '0 0 6px rgba(255,111,0,0.4)' : move.isCursed ? '0 0 6px rgba(124,58,237,0.3)' : '0 0 6px rgba(217,119,6,0.3)',
+            }}>{move.isJutsu ? (move.isBijuu ? '兽' : (jutsuNatureEmoji ? `${jutsuNatureEmoji}忍` : '忍')) : move.isCursed ? '咒' : '果'}</span>
           )}
           <span style={{
             fontSize:'9px', padding:'2px 5px', borderRadius:'4px', flexShrink:0,
@@ -163,6 +170,13 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
               boxShadow:'0 0 4px rgba(124,58,237,0.15)',
             }}>咒{move.ceCost}</span>
           )}
+          {move.isJutsu && move.chakraCost > 0 && (
+            <span style={{
+              fontSize:'8px', color:'#FFB74D', fontWeight:'600', flexShrink:0,
+              background:'rgba(255,111,0,0.2)', padding:'1px 4px', borderRadius:'3px',
+              boxShadow:'0 0 4px rgba(255,111,0,0.15)',
+            }}>🍥{move.chakraCost}</span>
+          )}
         </div>
       </div>
 
@@ -181,19 +195,25 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
 // 技能释放特效组件 (纯CSS)
 // =========================================
 export const SkillCastEffect = ({ type, x, y, onComplete }) => {
+  const [visible, setVisible] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => { if (onComplete) onComplete(); }, 1200);
+    const t = setTimeout(() => { setVisible(false); if (onComplete) onComplete(); }, 600);
     return () => clearTimeout(t);
   }, [type, onComplete]);
 
-  return null;
+  if (!visible) return null;
+  const colors = { FIRE:'#FF5722', WATER:'#2196F3', ELECTRIC:'#FFC107', GRASS:'#4CAF50', ICE:'#00BCD4', FIGHT:'#E53935', POISON:'#9C27B0', GROUND:'#795548', FLYING:'#64B5F6', PSYCHIC:'#E91E63', BUG:'#8BC34A', ROCK:'#A1887F', GHOST:'#7E57C2', DRAGON:'#7C4DFF', DARK:'#424242', STEEL:'#90A4AE', FAIRY:'#F48FB1' };
+  const c = colors[type] || '#fff';
+  return (
+    <div style={{position:'absolute', left:x||'50%', top:y||'50%', transform:'translate(-50%,-50%)', width:'40px', height:'40px', borderRadius:'50%', background:`radial-gradient(circle, ${c}80, transparent)`, animation:'shiny-flash 0.6s ease-out', pointerEvents:'none', zIndex:100}} />
+  );
 };
 
 // =========================================
 // 血条增强组件
 // =========================================
 export const EnhancedHPBar = ({ current, max, label }) => {
-  const percentage = Math.min((current / max) * 100, 100);
+  const percentage = max > 0 ? Math.min((current / max) * 100, 100) : 0;
 
   const getColor = () => {
     if (percentage > 50) return ['#4CAF50', '#66BB6A'];
@@ -244,7 +264,7 @@ export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => 
   return (
     <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 4 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 4) setExpanded(e => !e); }}>
       {displayLogs.map((msg, i) => (
-        <div key={`${msg}-${i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'}`}
+        <div key={`bmsg-${i}-${typeof msg === 'string' ? msg.slice(0,20) : i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'}`}
           style={{ opacity: i === 0 ? 1 : Math.max(0.4, 1 - i * 0.25) }}
         >
           {msg}
@@ -262,9 +282,10 @@ export const AnimatedDamageNumber = ({ damage, x, y, isCritical = false, type = 
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
+    setVisible(true);
     const t = setTimeout(() => setVisible(false), 1500);
     return () => clearTimeout(t);
-  }, []);
+  }, [damage, x, y]);
 
   if (!visible) return null;
 

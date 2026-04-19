@@ -123,6 +123,23 @@ export const WORLD_BOSSES = [
       { dmg: 45000, reward: { gold: 10000, title: '仙境行者' }, desc: '击败Boss: 💰 10000金 + 称号「仙境行者」' },
     ],
   },
+  {
+    id: 'wb_kurama', name: '暴走九尾·九喇嘛', emoji: '🦊', type: 'FIRE',
+    baseLv: 90, baseHp: 68000, baseStats: { hp: 240, p_atk: 190, p_def: 130, s_atk: 170, s_def: 120, spd: 170 },
+    traits: ['blaze', 'intimidate'],
+    phases: [
+      { hpPct: 1.0, buff: null, msg: '九尾的查克拉翻涌而出...' },
+      { hpPct: 0.7, buff: { spd: 2 }, msg: '九尾加速了！速度暴涨！' },
+      { hpPct: 0.3, buff: { p_atk: 3, s_atk: 2, p_def: -1 }, msg: '九尾蓄力尾兽玉！攻击力飙升但防御下降！' },
+    ],
+    rewards: { gold: 12000, exp_candy: 4, tickets: 2 },
+    milestones: [
+      { dmg: 8000,  reward: { gold: 3000 }, desc: '造成8000伤害: 💰 3000金币' },
+      { dmg: 25000, reward: { gold: 7000, tickets: 1 }, desc: '造成25000伤害: 💰 7000金 + 🎫 竞技票' },
+      { dmg: 45000, reward: { exp_candy: 3 }, desc: '造成45000伤害: 🍬 经验糖果x3' },
+      { dmg: 68000, reward: { gold: 15000, title: '尾兽猎人' }, desc: '击败Boss: 💰 15000金 + 称号「尾兽猎人」' },
+    ],
+  },
 ];
 
 export const WORLD_BOSS_MAX_ATTEMPTS = 3;
@@ -140,8 +157,10 @@ export const DEFAULT_WORLD_BOSS_STATE = {
 };
 
 export function getTodayBoss(dateStr) {
-  const dayHash = dateStr.split('-').reduce((s, n) => s + parseInt(n, 10), 0);
-  return WORLD_BOSSES[dayHash % WORLD_BOSSES.length];
+  const parts = (dateStr || '').split('-');
+  const dayHash = parts.reduce((s, n) => { const v = parseInt(n, 10); return s + (isNaN(v) ? 0 : v); }, 0);
+  const idx = dayHash % WORLD_BOSSES.length;
+  return WORLD_BOSSES[idx] || WORLD_BOSSES[0];
 }
 
 export function scaleBossHp(boss, badges) {

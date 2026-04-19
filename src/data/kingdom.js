@@ -71,7 +71,7 @@ export const RANK_PROMOTION_CHALLENGES = {
   grand_gen: { type: 'historical', desc: '通关至少10场历史名战', target: 10, stat: 'historicalBattles' },
   minister: { type: 'contribution', desc: '单赛季内获得3000战功', target: 3000, stat: 'seasonContribution' },
   king: { type: 'siege', desc: '成功参与3次都城攻防', target: 3, stat: 'capitalSieges' },
-  hegemon: { type: 'multi', desc: '通关全部阵营战役 + 拥有8名名将 + 控制7+领地', targets: { campaignsCleared: 8, recruitedGenerals: 8, factionTerritories: 7 } },
+  hegemon: { type: 'multi', desc: '通关本阵营全部8场战役 + 拥有8名名将 + 控制7+领地', targets: { campaignsCleared: 8, recruitedGenerals: 8, factionTerritories: 7 } },
   emperor: { type: 'ultimate', desc: '通关25场历史名战 + 战功35000 + 获得"霸主"赛季称号', targets: { historicalBattles: 25, totalContribution: 35000, hasHegemonTitle: true } },
 };
 

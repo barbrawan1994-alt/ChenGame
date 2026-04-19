@@ -13,7 +13,7 @@ export const getBondLevel = (bondPoints) => {
   for (const bl of BOND_LEVELS) {
     if (bondPoints >= bl.threshold) lv = bl;
   }
-  return lv;
+  return lv || { threshold: 0, tier: 0, powerMult: 1.0, name: '陌生人' };
 };
 
 export const PARTNER_COMBOS = {

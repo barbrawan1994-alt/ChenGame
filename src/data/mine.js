@@ -4,6 +4,7 @@ export const MINE_ORES = {
   gold_ore: { id: 'gold_ore', name: '金矿',     icon: '🟡', color: '#FFD700', tier: 3 },
   jade:     { id: 'jade',     name: '翡翠',     icon: '💚', color: '#00C853', tier: 4 },
   stardust: { id: 'stardust', name: '星辰碎片', icon: '⭐', color: '#7C4DFF', tier: 5 },
+  chakra_ore: { id: 'chakra_ore', name: '查克拉矿石', icon: '🍥', color: '#FF6F00', tier: 4 },
 };
 
 export const MINE_TILES = {
@@ -14,13 +15,14 @@ export const MINE_TILES = {
   jade:     { id: 'jade',     name: '翡翠',   icon: '💚', weight: 4 },
   stardust: { id: 'stardust', name: '星辰碎片', icon: '⭐', weight: 2 },
   trap_rock:{ id: 'trap_rock', name: '碎石陷阱', icon: '🪨', weight: 8, penalty: { energyCost: 2, desc: '落石砸中！额外消耗2点体力' } },
-  trap_gas: { id: 'trap_gas', name: '毒气陷阱', icon: '☠️', weight: 3, penalty: { energyCost: 3, desc: '毒气弥漫！额外消耗3点体力' } },
+  trap_gas: { id: 'trap_gas', name: '毒气陷阱', icon: '☠️', weight: 3, penalty: { energyCost: 2, desc: '毒气弥漫！额外消耗2点体力' } },
   chest:    { id: 'chest',    name: '宝箱',   icon: '🎁', weight: 2 },
+  chakra_ore:{ id: 'chakra_ore', name: '查克拉矿石', icon: '🍥', weight: 3 },
 };
 
 export const MINE_EXCHANGE = [
   { id: 'copper_gold',    cost: { copper: 10 },              reward: { type: 'gold', amount: 1000 }, desc: '铜矿 x10 → 1000 金币' },
-  { id: 'copper_potion',  cost: { copper: 5 },               reward: { type: 'item', id: 'potion', amount: 3 }, desc: '铜矿 x5 → 回复药 x3' },
+  { id: 'copper_potion',  cost: { copper: 5 },               reward: { type: 'item', id: 'potion', amount: 3 }, desc: '铜矿 x5 → 伤药 x3' },
   { id: 'silver_candy',   cost: { silver: 5 },               reward: { type: 'item', id: 'exp_candy', amount: 1 }, desc: '银矿 x5 → 经验糖果' },
   { id: 'silver_gold',    cost: { silver: 3 },               reward: { type: 'gold', amount: 3000 }, desc: '银矿 x3 → 3000 金币' },
   { id: 'gold_stone',     cost: { gold_ore: 3 },             reward: { type: 'evo_stone', amount: 1 }, desc: '金矿 x3 → 随机进化石' },
@@ -30,11 +32,14 @@ export const MINE_EXCHANGE = [
   { id: 'star_legacy',    cost: { stardust: 1 },             reward: { type: 'legacy_stone', amount: 1 }, desc: '星辰碎片 x1 → 传承石' },
   { id: 'star_rebirth',   cost: { stardust: 2 },             reward: { type: 'item', id: 'rebirth_pill', amount: 1 }, desc: '星辰碎片 x2 → 洗练药' },
   { id: 'mixed_ticket',   cost: { copper: 5, silver: 3 },    reward: { type: 'arena_ticket', amount: 2 }, desc: '铜矿x5+银矿x3 → 竞技票 x2' },
+  { id: 'chakra_scroll',  cost: { chakra_ore: 2 },            reward: { type: 'gold', amount: 5000 }, desc: '查克拉矿石 x2 → 5000 金币' },
+  { id: 'chakra_jutsu',   cost: { chakra_ore: 4 },            reward: { type: 'jutsu_scroll', amount: 1 }, desc: '查克拉矿石 x4 → 忍术卷轴 x1' },
+  { id: 'chakra_candy',   cost: { chakra_ore: 3 },            reward: { type: 'item', id: 'exp_candy', amount: 2 }, desc: '查克拉矿石 x3 → 经验糖果 x2' },
 ];
 
 export const MINE_GRID_SIZE = 6;
 export const MINE_MAX_ENERGY = 25;
-export const MINE_REGEN_INTERVAL = 8 * 60 * 1000;
+export const MINE_REGEN_INTERVAL = 6 * 60 * 1000;
 export const MINE_REQ_BADGES = 2;
 
 export const DEFAULT_MINE_STATE = {
@@ -44,9 +49,8 @@ export const DEFAULT_MINE_STATE = {
   depth: 0,
   grid: null,
   revealed: [],
-  minerals: { copper: 0, silver: 0, gold_ore: 0, jade: 0, stardust: 0 },
+  minerals: { copper: 0, silver: 0, gold_ore: 0, jade: 0, stardust: 0, chakra_ore: 0 },
   totalMined: 0,
-  legacyStones: 0,
 };
 
 export const MINE_DEPTH_MILESTONES = [

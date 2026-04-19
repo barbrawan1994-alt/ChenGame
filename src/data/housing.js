@@ -318,7 +318,8 @@ export const calcHouseScore = (placedFurniture) => {
     const def = FURNITURE_DB.find(d => d.id === f.baseId);
     if (!def) continue;
     const qual = FURNITURE_QUALITY[f.quality] || FURNITURE_QUALITY.COMMON;
-    score += Math.floor((def.baseEffect.scoreBonus || 5) * qual.statMult);
+    const baseScore = def.baseEffect.scoreBonus || (def.category === 'DECO' ? 5 : 2);
+    score += Math.floor(baseScore * qual.statMult);
   }
   return score;
 };
