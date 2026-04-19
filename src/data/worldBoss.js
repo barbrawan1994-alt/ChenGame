@@ -125,7 +125,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_kurama', name: '暴走九尾·九喇嘛', emoji: '🦊', type: 'FIRE',
-    baseLv: 90, baseHp: 68000, baseStats: { hp: 240, p_atk: 190, p_def: 130, s_atk: 170, s_def: 120, spd: 170 },
+    baseLv: 90, baseHp: 58000, baseStats: { hp: 240, p_atk: 190, p_def: 130, s_atk: 170, s_def: 120, spd: 170 },
     traits: ['blaze', 'intimidate'],
     phases: [
       { hpPct: 1.0, buff: null, msg: '九尾的查克拉翻涌而出...' },
@@ -137,7 +137,7 @@ export const WORLD_BOSSES = [
       { dmg: 8000,  reward: { gold: 3000 }, desc: '造成8000伤害: 💰 3000金币' },
       { dmg: 25000, reward: { gold: 7000, tickets: 1 }, desc: '造成25000伤害: 💰 7000金 + 🎫 竞技票' },
       { dmg: 45000, reward: { exp_candy: 3 }, desc: '造成45000伤害: 🍬 经验糖果x3' },
-      { dmg: 68000, reward: { gold: 15000, title: '尾兽猎人' }, desc: '击败Boss: 💰 15000金 + 称号「尾兽猎人」' },
+      { dmg: 58000, reward: { gold: 15000, title: '尾兽猎人' }, desc: '击败Boss: 💰 15000金 + 称号「尾兽猎人」' },
     ],
   },
 ];

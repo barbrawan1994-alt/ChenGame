@@ -62,7 +62,7 @@ export const EXPEDITION_ZONES = [
   },
   {
     id: 'time_rift', name: '时空裂隙', icon: '🌀', desc: '连接异次元的裂缝，幽灵系、恶系和钢系精灵在此游荡',
-    color: '#4527A0', reqBadges: 8, duration: 15 * 60 * 1000,
+    color: '#4527A0', reqBadges: 8, duration: 12 * 60 * 1000,
     bonusTypes: ['GHOST', 'DARK', 'STEEL'],
     bonusMultiplier: 1.5,
     rewards: [
@@ -74,7 +74,7 @@ export const EXPEDITION_ZONES = [
   },
   {
     id: 'divine_realm', name: '神域秘境', icon: '✨', desc: '传说中神兽栖息的净土，所有属性都能获得加成',
-    color: '#FFB300', reqBadges: 10, duration: 20 * 60 * 1000,
+    color: '#FFB300', reqBadges: 10, duration: 15 * 60 * 1000,
     bonusTypes: ['ALL'],
     bonusMultiplier: 1.5,
     rewards: [

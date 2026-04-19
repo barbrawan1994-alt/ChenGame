@@ -5082,3 +5082,16 @@ button:active {
 /* 重新随机按钮 hover */
 .reroll-btn { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
 .reroll-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+/* 战斗卡住恢复按钮：高对比 + 外发光脉冲 */
+@keyframes battle-stuck-recover-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(255, 50, 50, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px 12px rgba(255, 80, 80, 0.9), 0 0 48px 8px rgba(255, 180, 80, 0.35), 0 2px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+.battle-stuck-recover-btn {
+  animation: battle-stuck-recover-glow 1.35s ease-in-out infinite;
+}

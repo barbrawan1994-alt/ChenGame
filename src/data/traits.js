@@ -31,6 +31,15 @@ export const TRAIT_DB = {
   speed_boost: { name: '加速', desc: '每回合结束时，速度提升1级(+50%)', type: 'PASSIVE' },
   regenerator: { name: '再生力', desc: '交换下场或战斗结束时，恢复1/3最大HP', type: 'OTHER' },
   prankster:   { name: '恶作剧之心', desc: '变化类技能(无伤害)必定先手', type: 'BATTLE' },
+
+  // --- 世界首领 / 天气与场地类 ---
+  ice_body:    { name: '冰之躯', desc: '冰雹天气时每回合恢复1/16HP', type: 'PASSIVE' },
+  dark_aura:   { name: '暗黑气场', desc: '场上所有恶系技能威力提升33%', type: 'BATTLE' },
+  flame_body:  { name: '火焰之躯', desc: '受接触攻击时30%概率灼伤对手', type: 'BATTLE' },
+  sand_stream: { name: '扬沙', desc: '出场时召唤沙暴天气', type: 'ENTRY' },
+  magic_guard: { name: '魔法防御', desc: '不受技能以外的伤害（天气/中毒/灼伤等）', type: 'PASSIVE' },
+  magic_bounce: { name: '魔法反射', desc: '将对手的变化技能反弹回去', type: 'BATTLE' },
+  fairy_aura:  { name: '妖精气场', desc: '场上所有妖精系技能威力提升33%', type: 'BATTLE' },
 };
 
 // ==========================================

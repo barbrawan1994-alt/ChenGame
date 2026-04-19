@@ -108,33 +108,33 @@ export const EnhancedCard = ({ children, hover = true, ...props }) => {
   }));
 
   useEffect(() => {
-    if (hover && cardRef.current) {
-      const handleMouseEnter = () => {
-        api.start({
-          y: -10,
-          scale: 1.02,
-          boxShadow: '0 12px 40px rgba(0,0,0,0.2)'
-        });
-      };
+    if (!hover) return;
+    const el = cardRef.current;
+    if (!el) return;
 
-      const handleMouseLeave = () => {
-        api.start({
-          y: 0,
-          scale: 1,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-        });
-      };
+    const handleMouseEnter = () => {
+      api.start({
+        y: -10,
+        scale: 1.02,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.2)'
+      });
+    };
 
-      cardRef.current.addEventListener('mouseenter', handleMouseEnter);
-      cardRef.current.addEventListener('mouseleave', handleMouseLeave);
+    const handleMouseLeave = () => {
+      api.start({
+        y: 0,
+        scale: 1,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+      });
+    };
 
-      return () => {
-        if (cardRef.current) {
-          cardRef.current.removeEventListener('mouseenter', handleMouseEnter);
-          cardRef.current.removeEventListener('mouseleave', handleMouseLeave);
-        }
-      };
-    }
+    el.addEventListener('mouseenter', handleMouseEnter);
+    el.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      el.removeEventListener('mouseenter', handleMouseEnter);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+    };
   }, [hover, api]);
 
   return (
@@ -249,7 +249,7 @@ export const EnhancedModal = ({
   };
 
   return (
-    <div style={{
+    <animated.div style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -261,7 +261,7 @@ export const EnhancedModal = ({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 10000,
-      opacity: style.opacity.get()
+      opacity: style.opacity
     }} onClick={onClose}>
       <animated.div
         style={{
@@ -291,7 +291,7 @@ export const EnhancedModal = ({
         )}
         {children}
       </animated.div>
-    </div>
+    </animated.div>
   );
 };
 
@@ -321,11 +321,16 @@ export const EnhancedTooltip = ({ children, content, position = 'top' }) => {
   }, [isVisible, api, position]);
 
   const positions = {
-    top: { bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '8px' },
-    bottom: { top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '8px' },
-    left: { right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: '8px' },
-    right: { left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: '8px' }
+    top: { bottom: '100%', left: '50%', marginBottom: '8px' },
+    bottom: { top: '100%', left: '50%', marginTop: '8px' },
+    left: { right: '100%', top: '50%', marginRight: '8px' },
+    right: { left: '100%', top: '50%', marginLeft: '8px' }
   };
+
+  const tooltipTransform =
+    position === 'top' || position === 'bottom'
+      ? style.y.to((y) => `translateX(-50%) translateY(${y}px)`)
+      : style.y.to((y) => `translateY(calc(-50% + ${y}px))`);
 
   return (
     <div
@@ -348,8 +353,7 @@ export const EnhancedTooltip = ({ children, content, position = 'top' }) => {
             whiteSpace: 'nowrap',
             zIndex: 1000,
             pointerEvents: 'none',
-            opacity: style.opacity.get(),
-            transform: style.y.to(y => `translateX(-50%) translateY(${y}px)`)
+            transform: tooltipTransform
           }}
         >
           {content}

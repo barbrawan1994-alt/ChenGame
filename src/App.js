@@ -3,9 +3,7 @@ import { flushSync } from 'react-dom';
 import _ from 'lodash';
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
-import { GSAPAnimations, SpringAnimations, CombinedAnimations } from './engines/AnimationEngine';
-import { EnhancedButton, EnhancedCard, EnhancedProgressBar, EnhancedModal } from './engines/UIEnhancement';
-import { CanvasParticleSystem, ParticlePresets } from './engines/ParticleEngine';
+import { GSAPAnimations } from './engines/AnimationEngine';
 // 导入战斗增强组件
 import { 
   EnhancedMoveButton, 
@@ -233,6 +231,24 @@ const SIDE_STORY_LINES = [
 const inferCompletedSideStories = (storyProg) => {
   return SIDE_STORY_LINES.filter(s => storyProg > s.endIdx).map(s => s.id);
 };
+
+/** 每日登录 streak 奖励表（与登录检测 useEffect 共用，供弹窗「明日预告」使用） */
+const DAILY_LOGIN_DAY_REWARDS = [
+  { gold: 500, desc: '💰 500金币' },
+  { gold: 800, desc: '💰 800金币' },
+  { gold: 1200, desc: '💰 1200金币' },
+  { gold: 1500, berries: 5, desc: '💰 1500金币 + 🍒 5树果' },
+  { gold: 2000, berries: 8, desc: '💰 2000金币 + 🍒 8树果' },
+  { gold: 3000, meds: true, desc: '💰 3000金币 + 🧪 超级药水×3' },
+  { gold: 5000, meds: true, berries: 15, desc: '💰 5000金币 + 🧪 超级药水×5 + 🍒 15树果' },
+  { gold: 6000, berries: 20, desc: '💰 6000金币 + 🍒 20树果' },
+  { gold: 7000, meds: true, desc: '💰 7000金币 + 🧪 超级药水×5' },
+  { gold: 8000, berries: 25, desc: '💰 8000金币 + 🍒 25树果' },
+  { gold: 9000, meds: true, desc: '💰 9000金币 + 🧪 超级药水×8' },
+  { gold: 10000, berries: 30, desc: '💰 10000金币 + 🍒 30树果' },
+  { gold: 12000, meds: true, berries: 30, desc: '💰 12000金币 + 🧪 高级药水×5 + 🍒 30树果' },
+  { gold: 15000, meds: true, berries: 50, desc: '💰 15000金币 + 🧪 高级药水×10 + 🍒 50树果 + ⭐ 经验糖果' },
+];
 
 export default function RPG(props) {
   // =================================================================
@@ -908,23 +924,7 @@ const [infinityState, setInfinityState] = useState(() => {
       const isConsecutive = prev.lastDate === yesterday;
       const newStreak = isConsecutive ? prev.streak + 1 : Math.max(1, Math.floor((prev.streak || 0) / 2));
       const newTotal = (prev.totalDays || 0) + 1;
-      const DAY_REWARDS = [
-        { gold: 500, desc: '💰 500金币' },
-        { gold: 800, desc: '💰 800金币' },
-        { gold: 1200, desc: '💰 1200金币' },
-        { gold: 1500, berries: 5, desc: '💰 1500金币 + 🍒 5树果' },
-        { gold: 2000, berries: 8, desc: '💰 2000金币 + 🍒 8树果' },
-        { gold: 3000, meds: true, desc: '💰 3000金币 + 🧪 超级药水×3' },
-        { gold: 5000, meds: true, berries: 15, desc: '💰 5000金币 + 🧪 超级药水×5 + 🍒 15树果' },
-        { gold: 6000, berries: 20, desc: '💰 6000金币 + 🍒 20树果' },
-        { gold: 7000, meds: true, desc: '💰 7000金币 + 🧪 超级药水×5' },
-        { gold: 8000, berries: 25, desc: '💰 8000金币 + 🍒 25树果' },
-        { gold: 9000, meds: true, desc: '💰 9000金币 + 🧪 超级药水×8' },
-        { gold: 10000, berries: 30, desc: '💰 10000金币 + 🍒 30树果' },
-        { gold: 12000, meds: true, berries: 30, desc: '💰 12000金币 + 🧪 高级药水×5 + 🍒 30树果' },
-        { gold: 15000, meds: true, berries: 50, desc: '💰 15000金币 + 🧪 高级药水×10 + 🍒 50树果 + ⭐ 经验糖果' },
-      ];
-      const reward = DAY_REWARDS[Math.min(newStreak - 1, DAY_REWARDS.length - 1)];
+      const reward = DAILY_LOGIN_DAY_REWARDS[Math.min(newStreak - 1, DAILY_LOGIN_DAY_REWARDS.length - 1)];
       setGold(g => g + reward.gold);
       updateAchStat({ totalGoldEarned: reward.gold });
       if (reward.berries) setInventory(inv => ({...inv, berries: (inv.berries||0) + reward.berries}));
@@ -1054,12 +1054,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
           const eTypes = [enemy.type, enemy.type2 || enemy.secondaryType].filter(Boolean);
           if (eTypes.some(t => t === 'WATER' || t === 'BUG')) rate = 3.5;
       }
-      // 黑暗球：特定地图(工厂/古堡/太空) 或 幽灵/超能/毒系（含副属性）
+      // 黑暗球：工厂/古堡/宇宙地图（maps: factory / ghost古堡主题 / space）或 幽灵系（含副属性），与 items 描述一致
       if (ballType === 'dusk') {
           const isDarkMap = mapInfo && ['factory', 'ghost', 'space'].includes(mapInfo.type);
           const eTypes = [enemy.type, enemy.type2 || enemy.secondaryType].filter(Boolean);
-          const isDarkType = eTypes.some(t => ['GHOST', 'PSYCHIC', 'POISON'].includes(t));
-          if (isDarkMap || isDarkType) rate = 3.5;
+          const isGhostType = eTypes.some(t => t === 'GHOST');
+          if (isDarkMap || isGhostType) rate = 3.5;
       }
       // 先机球：前 3 回合
       if (ballType === 'quick') {
@@ -15022,6 +15022,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (expNeeded > 0) summaryParts.push(`📊 ${leadPet.name} 距升级还需 ${expNeeded} 经验`);
       }
       if (extraDrops.length > 0) summaryParts.push(extraDrops.join(' '));
+      if (newStreak >= 5) {
+        const streakBonusPct = newStreak >= 20 ? 50 : newStreak >= 10 ? 30 : 15;
+        summaryParts.push(`🔥 ${newStreak}连胜！金币+${streakBonusPct}%`);
+      }
       const winTitle = battle.dungeonId ? `副本通关！` : '战斗胜利！';
       showMapToast('🏆', winTitle, summaryParts.join(' · '), extraDrops.length > 0 ? 4500 : 3500);
       if (!isDialogVisible) setView('grid_map');
@@ -15353,12 +15357,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const shinyMult = pet.isShiny ? 3 : 1;
     const legendMult = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1);
     const releaseGold = Math.floor((50 + lv * 10) * shinyMult * legendMult);
-    setConfirmModal({ title: '⚠️ 确认放生', msg: `确定要放生 ${pet.name} (Lv.${lv}) 吗？\n将获得 ${releaseGold.toLocaleString()} 金币补偿。\n无法找回！`, onOk: () => {
+    const isLegend = LEGENDARY_POOL?.includes(pet.id);
+    const isHighTier = HIGH_TIER_POOL?.includes(pet.id);
+    const needsSpecialWarn = pet.isShiny || isLegend || isHighTier;
+    const specialLine = needsSpecialWarn
+      ? `\n\n⚠️ 这是一只${[pet.isShiny && '闪光', isLegend && '传说', !isLegend && isHighTier && '珍稀'].filter(Boolean).join('/')}精灵，确定要放生吗？`
+      : '';
+    const runRelease = () => {
       setBox(prev => prev.filter((_, i) => i !== selectedBoxIdx));
-      setGold(g => g + releaseGold); 
+      setGold(g => g + releaseGold);
       showMapToast('🕊️', '放生成功', `${pet.name} 回归自然，获得 ${releaseGold.toLocaleString()} 金币`, 2500);
       setSelectedBoxIdx(null);
-    }});
+    };
+    const firstMsg = `确定要放生 ${pet.name} (Lv.${lv}) 吗？\n将获得 ${releaseGold.toLocaleString()} 金币补偿。\n无法找回！${specialLine}`;
+    if (needsSpecialWarn) {
+      setConfirmModal({ title: '⚠️ 确认放生', msg: firstMsg, onOk: () => {
+        setConfirmModal({ title: '⚠️ 最后确认', msg: `${pet.name} 将被永久放生，此操作不可撤销。\n确定继续？`, onOk: runRelease });
+      }});
+    } else {
+      setConfirmModal({ title: '⚠️ 确认放生', msg: firstMsg, onOk: runRelease });
+    }
   };
 
   const updateBuyCount = (id, delta) => {
@@ -21494,7 +21512,13 @@ const renderMenu = () => {
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
               { id: 'jutsu_codex', icon: '🍥', label: '忍术', action: () => { if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('jutsu_codex'); } },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
-              { id: 'activity', icon: '🎪', label: '活动', action: () => setActivityCenter(true) },
+              { id: 'activity', icon: '🎪', label: '活动', action: () => {
+                setActivityCenter(true);
+                if (!localStorage.getItem('seen_activity_hint')) {
+                  localStorage.setItem('seen_activity_hint', '1');
+                  showMessage('欢迎来到活动中心！这里有竞技场、远征、矿洞、赏金等丰富玩法等你探索。');
+                }
+              } },
               { id: 'gang', icon: '🏴', label: '帮派', action: () => setView('gang') },
               { id: 'kingdom', icon: kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.icon || '🏰' : '🏰', label: '国战', action: () => { handleExitAndSave(); setMapTab('kingdom'); } },
               { id: 'general_dex', icon: '📜', label: '名将', badge: (kingdomWar?.generalDraws || 0), action: () => setView('general_dex') },
@@ -23626,10 +23650,11 @@ const renderMenu = () => {
                                     if (activeEnemy && m.p > 0) {
                                       let mod = getTypeMod(m.t || 'NORMAL', activeEnemy.type);
                                       if (activeEnemy.secondaryType && activeEnemy.secondaryType !== activeEnemy.type) mod *= getTypeMod(m.t || 'NORMAL', activeEnemy.secondaryType);
-                                      if (mod >= 4) effLabel = (effLabel || '') + `⚡×${mod}`;
-                                      else if (mod >= 2) effLabel = (effLabel || '') + `✦×${mod}`;
+                                      if (mod >= 4) effLabel = (effLabel || '') + `⚡×${Number(mod.toFixed(2))}`;
+                                      else if (mod >= 2) effLabel = (effLabel || '') + `✦×${Number(mod.toFixed(2))}`;
+                                      else if (mod > 1) effLabel = (effLabel || '') + `⬆×${Number(mod.toFixed(2))}`;
                                       else if (mod <= 0) effLabel = (effLabel || '') + '✕免疫';
-                                      else if (mod < 1) effLabel = (effLabel || '') + `△×${mod}`;
+                                      else if (mod < 1) effLabel = (effLabel || '') + `△×${Number(mod.toFixed(2))}`;
                                     }
                                     return (
                                     <EnhancedMoveButton
@@ -23707,7 +23732,7 @@ const renderMenu = () => {
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
                     <span style={{color:'rgba(255,255,255,0.5)', fontWeight:'bold', fontSize:'16px', letterSpacing:'1px'}}>{battle.phase === 'busy' ? '回合结算中…' : battle.phase === 'anim' ? '动画播放中…' : battle.showSwitch ? '请选择替补精灵…' : '处理中…'}</span>
-                    <button style={{padding:'8px 20px', background:'rgba(255,82,82,0.9)', color:'#fff', border:'none', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:600, marginTop:8, minHeight:36}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input', doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false}) : null); }}>操作无响应？点击恢复</button>
+                    <button className="battle-stuck-recover-btn" style={{padding:'10px 22px', background:'linear-gradient(180deg,#E53935,#B71C1C)', color:'#fff', border:'2px solid rgba(255,255,255,0.35)', borderRadius:'12px', cursor:'pointer', fontSize:'15px', fontWeight:800, marginTop:8, minHeight:42, letterSpacing:'0.5px', textShadow:'0 1px 2px rgba(0,0,0,0.35)'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input', doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false}) : null); }}>操作无响应？点击恢复</button>
                 </div>
             )}
         </div> 
@@ -24094,6 +24119,10 @@ const renderMenu = () => {
                   </div>
 
           <div className="shop-content-area" style={{padding:'20px',overflowY:'auto'}}>
+            <div style={{marginBottom:'14px',padding:'10px 14px',borderRadius:'12px',background:`linear-gradient(90deg,${tierColor}22,transparent)`,border:`1px solid ${tierColor}44`,fontSize:'12px',fontWeight:'700',color:'#1a1a2e',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+              <span>🏪 商店等级: {['', '初级', '进阶', '高级', '顶级'][tier]}</span>
+              <span style={{fontSize:'10px',fontWeight:'600',color:'#78909C'}}>（徽章 {badgeCount} 枚 · 商品池随等级解锁）</span>
+            </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:'14px'}}>
               {shopTab==='balls' && availBalls.map(type=>{
                 const item=BALLS[type]; if(!item) return null;
@@ -24252,14 +24281,24 @@ const renderMenu = () => {
               </button>
               {pcBatchRelease && pcBatchSelected.size > 0 && (
                 <button onClick={() => {
-                  const batchGold = [...pcBatchSelected].reduce((sum, idx) => { const pet = box[idx]; if (!pet) return sum; const lv = pet.level || 1; const shinyM = pet.isShiny ? 3 : 1; const legM = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1); return sum + Math.floor((50 + lv * 10) * shinyM * legM); }, 0);
-                  setConfirmModal({ title: `批量放生 ${pcBatchSelected.size} 只精灵`, msg: `放生后无法恢复！\n将获得 ${batchGold.toLocaleString()} 金币补偿。\n确定吗？`, onOk: () => {
-                    setBox(prev => prev.filter((_, i) => !pcBatchSelected.has(i)));
+                  const selectedSet = new Set(pcBatchSelected);
+                  const batchGold = [...selectedSet].reduce((sum, idx) => { const pet = box[idx]; if (!pet) return sum; const lv = pet.level || 1; const shinyM = pet.isShiny ? 3 : 1; const legM = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1); return sum + Math.floor((50 + lv * 10) * shinyM * legM); }, 0);
+                  const hasSpecial = [...selectedSet].some(idx => { const pet = box[idx]; return pet && (pet.isShiny || LEGENDARY_POOL?.includes(pet.id) || HIGH_TIER_POOL?.includes(pet.id)); });
+                  const execBatch = () => {
+                    setBox(prev => prev.filter((_, i) => !selectedSet.has(i)));
                     setGold(g => g + batchGold);
-                    showMapToast('👋', '批量放生', `${pcBatchSelected.size}只精灵回归自然，获得 ${batchGold.toLocaleString()} 金币`, 2500);
+                    showMapToast('👋', '批量放生', `${selectedSet.size}只精灵回归自然，获得 ${batchGold.toLocaleString()} 金币`, 2500);
                     setPcBatchSelected(new Set());
                     setPcBatchRelease(false);
-                  }});
+                  };
+                  const baseMsg = `放生后无法恢复！\n将获得 ${batchGold.toLocaleString()} 金币补偿。\n确定吗？`;
+                  if (hasSpecial) {
+                    setConfirmModal({ title: `批量放生 ${selectedSet.size} 只精灵`, msg: `${baseMsg}\n\n⚠️ 选中含有闪光/传说或珍稀精灵，确定要放生吗？`, onOk: () => {
+                      setConfirmModal({ title: '⚠️ 最后确认', msg: `${selectedSet.size} 只精灵将被永久放生，无法找回。`, onOk: execBatch });
+                    }});
+                  } else {
+                    setConfirmModal({ title: `批量放生 ${selectedSet.size} 只精灵`, msg: baseMsg, onOk: execBatch });
+                  }
                 }} style={{background:'#E53935',border:'none',color:'#fff',padding:'4px 10px',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>
                   确认放生({pcBatchSelected.size})
                 </button>
@@ -26126,7 +26165,11 @@ const renderMenu = () => {
             <div style={{padding:'16px', background:'rgba(255,215,0,0.08)', borderRadius:'12px', marginBottom:'16px'}}>
               <div style={{fontSize:'15px', color:'#fff', fontWeight:'600'}}>{showDailyReward.desc}</div>
             </div>
-            <div style={{fontSize:'11px', color:'#94a3b8', marginBottom:'16px'}}>累计登录 {showDailyReward.total} 天 · 连续登录7天获得最高奖励</div>
+            <div style={{fontSize:'11px', color:'#94a3b8', marginBottom:'10px'}}>累计登录 {showDailyReward.total} 天 · 连续登录7天获得最高奖励</div>
+            <div style={{fontSize:'12px', color:'#a5b4fc', marginBottom:'16px', lineHeight:1.5}}>
+              <span style={{color:'#818cf8', fontWeight:700}}>明日奖励预告</span>
+              （连续登录时）：{DAILY_LOGIN_DAY_REWARDS[Math.min(showDailyReward.streak, DAILY_LOGIN_DAY_REWARDS.length - 1)].desc}
+            </div>
             <button onClick={() => setShowDailyReward(null)} style={{padding:'10px 30px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#FFD700,#FF8F00)', color:'#000', fontSize:'14px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 15px rgba(255,215,0,0.3)'}}>领取</button>
           </div>
         </div>

@@ -50,7 +50,8 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
 
   const c = TYPE_COLORS[move.t] || '#90A4AE';
   const tName = TYPE_NAMES[move.t] || move.t;
-  const ppRatio = move.maxPp > 0 ? move.pp / move.maxPp : 0;
+  const maxPpCap = (move.maxPP || move.maxPp || 15);
+  const ppRatio = maxPpCap > 0 ? move.pp / maxPpCap : 0;
   const ppColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
   const hasDesc = move.desc && move.desc.length > 0;
   const jutsuNatureEmoji = move.isJutsu && move.nature ? (JUTSU_NATURE_EMOJI[move.nature] || '') : '';
@@ -162,7 +163,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
           <span style={{
             fontSize:'9px', fontWeight:'600', flexShrink:0, lineHeight:1,
             color: ppRatio <= 0.2 ? '#F44336' : 'rgba(255,255,255,0.4)',
-          }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{move.pp}/{move.maxPp}</span>
+          }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{move.pp}/{maxPpCap}</span>
           {move.isCursed && move.ceCost > 0 && (
             <span style={{
               fontSize:'8px', color:'#a78bfa', fontWeight:'600', flexShrink:0,
@@ -259,10 +260,10 @@ export const EnhancedHPBar = ({ current, max, label }) => {
 export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => {
   const [expanded, setExpanded] = useState(false);
   const allLogs = logs.length > 0 ? logs : (message ? [message] : []);
-  const displayLogs = expanded ? allLogs.slice(0, 12) : allLogs.slice(0, 4);
+  const displayLogs = expanded ? allLogs.slice(0, 12) : allLogs.slice(0, 6);
 
   return (
-    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 4 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 4) setExpanded(e => !e); }}>
+    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 6 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 6) setExpanded(e => !e); }}>
       {displayLogs.map((msg, i) => (
         <div key={`bmsg-${i}-${typeof msg === 'string' ? msg.slice(0,20) : i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'}`}
           style={{ opacity: i === 0 ? 1 : Math.max(0.4, 1 - i * 0.25) }}
@@ -270,7 +271,7 @@ export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => 
           {msg}
         </div>
       ))}
-      {allLogs.length > 4 && <div style={{fontSize:'9px',textAlign:'center',color:'rgba(255,255,255,0.5)',padding:'2px 0'}}>{expanded ? '▲ 收起' : `▼ 展开全部 (${allLogs.length})`}</div>}
+      {allLogs.length > 6 && <div style={{fontSize:'9px',textAlign:'center',color:'rgba(255,255,255,0.5)',padding:'2px 0'}}>{expanded ? '▲ 收起' : `▼ 展开全部 (${allLogs.length})`}</div>}
     </div>
   );
 };
