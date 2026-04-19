@@ -1354,7 +1354,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     // 2. 初始化玩家状态
     setParty([newPet]);
     setCaughtDex([newPet.id]);
-    setGold(1500);
+    setGold(2000);
     
     // ▼▼▼▼▼▼▼▼▼▼ 核心修复点 ▼▼▼▼▼▼▼▼▼▼
     setInventory({ 
@@ -2144,6 +2144,63 @@ const [viewStatPet, setViewStatPet] = useState(null);
         } else if (item.id === 'exp_candy') {
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
 
+            const candyCount = inventory.exp_candy || 0;
+            const maxLevels = Math.min(candyCount, 100 - pet.level);
+            if (usingItem.batch && maxLevels > 1) {
+                const targetLvOptions = [];
+                for (let n = 5; n <= maxLevels; n += 5) targetLvOptions.push(n);
+                if (maxLevels > 0 && !targetLvOptions.includes(maxLevels)) targetLvOptions.push(maxLevels);
+                const targetLv = Math.min(pet.level + maxLevels, 100);
+                setConfirmModal({ title: '🍬 批量使用经验糖果', msg: `将 ${pet.name} (Lv.${pet.level}) 一次性升到 Lv.${targetLv}？\n消耗经验糖果 x${targetLv - pet.level}`, onOk: () => {
+                    const usedCount = targetLv - pet.level;
+                    const np = [...party];
+                    const p = np[petIdx];
+                    const oldLv = p.level;
+                    p.level = targetLv;
+                    p.exp = 0;
+                    p.nextExp = calcNextExp(p.level, NATURE_DB[p.nature || 'docile']?.exp || 1.0);
+                    const ns = getStats(p);
+                    p.currentHp = ns.maxHp;
+                    let evoMsg = '';
+                    const pdx = POKEDEX.find(px => px.id === p.id);
+                    if (pdx?.evo && p.level >= (pdx.evoLvl || 30) && !p.isEvolved) {
+                        const evoDex = POKEDEX.find(px => px.id === pdx.evo);
+                        if (evoDex) {
+                            p.id = evoDex.id;
+                            p.name = p.isFusedShiny ? `异色·${evoDex.name}` : p.isShiny ? `✨${evoDex.name}` : evoDex.name;
+                            p.type = evoDex.type;
+                            if (evoDex.type2) p.secondaryType = evoDex.type2;
+                            else if (evoDex.secondaryType) p.secondaryType = evoDex.secondaryType;
+                            p.isEvolved = !evoDex.evo;
+                            p.evo = evoDex.evo || null;
+                            p.evoLvl = evoDex.evoLvl || null;
+                            p.canEvolve = false;
+                            if (evoDex.hp) { p.hp = evoDex.hp; p.atk = evoDex.atk; p.def = evoDex.def; p.s_atk = evoDex.s_atk; p.s_def = evoDex.s_def; p.spd = evoDex.spd; }
+                            if (evoDex.trait) p.trait = evoDex.trait;
+                            evoMsg = ` 并进化为 ${p.name}！`;
+                        }
+                    }
+                    const pokedex2 = POKEDEX.find(px => px.id === p.id);
+                    if (pokedex2?.learnset) {
+                        for (let lv = oldLv + 1; lv <= p.level; lv++) {
+                            const learn = pokedex2.learnset.filter(ls => ls.level === lv);
+                            learn.forEach(ls => {
+                                const move = allSkills.find(s => s.id === ls.move);
+                                if (move && !p.moves.some(m => m.id === move.id)) {
+                                    if (p.moves.length < 4) p.moves.push({ ...move, pp: move.maxPP || 15 });
+                                }
+                            });
+                        }
+                    }
+                    p.intimacy = Math.min(255, (p.intimacy || 0) + usedCount * 3);
+                    setParty(np);
+                    setInventory(prev => ({...prev, exp_candy: Math.max(0, (prev.exp_candy || 0) - usedCount)}));
+                    showMapToast('🍬', '批量升级', `${p.name} Lv.${oldLv} → Lv.${p.level}${evoMsg} (糖果x${usedCount}, 亲密度+${usedCount*3})`, 3000);
+                    setUsingItem(null); setView('bag');
+                }});
+                return;
+            }
+
             const oldLv = pet.level;
             pet.level = Math.min(100, pet.level + 1);
             pet.exp = 0;
@@ -2497,7 +2554,7 @@ useEffect(() => {
   }, [playerPos]);
 
      
-
+     
 // ----------------------------------------------------------------
 // [升级版] 0.5 雷达图组件 (支持自定义文字颜色)
 // ----------------------------------------------------------------
@@ -2963,9 +3020,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 3. IV: 随机生成
   // ==========================================
   // --- 融合逻辑处理函数 (使用完整混合算法) ---
+  const getFusionCost = () => {
+    const badgeCount = badges?.length || 0;
+    if (badgeCount >= 8) return 2000;
+    if (badgeCount >= 5) return 1000;
+    return 500;
+  };
   const handleFusion = () => {
     if (!fusionParent || !fusionChild) return;
-    if (gold < 500) { showMapToast('💰', '金币不足', '融合需要 500 金币', 1500); return; }
+    const fusionCost = getFusionCost();
+    if (gold < fusionCost) { showMapToast('💰', '金币不足', `融合需要 ${fusionCost} 金币`, 1500); return; }
     
     const p1 = fusionParent;
     const p2 = fusionChild;
@@ -3048,8 +3112,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const finalStats = getStats(newPet);
     newPet.currentHp = finalStats.maxHp;
 
-    setGold(g => Math.max(0, g - 500));
-    updateAchStat({ totalGoldSpent: 500 });
+    setGold(g => Math.max(0, g - fusionCost));
+    updateAchStat({ totalGoldSpent: fusionCost });
     const returnedEquips = [];
     [p1, p2].forEach(parent => {
       if (parent.equips) {
@@ -3188,19 +3252,20 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             {/* 底部按钮 */}
             <div style={{padding: '20px'}}>
                 <button 
-                    disabled={!fusionParent || !fusionChild || gold < 500}
+                    disabled={!fusionParent || !fusionChild || gold < getFusionCost()}
                     onClick={() => {
-                        setConfirmModal({ title: '⚠️ 融合确认', msg: `融合不可逆！\n${fusionParent?.name} + ${fusionChild?.name} 将合为一体。\n消耗 500 金币。`, onOk: handleFusion });
+                        const fc = getFusionCost();
+                        setConfirmModal({ title: '⚠️ 融合确认', msg: `融合不可逆！\n${fusionParent?.name} + ${fusionChild?.name} 将合为一体。\n消耗 ${fc} 金币。`, onOk: handleFusion });
                     }}
                     style={{
                         width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
-                        background: (!fusionParent || !fusionChild || gold < 500) ? '#333' : 'linear-gradient(90deg, #303f9f, #7b1fa2)',
-                        color: (!fusionParent || !fusionChild || gold < 500) ? '#666' : '#fff',
+                        background: (!fusionParent || !fusionChild || gold < getFusionCost()) ? '#333' : 'linear-gradient(90deg, #303f9f, #7b1fa2)',
+                        color: (!fusionParent || !fusionChild || gold < getFusionCost()) ? '#666' : '#fff',
                         fontWeight: 'bold', fontSize: '16px', cursor: 'pointer',
-                        boxShadow: (!fusionParent || !fusionChild || gold < 500) ? 'none' : '0 4px 15px rgba(123, 31, 162, 0.4)'
+                        boxShadow: (!fusionParent || !fusionChild || gold < getFusionCost()) ? 'none' : '0 4px 15px rgba(123, 31, 162, 0.4)'
                     }}
                 >
-                    {gold < 500 ? '金币不足' : '开始融合'}
+                    {gold < getFusionCost() ? '金币不足' : `开始融合 (${getFusionCost()}💰)`}
                 </button>
             </div>
 
@@ -12231,13 +12296,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
       PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'], immune: ['DARK'] },
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'], immune: [] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'], immune: [] },
-      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'], immune: ['NORMAL'] },
+      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: ['NORMAL'] },
       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'], immune: ['FAIRY'] },
-      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'], immune: [] },
+      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: [] },
       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'], immune: [] },
       FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'], immune: [] },
       WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'], immune: [] },
-      LIGHT:   { weak: ['STEEL', 'LIGHT', 'FIRE'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'], immune: [] },
+      LIGHT:   { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'], immune: [] },
       COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING', 'POISON'], immune: [] },
       SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC', 'GHOST', 'BUG'], immune: [] },
       GOD:     { weak: ['GOD'], strong: ['DRAGON', 'DARK', 'GHOST', 'PSYCHIC', 'FAIRY'], immune: [] },
@@ -12264,8 +12329,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const checkEffectExpiration = (unit, state, isHardBattle = false) => {
     const logs = [];
-    const decayChance = isHardBattle ? 0.2 : 0.4;
-    const decayMinTurns = isHardBattle ? 3 : 2;
+    const decayChance = isHardBattle ? 0.15 : 0.25;
+    const decayMinTurns = isHardBattle ? 4 : 3;
 
     // 1. 检查能力等级 (Buff/Debuff)
     if (!state.stages) state.stages = {};
@@ -12655,7 +12720,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkFE && atkFE.critBoost) critStage += atkFE.critBoost;
         const domForCrit = battleState.activeDomain;
         if (domForCrit && domForCrit.turnsLeft > 0 && domForCrit.effect && domForCrit.ownerSide === source && domForCrit.effect.critBoost) critStage += domForCrit.effect.critBoost;
-        let critChance = Math.min(50, statsAtk.crit * (1 + critStage * 0.5));
+        let critChance = Math.min(40, statsAtk.crit * (1 + critStage * 0.5));
         if (Math.random() * 100 < critChance) isCrit = true;
 
         if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
@@ -12709,7 +12774,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const isOwner = domForDmg.ownerSide === source;
           if (isOwner && domForDmg.effect.atkBoost) rawDmg *= domForDmg.effect.atkBoost;
           if (!isOwner && domForDmg.effect.enemyAtkDown) rawDmg *= domForDmg.effect.enemyAtkDown;
-          if (isOwner && domForDmg.effect.defBoost) rawDmg /= Math.max(0.01, domForDmg.effect.defBoost);
+          if (isOwner && domForDmg.effect.defBoost) rawDmg *= (1 / Math.max(1, domForDmg.effect.defBoost));
           if (!isOwner && domForDmg.effect.enemyDefDown) rawDmg *= (domForDmg.effect.enemyDefDown || 1);
         }
 
@@ -12733,10 +12798,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (move.t === 'WATER') { rawDmg *= 0.5; weatherBoosted = true; }
         }
         const atkTypes = [attacker.type, attacker.secondaryType].filter(Boolean);
-        if (weather === 'SAND' && atkTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) {
-             if (category === 'special') rawDmg *= 0.8; 
+        const defTypes = [defender.type, defender.secondaryType].filter(Boolean);
+        if (weather === 'SAND' && defTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) {
+             if (category === 'special') rawDmg *= 0.8;
         }
-        if (weather === 'SNOW' && atkTypes.includes('ICE')) {
+        if (weather === 'SNOW' && defTypes.includes('ICE')) {
              if (category === 'physical') rawDmg *= 0.8;
         }
         if (timePhase === 'NIGHT' && (move.t === 'GHOST' || move.t === 'DARK')) {
@@ -12830,23 +12896,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
 
         let isDodged = false;
-        // 门派修正
-        const atkSect = attacker.sectId || 1;
-        const atkSectLv = attacker.sectLevel || 1;
-        const defSect = defender.sectId || 1;
-        const defSectLv = defender.sectLevel || 1;
+        // 门派修正（无门派时sectId为0，不触发任何门派效果）
+        const atkSect = attacker.sectId || 0;
+        const atkSectLv = attacker.sectLevel || 0;
+        const defSect = defender.sectId || 0;
+        const defSectLv = defender.sectLevel || 0;
 
-        if (atkSect === 1) rawDmg *= (1 + (0.03 + atkSectLv * 0.02)); 
-        if (defSect === 2) rawDmg *= (1 - (0.03 + defSectLv * 0.02));
-        if (defSect === 3) {
+        if (atkSect === 1 && atkSectLv > 0) rawDmg *= (1 + (0.03 + atkSectLv * 0.02)); 
+        if (defSect === 2 && defSectLv > 0) rawDmg *= (1 - (0.03 + defSectLv * 0.02));
+        if (defSect === 3 && defSectLv > 0) {
             const dodgeChance = 0.02 + defSectLv * 0.01;
             if (Math.random() < dodgeChance) {
                 rawDmg = 0; isDodged = true; addLog(`💨 ${defender.name} 施展凌波微步，闪避了攻击！`);
             }
         }
-        if (atkSect === 4 && isCrit) rawDmg *= (1 + (0.1 + atkSectLv * 0.05));
-        if (atkSect === 10) rawDmg *= (1 + (0.05 + atkSectLv * 0.02));
-        if (atkSect === 11 && category === 'special') rawDmg *= (1 + (0.02 + atkSectLv * 0.01));
+        if (atkSect === 4 && atkSectLv > 0 && isCrit) rawDmg *= (1 + (0.1 + atkSectLv * 0.05));
+        if (atkSect === 10 && atkSectLv > 0) rawDmg *= (1 + (0.05 + atkSectLv * 0.02));
+        if (atkSect === 11 && atkSectLv > 0 && category === 'special') rawDmg *= (1 + (0.02 + atkSectLv * 0.01));
 
         rawDmg = Math.min(rawDmg, 99999);
         if (!Number.isFinite(rawDmg) || rawDmg < 0) rawDmg = 0;
@@ -12881,9 +12947,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let msg = `造成 ${dmg.toLocaleString()} 伤害`;
         if (isCrit) msg += ` (暴击!)`;
         if (typeMod >= 2.0) msg += ` 双重效果拔群!`;
-        else if (typeMod > 1.2) msg += ` 效果拔群!`;
-        if (typeMod <= 0.65) msg += ` 双重抵抗，收效甚微...`;
-        else if (typeMod < 0.9) msg += ` 收效甚微...`;
+        else if (typeMod > 1.0) msg += ` 效果拔群!`;
+        if (typeMod > 0 && typeMod <= 0.65) msg += ` 双重抵抗，收效甚微...`;
+        else if (typeMod > 0 && typeMod < 1.0) msg += ` 收效甚微...`;
         addLog(msg);
         }
 
@@ -12920,7 +12986,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (fx.id === 'endure' && !defender._endureUsed) { endured = true; defender._endureUsed = true; }
           });
           if (endured) { dmg = defender.currentHp - 1; survivalMsg = `🪶 ${defender.name} 的不死鸟羽发动，硬撑住了！`; }
-          else if (defender.intimacy >= 200 && Math.random() < 0.15) {
+          else if (source === 'enemy' && defender.intimacy >= 200 && Math.random() < 0.15) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 为了不让你伤心，撑住了攻击！`;
           }
@@ -13020,14 +13086,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 addLog(`🥊 打狗棒法反弹了 ${reflectDmg} 点伤害！`);
             }
         }
-        if (atkSect === 6 && !defender.status && move.p > 0 && Math.random() < (0.05 + atkSectLv * 0.02)) {
-            defender.status = 'BRN'; addLog(`🔥 圣火令触发，${defender.name} 灼伤了！`);
+        if (atkSect === 6 && atkSectLv > 0 && !defState.status && move.p > 0 && Math.random() < (0.05 + atkSectLv * 0.02)) {
+            defState.status = 'BRN'; addLog(`🔥 圣火令触发，${defender.name} 灼伤了！`);
         }
-        if (defSect === 7 && !attacker.status && move.p > 0 && Math.random() < (0.03 + defSectLv * 0.01)) {
-            attacker.status = 'FRZ'; addLog(`❄️ 寒冰劲护体，${attacker.name} 被冻结了！`);
+        if (defSect === 7 && defSectLv > 0 && !atkState.status && move.p > 0 && Math.random() < (0.03 + defSectLv * 0.01)) {
+            atkState.status = 'FRZ'; addLog(`❄️ 寒冰劲护体，${attacker.name} 被冻结了！`);
         }
-        if (atkSect === 8 && !defender.status && move.p > 0 && Math.random() < (0.05 + atkSectLv * 0.02)) {
-            defender.status = 'PSN'; addLog(`☠️ 千蛛手触发，${defender.name} 中毒了！`);
+        if (atkSect === 8 && atkSectLv > 0 && !defState.status && move.p > 0 && Math.random() < (0.05 + atkSectLv * 0.02)) {
+            defState.status = 'PSN'; addLog(`☠️ 千蛛手触发，${defender.name} 中毒了！`);
         }
         if (atkSect === 5 && attacker.currentHp > 0 && dmg > 0) {
             const healPct = 0.02 + atkSectLv * 0.008;
@@ -13035,7 +13101,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const heal = Math.min(Math.floor(getStats(attacker).maxHp * healPct), maxHeal > 0 ? maxHeal : 999);
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
         }
-        if (atkSect === 11 && !isDead && move.p > 0 && !defState.volatiles.confused && Math.random() < (0.03 + atkSectLv * 0.02)) {
+        if (atkSect === 11 && atkSectLv > 0 && !isDead && move.p > 0 && !defState.volatiles.confused && Math.random() < (0.03 + atkSectLv * 0.02)) {
             defState.volatiles.confused = 3; addLog(`🏔️ 紫霞神功扰乱心神，${defender.name} 混乱了！`);
         }
         if (defSect === 12 && category === 'special' && move.p > 0 && dmg > 0) {
@@ -22094,7 +22160,13 @@ const renderMenu = () => {
                 <button onClick={()=>setSelectedBagItem(null)} style={{flex:1,padding:'11px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',borderRadius:'12px',cursor:'pointer',color:'rgba(255,255,255,0.6)',fontWeight:'600',fontSize:'12px'}}>关闭</button>
                 {['meds','tm','growth','stone','cursed'].includes(selectedBagItem.category) && (
                   <button onClick={handleUseBtn} style={{flex:1,padding:'11px',border:'none',background:`linear-gradient(135deg,${activeTab.color},${activeTab.color}cc)`,borderRadius:'12px',fontWeight:'700',color:'#fff',cursor:'pointer',fontSize:'12px',boxShadow:`0 4px 12px ${activeTab.color}40`}}>使用</button>
-                        )}
+                )}
+                {selectedBagItem.id === 'exp_candy' && selectedBagItem.count > 1 && (
+                  <button onClick={()=>{
+                    setUsingItem({ id:'exp_candy', category:'growth', data: selectedBagItem, batch: true });
+                    setSelectedBagItem(null); setView('team');
+                  }} style={{flex:1,padding:'11px',border:'none',background:'linear-gradient(135deg,#FF6D00,#FF9800cc)',borderRadius:'12px',fontWeight:'700',color:'#fff',cursor:'pointer',fontSize:'12px',boxShadow:'0 4px 12px rgba(255,109,0,0.4)'}}>批量使用 ({selectedBagItem.count})</button>
+                )}
                     </div>
                 </div>
             </div>
@@ -22866,11 +22938,18 @@ const renderMenu = () => {
               border:'1px solid rgba(129,212,250,0.3)', borderRadius:16, padding:'5px 10px', fontSize:11, minHeight:30,
               fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)'
             }}>属性</button>
-            {(achStats.currentWinStreak || 0) >= 3 && <div style={{
-              position:'absolute', top:8, left:8, zIndex:20, background:'rgba(0,0,0,0.6)', color: (achStats.currentWinStreak||0) >= 20 ? '#FF5722' : (achStats.currentWinStreak||0) >= 10 ? '#FFB300' : '#81C784',
-              border:'1px solid rgba(255,255,255,0.2)', borderRadius:16, padding:'3px 10px', fontSize:10,
-              fontWeight:700, backdropFilter:'blur(4px)'
-            }}>🔥{achStats.currentWinStreak}连胜{(achStats.currentWinStreak||0) >= 5 ? ` +${(achStats.currentWinStreak||0) >= 20 ? '50' : (achStats.currentWinStreak||0) >= 10 ? '30' : '15'}%💰` : ''}</div>}
+            <div style={{
+              position:'absolute', top:8, left:8, zIndex:20, display:'flex', flexDirection:'column', gap:'4px'
+            }}>
+              {battle?.turnCount > 0 && <div style={{background:'rgba(0,0,0,0.6)', color:'#81D4FA',
+                border:'1px solid rgba(129,212,250,0.2)', borderRadius:16, padding:'3px 10px', fontSize:10,
+                fontWeight:700, backdropFilter:'blur(4px)', textAlign:'center'
+              }}>R{battle.turnCount}</div>}
+              {(achStats.currentWinStreak || 0) >= 3 && <div style={{background:'rgba(0,0,0,0.6)', color: (achStats.currentWinStreak||0) >= 20 ? '#FF5722' : (achStats.currentWinStreak||0) >= 10 ? '#FFB300' : '#81C784',
+                border:'1px solid rgba(255,255,255,0.2)', borderRadius:16, padding:'3px 10px', fontSize:10,
+                fontWeight:700, backdropFilter:'blur(4px)'
+              }}>🔥{achStats.currentWinStreak}连胜{(achStats.currentWinStreak||0) >= 5 ? ` +${(achStats.currentWinStreak||0) >= 20 ? '50' : (achStats.currentWinStreak||0) >= 10 ? '30' : '15'}%💰` : ''}</div>}
+            </div>
             {animEffect?.type === 'BLACKOUT' && <div className="blackout-overlay">眼前一黑...</div>}
             
             <div className="battle-scene-layer" style={{width: '100%', height: '100%', position: 'relative'}}>
@@ -23642,7 +23721,7 @@ const renderMenu = () => {
                 {battleBagTab === 'balls' && (
                   <>
                     {Object.keys(inventory.balls || {}).filter(k => (inventory.balls||{})[k] > 0).length === 0 && <div className="empty-hint">没有可用的精灵球</div>}
-                    {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; const enemy = battle?.enemyParty?.[battle?.enemyActiveIdx]; const catchPct = enemy ? Math.min(100, Math.round(calculateCatchRate(type, enemy) * 100)) : 0; const catchColor = catchPct >= 60 ? '#4CAF50' : catchPct >= 30 ? '#FF9800' : '#F44336'; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}{enemy && <span style={{fontSize:'10px',marginLeft:'6px',color:catchColor,fontWeight:700}}>{type==='master'?'必捕':catchPct+'%'}</span>}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
                   </>
                 )}
                 {battleBagTab === 'meds' && (
@@ -23960,6 +24039,7 @@ const renderMenu = () => {
           <div style={{fontSize:'10px',color:'#888',height:'28px',overflow:'hidden',lineHeight:'1.4',marginBottom:'4px'}}>{desc}</div>
           {buyType === 'ball' && <div style={{fontSize:'9px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.balls?.[key.replace('ball_','')]||0}</div>}
           {buyType === 'item' && <div style={{fontSize:'9px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.meds?.[key] || inventory[key] || 0}</div>}
+          {buyType === 'stone' && <div style={{fontSize:'9px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.stones?.[key] || 0}</div>}
           <div style={{fontSize:'14px',fontWeight:'900',color:'#F57C00',marginBottom:'10px'}}>💰 {totalPrice.toLocaleString()}</div>
           <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px',background:'#f0f0f5',padding:'3px 6px',borderRadius:'16px'}}>
             <div onClick={()=>updateBuyCount(key,-1)} style={{width:'36px',height:'36px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'16px',userSelect:'none'}}>-</div>
@@ -24172,9 +24252,11 @@ const renderMenu = () => {
               </button>
               {pcBatchRelease && pcBatchSelected.size > 0 && (
                 <button onClick={() => {
-                  setConfirmModal({ title: `批量放生 ${pcBatchSelected.size} 只精灵`, desc: '放生后无法恢复，确定吗？', onConfirm: () => {
+                  const batchGold = [...pcBatchSelected].reduce((sum, idx) => { const pet = box[idx]; if (!pet) return sum; const lv = pet.level || 1; const shinyM = pet.isShiny ? 3 : 1; const legM = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1); return sum + Math.floor((50 + lv * 10) * shinyM * legM); }, 0);
+                  setConfirmModal({ title: `批量放生 ${pcBatchSelected.size} 只精灵`, msg: `放生后无法恢复！\n将获得 ${batchGold.toLocaleString()} 金币补偿。\n确定吗？`, onOk: () => {
                     setBox(prev => prev.filter((_, i) => !pcBatchSelected.has(i)));
-                    showMapToast('👋', '批量放生', `${pcBatchSelected.size}只精灵回归自然`, 2000);
+                    setGold(g => g + batchGold);
+                    showMapToast('👋', '批量放生', `${pcBatchSelected.size}只精灵回归自然，获得 ${batchGold.toLocaleString()} 金币`, 2500);
                     setPcBatchSelected(new Set());
                     setPcBatchRelease(false);
                   }});
