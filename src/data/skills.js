@@ -110,7 +110,7 @@ const SKILL_DB = {
     { name: '空气斩', p: 75, pp: 15, desc: '用锋利的空气刃切割对手' },
     { name: '钻孔啄', p: 80, pp: 20, desc: '旋转飞行钻击对手' },
     { name: '飞翔', p: 90, pp: 15, desc: '飞上高空后俯冲攻击' },
-    { name: '暴风', p: 110, pp: 10, desc: '掀起猛烈暴风攻击，可能混乱' },
+    { name: '暴风·天空', p: 110, pp: 10, desc: '掀起猛烈暴风攻击，可能混乱' },
     { name: '勇鸟猛攻', p: 120, pp: 15, desc: '勇敢地猛冲，附带反伤' },
     { name: '神鸟特攻', p: 140, pp: 5, desc: '蓄力后发动的究极飞行攻击' },
     { name: '画龙点睛', p: 120, pp: 5, desc: '全力一击后自身能力下降' }
@@ -398,7 +398,7 @@ const SIDE_EFFECT_SKILLS = [
   // --- 8. 混乱系列 ---
   { name: '水之波动', t: 'WATER', p: 60, pp: 20, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '20%概率混乱' },
   { name: '信号光束', t: 'BUG', p: 75, pp: 15, effect: { type: 'STATUS', status: 'CON', chance: 0.1 }, desc: '10%概率混乱' },
-  { name: '暴风', t: 'FLYING', p: 110, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '30%概率混乱' },
+  { name: '暴风·天空', t: 'FLYING', p: 110, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '30%概率混乱' },
   { name: '爆裂拳', t: 'FIGHT', p: 100, pp: 5, acc: 50, effect: { type: 'STATUS', status: 'CON', chance: 1.0 }, desc: '100%混乱，命中率50%' },
 
   // --- 9. 强化自身系列 (攻击同时提升自己) ---
@@ -491,10 +491,13 @@ const ADVANCED_SKILLS = [
   { name: '精灵之舞', t: 'FAIRY', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.5 }, desc: '舞蹈蓄力，80威力+50%提特攻' },
   { name: '梦幻泡影', t: 'FAIRY', p: 110, pp: 8, effect: { type: 'STATUS', status: 'SLP', chance: 0.15 }, desc: '梦幻之力，110威力+15%催眠' },
 
-  // --- 暗系 (3) ---
+  // --- 暗系 (6)：暗影吞噬～终焉之影 ---
   { name: '暗影吞噬', t: 'DARK', p: 95, pp: 10, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '暗影侵蚀，95威力+30%降特防' },
   { name: '深渊凝视', t: 'DARK', p: 80, pp: 15, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '深渊之眼，80威力+30%混乱' },
   { name: '黑洞吸引', t: 'DARK', p: 130, pp: 5, effect: { type: 'DEBUFF', stat: 'spd', val: 2, chance: 0.5 }, desc: '黑洞引力，130威力+50%大幅降速' },
+  { name: '暗夜猎杀', t: 'DARK', p: 95, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '暗夜猎杀，95威力+30%升攻' },
+  { name: '黑暗领域', t: 'DARK', p: 105, pp: 8, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.4 }, desc: '黑暗弥漫，105威力+40%降命中' },
+  { name: '终焉之影', t: 'DARK', p: 140, pp: 3, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '终焉暗影，140威力+30%混乱' },
 
   // --- 神系 (1) ---
   { name: '天启审判', t: 'GOD', p: 160, pp: 3, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '天之审判降临，160威力+50%大幅降防' },
@@ -508,11 +511,6 @@ const ADVANCED_SKILLS = [
   { name: '圣光审判', t: 'LIGHT', p: 110, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '圣光降下审判，110威力+30%降特防' },
   { name: '光之壁垒', t: 'LIGHT', p: 80, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 1, chance: 0.5 }, desc: '光之壁垒，80威力+50%升特防' },
   { name: '极光冲击', t: 'LIGHT', p: 130, pp: 5, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '极光之力，130威力+20%混乱' },
-
-  // --- 暗系 (3) ---
-  { name: '暗夜猎杀', t: 'DARK', p: 95, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '暗夜猎杀，95威力+30%升攻' },
-  { name: '黑暗领域', t: 'DARK', p: 105, pp: 8, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.4 }, desc: '黑暗弥漫，105威力+40%降命中' },
-  { name: '终焉之影', t: 'DARK', p: 140, pp: 3, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '终焉暗影，140威力+30%混乱' },
 
   // --- 火系新增 (2) ---
   { name: '烈焰星坠', t: 'FIRE', p: 115, pp: 5, effect: { type: 'STATUS', status: 'BRN', chance: 0.4 }, desc: '如流星坠落的烈焰，115威力+40%灼伤' },
@@ -539,7 +537,74 @@ const ADVANCED_SKILLS = [
   { name: '龙魂爆裂', t: 'DRAGON', p: 140, pp: 3, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.4 }, desc: '龙之魂魄爆发，140威力+40%升攻' },
 
   // --- 冰系新增 (1) ---
-  { name: '极冰裁决', t: 'ICE', p: 0, pp: 5, effect: { type: 'OHKO', chance: 0.3 }, desc: '极寒领域之力，30%概率一击必杀' },
+  { name: '极冰裁决', t: 'ICE', p: 130, pp: 3, effect: { type: 'STATUS', status: 'FRZ', chance: 0.3 }, desc: '极寒裁决轰击，130威力+30%冻结' },
+];
+
+// ==========================================
+// V17 新增技能（60）
+// ==========================================
+const NEW_SKILLS_V17 = [
+  // 合计 60；格斗/地面/虫/妖各 4，治愈 3、神 2，其余系补足中威力带
+  { name: '和风推手', t: 'NORMAL', p: 55, pp: 25, desc: '以柔劲推开对手，讲究中线与呼吸' },
+  { name: '居合切', t: 'NORMAL', p: 68, pp: 20, desc: '拔刀般的迅猛横斩，干净利落' },
+  { name: '师范流·踏切', t: 'NORMAL', p: 88, pp: 12, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.25 }, desc: '踏地夺位的一击，25%扰乱对手视线' },
+  { name: '红莲碎焰', t: 'FIRE', p: 58, pp: 22, desc: '散落的细碎火点如红莲绽放' },
+  { name: '炎狱突', t: 'FIRE', p: 72, pp: 18, effect: { type: 'STATUS', status: 'BRN', chance: 0.15 }, desc: '短距爆发突刺，15%灼伤' },
+  { name: '急流破', t: 'WATER', p: 58, pp: 22, desc: '以一线急流切开对手架势' },
+  { name: '瀑布掌', t: 'WATER', p: 74, pp: 16, desc: '自上而下如瀑布坠落的掌压' },
+  { name: '青竹鞭影', t: 'GRASS', p: 52, pp: 24, desc: '竹影般的鞭击，轻灵连绵' },
+  { name: '万象森罗', t: 'GRASS', p: 92, pp: 10, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.25 }, desc: '森罗幻象缠绕，25%降特防' },
+  { name: '雷纹指', t: 'ELECTRIC', p: 58, pp: 23, desc: '指尖雷纹游走，点穴般精准' },
+  { name: '紫电贯虹', t: 'ELECTRIC', p: 88, pp: 12, desc: '紫色电光如长虹贯日' },
+  { name: '霜刃回旋', t: 'ICE', p: 58, pp: 22, desc: '霜刃绕身回旋斩出' },
+  { name: '雪女叹息', t: 'ICE', p: 86, pp: 12, desc: '如传说雪女轻叹的极寒吐息' },
+  { name: '黄泉雾', t: 'POISON', p: 58, pp: 21, desc: '黄泉色泽的毒雾扑面' },
+  { name: '蛊毒穿心', t: 'POISON', p: 92, pp: 11, desc: '蛊毒随劲力透体而入' },
+  { name: '燕双线', t: 'FLYING', p: 62, pp: 22, desc: '燕子抄水般的双线掠击' },
+  { name: '鸢月闪', t: 'FLYING', p: 90, pp: 12, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '月下鸢影一闪，20%混乱' },
+  { name: '心象镜', t: 'PSYCHIC', p: 62, pp: 20, desc: '将心象映于镜中再击碎' },
+  { name: '阿赖耶识刃', t: 'PSYCHIC', p: 94, pp: 10, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.25 }, desc: '触及藏识之刃，25%降特防' },
+  { name: '碑裂击', t: 'ROCK', p: 62, pp: 18, desc: '如古碑龟裂的沉重一击' },
+  { name: '不动尊·岩肘', t: 'ROCK', p: 76, pp: 14, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.25 }, desc: '岩肘顶击，25%降物防' },
+  { name: '纸扎替身击', t: 'GHOST', p: 62, pp: 18, desc: '纸人替身迷惑后真身突袭' },
+  { name: '忘川涟漪', t: 'GHOST', p: 78, pp: 14, effect: { type: 'STATUS', status: 'CON', chance: 0.25 }, desc: '忘川水纹荡开，25%混乱' },
+  { name: '蛟翻身', t: 'DRAGON', p: 62, pp: 20, desc: '如蛟龙卷浪翻身而起' },
+  { name: '苍角钻', t: 'DRAGON', p: 77, pp: 15, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.2 }, desc: '苍龙之角螺旋钻刺，20%挫其锐气' },
+  { name: '锻刀雨', t: 'STEEL', p: 62, pp: 20, desc: '锻锤火花与碎钢如雨洒落' },
+  { name: '铁后劲', t: 'STEEL', p: 76, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1, chance: 0.25 }, desc: '后发先至的寸劲，25%自升物防' },
+  { name: '鍔鸣千返', t: 'STEEL', p: 88, pp: 11, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.2 }, desc: '刀鍔连鸣如千次返刃，20%削甲' },
+  { name: '极真崩拳', t: 'FIGHT', p: 62, pp: 18, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.25 }, desc: '极真空手崩拳，25%降物防' },
+  { name: '八极·野马分鬃', t: 'FIGHT', p: 78, pp: 15, desc: '八极拳架，开胯分鬃顶肘' },
+  { name: '明镜止水·贯手', t: 'FIGHT', p: 96, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.2 }, desc: '心如明镜，20%自升物攻' },
+  { name: '一闪崩捶', t: 'FIGHT', p: 108, pp: 8, effect: { type: 'STATUS', status: 'CON', chance: 0.15 }, desc: '瞬步贴近后的崩捶，15%震乱神识' },
+  { name: '砂岚拳', t: 'GROUND', p: 58, pp: 20, desc: '砂尘旋风裹拳轰出' },
+  { name: '地脉涌', t: 'GROUND', p: 76, pp: 14, desc: '引地脉之气自下而上喷涌' },
+  { name: '泰山印', t: 'GROUND', p: 94, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.3 }, desc: '如泰山压顶之印，30%降速' },
+  { name: '龙门震踏', t: 'GROUND', p: 82, pp: 12, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.25 }, desc: '踏如龙门开阖，25%扬尘迷眼' },
+  { name: '丝笼缚', t: 'BUG', p: 58, pp: 20, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.3 }, desc: '蚕丝成笼束缚，30%降速' },
+  { name: '玉茧剑', t: 'BUG', p: 76, pp: 15, desc: '玉色虫茧硬化为剑形斩击' },
+  { name: '绯想天蛾', t: 'BUG', p: 98, pp: 10, effect: { type: 'STATUS', status: 'PSN', chance: 0.2 }, desc: '磷粉如蛾翼飘散，20%中毒' },
+  { name: '槐蚕刺', t: 'BUG', p: 66, pp: 17, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 0.25 }, desc: '如槐蚕吐丝贯刺，25%挫其念力' },
+  { name: '樱吹雪刃', t: 'FAIRY', p: 62, pp: 20, desc: '樱花如雪，刃藏于花瓣之间' },
+  { name: '神乐铃音', t: 'FAIRY', p: 76, pp: 15, desc: '神乐铃响，音刃齐发' },
+  { name: '天狐燐火', t: 'FAIRY', p: 94, pp: 10, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 0.2 }, desc: '天狐磷火惑心，20%降特攻' },
+  { name: '结缘红绳', t: 'FAIRY', p: 70, pp: 16, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.3 }, desc: '红线缠足绊心，30%降速' },
+  { name: '影缝', t: 'DARK', p: 68, pp: 17, desc: '将对手钉在影子的缝隙之间' },
+  { name: '罗城门', t: 'DARK', p: 84, pp: 13, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.25 }, desc: '罗生门般的压迫，25%降命中' },
+  { name: '百鬼夜行切', t: 'DARK', p: 102, pp: 9, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.2 }, desc: '百鬼过境的一斩，20%裂其心神之防' },
+  { name: '岚步斩', t: 'WIND', p: 82, pp: 14, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 0.35 }, desc: '踏岚而行，35%自提速' },
+  { name: '穿林风', t: 'WIND', p: 64, pp: 18, desc: '林隙间穿行的细碎风刃' },
+  { name: '破魔矢', t: 'LIGHT', p: 84, pp: 13, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.25 }, desc: '破魔一矢，25%降特防' },
+  { name: '净玻璃明镜', t: 'LIGHT', p: 72, pp: 14, effect: { type: 'STATUS', status: 'CON', chance: 0.15 }, desc: '镜光映心，15%惑乱' },
+  { name: '星屑螺旋', t: 'COSMIC', p: 86, pp: 12, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.25 }, desc: '星屑成螺旋卷入，25%降速' },
+  { name: '黄道坍缩', t: 'COSMIC', p: 92, pp: 10, desc: '黄道之力向内坍缩的一击' },
+  { name: '太鼓雷', t: 'SOUND', p: 79, pp: 15, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '太鼓雷鸣共振，20%混乱' },
+  { name: '琴心三叠', t: 'SOUND', p: 64, pp: 18, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.2 }, desc: '琴音三折扰神，20%降命中' },
+  { name: '伏兔针打', t: 'HEAL', p: 74, pp: 12, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '如针灸取穴的打击要害，30%降物攻' },
+  { name: '药气化劲', t: 'HEAL', p: 82, pp: 11, effect: { type: 'DEBUFF', stat: 's_atk', val: 1, chance: 0.2 }, desc: '药力化内劲轰出，20%降特攻' },
+  { name: '回灵拍', t: 'HEAL', p: 66, pp: 14, desc: '以推拿之理拍击要穴，刚柔并济' },
+  { name: '神阶·微尘', t: 'GOD', p: 100, pp: 12, acc: 95, desc: '神祇随手一抹，却如山海倾覆前的微尘预警' },
+  { name: '神阶·雨师', t: 'GOD', p: 115, pp: 8, acc: 92, desc: '司雨之神权能的中位轰击，雨露亦可穿石' },
 ];
 
 // [自动注入] 将新技能合并到 SKILL_DB
@@ -579,4 +644,15 @@ const injectAdvancedSkills = () => {
 };
 injectAdvancedSkills();
 
-export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS, ADVANCED_SKILLS };
+// [自动注入] V17 新增技能
+const injectNewSkillsV17 = () => {
+  NEW_SKILLS_V17.forEach(skill => {
+    if (!SKILL_DB[skill.t]) SKILL_DB[skill.t] = [];
+    if (!SKILL_DB[skill.t].find(s => s.name === skill.name)) {
+      SKILL_DB[skill.t].push(skill);
+    }
+  });
+};
+injectNewSkillsV17();
+
+export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS, ADVANCED_SKILLS, NEW_SKILLS_V17 };

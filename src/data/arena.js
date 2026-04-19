@@ -1,3 +1,4 @@
+/** 段位徽章门槛：2→4→6→8→10；钻石起为 10 枚，与大师同为终局门槛（铂金仍为 8→10 的明确进阶）。 */
 export const ARENA_RANKS = [
   { id: 'bronze',   name: '青铜', icon: '🥉', color: '#CD7F32', maxStars: 3, noDropOnLoss: true,
     enemyLvl: [20, 40], enemyCount: 3, reqBadges: 2,
@@ -16,7 +17,7 @@ export const ARENA_RANKS = [
     firstReward: { gold: 50000, title: '铂金王者' },
     streakBonus: { 3: { gold: 12000 }, 5: { gold: 30000 } } },
   { id: 'diamond',  name: '钻石', icon: '💠', color: '#B9F2FF', maxStars: 3, noDropOnLoss: false,
-    enemyLvl: [80, 95], enemyCount: 6, reqBadges: 8,
+    enemyLvl: [80, 95], enemyCount: 6, reqBadges: 10,
     firstReward: { gold: 80000 },
     streakBonus: { 3: { gold: 20000 }, 5: { gold: 50000 } } },
   { id: 'master',   name: '大师', icon: '👑', color: '#FF6F00', maxStars: 3, noDropOnLoss: false,

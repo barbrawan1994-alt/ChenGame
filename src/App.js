@@ -246,8 +246,8 @@ const DAILY_LOGIN_DAY_REWARDS = [
   { gold: 8000, berries: 25, desc: '💰 8000金币 + 🍒 25树果' },
   { gold: 9000, meds: true, desc: '💰 9000金币 + 🧪 超级药水×8' },
   { gold: 10000, berries: 30, desc: '💰 10000金币 + 🍒 30树果' },
-  { gold: 12000, meds: true, berries: 30, desc: '💰 12000金币 + 🧪 高级药水×5 + 🍒 30树果' },
-  { gold: 15000, meds: true, berries: 50, desc: '💰 15000金币 + 🧪 高级药水×10 + 🍒 50树果 + ⭐ 经验糖果' },
+  { gold: 12000, meds: true, berries: 30, desc: '💰 12000金币 + 🧪 超级药水×5 + 🍒 30树果' },
+  { gold: 15000, hyperPotions: 10, berries: 50, expCandy: 1, desc: '💰 15000金币 + 🧪 高级药水×10 + 🍒 50树果 + ⭐ 经验糖果' },
 ];
 
 export default function RPG(props) {
@@ -928,6 +928,8 @@ const [infinityState, setInfinityState] = useState(() => {
       setGold(g => g + reward.gold);
       updateAchStat({ totalGoldEarned: reward.gold });
       if (reward.berries) setInventory(inv => ({...inv, berries: (inv.berries||0) + reward.berries}));
+      if (reward.hyperPotions) setInventory(inv => ({...inv, meds: {...(inv.meds||{}), hyper_potion: ((inv.meds||{}).hyper_potion||0) + reward.hyperPotions}}));
+      if (reward.expCandy) setInventory(inv => ({...inv, exp_candy: (inv.exp_candy || 0) + reward.expCandy}));
       if (reward.meds) setInventory(inv => ({...inv, meds: {...(inv.meds||{}), super_potion: ((inv.meds||{}).super_potion||0) + (newStreak >= 7 ? 5 : 3)}}));
       setShowDailyReward({ streak: newStreak, desc: reward.desc, total: newTotal });
       return { lastDate: today, streak: newStreak, totalDays: newTotal };
@@ -12472,7 +12474,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (defState.trait === 'pressure') ppCost = 2; 
         move.pp = Math.max(0, move.pp - ppCost);
     }
-    if (move.effect?.type !== 'PROTECT') { atkState.volatiles.protectStreak = 0; }
+    if (move.effect?.type !== 'PROTECT') {
+      if (!atkState.volatiles) atkState.volatiles = {};
+      atkState.volatiles.protectStreak = 0;
+    }
 
     // 2. 技能施放与命中
     addLog(`${attacker.name} 使用 ${move.name}`);
@@ -12481,7 +12486,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 守住逻辑 (移到显示技能名之后)
     const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self');
-    if (defState.volatiles.protected && isAttackOrDebuff) {
+    if (defState.volatiles?.protected && isAttackOrDebuff) {
         addLog(`✋ ${defender.name} 守住了攻击!`); 
         _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
         await wait(1200); 
@@ -13012,8 +13017,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (atkFE.onHitFreeze && !defState.status && Math.random() < atkFE.onHitFreeze) {
             defState.status = 'FRZ'; addLog(`果实冰封了 ${defender.name}!`);
           }
-          if (atkFE.onHitConfuse && !defState.volatiles.confused && Math.random() < atkFE.onHitConfuse) {
-            defState.volatiles.confused = 3; addLog(`果实幻术迷惑了 ${defender.name}!`);
+          if (atkFE.onHitConfuse && !defState.volatiles?.confused && Math.random() < atkFE.onHitConfuse) {
+            defState.volatiles = { ...(defState.volatiles || {}), confused: 3 }; addLog(`果实幻术迷惑了 ${defender.name}!`);
           }
           if (atkFE.onHitDefDown) {
             defState.stages.p_def = Math.max(-6, (defState.stages.p_def || 0) - atkFE.onHitDefDown);
@@ -13101,8 +13106,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const heal = Math.min(Math.floor(getStats(attacker).maxHp * healPct), maxHeal > 0 ? maxHeal : 999);
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
         }
-        if (atkSect === 11 && atkSectLv > 0 && !isDead && move.p > 0 && !defState.volatiles.confused && Math.random() < (0.03 + atkSectLv * 0.02)) {
-            defState.volatiles.confused = 3; addLog(`🏔️ 紫霞神功扰乱心神，${defender.name} 混乱了！`);
+        if (atkSect === 11 && atkSectLv > 0 && !isDead && move.p > 0 && !defState.volatiles?.confused && Math.random() < (0.03 + atkSectLv * 0.02)) {
+            defState.volatiles = { ...(defState.volatiles || {}), confused: 3 }; addLog(`🏔️ 紫霞神功扰乱心神，${defender.name} 混乱了！`);
         }
         if (defSect === 12 && category === 'special' && move.p > 0 && dmg > 0) {
             const reflectPct = 0.05 + defSectLv * 0.03;
