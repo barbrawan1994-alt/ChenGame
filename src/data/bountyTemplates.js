@@ -70,7 +70,7 @@ export const BOUNTY_TEMPLATES = [
     id: 'spend_gold', category: 'economy', icon: '💰',
     generate: (badgeCount) => {
       const n = (3 + badgeCount) * 1000;
-      return { id: `spend_${n}`, desc: `消费 ${n.toLocaleString()} 金币`, type: 'spend_gold', target: n, progress: 0, reward: { gold: Math.floor(n * 0.15) }, completed: false };
+      return { id: `spend_${n}`, desc: `消费 ${n.toLocaleString()} 金币`, type: 'spend_gold', target: n, progress: 0, reward: { gold: Math.floor(n * 0.5) }, completed: false };
     }
   },
   {

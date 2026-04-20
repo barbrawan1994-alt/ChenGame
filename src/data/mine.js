@@ -21,7 +21,7 @@ export const MINE_TILES = {
 };
 
 export const MINE_EXCHANGE = [
-  { id: 'copper_gold',    cost: { copper: 10 },              reward: { type: 'gold', amount: 1000 }, desc: '铜矿 x10 → 1000 金币' },
+  { id: 'copper_gold',    cost: { copper: 10 },              reward: { type: 'gold', amount: 1500 }, desc: '铜矿 x10 → 1500 金币' },
   { id: 'copper_potion',  cost: { copper: 5 },               reward: { type: 'item', id: 'potion', amount: 3 }, desc: '铜矿 x5 → 伤药 x3' },
   { id: 'silver_candy',   cost: { silver: 5 },               reward: { type: 'item', id: 'exp_candy', amount: 1 }, desc: '银矿 x5 → 经验糖果' },
   { id: 'silver_gold',    cost: { silver: 3 },               reward: { type: 'gold', amount: 3000 }, desc: '银矿 x3 → 3000 金币' },

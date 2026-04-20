@@ -16,7 +16,7 @@ export const FRUIT_CATEGORY_NAMES = {
 };
 
 // ============================================================
-// 100种恶魔果实（与游戏内图鉴/说明一致）
+// 200种恶魔果实（与游戏内图鉴/说明一致）
 // ============================================================
 export const DEVIL_FRUITS = {
   // ===================== 超人系 (17种) =====================
@@ -902,7 +902,7 @@ export const DEVIL_FRUITS = {
     transformMove: { name: '流萤乱舞', t: 'BUG', p: 72, pp: 10, acc: 100, isFruitMove: true },
   },
 
-  // === 扩充恶魔果实 (100种) ===
+  // === 扩充恶魔果实（第101-200种；恶魔果实共200种）===
   df_nx_yozora: {
     id: 'df_nx_yozora', name: '夜空果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '操控夜色遮蔽视线，特攻与闪避小幅提升',
@@ -2815,7 +2815,7 @@ export const FRUIT_ICONS = {
   df_cosmic:            { bg: 'linear-gradient(135deg, #0D47A1, #1A237E)', pattern: 'radial-gradient(circle at 30% 30%, #fff 2%, transparent 3%), radial-gradient(circle at 70% 60%, #fff 1%, transparent 2%)', symbol: '🌌', symbolColor: '#B388FF' },
   df_tsuru_hane:        { bg: 'linear-gradient(135deg, #ECEFF1, #90A4AE)', pattern: 'repeating-linear-gradient(-35deg, transparent, transparent 5px, rgba(255,255,255,0.25) 5px, rgba(255,255,255,0.25) 7px)', symbol: '🕊️', symbolColor: '#37474F' },
   df_hotaru_kari:       { bg: 'linear-gradient(135deg, #1B5E20, #CDDC39)', pattern: 'radial-gradient(circle at 70% 30%, rgba(205,220,57,0.5), transparent 55%)', symbol: '✨', symbolColor: '#F9FBE7' },
-  // === 扩充图标 (100种) ===
+  // === 扩充图标（与上列第101-200种果实一一对应；全图鉴200种）===
 df_nx_yozora: { bg: 'linear-gradient(135deg, #51f08d, #df7fa5)', pattern: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.12) 4px, rgba(255,255,255,0.12) 7px)', symbol: '◇', symbolColor: '#841c9a' },
   df_nx_shigure: { bg: 'linear-gradient(135deg, #a1558b, #6a8a23)', pattern: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.35), transparent 55%)', symbol: '✺', symbolColor: '#bc377a' },
   df_nx_plasma2: { bg: 'linear-gradient(135deg, #ac3f83, #864f48)', pattern: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.35), transparent 55%)', symbol: '◆', symbolColor: '#b6c1f6' },

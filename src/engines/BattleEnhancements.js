@@ -45,7 +45,7 @@ const TYPE_NAMES = {
 /** 火影忍术查克拉性质 → 与 CHAKRA_NATURE_MAP 一致的展示用 emoji */
 const JUTSU_NATURE_EMOJI = { FIRE: '🔥', WATER: '💧', LIGHTNING: '⚡', WIND: '🌀', EARTH: '🪨' };
 
-export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
+export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, index }) => {
   const [hovered, setHovered] = useState(false);
 
   const c = TYPE_COLORS[move.t] || '#90A4AE';
@@ -179,6 +179,9 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, index }) => {
             }}>🍥{move.chakraCost}</span>
           )}
         </div>
+        {disabled && disabledReason ? (
+          <div style={{ fontSize: '10px', color: '#EF9A9A', marginTop: '2px', lineHeight: 1.2, paddingLeft: '2px' }}>{disabledReason}</div>
+        ) : null}
       </div>
 
       {/* hover 光效 */}

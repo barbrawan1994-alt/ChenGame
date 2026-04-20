@@ -1,3 +1,4 @@
+// 捕获球商店价：精灵球200 · 超级球600 · 高级球1200 · 先机球1500 · 治愈球250
 export const BALLS = {
   poke:   { id: 'poke',   name: '精灵球', rate: 1.0, price: 200, icon: '🔴', desc: '基础捕获球' },
   great:  { id: 'great',  name: '超级球', rate: 1.5, price: 600, icon: '🔵', desc: '中等概率捕获' },

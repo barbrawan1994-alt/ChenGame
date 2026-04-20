@@ -168,7 +168,7 @@ const generateUniqueModel = (name, type, colors, size) => {
   if (name.includes('泡泡鱼') || (name.includes('鱼') && name.includes('泡'))) {
     return generateBubbleFish(colors, size);
   }
-  if (name.includes('火绒狐') || (name.includes('狐') && name.includes('火'))) {
+  if (name.includes('火绒狐') || name.includes('炎绒狐') || (name.includes('狐') && name.includes('火'))) {
     return generateFireFox(colors, size);
   }
   

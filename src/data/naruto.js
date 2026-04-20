@@ -171,7 +171,7 @@ export const JUTSU_DB = [
   { id: 'nj206', name: '体术·贯手', nature: null, p: 48, pp: 19, chakraCost: 10, desc: '指突刺要害', cat: 'physical', rank: 'D' },
   { id: 'nj207', name: '幻术·枷沫', nature: null, p: 0, pp: 18, chakraCost: 12, desc: '泡沫般的精神枷锁', cat: 'status', rank: 'D', effect: { type: 'DEBUFF', stat: 's_atk', val: 1, target: 'enemy' } },
   { id: 'nj208', name: '火遁·火线', nature: 'FIRE', p: 52, pp: 17, chakraCost: 13, desc: '笔直延烧的火线', cat: 'special', rank: 'D' },
-  { id: 'nj209', name: '水遁·点滴', nature: 'WATER', p: 35, pp: 25, chakraCost: 9, desc: '连续水滴攒射', cat: 'special', rank: 'D' },
+  { id: 'nj209', name: '水遁·点滴', nature: 'WATER', p: 35, pp: 25, chakraCost: 12, desc: '连续水滴攒射', cat: 'special', rank: 'D' },
   { id: 'nj210', name: '雷遁·萤火', nature: 'LIGHTNING', p: 44, pp: 20, chakraCost: 10, desc: '微弱电火花迸溅', cat: 'special', rank: 'D' },
   { id: 'nj211', name: '風遁·轻岚', nature: 'WIND', p: 49, pp: 16, chakraCost: 14, desc: '轻柔侧风刮面', cat: 'special', rank: 'D' },
   { id: 'nj212', name: '土遁·踏土', nature: 'EARTH', p: 46, pp: 18, chakraCost: 11, desc: '踏地借力猛撞', cat: 'physical', rank: 'D' },
@@ -355,6 +355,7 @@ export const CHUNIN_EXAM_PHASES = [
   { id: 'finals', name: '淘汰赛', icon: '🏆', desc: '4轮对战淘汰赛', duration: 0 },
 ];
 
+// [已废弃] 笔试已替换为生存试炼，保留数据供未来知识问答玩法使用
 export const WRITTEN_EXAM_QUESTIONS = [
   { q: '查克拉的两种基本能量是什么？', opts: ['身体能量与精神能量', '火遁与水遁', '阴遁与阳遁', '仙术与忍术'], ans: 0 },
   { q: '影分身之术与普通分身术的最大区别？', opts: ['消耗更多查克拉', '分身有实体', '需要手印', '只有上忍能用'], ans: 1 },

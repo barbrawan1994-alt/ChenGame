@@ -295,7 +295,7 @@ const ID_TO_NATDEX = {
   536:509, 537:367, 538:5, 539:276, 540:432,
   // 火系 541-546: 火焰蜥→Salandit, 烈焰巨蜥→Salazzle, 火山幼龙→Bagon, 赤炎飞龙→Salamence, 仙人掌→Camerupt, 舞者→Oricorio
   541:757, 542:463, 543:293, 544:294, 545:280, 546:741,
-  // 水系 547-552: 泡泡鱼→Luvdisc, 深海鲸→Wailord, 珊瑚精灵→Mareanie, 海礁兽→Barbaracle, 雨滴精→Castform, 海马骑士→Kingdra
+  // 水系 547-552: 珠泡鱼→Luvdisc, 深海鲸→Wailord, 珊瑚精灵→Mareanie, 海礁兽→Barbaracle, 雨滴精→Castform, 海马骑士→Kingdra
   547:370, 548:278, 549:747, 550:689, 551:351, 552:235,
   // 草系 553-558: 种子球→Sunkern, 花丛兽→Grotle, 森之守护→Trevenant, 蘑菇→Shroomish, 仙人球→Cacnea, 莲叶蛙→Lombre
   553:210, 554:315, 555:709, 556:285, 557:331, 558:271,

@@ -12,7 +12,7 @@ const BASE_POKEDEX = [
   { id: 8, name: '激流鲨', type: 'WATER', emoji: '🦈', hp: 59, atk: 63, def: 80, evo: 9, evoLvl: 36 },
   { id: 9, name: '深海霸主', type: 'WATER', emoji: '🐋', hp: 90, atk: 95, def: 100 },
   { id: 10, name: '藤蔓怪', type: 'GRASS', emoji: '🧶', hp: 65, atk: 55, def: 100, evo: 301, evoLvl: 40 }, // 新增进化
-  { id: 11, name: '火绒狐', type: 'FIRE', emoji: '🦊', hp: 39, atk: 52, def: 43, evo: 12, evoLvl: 16 },
+  { id: 11, name: '炎绒狐', type: 'FIRE', emoji: '🦊', hp: 39, atk: 52, def: 43, evo: 12, evoLvl: 16 },
   { id: 12, name: '炎尾狼', type: 'FIRE', emoji: '🐺', hp: 58, atk: 64, def: 58, evo: 13, evoLvl: 36 },
   { id: 13, name: '炼狱魔狼', type: 'FIRE', emoji: '👹', hp: 78, atk: 104, def: 78 },
   { id: 14, name: '燃煤怪', type: 'FIRE', emoji: '⚫', hp: 40, atk: 40, def: 70, evo: 15, evoLvl: 25 },
@@ -762,7 +762,7 @@ const NEW_PETS_500 = [
 
   // 4. 飞行家族 (FLYING)
   { id: 441, name: '微风雀', type: 'FLYING', emoji: '🕊️', hp: 38, atk: 45, def: 35, evo: 442, evoLvl: 17, desc: '轻盈的小鸟，总是追着风跑。' },
-  { id: 442, name: '疾风鹰', type: 'FLYING', emoji: '🦅', hp: 60, atk: 80, def: 55, evo: 443, evoLvl: 36, desc: '翱翔于高空的猛禽，俯冲速度惊人。' },
+  { id: 442, name: '岚翼鹰', type: 'FLYING', emoji: '🦅', hp: 60, atk: 80, def: 55, evo: 443, evoLvl: 36, desc: '翱翔于高空的猛禽，俯冲速度惊人。' },
   { id: 443, name: '暴风之翼', type: 'FLYING', emoji: '🌪️', hp: 80, atk: 110, def: 75, desc: '振翅即可掀起暴风的传说飞禽。' },
 
   // 5. 花精灵家族 (FAIRY)
@@ -920,7 +920,7 @@ const PETS_600 = [
   { id: 546, name: '火之舞者', type: 'FIRE', emoji: '💃', hp: 60, atk: 75, def: 50, desc: '在火焰中翩翩起舞的精灵。' },
 
   // 水系 (6种)
-  { id: 547, name: '泡泡鱼', type: 'WATER', emoji: '🐠', hp: 40, atk: 35, def: 35, evo: 548, evoLvl: 18, desc: '吐出可爱泡泡的小鱼。' },
+  { id: 547, name: '珠泡鱼', type: 'WATER', emoji: '🐠', hp: 40, atk: 35, def: 35, evo: 548, evoLvl: 18, desc: '吐出可爱泡泡的小鱼。' },
   { id: 548, name: '深海鲸', type: 'WATER', emoji: '🐋', hp: 90, atk: 70, def: 80, desc: '潜入深海的巨大鲸鱼精灵。' },
   { id: 549, name: '珊瑚精灵', type: 'WATER', emoji: '🪸', hp: 55, atk: 45, def: 65, evo: 550, evoLvl: 25, desc: '由珊瑚构成的美丽精灵。' },
   { id: 550, name: '海礁巨兽', type: 'WATER', emoji: '🪸', hp: 80, atk: 70, def: 95, desc: '由整片珊瑚礁进化的巨兽。' },

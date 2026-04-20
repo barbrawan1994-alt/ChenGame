@@ -7,7 +7,7 @@ export const CURSED_ENERGY_CONFIG = {
   regenPerTurn: 15,
   chargeAction: 40,
   levelScaling: 0.5,
-  initialPercent: 0,
+  initialPercent: 0, // 战斗中共享能量池从0开始，每回合恢复
 };
 
 export const CURSE_GRADES = {
@@ -66,7 +66,7 @@ export const TYPE_TECHNIQUES = {
            moveType: 'WATER', effect: { spdDown: 1 }, desc: '咒力收敛的极致——吸引万物' },
   GRASS: { id: 'ct_forest_curse', name: '森罗咒法', ceCost: 30, p: 100, pp: 99, cat: 'special',
            moveType: 'GRASS', effect: { leech: 0.25 }, desc: '操纵植物吸取生命力' },
-  ELECTRIC: { id: 'ct_thunder_god', name: '御厨子', ceCost: 40, p: 125, pp: 99, cat: 'special',
+  ELECTRIC: { id: 'ct_thunder_god', name: '雷神', ceCost: 40, p: 125, pp: 99, cat: 'special',
               moveType: 'ELECTRIC', effect: { paralyze: 0.3 }, desc: '将电能转化为咒力释放' },
   ICE: { id: 'ct_frost_calm', name: '霜凪', ceCost: 35, p: 110, pp: 99, cat: 'special',
          moveType: 'ICE', effect: { freeze: 0.25 }, desc: '冻结周围一切的绝对零度' },
