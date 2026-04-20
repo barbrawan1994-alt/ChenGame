@@ -56,6 +56,7 @@ export const DEFAULT_MINE_STATE = {
 export const MINE_DEPTH_MILESTONES = [
   { depth: 5,  reward: { type: 'gold', amount: 2000 }, desc: '🏆 5层里程碑：2000金币' },
   { depth: 10, reward: { type: 'mineral', id: 'jade', amount: 1 }, desc: '🏆 10层里程碑：翡翠 x1' },
+  { depth: 15, reward: { type: 'tm', amount: 1 }, desc: '🏆 15层里程碑：随机技能书 x1（矿洞TM奖励）' },
   { depth: 20, reward: { type: 'mineral', id: 'stardust', amount: 1 }, desc: '🏆 20层里程碑：星辰碎片 x1' },
   { depth: 30, reward: { type: 'accessory', amount: 1 }, desc: '🏆 30层里程碑：随机饰品' },
   { depth: 50, reward: { type: 'legacy_stone', amount: 2 }, desc: '🏆 50层里程碑：传承石 x2' },

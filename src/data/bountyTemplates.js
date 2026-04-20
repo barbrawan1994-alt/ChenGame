@@ -94,6 +94,18 @@ export const BOUNTY_TEMPLATES = [
       return { id: `jutsu_win_${n}`, desc: `使用忍术技能赢得 ${n} 场战斗`, type: 'jutsu_win_battle', target: n, progress: 0, reward: { gold: 2500 + badgeCount * 400, tickets: 1 }, completed: false };
     }
   },
+  {
+    id: 'learn_tm', category: 'skill', icon: '📖',
+    generate: (badgeCount) => ({
+      id: `learn_tm_${badgeCount}`,
+      desc: '让精灵成功学会 1 本技能书 (TM)',
+      type: 'learn_tm',
+      target: 1,
+      progress: 0,
+      reward: { gold: 1200 + badgeCount * 200 },
+      completed: false,
+    }),
+  },
 ];
 
 export function generateDailyBounties(badgeCount) {

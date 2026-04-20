@@ -80,11 +80,11 @@ export const TMS = [
   { id: 'tm_shock',  name: '电击波',   type: 'ELECTRIC', p: 60,  pp: 15, price: 2500,  desc: '基础电系攻击，释放电流冲击', tier: 1, shopSell: true },
   { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 40,  pp: 20, price: 2500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },
   // ★★ 进阶技能书 (Tier 2) — 威力 80-95, 适合中期 (商店可售)
-  { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',     p: 90,  pp: 12, price: 8000,  desc: '进阶火系技能，稳定火焰攻击，可能灼伤', tier: 2, shopSell: true },
-  { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',      p: 90,  pp: 10, price: 8000,  desc: '进阶冰系技能，冰冻光束，概率冻结', tier: 2, shopSell: true },
-  { id: 'tm_shadow', name: '暗影球',   type: 'GHOST',    p: 80,  pp: 15, price: 7500,  desc: '进阶幽灵系技能，凝聚暗影之力', tier: 2, shopSell: true },
-  { id: 'tm_sludge', name: '污泥炸弹', type: 'POISON',   p: 90,  pp: 8,  price: 8500,  desc: '进阶毒系技能，高概率使目标中毒', tier: 2, shopSell: true },
-  { id: 'tm_psy',    name: '精神强念', type: 'PSYCHIC',  p: 90,  pp: 8,  price: 8000,  desc: '进阶超能系技能，精神力集中攻击', tier: 2, shopSell: true },
+  { id: 'tm_flame',  name: '喷射火焰', type: 'FIRE',     p: 90,  pp: 12, price: 8000,  desc: '进阶火系技能，稳定火焰攻击，可能灼伤', tier: 2 },
+  { id: 'tm_icebeam',name: '急冻光线', type: 'ICE',      p: 90,  pp: 10, price: 8000,  desc: '进阶冰系技能，冰冻光束，概率冻结', tier: 2 },
+  { id: 'tm_shadow', name: '暗影球',   type: 'GHOST',    p: 80,  pp: 15, price: 7500,  desc: '进阶幽灵系技能，凝聚暗影之力', tier: 2 },
+  { id: 'tm_sludge', name: '污泥炸弹', type: 'POISON',   p: 90,  pp: 8,  price: 8500,  desc: '进阶毒系技能，高概率使目标中毒', tier: 2 },
+  { id: 'tm_psy',    name: '精神强念', type: 'PSYCHIC',  p: 90,  pp: 8,  price: 8000,  desc: '进阶超能系技能，精神力集中攻击', tier: 2 },
   // ★★★ 高级/终极技能书 — 威力 100+, 不在商店出售, 只能通过掉落/奖励获得
   { id: 'tm_eq',     name: '地震',     type: 'GROUND',   p: 100, pp: 10, price: 12000, desc: '地面系高级技能，大地震动席卷全场', tier: 3 },
   { id: 'tm_dragon', name: '龙之波动', type: 'DRAGON',   p: 85, pp: 10,  price: 15000, desc: '龙系高级技能，龙族波动之力', tier: 3 },
@@ -98,11 +98,11 @@ export const TMS = [
   { id: 'tm_ice',    name: '暴风雪',   type: 'ICE',      p: 110, pp: 5,  price: 25000, desc: '冰系终极大招，极寒暴风雪席卷全场', tier: 4 },
   { id: 'tm_bolt',   name: '伏特攻击', type: 'ELECTRIC', p: 120, pp: 5,  price: 35000, desc: '电系究极物攻，极限电击带麻痹', tier: 4 },
   { id: 'tm_light',  name: '光子爆发', type: 'LIGHT',    p: 110, pp: 5,  price: 28000, desc: '光系终极大招，光子能量爆炸', tier: 4 },
-  { id: 'tm_cosmic1', name: '星云旋涡', type: 'COSMIC',  p: 75,  pp: 15, price: 3500,  desc: '宇宙系基础技能，卷起星云攻击', tier: 1, shopSell: true },
-  { id: 'tm_cosmic2', name: '银河射线', type: 'COSMIC',  p: 100, pp: 8,  price: 8500,  desc: '宇宙系进阶技能，贯穿银河', tier: 2, shopSell: true },
+  { id: 'tm_cosmic1', name: '星云旋涡', type: 'COSMIC',  p: 75,  pp: 15, price: 3500,  desc: '宇宙系基础技能，卷起星云攻击', tier: 1 },
+  { id: 'tm_cosmic2', name: '银河射线', type: 'COSMIC',  p: 100, pp: 8,  price: 8500,  desc: '宇宙系进阶技能，贯穿银河', tier: 2 },
   { id: 'tm_cosmic3', name: '虚空坍缩', type: 'COSMIC',  p: 135, pp: 3,  price: 28000, desc: '宇宙系终极大招，空间坍缩', tier: 4 },
   { id: 'tm_sound1',  name: '共鸣爆破', type: 'SOUND',   p: 70,  pp: 15, price: 3000,  desc: '音波系基础技能，共鸣频率爆破', tier: 1, shopSell: true },
-  { id: 'tm_sound2',  name: '死亡咏叹', type: 'SOUND',   p: 100, pp: 8,  price: 8000,  desc: '音波系进阶技能，死亡之歌', tier: 2, shopSell: true },
+  { id: 'tm_sound2',  name: '死亡咏叹', type: 'SOUND',   p: 100, pp: 8,  price: 8000,  desc: '音波系进阶技能，死亡之歌', tier: 2 },
   { id: 'tm_sound3',  name: '寂灭之音', type: 'SOUND',   p: 130, pp: 3,  price: 25000, desc: '音波系终极大招，万物寂灭', tier: 4 },
 ];
 
