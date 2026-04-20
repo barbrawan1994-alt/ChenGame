@@ -891,7 +891,63 @@ const [infinityState, setInfinityState] = useState(() => {
   // 战斗与事件
   const [showKeyHelp, setShowKeyHelp] = useState(false);
   const [autoBattle, setAutoBattle] = useState(savedData.autoBattle || false);
-  const [battle, setBattle] = useState(null);
+  const [battle, _setBattleRaw] = useState(null);
+  const setBattle = useCallback((updater) => {
+    _setBattleRaw(prev => {
+      let next = typeof updater === 'function' ? updater(prev) : updater;
+      if (!next || !next.playerCombatStates) return next;
+
+      // --- 全队共享能量池：切换精灵时自动继承能量 ---
+      if (prev && prev.playerCombatStates) {
+        const prevPI = prev.activeIdx;
+        const nextPI = next.activeIdx;
+        if (prevPI !== undefined && nextPI !== undefined && prevPI !== nextPI) {
+          const outPet = (next.playerCombatStates[prevPI]) || (prev.playerCombatStates[prevPI]);
+          const poolChk = outPet?.chakra ?? prev.sharedPlayerChakra ?? 0;
+          const poolCE  = outPet?.cursedEnergy ?? prev.sharedPlayerCE ?? 0;
+          const states = next.playerCombatStates.map(p => ({...p}));
+          if (states[nextPI]) {
+            states[nextPI] = { ...states[nextPI],
+              chakra: Math.min(states[nextPI].maxChakra || 0, poolChk),
+              cursedEnergy: Math.min(states[nextPI].maxCE || 0, poolCE),
+            };
+          }
+          next = { ...next, playerCombatStates: states };
+        }
+      }
+      if (prev && prev.enemyParty) {
+        const prevEI = prev.enemyActiveIdx;
+        const nextEI = next.enemyActiveIdx;
+        if (prevEI !== undefined && nextEI !== undefined && prevEI !== nextEI) {
+          const outEn = (next.enemyParty[prevEI]) || (prev.enemyParty[prevEI]);
+          const poolChk = outEn?.chakra ?? prev.sharedEnemyChakra ?? 0;
+          const poolCE  = outEn?.cursedEnergy ?? prev.sharedEnemyCE ?? 0;
+          const party = next.enemyParty.map(e => ({...e}));
+          if (party[nextEI]) {
+            party[nextEI] = { ...party[nextEI],
+              chakra: Math.min(party[nextEI].maxChakra || 0, poolChk),
+              cursedEnergy: Math.min(party[nextEI].maxCE || 0, poolCE),
+            };
+          }
+          next = { ...next, enemyParty: party };
+        }
+      }
+
+      // --- 从当前出战精灵同步到共享池 ---
+      const activeP = next.playerCombatStates?.[next.activeIdx];
+      if (activeP) {
+        next.sharedPlayerChakra = activeP.chakra || 0;
+        next.sharedPlayerCE = activeP.cursedEnergy || 0;
+      }
+      const activeE = next.enemyParty?.[next.enemyActiveIdx];
+      if (activeE) {
+        next.sharedEnemyChakra = activeE.chakra || 0;
+        next.sharedEnemyCE = activeE.cursedEnergy || 0;
+      }
+
+      return next;
+    });
+  }, []);
   const [battleSpeed, setBattleSpeed] = useState(savedData.battleSpeed || 1);
   const [showTypeChart, setShowTypeChart] = useState(false);
   const battleSpeedRef = useRef(1);
@@ -9799,7 +9855,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             
             volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
             turnCounters: { status: 0, stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 } },
-            cursedEnergy: Math.floor(maxCE * 0.5),
+            cursedEnergy: 0,
             maxCE,
             curseGrade: grade,
             hasDomain: canDomain,
@@ -9811,11 +9867,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             fruitTurnsLeft: 0,
             fruitUsed: false,
             fruitEffects: null,
-            chakra: Math.floor((CHAKRA_CONFIG.baseAmount + p.level * CHAKRA_CONFIG.perLevelBonus + (nRank?.chakraBonus || 0)) * 0.5),
+            chakra: 0,
             maxChakra: CHAKRA_CONFIG.baseAmount + p.level * CHAKRA_CONFIG.perLevelBonus + (nRank?.chakraBonus || 0),
-            jutsuUsesLeft: nRank?.id === 'kage' ? 5 : nRank?.id === 'jonin' ? 4 : nRank?.id === 'chunin' ? 3 : nRank?.id === 'genin' ? 2 : 0,
             jutsuCooldowns: {},
-            cursedUsesLeft: 3,
             cursedCooldowns: {},
             bijuuData: bijuuData,
             bijuuTransformed: false,
@@ -9887,6 +9941,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       battleEnemyParty[1].bondPoints = bondBase;
     }
 
+    // --- 全队共享能量池：所有精灵共享同一个查克拉/咒力上限 ---
+    const pTeamMaxChakra = Math.max(0, ...battlePlayerParty.map(p => p.maxChakra || 0));
+    const pTeamMaxCE     = Math.max(0, ...battlePlayerParty.map(p => p.maxCE || 0));
+    const eTeamMaxChakra = Math.max(0, ...battleEnemyParty.map(p => p.maxChakra || 0));
+    const eTeamMaxCE     = Math.max(0, ...battleEnemyParty.map(p => p.maxCE || 0));
+    battlePlayerParty.forEach(p => { p.maxChakra = pTeamMaxChakra; p.maxCE = pTeamMaxCE; });
+    battleEnemyParty.forEach(p =>  { p.maxChakra = eTeamMaxChakra; p.maxCE = eTeamMaxCE; });
+
     const secondPlayerIdx = battlePlayerParty.findIndex((p, i) => i !== activeIdx && p.currentHp > 0);
     const doubleActiveIdxs = isDouble ? (secondPlayerIdx >= 0 ? [activeIdx, secondPlayerIdx] : [activeIdx]) : null;
     const doubleEnemyIdxs = isDouble ? (battleEnemyParty.length > 1 ? [0, 1] : [0]) : null;
@@ -9922,6 +9984,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       enemyActiveIdxs: doubleEnemyIdxs,
       doubleSlot: 0,
       doubleActions: [],
+      sharedPlayerChakra: 0, sharedPlayerCE: 0,
+      sharedPlayerMaxChakra: pTeamMaxChakra, sharedPlayerMaxCE: pTeamMaxCE,
+      sharedEnemyChakra: 0, sharedEnemyCE: 0,
+      sharedEnemyMaxChakra: eTeamMaxChakra, sharedEnemyMaxCE: eTeamMaxCE,
       ...extraBattleData,
     });
     
@@ -10236,8 +10302,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
     const rawMoves = enemy.combatMoves || enemy.moves || [];
     const movesWithPP = rawMoves.filter(m => {
-      if (m.isCursed) return (enemy.cursedEnergy || 0) >= (m.ceCost || 0) && (enemy.cursedUsesLeft || 0) > 0 && !((enemy.cursedCooldowns?.[m.id || m.name] || 0) > 0);
-      if (m.isJutsu) return (enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0 && (enemy.jutsuUsesLeft || 0) > 0 && !((enemy.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+      if (m.isCursed) return (enemy.cursedEnergy || 0) >= (m.ceCost || 0) && !((enemy.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+      if (m.isJutsu) return (enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0 && !((enemy.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
       return m.pp > 0;
     });
     const smartMoves = movesWithPP.filter(m => {
@@ -10301,19 +10367,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const normalMoves = (tempPlayerState.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
         const allNormalPPZero = normalMoves.length === 0 || normalMoves.every(m => m.pp <= 0);
         const cursedMoves = (tempPlayerState.combatMoves || []).filter(m => m.isCursed);
-        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => (tempPlayerState.cursedEnergy || 0) < (m.ceCost || 0) || (tempPlayerState.cursedUsesLeft || 0) <= 0 || (tempPlayerState.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => (tempPlayerState.cursedEnergy || 0) < (m.ceCost || 0) || (tempPlayerState.cursedCooldowns?.[m.id || m.name] || 0) > 0);
         const jutsuMoves = (tempPlayerState.combatMoves || []).filter(m => m.isJutsu);
-        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (tempPlayerState.jutsuUsesLeft || 0) <= 0 || (tempPlayerState.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (tempPlayerState.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
         const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable;
         let useStruggle = false;
         if (!move && !allMovesExhausted) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
         if (allMovesExhausted) {
             useStruggle = true;
         } else if (move?.isCursed) {
-            if ((tempPlayerState.cursedUsesLeft || 0) <= 0) {
-                showMapToast('❌', '提示', '本场咒术次数已用尽！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
             if ((tempPlayerState.cursedCooldowns?.[move.id || move.name] || 0) > 0) {
                 showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.cursedCooldowns[move.id || move.name]} 回合冷却`, 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
@@ -10323,10 +10385,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
         } else if (move?.isJutsu) {
-            if ((tempPlayerState.jutsuUsesLeft || 0) <= 0) {
-                showMapToast('❌', '提示', '本场忍术次数已用尽！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
             if ((tempPlayerState.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0) {
                 showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.jutsuCooldowns[move.jutsuId || move.name]} 回合冷却`, 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
@@ -10582,22 +10640,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
       let tempBattle = _.cloneDeep(battle);
       tempBattle.doubleActions = playerActions;
 
+      // --- 双打共享能量池：同步所有出战精灵到共享池值 ---
+      const poolChk = tempBattle.sharedPlayerChakra || 0;
+      const poolCE  = tempBattle.sharedPlayerCE || 0;
       for (const pIdx of (tempBattle.activeIdxs || [])) {
         const ps = tempBattle.playerCombatStates?.[pIdx];
-        if (ps?.volatiles) ps.volatiles.protected = false;
+        if (ps) {
+          ps.chakra = Math.min(ps.maxChakra || 0, poolChk);
+          ps.cursedEnergy = Math.min(ps.maxCE || 0, poolCE);
+          if (ps.volatiles) ps.volatiles.protected = false;
+        }
       }
+      const ePoolChk = tempBattle.sharedEnemyChakra || 0;
+      const ePoolCE  = tempBattle.sharedEnemyCE || 0;
       for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
         const es = tempBattle.enemyParty?.[eIdx];
-        if (es?.volatiles) es.volatiles.protected = false;
+        if (es) {
+          es.chakra = Math.min(es.maxChakra || 0, ePoolChk);
+          es.cursedEnergy = Math.min(es.maxCE || 0, ePoolCE);
+          if (es.volatiles) es.volatiles.protected = false;
+        }
       }
 
       const actions = [];
 
+      let _dblPoolChk = poolChk;
+      let _dblPoolCE  = poolCE;
       playerActions.forEach((action, slotIdx) => {
         if (!action || action.moveIdx < 0) return;
         const pIdx = action.activeIdx;
         const pet = tempBattle.playerCombatStates?.[pIdx];
         if (!pet || pet.currentHp <= 0) return;
+        pet.chakra = Math.min(pet.maxChakra || 0, _dblPoolChk);
+        pet.cursedEnergy = Math.min(pet.maxCE || 0, _dblPoolCE);
         let move = (pet.combatMoves || [])[action.moveIdx];
         const allEmpty = (pet.combatMoves || []).every(m => !m.isCursed && !m.isJutsu && m.pp <= 0);
         if (allEmpty || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
@@ -10606,6 +10681,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!move) return;
         if (move.isJutsu && move.chakraCost > 0) {
           pet.chakra = Math.max(0, (pet.chakra || 0) - move.chakraCost);
+          _dblPoolChk = pet.chakra;
+        }
+        if (move.isCursed && move.ceCost > 0) {
+          _dblPoolCE = Math.max(0, _dblPoolCE - move.ceCost);
         }
         const spd = getStats(pet, pet.stages, pet.status).spd || 1;
         const eaIdxs = tempBattle.enemyActiveIdxs || [];
@@ -10829,27 +10908,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${ps.name} 的果实变身结束了！`);
           }
         }
-        if (ps && ps.currentHp > 0 && ps.maxCE > 0) {
-          const regen = CURSED_ENERGY_CONFIG.regenPerTurn || 15;
-          ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + regen);
-        }
-        // 查克拉回复
-        if (ps && ps.currentHp > 0 && (ps.maxChakra || 0) > 0) {
-          const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
-          const cRegen = CHAKRA_CONFIG.regenPerTurn + (nrk?.id === 'jonin' ? 3 : nrk?.id === 'kage' ? 5 : 0);
-          ps.chakra = Math.min(ps.maxChakra, (ps.chakra || 0) + cRegen);
-        }
         if (ps) {
           if (ps.jutsuCooldowns) Object.keys(ps.jutsuCooldowns).forEach(k => { if (ps.jutsuCooldowns[k] > 0) ps.jutsuCooldowns[k]--; });
           if (ps.cursedCooldowns) Object.keys(ps.cursedCooldowns).forEach(k => { if (ps.cursedCooldowns[k] > 0) ps.cursedCooldowns[k]--; });
         }
-        // 尾兽化持续时间
         if (ps && ps.bijuuTransformed && ps.bijuuTurnsLeft > 0) {
           ps.bijuuTurnsLeft--;
           if (ps.bijuuTurnsLeft <= 0) {
             ps.bijuuTransformed = false;
             ps.combatMoves = (ps.combatMoves || []).filter(m => !m.isBijuu);
             addLog(`${ps.name} 的尾兽化结束了！`);
+          }
+        }
+      }
+      // --- 共享能量池：每回合恢复一次(非按出战精灵数) ---
+      {
+        const firstAliveP = (tempBattle.activeIdxs || []).map(i => tempBattle.playerCombatStates?.[i]).find(p => p && p.currentHp > 0);
+        if (firstAliveP) {
+          if (firstAliveP.maxCE > 0) {
+            const ceRegen = CURSED_ENERGY_CONFIG.regenPerTurn || 15;
+            firstAliveP.cursedEnergy = Math.min(firstAliveP.maxCE, (firstAliveP.cursedEnergy || 0) + ceRegen);
+          }
+          if ((firstAliveP.maxChakra || 0) > 0) {
+            const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
+            const cRegen = CHAKRA_CONFIG.regenPerTurn + (nrk?.id === 'jonin' ? 3 : nrk?.id === 'kage' ? 5 : 0);
+            firstAliveP.chakra = Math.min(firstAliveP.maxChakra, (firstAliveP.chakra || 0) + cRegen);
+          }
+          // 同步到所有出战精灵
+          for (const pIdx of (tempBattle.activeIdxs || [])) {
+            const pp = tempBattle.playerCombatStates?.[pIdx];
+            if (pp && pp !== firstAliveP) {
+              pp.chakra = Math.min(pp.maxChakra || 0, firstAliveP.chakra || 0);
+              pp.cursedEnergy = Math.min(pp.maxCE || 0, firstAliveP.cursedEnergy || 0);
+            }
           }
         }
       }
@@ -10870,17 +10961,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${es.name} 的果实变身结束了！`);
           }
         }
-        if (es && es.currentHp > 0 && es.maxCE > 0) {
-          const regen = CURSED_ENERGY_CONFIG.regenPerTurn || 15;
-          es.cursedEnergy = Math.min(es.maxCE, (es.cursedEnergy || 0) + regen);
-        }
-        if (es && es.currentHp > 0 && (es.maxChakra || 0) > 0) {
-          const cRegen = CHAKRA_CONFIG.regenPerTurn || 10;
-          es.chakra = Math.min(es.maxChakra, (es.chakra || 0) + cRegen);
-        }
         if (es) {
           if (es.jutsuCooldowns) Object.keys(es.jutsuCooldowns).forEach(k => { if (es.jutsuCooldowns[k] > 0) es.jutsuCooldowns[k]--; });
           if (es.cursedCooldowns) Object.keys(es.cursedCooldowns).forEach(k => { if (es.cursedCooldowns[k] > 0) es.cursedCooldowns[k]--; });
+        }
+      }
+      // --- 敌方共享能量池回复(每回合一次) ---
+      {
+        const firstAliveE = (tempBattle.enemyActiveIdxs || []).map(i => tempBattle.enemyParty?.[i]).find(e => e && e.currentHp > 0);
+        if (firstAliveE) {
+          if (firstAliveE.maxCE > 0) { firstAliveE.cursedEnergy = Math.min(firstAliveE.maxCE, (firstAliveE.cursedEnergy || 0) + (CURSED_ENERGY_CONFIG.regenPerTurn || 15)); }
+          if ((firstAliveE.maxChakra || 0) > 0) { firstAliveE.chakra = Math.min(firstAliveE.maxChakra, (firstAliveE.chakra || 0) + (CHAKRA_CONFIG.regenPerTurn || 10)); }
+          for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
+            const ee = tempBattle.enemyParty?.[eIdx];
+            if (ee && ee !== firstAliveE) {
+              ee.chakra = Math.min(ee.maxChakra || 0, firstAliveE.chakra || 0);
+              ee.cursedEnergy = Math.min(ee.maxCE || 0, firstAliveE.cursedEnergy || 0);
+            }
+          }
         }
       }
 
@@ -10974,7 +11072,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   // ==========================================
-  // 咒术系统 - 蓄力 (消耗一回合, 回复咒力)
+  // 蓄力 (消耗一回合, 回复咒力+查克拉)
   // ==========================================
   const executeChargeCE = async () => {
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2')) return;
@@ -10982,15 +11080,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const currentSlot = battle.doubleSlot || 0;
       const currentIdx = battle.activeIdxs?.[currentSlot];
       if (currentIdx === undefined) return;
-      const chargeAmt = CURSED_ENERGY_CONFIG.chargeAction;
+      const ceAmt = CURSED_ENERGY_CONFIG.chargeAction;
+      const ckAmt = CHAKRA_CONFIG.chargeAmount;
       const chargeAction = { moveIdx: -2, activeIdx: currentIdx, isChargeCE: true };
       const newActions = [...(battle.doubleActions || [])];
       newActions[currentSlot] = chargeAction;
       setBattle(prev => {
         const next = JSON.parse(JSON.stringify(prev));
         const ps = next.playerCombatStates[currentIdx];
-        if (ps) ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + chargeAmt);
-        addLog(`🔮 ${ps?.name} 蓄积咒力! (+${chargeAmt} CE)`);
+        if (ps) {
+          const parts = [];
+          if (ps.maxCE > 0) { ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + ceAmt); parts.push(`+${ceAmt}咒力`); }
+          if ((ps.maxChakra || 0) > 0) { ps.chakra = Math.min(ps.maxChakra, (ps.chakra || 0) + ckAmt); parts.push(`+${ckAmt}查克拉`); }
+          addLog(`⚡ ${ps.name} 集中精神蓄力! (${parts.join(', ')})`);
+        }
         if (currentSlot === 0 && next.activeIdxs?.length > 1) {
           const secondIdx = next.activeIdxs[1];
           const secondPet = secondIdx >= 0 ? next.playerCombatStates[secondIdx] : null;
@@ -11008,9 +11111,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try {
         let tempBattle = _.cloneDeep(battle);
         const player = tempBattle.playerCombatStates[battle.activeIdx];
-        const chargeAmt = CURSED_ENERGY_CONFIG.chargeAction;
-        player.cursedEnergy = Math.min(player.maxCE, (player.cursedEnergy || 0) + chargeAmt);
-        addLog(`🔮 ${player.name} 蓄积咒力! (+${chargeAmt} CE)`);
+        const parts = [];
+        if (player.maxCE > 0) { player.cursedEnergy = Math.min(player.maxCE, (player.cursedEnergy || 0) + CURSED_ENERGY_CONFIG.chargeAction); parts.push(`+${CURSED_ENERGY_CONFIG.chargeAction}咒力`); }
+        if ((player.maxChakra || 0) > 0) { player.chakra = Math.min(player.maxChakra, (player.chakra || 0) + CHAKRA_CONFIG.chargeAmount); parts.push(`+${CHAKRA_CONFIG.chargeAmount}查克拉`); }
+        addLog(`⚡ ${player.name} 集中精神蓄力! (${parts.join(', ')})`);
         setAnimEffect({ type: 'BUFF', target: 'player' });
         await wait(800);
         setAnimEffect(null);
@@ -11946,13 +12050,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
 
-    // --- AI: 蓄力决策 (CE不足30%且无其他行动时) ---
-    if (enemy.maxCE > 0 && (enemy.cursedEnergy || 0) < enemy.maxCE * 0.3 && !enemy.activeVow) {
-      const chargeChance = isHardBattle ? 0.2 : 0.05;
+    // --- AI: 蓄力决策 (CE或查克拉不足时) ---
+    const needCECharge = enemy.maxCE > 0 && (enemy.cursedEnergy || 0) < enemy.maxCE * 0.3;
+    const needChakraCharge = (enemy.maxChakra || 0) > 0 && (enemy.chakra || 0) < (enemy.maxChakra || 0) * 0.3;
+    if ((needCECharge || needChakraCharge) && !enemy.activeVow) {
+      const chargeChance = isHardBattle ? 0.25 : 0.08;
       if (Math.random() < chargeChance) {
-        const gain = Math.floor(enemy.maxCE * 0.25);
-        enemy.cursedEnergy = Math.min(enemy.maxCE, (enemy.cursedEnergy || 0) + gain);
-        addLog(`🔮 ${enemy.name} 集中精神蓄积咒力! (+${gain}CE)`);
+        const parts = [];
+        if (enemy.maxCE > 0) {
+          const ceGain = CURSED_ENERGY_CONFIG.chargeAction;
+          enemy.cursedEnergy = Math.min(enemy.maxCE, (enemy.cursedEnergy || 0) + ceGain);
+          parts.push(`+${ceGain}咒力`);
+        }
+        if ((enemy.maxChakra || 0) > 0) {
+          const ckGain = CHAKRA_CONFIG.chargeAmount;
+          enemy.chakra = Math.min(enemy.maxChakra, (enemy.chakra || 0) + ckGain);
+          parts.push(`+${ckGain}查克拉`);
+        }
+        addLog(`⚡ ${enemy.name} 集中精神蓄力! (${parts.join(', ')})`);
         setAnimEffect({ type: 'CHARGE_CE', target: 'enemy' });
         await wait(1000);
         setAnimEffect(null);
@@ -12499,10 +12614,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     if (move.isCursed && move.ceCost) {
-        if ((atkState.cursedUsesLeft || 0) <= 0) {
-            addLog(`${attacker.name} 本场咒术次数已用尽！`);
-            return false;
-        }
         const cCd = atkState.cursedCooldowns?.[move.id || move.name] || 0;
         if (cCd > 0) {
             addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${cCd}回合)！`);
@@ -12513,15 +12624,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return false;
         }
         atkState.cursedEnergy = (atkState.cursedEnergy || 0) - move.ceCost;
-        atkState.cursedUsesLeft = Math.max(0, (atkState.cursedUsesLeft || 0) - 1);
         if (!atkState.cursedCooldowns) atkState.cursedCooldowns = {};
         atkState.cursedCooldowns[move.id || move.name] = 2;
-        addLog(`🔮 消耗 ${move.ceCost} 咒力 (咒术${atkState.cursedUsesLeft}次剩余)`);
+        addLog(`🔮 消耗 ${move.ceCost} 咒力 (剩余${atkState.cursedEnergy})`);
     } else if (move.isJutsu && move.chakraCost > 0) {
-        if ((atkState.jutsuUsesLeft || 0) <= 0) {
-            addLog(`${attacker.name} 本场忍术次数已用尽！`);
-            return false;
-        }
         const jCd = atkState.jutsuCooldowns?.[move.jutsuId || move.name] || 0;
         if (jCd > 0) {
             addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${jCd}回合)！`);
@@ -12537,10 +12643,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         atkState.chakra = Math.max(0, (atkState.chakra || 0) - move.chakraCost);
         if (move.pp > 0) move.pp = Math.max(0, move.pp - 1);
-        atkState.jutsuUsesLeft = Math.max(0, (atkState.jutsuUsesLeft || 0) - 1);
         if (!atkState.jutsuCooldowns) atkState.jutsuCooldowns = {};
         atkState.jutsuCooldowns[move.jutsuId || move.name] = 2;
-        addLog(`🍥 消耗 ${move.chakraCost} 查克拉 (忍术${atkState.jutsuUsesLeft}次剩余)`);
+        addLog(`🍥 消耗 ${move.chakraCost} 查克拉 (剩余${atkState.chakra})`);
     } else if (move.pp > 0) {
         let ppCost = 1;
         if (defState.trait === 'pressure') ppCost = 2; 
@@ -23561,7 +23666,7 @@ const renderMenu = () => {
                                 <div style={{flex:1, height:'4px', background:'#333', borderRadius:'2px', overflow:'hidden'}}>
                                     <div style={{width:`${Math.min(100, ((p.cursedEnergy||0)/Math.max(1,p.maxCE))*100)}%`, height:'100%', background:'linear-gradient(90deg, #7B1FA2, #E040FB)', transition:'width 0.3s'}}></div>
                                 </div>
-                                <span style={{fontSize:'9px', color:'#CE93D8'}}>{p.cursedEnergy||0}/{p.maxCE}</span>
+                                <span style={{fontSize:'9px', color:'#CE93D8'}}>{p.cursedEnergy||0}/{p.maxCE}<span style={{fontSize:'7px',color:'#9C27B0',marginLeft:'2px'}}>队</span></span>
                             </div>
                         )}
                         {(p.maxChakra || 0) > 0 && (
@@ -23570,7 +23675,7 @@ const renderMenu = () => {
                                 <div style={{flex:1, height:'6px', background:'rgba(255,111,0,0.15)', borderRadius:'3px', overflow:'hidden', border:'1px solid rgba(255,111,0,0.2)'}}>
                                     <div style={{width:`${Math.min(100, ((p.chakra||0)/Math.max(1,p.maxChakra))*100)}%`, height:'100%', background:'linear-gradient(90deg, #E65100, #FF6F00, #FFB74D)', transition:'width 0.3s', borderRadius:'3px', boxShadow:'0 0 4px rgba(255,111,0,0.4)'}}></div>
                                 </div>
-                                <span style={{fontSize:'9px', color:'#FFB74D', fontWeight:'700'}}>{p.chakra||0}/{p.maxChakra}</span>
+                                <span style={{fontSize:'9px', color:'#FFB74D', fontWeight:'700'}}>{p.chakra||0}/{p.maxChakra}<span style={{fontSize:'7px',color:'#E65100',marginLeft:'2px'}}>队</span></span>
                                 {p.bijuuTransformed && <span style={{fontSize:'8px', color:'#FF5722', fontWeight:'bold', animation:'shiny-flash 1.5s infinite'}}>🦊尾兽化</span>}
                             </div>
                         )}
@@ -23777,7 +23882,7 @@ const renderMenu = () => {
                                                 executeTurn(i);
                                             }
                                         }}
-                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedUsesLeft || 0) <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuUsesLeft || 0) <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
+                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
                                         index={i}
                                     />
                                 ); });
@@ -23797,7 +23902,7 @@ const renderMenu = () => {
                               const hint = !turnOk && !hpOk ? `回合≥3(还需${3-battle.turnCount}回合) 且 HP<50%` : !turnOk ? `回合≥3(还需${3-battle.turnCount}回合)` : 'HP<50%';
                               return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)} disabled={!canUse}>变身{!canUse ? `(${hint})` : ''}</button>;
                             })() : null; })()}
-                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.maxCE > 0 ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
+                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return (cp.maxCE > 0 || (cp.maxChakra || 0) > 0) ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.hasDomain && !cp.usedDomain && !battle.activeDomain ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(cp.cursedEnergy||0) < (DOMAINS[cp.domainType]?.ceCost||999)}>领域</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.maxCE > 0 && !cp.activeVow ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.bijuuData && !cp.bijuuUsed && !cp.bijuuTransformed && !cp.fruitTransformed ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#FF6F00,#FF8F00)', opacity: (cp.chakra||0) >= Math.floor((cp.maxChakra||1)*BIJUU_TRANSFORM_COST_PCT) ? 1 : 0.5}} onClick={executeBijuuTransform} disabled={(cp.chakra||0) < Math.floor((cp.maxChakra||1)*BIJUU_TRANSFORM_COST_PCT)}>🦊尾兽化</button> : null; })()}

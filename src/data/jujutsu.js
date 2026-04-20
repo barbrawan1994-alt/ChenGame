@@ -7,7 +7,7 @@ export const CURSED_ENERGY_CONFIG = {
   regenPerTurn: 15,
   chargeAction: 40,
   levelScaling: 0.5,
-  initialPercent: 0.3,
+  initialPercent: 0,
 };
 
 export const CURSE_GRADES = {
