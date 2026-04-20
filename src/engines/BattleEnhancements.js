@@ -113,6 +113,9 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
             flex:1, minWidth:0,
             textShadow:'0 1px 2px rgba(0,0,0,0.3)',
           }}>{move.name}</span>
+          {move.effectivenessHint ? (
+            <span style={{ fontSize: '12px', flexShrink: 0, lineHeight: 1 }} title="相对当前目标的属性效果">{move.effectivenessHint}</span>
+          ) : null}
           {(move.isCursed || move.isExtra || move.isJutsu) && (
             <span style={{
               fontSize:'8px', padding:'1px 4px', borderRadius:'3px', flexShrink:0,

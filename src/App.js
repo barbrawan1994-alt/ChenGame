@@ -331,8 +331,8 @@ export default function RPG(props) {
   // 核心资产 (金币/背包/队伍)
   const [gold, setGold] = useState(savedData.gold !== undefined ? savedData.gold : 2000);
   const migrateCurseTalent = (pets) => (pets || []).map(p => p.curseTalent != null ? p : { ...p, curseTalent: generateCurseTalent() });
-  const [party, setParty] = useState(migrateCurseTalent(savedData.party));
-  const [box, setBox] = useState(migrateCurseTalent(savedData.box));
+  const [party, setParty] = useState(migrateCurseTalent(Array.isArray(savedData.party) ? savedData.party : []));
+  const [box, setBox] = useState(migrateCurseTalent(Array.isArray(savedData.box) ? savedData.box : []));
   const [accessories, setAccessories] = useState(savedData.accessories || []);
   
   // 背包初始化 (防止旧存档缺字段导致报错)
@@ -856,7 +856,8 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
    useEffect(() => () => { if (mapToastTimer.current) clearTimeout(mapToastTimer.current); }, []);
    const showMapToast = (icon, title, desc, duration = 2500, opts) => {
      if (mapToastTimer.current) clearTimeout(mapToastTimer.current);
-     setMapToast({ icon, title, desc, key: Date.now(), ...(opts && typeof opts === 'object' ? opts : {}) });
+     const extra = opts && typeof opts === 'object' ? opts : {};
+     setMapToast({ icon, title, desc, key: Date.now(), ...extra });
      mapToastTimer.current = setTimeout(() => setMapToast(null), duration);
    };
   // ✨ 新增：全局键盘监听 (空格键关闭弹窗/返回)
@@ -1027,6 +1028,14 @@ const [infinityState, setInfinityState] = useState(() => {
   const [showTypeChart, setShowTypeChart] = useState(false);
   const battleSpeedRef = useRef(1);
   useEffect(() => { battleSpeedRef.current = battleSpeed; }, [battleSpeed]);
+  const [menuLeadSpriteErr, setMenuLeadSpriteErr] = useState(false);
+  useEffect(() => { setMenuLeadSpriteErr(false); }, [party[0]?.uid, party[0]?.id]);
+  const inventoryRef = useRef(inventory);
+  useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
+  const [postBattleQuickHeal, setPostBattleQuickHeal] = useState(false);
+  const [catchInspectPet, setCatchInspectPet] = useState(null);
+  const [bagItemSort, setBagItemSort] = useState('count');
+  const [autoSaveIntervalMin, setAutoSaveIntervalMin] = useState(savedData.autoSaveIntervalMin ?? 1);
   useEffect(() => {
     if (!autoBattle || !battle || battle.isPvP) return;
     const isInputPhase = battle.phase === 'input' || battle.phase === 'double_input_2';
@@ -2069,7 +2078,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
             {/* 列表区域 */}
             <div style={{flex: 1, overflowY: 'auto', padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '15px'}}>
-                {viewSectTeam.team.map((pet, i) => {
+                {(viewSectTeam.team || []).map((pet, i) => {
                     const stats = getStats(pet);
                     const isAce = i === 0;
                     
@@ -2117,7 +2126,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                             <div style={{background:'rgba(0,0,0,0.3)', borderRadius:'6px', padding:'6px'}}>
                                 <div style={{fontSize:'10px', color:'#666', marginBottom:'4px'}}>携带技能</div>
                                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px'}}>
-                                    {pet.moves.map((m, mi) => (
+                                    {(pet.moves || []).map((m, mi) => (
                                         <div key={mi} style={{fontSize:'10px', color: TYPES[m.t]?.color}}>{m.name}</div>
                                     ))}
                                 </div>
@@ -2941,8 +2950,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const buildSavePayload = () => {
     const trimPet = (p) => { const { combatMoves, stages, isProtected, lastMoveUsed, flinched, ...clean } = (p || {}); return clean; }; // clean 保留 equippedBerry（非解构字段）及饰品等持久字段
-    const cleanParty = party.map(trimPet);
-    const cleanBox = box.map(trimPet);
+    const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
+    const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
     return {
     saveVersion: 21,
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles,
@@ -2958,6 +2967,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
     trainingState, worldBossState, raceState, narutoState,
     savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
+    autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
   };};
 
@@ -2993,6 +3003,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   useEffect(() => {
     const onBeforeUnload = () => { if (!isResettingRef.current) persistSaveRef.current(true); };
     window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+  useEffect(() => {
+    const ms = Math.max(15000, (autoSaveIntervalMin || 1) * 60000);
     const autoSaveTimer = setInterval(() => {
       if (!isResettingRef.current && partyLenRef.current > 0) {
         persistSaveRef.current(true);
@@ -3000,14 +3014,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (autoSaveMsgTimerRef.current) clearTimeout(autoSaveMsgTimerRef.current);
         autoSaveMsgTimerRef.current = setTimeout(() => setAutoSaveMsg(''), 2000);
       }
-    }, 60000);
-    return () => { window.removeEventListener('beforeunload', onBeforeUnload); clearInterval(autoSaveTimer); if (autoSaveMsgTimerRef.current) clearTimeout(autoSaveMsgTimerRef.current); };
-  }, []);
+    }, ms);
+    return () => { clearInterval(autoSaveTimer); if (autoSaveMsgTimerRef.current) clearTimeout(autoSaveMsgTimerRef.current); };
+  }, [autoSaveIntervalMin]);
   // ==========================================
   // 五大新玩法状态
   // ==========================================
   const [arenaState, setArenaState] = useState(() => ({ ...DEFAULT_ARENA_STATE, ...(savedData.arenaState || {}) }));
-  const [expeditions, setExpeditions] = useState(() => ({ ...DEFAULT_EXPEDITIONS, ...(savedData.expeditions || {}) }));
+  const [expeditions, setExpeditions] = useState(() => {
+    const ex = savedData.expeditions || {};
+    return { ...DEFAULT_EXPEDITIONS, ...ex, teams: Array.isArray(ex.teams) ? ex.teams : [] };
+  });
   const [mineState, setMineState] = useState(() => ({ ...DEFAULT_MINE_STATE, ...(savedData.mineState || {}) }));
   const [bountyBoard, setBountyBoard] = useState(() => ({ ...DEFAULT_BOUNTY_BOARD, ...(savedData.bountyBoard || {}) }));
   const [luckyWheel, setLuckyWheel] = useState(() => ({ lastFreeDate: '', paidSpins: 0, totalSpins: 0, dailySpinDate: '', dailySpinCount: 0, ...(savedData.luckyWheel || {}) }));
@@ -9303,8 +9320,16 @@ const useGrowthItem = (petIndex, itemId) => {
 
         const avgLv = Math.round(party.filter(p => p.currentHp > 0).reduce((s,p) => s + p.level, 0) / Math.max(1, party.filter(p => p.currentHp > 0).length));
         const recLv = mapInfo.gymLvl || mapInfo.lvl?.[1] || '?';
-        showMapToast('⚔️', `${mapInfo.name}道馆`, `道馆挑战开始！推荐Lv.${recLv} (你的队伍Lv.${avgLv})`, 2000);
-        startBattle(mapInfo, 'gym');
+        const leaderDex = mapInfo.gymLeader ? POKEDEX.find(p => p.id === mapInfo.gymLeader) : null;
+        const aceLv = mapInfo.gymLvl || mapInfo.lvl?.[1] || 35;
+        const poolPreview = (mapInfo.pool || []).slice(0, 3).map(id => POKEDEX.find(p => p.id === id)?.icon || '🐾').join(' ');
+        const gymMsg = `推荐等级 Lv.${recLv} · 你的队伍平均 Lv.${avgLv}\n馆主王牌：${leaderDex ? `${leaderDex.icon || '🐾'} ${leaderDex.name}` : '???'} （约 Lv.${aceLv}）${poolPreview ? `\n本地区可遇精灵：${poolPreview}` : ''}`;
+        setConfirmModal({
+          title: `⚔️ ${mapInfo.name}道馆`,
+          msg: gymMsg,
+          confirmText: '开始挑战',
+          onOk: () => { startBattle(mapInfo, 'gym'); },
+        });
         return;
       }
 
@@ -16108,6 +16133,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       const winTitle = battle.dungeonId ? `副本通关！` : '战斗胜利！';
       showMapToast('🏆', winTitle, summaryParts.join(' · '), extraDrops.length > 0 ? 4500 : 3500, { turnCount: battle?.turnCount });
+      const invSnap = inventoryRef.current || {};
+      const med = invSnap.meds || {};
+      const potCount = (med.potion || 0) + (med.super_potion || 0) + (med.hyper_potion || 0);
+      const needsHeal = partyToSave.some(pp => pp && getStats(pp).maxHp > (pp.currentHp || 0));
+      setPostBattleQuickHeal(potCount > 0 && needsHeal);
       if (!isDialogVisible) setView('grid_map');
       setBattle(null);
       }
@@ -16399,7 +16429,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
       await wait(1000);
       const newDex = !caughtDex.includes(newPet.id);
       const location = party.length < 6 ? '已加入队伍' : '已发送到电脑';
-      showMapToast('🎊', `捕获成功！`, `${newPet.isShiny ? '✨闪光！' : ''}${newPet.name} Lv.${newPet.level} · ${location}${newDex ? ' · 📖图鉴+1' : ''}`, 3500);
+      showMapToast('🎊', `捕获成功！`, `${newPet.isShiny ? '✨闪光！' : ''}${newPet.name} Lv.${newPet.level} · ${location}${newDex ? ' · 📖图鉴+1' : ''}`, 4500, {
+        actionLabel: '查看',
+        onAction: () => {
+          if (mapToastTimer.current) clearTimeout(mapToastTimer.current);
+          setMapToast(null);
+          setCatchInspectPet(null);
+          setViewStatPet(newPet);
+        },
+      });
+      setCatchInspectPet(newPet);
       setBattle(null);
       setView('grid_map');
 
@@ -18447,9 +18486,9 @@ const renderMenu = () => {
   const bijuuCount = (narutoState?.bijuuCollected || []).length;
   const jutsuCollCount = (narutoState?.jutsuCollection || []).length;
 
-  const leadPet = hasSave && team?.length > 0 ? team[0] : null;
+  const leadPet = hasSave && party?.length > 0 ? party[0] : null;
   const leadPetDex = leadPet ? POKEDEX.find(p => p.id === leadPet.id) : null;
-  const totalPower = hasSave && team ? team.reduce((s, p) => s + (p.level || 1) * 10 + (p.attack || 50) + (p.spAttack || 50), 0) : 0;
+  const totalPower = hasSave && party ? party.reduce((s, p) => s + (p.level || 1) * 10 + (p.attack || 50) + (p.spAttack || 50), 0) : 0;
   const dailyTasksDone = hasSave ? Math.min((narutoState?.dailyMissions || 0), 5) : 0;
 
   return (
@@ -18529,10 +18568,10 @@ const renderMenu = () => {
               border:'1px solid rgba(255,100,0,0.12)', display:'flex', alignItems:'center', justifyContent:'center',
               boxShadow:'0 4px 20px rgba(255,100,0,0.08), inset 0 0 20px rgba(255,100,0,0.03)',
             }}>
-              {leadPetDex?.sprite ? (
-                <img src={leadPetDex.sprite} alt="" style={{width:'48px', height:'48px', imageRendering:'pixelated'}} onError={e => { e.target.style.display='none'; }} />
+              {leadPetDex?.sprite && !menuLeadSpriteErr ? (
+                <img src={leadPetDex.sprite} alt="" style={{width:'48px', height:'48px', imageRendering:'pixelated'}} onError={() => setMenuLeadSpriteErr(true)} />
               ) : (
-                <span style={{fontSize:'32px'}}>{leadPetDex?.icon || '🐾'}</span>
+                <span style={{fontSize:'32px'}} title={leadPetDex?.name || ''}>{leadPet.emoji || leadPetDex?.icon || '🐾'}</span>
               )}
             </div>
             <div style={{flex:1, minWidth:0}}>
@@ -18547,12 +18586,13 @@ const renderMenu = () => {
 
         {/* Quick Status Cards - glassmorphism */}
         {hasSave && (
-          <div style={{padding:'0 20px 14px', display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px'}}>
+          <div style={{padding:'0 20px 14px', display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(72px, 1fr))', gap:'8px'}}>
             {[
               {icon:'⚔️', label:'战力', value: totalPower, color:'#FF6F00'},
               {icon:'📋', label:'任务', value: dailyTasksDone + '/5', color:'#4CAF50'},
               {icon:'🍥', label:'忍阶', value: ninjaRank?.name || '学员', color:'#2196F3'},
               {icon:'🏰', label:'领地', value: myTerrCountMenu, color: playerFaction ? fc.primary : '#9C27B0'},
+              {icon:'💎', label:'累计金币', value: (achStats.totalGoldEarned ?? 0).toLocaleString(), color:'#FFD54F'},
             ].map((card, i) => (
               <div key={i} style={{
                 padding:'10px 6px', borderRadius:'12px', textAlign:'center',
@@ -18680,6 +18720,7 @@ const renderMenu = () => {
                 { key:'general_dex', label:'名将', sub:collectedGenCount+'/200', emoji:'📜' },
                 { key:'achievements', label:'成就', sub:Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)+'%', emoji:'🏆' },
                 { key:'guide', label:'攻略', sub:'说明', emoji:'📖' },
+                { key:'settings', label:'设置', sub:'选项', emoji:'⚙️' },
                 { key:null, label:'重置', sub:'存档', emoji:'🔄', action: resetGame },
               ].map(btn => (
                 <button key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }} style={{
@@ -19131,11 +19172,27 @@ const renderMenu = () => {
             const themeClass = `theme-bg-${m.type}`;
             const isContestedActive = m.isContested;
             const contestOwner = isContestedActive ? kingdomWar.territories?.[m.id]?.owner : null;
+            const lvLo = m.lvl?.[0] ?? 1;
+            const lvHi = m.lvl?.[1] ?? lvLo;
+            const diffAvg = (lvLo + lvHi) / 2;
+            const diffTier = diffAvg < 25 ? 0 : diffAvg < 45 ? 1 : diffAvg < 70 ? 2 : 3;
+            const diffInset = ['inset 0 0 50px rgba(34,197,94,0.2)', 'inset 0 0 50px rgba(234,179,8,0.22)', 'inset 0 0 50px rgba(249,115,22,0.24)', 'inset 0 0 55px rgba(239,68,68,0.28)'][diffTier];
+
+            const diffBgGrad = [
+              'linear-gradient(160deg, rgba(34,197,94,0.22) 0%, rgba(34,197,94,0.06) 42%, transparent 72%)',
+              'linear-gradient(160deg, rgba(234,179,8,0.24) 0%, rgba(234,179,8,0.07) 42%, transparent 72%)',
+              'linear-gradient(160deg, rgba(249,115,22,0.26) 0%, rgba(249,115,22,0.08) 42%, transparent 72%)',
+              'linear-gradient(160deg, rgba(239,68,68,0.28) 0%, rgba(239,68,68,0.09) 42%, transparent 72%)',
+            ][diffTier];
 
             return (
               <div key={m.id} className={`map-card-pro ${themeClass}`} style={{
                 ...(isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined),
-                ...(isContestedActive && !isLocked ? {boxShadow: `0 0 12px ${contestOwner && contestOwner !== 'neutral' ? FACTIONS[contestOwner]?.color+'60' : 'rgba(255,200,0,0.3)'}`, border: '1px solid rgba(255,200,0,0.3)'} : {}),
+                ...(isContestedActive && !isLocked ? { border: '1px solid rgba(255,200,0,0.3)'} : {}),
+                backgroundImage: diffBgGrad,
+                boxShadow: isContestedActive && !isLocked
+                  ? `0 0 12px ${contestOwner && contestOwner !== 'neutral' ? FACTIONS[contestOwner]?.color+'60' : 'rgba(255,200,0,0.3)'}, ${diffInset}`
+                  : diffInset,
               }} onClick={() => { if (isLocked) showMapToast('🔒', '区域锁定', lockReason, 2000); else enterMap(m.id); }}>
                 {isContestedActive && !isLocked && (
                   <div style={{position:'absolute', inset:0, borderRadius:'inherit', overflow:'hidden', pointerEvents:'none', zIndex:1}}>
@@ -19158,12 +19215,12 @@ const renderMenu = () => {
                         <div style={{marginTop:'8px', display:'flex', gap:'6px', flexWrap:'wrap'}}>
                            {(() => {
                              const pLv = party[0]?.level || 1;
-                             const mapMid = (m.lvl[0] + m.lvl[1]) / 2;
+                             const mapMid = (lvLo + lvHi) / 2;
                              const diff = pLv - mapMid;
                              const diffColor = diff < -15 ? '#ef4444' : diff < -5 ? '#f59e0b' : diff < 10 ? '#22c55e' : '#60a5fa';
                              const diffLabel = diff < -15 ? '危险' : diff < -5 ? '挑战' : diff < 10 ? '适中' : '轻松';
                              return <span style={{fontSize:'11px', background:`${diffColor}33`, backdropFilter:'blur(4px)', padding:'3px 10px', borderRadius:'12px', color:diffColor, fontWeight:'600', border:`1px solid ${diffColor}44`}}>
-                               Lv.{m.lvl[0]}-{m.lvl[1]} · {diffLabel}
+                               Lv.{lvLo}-{lvHi} · {diffLabel}
                              </span>;
                            })()}
                            <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
@@ -20595,7 +20652,7 @@ const renderMenu = () => {
             </div>
           </div>
           <div style={{display:'flex', gap:'6px', marginTop:'10px'}}>
-            {[{icon:'🎖️', val:badges.length, label:'徽章'}, {icon:'📖', val:caughtDex.length, label:'图鉴'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}].map((s,i) => (
+            {[{icon:'🎖️', val:badges.length, label:'徽章'}, {icon:'📖', val:caughtDex.length, label:'图鉴'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}, {icon:'💎', val:(achStats.totalGoldEarned ?? 0) >= 100000 ? Math.floor((achStats.totalGoldEarned ?? 0)/1000)+'k' : (achStats.totalGoldEarned ?? 0), label:'累计金'}].map((s,i) => (
               <div key={i} style={{flex:1, textAlign:'center', padding:'6px 4px', background:'rgba(0,0,0,0.02)', borderRadius:'8px'}}>
                 <div style={{fontSize:'14px', fontWeight:'800', color:'#2c2417'}}>{s.icon} {s.val}</div>
                 <div style={{fontSize:'9px', color:'#999', marginTop:'1px'}}>{s.label}</div>
@@ -20716,6 +20773,15 @@ const renderMenu = () => {
               <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
               {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
+            {encounters.length > 0 && (
+              <div style={{marginTop:'8px', display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
+                <span style={{fontSize:'9px', color:'#888', fontWeight:'600'}}>可遇到</span>
+                {encounters.slice(0, 3).map(pid => {
+                  const pk = POKEDEX.find(p => p.id === pid);
+                  return <span key={pid} style={{fontSize:'20px', lineHeight:1}} title={pk?.name || ''}>{pk ? renderAvatar(pk) : '❓'}</span>;
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -20937,6 +21003,19 @@ const renderMenu = () => {
                     </div>
                     <button onClick={() => setViewStatPet(null)} style={{marginLeft:'auto', border:'none', background:'transparent', fontSize:'24px', color:'#999'}}>×</button>
                 </div>
+                {(() => {
+                  const dexE = POKEDEX.find(p => p.id === viewStatPet.id);
+                  const nextId = dexE?.evo;
+                  const nextDex = nextId ? POKEDEX.find(p => p.id === nextId) : null;
+                  if (!nextDex || viewStatPet.isEvolved) return null;
+                  const needLv = dexE?.evoLvl || 36;
+                  return (
+                    <div style={{ margin: '0 20px 12px', padding: '10px 12px', background: '#E3F2FD', borderRadius: '10px', fontSize: '11px', color: '#1565C0', border: '1px solid #BBDEFB' }}>
+                      <span style={{ fontWeight: '800' }}>⬆ 下一进化：</span> {nextDex.icon || '🐾'} {nextDex.name} · 需 Lv.{needLv}+
+                      {(viewStatPet.level || 0) < needLv ? `（还差 ${needLv - (viewStatPet.level || 0)} 级）` : '（已满足等级，可进化）'}
+                    </div>
+                  );
+                })()}
 
                 {/* 1.5 属性克制信息 */}
                 <div style={{margin:'0 20px 10px', background:'#f9f9f9', borderRadius:'10px', padding:'10px 12px', border:'1px solid #eee'}}>
@@ -21260,11 +21339,23 @@ const renderMenu = () => {
                             </span>
                         </div>
                     </div>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <span style={{fontSize:'10px', color:'#999'}}>亲密</span>
-                        <span style={{fontSize:'12px', fontWeight:'bold', color:'#F44336', display:'flex', alignItems:'center', gap:'4px'}}>
-                            ❤️ {viewStatPet.intimacy || 0}
-                        </span>
+                    <div style={{display:'flex', flexDirection:'column', gap:'6px', width:'100%'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                          <span style={{fontSize:'10px', color:'#999'}}>亲密</span>
+                          <span style={{fontSize:'10px', fontWeight:'bold', color:'#F44336'}}>{viewStatPet.intimacy || 0}/255</span>
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'8px', width:'100%'}} title="亲密度">
+                          <span style={{fontSize:'18px', lineHeight:1, filter:'drop-shadow(0 1px 2px rgba(233,30,99,0.35))'}}>❤️</span>
+                          <div style={{flex:1, height:'12px', borderRadius:'10px', background:'#ffebee', overflow:'hidden', border:'1px solid #ffcdd2', position:'relative'}}>
+                            <div style={{
+                              width:`${Math.min(100, ((viewStatPet.intimacy || 0) / 255) * 100)}%`,
+                              height:'100%',
+                              background:'linear-gradient(90deg,#ff8a80 0%,#e91e63 45%,#c2185b 100%)',
+                              transition:'width 0.35s',
+                              boxShadow:'inset 0 -2px 0 rgba(255,255,255,0.25)',
+                            }} />
+                          </div>
+                        </div>
                     </div>
                     {(() => {
                         const bs = viewStatPet.customBaseStats || POKEDEX.find(pd => pd.id === viewStatPet.id) || {};
@@ -22490,13 +22581,19 @@ const renderMenu = () => {
                  </div>
             </div>
 
-            {/* 右侧：坐标显示 */}
-            <div style={{
-                width: '80px', textAlign:'right', fontSize:'12px', 
+            {/* 右侧：坐标 + 设置 */}
+            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+              <button type="button" onClick={() => setView('settings')} title="游戏设置" style={{
+                fontSize:'14px', lineHeight:1, padding:'4px 8px', borderRadius:'8px',
+                border:'1px solid rgba(0,0,0,0.08)', background:'rgba(255,255,255,0.75)', cursor:'pointer',
+              }}>⚙️</button>
+              <div style={{
+                textAlign:'right', fontSize:'12px',
                 color:'#666', fontWeight:'bold', fontFamily:'monospace',
                 background:'rgba(255,255,255,0.5)', padding:'2px 8px', borderRadius:'6px'
-            }}>
-               X:{playerPos.x} Y:{playerPos.y}
+              }}>
+                X:{playerPos.x} Y:{playerPos.y}
+              </div>
             </div>
           </div>
           {/* 当前剧情任务提示条 */}
@@ -22557,7 +22654,8 @@ const renderMenu = () => {
                     cells.push(<div key={`${vx}-${vy}`} className="mt-void" style={{width:TILE_SZ,height:TILE_SZ}} />);
                     continue;
                   }
-                  const type = mapGrid[wy][wx];
+                  const row = mapGrid[wy];
+                  const type = (row && wx >= 0 && wx < row.length) ? row[wx] : 0;
                   const isPlayer = wx === playerPos.x && wy === playerPos.y;
                   const isEven = (wx + wy) % 2 === 0;
                   const seed = (wx * 7 + wy * 13) % 10;
@@ -23256,6 +23354,22 @@ const renderMenu = () => {
     } else if (effBagTab === 'eggs') { currentCat = 'egg'; (inventory.eggs || []).forEach((egg, idx) => { currentItems.push({ id: `egg_${idx}`, name: `${egg.name || '未知'}的蛋`, icon: '🥚', desc: `剩余 ${egg.stepsLeft} 步孵化\nLv.${egg.level || 1}`, count: 1, stepsLeft: egg.stepsLeft }); }); }
 
     const activeTab = tabConfig.find(t=>t.id===effBagTab) || tabConfig[0];
+    const itemPriceForSort = (item) => {
+      if (effBagTab === 'balls' && BALLS[item.id]) return BALLS[item.id].price || 0;
+      if (effBagTab === 'meds' && MEDICINES[item.id]) return MEDICINES[item.id].price || 0;
+      if (effBagTab === 'berries' && BERRIES[item.id]) return BERRIES[item.id].price || 0;
+      if (effBagTab === 'tms') return item.price || 0;
+      if (effBagTab === 'stones' && EVO_STONES[item.id]) return EVO_STONES[item.id].price || 0;
+      if (effBagTab === 'misc') return item.buyPrice || item.price || 0;
+      if (effBagTab === 'accessories') return item.shopPrice || item.price || 0;
+      if (effBagTab === 'cursed' && CURSED_ITEMS[item.id]) return CURSED_ITEMS[item.id].price || 0;
+      return 0;
+    };
+    currentItems = [...currentItems].sort((a, b) => {
+      if (bagItemSort === 'name') return (a.name || '').localeCompare(b.name || '', 'zh-Hans-CN');
+      if (bagItemSort === 'price') return itemPriceForSort(b) - itemPriceForSort(a);
+      return (b.count || 0) - (a.count || 0);
+    });
     const totalItems = currentItems.reduce((s,i)=>s+i.count,0);
 
     const renderItemIcon = (item, size) => {
@@ -23293,6 +23407,14 @@ const renderMenu = () => {
                 <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
                     <div style={{fontSize:'18px',fontWeight:'900',color:'#fff',letterSpacing:'2px',marginBottom:'4px'}}>🎒 背包</div>
                     <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>💰 {gold.toLocaleString()} 金币</div>
+                    <div style={{display:'flex',gap:'4px',marginTop:'8px',flexWrap:'wrap'}}>
+                      {[{k:'count',l:'数量'},{k:'price',l:'价格'},{k:'name',l:'名称'}].map(o => (
+                        <button key={o.k} type="button" onClick={() => setBagItemSort(o.k)} style={{
+                          fontSize:'9px',padding:'3px 6px',borderRadius:'6px',border:bagItemSort===o.k?'1px solid #7c4dff':'1px solid rgba(255,255,255,0.12)',
+                          background:bagItemSort===o.k?'rgba(124,77,255,0.35)':'transparent',color:'#fff',cursor:'pointer',fontWeight:700
+                        }}>{o.l}</button>
+                      ))}
+                    </div>
                 </div>
                 <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
                   {tabConfig.map(tab=>{
@@ -24538,6 +24660,9 @@ const renderMenu = () => {
                             max={eStats.maxHp} 
                             label=""
                         />
+                        <div style={{fontSize:'10px', color:'#666', textAlign:'right', marginTop:'2px'}}>
+                          HP {Math.max(0, Math.floor(e.currentHp)).toLocaleString()}/{eStats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)
+                        </div>
                         {e.maxCE > 0 && (
                             <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
                                 <span style={{fontSize:'9px', color: e.curseGrade?.color || '#999', fontWeight:'bold'}}>🔮{e.curseGrade?.name || ''}</span>
@@ -24657,6 +24782,9 @@ const renderMenu = () => {
                         ) : null; })()}
                       </div>
                       <EnhancedHPBar current={e2.currentHp} max={e2Stats.maxHp} label="" />
+                      <div style={{fontSize:'10px', color:'#666', textAlign:'right', marginTop:'2px'}}>
+                        HP {Math.max(0, Math.floor(e2.currentHp)).toLocaleString()}/{e2Stats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e2.currentHp / Math.max(1, e2Stats.maxHp)) * 100))}%)
+                      </div>
                       {e2.maxCE > 0 && (
                         <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
                           <span style={{fontSize:'9px', color: e2.curseGrade?.color || '#999', fontWeight:'bold'}}>🔮{e2.curseGrade?.name || ''}</span>
@@ -24991,18 +25119,17 @@ const renderMenu = () => {
                                     } else if ((m.pp || 0) <= 0) {
                                       moveDisabledReason = '(无PP)';
                                     }
-                                    let effLabel = '';
+                                    let typeEffTag = '';
+                                    let mod = 1;
                                     const isSTAB = m.t && (m.t === (skillPet?.type) || m.t === (skillPet?.secondaryType));
-                                    if (isSTAB && m.p > 0) effLabel = '★';
                                     if (activeEnemy && m.p > 0) {
-                                      let mod = getTypeMod(m.t || 'NORMAL', activeEnemy.type);
+                                      mod = getTypeMod(m.t || 'NORMAL', activeEnemy.type);
                                       if (activeEnemy.secondaryType && activeEnemy.secondaryType !== activeEnemy.type) mod *= getTypeMod(m.t || 'NORMAL', activeEnemy.secondaryType);
-                                      if (mod >= 4) effLabel = (effLabel || '') + `⚡×${Number(mod.toFixed(2))}`;
-                                      else if (mod >= 2) effLabel = (effLabel || '') + `✦×${Number(mod.toFixed(2))}`;
-                                      else if (mod > 1) effLabel = (effLabel || '') + `⬆×${Number(mod.toFixed(2))}`;
-                                      else if (mod <= 0) effLabel = (effLabel || '') + '✕免疫';
-                                      else if (mod < 1) effLabel = (effLabel || '') + `△×${Number(mod.toFixed(2))}`;
+                                      if (mod <= 0) typeEffTag = '🔻';
+                                      else if (mod > 1) typeEffTag = '🔺';
                                     }
+                                    const stabMark = (isSTAB && m.p > 0) ? '★ ' : '';
+                                    const effLabel = `${stabMark}${activeEnemy && m.p > 0 ? `×${Number(mod.toFixed(2))}` : ''}`.trim();
                                     return (
                                     <EnhancedMoveButton
                                         key={i}
@@ -25013,7 +25140,8 @@ const renderMenu = () => {
                                             pp: m.pp,
                                         maxPp: m.maxPP || 15,
                                         acc: m.acc,
-                                        desc: effLabel ? `${effLabel} ${m.desc || ''}` : (m.desc || ''),
+                                        effectivenessHint: typeEffTag || undefined,
+                                        desc: effLabel ? `${effLabel}${m.desc ? ' · ' + m.desc : ''}` : (m.desc || ''),
                                         isCursed: m.isCursed,
                                         ceCost: m.ceCost,
                                         isExtra: m.isExtra,
@@ -25473,7 +25601,7 @@ const renderMenu = () => {
                   color:shopTab===t.id?'#fff':'rgba(255,255,255,0.5)',
                   background:shopTab===t.id?`linear-gradient(90deg,${tierColor}40,transparent)`:'transparent',
                   borderLeft:shopTab===t.id?`3px solid ${tierColor}`:'3px solid transparent',
-                  transition:'all 0.2s'}}
+                  transition:'background 0.35s ease, color 0.25s ease, border-color 0.35s ease, padding 0.2s ease'}}
                 onClick={()=>setShopTab(t.id)}>
                 <span style={{fontSize:'16px'}}>{t.icon}</span>{t.label}
                   </div>
@@ -25485,7 +25613,7 @@ const renderMenu = () => {
             <button style={{margin:'8px 12px 14px',padding:'8px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.7)',fontSize:'12px',fontWeight:'600',cursor:'pointer'}} onClick={()=>setShopMode(false)}>关闭商店</button>
                   </div>
 
-          <div className="shop-content-area" style={{padding:'20px',overflowY:'auto'}}>
+          <div className="shop-content-area shop-tab-content-enter" style={{padding:'20px',overflowY:'auto',transition:'opacity 0.35s ease, transform 0.3s ease'}} key={shopTab}>
             <div style={{marginBottom:'14px',padding:'10px 14px',borderRadius:'12px',background:`linear-gradient(90deg,${tierColor}22,transparent)`,border:`1px solid ${tierColor}44`,fontSize:'12px',fontWeight:'700',color:'#1a1a2e',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'6px',flexWrap:'wrap'}}>
               <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap',width:'100%'}}>
                 <span>🏪 商店等级: {['', '初级', '进阶', '高级', '顶级'][tier]}</span>
@@ -26821,11 +26949,25 @@ const renderMenu = () => {
                   {autoBattle ? '✅ 开启' : '关闭'}
                 </button>
               </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+                <span style={{fontSize:'13px'}}>战斗速度</span>
+                <div style={{display:'flex',gap:'6px'}}>
+                  {[1,2,3].map(s => (
+                    <button key={s} onClick={() => setBattleSpeed(s)} style={{padding:'6px 12px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.2)',background:battleSpeed===s?'rgba(255,213,79,0.25)':'transparent',color:battleSpeed===s?'#FFD54F':'#aaa',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>{s}x</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0'}}>
+                <span style={{fontSize:'13px'}}>自动存档间隔</span>
+                <select value={autoSaveIntervalMin} onChange={e => setAutoSaveIntervalMin(Number(e.target.value))} style={{padding:'6px 10px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.2)',background:'rgba(0,0,0,0.3)',color:'#fff',fontSize:'12px'}}>
+                  {[1,2,3,5,10].map(m => <option key={m} value={m}>{m} 分钟</option>)}
+                </select>
+              </div>
             </div>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#ef4444',marginBottom:'12px'}}>⚠️ 危险操作</div>
-              <button onClick={() => setConfirmModal({title:'重置存档',desc:'这将清除所有游戏数据，无法恢复！',onConfirm:() => { localStorage.removeItem(SAVE_KEY); window.location.reload(); }})} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
-                🗑️ 重置存档
+              <button onClick={() => setConfirmModal({title:'⚠️ 删除存档',msg:'确定要删除所有存档并重新开始吗？\n此操作不可恢复！',onOk:() => { isResettingRef.current = true; localStorage.removeItem(SAVE_KEY); window.location.replace(window.location.href); }})} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+                🗑️ 删除存档
               </button>
             </div>
           </div>
@@ -27469,40 +27611,29 @@ const renderMenu = () => {
         const rar = ACH_RARITY[ach.rarity] || { color: '#888', name: '未知' };
         const cat = ACH_CATEGORY[ach.cat] || { icon: '🏆', name: '成就' };
         return (
-          <div onClick={() => { setAchNotification(null); setView('achievements'); }} style={{
-            position:'fixed', top:'20px', right:'20px', zIndex:10000, cursor:'pointer',
-            background:`linear-gradient(135deg, rgba(15,10,40,0.95), rgba(25,20,50,0.95))`,
-            backdropFilter:'blur(20px)',
-            border:`1px solid ${rar.color}50`,
-            borderRadius:'16px', padding:'14px 18px', minWidth:'280px', maxWidth:'360px',
-            boxShadow:`0 10px 40px rgba(0,0,0,0.5), 0 0 20px ${rar.color}20`,
-            animation:'achSlideIn 0.4s cubic-bezier(.22,1,.36,1)',
-            display:'flex', alignItems:'center', gap:'12px'
+          <div onClick={() => setAchNotification(null)} style={{
+            position:'fixed', inset:0, zIndex:10000, cursor:'pointer',
+            background:`radial-gradient(circle at 50% 40%, ${rar.color}22 0%, rgba(5,5,15,0.92) 55%, rgba(0,0,0,0.96) 100%)`,
+            backdropFilter:'blur(8px)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            animation:'fadeIn 0.35s ease-out',
           }}>
             <div style={{
-              width:'42px', height:'42px', borderRadius:'12px', flexShrink:0,
-              background:`linear-gradient(135deg, ${rar.color}30, ${rar.color}10)`,
-              border:`1px solid ${rar.color}40`,
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px'
-            }}>
-              {cat?.icon || '🏆'}
-            </div>
-            <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'10px', color:rar.color, fontWeight:'700', letterSpacing:'1px', marginBottom:'2px'}}>
-                成就解锁 {'★'.repeat(rar.stars)}
-              </div>
-              <div style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>
-                {ach.name}
-              </div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px', lineHeight:'1.4'}}>
-                {ach.desc}
-              </div>
+              textAlign:'center', padding:'32px 28px', maxWidth:'420px',
+              border:`2px solid ${rar.color}66`, borderRadius:'24px',
+              background:`linear-gradient(145deg, rgba(20,15,45,0.95), rgba(30,20,55,0.92))`,
+              boxShadow:`0 0 60px ${rar.color}44, 0 20px 80px rgba(0,0,0,0.6)`,
+              transform:'scale(1)', animation:'achSlideIn 0.5s cubic-bezier(.22,1,.36,1)',
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{fontSize:'56px', marginBottom:'12px', filter:`drop-shadow(0 0 20px ${rar.color}88)`}}>{cat?.icon || '🏆'}</div>
+              <div style={{fontSize:'11px', color:rar.color, fontWeight:'800', letterSpacing:'4px', marginBottom:'8px'}}>成就解锁 {'★'.repeat(rar.stars)}</div>
+              <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', marginBottom:'10px', textShadow:'0 2px 12px rgba(0,0,0,0.5)'}}>{ach.name}</div>
+              <div style={{fontSize:'13px', color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:'12px'}}>{ach.desc}</div>
               {ach.reward?.gold && (
-                <div style={{fontSize:'10px', color:'#FFD700', fontWeight:'700', marginTop:'3px'}}>
-                  +{ach.reward.gold.toLocaleString()} 金币
-                </div>
+                <div style={{fontSize:'14px', color:'#FFD700', fontWeight:'800', marginBottom:'16px'}}>+{ach.reward.gold.toLocaleString()} 金币</div>
               )}
-              <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>点击查看成就</div>
+              <button type="button" onClick={() => { setAchNotification(null); setView('achievements'); }} style={{padding:'12px 28px', borderRadius:'14px', border:'none', background:`linear-gradient(135deg, ${rar.color}, ${rar.color}99)`, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer', boxShadow:`0 4px 20px ${rar.color}55`}}>查看成就</button>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'12px'}}>点击背景关闭</div>
             </div>
           </div>
         );
@@ -27596,18 +27727,66 @@ const renderMenu = () => {
         </div>
       )}
       {/* 地图Toast通知 */}
+      {postBattleQuickHeal && view === 'grid_map' && (
+        <div style={{position:'fixed', bottom:'100px', left:'50%', transform:'translateX(-50%)', zIndex:9996, display:'flex', alignItems:'center', gap:'12px', padding:'10px 16px', borderRadius:'14px', background:'linear-gradient(135deg,rgba(30,40,60,0.95),rgba(20,25,45,0.98))', border:'1px solid rgba(76,175,80,0.35)', boxShadow:'0 8px 28px rgba(0,0,0,0.35)'}}>
+          <span style={{fontSize:'12px', color:'#e2e8f0', fontWeight:'600'}}>💊 战斗胜利：一键用药补满队伍？</span>
+          <button type="button" onClick={() => {
+            setPostBattleQuickHeal(false);
+            const meds = { ...((inventoryRef.current && inventoryRef.current.meds) || {}) };
+            let used = 0;
+            setParty(prev => prev.map(p => {
+              const s = getStats(p);
+              if (p.currentHp >= s.maxHp) return p;
+              let need = s.maxHp - p.currentHp;
+              const pet = { ...p };
+              for (const [key, val] of [['hyper_potion', 200], ['super_potion', 50], ['potion', 20]]) {
+                while (need > 0 && (meds[key] || 0) > 0) {
+                  pet.currentHp = Math.min(s.maxHp, pet.currentHp + val);
+                  need = s.maxHp - pet.currentHp;
+                  meds[key]--;
+                  used++;
+                }
+              }
+              return pet;
+            }));
+            setInventory(inv => ({ ...inv, meds }));
+            showMapToast('💊', '已治疗', used > 0 ? `消耗药品 ${used} 次` : '无需或药品不足', 2000);
+          }} style={{padding:'8px 14px', borderRadius:'10px', border:'none', background:'linear-gradient(135deg,#43A047,#2E7D32)', color:'#fff', fontWeight:'800', fontSize:'12px', cursor:'pointer'}}>一键治疗</button>
+          <button type="button" onClick={() => setPostBattleQuickHeal(false)} style={{padding:'8px 12px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'#94a3b8', fontSize:'12px', cursor:'pointer'}}>关闭</button>
+        </div>
+      )}
+      {catchInspectPet && view === 'grid_map' && (
+        <div style={{position:'fixed', bottom:'100px', right:'16px', zIndex:9996, maxWidth:'280px', padding:'14px 16px', borderRadius:'16px', background:'linear-gradient(135deg,rgba(25,30,50,0.96),rgba(15,20,40,0.98))', border:'1px solid rgba(255,213,79,0.35)', boxShadow:'0 10px 36px rgba(0,0,0,0.4)'}}>
+          <div style={{fontSize:'13px', fontWeight:'800', color:'#fff', marginBottom:'6px'}}>🎊 新伙伴入队</div>
+          <div style={{fontSize:'12px', color:'#94a3b8', marginBottom:'10px'}}>{catchInspectPet.name} Lv.{catchInspectPet.level}</div>
+          <div style={{display:'flex', gap:'8px'}}>
+            <button type="button" onClick={() => { const pet = catchInspectPet; setCatchInspectPet(null); setViewStatPet(pet); }} style={{flex:1, padding:'8px', borderRadius:'10px', border:'none', background:'linear-gradient(135deg,#FFD54F,#FF8F00)', color:'#1a1a1a', fontWeight:'800', fontSize:'12px', cursor:'pointer'}}>查看</button>
+            <button type="button" onClick={() => setCatchInspectPet(null)} style={{padding:'8px 12px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.15)', background:'transparent', color:'#94a3b8', fontSize:'12px', cursor:'pointer'}}>关闭</button>
+          </div>
+        </div>
+      )}
       {mapToast && (
         <div key={mapToast.key} style={{
           position:'fixed', top:'60px', left:'50%', transform:'translateX(-50%)', zIndex:9998,
           background:'linear-gradient(135deg,rgba(30,30,50,0.95),rgba(20,20,40,0.98))',
-          borderRadius:'16px', padding:'14px 22px', minWidth:'240px', maxWidth:'340px',
+          borderRadius:'16px', padding:'14px 22px', minWidth:'240px', maxWidth:'380px',
           boxShadow:'0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)',
           display:'flex', alignItems:'center', gap:'14px',
           animation:'slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-          backdropFilter:'blur(16px)', pointerEvents:'auto', cursor:'pointer'
-        }} onClick={() => { if (mapToastTimer.current) clearTimeout(mapToastTimer.current); setMapToast(null); }}>
-          <div style={{fontSize:'28px', flexShrink:0}}>{mapToast.icon}</div>
-          <div style={{flex:1,minWidth:0}}>
+          backdropFilter:'blur(16px)', pointerEvents:'auto',
+        }}>
+          <div
+            style={{fontSize:'28px', flexShrink:0, cursor:'pointer'}}
+            onClick={() => { if (mapToastTimer.current) clearTimeout(mapToastTimer.current); setMapToast(null); }}
+            title="关闭"
+          >
+            {mapToast.icon}
+          </div>
+          <div
+            style={{flex:1,minWidth:0, cursor: mapToast.onAction ? 'default' : 'pointer'}}
+            onClick={() => { if (mapToast.onAction) return; if (mapToastTimer.current) clearTimeout(mapToastTimer.current); setMapToast(null); }}
+            role={mapToast.onAction ? undefined : 'button'}
+          >
             <div style={{fontSize:'14px',fontWeight:700,color:'#fff',marginBottom:'3px',textShadow:'0 1px 2px rgba(0,0,0,0.3)'}}>{mapToast.title}</div>
             <div style={{fontSize:'12px',color:'rgba(255,255,255,0.7)',lineHeight:1.4}}>{mapToast.desc}</div>
             {mapToast.turnCount !== undefined && mapToast.turnCount !== null && (
@@ -27616,6 +27795,23 @@ const renderMenu = () => {
               </div>
             )}
           </div>
+          {mapToast.actionLabel && typeof mapToast.onAction === 'function' && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (mapToastTimer.current) clearTimeout(mapToastTimer.current);
+                mapToast.onAction();
+              }}
+              style={{
+                flexShrink:0, padding:'8px 14px', borderRadius:'12px', border:'none',
+                background:'linear-gradient(135deg,#FFD54F,#FF8F00)', color:'#1a1a1a',
+                fontWeight:800, fontSize:'12px', cursor:'pointer', boxShadow:'0 2px 10px rgba(255,213,79,0.35)',
+              }}
+            >
+              {mapToast.actionLabel}
+            </button>
+          )}
         </div>
       )}
       {/* 精灵选择器 */}
