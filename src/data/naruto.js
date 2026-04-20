@@ -25,10 +25,10 @@ export const CHAKRA_NATURE_MAP = {
 // --- 忍者段位 ---
 export const NINJA_RANKS = [
   { id: 'academy', name: '忍者学员', icon: '📖', minExams: 0, perk: null, chakraBonus: 0 },
-  { id: 'genin', name: '下忍', icon: '🎯', minExams: 1, perk: '忍术伤害+5%', chakraBonus: 10 },
-  { id: 'chunin', name: '中忍', icon: '🌀', minExams: 3, perk: '忍术伤害+10% · 查克拉+20', chakraBonus: 20 },
-  { id: 'jonin', name: '上忍', icon: '⚔️', minExams: 6, perk: '忍术伤害+15% · 查克拉+40 · 回复+3', chakraBonus: 40 },
-  { id: 'kage', name: '影', icon: '👤', minExams: 8, perk: '忍术伤害+20% · 查克拉+60 · 回复+5 · 尾兽增强', chakraBonus: 60 },
+  { id: 'genin', name: '下忍', icon: '🎯', minExams: 2, perk: '忍术伤害+5%', chakraBonus: 10 },
+  { id: 'chunin', name: '中忍', icon: '🌀', minExams: 5, perk: '忍术伤害+10% · 查克拉+20', chakraBonus: 20 },
+  { id: 'jonin', name: '上忍', icon: '⚔️', minExams: 10, perk: '忍术伤害+15% · 查克拉+40 · 回复+3', chakraBonus: 40 },
+  { id: 'kage', name: '影', icon: '👤', minExams: 15, perk: '忍术伤害+20% · 查克拉+60 · 回复+5 · 尾兽增强', chakraBonus: 60 },
 ];
 
 export function getNinjaRank(examsCompleted) {

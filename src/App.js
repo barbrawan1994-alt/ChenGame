@@ -5418,7 +5418,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'training', icon:'🏋️', name:'精灵特训', desc:'强化精灵能力', color:'#1565C0', badge: (Array.isArray(trainingState.slots) ? trainingState.slots : []).filter(s => Date.now() - s.startTime >= s.duration).length, onClick: () => { setActivityCenter(false); if (badges.length < TRAINING_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${TRAINING_REQ_BADGES} 枚徽章`,1500); return; } setView('training'); } },
       { id:'world_boss', icon:'👹', name:'世界Boss', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
-      { id:'naruto_exam', icon:'🍥', name:`中忍考试 ${getNinjaRank(narutoState?.examsCompleted||0)?.icon||''}`, desc:`忍者晋级 · ${getNinjaRank(narutoState?.examsCompleted||0)?.name||'学员'}`, color:'#FF6F00', badge: (() => { const td = getLocalDateStr(); return narutoState.lastExamDate !== td ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('naruto_exam'); } },
     ];
 
     return (
@@ -6447,7 +6446,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     return (
       <div className="screen" style={{background:'linear-gradient(135deg,#0a0a1a,#1a1a2e,#0a0a1a)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'16px 20px',background:'rgba(0,0,0,0.4)',borderBottom:'1px solid rgba(255,152,0,0.15)',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
-          <button onClick={()=>setView('naruto_exam')} style={{padding:'6px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.05)',color:'#aaa',fontSize:'12px',cursor:'pointer'}}>⬅ 返回</button>
+          <button onClick={()=>setView(safeBack())} style={{padding:'6px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.05)',color:'#aaa',fontSize:'12px',cursor:'pointer'}}>⬅ 返回</button>
           <div style={{fontSize:'16px',fontWeight:'900',letterSpacing:'2px',background:'linear-gradient(90deg,#FF6F00,#FFB74D)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>📖 忍术图鉴</div>
           <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>{filtered.length}/{JUTSU_DB.length}</div>
         </div>
@@ -9759,7 +9758,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const petNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === p.type);
           const natureKey = petNature ? petNature[0] : null;
           const jutsuPool = natureKey ? getJutsuByNature(natureKey) : JUTSU_DB.filter(j => !j.nature);
-          const maxJutsu = nRank.id === 'kage' ? 3 : nRank.id === 'jonin' ? 2 : 1;
+          const maxJutsu = nRank.id === 'kage' ? 2 : 1;
           const ninjaRankJutsu = { academy: ['D'], genin: ['D', 'C'], chunin: ['D', 'C', 'B'], jonin: ['D', 'C', 'B', 'A'], kage: ['D', 'C', 'B', 'A', 'S'] };
           const levelRanks = getUnlockedJutsuRanks(p.level);
           const ninjaAllowed = ninjaRankJutsu[nRank.id] || ninjaRankJutsu.academy;
@@ -9771,7 +9770,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             jutsuMoves.push({
               ...j, name: j.name, p: j.p, pp: j.pp, maxPP: j.pp,
               t: j.nature ? (CHAKRA_NATURE_MAP[j.nature]?.gameType || p.type) : p.type,
-              isJutsu: true, jutsuId: j.id, chakraCost: j.chakraCost, effect: j.effect,
+              isJutsu: true, jutsuId: j.id, chakraCost: Math.ceil(j.chakraCost * 1.2), effect: j.effect,
             });
           });
         }
@@ -10222,7 +10221,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!player || !enemy || enemy.currentHp <= 0 || player.currentHp <= 0) return null;
     const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
     const rawMoves = enemy.combatMoves || enemy.moves || [];
-    const movesWithPP = rawMoves.filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.isJutsu ? (enemy.chakra || 0) >= (m.chakraCost || 0) : m.pp > 0);
+    const movesWithPP = rawMoves.filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.isJutsu ? ((enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0) : m.pp > 0);
     const smartMoves = movesWithPP.filter(m => {
       if (m.p > 0) return true;
       if (m.effect) {
@@ -10286,7 +10285,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const cursedMoves = (tempPlayerState.combatMoves || []).filter(m => m.isCursed);
         const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => (tempPlayerState.cursedEnergy || 0) < (m.ceCost || 0));
         const jutsuMoves = (tempPlayerState.combatMoves || []).filter(m => m.isJutsu);
-        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0));
+        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0);
         const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable;
         let useStruggle = false;
         if (!move && !allMovesExhausted) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
@@ -10301,6 +10300,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         } else if (move?.isJutsu) {
             if (move.chakraCost > 0 && (tempPlayerState.chakra || 0) < move.chakraCost) {
                 showMapToast('❌', '提示', '查克拉不足！', 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
+                return;
+            }
+            if (move.pp !== undefined && move.pp <= 0) {
+                showMapToast('❌', '提示', '忍术PP耗尽！', 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
                 return;
             }
@@ -12467,7 +12471,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${attacker.name} 查克拉不足，无法施展 ${move.name}!`);
             return false;
         }
+        if (move.pp !== undefined && move.pp <= 0) {
+            addLog(`${attacker.name} 的 ${move.name} PP耗尽！`);
+            return false;
+        }
         atkState.chakra = Math.max(0, (atkState.chakra || 0) - move.chakraCost);
+        if (move.pp > 0) move.pp = Math.max(0, move.pp - 1);
         addLog(`🍥 消耗 ${move.chakraCost} 查克拉`);
     } else if (move.pp > 0) {
         let ppCost = 1;
@@ -12830,13 +12839,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
 
-        // 咒具加成 (咒言放大器)
+        if (move.isCursed) rawDmg *= 0.85;
         if (move.isCursed && atkState.cursedBoost) {
             rawDmg *= (1 + atkState.cursedBoost);
         }
 
         // 忍术加成 (忍者段位 + 精通)
         if (move.isJutsu) {
+            rawDmg *= 0.80;
             const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
             const jutsuBonus = nrk?.id === 'kage' ? 0.20 : nrk?.id === 'jonin' ? 0.15 : nrk?.id === 'chunin' ? 0.10 : nrk?.id === 'genin' ? 0.05 : 0;
             if (jutsuBonus > 0) rawDmg *= (1 + jutsuBonus);
@@ -17384,16 +17394,7 @@ const renderMenu = () => {
           <div style={{fontSize:'9px', color:'rgba(255,255,255,0.1)', letterSpacing:'2px', marginTop:'4px'}}>{POKEDEX.length} 精灵 · {JUTSU_DB.length} 忍术 · {MAPS.length} 地图</div>
         </div>
 
-        {hasSave && ninjaRank && (
-          <div style={{display:'flex', alignItems:'center', gap:'8px', margin:'0 20px 10px', padding:'8px 12px', borderRadius:'10px', background:'linear-gradient(135deg, rgba(255,100,0,0.06), rgba(255,60,0,0.03))', border:'1px solid rgba(255,100,0,0.1)'}}>
-            <div style={{width:'34px', height:'34px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(255,100,0,0.1)', fontSize:'18px', border:'2px solid rgba(255,100,0,0.15)', flexShrink:0}}>{ninjaRank.icon}</div>
-            <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'12px', fontWeight:'800', color:'#FFB300'}}>{ninjaRank.name}</div>
-              <div style={{fontSize:'8px', color:'rgba(255,255,255,0.25)', marginTop:'1px'}}>考试 {narutoState?.examsCompleted || 0}次 · 尾兽 {bijuuCount}/9 · 忍术 {jutsuCollCount}/{JUTSU_DB.length}</div>
-            </div>
-            <button onClick={() => setView('jutsu_codex')} style={{fontSize:'9px', color:'#FF8A65', background:'rgba(255,100,0,0.08)', border:'1px solid rgba(255,100,0,0.12)', borderRadius:'6px', padding:'4px 8px', cursor:'pointer', fontWeight:'600', whiteSpace:'nowrap'}}>📖 忍术图鉴</button>
-          </div>
-        )}
+        {/* 忍者信息已移至游戏内卡片页面，首页仅保留核心入口 */}
 
         <div style={{display:'flex', justifyContent:'center', gap:'6px', padding:'0 24px 12px'}}>
           {FACTION_IDS.map(fid => {
@@ -17500,7 +17501,7 @@ const renderMenu = () => {
               { key:'pokedex', label:'图鉴', sub:caughtDex.length+'/'+POKEDEX.length, emoji:'📚' },
               { key:'skill_dex', label:'技能', sub:allSkills.length+'种', emoji:'⚡' },
               { key:'fruit_dex', label:'果实', sub:getAllFruits().length+'种', emoji:'🍎' },
-              { key:'jutsu_codex', label:'忍术', sub:JUTSU_DB.length+'种', emoji:'🍥', lock: badges.length < 3 },
+              { key:'jutsu_codex', label:'忍术', sub:JUTSU_DB.length+'种', emoji:'🍥' },
               { key:'general_dex', label:'名将', sub:collectedGenCount+'/200', emoji:'📜' },
               { key:'achievements', label:'成就', sub:Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)+'%', emoji:'🏆' },
               { key:'guide', label:'说明', sub:'攻略', emoji:'📖' },
@@ -21515,7 +21516,8 @@ const renderMenu = () => {
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
-              { id: 'jutsu_codex', icon: '🍥', label: '忍术', action: () => { if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('jutsu_codex'); } },
+              { id: 'naruto', icon: '🍥', label: '忍者', action: () => { if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('naruto_exam'); } },
+              { id: 'jutsu_codex', icon: '📖', label: '忍术', action: () => setView('jutsu_codex') },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
               { id: 'activity', icon: '🎪', label: '活动', action: () => {
                 setActivityCenter(true);
@@ -23695,7 +23697,7 @@ const renderMenu = () => {
                                                 executeTurn(i);
                                             }
                                         }}
-                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0)) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0)) : (m.pp <= 0)}
+                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0)) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0) : (m.pp <= 0)}
                                         index={i}
                                     />
                                 ); });
