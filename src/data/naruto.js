@@ -1,5 +1,5 @@
 // =============================================
-// 火影忍者系统 — 查克拉 · 忍术 · 尾兽 · 中忍考试
+// 火影忍者系统 — 查克拉 · 忍术 · 尾兽 · 忍者试炼
 // =============================================
 
 // --- 查克拉配置 ---
@@ -348,7 +348,7 @@ export function rollBijuu(level, badgeCount) {
   return pool[pool.length - 1];
 }
 
-// --- 中忍考试 ---
+// --- 忍者试炼 ---
 export const CHUNIN_EXAM_PHASES = [
   { id: 'survival', name: '生存试炼', icon: '⚔️', desc: '连续击败2波敌人不回复HP', duration: 0 },
   { id: 'forest', name: '死亡之森', icon: '🌲', desc: '在森林中收集天地卷轴', duration: 0 },
@@ -437,7 +437,7 @@ export const EXAM_FINALS_BRACKETS = [
   { round: 1, name: '预选赛', enemyLvlRange: [0, 5], reward: { gold: 2000 } },
   { round: 2, name: '八强赛', enemyLvlRange: [3, 8], reward: { gold: 3000 } },
   { round: 3, name: '半决赛', enemyLvlRange: [5, 12], reward: { gold: 5000 } },
-  { round: 4, name: '决赛', enemyLvlRange: [8, 15], reward: { gold: 8000, title: '中忍考试冠军' } },
+  { round: 4, name: '决赛', enemyLvlRange: [8, 15], reward: { gold: 8000, title: '忍者试炼冠军' } },
 ];
 
 export const NARUTO_CHALLENGES = [

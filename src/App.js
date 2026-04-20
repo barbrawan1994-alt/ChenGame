@@ -146,18 +146,28 @@ const BREATHING_BUFFS = [
 const ALL_SKILL_TMS = (() => {
   const existingKeys = new Set(TMS.map(t => `${t.type}_${t.name}`));
   const generated = [];
+  const autoTierPrice = (power) => {
+    if (power === 0) return { tier: 1, price: 1500 };
+    if (power < 70) return { tier: 1, price: 2000 };
+    if (power < 100) return { tier: 2, price: 3500 };
+    if (power < 130) return { tier: 2, price: 5500 };
+    if (power < 160) return { tier: 3, price: 8000 };
+    return { tier: 3, price: 12000 };
+  };
   Object.entries(SKILL_DB).forEach(([typeKey, skills]) => {
     if (typeKey === 'GOD') return;
     skills.forEach(skill => {
       const sType = skill.t || typeKey;
       const key = `${sType}_${skill.name}`;
       if (!existingKeys.has(key)) {
+        const { tier, price } = autoTierPrice(skill.p || 0);
         generated.push({
           id: `tmg_${sType}_${skill.name}`,
           name: skill.name, type: sType,
           p: skill.p || 0, pp: skill.pp || 10,
           desc: skill.desc || `${sType}系技能`,
           effect: skill.effect, val: skill.val,
+          tier, price, shopSell: true,
         });
       }
     });
@@ -288,7 +298,7 @@ export default function RPG(props) {
   const [currentTitle, setCurrentTitle] = useState(savedData.currentTitle || '见习训练家');
 
   // 核心资产 (金币/背包/队伍)
-  const [gold, setGold] = useState(savedData.gold !== undefined ? savedData.gold : 2500);
+  const [gold, setGold] = useState(savedData.gold !== undefined ? savedData.gold : 2000);
   const migrateCurseTalent = (pets) => (pets || []).map(p => p.curseTalent != null ? p : { ...p, curseTalent: generateCurseTalent() });
   const [party, setParty] = useState(migrateCurseTalent(savedData.party));
   const [box, setBox] = useState(migrateCurseTalent(savedData.box));
@@ -889,6 +899,7 @@ const [infinityState, setInfinityState] = useState(() => {
   // 商店
   const [shopTab, setShopTab] = useState('balls'); 
   const [buyCounts, setBuyCounts] = useState({}); 
+  const [shopTMFilter, setShopTMFilter] = useState(null);
 
   // 地图/挑战切换
   const [mapTab, setMapTab] = useState('maps'); 
@@ -939,15 +950,35 @@ const [infinityState, setInfinityState] = useState(() => {
       }
 
       // --- 从当前出战精灵同步到共享池 ---
-      const activeP = next.playerCombatStates?.[next.activeIdx];
-      if (activeP) {
-        next.sharedPlayerChakra = activeP.chakra || 0;
-        next.sharedPlayerCE = activeP.cursedEnergy || 0;
+      if (next.isDouble && next.activeIdxs) {
+        let maxC = 0, maxCE = 0;
+        next.activeIdxs.forEach(idx => {
+          const p = next.playerCombatStates?.[idx];
+          if (p) { maxC = Math.max(maxC, p.chakra || 0); maxCE = Math.max(maxCE, p.cursedEnergy || 0); }
+        });
+        next.sharedPlayerChakra = maxC;
+        next.sharedPlayerCE = maxCE;
+      } else {
+        const activeP = next.playerCombatStates?.[next.activeIdx];
+        if (activeP) {
+          next.sharedPlayerChakra = activeP.chakra || 0;
+          next.sharedPlayerCE = activeP.cursedEnergy || 0;
+        }
       }
-      const activeE = next.enemyParty?.[next.enemyActiveIdx];
-      if (activeE) {
-        next.sharedEnemyChakra = activeE.chakra || 0;
-        next.sharedEnemyCE = activeE.cursedEnergy || 0;
+      if (next.isDouble && next.enemyActiveIdxs) {
+        let maxEC = 0, maxECE = 0;
+        next.enemyActiveIdxs.forEach(idx => {
+          const e = next.enemyParty?.[idx];
+          if (e) { maxEC = Math.max(maxEC, e.chakra || 0); maxECE = Math.max(maxECE, e.cursedEnergy || 0); }
+        });
+        next.sharedEnemyChakra = maxEC;
+        next.sharedEnemyCE = maxECE;
+      } else {
+        const activeE = next.enemyParty?.[next.enemyActiveIdx];
+        if (activeE) {
+          next.sharedEnemyChakra = activeE.chakra || 0;
+          next.sharedEnemyCE = activeE.cursedEnergy || 0;
+        }
       }
 
       return next;
@@ -1373,7 +1404,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             logMsg = `使用了 ${cItem.name}，但封印失败了...`;
             used = true;
           }
-        } else { addLog(battle.isBoss ? "⚠️ 对Boss无效！" : "⚠️ 无效目标！"); return; }
+        } else { addLog(battle.isBoss ? "⚠️ 对首领无效！" : "⚠️ 无效目标！"); return; }
       }
 
       if (used) {
@@ -1772,7 +1803,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                             
                             {/* 显示 Buff 详情 */}
                             <div style={{borderTop:'1px dashed #555', paddingTop:'8px', color: isActive ? '#fff' : '#888'}}>
-                                <span style={{background: sect.color, color:'#fff', padding:'1px 4px', borderRadius:'3px', fontSize:'10px', marginRight:'5px'}}>Buff</span>
+                                <span style={{background: sect.color, color:'#fff', padding:'1px 4px', borderRadius:'3px', fontSize:'10px', marginRight:'5px'}}>增益</span>
                                 <strong>{chief.buffName}</strong>: {chief.buffDesc}
                             </div>
                         </div>
@@ -1898,7 +1929,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                             background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px',
                             border: isAce ? '1px solid #FFD700' : '1px solid #333', position: 'relative'
                         }}>
-                            {isAce && <div style={{position:'absolute', top:0, right:0, background:'#FFD700', color:'#000', fontSize:'10px', fontWeight:'bold', padding:'2px 8px', borderRadius:'0 10px 0 10px'}}>ACE</div>}
+                            {isAce && <div style={{position:'absolute', top:0, right:0, background:'#FFD700', color:'#000', fontSize:'10px', fontWeight:'bold', padding:'2px 8px', borderRadius:'0 10px 0 10px'}}>王牌</div>}
                             
                             <div style={{display: 'flex', alignItems: 'center', marginBottom: '10px'}}>
                                 <div style={{fontSize: '36px', marginRight: '10px'}}>{renderAvatar(pet)}</div>
@@ -2499,7 +2530,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     else if (charmVal >= 25) charmRank = '呆萌';   // C级
     
     // --- [新增] 亲密度 (Intimacy) ---
-    const intimacy = 70; 
+    const intimacy = 50; 
 
     const curseTalent = generateCurseTalent();
 
@@ -2713,6 +2744,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanParty = party.map(trimPet);
     const cleanBox = box.map(trimPet);
     return {
+    saveVersion: 18,
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles,
     inventory, mapProgress, caughtDex, completedChallenges, badges, viewedIntros,
     leagueWins, leagueRound, unlockedTitles, currentTitle, housing, fruitInventory, achStats,
@@ -3301,8 +3333,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{margin:'0 20px 10px', padding:'12px', background:'rgba(123,31,162,0.15)', borderRadius:'12px', border:'1px solid rgba(123,31,162,0.3)'}}>
                 <div style={{fontSize:'12px', color:'#bb86fc', fontWeight:'bold', marginBottom:'8px'}}>📊 融合预览</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', fontSize:'11px', color:'#ccc'}}>
-                  <div>类型: {fusionParent.type}{fusionParent.secondaryType ? '/'+fusionParent.secondaryType : ''}</div>
-                  <div>类型: {fusionChild.type}{fusionChild.secondaryType ? '/'+fusionChild.secondaryType : ''}</div>
+                  <div>类型: {TYPES[fusionParent.type]?.name || fusionParent.type}{fusionParent.secondaryType ? '/' + (TYPES[fusionParent.secondaryType]?.name || fusionParent.secondaryType) : ''}</div>
+                  <div>类型: {TYPES[fusionChild.type]?.name || fusionChild.type}{fusionChild.secondaryType ? '/' + (TYPES[fusionChild.secondaryType]?.name || fusionChild.secondaryType) : ''}</div>
                 </div>
                 <div style={{fontSize:'11px', color:'#aaa', marginTop:'6px'}}>
                   预估等级: Lv.{Math.min(100, Math.floor((fusionParent.level + fusionChild.level) / 2))}（双方平均）
@@ -3315,6 +3347,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
             {/* 底部按钮 */}
             <div style={{padding: '20px'}}>
+                <div style={{ fontSize: '11px', color: '#e53935', marginBottom: '10px', textAlign: 'center', lineHeight: 1.4 }}>
+                  ⚠️ 融合将清空精灵的努力值(EV)
+                </div>
                 <button 
                     disabled={!fusionParent || !fusionChild || gold < getFusionCost()}
                     onClick={() => {
@@ -3389,7 +3424,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         <div style={{width:'100%', padding:'20px', display:'flex', justifyContent:'space-between', background:'rgba(255,255,255,0.05)'}}>
             <div style={{fontSize:'20px', fontWeight:'bold', color:'#E040FB'}}>🏯 无限城 - 第 {floor} 层</div>
             <button onClick={() => {
-                setConfirmModal({ title:'🏯 退出确认', msg:'确定要退出吗？进度将丢失，Buff也会重置。', onOk: () => {
+                setConfirmModal({ title:'🏯 退出确认', msg:'确定要退出吗？进度将丢失，增益也会重置。', onOk: () => {
                     setInfinityState(null); setView('grid_map');
                 }})
             }} style={{background:'transparent', border:'1px solid #666', color:'#aaa', padding:'5px 15px', borderRadius:'20px', fontSize:'12px'}}>放弃</button>
@@ -3483,6 +3518,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 帮派系统 - 每日重置 & 工具函数
   // ==========================================
   const getLocalDateStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+  useEffect(() => {
+    if (party.length === 0) return;
+    const today = getLocalDateStr();
+    if (dailyChallenge && dailyChallenge.date === today) return;
+    const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'FIGHT', 'PSYCHIC', 'DARK', 'DRAGON'];
+    const challengeType = types[Math.floor(Math.random() * types.length)];
+    const typeName = TYPES[challengeType]?.name || challengeType;
+    setDailyChallenge({ date: today, type: challengeType, typeName, wins: 0, target: 3, completed: false });
+    showMapToast('⚡', '每日挑战', `今日挑战：使用${typeName}系精灵赢得3场战斗！`, 3000);
+  }, [party.length, dailyChallenge?.date]);
+
   const resetGangDailyCounts = () => {
     const today = getLocalDateStr();
     if (!gang.dailyCounts || gang.dailyCounts.resetDate !== today) {
@@ -4670,7 +4717,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             <div style={{flex:1, height:'4px', background:'rgba(255,255,255,0.3)', borderRadius:'2px', overflow:'hidden'}}>
                               <div style={{width:`${pct}%`, height:'100%', background:'#fff', borderRadius:'2px', transition:'width 0.5s'}} />
                             </div>
-                            <span style={{fontSize:'10px', opacity:0.8}}>{pct >= 100 ? 'MAX' : `${aff}/${nextMin}`}</span>
+                            <span style={{fontSize:'10px', opacity:0.8}}>{pct >= 100 ? '已满' : `${aff}/${nextMin}`}</span>
                           </div>;
                         })()}
                         <div style={{fontSize:'11px', opacity:0.7, marginTop:'2px'}}>结婚日期：{marriage.weddingDate}</div>
@@ -5253,7 +5300,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     refreshWorldBoss();
     const today = getLocalDateStr();
     const st = worldBossState.bossDate === today ? worldBossState : { ...DEFAULT_WORLD_BOSS_STATE, bossDate: today, currentBossId: getTodayBoss(today).id };
-    if (st.defeated) { showMapToast('🏆', '已击败', '今日Boss已被消灭！', 1500); return; }
+    if (st.defeated) { showMapToast('🏆', '已击败', '今日首领已被消灭！', 1500); return; }
     if (st.attempts >= WORLD_BOSS_MAX_ATTEMPTS) { showMapToast('❌', '次数用尽', `今日最多 ${WORLD_BOSS_MAX_ATTEMPTS} 次`, 1500); return; }
 
     const boss = WORLD_BOSSES.find(b => b.id === st.currentBossId) || getTodayBoss(today);
@@ -5328,8 +5375,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           showMapToast('🏆', '里程碑达成', lastMs.desc, 3500);
         }
         if (prev._defeated) {
+          setGold(g => g + (boss?.rewards?.gold || 2000));
           updateAchStat({ worldBossesDefeated: 1 });
-          showMapToast('🎊', 'Boss击破！', `${boss.name} 已被击败！`, 4000);
+          showMapToast('🎊', '首领击破！', `${boss.name} 已被击败！`, 4000);
         }
         updateAchStat({ worldBossBestDamage: () => Math.max(prev.bestDamage || 0, prev._totalDmgDealt || 0) });
         const { _pendingMilestones, _defeated, _totalDmgDealt, ...clean } = prev;
@@ -5479,7 +5527,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'bounty', icon:'📋', name:'赏金任务', desc:'每日悬赏任务', color:'#FF8F00', badge: unclaimedBounties, onClick: () => { setActivityCenter(false); refreshBounties(); setView('bounty'); } },
       { id:'wheel', icon:'🎡', name:'幸运轮盘', desc:'每日抽奖', color:'#7B1FA2', badge: freeWheelAvail ? 1 : 0, onClick: () => { setActivityCenter(false); setView('lucky_wheel'); } },
       { id:'training', icon:'🏋️', name:'精灵特训', desc:'强化精灵能力', color:'#1565C0', badge: (Array.isArray(trainingState.slots) ? trainingState.slots : []).filter(s => Date.now() - s.startTime >= s.duration).length, onClick: () => { setActivityCenter(false); if (badges.length < TRAINING_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${TRAINING_REQ_BADGES} 枚徽章`,1500); return; } setView('training'); } },
-      { id:'world_boss', icon:'👹', name:'世界Boss', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
+      { id:'world_boss', icon:'👹', name:'世界首领', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
     ];
 
@@ -5755,7 +5803,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const renderWorldBoss = () => {
     const today = getLocalDateStr();
     const boss = getTodayBoss(today);
-    if (!boss) return <div className="screen" style={{background:'#1a0000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>Boss数据加载中...</div>;
+    if (!boss) return <div className="screen" style={{background:'#1a0000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>首领数据加载中...</div>;
     const bossHp = scaleBossHp(boss, badges.length);
     const bossLv = scaleBossLevel(boss, badges.length);
     const needsRefresh = worldBossState.bossDate !== today;
@@ -5767,7 +5815,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d0a0a,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'16px 20px',background:'linear-gradient(135deg,#B71C1C,#880E4F)',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 20px rgba(183,28,28,0.4)'}}>
           <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',padding:'8px 16px',borderRadius:'12px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>⬅ 返回</button>
-          <div style={{fontSize:'18px',fontWeight:'900',textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>👹 世界Boss</div>
+          <div style={{fontSize:'18px',fontWeight:'900',textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>👹 世界首领</div>
           <div style={{fontSize:'12px',color:'rgba(255,255,255,0.7)'}}>⚔️ {st.attempts}/{WORLD_BOSS_MAX_ATTEMPTS}</div>
         </div>
         <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
@@ -5823,7 +5871,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
           {boss.phases && (
             <div style={{marginTop:'16px'}}>
-              <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>⚠️ Boss阶段</div>
+              <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>⚠️ 首领阶段</div>
               {boss.phases.map((ph, pi) => (
                 <div key={pi} style={{padding:'8px 12px',borderRadius:'8px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)',marginBottom:'4px',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   <span style={{color:(ph.hpPct || 0) < 1 && remainHp <= bossHp * (ph.hpPct || 0) ? '#FF8A80' : 'inherit'}}>{(ph.hpPct || 0) >= 1 ? '🔄' : '💀'} {(ph.hpPct || 0) >= 1 ? '常驻' : `HP≤${Math.floor((ph.hpPct || 0) * 100)}%`}: {ph.msg || '未知效果'}</span>
@@ -5837,7 +5885,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   // ==========================================
-  // 🍥 火影忍者 — 中忍考试 · 尾兽化 · 段位
+  // 🍥 火影忍者 — 忍者试炼 · 尾兽化 · 段位
   // ==========================================
 
   const executeBijuuTransform = () => {
@@ -5871,19 +5919,33 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     });
   };
 
+  const getExamDifficulty = (rank) => {
+    const id = rank?.id || 'academy';
+    const cfg = { academy: { waves: 2, enemyPerWave: [2,3], lvMod: 0, finalsExtra: 0 },
+      genin: { waves: 3, enemyPerWave: [2,3,3], lvMod: 3, finalsExtra: 2 },
+      chunin: { waves: 4, enemyPerWave: [2,3,3,4], lvMod: 6, finalsExtra: 4 },
+      jonin: { waves: 4, enemyPerWave: [3,3,4,4], lvMod: 10, finalsExtra: 7 },
+      kage: { waves: 5, enemyPerWave: [3,3,4,4,5], lvMod: 15, finalsExtra: 10 },
+    };
+    return cfg[id] || cfg.academy;
+  };
+
   const startChuninExam = () => {
     const today = getLocalDateStr();
-    if (narutoState.lastExamDate === today) { showMapToast('❌','冷却中','今日已参加过考试',1500); return; }
+    if (narutoState.lastExamDate === today) { showMapToast('❌','冷却中','今日已参加过试炼',1500); return; }
     if (party.length < 3) { showMapToast('❌','队伍不足','至少需要3只精灵',1500); return; }
-    setNarutoExamUI({ phase: 'survival', survivalWave: 0, survivalWaves: 2, score: 0, forestProgress: 0, scrolls: { heaven: 0, earth: 0 }, finalsRound: 0 });
+    const rank = getNinjaRank(narutoState.examsCompleted || 0);
+    const diff = getExamDifficulty(rank);
+    setNarutoExamUI({ phase: 'survival', survivalWave: 0, survivalWaves: diff.waves, score: 0, forestProgress: 0, scrolls: { heaven: 0, earth: 0 }, finalsRound: 0, difficulty: diff });
   };
 
   const startSurvivalWave = () => {
     if (!narutoExamUI || narutoExamUI.phase !== 'survival') return;
     const wave = narutoExamUI.survivalWave;
+    const diff = narutoExamUI.difficulty || getExamDifficulty(getNinjaRank(narutoState.examsCompleted || 0));
     const baseLv = Math.max(...party.map(p => p.level || 1));
-    const waveLvMod = wave * 5;
-    const enemyCount = wave === 0 ? 2 : 3;
+    const waveLvMod = wave * 5 + diff.lvMod;
+    const enemyCount = diff.enemyPerWave?.[wave] || (wave === 0 ? 2 : 3);
     const enemyPool = POKEDEX.filter(pd => pd.tier >= 3 && pd.tier <= 5);
     const enemies = [];
     for (let i = 0; i < enemyCount; i++) {
@@ -5985,20 +6047,21 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const goldReward = 5000 + examsCompleted * 2000 + Math.floor(Math.pow(examsCompleted, 1.5) * 500);
       setGold(g => g + goldReward);
       if (newRank.id !== prevRank.id) {
-        showMapToast('🎉','段位晋升',`恭喜晋升为 ${newRank.icon} ${newRank.name}！\n${newRank.perk}`,4000);
+        showMapToast('🎉','段位晋升',`恭喜从 ${prevRank.icon} ${prevRank.name} 晋升为 ${newRank.icon} ${newRank.name}！\n${newRank.perk}`,4000);
         setUnlockedTitles(prev => [...new Set([...prev, newRank.name])]);
       } else {
-        showMapToast('🎉','考试通过',`获得 ${goldReward.toLocaleString()} 金币！`,3000);
+        showMapToast('🎉','试炼通过',`获得 ${goldReward.toLocaleString()} 金币！`,3000);
       }
       updateAchStat({ chuninExams: examsCompleted });
       setNarutoExamUI(null);
       return;
     }
     const bracket = EXAM_FINALS_BRACKETS[round];
+    const diff = narutoExamUI.difficulty || getExamDifficulty(getNinjaRank(narutoState.examsCompleted || 0));
     const baseLv = Math.max(...party.map(p => p.level || 1));
-    const enemyLv = baseLv + bracket.enemyLvlRange[0] + Math.floor(Math.random() * (bracket.enemyLvlRange[1] - bracket.enemyLvlRange[0]));
+    const enemyLv = baseLv + bracket.enemyLvlRange[0] + diff.finalsExtra + Math.floor(Math.random() * (bracket.enemyLvlRange[1] - bracket.enemyLvlRange[0]));
     const enemyPool = POKEDEX.filter(pd => pd.tier >= 3 && pd.tier <= 5);
-    const enemyCount = round >= 2 ? 3 : 2;
+    const enemyCount = (round >= 2 ? 3 : 2) + (diff.finalsExtra >= 7 ? 1 : 0);
     const enemies = [];
     for (let i = 0; i < enemyCount; i++) {
       const base = enemyPool[Math.floor(Math.random() * enemyPool.length)];
@@ -6337,7 +6400,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               {allDone && (
                 <div style={{textAlign:'center'}}>
                   <div style={{fontSize:'40px',marginBottom:'8px'}}>🏆</div>
-                  <div style={{fontSize:'18px',fontWeight:'800'}}>考试通过！</div>
+                  <div style={{fontSize:'18px',fontWeight:'800'}}>试炼通过！</div>
                 </div>
               )}
               <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
@@ -6369,7 +6432,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       <div className="screen" style={{background:'linear-gradient(135deg,#1a0a00,#2d1500,#1a0a00)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
-          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🍥 中忍考试</div>
+          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🍥 忍者试炼</div>
           <div style={{width:'60px'}}></div>
         </div>
         <div style={{flex:1,overflow:'auto',padding:'20px',display:'flex',flexDirection:'column',gap:'16px'}}>
@@ -6379,13 +6442,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'36px'}}>{rank.icon}</div>
               <div>
                 <div style={{fontSize:'20px',fontWeight:'900',color:'#FFB74D'}}>{rank.name}</div>
-                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>累计通过 {narutoState.examsCompleted || 0} 次考试</div>
+                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>累计通过 {narutoState.examsCompleted || 0} 次试炼</div>
               </div>
             </div>
             {rank.perk && <div style={{fontSize:'12px',color:'#FFCC80',padding:'8px 12px',borderRadius:'8px',background:'rgba(255,111,0,0.08)'}}>{rank.perk}</div>}
+            <div style={{fontSize:'11px',color:'rgba(255,200,128,0.7)',marginTop:'6px',padding:'4px 8px',borderRadius:'6px',background:'rgba(255,111,0,0.06)'}}>
+              当前试炼难度: 生存{(() => { const d = getExamDifficulty(rank); return d.waves; })()}波 · 敌人等级+{(() => { const d = getExamDifficulty(rank); return d.lvMod; })()}
+            </div>
             {nextRank && (
               <div style={{marginTop:'10px'}}>
-                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginBottom:'4px'}}>下一段位: {nextRank.icon} {nextRank.name} (需 {nextRank.minExams} 次考试)</div>
+                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginBottom:'4px'}}>下一段位: {nextRank.icon} {nextRank.name} (需 {nextRank.minExams} 次试炼)</div>
                 <div style={{height:'6px',borderRadius:'3px',background:'rgba(255,255,255,0.06)',overflow:'hidden'}}>
                   <div style={{height:'100%',borderRadius:'3px',background:'linear-gradient(90deg,#FF6F00,#FF8F00)',width:`${Math.min(100, ((narutoState.examsCompleted || 0) / nextRank.minExams) * 100)}%`,transition:'width 0.3s'}}></div>
                 </div>
@@ -6423,14 +6489,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
           </div>
 
-          {/* 查克拉亲和 & 考试统计 */}
+          {/* 查克拉亲和 & 试炼统计 */}
           <div style={{display:'flex',gap:'10px'}}>
             <div style={{flex:1,padding:'14px',borderRadius:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
               <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>查克拉亲和</div>
               <div style={{fontSize:'14px',fontWeight:'700',color:'#FFB74D'}}>{(() => { const aff = calcChakraAffinity(narutoState.jutsuMastery); return aff ? `${CHAKRA_NATURE_MAP[aff]?.icon} ${CHAKRA_NATURE_MAP[aff]?.name}` : '尚未确定'; })()}</div>
             </div>
             <div style={{flex:1,padding:'14px',borderRadius:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
-              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>考试最高分</div>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>试炼最高分</div>
               <div style={{fontSize:'14px',fontWeight:'700',color:'#FFB74D'}}>{narutoState.examHighScore || 0}/5</div>
             </div>
             <div style={{flex:1,padding:'14px',borderRadius:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
@@ -6447,14 +6513,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             📖 忍术图鉴 <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>({JUTSU_DB.length}种忍术)</span>
           </button>
 
-          {/* 开始考试 */}
+          {/* 开始试炼 */}
           <button type="button" onClick={startChuninExam} disabled={!canExam || party.length < 3}
             style={{padding:'16px',borderRadius:'16px',border:'none',
               background: canExam && party.length >= 3 ? 'linear-gradient(135deg,#FF6F00,#FF8F00)' : 'rgba(255,255,255,0.05)',
               color: canExam && party.length >= 3 ? '#fff' : 'rgba(255,255,255,0.3)',
               fontSize:'16px',fontWeight:'800',cursor: canExam && party.length >= 3 ? 'pointer' : 'not-allowed',
               boxShadow: canExam ? '0 4px 20px rgba(255,111,0,0.3)' : 'none'}}>
-            {canExam ? '🍥 开始中忍考试' : '今日已参加 · 明日再来'}
+            {canExam ? '🍥 开始忍者试炼' : '今日已参加 · 明日再来'}
           </button>
 
           {/* 三阶段说明 */}
@@ -6475,7 +6541,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
               {NARUTO_CHALLENGES.map(ch => {
                 const unlocked = badges.length >= ch.badgeReq;
-                const completed = (narutoState.examsCompleted || 0) >= ch.req / 50;
+                const completed = (narutoState.examsCompleted || 0) >= Math.max(1, ch.req) / 50;
                 return (
                   <div key={ch.id} style={{display:'flex',alignItems:'center',padding:'10px 14px',borderRadius:'10px',
                     background: completed ? 'rgba(76,175,80,0.08)' : unlocked ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.2)',
@@ -7457,8 +7523,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           })()}
 
           <button onClick={() => {
-            const penalty = Math.floor((gold || 0) * 0.1);
-            const penaltyText = penalty > 0 ? `\n- 罚款 ${penalty.toLocaleString()} 金币（当前金币的10%）` : '';
+            const penalty = Math.min(Math.floor((gold || 0) * 0.05), 10000);
+            const penaltyText = penalty > 0 ? `\n- 罚款 ${penalty.toLocaleString()} 金币（当前金币的5%，最高10000）` : '';
             setConfirmModal({ title:'⚠️ 退帮确认', msg:`退帮惩罚：\n- 帮贡清零\n- 个人技能全部重置\n- 24小时内无法加入新帮派${penaltyText}\n\n确定要退出帮派吗？`, onOk: () => {
               if (penalty > 0) setGold(g => Math.max(0, g - penalty));
               setGang({ ...DEFAULT_GANG_STATE, leaveTime: Date.now() });
@@ -9224,7 +9290,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             stages: p.stages || { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
             volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
         }));
-        trainerName = context.trainerName || '世界Boss';
+        trainerName = context.trainerName || '世界首领';
         dropGold = context?.rewards?.gold ?? context?.drop ?? 2000;
     }
     else if (type === 'league') {
@@ -9494,7 +9560,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         boss.currentHp = getStats(boss).maxHp;
         enemyParty.push(boss);
         dropGold = context.drop;
-        trainerName = `Boss塔守卫`;
+        trainerName = `首领塔守卫`;
         extraBattleData = { ...extraBattleData, bossRushWave: context.bossRushWave || 1 };
     }
     // 属性试炼场
@@ -9663,7 +9729,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         extraBattleData.campaignData = campaign;
     }
     // -------------------------------------------------
-    // 16. 火影剧情 / 中忍考试 (自定义敌方队伍)
+    // 16. 火影剧情 / 忍者试炼 (自定义敌方队伍)
     // -------------------------------------------------
     else if (type === 'naruto_story' || type === 'naruto_exam' || type === 'naruto_survival') {
         enemyParty = (context.customParty || []).map(p => {
@@ -9673,7 +9739,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
               volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 }};
         });
         trainerName = context.trainerName || '忍界之敌';
-        dropGold = 0;
+        if (type === 'naruto_story') {
+          dropGold = 500 + (context.customParty?.length || 1) * 200;
+        } else {
+          dropGold = 0;
+        }
         if (context.isDouble || (context.customParty && context.customParty.length >= 2 && context.customParty.some(p => p._isDoubleStage))) isDouble = true;
         isBoss = true;
         extraBattleData.meta = challengeId;
@@ -9772,7 +9842,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (activeIdx === -1) { showMapToast('⚠️', '全员战斗不能', '请先前往精灵中心治疗', 2500); setView(safeBack()); return; }
 
        // 初始化战斗状态的辅助函数
-    const initBattleState = (p) => {
+    const getEnemyNinjaRank = (level) => {
+      if (level >= 70) return NINJA_RANKS.find(r => r.id === 'kage');
+      if (level >= 55) return NINJA_RANKS.find(r => r.id === 'jonin');
+      if (level >= 40) return NINJA_RANKS.find(r => r.id === 'chunin');
+      if (level >= 25) return NINJA_RANKS.find(r => r.id === 'genin');
+      return NINJA_RANKS[0];
+    };
+
+    const initBattleState = (p, isEnemy = false) => {
         const equipMoves = (p.equips || []).map(equip => {
             if (equip && typeof equip === 'object' && equip.extraSkill) {
                 return { ...equip.extraSkill, isExtra: true };
@@ -9826,7 +9904,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         // 火影忍术注入
         const jutsuMoves = [];
-        const nRank = getNinjaRank(narutoState?.examsCompleted || 0);
+        const nRank = isEnemy ? getEnemyNinjaRank(p.level) : getNinjaRank(narutoState?.examsCompleted || 0);
         if (nRank && nRank.id !== 'academy' && p.level >= 20) {
           const petNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === p.type);
           const natureKey = petNature ? petNature[0] : null;
@@ -9886,8 +9964,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     };
 
 
-    const battleEnemyParty = enemyParty.map(initBattleState);
-    const battlePlayerParty = playerPartyForBattle.map(initBattleState); 
+    const battleEnemyParty = enemyParty.map(p => initBattleState(p, true));
+    const battlePlayerParty = playerPartyForBattle.map(p => initBattleState(p, false)); 
 
     if (extraBattleData._arenaLevelCap) {
       const cap = extraBattleData._arenaLevelCap;
@@ -10198,7 +10276,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const winner = deadSide === 'player' ? '2P (对手)' : '1P (我方)';
           showMapToast('🏆', '战斗结束', `获胜者：${winner}`, 2000);
           if (deadSide === 'enemy') {
-              const pvpGold = (achStats.pvpWins || 0) < 1 ? 5000 : 1000;
+              const pvpGold = (achStats.pvpWins || 0) < 1 ? 5000 : 500;
               setGold(g => g + pvpGold);
               updateAchStat({ pvpWins: 1, trainerWins: 1 });
               showMapToast('✅', '提示', `获得获胜奖励：${pvpGold} 金币${pvpGold < 5000 ? '（非首胜递减）' : ''}`, 2000);
@@ -11336,7 +11414,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
   useEffect(() => {
     if (!cafe._pendingSideEffects) return;
     const { ticks, workers, oldWorkCount } = cafe._pendingSideEffects;
-    setCafe(prev => { const { _pendingSideEffects, ...rest } = prev; return rest; });
     const lvData = getCafeLevel(oldWorkCount);
     const _m = marriageRef.current;
     const spCafeBonus = _m.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === _m.spouse), (getMarriageLevel(_m.affections[_m.spouse] || 0)).level).cafeGold || 0) : 0;
@@ -11344,7 +11421,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const cafeGoldMult = 1 + spCafeBonus + spCafeBase;
     const workerMult = 1 + Math.max(0, workers.length - 1) * 0.3;
     const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult * cafeGoldMult * workerMult);
-    setGold(g => g + goldEarned);
+    const today = getLocalDateStr();
+    let actualCafeGold = 0;
+    setCafe(prev => {
+      const { _pendingSideEffects, ...rest } = prev;
+      const soFar = rest.cafeDailyGoldDate === today ? (rest.cafeDailyGoldEarned || 0) : 0;
+      actualCafeGold = Math.min(goldEarned, Math.max(0, 50000 - soFar));
+      return { ...rest, cafeDailyGoldDate: today, cafeDailyGoldEarned: soFar + actualCafeGold };
+    });
+    setGold(g => g + actualCafeGold);
     const intimacyIncrease = ticks * 2;
     const update = (list) => list.map(p => {
       if (workers.includes(p.uid || p.id)) {
@@ -11758,7 +11843,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const player = tempBattle.playerCombatStates[vowIdx];
 
         if (vow.ceCost && (player.cursedEnergy || 0) < vow.ceCost) {
-            addLog(`📜 咒力不足! 需要 ${vow.ceCost} CE`);
+            addLog(`📜 咒力不足! 需要 ${vow.ceCost} 咒力`);
             setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
             return;
         }
@@ -12751,10 +12836,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!atkState.jutsuCooldowns) atkState.jutsuCooldowns = {};
         atkState.jutsuCooldowns[move.jutsuId || move.name] = 2;
         addLog(`🍥 消耗 ${move.chakraCost} 查克拉 (剩余${atkState.chakra})`);
-    } else if (move.pp > 0) {
-        let ppCost = 1;
-        if (defState.trait === 'pressure') ppCost = 2; 
-        move.pp = Math.max(0, move.pp - ppCost);
+    } else {
+        if (move.pp === undefined && !move.isJutsu && !move.isCursed) {
+            move.pp = move.maxPP || 15;
+        }
+        if (move.pp > 0) {
+            let ppCost = 1;
+            if (defState.trait === 'pressure') ppCost = 2;
+            move.pp = Math.max(0, move.pp - ppCost);
+        }
     }
     if (move.effect?.type !== 'PROTECT') {
       if (!atkState.volatiles) atkState.volatiles = {};
@@ -12928,7 +13018,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         else if (eff.type === 'OHKO') {
             if (defender.isBoss) {
-              addLog(`${defender.name} 是Boss级别，一击必杀无效！`);
+              addLog(`${defender.name} 是首领级别，一击必杀无效！`);
             } else if (Math.random() < (eff.chance || 0.3)) {
               defender.currentHp = 0;
               addLog(`💀 ${defender.name} 被一击必杀了！`);
@@ -13020,8 +13110,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (fx.id === 'void_heart' && fx.ignDef) defVal = Math.floor(defVal * (1 - fx.ignDef));
         });
 
+        const atkSecType = attacker.type2 || attacker.secondaryType;
+        const defSecType = defender.type2 || defender.secondaryType;
+
         let typeMod = getTypeMod(move.t, defender.type);
-        if (defender.secondaryType && defender.secondaryType !== defender.type) typeMod *= getTypeMod(move.t, defender.secondaryType);
+        if (defSecType && defSecType !== defender.type) typeMod *= getTypeMod(move.t, defSecType);
         const levelBase = attacker.level * 0.8 + 5;
         const movePower = move.p || 40;
         const powerFactor = movePower * 0.5 + 10;
@@ -13033,7 +13126,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         atkEquipFx.forEach(fx => { if (fx.id === 'crit_dmg') critDmgMult += fx.val; });
         if (isCrit) rawDmg *= critDmgMult;
         rawDmg *= typeMod;
-        const isSTAB = (move.t === attacker.type || move.t === attacker.secondaryType);
+        const isSTAB = (move.t === attacker.type || move.t === atkSecType);
         if (isSTAB) rawDmg *= 1.5;
         rawDmg *= (0.85 + Math.random() * 0.15);
 
@@ -13084,8 +13177,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (move.t === 'FIRE') { rawDmg *= 1.5; weatherBoosted = true; addLog('☀️ 烈日增强了火系威力！'); }
             if (move.t === 'WATER') { rawDmg *= 0.5; weatherBoosted = true; }
         }
-        const atkTypes = [attacker.type, attacker.secondaryType].filter(Boolean);
-        const defTypes = [defender.type, defender.secondaryType].filter(Boolean);
+        const atkTypes = [attacker.type, atkSecType].filter(Boolean);
+        const defTypes = [defender.type, defSecType].filter(Boolean);
         if (weather === 'SAND' && defTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) {
              if (category === 'special') rawDmg *= 0.8;
         }
@@ -14064,8 +14157,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const streakCount = achStats.currentWinStreak || 0;
     const streakMult = streakCount >= 20 ? 1.5 : streakCount >= 10 ? 1.3 : streakCount >= 5 ? 1.15 : 1.0;
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
-    const isNarutoFight = type === 'naruto_story' || type === 'naruto_exam' || type === 'naruto_survival';
-    const goldGain = isNarutoFight ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * bountyMult * streakMult * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
+    const isNarutoExamOrSurvival = type === 'naruto_exam' || type === 'naruto_survival';
+    const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * bountyMult * streakMult * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
     if (goldGain > 0) setGold(g => g + goldGain);
     const extraDrops = [];
 
@@ -14219,7 +14312,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (wave < maxWaves) {
         const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
         const nextLvlBase = Math.min(100, (battle.enemyParty?.[0]?.level || 50) + 5);
-        const rushName = battle.rushName || battle.battleName?.replace(/第\d+层/, '').trim() || 'Boss塔';
+        const rushName = battle.rushName || battle.battleName?.replace(/第\d+层/, '').trim() || '首领塔';
         const dungeonId = battle.dungeonId;
         addLog(`🗼 ${rushName}第${wave}层通关！准备迎战第${wave + 1}层...`);
         if (battle.dungeonId === 'ladder_trial') {
@@ -14234,7 +14327,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }, 1000);
         return;
       } else {
-        const rushName = battle.rushName || 'Boss塔';
+        const rushName = battle.rushName || '首领塔';
         const rushDungeon = DUNGEONS.find(d => d.id === battle.dungeonId);
         const rushTier = rushDungeon?.tier || 2;
         const bonusGold = rushTier <= 1 ? 2500 : rushTier <= 2 ? 5000 : rushTier <= 3 ? 8000 : 12000;
@@ -14584,7 +14677,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setLeagueRound(0); 
             setCompletedChallenges(prev => [...prev, 'LEAGUE_CHAMPION']); 
             const candyCount = 3 + Math.min(5, Math.floor(leagueWins / 2));
-            const goldReward = 20000 + (leagueWins * 8000);
+            const goldReward = Math.min(20000 + leagueWins * 8000, 80000);
             setInventory(prev => ({...prev, max_candy: (prev.max_candy || 0) + candyCount}));
             setGold(g => g + goldReward);
             const rand = Math.random();
@@ -14966,7 +15059,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setBadges(prev => {
               const newBadges = [...prev, mapBadge];
               const bc = newBadges.length;
-              const milestoneGold = bc * 500;
+              const milestoneGold = Math.min(bc * 500, 5000);
               setGold(g => g + milestoneGold);
               addLog(`🏅 获得第${bc}枚徽章！奖励 ${milestoneGold} 金币！`);
               if (bc === 3) {
@@ -15124,7 +15217,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 竞技场结算
     if (battle.type === 'arena') handleArenaResult(true);
-    // 中忍考试生存试炼结算
+    // 忍者试炼生存试炼结算
     if (battle.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
       const wave = narutoExamUI.survivalWave || 0;
       if (wave >= (narutoExamUI.survivalWaves || 2)) {
@@ -15138,7 +15231,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       return;
     }
-    // 中忍考试对战结算
+    // 忍者试炼对战结算
     if (battle.type === 'naruto_exam' && narutoExamUI?.phase === 'finals') {
       const round = narutoExamUI.finalsRound || 0;
       const bracket = EXAM_FINALS_BRACKETS[round - 1];
@@ -15266,7 +15359,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const newWins = (dailyChallenge.wins || 0) + 1;
         if (newWins >= dailyChallenge.target) {
           setDailyChallenge(prev => ({ ...prev, wins: newWins, completed: true }));
-          const reward = 3000 + badges.length * 500;
+          const reward = Math.min(3000 + badges.length * 500, 10000);
           setGold(g => g + reward);
           showMapToast('⚡','每日挑战完成',`获得 ${reward} 金币奖励！`,3000);
           updateAchStat({ totalGoldEarned: reward });
@@ -15328,7 +15421,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (levelUps.length > 0) summaryParts.push(`🆙 ${levelUps.join('、')}`);
       const leadPet = partyToSave[0];
       if (leadPet && !levelUps.find(l => l.startsWith(leadPet.name))) {
-        const expNeeded = getExpForLevel(leadPet.level + 1) - (leadPet.exp || 0);
+        const expNeeded = (leadPet.nextExp || calcNextExp(leadPet.level, 1.0)) - (leadPet.exp || 0);
         if (expNeeded > 0) summaryParts.push(`📊 ${leadPet.name} 距升级还需 ${expNeeded} 经验`);
       }
       if (extraDrops.length > 0) summaryParts.push(extraDrops.join(' '));
@@ -15371,8 +15464,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isStoryFight = battle?.type === 'naruto_story';
     let penaltyAmount = 0;
     if (!isArenaFight && !isWorldBoss && !isStoryFight) {
-      penaltyAmount = Math.min(Math.floor(gold * 0.1), 5000);
-      setGold(g => Math.max(0, g - penaltyAmount));
+      setGold(g => {
+        const penalty = Math.min(Math.floor(g * 0.1), 5000);
+        penaltyAmount = penalty;
+        return Math.max(0, g - penalty);
+      });
     }
     if (isWorldBoss) {
       const totalDmgDealt = battle._worldBossDmgDealt || 0;
@@ -15406,7 +15502,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else if (isWorldBoss) {
       setView('world_boss');
       const dmg = battle?._worldBossDmgDealt || 0;
-      showMapToast('⚔️', 'Boss挑战结束', `本次造成 ${dmg.toLocaleString()} 伤害！`, 3000);
+      showMapToast('⚔️', '首领挑战结束', `本次造成 ${dmg.toLocaleString()} 伤害！`, 3000);
     } else if (battle?.type === 'naruto_story') {
       setView('naruto_story');
       showMapToast('💀', '忍界挑战失败', '伙伴已恢复，提升实力后再来挑战！', 3000);
@@ -15417,7 +15513,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       showMapToast('💀', '生存试炼失败', '实力不足，明日再战！', 3000);
     } else if (battle?.type === 'naruto_exam') {
       setView('naruto_exam');
-      showMapToast('💀', '考试失败', '中忍考试失败，明日再挑战！', 3000);
+      showMapToast('💀', '试炼失败', '忍者试炼失败，明日再挑战！', 3000);
     } else if (battle?.type === 'gang_war') {
       setView('gang');
       showMapToast('💀', '帮战失败', '帮战落败，继续努力！', 3000);
@@ -16140,10 +16236,10 @@ const renderNameInput = () => {
       {/* 背景装饰粒子 */}
       {[...Array(12)].map((_, i) => (
         <div key={i} style={{
-          position:'fixed', width: 4+Math.random()*6, height: 4+Math.random()*6,
-          borderRadius:'50%', background:`rgba(${100+Math.random()*155},${150+Math.random()*100},255,${0.15+Math.random()*0.2})`,
-          left:`${Math.random()*100}%`, top:`${Math.random()*100}%`,
-          animation:`float ${4+Math.random()*6}s ease-in-out infinite`, animationDelay:`${Math.random()*3}s`,
+          position:'fixed', width: 4+((i*7+3)%7), height: 4+((i*7+3)%7),
+          borderRadius:'50%', background:`rgba(${100+((i*7919)%156)},${150+((i*6131)%101)},255,${0.15+(((i*4139)%21)/100)})`,
+          left:`${(i * 8371 + 2143) % 100}%`, top:`${(i * 6547 + 1231) % 100}%`,
+          animation:`float ${4+((i*5153)%7)}s ease-in-out infinite`, animationDelay:`${(i*3+1)%4}s`,
           pointerEvents:'none'
         }} />
       ))}
@@ -17765,16 +17861,7 @@ const renderMenu = () => {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{opacity:0.5}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
 
-          {hasSave && (
-            <div style={{display:'flex', justifyContent:'center', gap:'14px', marginTop:'8px', padding:'3px 0'}}>
-              {[{icon:'⚡', val:'Lv.'+((party[0]||{}).level||'?'), label:'等级'}, {icon:'📖', val:caughtDex.length+'/'+POKEDEX.length, label:'图鉴'}, {icon:'💰', val:(gold||0)>=100000000?Math.floor((gold||0)/100000000)+'亿':(gold||0)>=10000?((gold||0)/10000).toFixed(1).replace(/\.0$/,'')+'万':(gold||0).toLocaleString(), label:'金币'}, {icon:'🎖️', val:badges.length, label:'徽章'}, {icon:'🍥', val:ninjaRank?.name||'学员', label:'段位'}].map((s,i) => (
-                <div key={i} style={{textAlign:'center'}}>
-                  <div style={{fontSize:'11px', fontWeight:'800', color:'rgba(255,255,255,0.5)'}}>{s.icon} {s.val}</div>
-                  <div style={{fontSize:'9px', color:'rgba(255,255,255,0.12)', marginTop:'1px'}}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          )}
+{/* 人物信息栏已移至游戏内查看 */}
 
           <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,100,0,0.06), transparent)', margin:'10px 0'}} />
 
@@ -17807,7 +17894,6 @@ const renderMenu = () => {
               { key:'general_dex', label:'名将', sub:collectedGenCount+'/200', emoji:'📜' },
               { key:'achievements', label:'成就', sub:Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)+'%', emoji:'🏆' },
               { key:'guide', label:'说明', sub:'攻略', emoji:'📖' },
-              { key:'trainer_card', label:'卡片', sub:'信息', emoji:'🪪' },
               { key:null, label:'重置', sub:'存档', emoji:'🔄', action: resetGame },
             ].map(btn => (
               <button key={btn.label} onClick={() => { if (btn.lock) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } btn.action ? btn.action() : setView(btn.key); }} style={{
@@ -17987,7 +18073,7 @@ const renderMenu = () => {
       else if (dungeon.type === 'boss_rush') {
         const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
         const bossLvl = Math.max(40, Math.min(party[0].level + 5, 95));
-        showMapToast('🗼', dungeon.name, '连续 3 Boss', 2500);
+        showMapToast('🗼', dungeon.name, '连续 3 首领', 2500);
         startBattle({ id: 992, name: `${dungeon.name} 第1层`, lvl: [bossLvl - 5, bossLvl], pool: bossPool, drop: 1500, bossRushWave: 1, rushName: dungeon.name, dungeonId: dungeon.id }, 'boss_rush');
       }
       // --- 属性试炼场 ---
@@ -19099,7 +19185,7 @@ const renderMenu = () => {
                       <div style={{background:'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius:'14px', padding:'16px', color:'#fff', marginBottom:'14px', position:'relative', overflow:'hidden'}}>
                         <div style={{position:'absolute', top:0, right:0, bottom:0, width:'40%', background:'linear-gradient(90deg, transparent, rgba(255,215,0,0.05))'}} />
                         <div style={{fontSize:'18px', fontWeight:'800', marginBottom:'4px'}}>📜 三国名战录</div>
-                        <div style={{fontSize:'12px', opacity:0.8, marginBottom:'8px'}}>纵横三国，重现经典战役。多波次Boss连战，HP延续，策略为王！</div>
+                        <div style={{fontSize:'12px', opacity:0.8, marginBottom:'8px'}}>纵横三国，重现经典战役。多波次首领连战，HP延续，策略为王！</div>
                         <div style={{display:'flex', gap:'10px', fontSize:'11px'}}>
                           <span style={{background:'rgba(255,215,0,0.15)', padding:'3px 10px', borderRadius:'8px', color:'#FFD700'}}>已通关 {completed.length}/{HISTORICAL_BATTLES.length}</span>
                           <span style={{background:'rgba(100,181,246,0.15)', padding:'3px 10px', borderRadius:'8px', color:'#64B5F6'}}>队伍 Lv.{avgLv}</span>
@@ -19251,7 +19337,7 @@ const renderMenu = () => {
                               <div style={{display:'flex', borderRadius:'6px', overflow:'hidden', height:'20px', background:'#e2e8f0', marginBottom:'8px'}}>
                                 {FACTION_IDS.map(fid => {
                                   const pts = progress[fid] || 0;
-                                  const pct = (pts / totalPts) * 100;
+                                  const pct = totalPts > 0 ? (pts / totalPts) * 100 : 0;
                                   if (pct < 1) return null;
                                   return <div key={fid} style={{width:`${pct}%`, background:FACTIONS[fid].color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', color:'#fff', fontWeight:'700', minWidth: pct > 5 ? '0' : '18px'}}>{pts}</div>;
                                 })}
@@ -19834,7 +19920,7 @@ const renderMenu = () => {
         <div className="panel-card" style={{padding:'16px', background:'linear-gradient(135deg, #fff 0%, #f8f6f0 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)', position:'relative', overflow:'hidden', borderLeft: `4px solid ${theme.color || '#4CAF50'}`}}>
           <div style={{position:'absolute', top:'-8px', right:'-8px', fontSize:'60px', opacity:0.06, pointerEvents:'none', transform:'rotate(-15deg)'}}>{currentMap.icon}</div>
           <div style={{position:'relative', zIndex:2}}>
-            <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>Current Location</div>
+            <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>当前位置</div>
             <div style={{fontSize:'18px', fontWeight:'900', color:'#2c2417', marginBottom:'6px'}}>{currentMap.name}</div>
             <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
               <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
@@ -19887,15 +19973,7 @@ const renderMenu = () => {
                 <span style={{fontSize:'9px', color:'#999'}}>{today}</span>
               </div>
               {!isToday ? (
-                <button onClick={() => {
-                  const types = ['FIRE','WATER','GRASS','ELECTRIC','FIGHT','PSYCHIC','DARK','DRAGON'];
-                  const challengeType = types[Math.floor(Math.random() * types.length)];
-                  const typeName = TYPES[challengeType]?.name || challengeType;
-                  setDailyChallenge({ date: today, type: challengeType, typeName, wins: 0, target: 3, completed: false });
-                  showMapToast('⚡','每日挑战',`今日挑战：使用${typeName}系精灵赢得3场战斗！`,3000);
-                }} style={{width:'100%', padding:'8px', borderRadius:'10px', background:'linear-gradient(90deg,#FF9800,#F57C00)', color:'#fff', fontWeight:'700', fontSize:'11px', cursor:'pointer'}}>
-                  接受今日挑战
-                </button>
+                <div style={{textAlign:'center', fontSize:'11px', color:'#999'}}>今日挑战加载中…</div>
               ) : completed ? (
                 <div style={{textAlign:'center', fontSize:'11px', color:'#4CAF50', fontWeight:'700'}}>✅ 已完成！奖励已发放</div>
               ) : (
@@ -21800,7 +21878,7 @@ const renderMenu = () => {
               { id: 'pvp', icon: '⚔️', label: '对战', action: () => setPvpMode(true) },
               { id: 'league', icon: '🏆', label: '联盟' },
               { id: 'pc', icon: '💻', label: '电脑', action: () => setPcMode(true) },
-              { id: 'card', icon: '🆔', label: '卡片', action: () => setView('trainer_card') },
+              { id: 'card', icon: '📋', label: '资料', action: () => setView('trainer_card') },
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
@@ -23397,10 +23475,10 @@ const renderMenu = () => {
 
                 {/* ====== 中景光点 (通用) ====== */}
                 {Array.from({length: 8}, (_, i) => {
-                  const left = 20 + Math.random() * 60;
-                  const top = 20 + Math.random() * 50;
-                  const size = 2 + Math.random() * 3;
-                  const dur = 3 + Math.random() * 5;
+                  const left = 20 + ((i * 7919 + 3571) % 61);
+                  const top = 20 + ((i * 6133 + 2477) % 51);
+                  const size = 2 + ((i * 4397) % 4);
+                  const dur = 3 + ((i * 5153) % 6);
                   return <div key={`spk${i}`} className="battle-sparkle" style={{
                     left:`${left}%`, top:`${top}%`, width:size, height:size,
                     animationDuration:`${dur}s`, animationDelay:`${i * 0.8}s`
@@ -24377,7 +24455,7 @@ const renderMenu = () => {
       3: ['super_potion','hyper_potion','max_potion','ether','max_ether','awakening','ice_heal','full_heal','revive'],
       4: ['hyper_potion','max_potion','ether','max_ether','full_heal','revive','max_revive'],
     };
-    const shopTMs = TMS.filter(t=>t.shopSell);
+    const shopTMs = ALL_SKILL_TMS.filter(t=>t.shopSell);
     const tmsByTier = {
       1: shopTMs.filter(t=>t.tier<=1).map(t=>t.id),
       2: shopTMs.filter(t=>t.tier<=2).map(t=>t.id),
@@ -24486,6 +24564,14 @@ const renderMenu = () => {
               <span>🏪 商店等级: {['', '初级', '进阶', '高级', '顶级'][tier]}</span>
               <span style={{fontSize:'11px',fontWeight:'600',color:'#78909C'}}>（徽章 {badgeCount} 枚 · 商品池随等级解锁）</span>
             </div>
+            {shopTab==='tms' && (
+              <div style={{display:'flex',gap:'4px',flexWrap:'wrap',marginBottom:'10px'}}>
+                <button onClick={()=>setShopTMFilter(null)} style={{padding:'4px 10px',borderRadius:'14px',border:'1px solid '+(shopTMFilter===null?'#FF6F00':'#ddd'),background:shopTMFilter===null?'#FF6F00':'#fff',color:shopTMFilter===null?'#fff':'#666',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>全部</button>
+                {Object.entries(TYPES).filter(([k])=>k!=='GOD').map(([k,v])=>(
+                  <button key={k} onClick={()=>setShopTMFilter(k)} style={{padding:'4px 10px',borderRadius:'14px',border:'1px solid '+(shopTMFilter===k?v.color||'#FF6F00':'#ddd'),background:shopTMFilter===k?v.color||'#FF6F00':'#fff',color:shopTMFilter===k?'#fff':'#666',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>{v.name||k}</button>
+                ))}
+              </div>
+            )}
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:'14px'}}>
               {shopTab==='balls' && availBalls.map(type=>{
                 const item=BALLS[type]; if(!item) return null;
@@ -24495,8 +24581,8 @@ const renderMenu = () => {
                 const item=MEDICINES[key]; if(!item) return null;
                 return renderShopCard(key,renderMedCSS(key,36)||<span style={{fontSize:30}}>{item.icon}</span>,item.name,item.desc,item.price,'item');
               })}
-              {shopTab==='tms' && availTMs.map(tmId=>{
-                const tm=TMS.find(t=>t.id===tmId); if(!tm) return null;
+              {shopTab==='tms' && availTMs.filter(tmId => !shopTMFilter || (ALL_SKILL_TMS.find(t=>t.id===tmId)?.type === shopTMFilter)).map(tmId=>{
+                const tm=ALL_SKILL_TMS.find(t=>t.id===tmId); if(!tm) return null;
                 const alreadyOwned = (inventory.tms?.[tmId]||0) > 0;
                 const tierLabel = tm.tier===1?'基础':tm.tier===2?'进阶':'高级';
                 const tierTagColor = tm.tier===1?'#78909C':tm.tier===2?'#43A047':'#FB8C00';
@@ -24997,8 +25083,8 @@ const renderMenu = () => {
     // 辅助显示属性行
     const StatRow = ({ label, oldVal, newVal, max }) => {
         // 计算进度条
-        const oldPct = Math.min(100, (oldVal / max) * 100);
-        const newPct = newVal ? Math.min(100, (newVal / max) * 100) : 0;
+        const oldPct = max > 0 ? Math.min(100, (oldVal / max) * 100) : 0;
+        const newPct = newVal ? (max > 0 ? Math.min(100, (newVal / max) * 100) : 0) : 0;
         const diff = newVal ? newVal - oldVal : 0;
         
         return (
@@ -26527,11 +26613,12 @@ const renderMenu = () => {
             <div style={{fontSize:'13px', color:'#aaa', marginBottom:'16px'}}>连续登录第 <span style={{color:'#FF9800', fontWeight:'bold', fontSize:'18px'}}>{showDailyReward.streak}</span> 天</div>
             <div style={{padding:'16px', background:'rgba(255,215,0,0.08)', borderRadius:'12px', marginBottom:'16px'}}>
               <div style={{fontSize:'15px', color:'#fff', fontWeight:'600'}}>{showDailyReward.desc}</div>
+              <div style={{fontSize:'11px', color:'#94a3b8', marginTop:'10px', lineHeight:1.4}}>金币与道具已自动发放到账户与背包。</div>
             </div>
             <div style={{fontSize:'11px', color:'#94a3b8', marginBottom:'10px'}}>累计登录 {showDailyReward.total} 天 · 连续登录14天获得最高奖励</div>
             <div style={{fontSize:'12px', color:'#a5b4fc', marginBottom:'16px', lineHeight:1.5}}>
               <span style={{color:'#818cf8', fontWeight:700}}>明日奖励预告</span>
-              （连续登录时）：{DAILY_LOGIN_DAY_REWARDS[Math.min(showDailyReward.streak, DAILY_LOGIN_DAY_REWARDS.length - 1)].desc}
+              （明日若仍连续登录）：{DAILY_LOGIN_DAY_REWARDS[Math.min(showDailyReward.streak, DAILY_LOGIN_DAY_REWARDS.length - 1)].desc}
             </div>
             <button onClick={() => setShowDailyReward(null)} style={{padding:'10px 30px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#FFD700,#FF8F00)', color:'#000', fontSize:'14px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 15px rgba(255,215,0,0.3)'}}>领取</button>
           </div>

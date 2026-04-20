@@ -163,7 +163,7 @@ const ACHIEVEMENTS = [
   { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴700+全门派+联赛10+全副本+25座塔', check: s => s.dexCount >= 700 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 10 && (s.uniqueDungeonsCleared || 0) >= 8 && s.challengesCompleted >= 25, reward: { title: '真·大师' } },
   { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁90个成就',               check: s => s.achievementCount >= 90, reward: { title: '传说训练家' } },
 
-  // ===== 火影忍者系列成就 (12) =====
+  // ===== 火影忍者系列成就 (19) =====
   { id: 'ninja_genin',      cat: 'NARUTO', rarity: 'COMMON',    name: '下忍毕业',     desc: '通过第一次中忍考试',            check: s => (s.chuninExams || 0) >= 1,   reward: { gold: 1000 } },
   { id: 'ninja_chunin',     cat: 'NARUTO', rarity: 'UNCOMMON',  name: '中忍晋级',     desc: '通过3次中忍考试达到中忍段位',    check: s => (s.chuninExams || 0) >= 3,   reward: { gold: 3000 } },
   { id: 'ninja_jonin',      cat: 'NARUTO', rarity: 'RARE',      name: '上忍之路',     desc: '通过6次中忍考试达到上忍段位',    check: s => (s.chuninExams || 0) >= 6,   reward: { title: '上忍', gold: 5000 } },
@@ -184,7 +184,7 @@ const ACHIEVEMENTS = [
   { id: 'jutsu_mastery_30', cat: 'NARUTO', rarity: 'RARE',      name: '百忍通达',     desc: '将30种忍术提升到熟练精通',       check: s => (s.jutsuSkilledCount || 0) >= 30, reward: { title: '忍术通', gold: 5000 } },
   { id: 'jutsu_okugi_5',    cat: 'NARUTO', rarity: 'EPIC',      name: '奥义领悟者',   desc: '将5种忍术提升到奥义精通',       check: s => (s.jutsuOugiCount || 0) >= 5, reward: { title: '奥义之人', gold: 10000 } },
 
-  // ===== 隐藏成就 (18) =====
+  // ===== 隐藏成就 (25) =====
   { id: 'secret_solo_god',   cat: 'SECRET', rarity: 'LEGENDARY', name: '以一敌百',
     desc: '用一只精灵独自击败冠军之路道馆馆主',
     hint: '提示：最终之地的守护者…你能只带一位勇士吗？',
@@ -271,9 +271,9 @@ const ACHIEVEMENTS = [
     hint: '生命的奇迹有时会闪耀...',
     check: s => s.shinyEggsHatched >= 1, reward: { title: '金色奇迹' }, hidden: true },
   { id: 'secret_all_dungeons', cat: 'SECRET', rarity: 'LEGENDARY', name: '秘境征服者',
-    desc: '通关全部21个秘境至少各一次',
+    desc: '通关全部20个秘境至少各一次',
     hint: '每一个秘境都值得探索...',
-    check: s => s.uniqueDungeonsCleared >= 21, reward: { title: '全秘境之王' }, hidden: true },
+    check: s => s.uniqueDungeonsCleared >= 20, reward: { title: '全秘境之王' }, hidden: true },
   { id: 'secret_zero_damage_boss', cat: 'SECRET', rarity: 'LEGENDARY', name: '无敌Boss杀手',
     desc: '不受任何伤害击败道馆馆主',
     hint: '完美的战术不需要承受痛苦',
