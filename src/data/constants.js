@@ -1,3 +1,6 @@
+/** 存档键名保留 V17 历史前缀（localStorage 键仍为 …_V17_FIXED）；勿仅改键名字符串以免丢档。
+ * 当前 buildSavePayload.saveVersion = 19（见 App.js），读档迁移负责从旧版本升级。
+ * 注意：saveVersion 与键名中的「V17」无强制对应关系，仅表示数据模式代数。 */
 export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 export const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
 export const GRID_W = 32; 

@@ -1354,7 +1354,9 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
     if (DUAL_TYPE_MAP[i] && !entry.type2) entry.type2 = DUAL_TYPE_MAP[i];
     POKEDEX.push(entry);
   } else {
-    POKEDEX.push({ id: i, name: `野生精灵#${i}`, type: 'NORMAL', emoji: '🐾', hp: 50, atk: 50, def: 50 });
+    // 占位图鉴：按编号区间差异化种族值（确定性公式，避免 Math.random 导致每次加载变化）
+    const baseStat = 45 + (i % 10) + Math.floor(i / 100) * 5;
+    POKEDEX.push({ id: i, name: '未发现', type: 'NORMAL', emoji: '🐾', hp: baseStat, atk: baseStat, def: baseStat, spd: baseStat, hidden: true });
   }
 }
 

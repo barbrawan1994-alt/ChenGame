@@ -161,7 +161,7 @@ const ACHIEVEMENTS = [
   { id: 'gold_50m', cat: 'ECONOMY', rarity: 'LEGENDARY', name: '半亿传说', desc: '累计获得5000万金币', check: s => s.totalGoldEarned >= 50000000, reward: { title: '半亿传说', gold: 200000 } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 12, reward: { title: '精灵大师' } },
   { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴700+全门派+联赛10+全副本+25座塔', check: s => s.dexCount >= 700 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 10 && (s.uniqueDungeonsCleared || 0) >= 8 && s.challengesCompleted >= 25, reward: { title: '真·大师' } },
-  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁90个成就',               check: s => s.achievementCount >= 90, reward: { title: '传说训练家' } },
+  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁约90%全部成就',               check: s => s.achievementCount >= Math.floor(ACHIEVEMENTS.length * 0.9), reward: { title: '传说训练家' } },
 
   // ===== 火影忍者系列成就 (19) =====
   { id: 'ninja_genin',      cat: 'NARUTO', rarity: 'COMMON',    name: '下忍毕业',     desc: '通过第一次中忍考试',            check: s => (s.chuninExams || 0) >= 1,   reward: { gold: 1000 } },
@@ -271,9 +271,9 @@ const ACHIEVEMENTS = [
     hint: '生命的奇迹有时会闪耀...',
     check: s => s.shinyEggsHatched >= 1, reward: { title: '金色奇迹' }, hidden: true },
   { id: 'secret_all_dungeons', cat: 'SECRET', rarity: 'LEGENDARY', name: '秘境征服者',
-    desc: '通关全部20个秘境至少各一次',
+    desc: '通关全部21种秘境各至少一次（含秘境列表20座+百鬼夜行等特殊入口）',
     hint: '每一个秘境都值得探索...',
-    check: s => s.uniqueDungeonsCleared >= 20, reward: { title: '全秘境之王' }, hidden: true },
+    check: s => s.uniqueDungeonsCleared >= 21, reward: { title: '全秘境之王' }, hidden: true },
   { id: 'secret_zero_damage_boss', cat: 'SECRET', rarity: 'LEGENDARY', name: '无敌Boss杀手',
     desc: '不受任何伤害击败道馆馆主',
     hint: '完美的战术不需要承受痛苦',
@@ -353,6 +353,14 @@ const ACHIEVEMENTS = [
   { id: 'wb_10',            cat: 'MASTERY',  rarity: 'EPIC',      name: '世界猎人',     desc: '累计击败10次世界Boss',         check: s => s.worldBossesDefeated >= 10,  reward: { gold: 15000, title: '世界猎人' } },
   { id: 'wb_damage_king',   cat: 'SECRET',   rarity: 'LEGENDARY', name: '伤害之王',     desc: '单次世界Boss战斗造成30000+伤害', hint: '提示：对世界Boss释放全力一击…', check: s => s.worldBossBestDamage >= 30000, reward: { title: '伤害之王' }, hidden: true },
 ];
+
+(() => {
+  const ix = ACHIEVEMENTS.findIndex(a => a.id === 'all_achievements');
+  if (ix >= 0) {
+    const need = Math.floor(ACHIEVEMENTS.length * 0.9);
+    ACHIEVEMENTS[ix] = { ...ACHIEVEMENTS[ix], desc: `解锁约${need}个成就（总成就数的90%）` };
+  }
+})();
 
 export const DEFAULT_ACH_STATS = {
   totalCaught: 0,

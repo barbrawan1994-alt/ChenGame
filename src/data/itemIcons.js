@@ -56,11 +56,11 @@ export const ACC_ICONS = {
 
 export const GROWTH_ICONS = {
   vit_hp:    { c:'#4CAF50', sym:'HP', bg:'#E8F5E9' },
-  vit_patk:  { c:'#F44336', sym:'ATK',bg:'#FFEBEE' },
-  vit_pdef:  { c:'#2196F3', sym:'DEF',bg:'#E3F2FD' },
-  vit_satk:  { c:'#9C27B0', sym:'SP', bg:'#F3E5F5' },
-  vit_sdef:  { c:'#009688', sym:'SD', bg:'#E0F2F1' },
-  vit_spd:   { c:'#FF9800', sym:'SPD',bg:'#FFF3E0' },
+  vit_patk:  { c:'#F44336', sym:'物攻', bg:'#FFEBEE' },
+  vit_pdef:  { c:'#2196F3', sym:'物防', bg:'#E3F2FD' },
+  vit_satk:  { c:'#9C27B0', sym:'特攻', bg:'#F3E5F5' },
+  vit_sdef:  { c:'#009688', sym:'特防', bg:'#E0F2F1' },
+  vit_spd:   { c:'#FF9800', sym:'速度', bg:'#FFF3E0' },
   vit_crit:  { c:'#E91E63', sym:'★', bg:'#FCE4EC' },
   exp_candy: { c:'#7C4DFF', sym:'EXP',bg:'#EDE7F6' },
   max_candy: { c:'#FFD600', sym:'LV', bg:'#FFFDE7', shine:true },

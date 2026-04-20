@@ -17,20 +17,59 @@ export const BALLS = {
 };
 
 export const MEDICINES = {
-  potion:       { id: 'potion',       name: '伤药',      price: 50,  icon: '💊', type: 'HP', val: 35, desc: '恢复35点HP' },
-  super_potion: { id: 'super_potion', name: '好伤药',    price: 150,  icon: '🧪', type: 'HP', val: 80, desc: '恢复80点HP' },
-  hyper_potion: { id: 'hyper_potion', name: '厉害伤药',  price: 400, icon: '💉', type: 'HP', val: 200, desc: '恢复200点HP' },
-  max_potion:   { id: 'max_potion',   name: '全满药',    price: 800, icon: '✨', type: 'HP', val: 9999, desc: '恢复全部HP' },
-  ether:        { id: 'ether',        name: 'PP单补剂',  price: 200,  icon: '💧', type: 'PP', val: 10, desc: '恢复1个技能10点PP' },
-  max_ether:    { id: 'max_ether',    name: 'PP全补剂',  price: 500, icon: '🌊', type: 'PP_ALL', val: 10, desc: '恢复所有技能10点PP' },
-  antidote:     { id: 'antidote',     name: '解毒药',    price: 100,  icon: '🤢', type: 'STATUS', val: 'PSN', desc: '治愈中毒状态' },
-  paralyze_heal:{ id: 'paralyze_heal',name: '解麻药',    price: 100,  icon: '⚡', type: 'STATUS', val: 'PAR', desc: '治愈麻痹状态' },
-  burn_heal:    { id: 'burn_heal',    name: '烧伤药',    price: 100,  icon: '🔥', type: 'STATUS', val: 'BRN', desc: '治愈灼伤状态' },
-  awakening:    { id: 'awakening',   name: '清醒药',    price: 150,  icon: '💤', type: 'STATUS', val: 'SLP', desc: '治愈睡眠状态' },
-  ice_heal:     { id: 'ice_heal',    name: '解冻药',    price: 150,  icon: '❄️', type: 'STATUS', val: 'FRZ', desc: '治愈冰冻状态' },
-  full_heal:    { id: 'full_heal',    name: '万能药',    price: 400,  icon: '🌟', type: 'STATUS', val: 'ALL', desc: '治愈所有异常状态' },
-  revive:       { id: 'revive',       name: '活力块',    price: 800, icon: '💎', type: 'REVIVE', val: 0.5, desc: '复活并恢复一半HP' },
-  max_revive:   { id: 'max_revive',   name: '活力星',    price: 1200, icon: '🌟', type: 'REVIVE', val: 1.0, desc: '复活濒死精灵并恢复全部HP' },
+  // === 初级药品 (mapTier: 1, 前3张地图可买) ===
+  potion:       { id: 'potion',       name: '伤药',      price: 50,  icon: '💊', type: 'HP', val: 35, desc: '恢复35点HP', mapTier: 1 },
+  super_potion: { id: 'super_potion', name: '好伤药',    price: 150,  icon: '🧪', type: 'HP', val: 80, desc: '恢复80点HP', mapTier: 1 },
+  antidote:     { id: 'antidote',     name: '解毒药',    price: 100,  icon: '🤢', type: 'STATUS', val: 'PSN', desc: '治愈中毒状态', mapTier: 1 },
+  paralyze_heal:{ id: 'paralyze_heal',name: '解麻药',    price: 100,  icon: '⚡', type: 'STATUS', val: 'PAR', desc: '治愈麻痹状态', mapTier: 1 },
+  burn_heal:    { id: 'burn_heal',    name: '烧伤药',    price: 100,  icon: '🔥', type: 'STATUS', val: 'BRN', desc: '治愈灼伤状态', mapTier: 1 },
+  awakening:    { id: 'awakening',   name: '清醒药',    price: 150,  icon: '💤', type: 'STATUS', val: 'SLP', desc: '治愈睡眠状态', mapTier: 1 },
+  ice_heal:     { id: 'ice_heal',    name: '解冻药',    price: 150,  icon: '❄️', type: 'STATUS', val: 'FRZ', desc: '治愈冰冻状态', mapTier: 1 },
+  energy_powder: { id: 'energy_powder', name: '元气粉',  price: 80, icon: '🌿', type: 'HP', val: 50, desc: '恢复50HP(味道苦涩)', mapTier: 1 },
+
+  // === 中级药品 (mapTier: 2, 4-6张地图可买) ===
+  hyper_potion: { id: 'hyper_potion', name: '厉害伤药',  price: 400, icon: '💉', type: 'HP', val: 200, desc: '恢复200点HP', mapTier: 2 },
+  ether:        { id: 'ether',        name: 'PP单补剂',  price: 200,  icon: '💧', type: 'PP', val: 10, desc: '恢复1个技能10点PP', mapTier: 2 },
+  full_heal:    { id: 'full_heal',    name: '万能药',    price: 400,  icon: '🌟', type: 'STATUS', val: 'ALL', desc: '治愈所有异常状态', mapTier: 2 },
+  revive:       { id: 'revive',       name: '活力块',    price: 800, icon: '💎', type: 'REVIVE', val: 0.5, desc: '复活并恢复一半HP', mapTier: 2 },
+  moomoo_milk:  { id: 'moomoo_milk',  name: '哞哞鲜奶', price: 300, icon: '🥛', type: 'HP', val: 120, desc: '恢复120HP,美味的鲜奶', mapTier: 2 },
+  lemonade:     { id: 'lemonade',     name: '柠檬苏打', price: 250, icon: '🍋', type: 'HP', val: 100, desc: '恢复100HP,清爽解渴', mapTier: 2 },
+  x_attack:     { id: 'x_attack',     name: 'X攻击',    price: 500, icon: '⚔️', type: 'BUFF', val: 'ATK', desc: '战斗中攻击力提升1级', mapTier: 2 },
+  x_defense:    { id: 'x_defense',    name: 'X防御',    price: 500, icon: '🛡️', type: 'BUFF', val: 'DEF', desc: '战斗中防御力提升1级', mapTier: 2 },
+  x_speed:      { id: 'x_speed',      name: 'X速度',    price: 500, icon: '💨', type: 'BUFF', val: 'SPD', desc: '战斗中速度提升1级', mapTier: 2 },
+
+  // === 高级药品 (mapTier: 3, 7-9张地图可买) ===
+  max_potion:   { id: 'max_potion',   name: '全满药',    price: 800, icon: '✨', type: 'HP', val: 9999, desc: '恢复全部HP', mapTier: 3 },
+  max_ether:    { id: 'max_ether',    name: 'PP全补剂',  price: 500, icon: '🌊', type: 'PP_ALL', val: 10, desc: '恢复所有技能10点PP', mapTier: 3 },
+  max_revive:   { id: 'max_revive',   name: '活力星',    price: 1200, icon: '🌟', type: 'REVIVE', val: 1.0, desc: '复活濒死精灵并恢复全部HP', mapTier: 3 },
+  full_restore: { id: 'full_restore', name: '全复药',    price: 1500, icon: '💫', type: 'FULL_RESTORE', val: 9999, desc: '恢复全部HP并治愈异常', mapTier: 3 },
+  pp_max:       { id: 'pp_max',       name: 'PP极限',   price: 2000, icon: '🔋', type: 'PP_ALL', val: 99, desc: '恢复所有技能全部PP', mapTier: 3 },
+  x_sp_atk:     { id: 'x_sp_atk',    name: 'X特攻',    price: 600, icon: '🔮', type: 'BUFF', val: 'SATK', desc: '战斗中特攻提升1级', mapTier: 3 },
+  x_sp_def:     { id: 'x_sp_def',    name: 'X特防',    price: 600, icon: '🧠', type: 'BUFF', val: 'SDEF', desc: '战斗中特防提升1级', mapTier: 3 },
+
+  // === 顶级药品 (mapTier: 4, 10+地图/冠军之路可买) ===
+  sacred_ash:   { id: 'sacred_ash',   name: '圣灰',      price: 3000, icon: '🏛️', type: 'REVIVE_ALL', val: 1.0, desc: '复活全队并恢复满HP(战斗外)', mapTier: 4 },
+  max_elixir:   { id: 'max_elixir',   name: '万能特效药', price: 2500, icon: '⭐', type: 'FULL_RESTORE', val: 9999, desc: '恢复HP+PP+异常全满', mapTier: 4 },
+  dire_hit:     { id: 'dire_hit',     name: '要害攻击',  price: 800, icon: '🎯', type: 'BUFF', val: 'CRIT', desc: '战斗中暴击率大幅提升', mapTier: 4 },
+  guard_spec:   { id: 'guard_spec',   name: '防御指令',  price: 1000, icon: '🏰', type: 'BUFF', val: 'GUARD', desc: '5回合内防止能力被降低', mapTier: 4 },
+};
+
+export const BERRIES = {
+  oran:     { id: 'oran',     name: '橙橙果',   price: 80,  icon: '🍊', type: 'HP', val: 30, desc: 'HP低于50%时自动恢复30HP', mapTier: 1 },
+  sitrus:   { id: 'sitrus',   name: '文柚果',   price: 200, icon: '🍋', type: 'HP_PCT', val: 0.25, desc: 'HP低于50%时恢复25%最大HP', mapTier: 2 },
+  leppa:    { id: 'leppa',    name: '苹野果',   price: 150, icon: '🍎', type: 'PP', val: 10, desc: '技能PP用完时恢复10PP', mapTier: 1 },
+  lum:      { id: 'lum',      name: '木子果',   price: 250, icon: '🫐', type: 'STATUS', val: 'ALL', desc: '自动治愈任何异常状态', mapTier: 2 },
+  chesto:   { id: 'chesto',   name: '零余果',   price: 100, icon: '🫒', type: 'STATUS', val: 'SLP', desc: '自动治愈睡眠', mapTier: 1 },
+  rawst:    { id: 'rawst',    name: '樱子果',   price: 100, icon: '🍒', type: 'STATUS', val: 'BRN', desc: '自动治愈灼伤', mapTier: 1 },
+  aspear:   { id: 'aspear',   name: '柿仔果',   price: 100, icon: '🍑', type: 'STATUS', val: 'FRZ', desc: '自动治愈冰冻', mapTier: 1 },
+  cheri:    { id: 'cheri',    name: '樱桃果',   price: 100, icon: '🍒', type: 'STATUS', val: 'PAR', desc: '自动治愈麻痹', mapTier: 1 },
+  pecha:    { id: 'pecha',    name: '桃桃果',   price: 100, icon: '🍑', type: 'STATUS', val: 'PSN', desc: '自动治愈中毒', mapTier: 1 },
+  liechi:   { id: 'liechi',   name: '枝荔果',   price: 500, icon: '🍇', type: 'STAT_BOOST', val: 'ATK', desc: 'HP低于25%时攻击力+1级', mapTier: 3 },
+  ganlon:   { id: 'ganlon',   name: '龙睛果',   price: 500, icon: '🫐', type: 'STAT_BOOST', val: 'DEF', desc: 'HP低于25%时防御力+1级', mapTier: 3 },
+  salac:    { id: 'salac',    name: '沙鳞果',   price: 500, icon: '🥝', type: 'STAT_BOOST', val: 'SPD', desc: 'HP低于25%时速度+1级', mapTier: 3 },
+  petaya:   { id: 'petaya',   name: '番荔果',   price: 500, icon: '🥭', type: 'STAT_BOOST', val: 'SATK', desc: 'HP低于25%时特攻+1级', mapTier: 3 },
+  lansat:   { id: 'lansat',   name: '蓝檬果',   price: 800, icon: '🍋', type: 'CRIT_BOOST', val: 2, desc: 'HP低于25%时暴击率大幅提升', mapTier: 4 },
+  starf:    { id: 'starf',    name: '星桃果',   price: 1000, icon: '⭐', type: 'RANDOM_BOOST', val: 2, desc: 'HP低于25%时随机一项能力+2级', mapTier: 4 },
 };
 
 export const TMS = [
