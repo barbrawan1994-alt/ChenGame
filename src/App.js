@@ -1061,7 +1061,6 @@ const [infinityState, setInfinityState] = useState(() => {
   const [battleRecords, setBattleRecords] = useState(savedData.battleRecords || []);
   const [showBattleRecords, setShowBattleRecords] = useState(false);
   const [showSeasonRank, setShowSeasonRank] = useState(false);
-  const [showComboJutsu, setShowComboJutsu] = useState(false);
 
   // 地图/挑战切换
   const [mapTab, setMapTab] = useState('maps'); 
@@ -5962,7 +5961,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </button>
           </div>
           <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',margin:'16px 0 8px',fontWeight:'600'}}>记录与收集</div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginTop:'4px'}}>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'4px'}}>
             <button type="button" onClick={() => { setActivityCenter(false); setShowBattleRecords(true); }} style={{
               padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(100,181,246,0.35)',
               background:'linear-gradient(135deg, rgba(33,150,243,0.18), rgba(33,150,243,0.06))', color:'#fff',
@@ -5978,14 +5977,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'22px', lineHeight:1.2}}>🏅</div>
               <div style={{fontSize:'11px', fontWeight:700, marginTop:'4px'}}>赛季排行</div>
               <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>第{arenaState.season || 1}赛季</div>
-            </button>
-            <button type="button" onClick={() => { setActivityCenter(false); setShowComboJutsu(true); }} style={{
-              padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(156,39,176,0.35)',
-              background:'linear-gradient(135deg, rgba(156,39,176,0.18), rgba(156,39,176,0.06))', color:'#fff',
-            }}>
-              <div style={{fontSize:'22px', lineHeight:1.2}}>🌀</div>
-              <div style={{fontSize:'11px', fontWeight:700, marginTop:'4px'}}>组合忍术</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>图鉴与条件</div>
             </button>
           </div>
           <button onClick={()=>setActivityCenter(false)} style={{width:'100%',marginTop:'16px',padding:'10px',borderRadius:'12px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.6)',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>关闭</button>
@@ -6064,45 +6055,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     <div style={{ fontWeight: '800', color: '#81D4FA', fontSize: '13px', flexShrink: 0 }}>{row.wins} 胜</div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      {showComboJutsu && (() => {
-        const ninjaRk = getNinjaRank(narutoState.examsCompleted || 0);
-        return (
-          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowComboJutsu(false)}>
-            <div onClick={e => e.stopPropagation()} style={{ width: '440px', maxWidth: '94vw', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'linear-gradient(145deg,#1a0a2e,#301b4a,#1a0a2e)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>🌀 组合忍术图鉴</div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>当前忍者段位：{ninjaRk.icon} {ninjaRk.name} · 双打战斗中可发动（需场上两只出战精灵满足配方与查克拉）</div>
-                </div>
-                <button type="button" onClick={() => setShowComboJutsu(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }} aria-label="关闭">×</button>
-              </div>
-              <div style={{ padding: '10px 14px 18px', overflowY: 'auto', flex: 1 }}>
-                {COMBO_JUTSU_LIST.map((combo) => {
-                  const rankOk = ninjaRankAtLeast(ninjaRk.id, combo.minRank);
-                  const partyOk = partyMatchesComboNatures(party, combo.natures);
-                  const unlocked = rankOk && partyOk;
-                  const needRankName = NINJA_RANKS.find(x => x.id === combo.minRank)?.name || combo.minRank;
-                  const cond = [];
-                  if (!rankOk) cond.push(`段位≥「${needRankName}」`);
-                  if (!partyOk) cond.push('队伍内需有精灵持有配方所需性质忍术（同性质需不同精灵）');
-                  return (
-                    <div key={combo.id} style={{ padding: '12px', marginBottom: '8px', borderRadius: '14px', background: unlocked ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.05)', border: unlocked ? '1px solid rgba(76,175,80,0.35)' : '1px solid rgba(255,255,255,0.08)', opacity: unlocked ? 1 : 0.85 }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                        <div style={{ fontSize: '26px', lineHeight: 1 }}>{combo.icon}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>{combo.name}</div>
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.45, marginBottom: '6px' }}>{combo.desc}</div>
-                          <div style={{ fontSize: '10px', fontWeight: '700', color: unlocked ? '#A5D6A7' : '#FFAB91' }}>{unlocked ? '✅ 已解锁（图鉴）' : `🔒 未解锁：${cond.join(' · ')}`}</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
@@ -7157,6 +7109,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const [jutsuCodexFilter, setJutsuCodexFilter] = useState({ nature: 'ALL', rank: 'ALL', cat: 'ALL', tag: 'ALL', search: '' });
+  const [jutsuCodexTab, setJutsuCodexTab] = useState('jutsu');
   const renderJutsuCodex = () => {
     const { nature: fNature, rank: fRank, cat: fCat, tag: fTag, search: fSearch } = jutsuCodexFilter;
     const allNatures = [{ id: 'ALL', name: '全部', icon: '📖' }, ...CHAKRA_CONFIG.natureTypes.map(n => ({ id: n, name: CHAKRA_NATURE_MAP[n]?.name || n, icon: CHAKRA_NATURE_MAP[n]?.icon || '🔮' })), { id: 'NONE', name: '通用/特殊', icon: '⭐' }];
@@ -7177,13 +7130,19 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const catLabels = { physical: '体', special: '忍', status: '辅' };
     const mastery = narutoState?.jutsuMastery || {};
     const affinity = calcChakraAffinity(mastery);
+    const ninjaRkCodex = getNinjaRank(narutoState.examsCompleted || 0);
     return (
       <div className="screen" style={{background:'linear-gradient(135deg,#0a0a1a,#1a1a2e,#0a0a1a)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'16px 20px',background:'rgba(0,0,0,0.4)',borderBottom:'1px solid rgba(255,152,0,0.15)',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{padding:'6px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.05)',color:'#aaa',fontSize:'12px',cursor:'pointer'}}>⬅ 返回</button>
           <div style={{fontSize:'16px',fontWeight:'900',letterSpacing:'2px',background:'linear-gradient(90deg,#FF6F00,#FFB74D)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>📖 忍术图鉴</div>
-          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>{filtered.length}/{JUTSU_DB.length}</div>
+          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>{jutsuCodexTab === 'jutsu' ? `${filtered.length}/${JUTSU_DB.length}` : `${COMBO_JUTSU_LIST.length}`}</div>
         </div>
+        <div style={{display:'flex',gap:'0',borderBottom:'2px solid rgba(255,255,255,0.06)',background:'rgba(0,0,0,0.2)',flexShrink:0}}>
+          <button type="button" onClick={()=>setJutsuCodexTab('jutsu')} style={{flex:1,padding:'10px',border:'none',background:'transparent',color:jutsuCodexTab==='jutsu'?'#FFB74D':'rgba(255,255,255,0.4)',fontSize:'13px',fontWeight:'700',cursor:'pointer',borderBottom:jutsuCodexTab==='jutsu'?'2px solid #FF6F00':'2px solid transparent'}}>📖 忍术图鉴 ({JUTSU_DB.length})</button>
+          <button type="button" onClick={()=>setJutsuCodexTab('combo')} style={{flex:1,padding:'10px',border:'none',background:'transparent',color:jutsuCodexTab==='combo'?'#CE93D8':'rgba(255,255,255,0.4)',fontSize:'13px',fontWeight:'700',cursor:'pointer',borderBottom:jutsuCodexTab==='combo'?'2px solid #9C27B0':'2px solid transparent'}}>🌀 组合忍术 ({COMBO_JUTSU_LIST.length})</button>
+        </div>
+        {jutsuCodexTab === 'jutsu' && (<>
         {affinity && <div style={{padding:'8px 20px',background:'rgba(255,111,0,0.06)',borderBottom:'1px solid rgba(255,111,0,0.1)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
           <span style={{fontSize:'11px',color:'#FFB74D'}}>查克拉亲和: {CHAKRA_NATURE_MAP[affinity]?.icon} {CHAKRA_NATURE_MAP[affinity]?.name}</span>
         </div>}
@@ -7260,6 +7219,35 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             {filtered.length === 0 && <div style={{textAlign:'center',padding:'40px',color:'rgba(255,255,255,0.3)',fontSize:'14px'}}>暂无匹配的忍术</div>}
           </div>
         </div>
+        </>)}
+        {jutsuCodexTab === 'combo' && (
+          <div style={{flex:1,overflow:'auto',padding:'12px 16px'}}>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',marginBottom:'12px',lineHeight:1.5}}>当前忍者段位：{ninjaRkCodex.icon} {ninjaRkCodex.name} · 双打战斗中可发动（需场上两只出战精灵满足配方与查克拉）</div>
+            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+              {COMBO_JUTSU_LIST.map((combo) => {
+                const rankOk = ninjaRankAtLeast(ninjaRkCodex.id, combo.minRank);
+                const partyOk = partyMatchesComboNatures(party, combo.natures);
+                const unlocked = rankOk && partyOk;
+                const needRankName = NINJA_RANKS.find(x => x.id === combo.minRank)?.name || combo.minRank;
+                const cond = [];
+                if (!rankOk) cond.push(`段位≥「${needRankName}」`);
+                if (!partyOk) cond.push('队伍内需有精灵持有配方所需性质忍术（同性质需不同精灵）');
+                return (
+                  <div key={combo.id} style={{ padding: '12px', marginBottom: '2px', borderRadius: '14px', background: unlocked ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.05)', border: unlocked ? '1px solid rgba(76,175,80,0.35)' : '1px solid rgba(255,255,255,0.08)', opacity: unlocked ? 1 : 0.85 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ fontSize: '26px', lineHeight: 1 }}>{combo.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>{combo.name}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.45, marginBottom: '6px' }}>{combo.desc}</div>
+                        <div style={{ fontSize: '10px', fontWeight: '700', color: unlocked ? '#A5D6A7' : '#FFAB91' }}>{unlocked ? '✅ 已解锁（图鉴）' : `🔒 未解锁：${cond.join(' · ')}`}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -9290,23 +9278,23 @@ const useGrowthItem = (petIndex, itemId) => {
            const mineRoll = Math.random();
            const mapLv = Math.min(100, 10 + badges.length * 7);
            if (mineRoll < 0.10) {
-              const gemGold = _.random(2000, 8000);
+              const gemGold = _.random(80, 200);
               setGold(g => g + gemGold);
               showMapToast('💎', '稀有宝石', `闪耀宝石！+${gemGold} 金币`, 2500);
            } else if (mineRoll < 0.30) {
               const stoneNames = ['火之石','水之石','雷之石','月之石','太阳石','暗之石','光之石','冰之石'];
               const stone = _.sample(stoneNames);
-              const stoneGold = _.random(500, 1500);
+              const stoneGold = _.random(30, 80);
               setGold(g => g + stoneGold);
               showMapToast('🪨', `发现${stone}`, `+${stoneGold} 金币`, 2500);
            } else if (mineRoll < 0.50) {
               const fossilNames = ['远古化石','覆盖化石','盖子化石','羽毛化石','颚化石','鳍化石'];
               const fossil = _.sample(fossilNames);
-              const fossilGold = _.random(1000, 3000);
+              const fossilGold = _.random(50, 150);
               setGold(g => g + fossilGold);
               showMapToast('🦴', `发掘${fossil}`, `+${fossilGold} 金币`, 2500);
            } else if (mineRoll < 0.70) {
-              const mineralGold = _.random(300, 1000);
+              const mineralGold = _.random(20, 60);
               setGold(g => g + mineralGold);
               showMapToast('⛏️', '采集矿物', `矿物碎片 +${mineralGold} 金币`, 2500);
            } else if (mineRoll < 0.85) {
@@ -11219,7 +11207,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 showMapToast('❌', '提示', '咒力不足！', 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
-        } else if (move?.isJutsu) {
+        } else if (move?.isJutsu && !useStruggle) {
             if ((tempPlayerState.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0) {
                 showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.jutsuCooldowns[move.jutsuId || move.name]} 回合冷却`, 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
@@ -11442,15 +11430,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     let move = p.combatMoves?.[moveIdx];
-    const allPPEmpty = p.combatMoves?.every(m => !m.isCursed && !m.isJutsu && m.pp <= 0);
-    if (!move && !allPPEmpty) return;
-    if (move?.isCursed && (p.cursedEnergy || 0) < (move.ceCost || 0)) {
+    const normalMovesD = (p.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
+    const allNormalPPZeroD = normalMovesD.length === 0 || normalMovesD.every(m => m.pp <= 0);
+    const cursedMovesD = (p.combatMoves || []).filter(m => m.isCursed);
+    const allCursedUnusableD = cursedMovesD.length === 0 || cursedMovesD.every(m => (p.cursedEnergy || 0) < (m.ceCost || 0) || (p.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+    const jutsuMovesD = (p.combatMoves || []).filter(m => m.isJutsu);
+    const allJutsuUnusableD = jutsuMovesD.length === 0 || jutsuMovesD.every(m => (p.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (p.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+    const allMovesExhaustedD = allNormalPPZeroD && allCursedUnusableD && allJutsuUnusableD;
+    if (!move && !allMovesExhaustedD) return;
+    let useStruggleD = false;
+    if (allMovesExhaustedD) useStruggleD = true;
+    if (move?.isCursed && !useStruggleD && (p.cursedEnergy || 0) < (move.ceCost || 0)) {
       showMapToast('❌', '提示', '咒力不足！', 1500); return;
     }
-    if (move?.isJutsu && move.chakraCost > 0 && (p.chakra || 0) < move.chakraCost) {
+    if (move?.isJutsu && !useStruggleD && move.chakraCost > 0 && (p.chakra || 0) < move.chakraCost) {
       showMapToast('❌', '提示', '查克拉不足！', 1500); return;
     }
-    if (allPPEmpty || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
+    if (move?.isJutsu && !useStruggleD && move.pp !== undefined && move.pp <= 0) {
+      showMapToast('❌', '提示', '忍术PP耗尽！', 1500); return;
+    }
+    if (useStruggleD || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
       move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } };
     } else if (!move) return;
 
@@ -11637,8 +11636,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
         pet.chakra = Math.min(pet.maxChakra || 0, poolChk);
         pet.cursedEnergy = Math.min(pet.maxCE || 0, _dblPoolCE);
         let move = (pet.combatMoves || [])[action.moveIdx];
-        const allEmpty = (pet.combatMoves || []).every(m => !m.isCursed && !m.isJutsu && m.pp <= 0);
-        if (allEmpty || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
+        const normD = (pet.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
+        const allNormEmptyD = normD.length === 0 || normD.every(m => m.pp <= 0);
+        const curseD = (pet.combatMoves || []).filter(m => m.isCursed);
+        const allCurseBadD = curseD.length === 0 || curseD.every(m => (pet.cursedEnergy || 0) < (m.ceCost || 0) || (pet.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+        const jutsuD = (pet.combatMoves || []).filter(m => m.isJutsu);
+        const allJutsuBadD = jutsuD.length === 0 || jutsuD.every(m => (pet.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (pet.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+        const allExD = allNormEmptyD && allCurseBadD && allJutsuBadD;
+        if (allExD || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
           move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } };
         }
         if (!move) return;
@@ -11841,8 +11846,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (s.status === 'PSN' && s.volatiles?.badlyPoisoned) {
             s.volatiles.badlyPoisonedTurns = (s.volatiles.badlyPoisonedTurns || 1) + 1;
             dot = Math.floor(getStats(u).maxHp * Math.min(0.5, s.volatiles.badlyPoisonedTurns / 16));
+          } else if (s.status === 'BRN') {
+            dot = Math.max(1, Math.floor(getStats(u).maxHp / 16));
           } else {
-            dot = Math.floor(getStats(u).maxHp / 8);
+            dot = Math.max(1, Math.floor(getStats(u).maxHp / 8));
           }
           u.currentHp = Math.max(0, u.currentHp - dot);
           addLog(`${u.name} 受到 ${s.status === 'BRN' ? '灼伤' : '中毒'} 伤害 ${dot}!`);
@@ -12093,6 +12100,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         return { ...next, phase: 'busy', doubleActions: newActions };
       });
+      const _slotAnim = (battle.activeIdxs || []).indexOf(currentIdx);
+      setTimeout(() => {
+        setAnimEffect({ type: 'CHARGE_CE', target: 'player', slot: _slotAnim >= 0 ? _slotAnim : 0 });
+        setTimeout(() => setAnimEffect(null), 450);
+      }, 0);
       if (currentSlot === 0 && battle.activeIdxs?.length > 1) return;
       await executeDoubleRound(newActions);
       return;
@@ -12221,7 +12233,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (e.secondaryType && e.secondaryType !== e.type) typeMod *= getTypeMod(combo.type, e.secondaryType);
       const critRate = Math.min(0.4, Math.max(0.05, (pStats.crit || 0) / 100 + 0.0625));
       const isCrit = combo.effect?.crit || Math.random() < critRate;
-      const critMult = isCrit ? Math.min(2.5, 1.5) : 1;
+      const critMult = isCrit ? 1.5 : 1;
       let dmg = Math.max(1, Math.floor(((p.level * 2 / 5 + 2) * power * atk / def / 50 + 2) * stab * typeMod * critMult * (0.85 + Math.random() * 0.15)));
 
       addLog(`🤝 ${p.name} 和 ${pt.name} 发动协作技——【${combo.name}】！(Lv${bl.tier})`);
@@ -13743,7 +13755,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             await wait(1000); _setAnim(null);
             if (Math.random() < 0.33) {
                 addLog(`它在混乱中攻击了自己!`);
-                const selfDmg = Math.floor(getStats(attacker, atkState.stages, atkState.status).maxHp * 0.10);
+                const selfDmg = Math.max(1, Math.floor(getStats(attacker, atkState.stages, atkState.status).maxHp / 16));
             attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
                 if (attacker.currentHp <= 0) {
                   atkState._diedFromConfusion = true;
@@ -13814,7 +13826,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 2. 技能施放与命中
-    addLog(`${attacker.name} 使用 ${move.name}`);
+    addLog(source === 'enemy' ? `⚔️ 对手 ${attacker.name} 使用 ${move.name}` : `${attacker.name} 使用 ${move.name}`);
     if (source === 'player' && move.t) advanceBounty('use_type_move', move.t);
     await wait(1000);
 
@@ -13844,8 +13856,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (domHit.ownerSide !== source && domHit.effect.evasionBoost) accMult /= Math.max(0.01, domHit.effect.evasionBoost);
         if (domHit.ownerSide !== source && domHit.effect.enemyAccDown) accMult *= domHit.effect.enemyAccDown;
     }
-    const moveAcc = move.acc || 100;
-    const finalHitChance = moveAcc * accMult;
+    const moveAccNum = Number(move.acc);
+    const moveAcc = Number.isFinite(moveAccNum) && moveAccNum > 0 ? moveAccNum : 100;
+    let finalHitChance = Math.min(100, Math.max(0, moveAcc * accMult));
+    if (!Number.isFinite(finalHitChance)) finalHitChance = 100;
 
     // 果实属性免疫
     const defFE = defState.fruitTransformed ? defState.fruitEffects : null;
@@ -13966,7 +13980,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const actualTargetSide = source === 'player' ? 'player' : 'enemy';
 
             const protectStreak = actualTargetState.volatiles.protectStreak || 0;
-            const successRate = Math.pow(1/3, protectStreak);
+            const successRate = 1 / Math.pow(2, protectStreak);
             if (protectStreak > 0) addLog(`连续守住第${protectStreak + 1}次，成功率${Math.round(successRate * 100)}%`);
             if (Math.random() < successRate) {
               actualTargetState.volatiles.protected = true;
@@ -14018,7 +14032,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 _setAnim({ type: 'HEAL', target: source === 'player' ? 'player' : 'enemy' });
             }
             if (eff.stat && eff.stages) {
-                atkState.stages[eff.stat] = Math.min(6, (atkState.stages[eff.stat] || 0) + eff.stages);
+                atkState.stages[eff.stat] = Math.max(-6, Math.min(6, (atkState.stages[eff.stat] || 0) + eff.stages));
                 addLog(`🔮 ${attacker.name} 咒力强化! ${eff.stat === 'p_atk' ? '物攻' : eff.stat}+${eff.stages}!`);
                 _setAnim({ type: 'BUFF', target: source === 'player' ? 'player' : 'enemy' });
             }
@@ -14103,14 +14117,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let rawDmg = (levelBase + powerFactor) * statFactor;
         let critDmgMult = 1.5;
         atkEquipFx.forEach(fx => { if (fx.id === 'crit_dmg') critDmgMult += fx.val; });
-        const finalCritMult = Math.min(2.5, critDmgMult);
+        const finalCritMult = Math.min(1.5, critDmgMult);
         if (isCrit) rawDmg *= finalCritMult;
         rawDmg *= typeMod;
         const isSTAB = (move.t === attacker.type || move.t === atkSecType);
         if (isSTAB) {
-          let stabMult = 1.5;
-          if (source === 'player' && (attacker.intimacy || 0) >= 200) stabMult += 0.1;
-          rawDmg *= stabMult;
+          rawDmg *= 1.5;
         }
         rawDmg *= (0.85 + Math.random() * 0.15);
 
@@ -14154,12 +14166,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // ▼▼▼ 天气/时间 伤害修正 ▼▼▼
         let weatherBoosted = false;
         if (weather === 'RAIN') {
-            if (move.t === 'WATER') { rawDmg *= 1.5; weatherBoosted = true; addLog('🌧️ 雨天增强了水系威力！'); }
-            if (move.t === 'FIRE') { rawDmg *= 0.5; weatherBoosted = true; }
+            if (move.t === 'WATER') { rawDmg *= 1.28; weatherBoosted = true; addLog('🌧️ 雨天增强了水系威力！'); }
+            if (move.t === 'FIRE') { rawDmg *= 0.72; weatherBoosted = true; }
         }
         if (weather === 'SUN') {
-            if (move.t === 'FIRE') { rawDmg *= 1.5; weatherBoosted = true; addLog('☀️ 烈日增强了火系威力！'); }
-            if (move.t === 'WATER') { rawDmg *= 0.5; weatherBoosted = true; }
+            if (move.t === 'FIRE') { rawDmg *= 1.28; weatherBoosted = true; addLog('☀️ 烈日增强了火系威力！'); }
+            if (move.t === 'WATER') { rawDmg *= 0.72; weatherBoosted = true; }
         }
         const atkTypes = [attacker.type, atkSecType].filter(Boolean);
         const defTypes = [defender.type, defSecType].filter(Boolean);
@@ -14244,7 +14256,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (attacker.trait === 'adaptability' && isSTAB) {
             rawDmg *= (2.0 / 1.5);
         }
-        if (isCrit && attacker.trait === 'sniper') rawDmg *= (2.25 / 1.5);
+        if (isCrit && attacker.trait === 'sniper') rawDmg *= (4 / 3);
 
         let isImmune = false;
         if (typeMod === 0) {
@@ -14545,7 +14557,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`⬇️ ${defender.name} 的物攻下降了！`);
           }
           if (eff.recoil && !isDead) {
-            const recoilDmg = Math.floor(dmg * eff.recoil);
+            const recoilDmg = Math.floor(dmg * Math.min(0.35, eff.recoil));
             attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
             addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
           }
@@ -14719,7 +14731,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 3.4b 反伤在KO时也要生效
     if (isDead && move.effect?.recoil && dmg > 0) {
-      const recoilDmg = Math.floor(dmg * move.effect.recoil);
+      const recoilDmg = Math.floor(dmg * Math.min(0.35, move.effect.recoil));
       attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
       addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
     }
@@ -14768,8 +14780,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 if (state.status === 'PSN' && state.volatiles?.badlyPoisoned) {
                     state.volatiles.badlyPoisonedTurns = (state.volatiles.badlyPoisonedTurns || 1) + 1;
                     dot = Math.floor(getStats(unit).maxHp * Math.min(0.5, state.volatiles.badlyPoisonedTurns / 16));
+                } else if (state.status === 'BRN') {
+                    dot = Math.max(1, Math.floor(getStats(unit).maxHp / 16));
                 } else {
-                    dot = Math.floor(getStats(unit).maxHp / 8);
+                    dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
                 }
                 unit.currentHp = Math.max(0, unit.currentHp - dot);
                 addLog(`${unit.name} 受到 ${state.status==='BRN'?'灼伤': state.volatiles?.badlyPoisoned ? '剧毒' : '毒'} 伤害 ${dot}!`);
@@ -16671,7 +16685,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleRun = async () => {
     if (!battle) return;
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.dungeonId) {
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.dungeonId) {
         addLog("⚠️ 这种战斗无法逃跑！必须决出胜负！");
         return;
     }
@@ -16682,15 +16696,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemyPet = battle.enemyParty?.[eIdx];
     if (!playerPet || !enemyPet) { addLog('⚠️ 战斗状态异常'); setBattle(null); setView('grid_map'); return; }
 
-    let escapeChance = 0.8;
+    const isWildEncounter = !battle.isTrainer && !battle.isGym && !battle.isChallenge && !battle.isStory;
+    let escapeChance = isWildEncounter ? 0.88 : 0.72;
     if (enemyPet.level > playerPet.level) {
         const levelDiff = enemyPet.level - playerPet.level;
-        escapeChance -= (levelDiff * 0.05);
+        escapeChance -= (levelDiff * (isWildEncounter ? 0.04 : 0.06));
     }
     const pSpd = getStats(playerPet, playerPet.stages, playerPet.status).spd;
     const eSpd = getStats(enemyPet, enemyPet.stages, enemyPet.status).spd;
-    if (pSpd > eSpd) escapeChance += 0.2;
-    escapeChance = Math.max(0.2, Math.min(1.0, escapeChance));
+    if (pSpd > eSpd) escapeChance += isWildEncounter ? 0.12 : 0.18;
+    escapeChance = Math.max(isWildEncounter ? 0.25 : 0.15, Math.min(0.95, escapeChance));
 
      // 4. 执行判定
     if (Math.random() < escapeChance) {
@@ -16861,6 +16876,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else {
       setAnimEffect({ type: 'CATCH_FAIL', target: 'enemy', ballType });
       addLog("哎呀! 差点就捉到了!");
+      showMapToast('❌', '捕捉失败', `${(BALLS[ballType] || {}).name || '精灵球'}被挣脱了！再试一次或换更强的球。`, 2800);
       await wait(1000);
       setAnimEffect(null);
       if (battle?.isDouble) {
@@ -21352,7 +21368,7 @@ const renderMenu = () => {
                 {/* 1. 头部信息 */}
                 <div style={{padding:'20px 20px 0', display:'flex', alignItems:'center', position:'relative'}}>
                     <div style={{
-                        position:'absolute', right:'16px', top:'-6px', 
+                        position:'absolute', right:'16px', top:'10px', 
                         fontSize:'28px', fontWeight:'900', color: gradeColor,
                         border: `3px solid ${gradeColor}`, borderRadius:'50%', width:'44px', height:'44px',
                         display:'flex', alignItems:'center', justifyContent:'center', transform:'rotate(-15deg)',
@@ -21724,7 +21740,7 @@ const renderMenu = () => {
                     </div>
                     <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #eee', fontSize: '10px', color: '#5D4037' }}>
                       🍒 树果：{viewStatPet.equippedBerry && BERRIES[viewStatPet.equippedBerry] ? `${BERRIES[viewStatPet.equippedBerry].icon} ${BERRIES[viewStatPet.equippedBerry].name}` : '未装备（背包·树果栏使用即可装备）'}
-                      <button type="button" onClick={() => { setBagTab('berries'); setView('bag'); }} style={{ marginLeft: '8px', padding: '2px 8px', fontSize: '9px', borderRadius: '8px', border: '1px solid #8BC34A', background: '#f1f8e9', cursor: 'pointer', color: '#33691E', fontWeight: 700 }}>去装备</button>
+                      <button type="button" onClick={() => { setViewStatPet(null); setBagTab('berries'); setView('bag'); }} style={{ marginLeft: '8px', padding: '2px 8px', fontSize: '9px', borderRadius: '8px', border: '1px solid #8BC34A', background: '#f1f8e9', cursor: 'pointer', color: '#33691E', fontWeight: 700 }}>去装备</button>
                     </div>
                 </div>
 
@@ -24188,6 +24204,38 @@ const renderMenu = () => {
     const p2Stats = p2 ? getStats(p2) : null;
     const e2Stats = e2 ? getStats(e2) : null;
     const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.doubleSlot || 0]] : null;
+
+    const renderBattleStageRow = (pet, slotInParty) => {
+      if (!pet) return null;
+      const st = pet.stages || {};
+      const keys = ['p_atk', 'p_def', 's_atk', 's_def', 'spd', 'acc', 'eva', 'crit'];
+      const short = { p_atk: '物', p_def: '防', s_atk: '特', s_def: '特', spd: '速', acc: '命', eva: '闪', crit: '暴' };
+      const chips = keys.filter(k => st[k]).map(k => {
+        const v = st[k];
+        return (
+          <span key={k} title={`${k} ${v}`} style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: v > 0 ? 'rgba(76,175,80,0.22)' : 'rgba(244,67,54,0.2)', color: v > 0 ? '#2E7D32' : '#C62828', fontWeight: 700 }}>
+            {short[k]}{v > 0 ? '+' : ''}{v}
+          </span>
+        );
+      });
+      const pi = typeof slotInParty === 'number' ? (isDoubleBattle ? battle.activeIdxs?.[slotInParty] : battle.activeIdx) : battle.activeIdx;
+      const partyPet = typeof pi === 'number' && pi >= 0 ? party[pi] : null;
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+          {chips.length > 0 && (
+            <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '8px', color: '#888' }}>能力</span>
+              {chips}
+            </div>
+          )}
+          {partyPet && (
+            <button type="button" onClick={() => setViewStatPet(partyPet)} style={{ fontSize: '9px', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(33,150,243,0.45)', background: 'rgba(33,150,243,0.08)', color: '#1565C0', cursor: 'pointer', fontWeight: 700 }}>
+              详情
+            </button>
+          )}
+        </div>
+      );
+    };
     
     // --- 名将头像组件 ---
     const GeneralPortraitIcon = ({gen, size = 36, showName = false, onClick}) => {
@@ -25312,6 +25360,7 @@ const renderMenu = () => {
                               </span>
                             ) : null; })()}
                         </div>
+                        {renderBattleStageRow(p, 0)}
 
                         {/* 第三行：血条（使用增强组件） */}
                         <EnhancedHPBar 
@@ -25385,6 +25434,7 @@ const renderMenu = () => {
                           </span>
                         ) : null; })()}
                       </div>
+                      {renderBattleStageRow(p2, 1)}
                       <EnhancedHPBar current={p2.currentHp} max={p2Stats.maxHp} label="" />
                       {p2.maxCE > 0 && (
                         <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
@@ -25447,7 +25497,7 @@ const renderMenu = () => {
                           <span>⚔️ 双打</span>
                           <span style={{background:'rgba(255,255,255,0.25)', padding:'2px 10px', borderRadius:'10px', fontSize:'11px'}}>
                             {battle.pendingDoubleMove !== undefined
-                              ? '🎯 选择攻击目标'
+                              ? '🎯 点选场上敌方精灵以确认攻击目标（或下方红色按钮）'
                               : (battle.phase === 'double_input_2' ? `🔶 选择 ${doubleCurrentPet?.name || p2?.name || '?'} 的技能` : `🔷 选择 ${doubleCurrentPet?.name || p?.name || '?'} 的技能`)}
                           </span>
                         </div>
@@ -26137,8 +26187,7 @@ const renderMenu = () => {
                 const tierLabel = tm.tier===1?'基础':tm.tier===2?'进阶':'高级';
                 const tierTagColor = tm.tier===1?'#78909C':tm.tier===2?'#43A047':'#FB8C00';
                 const typeColor = TYPES[tm.type]?.color||'#888';
-                const isFirstBuyDiscount = tm.tier === 1 && !alreadyOwned && !(achStats.tmsBought || []).includes(tmId);
-                const displayPrice = isFirstBuyDiscount ? Math.floor(tm.price / 2) : tm.price;
+                const displayPrice = tm.price;
                         return (
                   <div key={tmId} style={{
                     background: alreadyOwned?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg, #ffffff, #f8f9ff)',borderRadius:'16px',
@@ -26150,14 +26199,11 @@ const renderMenu = () => {
                   onMouseEnter={e=>{if(!alreadyOwned){e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';}}}
                   onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}>
                     <span style={{position:'absolute',top:'-6px',right:'8px',background:tierTagColor,color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>{tierLabel}</span>
-                    <div style={{ position:'absolute', top:'-6px', left:'8px', display:'flex', flexDirection:'column', gap:'4px', alignItems:'flex-start', zIndex:1 }}>
-                      {isFirstBuyDiscount && <span style={{ background:'#E91E63', color:'#fff', fontSize:'9px', padding:'2px 8px', borderRadius:'8px', fontWeight:'700' }}>首购半价</span>}
-                      <span style={{ background:'#FF6F00', color:'#fff', fontSize:'9px', padding:'2px 8px', borderRadius:'8px', fontWeight:'700' }}>限购1</span>
-                    </div>
+                    <span style={{ position:'absolute', top:'-6px', left:'8px', background:'#FF6F00', color:'#fff', fontSize:'9px', padding:'2px 8px', borderRadius:'8px', fontWeight:'700', zIndex:1 }}>限购1</span>
                     <div style={{fontSize:'36px',marginBottom:'8px',filter:alreadyOwned?'grayscale(1)':'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{renderTMCSS(tm.type||'NORMAL',36)}</div>
                     <div style={{fontSize:'13px',fontWeight:'800',color:alreadyOwned?'#999':'#1a1a2e',marginBottom:'3px'}}>{tm.name}</div>
                     <div title={`${TYPES[tm.type]?.name||''} · 威力${tm.p}`} style={{fontSize:'11px',color:'#888',height:'28px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'28px',marginBottom:'8px'}}>{TYPES[tm.type]?.name||''} · 威力{tm.p}</div>
-                    <div style={{fontSize:'14px',fontWeight:'900',color:alreadyOwned?'#aaa':'#F57C00',marginBottom:'10px'}}>{isFirstBuyDiscount && <span style={{textDecoration:'line-through',color:'#999',fontSize:'11px',marginRight:'4px'}}>💰{tm.price.toLocaleString()}</span>}💰 {displayPrice.toLocaleString()}</div>
+                    <div style={{fontSize:'14px',fontWeight:'900',color:alreadyOwned?'#aaa':'#F57C00',marginBottom:'10px'}}>💰 {displayPrice.toLocaleString()}</div>
                     {alreadyOwned?(
                       <div style={{width:'100%',padding:'8px',borderRadius:'10px',background:'#e0e0e0',color:'#999',fontWeight:'700',fontSize:'12px',textAlign:'center'}}>✅ 已拥有</div>
                     ):(
