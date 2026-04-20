@@ -5812,31 +5812,36 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const today = getLocalDateStr();
     if (narutoState.lastExamDate === today) { showMapToast('❌','冷却中','今日已参加过考试',1500); return; }
     if (party.length < 3) { showMapToast('❌','队伍不足','至少需要3只精灵',1500); return; }
-    const questions = generateExamQuestions(5);
-    setNarutoExamUI({ phase: 'written', questions, currentQ: 0, score: 0, answers: [], forestProgress: 0, scrolls: { heaven: 0, earth: 0 }, finalsRound: 0 });
+    setNarutoExamUI({ phase: 'survival', survivalWave: 0, survivalWaves: 2, score: 0, forestProgress: 0, scrolls: { heaven: 0, earth: 0 }, finalsRound: 0 });
   };
 
-  const answerExamQuestion = (ansIdx) => {
-    if (!narutoExamUI || narutoExamUI.phase !== 'written' || narutoExamUI._answering) return;
-    const q = narutoExamUI.questions[narutoExamUI.currentQ];
-    const correct = ansIdx === q.ans;
-    const newScore = narutoExamUI.score + (correct ? 1 : 0);
-    const newAnswers = [...narutoExamUI.answers, { q: narutoExamUI.currentQ, chosen: ansIdx, correct }];
-    setNarutoExamUI(prev => ({ ...prev, _answering: true, _lastCorrect: correct, _lastChosenIdx: ansIdx, _lastCorrectIdx: q.ans }));
-    setTimeout(() => {
-      if (narutoExamUI.currentQ + 1 >= narutoExamUI.questions.length) {
-        if (newScore >= 3) {
-          showMapToast('✅','笔试通过',`答对 ${newScore}/5，进入死亡之森！`,2000);
-          setNarutoExamUI(prev => ({ ...prev, phase: 'forest', score: newScore, answers: newAnswers, forestProgress: 0, scrolls: { heaven: 0, earth: 0 }, _answering: false, _lastCorrect: undefined, _lastChosenIdx: undefined, _lastCorrectIdx: undefined }));
-        } else {
-          showMapToast('❌','笔试失败',`答对 ${newScore}/5，需要至少3题`,2000);
-          setNarutoExamUI(null);
-          setNarutoState(prev => ({ ...prev, lastExamDate: getLocalDateStr() }));
-        }
-      } else {
-        setNarutoExamUI(prev => ({ ...prev, currentQ: prev.currentQ + 1, score: newScore, answers: newAnswers, _answering: false, _lastCorrect: undefined, _lastChosenIdx: undefined, _lastCorrectIdx: undefined }));
-      }
-    }, 800);
+  const startSurvivalWave = () => {
+    if (!narutoExamUI || narutoExamUI.phase !== 'survival') return;
+    const wave = narutoExamUI.survivalWave;
+    const baseLv = Math.max(...party.map(p => p.level || 1));
+    const waveLvMod = wave * 5;
+    const enemyCount = wave === 0 ? 2 : 3;
+    const enemyPool = POKEDEX.filter(pd => pd.tier >= 3 && pd.tier <= 5);
+    const enemies = [];
+    for (let i = 0; i < enemyCount; i++) {
+      const base = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+      if (!base) continue;
+      const lvl = Math.min(100, baseLv + waveLvMod + Math.floor(Math.random() * 5));
+      const stats = base.baseStats || {};
+      const hp = Math.floor(((stats.hp || 50) * 2 * lvl / 100 + lvl + 10));
+      enemies.push({
+        id: base.id, name: base.name, type: base.type, type2: base.type2,
+        level: lvl, currentHp: hp, isWild: false,
+        moves: (base.learnset || []).filter(m => m.lv <= lvl).slice(-4).map(m => ({
+          name: m.name, p: m.p || 50, pp: m.pp || 15, maxPP: m.pp || 15,
+          t: m.type || base.type, effect: m.effect,
+        })),
+        trait: base.traits?.[0] || null, nature: 'adamant',
+      });
+    }
+    if (enemies.length === 0) { showMapToast('❌','错误','无法生成对手',1500); return; }
+    startBattle({ customParty: enemies, trainerName: `生存试炼·第${wave + 1}波` }, 'naruto_survival', { wave });
+    setNarutoExamUI(prev => prev ? ({ ...prev, survivalWave: wave + 1 }) : prev);
   };
 
   const advanceForest = () => {
@@ -6160,35 +6165,40 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const actBtnSecondary = {padding:'8px 16px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.05)',color:'#aaa',fontSize:'12px',fontWeight:'600',cursor:'pointer'};
 
     if (narutoExamUI) {
-      // 笔试阶段
-      if (narutoExamUI.phase === 'written') {
-        const q = narutoExamUI.questions[narutoExamUI.currentQ];
+      // 生存试炼阶段
+      if (narutoExamUI.phase === 'survival') {
+        const wave = narutoExamUI.survivalWave || 0;
+        const totalWaves = narutoExamUI.survivalWaves || 2;
         return (
           <div className="screen" style={{background:'linear-gradient(135deg,#1a0a00,#2d1500,#1a0a00)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
             <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
               <button onClick={()=>{setNarutoExamUI(null);setNarutoState(prev=>({...prev,lastExamDate:getLocalDateStr()}));setView(safeBack());}} style={{...actBtnSecondary}}>⬅ 放弃</button>
-              <div style={{fontSize:'16px',fontWeight:'800',letterSpacing:'2px'}}>📝 笔试 · {narutoExamUI.currentQ + 1}/{narutoExamUI.questions.length}</div>
-              <div style={{fontSize:'13px',color:'#FFB74D'}}>得分: {narutoExamUI.score}</div>
+              <div style={{fontSize:'16px',fontWeight:'800',letterSpacing:'2px'}}>⚔️ 生存试炼 · {wave}/{totalWaves}</div>
+              <div style={{fontSize:'13px',color:'#FFB74D'}}>HP不会恢复</div>
             </div>
-            <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px',gap:'16px'}}>
-              <div style={{fontSize:'18px',fontWeight:'700',textAlign:'center',marginBottom:'8px',lineHeight:1.5}}>{q.q}</div>
-              <div style={{display:'flex',flexDirection:'column',gap:'10px',maxWidth:'400px',margin:'0 auto',width:'100%'}}>
-                {q.opts.map((opt, oi) => {
-                  const isAnswering = narutoExamUI._answering;
-                  const isChosen = isAnswering && narutoExamUI._lastChosenIdx === oi;
-                  const isCorrectOpt = isAnswering && narutoExamUI._lastCorrectIdx === oi;
-                  const btnBg = isChosen && !narutoExamUI._lastCorrect ? 'rgba(229,57,53,0.25)' : isCorrectOpt && isAnswering ? 'rgba(67,160,71,0.25)' : 'rgba(255,152,0,0.08)';
-                  const btnBorder = isChosen && !narutoExamUI._lastCorrect ? 'rgba(229,57,53,0.6)' : isCorrectOpt && isAnswering ? 'rgba(67,160,71,0.6)' : 'rgba(255,152,0,0.3)';
-                  return (
-                  <button key={oi} type="button" onClick={() => answerExamQuestion(oi)} disabled={isAnswering}
-                    style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid '+btnBorder,background:btnBg,color:'#fff',fontSize:'14px',fontWeight:'600',cursor:isAnswering?'default':'pointer',textAlign:'left',transition:'background 0.3s, border-color 0.3s, transform 0.2s',opacity:isAnswering && !isChosen && !isCorrectOpt ? 0.5 : 1}}>
-                    {String.fromCharCode(65 + oi)}. {opt} {isCorrectOpt && isAnswering ? ' ✓' : ''}{isChosen && !narutoExamUI._lastCorrect ? ' ✗' : ''}
-                  </button>
-                  );
-                })}
+            <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px',gap:'20px'}}>
+              <div style={{fontSize:'48px',opacity:0.8}}>⚔️</div>
+              <div style={{fontSize:'20px',fontWeight:'800',color:'#FFB74D'}}>忍者生存试炼</div>
+              <div style={{fontSize:'13px',color:'rgba(255,255,255,0.5)',textAlign:'center',maxWidth:'340px',lineHeight:1.6}}>
+                连续击败 {totalWaves} 波敌人证明你的实力。<br/>每波之间不会恢复HP，必须以残存战力迎战下一波！
               </div>
+              <div style={{display:'flex',gap:'8px',marginTop:'8px'}}>
+                {Array.from({length: totalWaves}).map((_, i) => (
+                  <div key={i} style={{width:'40px',height:'40px',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',fontWeight:'800',
+                    background: i < wave ? 'rgba(76,175,80,0.2)' : i === wave ? 'rgba(255,111,0,0.2)' : 'rgba(255,255,255,0.05)',
+                    border: i < wave ? '2px solid #4CAF50' : i === wave ? '2px solid #FF6F00' : '1px solid rgba(255,255,255,0.1)',
+                    color: i < wave ? '#4CAF50' : i === wave ? '#FF6F00' : 'rgba(255,255,255,0.3)'}}>
+                    {i < wave ? '✓' : i + 1}
+                  </div>
+                ))}
+              </div>
+              <button onClick={startSurvivalWave} style={{marginTop:'12px',padding:'14px 40px',borderRadius:'14px',border:'none',
+                background:'linear-gradient(135deg,#E65100,#FF6F00)',color:'#fff',fontSize:'16px',fontWeight:'800',cursor:'pointer',
+                boxShadow:'0 6px 20px rgba(255,111,0,0.3)',letterSpacing:'2px'}}>
+                {wave === 0 ? '开始第1波' : `迎战第${wave + 1}波`}
+              </button>
               <div style={{display:'flex',justifyContent:'center',gap:'6px',marginTop:'12px'}}>
-                {CHUNIN_EXAM_PHASES.map((ph, i) => (
+                {[{id:'survival',icon:'⚔️',name:'生存试炼'},{id:'forest',icon:'🌲',name:'死亡之森'},{id:'finals',icon:'🏆',name:'淘汰赛'}].map((ph) => (
                   <div key={ph.id} style={{padding:'6px 14px',borderRadius:'20px',fontSize:'11px',fontWeight:'700',
                     background: narutoExamUI.phase === ph.id ? 'linear-gradient(135deg,#FF6F00,#FF8F00)' : 'rgba(255,255,255,0.05)',
                     color: narutoExamUI.phase === ph.id ? '#fff' : 'rgba(255,255,255,0.3)'}}>
@@ -9084,7 +9094,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader' || actualType === 'world_boss';
     const isGym = actualType === 'gym';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'contest_war' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType === 'naruto_survival' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -9592,7 +9602,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     // 16. 火影剧情 / 中忍考试 (自定义敌方队伍)
     // -------------------------------------------------
-    else if (type === 'naruto_story' || type === 'naruto_exam') {
+    else if (type === 'naruto_story' || type === 'naruto_exam' || type === 'naruto_survival') {
         enemyParty = (context.customParty || []).map(p => {
             const stats = getStats(p, null, null, {});
             return {...p, currentHp: stats.maxHp, maxHp: stats.maxHp, status: null,
@@ -9770,7 +9780,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             jutsuMoves.push({
               ...j, name: j.name, p: j.p, pp: j.pp, maxPP: j.pp,
               t: j.nature ? (CHAKRA_NATURE_MAP[j.nature]?.gameType || p.type) : p.type,
-              isJutsu: true, jutsuId: j.id, chakraCost: Math.ceil(j.chakraCost * 1.2), effect: j.effect,
+              isJutsu: true, jutsuId: j.id, chakraCost: j.chakraCost, effect: j.effect,
             });
           });
         }
@@ -9803,6 +9813,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             fruitEffects: null,
             chakra: Math.floor((CHAKRA_CONFIG.baseAmount + p.level * CHAKRA_CONFIG.perLevelBonus + (nRank?.chakraBonus || 0)) * 0.5),
             maxChakra: CHAKRA_CONFIG.baseAmount + p.level * CHAKRA_CONFIG.perLevelBonus + (nRank?.chakraBonus || 0),
+            jutsuUsesLeft: nRank?.id === 'kage' ? 5 : nRank?.id === 'jonin' ? 4 : nRank?.id === 'chunin' ? 3 : nRank?.id === 'genin' ? 2 : 0,
+            jutsuCooldowns: {},
+            cursedUsesLeft: 3,
+            cursedCooldowns: {},
             bijuuData: bijuuData,
             bijuuTransformed: false,
             bijuuTurnsLeft: 0,
@@ -10221,7 +10235,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!player || !enemy || enemy.currentHp <= 0 || player.currentHp <= 0) return null;
     const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
     const rawMoves = enemy.combatMoves || enemy.moves || [];
-    const movesWithPP = rawMoves.filter(m => m.isCursed ? (enemy.cursedEnergy || 0) >= (m.ceCost || 0) : m.isJutsu ? ((enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0) : m.pp > 0);
+    const movesWithPP = rawMoves.filter(m => {
+      if (m.isCursed) return (enemy.cursedEnergy || 0) >= (m.ceCost || 0) && (enemy.cursedUsesLeft || 0) > 0 && !((enemy.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+      if (m.isJutsu) return (enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0 && (enemy.jutsuUsesLeft || 0) > 0 && !((enemy.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+      return m.pp > 0;
+    });
     const smartMoves = movesWithPP.filter(m => {
       if (m.p > 0) return true;
       if (m.effect) {
@@ -10283,30 +10301,43 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const normalMoves = (tempPlayerState.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
         const allNormalPPZero = normalMoves.length === 0 || normalMoves.every(m => m.pp <= 0);
         const cursedMoves = (tempPlayerState.combatMoves || []).filter(m => m.isCursed);
-        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => (tempPlayerState.cursedEnergy || 0) < (m.ceCost || 0));
+        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => (tempPlayerState.cursedEnergy || 0) < (m.ceCost || 0) || (tempPlayerState.cursedUsesLeft || 0) <= 0 || (tempPlayerState.cursedCooldowns?.[m.id || m.name] || 0) > 0);
         const jutsuMoves = (tempPlayerState.combatMoves || []).filter(m => m.isJutsu);
-        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0);
+        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (tempPlayerState.jutsuUsesLeft || 0) <= 0 || (tempPlayerState.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
         const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable;
         let useStruggle = false;
         if (!move && !allMovesExhausted) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
         if (allMovesExhausted) {
             useStruggle = true;
         } else if (move?.isCursed) {
+            if ((tempPlayerState.cursedUsesLeft || 0) <= 0) {
+                showMapToast('❌', '提示', '本场咒术次数已用尽！', 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
+            }
+            if ((tempPlayerState.cursedCooldowns?.[move.id || move.name] || 0) > 0) {
+                showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.cursedCooldowns[move.id || move.name]} 回合冷却`, 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
+            }
             if ((tempPlayerState.cursedEnergy || 0) < (move.ceCost || 0)) {
                 showMapToast('❌', '提示', '咒力不足！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-                return;
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
         } else if (move?.isJutsu) {
+            if ((tempPlayerState.jutsuUsesLeft || 0) <= 0) {
+                showMapToast('❌', '提示', '本场忍术次数已用尽！', 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
+            }
+            if ((tempPlayerState.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0) {
+                showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.jutsuCooldowns[move.jutsuId || move.name]} 回合冷却`, 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
+            }
             if (move.chakraCost > 0 && (tempPlayerState.chakra || 0) < move.chakraCost) {
                 showMapToast('❌', '提示', '查克拉不足！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-                return;
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
             if (move.pp !== undefined && move.pp <= 0) {
                 showMapToast('❌', '提示', '忍术PP耗尽！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-                return;
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
             tempPlayerState.chakra = Math.max(0, (tempPlayerState.chakra || 0) - move.chakraCost);
         } else if (!move?.isCursed && (move?.pp <= 0)) {
@@ -10808,6 +10839,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const cRegen = CHAKRA_CONFIG.regenPerTurn + (nrk?.id === 'jonin' ? 3 : nrk?.id === 'kage' ? 5 : 0);
           ps.chakra = Math.min(ps.maxChakra, (ps.chakra || 0) + cRegen);
         }
+        if (ps) {
+          if (ps.jutsuCooldowns) Object.keys(ps.jutsuCooldowns).forEach(k => { if (ps.jutsuCooldowns[k] > 0) ps.jutsuCooldowns[k]--; });
+          if (ps.cursedCooldowns) Object.keys(ps.cursedCooldowns).forEach(k => { if (ps.cursedCooldowns[k] > 0) ps.cursedCooldowns[k]--; });
+        }
         // 尾兽化持续时间
         if (ps && ps.bijuuTransformed && ps.bijuuTurnsLeft > 0) {
           ps.bijuuTurnsLeft--;
@@ -10842,6 +10877,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (es && es.currentHp > 0 && (es.maxChakra || 0) > 0) {
           const cRegen = CHAKRA_CONFIG.regenPerTurn || 10;
           es.chakra = Math.min(es.maxChakra, (es.chakra || 0) + cRegen);
+        }
+        if (es) {
+          if (es.jutsuCooldowns) Object.keys(es.jutsuCooldowns).forEach(k => { if (es.jutsuCooldowns[k] > 0) es.jutsuCooldowns[k]--; });
+          if (es.cursedCooldowns) Object.keys(es.cursedCooldowns).forEach(k => { if (es.cursedCooldowns[k] > 0) es.cursedCooldowns[k]--; });
         }
       }
 
@@ -12460,13 +12499,34 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     if (move.isCursed && move.ceCost) {
+        if ((atkState.cursedUsesLeft || 0) <= 0) {
+            addLog(`${attacker.name} 本场咒术次数已用尽！`);
+            return false;
+        }
+        const cCd = atkState.cursedCooldowns?.[move.id || move.name] || 0;
+        if (cCd > 0) {
+            addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${cCd}回合)！`);
+            return false;
+        }
         if ((atkState.cursedEnergy || 0) < move.ceCost) {
             addLog(`${attacker.name} 咒力不足，无法施展 ${move.name}!`);
             return false;
         }
         atkState.cursedEnergy = (atkState.cursedEnergy || 0) - move.ceCost;
-        addLog(`🔮 消耗 ${move.ceCost} 咒力`);
+        atkState.cursedUsesLeft = Math.max(0, (atkState.cursedUsesLeft || 0) - 1);
+        if (!atkState.cursedCooldowns) atkState.cursedCooldowns = {};
+        atkState.cursedCooldowns[move.id || move.name] = 2;
+        addLog(`🔮 消耗 ${move.ceCost} 咒力 (咒术${atkState.cursedUsesLeft}次剩余)`);
     } else if (move.isJutsu && move.chakraCost > 0) {
+        if ((atkState.jutsuUsesLeft || 0) <= 0) {
+            addLog(`${attacker.name} 本场忍术次数已用尽！`);
+            return false;
+        }
+        const jCd = atkState.jutsuCooldowns?.[move.jutsuId || move.name] || 0;
+        if (jCd > 0) {
+            addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${jCd}回合)！`);
+            return false;
+        }
         if ((atkState.chakra || 0) < move.chakraCost) {
             addLog(`${attacker.name} 查克拉不足，无法施展 ${move.name}!`);
             return false;
@@ -12477,7 +12537,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         atkState.chakra = Math.max(0, (atkState.chakra || 0) - move.chakraCost);
         if (move.pp > 0) move.pp = Math.max(0, move.pp - 1);
-        addLog(`🍥 消耗 ${move.chakraCost} 查克拉`);
+        atkState.jutsuUsesLeft = Math.max(0, (atkState.jutsuUsesLeft || 0) - 1);
+        if (!atkState.jutsuCooldowns) atkState.jutsuCooldowns = {};
+        atkState.jutsuCooldowns[move.jutsuId || move.name] = 2;
+        addLog(`🍥 消耗 ${move.chakraCost} 查克拉 (忍术${atkState.jutsuUsesLeft}次剩余)`);
     } else if (move.pp > 0) {
         let ppCost = 1;
         if (defState.trait === 'pressure') ppCost = 2; 
@@ -12839,14 +12902,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
 
-        if (move.isCursed) rawDmg *= 0.85;
         if (move.isCursed && atkState.cursedBoost) {
             rawDmg *= (1 + atkState.cursedBoost);
         }
 
         // 忍术加成 (忍者段位 + 精通)
         if (move.isJutsu) {
-            rawDmg *= 0.80;
             const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
             const jutsuBonus = nrk?.id === 'kage' ? 0.20 : nrk?.id === 'jonin' ? 0.15 : nrk?.id === 'chunin' ? 0.10 : nrk?.id === 'genin' ? 0.05 : 0;
             if (jutsuBonus > 0) rawDmg *= (1 + jutsuBonus);
@@ -13784,7 +13845,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const streakCount = achStats.currentWinStreak || 0;
     const streakMult = streakCount >= 20 ? 1.5 : streakCount >= 10 ? 1.3 : streakCount >= 5 ? 1.15 : 1.0;
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
-    const isNarutoFight = type === 'naruto_story' || type === 'naruto_exam';
+    const isNarutoFight = type === 'naruto_story' || type === 'naruto_exam' || type === 'naruto_survival';
     const goldGain = isNarutoFight ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * bountyMult * streakMult * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
     if (goldGain > 0) setGold(g => g + goldGain);
     const extraDrops = [];
@@ -14843,6 +14904,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 竞技场结算
     if (battle.type === 'arena') handleArenaResult(true);
+    // 中忍考试生存试炼结算
+    if (battle.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
+      const wave = narutoExamUI.survivalWave || 0;
+      if (wave >= (narutoExamUI.survivalWaves || 2)) {
+        showMapToast('✅','生存试炼通过','不愧是有实力的忍者！进入死亡之森',2500);
+        setBattle(null);
+        setNarutoExamUI(prev => prev ? ({ ...prev, phase: 'forest', forestProgress: 0, scrolls: { heaven: 0, earth: 0 } }) : prev);
+      } else {
+        showMapToast('⚔️','第'+(wave)+'波通过','准备迎接下一波敌人！(不会回复HP)',2000);
+        setBattle(null);
+        setView('naruto_exam');
+      }
+      return;
+    }
     // 中忍考试对战结算
     if (battle.type === 'naruto_exam' && narutoExamUI?.phase === 'finals') {
       const round = narutoExamUI.finalsRound || 0;
@@ -15115,6 +15190,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else if (battle?.type === 'naruto_story') {
       setView('naruto_story');
       showMapToast('💀', '忍界挑战失败', '伙伴已恢复，提升实力后再来挑战！', 3000);
+    } else if (battle?.type === 'naruto_survival') {
+      setNarutoExamUI(null);
+      setNarutoState(prev => ({ ...prev, lastExamDate: getLocalDateStr() }));
+      setView('naruto_exam');
+      showMapToast('💀', '生存试炼失败', '实力不足，明日再战！', 3000);
     } else if (battle?.type === 'naruto_exam') {
       setView('naruto_exam');
       showMapToast('💀', '考试失败', '中忍考试失败，明日再挑战！', 3000);
@@ -23697,7 +23777,7 @@ const renderMenu = () => {
                                                 executeTurn(i);
                                             }
                                         }}
-                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0)) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0) : (m.pp <= 0)}
+                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedUsesLeft || 0) <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuUsesLeft || 0) <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
                                         index={i}
                                     />
                                 ); });

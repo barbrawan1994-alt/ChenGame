@@ -350,9 +350,9 @@ export function rollBijuu(level, badgeCount) {
 
 // --- 中忍考试 ---
 export const CHUNIN_EXAM_PHASES = [
-  { id: 'written', name: '笔试', icon: '📝', desc: '回答忍者知识问题', duration: 0 },
+  { id: 'survival', name: '生存试炼', icon: '⚔️', desc: '连续击败2波敌人不回复HP', duration: 0 },
   { id: 'forest', name: '死亡之森', icon: '🌲', desc: '在森林中收集天地卷轴', duration: 0 },
-  { id: 'finals', name: '正式对战', icon: '⚔️', desc: '一对一淘汰赛', duration: 0 },
+  { id: 'finals', name: '淘汰赛', icon: '🏆', desc: '4轮对战淘汰赛', duration: 0 },
 ];
 
 export const WRITTEN_EXAM_QUESTIONS = [
