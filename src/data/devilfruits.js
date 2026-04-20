@@ -23,10 +23,10 @@ export const DEVIL_FRUITS = {
   df_gomu: {
     id: 'df_gomu', name: '橡胶果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '身体变成橡胶，免疫电系攻击，物攻与速度大幅提升',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.4, defMult: 1.2, spdMult: 1.3,
-      movePowerBoost: 0.2, typeImmune: 'ELECTRIC',
+      atkMult: 1.35, defMult: 1.2, spdMult: 1.3,
+      movePowerBoost: 0.15, typeImmune: 'ELECTRIC',
     },
     transformMove: { name: '橡胶火箭炮', t: 'FIGHT', p: 120, pp: 5, acc: 90, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.3 } },
@@ -34,9 +34,9 @@ export const DEVIL_FRUITS = {
   df_gura: {
     id: 'df_gura', name: '震震果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '引发地震与海啸，无视部分防御，技能威力大增',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.5, ignoreDefPercent: 0.2, movePowerBoost: 0.25,
+      atkMult: 1.35, ignoreDefPercent: 0.12, movePowerBoost: 0.15,
     },
     transformMove: { name: '大地裂击', t: 'GROUND', p: 130, pp: 4, acc: 85, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 2, target: 'enemy', chance: 0.5 } },
@@ -44,9 +44,9 @@ export const DEVIL_FRUITS = {
   df_ope: {
     id: 'df_ope', name: '手术果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '创造ROOM空间，可造成固定比例伤害并增强回复',
-    duration: 4,
+    duration: 3,
     transform: {
-      sAtkMult: 1.5, healPerTurn: 0.1, fixedDmgPercent: 0.15,
+      sAtkMult: 1.35, healPerTurn: 0.1, fixedDmgPercent: 0.11,
     },
     transformMove: { name: '伽马刀', t: 'PSYCHIC', p: 110, pp: 5, acc: 95, isFruitMove: true,
       effect: { type: 'STAT', stat: 'p_def', stages: -2, chance: 0.5, target: 'enemy' } },
@@ -54,7 +54,7 @@ export const DEVIL_FRUITS = {
   df_ito: {
     id: 'df_ito', name: '线线果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '操纵丝线束缚对手，每回合降低对手速度并造成持续伤害',
-    duration: 5,
+    duration: 4,
     transform: {
       sAtkMult: 1.3, spdMult: 1.2,
       dotPerTurn: 0.05, enemySpdDown: 1,
@@ -65,7 +65,7 @@ export const DEVIL_FRUITS = {
   df_mochi: {
     id: 'df_mochi', name: '糯糯果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '身体变成糯米，物理伤害反弹20%，物防大增',
-    duration: 5,
+    duration: 4,
     transform: {
       defMult: 1.6, atkMult: 1.2,
       reflectPhysical: 0.2,
@@ -75,7 +75,7 @@ export const DEVIL_FRUITS = {
   df_pero: {
     id: 'df_pero', name: '甜甜果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '甜蜜气息削弱对手，每回合回复HP并降低对手攻击',
-    duration: 5,
+    duration: 4,
     transform: {
       healPerTurn: 0.08, enemyAtkDown: 1, defMult: 1.3,
     },
@@ -85,7 +85,7 @@ export const DEVIL_FRUITS = {
   df_zushi: {
     id: 'df_zushi', name: '重力果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '操控重力，大幅降低对手速度，防御提升',
-    duration: 5,
+    duration: 4,
     transform: {
       enemySpdDown: 2, defMult: 1.2,
     },
@@ -95,7 +95,7 @@ export const DEVIL_FRUITS = {
   df_doa: {
     id: 'df_doa', name: '门门果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '创造空间之门，首回合必先手，闪避大幅提升',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.4, evaBoost: 0.3, firstStrike: true,
     },
@@ -104,7 +104,7 @@ export const DEVIL_FRUITS = {
   df_suke: {
     id: 'df_suke', name: '透明果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '变得透明，闪避和暴击率大幅提升',
-    duration: 4,
+    duration: 3,
     transform: {
       evaBoost: 0.4, critBoost: 2, spdMult: 1.2,
     },
@@ -113,7 +113,7 @@ export const DEVIL_FRUITS = {
   df_noro: {
     id: 'df_noro', name: '迟缓果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '释放迟缓光子，大幅降低对手速度',
-    duration: 5,
+    duration: 4,
     transform: {
       enemySpdDown: 3, spdMult: 1.3,
     },
@@ -123,16 +123,16 @@ export const DEVIL_FRUITS = {
   df_bomu: {
     id: 'df_bomu', name: '炸弹果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '身体可以产生爆炸，全技能威力+40%但每回合损失5%HP',
-    duration: 4,
+    duration: 3,
     transform: {
-      movePowerBoost: 0.4, selfDotPerTurn: 0.05, atkMult: 1.3,
+      movePowerBoost: 0.15, selfDotPerTurn: 0.05, atkMult: 1.3,
     },
     transformMove: { name: '全身爆破', t: 'FIRE', p: 110, pp: 5, acc: 90, isFruitMove: true },
   },
   df_sabi: {
     id: 'df_sabi', name: '锈锈果实', category: 'PARAMECIA', rarity: 'COMMON',
     desc: '使接触到的金属生锈，攻击时降低对手物防',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.15, onHitDefDown: 1,
     },
@@ -142,9 +142,9 @@ export const DEVIL_FRUITS = {
   df_jiki: {
     id: 'df_jiki', name: '磁磁果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '操控磁力场，钢系技能威力大增，可牵引对手降低速度',
-    duration: 5,
+    duration: 4,
     transform: {
-      sAtkMult: 1.4, typeBoost: { STEEL: 1.5 }, enemySpdDown: 1,
+      sAtkMult: 1.35, typeBoost: { STEEL: 1.5 }, enemySpdDown: 1,
     },
     transformMove: { name: '磁暴轰击', t: 'STEEL', p: 105, pp: 5, acc: 95, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'spd', val: 1, target: 'enemy', chance: 0.5 } },
@@ -152,7 +152,7 @@ export const DEVIL_FRUITS = {
   df_bari: {
     id: 'df_bari', name: '屏障果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '展开绝对防御屏障，物理伤害大幅减少，反弹部分伤害',
-    duration: 5,
+    duration: 4,
     transform: {
       defMult: 1.7, reflectPhysical: 0.25, spdMult: 0.9,
     },
@@ -161,7 +161,7 @@ export const DEVIL_FRUITS = {
   df_wara: {
     id: 'df_wara', name: '草草果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '操控稻草进行攻击，草系增伤，每回合少量恢复',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.25, healPerTurn: 0.06, typeBoost: { GRASS: 1.4 },
     },
@@ -170,7 +170,7 @@ export const DEVIL_FRUITS = {
   df_horu: {
     id: 'df_horu', name: '荷尔蒙果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '注入荷尔蒙激发潜能，全属性中等提升并附带状态治疗',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.25, defMult: 1.25, spdMult: 1.25, cureStatus: true,
     },
@@ -179,7 +179,7 @@ export const DEVIL_FRUITS = {
   df_gasu: {
     id: 'df_gasu', name: '瓦斯果实', category: 'PARAMECIA', rarity: 'COMMON',
     desc: '释放有毒瓦斯，降低对手命中率，攻击附带中毒',
-    duration: 5,
+    duration: 4,
     transform: {
       sAtkMult: 1.15, enemyAccDown: 1, onHitPoison: 0.3,
     },
@@ -193,14 +193,14 @@ export const DEVIL_FRUITS = {
     desc: '化身巨大金佛，全属性大幅提升，冲击波威力极高',
     duration: 3,
     transform: {
-      atkMult: 1.4, defMult: 1.4, sAtkMult: 1.4, sDefMult: 1.4, spdMult: 1.1,
+      atkMult: 1.35, defMult: 1.4, sAtkMult: 1.35, sDefMult: 1.4, spdMult: 1.1,
     },
     transformMove: { name: '佛之冲击', t: 'FIGHT', p: 140, pp: 3, acc: 85, isFruitMove: true },
   },
   df_ryu_pteranodon: {
     id: 'df_ryu_pteranodon', name: '龙龙果实·翼龙形态', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '变身远古翼龙，飞行与龙系双增伤，速度大幅提升',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.5, atkMult: 1.3,
       typeBoost: { FLYING: 1.5, DRAGON: 1.5 },
@@ -210,7 +210,7 @@ export const DEVIL_FRUITS = {
   df_hebi_yamata: {
     id: 'df_hebi_yamata', name: '蛇蛇果实·八岐大蛇', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身八头巨蛇，攻击命中2-3次，附带毒素',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.2, multiHit: [2, 3],
       onHitPoison: 0.3,
@@ -221,9 +221,9 @@ export const DEVIL_FRUITS = {
   df_inu_kyubi: {
     id: 'df_inu_kyubi', name: '犬犬果实·九尾狐形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身九尾妖狐，特攻大增，攻击有概率魅惑对手',
-    duration: 4,
+    duration: 3,
     transform: {
-      sAtkMult: 1.5, spdMult: 1.2,
+      sAtkMult: 1.35, spdMult: 1.2,
       onHitConfuse: 0.25,
     },
     transformMove: { name: '妖狐幻术', t: 'PSYCHIC', p: 100, pp: 6, acc: 95, isFruitMove: true,
@@ -232,7 +232,7 @@ export const DEVIL_FRUITS = {
   df_neko_leopard: {
     id: 'df_neko_leopard', name: '猫猫果实·豹形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身猎豹，速度极大提升，暴击率翻倍',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.5, atkMult: 1.2, critBoost: 2,
     },
@@ -241,9 +241,9 @@ export const DEVIL_FRUITS = {
   df_ushi_bison: {
     id: 'df_ushi_bison', name: '牛牛果实·野牛形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身巨大野牛，物攻物防大增，但速度下降',
-    duration: 5,
+    duration: 4,
     transform: {
-      atkMult: 1.5, defMult: 1.5, spdMult: 0.8,
+      atkMult: 1.35, defMult: 1.5, spdMult: 0.8,
     },
     transformMove: { name: '暴牛冲锋', t: 'FIGHT', p: 110, pp: 5, acc: 90, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.3 } },
@@ -251,7 +251,7 @@ export const DEVIL_FRUITS = {
   df_zou_mammoth: {
     id: 'df_zou_mammoth', name: '象象果实·猛犸形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身远古猛犸，HP上限+30%，物防大增',
-    duration: 5,
+    duration: 4,
     transform: {
       hpMult: 1.3, defMult: 1.5, atkMult: 1.2,
     },
@@ -260,7 +260,7 @@ export const DEVIL_FRUITS = {
   df_tori_phoenix: {
     id: 'df_tori_phoenix', name: '鸟鸟果实·凤凰形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身不死鸟，每回合回复15%HP，火系技能增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       healPerTurn: 0.15, spdMult: 1.3,
       typeBoost: { FIRE: 1.5 },
@@ -270,9 +270,9 @@ export const DEVIL_FRUITS = {
   df_mushi_kabutomushi: {
     id: 'df_mushi_kabutomushi', name: '虫虫果实·独角仙形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身巨型独角仙，物攻+50%，虫系技能追加',
-    duration: 5,
+    duration: 4,
     transform: {
-      atkMult: 1.5, defMult: 1.2,
+      atkMult: 1.35, defMult: 1.2,
       typeBoost: { BUG: 1.4 },
     },
     transformMove: { name: '巨角猛击', t: 'BUG', p: 95, pp: 6, acc: 95, isFruitMove: true },
@@ -280,9 +280,9 @@ export const DEVIL_FRUITS = {
   df_uo_seiryu: {
     id: 'df_uo_seiryu', name: '鱼鱼果实·青龙形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身东方青龙，水系与龙系双增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      sAtkMult: 1.4, defMult: 1.2,
+      sAtkMult: 1.35, defMult: 1.2,
       typeBoost: { WATER: 1.4, DRAGON: 1.4 },
     },
     transformMove: { name: '青龙吐息', t: 'DRAGON', p: 100, pp: 5, acc: 90, isFruitMove: true },
@@ -290,7 +290,7 @@ export const DEVIL_FRUITS = {
   df_uma: {
     id: 'df_uma', name: '马马果实', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身骏马，速度大幅提升',
-    duration: 5,
+    duration: 4,
     transform: {
       spdMult: 1.4, atkMult: 1.1,
     },
@@ -299,7 +299,7 @@ export const DEVIL_FRUITS = {
   df_inu_wolf: {
     id: 'df_inu_wolf', name: '犬犬果实·狼形态', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身恶狼，物攻提升，暴击率增加',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.3, critBoost: 2, spdMult: 1.15,
     },
@@ -318,7 +318,7 @@ export const DEVIL_FRUITS = {
   df_kumo_spider: {
     id: 'df_kumo_spider', name: '蜘蛛果实·络新妇形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身巨型蜘蛛，织网降速，攻击附带毒素并可束缚',
-    duration: 4,
+    duration: 3,
     transform: {
       sAtkMult: 1.35, spdMult: 1.2, enemySpdDown: 2, onHitPoison: 0.35,
     },
@@ -328,7 +328,7 @@ export const DEVIL_FRUITS = {
   df_wani_croc: {
     id: 'df_wani_croc', name: '鳄鱼果实·远古鳄形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身远古鳄鱼，物攻物防均衡提升，咬击附带降防',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.35, defMult: 1.35,
     },
@@ -338,7 +338,7 @@ export const DEVIL_FRUITS = {
   df_taka_hawk: {
     id: 'df_taka_hawk', name: '鸟鸟果实·隼形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身猛禽隼，速度极大提升，飞行系技能增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.5, atkMult: 1.2, typeBoost: { FLYING: 1.5 },
     },
@@ -347,7 +347,7 @@ export const DEVIL_FRUITS = {
   df_kame_turtle: {
     id: 'df_kame_turtle', name: '龟龟果实·玄武形态', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身玄武巨龟，物防特防大增，回复少量HP',
-    duration: 6,
+    duration: 5,
     transform: {
       defMult: 1.5, sDefMult: 1.5, healPerTurn: 0.05, spdMult: 0.7,
     },
@@ -369,9 +369,9 @@ export const DEVIL_FRUITS = {
   df_yami: {
     id: 'df_yami', name: '暗暗果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '操控黑暗，吸收伤害回复HP，可取消对手果实变身效果',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.4, hpDrain: 0.2,
+      atkMult: 1.35, hpDrain: 0.2,
       cancelEnemyFruit: true,
     },
     transformMove: { name: '暗水', t: 'DARK', p: 110, pp: 4, acc: 90, isFruitMove: true },
@@ -379,7 +379,7 @@ export const DEVIL_FRUITS = {
   df_hie: {
     id: 'df_hie', name: '冰冻果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为冰，冰系增伤，冻结概率大增，物防+40%',
-    duration: 4,
+    duration: 3,
     transform: {
       defMult: 1.4,
       typeBoost: { ICE: 1.5 },
@@ -391,7 +391,7 @@ export const DEVIL_FRUITS = {
   df_goro: {
     id: 'df_goro', name: '闪电果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为闪电，电系增伤，速度+60%，变身首回合必先手',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.5, firstStrike: true,
       typeBoost: { ELECTRIC: 1.5 },
@@ -402,7 +402,7 @@ export const DEVIL_FRUITS = {
   df_pika: {
     id: 'df_pika', name: '光光果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为光，速度极大提升，普通攻击变为光属性',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.5, sAtkMult: 1.3,
       convertNormalTo: 'ELECTRIC',
@@ -412,7 +412,7 @@ export const DEVIL_FRUITS = {
   df_moku: {
     id: 'df_moku', name: '烟雾果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为烟雾，闪避+40%，降低对手命中',
-    duration: 5,
+    duration: 4,
     transform: {
       evaBoost: 0.4, enemyAccDown: 2, defMult: 1.1,
     },
@@ -421,7 +421,7 @@ export const DEVIL_FRUITS = {
   df_suna: {
     id: 'df_suna', name: '沙沙果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为砂砾，地面系增伤，物理攻击附带降防',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.3, onHitDefDown: 1,
       typeBoost: { GROUND: 1.4 },
@@ -432,7 +432,7 @@ export const DEVIL_FRUITS = {
   df_mera: {
     id: 'df_mera', name: '火火果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为火焰，火系增伤50%，灼伤几率提升',
-    duration: 5,
+    duration: 4,
     transform: {
       sAtkMult: 1.3,
       typeBoost: { FIRE: 1.5 },
@@ -444,7 +444,7 @@ export const DEVIL_FRUITS = {
   df_yuki: {
     id: 'df_yuki', name: '雪雪果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为冰雪，冰系增伤30%，攻击附带降速',
-    duration: 5,
+    duration: 4,
     transform: {
       sAtkMult: 1.2,
       typeBoost: { ICE: 1.3 },
@@ -456,7 +456,7 @@ export const DEVIL_FRUITS = {
   df_doku: {
     id: 'df_doku', name: '毒毒果实', category: 'LOGIA', rarity: 'COMMON',
     desc: '身体充满剧毒，所有攻击附带中毒',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.15, sAtkMult: 1.15,
       onHitPoison: 0.5,
@@ -467,7 +467,7 @@ export const DEVIL_FRUITS = {
   df_beta: {
     id: 'df_beta', name: '黏黏果实', category: 'LOGIA', rarity: 'COMMON',
     desc: '释放黏液降低对手速度，反弹10%伤害',
-    duration: 5,
+    duration: 4,
     transform: {
       defMult: 1.2, enemySpdDown: 1,
       reflectAll: 0.1,
@@ -478,7 +478,7 @@ export const DEVIL_FRUITS = {
   df_numa: {
     id: 'df_numa', name: '沼沼果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为无底沼泽，吞噬敌方攻击恢复HP，降低命中',
-    duration: 4,
+    duration: 3,
     transform: {
       defMult: 1.3, hpDrain: 0.15, enemyAccDown: 2,
     },
@@ -488,7 +488,7 @@ export const DEVIL_FRUITS = {
   df_kaze: {
     id: 'df_kaze', name: '风风果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为狂风，速度提升，飞行系增伤，每回合降低敌方攻击',
-    duration: 4,
+    duration: 3,
     transform: {
       spdMult: 1.5, typeBoost: { FLYING: 1.5 }, enemyAtkDown: 1,
     },
@@ -497,7 +497,7 @@ export const DEVIL_FRUITS = {
   df_tsuchi: {
     id: 'df_tsuchi', name: '土土果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为大地，地面系增伤，物防极高，岩石系免疫',
-    duration: 5,
+    duration: 4,
     transform: {
       defMult: 1.5, atkMult: 1.2, typeBoost: { GROUND: 1.4 }, typeImmune: 'ROCK',
     },
@@ -506,7 +506,7 @@ export const DEVIL_FRUITS = {
   df_kusa: {
     id: 'df_kusa', name: '森森果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为森林，草系增伤，每回合回复HP，降低对手速度',
-    duration: 5,
+    duration: 4,
     transform: {
       sAtkMult: 1.3, healPerTurn: 0.1, typeBoost: { GRASS: 1.4 }, enemySpdDown: 1,
     },
@@ -517,7 +517,7 @@ export const DEVIL_FRUITS = {
     desc: '身体化为等离子态，无视部分防御，电系技能威力翻倍',
     duration: 3,
     transform: {
-      sAtkMult: 1.5, ignoreDefPercent: 0.15, typeBoost: { ELECTRIC: 1.5 },
+      sAtkMult: 1.35, ignoreDefPercent: 0.12, typeBoost: { ELECTRIC: 1.5 },
     },
     transformMove: { name: '等离子轰击', t: 'ELECTRIC', p: 140, pp: 3, acc: 85, isFruitMove: true,
       effect: { type: 'STATUS', status: 'PAR', chance: 0.5, target: 'enemy' } },
@@ -525,7 +525,7 @@ export const DEVIL_FRUITS = {
   df_jimen: {
     id: 'df_jimen', name: '磁暴果实', category: 'LOGIA', rarity: 'COMMON',
     desc: '释放磁暴能量，电系增伤，闪避小幅提升',
-    duration: 5,
+    duration: 4,
     transform: {
       sAtkMult: 1.2, typeBoost: { ELECTRIC: 1.3 }, evaBoost: 0.2,
     },
@@ -537,13 +537,13 @@ export const DEVIL_FRUITS = {
     id: 'df_nikyu', name: '肉球果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '掌心肉球可弹飞一切，攻击无视闪避，将伤害弹回',
     duration: 3,
-    transform: { atkMult: 1.4, ignoreEva: true, reflectAll: 0.2 },
+    transform: { atkMult: 1.35, ignoreEva: true, reflectAll: 0.2 },
     transformMove: { name: '熊之冲击', t: 'FIGHT', p: 130, pp: 3, acc: 100, isFruitMove: true },
   },
   df_hana: {
     id: 'df_hana', name: '花花果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '在任何表面开花出肢体，多段攻击+降对手防御',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.2, multiHit: [2, 4], onHitDefDown: 1 },
     transformMove: { name: '千紫万红', t: 'GRASS', p: 45, pp: 10, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.5 } },
@@ -551,35 +551,35 @@ export const DEVIL_FRUITS = {
   df_kilo: {
     id: 'df_kilo', name: '轻飘飘果实', category: 'PARAMECIA', rarity: 'COMMON',
     desc: '自由改变体重，速度大增，变身技为地面属性',
-    duration: 5,
+    duration: 4,
     transform: { spdMult: 1.4, atkMult: 1.15 },
     transformMove: { name: '万吨压顶', t: 'GROUND', p: 85, pp: 8, acc: 90, isFruitMove: true },
   },
   df_baku: {
     id: 'df_baku', name: '吞吞果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '吞噬一切物质化为己用，每次攻击回复HP',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.2, hpDrain: 0.15, defMult: 1.15 },
     transformMove: { name: '暴食吞噬', t: 'DARK', p: 80, pp: 8, acc: 100, isFruitMove: true },
   },
   df_supa: {
     id: 'df_supa', name: '快斩果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '身体可变为利刃，暴击率大增，物攻极高',
-    duration: 4,
-    transform: { atkMult: 1.45, critBoost: 3, spdMult: 1.1 },
+    duration: 3,
+    transform: { atkMult: 1.35, critBoost: 3, spdMult: 1.1 },
     transformMove: { name: '蜘蛛斩', t: 'STEEL', p: 100, pp: 6, acc: 95, isFruitMove: true },
   },
   df_shiro: {
     id: 'df_shiro', name: '城堡果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '身体化为城堡要塞，物防特防极高但速度降低',
-    duration: 5,
+    duration: 4,
     transform: { defMult: 1.6, sDefMult: 1.6, spdMult: 0.7, healPerTurn: 0.05 },
     transformMove: { name: '炮台连射', t: 'STEEL', p: 85, pp: 8, acc: 90, isFruitMove: true },
   },
   df_awa: {
     id: 'df_awa', name: '泡泡果实', category: 'PARAMECIA', rarity: 'COMMON',
     desc: '释放清洁泡沫，降低对手攻防',
-    duration: 5,
+    duration: 4,
     transform: { defMult: 1.2, enemyAtkDown: 1, onHitDefDown: 1 },
     transformMove: { name: '黄金泡沫', t: 'WATER', p: 70, pp: 10, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, target: 'enemy', chance: 0.5 } },
@@ -587,14 +587,14 @@ export const DEVIL_FRUITS = {
   df_mane: {
     id: 'df_mane', name: '模仿果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '模仿对手外貌，复制对手部分属性加成',
-    duration: 4,
+    duration: 3,
     transform: { atkMult: 1.3, defMult: 1.3, sAtkMult: 1.3, spdMult: 1.1 },
     transformMove: { name: '完美复制', t: 'NORMAL', p: 90, pp: 6, acc: 100, isFruitMove: true },
   },
   df_ori: {
     id: 'df_ori', name: '笼笼果实', category: 'PARAMECIA', rarity: 'COMMON',
     desc: '制造铁笼束缚对手，降低对手速度和闪避',
-    duration: 5,
+    duration: 4,
     transform: { defMult: 1.2, enemySpdDown: 2 },
     transformMove: { name: '铁笼封锁', t: 'STEEL', p: 70, pp: 10, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'spd', val: 2, target: 'enemy', chance: 0.6 } },
@@ -602,42 +602,42 @@ export const DEVIL_FRUITS = {
   df_toge: {
     id: 'df_toge', name: '荆棘果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '全身长满荆棘，物理攻击者受到反伤',
-    duration: 5,
+    duration: 4,
     transform: { defMult: 1.3, reflectPhysical: 0.3, atkMult: 1.1 },
     transformMove: { name: '荆棘鞭击', t: 'GRASS', p: 85, pp: 8, acc: 95, isFruitMove: true },
   },
   df_nui: {
     id: 'df_nui', name: '缝缝果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '缝合一切伤口和裂缝，每回合大量恢复HP',
-    duration: 5,
+    duration: 4,
     transform: { healPerTurn: 0.12, defMult: 1.35, sDefMult: 1.35 },
     transformMove: { name: '缝合术', t: 'NORMAL', p: 75, pp: 8, acc: 100, isFruitMove: true },
   },
   df_chiyu: {
     id: 'df_chiyu', name: '治愈果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '万物治愈之力，治疗异常状态并持续回复',
-    duration: 4,
+    duration: 3,
     transform: { healPerTurn: 0.15, cureStatus: true, defMult: 1.3, sDefMult: 1.3 },
     transformMove: { name: '万物生息', t: 'FAIRY', p: 90, pp: 5, acc: 100, isFruitMove: true },
   },
   df_memo: {
     id: 'df_memo', name: '记忆果实', category: 'PARAMECIA', rarity: 'RARE',
     desc: '操纵记忆，降低对手命中率和攻击',
-    duration: 5,
+    duration: 4,
     transform: { sAtkMult: 1.2, enemyAccDown: 2, enemyAtkDown: 1 },
     transformMove: { name: '记忆消除', t: 'PSYCHIC', p: 80, pp: 8, acc: 95, isFruitMove: true },
   },
   df_guru: {
     id: 'df_guru', name: '转转果实', category: 'PARAMECIA', rarity: 'COMMON',
     desc: '高速旋转产生龙卷风，速度提升',
-    duration: 5,
+    duration: 4,
     transform: { spdMult: 1.35, atkMult: 1.15 },
     transformMove: { name: '旋风斩', t: 'FLYING', p: 75, pp: 10, acc: 95, isFruitMove: true },
   },
   df_gasha: {
     id: 'df_gasha', name: '扭蛋果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '将对手封入胶囊，概率降低对手全属性',
-    duration: 4,
+    duration: 3,
     transform: { sAtkMult: 1.3, enemySpdDown: 1, enemyAtkDown: 1 },
     transformMove: { name: '胶囊封印', t: 'PSYCHIC', p: 95, pp: 6, acc: 90, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, target: 'enemy', chance: 0.5 } },
@@ -645,7 +645,7 @@ export const DEVIL_FRUITS = {
   df_fuku: {
     id: 'df_fuku', name: '幸运果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '幸运之力，暴击率大增且攻击回复HP',
-    duration: 4,
+    duration: 3,
     transform: { critBoost: 4, hpDrain: 0.1, atkMult: 1.2 },
     transformMove: { name: '幸运一击', t: 'NORMAL', p: 90, pp: 6, acc: 100, isFruitMove: true },
   },
@@ -654,14 +654,14 @@ export const DEVIL_FRUITS = {
   df_tori_eagle: {
     id: 'df_tori_eagle', name: '鸟鸟果实·鹰形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身猎鹰，速度极快，攻击附带降速',
-    duration: 4,
+    duration: 3,
     transform: { spdMult: 1.5, atkMult: 1.25, onHitSpdDown: 1 },
     transformMove: { name: '鹰爪突击', t: 'FLYING', p: 95, pp: 6, acc: 100, isFruitMove: true },
   },
   df_hebi_cobra: {
     id: 'df_hebi_cobra', name: '蛇蛇果实·眼镜蛇形态', category: 'ZOAN', rarity: 'RARE',
     desc: '化身眼镜蛇，攻击必附毒，特攻提升',
-    duration: 5,
+    duration: 4,
     transform: { sAtkMult: 1.35, onHitPoison: 0.5, spdMult: 1.15 },
     transformMove: { name: '毒牙射击', t: 'POISON', p: 85, pp: 8, acc: 95, isFruitMove: true,
       effect: { type: 'STATUS', status: 'PSN', chance: 0.6, target: 'enemy' } },
@@ -669,36 +669,36 @@ export const DEVIL_FRUITS = {
   df_mogu: {
     id: 'df_mogu', name: '鼹鼠果实', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身鼹鼠，地面系增伤，闪避提升',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.2, evaBoost: 0.25, typeBoost: { GROUND: 1.3 } },
     transformMove: { name: '掘地突袭', t: 'GROUND', p: 75, pp: 10, acc: 95, isFruitMove: true },
   },
   df_saru: {
     id: 'df_saru', name: '猿猿果实', category: 'ZOAN', rarity: 'RARE',
     desc: '化身巨猿，物攻和速度均衡提升',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.3, spdMult: 1.3, critBoost: 1 },
     transformMove: { name: '猿王铁拳', t: 'FIGHT', p: 90, pp: 6, acc: 95, isFruitMove: true },
   },
   df_kuma_bear: {
     id: 'df_kuma_bear', name: '熊熊果实', category: 'ZOAN', rarity: 'RARE',
     desc: '化身巨熊，HP和物防大增',
-    duration: 5,
+    duration: 4,
     transform: { hpMult: 1.25, defMult: 1.4, atkMult: 1.2 },
     transformMove: { name: '熊掌重击', t: 'NORMAL', p: 90, pp: 6, acc: 100, isFruitMove: true },
   },
   df_same_shark: {
     id: 'df_same_shark', name: '鲨鲨果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身大白鲨，水中增伤，攻击吸血',
-    duration: 4,
-    transform: { atkMult: 1.4, hpDrain: 0.15, typeBoost: { WATER: 1.5 } },
+    duration: 3,
+    transform: { atkMult: 1.35, hpDrain: 0.15, typeBoost: { WATER: 1.5 } },
     transformMove: { name: '鲨齿撕裂', t: 'WATER', p: 100, pp: 5, acc: 95, isFruitMove: true },
   },
   df_ryu_spinosaurus: {
     id: 'df_ryu_spinosaurus', name: '龙龙果实·棘龙形态', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '化身远古棘龙，攻击与防御兼备的完美形态',
     duration: 3,
-    transform: { atkMult: 1.45, defMult: 1.45, spdMult: 1.1 },
+    transform: { atkMult: 1.35, defMult: 1.45, spdMult: 1.1 },
     transformMove: { name: '棘龙裂岩', t: 'DRAGON', p: 135, pp: 3, acc: 85, isFruitMove: true },
   },
   df_kirin: {
@@ -712,29 +712,29 @@ export const DEVIL_FRUITS = {
   df_tanuki: {
     id: 'df_tanuki', name: '狸猫果实', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身狸猫，闪避和速度提升，擅长欺骗',
-    duration: 5,
+    duration: 4,
     transform: { evaBoost: 0.3, spdMult: 1.3, onHitConfuse: 0.2 },
     transformMove: { name: '狸猫幻术', t: 'GHOST', p: 70, pp: 10, acc: 100, isFruitMove: true },
   },
   df_usagi: {
     id: 'df_usagi', name: '兔兔果实', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身灵兔，速度极高，首回合先手',
-    duration: 5,
+    duration: 4,
     transform: { spdMult: 1.5, firstStrike: true, atkMult: 1.1 },
     transformMove: { name: '疾风兔踢', t: 'NORMAL', p: 75, pp: 10, acc: 100, isFruitMove: true },
   },
   df_suzume: {
     id: 'df_suzume', name: '雀雀果实·朱雀形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身传说朱雀，火系大增伤，每回合回复',
-    duration: 4,
-    transform: { sAtkMult: 1.4, typeBoost: { FIRE: 1.5 }, healPerTurn: 0.08 },
+    duration: 3,
+    transform: { sAtkMult: 1.35, typeBoost: { FIRE: 1.5 }, healPerTurn: 0.08 },
     transformMove: { name: '朱雀天焰', t: 'FIRE', p: 110, pp: 4, acc: 90, isFruitMove: true,
       effect: { type: 'STATUS', status: 'BRN', chance: 0.4, target: 'enemy' } },
   },
   df_batto: {
     id: 'df_batto', name: '蝙蝠果实·吸血鬼形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身吸血蝙蝠，暗系增伤，大量吸血',
-    duration: 4,
+    duration: 3,
     transform: { sAtkMult: 1.3, hpDrain: 0.25, spdMult: 1.2, typeBoost: { DARK: 1.4 } },
     transformMove: { name: '血族之吻', t: 'DARK', p: 95, pp: 6, acc: 95, isFruitMove: true },
   },
@@ -748,21 +748,21 @@ export const DEVIL_FRUITS = {
   df_shika: {
     id: 'df_shika', name: '鹿鹿果实', category: 'ZOAN', rarity: 'RARE',
     desc: '化身神鹿，速度提升，草系增伤',
-    duration: 5,
+    duration: 4,
     transform: { spdMult: 1.35, sAtkMult: 1.2, typeBoost: { GRASS: 1.4 }, healPerTurn: 0.06 },
     transformMove: { name: '鹿角冲刺', t: 'GRASS', p: 85, pp: 8, acc: 95, isFruitMove: true },
   },
   df_tora: {
     id: 'df_tora', name: '猫猫果实·虎形态', category: 'ZOAN', rarity: 'EPIC',
     desc: '化身白虎，物攻极高，暴击致命',
-    duration: 4,
-    transform: { atkMult: 1.5, critBoost: 3, spdMult: 1.2 },
+    duration: 3,
+    transform: { atkMult: 1.35, critBoost: 3, spdMult: 1.2 },
     transformMove: { name: '白虎裂爪', t: 'NORMAL', p: 100, pp: 5, acc: 95, isFruitMove: true },
   },
   df_inoshishi: {
     id: 'df_inoshishi', name: '猪猪果实·野猪形态', category: 'ZOAN', rarity: 'COMMON',
     desc: '化身野猪，猛烈冲撞，物攻物防提升',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.3, defMult: 1.3, spdMult: 0.9 },
     transformMove: { name: '蛮力冲锋', t: 'FIGHT', p: 85, pp: 8, acc: 90, isFruitMove: true },
   },
@@ -772,21 +772,21 @@ export const DEVIL_FRUITS = {
     id: 'df_suigin', name: '水银果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为液态金属，兼具流动性和杀伤力',
     duration: 3,
-    transform: { atkMult: 1.4, defMult: 1.4, onHitPoison: 0.4 },
+    transform: { atkMult: 1.35, defMult: 1.4, onHitPoison: 0.4 },
     transformMove: { name: '水银洪流', t: 'STEEL', p: 125, pp: 3, acc: 90, isFruitMove: true,
       effect: { type: 'STATUS', status: 'PSN', chance: 0.5, target: 'enemy' } },
   },
   df_koutetsu: {
     id: 'df_koutetsu', name: '钢铁果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为纯钢，物防极高，钢系增伤',
-    duration: 4,
+    duration: 3,
     transform: { defMult: 1.6, atkMult: 1.25, typeBoost: { STEEL: 1.5 }, spdMult: 0.85 },
     transformMove: { name: '铁壁粉碎', t: 'STEEL', p: 100, pp: 5, acc: 95, isFruitMove: true },
   },
   df_acid: {
     id: 'df_acid', name: '酸酸果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为强酸，腐蚀对手防御',
-    duration: 5,
+    duration: 4,
     transform: { sAtkMult: 1.25, onHitDefDown: 2 },
     transformMove: { name: '强酸溶解', t: 'POISON', p: 80, pp: 8, acc: 95, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 2, target: 'enemy', chance: 0.6 } },
@@ -794,14 +794,14 @@ export const DEVIL_FRUITS = {
   df_crystal: {
     id: 'df_crystal', name: '水晶果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为水晶，物防特防大增，反射光线',
-    duration: 4,
+    duration: 3,
     transform: { defMult: 1.5, sDefMult: 1.5, reflectAll: 0.15 },
     transformMove: { name: '水晶棱镜', t: 'ROCK', p: 95, pp: 6, acc: 90, isFruitMove: true },
   },
   df_steam: {
     id: 'df_steam', name: '蒸汽果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为高温蒸汽，灼伤概率高，闪避提升',
-    duration: 5,
+    duration: 4,
     transform: { evaBoost: 0.3, sAtkMult: 1.2, onHitBurn: 0.4 },
     transformMove: { name: '蒸汽喷射', t: 'WATER', p: 80, pp: 8, acc: 95, isFruitMove: true,
       effect: { type: 'STATUS', status: 'BRN', chance: 0.4, target: 'enemy' } },
@@ -810,20 +810,20 @@ export const DEVIL_FRUITS = {
     id: 'df_star', name: '星辰果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为星辰能量，特攻极高，妖精系增伤',
     duration: 3,
-    transform: { sAtkMult: 1.5, typeBoost: { FAIRY: 1.5 }, spdMult: 1.3 },
+    transform: { sAtkMult: 1.35, typeBoost: { FAIRY: 1.5 }, spdMult: 1.3 },
     transformMove: { name: '流星风暴', t: 'FAIRY', p: 130, pp: 3, acc: 85, isFruitMove: true },
   },
   df_shadow: {
     id: 'df_shadow', name: '影影果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为影子，闪避极高，暗系增伤',
-    duration: 4,
+    duration: 3,
     transform: { evaBoost: 0.4, sAtkMult: 1.3, typeBoost: { DARK: 1.5 } },
     transformMove: { name: '影刃乱舞', t: 'DARK', p: 100, pp: 5, acc: 95, isFruitMove: true },
   },
   df_koori: {
     id: 'df_koori', name: '霜冻果实', category: 'LOGIA', rarity: 'COMMON',
     desc: '释放寒霜，降低对手速度和攻击',
-    duration: 5,
+    duration: 4,
     transform: { sAtkMult: 1.15, enemySpdDown: 1, enemyAtkDown: 1, typeBoost: { ICE: 1.2 } },
     transformMove: { name: '霜冻之息', t: 'ICE', p: 75, pp: 10, acc: 95, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'spd', val: 1, target: 'enemy', chance: 0.5 } },
@@ -831,7 +831,7 @@ export const DEVIL_FRUITS = {
   df_lava: {
     id: 'df_lava', name: '熔岩果实', category: 'LOGIA', rarity: 'RARE',
     desc: '身体化为熔岩流，火地双属性增伤',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.3, typeBoost: { FIRE: 1.3, GROUND: 1.3 }, onHitBurn: 0.25 },
     transformMove: { name: '熔岩涌流', t: 'FIRE', p: 90, pp: 6, acc: 90, isFruitMove: true,
       effect: { type: 'STATUS', status: 'BRN', chance: 0.3, target: 'enemy' } },
@@ -840,13 +840,13 @@ export const DEVIL_FRUITS = {
     id: 'df_void', name: '虚空果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为虚空，无视部分防御，鬼系增伤',
     duration: 3,
-    transform: { sAtkMult: 1.45, ignoreDefPercent: 0.2, typeBoost: { GHOST: 1.5 } },
+    transform: { sAtkMult: 1.35, ignoreDefPercent: 0.12, typeBoost: { GHOST: 1.5 } },
     transformMove: { name: '虚空吞噬', t: 'GHOST', p: 130, pp: 3, acc: 85, isFruitMove: true },
   },
   df_radium: {
     id: 'df_radium', name: '辐射果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '释放辐射能量，攻击附带持续伤害',
-    duration: 4,
+    duration: 3,
     transform: { sAtkMult: 1.35, dotPerTurn: 0.08, onHitPoison: 0.3 },
     transformMove: { name: '辐射爆发', t: 'POISON', p: 100, pp: 5, acc: 90, isFruitMove: true,
       effect: { type: 'STATUS', status: 'PSN', chance: 0.5, target: 'enemy' } },
@@ -854,21 +854,21 @@ export const DEVIL_FRUITS = {
   df_aurora: {
     id: 'df_aurora', name: '极光果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '身体化为极光，冰系妖精双增伤，美丽而致命',
-    duration: 4,
+    duration: 3,
     transform: { sAtkMult: 1.35, typeBoost: { ICE: 1.3, FAIRY: 1.3 }, evaBoost: 0.2 },
     transformMove: { name: '极光幕帘', t: 'ICE', p: 95, pp: 6, acc: 95, isFruitMove: true },
   },
   df_mizu: {
     id: 'df_mizu', name: '水水果实', category: 'LOGIA', rarity: 'COMMON',
     desc: '身体化为纯水，水系增伤，每回合少量回复',
-    duration: 5,
+    duration: 4,
     transform: { sAtkMult: 1.2, typeBoost: { WATER: 1.3 }, healPerTurn: 0.05 },
     transformMove: { name: '水柱冲击', t: 'WATER', p: 75, pp: 10, acc: 100, isFruitMove: true },
   },
   df_quake: {
     id: 'df_quake', name: '地裂果实', category: 'LOGIA', rarity: 'RARE',
     desc: '引发地壳震动，地面系增伤，有概率令对手畏缩',
-    duration: 5,
+    duration: 4,
     transform: { atkMult: 1.3, typeBoost: { GROUND: 1.4 }, onHitDefDown: 1 },
     transformMove: { name: '地裂天崩', t: 'GROUND', p: 90, pp: 6, acc: 90, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 1, target: 'enemy', chance: 0.4 } },
@@ -877,7 +877,7 @@ export const DEVIL_FRUITS = {
     id: 'df_cosmic', name: '宇宙果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为宇宙能量，超能力系增伤，全维度压制',
     duration: 3,
-    transform: { sAtkMult: 1.5, sDefMult: 1.3, typeBoost: { PSYCHIC: 1.5 }, ignoreDefPercent: 0.1 },
+    transform: { sAtkMult: 1.35, sDefMult: 1.3, typeBoost: { PSYCHIC: 1.5 }, ignoreDefPercent: 0.1 },
     transformMove: { name: '星陨灭世', t: 'PSYCHIC', p: 135, pp: 3, acc: 85, isFruitMove: true },
   },
   df_tsuru_hane: {
@@ -906,7 +906,7 @@ export const DEVIL_FRUITS = {
   df_nx_yozora: {
     id: 'df_nx_yozora', name: '夜空果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '操控夜色遮蔽视线，特攻与闪避小幅提升',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.11,
       defMult: 1.26,
@@ -929,7 +929,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.3,
       defMult: 1.33,
       spdMult: 1.07,
-      sAtkMult: 1.38,
+      sAtkMult: 1.35,
       sDefMult: 1.14,
       dotPerTurn: 0.06,
       onHitPoison: 0.39,
@@ -945,7 +945,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.28,
       defMult: 1.2,
       spdMult: 1.08,
-      sAtkMult: 1.38,
+      sAtkMult: 1.35,
       sDefMult: 1.17,
       critBoost: 1,
       onHitPoison: 0.37,
@@ -978,7 +978,7 @@ export const DEVIL_FRUITS = {
     desc: '潮湿环境削弱火系，水系技能增伤',
     duration: 3,
     transform: {
-      atkMult: 1.44,
+      atkMult: 1.35,
       defMult: 1.19,
       spdMult: 1.09,
       sAtkMult: 1.3,
@@ -996,7 +996,7 @@ export const DEVIL_FRUITS = {
     desc: '九尾幻术，妖精与幽灵双增伤',
     duration: 3,
     transform: {
-      atkMult: 1.44,
+      atkMult: 1.35,
       defMult: 1.23,
       spdMult: 1.1,
       sAtkMult: 1.21,
@@ -1024,7 +1024,7 @@ export const DEVIL_FRUITS = {
       ignoreDefPercent: 0.08,
       critBoost: 2,
       evaBoost: 0.24,
-      movePowerBoost: 0.22,
+      movePowerBoost: 0.15,
       typeBoost: { DARK: 1.39 }
     },
     transformMove: { name: '霜岚切·霓虹', t: 'DARK', p: 81, pp: 10, acc: 85, isFruitMove: true,
@@ -1057,7 +1057,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.23,
       defMult: 1.28,
       spdMult: 1.08,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.28,
       enemyAtkDown: 2,
       onHitBurn: 0.44,
@@ -1071,9 +1071,9 @@ export const DEVIL_FRUITS = {
   df_nx_tanuki2: {
     id: 'df_nx_tanuki2', name: '狸釜果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '变化术式，闪避与物防提升',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.4,
+      atkMult: 1.35,
       defMult: 1.26,
       spdMult: 1.27,
       sAtkMult: 1.22,
@@ -1090,10 +1090,10 @@ export const DEVIL_FRUITS = {
     desc: '有机雾霭，毒系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.27,
       spdMult: 1.15,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.11,
       typeImmune: 'DRAGON',
       reflectPhysical: 0.15,
@@ -1108,7 +1108,7 @@ export const DEVIL_FRUITS = {
     desc: '星尘沙暴，地面系增伤',
     duration: 2,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.21,
       spdMult: 1.08,
       sAtkMult: 1.33,
@@ -1129,7 +1129,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.11,
       defMult: 1.15,
       spdMult: 1.08,
-      sAtkMult: 1.4,
+      sAtkMult: 1.35,
       sDefMult: 1.15,
       reflectPhysical: 0.22,
       enemySpdDown: 2,
@@ -1150,7 +1150,7 @@ export const DEVIL_FRUITS = {
       sDefMult: 1.15,
       evaBoost: 0.26,
       onHitPoison: 0.39,
-      movePowerBoost: 0.2,
+      movePowerBoost: 0.15,
       enemyAccDown: 2
     },
     transformMove: { name: '天华斩·枫染', t: 'GROUND', p: 96, pp: 4, acc: 100, isFruitMove: true,
@@ -1164,7 +1164,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.27,
       defMult: 1.27,
       spdMult: 1.13,
-      sAtkMult: 1.5,
+      sAtkMult: 1.35,
       sDefMult: 1.2,
       critBoost: 3,
       onHitBurn: 0.26,
@@ -1197,7 +1197,7 @@ export const DEVIL_FRUITS = {
     desc: '掘洞奇袭，地面系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.38,
+      atkMult: 1.35,
       defMult: 1.17,
       spdMult: 1.24,
       sAtkMult: 1.25,
@@ -1213,12 +1213,12 @@ export const DEVIL_FRUITS = {
   df_nx_brine: {
     id: 'df_nx_brine', name: '苦卤果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '盐蚀裂伤，水系与岩石双增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.32,
       defMult: 1.15,
       spdMult: 1.27,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.11,
       enemyAtkDown: 2,
       dotPerTurn: 0.04,
@@ -1231,12 +1231,12 @@ export const DEVIL_FRUITS = {
   df_nx_glacier: {
     id: 'df_nx_glacier', name: '冰川果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '极寒封冻，冰系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.31,
       defMult: 1.12,
       spdMult: 1.26,
-      sAtkMult: 1.43,
+      sAtkMult: 1.35,
       sDefMult: 1.17,
       reflectPhysical: 0.1,
       enemyAtkDown: 1,
@@ -1270,7 +1270,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.19,
       defMult: 1.3,
       spdMult: 1.17,
-      sAtkMult: 1.42,
+      sAtkMult: 1.35,
       sDefMult: 1.12,
       onHitDefDown: 2,
       typeImmune: 'FIRE',
@@ -1309,7 +1309,7 @@ export const DEVIL_FRUITS = {
       sDefMult: 1.23,
       reflectPhysical: 0.21,
       onHitBurn: 0.26,
-      movePowerBoost: 0.16,
+      movePowerBoost: 0.15,
       typeImmune: 'ICE',
       typeBoost: { PSYCHIC: 1.43 }
     },
@@ -1324,11 +1324,11 @@ export const DEVIL_FRUITS = {
       atkMult: 1.1,
       defMult: 1.23,
       spdMult: 1.08,
-      sAtkMult: 1.43,
+      sAtkMult: 1.35,
       sDefMult: 1.1,
       reflectPhysical: 0.2,
       enemySpdDown: 1,
-      ignoreDefPercent: 0.18,
+      ignoreDefPercent: 0.12,
       dotPerTurn: 0.04,
       onHitPoison: 0.31
     },
@@ -1343,7 +1343,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.18,
       defMult: 1.27,
       spdMult: 1.12,
-      sAtkMult: 1.38,
+      sAtkMult: 1.35,
       sDefMult: 1.14,
       critBoost: 3,
       enemyAccDown: 2,
@@ -1356,16 +1356,16 @@ export const DEVIL_FRUITS = {
   df_nx_kosumosu: {
     id: 'df_nx_kosumosu', name: '秋樱果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '花瓣切割，虫系技能增伤',
-    duration: 5,
+    duration: 4,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.16,
       spdMult: 1.21,
-      sAtkMult: 1.41,
+      sAtkMult: 1.35,
       sDefMult: 1.26,
       enemyAtkDown: 2,
       reflectPhysical: 0.17,
-      movePowerBoost: 0.21,
+      movePowerBoost: 0.15,
       healPerTurn: 0.06,
       evaBoost: 0.31
     },
@@ -1377,7 +1377,7 @@ export const DEVIL_FRUITS = {
     desc: '激流翻滚，水系威力提升',
     duration: 3,
     transform: {
-      atkMult: 1.46,
+      atkMult: 1.35,
       defMult: 1.24,
       spdMult: 1.14,
       sAtkMult: 1.26,
@@ -1397,7 +1397,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.34,
       defMult: 1.21,
       spdMult: 1.28,
-      sAtkMult: 1.42,
+      sAtkMult: 1.35,
       sDefMult: 1.11,
       enemySpdDown: 2,
       ignoreDefPercent: 0.08,
@@ -1452,7 +1452,7 @@ export const DEVIL_FRUITS = {
       spdMult: 1.15,
       sAtkMult: 1.14,
       sDefMult: 1.28,
-      movePowerBoost: 0.2,
+      movePowerBoost: 0.15,
       enemyAccDown: 1,
       enemySpdDown: 2
     },
@@ -1464,7 +1464,7 @@ export const DEVIL_FRUITS = {
     desc: '潮汐牵引，水系增伤',
     duration: 2,
     transform: {
-      atkMult: 1.37,
+      atkMult: 1.35,
       defMult: 1.12,
       spdMult: 1.08,
       sAtkMult: 1.31,
@@ -1481,7 +1481,7 @@ export const DEVIL_FRUITS = {
   df_nx_kujaku: {
     id: 'df_nx_kujaku', name: '孔雀果实', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '开屏眩目，飞行系增伤',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.24,
       defMult: 1.39,
@@ -1505,7 +1505,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.33,
       defMult: 1.33,
       spdMult: 1.05,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.14,
       onHitDefDown: 2,
       typeImmune: 'GHOST'
@@ -1515,7 +1515,7 @@ export const DEVIL_FRUITS = {
   df_nx_hakobe: {
     id: 'df_nx_hakobe', name: '薄雪草果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '高山寒气，冰系技能增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.32,
       defMult: 1.32,
@@ -1532,9 +1532,9 @@ export const DEVIL_FRUITS = {
   df_nx_meteor: {
     id: 'df_nx_meteor', name: '陨星果实', category: 'LOGIA', rarity: 'EPIC',
     desc: '流星坠击，岩石系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.36,
+      atkMult: 1.35,
       defMult: 1.17,
       spdMult: 1.24,
       sAtkMult: 1.31,
@@ -1570,10 +1570,10 @@ export const DEVIL_FRUITS = {
     desc: '黑烟窒息，毒系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.38,
+      atkMult: 1.35,
       defMult: 1.2,
       spdMult: 1.09,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.21,
       ignoreDefPercent: 0.08,
       movePowerBoost: 0.12,
@@ -1590,7 +1590,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.26,
       defMult: 1.23,
       spdMult: 1.23,
-      sAtkMult: 1.41,
+      sAtkMult: 1.35,
       sDefMult: 1.27,
       onHitDefDown: 1,
       evaBoost: 0.18
@@ -1603,7 +1603,7 @@ export const DEVIL_FRUITS = {
     desc: '时间错觉，先手权重提升',
     duration: 2,
     transform: {
-      atkMult: 1.41,
+      atkMult: 1.35,
       defMult: 1.13,
       spdMult: 1.15,
       sAtkMult: 1.28,
@@ -1620,12 +1620,12 @@ export const DEVIL_FRUITS = {
   df_nx_mikage: {
     id: 'df_nx_mikage', name: '御影果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '影子分身残像，闪避与速度提升',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.26,
       defMult: 1.19,
       spdMult: 1.11,
-      sAtkMult: 1.42,
+      sAtkMult: 1.35,
       sDefMult: 1.11,
       healPerTurn: 0.09,
       dotPerTurn: 0.09,
@@ -1638,9 +1638,9 @@ export const DEVIL_FRUITS = {
   df_nx_karasu2: {
     id: 'df_nx_karasu2', name: '乌羽果实', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '黑羽风暴，飞行系威力提升',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.42,
+      atkMult: 1.35,
       defMult: 1.19,
       spdMult: 1.2,
       sAtkMult: 1.11,
@@ -1657,7 +1657,7 @@ export const DEVIL_FRUITS = {
   df_nx_takara: {
     id: 'df_nx_takara', name: '宝匣果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '随机应变，技能威力波动提升',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.33,
       defMult: 1.13,
@@ -1678,10 +1678,10 @@ export const DEVIL_FRUITS = {
       atkMult: 1.25,
       defMult: 1.32,
       spdMult: 1.22,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.23,
       onHitBurn: 0.36,
-      movePowerBoost: 0.21,
+      movePowerBoost: 0.15,
       healPerTurn: 0.08,
       enemyAtkDown: 1,
       enemySpdDown: 1
@@ -1694,7 +1694,7 @@ export const DEVIL_FRUITS = {
     desc: '身法轻盈，飞行系技能增伤',
     duration: 2,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.1,
       spdMult: 1.27,
       sAtkMult: 1.14,
@@ -1708,9 +1708,9 @@ export const DEVIL_FRUITS = {
   df_nx_senri: {
     id: 'df_nx_senri', name: '千里果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '超远感知，超能力系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.38,
+      atkMult: 1.35,
       defMult: 1.33,
       spdMult: 1.17,
       sAtkMult: 1.27,
@@ -1743,16 +1743,16 @@ export const DEVIL_FRUITS = {
   df_nx_kirin2: {
     id: 'df_nx_kirin2', name: '麒麟踏云果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '圣兽威压，龙系与妖精增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.43,
+      atkMult: 1.35,
       defMult: 1.35,
       spdMult: 1.06,
       sAtkMult: 1.3,
       sDefMult: 1.13,
       enemyAccDown: 2,
       onHitDefDown: 2,
-      movePowerBoost: 0.16,
+      movePowerBoost: 0.15,
       reflectPhysical: 0.11,
       critBoost: 3
     },
@@ -1763,10 +1763,10 @@ export const DEVIL_FRUITS = {
     desc: '熔岩纹路，火系与地面双增伤',
     duration: 3,
     transform: {
-      atkMult: 1.45,
+      atkMult: 1.35,
       defMult: 1.23,
       spdMult: 1.12,
-      sAtkMult: 1.45,
+      sAtkMult: 1.35,
       sDefMult: 1.19,
       enemyAccDown: 1,
       reflectPhysical: 0.13
@@ -1778,10 +1778,10 @@ export const DEVIL_FRUITS = {
     desc: '熔渣灼烧，火系与地面双增伤',
     duration: 3,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.15,
       spdMult: 1.28,
-      sAtkMult: 1.45,
+      sAtkMult: 1.35,
       sDefMult: 1.15,
       onHitBurn: 0.43,
       enemyAccDown: 1,
@@ -1838,7 +1838,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.14,
       defMult: 1.19,
       spdMult: 1.16,
-      sAtkMult: 1.4,
+      sAtkMult: 1.35,
       sDefMult: 1.14,
       enemySpdDown: 1,
       onHitPoison: 0.41,
@@ -1851,12 +1851,12 @@ export const DEVIL_FRUITS = {
     desc: '龙蛇合体，龙系与毒系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.36,
+      atkMult: 1.35,
       defMult: 1.31,
       spdMult: 1.07,
       sAtkMult: 1.28,
       sDefMult: 1.26,
-      ignoreDefPercent: 0.17,
+      ignoreDefPercent: 0.12,
       enemyAtkDown: 2,
       critBoost: 2
     },
@@ -1866,9 +1866,9 @@ export const DEVIL_FRUITS = {
   df_nx_mizuchi: {
     id: 'df_nx_mizuchi', name: '蛟人果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '水蛟化形，水系与龙系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.36,
+      atkMult: 1.35,
       defMult: 1.28,
       spdMult: 1.09,
       sAtkMult: 1.33,
@@ -1887,7 +1887,7 @@ export const DEVIL_FRUITS = {
     desc: '烈风掌击，飞行与格斗双增伤',
     duration: 2,
     transform: {
-      atkMult: 1.49,
+      atkMult: 1.35,
       defMult: 1.33,
       spdMult: 1.15,
       sAtkMult: 1.32,
@@ -1903,10 +1903,10 @@ export const DEVIL_FRUITS = {
     desc: '彗尾扫击，冰系与妖精双增伤',
     duration: 3,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.11,
       spdMult: 1.09,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.21,
       enemyAtkDown: 2,
       dotPerTurn: 0.07,
@@ -1919,7 +1919,7 @@ export const DEVIL_FRUITS = {
   df_nx_nue: {
     id: 'df_nx_nue', name: '鵺兽果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '混沌嘶吼，恶系与毒系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.33,
       defMult: 1.36,
@@ -1935,7 +1935,7 @@ export const DEVIL_FRUITS = {
   df_nx_kirinji: {
     id: 'df_nx_kirinji', name: '麒麟竭果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '树脂封印，降低对手速度',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.34,
       defMult: 1.19,
@@ -1954,7 +1954,7 @@ export const DEVIL_FRUITS = {
     desc: '吞梦安眠，超能力系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.49,
+      atkMult: 1.35,
       defMult: 1.37,
       spdMult: 1.08,
       sAtkMult: 1.13,
@@ -1971,7 +1971,7 @@ export const DEVIL_FRUITS = {
     desc: '白昼极光，妖精系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.42,
+      atkMult: 1.35,
       defMult: 1.13,
       spdMult: 1.12,
       sAtkMult: 1.32,
@@ -1989,7 +1989,7 @@ export const DEVIL_FRUITS = {
     desc: '呓语干扰，降低对手特攻',
     duration: 3,
     transform: {
-      atkMult: 1.38,
+      atkMult: 1.35,
       defMult: 1.11,
       spdMult: 1.21,
       sAtkMult: 1.15,
@@ -2002,17 +2002,17 @@ export const DEVIL_FRUITS = {
   df_nx_kagebito: {
     id: 'df_nx_kagebito', name: '影人果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '操控剪影，幽灵系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.15,
       defMult: 1.28,
       spdMult: 1.11,
-      sAtkMult: 1.38,
+      sAtkMult: 1.35,
       sDefMult: 1.19,
       enemyAtkDown: 1,
       typeImmune: 'ELECTRIC',
       evaBoost: 0.3,
-      ignoreDefPercent: 0.14,
+      ignoreDefPercent: 0.12,
       enemySpdDown: 1
     },
     transformMove: { name: '苍岚闪·影人', t: 'STEEL', p: 128, pp: 3, acc: 90, isFruitMove: true },
@@ -2022,7 +2022,7 @@ export const DEVIL_FRUITS = {
     desc: '百花齐放，草系威力提升',
     duration: 3,
     transform: {
-      atkMult: 1.42,
+      atkMult: 1.35,
       defMult: 1.3,
       spdMult: 1.25,
       sAtkMult: 1.32,
@@ -2042,7 +2042,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.35,
       defMult: 1.39,
       spdMult: 1.18,
-      sAtkMult: 1.43,
+      sAtkMult: 1.35,
       sDefMult: 1.13,
       typeImmune: 'GHOST',
       enemySpdDown: 2,
@@ -2060,10 +2060,10 @@ export const DEVIL_FRUITS = {
       atkMult: 1.34,
       defMult: 1.13,
       spdMult: 1.13,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.27,
       onHitBurn: 0.4,
-      ignoreDefPercent: 0.15,
+      ignoreDefPercent: 0.12,
       onHitPoison: 0.44,
       evaBoost: 0.18
     },
@@ -2078,7 +2078,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.27,
       defMult: 1.34,
       spdMult: 1.25,
-      sAtkMult: 1.47,
+      sAtkMult: 1.35,
       sDefMult: 1.17,
       evaBoost: 0.18,
       enemySpdDown: 2,
@@ -2091,7 +2091,7 @@ export const DEVIL_FRUITS = {
     desc: '石墙格挡，岩石系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.43,
+      atkMult: 1.35,
       defMult: 1.28,
       spdMult: 1.22,
       sAtkMult: 1.2,
@@ -2117,7 +2117,7 @@ export const DEVIL_FRUITS = {
       enemyAtkDown: 2,
       onHitDefDown: 1,
       typeImmune: 'ICE',
-      ignoreDefPercent: 0.17
+      ignoreDefPercent: 0.12
     },
     transformMove: { name: '涡潮冲·月读', t: 'GHOST', p: 63, pp: 4, acc: 90, isFruitMove: true },
   },
@@ -2126,12 +2126,12 @@ export const DEVIL_FRUITS = {
     desc: '护送灵火，幽灵系增伤',
     duration: 2,
     transform: {
-      atkMult: 1.37,
+      atkMult: 1.35,
       defMult: 1.39,
       spdMult: 1.15,
       sAtkMult: 1.26,
       sDefMult: 1.18,
-      ignoreDefPercent: 0.15,
+      ignoreDefPercent: 0.12,
       reflectPhysical: 0.17,
       dotPerTurn: 0.08
     },
@@ -2141,12 +2141,12 @@ export const DEVIL_FRUITS = {
   df_nx_shion: {
     id: 'df_nx_shion', name: '紫苑果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '思念花粉，中毒概率',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.44,
+      atkMult: 1.35,
       defMult: 1.24,
       spdMult: 1.2,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.2,
       healPerTurn: 0.06,
       onHitPoison: 0.42,
@@ -2160,7 +2160,7 @@ export const DEVIL_FRUITS = {
     desc: '灵犬撕咬，幽灵与恶双增伤',
     duration: 3,
     transform: {
-      atkMult: 1.47,
+      atkMult: 1.35,
       defMult: 1.33,
       spdMult: 1.22,
       sAtkMult: 1.27,
@@ -2176,12 +2176,12 @@ export const DEVIL_FRUITS = {
     desc: '龙胆苦液，毒系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.43,
+      atkMult: 1.35,
       defMult: 1.26,
       spdMult: 1.27,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.12,
-      ignoreDefPercent: 0.16,
+      ignoreDefPercent: 0.12,
       reflectPhysical: 0.17
     },
     transformMove: { name: '霜岚切·龙胆', t: 'DRAGON', p: 104, pp: 10, acc: 95, isFruitMove: true },
@@ -2208,10 +2208,10 @@ export const DEVIL_FRUITS = {
     desc: '虚空涌动，幽灵系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.41,
+      atkMult: 1.35,
       defMult: 1.34,
       spdMult: 1.21,
-      sAtkMult: 1.48,
+      sAtkMult: 1.35,
       sDefMult: 1.27,
       movePowerBoost: 0.08,
       healPerTurn: 0.07,
@@ -2243,7 +2243,7 @@ export const DEVIL_FRUITS = {
     desc: '豆袋戏法，一般系威力提升',
     duration: 3,
     transform: {
-      atkMult: 1.47,
+      atkMult: 1.35,
       defMult: 1.35,
       spdMult: 1.24,
       sAtkMult: 1.17,
@@ -2275,7 +2275,7 @@ export const DEVIL_FRUITS = {
   df_nx_momiji: {
     id: 'df_nx_momiji', name: '红叶果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '秋风扫叶，降低对手速度',
-    duration: 5,
+    duration: 4,
     transform: {
       atkMult: 1.32,
       defMult: 1.26,
@@ -2298,7 +2298,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.22,
       defMult: 1.32,
       spdMult: 1.13,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.11,
       enemySpdDown: 1,
       healPerTurn: 0.07,
@@ -2330,7 +2330,7 @@ export const DEVIL_FRUITS = {
     desc: '火花雨，火系增伤',
     duration: 2,
     transform: {
-      atkMult: 1.38,
+      atkMult: 1.35,
       defMult: 1.12,
       spdMult: 1.18,
       sAtkMult: 1.34,
@@ -2369,7 +2369,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.2,
       defMult: 1.1,
       spdMult: 1.08,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.19,
       typeImmune: 'NORMAL',
       enemyAccDown: 2,
@@ -2384,7 +2384,7 @@ export const DEVIL_FRUITS = {
     desc: '蜕皮再生，每回合微量回复',
     duration: 3,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.26,
       spdMult: 1.16,
       sAtkMult: 1.14,
@@ -2400,10 +2400,10 @@ export const DEVIL_FRUITS = {
     desc: '霜华凝结，冰系威力提升',
     duration: 3,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.28,
       spdMult: 1.1,
-      sAtkMult: 1.4,
+      sAtkMult: 1.35,
       sDefMult: 1.25,
       evaBoost: 0.11,
       healPerTurn: 0.08,
@@ -2415,12 +2415,12 @@ export const DEVIL_FRUITS = {
   df_nx_raijin: {
     id: 'df_nx_raijin', name: '雷兽果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '雷蹄践踏，电系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.38,
+      atkMult: 1.35,
       defMult: 1.34,
       spdMult: 1.22,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.24,
       onHitPoison: 0.25,
       movePowerBoost: 0.11,
@@ -2436,10 +2436,10 @@ export const DEVIL_FRUITS = {
     desc: '风翼切割，飞行系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.47,
+      atkMult: 1.35,
       defMult: 1.33,
       spdMult: 1.27,
-      sAtkMult: 1.37,
+      sAtkMult: 1.35,
       sDefMult: 1.18,
       onHitBurn: 0.23,
       onHitPoison: 0.36,
@@ -2451,12 +2451,12 @@ export const DEVIL_FRUITS = {
   df_nx_suzaku: {
     id: 'df_nx_suzaku', name: '朱雀果实', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '圣炎燎原，火系与飞行双增伤',
-    duration: 5,
+    duration: 4,
     transform: {
-      atkMult: 1.37,
+      atkMult: 1.35,
       defMult: 1.24,
       spdMult: 1.1,
-      sAtkMult: 1.36,
+      sAtkMult: 1.35,
       sDefMult: 1.18,
       onHitDefDown: 2,
       onHitBurn: 0.29
@@ -2484,9 +2484,9 @@ export const DEVIL_FRUITS = {
   df_nx_seiryu2: {
     id: 'df_nx_seiryu2', name: '青龙果实', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '苍雷龙卷，龙系与电系双增伤',
-    duration: 4,
+    duration: 3,
     transform: {
-      atkMult: 1.4,
+      atkMult: 1.35,
       defMult: 1.28,
       spdMult: 1.22,
       sAtkMult: 1.13,
@@ -2505,7 +2505,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.28,
       defMult: 1.29,
       spdMult: 1.06,
-      sAtkMult: 1.38,
+      sAtkMult: 1.35,
       sDefMult: 1.19,
       dotPerTurn: 0.08,
       enemySpdDown: 2,
@@ -2519,10 +2519,10 @@ export const DEVIL_FRUITS = {
     desc: '泥浆吞噬，地面与毒双增伤',
     duration: 3,
     transform: {
-      atkMult: 1.42,
+      atkMult: 1.35,
       defMult: 1.27,
       spdMult: 1.07,
-      sAtkMult: 1.45,
+      sAtkMult: 1.35,
       sDefMult: 1.14,
       movePowerBoost: 0.09,
       enemySpdDown: 2,
@@ -2537,7 +2537,7 @@ export const DEVIL_FRUITS = {
   df_nx_kinkan: {
     id: 'df_nx_kinkan', name: '金柑果实', category: 'PARAMECIA', rarity: 'EPIC',
     desc: '金皮护体，物防提升',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.17,
       defMult: 1.31,
@@ -2546,7 +2546,7 @@ export const DEVIL_FRUITS = {
       sDefMult: 1.19,
       typeImmune: 'ICE',
       onHitDefDown: 2,
-      ignoreDefPercent: 0.16,
+      ignoreDefPercent: 0.12,
       onHitBurn: 0.32,
       enemyAccDown: 1
     },
@@ -2561,7 +2561,7 @@ export const DEVIL_FRUITS = {
       atkMult: 1.29,
       defMult: 1.34,
       spdMult: 1.19,
-      sAtkMult: 1.44,
+      sAtkMult: 1.35,
       sDefMult: 1.27,
       typeImmune: 'BUG',
       enemySpdDown: 1,
@@ -2577,10 +2577,10 @@ export const DEVIL_FRUITS = {
     desc: '珠光护盾，妖精系增伤',
     duration: 2,
     transform: {
-      atkMult: 1.41,
+      atkMult: 1.35,
       defMult: 1.11,
       spdMult: 1.05,
-      sAtkMult: 1.37,
+      sAtkMult: 1.35,
       sDefMult: 1.11,
       healPerTurn: 0.07,
       typeImmune: 'DARK',
@@ -2609,7 +2609,7 @@ export const DEVIL_FRUITS = {
   df_nx_kiji: {
     id: 'df_nx_kiji', name: '雉羽果实', category: 'ZOAN', rarity: 'EPIC',
     desc: '尾羽火雨，火系增伤',
-    duration: 4,
+    duration: 3,
     transform: {
       atkMult: 1.35,
       defMult: 1.18,
@@ -2629,7 +2629,7 @@ export const DEVIL_FRUITS = {
     desc: '山地疾走，地面系增伤',
     duration: 3,
     transform: {
-      atkMult: 1.48,
+      atkMult: 1.35,
       defMult: 1.29,
       spdMult: 1.13,
       sAtkMult: 1.1,
@@ -2647,13 +2647,13 @@ export const DEVIL_FRUITS = {
     desc: '云丝缠绕，降低对手速度',
     duration: 3,
     transform: {
-      atkMult: 1.39,
+      atkMult: 1.35,
       defMult: 1.17,
       spdMult: 1.23,
       sAtkMult: 1.19,
       sDefMult: 1.11,
       healPerTurn: 0.05,
-      ignoreDefPercent: 0.16
+      ignoreDefPercent: 0.12
     },
     transformMove: { name: '雷鸣坠·云网', t: 'ROCK', p: 93, pp: 3, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 's_def', val: 1, target: 'enemy', chance: 0.32 } },

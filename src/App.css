@@ -4411,6 +4411,22 @@ button:active {
   100% { transform: translateX(100%); }
 }
 
+@keyframes fire-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { transform: translateY(-100vh) scale(0.3); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes spin-slow {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to { transform: translate(-50%,-50%) rotate(360deg); }
+}
+
 /* ============================================ */
 /* 地图视觉升级 v2 - 视口/纹理/建筑/玩家/氛围 */
 /* ============================================ */
@@ -4659,6 +4675,16 @@ button:active {
   border: 3px solid rgba(66,165,245,0.7);
   animation: player-ping 2s ease-out infinite;
   z-index: 0;
+}
+.player-marker::after {
+  content: ''; position: absolute;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid rgba(255,213,79,0.75);
+  box-shadow: 0 0 12px rgba(255,213,79,0.45);
+  animation: player-ping 2.4s ease-out infinite;
+  animation-delay: 0.35s;
+  z-index: 0;
+  pointer-events: none;
 }
 @keyframes player-ping {
   0%   { transform: scale(0.6); opacity: 1; }
