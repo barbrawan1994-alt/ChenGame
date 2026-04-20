@@ -237,16 +237,16 @@ export const RANDOM_EQUIP_DB = [
 ];
 
 export const EVO_STONES = {
-  fire_stone:   { id: 'fire_stone',   name: '火之石',   price: 3000, icon: '🔥', desc: '炽热的石头，能激发潜能' },
-  water_stone:  { id: 'water_stone',  name: '水之石',   price: 3000, icon: '💧', desc: '澄澈的石头，能激发潜能' },
-  thunder_stone:{ id: 'thunder_stone',name: '雷之石',   price: 3000, icon: '⚡', desc: '带电的石头，能激发潜能' },
-  leaf_stone:   { id: 'leaf_stone',   name: '叶之石',   price: 3000, icon: '🍃', desc: '有着叶脉的石头，能激发潜能' },
-  moon_stone:   { id: 'moon_stone',   name: '月之石',   price: 4000, icon: '🌙', desc: '如夜空般深邃，能让神秘精灵进化' },
-  sun_stone:    { id: 'sun_stone',    name: '日之石',   price: 4000, icon: '☀️', desc: '如太阳般耀眼，能让特定精灵进化' },
-  ice_stone:    { id: 'ice_stone',    name: '冰之石',   price: 3500, icon: '❄️', desc: '冻结的石头，能让冰系精灵进化' },
-  dusk_stone:   { id: 'dusk_stone',   name: '暗之石',   price: 4500, icon: '🌑', desc: '黑暗中的石头，能让幽灵/恶系进化' },
-  dawn_stone:   { id: 'dawn_stone',   name: '觉醒石',   price: 4500, icon: '✨', desc: '闪耀光芒的石头，能唤醒特定性别' },
-  shiny_stone:  { id: 'shiny_stone',  name: '光之石',   price: 5000, icon: '🌟', desc: '光辉灿烂，能让稀有精灵进化' }
+  fire_stone:   { id: 'fire_stone',   name: '火之石',   price: 2500, icon: '🔥', desc: '炽热的石头，能激发潜能' },
+  water_stone:  { id: 'water_stone',  name: '水之石',   price: 2500, icon: '💧', desc: '澄澈的石头，能激发潜能' },
+  thunder_stone:{ id: 'thunder_stone',name: '雷之石',   price: 2500, icon: '⚡', desc: '带电的石头，能激发潜能' },
+  leaf_stone:   { id: 'leaf_stone',   name: '叶之石',   price: 2500, icon: '🍃', desc: '有着叶脉的石头，能激发潜能' },
+  moon_stone:   { id: 'moon_stone',   name: '月之石',   price: 5000, icon: '🌙', desc: '如夜空般深邃，能让神秘精灵进化' },
+  sun_stone:    { id: 'sun_stone',    name: '日之石',   price: 5000, icon: '☀️', desc: '如太阳般耀眼，能让特定精灵进化' },
+  ice_stone:    { id: 'ice_stone',    name: '冰之石',   price: 2500, icon: '❄️', desc: '冻结的石头，能让冰系精灵进化' },
+  dusk_stone:   { id: 'dusk_stone',   name: '暗之石',   price: 5500, icon: '🌑', desc: '黑暗中的石头，能让幽灵/恶系进化' },
+  dawn_stone:   { id: 'dawn_stone',   name: '觉醒石',   price: 5500, icon: '✨', desc: '闪耀光芒的石头，能唤醒特定性别' },
+  shiny_stone:  { id: 'shiny_stone',  name: '光之石',   price: 6000, icon: '🌟', desc: '光辉灿烂，能让稀有精灵进化' }
 };
 
 export const GROWTH_ITEMS = [
@@ -257,7 +257,7 @@ export const GROWTH_ITEMS = [
   { id: 'vit_sdef', name: '精神披风',   emoji: '🧩', price: 10000, desc: '永久特防+5', stat: 's_def', val: 5 },
   { id: 'vit_spd',  name: '极速之羽',   emoji: '🪶', price: 10000, desc: '永久速度+5', stat: 'spd', val: 5 },
   { id: 'vit_crit', name: '幸运四叶草', emoji: '🍀', price: 15000, desc: '永久暴击+2%', stat: 'crit', val: 2 },
-   { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 5000, desc: '给精灵吃下后，等级提升1级', stat: 'level_up', val: 1 },
+   { id: 'exp_candy', name: '经验糖果', emoji: '🍬', price: 8000, desc: '给精灵吃下后，等级提升1级', stat: 'level_up', val: 1 },
   { id: 'spd_candy', name: '速度糖果', emoji: '⚡', price: 5000, desc: '给精灵吃下后，永久速度+3', stat: 'spd', val: 3 },
   { id: 'max_candy', name: '神奇糖果', emoji: '🌟', price: 500000, desc: '瞬间升至 Lv.100 (仅限非满级精灵，需8徽章)', stat: 'level_max', val: 100 },
 ];

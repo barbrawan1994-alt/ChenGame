@@ -34,7 +34,7 @@ export const MAPS = [
   { 
     id: 3, name: '遗迹工厂', lvl: [15, 24], 
     pool: [34, 40, 54, 57, 60, 85, 87, 18, 5, 114, 116, 131, 119, 124, 127, 128, 189, 192, 195, 200, 203, 219, 235, 239, 293, 247, 415, 476, 497, 613, 617, 621, 625, 629, 633, 637, 641, 645, 649, 653, 657, 661, 665, 671, 685, 686], 
-    drop: 200, boss: 140, type: 'factory', color: '#E1BEE7', gymLeader: 35, gymLvl: 28, badge: '⚡', icon: '🏭', gymName: '马志士',
+    drop: 200, boss: 140, type: 'factory', color: '#E1BEE7', gymLeader: 35, gymLvl: 26, badge: '⚡', icon: '🏭', gymName: '马志士',
     trainerLvl: [18, 26], storyLvl: [22, 28]
   },
   { 
@@ -94,7 +94,7 @@ export const MAPS = [
   { 
     id: 13, name: '冠军之路', lvl: [92, 100], 
     pool: [254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 614, 618, 622, 626, 630, 634, 638, 642, 646, 650, 654, 658, 662, 666, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700, 756, 758, 759, 764, 766, 775, 779, 780, 781, 783, 785, 786, 787, 788, 790, 791, 792, 793, 794, 795, 796, 798, 799, 800], 
-    drop: 2000, type: 'gold', color: '#FFD700', gymLeader: 340, gymLvl: 100, badge: '🏆', icon: '🏛️', gymName: '创世元灵',
+    drop: 1200, type: 'gold', color: '#FFD700', gymLeader: 340, gymLvl: 100, badge: '🏆', icon: '🏛️', gymName: '创世元灵',
     trainerLvl: [95, 100], storyLvl: [98, 100]
   },
   // 日蚀要塞
@@ -106,7 +106,7 @@ export const MAPS = [
   {
     id: 100, name: '都立咒术高专', lvl: [40, 80],
     pool: [92, 93, 94, 63, 65, 200, 130, 149, 150, 151],
-    drop: 500, type: 'ghost', color: '#1A237E', gymLeader: 150, gymLvl: 80, badge: '🔮', icon: '⛩️',
+    drop: 700, type: 'ghost', color: '#1A237E', gymLeader: 150, gymLvl: 80, badge: '🔮', icon: '⛩️',
     isJJK: true, unlockBadges: 7, desc: '东京都立咒术高等专门学校，术师们的训练基地（推荐Lv.60+）', gymName: '五条悟'
   },
   // 莉可莉丝篇 - DA特务本部

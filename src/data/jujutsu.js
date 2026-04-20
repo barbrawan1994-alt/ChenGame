@@ -4,7 +4,7 @@
 
 export const CURSED_ENERGY_CONFIG = {
   maxCE: 100,
-  regenPerTurn: 12,
+  regenPerTurn: 10,
   chargeAction: 35,
   levelScaling: 0.5,
   initialPercent: 0, // 战斗中共享能量池从0开始，每回合恢复

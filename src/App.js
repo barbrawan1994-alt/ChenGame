@@ -192,13 +192,36 @@ const ALL_SKILL_TMS = (() => {
 const SEASON_NPC_NAMES = ['红莲','青岚','紫电','金刚','银河','碧落','玄武','朱雀','白虎','苍龙','烈焰','冰霜','雷神','风王','地藏','星辰','月华','日轮','天罡','地煞'];
 
 const COMBO_JUTSU_LIST = [
-  { id: 'fire_combo', name: '火遁·焰皇连弹', natures: ['FIRE','FIRE'], desc: '两只精灵同时发动火遁，造成1.5倍火属性伤害', icon: '🔥🔥', minRank: 'genin' },
-  { id: 'water_fire', name: '沸遁·过热蒸汽', natures: ['WATER','FIRE'], desc: '水火交融产生高温蒸汽，造成伤害并降低命中', icon: '💧🔥', minRank: 'chunin' },
-  { id: 'wind_fire', name: '灼遁·光轮疾风', natures: ['WIND','FIRE'], desc: '风助火势，造成1.8倍伤害', icon: '🌀🔥', minRank: 'chunin' },
-  { id: 'earth_water', name: '溶遁·熔岩浊流', natures: ['EARTH','WATER'], desc: '岩浆与水流的融合攻击', icon: '🪨💧', minRank: 'chunin' },
-  { id: 'lightning_water', name: '岚遁·雷云风暴', natures: ['LIGHTNING','WATER'], desc: '雷电注入水中，全体攻击', icon: '⚡💧', minRank: 'jonin' },
-  { id: 'wind_lightning', name: '磁遁·砂铁界法', natures: ['WIND','LIGHTNING'], desc: '操控磁力进行高速攻击', icon: '🌀⚡', minRank: 'jonin' },
-  { id: 'triple_nature', name: '仙法·三性质变化', natures: ['FIRE','WIND','LIGHTNING'], desc: '三种性质同时变化，毁灭性一击', icon: '🔥🌀⚡', minRank: 'kage' },
+  { id: 'fire_combo', name: '火遁·焰皇连弹', natures: ['FIRE', 'FIRE'], desc: '两只精灵同时发动火遁，合击火属性伤害', icon: '🔥🔥', minRank: 'genin', power: 60, chakraCost: 30, cat: 'special' },
+  { id: 'water_combo', name: '水遁·双龙暴潮', natures: ['WATER', 'WATER'], desc: '双重水遁形成暴潮', icon: '💧💧', minRank: 'genin', power: 60, chakraCost: 30, cat: 'special' },
+  { id: 'wind_combo', name: '风遁·真空大玉', natures: ['WIND', 'WIND'], desc: '双风叠加真空大玉', icon: '🌀🌀', minRank: 'genin', power: 60, chakraCost: 30, cat: 'special' },
+  { id: 'earth_combo', name: '土遁·双壁巨阵', natures: ['EARTH', 'EARTH'], desc: '双土壁碾压', icon: '🪨🪨', minRank: 'genin', power: 55, chakraCost: 28, cat: 'physical' },
+  { id: 'lightning_combo', name: '雷遁·千鸟双重', natures: ['LIGHTNING', 'LIGHTNING'], desc: '双重千鸟贯穿', icon: '⚡⚡', minRank: 'genin', power: 65, chakraCost: 32, cat: 'special' },
+  { id: 'water_fire', name: '沸遁·过热蒸汽', natures: ['WATER', 'FIRE'], desc: '水火交融产生高温蒸汽，造成伤害并降低命中', icon: '💧🔥', minRank: 'chunin', power: 80, chakraCost: 40, cat: 'special', effect: { accDown: 1 } },
+  { id: 'wind_fire', name: '灼遁·光轮疾风', natures: ['WIND', 'FIRE'], desc: '风助火势的灼遁追击', icon: '🌀🔥', minRank: 'chunin', power: 85, chakraCost: 42, cat: 'special' },
+  { id: 'earth_water', name: '溶遁·熔岩浊流', natures: ['EARTH', 'WATER'], desc: '岩浆与水流的融合攻击', icon: '🪨💧', minRank: 'chunin', power: 78, chakraCost: 38, cat: 'special' },
+  { id: 'lightning_water', name: '岚遁·雷云风暴', natures: ['LIGHTNING', 'WATER'], desc: '雷电注入水中的岚遁打击', icon: '⚡💧', minRank: 'jonin', power: 95, chakraCost: 55, cat: 'special' },
+  { id: 'wind_lightning', name: '磁遁·砂铁界法', natures: ['WIND', 'LIGHTNING'], desc: '操控磁力进行高速攻击', icon: '🌀⚡', minRank: 'jonin', power: 92, chakraCost: 52, cat: 'special' },
+  { id: 'fire_earth', name: '熔遁·鬼灯城壁', natures: ['FIRE', 'EARTH'], desc: '熔岩与土壁的熔遁合击', icon: '🔥🪨', minRank: 'chunin', power: 82, chakraCost: 44, cat: 'special', effect: { burn: 0.25 } },
+  { id: 'wind_water', name: '氷遁·黑龙暴风雪', natures: ['WIND', 'WATER'], desc: '风与水交织的暴风雪', icon: '🌀❄️', minRank: 'jonin', power: 98, chakraCost: 58, cat: 'special', effect: { freeze: 0.15 } },
+  { id: 'fire_lightning', name: '炎雷·天叢雲剣', natures: ['FIRE', 'LIGHTNING'], desc: '炎与雷合一的斩击', icon: '🔥⚡', minRank: 'jonin', power: 100, chakraCost: 60, cat: 'special' },
+  { id: 'earth_lightning', name: '土雷·磁暴岩阵', natures: ['EARTH', 'LIGHTNING'], desc: '土雷磁暴束缚对手', icon: '🪨⚡', minRank: 'chunin', power: 76, chakraCost: 36, cat: 'physical', effect: { paralyze: 0.2 } },
+  { id: 'earth_wind', name: '砂遁·砂塵大葬', natures: ['EARTH', 'WIND'], desc: '砂尘遮蔽并拖慢对手', icon: '🪨🌀', minRank: 'chunin', power: 74, chakraCost: 35, cat: 'physical', effect: { spdDown: 0.5 } },
+  { id: 'water_lightning_alt', name: '水雷·海神裁决', natures: ['WATER', 'LIGHTNING'], desc: '水雷交织的裁决一击', icon: '💧⚡', minRank: 'jonin', power: 105, chakraCost: 62, cat: 'special' },
+  { id: 'fire_wind_alt', name: '火風·灰燼颶風', natures: ['FIRE', 'WIND'], desc: '火风合一的灰烬飓风', icon: '🔥🌀', minRank: 'jonin', power: 108, chakraCost: 65, cat: 'special' },
+  { id: 'earth_fire', name: '灰遁·火山灰降', natures: ['EARTH', 'FIRE'], desc: '火山灰遮蔽视线并灼伤', icon: '🪨🔥', minRank: 'jonin', power: 96, chakraCost: 54, cat: 'special', effect: { burn: 0.2, accDown: 0.6 } },
+  { id: 'water_wind', name: '海遁·海嘯卷', natures: ['WATER', 'WIND'], desc: '海啸与狂风合一', icon: '💧🌀', minRank: 'jonin', power: 94, chakraCost: 52, cat: 'special' },
+  { id: 'triple_nature', name: '仙法·三性质变化', natures: ['FIRE', 'WIND', 'LIGHTNING'], desc: '三种性质同时变化，毁灭性一击', icon: '🔥🌀⚡', minRank: 'kage', power: 130, chakraCost: 90, cat: 'special' },
+  { id: 'triple_water', name: '仙法·海神三叉戟', natures: ['WATER', 'EARTH', 'LIGHTNING'], desc: '水·土·雷的仙法合击', icon: '💧🪨⚡', minRank: 'kage', power: 125, chakraCost: 85, cat: 'special' },
+  { id: 'triple_ice', name: '仙法·氷遁绝零', natures: ['WATER', 'WIND', 'EARTH'], desc: '零度冰遁三重奏', icon: '❄️🌀🪨', minRank: 'kage', power: 120, chakraCost: 82, cat: 'special' },
+  { id: 'triple_fire', name: '仙法·炎帝審判', natures: ['FIRE', 'EARTH', 'WIND'], desc: '炎帝与大地与狂风', icon: '🔥🪨🌀', minRank: 'kage', power: 128, chakraCost: 88, cat: 'special' },
+  { id: 'triple_storm', name: '仙法·雷遁風暴', natures: ['LIGHTNING', 'WIND', 'FIRE'], desc: '雷·风·炎的毁灭风暴', icon: '⚡🌀🔥', minRank: 'kage', power: 132, chakraCost: 92, cat: 'special' },
+  { id: 'all_five', name: '仙法·五遁大結界', natures: ['FIRE', 'WATER', 'WIND', 'EARTH', 'LIGHTNING'], desc: '集齐五遁的仙法大结界（队伍需至少三只不同性质精灵且场上双宠覆盖五遁）', icon: '🔯✨', minRank: 'kage', power: 140, chakraCost: 100, cat: 'special' },
+  { id: 'yin_yang', name: '陰陽遁·創造之力', natures: ['FIRE', 'WATER'], desc: '对立之火水交融的阴阳遁', icon: '☯️', minRank: 'kage', power: 135, chakraCost: 95, cat: 'special' },
+  { id: 'sealing', name: '封印忍術·屍鬼封盡', natures: ['FIRE', 'FIRE'], desc: '封印对手大量生命（特殊效果）', icon: '👻', minRank: 'jonin', power: 0, chakraCost: 70, cat: 'special', effect: { sealing: true } },
+  { id: 'medical', name: '忍法·百豪之力', natures: ['WATER', 'EARTH'], desc: '回复双方出战精灵体力', icon: '💚', minRank: 'chunin', power: 0, chakraCost: 45, cat: 'special', effect: { medical: true } },
+  { id: 'genjutsu', name: '幻術·無限月讀', natures: ['FIRE', 'WATER', 'WIND'], desc: '使敌方全体陷入长眠', icon: '🌙', minRank: 'kage', power: 0, chakraCost: 80, cat: 'special', effect: { genjutsu: true } },
+  { id: 'barrier', name: '結界·四紫炎陣', natures: ['FIRE', 'EARTH', 'LIGHTNING'], desc: '双方出战精灵数回合内免疫伤害', icon: '🛡️', minRank: 'jonin', power: 0, chakraCost: 55, cat: 'special', effect: { barrier: true } },
 ];
 
 const NINJA_ID_ORDER = { academy: 0, genin: 1, chunin: 2, jonin: 3, kage: 4 };
@@ -212,6 +235,25 @@ const getPetJutsuNatureSet = (pet) => {
     if (ent) set.add(ent[0]);
   });
   return set;
+};
+
+/** 双打两只出战精灵能否覆盖配方 multiset：每只精灵对同种性质最多贡献一次，不同性质可由同一只承担。 */
+const matchDoubleComboNatures = (pet0, pet1, natures) => {
+  if (!pet0 || !pet1 || !natures?.length) return false;
+  const s0 = getPetJutsuNatureSet(pet0);
+  const s1 = getPetJutsuNatureSet(pet1);
+  const dfs = (idx, u0, u1) => {
+    if (idx >= natures.length) return true;
+    const n = natures[idx];
+    if (s0.has(n) && !u0[n]) {
+      if (dfs(idx + 1, { ...u0, [n]: true }, u1)) return true;
+    }
+    if (s1.has(n) && !u1[n]) {
+      if (dfs(idx + 1, u0, { ...u1, [n]: true })) return true;
+    }
+    return false;
+  };
+  return dfs(0, {}, {});
 };
 
 /** 队伍中每名精灵至多匹配配方中的一项；同性质需不同精灵各带该性质忍术。 */
@@ -235,6 +277,34 @@ const partyMatchesComboNatures = (party, natures) => {
 
 const ninjaRankAtLeast = (playerRankId, minRank) =>
   (NINJA_ID_ORDER[playerRankId] ?? 0) >= (NINJA_ID_ORDER[minRank] ?? 0);
+
+/** 队伍中至少 3 只精灵各持有不同代表性质忍术（用于仙法·五遁大結界） */
+const partyHasThreeDistinctJutsuNaturePets = (partyArr) => {
+  const team = (partyArr || []).filter(Boolean);
+  if (team.length < 3) return false;
+  const reps = team.map((p) => {
+    const s = getPetJutsuNatureSet(p);
+    if (s.size === 0) return null;
+    return [...s].sort()[0];
+  });
+  if (reps.filter(Boolean).length < 3) return false;
+  return new Set(reps.filter(Boolean)).size >= 3;
+};
+
+const isComboJutsuAvailableInDouble = (combo, { pet0, pet1, ninjaRankId, party }) => {
+  if (!pet0 || !pet1 || pet0.currentHp <= 0 || pet1.currentHp <= 0) return false;
+  const totalChakra = (pet0.chakra || 0) + (pet1.chakra || 0);
+  if (totalChakra < combo.chakraCost) return false;
+  if (!ninjaRankAtLeast(ninjaRankId, combo.minRank)) return false;
+  if (!matchDoubleComboNatures(pet0, pet1, combo.natures)) return false;
+  if (combo.id === 'yin_yang') {
+    const s0 = getPetJutsuNatureSet(pet0);
+    const s1 = getPetJutsuNatureSet(pet1);
+    if (!((s0.has('FIRE') && s1.has('WATER')) || (s0.has('WATER') && s1.has('FIRE')))) return false;
+  }
+  if (combo.id === 'all_five' && !partyHasThreeDistinctJutsuNaturePets(party)) return false;
+  return true;
+};
 
 const sampleWeightedTM = (tmList, maxTier = 4) => {
   if (!tmList || tmList.length === 0) return null;
@@ -3389,7 +3459,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // --- 融合逻辑处理函数 (使用完整混合算法) ---
   const getFusionCost = () => {
     const badgeCount = badges?.length || 0;
-    if (badgeCount >= 8) return 2000;
+    if (badgeCount >= 8) return 3000;
     if (badgeCount >= 5) return 1000;
     return 500;
   };
@@ -5729,7 +5799,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       enemyParty.push(pet);
     }
     setArenaState(prev => ({...prev, tickets: prev.tickets - 1}));
-    const battleOpts = { customParty: enemyParty, trainerName: `${rank.name}段位挑战者`, drop: 500 + ARENA_RANKS.indexOf(rank) * 300, _arenaPlayerParty: arenaPlayerParty };
+    const battleOpts = { customParty: enemyParty, trainerName: `${rank.name}段位挑战者`, drop: 500 + ARENA_RANKS.indexOf(rank) * 200, _arenaPlayerParty: arenaPlayerParty };
     if (ruleEffect === 'levelCap50') battleOpts._arenaLevelCap = 50;
     if (ruleEffect === 'halfHp') battleOpts._arenaHalfHp = true;
     if (ruleEffect === 'speedBoost') battleOpts._arenaSpeedBoost = true;
@@ -6007,7 +6077,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 <div>
                   <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>🌀 组合忍术图鉴</div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>当前忍者段位：{ninjaRk.icon} {ninjaRk.name}（战斗中暂未实装，仅作收集目标）</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>当前忍者段位：{ninjaRk.icon} {ninjaRk.name} · 双打战斗中可发动（需场上两只出战精灵满足配方与查克拉）</div>
                 </div>
                 <button type="button" onClick={() => setShowComboJutsu(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }} aria-label="关闭">×</button>
               </div>
@@ -6926,13 +6996,39 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
     }
 
+    const narutoLocked = badges.length < 3;
+
     return (
       <div className="screen" style={{background:'linear-gradient(135deg,#1a0a00,#2d1500,#1a0a00)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
-          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🍥 忍者试炼</div>
+          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🍥 忍者系统</div>
           <div style={{width:'60px'}}></div>
         </div>
+        {narutoLocked ? (
+          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px',gap:'20px'}}>
+            <div style={{fontSize:'64px',opacity:0.6}}>🔒</div>
+            <div style={{fontSize:'22px',fontWeight:'900',color:'#FFB74D'}}>忍者系统尚未解锁</div>
+            <div style={{fontSize:'14px',color:'rgba(255,255,255,0.5)',textAlign:'center',lineHeight:1.8,maxWidth:'320px'}}>
+              需要获得 <span style={{color:'#FF6F00',fontWeight:'800'}}>3 枚徽章</span> 才能解锁忍者系统的所有功能。
+              <br/><br/>
+              当前徽章：{badges.length} / 3
+            </div>
+            <div style={{width:'200px',height:'8px',borderRadius:'4px',background:'rgba(255,255,255,0.08)',overflow:'hidden',marginTop:'8px'}}>
+              <div style={{height:'100%',borderRadius:'4px',background:'linear-gradient(90deg,#FF6F00,#FF8F00)',width:`${Math.min(100, (badges.length / 3) * 100)}%`,transition:'width 0.5s'}} />
+            </div>
+            <div style={{marginTop:'16px',padding:'16px 24px',borderRadius:'14px',background:'rgba(255,111,0,0.06)',border:'1px solid rgba(255,111,0,0.15)',textAlign:'center',maxWidth:'340px'}}>
+              <div style={{fontSize:'12px',color:'#FFB74D',fontWeight:'700',marginBottom:'8px'}}>🍥 忍者系统预览</div>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',lineHeight:1.7}}>
+                · 200种忍术 · 查克拉战斗系统<br/>
+                · 忍者段位晋升 · 生存试炼<br/>
+                · 9只尾兽收集 · 尾兽化变身<br/>
+                · 30种组合忍术（双打专用）<br/>
+                · 火影主线剧情20章
+              </div>
+            </div>
+          </div>
+        ) : (
         <div style={{flex:1,overflow:'auto',padding:'20px',display:'flex',flexDirection:'column',gap:'16px'}}>
           {/* 段位信息 */}
           <div style={{padding:'20px',borderRadius:'16px',background:'linear-gradient(145deg,rgba(255,111,0,0.12),rgba(255,143,0,0.06))',border:'1px solid rgba(255,111,0,0.2)'}}>
@@ -7055,6 +7151,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
           </div>
         </div>
+        )}
       </div>
     );
   };
@@ -9565,7 +9662,7 @@ const useGrowthItem = (petIndex, itemId) => {
 
       let trainerRate = 0.06;
       let encounterRate = 0.12;
-      if (tileType === 7) { trainerRate = 0.08; encounterRate = 0.30; }
+      if (tileType === 7) { trainerRate = 0.08; encounterRate = 0.22; }
       else if (tileType === 5) { trainerRate = 0.04; encounterRate = 0.08; }
       if (storyProgress === 0 && storyStep === 0) { trainerRate *= 0.6; encounterRate *= 0.6; }
       
@@ -9586,7 +9683,7 @@ const useGrowthItem = (petIndex, itemId) => {
             setTimeout(() => startBattle(mapInfo, 'trainer'), 200);
           }
       } else if (roll < trainerRate + encounterRate) {
-          const isDouble = party.filter(p => p.currentHp > 0).length >= 2 && Math.random() < 0.2;
+          const isDouble = party.filter(p => p.currentHp > 0).length >= 2 && Math.random() < 0.25;
           setTimeout(() => startBattle(mapInfo, isDouble ? 'wild_double' : 'wild'), 200);
       }
     }
@@ -11387,7 +11484,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       tempBattle.doubleActions = playerActions;
 
       // --- 双打共享能量池：同步所有出战精灵到共享池值 ---
-      const poolChk = tempBattle.sharedPlayerChakra || 0;
+      let poolChk = tempBattle.sharedPlayerChakra || 0;
       const poolCE  = tempBattle.sharedPlayerCE || 0;
       for (const pIdx of (tempBattle.activeIdxs || [])) {
         const ps = tempBattle.playerCombatStates?.[pIdx];
@@ -11405,6 +11502,105 @@ const grantContestReward = (config, score, subjectPet = null) => {
           es.chakra = Math.min(es.maxChakra || 0, ePoolChk);
           es.cursedEnergy = Math.min(es.maxCE || 0, ePoolCE);
           if (es.volatiles) es.volatiles.protected = false;
+        }
+      }
+
+      const comboAction = playerActions?.find(a => a.comboJutsuId);
+      if (comboAction) {
+        const combo = COMBO_JUTSU_LIST.find(c => c.id === comboAction.comboJutsuId);
+        const slot0 = tempBattle.activeIdxs?.[0];
+        const slot1 = tempBattle.activeIdxs?.[1];
+        const pet0 = tempBattle.playerCombatStates?.[slot0];
+        const pet1 = tempBattle.playerCombatStates?.[slot1];
+        const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
+        if (
+          combo &&
+          pet0 &&
+          pet1 &&
+          isComboJutsuAvailableInDouble(combo, {
+            pet0,
+            pet1,
+            ninjaRankId: nrk.id,
+            party,
+          })
+        ) {
+          const halfCost = Math.ceil(combo.chakraCost / 2);
+          pet0.chakra = Math.max(0, (pet0.chakra || 0) - halfCost);
+          pet1.chakra = Math.max(0, (pet1.chakra || 0) - halfCost);
+          poolChk = Math.max(pet0.chakra || 0, pet1.chakra || 0);
+          tempBattle.sharedPlayerChakra = poolChk;
+          for (const pIdx of tempBattle.activeIdxs || []) {
+            const ps = tempBattle.playerCombatStates?.[pIdx];
+            if (ps) ps.chakra = Math.min(ps.maxChakra || 0, poolChk);
+          }
+
+          addLog(`🌀 ${pet0.name} 和 ${pet1.name} 发动组合忍术 —— ${combo.name}！`);
+          showMapToast('🌀', '组合忍术', combo.name, 2000);
+          const animNature = CHAKRA_NATURE_MAP[combo.natures?.[0]]?.gameType || combo.natures?.[0] || 'PSYCHIC';
+          setAnimEffect({ type: animNature, target: 'enemy' });
+          await wait(1200);
+
+          const tRaw = comboAction.targetEnemyIdx ?? (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
+          const targetIdx = tRaw !== undefined ? tRaw : 0;
+          const target = tempBattle.enemyParty?.[targetIdx];
+
+          if (combo.power > 0 && target && target.currentHp > 0) {
+            const nature = CHAKRA_NATURE_MAP[combo.natures[0]];
+            const comboMove = {
+              name: combo.name,
+              p: combo.power,
+              t: nature?.gameType || 'PSYCHIC',
+              cat: combo.cat || 'special',
+              acc: 95,
+              pp: 99,
+              isComboJutsu: true,
+              effect: combo.effect || null,
+            };
+            const s0 = getStats(pet0, pet0.stages, pet0.status);
+            const s1 = getStats(pet1, pet1.stages, pet1.status);
+            const phys = combo.cat === 'physical';
+            const attacker = phys
+              ? ((s0.p_atk || 0) >= (s1.p_atk || 0) ? pet0 : pet1)
+              : ((s0.s_atk || 0) >= (s1.s_atk || 0) ? pet0 : pet1);
+            const defAnimSlot = (tempBattle.enemyActiveIdxs || []).indexOf(targetIdx);
+            const atkPetIdx = tempBattle.playerCombatStates.indexOf(attacker);
+            const atkAnimSlot = (tempBattle.activeIdxs || []).indexOf(atkPetIdx);
+            tempBattle._doubleAnimCtx = { atkSlot: atkAnimSlot >= 0 ? atkAnimSlot : 0, defSlot: defAnimSlot >= 0 ? defAnimSlot : 0, source: 'player' };
+            tempBattle.activeIdx = atkPetIdx;
+            tempBattle.enemyActiveIdx = targetIdx;
+            await performAction(attacker, target, comboMove, 'player', tempBattle);
+            setAnimEffect(null);
+            await wait(400);
+          } else if (combo.id === 'sealing' && target && target.currentHp > 0) {
+            const dmg = Math.floor(target.currentHp * 0.5);
+            target.currentHp = Math.max(1, target.currentHp - dmg);
+            addLog(`${combo.name} 封印了 ${target.name}，造成 ${dmg} 点伤害！`);
+          } else if (combo.id === 'medical') {
+            [pet0, pet1].forEach((p) => {
+              const maxHp = getStats(p, p.stages, p.status).maxHp || p.currentHp;
+              const heal = Math.floor(maxHp * 0.3);
+              p.currentHp = Math.min(maxHp, p.currentHp + heal);
+              addLog(`💚 ${p.name} 恢复了 ${heal} HP！`);
+            });
+          } else if (combo.id === 'genjutsu') {
+            for (const eIdx of tempBattle.enemyActiveIdxs || []) {
+              const e = tempBattle.enemyParty?.[eIdx];
+              if (e && e.currentHp > 0 && !e.status) {
+                e.status = 'SLP';
+                if (!e.volatiles) e.volatiles = {};
+                e.volatiles.sleepTurns = 2;
+                addLog(`${e.name} 陷入了沉睡！`);
+              }
+            }
+          } else if (combo.id === 'barrier') {
+            [pet0, pet1].forEach((p) => {
+              if (!p.volatiles) p.volatiles = {};
+              p.volatiles.comboBarrierTurns = 2;
+              p.volatiles.protected = true;
+              addLog(`🛡️ ${p.name} 获得了四紫炎阵的保护！`);
+            });
+          }
+          setAnimEffect(null);
         }
       }
 
@@ -11554,7 +11750,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         await performAction(attacker, defender, action.move, side, tempBattle);
 
-        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.05) {
+        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.10) {
           const baseDmg = tempBattle._lastPlayerMoveDmg || 0;
           if (baseDmg > 0) {
             const mateIdx = (tempBattle.activeIdxs || []).find(i => i !== action.petIdx && tempBattle.playerCombatStates?.[i]?.currentHp > 0);
@@ -11564,7 +11760,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               if (!ep || ep.currentHp <= 0) tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
               const tgt = tIdx !== undefined ? tempBattle.enemyParty?.[tIdx] : null;
               if (tgt && tgt.currentHp > 0) {
-                const sync = Math.max(1, Math.floor(baseDmg * 0.3));
+                const sync = Math.max(1, Math.floor(baseDmg * 0.35));
                 tgt.currentHp = Math.max(0, tgt.currentHp - sync);
                 showMapToast('⚡', '协同攻击', '队友追加了一次攻击！', 1500);
                 addLog(`⚡ 协同追击对 ${tgt.name} 造成额外 ${sync} 伤害！`);
@@ -11669,6 +11865,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const wDmg = Math.floor(getStats(u).maxHp / 16);
             u.currentHp = Math.max(0, u.currentHp - wDmg);
             addLog(`${u.name} 受到${weather === 'SAND' ? '沙暴' : '冰雹'}伤害 ${wDmg}！`);
+          }
+        }
+      }
+
+      for (const pIdx of (tempBattle.activeIdxs || [])) {
+        const ps = tempBattle.playerCombatStates?.[pIdx];
+        if (ps?.volatiles && (ps.volatiles.comboBarrierTurns || 0) > 0) {
+          ps.volatiles.comboBarrierTurns = (ps.volatiles.comboBarrierTurns || 0) - 1;
+          if (ps.volatiles.comboBarrierTurns <= 0) {
+            ps.volatiles.comboBarrierTurns = 0;
+            ps.volatiles.protected = false;
+            addLog(`🛡️ ${ps.name} 的四紫炎阵消散了！`);
           }
         }
       }
@@ -13612,6 +13820,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 守住逻辑 (移到显示技能名之后)
     const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self');
+    if (move.p > 0 && (defState.volatiles?.comboBarrierTurns || 0) > 0) {
+        addLog(`🛡️ ${defender.name} 的结界挡下了伤害！`);
+        _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' });
+        await wait(1200);
+        _setAnim(null);
+        return false;
+    }
     if (defState.volatiles?.protected && isAttackOrDebuff) {
         addLog(`✋ ${defender.name} 守住了攻击!`); 
         _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
@@ -14317,6 +14532,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
             defState.stages.spd = Math.max(-6, (defState.stages.spd || 0) - 1);
             addLog(`⬇️ ${defender.name} 的速度下降了！`);
           }
+          if (eff.accDown != null) {
+            const chance = typeof eff.accDown === 'number' ? (eff.accDown > 1 ? 1 : eff.accDown) : 1;
+            if (Math.random() < chance) {
+              if (!defState.stages) defState.stages = {};
+              defState.stages.acc = Math.max(-6, (defState.stages.acc || 0) - 1);
+              addLog(`⬇️ ${defender.name} 的命中下降了！`);
+            }
+          }
           if (eff.atkDown && Math.random() < (eff.atkDown > 1 ? 1 : eff.atkDown)) {
             defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - 1);
             addLog(`⬇️ ${defender.name} 的物攻下降了！`);
@@ -14590,7 +14813,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const processDefeatedEnemy = (deadEnemy, currentParty, finalBattleState) => { 
   
     const bState = finalBattleState || battle;
-    const earlyBoost = (deadEnemy.level <= 20) ? 1.2 : (deadEnemy.level <= 35) ? 1.1 : 1.0;
+    const earlyBoost = (deadEnemy.level <= 20) ? 1.15 : (deadEnemy.level <= 35) ? 1.05 : 1.0;
     const bountyMult = bState.isBounty ? 1.3 : 1;
     const baseExp = Math.floor(deadEnemy.level * 30 * (bState.isTrainer ? 1.5 : 1) * earlyBoost * bountyMult);
     
@@ -19119,7 +19342,7 @@ const renderMenu = () => {
       else if (dungeon.type === 'reverse') {
         const revLvl = Math.min(party[0].level + 5, 100);
         showMapToast('ℹ️', '提示', '🔄 逆位空间！ 这里的属性克制完全反转！ 原本克制的属性变为被克制，请重新思考你的策略！', 2000);
-        startBattle({ id: 989, name: '逆位空间', lvl: [revLvl - 8, revLvl], pool: [...HIGH_TIER_POOL, ...LEGENDARY_POOL.slice(0, 20)], drop: 15000, isReversed: true, dungeonId: 'reverse_world' }, 'wild');
+        startBattle({ id: 989, name: '逆位空间', lvl: [revLvl - 8, revLvl], pool: [...HIGH_TIER_POOL, ...LEGENDARY_POOL.slice(0, 20)], drop: 5000, isReversed: true, dungeonId: 'reverse_world' }, 'wild');
       }
       // --- 双打擂台 ---
       else if (dungeon.type === 'elite_rotation') {
@@ -22993,7 +23216,7 @@ const renderMenu = () => {
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
-              { id: 'naruto', icon: '🍥', label: '忍者', action: () => { if (badges.length < 3) { showMapToast('🔒','未解锁','需要 3 枚徽章',1500); return; } setView('naruto_exam'); } },
+              { id: 'naruto', icon: '🍥', label: '忍者', action: () => setView('naruto_exam') },
               { id: 'jutsu_codex', icon: '📖', label: '忍术', action: () => setView('jutsu_codex') },
               { id: 'skill_dex', icon: '⚡', label: '技能', action: () => setView('skill_dex') },
               { id: 'activity', icon: '🎪', label: '活动', action: () => {
@@ -25358,6 +25581,61 @@ const renderMenu = () => {
                             })()}
                         </div>
                     )}
+                    {battle.isDouble && !battle.isPvP && battle.phase === 'input' && (battle.doubleSlot || 0) === 0 && (!isDoubleBattle || battle.pendingDoubleMove === undefined) && (() => {
+                      const slot0Idx = battle.activeIdxs?.[0];
+                      const slot1Idx = battle.activeIdxs?.[1];
+                      const pet0 = battle.playerCombatStates?.[slot0Idx];
+                      const pet1 = battle.playerCombatStates?.[slot1Idx];
+                      if (!pet0 || !pet1 || pet0.currentHp <= 0 || pet1.currentHp <= 0) return null;
+                      const ninjaRk = getNinjaRank(narutoState?.examsCompleted || 0);
+                      const availCombos = COMBO_JUTSU_LIST.filter((combo) =>
+                        isComboJutsuAvailableInDouble(combo, {
+                          pet0,
+                          pet1,
+                          ninjaRankId: ninjaRk.id,
+                          party,
+                        }),
+                      );
+                      if (availCombos.length === 0) return null;
+                      return (
+                        <details style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px', width: '100%' }}>
+                          <summary style={{ fontSize: '11px', color: '#FFD54F', fontWeight: '800', cursor: 'pointer', listStyle: 'none', marginBottom: '6px' }}>
+                            🌀 组合忍术（点击展开 · 双方精灵联合施放）
+                          </summary>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                            {availCombos.map((combo) => (
+                              <button
+                                key={combo.id}
+                                type="button"
+                                onClick={() => {
+                                  const aliveEnemies = (battle.enemyActiveIdxs || []).filter((idx) => battle.enemyParty?.[idx]?.currentHp > 0);
+                                  const tgt = aliveEnemies[0] ?? battle.enemyActiveIdxs?.[0];
+                                  const newActions = [{ moveIdx: -3, activeIdx: slot0Idx, comboJutsuId: combo.id, targetEnemyIdx: tgt }];
+                                  setBattle((prev) => ({ ...prev, phase: 'busy', doubleActions: newActions }));
+                                  void executeDoubleRound(newActions);
+                                }}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: '8px',
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  background: 'linear-gradient(135deg, rgba(156,39,176,0.3), rgba(255,152,0,0.2))',
+                                  border: '1px solid rgba(255,152,0,0.4)',
+                                  color: '#FFD54F',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                <div>{combo.icon} {combo.name}</div>
+                                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+                                  威力{combo.power} · {combo.chakraCost}查克拉
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      );
+                    })()}
                     {/* 底部操作按钮 - 横向排列 */}
                         {!battle.isPvP ? (
                         <div className="actions-bar-h">

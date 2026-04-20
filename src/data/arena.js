@@ -13,11 +13,11 @@ export const ARENA_RANKS = [
     firstReward: { gold: 30000 },
     streakBonus: { 3: { gold: 8000 }, 5: { gold: 20000 } } },
   { id: 'platinum', name: '铂金', icon: '💎', color: '#E5E4E2', maxStars: 3, noDropOnLoss: false,
-    enemyLvl: [70, 85], enemyCount: 5, reqBadges: 8,
+    enemyLvl: [70, 82], enemyCount: 5, reqBadges: 8,
     firstReward: { gold: 50000, title: '铂金王者' },
     streakBonus: { 3: { gold: 12000 }, 5: { gold: 30000 } } },
   { id: 'diamond',  name: '钻石', icon: '💠', color: '#B9F2FF', maxStars: 3, noDropOnLoss: false,
-    enemyLvl: [80, 95], enemyCount: 6, reqBadges: 10,
+    enemyLvl: [84, 96], enemyCount: 6, reqBadges: 10,
     firstReward: { gold: 80000 },
     streakBonus: { 3: { gold: 20000 }, 5: { gold: 50000 } } },
   { id: 'master',   name: '大师', icon: '👑', color: '#FF6F00', maxStars: 3, noDropOnLoss: false,
@@ -34,7 +34,7 @@ export const ARENA_WEEKLY_RULES = [
   { id: 'handicap',  name: '逆境突破', icon: '💪', desc: '初始全队扣50% HP', effect: 'halfHp' },
   { id: 'speed',     name: '极速对决', icon: '⚡', desc: '速度决定一切，先手必杀', effect: 'speedBoost' },
   { id: 'double',    name: '双打狂欢', icon: '👥', desc: '所有对战为2v2双打', effect: 'forcedDouble' },
-  { id: 'jutsu',     name: '忍术之战', icon: '🍥', desc: '忍术技能伤害+10~25%（按段位递减）', effect: 'jutsuBoost' },
+  { id: 'jutsu',     name: '忍术之战', icon: '🍥', desc: '忍术技能伤害+5~15%（低段位15%、影级5%，递减追赶）', effect: 'jutsuBoost' },
 ];
 
 export const ARENA_TICKET_PRICE = 3000;

@@ -7,12 +7,12 @@ export const CHAKRA_CONFIG = {
   baseAmount: 100,
   perLevelBonus: 3,
   regenPerTurn: 8,
-  chargeAmount: 25,
+  chargeAmount: 20,
   natureTypes: ['FIRE', 'WATER', 'LIGHTNING', 'WIND', 'EARTH'],
 };
 
 /** 尾兽化消耗的查克拉占最大查克拉比例（原 0.40，已下调） */
-export const BIJUU_TRANSFORM_COST_PCT = 0.35;
+export const BIJUU_TRANSFORM_COST_PCT = 0.40;
 
 export const CHAKRA_NATURE_MAP = {
   FIRE: { name: '火遁', icon: '🔥', color: '#E53935', strongVs: 'WIND', weakVs: 'WATER', gameType: 'FIRE' },
@@ -707,7 +707,7 @@ export const JUTSU_MASTERY_LEVELS = [
   { level: 2, name: '熟练', icon: '🟦', minUses: 10, bonus: 0.05 },
   { level: 3, name: '精通', icon: '🟪', minUses: 25, bonus: 0.08 },
   { level: 4, name: '极意', icon: '🟧', minUses: 50, bonus: 0.12 },
-  { level: 5, name: '奥义', icon: '🟥', minUses: 100, bonus: 0.12 },
+  { level: 5, name: '奥义', icon: '🟥', minUses: 100, bonus: 0.15 },
 ];
 
 export function getJutsuMasteryLevel(uses) {

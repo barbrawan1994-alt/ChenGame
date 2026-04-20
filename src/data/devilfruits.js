@@ -36,7 +36,7 @@ export const DEVIL_FRUITS = {
     desc: '引发地震与海啸，无视部分防御，技能威力大增',
     duration: 3,
     transform: {
-      atkMult: 1.35, ignoreDefPercent: 0.12, movePowerBoost: 0.15,
+      atkMult: 1.35, ignoreDefPercent: 0.10, movePowerBoost: 0.15,
     },
     transformMove: { name: '大地裂击', t: 'GROUND', p: 130, pp: 4, acc: 85, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 'p_def', val: 2, target: 'enemy', chance: 0.5 } },
@@ -517,7 +517,7 @@ export const DEVIL_FRUITS = {
     desc: '身体化为等离子态，无视部分防御，电系技能威力翻倍',
     duration: 3,
     transform: {
-      sAtkMult: 1.35, ignoreDefPercent: 0.12, typeBoost: { ELECTRIC: 1.5 },
+      sAtkMult: 1.35, ignoreDefPercent: 0.10, typeBoost: { ELECTRIC: 1.5 },
     },
     transformMove: { name: '等离子轰击', t: 'ELECTRIC', p: 140, pp: 3, acc: 85, isFruitMove: true,
       effect: { type: 'STATUS', status: 'PAR', chance: 0.5, target: 'enemy' } },
@@ -840,7 +840,7 @@ export const DEVIL_FRUITS = {
     id: 'df_void', name: '虚空果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为虚空，无视部分防御，鬼系增伤',
     duration: 3,
-    transform: { sAtkMult: 1.35, ignoreDefPercent: 0.12, typeBoost: { GHOST: 1.5 } },
+    transform: { sAtkMult: 1.35, ignoreDefPercent: 0.10, typeBoost: { GHOST: 1.5 } },
     transformMove: { name: '虚空吞噬', t: 'GHOST', p: 130, pp: 3, acc: 85, isFruitMove: true },
   },
   df_radium: {
@@ -1041,7 +1041,7 @@ export const DEVIL_FRUITS = {
       sAtkMult: 1.12,
       sDefMult: 1.25,
       onHitBurn: 0.26,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       dotPerTurn: 0.09,
       onHitDefDown: 2,
       onHitPoison: 0.41
@@ -1328,7 +1328,7 @@ export const DEVIL_FRUITS = {
       sDefMult: 1.1,
       reflectPhysical: 0.2,
       enemySpdDown: 1,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       dotPerTurn: 0.04,
       onHitPoison: 0.31
     },
@@ -1383,7 +1383,7 @@ export const DEVIL_FRUITS = {
       sAtkMult: 1.26,
       sDefMult: 1.16,
       typeImmune: 'GRASS',
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       onHitBurn: 0.22
     },
     transformMove: { name: '幽冥破·獭祭', t: 'ROCK', p: 80, pp: 8, acc: 85, isFruitMove: true,
@@ -1700,7 +1700,7 @@ export const DEVIL_FRUITS = {
       sAtkMult: 1.14,
       sDefMult: 1.15,
       enemyAtkDown: 2,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       critBoost: 2
     },
     transformMove: { name: '天华斩·燕舞', t: 'BUG', p: 60, pp: 3, acc: 95, isFruitMove: true },
@@ -1856,7 +1856,7 @@ export const DEVIL_FRUITS = {
       spdMult: 1.07,
       sAtkMult: 1.28,
       sDefMult: 1.26,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       enemyAtkDown: 2,
       critBoost: 2
     },
@@ -2012,7 +2012,7 @@ export const DEVIL_FRUITS = {
       enemyAtkDown: 1,
       typeImmune: 'ELECTRIC',
       evaBoost: 0.3,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       enemySpdDown: 1
     },
     transformMove: { name: '苍岚闪·影人', t: 'STEEL', p: 128, pp: 3, acc: 90, isFruitMove: true },
@@ -2063,7 +2063,7 @@ export const DEVIL_FRUITS = {
       sAtkMult: 1.35,
       sDefMult: 1.27,
       onHitBurn: 0.4,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       onHitPoison: 0.44,
       evaBoost: 0.18
     },
@@ -2117,7 +2117,7 @@ export const DEVIL_FRUITS = {
       enemyAtkDown: 2,
       onHitDefDown: 1,
       typeImmune: 'ICE',
-      ignoreDefPercent: 0.12
+      ignoreDefPercent: 0.10
     },
     transformMove: { name: '涡潮冲·月读', t: 'GHOST', p: 63, pp: 4, acc: 90, isFruitMove: true },
   },
@@ -2131,7 +2131,7 @@ export const DEVIL_FRUITS = {
       spdMult: 1.15,
       sAtkMult: 1.26,
       sDefMult: 1.18,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       reflectPhysical: 0.17,
       dotPerTurn: 0.08
     },
@@ -2181,7 +2181,7 @@ export const DEVIL_FRUITS = {
       spdMult: 1.27,
       sAtkMult: 1.35,
       sDefMult: 1.12,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       reflectPhysical: 0.17
     },
     transformMove: { name: '霜岚切·龙胆', t: 'DRAGON', p: 104, pp: 10, acc: 95, isFruitMove: true },
@@ -2473,7 +2473,7 @@ export const DEVIL_FRUITS = {
       spdMult: 1.26,
       sAtkMult: 1.19,
       sDefMult: 1.1,
-      ignoreDefPercent: 0.11,
+      ignoreDefPercent: 0.10,
       enemySpdDown: 1,
       typeImmune: 'PSYCHIC',
       reflectPhysical: 0.17,
@@ -2546,7 +2546,7 @@ export const DEVIL_FRUITS = {
       sDefMult: 1.19,
       typeImmune: 'ICE',
       onHitDefDown: 2,
-      ignoreDefPercent: 0.12,
+      ignoreDefPercent: 0.10,
       onHitBurn: 0.32,
       enemyAccDown: 1
     },
@@ -2634,7 +2634,7 @@ export const DEVIL_FRUITS = {
       spdMult: 1.13,
       sAtkMult: 1.1,
       sDefMult: 1.2,
-      ignoreDefPercent: 0.11,
+      ignoreDefPercent: 0.10,
       enemySpdDown: 2,
       healPerTurn: 0.05,
       evaBoost: 0.11
@@ -2653,7 +2653,7 @@ export const DEVIL_FRUITS = {
       sAtkMult: 1.19,
       sDefMult: 1.11,
       healPerTurn: 0.05,
-      ignoreDefPercent: 0.12
+      ignoreDefPercent: 0.10
     },
     transformMove: { name: '雷鸣坠·云网', t: 'ROCK', p: 93, pp: 3, acc: 100, isFruitMove: true,
       effect: { type: 'DEBUFF', stat: 's_def', val: 1, target: 'enemy', chance: 0.32 } },
