@@ -189,6 +189,53 @@ const ALL_SKILL_TMS = (() => {
   return [...TMS, ...generated];
 })();
 
+const SEASON_NPC_NAMES = ['红莲','青岚','紫电','金刚','银河','碧落','玄武','朱雀','白虎','苍龙','烈焰','冰霜','雷神','风王','地藏','星辰','月华','日轮','天罡','地煞'];
+
+const COMBO_JUTSU_LIST = [
+  { id: 'fire_combo', name: '火遁·焰皇连弹', natures: ['FIRE','FIRE'], desc: '两只精灵同时发动火遁，造成1.5倍火属性伤害', icon: '🔥🔥', minRank: 'genin' },
+  { id: 'water_fire', name: '沸遁·过热蒸汽', natures: ['WATER','FIRE'], desc: '水火交融产生高温蒸汽，造成伤害并降低命中', icon: '💧🔥', minRank: 'chunin' },
+  { id: 'wind_fire', name: '灼遁·光轮疾风', natures: ['WIND','FIRE'], desc: '风助火势，造成1.8倍伤害', icon: '🌀🔥', minRank: 'chunin' },
+  { id: 'earth_water', name: '溶遁·熔岩浊流', natures: ['EARTH','WATER'], desc: '岩浆与水流的融合攻击', icon: '🪨💧', minRank: 'chunin' },
+  { id: 'lightning_water', name: '岚遁·雷云风暴', natures: ['LIGHTNING','WATER'], desc: '雷电注入水中，全体攻击', icon: '⚡💧', minRank: 'jonin' },
+  { id: 'wind_lightning', name: '磁遁·砂铁界法', natures: ['WIND','LIGHTNING'], desc: '操控磁力进行高速攻击', icon: '🌀⚡', minRank: 'jonin' },
+  { id: 'triple_nature', name: '仙法·三性质变化', natures: ['FIRE','WIND','LIGHTNING'], desc: '三种性质同时变化，毁灭性一击', icon: '🔥🌀⚡', minRank: 'kage' },
+];
+
+const NINJA_ID_ORDER = { academy: 0, genin: 1, chunin: 2, jonin: 3, kage: 4 };
+
+const getPetJutsuNatureSet = (pet) => {
+  const set = new Set();
+  (pet?.moves || []).forEach((m) => {
+    if (!m?.isJutsu) return;
+    if (m.nature) { set.add(m.nature); return; }
+    const ent = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === m.t);
+    if (ent) set.add(ent[0]);
+  });
+  return set;
+};
+
+/** 队伍中每名精灵至多匹配配方中的一项；同性质需不同精灵各带该性质忍术。 */
+const partyMatchesComboNatures = (party, natures) => {
+  if (!Array.isArray(party) || !natures?.length) return false;
+  const used = new Array(party.length).fill(false);
+  const dfs = (i) => {
+    if (i >= natures.length) return true;
+    const need = natures[i];
+    for (let pi = 0; pi < party.length; pi++) {
+      if (used[pi]) continue;
+      if (!getPetJutsuNatureSet(party[pi]).has(need)) continue;
+      used[pi] = true;
+      if (dfs(i + 1)) return true;
+      used[pi] = false;
+    }
+    return false;
+  };
+  return dfs(0);
+};
+
+const ninjaRankAtLeast = (playerRankId, minRank) =>
+  (NINJA_ID_ORDER[playerRankId] ?? 0) >= (NINJA_ID_ORDER[minRank] ?? 0);
+
 const sampleWeightedTM = (tmList, maxTier = 4) => {
   if (!tmList || tmList.length === 0) return null;
   const filtered = tmList.filter(t => (t.tier || 1) <= maxTier);
@@ -940,6 +987,11 @@ const [infinityState, setInfinityState] = useState(() => {
   useEffect(() => {
     if (shopTab === 'tms') setShopTmsVisibleCount(50);
   }, [shopTab, shopTMFilter]);
+
+  const [battleRecords, setBattleRecords] = useState(savedData.battleRecords || []);
+  const [showBattleRecords, setShowBattleRecords] = useState(false);
+  const [showSeasonRank, setShowSeasonRank] = useState(false);
+  const [showComboJutsu, setShowComboJutsu] = useState(false);
 
   // 地图/挑战切换
   const [mapTab, setMapTab] = useState('maps'); 
@@ -2969,6 +3021,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
+    battleRecords,
   };};
 
   const persistSave = (silent = false) => {
@@ -5838,30 +5891,155 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             🔄 精灵交换 {lastPetTradeDate === today ? '(今日已用)' : '(每日1次)'}
           </button>
           </div>
-          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.6)',margin:'12px 0 4px',fontWeight:'600'}}>即将推出</div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'4px'}}>
-            {[
-              { icon: '📹', label: '回放记录' },
-              { icon: '🏅', label: '赛季排行' },
-              { icon: '🌀', label: '组合忍术' },
-            ].map((slot) => (
-              <div key={slot.label} role="presentation" aria-disabled="true" style={{
-                padding:'12px 6px', borderRadius:'10px', textAlign:'center',
-                background:'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-                border:'1px solid rgba(255,200,100,0.14)', boxShadow:'0 2px 8px rgba(0,0,0,0.2)',
-                opacity:0.5, pointerEvents:'none', cursor:'not-allowed', userSelect:'none',
-              }}>
-                <div style={{fontSize:'16px', lineHeight:1.2}}>{slot.icon}</div>
-                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'4px', fontWeight:600}}>{slot.label}</div>
-                <div style={{fontSize:'9px', color:'rgba(255,200,120,0.75)', marginTop:'6px', letterSpacing:'0.5px', fontWeight:700}}>即将推出</div>
-              </div>
-            ))}
+          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',margin:'16px 0 8px',fontWeight:'600'}}>记录与收集</div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginTop:'4px'}}>
+            <button type="button" onClick={() => { setActivityCenter(false); setShowBattleRecords(true); }} style={{
+              padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(100,181,246,0.35)',
+              background:'linear-gradient(135deg, rgba(33,150,243,0.18), rgba(33,150,243,0.06))', color:'#fff',
+            }}>
+              <div style={{fontSize:'22px', lineHeight:1.2}}>📹</div>
+              <div style={{fontSize:'11px', fontWeight:700, marginTop:'4px'}}>回放记录</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>最近20场摘要</div>
+            </button>
+            <button type="button" onClick={() => { setActivityCenter(false); setShowSeasonRank(true); }} style={{
+              padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(255,193,7,0.35)',
+              background:'linear-gradient(135deg, rgba(255,193,7,0.18), rgba(255,193,7,0.06))', color:'#fff',
+            }}>
+              <div style={{fontSize:'22px', lineHeight:1.2}}>🏅</div>
+              <div style={{fontSize:'11px', fontWeight:700, marginTop:'4px'}}>赛季排行</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>第{arenaState.season || 1}赛季</div>
+            </button>
+            <button type="button" onClick={() => { setActivityCenter(false); setShowComboJutsu(true); }} style={{
+              padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(156,39,176,0.35)',
+              background:'linear-gradient(135deg, rgba(156,39,176,0.18), rgba(156,39,176,0.06))', color:'#fff',
+            }}>
+              <div style={{fontSize:'22px', lineHeight:1.2}}>🌀</div>
+              <div style={{fontSize:'11px', fontWeight:700, marginTop:'4px'}}>组合忍术</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>图鉴与条件</div>
+            </button>
           </div>
           <button onClick={()=>setActivityCenter(false)} style={{width:'100%',marginTop:'16px',padding:'10px',borderRadius:'12px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.6)',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>关闭</button>
         </div>
       </div>
     );
   };
+
+  const renderActivityCenterModals = () => (
+    <>
+      {showBattleRecords && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowBattleRecords(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '400px', maxWidth: '92vw', maxHeight: '78vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'linear-gradient(145deg,#0f0c29,#302b63,#24243e)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>📹 战斗回放摘要</div>
+              <button type="button" onClick={() => setShowBattleRecords(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }} aria-label="关闭">×</button>
+            </div>
+            <div style={{ padding: '12px 16px 18px', overflowY: 'auto', flex: 1 }}>
+              {battleRecords.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.45)', fontSize: '13px', padding: '24px 8px' }}>暂无战斗记录</div>
+              ) : (
+                battleRecords.map((rec, idx) => (
+                  <div key={idx} style={{ padding: '10px 12px', marginBottom: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', fontSize: '12px', color: 'rgba(255,255,255,0.88)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', gap: '8px' }}>
+                      <span style={{ fontWeight: '700' }}>{rec.result === '胜' ? '✅ 胜利' : '💀 败北'}</span>
+                      <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>{rec.time ? new Date(rec.time).toLocaleString('zh-CN') : ''}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
+                      对手：<span style={{ color: '#FFD54F' }}>{rec.opponent || '—'}</span> · 回合 {rec.turns ?? '—'} · 首发 <span style={{ color: '#B3E5FC' }}>{rec.leadPet || '—'}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showSeasonRank && (() => {
+        const season = arenaState.season || 1;
+        let seed = (season * 2654435761) >>> 0;
+        const next = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed; };
+        const npcRows = SEASON_NPC_NAMES.map((name) => {
+          const wins = 8 + (next() % 118);
+          const rIdx = next() % ARENA_RANKS.length;
+          return { name, wins, rank: ARENA_RANKS[rIdx], isPlayer: false };
+        });
+        const pr = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
+        const playerRow = { name: trainerName || '我', wins: arenaState.wins || 0, rank: pr, isPlayer: true };
+        const rows = [...npcRows, playerRow].sort((a, b) => {
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          const ai = ARENA_RANKS.indexOf(a.rank);
+          const bi = ARENA_RANKS.indexOf(b.rank);
+          if (bi !== ai) return bi - ai;
+          if (a.isPlayer !== b.isPlayer) return a.isPlayer ? -1 : 1;
+          return 0;
+        });
+        return (
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowSeasonRank(false)}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '420px', maxWidth: '94vw', maxHeight: '82vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'linear-gradient(145deg,#1a0000,#2d1b1b,#1a0000)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>🏅 赛季排行榜</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>第 {season} 赛季 · NPC 为模拟数据</div>
+                </div>
+                <button type="button" onClick={() => setShowSeasonRank(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }} aria-label="关闭">×</button>
+              </div>
+              <div style={{ padding: '10px 14px 18px', overflowY: 'auto', flex: 1 }}>
+                {rows.map((row, idx) => (
+                  <div key={row.isPlayer ? 'player' : `${row.name}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', marginBottom: '6px', borderRadius: '12px', background: row.isPlayer ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.04)', border: row.isPlayer ? '1px solid rgba(255,215,0,0.35)' : '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ width: '30px', fontWeight: '800', color: idx < 3 ? '#FFD54F' : 'rgba(255,255,255,0.5)', fontSize: '13px' }}>{idx + 1}</span>
+                    <span style={{ fontSize: '20px', lineHeight: 1 }}>{row.rank?.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: '700', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>{row.name}{row.isPlayer ? ' （你）' : ''}</div>
+                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{row.rank?.name}</div>
+                    </div>
+                    <div style={{ fontWeight: '800', color: '#81D4FA', fontSize: '13px', flexShrink: 0 }}>{row.wins} 胜</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {showComboJutsu && (() => {
+        const ninjaRk = getNinjaRank(narutoState.examsCompleted || 0);
+        return (
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowComboJutsu(false)}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '440px', maxWidth: '94vw', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'linear-gradient(145deg,#1a0a2e,#301b4a,#1a0a2e)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>🌀 组合忍术图鉴</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>当前忍者段位：{ninjaRk.icon} {ninjaRk.name}（战斗中暂未实装，仅作收集目标）</div>
+                </div>
+                <button type="button" onClick={() => setShowComboJutsu(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }} aria-label="关闭">×</button>
+              </div>
+              <div style={{ padding: '10px 14px 18px', overflowY: 'auto', flex: 1 }}>
+                {COMBO_JUTSU_LIST.map((combo) => {
+                  const rankOk = ninjaRankAtLeast(ninjaRk.id, combo.minRank);
+                  const partyOk = partyMatchesComboNatures(party, combo.natures);
+                  const unlocked = rankOk && partyOk;
+                  const needRankName = NINJA_RANKS.find(x => x.id === combo.minRank)?.name || combo.minRank;
+                  const cond = [];
+                  if (!rankOk) cond.push(`段位≥「${needRankName}」`);
+                  if (!partyOk) cond.push('队伍内需有精灵持有配方所需性质忍术（同性质需不同精灵）');
+                  return (
+                    <div key={combo.id} style={{ padding: '12px', marginBottom: '8px', borderRadius: '14px', background: unlocked ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.05)', border: unlocked ? '1px solid rgba(76,175,80,0.35)' : '1px solid rgba(255,255,255,0.08)', opacity: unlocked ? 1 : 0.85 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <div style={{ fontSize: '26px', lineHeight: 1 }}>{combo.icon}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>{combo.name}</div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.45, marginBottom: '6px' }}>{combo.desc}</div>
+                          <div style={{ fontSize: '10px', fontWeight: '700', color: unlocked ? '#A5D6A7' : '#FFAB91' }}>{unlocked ? '✅ 已解锁（图鉴）' : `🔒 未解锁：${cond.join(' · ')}`}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
 
   const actHeaderStyle = { padding:'16px 20px', background:'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', borderBottom:'1px solid rgba(255,255,255,0.08)', backdropFilter:'blur(12px)' };
   const actBtnSecondary = { background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', padding:'8px 16px', borderRadius:'12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', backdropFilter:'blur(4px)' };
@@ -14664,6 +14842,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
        try {
          if (!battle || battleResultHandledRef.current) return;
          battleResultHandledRef.current = true;
+         {
+           const b = battle;
+           const turnCount = b.turnCount || 0;
+           const firstPet = finalParty?.[0];
+           const leadPet = firstPet ? (POKEDEX.find(p => p.id === firstPet.id)?.name || firstPet.name || '未知') : '—';
+           const opp = b.trainerName || (b.enemyParty?.[0] && (POKEDEX.find(p => p.id === b.enemyParty[0].id)?.name || b.enemyParty[0].name)) || '未知';
+           setBattleRecords(prev => [{ time: Date.now(), opponent: opp, result: '胜', turns: turnCount, leadPet }, ...prev].slice(0, 20));
+         }
          // TODO: 建议使用battle快照防止竞态
          setTimeout(() => {
            const run = () => { try { persistSaveRef.current(true); } catch (e) { /* ignore */ } };
@@ -16153,6 +16339,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     battleResultHandledRef.current = true;
     addLog("所有伙伴都倒下了...");
     const battleSnap = battle ? { ...battle } : null;
+    if (battleSnap) {
+      const turnCount = battleSnap.turnCount || 0;
+      const lead = party?.[0];
+      const leadPet = lead ? (POKEDEX.find(p => p.id === lead.id)?.name || lead.name || '未知') : '—';
+      const opp = battleSnap.trainerName || (battleSnap.enemyParty?.[0] && (POKEDEX.find(p => p.id === battleSnap.enemyParty[0].id)?.name || battleSnap.enemyParty[0].name)) || '未知';
+      setBattleRecords(prev => [{ time: Date.now(), opponent: opp, result: '负', turns: turnCount, leadPet }, ...prev].slice(0, 20));
+    }
     setAnimEffect({ type: 'BLACKOUT' }); 
     
     await wait(2500);
@@ -20773,15 +20966,6 @@ const renderMenu = () => {
               <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
               {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
-            {encounters.length > 0 && (
-              <div style={{marginTop:'8px', display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
-                <span style={{fontSize:'9px', color:'#888', fontWeight:'600'}}>可遇到</span>
-                {encounters.slice(0, 3).map(pid => {
-                  const pk = POKEDEX.find(p => p.id === pid);
-                  return <span key={pid} style={{fontSize:'20px', lineHeight:1}} title={pk?.name || ''}>{pk ? renderAvatar(pk) : '❓'}</span>;
-                })}
-              </div>
-            )}
           </div>
         </div>
 
@@ -25505,12 +25689,32 @@ const renderMenu = () => {
     const availMedsAll = Object.values(MEDICINES).filter(m => m.mapTier <= tier);
     const availMedIds = availMedsAll.map(m => m.id);
     const shopTMs = ALL_SKILL_TMS.filter(t=>t.shopSell);
-    const tmsByTier = {
-      1: shopTMs.filter(t=>t.tier<=1).map(t=>t.id),
-      2: shopTMs.filter(t=>t.tier<=2).map(t=>t.id),
-      3: shopTMs.filter(t=>t.tier<=3).map(t=>t.id),
-      4: shopTMs.map(t=>t.id),
+    const getMapShopTMs = (mapId, tierLevel) => {
+      const eligible = shopTMs.filter(t => t.tier <= tierLevel);
+      if (eligible.length <= 8) return eligible.map(t => t.id);
+      const selected = [];
+      const pool = [...eligible];
+      let seed = mapId * 2654435761;
+      const nextSeed = () => { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed; };
+      const typeGroups = {};
+      pool.forEach(t => { if (!typeGroups[t.type]) typeGroups[t.type] = []; typeGroups[t.type].push(t); });
+      const usedIds = new Set();
+      Object.values(typeGroups).forEach(group => {
+        if (selected.length < 8 && group.length > 0) {
+          const pick = group[nextSeed() % group.length];
+          selected.push(pick);
+          usedIds.add(pick.id);
+        }
+      });
+      const remaining = pool.filter(t => !usedIds.has(t.id));
+      while (selected.length < 8 && remaining.length > 0) {
+        const idx = nextSeed() % remaining.length;
+        selected.push(remaining[idx]);
+        remaining.splice(idx, 1);
+      }
+      return selected.map(t => t.id);
     };
+    const availTMs = getMapShopTMs(currentMapId || 1, tier);
     const growthByTier = {
       1: [],
       2: ['vit_hp','vit_patk','vit_pdef','exp_candy'],
@@ -25530,7 +25734,6 @@ const renderMenu = () => {
     const availBalls = ballsByTier[tier];
     const availMeds = availMedIds;
     const availBerryIds = Object.values(BERRIES).filter(b => b.mapTier <= tier).map(b => b.id);
-    const availTMs = tmsByTier[tier];
     const availGrowth = growthByTier[tier];
     const availAcc = accByTier[tier];
     const filteredShopTmIds = availTMs.filter(tmId => !shopTMFilter || ((ALL_SKILL_TMS.find(t => t.id === tmId)?.type || 'NORMAL') === shopTMFilter));
@@ -25669,8 +25872,10 @@ const renderMenu = () => {
                   onMouseEnter={e=>{if(!alreadyOwned){e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';}}}
                   onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}>
                     <span style={{position:'absolute',top:'-6px',right:'8px',background:tierTagColor,color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>{tierLabel}</span>
-                    {isFirstBuyDiscount && <span style={{position:'absolute',top:'-6px',left:'8px',background:'#E91E63',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700'}}>首购半价</span>}
-                    {!isFirstBuyDiscount && <span style={{position:'absolute',top:'-6px',left:'8px',background:'#FF6F00',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700'}}>限购1</span>}
+                    <div style={{ position:'absolute', top:'-6px', left:'8px', display:'flex', flexDirection:'column', gap:'4px', alignItems:'flex-start', zIndex:1 }}>
+                      {isFirstBuyDiscount && <span style={{ background:'#E91E63', color:'#fff', fontSize:'9px', padding:'2px 8px', borderRadius:'8px', fontWeight:'700' }}>首购半价</span>}
+                      <span style={{ background:'#FF6F00', color:'#fff', fontSize:'9px', padding:'2px 8px', borderRadius:'8px', fontWeight:'700' }}>限购1</span>
+                    </div>
                     <div style={{fontSize:'36px',marginBottom:'8px',filter:alreadyOwned?'grayscale(1)':'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{renderTMCSS(tm.type||'NORMAL',36)}</div>
                     <div style={{fontSize:'13px',fontWeight:'800',color:alreadyOwned?'#999':'#1a1a2e',marginBottom:'3px'}}>{tm.name}</div>
                     <div title={`${TYPES[tm.type]?.name||''} · 威力${tm.p}`} style={{fontSize:'11px',color:'#888',height:'28px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'28px',marginBottom:'8px'}}>{TYPES[tm.type]?.name||''} · 威力{tm.p}</div>
@@ -26923,6 +27128,7 @@ const renderMenu = () => {
       {view === 'jutsu_codex' && renderJutsuCodex()}
       {view === 'naruto_story' && renderNarutoStory()}
       {renderActivityCenter()}
+      {renderActivityCenterModals()}
       {view === 'guide' && renderGuide()}
       {view === 'settings' && (
         <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',color:'#fff',display:'flex',flexDirection:'column'}}>
