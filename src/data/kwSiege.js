@@ -13,7 +13,7 @@ export const CONTEST_BAR_IDS = ['wei', 'shu', 'wu', 'qun'];
 export const MANPOWER_RESERVE_CAP = 2800;
 
 /** 控制城池所需的占领积分阈值（四势力拉锯） */
-export const CONTEST_CAPTURE_THRESHOLD = 26;
+export const CONTEST_CAPTURE_THRESHOLD = 28;
 
 /** 六兵种：环形克制 — 每个兵种克制顺时针下两种 */
 export const KW_TROOP_TYPES = [
@@ -85,9 +85,24 @@ const expectedCounterMult = (playerAlloc, defWeights) => {
   return Math.max(0.55, Math.min(1.45, acc));
 };
 
+/** 兼容存档里 mapId 为 number / string 两种键 */
+export const getContestMapProgress = (contestProgress, mapId) => {
+  const cp = contestProgress || {};
+  const n = Number(mapId);
+  const raw = cp[n] ?? cp[String(n)] ?? {};
+  return {
+    wei: Math.max(0, Math.floor(Number(raw.wei) || 0)),
+    shu: Math.max(0, Math.floor(Number(raw.shu) || 0)),
+    wu: Math.max(0, Math.floor(Number(raw.wu) || 0)),
+    qun: Math.max(0, Math.floor(Number(raw.qun) || 0)),
+  };
+};
+
 /** 由城池争夺条推导出「守城方兵种倾向」 */
 export const inferDefenseWeights = (mapProgress) => {
-  const p = { wei: 0, shu: 0, wu: 0, qun: 0, ...(mapProgress || {}) };
+  const raw = mapProgress || {};
+  const p = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  for (const k of CONTEST_BAR_IDS) p[k] = Math.max(0, Number(raw[k]) || 0);
   const total = CONTEST_BAR_IDS.reduce((s, k) => s + (p[k] || 0), 0) || 1;
   const base = {
     shield: 0.14,
@@ -117,19 +132,23 @@ export const inferDefenseWeights = (mapProgress) => {
   return norm;
 };
 
-export const resolveContestedMapOwner = (mapProgress) => {
-  const p = { wei: 0, shu: 0, wu: 0, qun: 0, ...(mapProgress || {}) };
-  let best = 'neutral';
-  let bestV = -1;
-  for (const fid of CONTEST_BAR_IDS) {
-    const v = p[fid] || 0;
-    if (v > bestV) {
-      bestV = v;
-      best = fid;
-    }
-  }
-  if (bestV < CONTEST_CAPTURE_THRESHOLD) return 'neutral';
-  return best;
+/**
+ * 判定名城控制者。同分优先保留现任控制方（减少魏序偶然_bias），否则按魏→蜀→吴→群雄次序。
+ */
+export const resolveContestedMapOwner = (mapProgress, incumbent = null, mapId = 0) => {
+  const raw = mapProgress || {};
+  const p = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  for (const k of CONTEST_BAR_IDS) p[k] = Math.max(0, Number(raw[k]) || 0);
+  const PRIORITY = { wei: 0, shu: 1, wu: 2, qun: 3 };
+  let maxV = -1;
+  for (const fid of CONTEST_BAR_IDS) maxV = Math.max(maxV, p[fid] || 0);
+  if (maxV < CONTEST_CAPTURE_THRESHOLD) return 'neutral';
+  const tied = CONTEST_BAR_IDS.filter(fid => (p[fid] || 0) === maxV);
+  if (tied.length === 1) return tied[0];
+  if (incumbent && incumbent !== 'neutral' && tied.includes(incumbent)) return incumbent;
+  const salt = Math.abs(Number(mapId)) || 1;
+  tied.sort((a, b) => (PRIORITY[a] ?? 9) - (PRIORITY[b] ?? 9));
+  return tied[salt % tied.length];
 };
 
 /**
@@ -138,22 +157,26 @@ export const resolveContestedMapOwner = (mapProgress) => {
 export const tickContestOccupationAI = (contestProgress, playerFaction, avgLevel = 55) => {
   const cp = { ...(contestProgress || {}) };
   const lv = Math.max(35, Math.min(95, avgLevel || 55));
-  const aiScale = 0.85 + (lv - 55) * 0.004; // 高等级时 AI 争夺稍强
+  const aiScale = Math.min(1.12, Math.max(0.82, 0.85 + (lv - 55) * 0.004));
 
   for (const mid of CONTESTED_SIEGE_MAP_IDS) {
-    const cur = { wei: 0, shu: 0, wu: 0, qun: 0, ...(cp[mid] || {}) };
-    const roll = () => Math.max(0, Math.round((0.8 + Math.random() * 1.4) * aiScale));
-    cur.qun = Math.min(520, (cur.qun || 0) + roll() + (Math.random() < 0.25 ? 1 : 0));
+    const cur = { wei: 0, shu: 0, wu: 0, qun: 0, ...getContestMapProgress(cp, mid) };
+    const roll = () => Math.max(0, Math.round((0.75 + Math.random() * 1.35) * aiScale));
+    cur.qun = Math.min(480, (cur.qun || 0) + roll() + (Math.random() < 0.22 ? 1 : 0));
     for (const fid of ['wei', 'shu', 'wu']) {
-      const antiPlayer = playerFaction && fid !== playerFaction ? 1.25 : 1;
-      const gain = Math.round(roll() * 0.85 * antiPlayer);
-      cur[fid] = Math.min(520, (cur[fid] || 0) + gain);
+      const antiPlayer = playerFaction && fid !== playerFaction ? 1.18 : 1;
+      const gain = Math.round(roll() * 0.88 * antiPlayer);
+      cur[fid] = Math.min(480, (cur[fid] || 0) + gain);
     }
-    // 玩家在线略占一点便宜：微幅压制群雄膨胀
     if (playerFaction && ['wei', 'shu', 'wu'].includes(playerFaction)) {
-      cur.qun = Math.max(0, (cur.qun || 0) - (Math.random() < 0.35 ? 1 : 0));
+      cur.qun = Math.max(0, (cur.qun || 0) - (Math.random() < 0.32 ? 1 : 0));
     }
-    cp[mid] = cur;
+    const sum = CONTEST_BAR_IDS.reduce((s, k) => s + (cur[k] || 0), 0);
+    if (sum > 880) {
+      const f = 0.93;
+      for (const k of CONTEST_BAR_IDS) cur[k] = Math.max(0, Math.floor((cur[k] || 0) * f));
+    }
+    cp[Number(mid)] = cur;
   }
   return cp;
 };
@@ -161,10 +184,11 @@ export const tickContestOccupationAI = (contestProgress, playerFaction, avgLevel
 export const syncContestedTerritoryOwners = (contestProgress, territories) => {
   const terr = { ...territories };
   for (const mid of CONTESTED_SIEGE_MAP_IDS) {
-    const prog = contestProgress?.[mid];
-    const owner = resolveContestedMapOwner(prog);
-    if (!terr[mid]) continue;
-    terr[mid] = { ...terr[mid], owner };
+    const prog = getContestMapProgress(contestProgress, mid);
+    const t = terr[mid];
+    if (!t) continue;
+    const owner = resolveContestedMapOwner(prog, t.owner, mid);
+    terr[mid] = { ...t, owner };
   }
   return terr;
 };
@@ -193,7 +217,8 @@ export const runKwSiegeBattle = ({
     return { victory: false, occupationGain: 0, manpowerLost: 0, wallRemainPct: 100, detail: '兵力不足 80，无法形成有效攻城阵势。' };
   }
 
-  const gens = (generalIds || []).slice(0, 3).map(id => recruitedGenerals.find(g => g.id === id)).filter(Boolean);
+  const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
+  const gens = uniqIds.map(id => recruitedGenerals.find(g => String(g?.id) === id)).filter(Boolean);
   let lead = 1;
   gens.forEach(g => { lead += rarityLeadership(g.rarity || 1); });
   lead = Math.min(1.38, lead);
@@ -201,13 +226,21 @@ export const runKwSiegeBattle = ({
   const defWeights = inferDefenseWeights(mapProgress);
   const counter = expectedCounterMult(alloc, defWeights);
 
-  const midLv = (mapLvlMin + mapLvlMax) / 2;
+  const lo = Math.max(1, Number(mapLvlMin) || 50);
+  const hi = Math.max(lo, Number(mapLvlMax) || 80);
+  const midLv = (lo + hi) / 2;
   const wallBase = 138 + (midLv - 50) * 2.05;
-  const prog = { wei: 0, shu: 0, wu: 0, qun: 0, ...(mapProgress || {}) };
+  const rawP = mapProgress || {};
+  const prog = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  for (const k of CONTEST_BAR_IDS) prog[k] = Math.max(0, Number(rawP[k]) || 0);
   const others = CONTEST_BAR_IDS
     .filter(fid => fid !== playerFaction)
     .reduce((s, fid) => s + (prog[fid] || 0), 0);
-  const wallHp = wallBase * (1 + others * 0.0065) * (0.92 + (avgPartyLevel || 55) * 0.0018);
+  const av = Math.min(100, Math.max(15, Number(avgPartyLevel) || 55));
+  const wallHp = Math.max(
+    52,
+    wallBase * (1 + others * 0.0065) * (0.92 + av * 0.0018),
+  );
 
   const atkW = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0) * (TROOP_WEIGHT[tid] || 1), 0);
   let wall = wallHp;
@@ -233,8 +266,9 @@ export const runKwSiegeBattle = ({
 
   const wallRemainPct = Math.max(0, Math.round((Math.max(0, wall) / wallHp) * 100));
   const qunName = QUN_LEADERS[Math.floor(Math.random() * QUN_LEADERS.length)];
+  const genNames = gens.map(g => (g && g.name) ? g.name : '将领').join('、');
   const detail = victory
-    ? `城防被撕开！${gens.map(g => g.name).join('、') || '诸军'}率部突入，${qunName}等部被迫后撤。`
+    ? `城防被撕开！${genNames || '诸军'}率部突入，${qunName}等部被迫后撤。`
     : `城头箭如雨下，${qunName}部与守军联防，未能破城（城防剩余约 ${wallRemainPct}%）。`;
 
   return {

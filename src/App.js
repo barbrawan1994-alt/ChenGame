@@ -117,6 +117,7 @@ import {
   runKwSiegeBattle,
   tickContestOccupationAI,
   syncContestedTerritoryOwners,
+  getContestMapProgress,
 } from './data/kwSiege';
 import {
   SANGUO_GENERALS, GENERAL_RARITY_CONFIG, MAX_RECRUITED_GENERALS,
@@ -543,6 +544,7 @@ export default function RPG(props) {
     if (saved.kwManpowerReserve == null || Number.isNaN(saved.kwManpowerReserve)) {
       saved.kwManpowerReserve = DEFAULT_KINGDOM_WAR.kwManpowerReserve;
     }
+    saved.kwManpowerReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Number(saved.kwManpowerReserve) || 0));
     return saved;
   });
   const [kwTab, setKwTab] = useState('overview');
@@ -12358,7 +12360,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           let next = { ...prev, territories: terr, warLog: trimmedLog, lastTick: Date.now() };
           const _p0 = partyRef.current;
           const av0 = _p0.length > 0 ? Math.floor(_p0.reduce((s, p) => s + (p?.level || 1), 0) / _p0.length) : 50;
-          const cp0 = tickContestOccupationAI(next.contestProgress, next.faction, av0);
+          let cp0 = next.contestProgress;
+          for (let j = 0; j < missedTicks; j++) {
+            cp0 = tickContestOccupationAI(cp0, next.faction, av0);
+          }
           next.contestProgress = cp0;
           next.territories = syncContestedTerritoryOwners(cp0, next.territories);
           const seasonResult = checkSeasonEnd(next);
@@ -12390,6 +12395,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const tickTerr = { ...result.territories };
         if (totalTerrBonus > 0) {
           for (const mid of WAR_MAP_IDS) {
+            if (CONTESTED_MAP_IDS.includes(Number(mid))) continue;
             if (tickTerr[mid] && tickTerr[mid].owner === prev.faction) {
               tickTerr[mid] = { ...tickTerr[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, tickTerr[mid].strength + totalTerrBonus) };
             }
@@ -16261,7 +16267,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 帮派任务 - 战斗胜利追踪
     updateGangTaskProgress('battle_win', 1);
 
-    if (battle.type === 'trainer' && kingdomWar?.faction && WAR_MAP_IDS.includes(Number(battle.mapId || currentMapId))) {
+    if (battle.type === 'trainer' && !battle.isGym && !isChallenge && kingdomWar?.faction && WAR_MAP_IDS.includes(Number(battle.mapId || currentMapId))) {
       const avgTr = (enemyParty || []).reduce((s, e) => s + (e?.level || 0), 0) / Math.max(1, (enemyParty || []).length);
       const mpT = 10 + Math.floor(Math.random() * 12) + Math.floor((avgTr || 35) / 10);
       setKingdomWar(prev => ({
@@ -19897,7 +19903,7 @@ const renderMenu = () => {
                 shu: { generals: '关羽、张飞、赵云、马超', strategy: '仁义为先', capital: '成都', stronghold: '卧龙凤雏，天下归心' },
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
               };
-              return (<div style={{padding:'0'}}><div style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 天 下 三 分 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>三国争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>魏蜀吴三国并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{FACTION_IDS.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid]; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => ({...prev, faction: fid, territories: Object.keys(prev.territories).length > 0 ? prev.territories : initTerritories(), lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: {...prev.dailyCounts, resetDate: getLocalDateStr()}})); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
+              return (<div style={{padding:'0'}}><div style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 天 下 三 分 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>三国争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>魏蜀吴三国并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{FACTION_IDS.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid]; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -20524,7 +20530,7 @@ const renderMenu = () => {
                   const contestedMaps = MAPS.filter(m => m.isContested);
                   const contestData = kw.contestProgress || {};
                   const today = getLocalDateStr();
-                  const rankIdx = MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian'));
+                  const rankIdx = Math.max(0, MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian')));
                   const reserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
                   return (
                     <>
@@ -20541,7 +20547,7 @@ const renderMenu = () => {
                         const owner = territory?.owner || 'neutral';
                         const ownerF = FACTIONS[owner] || { icon: '⚪', name: '中立', color: '#78909C' };
                         const isOurs = owner === kw.faction;
-                        const progress = { wei: 0, shu: 0, wu: 0, qun: 0, ...(contestData[cm.id] || {}) };
+                        const progress = getContestMapProgress(contestData, cm.id);
                         const totalPts = Math.max(1, CONTEST_BAR_IDS.reduce((s, k) => s + (progress[k] || 0), 0));
                         const dailyAttempts = contestData[`${cm.id}_attempts_${today}`] || 0;
                         const maxDailyAttempts = 3;
@@ -20591,6 +20597,7 @@ const renderMenu = () => {
                                 {cm.contestBonus?.contribution && <span>🎖️ 战功 +{cm.contestBonus.contribution}%</span>}
                               </div>
                               <button onClick={() => {
+                                if (!kw.faction) { showMapToast('❌', '提示', '请先加入国战阵营。', 1800); return; }
                                 if (!canChallenge) { showMapToast('❌', '提示', '今日攻城次数已用完 (每日3次)', 1500); return; }
                                 if (deployCap < 80) { showMapToast('❌', '兵力不足', '预备兵至少 80 才可攻城，请先在国战地图击败训练家或敌国训练师征兵。', 2500); return; }
                                 const base = Math.floor(deployCap / 6);
@@ -20668,14 +20675,16 @@ const renderMenu = () => {
                               })}
                             </div>
                             <button type="button" onClick={() => {
+                              try {
+                              if (!kingdomWar?.faction) { showMapToast('❌', '提示', '未加入阵营，无法攻城。', 1800); return; }
                               const m = kwSiegeModal.contestMap;
                               const alloc = { ...kwSiegeModal.allocation };
                               const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                               if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌', '分配有误', `兵力合计须等于 ${kwSiegeModal.deployCap}`, 2000); return; }
                               if (sumA < 80) { showMapToast('❌', '兵力过少', '至少 80 兵力才可攻城', 2000); return; }
                               const avgLv = party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50;
-                              const genIds = kwSiegeModal.generalIds || [];
-                              const mapProgIn = { wei: 0, shu: 0, wu: 0, qun: 0, ...((kingdomWar.contestProgress || {})[m.id] || {}) };
+                              const genIds = [...new Set(kwSiegeModal.generalIds || [])].slice(0, 3);
+                              const mapProgIn = getContestMapProgress(kingdomWar.contestProgress, m.id);
                               const siegeResult = runKwSiegeBattle({
                                 mapId: m.id,
                                 playerFaction: kingdomWar.faction,
@@ -20687,17 +20696,22 @@ const renderMenu = () => {
                                 mapLvlMax: m.lvl[1],
                                 avgPartyLevel: avgLv,
                               });
+                              if (!siegeResult || typeof siegeResult.victory !== 'boolean') {
+                                showMapToast('❌', '攻城异常', '请稍后再试。', 2000);
+                                return;
+                              }
                               const contribGain = siegeResult.victory ? 24 + Math.floor(Math.random() * 14) : 6 + Math.floor(Math.random() * 5);
                               const tokenGain = siegeResult.victory ? 3 : 1;
                               let equipDrop = null;
-                              if (siegeResult.victory && Math.random() < 0.14) {
+                              if (siegeResult.victory && Array.isArray(KW_EQUIPMENT) && KW_EQUIPMENT.length > 0 && Math.random() < 0.14) {
                                 equipDrop = KW_EQUIPMENT[Math.floor(Math.random() * KW_EQUIPMENT.length)];
                               }
                               setKingdomWar(prev => {
+                                if (!prev.faction) return prev;
                                 const cp = { ...(prev.contestProgress || {}) };
                                 const tkey = `${m.id}_attempts_${getLocalDateStr()}`;
                                 cp[tkey] = (cp[tkey] || 0) + 1;
-                                const mapProg = { wei: 0, shu: 0, wu: 0, qun: 0, ...(cp[m.id] || {}) };
+                                const mapProg = getContestMapProgress(cp, m.id);
                                 const pf = prev.faction;
                                 if (pf && mapProg[pf] != null) mapProg[pf] = (mapProg[pf] || 0) + (siegeResult.occupationGain || 0);
                                 cp[m.id] = mapProg;
@@ -20719,6 +20733,10 @@ const renderMenu = () => {
                               if (equipDrop) setAccessories(prev => [...prev, { ...equipDrop, uid: Date.now() + Math.random() }]);
                               showMapToast(siegeResult.victory ? '🏯' : '🛡️', siegeResult.victory ? '攻城大捷' : '攻城受挫', `${siegeResult.detail} 占领+${siegeResult.occupationGain} · 战功+${contribGain} · 令牌+${tokenGain} · 战损-${siegeResult.manpowerLost}兵`, 4200);
                               setKwSiegeModal(null);
+                              } catch (err) {
+                                console.error('kw siege:', err);
+                                showMapToast('❌', '攻城失败', '数据异常已记录，请重试或反馈。', 3000);
+                              }
                             }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动攻城</button>
                             <button type="button" onClick={() => setKwSiegeModal(null)} style={{ width:'100%', marginTop:'8px', padding:'8px', border:'1px solid #cbd5e1', borderRadius:'10px', background:'#fff', cursor:'pointer', fontSize:'12px' }}>取消</button>
                           </div>

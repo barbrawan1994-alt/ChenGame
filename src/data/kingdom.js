@@ -257,6 +257,7 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
 
   // 自然衰减
   for (const mapId of WAR_MAP_IDS) {
+    if (CONTESTED_MAP_IDS.includes(Number(mapId))) continue;
     const t = newTerritories[mapId];
     if (!t) continue;
     const ownerCount = getFactionTerritoryCount(t.owner, newTerritories);
@@ -376,6 +377,8 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     territories: initTerritories(),
     contestProgress: {},
     season: kw.season + 1,
+    /** 赛季更替：预备兵保留 45% 并封顶，避免从零开始过难、也避免无限囤积 */
+    kwManpowerReserve: Math.min(2800, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
   };
   const stats = rankStatsFn ? rankStatsFn(newState) : null;
   newState.militaryRank = getMilitaryRank(newContribution, stats).id;
