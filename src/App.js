@@ -1893,7 +1893,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         }
 
         if (status === 'PAR' && ivKey === 'spd') val = Math.floor(val * 0.5); 
-        if (status === 'BRN' && ivKey === 'p_atk') val = Math.floor(val * 0.5); 
+        if (status === 'BRN' && ivKey === 'p_atk' && pet.trait !== 'guts') val = Math.floor(val * 0.5); 
 
         return val;
     };
@@ -2393,6 +2393,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if (usingItem.category === 'stone') {
         const stoneId = usingItem.id;
         if (pet.isFusion) { showMapToast('❌', '提示', '融合精灵无法使用进化石！', 1500); return; }
+        if (pet.isEvolved) { showMapToast('ℹ️', '提示', '该精灵已经进化过了', 1500); return; }
         const rules = STONE_EVO_RULES[pet.id];
         
         if (rules && rules[stoneId]) {
@@ -2590,6 +2591,16 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
             const newStats = getStats(pet);
             pet.currentHp = newStats.maxHp; 
+
+            if (dex?.evo && !pet.isEvolved) {
+              let candyEvoOk = true;
+              const evoDex = POKEDEX.find(px => px.id === dex.evo);
+              if (evoDex?.evoCondition) {
+                const cond = evoDex.evoCondition;
+                if (cond.intimacy && (pet.intimacy || 0) < cond.intimacy) candyEvoOk = false;
+              }
+              if (candyEvoOk) pet.canEvolve = true;
+            }
             
             consumed = true;
             msg = `不可思议！${pet.name} 瞬间升到了 Lv.100！`;
@@ -3116,7 +3127,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
     const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
     return {
-    saveVersion: 24,
+    saveVersion: 25,
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
     dexMilestoneClaimed, lastPetTradeDate, lastTradeDate: lastPetTradeDate,
@@ -3265,6 +3276,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
       achTimersRef.current.push(setTimeout(() => setAchNotification(null), 2500 * newUnlocks.length + 500));
     }
+    return () => { achTimersRef.current.forEach(t => clearTimeout(t)); achTimersRef.current = []; };
   }, [achStats, unlockedAchs]);
 
   useEffect(() => {
@@ -3301,7 +3313,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.furnitureCount = (housing?.furniture || []).filter(f => f?.placed).length;
       let hsScore = calcHouseScore ? calcHouseScore((housing?.furniture || []).filter(f => f?.placed)) : 0;
       const treasures = housing?.treasures || [];
-      hsScore += treasures.reduce((s, t) => s + (t.score || 10), 0);
+      hsScore += treasures.reduce((s, tid) => {
+        for (const col of TREASURE_COLLECTIONS) {
+          const item = col.items.find(i => i.id === tid);
+          if (item) return s + item.score;
+        }
+        return s + 10;
+      }, 0);
       const hsTierObj = getHousingScoreTier ? getHousingScoreTier(hsScore) : null;
       next.housingScoreTier = hsTierObj ? HOUSING_SCORE_TIERS.indexOf(hsTierObj) : 0;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
@@ -3525,7 +3543,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const otherParent = baseParent.uid === p1.uid ? p2 : p1;
     
     const fusionAvgLevel = Math.floor((p1.level + p2.level) / 2);
-    const parentShinyBonus = (p1.isShiny ? 0.1 : 0) + (p2.isShiny ? 0.1 : 0);
+    const parentShinyBonus = ((p1.isShiny || p1.isFusedShiny) ? 0.1 : 0) + ((p2.isShiny || p2.isFusedShiny) ? 0.1 : 0);
     const levelBonus = Math.min(0.15, fusionAvgLevel * 0.002);
     const isFusedShiny = Math.random() < (0.15 + parentShinyBonus + levelBonus);
 
@@ -3928,7 +3946,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const typeName = TYPES[challengeType]?.name || challengeType;
     setDailyChallenge({ date: today, type: challengeType, typeName, wins: 0, target: 3, completed: false });
     showMapToast('⚡', '每日挑战', `今日挑战：使用${typeName}系精灵赢得3场战斗！`, 3000);
-  }, [party.length, dailyChallenge?.date]);
+  }, [party.length, dailyChallenge?.date, gameTime]); // eslint-disable-line
 
   const resetGangDailyCounts = () => {
     const today = getLocalDateStr();
@@ -4333,6 +4351,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (placedFurniture.length >= currentHouseDef.furnitureSlots) { showMapToast('❌', '提示', '家具槽已满!', 1500); return; }
       setHousing(prev => {
         const currentPlaced = (prev.furniture || []).filter(f => f.placed).length;
+        const houseDef = HOUSE_TYPES.find(h => h.id === prev.currentHouse);
+        if (houseDef && currentPlaced >= houseDef.furnitureSlots) return prev;
         const updated = [...prev.furniture];
         updated[furnitureIdx] = { ...updated[furnitureIdx], placed: true, slotIdx: currentPlaced };
         const newH = { ...prev, furniture: updated };
@@ -5562,7 +5582,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (petIds.length === 0) { showMapToast('❌','提示','请选择至少1只精灵',1500); return; }
     if (petIds.length >= party.length) { showMapToast('❌','无法出发','至少保留1只精灵在队伍中',1500); return; }
     if (expeditions.teams.length >= 3) { showMapToast('❌','队伍上限','最多同时派遣3支队伍',1500); return; }
-    setExpeditions(prev => ({...prev, teams: [...prev.teams, { zoneId, petUids: petIds.map(p => p.uid || p.id || p).filter(Boolean), startTime: Date.now(), duration: zone.duration }]}));
+    const uniqueUids = [...new Set(petIds.map(p => p.uid || p.id || p).filter(Boolean))];
+    const alreadySent = expeditions.teams.flatMap(t => t.petUids || []);
+    const newUids = uniqueUids.filter(uid => !alreadySent.includes(uid));
+    if (newUids.length === 0) { showMapToast('❌','提示','所选精灵已在远征中',1500); return; }
+    setExpeditions(prev => ({...prev, teams: [...prev.teams, { zoneId, petUids: newUids, startTime: Date.now(), duration: zone.duration }]}));
     showMapToast('🗺️', '出发', `探险队前往${zone.name}！`, 2000);
   };
 
@@ -6192,7 +6216,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           })()}
           <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
             <button onClick={startArenaFight} disabled={arenaState.tickets<=0 || party.length===0} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:'linear-gradient(135deg,#E53935,#C62828)',color:'#fff',fontSize:'16px',fontWeight:'800',cursor:'pointer',boxShadow:'0 4px 15px rgba(229,57,53,0.3)'}}>⚔️ 开始挑战</button>
-            <button onClick={()=>{if(gold<ARENA_TICKET_PRICE){showMapToast('❌','金币不足',`需要 ${ARENA_TICKET_PRICE} 金币`,1500);return;}setConfirmModal({title:'购买门票',msg:`花费 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买 1 张竞技场门票？`,onOk:()=>{setGold(g=>Math.max(0,g-ARENA_TICKET_PRICE));updateAchStat({ totalGoldSpent: ARENA_TICKET_PRICE });advanceBounty('spend_gold', null, ARENA_TICKET_PRICE);setArenaState(p=>({...p,tickets:p.tickets+1}));showMapToast('🎫','购买成功','获得 1 张门票',1500);}});}} style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>买门票 💰{ARENA_TICKET_PRICE.toLocaleString()}</button>
+            <button onClick={()=>{if(gold<ARENA_TICKET_PRICE){showMapToast('❌','金币不足',`需要 ${ARENA_TICKET_PRICE} 金币`,1500);return;}setConfirmModal({title:'购买门票',msg:`花费 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买 1 张竞技场门票？`,onOk:()=>{setGold(g=>Math.max(0,g-ARENA_TICKET_PRICE));updateAchStat({ totalGoldSpent: ARENA_TICKET_PRICE });advanceBounty('spend_gold', null, ARENA_TICKET_PRICE);setArenaState(p=>({...p,tickets:Math.min(20, p.tickets+1)}));showMapToast('🎫','购买成功','获得 1 张门票',1500);}});}} style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>买门票 💰{ARENA_TICKET_PRICE.toLocaleString()}</button>
           </div>
           <div style={{padding:'10px 14px',borderRadius:'12px',background:'rgba(76,175,80,0.06)',border:'1px solid rgba(76,175,80,0.12)',marginBottom:'16px'}}>
             <div style={{fontSize:'11px',fontWeight:'700',color:'#4CAF50',marginBottom:'4px'}}>🏆 赛季奖励预览</div>
@@ -7346,9 +7370,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const raceCost = 500;
     const canRace = racesUsed < maxRaces && party.length > 0;
 
+    const raceRunningRef_local = { current: false };
     const startRace = (petIdx) => {
       const pet = party[petIdx];
       if (!pet) return;
+      if (raceRunningRef_local.current) return;
+      raceRunningRef_local.current = true;
+      setTimeout(() => { raceRunningRef_local.current = false; }, 500);
       if (racesUsed >= maxRaces) { showMapToast('⏰', '次数用完', '明日再来竞速吧！', 1500); return; }
       if (gold < raceCost && racesUsed >= 3) { showMapToast('💰', '金币不足', `竞速需要 ${raceCost} 金币`, 1500); return; }
       if (racesUsed >= 3) { setGold(g => Math.max(0, g - raceCost)); updateAchStat({ totalGoldSpent: raceCost }); advanceBounty('spend_gold', null, raceCost); }
@@ -7366,7 +7394,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const allRunners = [
         { name: pet.name, speed: petSpeed, isPlayer: true, type: pet.type },
         ...rivals
-      ].sort((a, b) => b.speed - a.speed);
+      ].sort((a, b) => b.speed - a.speed || (a.isPlayer ? -1 : 1));
 
       const placement = allRunners.findIndex(r => r.isPlayer) + 1;
       let rewardGold = 0; let rewardItem = null;
@@ -8149,7 +8177,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const canJoinGang = leaveCooldown <= 0;
 
     if (!gang.gangId) {
-      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } setConfirmModal({ title:'🏴 加入帮派', msg:'确定要加入「'+g.name+'」吗？', onOk: () => { setGang(prev => ({...prev, gangId: g.id, gangName: g.name, role:'member', joinDate: Date.now(), contribution:0})); showMapToast('🎉','加入成功','欢迎加入'+g.name+'！',1500); }}); return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:getLocalDateStr()}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
+      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } setConfirmModal({ title:'🏴 加入帮派', msg:'确定要加入「'+g.name+'」吗？', onOk: () => { setGang(prev => ({...prev, gangId: g.id, gangName: g.name, role:'member', joinDate: Date.now(), contribution:0, leaveTime: null, dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: getLocalDateStr() }, members: [...(g.members || [])]})); showMapToast('🎉','加入成功','欢迎加入'+g.name+'！',1500); }}); return; setGang({gangId:g.id, isOwner:false, customGang:null, contribution:0, rank:'member', personalSkills:{}, dailyCounts:{salary:false, warCount:0, taskProgress:{}, taskCompleted:[], cafeRecruits:generateCafeRecruits(), resetDate:getLocalDateStr()}}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
     }
 
     // 有帮派
@@ -8524,6 +8552,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   </div>
                   <button onClick={() => {
                     if (members.length >= maxM) { showMapToast('❌', '提示', '帮派成员已满', 1500); return; }
+                    if (members.some(m => m.name === npc.name)) { showMapToast('ℹ️', '提示', '该成员已在帮派中', 1500); return; }
                     setGang(prev => ({
                       ...prev,
                       customGang: { ...prev.customGang, members: [...(prev.customGang.members || []), npc] },
@@ -9142,37 +9171,38 @@ const useGrowthItem = (petIndex, itemId) => {
       const tileType = mapGrid[y][x];
 
       if (tileType !== 1) {
-        setInventory(prev => {
-          const eggs = prev.eggs || [];
-          if (eggs.length === 0) return prev;
-          const newEggs = eggs.map(egg => ({ ...egg, stepsLeft: Math.max(0, (egg.stepsLeft || 0) - 1) }));
+        const curEggs = inventory.eggs || [];
+        if (curEggs.length > 0) {
+          const newEggs = curEggs.map(egg => ({ ...egg, stepsLeft: Math.max(0, (egg.stepsLeft || 0) - 1) }));
           let workingEggs = [...newEggs];
+          const hatchedPets = [];
           let readyIdx = workingEggs.findIndex(e => (e.stepsLeft || 0) <= 0);
           while (readyIdx >= 0) {
             const readyEgg = workingEggs[readyIdx];
             workingEggs = [...workingEggs.slice(0, readyIdx), ...workingEggs.slice(readyIdx + 1)];
             const spBs = getSpouseBonuses();
             const isShiny = readyEgg.isShiny || Math.random() < (0.05 * (spBs.shinyRate || 1));
-            const isLegend = LEGENDARY_POOL?.includes(readyEgg.speciesId);
             const hatchedPet = createPet(readyEgg.speciesId, readyEgg.level || 1, false, isShiny);
             hatchedPet.uid = Date.now() + Math.random();
+            hatchedPets.push({ pet: hatchedPet, isShiny, isLegend: LEGENDARY_POOL?.includes(readyEgg.speciesId) });
+            readyIdx = workingEggs.findIndex(e => (e.stepsLeft || 0) <= 0);
+          }
+          if (hatchedPets.length > 0 || workingEggs.length !== curEggs.length) {
+            setInventory(prev => ({ ...prev, eggs: workingEggs }));
+          }
+          for (const { pet: hp, isShiny, isLegend } of hatchedPets) {
             const canAdd = party.length < 6;
-            if (canAdd) {
-              setParty(p => [...p, hatchedPet]);
-            } else {
-              setBox(b => [...b, hatchedPet]);
-            }
-            setCaughtDex(d => d.includes(hatchedPet.id) ? d : [...d, hatchedPet.id]);
+            if (canAdd) setParty(p => [...p, hp]);
+            else setBox(b => [...b, hp]);
+            setCaughtDex(d => d.includes(hp.id) ? d : [...d, hp.id]);
             const achUpdate = { eggsHatched: 1 };
             if (isLegend) achUpdate.legendEggsHatched = 1;
             if (isShiny) achUpdate.shinyEggsHatched = 1;
             updateAchStat(achUpdate);
             advanceBounty('hatch');
-            showMapToast('🥚', `${isShiny ? '✨闪光！' : ''}${hatchedPet.name} 诞生！`, canAdd ? '已加入队伍' : '已发送到电脑', 3000);
-            readyIdx = workingEggs.findIndex(e => (e.stepsLeft || 0) <= 0);
+            showMapToast('🥚', `${isShiny ? '✨闪光！' : ''}${hp.name} 诞生！`, canAdd ? '已加入队伍' : '已发送到电脑', 3000);
           }
-          return { ...prev, eggs: workingEggs };
-        });
+        }
       }
 
       // ------------------------------------------------
@@ -9980,6 +10010,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [核心修复] 启动战斗 (含特性触发与完整逻辑)
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
+     if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return; }
      setIsDialogVisible(false);
      battleResultHandledRef.current = false;
     let isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
@@ -10775,6 +10806,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
       applyIntimidate(battleEnemyParty[0], battlePlayerParty[activeIdx]);
       applyIntimidate(battlePlayerParty[activeIdx], battleEnemyParty[0]);
     }
+
+    const WEATHER_TRAITS = { sand_stream: 'SAND', drizzle: 'RAIN', drought: 'SUN', snow_warning: 'SNOW' };
+    const allEntryUnits = isDouble
+      ? [...[activeIdx, battlePlayerParty.findIndex((pp, i) => i !== activeIdx && pp.currentHp > 0)].filter(i => i >= 0).map(i => battlePlayerParty[i]),
+         ...[0, battleEnemyParty.length > 1 ? 1 : -1].filter(i => i >= 0).map(i => battleEnemyParty[i])]
+      : [battlePlayerParty[activeIdx], battleEnemyParty[0]];
+    for (const u of allEntryUnits) {
+      if (u?.trait && WEATHER_TRAITS[u.trait]) {
+        extraBattleData._weatherOverride = WEATHER_TRAITS[u.trait];
+        setWeather(WEATHER_TRAITS[u.trait]);
+      }
+    }
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     let enemyComboUsed = false;
@@ -11323,7 +11366,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let playerMovePriority = actualMove.priority || 0;
         if (player.trait === 'prankster' && (!actualMove.p || actualMove.p === 0) && actualMove.cat !== 'physical') playerMovePriority += 1;
         let enemyMovePriority = (preSelectedEnemy?.priority) || 0;
-        if (enemy.trait === 'prankster' && preSelectedEnemy && preSelectedEnemy.p === 0 && preSelectedEnemy.cat !== 'physical') enemyMovePriority += 1;
+        if (enemy.trait === 'prankster' && preSelectedEnemy && (!preSelectedEnemy.p || preSelectedEnemy.p === 0) && preSelectedEnemy.cat !== 'physical') enemyMovePriority += 1;
         const priorityFx = getEquipEffects(party[battle.activeIdx] || {}).find(fx => fx.id === 'priority');
         const playerHasPriority = player.fruitFirstStrike || (priorityFx && Math.random() < (priorityFx.val || 0.08));
         const enemyHasPriority = enemy.fruitFirstStrike;
@@ -11914,6 +11957,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       ];
       for (const { u, s } of allDoubleActives) {
         if (!u || !s || u.currentHp <= 0) continue;
+        if (u.trait === 'magic_guard') continue;
         if (s.status === 'BRN' || s.status === 'PSN') {
           let dot;
           if (s.status === 'PSN' && s.volatiles?.badlyPoisoned) {
@@ -11937,15 +11981,30 @@ const grantContestReward = (config, score, subjectPet = null) => {
         ];
         for (const u of weatherTargets) {
           if (!u || u.currentHp <= 0) continue;
+          if (u.trait === 'magic_guard') continue;
           const uTypes = [u.type, u.secondaryType, u.type2].filter(Boolean);
           let immune = false;
           if (weather === 'SAND' && uTypes.some(t => ['ROCK','GROUND','STEEL'].includes(t))) immune = true;
-          if (weather === 'SNOW' && uTypes.includes('ICE')) immune = true;
+          if (weather === 'SNOW' && uTypes.includes('ICE')) {
+            if (u.trait === 'ice_body') {
+              const iceHeal = Math.floor(getStats(u).maxHp / 16);
+              u.currentHp = Math.min(getStats(u).maxHp, u.currentHp + iceHeal);
+              addLog(`❄️ ${u.name} 的冰冻之躯恢复了 ${iceHeal} HP！`);
+            }
+            immune = true;
+          }
           if (!immune) {
             const wDmg = Math.floor(getStats(u).maxHp / 16);
             u.currentHp = Math.max(0, u.currentHp - wDmg);
             addLog(`${u.name} 受到${weather === 'SAND' ? '沙暴' : '冰雹'}伤害 ${wDmg}！`);
           }
+        }
+      }
+
+      for (const { u } of allDoubleActives) {
+        if (u?.currentHp > 0 && u.trait === 'speed_boost' && (u.stages?.spd || 0) < 6) {
+          u.stages.spd = Math.min(6, (u.stages?.spd || 0) + 1);
+          addLog(`🏃 ${u.name} 的加速特性提升了速度！`);
         }
       }
 
@@ -13012,12 +13071,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (i === state.enemyActiveIdx || e.currentHp <= 0) return false;
           const eHpRatio = e.currentHp / Math.max(1, getStats(e).maxHp);
           let tmod = getTypeMod(player.type, e.type);
-          if (player.secondaryType && player.secondaryType !== player.type) tmod = Math.max(tmod, getTypeMod(player.secondaryType, e.type));
+          if (e.secondaryType && e.secondaryType !== e.type) tmod *= getTypeMod(player.type, e.secondaryType);
+          if (player.secondaryType && player.secondaryType !== player.type) {
+            let tmod2 = getTypeMod(player.secondaryType, e.type);
+            if (e.secondaryType && e.secondaryType !== e.type) tmod2 *= getTypeMod(player.secondaryType, e.secondaryType);
+            tmod = Math.max(tmod, tmod2);
+          }
           return eHpRatio > 0.5 && tmod <= 1.0;
         });
         if (betterIdx >= 0) {
           addLog(`对手收回了 ${enemy.name}，换上了 ${state.enemyParty[betterIdx].name}!`);
           state.enemyActiveIdx = betterIdx;
+          const newEnemy = state.enemyParty[betterIdx];
+          if (newEnemy?.trait === 'intimidate') {
+            player.stages.p_atk = Math.max(-6, (player.stages.p_atk || 0) - 1);
+            addLog(`${newEnemy.name} 的威吓使 ${player.name} 的攻击下降了！`);
+          }
+          if (player.trait === 'intimidate') {
+            newEnemy.stages.p_atk = Math.max(-6, (newEnemy.stages.p_atk || 0) - 1);
+            addLog(`${player.name} 的威吓使 ${newEnemy.name} 的攻击下降了！`);
+          }
           state.turnCount = (state.turnCount || 0) + 1;
           setBattle(prev => ({
             ...prev,
@@ -13404,6 +13477,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
           logs: [`对手派出了 ${prev.enemyParty[nextEnemyIdx].name}!`, ...prev.logs],
         }));
         await triggerShinyAnim('enemy', state.enemyParty[nextEnemyIdx]);
+        const newEnm = state.enemyParty[nextEnemyIdx];
+        if (newEnm?.trait === 'intimidate') {
+          player.stages.p_atk = Math.max(-6, (player.stages.p_atk || 0) - 1);
+          addLog(`${newEnm.name} 的威吓使 ${player.name} 的攻击下降了！`);
+        }
+        if (player.trait === 'intimidate') {
+          newEnm.stages.p_atk = Math.max(-6, (newEnm.stages.p_atk || 0) - 1);
+          addLog(`${player.name} 的威吓使 ${newEnm.name} 的攻击下降了！`);
+        }
         await wait(1000);
         setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
       } else {
@@ -13448,6 +13530,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 天气回合伤害 (沙暴/冰雹)
     const applyWeatherDmg = (unit, isPlayer) => {
         if (unit.currentHp <= 0) return;
+        if (unit.trait === 'magic_guard') return;
         let weatherDmg = 0;
         const maxHp = getStats(unit).maxHp;
 
@@ -13457,6 +13540,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${unit.name} 受到沙暴伤害！`);
         }
         if (weather === 'SNOW' && !unitTypes.includes('ICE')) {
+            if (unit.trait === 'ice_body') {
+                const iceHeal = Math.floor(maxHp / 16);
+                unit.currentHp = Math.min(maxHp, unit.currentHp + iceHeal);
+                addLog(`❄️ ${unit.name} 的冰冻之躯恢复了 ${iceHeal} HP！`);
+                return;
+            }
             weatherDmg = Math.floor(maxHp / 16);
             addLog(`${unit.name} 受到冰雹伤害！`);
         }
@@ -13641,7 +13730,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'], immune: [] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'], immune: [] },
       GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: ['NORMAL'] },
-      DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'], immune: ['FAIRY'] },
+      DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'], immune: [] },
       DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: [] },
       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'], immune: [] },
       FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'], immune: [] },
@@ -13854,7 +13943,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             await wait(1000); _setAnim(null);
             if (Math.random() < 0.33) {
                 addLog(`它在混乱中攻击了自己!`);
-                const selfDmg = Math.max(1, Math.floor(getStats(attacker, atkState.stages, atkState.status).maxHp * 0.1));
+                const confStats = getStats(attacker, atkState.stages, atkState.status);
+                const selfDmg = Math.max(1, Math.floor(((2 * (attacker.level || 1) / 5 + 2) * 40 * confStats.p_atk / (confStats.p_def * 50) + 2)));
             attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
                 if (attacker.currentHp <= 0) {
                   atkState._diedFromConfusion = true;
@@ -14247,6 +14337,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         }
 
+        const auraUnits = battleState.isDouble
+          ? [...(battleState.playerCombatStates || []).filter(u => u?.currentHp > 0), ...(battleState.enemyParty || []).filter(u => u?.currentHp > 0)]
+          : [attacker, defender];
+        if (move.t === 'FAIRY' && auraUnits.some(u => u?.trait === 'fairy_aura')) rawDmg *= 1.33;
+        if (move.t === 'DARK' && auraUnits.some(u => u?.trait === 'dark_aura')) rawDmg *= 1.33;
+
         // 领域展开攻防加成
         const domForDmg = battleState.activeDomain;
         if (domForDmg && domForDmg.turnsLeft > 0 && domForDmg.effect) {
@@ -14613,6 +14709,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 atkState.volatiles = { ...(atkState.volatiles || {}), confused: 3 };
                 addLog(`${attacker.name} 被 ${defender.name} 迷住了，陷入混乱！`);
             }
+            if (defender.trait === 'flame_body' && Math.random() < 0.3 && !attacker.status) {
+                attacker.status = 'BRN'; addLog(`🔥 ${attacker.name} 被 ${defender.name} 的火焰之躯灼伤了！`);
+            }
         }
 
         if (move.effect && dmg > 0 && !isDead && !isImmune && !isDodged) {
@@ -14880,6 +14979,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!battleState?.isDouble && isEndOfTurn) {
         const applyDot = (unit, state) => {
             if (unit.currentHp <= 0) return false;
+            if (unit.trait === 'magic_guard') return false;
             if (state.status === 'BRN' || state.status === 'PSN') {
                 const eFx = getEquipEffects(unit);
                 let immune = false;
@@ -15190,6 +15290,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
        try {
          if (!battle || battleResultHandledRef.current) return;
          battleResultHandledRef.current = true;
+         if (battle._weatherOverride) setWeather('CLEAR');
          {
            const b = battle;
            const turnCount = b.turnCount || 0;
@@ -15733,7 +15834,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (rewardEquip) { setAccessories(prev => [...prev, rewardEquip]); addLog(`获得战利品: ${rewardEquip.displayName}`); }
             showMapToast('🏆', '挑战成功', `击败了 ${chiefInfo.name}，夺得【${chiefInfo.title}】称号！佩戴后激活全队${sectInfo.name}加成：${chiefInfo.buffName}`, 4000);
         } else {
-            const repeatGold = 2000 + (sectTitles.length * 500);
+            const repeatGold = Math.min(8000, 2000 + (sectTitles.length * 500));
             setGold(g => g + repeatGold);
             showMapToast('🥋', '切磋结束', `你仍是【${chiefInfo.title}】· 获得 💰${repeatGold}金币`, 2000);
         }
@@ -16647,6 +16748,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const handleDefeat = async () => {
     if (battleResultHandledRef.current) return;
     battleResultHandledRef.current = true;
+    if (battle?._weatherOverride) setWeather('CLEAR');
     addLog("所有伙伴都倒下了...");
     const battleSnap = battle ? { ...battle } : null;
     if (battleSnap) {
@@ -16727,7 +16829,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       showMapToast('💀', '试炼失败', '忍者试炼失败，明日再挑战！', 3000);
     } else if (battle?.type === 'gang_war') {
       setView('gang');
-      showMapToast('💀', '帮战失败', '帮战落败，继续努力！', 3000);
+      setGang(prev => ({ ...prev, dailyCounts: { ...(prev.dailyCounts || {}), warCount: ((prev.dailyCounts?.warCount) || 0) + 1 } }));
+      showMapToast('💀', '帮战失败', '帮战落败，消耗一次帮战次数', 3000);
     } else if (battle?.type === 'kingdom_war' || battle?.type === 'kw_campaign' || battle?.type === 'capital_siege') {
       setView('world_map');
       setMapTab('kingdom');
@@ -16754,7 +16857,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleRun = async () => {
     if (!battle) return;
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.dungeonId) {
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.dungeonId) {
         addLog("⚠️ 这种战斗无法逃跑！必须决出胜负！");
         return;
     }
@@ -16837,7 +16940,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const handleCatch = async (ballType) => {
     setShowBallMenu(false);
     if (!battle) return;
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.isBoss || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
     if (((inventory.balls || {})[ballType] || 0) <= 0) return addLog("球不足！");
     try {
     
@@ -16987,6 +17090,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (selectedBoxIdx === null) return;
     const pet = box[selectedBoxIdx];
     if (!pet) return;
+    const allExpUids = (expeditions.teams || []).flatMap(t => t.petUids || []);
+    if (pet.uid && allExpUids.includes(pet.uid)) { showMapToast('❌', '无法放生', '该精灵正在远征中', 1500); return; }
     const lv = pet.level || 1;
     const shinyMult = pet.isShiny ? 3 : 1;
     const legendMult = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1);
@@ -26099,7 +26204,7 @@ const renderMenu = () => {
                         <div className="actions-bar-h">
                             <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle} title={isDoubleBattle ? '双打模式中无法使用背包' : ''}>背包</button>
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}>交换</button>
-                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial'}>逃跑</button>
+                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || !!battle.dungeonId}>逃跑</button>
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed ? (() => {
                               const turnOk = battle.turnCount >= 3;
                               const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.5;
@@ -26292,11 +26397,14 @@ const renderMenu = () => {
               if (validTeam.length === 0) throw new Error("队伍数据无效");
               const avgLocal = party.length ? party.reduce((s, p) => s + (p.level || 1), 0) / party.length : 30;
               const fairCap = Math.min(100, Math.max(5, Math.floor(avgLocal + 18)));
-              data.team = validTeam.map(p => {
+              data.team = validTeam.slice(0, 6).map(p => {
                 let lv = Math.min(100, Math.max(1, Math.floor(Number(p.level))));
                 if (lv > fairCap + 12) lv = fairCap;
-                return { ...p, id: Number(p.id), level: lv };
+                const safeMoves = Array.isArray(p.moves) ? p.moves.slice(0, 6).map(m => (m && typeof m === 'object' ? { name: String(m.name || '').slice(0, 30), p: Number(m.p) || 0, t: String(m.t || 'NORMAL').slice(0, 10), cat: String(m.cat || 'physical').slice(0, 10), acc: Number(m.acc) || 100, pp: Math.min(40, Number(m.pp) || 5), maxPP: Math.min(40, Number(m.maxPP || m.maxPp) || 5), effect: m.effect || {}, priority: Number(m.priority) || 0 } : null)).filter(Boolean) : [];
+                const safeName = typeof p.name === 'string' ? p.name.slice(0, 20) : '';
+                return { id: Number(p.id), level: lv, moves: safeMoves, name: safeName, type: p.type, secondaryType: p.secondaryType, trait: p.trait, nature: p.nature, isShiny: !!p.isShiny, ivs: p.ivs, evs: p.evs, customBaseStats: p.customBaseStats, sectId: p.sectId ? Number(p.sectId) : undefined, sectLevel: p.sectLevel ? Math.min(10, Number(p.sectLevel)) : undefined, devilFruit: typeof p.devilFruit === 'string' ? p.devilFruit : undefined };
               });
+              data.name = typeof data.name === 'string' ? data.name.slice(0, 20) : '神秘人';
               
               setConfirmModal({ title:'⚔️ PvP 挑战', msg:`接受来自【${data.name || '神秘人'}】的挑战？\n对方队伍 ${data.team.length} 只精灵`, onOk: () => { 
                   setPvpMode(false); 
@@ -26847,7 +26955,7 @@ const renderMenu = () => {
                         fontSize:'9px', cursor:'pointer'}}>{t === 'all' ? '全部' : (TYPES[t]?.name || t)}</button>
                   ))}
                 </div>
-                <div style={{color:'#888', fontSize:'11px'}}>存储箱 ({box.length})</div>
+                <div style={{color:'#888', fontSize:'11px'}}>存储箱 ({box.length}/500)</div>
               </div>
               <div className="pc-box-grid-tech" style={{ 
                   display:'grid', 
@@ -28653,7 +28761,7 @@ const renderMenu = () => {
       )}
       {/* 主题化确认弹窗 */}
       {confirmModal && (
-        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100002, animation:'fadeIn 0.2s ease-out'}} onClick={() => setConfirmModal(null)}>
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100002, animation:'fadeIn 0.2s ease-out'}} onClick={() => { (confirmModal.onCancel)?.(); setConfirmModal(null); }}>
           <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a1a2e,#16213e)', borderRadius:'20px', padding:'28px', maxWidth:'340px', width:'90%', boxShadow:'0 20px 60px rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.1)'}}>
             <div style={{fontSize:'16px', fontWeight:'bold', color:'#fff', marginBottom:'12px'}}>{confirmModal.title}</div>
             <div style={{fontSize:'13px', color:'#bbb', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:'20px'}}>{confirmModal.msg || confirmModal.desc || ''}</div>

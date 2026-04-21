@@ -37,13 +37,17 @@ export const TRAIT_DB = {
   dark_aura:   { name: '暗黑气场', desc: '场上所有恶系技能威力提升33%', type: 'BATTLE' },
   flame_body:  { name: '火焰之躯', desc: '受接触攻击时30%概率灼伤对手', type: 'BATTLE' },
   sand_stream: { name: '扬沙', desc: '出场时召唤沙暴天气', type: 'ENTRY' },
+  drizzle:     { name: '降雨', desc: '出场时召唤雨天天气', type: 'ENTRY' },
+  drought:     { name: '日照', desc: '出场时召唤晴天天气', type: 'ENTRY' },
+  snow_warning: { name: '降雪', desc: '出场时召唤冰雹天气', type: 'ENTRY' },
   magic_guard: { name: '魔法防御', desc: '不受技能以外的伤害（天气/中毒/灼伤等）', type: 'PASSIVE' },
   magic_bounce: { name: '魔法反射', desc: '将对手的变化技能反弹回去', type: 'BATTLE' },
   fairy_aura:  { name: '妖精气场', desc: '场上所有妖精系技能威力提升33%', type: 'BATTLE' },
+  dark_aura:   { name: '暗黑气场', desc: '场上所有恶系技能威力提升33%', type: 'BATTLE' },
 };
 
 // ==========================================
-// [新增] 20种性格数据库 (平衡设计)
+// [新增] 25种性格数据库 (平衡设计)
 // stats: 属性修正倍率 (1.15 = +15%, 0.85 = -15%)
 // exp: 升级经验需求倍率 (0.8 = 升级快, 1.2 = 升级慢)
 // ==========================================
