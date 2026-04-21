@@ -144,6 +144,13 @@ import {
   JUTSU_MASTERY_LEVELS, getJutsuMasteryLevel, getJutsuMasteryBonus, calcChakraAffinity,
 } from './data/naruto';
 
+/** 名将奖励型加成展示：领地为固定点数，其余为百分比（与 generals.js 注释一致） */
+const formatGeneralBonusChip = (key, value) => {
+  const n = Number(value) || 0;
+  if (key === 'territory') return `+${n}`;
+  return `+${n}%`;
+};
+
 const normalizeBerriesInventory = (b) => {
   if (b == null) return {};
   if (typeof b === 'number') return b > 0 ? { oran: b } : {};
@@ -18526,7 +18533,7 @@ const renderGeneralDex = () => {
               <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px', padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}>
                 <span style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'100%'}}>名将总加成:</span>
                 {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
-                  <span key={k} style={{fontSize:'11px', fontWeight:'700', color: themeColor, background: themeColor+'18', padding:'3px 8px', borderRadius:'5px'}}>{bonusLabels[k]||k}+{v}%</span>
+                  <span key={k} style={{fontSize:'11px', fontWeight:'700', color: themeColor, background: themeColor+'18', padding:'3px 8px', borderRadius:'5px'}}>{bonusLabels[k]||k}{formatGeneralBonusChip(k, v)}</span>
                 ))}
               </div>
             )}
@@ -20088,6 +20095,25 @@ const renderMenu = () => {
                         </div>
                       </div>
                     )}
+                    {(() => {
+                      const todayStr = getLocalDateStr();
+                      const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
+                      let siegeDone = 0;
+                      CONTESTED_SIEGE_MAP_IDS.forEach((mid) => {
+                        siegeDone += Number((kw.contestProgress || {})[`${mid}_attempts_${todayStr}`]) || 0;
+                      });
+                      const siegeMax = CONTESTED_SIEGE_MAP_IDS.length * 3;
+                      return (
+                        <div style={{ background: 'linear-gradient(135deg, #1e293b, #334155)', borderRadius: '14px', padding: '14px 16px', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '6px' }}>⚔️ 争夺与预备兵</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '11px', opacity: 0.92, lineHeight: 1.55, alignItems: 'center' }}>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>预备兵 {res}/{MANPOWER_RESERVE_CAP}</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>今日名城攻城 {siegeDone}/{siegeMax}</span>
+                            <span style={{ opacity: 0.88 }}>征兵在国战地图；推占领条请在「争夺」攻城</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {/* 三国势力对比 */}
                     <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                       <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>三国势力对比</div>
@@ -20196,7 +20222,7 @@ const renderMenu = () => {
                           <div style={{display:'flex', flexWrap:'wrap', gap:'6px', padding:'8px 10px', background:'#f8fafc', borderRadius:'10px', border:'1px solid #e2e8f0'}}>
                             <span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>总加成:</span>
                             {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
-                              <span key={k} style={{fontSize:'10px', fontWeight:'700', color:myFaction.color, background:myFaction.color+'10', padding:'2px 6px', borderRadius:'4px'}}>{bonusLabels[k]||k}+{v}%</span>
+                              <span key={k} style={{fontSize:'10px', fontWeight:'700', color:myFaction.color, background:myFaction.color+'10', padding:'2px 6px', borderRadius:'4px'}}>{bonusLabels[k]||k}{formatGeneralBonusChip(k, v)}</span>
                             ))}
                           </div>
                         )}
@@ -20244,7 +20270,7 @@ const renderMenu = () => {
                                 </div>
                                 <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'8px'}}>
                                   {Object.entries(gen.bonus||{}).filter(([,v]) => v > 0).map(([k,v]) => (
-                                    <span key={k} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'#f1f5f9', color:'#475569', fontWeight:'600'}}>{bonusLabels[k]||k}+{v}%</span>
+                                    <span key={k} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'#f1f5f9', color:'#475569', fontWeight:'600'}}>{bonusLabels[k]||k}{formatGeneralBonusChip(k, v)}</span>
                                   ))}
                                 </div>
                               </div>
@@ -27861,7 +27887,7 @@ const renderMenu = () => {
                   {Object.entries(gen.bonus||{}).filter(([,v])=>v>0).map(([k,v]) => (
                     <div key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0'}}>
                       <span style={{fontSize:'10px', color:'#64748b'}}>{bonusLabelsD[k]||k}</span>
-                      <span style={{fontSize:'11px', fontWeight:'800', color: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50'}}>+{v}%</span>
+                      <span style={{fontSize:'11px', fontWeight:'800', color: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50'}}>{formatGeneralBonusChip(k, v)}</span>
                     </div>
                   ))}
                 </div>
@@ -27938,7 +27964,7 @@ const renderMenu = () => {
                         <div style={{fontSize:'11px', color:'#9ca3af', marginTop:'2px'}}>{gen.title}</div>
                         <div style={{display:'flex', flexWrap:'wrap', gap:'3px', marginTop:'4px'}}>
                           {Object.entries(gen.bonus || {}).filter(([,v]) => v > 0).map(([k,v]) => (
-                            <span key={k} style={{fontSize:'9px', padding:'1px 4px', borderRadius:'3px', background:'rgba(255,255,255,0.08)', color:'#d1d5db', fontWeight:'600'}}>{bonusLabelsGen[k]||k}+{v}%</span>
+                            <span key={k} style={{fontSize:'9px', padding:'1px 4px', borderRadius:'3px', background:'rgba(255,255,255,0.08)', color:'#d1d5db', fontWeight:'600'}}>{bonusLabelsGen[k]||k}{formatGeneralBonusChip(k, v)}</span>
                           ))}
                         </div>
                       </div>
@@ -27957,7 +27983,7 @@ const renderMenu = () => {
                       <div key={k} style={{display:'flex', alignItems:'center', gap:'6px', background:'rgba(255,255,255,0.04)', borderRadius:'6px', padding:'6px 8px'}}>
                         <span style={{fontSize:'14px'}}>{iconMap[k]||'📊'}</span>
                         <span style={{fontSize:'11px', color:'#aaa', minWidth:'32px'}}>{bonusLabelsGen[k]||k}</span>
-                        <span style={{fontSize:'13px', fontWeight:'bold', color: colorMap[k] || '#fff'}}>+{v}%</span>
+                        <span style={{fontSize:'13px', fontWeight:'bold', color: colorMap[k] || '#fff'}}>{formatGeneralBonusChip(k, v)}</span>
                       </div>
                     );
                   })}

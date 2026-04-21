@@ -52,9 +52,10 @@ const TROOP_WEIGHT = {
 
 const QUN_LEADERS = ['吕布', '袁绍', '董卓残部', '西凉铁骑', '黄巾余党', '汉中张鲁', '南中蛮兵'];
 
+/** 与 generals.js 一致：稀有度为字符串 SSR / SR / R（兼容旧数字 3/2/1） */
 const rarityLeadership = (r) => {
-  if (r >= 3) return 0.11;
-  if (r === 2) return 0.065;
+  if (r === 'SSR' || r === 3) return 0.11;
+  if (r === 'SR' || r === 2) return 0.065;
   return 0.038;
 };
 
