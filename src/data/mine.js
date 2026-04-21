@@ -46,7 +46,7 @@ export const DEFAULT_MINE_STATE = {
   energy: 25,
   maxEnergy: 25,
   lastRegenTime: Date.now(),
-  depth: 0,
+  depth: 1,
   grid: null,
   revealed: [],
   minerals: { copper: 0, silver: 0, gold_ore: 0, jade: 0, stardust: 0, chakra_ore: 0 },

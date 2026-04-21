@@ -161,7 +161,7 @@ const ACHIEVEMENTS = [
   { id: 'gold_50m', cat: 'ECONOMY', rarity: 'LEGENDARY', name: '半亿传说', desc: '累计获得5000万金币', check: s => s.totalGoldEarned >= 50000000, reward: { title: '半亿传说', gold: 200000 } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 12, reward: { title: '精灵大师' } },
   { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴700+全门派+联赛10+全副本+25座塔', check: s => s.dexCount >= 700 && s.sectChiefsDefeated >= 12 && s.leagueWins >= 10 && (s.uniqueDungeonsCleared || 0) >= 8 && s.challengesCompleted >= 25, reward: { title: '真·大师' } },
-  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁约90%全部成就',               check: s => s.achievementCount >= Math.floor(ACHIEVEMENTS.length * 0.9), reward: { title: '传说训练家' } },
+  { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁约90%全部成就',               check: s => s.achievementCount >= Math.floor((ACHIEVEMENTS.length - 1) * 0.9), reward: { title: '传说训练家' } },
 
   // ===== 火影忍者系列成就 (19) =====
   { id: 'ninja_genin',      cat: 'NARUTO', rarity: 'COMMON',    name: '下忍毕业',     desc: '通过第一次中忍考试',            check: s => (s.chuninExams || 0) >= 1,   reward: { gold: 1000 } },

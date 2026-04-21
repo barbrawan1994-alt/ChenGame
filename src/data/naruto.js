@@ -272,7 +272,7 @@ export const JUTSU_DB = [
 
 if (JUTSU_DB.length !== 200) {
   // eslint-disable-next-line no-console
-  console.error('[naruto] JUTSU_DB length mismatch:', JUTSU_DB.length);
+  console.warn('[naruto] JUTSU_DB length:', JUTSU_DB.length, '(expected 200)');
 }
 
 export function getJutsuByNature(nature) {
