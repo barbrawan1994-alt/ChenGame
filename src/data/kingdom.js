@@ -27,6 +27,15 @@ export const FACTIONS = {
     bonus: { gold: 12, exp: 5, catchRate: 3, contribution: 5 },
     bonusDesc: '金币+12%, 经验+5%, 捕获率+3%',
   },
+  /** 玩家不可选；名城争夺条中的 NPC 势力 */
+  qun: {
+    id: 'qun', name: '群雄', fullName: '诸侯群雄', icon: '🏴',
+    color: '#6A1B9A', darkColor: '#4A148C', lightColor: '#BA68C8',
+    lord: '诸侯', motto: '乱世逐鹿',
+    desc: '吕布袁绍等诸侯联军，在洛阳荆州汉中与三国角力，不享受阵营天赋但会分走占领积分。',
+    bonus: { gold: 0, exp: 0, catchRate: 0, contribution: 0 },
+    bonusDesc: '名城争夺 NPC',
+  },
 };
 
 export const FACTION_IDS = ['wei', 'shu', 'wu'];
@@ -158,7 +167,8 @@ export const WAR_TICK_CONFIG = {
   overextendDecayMultiplier: 3,
   playerKillStrengthBonus: 2,
   playerKillAttackBonus: 4,
-  aiAggressionBonus: 1.15,
+  /** 名城(洛阳/荆州/汉中)不在自动 War Tick 中被 AI 易主，仅由「争夺条 + 攻城」结算同步 */
+  aiAggressionBonus: 1.12,
 };
 
 // 默认国战状态
@@ -183,6 +193,8 @@ export const DEFAULT_KINGDOM_WAR = {
   completedHistoricalBattles: [],
   recruitedGenerals: [],
   contestProgress: {},
+  /** 可调配的预备兵力池（征兵增长，攻城消耗） */
+  kwManpowerReserve: 140,
 };
 
 export const initTerritories = () => {
@@ -258,7 +270,9 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
   for (const attackerFid of FACTION_IDS) {
     const targets = WAR_MAP_IDS.filter(mid => {
       const t = newTerritories[mid];
-      return t && t.owner !== attackerFid;
+      if (!t || t.owner === attackerFid) return false;
+      if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
+      return true;
     });
     if (targets.length === 0) continue;
 
