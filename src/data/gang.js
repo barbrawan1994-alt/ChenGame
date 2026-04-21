@@ -25,7 +25,7 @@ export const GANG_PRESETS = [
     id: 'dragon_fang', name: '龙牙会', icon: '🐲', leader: '夏侯惇',
     style: '攻城拔寨', level: 5, power: 3200, desc: '崇尚力量的格斗帮派，攻城略地所向披靡', faction: 'wei',
     color: '#D32F2F',
-    perkDesc: '国战贡献+20%, 金币+4%',
+    perkDesc: '国战贡献+20%, 金币+4%, 经验+2%',
     members: Array.from({length: 12}, (_, i) => ({
       name: WEI_GENERALS[i % WEI_GENERALS.length], level: 40 + i * 3, contribution: 100 + i * 50,
     })),
@@ -49,7 +49,7 @@ export const GANG_PRESETS = [
     id: 'iron_wall', name: '铁壁盟', icon: '🛡️', leader: '曹仁',
     style: '领地防御', level: 6, power: 3500, desc: '固若金汤的防御联盟，领地一旦到手绝不松手', faction: 'wei',
     color: '#455A64',
-    perkDesc: '领地防御+6, 商队收入高',
+    perkDesc: '领地防御+6, 商队收入+1000金/日, 贡献+10%',
     members: Array.from({length: 14}, (_, i) => ({
       name: WEI_GENERALS[(i + 5) % WEI_GENERALS.length], level: 45 + i * 3, contribution: 120 + i * 55,
     })),
@@ -87,7 +87,7 @@ export const GANG_PRESETS = [
     id: 'phoenix_order', name: '凤凰社', icon: '🔥', leader: '诸葛亮',
     style: '后勤支援', level: 5, power: 3000, desc: '以治愈与补给闻名，商队遍布天下', faction: 'shu',
     color: '#E64A19',
-    perkDesc: '商队收入高, 金币+4%',
+    perkDesc: '商队收入+1500金/日, 金币+4%, 领地防御+2',
     members: Array.from({length: 11}, (_, i) => ({
       name: SHU_GENERALS[(i + 5) % SHU_GENERALS.length], level: 38 + i * 3, contribution: 90 + i * 45,
     })),
@@ -161,7 +161,7 @@ export const GANG_PRESETS = [
     id: 'danyang_elite', name: '丹阳精兵', icon: '🗡️', leader: '朱桓',
     style: '全能战士', level: 4, power: 2700, desc: '江东丹阳出精兵，领地攻守兼备', faction: 'wu',
     color: '#AD1457',
-    perkDesc: '领地防御+4, 经验+2%, 金币+2%',
+    perkDesc: '领地防御+4, 经验+2%, 金币+2%, 贡献+10%',
     members: Array.from({length: 9}, (_, i) => ({
       name: WU_GENERALS[(i + 20) % WU_GENERALS.length], level: 34 + i * 3, contribution: 75 + i * 40,
     })),

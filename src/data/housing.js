@@ -295,12 +295,12 @@ export const FURNITURE_SETS = [
 ];
 
 export const HOUSING_SCORE_TIERS = [
-  { minScore: 0,   title: '流浪者',   buff: null },
-  { minScore: 50,  title: '安居者',   buff: { intimacyMult: 1.05 } },
-  { minScore: 150, title: '温馨小窝', buff: { intimacyMult: 1.10, hpRegenBonus: 2 } },
-  { minScore: 300, title: '精灵乐园', buff: { intimacyMult: 1.15, expBonus: 0.05 } },
-  { minScore: 500, title: '豪华庄园', buff: { intimacyMult: 1.20, expBonus: 0.10, allStats: 3 } },
-  { minScore: 1000, title: '传说家园', buff: { intimacyMult: 1.30, expBonus: 0.15, allStats: 5 } },
+  { minScore: 0,   title: '★ 简陋',   buff: null },
+  { minScore: 50,  title: '★★ 温馨',   buff: { intimacyMult: 1.05 } },
+  { minScore: 150, title: '★★★ 精致', buff: { intimacyMult: 1.10, hpRegenBonus: 2 } },
+  { minScore: 300, title: '★★★★ 豪华', buff: { intimacyMult: 1.15, expBonus: 0.05 } },
+  { minScore: 500, title: '★★★★★ 传奇', buff: { intimacyMult: 1.20, expBonus: 0.10, allStats: 3 } },
+  { minScore: 1000, title: '✦ 传说家园', buff: { intimacyMult: 1.30, expBonus: 0.15, allStats: 5 } },
 ];
 
 export const getHousingScoreTier = (score) => {

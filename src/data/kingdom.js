@@ -17,7 +17,7 @@ export const FACTIONS = {
     lord: '刘备', motto: '仁德布天下',
     desc: '以仁德治国的西方王国，注重将士成长与续航能力。',
     bonus: { gold: 5, exp: 12, catchRate: 2, contribution: 5 },
-    bonusDesc: '经验+12%, 金币+5%, 捕获率+2%',
+    bonusDesc: '经验+12%, 金币+5%, 捕获率+2%, 战功+5%',
   },
   wu: {
     id: 'wu', name: '吴', fullName: '吴国', icon: '🏹',
@@ -25,7 +25,7 @@ export const FACTIONS = {
     lord: '孙权', motto: '据江东以观天下',
     desc: '富庶善贾的东方大国，以财力和精准著称。',
     bonus: { gold: 12, exp: 5, catchRate: 3, contribution: 5 },
-    bonusDesc: '金币+12%, 经验+5%, 捕获率+3%',
+    bonusDesc: '金币+12%, 经验+5%, 捕获率+3%, 战功+5%',
   },
   /** 玩家不可选；名城争夺条中的 NPC 势力 */
   qun: {

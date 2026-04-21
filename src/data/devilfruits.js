@@ -125,7 +125,7 @@ export const DEVIL_FRUITS = {
     desc: '身体可以产生爆炸，全技能威力+40%但每回合损失5%HP',
     duration: 3,
     transform: {
-      movePowerBoost: 0.15, selfDotPerTurn: 0.05, atkMult: 1.3,
+      movePowerBoost: 0.40, selfDotPerTurn: 0.05, atkMult: 1.3,
     },
     transformMove: { name: '全身爆破', t: 'FIRE', p: 110, pp: 5, acc: 90, isFruitMove: true },
   },
