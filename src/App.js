@@ -1382,7 +1382,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       }
 
       // 等级差惩罚：敌方等级远超我方当前出战精灵时更难抓
-      const activePetForCatch = battle ? (battle.playerCombatStates?.[battle.activeIdx] || party[0]) : party[0];
+      const activePetForCatch = battle ? (battle.playerCombatStates?.[battle.activeIdx] || party?.[0]) : party?.[0];
       if (activePetForCatch) {
           const lvlDiff = enemy.level - (activePetForCatch.level || 1);
           if (lvlDiff > 20) baseRate *= 0.3;
@@ -1841,11 +1841,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
             chiefBonus = config.stats; 
         }
     }
-    const totalEv = Object.values(evs).reduce((s, v) => s + (v || 0), 0);
+    const totalEv = Object.values(evs).reduce((s, v) => s + Math.max(0, v || 0), 0);
     const evScale = totalEv > 510 ? 510 / totalEv : 1;
     const calc = (base, ivKey, evKey, isHp = false) => {
-        const iv = ivs[ivKey] || 0;
-        const rawEv = Math.min(252, isHp ? Math.max(evs[evKey] || 0, evs.maxHp || 0) : (evs[evKey] || 0));
+        const iv = Math.max(0, ivs[ivKey] || 0);
+        const rawEv = Math.min(252, Math.max(0, isHp ? Math.max(evs[evKey] || 0, evs.maxHp || 0) : (evs[evKey] || 0)));
         const ev = Math.floor(rawEv * evScale);
         
         let val = Math.floor((base + iv) * growth * shinyMod);
@@ -2546,14 +2546,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
             consumed = true;
             msg = `📖 ${pet.name} 学会了 [${tm.name}]!`;
             advanceBounty('learn_tm');
-            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 1) - 1)}}));
+            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 0) - 1)}}));
         } else {
             newMove._tmId = tm.id;
             pet.pendingLearnMove = newMove;
             setParty(newParty);
             setLearningPetIdx(petIdx);
             setPendingMove(newMove);
-            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 1) - 1)}}));
+            setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: Math.max(0, (prev.tms[tm.id] || 0) - 1)}}));
             setUsingItem(null);
             setView('move_forget');
             return;
@@ -2712,9 +2712,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
         } else {
             if (!pet.evs) pet.evs = {};
             if (!pet.evs[item.stat]) pet.evs[item.stat] = 0;
-            pet.evs[item.stat] += item.val;
+            const totalEv = Object.values(pet.evs).reduce((s, v) => s + Math.max(0, v || 0), 0);
+            const maxAdd = Math.min(item.val, 252 - pet.evs[item.stat], 510 - totalEv);
+            if (maxAdd <= 0) { showMapToast('ℹ️', '提示', '该精灵的努力值已经达到上限了！', 2000); return; }
+            pet.evs[item.stat] += maxAdd;
             if (item.stat === 'hp' || item.stat === 'maxHp') {
-              pet.currentHp = Math.min(pet.currentHp + item.val, getStats(pet).maxHp);
+              pet.currentHp = Math.min(pet.currentHp + maxAdd, getStats(pet).maxHp);
             }
             consumed = true;
             msg = `${pet.name} 的能力提升了！`;
@@ -5886,13 +5889,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (ruleEffect === 'halfHp') pet.currentHp = Math.floor(getStats(pet).maxHp * 0.5);
       enemyParty.push(pet);
     }
-    setArenaState(prev => ({...prev, tickets: prev.tickets - 1}));
     const battleOpts = { customParty: enemyParty, trainerName: `${rank.name}段位挑战者`, drop: 500 + ARENA_RANKS.indexOf(rank) * 200, _arenaPlayerParty: arenaPlayerParty };
     if (ruleEffect === 'levelCap50') battleOpts._arenaLevelCap = 50;
     if (ruleEffect === 'halfHp') battleOpts._arenaHalfHp = true;
     if (ruleEffect === 'speedBoost') battleOpts._arenaSpeedBoost = true;
     if (ruleEffect === 'forcedDouble') battleOpts._arenaForceDouble = true;
     if (ruleEffect === 'jutsuBoost') battleOpts._arenaJutsuBoost = true;
+    setArenaState(prev => ({...prev, tickets: prev.tickets - 1}));
     startBattle(battleOpts, 'arena');
   };
 
@@ -9090,7 +9093,9 @@ const useGrowthItem = (petIndex, itemId) => {
         if (currentChapter && currentChapter.mapId === mapId && currentChapter.tasks) {
            const currentTask = currentChapter.tasks.find(t => t.step === storyStep);
            if (currentTask) {
-              newGrid[currentTask.y][currentTask.x] = 99; 
+              if (currentTask.y >= 0 && currentTask.y < newGrid.length && currentTask.x >= 0 && currentTask.x < (newGrid[0]?.length || 0)) {
+                newGrid[currentTask.y][currentTask.x] = 99;
+              }
            }
         }
         setPlayerPos({x: 1, y: 2}); 
@@ -11640,8 +11645,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           })
         ) {
           const halfCost = Math.floor(combo.chakraCost / 2);
+          const otherHalf = combo.chakraCost - halfCost;
           pet0.chakra = Math.max(0, (pet0.chakra || 0) - halfCost);
-          pet1.chakra = Math.max(0, (pet1.chakra || 0) - halfCost);
+          pet1.chakra = Math.max(0, (pet1.chakra || 0) - otherHalf);
           poolChk = Math.max(pet0.chakra || 0, pet1.chakra || 0);
           tempBattle.sharedPlayerChakra = poolChk;
           for (const pIdx of tempBattle.activeIdxs || []) {
@@ -12111,8 +12117,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
       }
 
-      const allEnemiesDead = tempBattle.enemyParty.every(e => e.currentHp <= 0);
-      const allPlayersDead = tempBattle.playerCombatStates.filter((_, i) => i < party.length).every(p => p.currentHp <= 0);
+      const allEnemiesDead = tempBattle.enemyParty.length > 0 && tempBattle.enemyParty.every(e => e.currentHp <= 0);
+      const playerStates = tempBattle.playerCombatStates.filter((_, i) => i < party.length);
+      const allPlayersDead = playerStates.length > 0 && playerStates.every(p => p && p.currentHp <= 0);
 
       if (allPlayersDead) {
         await handleDefeat();
@@ -13904,7 +13911,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 1. 异常状态判定
     if (atkState.status === 'SLP') {
-        atkState.volatiles.sleepTurns = Math.max(0, (atkState.volatiles.sleepTurns || 0) - 1);
+        if (!atkState.volatiles.sleepTurns || atkState.volatiles.sleepTurns <= 0) atkState.volatiles.sleepTurns = 2 + Math.floor(Math.random() * 3);
+        atkState.volatiles.sleepTurns = Math.max(0, atkState.volatiles.sleepTurns - 1);
         if (atkState.volatiles.sleepTurns > 0) {
             addLog(`${attacker.name} 正在熟睡...`);
             _setAnim({ type: 'SLEEP', target: source === 'player' ? 'player' : 'enemy' }); 
@@ -13944,7 +13952,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (Math.random() < 0.33) {
                 addLog(`它在混乱中攻击了自己!`);
                 const confStats = getStats(attacker, atkState.stages, atkState.status);
-                const selfDmg = Math.max(1, Math.floor(((2 * (attacker.level || 1) / 5 + 2) * 40 * confStats.p_atk / (confStats.p_def * 50) + 2)));
+                const selfDmg = Math.max(1, Math.floor(((2 * (attacker.level || 1) / 5 + 2) * 40 * confStats.p_atk / (Math.max(1, confStats.p_def) * 50) + 2)));
             attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
                 if (attacker.currentHp <= 0) {
                   atkState._diedFromConfusion = true;
@@ -17448,7 +17456,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }
       }
       else if (type === 'berry') {
-        if (!BERRIES[id]) return;
+        if (!BERRIES[id]) { setGold(g => g + totalCost); showMapToast('❌', '错误', '无效的树果', 1500); return; }
         setInventory(i => ({ ...i, berries: addBerries(i.berries, id, count) }));
         itemName = BERRIES[id].name;
       }
@@ -24336,12 +24344,12 @@ const renderMenu = () => {
     };
 
     return (
-      <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(10,10,30,0.7)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
+      <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(10,10,30,0.7)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000}}>
         <div style={{width:'880px',maxWidth:'95vw',height:'600px',maxHeight:'90vh',background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',borderRadius:'24px',display:'flex',overflow:'hidden',boxShadow:'0 25px 60px rgba(0,0,0,0.5),0 0 120px rgba(100,100,255,0.08)',border:'1px solid rgba(255,255,255,0.08)'}}>
             {/* 左侧导航 */}
             <div style={{width:'170px',background:'rgba(0,0,0,0.3)',borderRight:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',flexShrink:0}}>
                 <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                    <div style={{fontSize:'18px',fontWeight:'900',color:'#fff',letterSpacing:'2px',marginBottom:'4px'}}>🎒 背包</div>
+                <div style={{fontSize:'18px',fontWeight:'900',color:'#fff',letterSpacing:'2px',marginBottom:'4px'}}>🎒 背包</div>
                     <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>💰 {gold.toLocaleString()} 金币</div>
                     <div style={{display:'flex',gap:'4px',marginTop:'8px',flexWrap:'wrap'}}>
                       {[{k:'count',l:'数量'},{k:'price',l:'价格'},{k:'name',l:'名称'}].map(o => (
@@ -27636,6 +27644,7 @@ const renderMenu = () => {
    
     const finishEvo = () => {
         if (step < 3) return;
+        const newDex = POKEDEX.find(p => p.id === newPet.id);
         
         setParty(prev => {
           const newParty = [...prev];
@@ -27656,7 +27665,8 @@ const renderMenu = () => {
               sectId: oldPet.sectId, sectLevel: oldPet.sectLevel, devilFruit: oldPet.devilFruit,
               diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
               cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
-              customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
+              customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
+              isEvolved: !newDex?.evo, evo: newDex?.evo || null, evoLvl: newDex?.evoLvl || null
             });
             newParty[realIdx].currentHp = getStats(newParty[realIdx]).maxHp;
             return newParty;
@@ -27672,7 +27682,8 @@ const renderMenu = () => {
             sectId: oldPet.sectId, sectLevel: oldPet.sectLevel, devilFruit: oldPet.devilFruit,
             diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
             cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
-            customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove
+            customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
+            isEvolved: !newDex?.evo, evo: newDex?.evo || null, evoLvl: newDex?.evoLvl || null
           });
           newParty[idx].currentHp = getStats(newParty[idx]).maxHp;
           return newParty;

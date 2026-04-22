@@ -12,8 +12,8 @@ function createWindow() {
     height: 800,
     title: "Pokemon RPG Legends",
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+      nodeIntegration: false,
+      contextIsolation: true
     },
     autoHideMenuBar: true // 隐藏菜单栏，更像游戏
   });

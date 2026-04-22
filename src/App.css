@@ -63,7 +63,14 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 button { outline: none; font-family: inherit; cursor: pointer; border: none; }
 button:active { transform: scale(0.96); }
 button:disabled { cursor: not-allowed; opacity: 0.55; filter: grayscale(0.8); }
+button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 4px; }
 button:disabled:active { transform: none; }
+
+.btn-game-primary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-game-secondary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-game-danger:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-game-success:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-back:hover:not(:disabled) { filter: brightness(1.2); transform: translateY(-1px); }
 
 /* 通用全屏面板 */
 .screen {
@@ -1135,7 +1142,7 @@ button:disabled:active { transform: none; }
 .slot-filled { text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .slot-emoji { font-size: 40px; margin-bottom: 5px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
 .slot-name { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
-.slot-lvl { font-size: 9px; color: #aaa; }
+.slot-lvl { font-size: 10px; color: #aaa; }
 
 .fusion-plus { font-size: 30px; color: #aaa; font-weight: bold; }
 
@@ -1684,7 +1691,7 @@ button:disabled:active { transform: none; }
   padding: 8px; border-radius: 8px;
 }
 .stat-pill { display: flex; flex-direction: column; align-items: center; flex: 1; }
-.stat-pill .label { font-size: 9px; color: #888; margin-bottom: 2px; }
+.stat-pill .label { font-size: 10px; color: #888; margin-bottom: 2px; }
 .stat-pill .val { font-size: 12px; color: #ccc; font-weight: bold; }
 
 .skill-desc { font-size: 12px; color: #aaa; line-height: 1.4; }
@@ -2015,13 +2022,14 @@ button:disabled:active { transform: none; }
 }
 
 .log-time {
-  font-size: 9px;
+  font-size: 10px;
   color: #999;
   margin-bottom: 2px;
 }
 .log-msg {
   color: #455A64;
   font-weight: 600;
+  word-break: break-word;
 }
 
 /* ====================
@@ -2234,7 +2242,7 @@ button:disabled:active { transform: none; }
   transform: none !important;
   
   width: auto !important;
-  min-width: 800px !important; /* 详情页宽一点更好看 */
+  min-width: min(800px, 95vw) !important; /* 详情页宽一点更好看，且响应式 */
   max-width: 95vw !important;
   height: auto !important;
   max-height: 90vh !important;
@@ -2431,7 +2439,8 @@ button:disabled:active { transform: none; }
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   
-  width: 400px !important; /* 详情页像卡片一样，窄一点 */
+  width: auto !important;
+  max-width: min(400px, 95vw) !important; /* 详情页像卡片一样，窄一点；与 min-width 规则不冲突 */
   height: auto !important;
   max-height: 85vh !important;
   min-height: 500px !important;
@@ -4588,7 +4597,7 @@ button:active {
   box-shadow: 0 3px 8px rgba(255,152,0,0.35);
 }
 .bld-shop span {
-  font-size: 9px; font-weight: 900; color: #fff;
+  font-size: 10px; font-weight: 900; color: #fff;
   letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
@@ -5036,7 +5045,7 @@ button:active {
 }
 .move-btn-v2::after { display: none !important; }
 .move-btn-v2::before { display: none !important; }
-.move-btn-v2:hover { transform: none !important; }
+.move-btn-v2:hover:not(:disabled) { filter: brightness(1.1); }
 
 @keyframes scaleIn {
   from { transform: scale(0.8); opacity: 0; }
