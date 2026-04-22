@@ -32,17 +32,6 @@
   --water-color: rgba(33, 150, 243, 0.3);
 }
 
-.btn-game {
-  padding: 10px 20px; border-radius: 12px; border: none;
-  font-weight: 700; font-size: 13px; cursor: pointer;
-  transition: all 0.2s ease; letter-spacing: 0.5px;
-}
-.btn-game:active { transform: scale(0.97); }
-.btn-game-primary { background: var(--btn-primary); color: #fff; box-shadow: 0 4px 12px var(--btn-primary-shadow); }
-.btn-game-secondary { background: var(--btn-secondary); color: #ccc; border: 1px solid var(--btn-secondary-border); }
-.btn-game-danger { background: var(--btn-danger); color: #fff; box-shadow: 0 4px 12px var(--btn-danger-shadow); }
-.btn-game-success { background: var(--btn-success); color: #fff; box-shadow: 0 4px 12px var(--btn-success-shadow); }
-
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 input, textarea, .selectable-text, .glass-panel p, .glass-panel span { user-select: text; }
 
@@ -66,10 +55,6 @@ button:disabled { cursor: not-allowed; opacity: 0.55; filter: grayscale(0.8); }
 button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 4px; }
 button:disabled:active { transform: none; }
 
-.btn-game-primary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
-.btn-game-secondary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
-.btn-game-danger:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
-.btn-game-success:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
 .btn-back:hover:not(:disabled) { filter: brightness(1.2); transform: translateY(-1px); }
 
 /* 通用全屏面板 */

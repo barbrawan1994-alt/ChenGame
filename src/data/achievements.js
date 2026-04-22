@@ -164,9 +164,9 @@ const ACHIEVEMENTS = [
   { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁约90%全部成就',               check: s => s.achievementCount >= Math.floor((ACHIEVEMENTS.length - 1) * 0.9), reward: { title: '传说训练家' } },
 
   // ===== 火影忍者系列成就 (19) =====
-  { id: 'ninja_genin',      cat: 'NARUTO', rarity: 'COMMON',    name: '下忍毕业',     desc: '通过第一次中忍考试',            check: s => (s.chuninExams || 0) >= 1,   reward: { gold: 1000 } },
-  { id: 'ninja_chunin',     cat: 'NARUTO', rarity: 'UNCOMMON',  name: '中忍晋级',     desc: '通过3次中忍考试达到中忍段位',    check: s => (s.chuninExams || 0) >= 3,   reward: { gold: 3000 } },
-  { id: 'ninja_jonin',      cat: 'NARUTO', rarity: 'RARE',      name: '上忍之路',     desc: '通过6次中忍考试达到上忍段位',    check: s => (s.chuninExams || 0) >= 6,   reward: { title: '上忍', gold: 5000 } },
+  { id: 'ninja_genin',      cat: 'NARUTO', rarity: 'COMMON',    name: '下忍毕业',     desc: '累计通过2次忍者试炼达到下忍段位',            check: s => (s.chuninExams || 0) >= 2,   reward: { gold: 1000 } },
+  { id: 'ninja_chunin',     cat: 'NARUTO', rarity: 'UNCOMMON',  name: '中忍晋级',     desc: '累计通过5次忍者试炼达到中忍段位',    check: s => (s.chuninExams || 0) >= 5,   reward: { gold: 3000 } },
+  { id: 'ninja_jonin',      cat: 'NARUTO', rarity: 'RARE',      name: '上忍之路',     desc: '累计通过10次忍者试炼达到上忍段位',    check: s => (s.chuninExams || 0) >= 10,   reward: { title: '上忍', gold: 5000 } },
   { id: 'ninja_kage',       cat: 'NARUTO', rarity: 'EPIC',      name: '影之资格',     desc: '通过15次考试达到影级段位',       check: s => (s.chuninExams || 0) >= 15,  reward: { title: '火影', gold: 10000 } },
   { id: 'naruto_story_5', cat: 'NARUTO', rarity: 'UNCOMMON', name: '下忍成长记', desc: '通关火影主线前5章', check: s => s.narutoStoryCleared >= 5, reward: { gold: 5000 } },
   { id: 'naruto_story_10', cat: 'NARUTO', rarity: 'RARE', name: '忍界历练', desc: '通关火影主线前10章', check: s => s.narutoStoryCleared >= 10, reward: { gold: 15000, title: '忍界旅人' } },

@@ -366,7 +366,7 @@ export const GARDEN_PLANTS = [
   { id: 'berry_bush_g', name: '树果灌木',   icon: '🫐', category: 'fruit',  growthMs: 20*60000,  rarity: 'COMMON',    seedPrice: 150,  harvestItem: { type:'berry', id:'berry', count:5 },  desc: '结出美味树果' },
   { id: 'heal_herb',    name: '回复草',     icon: '🌿', category: 'fruit',  growthMs: 40*60000,  rarity: 'COMMON',    seedPrice: 250,  harvestItem: { type:'med', id:'potion', count:3 },   desc: '可制成伤药的药草' },
   { id: 'golden_apple', name: '金苹果树',   icon: '🍎', category: 'fruit',  growthMs: 120*60000, rarity: 'RARE',      seedPrice: 600,  harvestItem: { type:'med', id:'hyper_potion', count:2 }, desc: '结出金色苹果' },
-  { id: 'evo_vine',     name: '进化藤',     icon: '🍇', category: 'fruit',  growthMs: 180*60000, rarity: 'EPIC',      seedPrice: null, harvestItem: { type:'stone', id:null, count:1 },     desc: '结出蕴含进化能量的果实' },
+  { id: 'evo_vine',     name: '进化藤',     icon: '🍇', category: 'fruit',  growthMs: 180*60000, rarity: 'EPIC',      seedPrice: null, harvestItem: { type:'stone', id:'leaf', count:1 },     desc: '结出蕴含进化能量的果实' },
   { id: 'mint',         name: '薄荷',       icon: '🍃', category: 'herb',   growthMs: 10*60000,  rarity: 'COMMON',    seedPrice: 80,   harvestItem: { type:'misc', id:'rebirth_pill', count:1, chance:0.15 }, desc: '清爽的药用植物' },
   { id: 'lucky_clover', name: '四叶草',     icon: '🍀', category: 'herb',   growthMs: 60*60000,  rarity: 'UNCOMMON',  seedPrice: 400,  harvestItem: { type:'candy', id:'exp_candy', count:2 }, desc: '传说能带来好运' },
   { id: 'moonlight_fern', name: '月光蕨',   icon: '🌙', category: 'herb',   growthMs: 120*60000, rarity: 'RARE',      seedPrice: 700,  harvestItem: { type:'growth', id:null, count:1 },    desc: '在月光下发光的蕨类' },
