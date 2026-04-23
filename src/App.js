@@ -1107,8 +1107,8 @@ const [infinityState, setInfinityState] = useState(() => {
       let next = typeof updater === 'function' ? updater(prev) : updater;
       if (!next || !next.playerCombatStates) return next;
 
-      // --- 全队共享能量池：切换精灵时自动继承能量 ---
-      if (prev && prev.playerCombatStates) {
+      // --- 全队共享能量池：切换精灵时自动继承能量（仅单打时触发） ---
+      if (!next.isDouble && prev && prev.playerCombatStates) {
         const prevPI = prev.activeIdx;
         const nextPI = next.activeIdx;
         if (prevPI !== undefined && nextPI !== undefined && prevPI !== nextPI) {
@@ -1125,7 +1125,7 @@ const [infinityState, setInfinityState] = useState(() => {
           next = { ...next, playerCombatStates: states };
         }
       }
-      if (prev && prev.enemyParty) {
+      if (!next.isDouble && prev && prev.enemyParty) {
         const prevEI = prev.enemyActiveIdx;
         const nextEI = next.enemyActiveIdx;
         if (prevEI !== undefined && nextEI !== undefined && prevEI !== nextEI) {
@@ -1195,13 +1195,12 @@ const [infinityState, setInfinityState] = useState(() => {
     const isInputPhase = battle.phase === 'input' || battle.phase === 'double_input_2';
     if (!isInputPhase) return;
     const b = battle;
-    const p = partyRef.current;
     const targetIdx = b.isDouble ? (b.activeIdxs?.[b.doubleSlot ?? 0] ?? b.activeIdx) : b.activeIdx;
     const enemy = b.enemyParty?.[b.isDouble ? (b.enemyActiveIdxs?.[0] ?? b.enemyActiveIdx) : b.enemyActiveIdx];
-    const player = p[targetIdx];
+    const player = b.playerCombatStates?.[targetIdx];
     if (!enemy || !player) return;
     if (enemy.level > player.level - 10) { return; }
-    const moves = b.playerCombatStates?.[targetIdx]?.combatMoves || [];
+    const moves = player.combatMoves || [];
     let bestIdx = 0, bestPow = -1;
     moves.forEach((m, i) => { if (m.pp > 0 && (m.p || 0) > bestPow) { bestPow = m.p || 0; bestIdx = i; }});
     const timer = setTimeout(() => executeTurn(bestIdx), 200);
@@ -11872,7 +11871,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               if (target.type2 || target.secondaryType) score *= getTypeMod(m.t, target.type2 || target.secondaryType);
               const hpRatio = target.currentHp / (getStats(target).maxHp || 1);
               if (hpRatio < 0.3) score += 20;
-              score += (Math.random() * 15);
+              score += (Math.random() * 8);
               if (score > bestScore) { bestScore = score; bestMove = m; chosenTarget = tIdx; }
             }
           }
@@ -11929,7 +11928,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         await performAction(attacker, defender, action.move, side, tempBattle);
 
-        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.10) {
+        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.08) {
           const baseDmg = tempBattle._lastPlayerMoveDmg || 0;
           if (baseDmg > 0) {
             const mateIdx = (tempBattle.activeIdxs || []).find(i => i !== action.petIdx && tempBattle.playerCombatStates?.[i]?.currentHp > 0);
@@ -11939,7 +11938,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               if (!ep || ep.currentHp <= 0) tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
               const tgt = tIdx !== undefined ? tempBattle.enemyParty?.[tIdx] : null;
               if (tgt && tgt.currentHp > 0) {
-                const sync = Math.max(1, Math.floor(baseDmg * 0.35));
+                const sync = Math.max(1, Math.floor(baseDmg * 0.25));
                 tgt.currentHp = Math.max(0, tgt.currentHp - sync);
                 showMapToast('⚡', '协同攻击', '队友追加了一次攻击！', 1500);
                 addLog(`⚡ 协同追击对 ${tgt.name} 造成额外 ${sync} 伤害！`);
@@ -12170,8 +12169,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
 
       const allEnemiesDead = tempBattle.enemyParty.length > 0 && tempBattle.enemyParty.every(e => e.currentHp <= 0);
-      const playerStates = tempBattle.playerCombatStates.filter((_, i) => i < party.length);
-      const allPlayersDead = playerStates.length > 0 && playerStates.every(p => p && p.currentHp <= 0);
+      const allPlayersDead = tempBattle.playerCombatStates.length > 0 && tempBattle.playerCombatStates.every(p => !p || p.currentHp <= 0);
 
       if (allPlayersDead) {
         await handleDefeat();
