@@ -1195,7 +1195,8 @@ const [infinityState, setInfinityState] = useState(() => {
     const isInputPhase = battle.phase === 'input' || battle.phase === 'double_input_2';
     if (!isInputPhase) return;
     const b = battle;
-    const targetIdx = b.isDouble ? (b.activeIdxs?.[b.doubleSlot ?? 0] ?? b.activeIdx) : b.activeIdx;
+    const _dSlot = b.phase === 'double_input_2' ? 1 : 0;
+    const targetIdx = b.isDouble ? (b.activeIdxs?.[_dSlot] ?? b.activeIdx) : b.activeIdx;
     const enemy = b.enemyParty?.[b.isDouble ? (b.enemyActiveIdxs?.[0] ?? b.enemyActiveIdx) : b.enemyActiveIdx];
     const player = b.playerCombatStates?.[targetIdx];
     if (!enemy || !player) return;
@@ -1489,8 +1490,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const useBattleItem = async (itemKey, category) => {
     if (!battle || (battle.phase !== 'input' && !battle.showSwitch)) return;
     try {
-    const targetIdx = battle.isDouble ? (battle.activeIdxs?.[battle.doubleSlot ?? 0] ?? battle.activeIdx) : battle.activeIdx;
-    const p = party[targetIdx];
+    const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
+    const targetIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
+    const p = battle.playerCombatStates?.[targetIdx] || party[targetIdx];
     const pState = battle.playerCombatStates?.[targetIdx];
     if (!p || !pState) return;
     let used = false;
@@ -6558,7 +6560,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const executeBijuuTransform = () => {
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2')) return;
-    const currentIdx = battle.isDouble ? (battle.activeIdxs?.[battle.doubleSlot || 0] ?? battle.activeIdx) : battle.activeIdx;
+    const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
+    const currentIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
     const player = battle.playerCombatStates?.[currentIdx];
     if (!player || !player.bijuuData || player.bijuuUsed || player.bijuuTransformed) {
       showMapToast('❌','无法变身','没有尾兽或已使用过',1500); return;
@@ -11577,7 +11580,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const phase = battle.phase;
     if (phase !== 'input' && phase !== 'double_input_2') return;
 
-    const currentSlot = battle.doubleSlot || 0;
+    const currentSlot = phase === 'double_input_2' ? 1 : 0;
     const currentActiveIdx = battle.activeIdxs?.[currentSlot];
     if (currentActiveIdx === undefined) return;
     const p = battle.playerCombatStates[currentActiveIdx];
@@ -12268,7 +12271,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const executeChargeCE = async () => {
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2')) return;
     if (battle.isDouble) {
-      const currentSlot = battle.doubleSlot || 0;
+      const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
       const currentIdx = battle.activeIdxs?.[currentSlot];
       if (currentIdx === undefined) return;
       const ceAmt = CURSED_ENERGY_CONFIG.chargeAction;
@@ -12883,8 +12886,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const executeDomainExpansion = async () => {
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2')) return;
+    const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
     const domainIdx = battle.isDouble
-      ? (battle.activeIdxs?.[battle.doubleSlot || 0] ?? battle.activeIdx)
+      ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx)
       : battle.activeIdx;
     const state = battle.playerCombatStates[domainIdx];
     const domainDef = DOMAINS[state.domainType];
@@ -12921,7 +12925,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }));
         await wait(500);
         if (battle.isDouble) {
-          const currentSlot = battle.doubleSlot || 0;
+          const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
           const domainAction = { moveIdx: -3, activeIdx: domainIdx, isDomain: true };
           const newActions = [...(battle.doubleActions || [])];
           newActions[currentSlot] = domainAction;
@@ -12950,7 +12954,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2')) return;
     const vow = BINDING_VOWS.find(v => v.id === vowId);
     if (!vow) return;
-    const vowIdx = battle.isDouble ? (battle.activeIdxs?.[battle.doubleSlot || 0] ?? battle.activeIdx) : battle.activeIdx;
+    const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
+    const vowIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
 
     setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
     try {
@@ -13005,7 +13010,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }));
         await wait(500);
         if (battle.isDouble) {
-          const currentSlot = battle.doubleSlot || 0;
+          const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
           const vowAction = { moveIdx: -4, activeIdx: vowIdx, isVow: true };
           const newActions = [...(battle.doubleActions || [])];
           newActions[currentSlot] = vowAction;
@@ -13033,8 +13038,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const executeDevilFruit = async (side = 'player', battleStateOverride = null) => {
     if (side === 'player' && (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2'))) return;
     const tempBattle = battleStateOverride || _.cloneDeep(battle);
+    const _dSlot = (battle?.phase === 'double_input_2') ? 1 : 0;
     const playerIdx = tempBattle.isDouble && side === 'player'
-      ? (tempBattle.activeIdxs?.[tempBattle.doubleSlot || 0] ?? tempBattle.activeIdx)
+      ? (tempBattle.activeIdxs?.[_dSlot] ?? tempBattle.activeIdx)
       : tempBattle.activeIdx;
     const unit = side === 'player'
       ? tempBattle.playerCombatStates[playerIdx]
@@ -13094,7 +13100,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }));
       await wait(500);
       if (battle.isDouble) {
-        const currentSlot = battle.doubleSlot || 0;
+        const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
         const fruitAction = { moveIdx: -5, activeIdx: playerIdx, isFruit: true };
         const newActions = [...(battle.doubleActions || [])];
         newActions[currentSlot] = fruitAction;
@@ -24887,7 +24893,7 @@ const renderMenu = () => {
     const e2 = isDoubleBattle && battle.enemyActiveIdxs?.[1] >= 0 ? battle.enemyParty?.[battle.enemyActiveIdxs[1]] : null;
     const p2Stats = p2 ? getStats(p2) : null;
     const e2Stats = e2 ? getStats(e2) : null;
-    const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.doubleSlot || 0]] : null;
+    const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.phase === 'double_input_2' ? 1 : 0]] : null;
 
     const renderBattleStageRow = (pet, slotInParty) => {
       if (!pet) return null;
