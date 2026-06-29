@@ -402,24 +402,6 @@ const inferCompletedSideStories = (storyProg) => {
   return SIDE_STORY_LINES.filter(s => storyProg > s.endIdx).map(s => s.id);
 };
 
-/** 每日登录 streak 奖励表（与登录检测 useEffect 共用，供弹窗「明日预告」使用） */
-const DAILY_LOGIN_DAY_REWARDS = [
-  { gold: 500, desc: '💰 500金币' },
-  { gold: 800, desc: '💰 800金币' },
-  { gold: 1200, desc: '💰 1200金币' },
-  { gold: 1500, berries: 5, desc: '💰 1500金币 + 🍒 5树果' },
-  { gold: 2000, berries: 8, desc: '💰 2000金币 + 🍒 8树果' },
-  { gold: 3000, meds: true, desc: '💰 3000金币 + 🧪 超级药水×3' },
-  { gold: 5000, meds: true, berries: 15, desc: '💰 5000金币 + 🧪 超级药水×5 + 🍒 15树果' },
-  { gold: 6000, berries: 20, desc: '💰 6000金币 + 🍒 20树果' },
-  { gold: 7000, meds: true, desc: '💰 7000金币 + 🧪 超级药水×5' },
-  { gold: 8000, berries: 25, desc: '💰 8000金币 + 🍒 25树果' },
-  { gold: 9000, meds: true, desc: '💰 9000金币 + 🧪 超级药水×8' },
-  { gold: 10000, berries: 30, desc: '💰 10000金币 + 🍒 30树果' },
-  { gold: 12000, meds: true, berries: 30, desc: '💰 12000金币 + 🧪 超级药水×5 + 🍒 30树果' },
-  { gold: 15000, hyperPotions: 10, berries: 50, expCandy: 1, desc: '💰 15000金币 + 🧪 高级药水×10 + 🍒 50树果 + ⭐ 经验糖果' },
-];
-
 export default function RPG(props) {
   // =================================================================
   // 🔥 [核心修复 1] 启动瞬间同步读取存档 (防止存档“丢失”)
@@ -569,9 +551,6 @@ export default function RPG(props) {
   const [genDexDetail, setGenDexDetail] = useState(null);
   const [generalDrawResult, setGeneralDrawResult] = useState(null);
 
-  // 每日登录
-  const [dailyLogin, setDailyLogin] = useState(savedData.dailyLogin || { lastDate: '', streak: 0, totalDays: 0 });
-  const [showDailyReward, setShowDailyReward] = useState(null);
   const [dailyChallenge, setDailyChallenge] = useState(savedData.dailyChallenge || null);
 
   // 成就系统
@@ -1203,30 +1182,16 @@ const [infinityState, setInfinityState] = useState(() => {
     if (enemy.level > player.level - 10) { return; }
     const moves = player.combatMoves || [];
     let bestIdx = 0, bestPow = -1;
-    moves.forEach((m, i) => { if (m.pp > 0 && (m.p || 0) > bestPow) { bestPow = m.p || 0; bestIdx = i; }});
-    const timer = setTimeout(() => executeTurn(bestIdx), 200);
+    moves.forEach((m, i) => {
+      if (canUseCombatMove(b, player, m, 'player') && (m.p || 0) > bestPow) {
+        bestPow = m.p || 0;
+        bestIdx = i;
+      }
+    });
+    if (bestPow < 0) return;
+    const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx) : executeTurn(bestIdx), 200);
     return () => clearTimeout(timer);
   }, [autoBattle, battle?.phase, battle?.activeIdx, battle?.enemyActiveIdx, battle?.doubleSlot, battle?.isDouble]); // eslint-disable-line
-
-  // 每日登录奖励检测
-  useEffect(() => {
-    if (!trainerName || party.length === 0) return;
-    const today = getLocalDateStr();
-    if (dailyLogin.lastDate === today) return;
-    const yesterday = getLocalDateStr(new Date(Date.now() - 86400000));
-    const isConsecutive = dailyLogin.lastDate === yesterday;
-    const newStreak = isConsecutive ? dailyLogin.streak + 1 : 1;
-    const newTotal = (dailyLogin.totalDays || 0) + 1;
-    const reward = DAILY_LOGIN_DAY_REWARDS[Math.min(newStreak - 1, DAILY_LOGIN_DAY_REWARDS.length - 1)];
-    setGold(g => g + reward.gold);
-    updateAchStat({ totalGoldEarned: reward.gold });
-    if (reward.berries) setInventory(inv => ({...inv, berries: addBerries(inv.berries, 'oran', reward.berries)}));
-    if (reward.hyperPotions) setInventory(inv => ({...inv, meds: {...(inv.meds||{}), hyper_potion: ((inv.meds||{}).hyper_potion||0) + reward.hyperPotions}}));
-    if (reward.expCandy) setInventory(inv => ({...inv, exp_candy: (inv.exp_candy || 0) + reward.expCandy}));
-    if (reward.meds) setInventory(inv => ({...inv, meds: {...(inv.meds||{}), super_potion: ((inv.meds||{}).super_potion||0) + (newStreak >= 7 ? 5 : 3)}}));
-    setShowDailyReward({ streak: newStreak, desc: reward.desc, total: newTotal });
-    setDailyLogin({ lastDate: today, streak: newStreak, totalDays: newTotal });
-  }, [trainerName, party.length]); // eslint-disable-line
 
   const battleResultHandledRef = useRef(false);
   const pendingJutsuWinForBountyRef = useRef(false);
@@ -1493,6 +1458,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
     const targetIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
     let workingBattle = _.cloneDeep(battle);
+    const itemTargetEnemyIdx = battle.isDouble
+      ? (battle.targetIdx ?? battle.enemyActiveIdxs?.find(idx => battle.enemyParty?.[idx]?.currentHp > 0) ?? battle.enemyActiveIdx)
+      : battle.enemyActiveIdx;
     const p = workingBattle.playerCombatStates?.[targetIdx] || party[targetIdx];
     const pState = workingBattle.playerCombatStates?.[targetIdx];
     if (!p || !pState) return;
@@ -1719,10 +1687,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
           used = true;
         } else { addLog("⚠️ 当前没有敌方领域！"); return; }
       } else if (cItem.type === 'SEAL') {
-        const enemy = workingBattle.enemyParty?.[workingBattle.enemyActiveIdx];
+        const enemy = workingBattle.enemyParty?.[itemTargetEnemyIdx];
         if (enemy && !workingBattle.isBoss) {
           if (Math.random() < cItem.val) {
-            workingBattle.enemyParty[workingBattle.enemyActiveIdx] = { ...enemy, currentHp: 0 };
+            workingBattle.enemyParty[itemTargetEnemyIdx] = { ...enemy, currentHp: 0 };
             logMsg = `使用了 ${cItem.name}，成功封印了 ${enemy.name}!`;
             used = true;
           } else {
@@ -1752,12 +1720,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
         setAnimEffect({ type: 'HEAL', target: 'player' });
         await wait(800);
         setAnimEffect(null);
-        const sealedEnemy = workingBattle.enemyParty?.[workingBattle.enemyActiveIdx];
+        const sealedEnemy = workingBattle.enemyParty?.[itemTargetEnemyIdx];
         if (sealedEnemy && sealedEnemy.currentHp <= 0) {
           const { newParty, logMsg: winLog } = processDefeatedEnemy(sealedEnemy, party, workingBattle);
           setParty(newParty);
           addLog(winLog);
-          const nextEnemyIdx = workingBattle.enemyParty.findIndex((p, i) => i > workingBattle.enemyActiveIdx && p.currentHp > 0);
+          const nextEnemyIdx = workingBattle.enemyParty.findIndex((p) => p.currentHp > 0);
           if (nextEnemyIdx !== -1) {
             setBattle(prev => prev ? ({
               ...prev,
@@ -1883,6 +1851,32 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const configuredPct = Number.isFinite(config.initialPercent) ? config.initialPercent : 0;
     const pct = configuredPct > 0 ? configuredPct : 0.25;
     return Math.max(0, Math.min(maxValue || 0, Math.floor((maxValue || 0) * pct)));
+  };
+
+  const getBattleResourceValue = (battleState, unit, source, kind) => {
+    const isPlayerSide = source === 'player';
+    if (kind === 'ce') {
+      const sharedMax = isPlayerSide ? battleState?.sharedPlayerMaxCE : battleState?.sharedEnemyMaxCE;
+      if ((sharedMax || 0) > 0) return isPlayerSide ? (battleState?.sharedPlayerCE || 0) : (battleState?.sharedEnemyCE || 0);
+      return unit?.cursedEnergy || 0;
+    }
+    const sharedMax = isPlayerSide ? battleState?.sharedPlayerMaxChakra : battleState?.sharedEnemyMaxChakra;
+    if ((sharedMax || 0) > 0) return isPlayerSide ? (battleState?.sharedPlayerChakra || 0) : (battleState?.sharedEnemyChakra || 0);
+    return unit?.chakra || 0;
+  };
+
+  const canUseCombatMove = (battleState, unit, move, source = 'player') => {
+    if (!move) return false;
+    if (move.isCursed) {
+      return getBattleResourceValue(battleState, unit, source, 'ce') >= (move.ceCost || 0)
+        && !((unit?.cursedCooldowns?.[move.id || move.name] || 0) > 0);
+    }
+    if (move.isJutsu) {
+      return getBattleResourceValue(battleState, unit, source, 'chakra') >= (move.chakraCost || 0)
+        && (move.pp === undefined || move.pp > 0)
+        && !((unit?.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0);
+    }
+    return (move.pp || 0) > 0;
   };
 
   // [核心] 属性计算函数 (含特性修正)
@@ -3219,7 +3213,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     unlockedAchs, storyProgress, storyStep, sanguoProgress, sanguoStep,
     completedSideStories: [...completedSideStories], activeSideStory,
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
-    kingdomWar, dungeonCooldowns, activityRecords, dailyLogin, dailyChallenge, autoBattle,
+    kingdomWar, dungeonCooldowns, activityRecords, dailyChallenge, autoBattle,
     infinityBestFloor: infinityState?.bestFloor || 0,
     infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null } : null,
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
@@ -7403,7 +7397,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const affinity = calcChakraAffinity(mastery);
     const ninjaRkCodex = getNinjaRank(narutoState.examsCompleted || 0);
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#0a0a1a,#1a1a2e,#0a0a1a)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen jutsu-codex-screen" style={{background:'linear-gradient(135deg,#0a0a1a,#1a1a2e,#0a0a1a)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'16px 20px',background:'rgba(0,0,0,0.4)',borderBottom:'1px solid rgba(255,152,0,0.15)',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{padding:'6px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.05)',color:'#aaa',fontSize:'12px',cursor:'pointer'}}>⬅ 返回</button>
           <div style={{fontSize:'16px',fontWeight:'900',letterSpacing:'2px',background:'linear-gradient(90deg,#FF6F00,#FFB74D)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>📖 忍术图鉴</div>
@@ -7413,50 +7407,53 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           <button type="button" onClick={()=>setJutsuCodexTab('jutsu')} style={{flex:1,padding:'10px',border:'none',background:'transparent',color:jutsuCodexTab==='jutsu'?'#FFB74D':'rgba(255,255,255,0.4)',fontSize:'13px',fontWeight:'700',cursor:'pointer',borderBottom:jutsuCodexTab==='jutsu'?'2px solid #FF6F00':'2px solid transparent'}}>📖 忍术图鉴 ({JUTSU_DB.length})</button>
           <button type="button" onClick={()=>setJutsuCodexTab('combo')} style={{flex:1,padding:'10px',border:'none',background:'transparent',color:jutsuCodexTab==='combo'?'#CE93D8':'rgba(255,255,255,0.4)',fontSize:'13px',fontWeight:'700',cursor:'pointer',borderBottom:jutsuCodexTab==='combo'?'2px solid #9C27B0':'2px solid transparent'}}>🌀 组合忍术 ({COMBO_JUTSU_LIST.length})</button>
         </div>
-        {jutsuCodexTab === 'jutsu' && (<>
-        {affinity && <div style={{padding:'8px 20px',background:'rgba(255,111,0,0.06)',borderBottom:'1px solid rgba(255,111,0,0.1)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-          <span style={{fontSize:'11px',color:'#FFB74D'}}>查克拉亲和: {CHAKRA_NATURE_MAP[affinity]?.icon} {CHAKRA_NATURE_MAP[affinity]?.name}</span>
-        </div>}
-        <div style={{padding:'6px 16px',display:'flex',gap:'8px',flexShrink:0,borderBottom:'1px solid rgba(255,255,255,0.04)',flexWrap:'wrap'}}>
-          {(() => { const natureStats = {}; const rankStats = {}; JUTSU_DB.forEach(j => { const n = j.nature || 'NONE'; natureStats[n] = (natureStats[n]||0)+1; rankStats[j.rank] = (rankStats[j.rank]||0)+1; }); const collected = (narutoState?.jutsuCollection||[]).length; return <>
-            <span style={{fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>收集 {collected}/{JUTSU_DB.length}</span>
-            {allRanks.filter(r=>r!=='ALL').map(r=> <span key={r} style={{fontSize:'10px',color:rankColors[r]||'#888',fontWeight:'600'}}>{r}:{rankStats[r]||0}</span>)}
-            <span style={{fontSize:'10px',color:'rgba(255,255,255,0.25)'}}>|</span>
-            {CHAKRA_CONFIG.natureTypes.slice(0,5).map(n=> <span key={n} style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>{CHAKRA_NATURE_MAP[n]?.icon}{natureStats[n]||0}</span>)}
-          </>; })()}
-        </div>
-        <div style={{padding:'8px 16px',flexShrink:0,borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-          <input type="text" placeholder="🔍 搜索忍术名称或描述..." value={fSearch} onChange={e=>setJutsuCodexFilter(p=>({...p,search:e.target.value}))} style={{width:'100%',padding:'8px 12px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.03)',color:'#fff',fontSize:'12px',outline:'none',boxSizing:'border-box'}} />
-        </div>
-        <div style={{padding:'8px 16px',display:'flex',gap:'6px',flexWrap:'wrap',flexShrink:0,borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-          {allNatures.map(n => (
-            <button key={n.id} onClick={()=>setJutsuCodexFilter(p=>({...p,nature:n.id}))} style={{padding:'4px 10px',borderRadius:'12px',border:'none',fontSize:'11px',fontWeight:'700',cursor:'pointer',background:fNature===n.id?'rgba(255,111,0,0.2)':'rgba(255,255,255,0.04)',color:fNature===n.id?'#FFB74D':'rgba(255,255,255,0.4)'}}>{n.icon} {n.name}</button>
-          ))}
-        </div>
-        <div style={{padding:'6px 16px',display:'flex',gap:'6px',flexShrink:0,flexWrap:'wrap',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-          {allRanks.map(r => (
-            <button key={r} onClick={()=>setJutsuCodexFilter(p=>({...p,rank:r}))} style={{padding:'4px 12px',borderRadius:'10px',border:'none',fontSize:'11px',fontWeight:'800',cursor:'pointer',background:fRank===r?(rankColors[r]||'rgba(255,255,255,0.15)')+'33':'rgba(255,255,255,0.04)',color:fRank===r?(rankColors[r]||'#fff'):'rgba(255,255,255,0.4)'}}>{r === 'ALL' ? '全部' : r}</button>
-          ))}
-          <div style={{flex:1}}/>
-          {allCats.map(c => (
-            <button key={c.id} onClick={()=>setJutsuCodexFilter(p=>({...p,cat:c.id}))} style={{padding:'4px 10px',borderRadius:'10px',border:'none',fontSize:'11px',fontWeight:'700',cursor:'pointer',background:fCat===c.id?'rgba(100,181,246,0.15)':'rgba(255,255,255,0.04)',color:fCat===c.id?'#64B5F6':'rgba(255,255,255,0.4)'}}>{c.name}</button>
-          ))}
-        </div>
-        <div style={{padding:'6px 16px',display:'flex',gap:'6px',flexShrink:0,borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-          {allTags.map(t => (
-            <button key={t.id} onClick={()=>setJutsuCodexFilter(p=>({...p,tag:p.tag===t.id?'ALL':t.id}))} style={{padding:'4px 10px',borderRadius:'10px',border:'none',fontSize:'11px',fontWeight:'700',cursor:'pointer',background:fTag===t.id?'rgba(156,39,176,0.15)':'rgba(255,255,255,0.04)',color:fTag===t.id?'#CE93D8':'rgba(255,255,255,0.4)'}}>{t.name}</button>
-          ))}
-        </div>
-        <div style={{flex:1,overflow:'auto',padding:'12px 16px'}}>
-          <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+        {jutsuCodexTab === 'jutsu' && (<div className="jutsu-codex-body">
+          <aside className="jutsu-codex-filter">
+            <div className="jutsu-filter-title">筛选卷轴</div>
+            {affinity && <div className="jutsu-affinity-pill">查克拉亲和: {CHAKRA_NATURE_MAP[affinity]?.icon} {CHAKRA_NATURE_MAP[affinity]?.name}</div>}
+            {(() => { const natureStats = {}; const rankStats = {}; JUTSU_DB.forEach(j => { const n = j.nature || 'NONE'; natureStats[n] = (natureStats[n]||0)+1; rankStats[j.rank] = (rankStats[j.rank]||0)+1; }); const collected = (narutoState?.jutsuCollection||[]).length; return (
+              <div className="jutsu-stat-panel">
+                <div><span>收集</span><strong>{collected}/{JUTSU_DB.length}</strong></div>
+                <div className="jutsu-stat-ranks">{allRanks.filter(r=>r!=='ALL').map(r=> <span key={r} style={{color:rankColors[r]||'#888'}}>{r}:{rankStats[r]||0}</span>)}</div>
+                <div className="jutsu-stat-natures">{CHAKRA_CONFIG.natureTypes.slice(0,5).map(n=> <span key={n}>{CHAKRA_NATURE_MAP[n]?.icon}{natureStats[n]||0}</span>)}</div>
+              </div>
+            ); })()}
+            <input className="jutsu-search-input" type="text" placeholder="搜索忍术名称或描述..." value={fSearch} onChange={e=>setJutsuCodexFilter(p=>({...p,search:e.target.value}))} />
+            <div className="jutsu-filter-group">
+              <div className="jutsu-filter-label">性质</div>
+              <div className="jutsu-chip-row">{allNatures.map(n => (
+                <button key={n.id} className={`jutsu-chip ${fNature===n.id?'active':''}`} onClick={()=>setJutsuCodexFilter(p=>({...p,nature:n.id}))}>{n.icon} {n.name}</button>
+              ))}</div>
+            </div>
+            <div className="jutsu-filter-group">
+              <div className="jutsu-filter-label">段位</div>
+              <div className="jutsu-chip-row">{allRanks.map(r => (
+                <button key={r} className={`jutsu-chip rank-chip ${fRank===r?'active':''}`} onClick={()=>setJutsuCodexFilter(p=>({...p,rank:r}))} style={fRank===r ? {borderColor:rankColors[r]||'rgba(255,255,255,0.2)',color:rankColors[r]||'#fff'} : undefined}>{r === 'ALL' ? '全部' : r}</button>
+              ))}</div>
+            </div>
+            <div className="jutsu-filter-group">
+              <div className="jutsu-filter-label">类型</div>
+              <div className="jutsu-chip-row">{allCats.map(c => (
+                <button key={c.id} className={`jutsu-chip blue ${fCat===c.id?'active':''}`} onClick={()=>setJutsuCodexFilter(p=>({...p,cat:c.id}))}>{c.name}</button>
+              ))}</div>
+            </div>
+            <div className="jutsu-filter-group">
+              <div className="jutsu-filter-label">标签</div>
+              <div className="jutsu-chip-row">{allTags.map(t => (
+                <button key={t.id} className={`jutsu-chip purple ${fTag===t.id?'active':''}`} onClick={()=>setJutsuCodexFilter(p=>({...p,tag:p.tag===t.id?'ALL':t.id}))}>{t.name}</button>
+              ))}</div>
+            </div>
+          </aside>
+          <div className="jutsu-codex-results">
+            <div className="jutsu-codex-grid">
             {filtered.map(j => {
               const natureInfo = j.nature ? CHAKRA_NATURE_MAP[j.nature] : null;
               const mLevel = getJutsuMasteryLevel(mastery[j.id] || 0);
               const uses = mastery[j.id] || 0;
               const nextLevel = JUTSU_MASTERY_LEVELS.find(l => l.minUses > uses);
               return (
-                <div key={j.id} style={{padding:'12px 14px',borderRadius:'12px',background:'rgba(255,255,255,0.03)',border:`1px solid ${j.isKekkei?'rgba(156,39,176,0.25)':j.isSpecial?'rgba(255,193,7,0.2)':'rgba(255,255,255,0.06)'}`,position:'relative'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}}>
+                <div key={j.id} className={`jutsu-card ${j.isKekkei?'kekkei':''} ${j.isSpecial?'special':''}`} style={{'--rank-color':rankColors[j.rank]||'#666','--nature-color':natureInfo?.color||rankColors[j.rank]||'#FF8F00'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
                     <span style={{fontSize:'11px',padding:'2px 6px',borderRadius:'4px',background:(rankColors[j.rank]||'#666')+'22',color:rankColors[j.rank]||'#aaa',fontWeight:'800'}}>{j.rank}</span>
                     {natureInfo && <span style={{fontSize:'12px'}}>{natureInfo.icon}</span>}
                     <span style={{fontSize:'13px',fontWeight:'800',flex:1}}>{j.name}</span>
@@ -7464,8 +7461,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     {j.isKekkei && <span style={{fontSize:'9px',padding:'1px 5px',borderRadius:'3px',background:'rgba(156,39,176,0.15)',color:'#CE93D8'}}>血继</span>}
                     {j.isSpecial && <span style={{fontSize:'9px',padding:'1px 5px',borderRadius:'3px',background:'rgba(255,193,7,0.15)',color:'#FFD54F'}}>特殊</span>}
                   </div>
-                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'6px'}}>{j.desc}</div>
-                  <div style={{display:'flex',gap:'12px',fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>
+                  <div className="jutsu-card-desc">{j.desc}</div>
+                  <div className="jutsu-mini-stats">
                     {j.p > 0 && <span>威力 <span style={{color:'#FF8A80',fontWeight:'700'}}>{j.p}</span></span>}
                     <span>PP <span style={{fontWeight:'700'}}>{j.pp}</span></span>
                     <span>查克拉 <span style={{color:'#64B5F6',fontWeight:'700'}}>{j.chakraCost}</span></span>
@@ -7475,7 +7472,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     {j.effect?.type === 'BUFF' && <span style={{color:'#64B5F6'}}>+{j.effect.val} {j.effect.stat}</span>}
                     {j.effect?.type === 'DEBUFF' && <span style={{color:'#EF9A9A'}}>-{j.effect.val} {j.effect.stat}</span>}
                   </div>
-                  <div style={{display:'flex',alignItems:'center',gap:'6px',marginTop:'6px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'6px',marginTop:'10px'}}>
                     <span style={{fontSize:'10px'}}>{mLevel.icon}</span>
                     <span style={{fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>{mLevel.name}</span>
                     {uses > 0 && <span style={{fontSize:'9px',color:'rgba(255,255,255,0.25)'}}>使用{uses}次</span>}
@@ -7487,14 +7484,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 </div>
               );
             })}
-            {filtered.length === 0 && <div style={{textAlign:'center',padding:'40px',color:'rgba(255,255,255,0.3)',fontSize:'14px'}}>暂无匹配的忍术</div>}
+            {filtered.length === 0 && <div className="jutsu-empty-state">暂无匹配的忍术</div>}
+            </div>
           </div>
-        </div>
-        </>)}
+        </div>)}
         {jutsuCodexTab === 'combo' && (
-          <div style={{flex:1,overflow:'auto',padding:'12px 16px'}}>
-            <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',marginBottom:'12px',lineHeight:1.5}}>当前忍者段位：{ninjaRkCodex.icon} {ninjaRkCodex.name} · 双打战斗中可发动（需场上两只出战精灵满足配方与查克拉）</div>
-            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+          <div className="jutsu-codex-results">
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',marginBottom:'12px',lineHeight:1.5,maxWidth:'1280px',marginLeft:'auto',marginRight:'auto'}}>当前忍者段位：{ninjaRkCodex.icon} {ninjaRkCodex.name} · 双打战斗中可发动（需场上两只出战精灵满足配方与查克拉）</div>
+            <div className="jutsu-codex-grid combo-grid">
               {COMBO_JUTSU_LIST.map((combo) => {
                 const rankOk = ninjaRankAtLeast(ninjaRkCodex.id, combo.minRank);
                 const partyOk = partyMatchesComboNatures(party, combo.natures);
@@ -7504,7 +7501,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 if (!rankOk) cond.push(`段位≥「${needRankName}」`);
                 if (!partyOk) cond.push('队伍内需有精灵持有配方所需性质忍术（同性质需不同精灵）');
                 return (
-                  <div key={combo.id} style={{ padding: '12px', marginBottom: '2px', borderRadius: '14px', background: unlocked ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.05)', border: unlocked ? '1px solid rgba(76,175,80,0.35)' : '1px solid rgba(255,255,255,0.08)', opacity: unlocked ? 1 : 0.85 }}>
+                  <div key={combo.id} className={`jutsu-card combo-card ${unlocked ? 'unlocked' : 'locked'}`}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                       <div style={{ fontSize: '26px', lineHeight: 1 }}>{combo.icon}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -11420,11 +11417,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!player || !enemy || enemy.currentHp <= 0 || player.currentHp <= 0) return null;
     const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
     const rawMoves = enemy.combatMoves || enemy.moves || [];
-    const movesWithPP = rawMoves.filter(m => {
-      if (m.isCursed) return (enemy.cursedEnergy || 0) >= (m.ceCost || 0) && !((enemy.cursedCooldowns?.[m.id || m.name] || 0) > 0);
-      if (m.isJutsu) return (enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0 && !((enemy.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
-      return m.pp > 0;
-    });
+    const movesWithPP = rawMoves.filter(m => canUseCombatMove(state, enemy, m, 'enemy'));
     const smartMoves = movesWithPP.filter(m => {
       if (m.p > 0) return true;
       if (m.effect) {
@@ -11486,9 +11479,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const normalMoves = (tempPlayerState.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
         const allNormalPPZero = normalMoves.length === 0 || normalMoves.every(m => m.pp <= 0);
         const cursedMoves = (tempPlayerState.combatMoves || []).filter(m => m.isCursed);
-        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => (tempPlayerState.cursedEnergy || 0) < (m.ceCost || 0) || (tempPlayerState.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
         const jutsuMoves = (tempPlayerState.combatMoves || []).filter(m => m.isJutsu);
-        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => (tempPlayerState.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (tempPlayerState.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
         const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable;
         let useStruggle = false;
         if (!move && !allMovesExhausted) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
@@ -11607,7 +11600,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const currentEnemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
           if (!currentEnemy) { syncBattleState({ phase: 'input' }); return; }
           enemyDied = await performAction(player, currentEnemy, actualMove, 'player', tempBattle);
-          syncBattleState({ phase: 'input', turnCount: tempBattle.turnCount || 0, enemyActiveIdx: tempBattle.enemyActiveIdx });
+          syncBattleState({ phase: 'input', enemyActiveIdx: tempBattle.enemyActiveIdx });
           {
             const pcs = tempBattle.playerCombatStates[tempBattle.activeIdx];
             playerDiedFromSelfDmg = !!(pcs && (pcs.currentHp <= 0 || pcs._diedFromDot || pcs._diedFromConfusion));
@@ -11949,9 +11942,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const normD = (pet.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
         const allNormEmptyD = normD.length === 0 || normD.every(m => m.pp <= 0);
         const curseD = (pet.combatMoves || []).filter(m => m.isCursed);
-        const allCurseBadD = curseD.length === 0 || curseD.every(m => poolCE < (m.ceCost || 0) || (pet.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+        const allCurseBadD = curseD.length === 0 || curseD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
         const jutsuD = (pet.combatMoves || []).filter(m => m.isJutsu);
-        const allJutsuBadD = jutsuD.length === 0 || jutsuD.every(m => (pet.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (pet.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+        const allJutsuBadD = jutsuD.length === 0 || jutsuD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
         const allExD = allNormEmptyD && allCurseBadD && allJutsuBadD;
         if (allExD || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
           move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } };
@@ -11966,11 +11959,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       (tempBattle.enemyActiveIdxs || []).forEach((eIdx, slotIdx) => {
         const enemy = tempBattle.enemyParty?.[eIdx];
         if (!enemy || enemy.currentHp <= 0) return;
-        let availMoves = (enemy.combatMoves || []).filter(m => {
-          if (m.isCursed) return (enemy.cursedEnergy || 0) >= (m.ceCost || 0) && !((enemy.cursedCooldowns?.[m.id || m.name] || 0) > 0);
-          if (m.isJutsu && m.chakraCost > 0) return (enemy.chakra || 0) >= m.chakraCost;
-          return m.pp > 0;
-        });
+        let availMoves = (enemy.combatMoves || []).filter(m => canUseCombatMove(tempBattle, enemy, m, 'enemy'));
         const spd = applyDoubleDomainSpeed(getStats(enemy, enemy.stages, enemy.status).spd, false);
         const alivePlayerIdxs = (tempBattle.activeIdxs || []).filter(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
         if (alivePlayerIdxs.length === 0) return;
@@ -12248,11 +12237,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (firstAliveP.maxCE > 0) {
             const ceRegen = CURSED_ENERGY_CONFIG.regenPerTurn;
             firstAliveP.cursedEnergy = Math.min(firstAliveP.maxCE, (firstAliveP.cursedEnergy || 0) + ceRegen);
+            tempBattle.sharedPlayerCE = Math.min(tempBattle.sharedPlayerMaxCE || firstAliveP.maxCE, firstAliveP.cursedEnergy || 0);
           }
           if ((firstAliveP.maxChakra || 0) > 0) {
             const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
             const cRegen = CHAKRA_CONFIG.regenPerTurn + (nrk?.id === 'kage' ? 5 : nrk?.id === 'jonin' ? 3 : nrk?.id === 'chunin' ? 2 : nrk?.id === 'genin' ? 1 : 0);
             firstAliveP.chakra = Math.min(firstAliveP.maxChakra, (firstAliveP.chakra || 0) + cRegen);
+            tempBattle.sharedPlayerChakra = Math.min(tempBattle.sharedPlayerMaxChakra || firstAliveP.maxChakra, firstAliveP.chakra || 0);
           }
           // 同步到所有出战精灵
           for (const pIdx of (tempBattle.activeIdxs || [])) {
@@ -12290,8 +12281,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       {
         const firstAliveE = (tempBattle.enemyActiveIdxs || []).map(i => tempBattle.enemyParty?.[i]).find(e => e && e.currentHp > 0);
         if (firstAliveE) {
-          if (firstAliveE.maxCE > 0) { firstAliveE.cursedEnergy = Math.min(firstAliveE.maxCE, (firstAliveE.cursedEnergy || 0) + (CURSED_ENERGY_CONFIG.regenPerTurn || 15)); }
-          if ((firstAliveE.maxChakra || 0) > 0) { firstAliveE.chakra = Math.min(firstAliveE.maxChakra, (firstAliveE.chakra || 0) + (CHAKRA_CONFIG.regenPerTurn || 10)); }
+          if (firstAliveE.maxCE > 0) {
+            firstAliveE.cursedEnergy = Math.min(firstAliveE.maxCE, (firstAliveE.cursedEnergy || 0) + (CURSED_ENERGY_CONFIG.regenPerTurn || 15));
+            tempBattle.sharedEnemyCE = Math.min(tempBattle.sharedEnemyMaxCE || firstAliveE.maxCE, firstAliveE.cursedEnergy || 0);
+          }
+          if ((firstAliveE.maxChakra || 0) > 0) {
+            firstAliveE.chakra = Math.min(firstAliveE.maxChakra, (firstAliveE.chakra || 0) + (CHAKRA_CONFIG.regenPerTurn || 10));
+            tempBattle.sharedEnemyChakra = Math.min(tempBattle.sharedEnemyMaxChakra || firstAliveE.maxChakra, firstAliveE.chakra || 0);
+          }
           for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
             const ee = tempBattle.enemyParty?.[eIdx];
             if (ee && ee !== firstAliveE) {
@@ -12375,6 +12372,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         ...prev,
         sharedPlayerChakra: tempBattle.sharedPlayerChakra ?? prev.sharedPlayerChakra,
         sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
+        sharedEnemyChakra: tempBattle.sharedEnemyChakra ?? prev.sharedEnemyChakra,
+        sharedEnemyCE: tempBattle.sharedEnemyCE ?? prev.sharedEnemyCE,
         playerCombatStates: (tempBattle.playerCombatStates || []).map(p => ({...p})),
         enemyParty: (tempBattle.enemyParty || []).map(e => ({...e})),
         activeIdxs: newActiveIdxs,
@@ -12633,6 +12632,31 @@ const grantContestReward = (config, score, subjectPet = null) => {
         phase: 'busy',
       }));
       await wait(800);
+      if (e.currentHp <= 0) {
+        const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(e, party, tempBattle);
+        setParty(newParty);
+        addLog(logMsg);
+        if (activeDidLevelUp) {
+          setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
+          await wait(1000);
+          setAnimEffect(null);
+        }
+        const nextEnemyIdx = tempBattle.enemyParty.findIndex((ep, i) => i > tempBattle.enemyActiveIdx && ep.currentHp > 0);
+        if (nextEnemyIdx !== -1) {
+          setBattle(prev => prev ? ({
+            ...prev,
+            playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
+            enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
+            enemyActiveIdx: nextEnemyIdx,
+            phase: 'input',
+            logs: [`对手派出了 ${tempBattle.enemyParty[nextEnemyIdx].name}!`, ...(prev.logs || [])],
+          }) : null);
+        } else {
+          pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
+          handleWin(newParty);
+        }
+        return;
+      }
       await enemyTurn(tempBattle);
     } catch (err) {
       console.error("Combo Attack Error:", err);
@@ -15104,6 +15128,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (eff.atkDown && Math.random() < (eff.atkDown > 1 ? 1 : eff.atkDown)) {
             defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - 1);
             addLog(`⬇️ ${defender.name} 的物攻下降了！`);
+          }
+          if (eff.type === 'BUFF' && eff.target === 'self' && eff.stat) {
+            const chance = eff.chance ?? 1;
+            if (Math.random() < chance) {
+              if (!atkState.stages) atkState.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
+              const statNames = { p_atk:'物攻', p_def:'物防', s_atk:'特攻', s_def:'特防', spd:'速度', acc:'命中', eva:'闪避', crit:'暴击' };
+              const boostVal = eff.val || 1;
+              [eff.stat, eff.stat2, eff.stat3].filter(Boolean).forEach(statKey => {
+                atkState.stages[statKey] = Math.max(-6, Math.min(6, (atkState.stages[statKey] || 0) + boostVal));
+                addLog(`⬆️ ${attacker.name} 的${statNames[statKey] || statKey}提升了！`);
+              });
+            }
           }
           const recoilRate = eff.recoil ?? move.recoil;
           if (recoilRate && !isDead) {
@@ -17679,7 +17715,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
       }}>
-        <div style={{
+        <div className="world-map-info-bar" style={{
             width: '100%', maxWidth: '380px', background: '#fff', borderRadius: '24px', overflow: 'hidden',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             position: 'relative', animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
@@ -19912,7 +19948,7 @@ const renderMenu = () => {
         </div>
 
         {/* 导航胶囊 */}
-        <div className="map-nav-container" style={{display:'flex', justifyContent:'center', margin:'16px 0 20px 0', position:'relative', zIndex:10}}>
+        <div className="map-nav-container world-map-nav" style={{display:'flex', justifyContent:'center', margin:'16px 0 20px 0', position:'relative', zIndex:10}}>
           <div style={{background:'rgba(255,255,255,0.88)', backdropFilter:'blur(16px)', padding:'5px', borderRadius:'50px', boxShadow:'0 4px 24px rgba(0,0,0,0.06)', border:'1px solid rgba(255,255,255,0.5)', display:'flex', gap:'4px', overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none', maskImage:'linear-gradient(to right, black 85%, transparent 100%)', WebkitMaskImage:'linear-gradient(to right, black 85%, transparent 100%)'}}>
             {[
               { id: 'maps', icon: '🗺️', label: '区域探索', color: '#3b82f6' },
@@ -20040,7 +20076,7 @@ const renderMenu = () => {
         })()}
 
         {/* 地图网格 */}
-        <div className="map-grid-container" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'16px', padding:'0 20px 20px'}}>
+        <div className="map-grid-container world-map-grid" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'16px', padding:'0 20px 20px'}}>
           {MAPS.map((m, index) => {
             const isCleared = badges.includes(m.badge);
             const mapWeatherKey = mapWeathers[m.id] || 'CLEAR';
@@ -20098,7 +20134,7 @@ const renderMenu = () => {
             ][diffTier];
 
             return (
-              <div key={m.id} className={`map-card-pro ${themeClass}`} style={{
+              <div key={m.id} className={`map-card-pro ${themeClass} difficulty-${diffTier}`} style={{
                 ...(isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined),
                 ...(isContestedActive && !isLocked ? { border: '1px solid rgba(255,200,0,0.3)'} : {}),
                 backgroundImage: diffBgGrad,
@@ -23780,7 +23816,7 @@ const renderMenu = () => {
         {renderLeftPanel()}
         
         {/* 中间区域 */}
-        <div className="center-area" style={{
+        <div className="center-area grid-main-stage" style={{
             flex: 1, 
             display: 'flex', 
             flexDirection: 'column', 
@@ -23862,15 +23898,16 @@ const renderMenu = () => {
             );
           })()}
           {/* 2D 视口地图 - 自适应铺满 */}
-          <div className="grid-viewport-v2" ref={el => {
+          <div className="grid-viewport-v2 map-viewport-frame" ref={el => {
             if (el && !el.dataset.sized) {
               el.dataset.sized = '1';
               const ro = new ResizeObserver(() => { el.dataset.w = el.clientWidth; el.dataset.h = el.clientHeight; });
               ro.observe(el);
             }
           }} style={{
+              '--map-bg': theme.bg,
               flex: 1, position: 'relative', borderRadius: '12px',
-              overflow: 'hidden', background: '#2d5a3d'
+              overflow: 'hidden', background: theme.bg || '#2d5a3d'
           }}>
             {mapGrid.length > 0 && (() => {
               const vpEl = document.querySelector('.grid-viewport-v2');
@@ -24073,14 +24110,21 @@ const renderMenu = () => {
               { id: 'guide', icon: '❓', label: '说明', action: () => setView('guide') },
               { id: 'keyhelp', icon: '⌨️', label: '快捷键', action: () => setShowKeyHelp(true) },
               { id: 'settings', icon: '⚙️', label: '设置', action: () => setView('settings') },
-            ].map(btn => (
-              <button key={btn.id} className="dock-btn-capsule" onClick={btn.action || (() => setView(btn.id))} 
+            ].map(btn => {
+              const growthIds = ['team','shop','fusion','bag','pc','fruit_dex','naruto','jutsu_codex','skill_dex','activity','gang','housing'];
+              const infoIds = ['card','achievements','pokedex','general_dex','guide'];
+              const systemIds = ['keyhelp','settings'];
+              const dockGroup = growthIds.includes(btn.id) ? 'growth' : infoIds.includes(btn.id) ? 'info' : systemIds.includes(btn.id) ? 'system' : 'explore';
+              const startsGroup = ['team','card','keyhelp'].includes(btn.id);
+              return (
+              <button key={btn.id} className={`dock-btn-capsule ${startsGroup ? 'dock-group-start' : ''}`} data-dock-group={dockGroup} onClick={btn.action || (() => setView(btn.id))}
                 style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor:'pointer', position:'relative'}}>
                   <div style={{fontSize: '20px', lineHeight: '1'}}>{btn.icon}</div>
                   <div style={{fontSize: '11px', fontWeight: 'bold', color:'#555', whiteSpace:'nowrap'}}>{btn.label}</div>
                   {btn.badge > 0 && <div style={{position:'absolute', top:'-2px', right:'-2px', width:'16px', height:'16px', borderRadius:'50%', background:'#E53935', color:'#fff', fontSize:'9px', fontWeight:'800', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #fff'}}>{btn.badge}</div>}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -27886,7 +27930,6 @@ const renderMenu = () => {
                 { label:'成就', val: `${unlockedAchs.length}/${ACHIEVEMENTS.length}`, icon:'🎖️' },
                 { label:'最佳连胜', val: achStats.maxWinStreak || 0, icon:'🔥' },
                 { label:'无限城', val: `${infinityState?.bestFloor || 0}F`, icon:'🏯' },
-                { label:'登录天数', val: dailyLogin.totalDays || 0, icon:'📅' },
               ].map(s => (
                 <div key={s.label} style={{textAlign:'center'}}>
                   <div style={{fontSize:'14px', marginBottom:'2px'}}>{s.icon}</div>
@@ -29048,29 +29091,6 @@ const renderMenu = () => {
               </div>
             ))}
             <button onClick={() => setShowKeyHelp(false)} style={{marginTop:16,width:'100%',padding:'10px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#667eea,#764ba2)',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>知道了</button>
-          </div>
-        </div>
-      )}
-      {/* 每日登录奖励弹窗 */}
-      {showDailyReward && (
-        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100003, animation:'fadeIn 0.3s ease-out'}} onClick={() => setShowDailyReward(null)}>
-          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a1a2e,#16213e)', borderRadius:'24px', padding:'32px', maxWidth:'320px', width:'85%', boxShadow:'0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,215,0,0.1)', border:'1px solid rgba(255,215,0,0.2)', textAlign:'center'}}>
-            <div style={{fontSize:'40px', marginBottom:'12px'}}>🎁</div>
-            <div style={{fontSize:'18px', fontWeight:'bold', color:'#FFD700', marginBottom:'6px'}}>每日登录奖励</div>
-            <div style={{fontSize:'13px', color:'#aaa', marginBottom:'16px'}}>连续登录第 <span style={{color:'#FF9800', fontWeight:'bold', fontSize:'18px'}}>{showDailyReward.streak}</span> 天</div>
-            <div style={{padding:'16px', background:'rgba(255,215,0,0.08)', borderRadius:'12px', marginBottom:'16px'}}>
-              <div style={{fontSize:'15px', color:'#fff', fontWeight:'600'}}>{showDailyReward.desc}</div>
-              <div style={{fontSize:'11px', color:'#94a3b8', marginTop:'10px', lineHeight:1.4}}>金币与道具已自动发放到账户与背包。</div>
-            </div>
-            <div style={{fontSize:'11px', color:'#94a3b8', marginBottom:'10px'}}>累计登录 {showDailyReward.total} 天 · 连续登录14天获得最高奖励</div>
-            <div style={{fontSize:'12px', color:'#a5b4fc', marginBottom:'16px', lineHeight:1.5}}>
-              <span style={{color:'#818cf8', fontWeight:700}}>明日奖励预告</span>
-              （明日若仍连续登录）：{DAILY_LOGIN_DAY_REWARDS[Math.min(showDailyReward.streak, DAILY_LOGIN_DAY_REWARDS.length - 1)].desc}
-            </div>
-            <button onClick={() => setShowDailyReward(null)} style={{padding:'10px 30px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#FFD700,#FF8F00)', color:'#000', fontSize:'14px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 15px rgba(255,215,0,0.3)'}}>领取</button>
-            <div style={{fontSize:'9px', color:'rgba(255,200,100,0.4)', marginTop:'6px', textAlign:'center'}}>
-              {showDailyReward.total < 7 ? `再签${7 - showDailyReward.total}天获得稀有奖励` : showDailyReward.total < 30 ? `再签${30 - showDailyReward.total}天获得史诗奖励` : '已达成月度里程碑！'}
-            </div>
           </div>
         </div>
       )}
