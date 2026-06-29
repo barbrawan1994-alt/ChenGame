@@ -12,7 +12,7 @@ import {
   SkillCastEffect,
   EnhancedBattleMessage 
 } from './engines/BattleEnhancements';
-import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG } from './data/constants';
+import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG, GAME_NAME, GAME_EN_NAME, GAME_VERSION_LABEL, GAME_TAGLINE } from './data/constants';
 import { TYPES, TYPE_CHARM_BASE, TYPE_BIAS } from './data/types';
 import {
   BALLS,
@@ -401,6 +401,37 @@ const SIDE_STORY_LINES = [
 const inferCompletedSideStories = (storyProg) => {
   return SIDE_STORY_LINES.filter(s => storyProg > s.endIdx).map(s => s.id);
 };
+
+const SuperSpiritIcon = ({ className = '', size = 56, label = GAME_NAME }) => (
+  <span className={`super-spirit-icon ${className}`} style={{ width: size, height: size }} role="img" aria-label={label}>
+    <svg viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="spiritCoreGlow" cx="50%" cy="42%" r="62%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="46%" stopColor="#8fd8ff" />
+          <stop offset="100%" stopColor="#2f6df6" />
+        </radialGradient>
+        <linearGradient id="spiritBallTop" x1="18" y1="12" x2="76" y2="45">
+          <stop offset="0%" stopColor="#ff6b5f" />
+          <stop offset="100%" stopColor="#ff2f5f" />
+        </linearGradient>
+        <linearGradient id="spiritBallBottom" x1="22" y1="54" x2="77" y2="88">
+          <stop offset="0%" stopColor="#f8fbff" />
+          <stop offset="100%" stopColor="#b8d8ff" />
+        </linearGradient>
+      </defs>
+      <circle cx="48" cy="48" r="41" fill="#07152f" />
+      <path d="M12 46a36 36 0 0 1 72 0H12Z" fill="url(#spiritBallTop)" />
+      <path d="M12 50a36 36 0 0 0 72 0H12Z" fill="url(#spiritBallBottom)" />
+      <path d="M13 48h70" stroke="#08142a" strokeWidth="8" strokeLinecap="round" />
+      <circle cx="48" cy="48" r="17" fill="#08142a" />
+      <circle cx="48" cy="48" r="11" fill="url(#spiritCoreGlow)" />
+      <path d="M48 12l4 12 12 4-12 4-4 12-4-12-12-4 12-4 4-12Z" fill="#ffd54f" opacity="0.9" />
+      <path d="M24 19l2.8 7.2L34 29l-7.2 2.8L24 39l-2.8-7.2L14 29l7.2-2.8L24 19Z" fill="#9df7c7" opacity="0.86" />
+      <path d="M72 57l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8Z" fill="#ffd54f" opacity="0.86" />
+    </svg>
+  </span>
+);
 
 export default function RPG(props) {
   // =================================================================
@@ -7872,10 +7903,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               ← 返回
             </button>
             <div style={{textAlign:'center'}}>
-              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>游 戏 说 明</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>V11 忍者大战</div>
+              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{GAME_NAME} 说明</div>
+              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>{GAME_VERSION_LABEL} · 精灵对战 RPG</div>
             </div>
             <div style={{width:'56px'}} />
+          </div>
+          <div className="guide-brand-strip">
+            <SuperSpiritIcon size={34} />
+            <div>
+              <strong>{GAME_NAME}</strong>
+              <span>以精灵收集、属性克制、技能搭配、捕捉进化和道馆挑战为主线，扩展忍术、咒术、果实、国战等玩法。</span>
+            </div>
           </div>
           {/* 搜索栏 */}
           <div style={{position:'relative', marginBottom:'8px'}}>
@@ -18016,8 +18054,9 @@ const renderNameInput = () => {
 
       {/* 顶部标题区 */}
       <div style={{textAlign:'center', marginBottom:'32px', animation:'popIn 0.6s ease-out', position:'relative', zIndex:1}}>
-        <div style={{fontSize:'11px', letterSpacing:'6px', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', marginBottom:'8px'}}>Legends RPG</div>
-        <div style={{fontSize:'28px', fontWeight:'900', color:'#fff', textShadow:'0 4px 20px rgba(100,140,255,0.4)'}}>开启你的冒险</div>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:'10px'}}><SuperSpiritIcon size={54} /></div>
+        <div style={{fontSize:'11px', letterSpacing:'6px', color:'rgba(255,255,255,0.45)', textTransform:'uppercase', marginBottom:'8px'}}>{GAME_EN_NAME}</div>
+        <div style={{fontSize:'28px', fontWeight:'900', color:'#fff', textShadow:'0 4px 20px rgba(100,190,255,0.45)'}}>{GAME_NAME} · 开启冒险</div>
       </div>
 
       {/* 名字输入卡片 */}
@@ -19536,11 +19575,11 @@ const renderMenu = () => {
   const commandStats = [
     { label: '队伍战力', value: hasSave ? totalPower.toLocaleString() : '待集结', hint: leadPet ? `${leadPet.nickname || leadPetDex?.name || '伙伴'} 领队` : '选择初始伙伴', tone: 'gold' },
     { label: '徽章进度', value: `${badgeCount}/${MAPS.length}`, hint: badgeCount >= MAPS.length ? '联盟资格完成' : '继续挑战道馆', tone: 'blue' },
-    { label: '每日任务', value: `${dailyTasksDone}/5`, hint: dailyTasksDone >= 5 ? '今日已清空' : '还有奖励可拿', tone: 'green' },
-    { label: '忍者阶级', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽 · ${jutsuCollCount} 忍术`, tone: 'red' },
+    { label: '训练任务', value: `${dailyTasksDone}/5`, hint: dailyTasksDone >= 5 ? '今日已完成' : '完成任务强化队伍', tone: 'green' },
+    { label: '忍术修行', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽 · ${jutsuCollCount} 忍术`, tone: 'red' },
   ];
   const quickEntries = [
-    { key:'pokedex', label:'宝可梦图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, icon:'📚' },
+    { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, icon:'📚' },
     { key:'skill_dex', label:'技能图鉴', sub:`${allSkills.length} 种`, icon:'⚡' },
     { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length} 种`, icon:'🍎' },
     { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
@@ -19562,11 +19601,16 @@ const renderMenu = () => {
       <div className="home-bg home-bg-mountains" aria-hidden="true" />
       <div className="home-grain" aria-hidden="true" />
 
-      <section className="home-shell" aria-label="忍者大战首页">
+      <section className="home-shell" aria-label={`${GAME_NAME}首页`}>
         <aside className="home-hero-panel">
-          <div className="home-kicker">Shinobi legend</div>
-          <h1 className="home-title">忍者大战</h1>
-          <p className="home-subtitle">宝可梦伙伴、忍术卷轴、三国名将与阵营领地都在同一条战线上。</p>
+          <div className="home-brand-mark">
+            <SuperSpiritIcon className="home-brand-icon" size={64} />
+            <div>
+              <div className="home-kicker">{GAME_EN_NAME}</div>
+              <h1 className="home-title">{GAME_NAME}</h1>
+            </div>
+          </div>
+          <p className="home-subtitle">{GAME_TAGLINE}。属性克制、技能 PP、捕捉与进化是每一场冒险的核心。</p>
 
           <div className="home-lead-card">
             <div className="home-lead-orbit" aria-hidden="true" />
@@ -19574,7 +19618,7 @@ const renderMenu = () => {
               {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
                 <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
               ) : (
-                <span title={leadPetDex?.name || '初始伙伴'}>{leadPet?.emoji || leadPetDex?.icon || '🍥'}</span>
+                <span title={leadPetDex?.name || '初始伙伴'}>{leadPet?.emoji || leadPetDex?.icon || '🔴'}</span>
               )}
             </div>
             <div className="home-lead-copy">
@@ -19585,10 +19629,10 @@ const renderMenu = () => {
           </div>
 
           <button className="home-primary-btn" onClick={handleStartGame}>
-            <span className="home-primary-icon">🍥</span>
+            <span className="home-primary-icon">🔴</span>
             <span>
               <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-              <small>{hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name}` : '读取上次的冒险进度') : '成为训练家，进入忍界战场'}</small>
+              <small>{hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name}` : '读取上次的冒险进度') : '成为训练家，进入精灵世界'}</small>
             </span>
             <b aria-hidden="true">›</b>
           </button>
@@ -19609,14 +19653,14 @@ const renderMenu = () => {
           <footer className="home-footer-note">
             <span>{POKEDEX.length} 精灵</span>
             <span>{JUTSU_DB.length} 忍术</span>
-            <span>V11</span>
+            <span>{GAME_VERSION_LABEL}</span>
           </footer>
         </aside>
 
         <section className="home-command-panel" id="home-command">
           <div className="home-command-head">
             <div>
-              <span className="home-section-label">作战概览</span>
+              <span className="home-section-label">训练家概览</span>
               <h2>{nextObjective}</h2>
             </div>
             <div className="home-gold-pill">💎 {(achStats.totalGoldEarned ?? 0).toLocaleString()}</div>
@@ -27938,7 +27982,7 @@ const renderMenu = () => {
                 </div>
               ))}
             </div>
-            <div style={{fontSize:'10px',color:'rgba(255,255,255,0.2)',marginTop:'8px'}}>存档版本 V{savedData.saveVersion || '?'}</div>
+            <div style={{fontSize:'10px',color:'rgba(255,255,255,0.2)',marginTop:'8px'}}>游戏版本 {GAME_VERSION_LABEL} · 存档版本 V{savedData.saveVersion || '?'}</div>
           </div>
         </div>
       </div>
@@ -28333,6 +28377,14 @@ const renderMenu = () => {
             <div style={{width:60}}/>
           </div>
           <div style={{flex:1,overflowY:'auto',padding:'20px',maxWidth:'500px',margin:'0 auto',width:'100%'}}>
+            <div className="settings-brand-card">
+              <SuperSpiritIcon size={48} />
+              <div>
+                <strong>{GAME_NAME}</strong>
+                <span>{GAME_VERSION_LABEL} · 精灵对战 RPG</span>
+              </div>
+              <button type="button" onClick={() => setView('guide')}>查看说明</button>
+            </div>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#8b5cf6',marginBottom:'12px'}}>🔊 音频设置</div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>

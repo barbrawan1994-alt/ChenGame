@@ -3,33 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="忍者大战：融合宝可梦伙伴、忍术修行、三国名将与阵营领地争夺的像素 RPG。">
-    <meta name="theme-color" content="#101826">
-    <meta property="og:title" content="忍者大战">
-    <meta property="og:description" content="集结伙伴、修炼忍术、招募名将，推进阵营战线。">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101826'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23d6aa4f'/%3E%3Cpath d='M32 10v44M10 32h44' stroke='%23101826' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23b65632'/%3E%3C/svg%3E">
-    <title>忍者大战</title>
+    <meta name="description" content="超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。">
+    <meta name="theme-color" content="#07152f">
+    <meta property="og:title" content="超级精灵">
+    <meta property="og:description" content="收集、进化、对战，打造你的冠军精灵队伍。">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Ccircle cx='48' cy='48' r='43' fill='%2307152f'/%3E%3Cpath d='M10 46a38 38 0 0 1 76 0H10Z' fill='%23ff3f67'/%3E%3Cpath d='M10 50a38 38 0 0 0 76 0H10Z' fill='%23f8fbff'/%3E%3Cpath d='M12 48h72' stroke='%2307152f' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='48' cy='48' r='17' fill='%2307152f'/%3E%3Ccircle cx='48' cy='48' r='10' fill='%238fd8ff'/%3E%3Cpath d='M48 12l4 12 12 4-12 4-4 12-4-12-12-4 12-4 4-12Z' fill='%23ffd54f'/%3E%3C/svg%3E">
+    <title>超级精灵</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #070b12; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #07152f; }
         #splash-loader {
             position: fixed; inset: 0; display: flex; flex-direction: column;
             align-items: center; justify-content: center; background:
-                radial-gradient(circle at 35% 20%, rgba(214,170,79,0.2), transparent 28%),
-                radial-gradient(circle at 70% 75%, rgba(182,86,50,0.22), transparent 32%),
-                linear-gradient(142deg, #070b12, #101826 55%, #1a1110);
+                radial-gradient(circle at 35% 20%, rgba(143,216,255,0.22), transparent 28%),
+                radial-gradient(circle at 70% 75%, rgba(34,197,94,0.18), transparent 32%),
+                linear-gradient(142deg, #07152f, #0c244f 55%, #061429);
             z-index: 99999; transition: opacity 0.5s;
         }
-        #splash-loader .title { font-size: 34px; font-weight: 900; color: #f9e7c1; letter-spacing: 6px; margin-bottom: 8px; font-family: "Arial Black", "PingFang SC", sans-serif; text-shadow: 0 14px 42px rgba(182,86,50,0.45); }
-        #splash-loader .sub { font-size: 12px; color: rgba(249,231,193,0.5); letter-spacing: 5px; margin-bottom: 26px; font-family: "PingFang SC", sans-serif; text-transform: uppercase; }
-        #splash-loader .bar-wrap { width: 220px; height: 5px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(214,170,79,0.12); }
-        #splash-loader .bar { width: 30%; height: 100%; background: linear-gradient(90deg, #b65632, #d6aa4f, #f2c36b); border-radius: 999px; animation: splashLoad 1.5s ease-in-out infinite; }
+        #splash-loader .title { font-size: 34px; font-weight: 900; color: transparent; letter-spacing: 6px; margin-bottom: 8px; font-family: "Arial Black", "PingFang SC", sans-serif; background: linear-gradient(90deg,#fff,#8fd8ff,#ffd54f,#9df7c7); -webkit-background-clip: text; background-clip: text; text-shadow: 0 14px 42px rgba(47,109,246,0.35); }
+        #splash-loader .sub { font-size: 12px; color: rgba(248,251,255,0.58); letter-spacing: 5px; margin-bottom: 26px; font-family: "PingFang SC", sans-serif; text-transform: uppercase; }
+        #splash-loader .bar-wrap { width: 220px; height: 5px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(143,216,255,0.16); }
+        #splash-loader .bar { width: 30%; height: 100%; background: linear-gradient(90deg, #2f6df6, #22c55e, #ffd54f); border-radius: 999px; animation: splashLoad 1.5s ease-in-out infinite; }
         @keyframes splashLoad { 0%{width:10%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:10%;margin-left:90%} }
     </style>
 </head>
 <body>
     <div id="splash-loader">
-        <div class="title">忍者大战</div>
-        <div class="sub">Shinobi legend</div>
+        <div class="title">超级精灵</div>
+        <div class="sub">Super Spirit · v12.0</div>
         <div class="bar-wrap"><div class="bar"></div></div>
     </div>
     <div id="root"></div>

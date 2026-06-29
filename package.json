@@ -1,7 +1,7 @@
 {
-  "name": "shinobi-legend",
-  "version": "3.0.0",
-  "description": "忍者大战：融合宝可梦伙伴、忍术修行、三国名将与阵营领地争夺的像素 RPG。",
+  "name": "super-spirit",
+  "version": "12.0.0",
+  "description": "超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。",
   "main": "main.js",
   "scripts": {
     "start": "concurrently \"cross-env BROWSER=none npm run web\" \"wait-on http://localhost:3000 && electron .\"",
@@ -10,8 +10,8 @@
     "dist": "npm run build && electron-builder"
   },
   "build": {
-    "appId": "com.shinobi.legend",
-    "productName": "忍者大战",
+    "appId": "com.super.spirit",
+    "productName": "超级精灵",
     "mac": {
       "category": "public.app-category.games",
       "target": [

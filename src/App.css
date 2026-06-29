@@ -1,12 +1,25 @@
 
 /* ==========================================================================
-   POKEMON RPG LEGENDS - COMPLETE STYLESHEET (OPTIMIZED & FIXED)
+   SUPER SPIRIT - COMPLETE STYLESHEET (OPTIMIZED & FIXED)
    ========================================================================== */
 
 :root {
   --primary-color: #2196F3;
   --accent-color: #FF4081;
   --bg-color: #f0f4f8;
+  --brand-primary: #2f6df6;
+  --brand-primary-deep: #0d2b68;
+  --brand-spirit: #22c55e;
+  --brand-accent: #ff3f67;
+  --brand-gold: #ffd54f;
+  --brand-cream: #f8fbff;
+  --brand-ink: #07152f;
+  --brand-glass: rgba(255,255,255,0.09);
+  --brand-glass-strong: rgba(255,255,255,0.16);
+  --brand-border: rgba(143,216,255,0.22);
+  --brand-shadow: 0 24px 80px rgba(47,109,246,0.24);
+  --radius-card: 22px;
+  --radius-panel: 28px;
   --font-main: "Outfit", "Geist", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-display: "Outfit", "Arial Black", "PingFang SC", sans-serif;
   --z-base: 1;
@@ -6319,5 +6332,244 @@ button:active {
   }
   .home-territory-labels {
     flex-wrap: wrap;
+  }
+}
+
+/* =========================================
+   Super Spirit v12.0 Brand System
+   ========================================= */
+.super-spirit-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 30% 18%, rgba(255,255,255,0.45), transparent 26%),
+    linear-gradient(145deg, rgba(34,197,94,0.18), rgba(47,109,246,0.22));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.32),
+    0 16px 38px rgba(47,109,246,0.3),
+    0 0 0 1px rgba(143,216,255,0.22);
+}
+
+.super-spirit-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.36));
+}
+
+.home-bg-fire {
+  background:
+    radial-gradient(circle at 17% 18%, rgba(47,109,246,0.38), transparent 28%),
+    radial-gradient(circle at 80% 12%, rgba(34,197,94,0.24), transparent 24%),
+    radial-gradient(circle at 58% 82%, rgba(255,213,79,0.22), transparent 33%),
+    linear-gradient(142deg, #061429 0%, #0c244f 46%, #07152f 100%);
+}
+
+.home-bg-sigil {
+  border-color: rgba(143,216,255,0.12);
+  background:
+    repeating-conic-gradient(from 18deg, rgba(143,216,255,0.1) 0 7deg, transparent 7deg 18deg),
+    radial-gradient(circle, transparent 0 33%, rgba(34,197,94,0.12) 34% 35%, transparent 36% 47%, rgba(255,213,79,0.11) 48% 49%, transparent 50%);
+}
+
+.home-bg-mountains {
+  background:
+    linear-gradient(150deg, transparent 0 50%, rgba(143,216,255,0.08) 51% 52%, transparent 53%) 0 0 / 180px 100%,
+    linear-gradient(18deg, #04101f 0 35%, transparent 36%),
+    linear-gradient(342deg, #061429 0 42%, transparent 43%);
+}
+
+.home-hero-panel,
+.home-command-panel {
+  border-color: rgba(143,216,255,0.18);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(34,197,94,0.12), transparent 32%),
+    linear-gradient(160deg, rgba(7,21,47,0.92), rgba(12,30,64,0.84));
+  box-shadow: var(--brand-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.home-hero-panel::after {
+  background: radial-gradient(ellipse at center, rgba(47,109,246,0.26), transparent 70%);
+}
+
+.home-brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.home-brand-icon {
+  border-radius: 20px;
+}
+
+.home-kicker,
+.home-section-label {
+  color: rgba(143,216,255,0.78);
+}
+
+.home-title {
+  color: transparent;
+  background:
+    linear-gradient(90deg, #ffffff 0%, #8fd8ff 24%, #ffd54f 54%, #9df7c7 78%, #ffffff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.14);
+  text-shadow:
+    0 8px 22px rgba(47,109,246,0.42),
+    0 0 34px rgba(34,197,94,0.22);
+  animation: title-shimmer 6s ease-in-out infinite;
+}
+
+.home-subtitle {
+  color: rgba(248,251,255,0.72);
+}
+
+.home-lead-orbit {
+  border-color: rgba(143,216,255,0.28);
+  box-shadow: inset 0 0 52px rgba(47,109,246,0.08), 0 0 60px rgba(34,197,94,0.08);
+}
+
+.home-lead-avatar {
+  border-color: rgba(143,216,255,0.3);
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255,255,255,0.16), transparent 34%),
+    linear-gradient(145deg, rgba(47,109,246,0.22), rgba(34,197,94,0.14));
+}
+
+.home-lead-copy {
+  border-color: rgba(143,216,255,0.17);
+  background: rgba(3,15,36,0.78);
+}
+
+.home-primary-btn {
+  color: #061429;
+  background:
+    linear-gradient(135deg, #8fd8ff, #22c55e 48%, #ffd54f);
+  box-shadow: 0 18px 48px rgba(34,197,94,0.24), 0 0 0 1px rgba(255,255,255,0.24) inset;
+}
+
+.home-primary-icon {
+  background: rgba(255,255,255,0.34);
+  box-shadow: inset 0 0 0 1px rgba(7,21,47,0.14);
+}
+
+.home-footer-note span:last-child {
+  color: #07152f;
+  background: linear-gradient(135deg, #ffd54f, #8fd8ff);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.home-stat-card,
+.home-war-card,
+.home-generals-card,
+.home-entry-btn {
+  border-color: rgba(143,216,255,0.13);
+}
+
+.guide-brand-strip {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(143,216,255,0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(34,197,94,0.16), transparent 40%),
+    rgba(255,255,255,0.055);
+}
+
+.guide-brand-strip .super-spirit-icon {
+  border-radius: 12px;
+}
+
+.guide-brand-strip strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.guide-brand-strip span {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255,255,255,0.58);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.settings-brand-card {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(143,216,255,0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(47,109,246,0.18), transparent 38%),
+    rgba(255,255,255,0.07);
+  box-shadow: 0 16px 42px rgba(0,0,0,0.2);
+}
+
+.settings-brand-card strong {
+  display: block;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.settings-brand-card span {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+}
+
+.settings-brand-card button {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(143,216,255,0.22);
+  background: rgba(143,216,255,0.12);
+  color: #8fd8ff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.settings-brand-card button:hover {
+  background: rgba(143,216,255,0.18);
+}
+
+.map-dock-capsule .dock-btn-capsule[data-dock-group="explore"]:hover { color: var(--brand-primary); }
+.map-dock-capsule .dock-btn-capsule[data-dock-group="growth"]:hover { color: var(--brand-spirit); }
+.map-dock-capsule .dock-btn-capsule[data-dock-group="info"]:hover { color: var(--brand-gold); }
+.map-dock-capsule .dock-btn-capsule[data-dock-group="system"]:hover { color: var(--brand-accent); }
+
+@media (max-width: 620px) {
+  .home-brand-mark {
+    align-items: flex-start;
+  }
+
+  .home-brand-icon {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .settings-brand-card {
+    grid-template-columns: 42px 1fr;
+  }
+
+  .settings-brand-card button {
+    grid-column: 1 / -1;
   }
 }
