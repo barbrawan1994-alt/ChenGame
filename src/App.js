@@ -4445,6 +4445,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }, 0);
     const score = furnitureScore + treasureScore + treasureSetBonus;
     const tier = getHousingScoreTier(score);
+    const residentCount = (housing.residents || []).filter(Boolean).length;
+    const gardenUsed = (housing.garden?.plots || []).length;
+    const gardenMax = getGardenSlots(housing.currentHouse);
 
     const completedSets = FURNITURE_SETS.filter(set =>
       set.items.every(itemId => placedFurniture.some(f => f.baseId === itemId))
@@ -4664,16 +4667,36 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     };
 
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
-        <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(safeBack())}>⬅ 返回地图</button>
-          <div className="nav-title">🏡 精灵家园</div>
-          <div className="nav-coin">💰 {gold.toLocaleString()}</div>
+      <div className="screen housing-screen-redesign" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
+        <div className="nav-header glass-panel housing-topbar">
+          <button className="btn-back housing-back-btn" onClick={() => setView(safeBack())}>⬅ 返回地图</button>
+          <div className="housing-title-lockup">
+            <span>Spirit homestead</span>
+            <strong>🏡 精灵家园</strong>
+          </div>
+          <div className="nav-coin housing-gold-pill">💰 {gold.toLocaleString()}</div>
         </div>
 
-        <div style={{display:'flex', gap:'6px', justifyContent:'flex-start', margin:'10px 0', overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:'4px', scrollbarWidth:'none'}}>
+        <section className="housing-hero">
+          <div className="housing-hero-main">
+            <div className="housing-house-orb">{currentHouseDef?.icon || '🏕️'}</div>
+            <div>
+              <span className="housing-eyebrow">伙伴休整基地</span>
+              <h1>{currentHouseDef?.name || '露宿野外'}</h1>
+              <p>安排精灵入住、布置家具、经营花园和咖啡厅，让队伍在冒险之外获得恢复、经验、亲密度与收藏评分。</p>
+            </div>
+          </div>
+          <div className="housing-hero-stats">
+            <div><strong>{score}</strong><span>家园评分</span></div>
+            <div><strong>{residentCount}/{currentHouseDef?.slots || 0}</strong><span>入住精灵</span></div>
+            <div><strong>{placedFurniture.length}/{currentHouseDef?.furnitureSlots || 0}</strong><span>家具槽</span></div>
+            <div><strong>{gardenUsed}/{gardenMax}</strong><span>花园槽</span></div>
+          </div>
+        </section>
+
+        <div className="housing-tab-bar" style={{display:'flex', gap:'6px', justifyContent:'flex-start', margin:'10px 0', overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:'4px', scrollbarWidth:'none'}}>
           {['overview','furniture','residents','garden','treasure','shop','upgrade','cafe','dating'].map(tab => (
-            <button key={tab} onClick={() => setHousingTab(tab)}
+            <button key={tab} className={housingTab === tab ? 'is-active' : ''} onClick={() => setHousingTab(tab)}
               style={{padding:'6px 12px', borderRadius:'20px', border:'none', cursor:'pointer',
                 background: housingTab === tab ? (tab === 'cafe' ? '#C62828' : tab === 'dating' ? '#E91E63' : tab === 'garden' ? '#43A047' : tab === 'treasure' ? '#FF8F00' : '#8D6E63') : '#fff',
                 color: housingTab === tab ? '#fff' : '#666', fontWeight:'bold', fontSize:'11px',
@@ -4683,7 +4706,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           ))}
         </div>
 
-        <div style={{padding:'0 20px 20px', maxHeight:'calc(100vh - 140px)', overflow:'auto'}}>
+        <div className="housing-content" style={{padding:'0 20px 20px', maxHeight:'calc(100vh - 140px)', overflow:'auto'}}>
 
           {housingTab === 'overview' && (
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
@@ -7942,11 +7965,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
 
             <nav className="guide-category-nav" aria-label="说明分类">
-              <button className={!guideCat ? 'is-active' : ''} onClick={() => setGuideCat(null)}>
+              <button type="button" className={!guideCat ? 'is-active' : ''} onClick={() => setGuideCat(null)}>
                 <span>📋</span><strong>全部内容</strong><small>{GAME_GUIDE.length} 类</small>
               </button>
               {GAME_GUIDE.map(g => (
-                <button key={g.id} className={guideCat === g.id ? 'is-active' : ''} onClick={() => setGuideCat(g.id)} style={{ '--guide-accent': g.color }}>
+                <button type="button" key={g.id} className={guideCat === g.id ? 'is-active' : ''} onClick={() => setGuideCat(g.id)} style={{ '--guide-accent': g.color }}>
                   <span>{g.icon}</span><strong>{g.title}</strong><small>{g.sections.length} 节</small>
                 </button>
               ))}
@@ -7980,7 +8003,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const isExpanded = guideExpanded[cat.id] !== false;
                 return (
                   <article key={cat.id} className="guide-category-card" style={{ '--guide-accent': cat.color }}>
-                    <button className="guide-category-head" onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}>
+                    <button type="button" className="guide-category-head" onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}>
                       <span className="guide-category-icon">{cat.icon}</span>
                       <span className="guide-category-copy"><strong>{cat.title}</strong>{cat.desc && <small>{cat.desc}</small>}</span>
                       <span className="guide-section-count">{cat.sections.length} 节</span>
@@ -7991,7 +8014,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         {cat.sections.map((sec, si) => {
                           const secKey = `${cat.id}_${si}`;
                           const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
-                          const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : false);
+                          const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : true);
                           const hasSub = sec.sub && sec.sub.length > 0;
                           return (
                             <section key={si} className={secOpen ? 'guide-section-card is-open' : 'guide-section-card'}>
@@ -23808,7 +23831,7 @@ const renderMenu = () => {
     };
     
     return (
-      <div className={`screen grid-screen game-ui-wrapper ${theme.cssClass}`} style={{
+      <div className={`screen grid-screen game-ui-wrapper grid-screen-redesign ${theme.cssClass}`} style={{
           backgroundColor: theme.bg, 
           position: 'relative', 
           overflow: 'hidden',
@@ -23838,19 +23861,20 @@ const renderMenu = () => {
         }}>
           
           {/* ▼▼▼▼▼▼ 顶部状态栏 ▼▼▼▼▼▼ */}
-          <div className="grid-header glass-panel" style={{
+          <div className="grid-header glass-panel grid-header-redesign" style={{
               marginBottom: '10px', flexShrink: 0, display: 'flex', 
               justifyContent: 'space-between', alignItems: 'center', padding: '0 15px',
               height: '50px' 
           }}>
             {/* 左侧：当前地图名称 */}
-            <div style={{display:'flex', alignItems:'center', gap:'6px', minWidth:'80px'}}>
-              <span style={{fontSize:'14px', fontWeight:'700', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'120px'}}>{currentMapInfo?.name || '未知区域'}</span>
+            <div className="grid-map-title" style={{display:'flex', alignItems:'center', gap:'6px', minWidth:'80px'}}>
+              <span>{currentMapInfo?.icon || '🗺️'}</span>
+              <strong>{currentMapInfo?.name || '未知区域'}</strong>
             </div>
             
             {/* 中间：环境仪表盘 (只读显示) */}
             {/* 🔥 [修改] 移除了 onClick 事件，改为纯展示 */}
-            <div style={{
+            <div className="grid-env-pill" style={{
                     display:'flex', alignItems:'center', gap:'15px',
                     background: 'rgba(255,255,255,0.9)', 
                     padding: '6px 20px', borderRadius: '30px',
@@ -23861,15 +23885,15 @@ const renderMenu = () => {
                 title={`当前时间: ${Math.floor(gameTime/60)}分 (循环周期75分)`}
             >
                  {/* 时间显示 */}
-                 <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                 <div className="grid-env-item" style={{display:'flex', alignItems:'center', gap:'6px'}}>
                     <span style={{fontSize:'20px', filter:'drop-shadow(0 2px 2px rgba(0,0,0,0.1))'}}>{timeInfo.icon}</span>
                     <span style={{fontSize:'14px', fontWeight:'800', color:'#444'}}>{timeInfo.name}</span>
                  </div>
                  
-                 <div style={{width:'2px', height:'14px', background:'#ddd'}}></div>
+                 <div className="grid-env-divider" style={{width:'2px', height:'14px', background:'#ddd'}}></div>
                  
                  {/* 天气显示 */}
-                 <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                 <div className="grid-env-item" style={{display:'flex', alignItems:'center', gap:'6px'}}>
                     <span style={{fontSize:'20px', filter:'drop-shadow(0 2px 2px rgba(0,0,0,0.1))'}}>{weatherInfo.icon}</span>
                     <span style={{fontSize:'14px', fontWeight:'800', color:'#444'}}>{weatherInfo.name}</span>
                  </div>
@@ -23877,11 +23901,11 @@ const renderMenu = () => {
 
             {/* 右侧：坐标 + 设置 */}
             <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-              <button type="button" onClick={() => setView('settings')} title="游戏设置" style={{
+              <button type="button" className="grid-settings-btn" onClick={() => setView('settings')} title="游戏设置" style={{
                 fontSize:'14px', lineHeight:1, padding:'4px 8px', borderRadius:'8px',
                 border:'1px solid rgba(0,0,0,0.08)', background:'rgba(255,255,255,0.75)', cursor:'pointer',
               }}>⚙️</button>
-              <div style={{
+              <div className="grid-coord-pill" style={{
                 textAlign:'right', fontSize:'12px',
                 color:'#666', fontWeight:'bold', fontFamily:'monospace',
                 background:'rgba(255,255,255,0.5)', padding:'2px 8px', borderRadius:'6px'
@@ -23897,12 +23921,12 @@ const renderMenu = () => {
             if (!ch || ch.mapId !== currentMapId) return null;
             const task = ch.tasks?.find(t => t.step === storyStep);
             if (!task) return (
-              <div style={{padding:'4px 12px', background:'rgba(76,175,80,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#4CAF50', fontWeight:'bold', textAlign:'center'}}>
+              <div className="grid-quest-banner is-complete" style={{padding:'4px 12px', background:'rgba(76,175,80,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#4CAF50', fontWeight:'bold', textAlign:'center'}}>
                 ✅ 剧情任务已完成 · 前往道馆挑战馆主
               </div>
             );
             return (
-              <div style={{padding:'4px 12px', background:'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#E65100', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div className="grid-quest-banner" style={{padding:'4px 12px', background:'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#E65100', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                 <span>{task.type === 'battle' ? '⚔️' : '💬'} {task.name}</span>
                 <span style={{color:'#FF6D00'}}>📍({task.x},{task.y})</span>
               </div>
