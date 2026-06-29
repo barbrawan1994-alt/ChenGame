@@ -74,8 +74,8 @@ export const BERRIES = {
 
 export const TMS = [
   // ★ 基础技能书 (Tier 1) — 威力 50-70, 适合前期 (商店可售)
-  { id: 'tm_ember',  name: '火花冲击', type: 'FIRE',     p: 65,  pp: 15, price: 3000,  desc: '基础火系攻击，灼热的火焰冲击', tier: 1, shopSell: true },
-  { id: 'tm_aqua',   name: '水流喷射', type: 'WATER',    p: 65,  pp: 15, price: 3000,  desc: '基础水系攻击，高压水流冲击', tier: 1, shopSell: true },
+  { id: 'tm_ember',  name: '火花', type: 'FIRE',     p: 65,  pp: 15, price: 3000,  desc: '基础火系攻击，灼热的火焰冲击', tier: 1, shopSell: true },
+  { id: 'tm_aqua',   name: '水炮', type: 'WATER',    p: 65,  pp: 15, price: 3000,  desc: '基础水系攻击，高压水流冲击', tier: 1, shopSell: true },
   { id: 'tm_vine',   name: '飞叶快刀', type: 'GRASS',    p: 55,  pp: 25, price: 3000,  desc: '基础草系攻击，锋利叶刃切割', tier: 1, shopSell: true },
   { id: 'tm_shock',  name: '电击波',   type: 'ELECTRIC', p: 60,  pp: 15, price: 2500,  desc: '基础电系攻击，释放电流冲击', tier: 1, shopSell: true },
   { id: 'tm_pup',    name: '增强拳',   type: 'FIGHT',    p: 40,  pp: 20, price: 2500,  desc: '攻击的同时提升自身攻击力', tier: 1, shopSell: true },

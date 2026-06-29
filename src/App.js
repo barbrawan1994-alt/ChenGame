@@ -1215,7 +1215,7 @@ const [infinityState, setInfinityState] = useState(() => {
     if (dailyLogin.lastDate === today) return;
     const yesterday = getLocalDateStr(new Date(Date.now() - 86400000));
     const isConsecutive = dailyLogin.lastDate === yesterday;
-    const newStreak = isConsecutive ? dailyLogin.streak + 1 : Math.max(1, Math.floor((dailyLogin.streak || 0) / 2));
+    const newStreak = isConsecutive ? dailyLogin.streak + 1 : 1;
     const newTotal = (dailyLogin.totalDays || 0) + 1;
     const reward = DAILY_LOGIN_DAY_REWARDS[Math.min(newStreak - 1, DAILY_LOGIN_DAY_REWARDS.length - 1)];
     setGold(g => g + reward.gold);
@@ -1684,12 +1684,28 @@ const [viewStatPet, setViewStatPet] = useState(null);
         const maxCE = pState.maxCE || 0;
         if (maxCE <= 0) { addLog("⚠️ 该精灵没有咒力！"); return; }
         const heal = Math.floor(maxCE * cItem.val);
-        pState.cursedEnergy = Math.min(maxCE, (pState.cursedEnergy || 0) + heal);
+        if ((workingBattle.sharedPlayerMaxCE || 0) > 0) {
+          workingBattle.sharedPlayerCE = Math.min(workingBattle.sharedPlayerMaxCE, (workingBattle.sharedPlayerCE || 0) + heal);
+          (workingBattle.activeIdxs || [workingBattle.activeIdx]).forEach(idx => {
+            const ps = workingBattle.playerCombatStates?.[idx];
+            if (ps) ps.cursedEnergy = Math.min(ps.maxCE || workingBattle.sharedPlayerMaxCE, workingBattle.sharedPlayerCE);
+          });
+        } else {
+          pState.cursedEnergy = Math.min(maxCE, (pState.cursedEnergy || 0) + heal);
+        }
         logMsg = `使用了 ${cItem.name}，恢复了 ${heal} 咒力!`;
         used = true;
       } else if (cItem.type === 'CE_RESTORE') {
         if ((pState.maxCE || 0) <= 0) { addLog("⚠️ 该精灵没有咒力！"); return; }
-        pState.cursedEnergy = Math.min(pState.maxCE, (pState.cursedEnergy || 0) + cItem.val);
+        if ((workingBattle.sharedPlayerMaxCE || 0) > 0) {
+          workingBattle.sharedPlayerCE = Math.min(workingBattle.sharedPlayerMaxCE, (workingBattle.sharedPlayerCE || 0) + cItem.val);
+          (workingBattle.activeIdxs || [workingBattle.activeIdx]).forEach(idx => {
+            const ps = workingBattle.playerCombatStates?.[idx];
+            if (ps) ps.cursedEnergy = Math.min(ps.maxCE || workingBattle.sharedPlayerMaxCE, workingBattle.sharedPlayerCE);
+          });
+        } else {
+          pState.cursedEnergy = Math.min(pState.maxCE, (pState.cursedEnergy || 0) + cItem.val);
+        }
         logMsg = `使用了 ${cItem.name}，恢复了 ${cItem.val} 咒力!`;
         used = true;
       } else if (cItem.type === 'CE_BOOST') {
@@ -1729,6 +1745,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
           playerCombatStates: workingBattle.playerCombatStates.map(p => ({ ...p })),
           enemyParty: workingBattle.enemyParty.map(e => ({ ...e })),
           activeDomain: workingBattle.activeDomain ? { ...workingBattle.activeDomain } : null,
+          sharedPlayerCE: workingBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
+          sharedPlayerChakra: workingBattle.sharedPlayerChakra ?? prev.sharedPlayerChakra,
           phase: 'busy',
         }) : prev);
         setAnimEffect({ type: 'HEAL', target: 'player' });
@@ -1754,7 +1772,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
             handleWin(newParty);
           }
         } else {
-          await enemyTurn(workingBattle);
+          if (workingBattle.isDouble) {
+            const skipActions = (workingBattle.activeIdxs || []).map(idx => ({ moveIdx: -1, activeIdx: idx }));
+            await executeDoubleRound(skipActions, workingBattle);
+          } else {
+            await enemyTurn(workingBattle);
+          }
         }
     }
     } catch (e) { console.error('useBattleItem error:', e); setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); }
@@ -1811,6 +1834,56 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 8;
     return Math.floor((lv * 100 + lateBonus) * expMod);
   }
+
+  const checkEvoCondition = (pet, evoDex) => {
+    const condition = evoDex?.evoCondition;
+    if (!condition) return true;
+    if (condition.time && condition.time !== timePhase) return false;
+    if (condition.weather && condition.weather !== weather) return false;
+    if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) return false;
+    return true;
+  };
+
+  const applySingleBattleDot = (battleState, addLogFn = addLog) => {
+    if (!battleState || battleState.isDouble) return { playerFainted: false, enemyFainted: false };
+    const pairs = [
+      { unit: battleState.playerCombatStates?.[battleState.activeIdx], side: 'player' },
+      { unit: battleState.enemyParty?.[battleState.enemyActiveIdx], side: 'enemy' },
+    ];
+    let playerFainted = false;
+    let enemyFainted = false;
+    pairs.forEach(({ unit, side }) => {
+      if (!unit || unit.currentHp <= 0 || unit.trait === 'magic_guard') return;
+      if (unit.status !== 'BRN' && unit.status !== 'PSN') return;
+      const eFx = getEquipEffects(unit);
+      const immune = eFx.some(fx => fx.id === 'status_immune' && (fx.val === 'ALL' || fx.val === unit.status));
+      if (immune) {
+        unit.status = null;
+        addLogFn(`🌸 ${unit.name} 的饰品净化了异常状态！`);
+        return;
+      }
+      let dot;
+      if (unit.status === 'PSN' && unit.volatiles?.badlyPoisoned) {
+        unit.volatiles.badlyPoisonedTurns = (unit.volatiles.badlyPoisonedTurns || 1) + 1;
+        dot = Math.floor(getStats(unit).maxHp * Math.min(0.5, unit.volatiles.badlyPoisonedTurns / 16));
+      } else {
+        dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
+      }
+      unit.currentHp = Math.max(0, unit.currentHp - dot);
+      addLogFn(`${unit.name} 受到 ${unit.status === 'BRN' ? '灼伤' : unit.volatiles?.badlyPoisoned ? '剧毒' : '毒'} 伤害 ${dot}!`);
+      if (unit.currentHp <= 0) {
+        if (side === 'player') playerFainted = true;
+        else enemyFainted = true;
+      }
+    });
+    return { playerFainted, enemyFainted };
+  };
+
+  const getInitialResource = (maxValue, config = {}) => {
+    const configuredPct = Number.isFinite(config.initialPercent) ? config.initialPercent : 0;
+    const pct = configuredPct > 0 ? configuredPct : 0.25;
+    return Math.max(0, Math.min(maxValue || 0, Math.floor((maxValue || 0) * pct)));
+  };
 
   // [核心] 属性计算函数 (含特性修正)
   // ==========================================
@@ -2583,6 +2656,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       
         if (item.id === 'max_candy') {
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
+            if (badges.length < 8) { showMapToast('🔒', '徽章不足', '神奇糖果需要 8 枚徽章后才能使用。', 2200); return; }
             const oldLv = pet.level;
             pet.level = 100;
             pet.exp = 0;
@@ -2611,10 +2685,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (dex?.evo && !pet.isEvolved) {
               let candyEvoOk = true;
               const evoDex = POKEDEX.find(px => px.id === dex.evo);
-              if (evoDex?.evoCondition) {
-                const cond = evoDex.evoCondition;
-                if (cond.intimacy && (pet.intimacy || 0) < cond.intimacy) candyEvoOk = false;
-              }
+              if (!checkEvoCondition(pet, evoDex)) candyEvoOk = false;
               if (candyEvoOk) pet.canEvolve = true;
             }
             
@@ -2646,10 +2717,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     if (pdx?.evo && p.level >= (pdx.evoLvl || 30) && !p.isEvolved) {
                         let candyEvoOk = true;
                         const evoDex = POKEDEX.find(px => px.id === pdx.evo);
-                        if (evoDex?.evoCondition) {
-                            const cond = evoDex.evoCondition;
-                            if (cond.intimacy && (p.intimacy || 0) < cond.intimacy) candyEvoOk = false;
-                        }
+                        if (!checkEvoCondition(p, evoDex)) candyEvoOk = false;
                         if (candyEvoOk && evoDex) {
                             p.id = evoDex.id;
                             p.name = p.isFusedShiny ? `异色·${evoDex.name}` : p.isShiny ? `✨${evoDex.name}` : evoDex.name;
@@ -2699,10 +2767,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (pokedex?.evo && pet.level >= (pokedex.evoLvl || 30) && !pet.isEvolved) {
                 let batchEvoOk = true;
                 const evoDex = POKEDEX.find(p => p.id === pokedex.evo);
-                if (evoDex?.evoCondition) {
-                    const bc = evoDex.evoCondition;
-                    if (bc.intimacy && (pet.intimacy || 0) < bc.intimacy) batchEvoOk = false;
-                }
+                if (!checkEvoCondition(pet, evoDex)) batchEvoOk = false;
                 if (batchEvoOk && evoDex) {
                     pet.id = evoDex.id;
                     pet.name = pet.isFusedShiny ? `异色·${evoDex.name}` : pet.isShiny ? `✨${evoDex.name}` : evoDex.name;
@@ -3321,7 +3386,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.leagueWins = leagueWins;
       next.sectChiefsDefeated = (sectTitles || []).length;
       next.uniqueFruits = [...new Set(fruitInventory || [])].length;
-      next.challengesCompleted = (completedChallenges || []).length;
+      const allChallengeIds = new Set([...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES].map(c => c.id));
+      next.challengesCompleted = (completedChallenges || []).filter(id => allChallengeIds.has(id)).length;
       next.achievementCount = unlockedAchs.length;
       const allPets = [...(party || []), ...(box || [])];
       next.maxPetLevel = Math.max(0, ...allPets.map(p => p?.level || 0));
@@ -3352,8 +3418,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const hsTierObj = getHousingScoreTier ? getHousingScoreTier(hsScore) : null;
       next.housingScoreTier = hsTierObj ? HOUSING_SCORE_TIERS.indexOf(hsTierObj) : 0;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
-      const mainMapCount = MAPS.filter(m => !m.isCapital && m.id < 200).length;
-      next.allMapsUnlocked = Object.keys(mapProgress || {}).length >= mainMapCount;
+      const explorableMapIds = MAPS.filter(m => !m.noEncounter).map(m => String(m.id));
+      const progressedMapIds = new Set(Object.keys(mapProgress || {}));
+      next.allMapsUnlocked = explorableMapIds.length > 0 && explorableMapIds.every(id => progressedMapIds.has(id));
       // 队伍属性多样性
       const partyTypes = new Set((party || []).map(p => p?.type).filter(Boolean));
       next.partyTypeDiv = partyTypes.size;
@@ -5349,7 +5416,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     { id: 'gold_l', name: '8000 金币', icon: '💎', color: '#E65100', weight: 5, action: () => { setGold(g => g + 8000); updateAchStat({ totalGoldEarned: 8000 }); } },
     { id: 'potion', name: '伤药 ×5', icon: '💊', color: '#4CAF50', weight: 18, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, potion:(prev.meds.potion||0)+5}})); } },
     { id: 'ether', name: 'PP补剂 ×3', icon: '🧪', color: '#2196F3', weight: 14, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+3}})); } },
-    { id: 'ball', name: '超级球 ×3', icon: '🔵', color: '#1E88E5', weight: 12, action: () => { setInventory(prev => ({...prev, balls:{...prev.balls, ultra:(prev.balls.ultra||0)+3}})); } },
+    { id: 'ball', name: '超级球 ×3', icon: '🔵', color: '#1E88E5', weight: 12, action: () => { setInventory(prev => ({...prev, balls:{...prev.balls, great:(prev.balls.great||0)+3}})); } },
     { id: 'candy', name: '经验糖果', icon: '🍬', color: '#E91E63', weight: 6, action: () => { setInventory(prev => ({...prev, exp_candy:(prev.exp_candy||0)+1})); } },
     { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: prev.tickets + 1})); } },
     { id: 'jutsu_scroll', name: '忍术卷轴', icon: '🍥', color: '#FF6F00', weight: 4, action: () => { setGold(g => g + 3000); updateAchStat({ totalGoldEarned: 3000 }); const rj = JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)]; setNarutoState(prev => ({...prev, jutsuScrolls: [...(prev.jutsuScrolls || []), rj.id], jutsuCollection: [...new Set([...(prev.jutsuCollection || []), rj.id])]})); showMapToast('🍥','忍术卷轴',`获得3000金币 + 忍术【${rj.name}】`,1500); } },
@@ -5398,9 +5465,19 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }, 2500);
   };
 
+  const grantBountyReward = (reward = {}) => {
+    if (reward.gold) { setGold(g => g + reward.gold); updateAchStat({ totalGoldEarned: reward.gold }); }
+    if (reward.tickets) setArenaState(a => ({...a, tickets: a.tickets + (reward.tickets || 0)}));
+  };
+
   const refreshBounties = () => {
     const today = getLocalDateStr();
     if (bountyBoard.date !== today) {
+      const pendingRewards = (bountyBoard.quests || []).filter(q => q.completed && !q.claimed).map(q => q.reward || {});
+      pendingRewards.forEach(grantBountyReward);
+      if (pendingRewards.length > 0) {
+        showMapToast('🎁', '赏金补发', `已自动领取昨日未领取赏金 x${pendingRewards.length}`, 3000);
+      }
       const quests = generateDailyBounties(badges.length);
       setBountyBoard({ date: today, quests, allCompleted: false, masterChestClaimed: false });
     }
@@ -5410,8 +5487,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const q = bountyBoard.quests?.[questIdx];
     if (!q || !q.completed || q.claimed) return;
     const reward = q.reward;
-    if (reward.gold) { setGold(g => g + reward.gold); updateAchStat({ totalGoldEarned: reward.gold }); }
-    if (reward.tickets) setArenaState(a => ({...a, tickets: a.tickets + (reward.tickets || 0)}));
+    grantBountyReward(reward);
     setBountyBoard(prev => {
       const quests = prev.quests.map((qq,i) => i === questIdx ? {...qq, claimed: true} : qq);
       const allDone = quests.every(qq => qq.claimed);
@@ -5622,11 +5698,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (petIds.length === 0) { showMapToast('❌','提示','请选择至少1只精灵',1500); return; }
     if (petIds.length >= party.length) { showMapToast('❌','无法出发','至少保留1只精灵在队伍中',1500); return; }
     if (expeditions.teams.length >= 3) { showMapToast('❌','队伍上限','最多同时派遣3支队伍',1500); return; }
+    const today = getLocalDateStr();
+    const dailyCount = expeditions.lastDate === today ? (expeditions.startedToday || 0) : 0;
+    const dailyCap = 6;
+    if (dailyCount >= dailyCap) { showMapToast('❌','今日次数已满',`远征每日最多 ${dailyCap} 次`,1500); return; }
     const uniqueUids = [...new Set(petIds.map(p => p.uid || p.id || p).filter(Boolean))];
     const alreadySent = expeditions.teams.flatMap(t => t.petUids || []);
     const newUids = uniqueUids.filter(uid => !alreadySent.includes(uid));
     if (newUids.length === 0) { showMapToast('❌','提示','所选精灵已在远征中',1500); return; }
-    setExpeditions(prev => ({...prev, teams: [...prev.teams, { zoneId, petUids: newUids, startTime: Date.now(), duration: zone.duration }]}));
+    setExpeditions(prev => {
+      const prevDaily = prev.lastDate === today ? (prev.startedToday || 0) : 0;
+      return {...prev, lastDate: today, startedToday: prevDaily + 1, teams: [...prev.teams, { zoneId, petUids: newUids, startTime: Date.now(), duration: zone.duration }]};
+    });
     showMapToast('🗺️', '出发', `探险队前往${zone.name}！`, 2000);
   };
 
@@ -5710,6 +5793,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       showMapToast('🔒', '未解锁', `需要 ${Math.max(camp.reqBadges, tier.reqBadges)} 枚徽章`, 1500); return;
     }
     if (gold < tier.cost) { showMapToast('❌', '金币不足', `需要 ${tier.cost} 金币`, 1500); return; }
+    const targetPet = [...party, ...box].find(p => p.uid === petUid);
+    if (targetPet) {
+      const currentEvs = targetPet.evs || {};
+      const currentStatEv = Math.max(0, currentEvs[camp.stat] || 0);
+      const currentTotalEv = Object.values(currentEvs).reduce((s, v) => s + Math.max(0, v || 0), 0);
+      if (currentStatEv >= 252 || currentTotalEv >= 510) {
+        showMapToast('⚠️', '训练已满', `${targetPet.name} 的努力值已达上限，无法开始无收益训练。`, 2500);
+        return;
+      }
+    }
     let startedTraining = false;
     flushSync(() => {
       setTrainingState(prev => {
@@ -5759,7 +5852,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (actualGain <= 0) {
           showMapToast('⚠️', '训练无效', `${pet.name} 的 ${camp.stat.toUpperCase()} 努力值已达上限，本次训练未获收益。`, 3000);
           setGold(g => g + (tier.cost || 0));
-          return { ...prev, slots: prev.slots.filter((_, i) => i !== slotIdx) };
+          const dailyCount = { ...(prev.dailyCount || {}) };
+          dailyCount[slot.petUid] = Math.max(0, (dailyCount[slot.petUid] || 1) - 1);
+          return { ...prev, dailyCount, slots: prev.slots.filter((_, i) => i !== slotIdx) };
         }
 
         let evApplied = false;
@@ -5821,8 +5916,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const bossHp = scaleBossHp(boss, badges.length);
     const remainHp = Math.max(0, bossHp - st.totalDamage);
 
-    setWorldBossState(prev => ({ ...prev, attempts: (prev.attempts || 0) + 1 }));
-
     const enemyPet = {
       uid: 'world_boss_' + boss.id,
       id: 999, name: boss.name, emoji: boss.emoji,
@@ -5858,6 +5951,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const defeated = newTotal >= bossHp;
       const next = {
         ...prev,
+        attempts: Math.min(WORLD_BOSS_MAX_ATTEMPTS, (prev.attempts || 0) + 1),
         totalDamage: newTotal,
         defeated,
         bestDamage: Math.max(prev.bestDamage || 0, totalDmgDealt),
@@ -5914,6 +6008,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const ruleEffect = rule.effect;
     if (ruleEffect === 'solo' && party.length < 1) { showMapToast('❌','队伍为空','至少需要1只精灵',1500); return; }
     let arenaPlayerParty = party;
+    if (ruleEffect === 'solo') {
+      arenaPlayerParty = party.slice(0, 1);
+    }
     if (ruleEffect === 'typeLock') {
       const allowedTypes = ['FIRE','WATER','GRASS','ELECTRIC','ICE','FIGHT','PSYCHIC','DARK','DRAGON','FAIRY','NORMAL'];
       const weekTypes = [allowedTypes[new Date().getDay() % allowedTypes.length], allowedTypes[(new Date().getDay() + 3) % allowedTypes.length]];
@@ -5924,6 +6021,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         return;
       }
       arenaPlayerParty = validPets;
+    }
+    if (ruleEffect === 'solo' && arenaPlayerParty.length > 1) {
+      arenaPlayerParty = arenaPlayerParty.slice(0, 1);
     }
     let effectiveLvl = _.random(rank.enemyLvl[0], rank.enemyLvl[1]);
     let enemyCount = rank.enemyCount || 3;
@@ -6008,9 +6108,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (prev.lastTicketDate === today) return prev;
       const weekDay = new Date().getDay();
       const ruleIdx = weekDay % ARENA_WEEKLY_RULES.length;
+      const ticketCap = ARENA_DAILY_FREE_TICKETS * 3;
       const next = {
         ...prev,
-        tickets: Math.max(prev.tickets, ARENA_DAILY_FREE_TICKETS),
+        tickets: Math.min(ticketCap, Math.max(0, prev.tickets || 0) + ARENA_DAILY_FREE_TICKETS),
         lastTicketDate: today,
         weeklyRule: ARENA_WEEKLY_RULES[ruleIdx]?.id || 'normal',
         lastRuleDate: today,
@@ -10791,6 +10892,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         // 尾兽化数据
         const bijuuData = p.bijuu || null;
+        const maxChakra = CHAKRA_CONFIG.baseAmount + p.level * CHAKRA_CONFIG.perLevelBonus + (nRank?.chakraBonus || 0);
 
         return {
             ...p,
@@ -10804,7 +10906,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             
             volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
             turnCounters: { status: 0, stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 } },
-            cursedEnergy: 0,
+            cursedEnergy: getInitialResource(maxCE, CURSED_ENERGY_CONFIG),
             maxCE,
             curseGrade: grade,
             hasDomain: canDomain,
@@ -10816,8 +10918,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             fruitTurnsLeft: 0,
             fruitUsed: false,
             fruitEffects: null,
-            chakra: 0,
-            maxChakra: CHAKRA_CONFIG.baseAmount + p.level * CHAKRA_CONFIG.perLevelBonus + (nRank?.chakraBonus || 0),
+            chakra: getInitialResource(maxChakra, CHAKRA_CONFIG),
+            maxChakra,
             jutsuCooldowns: {},
             cursedCooldowns: {},
             bijuuData: bijuuData,
@@ -10951,9 +11053,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       enemyActiveIdxs: doubleEnemyIdxs,
       doubleSlot: 0,
       doubleActions: [],
-      sharedPlayerChakra: 0, sharedPlayerCE: 0,
+      sharedPlayerChakra: getInitialResource(pTeamMaxChakra, CHAKRA_CONFIG), sharedPlayerCE: getInitialResource(pTeamMaxCE, CURSED_ENERGY_CONFIG),
       sharedPlayerMaxChakra: pTeamMaxChakra, sharedPlayerMaxCE: pTeamMaxCE,
-      sharedEnemyChakra: 0, sharedEnemyCE: 0,
+      sharedEnemyChakra: getInitialResource(eTeamMaxChakra, CHAKRA_CONFIG), sharedEnemyCE: getInitialResource(eTeamMaxCE, CURSED_ENERGY_CONFIG),
       sharedEnemyMaxChakra: eTeamMaxChakra, sharedEnemyMaxCE: eTeamMaxCE,
       targetIdx: isDouble && doubleEnemyIdxs?.length ? (doubleEnemyIdxs.find(i => enemyParty[i]?.currentHp > 0) ?? doubleEnemyIdxs[0]) : undefined,
       ...extraBattleData,
@@ -11627,18 +11729,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let move = p.combatMoves?.[moveIdx];
     const normalMovesD = (p.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
     const allNormalPPZeroD = normalMovesD.length === 0 || normalMovesD.every(m => m.pp <= 0);
+    const sharedCEForDouble = (battle.sharedPlayerMaxCE || 0) > 0 ? (battle.sharedPlayerCE || 0) : (p.cursedEnergy || 0);
+    const sharedChakraForDouble = (battle.sharedPlayerMaxChakra || 0) > 0 ? (battle.sharedPlayerChakra || 0) : (p.chakra || 0);
     const cursedMovesD = (p.combatMoves || []).filter(m => m.isCursed);
-    const allCursedUnusableD = cursedMovesD.length === 0 || cursedMovesD.every(m => (p.cursedEnergy || 0) < (m.ceCost || 0) || (p.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+    const allCursedUnusableD = cursedMovesD.length === 0 || cursedMovesD.every(m => sharedCEForDouble < (m.ceCost || 0) || (p.cursedCooldowns?.[m.id || m.name] || 0) > 0);
     const jutsuMovesD = (p.combatMoves || []).filter(m => m.isJutsu);
-    const allJutsuUnusableD = jutsuMovesD.length === 0 || jutsuMovesD.every(m => (p.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (p.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
+    const allJutsuUnusableD = jutsuMovesD.length === 0 || jutsuMovesD.every(m => sharedChakraForDouble < (m.chakraCost || 0) || m.pp <= 0 || (p.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
     const allMovesExhaustedD = allNormalPPZeroD && allCursedUnusableD && allJutsuUnusableD;
     if (!move && !allMovesExhaustedD) return;
     let useStruggleD = false;
     if (allMovesExhaustedD) useStruggleD = true;
-    if (move?.isCursed && !useStruggleD && (p.cursedEnergy || 0) < (move.ceCost || 0)) {
+    if (move?.isCursed && !useStruggleD && (p.cursedCooldowns?.[move.id || move.name] || 0) > 0) {
+      showMapToast('❌', '冷却中', `${move.name} 还需 ${p.cursedCooldowns[move.id || move.name]} 回合冷却`, 1500); return;
+    }
+    if (move?.isCursed && !useStruggleD && sharedCEForDouble < (move.ceCost || 0)) {
       showMapToast('❌', '提示', '咒力不足！', 1500); return;
     }
-    if (move?.isJutsu && !useStruggleD && move.chakraCost > 0 && (p.chakra || 0) < move.chakraCost) {
+    if (move?.isJutsu && !useStruggleD && (p.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0) {
+      showMapToast('❌', '冷却中', `${move.name} 还需 ${p.jutsuCooldowns[move.jutsuId || move.name]} 回合冷却`, 1500); return;
+    }
+    if (move?.isJutsu && !useStruggleD && move.chakraCost > 0 && sharedChakraForDouble < move.chakraCost) {
       showMapToast('❌', '提示', '查克拉不足！', 1500); return;
     }
     if (move?.isJutsu && !useStruggleD && move.pp !== undefined && move.pp <= 0) {
@@ -11672,9 +11782,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await executeDoubleRound(newActions);
   };
 
-  const executeDoubleRound = async (playerActions) => {
+  const executeDoubleRound = async (playerActions, stateOverride = null) => {
     try {
-      let tempBattle = _.cloneDeep(battle);
+      let tempBattle = _.cloneDeep(stateOverride || battle);
       tempBattle.doubleActions = playerActions;
 
       // --- 双打共享能量池：同步所有出战精灵到共享池值 ---
@@ -11806,7 +11916,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const actions = [];
 
-      let _dblPoolCE  = poolCE;
       const applyDoubleDomainSpeed = (baseSpd, forPlayerSide) => {
         let s = baseSpd || 1;
         if (tempBattle._arenaSpeedBoost || battle?._arenaSpeedBoost) s = Math.floor(s * 1.5);
@@ -11835,12 +11944,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const pet = tempBattle.playerCombatStates?.[pIdx];
         if (!pet || pet.currentHp <= 0) return;
         pet.chakra = Math.min(pet.maxChakra || 0, poolChk);
-        pet.cursedEnergy = Math.min(pet.maxCE || 0, _dblPoolCE);
+        pet.cursedEnergy = Math.min(pet.maxCE || 0, poolCE);
         let move = (pet.combatMoves || [])[action.moveIdx];
         const normD = (pet.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
         const allNormEmptyD = normD.length === 0 || normD.every(m => m.pp <= 0);
         const curseD = (pet.combatMoves || []).filter(m => m.isCursed);
-        const allCurseBadD = curseD.length === 0 || curseD.every(m => (pet.cursedEnergy || 0) < (m.ceCost || 0) || (pet.cursedCooldowns?.[m.id || m.name] || 0) > 0);
+        const allCurseBadD = curseD.length === 0 || curseD.every(m => poolCE < (m.ceCost || 0) || (pet.cursedCooldowns?.[m.id || m.name] || 0) > 0);
         const jutsuD = (pet.combatMoves || []).filter(m => m.isJutsu);
         const allJutsuBadD = jutsuD.length === 0 || jutsuD.every(m => (pet.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || (pet.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
         const allExD = allNormEmptyD && allCurseBadD && allJutsuBadD;
@@ -11848,9 +11957,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
           move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } };
         }
         if (!move) return;
-        if (move.isCursed && move.ceCost > 0) {
-          _dblPoolCE = Math.max(0, _dblPoolCE - move.ceCost);
-        }
         const spd = applyDoubleDomainSpeed(getStats(pet, pet.stages, pet.status).spd, true);
         const eaIdxs = tempBattle.enemyActiveIdxs || [];
         const targetEnemyIdx = action.targetEnemyIdx !== undefined ? action.targetEnemyIdx : (slotIdx < eaIdxs.length ? eaIdxs[slotIdx] : eaIdxs[0]);
@@ -11908,7 +12014,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         actions.push({ side: 'enemy', petIdx: eIdx, move: chosenMove, speed: spd, targetIdx: chosenTarget, slotIdx, unit: enemy });
       });
 
-      actions.forEach(a => { a._tieBreak = Math.random(); a._priority = a.move?.priority || 0; if (a.unit?.trait === 'prankster' && a.move && a.move.p === 0 && a.move.cat !== 'physical') a._priority += 1; });
+      actions.forEach(a => { a._tieBreak = Math.random(); a._priority = a.move?.priority || 0; if (a.unit?.trait === 'prankster' && a.move && (!a.move.p || a.move.p === 0) && a.move.cat !== 'physical') a._priority += 1; });
       actions.sort((a, b) => {
         if (a._priority !== b._priority) return b._priority - a._priority;
         const diff = (b.speed || 0) - (a.speed || 0);
@@ -13699,6 +13805,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     applyWeatherDmg(player, true);
     applyWeatherDmg(enemy, false);
 
+    const dotResult = applySingleBattleDot(state);
+    if (dotResult.playerFainted) playerDied = true;
+
     const singleHardBattle = !!(state?.isTrainer || state?.isGym || state?.isChallenge || state?.isStory || state?.isBoss);
     const playerExpLogs = checkEffectExpiration(player, player, singleHardBattle);
     const enemyExpLogs = checkEffectExpiration(enemy, enemy, singleHardBattle);
@@ -14300,9 +14409,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
             await wait(1000); _setAnim(null);
             return false;
         }
-        const targetState = eff.target === 'self' ? atkState : defState;
-        const targetName = eff.target === 'self' ? attacker.name : defender.name;
-        const targetSide = eff.target === 'self' ? (source==='player'?'player':'enemy') : (source==='player'?'enemy':'player');
+        let targetState = eff.target === 'self' ? atkState : defState;
+        let targetName = eff.target === 'self' ? attacker.name : defender.name;
+        let targetSide = eff.target === 'self' ? (source==='player'?'player':'enemy') : (source==='player'?'enemy':'player');
+        const canMagicBounce = eff.target !== 'self' && defender.trait === 'magic_bounce' && ['DEBUFF', 'STATUS'].includes(eff.type);
+        if (canMagicBounce) {
+            targetState = atkState;
+            targetName = attacker.name;
+            targetSide = source === 'player' ? 'player' : 'enemy';
+            addLog(`🪞 ${defender.name} 的魔法反射把变化技反弹了！`);
+        }
 
         if (eff.type === 'BUFF' || eff.type === 'DEBUFF') {
             const delta = eff.type === 'BUFF' ? eff.val : -eff.val;
@@ -14345,7 +14461,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
                        (eff.status === 'PAR' && (targetState.type === 'ELECTRIC' || targetState.type2 === 'ELECTRIC' || targetState.secondaryType === 'ELECTRIC'))) {
                 addLog(`但是对 ${targetName} 没有效果!`);
             } else {
-                const defEquipImmune = getEquipEffects(defender).some(fx => fx.id === 'status_immune' && (fx.val === 'ALL' || fx.val === eff.status));
+                const statusTargetUnit = canMagicBounce ? attacker : defender;
+                const defEquipImmune = getEquipEffects(statusTargetUnit).some(fx => fx.id === 'status_immune' && (fx.val === 'ALL' || fx.val === eff.status));
                 if (defEquipImmune) { addLog(`🌸 ${targetName} 的饰品抵御了异常状态！`); }
                 else if (Math.random() < (eff.chance || 1.0)) {
                 targetState.status = eff.status;
@@ -14641,8 +14758,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             // 查克拉属性克制加成
             if (move.isJutsu) {
               const jutsuNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === move.t);
-              const defNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === defender.type);
-              if (jutsuNature && defNature && CHAKRA_NATURE_MAP[jutsuNature[0]]?.strongVs === defNature[0]) {
+              const defenderTypesForNature = [defender.type, defender.type2, defender.secondaryType].filter(Boolean);
+              const natureMatch = defenderTypesForNature
+                .map(t => Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === t))
+                .find(defNature => defNature && CHAKRA_NATURE_MAP[jutsuNature?.[0]]?.strongVs === defNature[0]);
+              if (jutsuNature && natureMatch) {
                 rawDmg *= 1.15;
                 addLog(`${attacker.name} 的忍术属性克制了对手！`);
               }
@@ -14740,7 +14860,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
           _setAnim(null);
         }
 
+        let equipDodged = false;
+        if (!isImmune && !isDodged) {
+          defEquipFx.forEach(fx => {
+            if (fx.id === 'dodge' && Math.random() < fx.val) equipDodged = true;
+          });
+          if (equipDodged) {
+            dmg = 0;
+            rawDmg = 0;
+            addLog(`${defender.name} 的饰品发动，闪避了攻击！`);
+          } else {
+            defEquipFx.forEach(fx => {
+              if (fx.id === 'reduce_special' && category === 'special') {
+                rawDmg *= (1 - fx.val);
+                dmg = Math.max(1, Math.floor(rawDmg));
+              }
+            });
+          }
+        }
+
         if (isImmune || isDodged) {
+          addLog(`造成 0 伤害`);
+        } else if (equipDodged) {
           addLog(`造成 0 伤害`);
         } else {
         let msg = `造成 ${dmg.toLocaleString()} 伤害`;
@@ -14759,19 +14900,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (isCrit) {
             if (battleState) battleState._battleCrits = (battleState._battleCrits || 0) + 1;
           }
-        }
-
-        let equipDodged = false;
-        if (!isImmune && !isDodged) {
-          defEquipFx.forEach(fx => {
-            if (fx.id === 'dodge' && Math.random() < fx.val) { equipDodged = true; }
-          });
-          if (equipDodged) { dmg = 0; rawDmg = 0; addLog(`${defender.name} 的饰品发动，闪避了攻击！`); }
-        }
-        if (!isImmune && !isDodged && !equipDodged) {
-          defEquipFx.forEach(fx => {
-            if (fx.id === 'reduce_special' && category === 'special') { rawDmg *= (1 - fx.val); dmg = Math.max(1, Math.floor(rawDmg)); }
-          });
         }
 
         let survivalMsg = null;
@@ -14977,8 +15105,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - 1);
             addLog(`⬇️ ${defender.name} 的物攻下降了！`);
           }
-          if (eff.recoil && !isDead) {
-            const recoilDmg = Math.floor(dmg * Math.min(0.35, eff.recoil));
+          const recoilRate = eff.recoil ?? move.recoil;
+          if (recoilRate && !isDead) {
+            const recoilDmg = Math.floor(dmg * Math.min(0.35, recoilRate));
             attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
             addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
           }
@@ -15156,8 +15285,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 3.4b 反伤在KO时也要生效
-    if (isDead && move.effect?.recoil && dmg > 0) {
-      const recoilDmg = Math.floor(dmg * Math.min(0.35, move.effect.recoil));
+    const koRecoilRate = move.effect?.recoil ?? move.recoil;
+    if (isDead && koRecoilRate && dmg > 0) {
+      const recoilDmg = Math.floor(dmg * Math.min(0.35, koRecoilRate));
       attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
       addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
     }
@@ -15188,43 +15318,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
           addLog(`🌙 ${unit.name} 的饰品恢复了 ${h} HP`);
         }
       });
-    }
-
-    // 4b. 回合结束结算 (灼伤/中毒) — 仅在敌方行动后结算一次（避免每回合双重DOT）
-    const isEndOfTurn = source === 'enemy';
-    if (!battleState?.isDouble && isEndOfTurn) {
-        const applyDot = (unit, state) => {
-            if (unit.currentHp <= 0) return false;
-            if (unit.trait === 'magic_guard') return false;
-            if (state.status === 'BRN' || state.status === 'PSN') {
-                const eFx = getEquipEffects(unit);
-                let immune = false;
-                eFx.forEach(fx => {
-                  if (fx.id === 'status_immune' && (fx.val === 'ALL' || fx.val === state.status)) { immune = true; state.status = null; }
-                });
-                if (immune) { addLog(`🌸 ${unit.name} 的饰品净化了异常状态！`); return false; }
-                let dot;
-                if (state.status === 'PSN' && state.volatiles?.badlyPoisoned) {
-                    state.volatiles.badlyPoisonedTurns = (state.volatiles.badlyPoisonedTurns || 1) + 1;
-                    dot = Math.floor(getStats(unit).maxHp * Math.min(0.5, state.volatiles.badlyPoisonedTurns / 16));
-                } else if (state.status === 'BRN') {
-                    dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
-                } else {
-                    dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
-                }
-                unit.currentHp = Math.max(0, unit.currentHp - dot);
-                addLog(`${unit.name} 受到 ${state.status==='BRN'?'灼伤': state.volatiles?.badlyPoisoned ? '剧毒' : '毒'} 伤害 ${dot}!`);
-                return unit.currentHp <= 0;
-            }
-            return false;
-        };
-        
-        const atkDiedFromDot = applyDot(attacker, atkState);
-        const defDiedFromDot = applyDot(defender, defState);
-
-        if (defDiedFromDot) isDead = true;
-        if (atkDiedFromDot) addLog(`${attacker.name} 因状态伤害倒下了！`);
-        if (atkDiedFromDot && attacker.currentHp <= 0) atkState._diedFromDot = true;
     }
 
     if (battleState && source === 'player' && move?.isJutsu) {
@@ -17235,7 +17328,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try {
     
     // 1. 扣球并播放投掷动画
-    const enemy = battle.enemyParty[battle.enemyActiveIdx];
+    const catchTargetIdx = battle.isDouble
+      ? (battle.targetIdx ?? battle.enemyActiveIdxs?.find(idx => battle.enemyParty?.[idx]?.currentHp > 0) ?? battle.enemyActiveIdx)
+      : battle.enemyActiveIdx;
+    const enemy = battle.enemyParty[catchTargetIdx];
     if (!enemy) return addLog("无效的目标！");
     const catchChance = calculateCatchRate(ballType, enemy);
     setInventory(prev => ({ ...prev, balls: { ...(prev.balls || {}), [ballType]: Math.max(0, ((prev.balls || {})[ballType] || 0) - 1) } }));
@@ -26467,7 +26563,7 @@ const renderMenu = () => {
                 {battleBagTab === 'balls' && (
                   <>
                     {Object.keys(inventory.balls || {}).filter(k => (inventory.balls||{})[k] > 0).length === 0 && <div className="empty-hint">没有可用的精灵球</div>}
-                    {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; const enemy = battle?.enemyParty?.[battle?.enemyActiveIdx]; const catchPct = enemy ? Math.min(100, Math.round(calculateCatchRate(type, enemy) * 100)) : 0; const catchColor = catchPct >= 60 ? '#4CAF50' : catchPct >= 30 ? '#FF9800' : '#F44336'; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}{enemy && <span style={{fontSize:'10px',marginLeft:'6px',color:catchColor,fontWeight:700}}>{type==='master'?'必捕':catchPct+'%'}</span>}</div><div className="item-desc">{ball.desc}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; const catchTargetIdx = battle?.isDouble ? (battle?.targetIdx ?? battle?.enemyActiveIdxs?.find(idx => battle?.enemyParty?.[idx]?.currentHp > 0) ?? battle?.enemyActiveIdx) : battle?.enemyActiveIdx; const enemy = battle?.enemyParty?.[catchTargetIdx]; const catchPct = enemy ? Math.min(100, Math.round(calculateCatchRate(type, enemy) * 100)) : 0; const catchColor = catchPct >= 60 ? '#4CAF50' : catchPct >= 30 ? '#FF9800' : '#F44336'; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}{enemy && <span style={{fontSize:'10px',marginLeft:'6px',color:catchColor,fontWeight:700}}>{type==='master'?'必捕':catchPct+'%'}</span>}</div><div className="item-desc">{ball.desc}{battle?.isDouble && enemy ? ` · 目标：${enemy.name}` : ''}</div></div><div className="item-count">x{count}</div></div> ); })}
                   </>
                 )}
                 {battleBagTab === 'meds' && (

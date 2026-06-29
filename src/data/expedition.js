@@ -117,5 +117,7 @@ export function calcExpeditionBonus(teamPets, zone) {
 
 export const DEFAULT_EXPEDITIONS = {
   teams: [],
+  lastDate: '',
+  startedToday: 0,
   speedBoosts: 0, // 预留字段，暂未实现
 };

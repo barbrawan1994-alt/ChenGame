@@ -131,7 +131,7 @@ const BASE_POKEDEX = [
   { id: 127, name: '雷伊布', type: 'ELECTRIC', emoji: '⚡', hp: 65, atk: 110, def: 60 },
   { id: 128, name: '火伊布', type: 'FIRE', emoji: '🔥', hp: 65, atk: 130, def: 60 },
   { id: 129, name: '太阳伊布', type: 'PSYCHIC', emoji: '🔮', hp: 65, atk: 130, def: 60 },
-  { id: 130, name: '月亮伊布', type: 'GHOST', emoji: '🌙', hp: 95, atk: 65, def: 110 },
+  { id: 130, name: '月亮伊布', type: 'DARK', emoji: '🌙', hp: 95, atk: 65, def: 110 },
   { id: 131, name: '多边兽', type: 'NORMAL', emoji: '🦆', hp: 65, atk: 60, def: 70, evo: 132, evoLvl: 30 },
   { id: 132, name: '多边兽Z', type: 'NORMAL', emoji: '🤖', hp: 85, atk: 135, def: 70, evo: 324, evoLvl: 60 }, // 新增进化
   { id: 133, name: '菊石兽', type: 'ROCK', emoji: '🐚', hp: 35, atk: 40, def: 100, evo: 134, evoLvl: 40 },
