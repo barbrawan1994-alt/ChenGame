@@ -1339,7 +1339,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       
       if (!battle) {
         const baseRate = ball.rate || 1.0;
-        if (ballType === 'quick') return Math.min(baseRate, 1.0);
+        if (ballType === 'quick') return Math.min(0.6, baseRate * 0.4);
         return Math.min(0.6, baseRate * 0.4);
       }
       const mapInfo = MAPS.find(m => m.id === battle.mapId);
@@ -1359,7 +1359,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       }
       // 先机球：前 3 回合
       if (ballType === 'quick') {
-          if (turnCount <= 3) rate = 5.0;
+          if (turnCount < 3) rate = 5.0;
       }
       // 计时球：回合越久越强
       if (ballType === 'timer') {
@@ -1488,7 +1488,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     // 4. 战斗中使用药品 (消耗回合)
   const useBattleItem = async (itemKey, category) => {
-    if (!battle || (battle.phase !== 'input' && !battle.showSwitch)) return;
+    if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2' && !battle.showSwitch)) return;
     try {
     const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
     const targetIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
@@ -1505,6 +1505,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         if ((inventory.meds?.[itemKey] || 0) <= 0) return;
 
         if (item.type === 'HP') {
+            if (pState.currentHp <= 0) { addLog("⚠️ 无法对濒死精灵使用恢复药！"); return; }
             const max = getStats(pState, pState.stages, pState.status).maxHp;
             if (pState.currentHp >= max) { addLog("⚠️ 体力已满，无需使用！"); return; }
             const heal = item.val === 9999 ? max : item.val;
@@ -1513,7 +1514,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
             used = true;
         } else if (item.type === 'STATUS') {
             if (item.val === 'ALL') {
-                if (!pState.status) { addLog("⚠️ 没有异常状态！"); return; }
+                const hasVolatileStatus = !!(pState.volatiles?.confused || pState.volatiles?.sleepTurns || pState.volatiles?.frozenTurns);
+                if (!pState.status && !hasVolatileStatus) { addLog("⚠️ 没有异常状态！"); return; }
                 pState.status = null;
                 if (pState.volatiles) { pState.volatiles.sleepTurns = 0; pState.volatiles.confused = 0; }
                 logMsg = `使用了 ${item.name}，状态恢复正常！`;
@@ -1579,7 +1581,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
             } else { addLog("⚠️ 无法使用该道具"); return; }
             used = true;
         } else if (item.type === 'REVIVE') {
-             const faintedIdx = workingBattle.playerCombatStates?.findIndex((cs, i) => i !== targetIdx && cs.currentHp <= 0);
+             const forcedIdx = workingBattle.showSwitch && pState.currentHp <= 0 ? targetIdx : -1;
+             const faintedIdx = forcedIdx >= 0 ? forcedIdx : workingBattle.playerCombatStates?.findIndex(cs => cs.currentHp <= 0);
              if (faintedIdx >= 0 && faintedIdx < workingBattle.playerCombatStates.length) {
                const faintedState = workingBattle.playerCombatStates[faintedIdx];
                const maxHp = getStats(faintedState, faintedState.stages, faintedState.status).maxHp;
@@ -1591,7 +1594,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                    : Math.floor(maxHp * (v || 50) / 100);
                faintedState.currentHp = Math.min(maxHp, healAmt);
                faintedState.status = null;
-               if (faintedState.volatiles) faintedState.volatiles = {};
+               faintedState.volatiles = { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 };
                logMsg = `使用了 ${item.name}，${party[faintedIdx]?.name || '伙伴'} 恢复了战斗能力！`;
                used = true;
              } else {
@@ -5638,7 +5641,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const zone = EXPEDITION_ZONES.find(z => z.id === team.zoneId);
       if (!zone) return prev;
 
-      const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => (p.uid === uid) || (p.id === uid))).filter(Boolean);
+      const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
       const bonusMult = calcExpeditionBonus(teamPets, zone);
 
       const rewardCount = 1 + Math.floor(Math.random() * 3);
@@ -5665,7 +5668,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
           if (tm) { setInventory(p => ({...p, tms:{...p.tms, [tm.id]:(p.tms[tm.id]||0)+1}})); msg.push(`📖 ${tm.name} (${TYPES[tm.type]?.name || ''}·威力${tm.p ?? '—'})`); }
         }
-        else if (picked.type === 'berry') { const bCount = Math.floor((picked.count || 5) * bonusMult); setInventory(p => ({...p, berries: addBerries(p.berries, 'oran', bCount)})); msg.push(`🍒 树果 x${bCount}`); }
+        else if (picked.type === 'berry') { const berryId = BERRIES[picked.id] ? picked.id : 'oran'; const bCount = Math.floor((picked.count || 5) * bonusMult); setInventory(p => ({...p, berries: addBerries(p.berries, berryId, bCount)})); msg.push(`🍒 ${BERRIES[berryId]?.name || '树果'} x${bCount}`); }
         else if (picked.type === 'accessory_shard' || picked.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品 ${acc.name || '饰品'}`); } }
         else if (picked.type === 'egg' || picked.type === 'shiny_egg') {
           const eggLvCap = picked.level || (300 + badges.length * 30);
@@ -5747,10 +5750,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (!pet) { showMapToast('⚠️', '训练异常', '找不到该精灵，训练位已清除', 1500); return { ...prev, slots: prev.slots.filter((_, i) => i !== slotIdx) }; }
 
         const gain = calcTrainingGain(pet, camp, tier, badges.length);
+        const currentEvs = pet.evs || {};
+        const currentStatEv = Math.max(0, currentEvs[camp.stat] || 0);
+        const currentTotalEv = Object.values(currentEvs).reduce((s, v) => s + Math.max(0, v || 0), 0);
+        const actualGain = Math.max(0, Math.min(gain, 252 - currentStatEv, 510 - currentTotalEv));
         const evtText = TRAINING_EVENTS[Math.floor(Math.random() * TRAINING_EVENTS.length)];
 
-        if (gain <= 0) {
+        if (actualGain <= 0) {
           showMapToast('⚠️', '训练无效', `${pet.name} 的 ${camp.stat.toUpperCase()} 努力值已达上限，本次训练未获收益。`, 3000);
+          setGold(g => g + (tier.cost || 0));
           return { ...prev, slots: prev.slots.filter((_, i) => i !== slotIdx) };
         }
 
@@ -5759,13 +5767,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           if (p.uid !== slot.petUid) return p;
           evApplied = true;
           const evs = { ...(p.evs || {}) };
-          evs[camp.stat] = (evs[camp.stat] || 0) + gain;
+          evs[camp.stat] = Math.min(252, (evs[camp.stat] || 0) + actualGain);
           return { ...p, evs };
         };
         setParty(pr => pr.map(updatePetEVs));
         setBox(bx => bx.map(updatePetEVs));
         if (!evApplied) showMapToast('⚠️', '训练警告', '未找到对应精灵，努力值未应用', 2000);
-        else showMapToast('🎉', '训练完成', `${pet.name} ${camp.icon} ${camp.stat.toUpperCase()} +${gain}！${evtText}`, 3500);
+        else showMapToast('🎉', '训练完成', `${pet.name} ${camp.icon} ${camp.stat.toUpperCase()} +${actualGain}！${evtText}`, 3500);
         completedTraining = !!evApplied;
         return { ...prev, slots: prev.slots.filter((_, i) => i !== slotIdx) };
       });
@@ -10108,7 +10116,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 name: p.name || baseInfo.name || '未知精灵',
                 emoji: p.emoji || baseInfo.emoji || '❓',
                 type: p.type || baseInfo.type || 'NORMAL',
-                uid: Date.now(),
+                uid: `${Date.now()}_${safeId}_${Math.random().toString(36).slice(2)}`,
                 currentHp: stats.maxHp,
                 status: null,
                 // 确保 PvP 导入的数据也有特性字段，如果没有则随机一个
@@ -10252,11 +10260,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     else if (type === 'eclipse_leader') {
         trainerName = "日蚀队 首领·虚空";
         dropGold = 10000;
-        enemyParty.push(createPet(94, 90)); // 耿鬼
-        enemyParty.push(createPet(139, 91)); // 班基拉斯
-        enemyParty.push(createPet(182, 91)); // 暴飞龙
-        enemyParty.push(createPet(140, 92)); // 巨金怪
-        enemyParty.push(createPet(216, 92)); // 三首恶龙
+        enemyParty.push(createPet(94, 90, true)); // 耿鬼
+        enemyParty.push(createPet(139, 91, true)); // 班基拉斯
+        enemyParty.push(createPet(182, 91, true)); // 暴飞龙
+        enemyParty.push(createPet(140, 92, true)); // 巨金怪
+        enemyParty.push(createPet(216, 92, true)); // 三首恶龙
         const boss = createPet(341, 95, true, true); // 暗黑超梦
         boss.name = "暗黑超梦";
         boss.customBaseStats = { hp: 120, p_atk: 160, p_def: 100, s_atk: 160, s_def: 100, spd: 140, crit: 25 };
@@ -11383,7 +11391,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.cursedCooldowns[move.id || move.name]} 回合冷却`, 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
-            if ((tempPlayerState.cursedEnergy || 0) < (move.ceCost || 0)) {
+            const availableCE = (tempBattle.sharedPlayerMaxCE || 0) > 0 ? (tempBattle.sharedPlayerCE || 0) : (tempPlayerState.cursedEnergy || 0);
+            if (availableCE < (move.ceCost || 0)) {
                 showMapToast('❌', '提示', '咒力不足！', 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
@@ -11392,7 +11401,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.jutsuCooldowns[move.jutsuId || move.name]} 回合冷却`, 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
-            if (move.chakraCost > 0 && (tempPlayerState.chakra || 0) < move.chakraCost) {
+            const availableChakra = (tempBattle.sharedPlayerMaxChakra || 0) > 0 ? (tempBattle.sharedPlayerChakra || 0) : (tempPlayerState.chakra || 0);
+            if (move.chakraCost > 0 && availableChakra < move.chakraCost) {
                 showMapToast('❌', '提示', '查克拉不足！', 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
@@ -11400,7 +11410,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 showMapToast('❌', '提示', '忍术PP耗尽！', 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
-            tempPlayerState.chakra = Math.max(0, (tempPlayerState.chakra || 0) - move.chakraCost);
         } else if (!move?.isCursed && (move?.pp <= 0)) {
              useStruggle = true;
         } else if (!move) {
@@ -12334,19 +12343,37 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
     try {
-        let tempBattle = _.cloneDeep(battle);
-        const player = tempBattle.playerCombatStates[battle.activeIdx];
-        const parts = [];
-        if (player.maxCE > 0) { player.cursedEnergy = Math.min(player.maxCE, (player.cursedEnergy || 0) + CURSED_ENERGY_CONFIG.chargeAction); parts.push(`+${CURSED_ENERGY_CONFIG.chargeAction}咒力`); }
-        if ((player.maxChakra || 0) > 0) { player.chakra = Math.min(player.maxChakra, (player.chakra || 0) + CHAKRA_CONFIG.chargeAmount); parts.push(`+${CHAKRA_CONFIG.chargeAmount}查克拉`); }
+	        let tempBattle = _.cloneDeep(battle);
+	        const player = tempBattle.playerCombatStates[battle.activeIdx];
+	        const parts = [];
+	        if (player.maxCE > 0) {
+	          if ((tempBattle.sharedPlayerMaxCE || 0) > 0) {
+	            tempBattle.sharedPlayerCE = Math.min(tempBattle.sharedPlayerMaxCE, (tempBattle.sharedPlayerCE || 0) + CURSED_ENERGY_CONFIG.chargeAction);
+	            player.cursedEnergy = Math.min(player.maxCE, tempBattle.sharedPlayerCE);
+	          } else {
+	            player.cursedEnergy = Math.min(player.maxCE, (player.cursedEnergy || 0) + CURSED_ENERGY_CONFIG.chargeAction);
+	          }
+	          parts.push(`+${CURSED_ENERGY_CONFIG.chargeAction}咒力`);
+	        }
+	        if ((player.maxChakra || 0) > 0) {
+	          if ((tempBattle.sharedPlayerMaxChakra || 0) > 0) {
+	            tempBattle.sharedPlayerChakra = Math.min(tempBattle.sharedPlayerMaxChakra, (tempBattle.sharedPlayerChakra || 0) + CHAKRA_CONFIG.chargeAmount);
+	            player.chakra = Math.min(player.maxChakra, tempBattle.sharedPlayerChakra);
+	          } else {
+	            player.chakra = Math.min(player.maxChakra, (player.chakra || 0) + CHAKRA_CONFIG.chargeAmount);
+	          }
+	          parts.push(`+${CHAKRA_CONFIG.chargeAmount}查克拉`);
+	        }
         addLog(`⚡ ${player.name} 集中精神蓄力! (${parts.join(', ')})`);
         setAnimEffect({ type: 'BUFF', target: 'player' });
         await wait(800);
         setAnimEffect(null);
         setBattle(prev => ({
-            ...prev,
-            playerCombatStates: tempBattle.playerCombatStates,
-        }));
+	            ...prev,
+	            playerCombatStates: tempBattle.playerCombatStates,
+	            sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
+	            sharedPlayerChakra: tempBattle.sharedPlayerChakra ?? prev.sharedPlayerChakra,
+	        }));
         await wait(500);
         await enemyTurn(tempBattle);
     } catch (e) {
@@ -13326,26 +13353,38 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const chargeChance = isHardBattle ? 0.35 : 0.15;
       if (Math.random() < chargeChance) {
         const parts = [];
-        if (enemy.maxCE > 0) {
-          const ceGain = CURSED_ENERGY_CONFIG.chargeAction;
-          enemy.cursedEnergy = Math.min(enemy.maxCE, (enemy.cursedEnergy || 0) + ceGain);
-          parts.push(`+${ceGain}咒力`);
-        }
-        if ((enemy.maxChakra || 0) > 0) {
-          const ckGain = CHAKRA_CONFIG.chargeAmount;
-          enemy.chakra = Math.min(enemy.maxChakra, (enemy.chakra || 0) + ckGain);
-          parts.push(`+${ckGain}查克拉`);
-        }
+	        if (enemy.maxCE > 0) {
+	          const ceGain = CURSED_ENERGY_CONFIG.chargeAction;
+	          if ((state.sharedEnemyMaxCE || 0) > 0) {
+	            state.sharedEnemyCE = Math.min(state.sharedEnemyMaxCE, (state.sharedEnemyCE || 0) + ceGain);
+	            enemy.cursedEnergy = Math.min(enemy.maxCE, state.sharedEnemyCE);
+	          } else {
+	            enemy.cursedEnergy = Math.min(enemy.maxCE, (enemy.cursedEnergy || 0) + ceGain);
+	          }
+	          parts.push(`+${ceGain}咒力`);
+	        }
+	        if ((enemy.maxChakra || 0) > 0) {
+	          const ckGain = CHAKRA_CONFIG.chargeAmount;
+	          if ((state.sharedEnemyMaxChakra || 0) > 0) {
+	            state.sharedEnemyChakra = Math.min(state.sharedEnemyMaxChakra, (state.sharedEnemyChakra || 0) + ckGain);
+	            enemy.chakra = Math.min(enemy.maxChakra, state.sharedEnemyChakra);
+	          } else {
+	            enemy.chakra = Math.min(enemy.maxChakra, (enemy.chakra || 0) + ckGain);
+	          }
+	          parts.push(`+${ckGain}查克拉`);
+	        }
         addLog(`⚡ ${enemy.name} 集中精神蓄力! (${parts.join(', ')})`);
         setAnimEffect({ type: 'CHARGE_CE', target: 'enemy' });
         await wait(1000);
         setAnimEffect(null);
         setBattle(prev => ({
-          ...prev, phase: 'input',
-          turnCount: (prev?.turnCount || 0) + 1,
-          enemyParty: state.enemyParty.map(e => ({...e})),
-          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-        }));
+	          ...prev, phase: 'input',
+	          turnCount: (prev?.turnCount || 0) + 1,
+	          sharedEnemyCE: state.sharedEnemyCE ?? prev?.sharedEnemyCE,
+	          sharedEnemyChakra: state.sharedEnemyChakra ?? prev?.sharedEnemyChakra,
+	          enemyParty: state.enemyParty.map(e => ({...e})),
+	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+	        }));
         return;
       }
     }
@@ -13659,14 +13698,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemyExpLogs = checkEffectExpiration(enemy, enemy, singleHardBattle);
     [...playerExpLogs, ...enemyExpLogs].forEach(l => addLog(l));
 
-    // 咒力自然恢复
-    [player, enemy].forEach(u => {
-        if (u.maxCE > 0 && u.currentHp > 0) {
-            let regen = CURSED_ENERGY_CONFIG.regenPerTurn;
-            if (u.activeVow?.reward?.ceMult) regen = Math.floor(regen * u.activeVow.reward.ceMult);
-            u.cursedEnergy = Math.min(u.maxCE, (u.cursedEnergy || 0) + regen);
-        }
-    });
+	    // 咒力自然恢复
+	    [player, enemy].forEach((u, idx) => {
+	        if (u.maxCE > 0 && u.currentHp > 0) {
+	            let regen = CURSED_ENERGY_CONFIG.regenPerTurn;
+	            if (u.activeVow?.reward?.ceMult) regen = Math.floor(regen * u.activeVow.reward.ceMult);
+	            const isPlayerUnit = idx === 0;
+	            if (isPlayerUnit && (state.sharedPlayerMaxCE || 0) > 0) {
+	              state.sharedPlayerCE = Math.min(state.sharedPlayerMaxCE, (state.sharedPlayerCE || 0) + regen);
+	              u.cursedEnergy = Math.min(u.maxCE, state.sharedPlayerCE);
+	            } else if (!isPlayerUnit && (state.sharedEnemyMaxCE || 0) > 0) {
+	              state.sharedEnemyCE = Math.min(state.sharedEnemyMaxCE, (state.sharedEnemyCE || 0) + regen);
+	              u.cursedEnergy = Math.min(u.maxCE, state.sharedEnemyCE);
+	            } else {
+	              u.cursedEnergy = Math.min(u.maxCE, (u.cursedEnergy || 0) + regen);
+	            }
+	        }
+	    });
 
     // 领域展开回合递减 & DoT
     if (state.activeDomain && state.activeDomain.turnsLeft > 0) {
@@ -13752,9 +13800,36 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 addLog(`${u.name} 的果实变身结束了!`);
             }
         }
-    });
+	    });
 
-    if (playerDied || player.currentHp <= 0) {
+	    if (enemy.currentHp <= 0) {
+	      await wait(500);
+	      const defeatedEnemy = state.enemyParty[state.enemyActiveIdx];
+	      const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(defeatedEnemy, party, state);
+	      setParty(newParty);
+	      addLog(logMsg);
+	      if (activeDidLevelUp) {
+	        setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
+	        await wait(1000); setAnimEffect(null);
+	      }
+	      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i > state.enemyActiveIdx && p.currentHp > 0);
+	      if (nextEnemyIdx !== -1) {
+	        setBattle(prev => prev ? ({
+	          ...prev,
+	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+	          enemyParty: state.enemyParty.map(e => ({...e})),
+	          enemyActiveIdx: nextEnemyIdx,
+	          phase: 'input',
+	          logs: [`对手派出了 ${state.enemyParty[nextEnemyIdx].name}!`, ...(prev?.logs || [])],
+	        }) : null);
+	      } else {
+	        pendingJutsuWinForBountyRef.current = !!state._lastBattleWinWithJutsu;
+	        handleWin(newParty);
+	      }
+	      return;
+	    }
+
+	    if (playerDied || player.currentHp <= 0) {
        await wait(500);
        const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
        if (hasAlive) {
@@ -13788,10 +13863,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (state.isolateTurns > 0) state.isolateTurns--;
       setBattle(prev => ({ 
           ...prev, 
-          playerCombatStates: state.playerCombatStates.map(p => ({...p})), 
-          enemyParty: state.enemyParty.map(e => ({...e})),
-          enemyActiveIdx: state.enemyActiveIdx,
-          activeDomain: state.activeDomain ? {...state.activeDomain} : null,
+	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+	          enemyParty: state.enemyParty.map(e => ({...e})),
+	          enemyActiveIdx: state.enemyActiveIdx,
+	          sharedPlayerCE: state.sharedPlayerCE ?? prev?.sharedPlayerCE,
+	          sharedPlayerChakra: state.sharedPlayerChakra ?? prev?.sharedPlayerChakra,
+	          sharedEnemyCE: state.sharedEnemyCE ?? prev?.sharedEnemyCE,
+	          sharedEnemyChakra: state.sharedEnemyChakra ?? prev?.sharedEnemyChakra,
+	          activeDomain: state.activeDomain ? {...state.activeDomain} : null,
           activeWeather: state.activeWeather ? {...state.activeWeather} : prev?.activeWeather,
           isolateTurns: state.isolateTurns || 0,
           phase: 'input',
@@ -14051,17 +14130,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
+    const useSharedResource = !!battleState && (source === 'player'
+      ? ((battleState.sharedPlayerMaxCE || 0) > 0 || (battleState.sharedPlayerMaxChakra || 0) > 0)
+      : ((battleState.sharedEnemyMaxCE || 0) > 0 || (battleState.sharedEnemyMaxChakra || 0) > 0));
+    const getShared = (kind) => {
+      if (!useSharedResource) return kind === 'ce' ? (atkState.cursedEnergy || 0) : (atkState.chakra || 0);
+      if (source === 'player') return kind === 'ce' ? (battleState.sharedPlayerCE || 0) : (battleState.sharedPlayerChakra || 0);
+      return kind === 'ce' ? (battleState.sharedEnemyCE || 0) : (battleState.sharedEnemyChakra || 0);
+    };
+    const setShared = (kind, value) => {
+      if (kind === 'ce') atkState.cursedEnergy = Math.min(atkState.maxCE || value, value);
+      else atkState.chakra = Math.min(atkState.maxChakra || value, value);
+      if (!useSharedResource) return;
+      if (source === 'player') {
+        if (kind === 'ce') battleState.sharedPlayerCE = Math.max(0, value);
+        else battleState.sharedPlayerChakra = Math.max(0, value);
+      } else {
+        if (kind === 'ce') battleState.sharedEnemyCE = Math.max(0, value);
+        else battleState.sharedEnemyChakra = Math.max(0, value);
+      }
+    };
+
     if (move.isCursed && move.ceCost) {
         const cCd = atkState.cursedCooldowns?.[move.id || move.name] || 0;
         if (cCd > 0) {
             addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${cCd}回合)！`);
             return false;
         }
-        if ((atkState.cursedEnergy || 0) < move.ceCost) {
+        const availableCE = getShared('ce');
+        if (availableCE < move.ceCost) {
             addLog(`${attacker.name} 咒力不足，无法施展 ${move.name}!`);
             return false;
         }
-        atkState.cursedEnergy = (atkState.cursedEnergy || 0) - move.ceCost;
+        setShared('ce', availableCE - move.ceCost);
         if (!atkState.cursedCooldowns) atkState.cursedCooldowns = {};
         atkState.cursedCooldowns[move.id || move.name] = 2;
         addLog(`🔮 消耗 ${move.ceCost} 咒力 (剩余${atkState.cursedEnergy})`);
@@ -14071,7 +14172,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${jCd}回合)！`);
             return false;
         }
-        if ((atkState.chakra || 0) < move.chakraCost) {
+        const availableChakra = getShared('chakra');
+        if (availableChakra < move.chakraCost) {
             addLog(`${attacker.name} 查克拉不足，无法施展 ${move.name}!`);
             return false;
         }
@@ -14079,7 +14181,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${attacker.name} 的 ${move.name} PP耗尽！`);
             return false;
         }
-        atkState.chakra = Math.max(0, (atkState.chakra || 0) - move.chakraCost);
+        setShared('chakra', availableChakra - move.chakraCost);
         if (move.pp > 0) move.pp = Math.max(0, move.pp - 1);
         if (!atkState.jutsuCooldowns) atkState.jutsuCooldowns = {};
         atkState.jutsuCooldowns[move.jutsuId || move.name] = 2;
@@ -14182,6 +14284,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if ((!move.p || move.p === 0) && (move.effect || move.val)) {
         // === 变化类技能 ===
         const eff = move.effect;
+        if (!eff && move.val) {
+            const max = getStats(attacker).maxHp;
+            const healFrac = move.val >= 9999 ? 1 : (move.val > 1 ? move.val / 100 : move.val);
+            const heal = Math.floor(max * healFrac);
+            attacker.currentHp = Math.min(max, attacker.currentHp + heal);
+            addLog(`${attacker.name} 恢复了 ${heal} 点体力!`);
+            _setAnim({ type: 'HEAL', target: source === 'player' ? 'player' : 'enemy' });
+            await wait(1000); _setAnim(null);
+            return false;
+        }
         const targetState = eff.target === 'self' ? atkState : defState;
         const targetName = eff.target === 'self' ? attacker.name : defender.name;
         const targetSide = eff.target === 'self' ? (source==='player'?'player':'enemy') : (source==='player'?'enemy':'player');
@@ -17529,7 +17641,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [修正] 购买逻辑 (支持所有物品通用购买)
   // ==========================================
   const buyItemPro = (id, price, type) => {
-    const count = Math.max(1, Math.min(99, Math.floor(buyCounts[id] || 1)));
+    const maxCount = (type === 'tm' || type === 'acc') ? 1 : 99;
+    const count = Math.max(1, Math.min(maxCount, Math.floor(buyCounts[id] || 1)));
     const totalCost = price * count;
     if (totalCost <= 0 || !Number.isFinite(totalCost)) return;
     const priceLine = count > 1
@@ -17542,6 +17655,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     doBuyItemPro(id, price, type, count);
   };
   const doBuyItemPro = (id, price, type, count) => {
+    count = Math.max(1, Math.min((type === 'tm' || type === 'acc') ? 1 : 99, Math.floor(count || 1)));
     const totalCost = price * count;
     const validBuyTypes = ['ball', 'tm', 'stone', 'item', 'berry', 'acc', 'cursed'];
     if (!validBuyTypes.includes(type)) { showMapToast('❌', '错误', '未知的商品类型', 1500); return; }
@@ -17549,7 +17663,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     {
       if (type === 'tm' && (inventory.tms?.[id]||0) > 0) { showMapToast('❌', '购买失败', '每本技能书只能购买一次', 1500); return; }
       if (type === 'acc') {
-        const alreadyOwned = accessories.filter(a => a === id).length + party.reduce((s,p) => s + ((p.equips||[]).filter(e => e === id).length), 0);
+        const getAccId = (acc) => typeof acc === 'string' ? acc : acc?.id;
+        const alreadyOwned = accessories.filter(a => getAccId(a) === id).length + party.reduce((s,p) => s + ((p.equips||[]).filter(e => getAccId(e) === id).length), 0);
         if (alreadyOwned > 0) { showMapToast('❌', '购买失败', '每种饰品只能购买一个', 1500); return; }
       }
       if (type === 'stone' && !EVO_STONES[id]) { showMapToast('❌', '错误', '无效的进化石', 1500); return; }
