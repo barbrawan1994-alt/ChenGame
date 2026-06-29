@@ -7879,162 +7879,152 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       : filtered;
     const resultSectionCount = results.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0);
     const totalSectionCount = filtered.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0);
+    const guideStats = [
+      { label: '说明章节', value: GAME_GUIDE.length, icon: '📚' },
+      { label: '说明小节', value: GAME_GUIDE.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0), icon: '🧭' },
+      { label: '核心属性', value: 24, icon: '⚡' },
+      { label: '精灵图鉴', value: POKEDEX.length, icon: '🐾' },
+    ];
 
     const guideFormatContent = (text) => {
       return text.split('\n').map((line, i) => {
         const trimmed = line.trim();
-        if (!trimmed) return <div key={i} style={{height:'6px'}} />;
+        if (!trimmed) return <div key={i} className="guide-line-spacer" />;
         const isBullet = /^[·•\-①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬]/.test(trimmed);
         const isLabel = /^[🔥☠️⚡❄️😴🟢🔵🟣🟠🔴⬜🟧🟪★⭐🌀🐲🕳️🌈⚙️💎🏅🏆🗺️🐉🎪🌸🔮🍰💕🌙💰🗡️☁️🌳🏖️🌺👤⚔️🛡️🌟👑🧿❤️💨📖🐾🪲🎣✨]/.test(trimmed);
         const isHeading = /^(攻击型|防御型|辅助型|恢复类|增伤类|防御类|状态类|超人系|动物系|自然系)/.test(trimmed) && trimmed.length < 30;
-        if (isHeading) return <div key={i} style={{fontWeight:'700', color:'rgba(255,255,255,0.95)', marginTop:i > 0 ? '6px' : '0', fontSize:'11.5px'}}>{trimmed}</div>;
-        if (isBullet || isLabel) return <div key={i} style={{paddingLeft:'4px', lineHeight:'1.8'}}>{trimmed}</div>;
-        return <div key={i} style={{lineHeight:'1.8'}}>{trimmed}</div>;
+        if (isHeading) return <div key={i} className="guide-text-heading">{trimmed}</div>;
+        if (isBullet || isLabel) return <div key={i} className="guide-text-bullet">{trimmed}</div>;
+        return <div key={i} className="guide-text-line">{trimmed}</div>;
       });
     };
 
     return (
-      <div style={{position:'fixed', inset:0, background:'linear-gradient(160deg,#0a0a1a 0%,#1a1040 40%,#0d1f3c 70%,#0a1628 100%)', zIndex:9999, display:'flex', flexDirection:'column', overflow:'hidden'}}>
-        {/* 顶栏 */}
-        <div style={{padding:'14px 16px 10px', flexShrink:0, background:'rgba(0,0,0,0.2)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px'}}>
-            <button onClick={() => { setView(safeBack()); setGuideSearch(''); setGuideCat(null); }}
-              style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', borderRadius:'8px', padding:'5px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600', backdropFilter:'blur(10px)'}}>
-              ← 返回
-            </button>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{GAME_NAME} 说明</div>
-              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.35)', marginTop:'2px', letterSpacing:'1px'}}>{GAME_VERSION_LABEL} · 精灵对战 RPG</div>
-            </div>
-            <div style={{width:'56px'}} />
+      <div className="guide-screen-redesign">
+        <header className="guide-topbar">
+          <button className="guide-back-btn" onClick={() => { setView(safeBack()); setGuideSearch(''); setGuideCat(null); }}>← 返回</button>
+          <div className="guide-title-lockup">
+            <span>Trainer manual</span>
+            <strong>{GAME_NAME} 手册</strong>
           </div>
-          <div className="guide-brand-strip">
-            <SuperSpiritIcon size={34} />
-            <div>
-              <strong>{GAME_NAME}</strong>
-              <span>以精灵收集、属性克制、技能搭配、捕捉进化和道馆挑战为主线，扩展忍术、咒术、果实、国战等玩法。</span>
-            </div>
-          </div>
-          {/* 搜索栏 */}
-          <div style={{position:'relative', marginBottom:'8px'}}>
-            <input
-              type="text" placeholder="搜索关键词..."
-              value={guideSearch} onChange={e => setGuideSearch(e.target.value)}
-              style={{width:'100%', padding:'8px 12px 8px 34px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.05)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box', backdropFilter:'blur(10px)'}}
-            />
-            <span style={{position:'absolute', left:'11px', top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.25)', fontSize:'14px'}}>🔍</span>
-          </div>
-          <div className="guide-result-meta">
-            <span>{q ? `找到 ${resultSectionCount} 个相关小节` : `共 ${totalSectionCount} 个说明小节`}</span>
-            {q && <button className="guide-clear-btn" onClick={() => setGuideSearch('')}>清空搜索</button>}
-          </div>
-          {/* 分类标签 */}
-          <div style={{display:'flex', gap:'5px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none', WebkitOverflowScrolling:'touch'}}>
-            <button onClick={() => setGuideCat(null)}
-              style={{padding:'5px 12px', borderRadius:'16px', border:'1px solid rgba(255,255,255,0.12)', fontSize:'11px', fontWeight:'700', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
-                background: !guideCat ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.03)', color: !guideCat ? '#fff' : 'rgba(255,255,255,0.45)', transition:'all 0.2s'}}>
-              📋 全部
-            </button>
-            {GAME_GUIDE.map(g => (
-              <button key={g.id} onClick={() => setGuideCat(g.id)}
-                style={{padding:'5px 12px', borderRadius:'16px', border:`1px solid ${guideCat === g.id ? g.color+'50' : 'rgba(255,255,255,0.08)'}`, fontSize:'11px', fontWeight:'700', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap',
-                  background: guideCat === g.id ? g.color+'20' : 'rgba(255,255,255,0.03)', color: guideCat === g.id ? g.color : 'rgba(255,255,255,0.45)', transition:'all 0.2s'}}>
-                {g.icon} {g.title}
-              </button>
-            ))}
-          </div>
-        </div>
+          <div className="guide-version-pill">{GAME_VERSION_LABEL}</div>
+        </header>
 
-        {/* 内容区 */}
-        <div style={{flex:1, overflowY:'auto', padding:'10px 12px 24px', scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.12) transparent'}}>
-          {results.length === 0 && (
-            <div style={{textAlign:'center', padding:'60px 20px', color:'rgba(255,255,255,0.3)'}}>
-              <div style={{fontSize:'40px', marginBottom:'12px'}}>🔍</div>
-              <div style={{fontSize:'14px'}}>没有找到匹配的内容</div>
-            </div>
-          )}
-          {results.map((cat, ci) => {
-            const isExpanded = guideExpanded[cat.id] !== false;
-            return (
-              <div key={cat.id} style={{marginBottom:'12px'}}>
-                {/* 分类标题卡片 */}
-                <div
-                  onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}
-                  style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 14px', borderRadius:'14px', cursor:'pointer',
-                    background:`linear-gradient(135deg, ${cat.color}18 0%, ${cat.color}08 100%)`,
-                    border:`1px solid ${cat.color}25`, boxShadow: isExpanded ? `0 4px 20px ${cat.color}15` : 'none',
-                    transition:'all 0.25s ease'}}>
-                  <div style={{width:'36px', height:'36px', borderRadius:'10px', background:`linear-gradient(135deg, ${cat.color}30, ${cat.color}15)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0}}>
-                    {cat.icon}
-                  </div>
-                  <div style={{flex:1, minWidth:0}}>
-                    <div style={{fontSize:'14px', fontWeight:'800', color:'#fff', letterSpacing:'0.5px'}}>{cat.title}</div>
-                    {cat.desc && <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'1px'}}>{cat.desc}</div>}
-                  </div>
-                  <div style={{display:'flex', alignItems:'center', gap:'6px', flexShrink:0}}>
-                    <span style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', background:'rgba(255,255,255,0.06)', padding:'2px 6px', borderRadius:'8px'}}>{cat.sections.length} 节</span>
-                    <span style={{color:'rgba(255,255,255,0.25)', fontSize:'10px', transition:'transform 0.25s ease', transform: isExpanded ? 'rotate(90deg)' : 'none'}}>▶</span>
-                  </div>
-                </div>
-                {/* 展开内容 */}
-                {isExpanded && (
-                  <div style={{marginTop:'4px', paddingLeft:'4px'}}>
-                    {cat.sections.map((sec, si) => {
-                      const secKey = `${cat.id}_${si}`;
-                      const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
-                      const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : false);
-                      const hasSub = sec.sub && sec.sub.length > 0;
-                      return (
-                        <div key={si} style={{marginBottom:'3px'}}>
-                          {/* 小节标题 */}
-                          <div
-                            onClick={() => hasSub && setGuideExpanded(prev => ({...prev, [secKey]: !secOpen}))}
-                            style={{padding:'9px 12px', borderRadius:'10px',
-                              background: secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                              border: secOpen ? `1px solid ${cat.color}20` : '1px solid rgba(255,255,255,0.03)',
-                              cursor: hasSub ? 'pointer' : 'default', transition:'all 0.2s', display:'flex', alignItems:'center', gap:'8px'}}
-                            onMouseOver={e => { if (hasSub) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-                            onMouseOut={e => { e.currentTarget.style.background= secOpen ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)'; }}>
-                            <span style={{width:'3px', height:'16px', borderRadius:'2px', background: secOpen ? cat.color : cat.color+'60', flexShrink:0, transition:'background 0.2s'}} />
-                            <span style={{flex:1, fontSize:'12.5px', fontWeight:'700', color: secOpen ? '#fff' : 'rgba(255,255,255,0.85)'}}>{sec.title}</span>
-                            {hasSub && <span style={{fontSize:'9px', color:'rgba(255,255,255,0.25)'}}>{sec.sub.length} 条</span>}
-                            {hasSub && <span style={{color:'rgba(255,255,255,0.2)', fontSize:'9px', transition:'transform 0.2s', transform: secOpen ? 'rotate(90deg)' : 'none'}}>▶</span>}
-                          </div>
-                          {/* 展开的子条目 */}
-                          {hasSub && secOpen && (
-                            <div style={{marginLeft:'12px', marginTop:'3px', display:'flex', flexDirection:'column', gap:'3px'}}>
-                              {sec.sub.map((item, idx) => (
-                                <div key={idx} style={{padding:'8px 12px', borderRadius:'8px',
-                                  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)',
-                                  transition:'background 0.15s'}}
-                                  onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,0.05)'; }}
-                                  onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; }}>
-                                  <div style={{fontSize:'11.5px', fontWeight:'700', color: cat.color, marginBottom:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
-                                    <span style={{width:'4px', height:'4px', borderRadius:'50%', background:cat.color, flexShrink:0, opacity:0.7}} />
-                                    {item.t}
-                                  </div>
-                                  <div style={{fontSize:'11px', lineHeight:'1.75', color:'rgba(255,255,255,0.82)', paddingLeft:'8px'}}>
-                                    {item.c ? (q ? highlightSearch(item.c, q) : guideFormatContent(item.c)) : null}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* 纯文本内容 */}
-                          {!hasSub && sec.content && (
-                            <div style={{padding:'6px 12px 8px 18px', fontSize:'11px', lineHeight:'1.75', color:'rgba(255,255,255,0.82)'}}>
-                              {q ? highlightSearch(sec.content, q) : guideFormatContent(sec.content)}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+        <main className="guide-layout">
+          <aside className="guide-sidebar">
+            <section className="guide-cover-card">
+              <SuperSpiritIcon size={58} />
+              <div>
+                <span className="guide-cover-kicker">Super Spirit RPG</span>
+                <h1>读懂精灵对战，从这里开始</h1>
+                <p>围绕收集、属性克制、技能资源、捕捉进化和队伍构筑整理，扩展系统按“如何强化队伍”来阅读。</p>
               </div>
-            );
-          })}
-        </div>
+            </section>
+
+            <div className="guide-stat-grid">
+              {guideStats.map(stat => (
+                <div key={stat.label}>
+                  <span>{stat.icon}</span>
+                  <strong>{stat.value}</strong>
+                  <small>{stat.label}</small>
+                </div>
+              ))}
+            </div>
+
+            <div className="guide-search-box">
+              <span>🔍</span>
+              <input type="text" placeholder="搜索属性、捕捉、进化、国战..." value={guideSearch} onChange={e => setGuideSearch(e.target.value)} />
+              {q && <button onClick={() => setGuideSearch('')}>清空</button>}
+            </div>
+
+            <div className="guide-result-meta guide-result-meta-redesign">
+              <span>{q ? `找到 ${resultSectionCount} 个相关小节` : `当前显示 ${totalSectionCount} 个小节`}</span>
+            </div>
+
+            <nav className="guide-category-nav" aria-label="说明分类">
+              <button className={!guideCat ? 'is-active' : ''} onClick={() => setGuideCat(null)}>
+                <span>📋</span><strong>全部内容</strong><small>{GAME_GUIDE.length} 类</small>
+              </button>
+              {GAME_GUIDE.map(g => (
+                <button key={g.id} className={guideCat === g.id ? 'is-active' : ''} onClick={() => setGuideCat(g.id)} style={{ '--guide-accent': g.color }}>
+                  <span>{g.icon}</span><strong>{g.title}</strong><small>{g.sections.length} 节</small>
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <section className="guide-reader">
+            <div className="guide-reader-hero">
+              <div>
+                <span>推荐阅读路线</span>
+                <h2>先看新手入门，再看精灵养成与战斗体系</h2>
+                <p>如果只想快速上手，按“创建角色 → 地图探索 → 捕捉 → 道馆 → 图鉴/队伍培养”的顺序读即可。高级系统可以在卡关或想变强时再查。</p>
+              </div>
+              <div className="guide-route-chips">
+                <span>1 选择初始精灵</span>
+                <span>2 捕捉与进化</span>
+                <span>3 属性克制</span>
+                <span>4 道馆与秘境</span>
+              </div>
+            </div>
+
+            <div className="guide-reader-scroll">
+              {results.length === 0 && (
+                <div className="guide-empty-state">
+                  <div>🔍</div>
+                  <strong>没有找到匹配的内容</strong>
+                  <span>试试搜索“属性”“捕捉”“进化”“双打”或“国战”。</span>
+                </div>
+              )}
+              {results.map((cat) => {
+                const isExpanded = guideExpanded[cat.id] !== false;
+                return (
+                  <article key={cat.id} className="guide-category-card" style={{ '--guide-accent': cat.color }}>
+                    <button className="guide-category-head" onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}>
+                      <span className="guide-category-icon">{cat.icon}</span>
+                      <span className="guide-category-copy"><strong>{cat.title}</strong>{cat.desc && <small>{cat.desc}</small>}</span>
+                      <span className="guide-section-count">{cat.sections.length} 节</span>
+                      <span className={isExpanded ? 'guide-chevron is-open' : 'guide-chevron'}>▶</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="guide-section-list">
+                        {cat.sections.map((sec, si) => {
+                          const secKey = `${cat.id}_${si}`;
+                          const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
+                          const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : false);
+                          const hasSub = sec.sub && sec.sub.length > 0;
+                          return (
+                            <section key={si} className={secOpen ? 'guide-section-card is-open' : 'guide-section-card'}>
+                              <button className="guide-section-head" onClick={() => hasSub && setGuideExpanded(prev => ({...prev, [secKey]: !secOpen}))} type="button">
+                                <span className="guide-section-bar" />
+                                <strong>{sec.title}</strong>
+                                {hasSub && <small>{sec.sub.length} 条</small>}
+                                {hasSub && <span className={secOpen ? 'guide-chevron is-open' : 'guide-chevron'}>▶</span>}
+                              </button>
+                              {hasSub && secOpen && (
+                                <div className="guide-sub-list">
+                                  {sec.sub.map((item, idx) => (
+                                    <div key={idx} className="guide-sub-card">
+                                      <h3>{item.t}</h3>
+                                      <div className="guide-copy">{item.c ? (q ? highlightSearch(item.c, q) : guideFormatContent(item.c)) : null}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {!hasSub && sec.content && (
+                                <div className="guide-copy guide-copy-standalone">{q ? highlightSearch(sec.content, q) : guideFormatContent(sec.content)}</div>
+                              )}
+                            </section>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </main>
       </div>
     );
   };
@@ -19953,69 +19943,69 @@ const renderMenu = () => {
       }
     };
 
-    // --- 🔥 获取当前时间信息 ---
     const timeInfo = TIME_PHASES[timePhase];
+    const worldMapTabs = [
+      { id: 'maps', icon: '🗺️', label: '区域探索', hint: '地图与道馆', color: '#2f6df6' },
+      { id: 'dungeons', icon: '⚔️', label: '秘境探险', hint: '副本奖励', color: '#7c3aed' },
+      { id: 'challenges', icon: '🔥', label: '图鉴试炼塔', hint: '收集挑战', color: '#ef4444' },
+      { id: 'kingdom', icon: '🏴', label: '国战', hint: '势力与领地', color: '#B71C1C' },
+      { id: 'sects', icon: '🏔️', label: '门派顶峰', hint: '修行挑战', color: '#14b8a6' },
+      { id: 'housing', icon: '🏡', label: '精灵家园', hint: '生活系统', color: '#a78bfa' },
+    ];
+    const clearedMapCount = MAPS.filter(m => badges.includes(m.badge)).length;
+    const alivePartyCount = party.filter(p => p && p.currentHp > 0).length;
+    const leadLevel = party[0]?.level || 1;
 
     return (
-      <div className="screen map-screen" style={{background:'linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%)', minHeight:'100vh', overflow:'auto'}}>
+      <div className="screen map-screen world-map-screen-redesign" style={{minHeight:'100vh', overflow:'auto'}}>
         {/* 顶部导航 */}
-        <div className="nav-header" style={{background:'rgba(255,255,255,0.95)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(0,0,0,0.06)', boxShadow:'0 1px 12px rgba(0,0,0,0.04)', position:'sticky', top:0, zIndex:100}}>
-          <button className="btn-back" onClick={() => setView(mapGrid.length > 0 ? 'grid_map' : 'menu')}>⬅ {mapGrid.length > 0 ? '返回地图' : '返回'}</button>
-          <div className="nav-title" style={{fontSize:'17px', fontWeight:'700', letterSpacing:'1px'}}>冒险地图</div>
-          <div className="nav-coin" style={{background:'linear-gradient(135deg,#ffd54f,#ffb300)', color:'#5d4037', padding:'4px 12px', borderRadius:'20px', fontWeight:'bold', fontSize:'13px'}}>💰 {gold.toLocaleString()}</div>
+        <div className="nav-header world-map-topbar">
+          <button className="btn-back world-map-back-btn" onClick={() => setView(mapGrid.length > 0 ? 'grid_map' : 'menu')}>← {mapGrid.length > 0 ? '返回当前地图' : '返回首页'}</button>
+          <div className="world-map-title-lockup">
+            <span>SUPER SPIRIT WORLD</span>
+            <strong>冒险地图</strong>
+          </div>
+          <div className="nav-coin world-map-coin">💰 {gold.toLocaleString()}</div>
         </div>
         
         {/* 顶部信息栏 */}
-        <div style={{
-            margin: '12px 20px 0', padding: '12px 22px',
-            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)',
-            borderRadius: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            boxShadow: '0 2px 20px rgba(0,0,0,0.04)', border: '1px solid rgba(255,255,255,0.6)'
-        }}>
-            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                <div style={{width:44, height:44, borderRadius:'14px', background:'linear-gradient(135deg,#667eea,#764ba2)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(102,126,234,0.3)'}}>
-                    <span style={{fontSize:'22px'}}>{timeInfo.icon}</span>
-                </div>
-                    <div>
-                    <div style={{fontSize:'10px', color:'#64748b', fontWeight:'700', textTransform:'uppercase', letterSpacing:'1.5px'}}>World Time</div>
-                    <div style={{fontSize:'16px', fontWeight:'700', color:'#1e293b'}}>{timeInfo.name}</div>
-                    </div>
-                </div>
-            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-              <div style={{fontSize:'11px', color:'#64748b', fontStyle:'italic', textAlign:'right', maxWidth:'160px'}}>
-                {timePhase === 'DAY' ? '阳光明媚，适合冒险' : (timePhase === 'DUSK' ? '天色渐晚，注意安全' : '深夜是幽灵活跃的时刻...')}
-              </div>
-              <div style={{background:'linear-gradient(135deg,#e2e8f0,#cbd5e1)', padding:'6px 14px', borderRadius:'12px', fontSize:'12px', fontWeight:'600', color:'#475569'}}>
-                🏅 {badges.length} 徽章
-              </div>
+        <section className="world-map-hero world-map-info-bar">
+          <div className="world-map-hero-main">
+            <div className="world-map-time-orb">{timeInfo.icon}</div>
+            <div>
+              <span className="world-map-eyebrow">World time · {timeInfo.name}</span>
+              <h1>选择下一段精灵冒险</h1>
+              <p>{timePhase === 'DAY' ? '阳光明媚，适合推进道馆和捕捉新伙伴。' : (timePhase === 'DUSK' ? '天色渐晚，适合挑战秘境并补足队伍状态。' : '深夜是幽灵活跃的时刻，带上克制属性再出发。')}</p>
             </div>
-        </div>
-
-        {/* 导航胶囊 */}
-        <div className="map-nav-container world-map-nav" style={{display:'flex', justifyContent:'center', margin:'16px 0 20px 0', position:'relative', zIndex:10}}>
-          <div style={{background:'rgba(255,255,255,0.88)', backdropFilter:'blur(16px)', padding:'5px', borderRadius:'50px', boxShadow:'0 4px 24px rgba(0,0,0,0.06)', border:'1px solid rgba(255,255,255,0.5)', display:'flex', gap:'4px', overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none', maskImage:'linear-gradient(to right, black 85%, transparent 100%)', WebkitMaskImage:'linear-gradient(to right, black 85%, transparent 100%)'}}>
-            {[
-              { id: 'maps', icon: '🗺️', label: '区域探索', color: '#3b82f6' },
-              { id: 'dungeons', icon: '⚔️', label: '秘境探险', color: '#8b5cf6' },
-              { id: 'challenges', icon: '🔥', label: '图鉴试炼塔', color: '#ef4444' },
-              { id: 'kingdom', icon: '🏴', label: '国战', color: '#B71C1C' },
-              { id: 'sects', icon: '🏔️', label: '门派顶峰', color: '#14b8a6' },
-              { id: 'housing', icon: '🏡', label: '精灵家园', color: '#a78bfa' }
-            ].map(tab => {
-              const isActive = mapTab === tab.id || (tab.id === 'sects' && view === 'sect_summit');
-              return (
-                <button key={tab.id} onClick={() => { if (tab.id === 'sects') setView('sect_summit'); else if (tab.id === 'housing') setView('housing'); else { setMapTab(tab.id); if (view === 'sect_summit') setView('world_map'); } }}
-                  style={{padding:'9px 20px', borderRadius:'40px', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', transition:'all 0.3s cubic-bezier(.4,0,.2,1)', border:'none', outline:'none',
-                    background: isActive ? `linear-gradient(135deg, ${tab.color}, ${tab.color}cc)` : 'transparent',
-                    color: isActive ? '#fff' : '#64748b', fontWeight: isActive ? '700' : '500', fontSize:'13px',
-                    boxShadow: isActive ? `0 4px 16px ${tab.color}44` : 'none',
-                    transform: isActive ? 'scale(1.03)' : 'scale(1)'}}>
-                  <span style={{fontSize:'16px'}}>{tab.icon}</span><span>{tab.label}</span>
-                </button>
-              );
-            })}
           </div>
-        </div>
+          <div className="world-map-hero-stats" aria-label="冒险概览">
+            <div><strong>{badges.length}</strong><span>徽章</span></div>
+            <div><strong>{clearedMapCount}/{MAPS.length}</strong><span>区域</span></div>
+            <div><strong>Lv.{leadLevel}</strong><span>首发</span></div>
+            <div><strong>{alivePartyCount}/{party.length || 0}</strong><span>存活</span></div>
+          </div>
+        </section>
+
+        <div className="world-map-content">
+          {/* 导航胶囊 */}
+          <div className="map-nav-container world-map-nav">
+            <div className="world-map-tab-shell">
+              {worldMapTabs.map(tab => {
+                const isActive = mapTab === tab.id || (tab.id === 'sects' && view === 'sect_summit');
+                return (
+                  <button key={tab.id} onClick={() => { if (tab.id === 'sects') setView('sect_summit'); else if (tab.id === 'housing') setView('housing'); else { setMapTab(tab.id); if (view === 'sect_summit') setView('world_map'); } }}
+                    className={isActive ? 'world-map-tab-btn is-active' : 'world-map-tab-btn'}
+                    style={{ '--tab-color': tab.color }}>
+                    <span className="world-map-tab-icon">{tab.icon}</span>
+                    <span>
+                      <strong>{tab.label}</strong>
+                      <small>{tab.hint}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
         {/* 支线剧情选择 */}
         {mapTab === 'maps' && (() => {
@@ -20120,7 +20110,7 @@ const renderMenu = () => {
         })()}
 
         {/* 地图网格 */}
-        <div className="map-grid-container world-map-grid" style={{display: mapTab==='maps'?'grid':'none', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'16px', padding:'0 20px 20px'}}>
+        <div className="map-grid-container world-map-grid" style={{display: mapTab==='maps'?'grid':'none'}}>
           {MAPS.map((m, index) => {
             const isCleared = badges.includes(m.badge);
             const mapWeatherKey = mapWeathers[m.id] || 'CLEAR';
@@ -20168,23 +20158,20 @@ const renderMenu = () => {
             const lvHi = m.lvl?.[1] ?? lvLo;
             const diffAvg = (lvLo + lvHi) / 2;
             const diffTier = diffAvg < 25 ? 0 : diffAvg < 45 ? 1 : diffAvg < 70 ? 2 : 3;
-            const diffInset = ['inset 0 0 50px rgba(34,197,94,0.2)', 'inset 0 0 50px rgba(234,179,8,0.22)', 'inset 0 0 50px rgba(249,115,22,0.24)', 'inset 0 0 55px rgba(239,68,68,0.28)'][diffTier];
-
-            const diffBgGrad = [
-              'linear-gradient(160deg, rgba(34,197,94,0.22) 0%, rgba(34,197,94,0.06) 42%, transparent 72%)',
-              'linear-gradient(160deg, rgba(234,179,8,0.24) 0%, rgba(234,179,8,0.07) 42%, transparent 72%)',
-              'linear-gradient(160deg, rgba(249,115,22,0.26) 0%, rgba(249,115,22,0.08) 42%, transparent 72%)',
-              'linear-gradient(160deg, rgba(239,68,68,0.28) 0%, rgba(239,68,68,0.09) 42%, transparent 72%)',
-            ][diffTier];
+            const pLv = party[0]?.level || 1;
+            const mapMid = (lvLo + lvHi) / 2;
+            const diff = pLv - mapMid;
+            const diffColor = diff < -15 ? '#ef4444' : diff < -5 ? '#f59e0b' : diff < 10 ? '#22c55e' : '#60a5fa';
+            const diffLabel = diff < -15 ? '危险' : diff < -5 ? '挑战' : diff < 10 ? '适中' : '轻松';
+            const caughtInMap = m.pool?.length ? m.pool.filter(pid => caughtDex.includes(pid)).length : 0;
+            const mapDexTotal = m.pool?.length || 0;
+            const mapDexPct = mapDexTotal ? Math.round(caughtInMap / mapDexTotal * 100) : 0;
+            const mapDexColor = mapDexPct >= 100 ? '#ffd54f' : mapDexPct >= 50 ? '#22c55e' : '#8fd8ff';
 
             return (
-              <div key={m.id} className={`map-card-pro ${themeClass} difficulty-${diffTier}`} style={{
+              <article key={m.id} className={`map-card-pro world-region-card ${themeClass} difficulty-${diffTier}`} style={{
                 ...(isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined),
                 ...(isContestedActive && !isLocked ? { border: '1px solid rgba(255,200,0,0.3)'} : {}),
-                backgroundImage: diffBgGrad,
-                boxShadow: isContestedActive && !isLocked
-                  ? `0 0 12px ${contestOwner && contestOwner !== 'neutral' ? FACTIONS[contestOwner]?.color+'60' : 'rgba(255,200,0,0.3)'}, ${diffInset}`
-                  : diffInset,
               }} onClick={() => { if (isLocked) showMapToast('🔒', '区域锁定', lockReason, 2000); else enterMap(m.id); }}>
                 {isContestedActive && !isLocked && (
                   <div style={{position:'absolute', inset:0, borderRadius:'inherit', overflow:'hidden', pointerEvents:'none', zIndex:1}}>
@@ -20198,42 +20185,17 @@ const renderMenu = () => {
                   </div>
                 )}
                 
-                {/* 顶部区域：名称 + 通关标识 */}
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                <div className="world-region-card__top">
+                  <div className="world-region-card__identity">
+                    <span className="world-region-card__icon">{m.icon}</span>
                     <div>
-                        <div style={{fontSize:'20px', fontWeight:'800', display:'flex', alignItems:'center', gap:'8px', textShadow:'0 2px 8px rgba(0,0,0,0.25)', letterSpacing:'0.5px'}}>
-                            <span style={{fontSize:'24px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'}}>{m.icon}</span> {m.name}
-                        </div>
-                        <div style={{marginTop:'8px', display:'flex', gap:'6px', flexWrap:'wrap'}}>
-                           {(() => {
-                             const pLv = party[0]?.level || 1;
-                             const mapMid = (lvLo + lvHi) / 2;
-                             const diff = pLv - mapMid;
-                             const diffColor = diff < -15 ? '#ef4444' : diff < -5 ? '#f59e0b' : diff < 10 ? '#22c55e' : '#60a5fa';
-                             const diffLabel = diff < -15 ? '危险' : diff < -5 ? '挑战' : diff < 10 ? '适中' : '轻松';
-                             return <span style={{fontSize:'11px', background:`${diffColor}33`, backdropFilter:'blur(4px)', padding:'3px 10px', borderRadius:'12px', color:diffColor, fontWeight:'600', border:`1px solid ${diffColor}44`}}>
-                               Lv.{lvLo}-{lvHi} · {diffLabel}
-                             </span>;
-                           })()}
-                           <span style={{fontSize:'11px', background: mapWeatherKey === 'CLEAR' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)',
-                               color:'#fff', padding:'3px 10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'3px',
-                               border:'1px solid rgba(255,255,255,0.12)', fontWeight:'500', backdropFilter:'blur(4px)'}}>
-                                   {mapWeatherInfo.icon} {mapWeatherInfo.name}
-                               </span>
-                           {m.pool && m.pool.length > 0 && (() => {
-                             const caught = m.pool.filter(pid => caughtDex.includes(pid)).length;
-                             const total = m.pool.length;
-                             const pct = Math.round(caught / total * 100);
-                             const clr = pct >= 100 ? '#FFD700' : pct >= 50 ? '#22c55e' : '#94a3b8';
-                             return <span style={{fontSize:'11px', background:`${clr}22`, padding:'3px 10px', borderRadius:'12px', color:clr, fontWeight:'600', border:`1px solid ${clr}44`}}>
-                               📖 {caught}/{total}
-                             </span>;
-                           })()}
-                        </div>
+                      <h2>{m.name}</h2>
+                      <p>{m.isCapital ? '阵营都城' : m.isContested ? '国战争夺区' : '道馆区域'}</p>
                     </div>
-                    <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px'}}>
+                  </div>
+                  <div className="world-region-card__status">
                       {isCleared && (
-                        <div style={{background:'rgba(255,255,255,0.95)', color:'#16a34a', padding:'4px 10px', borderRadius:'10px', fontSize:'10px', fontWeight:'800', letterSpacing:'1px', boxShadow:'0 2px 8px rgba(0,0,0,0.1)'}}>
+                        <div className="world-region-badge is-clear">
                           ✓ CLEAR
                         </div>
                       )}
@@ -20246,36 +20208,41 @@ const renderMenu = () => {
                         const isNeutral = owner === 'neutral';
                         const isContested = m.isContested && !isNeutral;
                         return (
-                          <div style={{
-                            background: isNeutral ? 'rgba(150,150,150,0.85)' : `${ownerF?.color || '#666'}dd`,
-                            padding:'3px 8px', borderRadius:'8px', fontSize:'9px', fontWeight:'700',
-                            color:'#fff', display:'flex', alignItems:'center', gap:'3px',
-                            boxShadow: isContested ? `0 1px 8px ${ownerF?.color || '#666'}80` : '0 1px 4px rgba(0,0,0,0.2)',
-                            animation: isContested ? 'pulse 2s infinite' : 'none',
-                          }}>
+                          <div className="world-region-badge is-owner" style={{ '--owner-color': isNeutral ? '#78909c' : ownerF?.color || '#666', animation: isContested ? 'pulse 2s infinite' : 'none' }}>
                             {(t?.contested || m.isContested) && <span style={{animation:'pulse 1.5s infinite'}}>⚔️</span>}
                             {isNeutral ? '中立' : `${ownerF?.icon || ''} ${ownerF?.name || ''}`}
                             {isMine && ' ✅'}
                           </div>
                         );
                       })()}
-                    </div>
+                  </div>
                 </div>
+
+                <div className="world-region-card__metrics">
+                  <span style={{ '--metric-color': diffColor }}>Lv.{lvLo}-{lvHi} · {diffLabel}</span>
+                  <span>{mapWeatherInfo.icon} {mapWeatherInfo.name}</span>
+                  {mapDexTotal > 0 && <span style={{ '--metric-color': mapDexColor }}>📖 {caughtInMap}/{mapDexTotal}</span>}
+                </div>
+
+                {mapDexTotal > 0 && (
+                  <div className="world-region-card__progress" aria-label={`图鉴进度 ${mapDexPct}%`}>
+                    <span style={{ width: `${mapDexPct}%`, background: mapDexColor }} />
+                  </div>
+                )}
                 
-                {/* 底部区域：馆主/君主/守将信息 */}
-                <div style={{marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                      <span style={{width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'13px', border:'1px solid rgba(255,255,255,0.15)'}}>{m.isCapital ? '🐲' : m.isContested ? '⚔️' : '👑'}</span>
-                      <span style={{fontSize:'12px', fontWeight:'600', textShadow:'0 1px 4px rgba(0,0,0,0.2)'}}>
-                        {m.isCapital ? `君主 · ${m.lordName || '???'}` : m.isContested ? `守将 · ${(() => { const t = kingdomWar.territories?.[m.id]; return t && t.owner !== 'neutral' ? FACTIONS[t.owner]?.name + '军' : '无'; })()}` : `馆主 · ${m.gymName || '???'}`}
-                      </span>
-                </div>
-                    <span style={{fontSize:'11px', opacity:0.7, fontStyle:'italic'}}>{m.isCapital ? `${m.lordTitle}` : m.isContested ? `Lv.${m.lvl[0]}-${m.lvl[1]}` : `Lv.${m.gymLvl}`}</span>
+                <div className="world-region-card__footer">
+                  <div>
+                    <span className="world-region-card__boss-icon">{m.isCapital ? '🐲' : m.isContested ? '⚔️' : '👑'}</span>
+                    <strong>
+                      {m.isCapital ? `君主 · ${m.lordName || '???'}` : m.isContested ? `守将 · ${(() => { const t = kingdomWar.territories?.[m.id]; return t && t.owner !== 'neutral' ? FACTIONS[t.owner]?.name + '军' : '无'; })()}` : `馆主 · ${m.gymName || '???'}`}
+                    </strong>
+                  </div>
+                  <em>{m.isCapital ? `${m.lordTitle}` : m.isContested ? `Lv.${m.lvl[0]}-${m.lvl[1]}` : `Lv.${m.gymLvl}`}</em>
                 </div>
 
                 {/* 装饰性背景图标 */}
-                <div style={{position:'absolute', right:'-5px', bottom:'-10px', fontSize:'80px', opacity:0.08, pointerEvents:'none', transform:'rotate(-12deg)', zIndex:0}}>{m.icon}</div>
-              </div>
+                <div className="world-region-card__watermark">{m.icon}</div>
+              </article>
             );
           })}
         </div>
@@ -21951,7 +21918,7 @@ const renderMenu = () => {
             );
           })()}
         </div>
-
+        </div>
       </div>
     );
   };
