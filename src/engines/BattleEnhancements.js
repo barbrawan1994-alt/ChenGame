@@ -39,7 +39,7 @@ const TYPE_COLORS = {
 const TYPE_NAMES = {
   FIRE:'火',WATER:'水',GRASS:'草',ELECTRIC:'电',ICE:'冰',FIGHT:'斗',POISON:'毒',GROUND:'地',
   FLYING:'飞',PSYCHIC:'超',BUG:'虫',ROCK:'岩',GHOST:'鬼',DRAGON:'龙',STEEL:'钢',FAIRY:'妖',
-  DARK:'恶',NORMAL:'普',GOD:'神',HEAL:'回',WIND:'风',LIGHT:'光'
+  DARK:'恶',NORMAL:'普',GOD:'神',HEAL:'回',WIND:'风',LIGHT:'光',COSMIC:'宇',SOUND:'音'
 };
 
 /** 火影忍术查克拉性质 → 与 CHAKRA_NATURE_MAP 一致的展示用 emoji */
@@ -51,16 +51,21 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
   const c = TYPE_COLORS[move.t] || '#90A4AE';
   const tName = TYPE_NAMES[move.t] || move.t;
   const maxPpCap = (move.maxPP || move.maxPp || 15);
-  const ppRatio = maxPpCap > 0 ? move.pp / maxPpCap : 0;
+  const ppRatio = maxPpCap > 0 ? Math.max(0, Math.min(1, (move.pp || 0) / maxPpCap)) : 0;
   const ppColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
   const hasDesc = move.desc && move.desc.length > 0;
   const jutsuNatureEmoji = move.isJutsu && move.nature ? (JUTSU_NATURE_EMOJI[move.nature] || '') : '';
   const jutsuTooltipExtra = jutsuNatureEmoji ? `${jutsuNatureEmoji} 忍术` : '';
-  const buttonTitle = [move.name, jutsuTooltipExtra, move.desc].filter(Boolean).join('\n');
+  const readableDisabledReason = disabledReason
+    ? String(disabledReason).replace(/[()]/g, '').replace('CD:', '冷却 ')
+    : '';
+  const buttonTitle = [move.name, jutsuTooltipExtra, readableDisabledReason ? `无法使用：${readableDisabledReason}` : '', move.desc].filter(Boolean).join('\n');
 
   return (
     <button
       title={buttonTitle}
+      className="move-btn-v2 move-card-polished"
+      aria-label={`${move.name}${readableDisabledReason ? `，无法使用：${readableDisabledReason}` : ''}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => { if (!disabled && onClick) onClick(); }}
@@ -68,28 +73,28 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
       style={{
         width:'100%', height:'100%', boxSizing:'border-box',
         background: disabled
-          ? 'linear-gradient(160deg, #2a2a3a, #222233)'
+          ? 'linear-gradient(160deg, rgba(42,42,58,0.75), rgba(25,25,36,0.85))'
           : hovered
-            ? `linear-gradient(160deg, ${c}18, ${c}0a)`
-            : `linear-gradient(160deg, #2a2a45, #30304d)`,
-        border:'none', borderRadius:'10px', padding:'0',
+            ? `radial-gradient(circle at 18% 0%, ${c}2e, transparent 38%), linear-gradient(160deg, rgba(40,40,69,0.98), rgba(24,24,43,0.96))`
+            : `linear-gradient(160deg, rgba(42,42,69,0.96), rgba(27,27,48,0.98))`,
+        border:'none', borderRadius:'12px', padding:'0',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.35 : 1,
+        opacity: disabled ? 0.55 : 1,
         position:'relative', overflow:'hidden',
-        transition:'all 0.15s ease',
+        transition:'transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, opacity 0.16s ease',
         transform: hovered && !disabled ? 'translateY(-1px) scale(1.02)' : 'none',
         boxShadow: hovered && !disabled
-          ? `0 4px 16px ${c}40, inset 0 0 0 1.5px ${c}80`
-          : `0 2px 6px rgba(0,0,0,0.4), inset 0 0 0 1px ${c}30`,
+          ? `0 8px 22px ${c}38, inset 0 0 0 1.5px ${c}90, inset 0 1px 0 rgba(255,255,255,0.08)`
+          : `0 2px 8px rgba(0,0,0,0.42), inset 0 0 0 1px ${c}30, inset 0 1px 0 rgba(255,255,255,0.04)`,
         display:'flex', flexDirection:'column',
         textAlign:'left',
       }}
     >
       {/* 左侧类型色条 */}
       <div style={{
-        position:'absolute', left:0, top:0, bottom:0, width:'4px',
+        position:'absolute', left:0, top:0, bottom:0, width:'5px',
         background:`linear-gradient(180deg, ${c}, ${c}88)`,
-        borderRadius:'10px 0 0 10px',
+        borderRadius:'12px 0 0 12px',
         boxShadow:`0 0 8px ${c}40`,
       }} />
 
@@ -102,12 +107,12 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
       {/* 主内容 */}
       <div style={{
         flex:1, display:'flex', flexDirection:'column', justifyContent:'center',
-        padding:'5px 8px 4px 12px', gap:'2px', minHeight:0, overflow:'hidden',
+        padding:'6px 9px 5px 14px', gap:'3px', minHeight:0, overflow:'hidden',
       }}>
         {/* 行1: 技能名 + 属性徽章 + 威力 */}
         <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
           <span style={{
-            fontSize:'13px', fontWeight:'700', color:'#eee',
+            fontSize:'13px', fontWeight:'800', color:'#f8fafc',
             letterSpacing:'0.3px', lineHeight:1.2,
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             flex:1, minWidth:0,
@@ -126,7 +131,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
           )}
           <span style={{
             fontSize:'9px', padding:'2px 5px', borderRadius:'4px', flexShrink:0,
-            background:`${c}dd`, color:'#fff', fontWeight:'700',
+            background:`${c}dd`, color:'#fff', fontWeight:'800',
             lineHeight:'1.4', letterSpacing:'0.5px',
             boxShadow:`0 1px 4px ${c}40`,
           }}>{tName}</span>
@@ -143,8 +148,8 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
         {/* 行2: 技能描述 */}
         {hasDesc && (
           <div style={{
-            fontSize:'9px', lineHeight:'1.3',
-            color: hovered ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.3)',
+            fontSize:'9.5px', lineHeight:'1.35',
+            color: hovered ? 'rgba(255,255,255,0.68)' : 'rgba(255,255,255,0.42)',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             transition:'color 0.15s',
           }}>{move.desc}</div>
@@ -166,7 +171,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
           <span style={{
             fontSize:'9px', fontWeight:'600', flexShrink:0, lineHeight:1,
             color: ppRatio <= 0.2 ? '#F44336' : 'rgba(255,255,255,0.4)',
-          }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{move.pp}/{maxPpCap}</span>
+          }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{Math.max(0, move.pp || 0)}/{maxPpCap}</span>
           {move.isCursed && move.ceCost > 0 && (
             <span style={{
               fontSize:'8px', color:'#a78bfa', fontWeight:'600', flexShrink:0,
@@ -182,15 +187,15 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
             }}>🍥{move.chakraCost}</span>
           )}
         </div>
-        {disabled && disabledReason ? (
-          <div style={{ fontSize: '10px', color: '#EF9A9A', marginTop: '2px', lineHeight: 1.2, paddingLeft: '2px' }}>{disabledReason}</div>
+        {disabled && readableDisabledReason ? (
+          <div style={{ fontSize: '10px', color: '#FCA5A5', marginTop: '2px', lineHeight: 1.2, paddingLeft: '2px', fontWeight: 800 }}>无法使用 · {readableDisabledReason}</div>
         ) : null}
       </div>
 
       {/* hover 光效 */}
       {hovered && !disabled && (
         <div style={{
-          position:'absolute', inset:0, pointerEvents:'none', borderRadius:'10px',
+          position:'absolute', inset:0, pointerEvents:'none', borderRadius:'12px',
           background:`radial-gradient(ellipse at 30% 20%, ${c}20 0%, transparent 55%)`,
         }} />
       )}
@@ -220,7 +225,10 @@ export const SkillCastEffect = ({ type, x, y, onComplete }) => {
 // 血条增强组件
 // =========================================
 export const EnhancedHPBar = ({ current, max, label }) => {
-  const percentage = max > 0 ? Math.min((current / max) * 100, 100) : 0;
+  const safeMax = Math.max(1, max || 1);
+  const safeCurrent = Math.max(0, Math.min(safeMax, current || 0));
+  const percentage = safeMax > 0 ? Math.min((safeCurrent / safeMax) * 100, 100) : 0;
+  const isLow = percentage > 0 && percentage <= 20;
 
   const getColor = () => {
     if (percentage > 50) return ['#4CAF50', '#66BB6A'];
@@ -231,12 +239,13 @@ export const EnhancedHPBar = ({ current, max, label }) => {
   const [c1, c2] = getColor();
 
   return (
-    <div style={{ width: '100%', marginTop: '4px' }}>
+    <div className={isLow ? 'hp-bar-shell hp-bar-low' : 'hp-bar-shell'} style={{ width: '100%', marginTop: '4px' }}>
       {label && <div style={{ fontSize: '12px', marginBottom: '2px', color: '#666' }}>{label}</div>}
       <div style={{
-        width: '100%', height: '10px',
+        width: '100%', height: '11px',
         background: 'rgba(0,0,0,0.08)', borderRadius: '6px',
-        overflow: 'hidden', position: 'relative'
+        overflow: 'hidden', position: 'relative',
+        boxShadow: isLow ? `0 0 12px ${c1}66` : 'inset 0 1px 2px rgba(0,0,0,0.18)'
       }}>
         <div
           style={{
@@ -253,7 +262,7 @@ export const EnhancedHPBar = ({ current, max, label }) => {
           color: '#fff', fontSize: '9px', fontWeight: 'bold',
           textShadow: '0 1px 2px rgba(0,0,0,0.6)', whiteSpace: 'nowrap'
         }}>
-          {Math.floor(current).toLocaleString()} / {max.toLocaleString()}
+          {Math.floor(safeCurrent).toLocaleString()} / {safeMax.toLocaleString()}
         </div>
       </div>
     </div>
@@ -266,18 +275,30 @@ export const EnhancedHPBar = ({ current, max, label }) => {
 export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => {
   const [expanded, setExpanded] = useState(false);
   const allLogs = logs.length > 0 ? logs : (message ? [message] : []);
-  const displayLogs = expanded ? allLogs.slice(0, 12) : allLogs.slice(0, 6);
+  const displayLogs = expanded ? allLogs.slice(1, 13) : allLogs.slice(1, 6);
+  const latest = allLogs[0] || '等待行动';
+  const classifyLog = (msg) => {
+    const text = String(msg || '');
+    if (/暴击|效果拔群|捕获成功|胜利|获得|升级|进化/.test(text)) return 'is-good';
+    if (/没有效果|失败|晕厥|中毒|灼伤|麻痹|冰冻|睡眠|伤害/.test(text)) return 'is-danger';
+    if (/回合|天气|领域|蓄力|交换|派出/.test(text)) return 'is-info';
+    return 'is-neutral';
+  };
 
   return (
-    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 6 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 6) setExpanded(e => !e); }}>
+    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 5 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 5) setExpanded(e => !e); }}>
+      <div className={`battle-msg-summary ${classifyLog(latest)}`}>
+        <span>本回合</span>
+        <strong>{latest}</strong>
+      </div>
       {displayLogs.map((msg, i) => (
-        <div key={`bmsg-${i}-${typeof msg === 'string' ? msg.slice(0,20) : i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'}`}
+        <div key={`bmsg-${i}-${typeof msg === 'string' ? msg.slice(0,20) : i}`} className={`battle-msg-item ${i === 0 ? 'battle-msg-latest' : 'battle-msg-old'} ${classifyLog(msg)}`}
           style={{ opacity: i === 0 ? 1 : Math.max(0.4, 1 - i * 0.25) }}
         >
           {msg}
         </div>
       ))}
-      {allLogs.length > 6 && <div style={{fontSize:'9px',textAlign:'center',color:'rgba(255,255,255,0.5)',padding:'2px 0'}}>{expanded ? '▲ 收起' : `▼ 展开全部 (${allLogs.length})`}</div>}
+      {allLogs.length > 5 && <div className="battle-msg-toggle">{expanded ? '▲ 收起历史' : `▼ 展开战斗历史 (${allLogs.length})`}</div>}
     </div>
   );
 };

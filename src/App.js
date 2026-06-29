@@ -7748,6 +7748,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           }),
         })).filter(cat => cat.sections.length > 0)
       : filtered;
+    const resultSectionCount = results.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0);
+    const totalSectionCount = filtered.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0);
 
     const guideFormatContent = (text) => {
       return text.split('\n').map((line, i) => {
@@ -7785,6 +7787,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               style={{width:'100%', padding:'8px 12px 8px 34px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.05)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box', backdropFilter:'blur(10px)'}}
             />
             <span style={{position:'absolute', left:'11px', top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.25)', fontSize:'14px'}}>🔍</span>
+          </div>
+          <div className="guide-result-meta">
+            <span>{q ? `找到 ${resultSectionCount} 个相关小节` : `共 ${totalSectionCount} 个说明小节`}</span>
+            {q && <button className="guide-clear-btn" onClick={() => setGuideSearch('')}>清空搜索</button>}
           </div>
           {/* 分类标签 */}
           <div style={{display:'flex', gap:'5px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none', WebkitOverflowScrolling:'touch'}}>
@@ -19394,267 +19400,173 @@ const renderMenu = () => {
   const leadPetDex = leadPet ? POKEDEX.find(p => p.id === leadPet.id) : null;
   const totalPower = hasSave && party ? party.reduce((s, p) => { const st = getStats(p); return s + (p.level || 1) * 10 + (st.p_atk || 50) + (st.s_atk || 50); }, 0) : 0;
   const dailyTasksDone = hasSave ? Math.min((narutoState?.dailyMissions || 0), 5) : 0;
+  const badgeCount = badges?.length || 0;
+  const commandStats = [
+    { label: '队伍战力', value: hasSave ? totalPower.toLocaleString() : '待集结', hint: leadPet ? `${leadPet.nickname || leadPetDex?.name || '伙伴'} 领队` : '选择初始伙伴', tone: 'gold' },
+    { label: '徽章进度', value: `${badgeCount}/${MAPS.length}`, hint: badgeCount >= MAPS.length ? '联盟资格完成' : '继续挑战道馆', tone: 'blue' },
+    { label: '每日任务', value: `${dailyTasksDone}/5`, hint: dailyTasksDone >= 5 ? '今日已清空' : '还有奖励可拿', tone: 'green' },
+    { label: '忍者阶级', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽 · ${jutsuCollCount} 忍术`, tone: 'red' },
+  ];
+  const quickEntries = [
+    { key:'pokedex', label:'宝可梦图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, icon:'📚' },
+    { key:'skill_dex', label:'技能图鉴', sub:`${allSkills.length} 种`, icon:'⚡' },
+    { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length} 种`, icon:'🍎' },
+    { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
+    { key:'general_dex', label:'三国名将', sub:`${collectedGenCount}/200`, icon:'📜' },
+    { key:'achievements', label:'成就殿堂', sub:`${Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)}%`, icon:'🏆' },
+    { key:'guide', label:'冒险指南', sub:'规则说明', icon:'📖' },
+    { key:'settings', label:'系统设置', sub:'选项', icon:'⚙️' },
+    { key:null, label:'重置存档', sub:'重新开始', icon:'🔄', action: resetGame, danger: true },
+  ];
+  const nextObjective = hasSave
+    ? (badgeCount < MAPS.length ? `夺取第 ${badgeCount + 1} 枚徽章` : (playerFaction ? `${playerFaction.name} 阵营战线推进` : '挑战终局试炼'))
+    : '建立第一支冒险小队';
 
   return (
-    <div className="screen" style={{
-      display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-      background:'#0a0a12', position:'relative', overflow:'hidden', minHeight:'100vh',
-    }}>
-      {/* Background layers */}
-      <div style={{position:'absolute', inset:0, background:'linear-gradient(170deg, #0d0808 0%, #1a0c0c 18%, #12090e 35%, #0c0a14 55%, #080810 100%)'}} />
-      <div style={{position:'absolute', top:'-20%', left:'50%', transform:'translateX(-50%)', width:'700px', height:'700px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,80,0,0.07) 0%, rgba(220,40,0,0.03) 35%, transparent 65%)', pointerEvents:'none', animation:'pulse-glow 6s ease-in-out infinite'}} />
-      <div style={{position:'absolute', bottom:'-10%', right:'-5%', width:'400px', height:'400px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,120,0,0.05) 0%, transparent 60%)', pointerEvents:'none'}} />
+    <main className="screen home-screen" id="main-content">
+      <a className="skip-link" href="#home-command">跳到系统入口</a>
+      <div className="home-bg home-bg-fire" />
+      <div className="home-bg home-bg-sigil" aria-hidden="true" />
+      <div className="home-bg home-bg-mountains" aria-hidden="true" />
+      <div className="home-grain" aria-hidden="true" />
 
-      {/* Fire particle rising effect - deterministic */}
-      <div style={{position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none'}}>
-        {Array.from({length:12}).map((_, i) => (
-          <div key={i} style={{
-            position:'absolute', width: (3 + i % 4) + 'px', height: (3 + i % 4) + 'px',
-            borderRadius:'50%', background: i % 3 === 0 ? 'rgba(255,100,0,0.6)' : i % 3 === 1 ? 'rgba(255,160,0,0.4)' : 'rgba(255,60,0,0.5)',
-            bottom: '-10px', left: (8 + i * 7.5) + '%',
-            animation: 'fire-rise ' + (4 + i % 5 * 1.5) + 's ease-in infinite',
-            animationDelay: (i * 0.6) + 's', opacity: 0.7,
-          }} />
-        ))}
-      </div>
+      <section className="home-shell" aria-label="忍者大战首页">
+        <aside className="home-hero-panel">
+          <div className="home-kicker">Shinobi legend</div>
+          <h1 className="home-title">忍者大战</h1>
+          <p className="home-subtitle">宝可梦伙伴、忍术卷轴、三国名将与阵营领地都在同一条战线上。</p>
 
-      {/* Mountain silhouette */}
-      <svg style={{position:'absolute', bottom:0, left:0, right:0, height:'35%', opacity:0.05}} viewBox="0 0 1400 500" preserveAspectRatio="none">
-        <path d="M0 500 L0 300 Q180 180 350 240 Q520 120 700 180 Q880 80 1050 150 Q1200 100 1400 200 L1400 500Z" fill="rgba(255,100,0,0.3)"/>
-        <path d="M0 500 L0 380 Q200 300 400 340 Q600 260 800 310 Q1000 250 1200 300 L1400 280 L1400 500Z" fill="rgba(255,60,0,0.15)"/>
-      </svg>
-
-      {/* Light rays */}
-      <div style={{position:'absolute', top:0, left:'20%', width:'1px', height:'22%', background:'linear-gradient(180deg, rgba(255,100,0,0.4), transparent)', filter:'blur(2px)', animation:'float 7s ease-in-out infinite'}} />
-      <div style={{position:'absolute', top:0, left:'50%', width:'1px', height:'28%', background:'linear-gradient(180deg, rgba(255,60,0,0.35), transparent)', filter:'blur(2px)', animation:'float 8s ease-in-out infinite', animationDelay:'1s'}} />
-      <div style={{position:'absolute', top:0, right:'20%', width:'1px', height:'22%', background:'linear-gradient(180deg, rgba(255,160,0,0.35), transparent)', filter:'blur(2px)', animation:'float 9s ease-in-out infinite', animationDelay:'2s'}} />
-
-      {/* Main card */}
-      <div style={{
-        position:'relative', zIndex:10, width:'500px', maxWidth:'95vw',
-        background:'linear-gradient(150deg, rgba(18,10,10,0.95), rgba(22,12,14,0.94), rgba(14,10,16,0.95))',
-        borderRadius:'28px', overflow:'hidden',
-        border:'1px solid rgba(255,100,0,0.1)',
-        boxShadow:'0 24px 80px rgba(0,0,0,0.8), 0 0 80px rgba(255,80,0,0.05), inset 0 1px 0 rgba(255,255,255,0.04)',
-        backdropFilter:'blur(20px)',
-      }}>
-        {/* Top accent line */}
-        <div style={{height:'3px', background:'linear-gradient(90deg, transparent 5%, #E53935 20%, #FF6F00 40%, #FFD54F 50%, #FF6F00 60%, #E53935 80%, transparent 95%)', animation:'title-shimmer 4s ease infinite', backgroundSize:'300% 100%'}} />
-
-        {/* Title Section */}
-        <div style={{padding:'28px 24px 16px', textAlign:'center', position:'relative'}}>
-          <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'220px', height:'220px', opacity:0.03, pointerEvents:'none', animation:'spin-slow 30s linear infinite'}}>
-            <svg viewBox="0 0 100 100" fill="none">
-              <circle cx="50" cy="50" r="48" stroke="rgba(255,100,0,0.6)" strokeWidth="0.5" strokeDasharray="4 4"/>
-              <circle cx="50" cy="50" r="35" stroke="rgba(255,100,0,0.4)" strokeWidth="0.5" strokeDasharray="2 6"/>
-              <path d="M50 15 Q65 35 50 50 Q35 35 50 15Z" fill="rgba(255,100,0,0.2)"/>
-              <path d="M50 85 Q35 65 50 50 Q65 65 50 85Z" fill="rgba(255,100,0,0.2)"/>
-            </svg>
-          </div>
-
-          <div style={{fontSize:'10px', letterSpacing:'10px', color:'rgba(255,160,80,0.25)', fontWeight:'600', marginBottom:'6px', textTransform:'uppercase'}}>忍 · 者 · 传 · 说</div>
-          <div style={{fontSize:'46px', fontWeight:'900', letterSpacing:'6px', background:'linear-gradient(135deg, #FF6F00 0%, #FFB300 25%, #FFD54F 45%, #fff 50%, #FFD54F 55%, #FFB300 75%, #FF6F00 100%)', backgroundSize:'300% 300%', animation:'title-shimmer 4s ease infinite', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1.1, filter:'drop-shadow(0 4px 24px rgba(255,100,0,0.35))', position:'relative'}}>忍者大战</div>
-          <div style={{fontSize:'9px', fontWeight:'600', letterSpacing:'5px', color:'rgba(255,160,80,0.15)', marginTop:'6px'}}>SHINOBI LEGEND</div>
-
-          <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginTop:'10px'}}>
-            <div style={{height:'1px', width:'50px', background:'linear-gradient(90deg, transparent, rgba(255,100,0,0.35))'}} />
-            {['🔥','💧','⚡','🌀','🪨'].map((ic, i) => <span key={i} style={{fontSize:'13px', opacity:0.5, animation:'float '+(3+i*0.5)+'s ease-in-out infinite', animationDelay:i*0.3+'s'}}>{ic}</span>)}
-            <div style={{height:'1px', width:'50px', background:'linear-gradient(90deg, rgba(255,100,0,0.35), transparent)'}} />
-          </div>
-        </div>
-
-        {/* Hero Display - Lead Pet */}
-        {leadPet && (
-          <div style={{padding:'0 24px 12px', display:'flex', alignItems:'center', gap:'14px'}}>
-            <div style={{
-              width:'64px', height:'64px', borderRadius:'16px', flexShrink:0,
-              background:'linear-gradient(135deg, rgba(255,100,0,0.08), rgba(255,160,0,0.04))',
-              border:'1px solid rgba(255,100,0,0.12)', display:'flex', alignItems:'center', justifyContent:'center',
-              boxShadow:'0 4px 20px rgba(255,100,0,0.08), inset 0 0 20px rgba(255,100,0,0.03)',
-            }}>
-              {leadPetDex?.sprite && !menuLeadSpriteErr ? (
-                <img src={leadPetDex.sprite} alt="" style={{width:'48px', height:'48px', imageRendering:'pixelated'}} onError={() => setMenuLeadSpriteErr(true)} />
+          <div className="home-lead-card">
+            <div className="home-lead-orbit" aria-hidden="true" />
+            <div className="home-lead-avatar">
+              {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
+                <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
               ) : (
-                <span style={{fontSize:'32px'}} title={leadPetDex?.name || ''}>{leadPet.emoji || leadPetDex?.icon || '🐾'}</span>
+                <span title={leadPetDex?.name || '初始伙伴'}>{leadPet?.emoji || leadPetDex?.icon || '🍥'}</span>
               )}
             </div>
-            <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'14px', fontWeight:'800', color:'rgba(255,255,255,0.85)', letterSpacing:'1px'}}>{leadPet.nickname || leadPetDex?.name || '???'}</div>
-              <div style={{fontSize:'10px', color:'rgba(255,200,100,0.5)', marginTop:'2px'}}>Lv.{leadPet.level || 1} · {TYPES[leadPetDex?.type]?.name || '???'}属性</div>
-              <div style={{marginTop:'4px', height:'3px', borderRadius:'2px', background:'rgba(0,0,0,0.3)', overflow:'hidden'}}>
-                <div style={{height:'100%', width: Math.min(100, (leadPet.level || 1)) + '%', background:'linear-gradient(90deg, #FF6F00, #FFD54F)', borderRadius:'2px', transition:'width 0.5s'}} />
-              </div>
+            <div className="home-lead-copy">
+              <span className="home-lead-label">{hasSave ? '当前领队' : '新的冒险'}</span>
+              <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待选择初始伙伴'}</strong>
+              <small>{leadPet ? `Lv.${leadPet.level || 1} · ${TYPES[leadPetDex?.type]?.name || '未知'}属性` : '从第一只伙伴开始建立队伍'}</small>
             </div>
           </div>
-        )}
 
-        {/* Quick Status Cards - glassmorphism */}
-        {hasSave && (
-          <div style={{padding:'0 20px 14px', display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(72px, 1fr))', gap:'8px'}}>
-            {[
-              {icon:'⚔️', label:'战力', value: totalPower, color:'#FF6F00'},
-              {icon:'📋', label:'任务', value: dailyTasksDone + '/5', color:'#4CAF50'},
-              {icon:'🍥', label:'忍阶', value: ninjaRank?.name || '学员', color:'#2196F3'},
-              {icon:'🏰', label:'领地', value: myTerrCountMenu, color: playerFaction ? fc.primary : '#9C27B0'},
-              {icon:'💎', label:'累计金币', value: (achStats.totalGoldEarned ?? 0).toLocaleString(), color:'#FFD54F'},
-            ].map((card, i) => (
-              <div key={i} style={{
-                padding:'10px 6px', borderRadius:'12px', textAlign:'center',
-                background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.04)',
-                backdropFilter:'blur(10px)',
-                transition:'all 0.3s',
-              }}
-              onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor=card.color+'30'; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.04)'; e.currentTarget.style.transform=''; }}
-              >
-                <div style={{fontSize:'16px', marginBottom:'3px'}}>{card.icon}</div>
-                <div style={{fontSize:'12px', fontWeight:'800', color:card.color, lineHeight:1}}>{card.value}</div>
-                <div style={{fontSize:'8px', color:'rgba(255,255,255,0.25)', marginTop:'2px'}}>{card.label}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Faction strip */}
-        <div style={{display:'flex', justifyContent:'center', gap:'5px', padding:'0 24px 12px'}}>
-          {FACTION_IDS.map(fid => {
-            const f = FACTIONS[fid];
-            const isP = kingdomWar?.faction === fid;
-            return (<div key={fid} style={{padding:'4px 12px', borderRadius:'8px', fontSize:'10px', fontWeight:'700', background: isP ? f.color+'18' : 'rgba(255,255,255,0.015)', border:'1px solid '+(isP ? f.color+'30' : 'rgba(255,255,255,0.03)'), color: isP ? f.lightColor : 'rgba(255,255,255,0.15)', letterSpacing:'2px', transition:'all 0.3s', boxShadow: isP ? '0 0 16px '+f.color+'10' : 'none'}}>{f.icon} {f.name}</div>);
-          })}
-        </div>
-
-        {/* Action area */}
-        <div style={{padding:'0 20px 16px'}}>
-          {/* Faction & Gang details */}
-          {playerFaction && (
-            <div style={{marginBottom:'12px'}}>
-              <div style={{display:'flex', gap:'6px', marginBottom:'6px'}}>
-                <div style={{flex:1, display:'flex', alignItems:'center', gap:'8px', padding:'8px 12px', borderRadius:'12px', background:'linear-gradient(135deg, '+fc.primary+'0C, '+fc.dark+'06)', border:'1px solid '+fc.primary+'15', backdropFilter:'blur(8px)'}}>
-                  <div style={{width:'30px', height:'30px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', background:fc.primary+'18', fontSize:'15px'}}>{playerFaction.icon}</div>
-                  <div style={{flex:1, minWidth:0}}>
-                    <div style={{fontSize:'11px', fontWeight:'800', color:playerFaction.lightColor}}>{playerFaction.fullName}</div>
-                    <div style={{fontSize:'9px', color:'rgba(255,255,255,0.25)', marginTop:'1px'}}>{playerRank?.icon} {playerRank?.name} · 领地 {myTerrCountMenu}</div>
-                  </div>
-                </div>
-                {gangName && (
-                  <div style={{display:'flex', alignItems:'center', gap:'6px', padding:'8px 12px', borderRadius:'12px', background:'rgba(200,160,80,0.03)', border:'1px solid rgba(200,160,80,0.08)', backdropFilter:'blur(8px)'}}>
-                    <span style={{fontSize:'14px'}}>{gangIcon}</span>
-                    <div>
-                      <div style={{fontSize:'10px', fontWeight:'700', color:'#d4a853'}}>{gangName}</div>
-                      <div style={{fontSize:'9px', color:'rgba(255,255,255,0.18)'}}>帮贡 {gang.contribution || 0}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {/* Territory bar */}
-              <div style={{padding:'6px 12px', borderRadius:'10px', background:'rgba(255,255,255,0.015)', border:'1px solid rgba(255,255,255,0.03)'}}>
-                <div style={{display:'flex', gap:'2px', height:'4px', borderRadius:'3px', overflow:'hidden', background:'rgba(0,0,0,0.4)'}}>
-                  {FACTION_IDS.map(fid => {
-                    const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
-                    return <div key={fid} style={{flex:Math.max(count, 0.5), background:FACTIONS[fid].color, transition:'flex 0.8s', borderRadius:'3px'}} />;
-                  })}
-                </div>
-                <div style={{display:'flex', justifyContent:'space-between', marginTop:'4px'}}>
-                  {FACTION_IDS.map(fid => {
-                    const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
-                    return <span key={fid} style={{fontSize:'9px', color:kingdomWar.faction===fid ? FACTIONS[fid].lightColor:'rgba(255,255,255,0.12)', fontWeight:kingdomWar.faction===fid?'700':'400'}}>{FACTIONS[fid].name} {count}</span>;
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Main CTA button with pulse */}
-          <button onClick={handleStartGame} style={{
-            width:'100%', padding:'16px 20px', borderRadius:'16px', border:'none',
-            background:'linear-gradient(135deg, #BF360C 0%, #E65100 30%, #FF6F00 50%, #E65100 70%, #BF360C 100%)',
-            backgroundSize:'200% 200%', animation:'title-shimmer 4s ease infinite',
-            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'14px',
-            transition:'all 0.3s', position:'relative', overflow:'hidden',
-            boxShadow:'0 8px 36px rgba(255,100,0,0.3), 0 0 60px rgba(255,80,0,0.08)',
-          }}
-          onMouseOver={e => { e.currentTarget.style.transform='translateY(-3px) scale(1.01)'; e.currentTarget.style.boxShadow='0 14px 50px rgba(255,100,0,0.4), 0 0 80px rgba(255,80,0,0.12)'; }}
-          onMouseOut={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 36px rgba(255,100,0,0.3), 0 0 60px rgba(255,80,0,0.08)'; }}
-          >
-            <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)', transform:'translateX(-100%)', animation:'btn-shine 3s ease infinite'}} />
-            <div style={{position:'absolute', inset:'-2px', borderRadius:'18px', border:'2px solid transparent', background:'linear-gradient(135deg, rgba(255,200,100,0.2), transparent, rgba(255,200,100,0.2))', WebkitMask:'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)', WebkitMaskComposite:'xor', maskComposite:'exclude', animation:'pulse-glow 2s ease-in-out infinite', opacity:0.5}} />
-            <div style={{width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,0.2)', flexShrink:0, fontSize:'22px'}}>🍥</div>
-            <div style={{textAlign:'left', flex:1}}>
-              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'1px'}}>{hasSave ? '继续冒险' : '开始冒险'}</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.6)', marginTop:'3px'}}>{hasSave ? (playerFaction ? playerFaction.fullName+' · '+playerRank?.name : '读取上次的冒险进度') : '成为宝可梦训练家 · 征战忍界'}</div>
-            </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:0.6}}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <button className="home-primary-btn" onClick={handleStartGame}>
+            <span className="home-primary-icon">🍥</span>
+            <span>
+              <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
+              <small>{hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name}` : '读取上次的冒险进度') : '成为训练家，进入忍界战场'}</small>
+            </span>
+            <b aria-hidden="true">›</b>
           </button>
 
-          <div style={{height:'1px', background:'linear-gradient(90deg, transparent, rgba(255,100,0,0.08), transparent)', margin:'14px 0'}} />
+          <div className="home-faction-strip" aria-label="阵营概览">
+            {FACTION_IDS.map(fid => {
+              const f = FACTIONS[fid];
+              const isP = kingdomWar?.faction === fid;
+              return (
+                <div className={isP ? 'home-faction-chip is-active' : 'home-faction-chip'} key={fid}>
+                  <span>{f.icon}</span>
+                  <strong>{f.name}</strong>
+                </div>
+              );
+            })}
+          </div>
 
-          {/* Generals display */}
-          {recruitedGens.length > 0 && (
-            <div style={{marginBottom:'12px'}}>
-              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px'}}>
-                <div style={{fontSize:'9px', fontWeight:'700', color:'rgba(255,215,0,0.45)', letterSpacing:'2px'}}>⚔️ 麾下名将 {recruitedCount}/{MAX_RECRUITED_GENERALS}</div>
-                <button onClick={() => setView('general_dex')} style={{fontSize:'9px', color:'rgba(255,215,0,0.35)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px'}}>图鉴 {collectedGenCount}/{SANGUO_GENERALS.length} →</button>
+          <footer className="home-footer-note">
+            <span>{POKEDEX.length} 精灵</span>
+            <span>{JUTSU_DB.length} 忍术</span>
+            <span>V11</span>
+          </footer>
+        </aside>
+
+        <section className="home-command-panel" id="home-command">
+          <div className="home-command-head">
+            <div>
+              <span className="home-section-label">作战概览</span>
+              <h2>{nextObjective}</h2>
+            </div>
+            <div className="home-gold-pill">💎 {(achStats.totalGoldEarned ?? 0).toLocaleString()}</div>
+          </div>
+
+          <div className="home-stat-grid">
+            {commandStats.map(stat => (
+              <article className={`home-stat-card is-${stat.tone}`} key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.hint}</small>
+              </article>
+            ))}
+          </div>
+
+          {playerFaction && (
+            <article className="home-war-card">
+              <div className="home-war-main">
+                <span className="home-war-icon">{playerFaction.icon}</span>
+                <div>
+                  <strong>{playerFaction.fullName}</strong>
+                  <small>{playerRank?.icon} {playerRank?.name} · 已控领地 {myTerrCountMenu}</small>
+                </div>
               </div>
-              <div style={{display:'flex', gap:'5px', overflowX:'auto', padding:'3px 0'}}>
+              {gangName && (
+                <div className="home-gang-pill">
+                  <span>{gangIcon}</span>
+                  <strong>{gangName}</strong>
+                  <small>帮贡 {gang.contribution || 0}</small>
+                </div>
+              )}
+              <div className="home-territory-bars">
+                {FACTION_IDS.map(fid => {
+                  const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
+                  return (
+                    <div className="home-territory-segment" key={fid} style={{ flex: Math.max(count, 0.5), background: FACTIONS[fid].color }} title={`${FACTIONS[fid].name} ${count} 块领地`} />
+                  );
+                })}
+              </div>
+              <div className="home-territory-labels">
+                {FACTION_IDS.map(fid => {
+                  const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
+                  return <span key={fid}>{FACTIONS[fid].name} {count}</span>;
+                })}
+              </div>
+            </article>
+          )}
+
+          {recruitedGens.length > 0 && (
+            <article className="home-generals-card">
+              <div className="home-card-title">
+                <span>麾下名将 {recruitedCount}/{MAX_RECRUITED_GENERALS}</span>
+                <button onClick={() => setView('general_dex')}>图鉴 {collectedGenCount}/{SANGUO_GENERALS.length}</button>
+              </div>
+              <div className="home-generals-row">
                 {recruitedGens.slice(0, MAX_RECRUITED_GENERALS).map((g, i) => {
                   const rc = GENERAL_RARITY_CONFIG[g.rarity] || {};
                   return (
-                    <div key={g.id || i} style={{minWidth:'38px', height:'46px', borderRadius:'10px', background:rc.bgColor || '#333', border:'1px solid '+(rc.color || '#666')+'40', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px', position:'relative', overflow:'hidden', transition:'transform 0.2s'}}
-                    onMouseOver={e => e.currentTarget.style.transform='scale(1.1)'}
-                    onMouseOut={e => e.currentTarget.style.transform=''}
-                    >
-                      <span style={{fontSize:'17px'}}>{g.icon}</span>
-                      <div style={{fontSize:'9px', fontWeight:'700', color:'#fff', textShadow:'0 1px 3px rgba(0,0,0,0.8)', lineHeight:1}}>{g.name?.[0]}</div>
+                    <div className="home-general-token" key={g.id || i} style={{ '--general-color': rc.color || '#d6aa4f', '--general-bg': rc.bgColor || 'rgba(214,170,79,0.14)' }}>
+                      <span>{g.icon}</span>
+                      <strong>{g.name?.[0]}</strong>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </article>
           )}
 
-          {/* Quick entry - horizontal scrollable strip */}
-          <div style={{overflowX:'auto', padding:'2px 0', marginBottom:'4px'}}>
-            <div style={{display:'flex', gap:'8px', minWidth:'max-content'}}>
-              {[
-                { key:'pokedex', label:'图鉴', sub:caughtDex.length+'/'+POKEDEX.length, emoji:'📚' },
-                { key:'skill_dex', label:'技能', sub:allSkills.length+'种', emoji:'⚡' },
-                { key:'fruit_dex', label:'果实', sub:getAllFruits().length+'种', emoji:'🍎' },
-                { key:'jutsu_codex', label:'忍术', sub:JUTSU_DB.length+'种', emoji:'🍥' },
-                { key:'general_dex', label:'名将', sub:collectedGenCount+'/200', emoji:'📜' },
-                { key:'achievements', label:'成就', sub:Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)+'%', emoji:'🏆' },
-                { key:'guide', label:'攻略', sub:'说明', emoji:'📖' },
-                { key:'settings', label:'设置', sub:'选项', emoji:'⚙️' },
-                { key:null, label:'重置', sub:'存档', emoji:'🔄', action: resetGame },
-              ].map(btn => (
-                <button key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }} style={{
-                  padding:'10px 12px', minWidth:'56px', borderRadius:'12px', border:'1px solid rgba(255,100,0,0.05)',
-                  background:'rgba(255,100,0,0.015)', color:'#fff', cursor:'pointer',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:'3px',
-                  transition:'all 0.3s', textAlign:'center', flexShrink:0,
-                }}
-                onMouseOver={e => { e.currentTarget.style.background='rgba(255,100,0,0.06)'; e.currentTarget.style.borderColor='rgba(255,100,0,0.12)'; e.currentTarget.style.transform='translateY(-3px)'; }}
-                onMouseOut={e => { e.currentTarget.style.background='rgba(255,100,0,0.015)'; e.currentTarget.style.borderColor='rgba(255,100,0,0.05)'; e.currentTarget.style.transform='none'; }}
-                >
-                  <span style={{fontSize:'20px', filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.5))'}}>{btn.emoji}</span>
-                  <div style={{fontSize:'10px', fontWeight:'700', lineHeight:1.2, color:'rgba(255,255,255,0.6)'}}>{btn.label}</div>
-                  <div style={{fontSize:'8px', color:'rgba(255,255,255,0.15)'}}>{btn.sub}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{padding:'8px 20px', borderTop:'1px solid rgba(255,100,0,0.05)', background:'rgba(0,0,0,0.25)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-          <span style={{fontSize:'9px', color:'rgba(255,255,255,0.1)', letterSpacing:'1px'}}>{POKEDEX.length} 精灵 · {JUTSU_DB.length} 忍术</span>
-          <span style={{fontSize:'9px', color:'rgba(255,255,255,0.08)', letterSpacing:'1px'}}>V11 · 忍者大战</span>
-        </div>
-
-        {/* Bottom accent line */}
-        <div style={{height:'2px', background:'linear-gradient(90deg, transparent 5%, #BF360C 20%, #FF6F00 50%, #BF360C 80%, transparent 95%)'}} />
-      </div>
-    </div>
+          <nav className="home-entry-grid" aria-label="系统入口">
+            {quickEntries.map(btn => (
+              <button className={btn.danger ? 'home-entry-btn is-danger' : 'home-entry-btn'} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
+                <span className="home-entry-icon">{btn.icon}</span>
+                <span>
+                  <strong>{btn.label}</strong>
+                  <small>{btn.sub}</small>
+                </span>
+              </button>
+            ))}
+          </nav>
+        </section>
+      </section>
+    </main>
   );
 };
 
@@ -21879,6 +21791,7 @@ const renderMenu = () => {
     const expPercent = leader ? Math.min(100, (leader.exp / Math.max(1, leader.nextExp)) * 100) : 0;
     const currentWeatherKeyLocal = mapWeathers[currentMapId] || 'CLEAR';
     const weatherInfo = WEATHERS ? WEATHERS[currentWeatherKeyLocal] : null;
+    const nextMapObjective = MAPS[Math.min(badges.length, Math.max(0, MAPS.length - 1))] || MAPS[0];
 
     return (
       <div className="side-panel left-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
@@ -21981,6 +21894,12 @@ const renderMenu = () => {
             ) : (
               <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
             )}
+          </div>
+          <div style={{marginTop:'8px', padding:'8px 10px', borderRadius:'10px', background:'rgba(212,168,83,0.08)', border:'1px solid rgba(212,168,83,0.12)', fontSize:'11px', lineHeight:1.55, color:'#6b5a36'}}>
+            下一步：前往 <strong style={{color:'#2c2417'}}>{nextMapObjective?.name || '冒险地图'}</strong>
+            {nextMapObjective?.lvl ? ` · 推荐 Lv.${nextMapObjective.lvl[0]}-${nextMapObjective.lvl[1]}` : ''}
+            <br />
+            奖励重点：徽章推进、图鉴发现、金币与成长材料。
           </div>
         </div>
       </div>
@@ -25576,21 +25495,9 @@ const renderMenu = () => {
         )}
 
         <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
-            <button onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{
-              position:'absolute', top:6, right:6, zIndex:20, background:'rgba(0,0,0,0.6)', color:'#FFD54F',
-              border:'1px solid rgba(255,213,79,0.4)', borderRadius:16, padding:'5px 12px', fontSize:12, minHeight:32,
-              fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)', letterSpacing:1
-            }}>⏩{battleSpeed}x</button>
-            <button onClick={() => setAutoBattle(a => !a)} title="弱敌自动战斗：我方等级高于对方10级及以上时自动出招" style={{
-              position:'absolute', top:40, right:6, zIndex:20, background: autoBattle ? 'rgba(76,175,80,0.8)' : 'rgba(0,0,0,0.6)', color: autoBattle ? '#fff' : '#888',
-              border:'1px solid rgba(255,255,255,0.2)', borderRadius:16, padding:'5px 10px', fontSize:11, minHeight:30,
-              fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)'
-            }}>{autoBattle ? 'AUTO' : 'auto'}</button>
-            <button onClick={() => setShowTypeChart(true)} style={{
-              position:'absolute', top:74, right:6, zIndex:20, background:'rgba(0,0,0,0.6)', color:'#81D4FA',
-              border:'1px solid rgba(129,212,250,0.3)', borderRadius:16, padding:'5px 10px', fontSize:11, minHeight:30,
-              fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)'
-            }}>属性</button>
+            <button className="battle-control-pill" onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{ top: 8 }}>⏩ {battleSpeed}x</button>
+            <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title="弱敌自动战斗：我方等级高于对方10级及以上时自动出招" style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
+            <button className="battle-control-pill" onClick={() => setShowTypeChart(true)} style={{ top: 84 }}>属性表</button>
             {(battle.sharedPlayerMaxChakra > 0 || battle.sharedPlayerMaxCE > 0) && (
               <div style={{
                 position:'absolute', top:100, left:8, right:'auto', zIndex:20, pointerEvents:'none',
@@ -25970,9 +25877,10 @@ const renderMenu = () => {
                         position: 'relative',
                         marginRight: '10px',
                         ...(isDoubleBattle ? {
-                          border: battle.targetIdx === battle.enemyActiveIdxs?.[0] ? '2px solid #FFD54F' : '2px solid transparent',
+                          border: battle.targetIdx === battle.enemyActiveIdxs?.[0] ? '3px solid #FFD54F' : '2px solid transparent',
                           borderRadius: '12px',
                           boxSizing: 'border-box',
+                          boxShadow: battle.targetIdx === battle.enemyActiveIdxs?.[0] ? '0 0 0 4px rgba(255,213,79,0.18), 0 0 24px rgba(255,213,79,0.45)' : 'none',
                           cursor: battle.pendingDoubleMove !== undefined && e.currentHp > 0 ? 'pointer' : undefined,
                         } : {}),
                       }}
@@ -26086,9 +25994,10 @@ const renderMenu = () => {
                       className="sprite-wrapper"
                       style={{
                         position:'relative',
-                        border: `2px solid ${battle.targetIdx === battle.enemyActiveIdxs?.[1] ? '#FFD54F' : 'transparent'}`,
+                        border: `3px solid ${battle.targetIdx === battle.enemyActiveIdxs?.[1] ? '#FFD54F' : 'transparent'}`,
                         borderRadius:'12px',
                         boxSizing:'border-box',
+                        boxShadow: battle.targetIdx === battle.enemyActiveIdxs?.[1] ? '0 0 0 4px rgba(255,213,79,0.18), 0 0 24px rgba(255,213,79,0.45)' : 'none',
                         cursor: battle.pendingDoubleMove !== undefined && e2.currentHp > 0 ? 'pointer' : undefined,
                       }}
                       onClick={() => {
@@ -26544,7 +26453,7 @@ const renderMenu = () => {
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
                     <span style={{color:'rgba(255,255,255,0.5)', fontWeight:'bold', fontSize:'16px', letterSpacing:'1px'}}>{battle.phase === 'busy' ? '回合结算中…' : battle.phase === 'anim' ? '动画播放中…' : battle.showSwitch ? '请选择替补精灵…' : '处理中…'}</span>
-                    <button className="battle-stuck-recover-btn" style={{padding:'10px 22px', background:'linear-gradient(180deg,#E53935,#B71C1C)', color:'#fff', border:'2px solid rgba(255,255,255,0.35)', borderRadius:'12px', cursor:'pointer', fontSize:'15px', fontWeight:800, marginTop:8, minHeight:42, letterSpacing:'0.5px', textShadow:'0 1px 2px rgba(0,0,0,0.35)'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false}) : null); }}>操作无响应？点击恢复</button>
+                    <button className="battle-stuck-recover-btn" style={{padding:'10px 22px', background:'linear-gradient(180deg,#B45309,#92400E)', color:'#fff7ed', border:'1px solid rgba(255,255,255,0.28)', borderRadius:'12px', cursor:'pointer', fontSize:'14px', fontWeight:800, marginTop:8, minHeight:42, letterSpacing:'0.5px', textShadow:'0 1px 2px rgba(0,0,0,0.35)'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false}) : null); }}>回合卡住时恢复输入</button>
                 </div>
             )}
         </div> 
@@ -28288,7 +28197,7 @@ const renderMenu = () => {
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#8b5cf6',marginBottom:'12px'}}>🔊 音频设置</div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                <span style={{fontSize:'13px'}}>背景音乐</span>
+                <span style={{fontSize:'13px'}}>背景音乐<br/><small style={{color:'rgba(255,255,255,0.45)',fontWeight:500}}>切换地图与战斗时保留当前偏好</small></span>
                 <button onClick={() => setIsMuted(m => !m)} style={{padding:'6px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.2)',background:isMuted?'rgba(239,68,68,0.2)':'rgba(76,175,80,0.2)',color:isMuted?'#ef5350':'#4CAF50',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {isMuted ? '🔇 已静音' : '🔊 开启'}
                 </button>
@@ -28297,13 +28206,13 @@ const renderMenu = () => {
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#3b82f6',marginBottom:'12px'}}>🎮 游戏设置</div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                <span style={{fontSize:'13px'}}>自动战斗</span>
+                <span style={{fontSize:'13px'}}>自动战斗<br/><small style={{color:'rgba(255,255,255,0.45)',fontWeight:500}}>只在弱敌战中自动出招，避免误操作高难战</small></span>
                 <button onClick={() => setAutoBattle(a => !a)} style={{padding:'6px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.2)',background:autoBattle?'rgba(76,175,80,0.2)':'rgba(255,255,255,0.06)',color:autoBattle?'#4CAF50':'#999',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {autoBattle ? '✅ 开启' : '关闭'}
                 </button>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                <span style={{fontSize:'13px'}}>战斗速度</span>
+                <span style={{fontSize:'13px'}}>战斗速度<br/><small style={{color:'rgba(255,255,255,0.45)',fontWeight:500}}>影响技能动画与回合结算等待时间</small></span>
                 <div style={{display:'flex',gap:'6px'}}>
                   {[1,2,3].map(s => (
                     <button key={s} onClick={() => setBattleSpeed(s)} style={{padding:'6px 12px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.2)',background:battleSpeed===s?'rgba(255,213,79,0.25)':'transparent',color:battleSpeed===s?'#FFD54F':'#aaa',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>{s}x</button>
@@ -28311,7 +28220,7 @@ const renderMenu = () => {
                 </div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0'}}>
-                <span style={{fontSize:'13px'}}>自动存档间隔</span>
+                <span style={{fontSize:'13px'}}>自动存档间隔<br/><small style={{color:'rgba(255,255,255,0.45)',fontWeight:500}}>战斗外定时写入浏览器本地存档</small></span>
                 <select value={autoSaveIntervalMin} onChange={e => setAutoSaveIntervalMin(Number(e.target.value))} style={{padding:'6px 10px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.2)',background:'rgba(0,0,0,0.3)',color:'#fff',fontSize:'12px'}}>
                   {[1,2,3,5,10].map(m => <option key={m} value={m}>{m} 分钟</option>)}
                 </select>

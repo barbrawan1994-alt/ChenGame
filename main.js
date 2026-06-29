@@ -10,7 +10,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    title: "Pokemon RPG Legends",
+    title: "忍者大战",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
