@@ -1492,8 +1492,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     try {
     const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
     const targetIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
-    const p = battle.playerCombatStates?.[targetIdx] || party[targetIdx];
-    const pState = battle.playerCombatStates?.[targetIdx];
+    let workingBattle = _.cloneDeep(battle);
+    const p = workingBattle.playerCombatStates?.[targetIdx] || party[targetIdx];
+    const pState = workingBattle.playerCombatStates?.[targetIdx];
     if (!p || !pState) return;
     let used = false;
     let logMsg = "";
@@ -1578,9 +1579,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
             } else { addLog("⚠️ 无法使用该道具"); return; }
             used = true;
         } else if (item.type === 'REVIVE') {
-             const faintedIdx = battle.playerCombatStates?.findIndex((cs, i) => i !== targetIdx && cs.currentHp <= 0);
-             if (faintedIdx >= 0 && faintedIdx < battle.playerCombatStates.length) {
-               const faintedState = battle.playerCombatStates[faintedIdx];
+             const faintedIdx = workingBattle.playerCombatStates?.findIndex((cs, i) => i !== targetIdx && cs.currentHp <= 0);
+             if (faintedIdx >= 0 && faintedIdx < workingBattle.playerCombatStates.length) {
+               const faintedState = workingBattle.playerCombatStates[faintedIdx];
                const maxHp = getStats(faintedState, faintedState.stages, faintedState.status).maxHp;
                const v = item.val;
                const healAmt = v === 9999
@@ -1693,28 +1694,23 @@ const [viewStatPet, setViewStatPet] = useState(null);
         logMsg = `使用了 ${cItem.name}，术式威力提升 ${cItem.val * 100}%!`;
         used = true;
       } else if (cItem.type === 'ANTI_DOMAIN') {
-        if (battle.activeDomain && battle.activeDomain.ownerSide === 'enemy') {
-          setBattle(prev => prev ? ({...prev, activeDomain: null}) : prev);
+        if (workingBattle.activeDomain && workingBattle.activeDomain.ownerSide === 'enemy') {
+          workingBattle.activeDomain = null;
           logMsg = `使用了 ${cItem.name}，破除了敌方领域!`;
           used = true;
         } else { addLog("⚠️ 当前没有敌方领域！"); return; }
       } else if (cItem.type === 'SEAL') {
-        const enemy = battle.enemyParty?.[battle.enemyActiveIdx];
-        if (enemy && !battle.isBoss) {
+        const enemy = workingBattle.enemyParty?.[workingBattle.enemyActiveIdx];
+        if (enemy && !workingBattle.isBoss) {
           if (Math.random() < cItem.val) {
-            setBattle(prev => {
-              if (!prev) return prev;
-              const ep = [...prev.enemyParty];
-              ep[prev.enemyActiveIdx] = {...ep[prev.enemyActiveIdx], currentHp: 0};
-              return {...prev, enemyParty: ep};
-            });
+            workingBattle.enemyParty[workingBattle.enemyActiveIdx] = { ...enemy, currentHp: 0 };
             logMsg = `使用了 ${cItem.name}，成功封印了 ${enemy.name}!`;
             used = true;
           } else {
             logMsg = `使用了 ${cItem.name}，但封印失败了...`;
             used = true;
           }
-        } else { addLog(battle.isBoss ? "⚠️ 对首领无效！" : "⚠️ 无效目标！"); return; }
+        } else { addLog(workingBattle.isBoss ? "⚠️ 对首领无效！" : "⚠️ 无效目标！"); return; }
       }
 
       if (used) {
@@ -1725,23 +1721,37 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if (used) {
         setShowBallMenu(false); 
         addLog(logMsg);
+        setBattle(prev => prev ? ({
+          ...prev,
+          playerCombatStates: workingBattle.playerCombatStates.map(p => ({ ...p })),
+          enemyParty: workingBattle.enemyParty.map(e => ({ ...e })),
+          activeDomain: workingBattle.activeDomain ? { ...workingBattle.activeDomain } : null,
+          phase: 'busy',
+        }) : prev);
         setAnimEffect({ type: 'HEAL', target: 'player' });
         await wait(800);
         setAnimEffect(null);
-        const sealedEnemy = battle.enemyParty?.[battle.enemyActiveIdx];
+        const sealedEnemy = workingBattle.enemyParty?.[workingBattle.enemyActiveIdx];
         if (sealedEnemy && sealedEnemy.currentHp <= 0) {
-          const { newParty, logMsg: winLog } = processDefeatedEnemy(sealedEnemy, party, battle);
+          const { newParty, logMsg: winLog } = processDefeatedEnemy(sealedEnemy, party, workingBattle);
           setParty(newParty);
           addLog(winLog);
-          const nextEnemyIdx = battle.enemyParty.findIndex((p, i) => i > battle.enemyActiveIdx && p.currentHp > 0);
+          const nextEnemyIdx = workingBattle.enemyParty.findIndex((p, i) => i > workingBattle.enemyActiveIdx && p.currentHp > 0);
           if (nextEnemyIdx !== -1) {
-            setBattle(prev => prev ? ({ ...prev, enemyActiveIdx: nextEnemyIdx, phase: 'input', logs: [`对手派出了 ${prev.enemyParty[nextEnemyIdx].name}!`, ...prev.logs] }) : null);
+            setBattle(prev => prev ? ({
+              ...prev,
+              playerCombatStates: workingBattle.playerCombatStates.map(p => ({ ...p })),
+              enemyParty: workingBattle.enemyParty.map(e => ({ ...e })),
+              enemyActiveIdx: nextEnemyIdx,
+              phase: 'input',
+              logs: [`对手派出了 ${workingBattle.enemyParty[nextEnemyIdx].name}!`, ...prev.logs],
+            }) : null);
           } else {
             pendingJutsuWinForBountyRef.current = false;
             handleWin(newParty);
           }
         } else {
-          await enemyTurn();
+          await enemyTurn(workingBattle);
         }
     }
     } catch (e) { console.error('useBattleItem error:', e); setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); }
@@ -12641,10 +12651,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
   }, [kingdomWar.faction]);
 
   useEffect(() => {
-    if (!battle || battle.phase === 'input') return;
+    const recoverablePhases = new Set(['busy', 'anim']);
+    if (!battle || !recoverablePhases.has(battle.phase)) return;
     const timer = setTimeout(() => {
       setBattle(prev => {
-        if (!prev || prev.phase === 'input') return prev;
+        if (!prev || !recoverablePhases.has(prev.phase)) return prev;
         console.warn('Battle phase stuck, auto-recovering to input');
         return { ...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false };
       });
