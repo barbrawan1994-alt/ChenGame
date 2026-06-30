@@ -674,6 +674,7 @@ useEffect(() => {
                             const newMax = getStats(pet).maxHp;
                             if (pet.currentHp > 0) pet.currentHp = Math.min(newMax, pet.currentHp + (newMax - oldMax));
                         }
+                        if (!pet.canEvolve && pet.evo && pet.level >= (pet.evoLvl || 30) && !pet.isEvolved) pet.canEvolve = true;
                         const maxHp = getStats(pet).maxHp;
                         return { ...pet, currentHp: Math.min(maxHp, (pet.currentHp || maxHp) + adjHpRegen), intimacy: Math.min(255, (pet.intimacy || 0) + adjIntimacy) };
                     }));
@@ -690,6 +691,7 @@ useEffect(() => {
                             const newMax = getStats(pet).maxHp;
                             if (pet.currentHp > 0) pet.currentHp = Math.min(newMax, pet.currentHp + (newMax - oldMax));
                         }
+                        if (!pet.canEvolve && pet.evo && pet.level >= (pet.evoLvl || 30) && !pet.isEvolved) pet.canEvolve = true;
                         const maxHp = getStats(pet).maxHp;
                         return { ...pet, currentHp: Math.min(maxHp, (pet.currentHp || maxHp) + adjHpRegen), intimacy: Math.min(255, (pet.intimacy || 0) + adjIntimacy) };
                     }));
@@ -1201,7 +1203,7 @@ const [infinityState, setInfinityState] = useState(() => {
     }
     const enemy = b.enemyParty?.[enemyIdx];
     if (!enemy) return;
-    if (enemy.level > player.level - 10) { showMapToast('⚠️', '自动战斗暂停', '对手等级过高，建议手动操作', 2000); return; }
+    if (enemy.level > player.level + 10) { showMapToast('⚠️', '自动战斗暂停', '对手等级过高，建议手动操作', 2000); return; }
     const moves = player.combatMoves || [];
     const playerStats = getStats(party[targetIdx] || player);
     const hpPercent = player.currentHp / Math.max(1, playerStats.maxHp);
@@ -1213,9 +1215,11 @@ const [infinityState, setInfinityState] = useState(() => {
         score = 200;
       } else {
         let typeMod = getTypeMod(m.t, enemy.type, b);
-        if (enemy.type2 && enemy.type2 !== enemy.type) typeMod *= getTypeMod(m.t, enemy.type2, b);
+        const enemyType2 = enemy.secondaryType || enemy.type2;
+        if (enemyType2 && enemyType2 !== enemy.type) typeMod *= getTypeMod(m.t, enemyType2, b);
         score *= typeMod;
-        if (m.t === player.type || m.t === player.type2) score *= 1.5;
+        const playerType2 = player.secondaryType || player.type2;
+        if (m.t === player.type || m.t === playerType2) score *= 1.5;
       }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
@@ -2370,6 +2374,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
             const targetPetInfo = POKEDEX.find(p => p.id === targetId);
             
             if (targetPetInfo) {
+                if (targetPetInfo.evoCondition && !checkEvoCondition(pet, targetPetInfo)) {
+                    const cond = targetPetInfo.evoCondition;
+                    const hint = cond.time ? `需要在${cond.time === 'night' ? '夜晚' : '白天'}` : cond.intimacy ? `亲密度需≥${cond.intimacy}` : '条件不满足';
+                    showMapToast('❌', '进化条件不足', hint, 2000);
+                    return;
+                }
                 setConfirmModal({ title:'🔮 进化确认', msg:`确认使用 ${usingItem.name || '进化石'} 将 ${pet.name} 进化为 ${targetPetInfo.name}？\n此操作不可撤销！`, onOk: () => {
                 setInventory(prev => ({...prev, stones: {...prev.stones, [stoneId]: Math.max(0, (prev.stones[stoneId] || 0) - 1)}}));
                 setAchStats(prev => {
@@ -5187,7 +5197,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const grantBountyReward = (reward = {}) => {
     if (reward.gold) { setGold(g => g + reward.gold); updateAchStat({ totalGoldEarned: reward.gold }); }
-    if (reward.tickets) setArenaState(a => ({...a, tickets: a.tickets + (reward.tickets || 0)}));
+    if (reward.tickets) setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + (reward.tickets || 0))}));
   };
 
   const refreshBounties = () => {
@@ -5204,11 +5214,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const claimBountyReward = (questIdx) => {
-    const q = bountyBoard.quests?.[questIdx];
-    if (!q || !q.completed || q.claimed) return;
-    const reward = q.reward;
-    grantBountyReward(reward);
     setBountyBoard(prev => {
+      const q = prev.quests?.[questIdx];
+      if (!q || !q.completed || q.claimed) return prev;
+      const reward = q.reward;
+      grantBountyReward(reward);
       const quests = prev.quests.map((qq,i) => i === questIdx ? {...qq, claimed: true} : qq);
       const allDone = quests.every(qq => qq.claimed);
       const claimedCount = quests.filter(qq => qq.claimed).length;
@@ -5225,9 +5235,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + 1)}));
         setTimeout(() => showMapToast('🌟', '5连赏金!', `额外奖励 💰${bonus5} + 🎫1竞技票！`, 3000), 600);
       }
+      showMapToast('🎁', '赏金领取', `获得 ${reward.gold || 0} 金币${reward.tickets ? ` + ${reward.tickets} 竞技票` : ''}`, 2000);
       return {...prev, quests, allCompleted: allDone};
     });
-    showMapToast('🎁', '赏金领取', `获得 ${reward.gold || 0} 金币${reward.tickets ? ` + ${reward.tickets} 竞技票` : ''}`, 2000);
   };
 
   const claimMasterChest = () => {
@@ -5235,7 +5245,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (!prev.allCompleted || prev.masterChestClaimed) return prev;
       const chest = getMasterChestReward(badges.length);
       if (chest.gold) setGold(g => g + chest.gold);
-      if (chest.tickets) setArenaState(a => ({...a, tickets: a.tickets + chest.tickets}));
+      if (chest.tickets) setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + chest.tickets)}));
       if (chest.berries) setInventory(inv => ({...inv, berries: addBerries(inv.berries, 'oran', chest.berries)}));
       showMapToast('🏆', '大师宝箱', `全部完成！${chest.desc}`, 3500);
       updateAchStat({ totalGoldEarned: chest.gold || 0 });
@@ -5447,7 +5457,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
       const bonusMult = calcExpeditionBonus(teamPets, zone);
 
-      const rewardCount = 1 + Math.floor(Math.random() * 3);
+      const rewardCount = 1 + Math.floor(Math.random() * 2);
       let msg = [];
       const eventText = EXPEDITION_EVENTS[Math.floor(Math.random() * EXPEDITION_EVENTS.length)];
       msg.push(eventText);
@@ -5866,7 +5876,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   }, []); // eslint-disable-line
 
   useEffect(() => {
-    if (party.length > 0) refreshArenaDaily();
+    if (party.length === 0) return;
+    refreshArenaDaily();
+    const id = setInterval(refreshArenaDaily, 60000);
+    return () => clearInterval(id);
   }, [party.length > 0]); // eslint-disable-line
 
   useLayoutEffect(() => {
@@ -6201,6 +6214,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   useEffect(() => {
     regenMineEnergy();
+    if (view !== 'mining') return;
+    const id = setInterval(regenMineEnergy, 60000);
+    return () => clearInterval(id);
   }, [view, regenMineEnergy]);
 
   // ==========================================
@@ -13668,11 +13684,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     });
 
-    // 2. 检查异常状态 (Status)
+    // 2. 检查异常状态 (Status) - 只有睡眠和冰冻会自然恢复
     if (state.status) {
        state.turnCounters.status = (state.turnCounters.status || 0) + 1;
+       const canNaturalRecover = state.status === 'SLP' || state.status === 'FRZ';
+       const statusDecayMin = state.status === 'SLP' ? 2 : (isHardBattle ? 5 : 4);
+       const statusDecayRate = state.status === 'SLP' ? 0.33 : (isHardBattle ? 0.15 : 0.25);
        
-       if (state.turnCounters.status >= decayMinTurns && Math.random() < decayChance) {
+       if (canNaturalRecover && state.turnCounters.status >= statusDecayMin && Math.random() < statusDecayRate) {
           const statusNames = { PAR:'麻痹', BRN:'灼伤', PSN:'中毒', SLP:'睡眠', FRZ:'冰冻' };
           const sName = statusNames[state.status] || '异常';
           
@@ -17986,11 +18005,14 @@ const renderNameInput = () => {
     const claimDexMilestone = (m) => {
       if (dexMilestoneClaimed[m.key]) { showMapToast('ℹ️', '已领取', '该档奖励已领取过', 1500); return; }
       if (caughtDex.length < m.need) { showMapToast('❌', '未达成', `需要收集至少 ${m.need} 种`, 1500); return; }
-      if (m.key === 'p10') { setGold(g => g + 1000); showMapToast('🎁', '图鉴奖励', '获得 1000 金币！', 2500); }
-      else if (m.key === 'p25') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } })); showMapToast('🎁', '图鉴奖励', '获得 超级球×5！', 2500); }
-      else if (m.key === 'p50') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } })); showMapToast('🎁', '图鉴奖励', '获得 大师球×1！', 2500); }
-      else if (m.key === 'p100') { unlockTitle('图鉴完成者'); showMapToast('🎁', '图鉴奖励', '解锁称号：图鉴完成者！', 2500); }
-      setDexMilestoneClaimed(prev => ({ ...prev, [m.key]: true }));
+      setDexMilestoneClaimed(prev => {
+        if (prev[m.key]) return prev;
+        if (m.key === 'p10') { setGold(g => g + 1000); showMapToast('🎁', '图鉴奖励', '获得 1000 金币！', 2500); }
+        else if (m.key === 'p25') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } })); showMapToast('🎁', '图鉴奖励', '获得 超级球×5！', 2500); }
+        else if (m.key === 'p50') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } })); showMapToast('🎁', '图鉴奖励', '获得 大师球×1！', 2500); }
+        else if (m.key === 'p100') { unlockTitle('图鉴完成者'); showMapToast('🎁', '图鉴奖励', '解锁称号：图鉴完成者！', 2500); }
+        return { ...prev, [m.key]: true };
+      });
       persistSave(true);
     };
 
