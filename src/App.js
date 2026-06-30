@@ -663,25 +663,35 @@ useEffect(() => {
                     const adjExp = ben.expBonus || 0;
                     setBox(prevBox => prevBox.map(p => {
                         if (!residentIds.includes(p.uid || p.id)) return p;
-                        const maxHp = getStats(p).maxHp;
-                        const newExp = (p.exp || 0) + adjExp;
-                        return {
-                            ...p,
-                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + adjHpRegen),
-                            intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy),
-                            exp: p.level >= 100 ? 0 : newExp,
-                        };
+                        if (p.level >= 100) return { ...p, currentHp: Math.min(getStats(p).maxHp, (p.currentHp || getStats(p).maxHp) + adjHpRegen), intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy) };
+                        let pet = { ...p, exp: (p.exp || 0) + adjExp };
+                        while (pet.level < 100 && pet.nextExp > 0 && pet.exp >= pet.nextExp) {
+                            pet.exp -= pet.nextExp;
+                            const oldMax = getStats(pet).maxHp;
+                            pet.level++;
+                            pet.nextExp = calcNextExp(pet.level, NATURE_DB[pet.nature]?.exp || 1.0);
+                            if (pet.nextExp <= 0) pet.nextExp = 999999;
+                            const newMax = getStats(pet).maxHp;
+                            if (pet.currentHp > 0) pet.currentHp = Math.min(newMax, pet.currentHp + (newMax - oldMax));
+                        }
+                        const maxHp = getStats(pet).maxHp;
+                        return { ...pet, currentHp: Math.min(maxHp, (pet.currentHp || maxHp) + adjHpRegen), intimacy: Math.min(255, (pet.intimacy || 0) + adjIntimacy) };
                     }));
                     setParty(prevParty => prevParty.map(p => {
                         if (!residentIds.includes(p.uid || p.id)) return p;
-                        const maxHp = getStats(p).maxHp;
-                        const newExp = (p.exp || 0) + adjExp;
-                        return {
-                            ...p,
-                            currentHp: Math.min(maxHp, (p.currentHp || maxHp) + adjHpRegen),
-                            intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy),
-                            exp: p.level >= 100 ? 0 : newExp,
-                        };
+                        if (p.level >= 100) return { ...p, currentHp: Math.min(getStats(p).maxHp, (p.currentHp || getStats(p).maxHp) + adjHpRegen), intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy) };
+                        let pet = { ...p, exp: (p.exp || 0) + adjExp };
+                        while (pet.level < 100 && pet.nextExp > 0 && pet.exp >= pet.nextExp) {
+                            pet.exp -= pet.nextExp;
+                            const oldMax = getStats(pet).maxHp;
+                            pet.level++;
+                            pet.nextExp = calcNextExp(pet.level, NATURE_DB[pet.nature]?.exp || 1.0);
+                            if (pet.nextExp <= 0) pet.nextExp = 999999;
+                            const newMax = getStats(pet).maxHp;
+                            if (pet.currentHp > 0) pet.currentHp = Math.min(newMax, pet.currentHp + (newMax - oldMax));
+                        }
+                        const maxHp = getStats(pet).maxHp;
+                        return { ...pet, currentHp: Math.min(maxHp, (pet.currentHp || maxHp) + adjHpRegen), intimacy: Math.min(255, (pet.intimacy || 0) + adjIntimacy) };
                     }));
                 }
             }
@@ -1191,7 +1201,7 @@ const [infinityState, setInfinityState] = useState(() => {
     }
     const enemy = b.enemyParty?.[enemyIdx];
     if (!enemy) return;
-    if (enemy.level > player.level - 10) { return; }
+    if (enemy.level > player.level - 10) { showMapToast('⚠️', '自动战斗暂停', '对手等级过高，建议手动操作', 2000); return; }
     const moves = player.combatMoves || [];
     const playerStats = getStats(party[targetIdx] || player);
     const hpPercent = player.currentHp / Math.max(1, playerStats.maxHp);
@@ -1209,7 +1219,7 @@ const [infinityState, setInfinityState] = useState(() => {
       }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
-    if (bestScore < 0) return;
+    if (bestScore < 0) { showMapToast('⚠️', '自动战斗暂停', '无可用技能，请手动选择', 2000); return; }
     if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
     const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx, enemyIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
@@ -1343,7 +1353,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       }
       // 先机球：前 3 回合
       if (ballType === 'quick') {
-          if (turnCount < 3) rate = 5.0;
+          if (turnCount < 3) rate = 3.0;
       }
       // 计时球：回合越久越强
       if (ballType === 'timer') {
@@ -2529,9 +2539,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
             if (badges.length < 8) { showMapToast('🔒', '徽章不足', '神奇糖果需要 8 枚徽章后才能使用。', 2200); return; }
             const oldLv = pet.level;
-            pet.level = 100;
+            pet.level = Math.min(100, pet.level + 20);
             pet.exp = 0;
-            pet.nextExp = 999999; 
+            pet.nextExp = pet.level >= 100 ? 999999 : calcNextExp(pet.level, NATURE_DB[pet.nature]?.exp || 1.0); 
             
             const dex = POKEDEX.find(p => p.id === pet.id);
             if (dex?.learnset) {
@@ -3557,7 +3567,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     disabled={!fusionParent || !fusionChild || gold < getFusionCost()}
                     onClick={() => {
                         const fc = getFusionCost();
-                        setConfirmModal({ title: '⚠️ 融合确认', msg: `融合不可逆！\n${fusionParent?.name} + ${fusionChild?.name} 将合为一体。\n消耗 ${fc} 金币。`, onOk: handleFusion });
+                        setConfirmModal({ title: '⚠️ 融合确认', msg: `⚠️ 融合不可逆！两只精灵将永久消失！\n\n素材1: ${fusionParent?.name} Lv.${fusionParent?.level}${fusionParent?.isShiny ? ' ✨闪光' : ''}\n素材2: ${fusionChild?.name} Lv.${fusionChild?.level}${fusionChild?.isShiny ? ' ✨闪光' : ''}\n\n消耗 ${fc} 金币。确定要继续吗？`, onOk: handleFusion });
                     }}
                     style={{
                         width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
@@ -5127,7 +5137,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     { id: 'ether', name: 'PP补剂 ×3', icon: '🧪', color: '#2196F3', weight: 14, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+3}})); } },
     { id: 'ball', name: '超级球 ×3', icon: '🔵', color: '#1E88E5', weight: 12, action: () => { setInventory(prev => ({...prev, balls:{...prev.balls, great:(prev.balls.great||0)+3}})); } },
     { id: 'candy', name: '经验糖果', icon: '🍬', color: '#E91E63', weight: 6, action: () => { setInventory(prev => ({...prev, exp_candy:(prev.exp_candy||0)+1})); } },
-    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: prev.tickets + 1})); } },
+    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: Math.min(20, (prev.tickets || 0) + 1)})); } },
     { id: 'jutsu_scroll', name: '忍术卷轴', icon: '🍥', color: '#FF6F00', weight: 4, action: () => { setGold(g => g + 3000); updateAchStat({ totalGoldEarned: 3000 }); const rj = JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)]; setNarutoState(prev => ({...prev, jutsuScrolls: [...(prev.jutsuScrolls || []), rj.id], jutsuCollection: [...new Set([...(prev.jutsuCollection || []), rj.id])]})); showMapToast('🍥','忍术卷轴',`获得3000金币 + 忍术【${rj.name}】`,1500); } },
   ];
 
@@ -5136,10 +5146,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const today = getLocalDateStr();
     const prevD = luckyWheel.dailySpinDate || '';
     const dayCnt = prevD === today ? (luckyWheel.dailySpinCount || 0) : 0;
-    if (dayCnt >= 3) { showMapToast('❌','提示','今日转盘次数已达上限（3次）',1500); return; }
+    const maxDaily = WHEEL_FREE_SPINS_PER_DAY + 2;
+    if (dayCnt >= maxDaily) { showMapToast('❌','提示',`今日转盘次数已达上限（${maxDaily}次）`,1500); return; }
     if (!isPaid && luckyWheel.lastFreeDate === today) { showMapToast('❌','提示','今日免费次数已用完',1500); return; }
-    if (isPaid && gold < 1000) { showMapToast('❌','金币不足','需要 1000 金币',1500); return; }
-    if (isPaid) { setGold(g => Math.max(0, g - 1000)); updateAchStat({ totalGoldSpent: 1000 }); advanceBounty('spend_gold', null, 1000); }
+    if (isPaid && gold < WHEEL_PAID_SPIN_COST) { showMapToast('❌','金币不足',`需要 ${WHEEL_PAID_SPIN_COST} 金币`,1500); return; }
+    if (isPaid) { setGold(g => Math.max(0, g - WHEEL_PAID_SPIN_COST)); updateAchStat({ totalGoldSpent: WHEEL_PAID_SPIN_COST }); advanceBounty('spend_gold', null, WHEEL_PAID_SPIN_COST); }
     if (wheelSpinTimeoutRef.current) {
       clearTimeout(wheelSpinTimeoutRef.current);
       wheelSpinTimeoutRef.current = null;
@@ -5211,7 +5222,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const bonus5 = Math.floor(1500 + badges.length * 200);
         setGold(g => g + bonus5);
         updateAchStat({ totalGoldEarned: bonus5 });
-        setArenaState(a => ({...a, tickets: a.tickets + 1}));
+        setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + 1)}));
         setTimeout(() => showMapToast('🌟', '5连赏金!', `额外奖励 💰${bonus5} + 🎫1竞技票！`, 3000), 600);
       }
       return {...prev, quests, allCompleted: allDone};
@@ -7269,7 +7280,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const allRunners = [
         { name: pet.name, speed: petSpeed, isPlayer: true, type: pet.type },
         ...rivals
-      ].sort((a, b) => b.speed - a.speed || (a.isPlayer ? -1 : 1));
+      ].sort((a, b) => b.speed - a.speed || (Math.random() < 0.5 ? -1 : 1));
 
       const placement = allRunners.findIndex(r => r.isPlayer) + 1;
       let rewardGold = 0; let rewardItem = null;
@@ -8499,12 +8510,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     
     applyBerryHeal();
-    p.exp += 20;
+    const actuallyHealed = p.currentHp < stats.maxHp;
+    if (actuallyHealed) p.exp += 20; else p.exp += 5;
     while (p.level < 100 && p.nextExp > 0 && p.exp >= p.nextExp) {
       p.exp -= p.nextExp;
+      const oldMaxHp = getStats(p).maxHp;
       p.level++;
       p.nextExp = calcNextExp(p.level, NATURE_DB[p.nature]?.exp || 1.0);
       if (p.nextExp <= 0) p.nextExp = 999999;
+      const newMaxHp = getStats(p).maxHp;
+      if (p.currentHp > 0) p.currentHp = Math.min(newMaxHp, p.currentHp + (newMaxHp - oldMaxHp));
     }
     
     const oldInt = p.intimacy || 0;
@@ -8513,12 +8528,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setParty(t);
     setInventory(prev => ({...prev, berries: addBerries(prev.berries, berryId, -1)}));
     
-    // 提示变化
-    if (p.intimacy > oldInt) {
-        // 简单的爱心特效提示，这里用 alert 或者 log 都可以
-        // 如果是在战斗外，alert 比较合适
-        // alert(`${p.name} 吃得很开心！(亲密度 +3)`); 
-    }
+    const msgs = [`${p.name} 吃了树果`];
+    if (actuallyHealed) msgs.push('HP恢复了');
+    if (p.intimacy > oldInt) msgs.push('亲密度+3');
+    if (p.level > (stats.level || p.level)) msgs.push(`升到了Lv.${p.level}!`);
+    showMapToast('🍇', '喂食成功', msgs.join('，'), 2000);
   };
 
 
@@ -11604,7 +11618,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         await performAction(attacker, defender, action.move, side, tempBattle);
 
-        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.08) {
+        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.04) {
           const baseDmg = tempBattle._lastPlayerMoveDmg || 0;
           if (baseDmg > 0) {
             const mateIdx = (tempBattle.activeIdxs || []).find(i => i !== action.petIdx && tempBattle.playerCombatStates?.[i]?.currentHp > 0);
@@ -11614,7 +11628,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               if (!ep || ep.currentHp <= 0) tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
               const tgt = tIdx !== undefined ? tempBattle.enemyParty?.[tIdx] : null;
               if (tgt && tgt.currentHp > 0) {
-                const sync = Math.max(1, Math.floor(baseDmg * 0.25));
+                const sync = Math.max(1, Math.floor(baseDmg * 0.15));
                 tgt.currentHp = Math.max(0, tgt.currentHp - sync);
                 showMapToast('⚡', '协同攻击', '队友追加了一次攻击！', 1500);
                 addLog(`⚡ 协同追击对 ${tgt.name} 造成额外 ${sync} 伤害！`);
@@ -13744,6 +13758,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!battleState && !battle) return false;
     if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
     if (attacker.currentHp <= 0) return false;
+    if (!attacker.stages) attacker.stages = { ...DEFAULT_BATTLE_STAGES };
+    if (!defender.stages) defender.stages = { ...DEFAULT_BATTLE_STAGES };
     if (!battleState?.isDouble) setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
 
     const _dCtx = battleState?._doubleAnimCtx;
@@ -14387,7 +14403,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (defState) defState.flashFireActivated = true;
             addLog(`${defender.name} 的引火特性吸收了火焰，火系攻击力提升！`);
         }
-        if (defender.trait === 'multiscale' && defender.currentHp === statsDef.maxHp) {
+        if (defender.trait === 'multiscale' && defender.currentHp >= statsDef.maxHp) {
             rawDmg *= 0.5;
         }
 
@@ -14946,6 +14962,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let hasPendingSkill = false;
     let activeDidLevelUp = false;
 
+    const syncedAliveCount = Math.max(1, currentParty.filter((p, i) => {
+      const cs = bState?.playerCombatStates?.[i];
+      return (cs?.currentHp ?? p.currentHp) > 0;
+    }).length);
+
     const newParty = currentParty.map((p, index) => {
       let pet = { ...p };
       
@@ -14965,7 +14986,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const isActive = bState.isDouble ? (bState.activeIdxs?.includes(index)) : (index === bState.activeIdx);
       if (pet.currentHp <= 0) return pet;
       const activeCount = Math.max(1, bState.isDouble ? (bState.activeIdxs?.length || 2) : 1);
-      const aliveCount = currentParty.filter(p => p.currentHp > 0).length || 1;
+      const aliveCount = syncedAliveCount;
       const benchCount = Math.max(1, aliveCount - activeCount);
       const shareRatio = isActive
         ? (bState.isDouble ? 0.5 : 1.0)
@@ -15303,7 +15324,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const kwGoldBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.gold || 0) : 0;
     const rankBattlePerk = getRankPerkEffects(kingdomWar);
     const bountyMult = isBounty ? 2 : 1;
-    const streakCount = achStats.currentWinStreak || 0;
+    const streakCount = (achStats.currentWinStreak || 0) + 1;
     const streakMult = streakCount >= 20 ? 1.5 : streakCount >= 10 ? 1.3 : streakCount >= 5 ? 1.15 : 1.0;
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
     const isNarutoExamOrSurvival = type === 'naruto_exam' || type === 'naruto_survival' || type === 'survival';
@@ -15428,10 +15449,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const expBonus = Math.floor(battleSnapshot.meta.rewards.exp * 0.5);
       const aliveCount = Math.max(1, updatedParty.filter(p => p.currentHp > 0).length);
       const per = Math.floor(expBonus / aliveCount);
+      const remainder = expBonus - per * aliveCount;
+      let remainderGiven = false;
       updatedParty = updatedParty.map(p => {
         if (p.currentHp <= 0 || p.level >= 100) return p;
         let pet = { ...p };
-        pet.exp = (pet.exp || 0) + per;
+        let bonus = per;
+        if (!remainderGiven && remainder > 0) { bonus += remainder; remainderGiven = true; }
+        pet.exp = (pet.exp || 0) + bonus;
         while (pet.exp >= pet.nextExp && pet.level < 100 && (pet.nextExp || 0) > 0) {
           pet.exp -= pet.nextExp;
           pet.level++;
@@ -17002,15 +17027,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-      // 3. 普通捕捉：入队或存入电脑
-      const goesToParty = party.length < 6;
-      if (goesToParty) {
-        setParty(prev => [...syncCurrentParty(prev), newPet]);
-      } else {
-        setBox(prev => [...prev, newPet]);
-        setParty(prev => syncCurrentParty(prev)); 
-        addLog("队伍已满，已发送到电脑。");
-      }
+      // 3. 普通捕捉：入队或存入电脑 (use functional state to avoid stale closure)
+      setParty(prev => {
+        const synced = syncCurrentParty(prev);
+        if (synced.length < 6) {
+          return [...synced, newPet];
+        } else {
+          setBox(bPrev => [...bPrev, newPet]);
+          addLog("队伍已满，已发送到电脑。");
+          return synced;
+        }
+      });
       
       await wait(1000);
       const newDex = !caughtDex.includes(newPet.id);
@@ -17031,7 +17058,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else {
       setAnimEffect({ type: 'CATCH_FAIL', target: 'enemy', ballType });
       addLog("哎呀! 差点就捉到了!");
-      showMapToast('❌', '捕捉失败', `${(BALLS[ballType] || {}).name || '精灵球'}被挣脱了！再试一次或换更强的球。`, 2800);
+      const hpRate = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
+      const failHint = hpRate > 0.5 ? '试试先削减HP' : LEGENDARY_POOL?.includes(enemy.id) ? '神兽更难捕获' : '换更强的球试试';
+      showMapToast('❌', '捕捉失败', `${(BALLS[ballType] || {}).name || '精灵球'}被挣脱了！${failHint}`, 2800);
       await wait(1000);
       setAnimEffect(null);
       if (battle?.isDouble) {
@@ -17076,9 +17105,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const allExpUids = (expeditions.teams || []).flatMap(t => t.petUids || []);
     if (pet.uid && allExpUids.includes(pet.uid)) { showMapToast('❌', '无法放生', '该精灵正在远征中', 1500); return; }
     const lv = pet.level || 1;
-    const shinyMult = pet.isShiny ? 3 : 1;
-    const legendMult = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1);
-    const releaseGold = Math.floor((lv * 50 + 200) * shinyMult * legendMult);
+    const shinyMult = pet.isShiny ? 2 : 1;
+    const legendMult = LEGENDARY_POOL?.includes(pet.id) ? 3 : (HIGH_TIER_POOL?.includes(pet.id) ? 1.5 : 1);
+    const releaseGold = Math.min(5000, Math.floor((lv * 30 + 100) * shinyMult * legendMult));
     const isLegend = LEGENDARY_POOL?.includes(pet.id);
     const isHighTier = HIGH_TIER_POOL?.includes(pet.id);
     const needsSpecialWarn = pet.isShiny || isLegend || isHighTier;
