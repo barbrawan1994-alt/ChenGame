@@ -4,7 +4,7 @@
 export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 export const GAME_NAME = '超级精灵';
 export const GAME_EN_NAME = 'Super Spirit';
-export const GAME_VERSION = '12.0';
+export const GAME_VERSION = '13.0';
 export const GAME_VERSION_LABEL = `v${GAME_VERSION}`;
 export const GAME_TAGLINE = '收集、进化、对战，打造你的冠军精灵队伍';
 export const GAME_DESCRIPTION = '超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。';

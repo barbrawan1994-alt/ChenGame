@@ -221,6 +221,7 @@ export const DUNGEONS = [
     ] },
   { id: 'stone_tower', name: '元素之塔', desc: '进化石掉落 (需5徽章)',
     type: 'stone', color: '#7B1FA2', icon: '🔮', recLvl: 45,
+    tagRestriction: 'mechanical_tower',
     rarity: '稀有', stars: 3, tier: 2, reqBadges: 5,
     rewards: [
       { icon: '⚡', text: '随机进化石' },
@@ -250,6 +251,7 @@ export const DUNGEONS = [
   // === Tier 3: 精英级 (7~10徽章) ===
   { id: 'survival_arena', name: '生存竞技场', desc: '无尽波次生存挑战 (需7徽章)',
     type: 'survival', color: '#FF6F00', icon: '🏟️', recLvl: 65,
+    tagRestriction: 'swarm_nest',
     rarity: '史诗', stars: 4, tier: 3, reqBadges: 7,
     rewards: [
       { icon: '🏅', text: '按存活回合奖励' },
@@ -264,6 +266,7 @@ export const DUNGEONS = [
     ] },
   { id: 'reverse_world', name: '逆位空间', desc: '属性克制全部反转 (需9徽章)',
     type: 'reverse', color: '#880E4F', icon: '🔄', recLvl: 78,
+    tagRestriction: 'shadow_castle',
     rarity: '史诗', stars: 4, tier: 3, reqBadges: 9,
     rewards: [
       { icon: '🔄', text: '反转世界的挑战' },
@@ -294,6 +297,7 @@ export const DUNGEONS = [
     ] },
   { id: 'treasure_maze', name: '宝藏迷宫', desc: '随机房间探索 (需11徽章)',
     type: 'treasure', color: '#FF8F00', icon: '🗝️', recLvl: 90,
+    tagRestriction: 'narrow_cave',
     rarity: '传说', stars: 5, tier: 4, reqBadges: 11,
     rewards: [
       { icon: '🗝️', text: '每房间随机宝箱' },

@@ -2,6 +2,12 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { flushSync } from 'react-dom';
 import _ from 'lodash';
 
+import {
+  shouldForestVineBlock, shouldGravitySkip, calcFireHeatPPExtra, applyStarShieldDamage,
+  processDomainTurnStart, processBossMechanicsTurnEnd, getMirrorLakeMove, queueMirrorEcho,
+  processWindTowerFollowUp, applyAdaptationToCombatState, isDarkMoonHidden, canDarkMoonScout,
+} from './utils/pveBattleRules';
+
 import { getStats as getStatsRaw, getStageMult, calcNextExp } from './utils/statsCalculator';
 import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
@@ -78,7 +84,14 @@ import {
   WORLD_BOSSES, WORLD_BOSS_MAX_ATTEMPTS, WORLD_BOSS_REQ_BADGES, DEFAULT_WORLD_BOSS_STATE, getTodayBoss, scaleBossHp, scaleBossLevel,
   getInfinityFloorModifier, isInfinityMilestoneFloor, getInfinityMilestoneReward, INFINITY_MILESTONE_FLOORS,
   SPIRIT_DOMAINS, getSpiritDomainByMapId, getSpiritDomainRule,
-  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById,
+  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById, MORAL_BRANCHES, getMoralBranch, checkBranchRequirements,
+  ECO_EVENTS, getActiveEcoEventForMap, getEcoEventByMapId, getDefaultEcologyForMap, applyEcologyDelta, getEcologyTier, ECO_METRIC_LABELS,
+  getRegionPressure, getPartyAdaptationSummary, getAdaptationMult,
+  getBossMechanicDef, checkForestWillEcology, ECO_LINKED_BOSSES,
+  inferPetTags, checkTagRestriction, PET_TAG_DEFS,
+  FATIGUE_CONFIG, getPetFatigue, addFatigue, reduceFatigue, getFatigueLabel, canPetBattle,
+  INFINITY_ROUTE_TYPES, pickRouteOptions, pickBlessingOptions, pickSkillMutation, applySkillMutation, SPIRIT_BLESSINGS,
+  RESCUE_EVENTS, ENV_PUZZLES, OBSERVATION_TARGETS, getRescueEventsForMap, getPuzzlesForMap, getObservationsForMap,
 } from './data';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
@@ -749,6 +762,7 @@ useEffect(() => {
         status: 'selecting',
         floorModifier: getInfinityFloorModifier(newFloorVal),
         bestFloor,
+        routeOptions: pickRouteOptions(newFloorVal),
       };
     });
     if (newFloorVal > 0) updateAchStat({ maxInfinityFloor: newFloorVal });
@@ -756,6 +770,12 @@ useEffect(() => {
 
   // 2. 选择呼吸法 Buff
   const selectInfinityBuff = (buff) => {
+    if (buff.effect && typeof buff.effect === 'string') {
+      setInfinityState(prev => ({ ...prev, blessings: [...(prev.blessings || []), buff] }));
+      showMapToast(buff.icon || '✨', buff.name, buff.desc, 2000);
+      nextInfinityFloor();
+      return;
+    }
     if (buff.type === 'instant') {
       setParty(prev => prev.map(p => {
         if (p.currentHp > 0) {
@@ -805,6 +825,52 @@ useEffect(() => {
 
     // 选完后进入下一层
     nextInfinityFloor();
+  };
+
+  const selectInfinityRoute = (route) => {
+    if (!infinityState || !route) return;
+    if (route.id === 'merchant') {
+      const cost = route.cost || 500;
+      if (gold < cost) { showMapToast('💰', '金币不足', `需要 ${cost} 金`, 1500); return; }
+      setGold(g => g - cost);
+      updateAchStat({ totalGoldSpent: cost });
+      setParty(prev => prev.map(p => {
+        const s = getStats(p);
+        const heal = Math.floor(s.maxHp * (route.healPct || 0.25));
+        return { ...p, currentHp: Math.min(s.maxHp, p.currentHp + heal), fatigue: reduceFatigue(p, 20) };
+      }));
+      showMapToast('🏪', '商人', '购买了补给，队伍恢复了一部分体力', 2000);
+      nextInfinityFloor();
+      return;
+    }
+    if (route.id === 'heal_spring') {
+      setParty(prev => prev.map(p => {
+        const s = getStats(p);
+        return { ...p, currentHp: Math.min(s.maxHp, Math.floor(s.maxHp * 0.7)), fatigue: reduceFatigue(p, 35) };
+      }));
+      showMapToast('💚', '治疗泉', '泉水治愈了队伍的伤势', 2000);
+      nextInfinityFloor();
+      return;
+    }
+    if (route.id === 'training') {
+      const mut = pickSkillMutation();
+      setParty(prev => prev.map(p => {
+        if (!p.moves?.[0]) return p;
+        const newMoves = [...p.moves];
+        newMoves[0] = applySkillMutation(newMoves[0], mut);
+        return { ...p, moves: newMoves };
+      }));
+      showMapToast('📜', '技能训练', `技能变异：${mut.name}`, 2500);
+      nextInfinityFloor();
+      return;
+    }
+    if (route.id === 'spirit_event') {
+      const tempId = _.sample([1, 4, 7, 25, 43]) || 1;
+      showMapToast('🐾', '灵兽事件', `一只野生精灵加入了临时同行（本层有效）`, 2500);
+      nextInfinityFloor();
+      return;
+    }
+    startInfinityBattle(route.difficulty === 'hard' || route.id === 'elite' ? 'hard' : 'normal');
   };
 
 // 【新增】用于存储对话结束后要执行的任务
@@ -1079,6 +1145,8 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [gymEntryModal, setGymEntryModal] = useState(null);
   const [ecoCrisisModal, setEcoCrisisModal] = useState(null);
+  const [ecoBranchModal, setEcoBranchModal] = useState(null);
+  const [nonCombatModal, setNonCombatModal] = useState(null);
   const [statTooltip, setStatTooltip] = React.useState(null); 
   // 筛选和详情
   const [dexFilter, setDexFilter] = useState('all'); 
@@ -2926,7 +2994,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
     const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
     return {
-    saveVersion: 26,
+    saveVersion: 27,
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
     dexMilestoneClaimed, lastPetTradeDate, lastTradeDate: lastPetTradeDate,
@@ -2936,10 +3004,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
     kingdomWar, dungeonCooldowns, activityRecords, dailyChallenge, autoBattle,
     infinityBestFloor: infinityState?.bestFloor || 0,
-    infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null, floorModifier: infinityState.floorModifier || null, bestFloor: infinityState.bestFloor || 0 } : null,
+    infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, blessings: infinityState.blessings, routeOptions: infinityState.routeOptions, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null, floorModifier: infinityState.floorModifier || null, bestFloor: infinityState.bestFloor || 0 } : null,
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
     trainingState, worldBossState, raceState, narutoState,
-    spiritDomainsCleared, ecoCrisisState,
+    spiritDomainsCleared, ecoCrisisState, ecoCrisisChoices, regionEcology, observationLog,
     savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
@@ -3027,6 +3095,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [raceState, setRaceState] = useState(() => savedData.raceState || { lastDate: '', dailyRaces: 0, totalWins: 0 });
   const [spiritDomainsCleared, setSpiritDomainsCleared] = useState(() => savedData.spiritDomainsCleared || []);
   const [ecoCrisisState, setEcoCrisisState] = useState(() => savedData.ecoCrisisState || { cleared: [], active: null });
+  const [ecoCrisisChoices, setEcoCrisisChoices] = useState(() => savedData.ecoCrisisChoices || {});
+  const [regionEcology, setRegionEcology] = useState(() => savedData.regionEcology || {});
+  const [observationLog, setObservationLog] = useState(() => savedData.observationLog || []);
   const [raceResult, setRaceResult] = useState(null);
   const [narutoState, setNarutoState] = useState(() => {
     const loaded = { ...DEFAULT_NARUTO_STATE, ...(savedData.narutoState || {}) };
@@ -3700,29 +3771,30 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             
             {/* 1. 选门阶段 */}
             {status === 'selecting' && (
-                <div style={{textAlign:'center', animation:'fadeIn 0.5s'}}>
-                    <div style={{fontSize:'16px', marginBottom:'40px', color:'#ccc'}}>
-                        <div style={{fontSize:'40px', marginBottom:'10px'}}>👹</div>
-                        选择前进的道路...
+                <div style={{textAlign:'center', animation:'fadeIn 0.5s', width:'95%', maxWidth:'720px'}}>
+                    <div style={{fontSize:'16px', marginBottom:'24px', color:'#ccc'}}>
+                        <div style={{fontSize:'40px', marginBottom:'10px'}}>🌀</div>
+                        灵境远征 — 选择前进路线
                     </div>
-                    <div style={{display:'flex', gap:'20px', justifyContent:'center'}}>
-                        {/* 普通门 */}
-                        <div onClick={() => startInfinityBattle('normal')} className="door-card hover-glow-white" style={{
-                            width:'140px', padding:'20px', background:'#333', borderRadius:'12px', cursor:'pointer', border:'2px solid #555'
-                        }}>
-                            <div style={{fontSize:'60px'}}>🚪</div>
-                            <div style={{marginTop:'15px', fontWeight:'bold'}}>普通鬼气</div>
-                            <div style={{fontSize:'10px', color:'#aaa', marginTop:'5px'}}>稳扎稳打</div>
-                        </div>
-                        {/* 精英门 */}
-                        <div onClick={() => startInfinityBattle('hard')} className="door-card hover-glow-red" style={{
-                            width:'140px', padding:'20px', background:'#3E2723', borderRadius:'12px', cursor:'pointer', border:'2px solid #FF5252'
+                    <div style={{display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap'}}>
+                        {(infinityState.routeOptions || pickRouteOptions(floor)).map((route, ri) => (
+                        <div key={ri} onClick={() => selectInfinityRoute(route)} style={{
+                            width:'130px', padding:'16px 12px', background: route.id === 'elite' ? '#3E2723' : '#2a2a3e',
+                            borderRadius:'12px', cursor:'pointer', border: route.id === 'elite' ? '2px solid #FF5252' : '2px solid #555',
+                            transition:'transform 0.2s',
                         }}
+                        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                        onMouseOut={e => { e.currentTarget.style.transform = 'none'; }}
                         >
-                            <div style={{fontSize:'60px', filter:'drop-shadow(0 0 10px red)'}}>⛩️</div>
-                            <div style={{marginTop:'15px', fontWeight:'bold', color:'#FF5252'}}>强烈的鬼气</div>
-                            <div style={{fontSize:'10px', color:'#bbb', marginTop:'5px'}}>高风险高回报 · 奖励+30%</div>
+                            <div style={{fontSize:'36px'}}>{route.icon}</div>
+                            <div style={{marginTop:'10px', fontWeight:'bold', fontSize:'13px'}}>{route.name}</div>
+                            <div style={{fontSize:'10px', color:'#aaa', marginTop:'4px', lineHeight:1.4}}>{route.desc}</div>
                         </div>
+                        ))}
+                    </div>
+                    <div style={{marginTop:'20px', display:'flex', gap:'12px', justifyContent:'center'}}>
+                        <div onClick={() => startInfinityBattle('normal')} style={{ padding:'8px 16px', borderRadius:'8px', border:'1px solid #666', cursor:'pointer', fontSize:'12px', color:'#aaa' }}>🚪 普通战斗</div>
+                        <div onClick={() => startInfinityBattle('hard')} style={{ padding:'8px 16px', borderRadius:'8px', border:'1px solid #FF5252', cursor:'pointer', fontSize:'12px', color:'#FF8A80' }}>⛩️ 精英战斗</div>
                     </div>
                 </div>
             )}
@@ -5488,10 +5560,30 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     showMapToast('📡', '决策已下达', '探险队继续执行任务...', 1500);
   };
 
+  const getMapEcology = useCallback((mapId) => {
+    return regionEcology[mapId] || getDefaultEcologyForMap(mapId);
+  }, [regionEcology]);
+
+  const getTodayEcoEvent = useCallback((mapId) => {
+    return getActiveEcoEventForMap(mapId, getLocalDateStr(), ecoCrisisState.cleared || []);
+  }, [ecoCrisisState.cleared]);
+
+  const applyMapEcologyDelta = (mapId, delta) => {
+    setRegionEcology(prev => ({
+      ...prev,
+      [mapId]: applyEcologyDelta(prev[mapId] || getDefaultEcologyForMap(mapId), delta),
+    }));
+  };
+
   const startSpiritDomainBattle = (domain) => {
     if (!domain || spiritDomainsCleared.includes(domain.id)) return;
     if (badges.length < domain.reqBadges) {
       showMapToast('🔒', '未解锁', `需要 ${domain.reqBadges} 枚徽章`, 1500);
+      return;
+    }
+    const tired = party.filter(p => !canPetBattle(p));
+    if (tired.length === party.length) {
+      showMapToast('😴', '队伍疲惫', '精灵过于疲劳，请前往精灵中心休息', 2500);
       return;
     }
     const rule = getSpiritDomainRule(domain.rule);
@@ -5523,21 +5615,32 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const crisis = getEcoCrisisById(crisisId);
     if (!crisis || stepIdx >= crisis.steps.length) {
       if (crisis) {
+        const branchId = ecoCrisisChoices[crisisId];
+        const branch = branchId ? getMoralBranch(branchId) : null;
         setEcoCrisisState(prev => ({
           cleared: [...new Set([...(prev.cleared || []), crisisId])],
           active: null,
         }));
+        const ecoDelta = { ...(crisis.ecologyReward || {}), ...(branch?.ecology || {}) };
+        applyMapEcologyDelta(crisis.mapId, ecoDelta);
+        const evt = getEcoEventByMapId?.(crisis.mapId);
+        if (evt?.resolveEcology) applyMapEcologyDelta(crisis.mapId, evt.resolveEcology);
         if (crisis.reward?.gold) setGold(g => g + crisis.reward.gold);
         if (crisis.reward?.item) {
           const cat = crisis.reward.item.includes('ball') ? 'balls' : crisis.reward.item.includes('stone') ? 'stones' : 'meds';
           setInventory(p => ({ ...p, [cat]: { ...p[cat], [crisis.reward.item]: (p[cat]?.[crisis.reward.item] || 0) + (crisis.reward.itemCount || 1) } }));
         }
-        showMapToast('🌿', '生态恢复', `${crisis.name} 调查完成！`, 3500);
+        showMapToast('🌿', '生态恢复', `${crisis.name} 调查完成！区域生态已更新`, 3500);
       }
       setEcoCrisisModal(null);
+      setEcoBranchModal(null);
       return;
     }
     const step = crisis.steps[stepIdx];
+    if (step.type === 'branch') {
+      setEcoBranchModal({ crisisId, stepIdx, crisis, prompt: crisis.branchPrompt });
+      return;
+    }
     if (step.type === 'explore' || step.type === 'puzzle') {
       setEcoCrisisModal({ crisisId, stepIdx, step, crisis });
       return;
@@ -5548,10 +5651,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const lvl = step.lvl || [20, 30];
     const count = step.count || 3;
     const enemyParty = [];
+    const branchId = ecoCrisisChoices[crisisId];
+    const branch = branchId ? getMoralBranch(branchId) : null;
+    const linkedBoss = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
     if (step.type === 'boss') {
-      const boss = createPet(step.bossId || step.pool?.[0] || 1, step.lvl || lvl[1], true, true);
-      boss.name = step.enemyName || boss.name;
-      boss.customStatMult = 1.2;
+      const bossLvl = Array.isArray(step.lvl) ? step.lvl : (step.lvl || lvl[1]);
+      const boss = createPet(step.bossId || step.pool?.[0] || 1, bossLvl, true, true);
+      boss.name = step.enemyName || linkedBoss?.name || boss.name;
+      boss.customStatMult = 1.2 * (branch?.bossMult || 1);
+      if (linkedBoss) {
+        boss.type = linkedBoss.type;
+        boss.secondaryType = linkedBoss.secondaryType;
+      }
       enemyParty.push(boss);
     } else {
       for (let i = 0; i < count; i++) {
@@ -5559,6 +5670,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         enemyParty.push(createPet(pid, _.random(lvl[0], lvl[1]), true));
       }
     }
+    const ecology = getMapEcology(crisis.mapId);
     startBattle({
       id: crisis.mapId,
       name: step.title,
@@ -5566,7 +5678,158 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       trainerName: step.enemyName || crisis.name,
       drop: step.drop || 2000,
       ecoCrisis: { crisisId, stepIdx },
+      _crisisBranch: branchId,
+      _regionEcology: ecology,
+      ecoBossMechanics: !!step.bossKey,
+      bossPhases: linkedBoss?.phases,
     }, 'eco_crisis');
+  };
+
+  const selectEcoBranch = (crisisId, stepIdx, branchId) => {
+    const crisis = getEcoCrisisById(crisisId);
+    const branch = getMoralBranch(branchId);
+    if (!branch) return;
+    if (branch.cost?.gold && gold < branch.cost.gold) {
+      showMapToast('💰', '金币不足', `需要 ${branch.cost.gold} 金币`, 1500);
+      return;
+    }
+    const req = checkBranchRequirements(branchId, party);
+    if (!req.ok) {
+      showMapToast('❌', '条件不足', `需要队伍中有 ${req.reqTypes?.join('/')} 系精灵`, 2000);
+      return;
+    }
+    if (branch.cost?.gold) {
+      setGold(g => g - branch.cost.gold);
+      updateAchStat({ totalGoldSpent: branch.cost.gold });
+    }
+    setEcoCrisisChoices(prev => ({ ...prev, [crisisId]: branchId }));
+    setEcoBranchModal(null);
+    showMapToast(branch.label?.charAt(0) || '✓', '决策已记录', branch.desc, 2500);
+    runEcoCrisisStep(crisisId, stepIdx + 1);
+  };
+
+  const grantNonCombatReward = (event) => {
+    const r = event?.reward || {};
+    if (r.gold) setGold(g => g + r.gold);
+    if (r.item) {
+      const cat = r.item.includes('ball') ? 'balls' : r.item.includes('stone') ? 'stones' : 'meds';
+      setInventory(p => ({ ...p, [cat]: { ...p[cat], [r.item]: (p[cat]?.[r.item] || 0) + (r.itemCount || 1) } }));
+    }
+    if (r.title) unlockTitle(r.title);
+    if (r.intimacy) {
+      setParty(prev => prev.map((p, i) => i === 0 ? { ...p, intimacy: (p.intimacy || 0) + r.intimacy } : p));
+    }
+  };
+
+  const completeNonCombatRescue = (event, branchId) => {
+    if (!event) return;
+    if (observationLog.includes(event.id)) {
+      showMapToast('✅', '已完成', '该救助事件已处理', 1500);
+      setNonCombatModal(null);
+      return;
+    }
+    if (badges.length < (event.reqBadges || 0)) {
+      showMapToast('🔒', '未解锁', `需要 ${event.reqBadges} 枚徽章`, 1500);
+      return;
+    }
+    if (event.branches && branchId === 'fight') {
+      setNonCombatModal(null);
+      const lvl = Math.max(12, (party[0]?.level || 15) - 3);
+      startBattle({
+        id: event.mapId,
+        name: event.name,
+        customParty: [createPet(50, lvl, true)],
+        trainerName: '受困岩甲犀',
+        drop: event.reward?.gold || 2000,
+        _nonCombatRescue: event.id,
+      }, 'eco_crisis');
+      return;
+    }
+    if (event.branches && branchId) {
+      const branch = getMoralBranch(branchId);
+      if (!branch) return;
+      if (branch.cost?.gold && gold < branch.cost.gold) {
+        showMapToast('💰', '金币不足', `需要 ${branch.cost.gold} 金币`, 1500);
+        return;
+      }
+      const req = checkBranchRequirements(branchId, party);
+      if (!req.ok) {
+        showMapToast('❌', '条件不足', `需要队伍中有 ${req.reqTypes?.join('/')} 系精灵`, 2000);
+        return;
+      }
+      if (branch.cost?.gold) {
+        setGold(g => g - branch.cost.gold);
+        updateAchStat({ totalGoldSpent: branch.cost.gold });
+      }
+    } else {
+      if (event.reqTypes) {
+        const hasType = party.some(p => {
+          const types = [p.type, p.secondaryType, p.type2].filter(Boolean);
+          return event.reqTypes.some(t => types.includes(t));
+        });
+        if (!hasType) {
+          showMapToast('❌', '条件不足', `需要 ${event.reqTypes.join('/')} 系精灵`, 2000);
+          return;
+        }
+      }
+      if (event.avoidTypes) {
+        const hasBad = party.some(p => event.avoidTypes.includes(p.type) || event.avoidTypes.includes(p.secondaryType));
+        if (hasBad) {
+          showMapToast('⚠️', '无法靠近', `${event.avoidTypes.join('/')} 系会让它更加紧张`, 2000);
+          return;
+        }
+      }
+      if (event.reqTags) {
+        const hasTag = party.some(p => inferPetTags(p).some(t => event.reqTags.includes(t)));
+        if (!hasTag) {
+          showMapToast('❌', '条件不足', `需要带有 ${event.reqTags.join('/')} 标签的精灵`, 2000);
+          return;
+        }
+      }
+    }
+    grantNonCombatReward(event);
+    setObservationLog(prev => [...prev, event.id]);
+    if (event.ecology) applyMapEcologyDelta(event.mapId, event.ecology);
+    setNonCombatModal(null);
+    showMapToast(event.icon || '🌿', '救助成功', event.name, 2500);
+  };
+
+  const completeNonCombatPuzzle = (puzzle) => {
+    if (!puzzle) return;
+    if (observationLog.includes(puzzle.id)) {
+      showMapToast('✅', '已完成', '该谜题已解开', 1500);
+      setNonCombatModal(null);
+      return;
+    }
+    if (badges.length < (puzzle.reqBadges || 0)) {
+      showMapToast('🔒', '未解锁', `需要 ${puzzle.reqBadges} 枚徽章`, 1500);
+      return;
+    }
+    if (puzzle.reqTypes) {
+      const reqs = Array.isArray(puzzle.reqTypes[0]) ? puzzle.reqTypes : [puzzle.reqTypes];
+      const allMet = reqs.every(group => {
+        const types = Array.isArray(group) ? group : [group];
+        return party.some(p => {
+          const pt = [p.type, p.secondaryType, p.type2].filter(Boolean);
+          return types.some(t => pt.includes(t));
+        });
+      });
+      if (!allMet) {
+        showMapToast('❌', '机关未响应', '队伍属性不符合机关要求', 2000);
+        return;
+      }
+    }
+    grantNonCombatReward(puzzle);
+    if (puzzle.reward?.ecology) applyMapEcologyDelta(puzzle.mapId, puzzle.reward.ecology);
+    setObservationLog(prev => [...prev, puzzle.id]);
+    setNonCombatModal(null);
+    showMapToast(puzzle.icon || '🔮', '谜题解开', puzzle.name, 2500);
+  };
+
+  const completeObservation = (obs) => {
+    if (!obs || observationLog.includes(obs.id)) return;
+    setObservationLog(prev => [...prev, obs.id]);
+    showMapToast(obs.icon || '👁️', '观察记录', `${obs.name}：${obs.behavior}`, 3000);
   };
 
   const startEcoCrisis = (crisisId) => {
@@ -9684,6 +9947,7 @@ const useGrowthItem = (petIndex, itemId) => {
             currentHp: getStats(p).maxHp, 
             moves: (p.moves || []).map(m=>({...m, pp: m.maxPP || m.maxPp || 15})),
             status: null,
+            fatigue: Math.max(0, (p.fatigue || 0) - FATIGUE_CONFIG.restAtCenter),
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
             volatiles: {}
         })));
@@ -9733,6 +9997,8 @@ const useGrowthItem = (petIndex, itemId) => {
       if (tileType === 7) { trainerRate = 0.08; encounterRate = 0.22; }
       else if (tileType === 5) { trainerRate = 0.04; encounterRate = 0.08; }
       if (storyProgress === 0 && storyStep === 0) { trainerRate *= 0.6; encounterRate *= 0.6; }
+      const stepEcoEvt = getTodayEcoEvent(currentMapId);
+      if (stepEcoEvt?.effects?.encounterRateMult) encounterRate *= stepEcoEvt.effects.encounterRateMult;
       
       if (roll < trainerRate) {
           if (kingdomWar?.faction && Math.random() < 0.25) {
@@ -10002,6 +10268,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (context?.domainRule) extraBattleData.domainRule = context.domainRule;
     if (context?.spiritDomain) extraBattleData.spiritDomain = context.spiritDomain;
     if (context?.ecoCrisis) extraBattleData.ecoCrisis = context.ecoCrisis;
+    const mapIdForEco = context?.id || currentMapId;
+    if (context?._regionEcology) extraBattleData._regionEcology = context._regionEcology;
+    else extraBattleData._regionEcology = getMapEcology(mapIdForEco);
+    if (context?._crisisBranch) extraBattleData._crisisBranch = context._crisisBranch;
+    if (context?.ecoBossMechanics) extraBattleData.ecoBossMechanics = true;
+    if (context?.bossPhases) extraBattleData.bossPhases = context.bossPhases;
+    if (context?._nonCombatRescue) extraBattleData._nonCombatRescue = context._nonCombatRescue;
+    const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || []);
+    if (ecoEvt && !extraBattleData.ecoCrisis) {
+      extraBattleData._ecoEvent = ecoEvt;
+      if (ecoEvt.effects?.vineBlockBonus) extraBattleData._ecoVineBonus = ecoEvt.effects.vineBlockBonus;
+    }
 
     // -------------------------------------------------
     // 1. PvP 对战
@@ -10548,10 +10826,31 @@ const grantContestReward = (config, score, subjectPet = null) => {
               seen.add(key);
               return true;
             });
+            const pickWeighted = (pool) => {
+              const evt = extraBattleData._ecoEvent;
+              const bonusCfg = evt?.effects?.poolBonus
+                || (evt?.effects?.nightPoolBonus && timePhase === 'NIGHT' ? evt.effects.nightPoolBonus : null);
+              if (!bonusCfg?.types?.length) return _.sample(pool);
+              const bonusTypes = bonusCfg.types;
+              const weight = bonusCfg.weight || 1.5;
+              const weighted = pool.map(pid => {
+                const p = POKEDEX.find(x => x.id === pid);
+                const types = [p?.type, p?.type2].filter(Boolean);
+                const isBonus = bonusTypes.some(t => types.includes(t));
+                return { pid, w: isBonus ? weight : 1 };
+              });
+              const total = weighted.reduce((s, x) => s + x.w, 0);
+              let roll = Math.random() * total;
+              for (const item of weighted) {
+                roll -= item.w;
+                if (roll <= 0) return item.pid;
+              }
+              return weighted[0]?.pid || _.sample(pool);
+            };
             if (context.exclusivePool && Math.random() < 0.08) {
               enemyId = _.sample(context.exclusivePool);
             } else {
-              enemyId = _.sample(fullPool);
+              enemyId = pickWeighted(fullPool);
             }
          }
          enemyParty.push(createPet(enemyId, level, isBoss));
@@ -10844,6 +11143,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const secondPlayerIdx = battlePlayerParty.findIndex((p, i) => i !== activeIdx && p.currentHp > 0);
     const doubleActiveIdxs = isDouble ? (secondPlayerIdx >= 0 ? [activeIdx, secondPlayerIdx] : [activeIdx]) : null;
     const doubleEnemyIdxs = isDouble ? (battleEnemyParty.length > 1 ? [0, 1] : [0]) : null;
+
+    battlePlayerParty.forEach((cs, i) => {
+      const pet = party[i];
+      if (pet && cs) cs._adaptMult = getAdaptationMult(pet, mapIdForEco);
+    });
 
     setBattle({
       enemyParty: battleEnemyParty,
@@ -11399,7 +11703,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           // 玩家先手
           enemyDied = await performAction(player, enemy, actualMove, 'player', tempBattle);
           if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
-            tempBattle._lastPlayerMove = { name: actualMove.name, p: actualMove.p, t: actualMove.t, cat: actualMove.cat, acc: actualMove.acc || 100, effect: actualMove.effect };
+            queueMirrorEcho(tempBattle, actualMove);
           }
           syncBattleState();
           {
@@ -11432,7 +11736,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (!currentEnemy) { syncBattleState({ phase: 'input' }); return; }
           enemyDied = await performAction(player, currentEnemy, actualMove, 'player', tempBattle);
           if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
-            tempBattle._lastPlayerMove = { name: actualMove.name, p: actualMove.p, t: actualMove.t, cat: actualMove.cat, acc: actualMove.acc || 100, effect: actualMove.effect };
+            queueMirrorEcho(tempBattle, actualMove);
           }
           syncBattleState({ phase: 'input', enemyActiveIdx: tempBattle.enemyActiveIdx });
           {
@@ -13439,9 +13743,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     let enemyMove = state._enemySelectedMove || null;
     state._enemySelectedMove = null;
-    if (state.domainRule === 'mirror_lake' && state._lastPlayerMove?.p > 0) {
-      enemyMove = { ...state._lastPlayerMove, pp: 99 };
-      addLog(`🪞 镜湖倒影！${enemy.name} 复制了【${state._lastPlayerMove.name}】！`);
+    if (state.domainRule === 'mirror_lake' || getSpiritDomainRule(state.domainRule)?.id === 'mirror_lake') {
+      const echoMove = getMirrorLakeMove(state);
+      if (echoMove?.p > 0) {
+        enemyMove = echoMove;
+        addLog(`🪞 镜湖回声！${enemy.name} 复制了【${echoMove.name}】！`);
+        if (state._echoQueue?.length) state._echoQueue.shift();
+      }
     } else if (enemyMove) {
       // 使用executeTurn预选的技能以保持优先级判定一致
     } else if (isHardBattle && smartMoves.length > 1) {
@@ -13620,8 +13928,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await processPassive(player, 'player');
     await processPassive(enemy, 'enemy');
 
-    if (state.type === 'world_boss' && enemy.currentHp > 0) {
-      const wbData = state.worldBoss || WORLD_BOSSES.find(b => b.id === worldBossState?.currentBossId);
+    if ((state.type === 'world_boss' || state.ecoBossMechanics) && enemy.currentHp > 0) {
+      const wbData = state.worldBoss || (state.bossPhases ? { phases: state.bossPhases } : null);
       if (wbData?.phases) {
         const hpPct = enemy.currentHp / (getStats(enemy).maxHp || 1);
         const activePhase = [...wbData.phases].reverse().find(ph => hpPct <= (ph.hpPct || 1));
@@ -13636,13 +13944,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           enemy._phaseApplied = { ...(enemy._phaseApplied || {}), [String(activePhase.hpPct)]: true };
           addLog(`⚠️ ${activePhase.msg}`);
         }
-        if (activePhase?.mechanic === 'meteor_summon' && player.currentHp > 0 && Math.random() < 0.45) {
-          const meteorDmg = Math.max(1, Math.floor(getStats(player).maxHp * 0.06));
-          player.currentHp = Math.max(0, player.currentHp - meteorDmg);
-          addLog(`☄️ 小陨石坠落！${player.name} 受到 ${meteorDmg} 点伤害`);
-          if (player.currentHp <= 0) playerDied = true;
-        }
       }
+      const bossResult = processBossMechanicsTurnEnd(state, player, enemy, addLog, getStats);
+      if (bossResult.playerDied) playerDied = true;
     }
 
     // 天气回合伤害 (沙暴/冰雹)
@@ -13849,17 +14153,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else {
       if (state.enemyParty[state.enemyActiveIdx]?.volatiles) state.enemyParty[state.enemyActiveIdx].volatiles.protected = false;
       if (state.isolateTurns > 0) state.isolateTurns--;
-      if (state.domainRule === 'wind_tower' && player.currentHp > 0 && enemy.currentHp > 0) {
-        const pSpd = getStats(player).spd;
-        const eSpd = getStats(enemy).spd;
-        if (pSpd !== eSpd) {
-          const fasterSide = pSpd > eSpd ? 'player' : 'enemy';
-          const faster = pSpd > eSpd ? player : enemy;
-          const slower = pSpd > eSpd ? enemy : player;
-          const followMove = { name: '风塔乱流', p: Math.max(20, Math.floor((faster.level || 30) * 0.35)), t: 'FLYING', cat: 'special', acc: 100, pp: 99 };
-          addLog(`💨 风塔乱流！${faster.name} 发动追击！`);
+      if (state.domainRule === 'wind_tower' || getSpiritDomainRule(state.domainRule)?.id === 'wind_tower') {
+        const follow = processWindTowerFollowUp(state, player, enemy, null, addLog, getStats);
+        if (follow) {
           await wait(500);
-          await performAction(faster, slower, followMove, fasterSide, state);
+          await performAction(follow.faster, follow.slower, follow.followMove, follow.fasterSide, state);
         }
       }
       setBattle(prev => ({
@@ -14082,26 +14380,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return false;
     }
 
-    if (source === 'player' && battleState.domainRule === 'forest_vine' && Math.random() < 0.35) {
+    if (source === 'player' && shouldForestVineBlock(battleState, source)) {
       addLog(`🌿 藤蔓封锁！${attacker.name} 的技能被阻挡了！`);
       await wait(800);
       return false;
     }
 
-    if (battleState._gravityActive && battleState.type === 'world_boss') {
-      const playerUnit = battleState.playerCombatStates?.[battleState.activeIdx];
-      const enemyUnit = battleState.enemyParty?.[battleState.enemyActiveIdx];
-      if (playerUnit && enemyUnit) {
-        const pSpd = getStats(playerUnit).spd;
-        const eSpd = getStats(enemyUnit).spd;
-        const atkSpd = source === 'player' ? pSpd : eSpd;
-        const otherSpd = source === 'player' ? eSpd : pSpd;
-        if (atkSpd < otherSpd) {
-          addLog(`🌌 重力扭曲！${attacker.name} 行动缓慢，本回合无法行动！`);
-          await wait(800);
-          return false;
-        }
-      }
+    if (shouldGravitySkip(battleState, source, attacker,
+      battleState.playerCombatStates?.[battleState.activeIdx],
+      battleState.enemyParty?.[battleState.enemyActiveIdx])) {
+      addLog(`🌌 重力扭曲！${attacker.name} 行动缓慢，本回合无法行动！`);
+      await wait(800);
+      return false;
     }
 
     // 1. 异常状态判定
@@ -14221,11 +14511,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (move.pp > 0) {
             let ppCost = 1;
             if (defState.trait === 'pressure') ppCost = 2;
-            if (battleState.domainRule === 'fire_heat' && move.t === 'WATER') ppCost += 1;
-            move.pp = Math.max(0, move.pp - ppCost);
+            ppCost += calcFireHeatPPExtra(battleState, move);
             if (battleState.domainRule === 'fire_heat' && move.t === 'WATER' && ppCost > 1) {
               addLog(`🔥 高温环境使水系技能额外消耗 PP！`);
             }
+            move.pp = Math.max(0, move.pp - ppCost);
         }
     }
     const tryLeppaBerry = (unit, state, moveUsed) => {
@@ -14835,17 +15125,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         }
 
-        if (dmg > 0 && (defender._starShield || 0) > 0 && battleState?.type === 'world_boss') {
-          const breakTypes = ['FAIRY', 'PSYCHIC'];
-          if (!breakTypes.includes(move.t)) {
-            addLog(`✨ 星海护盾免疫了攻击！需妖精/超能系破盾`);
-            dmg = 0;
-          } else {
-            const absorbed = Math.min(defender._starShield, dmg);
-            defender._starShield -= absorbed;
-            dmg -= absorbed;
-            addLog(`✨ 护盾承受 ${absorbed.toLocaleString()} 伤害${defender._starShield <= 0 ? '，护盾破碎！' : `（剩余 ${defender._starShield.toLocaleString()}）`}`);
+        if (dmg > 0 && (defender._starShield || 0) > 0) {
+          const shieldDmg = applyStarShieldDamage(defender, move, dmg, battleState);
+          if (shieldDmg < dmg) {
+            addLog(defender._starShield <= 0 ? `✨ 星海护盾破碎！` : `✨ 护盾吸收 ${(dmg - shieldDmg).toLocaleString()} 伤害`);
           }
+          dmg = shieldDmg;
         }
 
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
@@ -15448,11 +15733,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setInfinityState({
       floor: 1,
       buffs: [],
+      blessings: [],
       status: 'selecting',
       healUsed: false,
       mode: mode,
       floorModifier: getInfinityFloorModifier(1),
       bestFloor: infinityState?.bestFloor || achStats.maxInfinityFloor || 0,
+      routeOptions: pickRouteOptions(1),
     });
     setView('infinity_castle');
   };
@@ -15623,6 +15910,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battle;
+
+    const fatigueAmt = type === 'infinity' ? FATIGUE_CONFIG.perInfinityFloor
+      : (isBoss || type === 'world_boss' || battleSnapshot.ecoBossMechanics) ? FATIGUE_CONFIG.perBossBattle
+      : FATIGUE_CONFIG.perBattle;
+    finalParty = (finalParty || party).map(p => ({ ...p, fatigue: addFatigue(p, fatigueAmt) }));
 
     // ★★★ 剧情推进逻辑 (最优先执行，确保不被后续代码的异常阻断) ★★★
     let storyHandled = false;
@@ -16256,9 +16548,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             showMapToast('🎁', ms.label, `+${ms.gold.toLocaleString()} 金${ms.item ? ` · ${MEDICINES[ms.item]?.name || BALLS[ms.item]?.name || ms.item}×${ms.itemCount}` : ''}`, 3000);
         }
         if (currentFloor % 5 === 0) {
-            const options = _.sampleSize(BREATHING_BUFFS, 3);
+            const breathOpts = _.sampleSize(BREATHING_BUFFS, 2);
+            const spiritOpts = pickBlessingOptions(1);
+            const options = [...breathOpts, ...spiritOpts];
             setInfinityState(prev => ({ ...prev, status: 'buff_select', buffOptions: options }));
-            showMapToast('🎉', '击败强敌', '请选择一种【呼吸法】强化自身！', 2500);
+            showMapToast('🎉', '击败强敌', '请选择【呼吸法】或【灵契祝福】强化自身！', 2500);
         } else {
             nextInfinityFloor();
         }
@@ -16828,6 +17122,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setBattle(null);
       setView('world_map');
       setTimeout(() => runEcoCrisisStep(crisisId, stepIdx + 1), 500);
+      return;
+    }
+    if (battle.type === 'eco_crisis' && battle._nonCombatRescue) {
+      const rescueEvt = RESCUE_EVENTS.find(r => r.id === battle._nonCombatRescue);
+      if (rescueEvt && !observationLog.includes(rescueEvt.id)) {
+        grantNonCombatReward(rescueEvt);
+        setObservationLog(prev => [...prev, rescueEvt.id]);
+        if (rescueEvt.ecology) applyMapEcologyDelta(rescueEvt.mapId, rescueEvt.ecology);
+        showMapToast(rescueEvt.icon || '🦏', '救助成功', `${rescueEvt.name} 重获自由`, 2500);
+      }
+      setBattle(null);
+      setView('grid_map');
       return;
     }
 
@@ -19456,6 +19762,14 @@ const renderMenu = () => {
     const enterDungeon = (dungeon) => {
       if (!party || party.length === 0 || !party[0]) { showMapToast('❌', '提示', '⛔ 队伍中没有精灵！', 1500); return; }
       if (!party.some(p => p && p.currentHp > 0)) { showMapToast('❌', '提示', '⛔ 所有精灵都已晕厥！', 1500); return; }
+      if (dungeon.tagRestriction) {
+        const tagCheck = checkTagRestriction(party, dungeon.tagRestriction);
+        if (!tagCheck.allowed) {
+          showMapToast('⛔', '无法进入', tagCheck.reason || '队伍不符合副本要求', 2500);
+          return;
+        }
+        if (tagCheck.rule?.hint) showMapToast('ℹ️', '副本提示', tagCheck.rule.hint, 2000);
+      }
       // --- 狩猎地带 (最高门槛, 最好奖励) ---
       if (dungeon.id === 'safari_zone') {
         if (party[0].level < 85) { showMapToast('❌', '提示', '⛔ 首发精灵等级需达到 Lv.85', 1500); return; }
@@ -19910,6 +20224,11 @@ const renderMenu = () => {
                   <span style={{ '--metric-color': diffColor }}>Lv.{lvLo}-{lvHi} · {diffLabel}</span>
                   <span>{mapWeatherInfo.icon} {mapWeatherInfo.name}</span>
                   {mapDexTotal > 0 && <span style={{ '--metric-color': mapDexColor }}>📖 {caughtInMap}/{mapDexTotal}</span>}
+                  {(() => {
+                    const eco = getMapEcology(m.id);
+                    const tier = getEcologyTier(eco);
+                    return <span style={{ '--metric-color': tier.color, fontSize:'10px' }}>🌿 {tier.label}</span>;
+                  })()}
                 </div>
 
                 {mapDexTotal > 0 && (
@@ -19925,9 +20244,13 @@ const renderMenu = () => {
                   const bossHere = todayBoss?.spawnMapId === m.id && badges.length >= WORLD_BOSS_REQ_BADGES && !isLocked;
                   const domain = getSpiritDomainByMapId(m.id);
                   const domainOpen = domain && badges.length >= domain.reqBadges && !spiritDomainsCleared.includes(domain.id);
-                  if (!crisis && !bossHere && !domainOpen && !crisisCleared) return null;
+                  const ecoEvt = !isLocked ? getTodayEcoEvent(m.id) : null;
+                  if (!crisis && !bossHere && !domainOpen && !crisisCleared && !ecoEvt) return null;
                   return (
                     <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'8px', position:'relative', zIndex:3 }} onClick={e => e.stopPropagation()}>
+                      {ecoEvt && (
+                        <span style={{ fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background: (ecoEvt.color || '#2E7D32') + '33', color: ecoEvt.color || '#2E7D32', fontWeight:'700' }} title={ecoEvt.summary}>{ecoEvt.icon} {ecoEvt.name}</span>
+                      )}
                       {crisis && !crisisCleared && !isLocked && badges.length >= crisis.reqBadges && (
                         <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'10px', fontWeight:'700', padding:'4px 10px', borderRadius:'10px', border:'none', cursor:'pointer', background: crisis.color || '#2E7D32', color:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.2)' }}>
                           {crisis.icon} 调查·{crisis.name}
@@ -23634,9 +23957,26 @@ const renderMenu = () => {
             const crisis = (activeCrisis?.mapId === currentMapId ? activeCrisis : null) || (!(ecoCrisisState.cleared || []).includes(mapCrisis?.id) ? mapCrisis : null);
             const todayBoss = getTodayBoss(getLocalDateStr());
             const bossHere = todayBoss?.spawnMapId === currentMapId && badges.length >= WORLD_BOSS_REQ_BADGES;
-            if (!crisis && !bossHere) return null;
+            const ecoEvt = getTodayEcoEvent(currentMapId);
+            const adaptSummary = getPartyAdaptationSummary(party, currentMapId);
+            const rescues = getRescueEventsForMap(currentMapId).filter(r => badges.length >= (r.reqBadges || 0) && !observationLog.includes(r.id));
+            const puzzles = getPuzzlesForMap(currentMapId).filter(p => badges.length >= (p.reqBadges || 0) && !observationLog.includes(p.id));
+            const observations = getObservationsForMap(currentMapId).filter(o => !observationLog.includes(o.id));
+            if (!crisis && !bossHere && !ecoEvt && rescues.length === 0 && puzzles.length === 0 && observations.length === 0) return null;
             return (
-              <div style={{ marginBottom:'6px', display:'flex', flexWrap:'wrap', gap:'8px', flexShrink:0 }}>
+              <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                {ecoEvt && (
+                  <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '22', border:`1px solid ${(ecoEvt.color || '#2E7D32')}55` }}>
+                    <div style={{ fontSize:'11px', fontWeight:'700', color:'#1a1a2e' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
+                    <div style={{ fontSize:'10px', color:'#555', marginTop:'2px' }}>{ecoEvt.counterHint}</div>
+                  </div>
+                )}
+                {adaptSummary.maladapted > 0 && (
+                  <div style={{ padding:'6px 10px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'10px', color:'#E65100' }}>
+                    ⚠️ {adaptSummary.pressure.icon} {adaptSummary.pressure.name}压力 · {adaptSummary.maladapted}只不适应
+                  </div>
+                )}
                 {crisis && (
                   <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '22', border:`1px solid ${crisis.color || '#2E7D32'}55`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
                     <span style={{ fontSize:'11px', fontWeight:'700', color:'#1a1a2e' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
@@ -23649,6 +23989,20 @@ const renderMenu = () => {
                   <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background:'rgba(183,28,28,0.12)', border:'1px solid rgba(183,28,28,0.35)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
                     <span style={{ fontSize:'11px', fontWeight:'700', color:'#B71C1C' }}>{todayBoss.emoji} 异象·{todayBoss.name}</span>
                     <button type="button" onClick={startWorldBossFight} style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px', border:'none', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff', cursor:'pointer' }}>挑战</button>
+                  </div>
+                )}
+                </div>
+                {(rescues.length > 0 || puzzles.length > 0 || observations.length > 0) && (
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+                    {rescues.map(r => (
+                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'10px', padding:'4px 10px', borderRadius:'8px', border:'1px solid #81C784', background:'rgba(76,175,80,0.1)', cursor:'pointer' }}>{r.icon} {r.name}</button>
+                    ))}
+                    {puzzles.map(p => (
+                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'10px', padding:'4px 10px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.1)', cursor:'pointer' }}>{p.icon} {p.name}</button>
+                    ))}
+                    {observations.map(o => (
+                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'10px', padding:'4px 10px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.08)', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -25757,7 +26111,11 @@ const renderMenu = () => {
                             label=""
                         />
                         <div style={{fontSize:'10px', color:'#666', textAlign:'right', marginTop:'2px'}}>
-                          HP {Math.max(0, Math.floor(e.currentHp)).toLocaleString()}/{eStats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)
+                          {isDarkMoon && battle._darkMoonScouted !== true ? (
+                            <span style={{ color:'#888' }}>HP ???/???</span>
+                          ) : (
+                            <>HP {Math.max(0, Math.floor(e.currentHp)).toLocaleString()}/{eStats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)</>
+                          )}
                         </div>
                         {e.maxCE > 0 && (
                             <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
@@ -28933,6 +29291,71 @@ const renderMenu = () => {
               <div style={{fontSize:'11px', color:'#81C784', marginBottom:'12px', padding:'8px', background:'rgba(76,175,80,0.1)', borderRadius:'8px'}}>✓ 选择：{ecoCrisisModal.step.choices[0]}</div>
             )}
             <button onClick={() => advanceEcoCrisis(ecoCrisisModal.crisisId, ecoCrisisModal.stepIdx)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background: ecoCrisisModal.crisis?.color || 'linear-gradient(90deg,#2E7D32,#43A047)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>继续调查 →</button>
+          </div>
+        </div>
+      )}
+      {ecoBranchModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100004}} onClick={() => setEcoBranchModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a2e1a,#0a1a2e)', borderRadius:'20px', padding:'24px', maxWidth:'420px', width:'92%', border:`1px solid ${ecoBranchModal.crisis?.color || '#2E7D32'}55`, boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{ecoBranchModal.crisis?.icon} 生态决策</div>
+            <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', marginBottom:'10px'}}>{ecoBranchModal.prompt || '你打算如何应对？'}</div>
+            <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+              {(ecoBranchModal.crisis?.branches || []).map(bid => {
+                const br = MORAL_BRANCHES[bid];
+                if (!br) return null;
+                return (
+                  <button key={bid} type="button" onClick={() => selectEcoBranch(ecoBranchModal.crisisId, ecoBranchModal.stepIdx, bid)} style={{padding:'12px 14px', borderRadius:'12px', border:'1px solid rgba(129,199,132,0.4)', background:'rgba(76,175,80,0.12)', color:'#E8F5E9', textAlign:'left', cursor:'pointer'}}>
+                    <div style={{fontSize:'14px', fontWeight:'700'}}>{br.label}</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)', marginTop:'4px'}}>{br.desc}{br.cost?.gold ? ` · 需 ${br.cost.gold} 金` : ''}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button" onClick={() => setEcoBranchModal(null)} style={{width:'100%', marginTop:'12px', padding:'8px', borderRadius:'10px', border:'1px solid #444', background:'transparent', color:'#888', fontSize:'12px', cursor:'pointer'}}>稍后再决定</button>
+          </div>
+        </div>
+      )}
+      {nonCombatModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100004}} onClick={() => setNonCombatModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a2a3a,#0f1a28)', borderRadius:'20px', padding:'24px', maxWidth:'420px', width:'92%', border:'1px solid rgba(100,181,246,0.35)', boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+            {nonCombatModal.type === 'rescue' && nonCombatModal.event && (() => {
+              const ev = nonCombatModal.event;
+              return (
+                <>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{ev.icon} 生态救助</div>
+                  <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', marginBottom:'10px'}}>{ev.name}</div>
+                  <div style={{fontSize:'13px', color:'#ccc', lineHeight:1.7, marginBottom:'16px'}}>{ev.desc}</div>
+                  {ev.branches ? (
+                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                      {ev.branches.map(bid => {
+                        const br = MORAL_BRANCHES[bid];
+                        if (!br) return null;
+                        return (
+                          <button key={bid} type="button" onClick={() => completeNonCombatRescue(ev, bid)} style={{padding:'12px 14px', borderRadius:'12px', border:'1px solid rgba(129,199,132,0.4)', background:'rgba(76,175,80,0.12)', color:'#E8F5E9', textAlign:'left', cursor:'pointer'}}>
+                            <div style={{fontSize:'14px', fontWeight:'700'}}>{br.label}</div>
+                            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)', marginTop:'4px'}}>{br.desc}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => completeNonCombatRescue(ev)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#2E7D32,#43A047)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>开始救助</button>
+                  )}
+                </>
+              );
+            })()}
+            {nonCombatModal.type === 'puzzle' && nonCombatModal.event && (() => {
+              const pv = nonCombatModal.event;
+              return (
+                <>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{pv.icon} 环境谜题</div>
+                  <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', marginBottom:'10px'}}>{pv.name}</div>
+                  <div style={{fontSize:'13px', color:'#ccc', lineHeight:1.7, marginBottom:'16px'}}>{pv.desc}</div>
+                  <button type="button" onClick={() => completeNonCombatPuzzle(pv)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#1565C0,#42A5F5)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>尝试解开</button>
+                </>
+              );
+            })()}
+            <button type="button" onClick={() => setNonCombatModal(null)} style={{width:'100%', marginTop:'12px', padding:'8px', borderRadius:'10px', border:'1px solid #444', background:'transparent', color:'#888', fontSize:'12px', cursor:'pointer'}}>离开</button>
           </div>
         </div>
       )}
