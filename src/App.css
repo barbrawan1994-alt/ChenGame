@@ -6891,6 +6891,7 @@ button:active {
 .world-region-card.theme-bg-ground { background: linear-gradient(135deg, #92400e 0%, #d97706 56%, #451a03 100%); }
 .world-region-card.theme-bg-factory { background: linear-gradient(135deg, #263340 0%, #3b82f6 56%, #111827 100%); }
 .world-region-card.theme-bg-gold { background: linear-gradient(135deg, #b7791f 0%, #facc15 56%, #78350f 100%); }
+.world-region-card.theme-bg-forest { background: linear-gradient(135deg, #1b4332 0%, #52b788 56%, #0b2618 100%); }
 
 .world-region-card__top,
 .world-region-card__footer {
@@ -7783,8 +7784,30 @@ button:active {
   margin-bottom: 12px;
 }
 
+.housing-content div {
+  background: rgba(12,24,48,0.5) !important;
+  border-color: rgba(143,216,255,0.1) !important;
+}
+
+.housing-content > div > div {
+  padding: 10px;
+  border-radius: 14px !important;
+}
+
+.housing-content span,
+.housing-content p,
+.housing-content em,
+.housing-content strong,
+.housing-content h1,
+.housing-content h2,
+.housing-content h3,
+.housing-content label {
+  background: transparent !important;
+}
+
 .housing-content button {
   color: #fff !important;
+  background: rgba(30,60,120,0.7) !important;
   box-shadow: 0 8px 18px rgba(0,0,0,0.2);
 }
 

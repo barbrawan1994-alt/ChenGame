@@ -1360,7 +1360,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       
       if (!battle) {
         const baseRate = ball.rate || 1.0;
-        if (ballType === 'quick') return Math.min(0.6, baseRate * 0.4);
+        if (ballType === 'quick') return Math.min(0.3, baseRate * 0.25);
         return Math.min(0.6, baseRate * 0.4);
       }
       const mapInfo = MAPS.find(m => m.id === battle.mapId);
@@ -1426,7 +1426,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       baseRate *= (1 + (gangCatchBonus + kwCatchBonus) / 100);
 
       // 徽章加成：每枚徽章提升2%捕获率上限
-      const badgeBonus = 1 + (badges.length * 0.02);
+      const badgeBonus = 1 + Math.min(badges.length, 10) * 0.015;
       baseRate *= badgeBonus;
 
       const etype = (POKEDEX.find(p => p.id === eid) || {}).type;
@@ -1945,11 +1945,18 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
   // [核心] 属性计算函数 (含特性修正)
   // ==========================================
+  const getStageMult = (stage) => {
+    if (!stage) return 1.0;
+    const s = Math.max(-6, Math.min(6, stage));
+    if (s >= 0) return (2 + s) / 2;
+    return 2 / (2 + Math.abs(s));
+  };
+
   function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
     if (!pet) return { maxHp: 1, p_atk: 1, p_def: 1, s_atk: 1, s_def: 1, spd: 1, crit: 5 };
     const isPlayerPet = gangBonusOverride === undefined;
     const lvl = pet.level || 1;
-    const growth = 1 + Math.pow(lvl / 100, 0.7) * 4; 
+    const growth = 1 + Math.min(2.5, Math.pow(lvl / 100, 0.7) * 3.5); 
     const shinyMod = pet.isFusedShiny ? 1.35 : (pet.isShiny ? 1.2 : 1.0);
 
     let ivs = pet.ivs || { hp:0, p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, crit:0 };
@@ -1974,12 +1981,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         crit: 5
     };
 
-    const getStageMult = (stage) => {
-        if (!stage) return 1.0;
-        const s = Math.max(-6, Math.min(6, stage));
-        if (s >= 0) return (2 + s) / 2;
-        return 2 / (2 + Math.abs(s));
-    };
+    // getStageMult is defined at module scope above
 
     let chiefBonus = {}; 
     if (isPlayerPet && pet.sectId && SECT_CHIEFS_CONFIG[pet.sectId]) {
@@ -2072,7 +2074,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const intimacyAllStatsMult = isPlayerPet && (pet.intimacy || 0) >= 200 ? 1.10 : 1.0;
     const applyGB = (val, pct) => {
       let total = (pct || 0);
-      val += housingAllStats;
+      val = Math.floor(val * (1 + (housingAllStats || 0) / 100));
       val = total > 0 ? Math.floor(val * (1 + total / 100)) : val;
       if (intimacyAllStatsMult > 1) val = Math.floor(val * intimacyAllStatsMult);
       return val;
@@ -4708,7 +4710,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     };
 
     return (
-      <div className="screen housing-screen-redesign" style={{background:'linear-gradient(135deg, #EFEBE9, #D7CCC8)', minHeight:'100vh'}}>
+      <div className="screen housing-screen-redesign" style={{minHeight:'100vh'}}>
         <div className="nav-header glass-panel housing-topbar">
           <button className="btn-back housing-back-btn" onClick={() => setView(safeBack())}>⬅ 返回地图</button>
           <div className="housing-title-lockup">
@@ -4751,14 +4753,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
           {housingTab === 'overview' && (
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
-              <div style={{background:'#fff', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
+              <div style={{background:'transparent', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
                 <div style={{fontSize:'48px', textAlign:'center'}}>{currentHouseDef?.icon || '🏕️'}</div>
                 <div style={{textAlign:'center', fontWeight:'bold', fontSize:'18px', margin:'8px 0'}}>{currentHouseDef?.name || '露宿野外'}</div>
                 <div style={{textAlign:'center', color:'#888', fontSize:'13px'}}>
                   {currentHouseDef ? `精灵槽: ${housing.residents.filter(r => r).length}/${currentHouseDef.slots} | 家具槽: ${placedFurniture.length}/${currentHouseDef.furnitureSlots}` : '还没有家呢...去商店看看吧!'}
                 </div>
               </div>
-              <div style={{background:'#fff', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
+              <div style={{background:'transparent', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
                 <div style={{fontWeight:'bold', fontSize:'16px', marginBottom:'12px'}}>📊 家园评分</div>
                 <div style={{fontSize:'32px', fontWeight:'bold', color:'#8D6E63', textAlign:'center'}}>{score}</div>
                 <div style={{textAlign:'center', color: tier.buff ? '#4CAF50' : '#999', fontWeight:'bold', fontSize:'14px', margin:'4px 0'}}>🏅 {tier.title}</div>
@@ -4768,7 +4770,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   {tier.buff.intimacyMult ? `亲密度x${tier.buff.intimacyMult} ` : ''}
                 </div>}
               </div>
-              <div style={{background:'#fff', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', gridColumn:'span 2'}}>
+              <div style={{background:'transparent', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', gridColumn:'span 2'}}>
                 <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'8px'}}>📋 每日收益 (入住精灵)</div>
                 <div style={{display:'flex', gap:'20px', justifyContent:'center', fontSize:'13px'}}>
                   <span>❤️ HP恢复: +{benefits.hpRegen}</span>
@@ -4790,7 +4792,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const ml = getMarriageLevel(aff);
                 const bonuses = getSpouseBonuses();
                 return (
-                  <div style={{background:'linear-gradient(135deg,#FCE4EC,#fff)', borderRadius:'16px', padding:'16px', boxShadow:'0 4px 20px rgba(233,30,99,0.1)', gridColumn:'span 2', border:'1px solid #F8BBD0', marginTop:'0'}}>
+                  <div style={{background:'transparent', borderRadius:'16px', padding:'16px', boxShadow:'0 4px 20px rgba(233,30,99,0.1)', gridColumn:'span 2', border:'1px solid #F8BBD0', marginTop:'0'}}>
                     <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px'}}>
                       <div style={{width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#E91E63,#F06292)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', color:'#fff'}}>{sp.icon}</div>
                       <div>
@@ -4822,7 +4824,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       if (!def) return null;
                       const qual = FURNITURE_QUALITY[f.quality];
                       return (
-                        <div key={idx} style={{background:'#fff', borderRadius:'12px', padding:'10px', border:`2px solid ${qual.color}`, cursor:'pointer', position:'relative'}} onClick={() => removeFurniture(idx)}>
+                        <div key={idx} style={{background:'transparent', borderRadius:'12px', padding:'10px', border:`2px solid ${qual.color}`, cursor:'pointer', position:'relative'}} onClick={() => removeFurniture(idx)}>
                           <div style={{fontSize:'24px', textAlign:'center'}}>{def.icon}</div>
                           <div style={{fontSize:'11px', fontWeight:'bold', textAlign:'center', marginTop:'4px'}}>{def.name}</div>
                           <div style={{fontSize:'10px', textAlign:'center', color: qual.color, fontWeight:'bold'}}>{qual.name}</div>
@@ -4842,7 +4844,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   if (!def) return null;
                   const qual = FURNITURE_QUALITY[f.quality];
                   return (
-                    <div key={idx} style={{background:'#fff', borderRadius:'12px', padding:'10px', border:'1px solid #eee', cursor:'pointer'}} onClick={() => placeFurniture(idx)}>
+                    <div key={idx} style={{background:'transparent', borderRadius:'12px', padding:'10px', border:'1px solid #eee', cursor:'pointer'}} onClick={() => placeFurniture(idx)}>
                       <div style={{fontSize:'24px', textAlign:'center'}}>{def.icon}</div>
                       <div style={{fontSize:'11px', fontWeight:'bold', textAlign:'center', marginTop:'4px'}}>{def.name}</div>
                       <div style={{fontSize:'10px', textAlign:'center', color: qual.color, fontWeight:'bold'}}>{qual.name}</div>
@@ -4862,7 +4864,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   {housing.residents.map((uid, idx) => {
                     const pet = uid ? findPetByUid(uid) : null;
                     return (
-                      <div key={idx} style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', textAlign:'center', border: pet ? '2px solid #4CAF50' : '2px dashed #ccc', minHeight:'120px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+                      <div key={idx} style={{background:'transparent', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', textAlign:'center', border: pet ? '2px solid #4CAF50' : '2px dashed #ccc', minHeight:'120px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
                         {pet ? (
                           <>
                             <div style={{width:48, height:48}}>{renderAvatar(pet)}</div>
@@ -4888,7 +4890,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           {housingTab === 'shop' && (
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'12px'}}>
               {FURNITURE_DB.filter(f => f.shopPrice).map(def => (
-                <div key={def.id} style={{background:'#fff', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', cursor:'pointer', transition:'background 0.2s, border-color 0.2s, transform 0.2s'}} onClick={() => buyFurnitureFromShop(def)}>
+                <div key={def.id} style={{background:'transparent', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', cursor:'pointer', transition:'background 0.2s, border-color 0.2s, transform 0.2s'}} onClick={() => buyFurnitureFromShop(def)}>
                   <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                     <span style={{fontSize:'28px'}}>{def.icon}</span>
                     <div>
@@ -4913,7 +4915,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const isNext = idx === ownedIdx + 1 || (!housing.currentHouse && idx === 0);
                 const isPast = idx <= ownedIdx;
                 return (
-                  <div key={h.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', border: isOwned ? '2px solid #4CAF50' : isNext ? '2px solid #FF9800' : '1px solid #eee', opacity: isPast && !isOwned ? 0.5 : 1}}>
+                  <div key={h.id} style={{background:'transparent', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', border: isOwned ? '2px solid #4CAF50' : isNext ? '2px solid #FF9800' : '1px solid #eee', opacity: isPast && !isOwned ? 0.5 : 1}}>
                     <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
                       <span style={{fontSize:'36px'}}>{h.icon}</span>
                       <div style={{flex:1}}>
@@ -4931,7 +4933,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const isMarried = !!marriage.spouse;
                 const canBuy = isMarried && !isOwned && gold >= h.price;
                 return (
-                  <div key={h.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(233,30,99,0.08)', border: isOwned ? '2px solid #E91E63' : '1px solid #F8BBD0', opacity: isMarried ? 1 : 0.6, position:'relative'}}>
+                  <div key={h.id} style={{background:'transparent', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(233,30,99,0.08)', border: isOwned ? '2px solid #E91E63' : '1px solid #F8BBD0', opacity: isMarried ? 1 : 0.6, position:'relative'}}>
                     <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
                       <span style={{fontSize:'36px'}}>{h.icon}</span>
                       <div style={{flex:1}}>
@@ -4964,7 +4966,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     <div style={{fontSize:'12px', opacity:0.8}}>种植槽 {(housing.garden?.plots || []).length}/{getGardenSlots(housing.currentHouse)} · 种植花草收获装饰和道具</div>
                   </div>
                   {/* 种植槽 */}
-                  <div style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                  <div style={{background:'transparent', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
                     <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>种植槽</div>
                     {(housing.garden?.plots || []).length === 0 && (
                       <div style={{textAlign:'center', padding:'20px', color:'#aaa', fontSize:'13px'}}>还没有种植任何植物，在下方选择种子开始种植吧！</div>
@@ -5009,7 +5011,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     </div>
                   </div>
                   {/* 种子列表 */}
-                  <div style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                  <div style={{background:'transparent', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
                     <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'4px'}}>种子商店</div>
                     <div style={{fontSize:'11px', color:'#888', marginBottom:'12px'}}>购买种子种植到花园，收获装饰品(加评分)或道具</div>
                     <div style={{display:'flex', flexDirection:'column', gap:'6px'}}>
@@ -5059,7 +5061,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const allCollected = ownedInSet.length === col.items.length;
                 const setScore = col.items.reduce((s, it) => s + (owned.includes(it.id) ? it.score : 0), 0) + (allCollected ? col.setBonus.score : 0);
                 return (
-                  <div key={col.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                  <div key={col.id} style={{background:'transparent', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
                     <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px'}}>
                       <span style={{fontSize:'24px'}}>{col.icon}</span>
                       <div style={{flex:1}}>
@@ -5108,7 +5110,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       购买咖啡厅 (💰 {CAFE_BUILDING.price})
                     </button>
                   ) : (
-                    <div style={{fontSize:'12px', color:'#999', padding:'10px', background:'#f5f5f5', borderRadius:'10px'}}>
+                    <div style={{fontSize:'12px', color:'#999', padding:'10px', background:'transparent', borderRadius:'10px'}}>
                       需要先通关「莉可莉丝篇·序章」才能解锁
                     </div>
                   )}
@@ -5132,9 +5134,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   </div>
 
                   {/* 打工精灵 */}
-                  <div style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                  <div style={{background:'transparent', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
                     <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>打工精灵 ({cafe.workers.length}/{CAFE_BUILDING.workerSlots})</div>
-                    <div style={{fontSize:'11px', color:'#888', marginBottom:'10px'}}>每5分钟产出 {(() => { const _sp = marriage.spouse; const _spCand = _sp ? MARRIAGE_CANDIDATES.find(c => c.id === _sp) : null; const _spLvl = _sp ? getMarriageLevel(marriage.affections[_sp] || 0).level : 0; const _spBonus = _spCand ? (getSpouseBonus(_spCand, _spLvl).cafeGold || 0) + (getSpouseBonus(_spCand, _spLvl).cafeGoldBase || 0) : 0; const _cafeM = 1 + _spBonus; return Math.floor(CAFE_BUILDING.goldPerTick * getCafeLevel(cafe.totalWorkCount).goldMult * _cafeM * (1 + Math.max(0, cafe.workers.length - 1) * 0.3)); })()} 金币 (等级×{getCafeLevel(cafe.totalWorkCount).goldMult} · 工人×{(1 + Math.max(0, cafe.workers.length - 1) * 0.3).toFixed(1)}{marriage.spouse ? ' · 💕配偶加成' : ''}) + 亲密度+2</div>
+                    <div style={{fontSize:'11px', color:'#888', marginBottom:'10px'}}>每5分钟产出 {(() => { const _sp = marriage.spouse; const _spCand = _sp ? MARRIAGE_CANDIDATES.find(c => c.id === _sp) : null; const _spLvl = _sp ? getMarriageLevel(marriage.affections[_sp] || 0).level : 0; const _spBonus = _spCand ? (getSpouseBonus(_spCand, _spLvl).cafeGold || 0) + (getSpouseBonus(_spCand, _spLvl).cafeGoldBase || 0) : 0; const _cafeM = 1 + _spBonus; return Math.floor(CAFE_BUILDING.goldPerTick * getCafeLevel(cafe.totalWorkCount).goldMult * _cafeM * (1 + Math.max(0, cafe.workers.length - 1) * 0.15)); })()} 金币 (等级×{getCafeLevel(cafe.totalWorkCount).goldMult} · 工人×{(1 + Math.max(0, cafe.workers.length - 1) * 0.15).toFixed(1)}{marriage.spouse ? ' · 💕配偶加成' : ''}) + 亲密度+2</div>
                     <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                       {party.map(p => {
                         const uid = p.uid || p.id;
@@ -5159,7 +5161,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
                   {/* 酿造状态 */}
                   {(cafe.brewing || cafe.readyDrink) && (
-                    <div style={{background:'#fff', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                    <div style={{background:'transparent', borderRadius:'16px', padding:'16px', marginBottom:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
                       <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'12px'}}>酿造状态</div>
                       {cafe.brewing && (() => {
                         const now = Date.now();
@@ -5202,7 +5204,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   )}
 
                   {/* 饮品菜单 */}
-                  <div style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+                  <div style={{background:'transparent', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
                     <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'4px'}}>酿造饮品</div>
                     <div style={{fontSize:'11px', color:'#888', marginBottom:'12px'}}>选择饮品开始酿造 → 等待完成 → 支付领取 · 每日限量</div>
                     {cafe.workers.length === 0 && (
@@ -5288,7 +5290,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               {/* 约会事件弹窗 */}
               {dateEvent && (
                 <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'}}>
-                  <div style={{background:'linear-gradient(135deg,#FCE4EC,#fff)', borderRadius:'20px', padding:'30px', maxWidth:'400px', width:'100%', boxShadow:'0 16px 48px rgba(0,0,0,0.4)'}}>
+                  <div style={{background:'transparent', borderRadius:'20px', padding:'30px', maxWidth:'400px', width:'100%', boxShadow:'0 16px 48px rgba(0,0,0,0.4)'}}>
                     <div style={{fontSize:'36px', textAlign:'center', marginBottom:'12px'}}>{dateEvent.candidateIcon}</div>
                     <div style={{fontSize:'14px', color:'#333', lineHeight:1.7, marginBottom:'8px'}}>{dateEvent.text.replace('{name}', dateEvent.candidateName)}</div>
                     <div style={{fontSize:'15px', fontWeight:'bold', color:'#E91E63', marginBottom:'16px'}}>{dateEvent.question}</div>
@@ -5296,7 +5298,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       {dateEvent.options.map((opt, i) => (
                         <button key={i} onClick={() => handleDateChoice(i)} style={{
                           padding:'12px 16px', borderRadius:'12px', border:'2px solid #F8BBD0',
-                          background:'#fff', color:'#333', fontSize:'13px', cursor:'pointer', textAlign:'left',
+                          background:'transparent', color:'#333', fontSize:'13px', cursor:'pointer', textAlign:'left',
                           transition:'all 0.2s'
                         }}
                         className="quiz-option-btn"
@@ -5328,7 +5330,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                           const pct = nextIdx >= 0 ? Math.min(100, Math.round((aff - curMin) / (nextMin - curMin) * 100)) : 100;
                           return <div style={{marginTop:'4px', display:'flex', alignItems:'center', gap:'6px'}}>
                             <div style={{flex:1, height:'4px', background:'rgba(255,255,255,0.3)', borderRadius:'2px', overflow:'hidden'}}>
-                              <div style={{width:`${pct}%`, height:'100%', background:'#fff', borderRadius:'2px', transition:'width 0.5s'}} />
+                              <div style={{width:`${pct}%`, height:'100%', background:'transparent', borderRadius:'2px', transition:'width 0.5s'}} />
                             </div>
                             <span style={{fontSize:'10px', opacity:0.8}}>{pct >= 100 ? '已满' : `${aff}/${nextMin}`}</span>
                           </div>;
@@ -5418,7 +5420,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         if (isSpouse) return null;
                         const nextStage = AFFECTION_STAGES[AFFECTION_STAGES.indexOf(stage) + 1];
                         return (
-                          <div key={c.id} style={{background:'#fff', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', border: stage.id === 'lover' ? '2px solid #E91E63' : '1px solid #eee'}}>
+                          <div key={c.id} style={{background:'transparent', borderRadius:'16px', padding:'16px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', border: stage.id === 'lover' ? '2px solid #E91E63' : '1px solid #eee'}}>
                             <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px'}}>
                               <div style={{width:'48px', height:'48px', borderRadius:'50%', background:`linear-gradient(135deg,${stage.color}33,${stage.color}11)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px', border:`2px solid ${stage.color}44`}}>{c.icon}</div>
                               <div style={{flex:1}}>
@@ -5451,13 +5453,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                                   <div style={{display:'flex', flexWrap:'wrap', gap:'6px', maxHeight:'150px', overflow:'auto'}}>
                                     {gifts.map(item => (
                                       <button key={item.key} onClick={() => { handleGift(c.id, item.key); setMarriageView(null); }}
-                                        style={{padding:'6px 10px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', fontSize:'11px', cursor:'pointer', color:'#333'}}>
+                                        style={{padding:'6px 10px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'11px', cursor:'pointer', color:'#333'}}>
                                         {item.icon} {item.name} {item.count > 1 ? `x${item.count}` : ''}
                                       </button>
                                     ))}
                                   </div>
                                 ); })()}
-                                <button onClick={() => setMarriageView(null)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'10px', border:'1px solid #ddd', background:'#fff', fontSize:'10px', cursor:'pointer', color:'#999'}}>关闭</button>
+                                <button onClick={() => setMarriageView(null)} style={{marginTop:'8px', padding:'4px 12px', borderRadius:'10px', border:'1px solid #ddd', background:'transparent', fontSize:'10px', cursor:'pointer', color:'#999'}}>关闭</button>
                               </div>
                             )}
                           </div>
@@ -5467,7 +5469,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         <div style={{marginTop:'8px'}}>
                           <div style={{fontSize:'12px', color:'#999', marginBottom:'8px'}}>🔒 未解锁</div>
                           {locked.map(c => (
-                            <div key={c.id} style={{display:'flex', alignItems:'center', gap:'10px', padding:'12px', background:'#f5f5f5', borderRadius:'12px', marginBottom:'6px', opacity:0.6}}>
+                            <div key={c.id} style={{display:'flex', alignItems:'center', gap:'10px', padding:'12px', background:'transparent', borderRadius:'12px', marginBottom:'6px', opacity:0.6}}>
                               <div style={{width:'36px', height:'36px', borderRadius:'50%', background:'#e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px'}}>❓</div>
                               <div>
                                 <div style={{fontWeight:'bold', fontSize:'13px', color:'#999'}}>{c.name}</div>
@@ -6219,7 +6221,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           next.season = (prev.season || 1) + 1;
           next.seasonStartDate = today;
           next.seasonBestRank = 'bronze';
-          next.rank = 'bronze';
+          const rankOrder = ARENA_RANKS.map(r => r.id);
+          const curIdx = rankOrder.indexOf(prev.rank || 'bronze');
+          const softIdx = Math.max(0, curIdx - 2);
+          next.rank = rankOrder[softIdx] || 'bronze';
           next.stars = 0;
         }
       }
@@ -10342,7 +10347,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       const bossIsShiny = challenge.bossLvl >= 80;
       const bossPet = createPet(challenge.boss, challenge.bossLvl, true, bossIsShiny);
-      if (challenge.bossLvl >= 90) bossPet.customStatMult = 1.2;
+      if (challenge.bossLvl >= 90) bossPet.customStatMult = 1.1;
       else if (challenge.bossLvl >= 75) bossPet.customStatMult = 1.1;
       enemyParty.push(bossPet);
       const targetSize = challenge.teamSize || 6;
@@ -12763,14 +12768,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const spCafeBonus = _m.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === _m.spouse), (getMarriageLevel(_m.affections[_m.spouse] || 0)).level).cafeGold || 0) : 0;
     const spCafeBase = _m.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === _m.spouse), (getMarriageLevel(_m.affections[_m.spouse] || 0)).level).cafeGoldBase || 0) : 0;
     const cafeGoldMult = 1 + spCafeBonus + spCafeBase;
-    const workerMult = 1 + Math.max(0, workers.length - 1) * 0.3;
+    const workerMult = 1 + Math.max(0, workers.length - 1) * 0.15;
     const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult * cafeGoldMult * workerMult);
     const today = getLocalDateStr();
     let actualCafeGold = 0;
     setCafe(prev => {
       const { _pendingSideEffects, ...rest } = prev;
       const soFar = rest.cafeDailyGoldDate === today ? (rest.cafeDailyGoldEarned || 0) : 0;
-      actualCafeGold = Math.min(goldEarned, Math.max(0, 50000 - soFar));
+      actualCafeGold = Math.min(goldEarned, Math.max(0, 25000 - soFar));
       return { ...rest, cafeDailyGoldDate: today, cafeDailyGoldEarned: soFar + actualCafeGold };
     });
     setGold(g => g + actualCafeGold);
@@ -15004,7 +15009,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (fx.id === 'endure' && !defender._endureUsed) { endured = true; defender._endureUsed = true; }
           });
           if (endured) { dmg = defender.currentHp - 1; survivalMsg = `🪶 ${defender.name} 的不死鸟羽发动，硬撑住了！`; }
-          else if (source === 'enemy' && defender.intimacy >= 200 && Math.random() < 0.15) {
+          else if (source === 'enemy' && defender.intimacy >= 200 && Math.random() < 0.06) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 为了不让你伤心，撑住了攻击！`;
           }
@@ -15487,10 +15492,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
       const kwExpBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.exp || 0) : 0;
-      const kwExpBuff = (kingdomWar?.expBuffBattles > 0) ? 50 : 0;
+      const kwExpBuff = (kingdomWar?.expBuffBattles > 0) ? 25 : 0;
       const lvlDiff = pet.level - deadEnemy.level;
       const underLvlBonus = lvlDiff < -10 ? 1.5 : lvlDiff < -5 ? 1.2 : 1.0;
-      const lvlPenalty = lvlDiff > 20 ? 0.2 : lvlDiff > 10 ? 0.5 : lvlDiff > 5 ? 0.8 : 1.0;
+      const lvlPenalty = lvlDiff > 20 ? 0.4 : lvlDiff > 10 ? 0.5 : lvlDiff > 5 ? 0.8 : 1.0;
       const rkPerk = getRankPerkEffects(kingdomWar);
       let expGain = Math.floor(baseExp * shareRatio * lvlPenalty * underLvlBonus * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100) * (rkPerk.battleExpMult || 1) * (rkPerk.allBonusMult || 1));
       if (!Number.isFinite(expGain) || expGain < 0) expGain = 0;
@@ -16403,7 +16408,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setLeagueRound(0); 
             setCompletedChallenges(prev => [...prev, 'LEAGUE_CHAMPION']); 
             const candyCount = 1 + Math.min(2, Math.floor(leagueWins / 3));
-            const goldReward = Math.min(15000 + leagueWins * 5000, 40000);
+            const goldReward = Math.min(15000 + (leagueWins + 1) * 5000, 40000);
             setInventory(prev => ({...prev, max_candy: (prev.max_candy || 0) + candyCount}));
             setGold(g => g + goldReward);
             const rand = Math.random();
@@ -20215,7 +20220,7 @@ const renderMenu = () => {
 
             return (
               <article key={m.id} className={`map-card-pro world-region-card ${themeClass} difficulty-${diffTier}`} style={{
-                ...(isLocked ? {filter:'brightness(0.7) saturate(0.6)', cursor:'not-allowed'} : undefined),
+                ...(isLocked ? {filter:'brightness(0.8) saturate(0.7)', cursor:'not-allowed'} : undefined),
                 ...(isContestedActive && !isLocked ? { border: '1px solid rgba(255,200,0,0.3)'} : {}),
               }} onClick={() => { if (isLocked) showMapToast('🔒', '区域锁定', lockReason, 2000); else enterMap(m.id); }}>
                 {isContestedActive && !isLocked && (
@@ -20282,7 +20287,7 @@ const renderMenu = () => {
                       {m.isCapital ? `君主 · ${m.lordName || '???'}` : m.isContested ? `守将 · ${(() => { const t = kingdomWar.territories?.[m.id]; return t && t.owner !== 'neutral' ? FACTIONS[t.owner]?.name + '军' : '无'; })()}` : `馆主 · ${m.gymName || '???'}`}
                     </strong>
                   </div>
-                  <em>{m.isCapital ? `${m.lordTitle}` : m.isContested ? `Lv.${m.lvl[0]}-${m.lvl[1]}` : `Lv.${m.gymLvl}`}</em>
+                  <em>{m.isCapital ? `${m.lordTitle}` : m.isContested ? `Lv.${m.lvl?.[0] || '?'}-${m.lvl?.[1] || '?'}` : `Lv.${m.gymLvl || m.lvl?.[1] || '?'}`}</em>
                 </div>
 
                 {/* 装饰性背景图标 */}
