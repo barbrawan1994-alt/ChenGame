@@ -11786,7 +11786,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 });
                 return {
                     ...prev,
-                    playerCombatStates: updatedCombatStates
+                    playerCombatStates: updatedCombatStates,
+                    enemyParty: tempBattle.enemyParty.map(e => ({...e})),
                 };
             });
             if (activeDidLevelUp) {
@@ -11794,7 +11795,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 await wait(1200); setAnimEffect(null);
             }
 
-            const nextEnemyIdx = tempBattle.enemyParty.findIndex((p, i) => i > tempBattle.enemyActiveIdx && p.currentHp > 0);
+            const nextEnemyIdx = tempBattle.enemyParty.findIndex((p, i) => i !== tempBattle.enemyActiveIdx && p.currentHp > 0);
             if (nextEnemyIdx !== -1) {
                 setBattle(prev => ({
                     ...prev, enemyActiveIdx: nextEnemyIdx, phase: 'anim', 
@@ -13877,13 +13878,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return {
           ...prev,
           playerCombatStates: updatedCombatStates,
+          enemyParty: state.enemyParty.map(e => ({...e})),
         };
       });
       if (activeDidLevelUp) {
         setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
         await wait(1200); setAnimEffect(null);
       }
-      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i > state.enemyActiveIdx && p.currentHp > 0);
+      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i !== state.enemyActiveIdx && p.currentHp > 0);
       if (nextEnemyIdx !== -1) {
         setBattle(prev => ({
           ...prev,
@@ -14104,7 +14106,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 	        setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
 	        await wait(1000); setAnimEffect(null);
 	      }
-	      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i > state.enemyActiveIdx && p.currentHp > 0);
+	      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i !== state.enemyActiveIdx && p.currentHp > 0);
 	      if (nextEnemyIdx !== -1) {
 	        setBattle(prev => prev ? ({
 	          ...prev,
