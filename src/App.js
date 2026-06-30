@@ -1203,7 +1203,6 @@ const [infinityState, setInfinityState] = useState(() => {
     }
     const enemy = b.enemyParty?.[enemyIdx];
     if (!enemy) return;
-    if (enemy.level > player.level + 10) { showMapToast('⚠️', '自动战斗暂停', '对手等级过高，建议手动操作', 2000); return; }
     const moves = player.combatMoves || [];
     const playerStats = getStats(party[targetIdx] || player);
     const hpPercent = player.currentHp / Math.max(1, playerStats.maxHp);
@@ -1223,7 +1222,7 @@ const [infinityState, setInfinityState] = useState(() => {
       }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
-    if (bestScore < 0) { showMapToast('⚠️', '自动战斗暂停', '无可用技能，请手动选择', 2000); return; }
+    if (bestScore < 0) { bestIdx = 0; }
     if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
     const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx, enemyIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
@@ -24911,7 +24910,7 @@ const renderMenu = () => {
 
         <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
             <button className="battle-control-pill" onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{ top: 8 }}>⏩ {battleSpeed}x</button>
-            <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title={autoBattle && battle?.enemyParty?.[battle.enemyActiveIdx] && battle?.playerCombatStates?.[battle.activeIdx] && battle.enemyParty[battle.enemyActiveIdx].level > battle.playerCombatStates[battle.activeIdx].level - 10 ? '未触发：敌方等级差不足10级' : '弱敌自动战斗：我方等级高于对方10级及以上时自动出招'} style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
+            <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title="自动战斗：开启后AI自动选择最优技能出招" style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
             <button className="battle-control-pill" onClick={() => setShowTypeChart(true)} style={{ top: 84 }}>属性表</button>
             <button className="battle-control-pill" onClick={() => setShowKeyHelp(h => !h)} style={{ top: 122, fontSize: '11px' }} title="快捷键: 1-4选技能 R逃跑 A自动">⌨️</button>
             {(battle.sharedPlayerMaxChakra > 0 || battle.sharedPlayerMaxCE > 0) && (
