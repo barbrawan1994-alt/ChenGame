@@ -19,6 +19,8 @@ export * from './mine';
 export * from './bountyTemplates';
 export * from './training';
 export * from './infinityCastle';
+export * from './spiritDomains';
+export * from './ecoCrises';
 export * from './worldBoss';
 export * from './achievements';
 export * from './gang';

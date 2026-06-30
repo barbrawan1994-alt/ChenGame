@@ -6,6 +6,7 @@
 export const WORLD_BOSSES = [
   {
     id: 'wb_dragon_king', name: '龙王·雷吉纳斯', emoji: '🐉', type: 'DRAGON',
+    spawnMapId: 8,
     baseLv: 80, baseHp: 50000, baseStats: { hp: 200, p_atk: 180, p_def: 150, s_atk: 160, s_def: 130, spd: 120 },
     traits: ['intimidate', 'multiscale'],
     phases: [
@@ -23,6 +24,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_ice_titan', name: '冰霜泰坦·弗罗斯特', emoji: '🧊', type: 'ICE',
+    spawnMapId: 9,
     baseLv: 85, baseHp: 55000, baseStats: { hp: 220, p_atk: 140, p_def: 200, s_atk: 120, s_def: 180, spd: 80 },
     traits: ['ice_body', 'sturdy'],
     phases: [
@@ -40,6 +42,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_shadow_lord', name: '暗影领主·奈克萨斯', emoji: '👹', type: 'DARK',
+    spawnMapId: 7,
     baseLv: 85, baseHp: 48000, baseStats: { hp: 180, p_atk: 200, p_def: 130, s_atk: 180, s_def: 110, spd: 160 },
     traits: ['pressure', 'dark_aura'],
     phases: [
@@ -57,6 +60,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_storm_phoenix', name: '风暴凤凰·塞拉菲姆', emoji: '🔥', type: 'FIRE',
+    spawnMapId: 5,
     baseLv: 90, baseHp: 52000, baseStats: { hp: 190, p_atk: 170, p_def: 140, s_atk: 190, s_def: 130, spd: 170 },
     traits: ['flame_body', 'regenerator'],
     phases: [
@@ -74,6 +78,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_earth_golem', name: '大地巨像·盖亚', emoji: '⛰️', type: 'ROCK',
+    spawnMapId: 10,
     baseLv: 88, baseHp: 65000, baseStats: { hp: 280, p_atk: 160, p_def: 240, s_atk: 140, s_def: 220, spd: 40 },
     traits: ['sturdy', 'sand_stream'],
     phases: [
@@ -91,6 +96,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_cosmic_entity', name: '宇宙意志·虚空', emoji: '🌌', type: 'COSMIC',
+    spawnMapId: 12,
     baseLv: 95, baseHp: 70000, baseStats: { hp: 250, p_atk: 190, p_def: 180, s_atk: 200, s_def: 170, spd: 150 },
     traits: ['pressure', 'magic_guard'],
     phases: [
@@ -108,6 +114,7 @@ export const WORLD_BOSSES = [
   },
   {
     id: 'wb_fairy_queen', name: '妖精女王·蒂塔妮亚', emoji: '🧚', type: 'FAIRY',
+    spawnMapId: 11,
     baseLv: 82, baseHp: 45000, baseStats: { hp: 200, p_atk: 120, p_def: 160, s_atk: 150, s_def: 180, spd: 140 },
     traits: ['magic_bounce', 'fairy_aura'],
     phases: [
@@ -124,7 +131,27 @@ export const WORLD_BOSSES = [
     ],
   },
   {
+    id: 'wb_meteor_whale', name: '陨星巨鲸', emoji: '🐋', type: 'WATER',
+    spawnMapId: 4,
+    baseLv: 88, baseHp: 62000,
+    baseStats: { hp: 260, p_atk: 150, p_def: 160, s_atk: 180, s_def: 150, spd: 110 },
+    traits: ['pressure', 'multiscale'],
+    phases: [
+      { hpPct: 1.0, mechanic: 'meteor_summon', buff: null, msg: '陨星巨鲸召唤小陨石坠落！' },
+      { hpPct: 0.66, mechanic: 'gravity_field', buff: { spd: -2 }, msg: '重力扭曲！速度慢的灵兽行动困难！' },
+      { hpPct: 0.33, mechanic: 'star_dream', buff: { s_def: 2 }, msg: '进入星海梦境！光/超能/妖精系才能破盾！', shield: 8000 },
+    ],
+    rewards: { gold: 12000, exp_candy: 4, tickets: 3 },
+    milestones: [
+      { dmg: 6000, reward: { gold: 2500 }, desc: '造成6000伤害: 💰 2500金币' },
+      { dmg: 18000, reward: { gold: 6000, tickets: 1 }, desc: '造成18000伤害: 💰 6000金 + 🎫 竞技票' },
+      { dmg: 35000, reward: { exp_candy: 3 }, desc: '造成35000伤害: 🍬 经验糖果x3' },
+      { dmg: 62000, reward: { gold: 15000, title: '星海猎鲸人' }, desc: '击败Boss: 💰 15000金 + 称号「星海猎鲸人」' },
+    ],
+  },
+  {
     id: 'wb_kurama', name: '暴走九尾·九喇嘛', emoji: '🦊', type: 'FIRE',
+    spawnMapId: 305,
     baseLv: 90, baseHp: 58000, baseStats: { hp: 240, p_atk: 190, p_def: 130, s_atk: 170, s_def: 120, spd: 170 },
     traits: ['blaze', 'intimidate'],
     phases: [

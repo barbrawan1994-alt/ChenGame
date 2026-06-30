@@ -77,6 +77,8 @@ import {
   TRAINING_CAMPS, TRAINING_TIERS, TRAINING_MAX_SLOTS, TRAINING_REQ_BADGES, TRAINING_EVENTS, DEFAULT_TRAINING_STATE, calcTrainingGain, TRAINING_MAX_EV, TRAINING_TOTAL_MAX_EV,
   WORLD_BOSSES, WORLD_BOSS_MAX_ATTEMPTS, WORLD_BOSS_REQ_BADGES, DEFAULT_WORLD_BOSS_STATE, getTodayBoss, scaleBossHp, scaleBossLevel,
   getInfinityFloorModifier, isInfinityMilestoneFloor, getInfinityMilestoneReward, INFINITY_MILESTONE_FLOORS,
+  SPIRIT_DOMAINS, getSpiritDomainByMapId, getSpiritDomainRule,
+  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById,
 } from './data';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
@@ -1075,6 +1077,8 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [pcBatchRelease, setPcBatchRelease] = useState(false);
   const [pcBatchSelected, setPcBatchSelected] = useState(new Set());
   const [confirmModal, setConfirmModal] = useState(null);
+  const [gymEntryModal, setGymEntryModal] = useState(null);
+  const [ecoCrisisModal, setEcoCrisisModal] = useState(null);
   const [statTooltip, setStatTooltip] = React.useState(null); 
   // 筛选和详情
   const [dexFilter, setDexFilter] = useState('all'); 
@@ -1263,7 +1267,7 @@ const [infinityState, setInfinityState] = useState(() => {
     }
     // 3. 定义【战斗音乐组】
     else if (view === 'battle') {
-      if (battle && (battle.isBoss || battle.isGym || battle.isChallenge || battle.type === 'eclipse_leader')) {
+      if (battle && (battle.isBoss || battle.isGym || battle.isChallenge || battle.type === 'eclipse_leader' || battle.type === 'spirit_domain' || battle.type === 'world_boss' || battle.type === 'eco_crisis')) {
         targetSrc = BGM_SOURCES.BOSS;
       } else {
         targetSrc = BGM_SOURCES.BATTLE;
@@ -2922,7 +2926,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
     const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
     return {
-    saveVersion: 25,
+    saveVersion: 26,
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
     dexMilestoneClaimed, lastPetTradeDate, lastTradeDate: lastPetTradeDate,
@@ -2935,6 +2939,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null, floorModifier: infinityState.floorModifier || null, bestFloor: infinityState.bestFloor || 0 } : null,
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
     trainingState, worldBossState, raceState, narutoState,
+    spiritDomainsCleared, ecoCrisisState,
     savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
@@ -3020,6 +3025,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [trainingState, setTrainingState] = useState(() => ({ ...DEFAULT_TRAINING_STATE, ...(savedData.trainingState || {}) }));
   const [worldBossState, setWorldBossState] = useState(() => ({ ...DEFAULT_WORLD_BOSS_STATE, ...(savedData.worldBossState || {}) }));
   const [raceState, setRaceState] = useState(() => savedData.raceState || { lastDate: '', dailyRaces: 0, totalWins: 0 });
+  const [spiritDomainsCleared, setSpiritDomainsCleared] = useState(() => savedData.spiritDomainsCleared || []);
+  const [ecoCrisisState, setEcoCrisisState] = useState(() => savedData.ecoCrisisState || { cleared: [], active: null });
   const [raceResult, setRaceResult] = useState(null);
   const [narutoState, setNarutoState] = useState(() => {
     const loaded = { ...DEFAULT_NARUTO_STATE, ...(savedData.narutoState || {}) };
@@ -5479,6 +5486,107 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return { ...prev, teams };
     });
     showMapToast('📡', '决策已下达', '探险队继续执行任务...', 1500);
+  };
+
+  const startSpiritDomainBattle = (domain) => {
+    if (!domain || spiritDomainsCleared.includes(domain.id)) return;
+    if (badges.length < domain.reqBadges) {
+      showMapToast('🔒', '未解锁', `需要 ${domain.reqBadges} 枚徽章`, 1500);
+      return;
+    }
+    const rule = getSpiritDomainRule(domain.rule);
+    const aceLvl = domain.gymLvl;
+    const enemyParty = [];
+    for (let i = 0; i < 4; i++) {
+      const pid = domain.pool[Math.floor(Math.random() * domain.pool.length)];
+      enemyParty.push(createPet(pid, aceLvl - 4 + i, true));
+    }
+    const leader = createPet(domain.leaderId, aceLvl + 2, true);
+    leader.name = domain.leaderName;
+    leader.customStatMult = 1.15;
+    enemyParty.push(leader);
+    startBattle({
+      id: domain.mapId,
+      name: domain.name,
+      pool: domain.pool,
+      gymLeader: domain.leaderId,
+      gymLvl: domain.gymLvl,
+      customParty: enemyParty,
+      trainerName: `${domain.leaderName} [灵域]`,
+      drop: domain.reward?.gold || 3000,
+      spiritDomain: domain,
+      domainRule: domain.rule,
+    }, 'spirit_domain');
+  };
+
+  const runEcoCrisisStep = (crisisId, stepIdx) => {
+    const crisis = getEcoCrisisById(crisisId);
+    if (!crisis || stepIdx >= crisis.steps.length) {
+      if (crisis) {
+        setEcoCrisisState(prev => ({
+          cleared: [...new Set([...(prev.cleared || []), crisisId])],
+          active: null,
+        }));
+        if (crisis.reward?.gold) setGold(g => g + crisis.reward.gold);
+        if (crisis.reward?.item) {
+          const cat = crisis.reward.item.includes('ball') ? 'balls' : crisis.reward.item.includes('stone') ? 'stones' : 'meds';
+          setInventory(p => ({ ...p, [cat]: { ...p[cat], [crisis.reward.item]: (p[cat]?.[crisis.reward.item] || 0) + (crisis.reward.itemCount || 1) } }));
+        }
+        showMapToast('🌿', '生态恢复', `${crisis.name} 调查完成！`, 3500);
+      }
+      setEcoCrisisModal(null);
+      return;
+    }
+    const step = crisis.steps[stepIdx];
+    if (step.type === 'explore' || step.type === 'puzzle') {
+      setEcoCrisisModal({ crisisId, stepIdx, step, crisis });
+      return;
+    }
+    setEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx } }));
+    setCurrentMapId(crisis.mapId);
+    setView('grid_map');
+    const lvl = step.lvl || [20, 30];
+    const count = step.count || 3;
+    const enemyParty = [];
+    if (step.type === 'boss') {
+      const boss = createPet(step.bossId || step.pool?.[0] || 1, step.lvl || lvl[1], true, true);
+      boss.name = step.enemyName || boss.name;
+      boss.customStatMult = 1.2;
+      enemyParty.push(boss);
+    } else {
+      for (let i = 0; i < count; i++) {
+        const pid = step.pool[Math.floor(Math.random() * step.pool.length)];
+        enemyParty.push(createPet(pid, _.random(lvl[0], lvl[1]), true));
+      }
+    }
+    startBattle({
+      id: crisis.mapId,
+      name: step.title,
+      customParty: enemyParty,
+      trainerName: step.enemyName || crisis.name,
+      drop: step.drop || 2000,
+      ecoCrisis: { crisisId, stepIdx },
+    }, 'eco_crisis');
+  };
+
+  const startEcoCrisis = (crisisId) => {
+    const crisis = getEcoCrisisById(crisisId);
+    if (!crisis) return;
+    if ((ecoCrisisState.cleared || []).includes(crisisId)) {
+      showMapToast('✅', '已完成', '该区域的生态危机已解决', 2000);
+      return;
+    }
+    if (badges.length < crisis.reqBadges) {
+      showMapToast('🔒', '未解锁', `需要 ${crisis.reqBadges} 枚徽章`, 1500);
+      return;
+    }
+    setEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: 0 } }));
+    runEcoCrisisStep(crisisId, 0);
+  };
+
+  const advanceEcoCrisis = (crisisId, fromStep) => {
+    setEcoCrisisModal(null);
+    runEcoCrisisStep(crisisId, fromStep + 1);
   };
 
   const collectExpedition = (teamIdx) => {
@@ -9545,12 +9653,26 @@ const useGrowthItem = (petIndex, itemId) => {
         const aceLv = mapInfo.gymLvl || mapInfo.lvl?.[1] || 35;
         const poolPreview = (mapInfo.pool || []).slice(0, 3).map(id => POKEDEX.find(p => p.id === id)?.icon || '🐾').join(' ');
         const gymMsg = `推荐等级 Lv.${recLv} · 你的队伍平均 Lv.${avgLv}\n馆主王牌：${leaderDex ? `${leaderDex.icon || '🐾'} ${leaderDex.name}` : '???'} （约 Lv.${aceLv}）${poolPreview ? `\n本地区可遇精灵：${poolPreview}` : ''}`;
-        setConfirmModal({
-          title: `⚔️ ${mapInfo.name}道馆`,
-          msg: gymMsg,
-          confirmText: '开始挑战',
-          onOk: () => { startBattle(mapInfo, 'gym'); },
-        });
+        const spiritDomain = getSpiritDomainByMapId(currentMapId);
+        const domainAvailable = spiritDomain && badges.length >= spiritDomain.reqBadges && !spiritDomainsCleared.includes(spiritDomain.id);
+        const domainRule = domainAvailable ? getSpiritDomainRule(spiritDomain.rule) : null;
+        if (domainAvailable) {
+          setGymEntryModal({
+            mapInfo,
+            spiritDomain,
+            domainRule,
+            gymMsg,
+            onGym: () => startBattle(mapInfo, 'gym'),
+            onDomain: () => startSpiritDomainBattle(spiritDomain),
+          });
+        } else {
+          setConfirmModal({
+            title: `⚔️ ${mapInfo.name}道馆`,
+            msg: gymMsg,
+            confirmText: '开始挑战',
+            onOk: () => { startBattle(mapInfo, 'gym'); },
+          });
+        }
         return;
       }
 
@@ -9856,8 +9978,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const actualType = type === 'wild_double' ? 'wild' : type === 'trainer_double' ? 'trainer' : type;
     let isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader' || actualType === 'world_boss' || (actualType === 'tower' && challengeId?.isBoss);
     const isGym = actualType === 'gym';
+    const isSpiritDomain = actualType === 'spirit_domain';
+    const isEcoCrisis = actualType === 'eco_crisis';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType === 'naruto_survival' || actualType === 'tower' || actualType === 'elemental_trial' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isSpiritDomain || isEcoCrisis || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType === 'naruto_survival' || actualType === 'tower' || actualType === 'elemental_trial' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -9875,6 +9999,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (context?._arenaSpeedBoost) extraBattleData._arenaSpeedBoost = true;
     if (context?._arenaJutsuBoost) extraBattleData._arenaJutsuBoost = true;
     if (context?._arenaHalfHp) extraBattleData._arenaHalfHp = true;
+    if (context?.domainRule) extraBattleData.domainRule = context.domainRule;
+    if (context?.spiritDomain) extraBattleData.spiritDomain = context.spiritDomain;
+    if (context?.ecoCrisis) extraBattleData.ecoCrisis = context.ecoCrisis;
 
     // -------------------------------------------------
     // 1. PvP 对战
@@ -10238,6 +10365,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
        }
        enemyParty.push(createPet(enemyId, level, true));
        dropGold = 1000;
+    }
+    // -------------------------------------------------
+    // 12b. 灵域试炼 / 生态危机
+    // -------------------------------------------------
+    else if (type === 'spirit_domain') {
+        enemyParty = context.customParty || [];
+        trainerName = context.trainerName || '灵域守卫';
+        dropGold = context.drop || 3000;
+        const ruleInfo = getSpiritDomainRule(context.domainRule);
+        if (ruleInfo) extraBattleData._domainRuleName = ruleInfo.name;
+    }
+    else if (type === 'eco_crisis') {
+        enemyParty = context.customParty || [];
+        trainerName = context.trainerName || '生态危机';
+        dropGold = context.drop || 2000;
     }
     // -------------------------------------------------
     // 13. 无限城
@@ -10709,7 +10851,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       enemyActiveIdx: 0, 
       activeIdx, 
       phase: 'input', 
-      logs: [isDouble && enemyParty.length > 1 ? `遭遇了 ${enemyParty[0].name} 和 ${enemyParty[1].name}！双打战斗！` : (actualType === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`))],
+      logs: [isDouble && enemyParty.length > 1 ? `遭遇了 ${enemyParty[0].name} 和 ${enemyParty[1].name}！双打战斗！` : (actualType === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isSpiritDomain ? `🌀 灵域试炼开始！规则：${extraBattleData._domainRuleName || '特殊战场'}` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`)))],
       mapId: context?.id,
       drop: dropGold,
       isBoss,
@@ -11256,6 +11398,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (playerFirst) {
           // 玩家先手
           enemyDied = await performAction(player, enemy, actualMove, 'player', tempBattle);
+          if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
+            tempBattle._lastPlayerMove = { name: actualMove.name, p: actualMove.p, t: actualMove.t, cat: actualMove.cat, acc: actualMove.acc || 100, effect: actualMove.effect };
+          }
           syncBattleState();
           {
             const pcs = tempBattle.playerCombatStates[tempBattle.activeIdx];
@@ -11286,6 +11431,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const currentEnemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
           if (!currentEnemy) { syncBattleState({ phase: 'input' }); return; }
           enemyDied = await performAction(player, currentEnemy, actualMove, 'player', tempBattle);
+          if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
+            tempBattle._lastPlayerMove = { name: actualMove.name, p: actualMove.p, t: actualMove.t, cat: actualMove.cat, acc: actualMove.acc || 100, effect: actualMove.effect };
+          }
           syncBattleState({ phase: 'input', enemyActiveIdx: tempBattle.enemyActiveIdx });
           {
             const pcs = tempBattle.playerCombatStates[tempBattle.activeIdx];
@@ -13291,7 +13439,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     let enemyMove = state._enemySelectedMove || null;
     state._enemySelectedMove = null;
-    if (enemyMove) {
+    if (state.domainRule === 'mirror_lake' && state._lastPlayerMove?.p > 0) {
+      enemyMove = { ...state._lastPlayerMove, pp: 99 };
+      addLog(`🪞 镜湖倒影！${enemy.name} 复制了【${state._lastPlayerMove.name}】！`);
+    } else if (enemyMove) {
       // 使用executeTurn预选的技能以保持优先级判定一致
     } else if (isHardBattle && smartMoves.length > 1) {
       // 训练家AI: 根据局势智能选择技能
@@ -13470,15 +13621,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await processPassive(enemy, 'enemy');
 
     if (state.type === 'world_boss' && enemy.currentHp > 0) {
-      const wbId = worldBossState?.currentBossId;
-      const wbData = wbId ? (typeof WORLD_BOSSES !== 'undefined' ? WORLD_BOSSES.find(b => b.id === wbId) : null) : null;
+      const wbData = state.worldBoss || WORLD_BOSSES.find(b => b.id === worldBossState?.currentBossId);
       if (wbData?.phases) {
         const hpPct = enemy.currentHp / (getStats(enemy).maxHp || 1);
         const activePhase = [...wbData.phases].reverse().find(ph => hpPct <= (ph.hpPct || 1));
-        if (activePhase?.buff && !enemy._phaseApplied?.[String(activePhase.hpPct)]) {
-          Object.entries(activePhase.buff).forEach(([k, v]) => { enemy.stages[k] = Math.min(6, (enemy.stages[k] || 0) + v); });
+        state._gravityActive = activePhase?.mechanic === 'gravity_field';
+        if (activePhase?.mechanic === 'star_dream' && activePhase.shield && (enemy._starShield || 0) <= 0) {
+          enemy._starShield = activePhase.shield;
+        }
+        if (activePhase && !enemy._phaseApplied?.[String(activePhase.hpPct)]) {
+          if (activePhase.buff) {
+            Object.entries(activePhase.buff).forEach(([k, v]) => { enemy.stages[k] = Math.min(6, Math.max(-6, (enemy.stages[k] || 0) + v)); });
+          }
           enemy._phaseApplied = { ...(enemy._phaseApplied || {}), [String(activePhase.hpPct)]: true };
           addLog(`⚠️ ${activePhase.msg}`);
+        }
+        if (activePhase?.mechanic === 'meteor_summon' && player.currentHp > 0 && Math.random() < 0.45) {
+          const meteorDmg = Math.max(1, Math.floor(getStats(player).maxHp * 0.06));
+          player.currentHp = Math.max(0, player.currentHp - meteorDmg);
+          addLog(`☄️ 小陨石坠落！${player.name} 受到 ${meteorDmg} 点伤害`);
+          if (player.currentHp <= 0) playerDied = true;
         }
       }
     }
@@ -13687,7 +13849,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else {
       if (state.enemyParty[state.enemyActiveIdx]?.volatiles) state.enemyParty[state.enemyActiveIdx].volatiles.protected = false;
       if (state.isolateTurns > 0) state.isolateTurns--;
-      setBattle(prev => ({ 
+      if (state.domainRule === 'wind_tower' && player.currentHp > 0 && enemy.currentHp > 0) {
+        const pSpd = getStats(player).spd;
+        const eSpd = getStats(enemy).spd;
+        if (pSpd !== eSpd) {
+          const fasterSide = pSpd > eSpd ? 'player' : 'enemy';
+          const faster = pSpd > eSpd ? player : enemy;
+          const slower = pSpd > eSpd ? enemy : player;
+          const followMove = { name: '风塔乱流', p: Math.max(20, Math.floor((faster.level || 30) * 0.35)), t: 'FLYING', cat: 'special', acc: 100, pp: 99 };
+          addLog(`💨 风塔乱流！${faster.name} 发动追击！`);
+          await wait(500);
+          await performAction(faster, slower, followMove, fasterSide, state);
+        }
+      }
+      setBattle(prev => ({
           ...prev, 
 	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
 	          enemyParty: state.enemyParty.map(e => ({...e})),
@@ -13907,6 +14082,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return false;
     }
 
+    if (source === 'player' && battleState.domainRule === 'forest_vine' && Math.random() < 0.35) {
+      addLog(`🌿 藤蔓封锁！${attacker.name} 的技能被阻挡了！`);
+      await wait(800);
+      return false;
+    }
+
+    if (battleState._gravityActive && battleState.type === 'world_boss') {
+      const playerUnit = battleState.playerCombatStates?.[battleState.activeIdx];
+      const enemyUnit = battleState.enemyParty?.[battleState.enemyActiveIdx];
+      if (playerUnit && enemyUnit) {
+        const pSpd = getStats(playerUnit).spd;
+        const eSpd = getStats(enemyUnit).spd;
+        const atkSpd = source === 'player' ? pSpd : eSpd;
+        const otherSpd = source === 'player' ? eSpd : pSpd;
+        if (atkSpd < otherSpd) {
+          addLog(`🌌 重力扭曲！${attacker.name} 行动缓慢，本回合无法行动！`);
+          await wait(800);
+          return false;
+        }
+      }
+    }
+
     // 1. 异常状态判定
     if (atkState.status === 'SLP') {
         if (!atkState.volatiles.sleepTurns || atkState.volatiles.sleepTurns <= 0) atkState.volatiles.sleepTurns = 2 + Math.floor(Math.random() * 3);
@@ -14024,7 +14221,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (move.pp > 0) {
             let ppCost = 1;
             if (defState.trait === 'pressure') ppCost = 2;
+            if (battleState.domainRule === 'fire_heat' && move.t === 'WATER') ppCost += 1;
             move.pp = Math.max(0, move.pp - ppCost);
+            if (battleState.domainRule === 'fire_heat' && move.t === 'WATER' && ppCost > 1) {
+              addLog(`🔥 高温环境使水系技能额外消耗 PP！`);
+            }
         }
     }
     const tryLeppaBerry = (unit, state, moveUsed) => {
@@ -14631,6 +14832,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
           else if (source === 'enemy' && defender.intimacy >= 200 && Math.random() < 0.06) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 为了不让你伤心，撑住了攻击！`;
+          }
+        }
+
+        if (dmg > 0 && (defender._starShield || 0) > 0 && battleState?.type === 'world_boss') {
+          const breakTypes = ['FAIRY', 'PSYCHIC'];
+          if (!breakTypes.includes(move.t)) {
+            addLog(`✨ 星海护盾免疫了攻击！需妖精/超能系破盾`);
+            dmg = 0;
+          } else {
+            const absorbed = Math.min(defender._starShield, dmg);
+            defender._starShield -= absorbed;
+            dmg -= absorbed;
+            addLog(`✨ 护盾承受 ${absorbed.toLocaleString()} 伤害${defender._starShield <= 0 ? '，护盾破碎！' : `（剩余 ${defender._starShield.toLocaleString()}）`}`);
           }
         }
 
@@ -16598,6 +16812,25 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 竞技场结算
     if (battle.type === 'arena') handleArenaResult(true);
+
+    if (battle.type === 'spirit_domain' && battle.spiritDomain) {
+      const sd = battle.spiritDomain;
+      if (!spiritDomainsCleared.includes(sd.id)) {
+        setSpiritDomainsCleared(prev => [...new Set([...prev, sd.id])]);
+        if (sd.reward?.gold) { setGold(g => g + sd.reward.gold); updateAchStat({ totalGoldEarned: sd.reward.gold }); }
+        if (sd.reward?.title) unlockTitle(sd.reward.title);
+        showMapToast(sd.icon || '🌀', '灵域征服', `通关 ${sd.name}！`, 3500);
+      }
+    }
+
+    if (battle.type === 'eco_crisis' && battle.ecoCrisis) {
+      const { crisisId, stepIdx } = battle.ecoCrisis;
+      setBattle(null);
+      setView('world_map');
+      setTimeout(() => runEcoCrisisStep(crisisId, stepIdx + 1), 500);
+      return;
+    }
+
     // 忍者试炼生存试炼结算
     if (battle.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
       const wave = narutoExamUI.survivalWave || 0;
@@ -16949,7 +17182,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const handleRun = async () => {
     if (!battle) return;
-    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.dungeonId) {
+    if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || battle.dungeonId) {
         addLog("⚠️ 这种战斗无法逃跑！必须决出胜负！");
         return;
     }
@@ -19684,6 +19917,36 @@ const renderMenu = () => {
                     <span style={{ width: `${mapDexPct}%`, background: mapDexColor }} />
                   </div>
                 )}
+
+                {(() => {
+                  const crisis = getEcoCrisisByMapId(m.id);
+                  const crisisCleared = crisis && (ecoCrisisState.cleared || []).includes(crisis.id);
+                  const todayBoss = getTodayBoss(getLocalDateStr());
+                  const bossHere = todayBoss?.spawnMapId === m.id && badges.length >= WORLD_BOSS_REQ_BADGES && !isLocked;
+                  const domain = getSpiritDomainByMapId(m.id);
+                  const domainOpen = domain && badges.length >= domain.reqBadges && !spiritDomainsCleared.includes(domain.id);
+                  if (!crisis && !bossHere && !domainOpen && !crisisCleared) return null;
+                  return (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'8px', position:'relative', zIndex:3 }} onClick={e => e.stopPropagation()}>
+                      {crisis && !crisisCleared && !isLocked && badges.length >= crisis.reqBadges && (
+                        <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'10px', fontWeight:'700', padding:'4px 10px', borderRadius:'10px', border:'none', cursor:'pointer', background: crisis.color || '#2E7D32', color:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.2)' }}>
+                          {crisis.icon} 调查·{crisis.name}
+                        </button>
+                      )}
+                      {crisisCleared && (
+                        <span style={{ fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background:'rgba(76,175,80,0.15)', color:'#2E7D32', fontWeight:'700' }}>✅ 生态已恢复</span>
+                      )}
+                      {bossHere && (
+                        <button type="button" onClick={() => { enterMap(m.id); setTimeout(() => startWorldBossFight(), 400); }} style={{ fontSize:'10px', fontWeight:'700', padding:'4px 10px', borderRadius:'10px', border:'none', cursor:'pointer', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff' }}>
+                          {todayBoss.emoji} 异象·{todayBoss.name}
+                        </button>
+                      )}
+                      {domainOpen && (
+                        <span style={{ fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background:'rgba(129,199,132,0.2)', color:'#1B5E20', fontWeight:'700' }}>{domain.icon} 道馆可挑战灵域试炼</span>
+                      )}
+                    </div>
+                  );
+                })()}
                 
                 <div className="world-region-card__footer">
                   <div>
@@ -23364,6 +23627,33 @@ const renderMenu = () => {
               </div>
             );
           })()}
+          {/* 生态危机 / 世界首领异象横幅 */}
+          {(() => {
+            const activeCrisis = ecoCrisisState.active ? getEcoCrisisById(ecoCrisisState.active.crisisId) : null;
+            const mapCrisis = getEcoCrisisByMapId(currentMapId);
+            const crisis = (activeCrisis?.mapId === currentMapId ? activeCrisis : null) || (!(ecoCrisisState.cleared || []).includes(mapCrisis?.id) ? mapCrisis : null);
+            const todayBoss = getTodayBoss(getLocalDateStr());
+            const bossHere = todayBoss?.spawnMapId === currentMapId && badges.length >= WORLD_BOSS_REQ_BADGES;
+            if (!crisis && !bossHere) return null;
+            return (
+              <div style={{ marginBottom:'6px', display:'flex', flexWrap:'wrap', gap:'8px', flexShrink:0 }}>
+                {crisis && (
+                  <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '22', border:`1px solid ${crisis.color || '#2E7D32'}55`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
+                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#1a1a2e' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
+                    {!(ecoCrisisState.cleared || []).includes(crisis.id) && (
+                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px', border:'none', background: crisis.color || '#2E7D32', color:'#fff', cursor:'pointer' }}>调查</button>
+                    )}
+                  </div>
+                )}
+                {bossHere && (
+                  <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background:'rgba(183,28,28,0.12)', border:'1px solid rgba(183,28,28,0.35)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
+                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#B71C1C' }}>{todayBoss.emoji} 异象·{todayBoss.name}</span>
+                    <button type="button" onClick={startWorldBossFight} style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px', border:'none', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff', cursor:'pointer' }}>挑战</button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {/* 2D 视口地图 - 自适应铺满 */}
           <div className="grid-viewport-v2 map-viewport-frame" ref={el => {
             if (el && !el.dataset.sized) {
@@ -24526,6 +24816,8 @@ const renderMenu = () => {
     const p2Stats = p2 ? getStats(p2) : null;
     const e2Stats = e2 ? getStats(e2) : null;
     const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.phase === 'double_input_2' ? 1 : 0]] : null;
+    const isDarkMoon = battle.domainRule === 'dark_moon';
+    const domainRuleInfo = battle.domainRule ? getSpiritDomainRule(battle.domainRule) : null;
 
     const renderBattleStageRow = (pet, slotInParty) => {
       if (!pet) return null;
@@ -25085,6 +25377,26 @@ const renderMenu = () => {
                 animation: 'pulse 2s ease-in-out infinite',
             }} />
         )}
+        {domainRuleInfo && (
+          <div style={{
+            position:'absolute', top:'8px', left:'50%', transform:'translateX(-50%)', zIndex:25,
+            background:'linear-gradient(90deg, rgba(76,175,80,0.9), rgba(56,142,60,0.85))',
+            color:'#fff', fontSize:'11px', fontWeight:'700', padding:'5px 14px', borderRadius:'20px',
+            boxShadow:'0 4px 12px rgba(0,0,0,0.25)', whiteSpace:'nowrap', pointerEvents:'none',
+          }}>
+            {domainRuleInfo.icon} 灵域规则：{domainRuleInfo.name} — {domainRuleInfo.desc}
+          </div>
+        )}
+        {battle.type === 'world_boss' && battle.worldBoss && (
+          <div style={{
+            position:'absolute', top: domainRuleInfo ? '36px' : '8px', left:'50%', transform:'translateX(-50%)', zIndex:25,
+            background:'linear-gradient(90deg, rgba(183,28,28,0.9), rgba(136,14,79,0.85))',
+            color:'#fff', fontSize:'10px', fontWeight:'700', padding:'4px 12px', borderRadius:'16px',
+            boxShadow:'0 4px 12px rgba(0,0,0,0.25)', pointerEvents:'none',
+          }}>
+            {battle.worldBoss.emoji} 世界首领 · {(battle.enemyParty?.[0]?._starShield || 0) > 0 ? `星海护盾 ${battle.enemyParty[0]._starShield.toLocaleString()}` : battle._gravityActive ? '重力扭曲中' : '阶段机制激活'}
+          </div>
+        )}
 
         <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
             <button className="battle-control-pill" onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{ top: 8 }}>⏩ {battleSpeed}x</button>
@@ -25407,9 +25719,15 @@ const renderMenu = () => {
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
                             <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
+                            {isDarkMoon ? (
+                              <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background:'#333', color:'#aaa', fontWeight:'bold', marginLeft:'4px'}}>???</span>
+                            ) : (
+                              <>
                             <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.type]?.color || '#888', color:'#fff', fontWeight:'bold', marginLeft:'4px'}}>{TYPES[e.type]?.name || e.type}</span>
                             {e.secondaryType && e.secondaryType !== e.type && <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.secondaryType]?.name || e.secondaryType}</span>}
                             {(() => { const weakTypes = Object.keys(TYPES || {}).filter(t => { let mod = getTypeMod(t, e.type); if (e.secondaryType && e.secondaryType !== e.type) mod *= getTypeMod(t, e.secondaryType); return mod >= 1.5; }); return weakTypes.length > 0 ? <span style={{fontSize:'9px',padding:'1px 5px',borderRadius:'6px',background:'rgba(244,67,54,0.15)',color:'#EF5350',fontWeight:'700',marginLeft:'2px'}}>弱:{weakTypes.slice(0,3).map(t => TYPES[t]?.name || t).join('/')}</span> : null; })()}
+                              </>
+                            )}
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
                             {e.isFusedShiny ? (
@@ -26030,7 +26348,7 @@ const renderMenu = () => {
                         <div className="actions-bar-h">
                             <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle} title={isDoubleBattle ? '双打模式中无法使用背包' : ''}>背包</button>
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}>交换</button>
-                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || !!battle.dungeonId}>逃跑</button>
+                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}>逃跑</button>
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed ? (() => {
                               const turnOk = battle.turnCount >= 3;
                               const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.5;
@@ -28579,6 +28897,42 @@ const renderMenu = () => {
               <button onClick={() => { (confirmModal.onCancel)?.(); setConfirmModal(null); }} style={{padding:'8px 20px', borderRadius:'10px', border:'1px solid #444', background:'transparent', color:'#aaa', fontSize:'13px', cursor:'pointer'}}>取消</button>
               <button onClick={() => { (confirmModal.onOk || confirmModal.onConfirm)?.(); setConfirmModal(null); }} style={{padding:'8px 20px', borderRadius:'10px', border:'none', background:'linear-gradient(90deg,#E91E63,#FF5722)', color:'#fff', fontSize:'13px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 15px rgba(233,30,99,0.3)'}}>{confirmModal.confirmText || '确认'}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* 道馆入口：道馆 vs 灵域试炼 */}
+      {gymEntryModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100003}} onClick={() => setGymEntryModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a2e1a,#0d1f0d)', borderRadius:'20px', padding:'24px', maxWidth:'380px', width:'92%', border:'1px solid rgba(129,199,132,0.3)', boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+            <div style={{fontSize:'18px', fontWeight:'800', color:'#A5D6A7', marginBottom:'8px'}}>⚔️ {gymEntryModal.mapInfo?.name}道馆</div>
+            <div style={{fontSize:'12px', color:'#bbb', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:'12px'}}>{gymEntryModal.gymMsg}</div>
+            {gymEntryModal.domainRule && (
+              <div style={{padding:'10px 12px', borderRadius:'12px', background:'rgba(76,175,80,0.12)', border:'1px solid rgba(76,175,80,0.25)', marginBottom:'16px'}}>
+                <div style={{fontSize:'13px', fontWeight:'700', color:'#81C784'}}>{gymEntryModal.spiritDomain?.icon} 灵域试炼：{gymEntryModal.spiritDomain?.name}</div>
+                <div style={{fontSize:'11px', color:'#aaa', marginTop:'4px'}}>{gymEntryModal.domainRule.icon} {gymEntryModal.domainRule.desc}</div>
+              </div>
+            )}
+            <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+              <button onClick={() => { setGymEntryModal(null); gymEntryModal.onGym?.(); }} style={{padding:'12px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#1976D2,#42A5F5)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>🏆 挑战道馆馆主</button>
+              {gymEntryModal.domainRule && (
+                <button onClick={() => { setGymEntryModal(null); gymEntryModal.onDomain?.(); }} style={{padding:'12px', borderRadius:'12px', border:'1px solid rgba(129,199,132,0.5)', background:'rgba(76,175,80,0.15)', color:'#A5D6A7', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>{gymEntryModal.spiritDomain?.icon} 灵域试炼（特殊规则）</button>
+              )}
+              <button onClick={() => setGymEntryModal(null)} style={{padding:'8px', borderRadius:'10px', border:'1px solid #444', background:'transparent', color:'#888', fontSize:'12px', cursor:'pointer'}}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 生态危机：探索/解谜步骤 */}
+      {ecoCrisisModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100003}} onClick={() => setEcoCrisisModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a2e1a,#0a1a2e)', borderRadius:'20px', padding:'24px', maxWidth:'400px', width:'92%', border:`1px solid ${ecoCrisisModal.crisis?.color || '#2E7D32'}44`, boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{ecoCrisisModal.crisis?.icon} {ecoCrisisModal.crisis?.name}</div>
+            <div style={{fontSize:'17px', fontWeight:'800', color:'#fff', marginBottom:'12px'}}>{ecoCrisisModal.step?.title}</div>
+            <div style={{fontSize:'13px', color:'#ccc', lineHeight:1.7, marginBottom:'16px'}}>{ecoCrisisModal.step?.text}</div>
+            {ecoCrisisModal.step?.choices && (
+              <div style={{fontSize:'11px', color:'#81C784', marginBottom:'12px', padding:'8px', background:'rgba(76,175,80,0.1)', borderRadius:'8px'}}>✓ 选择：{ecoCrisisModal.step.choices[0]}</div>
+            )}
+            <button onClick={() => advanceEcoCrisis(ecoCrisisModal.crisisId, ecoCrisisModal.stepIdx)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background: ecoCrisisModal.crisis?.color || 'linear-gradient(90deg,#2E7D32,#43A047)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>继续调查 →</button>
           </div>
         </div>
       )}
