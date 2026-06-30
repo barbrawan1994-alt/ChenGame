@@ -7,6 +7,8 @@ import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
+import TCGScreen from './components/tcg/TCGScreen';
+import { createDefaultTCGState } from './data/tcg';
 
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
@@ -2924,7 +2926,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     infinityBestFloor: infinityState?.bestFloor || 0,
     infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null } : null,
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
-    trainingState, worldBossState, raceState, narutoState,
+    trainingState, worldBossState, raceState, tcgState, narutoState,
     savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
@@ -3010,6 +3012,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [trainingState, setTrainingState] = useState(() => ({ ...DEFAULT_TRAINING_STATE, ...(savedData.trainingState || {}) }));
   const [worldBossState, setWorldBossState] = useState(() => ({ ...DEFAULT_WORLD_BOSS_STATE, ...(savedData.worldBossState || {}) }));
   const [raceState, setRaceState] = useState(() => savedData.raceState || { lastDate: '', dailyRaces: 0, totalWins: 0 });
+  const [tcgState, setTcgState] = useState(() => savedData.tcgState || createDefaultTCGState());
   const [raceResult, setRaceResult] = useState(null);
   const [narutoState, setNarutoState] = useState(() => {
     const loaded = { ...DEFAULT_NARUTO_STATE, ...(savedData.narutoState || {}) };
@@ -5907,6 +5910,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'training', icon:'🏋️', name:'精灵特训', desc:'强化精灵能力', color:'#1565C0', badge: (Array.isArray(trainingState.slots) ? trainingState.slots : []).filter(s => Date.now() - s.startTime >= s.duration).length, onClick: () => { setActivityCenter(false); if (badges.length < TRAINING_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${TRAINING_REQ_BADGES} 枚徽章`,1500); return; } setView('training'); } },
       { id:'world_boss', icon:'👹', name:'世界首领', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
+      { id:'tcg', icon:'🃏', name:'精灵卡牌', desc:'TCG卡牌对战', color:'#6A1B9A', badge: (tcgState.battleRecord?.streak || 0) >= 3 ? '🔥' : 0, onClick: () => { setActivityCenter(false); setView('tcg'); } },
     ];
 
     return (
@@ -18864,6 +18868,12 @@ const renderMenu = () => {
   const nextObjective = hasSave
     ? (badgeCount < MAPS.length ? `夺取第 ${badgeCount + 1} 枚徽章` : (playerFaction ? `${playerFaction.name} 阵营战线推进` : '挑战终局试炼'))
     : '建立第一支冒险小队';
+  const homeProgress = hasSave ? Math.min(100, Math.round((badgeCount / Math.max(1, MAPS.length)) * 100)) : 0;
+  const homeTrailSteps = [
+    { label: '初始伙伴', meta: leadPet ? (leadPet.nickname || leadPetDex?.name || '已加入') : '待选择', done: !!leadPet },
+    { label: '徽章征途', meta: `${badgeCount}/${MAPS.length}`, done: badgeCount > 0 },
+    { label: '联盟资格', meta: badgeCount >= MAPS.length ? '已解锁' : `${Math.max(0, MAPS.length - badgeCount)} 枚后`, done: badgeCount >= MAPS.length },
+  ];
 
   return (
     <main className="screen home-screen" id="main-content">
@@ -18884,8 +18894,34 @@ const renderMenu = () => {
           </div>
           <p className="home-subtitle">{GAME_TAGLINE}。属性克制、技能 PP、捕捉与进化是每一场冒险的核心。</p>
 
+          <div className="home-progress-rail" aria-label="冒险进度">
+            <div className="home-progress-copy">
+              <span>冒险完成度</span>
+              <strong>{homeProgress}%</strong>
+            </div>
+            <div className="home-progress-track">
+              <span style={{ width: `${homeProgress}%` }} />
+            </div>
+            <div className="home-progress-steps">
+              {homeTrailSteps.map(step => (
+                <div className={step.done ? 'home-progress-step is-done' : 'home-progress-step'} key={step.label}>
+                  <i aria-hidden="true" />
+                  <span>{step.label}</span>
+                  <small>{step.meta}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="home-lead-card">
             <div className="home-lead-orbit" aria-hidden="true" />
+            {titleSprites.length > 0 && (
+              <div className="home-sprite-showcase" aria-hidden="true">
+                {titleSprites.slice(0, 3).map((src, i) => (
+                  <img key={`${src}-${i}`} src={src} alt="" style={{ '--float-delay': `${i * 0.85}s` }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />
+                ))}
+              </div>
+            )}
             <div className="home-lead-avatar">
               {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
                 <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
@@ -24852,6 +24888,11 @@ const renderMenu = () => {
     let bgClass = 'bg-grass'; 
     if (battle.isGym) bgClass = 'bg-city'; else if (battle.isChallenge) bgClass = 'bg-cave'; 
     else { const mapInfo = MAPS.find(m => m.id === battle.mapId); if (mapInfo) { switch (mapInfo.type) { case 'water': bgClass = 'bg-water'; break; case 'fire': bgClass = 'bg-fire'; break; case 'ice': bgClass = 'bg-ice'; break; case 'mountain': case 'rock': case 'ground': bgClass = 'bg-cave'; break; case 'city': case 'steel': case 'electric': bgClass = 'bg-city'; break; case 'ghost': case 'dark': bgClass = 'bg-dark'; break; case 'factory': case 'space': bgClass = 'bg-cave'; break; default: bgClass = 'bg-grass'; break; } } }
+    const activeCommandPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
+    const playerHpPct = Math.min(100, Math.max(0, Math.round((p.currentHp / Math.max(1, pStats.maxHp)) * 100)));
+    const enemyHpPct = Math.min(100, Math.max(0, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100)));
+    const battleModeLabel = battle.isPvP ? 'PvP' : isDoubleBattle ? '双打' : battle.isTrainer ? '训练家战' : battle.isGym ? '道馆战' : battle.isBoss ? '首领战' : '野外战';
+    const tempoLabel = playerHpPct >= enemyHpPct + 15 ? '优势' : enemyHpPct >= playerHpPct + 15 ? '承压' : '均势';
 
     // 交换精灵弹窗
     if (battle.showSwitch) {
@@ -25632,6 +25673,20 @@ const renderMenu = () => {
 
         {/* 底部操作栏 */}
         <div className="battle-panel-v2">
+            <div className="battle-command-topline">
+              <div>
+                <span>{battleModeLabel}</span>
+                <strong>R{battle.turnCount || 1}</strong>
+              </div>
+              <div>
+                <span>行动</span>
+                <strong>{activeCommandPet?.name || '待命'}</strong>
+              </div>
+              <div className={`battle-tempo-pill is-${tempoLabel === '优势' ? 'good' : tempoLabel === '承压' ? 'danger' : 'even'}`}>
+                <span>{tempoLabel}</span>
+                <strong>{playerHpPct}% / {enemyHpPct}%</strong>
+              </div>
+            </div>
             {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'double_input_2') ? (
               <div className="controls-area-v2">
                     {battle.isPvP && (
@@ -27600,6 +27655,17 @@ const renderMenu = () => {
       {renderActivityCenter()}
       {renderActivityCenterModals()}
       {view === 'guide' && <GuideScreen onBack={() => setView(safeBack())} />}
+      {view === 'tcg' && (
+        <TCGScreen
+          tcgState={tcgState}
+          setTcgState={setTcgState}
+          gold={gold}
+          setGold={setGold}
+          onBack={() => setView(safeBack())}
+          showToast={showMapToast}
+          getLocalDateStr={getLocalDateStr}
+        />
+      )}
       {view === 'settings' && (
         <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',color:'#fff',display:'flex',flexDirection:'column'}}>
           <div style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',backdropFilter:'blur(12px)',flexShrink:0,height:'56px'}}>
