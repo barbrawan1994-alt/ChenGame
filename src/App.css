@@ -9047,3 +9047,56 @@ select:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hover Utility Classes (替代 inline onMouseEnter/Leave DOM 操作)
+   ───────────────────────────────────────────────────────────────────────────── */
+.hover-lift {
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.hover-lift-sm {
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease;
+}
+.hover-lift-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.hover-scale {
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease;
+}
+.hover-scale:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.hover-glow-white {
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.hover-glow-white:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 8px 25px rgba(255,255,255,0.15);
+  border-color: #aaa;
+}
+.hover-glow-red {
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.hover-glow-red:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 8px 25px rgba(255,82,82,0.3);
+  border-color: #FF8A80;
+}
+.hover-bg-light {
+  transition: background 0.2s ease;
+}
+.hover-bg-light:hover {
+  background: rgba(255,255,255,0.2) !important;
+}
+.hover-text-bright {
+  transition: color 0.2s ease;
+}
+.hover-text-bright:hover {
+  color: rgba(255,255,255,0.7) !important;
+}

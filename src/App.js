@@ -2,11 +2,6 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { flushSync } from 'react-dom';
 import _ from 'lodash';
 
-function useDebouncedValue(value, delay = 200) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => { const t = setTimeout(() => setDebounced(value), delay); return () => clearTimeout(t); }, [value, delay]);
-  return debounced;
-}
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
 import { GSAPAnimations } from './engines/AnimationEngine';
@@ -164,6 +159,43 @@ const normalizeBerriesInventory = (b) => {
   if (typeof b === 'object' && !Array.isArray(b)) return { ...b };
   return {};
 };
+
+// ==========================================
+// 提取的公共常量 (消除魔术数字/重复对象)
+// ==========================================
+const DEFAULT_BATTLE_STAGES = Object.freeze({ p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 });
+const MS_PER_DAY = 86400000;
+const MS_PER_MINUTE = 60000;
+const STAT_BUFF_MAP = Object.freeze({ ATK: 'p_atk', DEF: 'p_def', SPD: 'spd', SATK: 's_atk', SDEF: 's_def' });
+const LEAGUE_ROUNDS = Object.freeze([
+  { name: '16强赛', level: 85, teamSize: 4 },
+  { name: '8强赛', level: 90, teamSize: 5 },
+  { name: '半决赛', level: 95, teamSize: 6 },
+  { name: '总决赛', level: 100, teamSize: 6 },
+]);
+const WHEEL_FREE_SPINS_PER_DAY = 3;
+const WHEEL_PAID_SPIN_COST = 1000;
+const WHEEL_PITY_INTERVAL = 10;
+
+/**
+ * 通用加权随机抽样
+ * @param {Array} pool - 候选项
+ * @param {Function} weightFn - 返回每项权重的函数 (item) => number
+ * @returns {*} 抽中的项
+ */
+const sampleWeighted = (pool, weightFn) => {
+  if (!pool || pool.length === 0) return null;
+  const weighted = pool.map(item => ({ item, w: weightFn(item) }));
+  const total = weighted.reduce((s, x) => s + x.w, 0);
+  if (total <= 0) return null;
+  let roll = Math.random() * total;
+  for (const { item, w } of weighted) {
+    roll -= w;
+    if (roll <= 0) return item;
+  }
+  return weighted[weighted.length - 1].item;
+};
+
 const totalBerryCount = (b) => Object.values(normalizeBerriesInventory(b)).reduce((s, n) => s + (typeof n === 'number' ? n : 0), 0);
 const addBerries = (berries, id, amount) => {
   const o = normalizeBerriesInventory(berries);
@@ -335,25 +367,16 @@ const sampleWeightedTM = (tmList, maxTier = 4) => {
   if (!tmList || tmList.length === 0) return null;
   const filtered = tmList.filter(t => (t.tier || 1) <= maxTier);
   const pool = filtered.length > 0 ? filtered : tmList;
-  const weighted = pool.map(tm => {
+  const tmWeightFn = (tm) => {
     const p = tm.p || 0;
-    let w;
-    if (p === 0) w = 60;
-    else if (p < 70) w = 100;
-    else if (p < 100) w = 50;
-    else if (p < 130) w = 15;
-    else if (p < 160) w = 5;
-    else w = 2;
-    return { tm, w };
-  });
-  const total = weighted.reduce((s, x) => s + x.w, 0);
-  if (total <= 0) return null;
-  let roll = Math.random() * total;
-  for (const { tm, w } of weighted) {
-    roll -= w;
-    if (roll <= 0) return tm;
-  }
-  return weighted[weighted.length - 1].tm;
+    if (p === 0) return 60;
+    if (p < 70) return 100;
+    if (p < 100) return 50;
+    if (p < 130) return 15;
+    if (p < 160) return 5;
+    return 2;
+  };
+  return sampleWeighted(pool, tmWeightFn);
 };
 
 /** 特定图鉴组合同时在场时战斗伤害/防御微量加成（与存档无关，仅本场战斗） */
@@ -440,6 +463,14 @@ const SuperSpiritIcon = ({ className = '', size = 56, label = GAME_NAME }) => (
 );
 
 export default function RPG(props) {
+  // ==========================================
+  // 提取的共享内联样式常量 (减少重复对象创建)
+  // ==========================================
+  const STYLE_SHINY_BADGE = { background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite' };
+  const STYLE_FUSED_SHINY_BADGE = { background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite' };
+  const STYLE_MODAL_OVERLAY = { position:'fixed', inset:0, zIndex:10001, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center' };
+  const STYLE_DARK_PANEL = { background:'linear-gradient(145deg, #1a1a2e, #16213e)', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.12)', boxShadow:'0 20px 60px rgba(0,0,0,0.5)' };
+
   // =================================================================
   // 🔥 [核心修复 1] 启动瞬间同步读取存档 (防止存档“丢失”)
   // =================================================================
@@ -520,7 +551,6 @@ export default function RPG(props) {
   const [battleFruitDetail, setBattleFruitDetail] = useState(null);
   const [battleGangDetail, setBattleGangDetail] = useState(null);
   const [battleGeneralDetail, setBattleGeneralDetail] = useState(null);
-  const sectBadgeRef = React.useRef(null);
 
   // 游戏进度
   const [mapProgress, setMapProgress] = useState(savedData.mapProgress || {});
@@ -618,7 +648,7 @@ export default function RPG(props) {
   const [mapWeathers, setMapWeathers] = useState({}); 
   const [timePhase, setTimePhase] = useState('DAY');
   const timePhaseRef = useRef('DAY');
-  const weatherParticles = React.useMemo(() => ({
+  const weatherParticles = useMemo(() => ({
     rain: Array.from({length:40}, () => ({ left: Math.random()*100, top: Math.random()*20, h: 20+Math.random()*20, dur: 0.5+Math.random()*0.3, delay: Math.random() })),
     snow: Array.from({length:30}, () => ({ left: Math.random()*100, top: Math.random()*20, size: 14+Math.random()*10, dotSize: 8+Math.random()*6, dur: 3+Math.random()*2, delay: Math.random()*3 })),
     sand: Array.from({length:20}, () => ({ left: Math.random()*20, top: Math.random()*100, dur: 2+Math.random(), delay: Math.random()*2 })),
@@ -650,7 +680,7 @@ const generateWeatherForMap = (mapType) => {
     return rand < 0.7 ? 'CLEAR' : (rand < 0.9 ? 'RAIN' : 'SUN');
 };
 
-const housingRef = React.useRef(housing);
+const housingRef = useRef(housing);
 housingRef.current = housing;
 
 // 3. [核心] 时间流逝与天气轮转控制 Hook
@@ -825,7 +855,7 @@ const [pendingTask, setPendingTask] = useState(null);
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
   // [修正] 1. 图片数据源映射逻辑 (参考成功示例优化)
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-  const imageMap = React.useMemo(() => {
+  const imageMap = useMemo(() => {
     const map = {};
     // 注意：这里 pokemon_images 要和 manifest.json 里的 data_source_id 一致
     const sourceItems = props?.data?.pokemon_images?.items || [];
@@ -948,7 +978,7 @@ const [pendingTask, setPendingTask] = useState(null);
   };
   // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     // 缓存技能列表 (避免重复计算)
-  const allSkills = React.useMemo(() => {
+  const allSkills = useMemo(() => {
     let list = [];
     
     // SKILL_DB 已经被注入了所有技能，所以只需要遍历它
@@ -995,7 +1025,6 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
   const [fusionSlot, setFusionSlot] = useState(null);     // 当前正在选择哪个槽位 ('parent' 或 'child')
   // 融合系统状态
   const [fusionMode, setFusionMode] = useState(false);
-  const [fusionSlots, setFusionSlots] = useState([null, null]); // [ParentA_Index, ParentB_Index]
   const [viewSectTeam, setViewSectTeam] = useState(null); 
 
 
@@ -1603,8 +1632,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
         } else if (item.type === 'REVIVE_ALL') {
             addLog("⚠️ 圣灰仅可在战斗外使用！"); return;
         } else if (item.type === 'BUFF') {
-            if (!pState.stages) pState.stages = { p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 };
-            const map = { ATK: 'p_atk', DEF: 'p_def', SPD: 'spd', SATK: 's_atk', SDEF: 's_def' };
+            if (!pState.stages) pState.stages = { ...DEFAULT_BATTLE_STAGES };
+            const map = STAT_BUFF_MAP;
             if (item.val === 'GUARD') {
               pState.mistTurns = Math.max(pState.mistTurns || 0, 5);
               logMsg = `使用了 ${item.name}，5回合内能力不会被降低！`;
@@ -1679,16 +1708,15 @@ const [viewStatPet, setViewStatPet] = useState(null);
                 used = true;
             } else { addLog("⚠️ 异常状态不匹配！"); return; }
         } else if (bItem.type === 'STAT_BOOST') {
-            if (!pState.stages) pState.stages = { p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 };
-            const map = { ATK: 'p_atk', DEF: 'p_def', SPD: 'spd', SATK: 's_atk' };
-            const k = map[bItem.val];
+            if (!pState.stages) pState.stages = { ...DEFAULT_BATTLE_STAGES };
+            const k = STAT_BUFF_MAP[bItem.val];
             if (k && pState.currentHp <= max * 0.25) {
                 pState.stages[k] = Math.min(6, (pState.stages[k] || 0) + 1);
                 logMsg = `使用了 ${bItem.name}，能力上升了！`;
                 used = true;
             } else { addLog("⚠️ 树果未触发（需HP低于25%）"); return; }
         } else if (bItem.type === 'CRIT_BOOST' || bItem.type === 'RANDOM_BOOST') {
-            if (!pState.stages) pState.stages = { p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 };
+            if (!pState.stages) pState.stages = { ...DEFAULT_BATTLE_STAGES };
             if (pState.currentHp <= max * 0.25) {
                 if (bItem.type === 'CRIT_BOOST') {
                     pState.stages.crit = Math.min(6, (pState.stages.crit || 0) + 2);
@@ -2516,7 +2544,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
           <div className="dialog-box">
             <div className="dialog-header" style={{display:'flex',alignItems:'center',gap:'6px'}}>
                {currentLine.icon && <span style={{fontSize:'18px'}}>{currentLine.icon}</span>}
-               {!currentLine.icon && <span style={{fontSize:'16px',background:'linear-gradient(135deg,#667eea,#764ba2)',borderRadius:'50%',width:'22px',height:'22px',display:'inline-flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'10px',fontWeight:'bold'}}>{(currentLine.name||'?')[0]}</span>}
+               {!currentLine.icon && <span style={{background:'linear-gradient(135deg,#667eea,#764ba2)',borderRadius:'50%',width:'22px',height:'22px',display:'inline-flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'10px',fontWeight:'bold'}}>{(currentLine.name||'?')[0]}</span>}
                <span className="dialog-name">{currentLine.name}</span>
             </div>
             <div className="dialog-text">{currentLine.text}</div>
@@ -3897,7 +3925,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
             {/* 信息提示区 */}
             <div style={{padding: '0 20px', fontSize: '12px', color: '#ccc', lineHeight: '1.6'}}>
-                <div style={{marginBottom: '8px', color: '#FFD700'}}>💰 费用: 500 金币</div>
+                <div style={{marginBottom: '8px', color: '#FFD700'}}>💰 费用: {getFusionCost()} 金币</div>
                 <div style={{background: 'rgba(255,167,38,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,167,38,0.2)'}}>
                     <div style={{color: '#FFA726', fontWeight: 'bold', marginBottom: '4px'}}>⚠️ 警告</div>
                     融合后父母将消失，生成一只全新的子代。
@@ -4044,21 +4072,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     </div>
                     <div style={{display:'flex', gap:'20px', justifyContent:'center'}}>
                         {/* 普通门 */}
-                        <div onClick={() => startInfinityBattle('normal')} className="door-card" style={{
-                            width:'140px', padding:'20px', background:'#333', borderRadius:'12px', cursor:'pointer', border:'2px solid #555', transition:'all 0.2s ease'
-                        }}
-                        onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px) scale(1.03)';e.currentTarget.style.boxShadow='0 8px 25px rgba(255,255,255,0.15)';e.currentTarget.style.borderColor='#aaa';}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='';e.currentTarget.style.borderColor='#555';}}>
+                        <div onClick={() => startInfinityBattle('normal')} className="door-card hover-glow-white" style={{
+                            width:'140px', padding:'20px', background:'#333', borderRadius:'12px', cursor:'pointer', border:'2px solid #555'
+                        }}>
                             <div style={{fontSize:'60px'}}>🚪</div>
                             <div style={{marginTop:'15px', fontWeight:'bold'}}>普通鬼气</div>
                             <div style={{fontSize:'10px', color:'#aaa', marginTop:'5px'}}>稳扎稳打</div>
                         </div>
                         {/* 精英门 */}
-                        <div onClick={() => startInfinityBattle('hard')} className="door-card" style={{
-                            width:'140px', padding:'20px', background:'#3E2723', borderRadius:'12px', cursor:'pointer', border:'2px solid #FF5252', transition:'all 0.2s ease'
+                        <div onClick={() => startInfinityBattle('hard')} className="door-card hover-glow-red" style={{
+                            width:'140px', padding:'20px', background:'#3E2723', borderRadius:'12px', cursor:'pointer', border:'2px solid #FF5252'
                         }}
-                        onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px) scale(1.03)';e.currentTarget.style.boxShadow='0 8px 25px rgba(255,82,82,0.3)';e.currentTarget.style.borderColor='#FF8A80';}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='';e.currentTarget.style.borderColor='#FF5252';}}>
+                        >
                             <div style={{fontSize:'60px', filter:'drop-shadow(0 0 10px red)'}}>⛩️</div>
                             <div style={{marginTop:'15px', fontWeight:'bold', color:'#FF5252'}}>强烈的鬼气</div>
                             <div style={{fontSize:'10px', color:'#bbb', marginTop:'5px'}}>高风险高回报</div>
@@ -6028,7 +6053,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const stats = getStats(enemyPet, null, null, {});
     const enemyPartyMember = {
       ...enemyPet, currentHp: remainHp, maxHp: bossHp,
-      stages: { p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 },
+      stages: { ...DEFAULT_BATTLE_STAGES },
       volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
     };
 
@@ -6220,7 +6245,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (!startDate || isNaN(startDate.getTime())) {
         next.seasonStartDate = today;
       } else {
-        const daysSince = Math.floor((Date.now() - startDate.getTime()) / 86400000);
+        const daysSince = Math.floor((Date.now() - startDate.getTime()) / MS_PER_DAY);
         if (daysSince >= SEASON_DAYS) {
           const bestRank = prev.seasonBestRank || prev.rank || 'bronze';
           const srData = ARENA_SEASON_REWARDS.find(sr => sr.rank === bestRank);
@@ -6437,7 +6462,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
     const rankIdx = ARENA_RANKS.indexOf(rank);
     const seasonStartMs = arenaState.seasonStartDate ? new Date(arenaState.seasonStartDate).getTime() : NaN;
-    const seasonDaysLeft = Number.isFinite(seasonStartMs) ? Math.max(0, 14 - Math.floor((Date.now() - seasonStartMs) / 86400000)) : 14;
+    const seasonDaysLeft = Number.isFinite(seasonStartMs) ? Math.max(0, 14 - Math.floor((Date.now() - seasonStartMs) / MS_PER_DAY)) : 14;
     return (
       <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d1b1b,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
@@ -8366,9 +8391,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 )}
                 
                 {leagueRound > 0 && (
-              <button type="button" style={{textAlign:'center', marginTop:'12px', fontSize:'12px', color:'rgba(255,255,255,0.35)', cursor:'pointer', transition:'color 0.2s', background:'none', border:'none', padding:'8px 16px'}}
-                onMouseEnter={e => e.currentTarget.style.color='rgba(255,255,255,0.7)'}
-                onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.35)'}
+              <button type="button" className="hover-text-bright" style={{textAlign:'center', marginTop:'12px', fontSize:'12px', color:'rgba(255,255,255,0.35)', cursor:'pointer', background:'none', border:'none', padding:'8px 16px'}}
                 onClick={() => { setConfirmModal({ title:'弃权退赛', msg:'确定要弃权吗？当前联赛进度将丢失。', onOk:() => setLeagueRound(0) }); }}>
                 弃权退赛
               </button>
@@ -10286,7 +10309,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 status: null,
                 // 确保 PvP 导入的数据也有特性字段，如果没有则随机一个
                 trait: p.trait || (k => k[Math.floor(Math.random() * k.length)])(Object.keys(TRAIT_DB)),
-                stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
+                stages: { ...DEFAULT_BATTLE_STAGES },
                 volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
                 combatMoves: moves,
                 maxHp: stats.maxHp
@@ -10320,12 +10343,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         dropGold = context?.rewards?.gold ?? context?.drop ?? 2000;
     }
     else if (type === 'league') {
-        const roundNames = ['16强赛', '8强赛', '半决赛', '总决赛'];
-        const roundLevels = [85, 90, 95, 100];
-        const roundTeamSize = [4, 5, 6, 6];
-        const currentRoundName = roundNames[leagueRound - 1] || '比赛';
-        const roundLv = roundLevels[leagueRound - 1] || 100;
-        const teamSize = roundTeamSize[leagueRound - 1] || 6;
+        const leagueRoundData = LEAGUE_ROUNDS[leagueRound - 1] || LEAGUE_ROUNDS[LEAGUE_ROUNDS.length - 1];
+        const currentRoundName = leagueRoundData.name;
+        const roundLv = leagueRoundData.level;
+        const teamSize = leagueRoundData.teamSize;
         trainerName = `联盟选手 (${currentRoundName})`;
         dropGold = 5000 + (leagueRound * 3000);
         for(let i=0; i<teamSize; i++) {
@@ -13243,7 +13264,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         if (vow.reward?.spdMult && vow.reward.spdMult > 0) {
             const spdBoost = Math.min(6, Math.max(0, Math.round(Math.log2(vow.reward.spdMult) * 4)));
-            if (!player.stages) player.stages = { p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 };
+            if (!player.stages) player.stages = { ...DEFAULT_BATTLE_STAGES };
             player.stages.spd = Math.min(6, (player.stages.spd || 0) + spdBoost);
             addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
         }
@@ -17750,10 +17771,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
                             background: 'rgba(255,255,255,0.1)', backdropFilter:'blur(5px)',
                             color: TYPES[m.t]?.color || '#fff', borderLeft:`4px solid ${TYPES[m.t]?.color}`,
                             fontWeight:'bold', cursor:'pointer', textAlign:'left',
-                            boxShadow:'0 4px 10px rgba(0,0,0,0.2)', transition:'background 0.2s, border-color 0.2s, transform 0.2s'
+                            boxShadow:'0 4px 10px rgba(0,0,0,0.2)'
                         }}
-                        onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.2)'}
-                        onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'}
+                        className="hover-bg-light"
                         >
                             <div style={{fontSize:'14px'}}>{m.name}</div>
                             <div style={{fontSize:'10px', color:'#aaa', marginTop:'4px'}}>展示 {TYPES[m.t]?.name} 魅力</div>
@@ -19010,7 +19030,7 @@ const renderNameInput = () => {
   };
 
 
-const titleSpriteUrls = React.useMemo(() => {
+const titleSpriteUrls = useMemo(() => {
   const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
   return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
 }, []);
@@ -19971,7 +19991,7 @@ const renderMenu = () => {
       }
       // --- 双打擂台 ---
       else if (dungeon.type === 'elite_rotation') {
-        const dayIdx = Math.floor(Date.now() / 86400000) % 5;
+        const dayIdx = Math.floor(Date.now() / MS_PER_DAY) % 5;
         const rotationThemes = [
           { name: '炎之试炼', type: 'FIRE', pool: [...HIGH_TIER_POOL], bonus: '火系强敌' },
           { name: '冰雪行军', type: 'ICE', pool: [...HIGH_TIER_POOL], bonus: '冰系强敌' },
@@ -20547,7 +20567,7 @@ const renderMenu = () => {
             terrCounts.neutral = Object.values(kw.territories).filter(t => t.owner === 'neutral').length;
             const myTerrCount = terrCounts[kw.faction] || 0;
             const totalWarMaps = WAR_MAP_IDS.length;
-            const seasonDaysLeft = kw.seasonStartDate ? Math.max(0, SEASON_CONFIG.durationDays - Math.floor((Date.now() - new Date(kw.seasonStartDate).getTime()) / 86400000)) : 7;
+            const seasonDaysLeft = kw.seasonStartDate ? Math.max(0, SEASON_CONFIG.durationDays - Math.floor((Date.now() - new Date(kw.seasonStartDate).getTime()) / MS_PER_DAY)) : 7;
 
             const today = getLocalDateStr();
             const dailyReset = kw.dailyCounts.resetDate !== today;
@@ -25061,26 +25081,6 @@ const renderMenu = () => {
     }
 
     return { avatar, title };
-  };
-  // ==========================================
-  // [补全] 缺失的队伍状态指示器函数
-  // ==========================================
-  const renderPartyIndicators = (targetParty, isPlayer) => {
-    return (
-      <div className="party-indicators">
-        {/* 渲染现有队伍的状态 */}
-        {targetParty.map((p, i) => (
-          <div 
-            key={i} 
-            className={`party-ball ${p.currentHp > 0 ? 'alive' : 'fainted'}`}
-          />
-        ))}
-        {/* 补齐 6 个球的空位 (显示为灰色) */}
-        {[...Array(Math.max(0, 6 - targetParty.length))].map((_, i) => (
-           <div key={`empty-${i}`} className="party-ball" style={{background:'#ddd', opacity:0.3}}></div>
-        ))}
-      </div>
-    );
   };
   // ==========================================
   // [新增] 闪光特效组件 (渲染一圈炸开的星星)
