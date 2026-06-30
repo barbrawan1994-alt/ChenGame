@@ -21919,19 +21919,19 @@ const renderMenu = () => {
     return (
       <div className="side-panel left-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
         {/* 训练家卡片 */}
-        <div className="panel-card" style={{padding:'16px', background:'linear-gradient(135deg, #fff 0%, #f8f6f0 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+        <div className="panel-card" style={{padding:'16px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
           <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-            <div onClick={() => setShowAvatarSelector(true)} style={{width:'56px', height:'56px', cursor:'pointer', background:'#f0ede6', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #e8e0d0', boxShadow:'0 2px 8px rgba(0,0,0,0.08)', overflow:'hidden', transition:'all 0.2s', flexShrink:0}} onMouseOver={e => { e.currentTarget.style.borderColor='#d4a853'; }} onMouseOut={e => { e.currentTarget.style.borderColor='#e8e0d0'; }} title="点击更换形象">{renderAvatarImg(trainerAvatar, 52)}</div>
+            <div onClick={() => setShowAvatarSelector(true)} style={{width:'56px', height:'56px', cursor:'pointer', background:'rgba(143,216,255,0.08)', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(143,216,255,0.2)', boxShadow:'none', overflow:'hidden', transition:'all 0.2s', flexShrink:0}} onMouseOver={e => { e.currentTarget.style.borderColor='rgba(143,216,255,0.5)'; }} onMouseOut={e => { e.currentTarget.style.borderColor='rgba(143,216,255,0.2)'; }} title="点击更换形象">{renderAvatarImg(trainerAvatar, 52)}</div>
             <div style={{flex:1, minWidth:0}}>
-              <div style={{fontWeight:'800', fontSize:'15px', color:'#2c2417', marginBottom:'3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{trainerName || '训练家'}</div>
+              <div style={{fontWeight:'800', fontSize:'15px', color:'#e8f3ff', marginBottom:'3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{trainerName || '训练家'}</div>
               <div style={{fontSize:'10px', background:'linear-gradient(135deg, #d4a853, #b8860b)', color:'#fff', padding:'2px 8px', borderRadius:'8px', display:'inline-block', fontWeight:'700'}}>{currentTitle || '新手上路'}</div>
             </div>
           </div>
           <div style={{display:'flex', gap:'6px', marginTop:'10px'}}>
             {[{icon:'🎖️', val:badges.length, label:'徽章'}, {icon:'📖', val:caughtDex.length, label:'图鉴'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}, {icon:'💎', val:(achStats.totalGoldEarned ?? 0) >= 100000 ? Math.floor((achStats.totalGoldEarned ?? 0)/1000)+'k' : (achStats.totalGoldEarned ?? 0), label:'累计金'}].map((s,i) => (
-              <div key={i} style={{flex:1, textAlign:'center', padding:'6px 4px', background:'rgba(0,0,0,0.02)', borderRadius:'8px'}}>
-                <div style={{fontSize:'14px', fontWeight:'800', color:'#2c2417'}}>{s.icon} {s.val}</div>
-                <div style={{fontSize:'9px', color:'#999', marginTop:'1px'}}>{s.label}</div>
+              <div key={i} style={{flex:1, textAlign:'center', padding:'6px 4px', background:'rgba(143,216,255,0.04)', borderRadius:'8px'}}>
+                <div style={{fontSize:'14px', fontWeight:'800', color:'#e8f3ff'}}>{s.icon} {s.val}</div>
+                <div style={{fontSize:'9px', color:'#7fa8c8', marginTop:'1px'}}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -21939,29 +21939,29 @@ const renderMenu = () => {
 
         {/* 首发精灵 */}
         {leader && (
-          <div className="panel-card" style={{padding:'0', background:'#fff', borderRadius:'14px', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+          <div className="panel-card" style={{padding:'0', background:'rgba(10,20,40,0.5)', borderRadius:'14px', overflow:'hidden', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
             <div style={{height:'4px', background:`linear-gradient(90deg, ${typeColor}, ${typeColor}80)`}} />
             <div style={{padding:'14px', textAlign:'center'}}>
               <div style={{fontSize:'52px', filter:'drop-shadow(0 3px 6px rgba(0,0,0,0.12))', animation:'float 3s ease-in-out infinite', lineHeight:1}}>{renderAvatar(leader)}</div>
-              <div style={{fontWeight:'800', fontSize:'14px', color:'#2c2417', marginTop:'6px'}}>{leader.name} {leader.isShiny && '✨'}</div>
+              <div style={{fontWeight:'800', fontSize:'14px', color:'#e8f3ff', marginTop:'6px'}}>{leader.name} {leader.isShiny && '✨'}</div>
               <div style={{display:'flex', justifyContent:'center', gap:'4px', marginTop:'4px', marginBottom:'8px'}}>
                 <span style={{background:typeColor, color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'700'}}>{TYPES[leader.type]?.name || leader.type}</span>
                 {leader.type2 && <span style={{background:TYPES[leader.type2]?.color || '#999', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'700'}}>{TYPES[leader.type2]?.name || leader.type2}</span>}
                 <span style={{background:'#333', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'700'}}>Lv.{leader.level}</span>
               </div>
               <div style={{marginBottom:'6px'}}>
-                <div style={{display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#666', fontWeight:'600'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#8fb8d8', fontWeight:'600'}}>
                   <span style={{color:'#4CAF50'}}>HP</span>
-                  <div style={{flex:1, height:'7px', background:'#eee', borderRadius:'4px', overflow:'hidden'}}>
+                  <div style={{flex:1, height:'7px', background:'rgba(255,255,255,0.1)', borderRadius:'4px', overflow:'hidden'}}>
                     <div style={{width:hpPercent+'%', height:'100%', background:hpPercent > 50 ? 'linear-gradient(90deg, #4CAF50, #66BB6A)' : hpPercent > 20 ? 'linear-gradient(90deg, #FF9800, #FFA726)' : 'linear-gradient(90deg, #F44336, #EF5350)', transition:'width 0.3s ease', borderRadius:'4px'}} />
                   </div>
                   <span style={{fontSize:'9px', minWidth:'60px', textAlign:'right'}}>{Math.floor(leader.currentHp)}/{stats.maxHp}</span>
                 </div>
               </div>
               <div>
-                <div style={{display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#666', fontWeight:'600'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#8fb8d8', fontWeight:'600'}}>
                   <span style={{color:'#2196F3'}}>EXP</span>
-                  <div style={{flex:1, height:'5px', background:'#eee', borderRadius:'3px', overflow:'hidden'}}>
+                  <div style={{flex:1, height:'5px', background:'rgba(255,255,255,0.1)', borderRadius:'3px', overflow:'hidden'}}>
                     <div style={{width:expPercent+'%', height:'100%', background:'linear-gradient(90deg, #2196F3, #42A5F5)', transition:'width 0.3s ease', borderRadius:'3px'}} />
                   </div>
                   <span style={{fontSize:'9px', minWidth:'60px', textAlign:'right'}}>{leader.exp}/{leader.nextExp}</span>
@@ -21973,16 +21973,16 @@ const renderMenu = () => {
 
         {/* 队伍预览 - 跳过首发避免重复 */}
         {party.length > 1 && (
-        <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
-          <div style={{fontSize:'10px', color:'#999', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🛡️ 后备队伍 ({party.length - 1})</div>
+        <div className="panel-card" style={{padding:'12px', background:'rgba(10,20,40,0.5)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
+          <div style={{fontSize:'10px', color:'#7fa8c8', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🛡️ 后备队伍 ({party.length - 1})</div>
           <div style={{display:'flex', gap:'4px'}}>
             {party.slice(1).map((p, i) => {
               const pStats = getStats(p);
               const pHp = (p.currentHp / (pStats.maxHp || 1)) * 100;
               return (
-                <div key={i} style={{flex:1, textAlign:'center', padding:'4px 2px', borderRadius:'8px', background:'rgba(0,0,0,0.02)', border:'1px solid transparent'}}>
+                <div key={i} style={{flex:1, textAlign:'center', padding:'4px 2px', borderRadius:'8px', background:'rgba(143,216,255,0.04)', border:'1px solid transparent'}}>
                   <div style={{fontSize:'18px', lineHeight:1}}>{renderAvatar(p)}</div>
-                  <div style={{height:'3px', borderRadius:'2px', background:'#eee', margin:'3px 2px 0', overflow:'hidden'}}>
+                  <div style={{height:'3px', borderRadius:'2px', background:'rgba(255,255,255,0.1)', margin:'3px 2px 0', overflow:'hidden'}}>
                     <div style={{width:pHp+'%', height:'100%', background:pHp > 50 ? '#4CAF50' : pHp > 20 ? '#FF9800' : '#F44336', borderRadius:'2px'}} />
                   </div>
                 </div>
@@ -21993,33 +21993,33 @@ const renderMenu = () => {
         )}
 
         {/* 背包 + 金币 */}
-        <div className="panel-card" style={{padding:'12px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
-          <div style={{fontSize:'10px', color:'#999', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🎒 背包</div>
+        <div className="panel-card" style={{padding:'12px', background:'rgba(10,20,40,0.5)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
+          <div style={{fontSize:'10px', color:'#7fa8c8', fontWeight:'700', marginBottom:'8px', letterSpacing:'1px'}}>🎒 背包</div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'6px'}}>
             {[{icon:'🔴', val:inventory.balls?.poke||0, label:'精灵球'}, {icon:'🔵', val:inventory.balls?.great||0, label:'超级球'}, {icon:'💊', val:inventory.meds?.potion||0, label:'伤药'}, {icon:'🍇', val:totalBerryCount(inventory.berries), label:'树果'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}, {icon:'🎖️', val:badges.length, label:'徽章'}].map((item,i) => (
-              <div key={i} style={{background:'#f9f7f2', padding:'6px', borderRadius:'8px', textAlign:'center'}}>
+              <div key={i} style={{background:'rgba(143,216,255,0.06)', padding:'6px', borderRadius:'8px', textAlign:'center'}}>
                 <div style={{fontSize:'14px'}}>{item.icon}</div>
-                <div style={{fontSize:'11px', fontWeight:'700', color:'#2c2417'}}>{item.val}</div>
-                <div style={{fontSize:'9px', color:'#aaa'}}>{item.label}</div>
+                <div style={{fontSize:'11px', fontWeight:'700', color:'#e8f3ff'}}>{item.val}</div>
+                <div style={{fontSize:'9px', color:'#7fa8c8'}}>{item.label}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* 当前目标 */}
-        <div className="panel-card" style={{padding:'12px', background:'linear-gradient(135deg, #fff 0%, #fffdf5 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(212,168,83,0.15)'}}>
+        <div className="panel-card" style={{padding:'12px', background:'rgba(20,16,8,0.7)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(212,168,83,0.25)'}}>
           <div style={{fontSize:'10px', color:'#d4a853', fontWeight:'700', marginBottom:'5px', letterSpacing:'1px'}}>🏆 当前目标</div>
-          <div style={{fontSize:'12px', fontWeight:'700', color:'#2c2417'}}>
+          <div style={{fontSize:'12px', fontWeight:'700', color:'#e8f3ff'}}>
             {badges.length < 13 ? (
               <>收集徽章: <span style={{color:'#2196F3'}}>{badges.length} / 13</span> (主线)</>
             ) : badges.length < 20 ? (
-              <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！ <span style={{color:'#999', fontSize:'10px'}}>({badges.length}枚)</span></span>
+              <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！ <span style={{color:'#7fa8c8', fontSize:'10px'}}>({badges.length}枚)</span></span>
             ) : (
               <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
             )}
           </div>
-          <div style={{marginTop:'8px', padding:'8px 10px', borderRadius:'10px', background:'rgba(212,168,83,0.08)', border:'1px solid rgba(212,168,83,0.12)', fontSize:'11px', lineHeight:1.55, color:'#6b5a36'}}>
-            下一步：前往 <strong style={{color:'#2c2417'}}>{nextMapObjective?.name || '冒险地图'}</strong>
+          <div style={{marginTop:'8px', padding:'8px 10px', borderRadius:'10px', background:'rgba(212,168,83,0.15)', border:'1px solid rgba(212,168,83,0.2)', fontSize:'11px', lineHeight:1.55, color:'#b8d0e8'}}>
+            下一步：前往 <strong style={{color:'#e8f3ff'}}>{nextMapObjective?.name || '冒险地图'}</strong>
             {nextMapObjective?.lvl ? ` · 推荐 Lv.${nextMapObjective.lvl[0]}-${nextMapObjective.lvl[1]}` : ''}
             <br />
             奖励重点：徽章推进、图鉴发现、金币与成长材料。
@@ -22045,30 +22045,30 @@ const renderMenu = () => {
     return (
       <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
         {/* 地图信息 */}
-        <div className="panel-card" style={{padding:'16px', background:'linear-gradient(135deg, #fff 0%, #f8f6f0 100%)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)', position:'relative', overflow:'hidden', borderLeft: `4px solid ${theme.color || '#4CAF50'}`}}>
+        <div className="panel-card" style={{padding:'16px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)', position:'relative', overflow:'hidden', borderLeft:`2px solid ${theme.color || '#4CAF50'}`}}>
           <div style={{position:'absolute', top:'-8px', right:'-8px', fontSize:'60px', opacity:0.06, pointerEvents:'none', transform:'rotate(-15deg)'}}>{currentMap.icon}</div>
           <div style={{position:'relative', zIndex:2}}>
             <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>当前位置</div>
-            <div style={{fontSize:'18px', fontWeight:'900', color:'#2c2417', marginBottom:'6px'}}>{currentMap.name}</div>
+            <div style={{fontSize:'18px', fontWeight:'900', color:'#e8f3ff', marginBottom:'6px'}}>{currentMap.name}</div>
             <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
-              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#555', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
+              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#b8d4f0', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
+              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#b8d4f0', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
               {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
           </div>
         </div>
 
         {/* 区域生态 */}
-        <div className="panel-card" style={{padding:'14px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+        <div className="panel-card" style={{padding:'14px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
-            <div style={{fontSize:'11px', color:'#2c2417', fontWeight:'700'}}>🔎 发现生态</div>
+            <div style={{fontSize:'11px', color:'#e8f3ff', fontWeight:'700'}}>🔎 发现生态</div>
             <div style={{fontSize:'10px', fontWeight:'700', color: caughtCount===totalCount ? '#4CAF50' : '#888'}}>{caughtCount}/{totalCount}</div>
           </div>
-          <div style={{height:'4px', background:'#f0f0f0', borderRadius:'2px', marginBottom:'10px', overflow:'hidden'}}>
+          <div style={{height:'4px', background:'rgba(143,216,255,0.08)', borderRadius:'2px', marginBottom:'10px', overflow:'hidden'}}>
             <div style={{width:progressPercent+'%', background:`linear-gradient(90deg, ${theme.color || '#4CAF50'}, ${theme.color || '#4CAF50'}80)`, height:'100%', transition:'width 0.5s', borderRadius:'2px'}} />
           </div>
           {encounters.length === 0 ? (
-            <div style={{textAlign:'center', padding:'8px', color:'#bbb', fontSize:'11px'}}>这里似乎很安静...</div>
+            <div style={{textAlign:'center', padding:'8px', color:'#6898b8', fontSize:'11px'}}>这里似乎很安静...</div>
           ) : (
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(38px, 1fr))', gap:'5px'}}>
               {encounters.map(pokeId => {
@@ -22077,7 +22077,7 @@ const renderMenu = () => {
                 const isCaught = caughtDex.includes(pokeId);
                 const tc = TYPES[poke.type]?.color || '#ccc';
                 return (
-                  <div key={pokeId} title={isCaught ? `${poke.name} [${TYPES[poke.type]?.name}]` : '???'} style={{aspectRatio:'1/1', borderRadius:'8px', background: isCaught ? '#fff' : '#f5f5f5', border: isCaught ? `1px solid ${tc}35` : '1px solid #eee', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', cursor:'help', overflow:'hidden', transition:'transform 0.2s', boxShadow: isCaught ? `0 1px 4px ${tc}15` : 'none'}} onMouseOver={e => e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform=''}>
+                  <div key={pokeId} title={isCaught ? `${poke.name} [${TYPES[poke.type]?.name}]` : '???'} style={{aspectRatio:'1/1', borderRadius:'8px', background: isCaught ? 'rgba(143,216,255,0.08)' : 'rgba(0,0,0,0.2)', border: isCaught ? `1px solid ${tc}55` : '1px solid rgba(143,216,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', cursor:'help', overflow:'hidden', transition:'transform 0.2s', boxShadow:'none'}} onMouseOver={e => e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform=''}>
                     <div style={{fontSize:'20px', filter: isCaught ? 'none' : 'grayscale(100%) opacity(0.3) blur(0.5px)', transform: isCaught ? 'scale(1)' : 'scale(0.8)'}}>{renderAvatar(poke)}</div>
                     {isCaught && <div style={{position:'absolute', top:'1px', right:'2px', fontSize:'9px', color:tc}}>✓</div>}
                     {isCaught && <div style={{position:'absolute', bottom:0, left:0, right:0, height:'2px', background:tc}} />}
@@ -22095,22 +22095,22 @@ const renderMenu = () => {
           const isToday = dc && dc.date === today;
           const completed = isToday && dc.completed;
           return (
-            <div className="panel-card" style={{padding:'14px', background: completed ? 'linear-gradient(135deg,#E8F5E9,#fff)' : 'linear-gradient(135deg,#FFF8E1,#fff)', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border: completed ? '1px solid #4CAF50' : '1px solid #FF9800', borderLeft: completed ? '4px solid #4CAF50' : '4px solid #FF9800'}}>
+            <div className="panel-card" style={{padding:'14px', background: completed ? 'linear-gradient(135deg,#E8F5E9,#fff)' : 'linear-gradient(135deg,#FFF8E1,#fff)', borderRadius:'14px', boxShadow:'none', border: completed ? '1px solid #4CAF50' : '1px solid #FF9800', borderLeft: completed ? '4px solid #4CAF50' : '4px solid #FF9800'}}>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px'}}>
                 <span style={{fontSize:'11px', fontWeight:'700', color: completed ? '#4CAF50' : '#FF9800'}}>⚡ 每日挑战</span>
-                <span style={{fontSize:'9px', color:'#999'}}>{today}</span>
+                <span style={{fontSize:'9px', color:'#7fa8c8'}}>{today}</span>
               </div>
               {!isToday ? (
-                <div style={{textAlign:'center', fontSize:'11px', color:'#999'}}>今日挑战加载中…</div>
+                <div style={{textAlign:'center', fontSize:'11px', color:'#7fa8c8'}}>今日挑战加载中…</div>
               ) : completed ? (
                 <div style={{textAlign:'center', fontSize:'11px', color:'#4CAF50', fontWeight:'700'}}>✅ 已完成！奖励已发放</div>
               ) : (
                 <div>
-                  <div style={{fontSize:'11px', color:'#5a4e3c', marginBottom:'6px'}}>使用 <span style={{color:TYPES[dc.type]?.color || '#333', fontWeight:'700'}}>{dc.typeName}</span> 系精灵赢得战斗</div>
-                  <div style={{height:'6px', background:'#f0f0f0', borderRadius:'3px', overflow:'hidden'}}>
+                  <div style={{fontSize:'11px', color:'#c8ddf0', marginBottom:'6px'}}>使用 <span style={{color:TYPES[dc.type]?.color || '#333', fontWeight:'700'}}>{dc.typeName}</span> 系精灵赢得战斗</div>
+                  <div style={{height:'6px', background:'rgba(143,216,255,0.08)', borderRadius:'3px', overflow:'hidden'}}>
                     <div style={{width:`${Math.min(100, (dc.wins / dc.target) * 100)}%`, height:'100%', background:'linear-gradient(90deg,#FF9800,#F57C00)', transition:'width 0.3s', borderRadius:'3px'}} />
                   </div>
-                  <div style={{fontSize:'11px', color:'#888', textAlign:'right', marginTop:'2px'}}>{dc.wins}/{dc.target}</div>
+                  <div style={{fontSize:'11px', color:'#8fb8d8', textAlign:'right', marginTop:'2px'}}>{dc.wins}/{dc.target}</div>
                 </div>
               )}
             </div>
@@ -22118,19 +22118,19 @@ const renderMenu = () => {
         })()}
 
         {/* 探索日志 */}
-        <div className="panel-card" style={{padding:'14px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)', flex:1, display:'flex', flexDirection:'column', minHeight:'120px'}}>
+        <div className="panel-card" style={{padding:'14px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)', flex:1, display:'flex', flexDirection:'column', minHeight:'120px'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
-            <span style={{fontSize:'11px', color:'#2c2417', fontWeight:'700'}}>📜 冒险日志</span>
-            <span style={{fontSize:'9px', cursor:'pointer', color:'#999', fontWeight:'600'}} onClick={() => setGlobalLogs([])}>清空</span>
+            <span style={{fontSize:'11px', color:'#e8f3ff', fontWeight:'700'}}>📜 冒险日志</span>
+            <span style={{fontSize:'9px', cursor:'pointer', color:'#7fa8c8', fontWeight:'600'}} onClick={() => setGlobalLogs([])}>清空</span>
           </div>
           <div className="log-list-container" style={{flex:1, overflowY:'auto', maxHeight:'200px', background:'#faf9f5', borderRadius:'8px', padding:'8px', border:'1px solid #f0ede6', fontSize:'11px', lineHeight:'1.6'}}>
             {globalLogs.length === 0 ? (
-              <div style={{textAlign:'center', color:'#ccc', marginTop:'15px', fontSize:'10px'}}>暂无日志</div>
+              <div style={{textAlign:'center', color:'#5888a8', marginTop:'15px', fontSize:'10px'}}>暂无日志</div>
             ) : (
               globalLogs.map((log, i) => (
                 <div key={i} style={{marginBottom:'4px', borderBottom:'1px dashed #ede8dc', paddingBottom:'3px', display:'flex'}}>
                   <span style={{color:'#b8a88a', marginRight:'5px', minWidth:'32px', fontSize:'10px'}}>[{log.time}]</span>
-                  <span style={{color:'#5a4e3c'}}>{log.msg}</span>
+                  <span style={{color:'#c8ddf0'}}>{log.msg}</span>
                 </div>
               ))
             )}
@@ -22138,10 +22138,10 @@ const renderMenu = () => {
         </div>
 
         {/* 图例 */}
-        <div className="panel-card" style={{padding:'10px', background:'#fff', borderRadius:'14px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.04)'}}>
+        <div className="panel-card" style={{padding:'10px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
           <div style={{display:'flex', flexWrap:'wrap', gap:'4px', justifyContent:'center'}}>
             {[{i:theme.obstacle, l:'障碍'}, {i:theme.water, l:'水域'}, {i:'🪨', l:'矿石'}, {i:'🎁', l:'宝箱'}, {i:'🏥', l:'中心'}, {i:'🏪', l:'商店'}, {i:'🔮', l:'祭坛'}, {i:'🧳', l:'旅商'}, {i:'🌀', l:'传送'}, {i:'💎', l:'泉水'}, {i:'⚔️', l:'精英'}].map((item,idx) => (
-              <div key={idx} style={{display:'flex', alignItems:'center', gap:'2px', fontSize:'9px', color:'#888', background:'#f8f6f0', padding:'2px 6px', borderRadius:'8px', border:'1px solid rgba(0,0,0,0.03)'}}>
+              <div key={idx} style={{display:'flex', alignItems:'center', gap:'2px', fontSize:'9px', color:'#8fb8d8', background:'rgba(143,216,255,0.05)', padding:'2px 6px', borderRadius:'8px', border:'1px solid rgba(143,216,255,0.08)'}}>
                 <span>{item.i}</span> {item.l}
               </div>
             ))}
