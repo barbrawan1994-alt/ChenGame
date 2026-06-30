@@ -18861,6 +18861,7 @@ const renderMenu = () => {
     { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
     { key:'general_dex', label:'三国名将', sub:`${collectedGenCount}/200`, icon:'📜' },
     { key:'achievements', label:'成就殿堂', sub:`${Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)}%`, icon:'🏆' },
+    { key:'tcg', label:'精灵卡牌', sub:`${tcgState.battleRecord?.wins || 0}胜 · ${tcgState.rankPoints || 0}分`, icon:'🃏' },
     { key:'guide', label:'冒险指南', sub:'规则说明', icon:'📖' },
     { key:'settings', label:'系统设置', sub:'选项', icon:'⚙️' },
     { key:null, label:'重置存档', sub:'重新开始', icon:'🔄', action: resetGame, danger: true },
@@ -18915,19 +18916,8 @@ const renderMenu = () => {
 
           <div className="home-lead-card">
             <div className="home-lead-orbit" aria-hidden="true" />
-            {titleSprites.length > 0 && (
-              <div className="home-sprite-showcase" aria-hidden="true">
-                {titleSprites.slice(0, 3).map((src, i) => (
-                  <img key={`${src}-${i}`} src={src} alt="" style={{ '--float-delay': `${i * 0.85}s` }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />
-                ))}
-              </div>
-            )}
             <div className="home-lead-avatar">
-              {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
-                <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
-              ) : (
-                <span title={leadPetDex?.name || '初始伙伴'}>{leadPet?.emoji || leadPetDex?.icon || '🔴'}</span>
-              )}
+              <span title={leadPetDex?.name || '初始伙伴'}>{leadPetDex?.emoji || leadPet?.emoji || (hasSave ? '🐾' : '🔴')}</span>
             </div>
             <div className="home-lead-copy">
               <span className="home-lead-label">{hasSave ? '当前领队' : '新的冒险'}</span>
@@ -18945,6 +18935,7 @@ const renderMenu = () => {
             <b aria-hidden="true">›</b>
           </button>
 
+          {playerFaction && (
           <div className="home-faction-strip" aria-label="阵营概览">
             {FACTION_IDS.map(fid => {
               const f = FACTIONS[fid];
@@ -18957,6 +18948,7 @@ const renderMenu = () => {
               );
             })}
           </div>
+          )}
 
           <footer className="home-footer-note">
             <span>{POKEDEX.length} 精灵</span>

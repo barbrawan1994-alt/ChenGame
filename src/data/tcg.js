@@ -356,7 +356,66 @@ export function createDefaultTCGState() {
     lastBattleDate: '',
     packsPurchased: 0,
     milestones: {},
+    rankPoints: 0,
+    dailyBossDate: '',
+    dailyBossCleared: false,
+    challengeStreak: 0,
+    bestStreak: 0,
   };
+}
+
+export const TCG_RANKS = [
+  { id: 'bronze', name: '铜牌训练家', icon: '🥉', min: 0 },
+  { id: 'silver', name: '银牌训练家', icon: '🥈', min: 80 },
+  { id: 'gold', name: '金牌训练家', icon: '🥇', min: 200 },
+  { id: 'master', name: '卡牌大师', icon: '👑', min: 450 },
+  { id: 'legend', name: '传说决斗者', icon: '✨', min: 800 },
+];
+
+export function getRankTier(points = 0) {
+  let tier = TCG_RANKS[0];
+  for (const r of TCG_RANKS) { if (points >= r.min) tier = r; }
+  const next = TCG_RANKS[TCG_RANKS.indexOf(tier) + 1];
+  return { ...tier, points, next, progress: next ? Math.min(100, Math.round(((points - tier.min) / (next.min - tier.min)) * 100)) : 100 };
+}
+
+export function calcRankPoints(won, difficultyId, streak = 0) {
+  if (!won) return 0;
+  const base = { easy: 15, medium: 25, hard: 40, legend: 60, boss: 50, streak: 20 }[difficultyId] || 15;
+  const streakBonus = Math.min(30, Math.floor(streak / 2) * 5);
+  return base + streakBonus;
+}
+
+export const TCG_CHALLENGES = [
+  { id: 'boss', name: '每日首领', trainer: '试炼守护者', emoji: '👹', desc: '首领HP+50%，击败得稀有包', ai: 'smart', hpMult: 1.5, reward: { gold: 400, packs: ['rare'], points: 50 }, daily: true },
+  { id: 'streak', name: '连胜挑战', trainer: '连胜守卫', emoji: '🔥', desc: '连胜越高奖励越多，败北即重置', ai: 'counter', reward: { gold: 200, packs: ['basic'], points: 20 }, streakMode: true },
+];
+
+export function applyStatusEffect(defender, effect) {
+  if (!effect || effect.kind !== 'status' || !defender) return defender;
+  if (Math.random() > (effect.chance ?? 1)) return defender;
+  return { ...defender, status: effect.status };
+}
+
+export function processStatusDamage(mon) {
+  if (!mon?.status) return { mon, damage: 0, skipAttack: false };
+  let damage = 0;
+  let skipAttack = false;
+  if (mon.status === 'PSN') damage = 10;
+  if (mon.status === 'BRN') damage = 20;
+  if (mon.status === 'PAR' && Math.random() < 0.5) skipAttack = true;
+  const currentHp = Math.max(0, (mon.currentHp || 0) - damage);
+  return { mon: { ...mon, currentHp }, damage, skipAttack };
+}
+
+export function buildBossDeck() {
+  const cards = [];
+  const pool = getCardsByRarity('R', 'pokemon').concat(getCardsByRarity('SR', 'pokemon'));
+  for (let i = 0; i < 8; i++) cards.push(pool[Math.floor(Math.random() * pool.length)]?.cardId || 'poke_003');
+  for (let i = 0; i < 10; i++) cards.push(`energy_${['FIRE','WATER','GRASS','ELECTRIC'][i % 4]}`);
+  const trainers = TCG_TRAINER_CARDS.filter(t => t.rarity === 'R' || t.rarity === 'U');
+  while (cards.length < TCG_DECK_SIZE) cards.push(trainers[Math.floor(Math.random() * trainers.length)].cardId);
+  return cards.slice(0, TCG_DECK_SIZE);
 }
 
 export function buildAIDeck(difficultyId) {

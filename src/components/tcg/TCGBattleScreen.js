@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   TCG_PRIZE_COUNT, TCG_BENCH_SIZE, TCG_START_HAND,
-  cloneBattleCard, getCard, canPayEnergy, calcTCGDamage, buildAIDeck,
+  cloneBattleCard, getCard, canPayEnergy, calcTCGDamage, buildAIDeck, buildBossDeck,
+  applyStatusEffect, processStatusDamage,
 } from '../../data/tcg';
 import TCGCard from './TCGCard';
 
@@ -32,7 +33,8 @@ function findBasicInHand(hand) {
   return hand.findIndex(c => c.cardType === 'pokemon' && c.isBasic);
 }
 
-function setupSide(deckIds) {
+function setupSide(deckIds, options = {}) {
+  const hpMult = options.hpMult || 1;
   let deck = shuffle([...deckIds]);
   let hand = [];
   for (let mulligan = 0; mulligan < 5; mulligan++) {
@@ -49,13 +51,13 @@ function setupSide(deckIds) {
   const basicIdx = findBasicInHand(hand);
   if (basicIdx >= 0) {
     active = hand.splice(basicIdx, 1)[0];
-    active.currentHp = active.hp;
+    active.currentHp = Math.round(active.hp * hpMult);
   }
   for (let i = 0; i < TCG_BENCH_SIZE; i++) {
     const idx = findBasicInHand(hand);
     if (idx < 0) break;
     const mon = hand.splice(idx, 1)[0];
-    mon.currentHp = mon.hp;
+    mon.currentHp = Math.round(mon.hp * hpMult);
     bench.push(mon);
   }
   const prizes = [];
@@ -68,15 +70,17 @@ function setupSide(deckIds) {
   };
 }
 
-function setupGame(playerDeck, aiDeck) {
+function setupGame(playerDeck, aiDeck, options = {}) {
   return {
     player: setupSide(playerDeck),
-    opponent: setupSide(aiDeck),
+    opponent: setupSide(aiDeck, options),
     turn: 'player',
     phase: 'main',
     log: ['对战开始！'],
     winner: null,
     turnCount: 1,
+    comboCount: 0,
+    lastAttackType: null,
   };
 }
 
@@ -153,14 +157,48 @@ function runAI(state, aiLevel) {
     }
   }
 
+  if (aiLevel !== 'random' && opp.active && s.player.active) {
+    const hpPct = opp.active.currentHp / Math.max(1, opp.active.hp);
+    if (hpPct < 0.3 && opp.bench.some(p => p?.currentHp > 0) && (opp.active.attachedEnergy || []).length >= (opp.active.retreatCost || 1)) {
+      const benchIdx = opp.bench.findIndex(p => p?.currentHp > 0);
+      const cost = opp.active.retreatCost || 1;
+      const newEnergy = [...(opp.active.attachedEnergy || [])];
+      for (let i = 0; i < cost; i++) newEnergy.pop();
+      const old = opp.active;
+      opp.active = { ...opp.bench[benchIdx] };
+      opp.bench[benchIdx] = { ...old, attachedEnergy: newEnergy };
+      s.log = [...s.log, `对手撤退，换上${opp.active.name}`];
+    }
+  }
+
   const moveIdx = aiChooseMove(s, aiLevel);
   if (moveIdx !== null && opp.active) {
-    const move = opp.active.moves[moveIdx];
-    const dmg = calcTCGDamage(opp.active, s.player.active, move, opp.active.type);
-    s.log = [...s.log, `对手${opp.active.name}使用${move.name}！造成${dmg}伤害`];
-    s = applyDamage(s, 'player', dmg);
+    if (opp.active.status === 'PAR') {
+      const ps = processStatusDamage(opp.active);
+      opp.active = ps.mon;
+      if (ps.skipAttack) { s.log = [...s.log, `对手${opp.active.name}麻痹中，无法攻击`]; }
+      else {
+        const move = opp.active.moves[moveIdx];
+        let dmg = calcTCGDamage(opp.active, s.player.active, move, opp.active.type);
+        s.log = [...s.log, `对手${opp.active.name}使用${move.name}！造成${dmg}伤害`];
+        if (move.effect) s.player.active = applyStatusEffect(s.player.active, move.effect);
+        s = applyDamage(s, 'player', dmg);
+      }
+    } else {
+      const move = opp.active.moves[moveIdx];
+      let dmg = calcTCGDamage(opp.active, s.player.active, move, opp.active.type);
+      s.log = [...s.log, `对手${opp.active.name}使用${move.name}！造成${dmg}伤害`];
+      if (move.effect) s.player.active = applyStatusEffect(s.player.active, move.effect);
+      s = applyDamage(s, 'player', dmg);
+    }
   } else {
     s.log = [...s.log, '对手无法攻击'];
+  }
+
+  if (s.player.active?.status) {
+    const ps = processStatusDamage(s.player.active);
+    s.player.active = ps.mon;
+    if (ps.damage > 0) s.log = [...s.log, `${s.player.active.name}受到状态伤害${ps.damage}`];
   }
 
   s.player = { ...s.player, attachedThisTurn: false, evolvedThisTurn: false, damageBonus: 0 };
@@ -177,9 +215,10 @@ function runAI(state, aiLevel) {
   return s;
 }
 
-export default function TCGBattleScreen({ difficulty, playerDeck, onFinish, onBack, showToast }) {
-  const aiDeck = useMemo(() => buildAIDeck(difficulty?.id || 'easy'), [difficulty]);
-  const [game, setGame] = useState(() => setupGame(playerDeck, aiDeck));
+export default function TCGBattleScreen({ difficulty, playerDeck, onFinish, onBack, showToast, challengeMode }) {
+  const hpMult = difficulty?.hpMult || 1;
+  const aiDeck = useMemo(() => (challengeMode === 'boss' ? buildBossDeck() : buildAIDeck(difficulty?.id || 'easy')), [difficulty, challengeMode]);
+  const [game, setGame] = useState(() => setupGame(playerDeck, aiDeck, { hpMult }));
   const [selectedHand, setSelectedHand] = useState(null);
   const [selectedMove, setSelectedMove] = useState(null);
   const finishedRef = useRef(false);
@@ -252,9 +291,17 @@ export default function TCGBattleScreen({ difficulty, playerDeck, onFinish, onBa
       if (!move || !canPayEnergy(g.player.active.attachedEnergy, move.energyCost)) return g;
 
       let s = { ...g, player: { ...g.player, active: { ...g.player.active } }, opponent: { ...g.opponent, active: g.opponent.active ? { ...g.opponent.active } : null } };
-      const dmg = calcTCGDamage(s.player.active, s.opponent.active, move, s.player.active.type);
-      s.log = [...s.log, `${s.player.active.name}使用${move.name}！造成${dmg}伤害`];
+      let dmg = calcTCGDamage(s.player.active, s.opponent.active, move, s.player.active.type);
+      if (s.lastAttackType === s.player.active.type) {
+        dmg += 10;
+        s.log = [...s.log, '属性连击 +10！'];
+      }
+      const weakHint = s.opponent.active.weakness === s.player.active.type ? ' (弱点!)' : '';
+      s.log = [...s.log, `${s.player.active.name}使用${move.name}！造成${dmg}伤害${weakHint}`];
+      if (move.effect) s.opponent.active = applyStatusEffect(s.opponent.active, move.effect);
       s = applyDamage(s, 'opponent', dmg);
+      s.lastAttackType = s.player.active.type;
+      s.comboCount = (s.comboCount || 0) + 1;
 
       s = runAI(s, aiLevel);
       s.winner = checkWinner(s);
@@ -262,6 +309,39 @@ export default function TCGBattleScreen({ difficulty, playerDeck, onFinish, onBa
     });
     setSelectedMove(null);
   }, [aiLevel]);
+
+  const evolveFromHand = useCallback((handIdx) => {
+    setGame(g => {
+      if (g.turn !== 'player' || g.player.evolvedThisTurn || !g.player.active) return g;
+      const card = g.player.hand[handIdx];
+      if (!card || card.cardType !== 'pokemon' || card.evolvesFrom !== g.player.active.cardId) return g;
+      const evolved = cloneBattleCard(card.cardId);
+      evolved.currentHp = Math.min(evolved.hp, g.player.active.currentHp + Math.round((evolved.hp - g.player.active.hp) * 0.6));
+      evolved.attachedEnergy = [...(g.player.active.attachedEnergy || [])];
+      evolved.status = g.player.active.status;
+      const player = { ...g.player, hand: [...g.player.hand], active: evolved, evolvedThisTurn: true };
+      player.hand.splice(handIdx, 1);
+      return { ...g, player, log: [...g.log, `✨ ${g.player.active.name} 进化为 ${evolved.name}！`] };
+    });
+    setSelectedHand(null);
+  }, []);
+
+  const retreatToBench = useCallback((benchIdx) => {
+    setGame(g => {
+      const active = g.player.active;
+      const benchMon = g.player.bench[benchIdx];
+      if (!active || !benchMon || g.turn !== 'player') return g;
+      const cost = active.retreatCost || 1;
+      if ((active.attachedEnergy || []).length < cost) {
+        return { ...g, log: [...g.log, '能量不足，无法撤退'] };
+      }
+      const newEnergy = [...active.attachedEnergy];
+      for (let i = 0; i < cost; i++) newEnergy.pop();
+      const player = { ...g.player, bench: [...g.player.bench], active: { ...benchMon } };
+      player.bench[benchIdx] = { ...active, attachedEnergy: newEnergy };
+      return { ...g, player, log: [...g.log, `撤退！${benchMon.name} 上阵`] };
+    });
+  }, []);
 
   const endTurn = useCallback(() => {
     setGame(g => {
@@ -338,7 +418,14 @@ export default function TCGBattleScreen({ difficulty, playerDeck, onFinish, onBa
                 {m.name} ({m.damage})
               </button>
             ))}
+            {player.active && player.bench.some(p => p?.currentHp > 0) && (
+              <button className="tcg-btn tcg-btn-secondary" onClick={() => {
+                const idx = player.bench.findIndex(p => p?.currentHp > 0);
+                if (idx >= 0) retreatToBench(idx);
+              }}>撤退↔</button>
+            )}
             <button className="tcg-btn tcg-btn-secondary" onClick={endTurn}>结束回合</button>
+            {game.comboCount > 1 && <span style={{ fontSize: 11, color: '#fbbf24', alignSelf: 'center' }}>连击 x{game.comboCount}</span>}
           </div>
         )}
 
@@ -348,6 +435,7 @@ export default function TCGBattleScreen({ difficulty, playerDeck, onFinish, onBa
               <div key={c.instanceId || i} onClick={() => {
                 if (c.cardType === 'energy') attachEnergy(i);
                 else if (c.cardType === 'trainer') playTrainer(i);
+                else if (c.cardType === 'pokemon' && c.evolvesFrom === player.active?.cardId) evolveFromHand(i);
                 else setSelectedHand(i);
               }}>
                 <TCGCard card={c} size="small" selected={selectedHand === i} />
