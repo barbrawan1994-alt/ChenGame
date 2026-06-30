@@ -22124,15 +22124,15 @@ const renderMenu = () => {
     return (
       <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'10px', overflowY:'auto', maxHeight:'100%'}}>
         {/* 地图信息 */}
-        <div className="panel-card" style={{padding:'16px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)', position:'relative', overflow:'hidden', borderLeft:`2px solid ${theme.color || '#4CAF50'}`}}>
-          <div style={{position:'absolute', top:'-8px', right:'-8px', fontSize:'60px', opacity:0.06, pointerEvents:'none', transform:'rotate(-15deg)'}}>{currentMap.icon}</div>
+        <div className="panel-card" style={{padding:'12px 14px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)', position:'relative', overflow:'visible', borderLeft:`3px solid ${currentMap.color || '#4CAF50'}`}}>
+          <div style={{position:'absolute', top:'-8px', right:'-8px', fontSize:'50px', opacity:0.06, pointerEvents:'none', transform:'rotate(-15deg)'}}>{currentMap.icon}</div>
           <div style={{position:'relative', zIndex:2}}>
-            <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>当前位置</div>
-            <div style={{fontSize:'18px', fontWeight:'900', color:'#e8f3ff', marginBottom:'6px'}}>{currentMap.name}</div>
+            <div style={{fontSize:'9px', color:currentMap.color || '#4CAF50', fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'3px'}}>当前位置</div>
+            <div style={{fontSize:'16px', fontWeight:'900', color:'#e8f3ff', marginBottom:'5px'}}>{currentMap.name}</div>
             <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#e8f3ff', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
-              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#b8d4f0', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
-              {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
+              <span style={{fontSize:'10px', background:'rgba(143,216,255,0.15)', color:'#e8f3ff', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${currentMap.color || '#4CAF50'}40`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
+              <span style={{fontSize:'10px', background:'rgba(143,216,255,0.15)', color:'#e8f3ff', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{currentMap.type || '野外'}</span>
+              {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'20', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}40`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
           </div>
         </div>
@@ -22144,7 +22144,7 @@ const renderMenu = () => {
             <div style={{fontSize:'10px', fontWeight:'700', color: caughtCount===totalCount ? '#4CAF50' : '#888'}}>{caughtCount}/{totalCount}</div>
           </div>
           <div style={{height:'4px', background:'rgba(143,216,255,0.08)', borderRadius:'2px', marginBottom:'10px', overflow:'hidden'}}>
-            <div style={{width:progressPercent+'%', background:`linear-gradient(90deg, ${theme.color || '#4CAF50'}, ${theme.color || '#4CAF50'}80)`, height:'100%', transition:'width 0.5s', borderRadius:'2px'}} />
+            <div style={{width:progressPercent+'%', background:`linear-gradient(90deg, ${currentMap.color || '#4CAF50'}, ${currentMap.color || '#4CAF50'}80)`, height:'100%', transition:'width 0.5s', borderRadius:'2px'}} />
           </div>
           {encounters.length === 0 ? (
             <div style={{textAlign:'center', padding:'8px', color:'#6898b8', fontSize:'11px'}}>这里似乎很安静...</div>
