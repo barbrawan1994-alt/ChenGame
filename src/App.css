@@ -8091,3 +8091,959 @@ button:active {
     justify-content: center;
   }
 }
+
+/* ==========================================================================
+   VISUAL ENHANCEMENT PACK v13.0 — 30 Design Improvements
+   ========================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #1 Enhanced Design Tokens
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --shadow-elevation-1: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-elevation-2: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
+  --shadow-elevation-3: 0 20px 60px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-glow-blue: 0 0 20px rgba(47,109,246,0.25), 0 0 60px rgba(47,109,246,0.1);
+  --shadow-glow-gold: 0 0 20px rgba(255,213,79,0.3), 0 0 60px rgba(255,213,79,0.12);
+  --shadow-glow-green: 0 0 20px rgba(34,197,94,0.25), 0 0 60px rgba(34,197,94,0.1);
+  --gradient-shine: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 55%, transparent 60%);
+  --border-subtle: 1px solid rgba(0,0,0,0.06);
+  --border-glow: 1px solid rgba(143,216,255,0.25);
+  --transition-micro: 0.15s var(--ease-smooth);
+  --transition-normal: 0.3s var(--ease-smooth);
+  --transition-spring: 0.5s var(--ease-spring);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #2 Nav Header Enhancement
+   ───────────────────────────────────────────────────────────────────────────── */
+.nav-header {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+  transition: box-shadow var(--transition-normal), background var(--transition-normal);
+}
+.nav-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-primary), var(--brand-spirit), var(--brand-gold), transparent);
+  opacity: 0.4;
+  transition: opacity var(--transition-normal);
+}
+.nav-title {
+  background: linear-gradient(135deg, #1a1a2e 0%, #333 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #3 Enhanced Glass Panel
+   ───────────────────────────────────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
+}
+.glass-panel:hover {
+  border-color: rgba(47,109,246,0.12);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #4 Button Style Upgrades
+   ───────────────────────────────────────────────────────────────────────────── */
+button {
+  transition: transform 0.12s var(--ease-spring), box-shadow var(--transition-micro), filter var(--transition-micro);
+}
+button:active {
+  transform: scale(0.95);
+  transition-duration: 0.06s;
+}
+.btn-back {
+  background: linear-gradient(135deg, #f8f9fa, #eef1f5);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-elevation-1);
+  transition: all var(--transition-normal);
+}
+.btn-back:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fff, #f0f4ff);
+  box-shadow: var(--shadow-elevation-2);
+  transform: translateY(-2px);
+  filter: none;
+  border-color: rgba(47,109,246,0.15);
+}
+.btn-choose {
+  background: linear-gradient(135deg, #00C6FF 0%, #0072FF 50%, #005BCC 100%);
+  box-shadow: 0 6px 20px rgba(0, 114, 255, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: all 0.3s var(--ease-spring);
+}
+.starter-card:hover .btn-choose {
+  opacity: 1;
+  transform: translateY(0) scale(1.02);
+  box-shadow: 0 10px 30px rgba(0, 114, 255, 0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-chal-action {
+  backdrop-filter: blur(8px);
+  transition: all 0.25s var(--ease-spring);
+}
+.btn-chal-action:hover {
+  background: rgba(255,255,255,0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255,255,255,0.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #5 Grid Tile Visual Density
+   ───────────────────────────────────────────────────────────────────────────── */
+.grid-tile {
+  transition: background var(--transition-micro);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.type-2 {
+  background: rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.type-3 {
+  background: linear-gradient(180deg, rgba(33,150,243,0.25) 0%, rgba(33,150,243,0.15) 100%);
+  animation: water-shimmer 3s ease-in-out infinite;
+}
+@keyframes water-shimmer {
+  0%, 100% { background-color: rgba(33,150,243,0.2); }
+  50% { background-color: rgba(33,150,243,0.28); }
+}
+.type-7 {
+  background: linear-gradient(160deg, rgba(76,175,80,0.22) 0%, rgba(76,175,80,0.12) 100%);
+  position: relative;
+}
+.type-7::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 80%, rgba(76,175,80,0.15), transparent 70%);
+  animation: grass-sway 4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes grass-sway {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.type-1 {
+  background: linear-gradient(145deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 100%);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #6 Battle HP Bar Shimmer
+   ───────────────────────────────────────────────────────────────────────────── */
+.hp-bar-fill,
+.progress-fill {
+  position: relative;
+  overflow: hidden;
+}
+.hp-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-shine);
+  background-size: 300% 100%;
+  animation: hp-shimmer 2.5s ease-in-out infinite;
+}
+@keyframes hp-shimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -150% 0; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #7 Dex Item Holographic Hover
+   ───────────────────────────────────────────────────────────────────────────── */
+.dex-item {
+  transition: all 0.3s var(--ease-spring);
+  overflow: hidden;
+}
+.dex-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(47,109,246,0.06) 45%,
+    rgba(34,197,94,0.06) 55%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  pointer-events: none;
+  z-index: 0;
+}
+.dex-item:hover::before {
+  opacity: 1;
+}
+.dex-item:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.12), 0 0 0 1px rgba(47,109,246,0.1);
+}
+.dex-item.caught {
+  border-color: rgba(76,175,80,0.3);
+  background: linear-gradient(135deg, #f1f8e9 0%, #e8f5e9 100%);
+}
+.dex-item.caught:hover {
+  box-shadow: 0 12px 28px rgba(76,175,80,0.15), 0 0 0 1px rgba(76,175,80,0.2);
+}
+.dex-item-icon {
+  transition: transform 0.3s var(--ease-spring);
+}
+.dex-item:hover .dex-item-icon {
+  transform: scale(1.15) rotate(-3deg);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #8 Map Card Parallax Hover
+   ───────────────────────────────────────────────────────────────────────────── */
+.map-card-rich {
+  transition: all 0.35s var(--ease-spring);
+  transform-style: preserve-3d;
+  perspective: 800px;
+}
+.map-card-rich:hover {
+  transform: translateY(-6px) rotateX(2deg);
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.12),
+    0 8px 16px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.map-card-rich:hover .map-card-bg {
+  opacity: 0.65;
+  transform: scale(1.05);
+  transition: all 0.5s ease;
+}
+.map-card-rich:hover .map-watermark {
+  transform: rotate(-15deg) scale(1.1) translateY(-5px);
+  opacity: 0.25;
+  transition: all 0.5s var(--ease-spring);
+}
+.map-card-rich:hover .map-icon-box {
+  transform: scale(1.15);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #9 Page View Transitions
+   ───────────────────────────────────────────────────────────────────────────── */
+@keyframes screenFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.screen {
+  animation: screenFadeIn 0.35s var(--ease-out-expo);
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #10 Starter Card Particle Background
+   ───────────────────────────────────────────────────────────────────────────── */
+.starter-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(3px 3px at 15% 25%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(2px 2px at 45% 65%, rgba(255,255,255,0.25), transparent),
+    radial-gradient(3px 3px at 75% 35%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(2px 2px at 85% 75%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(2px 2px at 25% 85%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(3px 3px at 55% 15%, rgba(255,255,255,0.25), transparent);
+  background-size: 200% 200%;
+  animation: starter-particles 8s ease-in-out infinite;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.starter-card:hover::before {
+  opacity: 1;
+}
+@keyframes starter-particles {
+  0%, 100% { background-position: 0% 0%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 50% 100%; }
+  75% { background-position: 0% 50%; }
+}
+.starter-card {
+  transition: transform 0.4s var(--ease-spring), box-shadow 0.4s ease, border-color 0.3s ease, background 0.3s ease;
+}
+.starter-card:hover {
+  transform: translateY(-12px) scale(1.03);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 114, 255, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #11 Battle Stage Animated Ground
+   ───────────────────────────────────────────────────────────────────────────── */
+.battle-arena-floor {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.15) 0%, transparent 35%),
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0,0,0,0.08) 65%, transparent 67%),
+    radial-gradient(ellipse at 50% 50%, transparent 82%, rgba(0,0,0,0.05) 92%, transparent 94%),
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.02) 0deg 10deg, transparent 10deg 20deg);
+  animation: arena-rotate 30s linear infinite;
+}
+@keyframes arena-rotate {
+  from { transform: translateX(-50%) perspective(600px) rotateX(55deg) rotate(0deg); }
+  to { transform: translateX(-50%) perspective(600px) rotateX(55deg) rotate(360deg); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #12 Dock Capsule Glassmorphism Upgrade
+   ───────────────────────────────────────────────────────────────────────────── */
+.map-dock-capsule {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1.5px solid rgba(255,255,255,0.25);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: all 0.4s var(--ease-spring);
+}
+.map-dock-capsule:hover {
+  transform: translateX(-50%) translateY(-4px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px) saturate(2);
+  border-color: rgba(255,255,255,0.9);
+  box-shadow:
+    0 16px 48px rgba(0,0,0,0.18),
+    0 4px 12px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,1);
+}
+.dock-btn-capsule {
+  transition: all 0.25s var(--ease-spring);
+}
+.dock-btn-capsule:hover {
+  background: rgba(47,109,246,0.08);
+  transform: scale(1.12) translateY(-2px);
+  border-radius: 14px;
+}
+.dock-emoji {
+  transition: transform 0.3s var(--ease-spring);
+}
+.dock-btn-capsule:hover .dock-emoji {
+  transform: scale(1.2) rotate(-5deg);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #13 Scroll Reveal Animations
+   ───────────────────────────────────────────────────────────────────────────── */
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.map-card-rich,
+.dungeon-card,
+.chal-card-new,
+.dex-item,
+.skill-card-pro {
+  animation: revealUp 0.4s var(--ease-out-expo) backwards;
+}
+.map-card-rich:nth-child(1) { animation-delay: 0.02s; }
+.map-card-rich:nth-child(2) { animation-delay: 0.04s; }
+.map-card-rich:nth-child(3) { animation-delay: 0.06s; }
+.map-card-rich:nth-child(4) { animation-delay: 0.08s; }
+.map-card-rich:nth-child(5) { animation-delay: 0.10s; }
+.map-card-rich:nth-child(6) { animation-delay: 0.12s; }
+.map-card-rich:nth-child(7) { animation-delay: 0.14s; }
+.map-card-rich:nth-child(8) { animation-delay: 0.16s; }
+.dungeon-card:nth-child(1) { animation-delay: 0.03s; }
+.dungeon-card:nth-child(2) { animation-delay: 0.06s; }
+.dungeon-card:nth-child(3) { animation-delay: 0.09s; }
+.dungeon-card:nth-child(4) { animation-delay: 0.12s; }
+.dex-item:nth-child(n+1) { animation-delay: calc(0.015s * var(--i, 1)); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #14 Filter Chip Animation
+   ───────────────────────────────────────────────────────────────────────────── */
+.filter-chip {
+  transition: all 0.25s var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+}
+.filter-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.3), transparent 70%);
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.3s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.filter-chip.active::after {
+  opacity: 1;
+  transform: scale(1);
+}
+.filter-chip:hover:not(.active) {
+  background: #eef2ff;
+  border-color: rgba(47,109,246,0.2);
+  color: var(--brand-primary);
+  transform: translateY(-1px);
+}
+.filter-chip.active {
+  background: linear-gradient(135deg, var(--brand-primary), #1d4ed8);
+  box-shadow: 0 4px 14px rgba(47,109,246,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  transform: scale(1.05);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #15 Modal Overlay Depth of Field
+   ───────────────────────────────────────────────────────────────────────────── */
+.modal-overlay,
+.dex-modal-overlay {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px) saturate(0.8) brightness(0.9);
+  -webkit-backdrop-filter: blur(8px) saturate(0.8) brightness(0.9);
+}
+.dex-modal-card,
+.rebirth-panel {
+  animation: modalSlideUp 0.4s var(--ease-spring);
+}
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.92);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #16 Loading Shimmer Effects
+   ───────────────────────────────────────────────────────────────────────────── */
+@keyframes shimmer-loading {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-placeholder {
+  background: linear-gradient(90deg,
+    rgba(0,0,0,0.04) 25%,
+    rgba(0,0,0,0.08) 37%,
+    rgba(0,0,0,0.04) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-loading 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+.dex-item.missing {
+  position: relative;
+}
+.dex-item.missing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 25%,
+    rgba(0,0,0,0.03) 37%,
+    transparent 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-loading 3s ease-in-out infinite;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #17 Progress Bar Animated Gradient
+   ───────────────────────────────────────────────────────────────────────────── */
+.progress-track {
+  background: rgba(0,0,0,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-fill {
+  border-radius: 4px;
+  background-size: 200% 100%;
+  animation: progress-gradient 3s linear infinite;
+  box-shadow: 0 0 8px currentColor;
+}
+@keyframes progress-gradient {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.map-card-footer .progress-fill {
+  background: linear-gradient(90deg, #4CAF50, #66BB6A, #81C784, #66BB6A, #4CAF50);
+  background-size: 200% 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #18 Side Panel Entry Animations
+   ───────────────────────────────────────────────────────────────────────────── */
+.panel-card {
+  animation: panelCardEnter 0.45s var(--ease-out-expo) backwards;
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease;
+}
+.panel-card:nth-child(1) { animation-delay: 0.05s; }
+.panel-card:nth-child(2) { animation-delay: 0.1s; }
+.panel-card:nth-child(3) { animation-delay: 0.15s; }
+.panel-card:nth-child(4) { animation-delay: 0.2s; }
+@keyframes panelCardEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+.panel-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #19 Text Gradient for Headings
+   ───────────────────────────────────────────────────────────────────────────── */
+.home-title {
+  background: linear-gradient(135deg, #f9e7c1 0%, #ffd54f 40%, #f9e7c1 60%, #d6aa4f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% auto;
+  animation: text-gradient-shift 6s linear infinite;
+}
+@keyframes text-gradient-shift {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+.starter-title div:last-child {
+  background: linear-gradient(135deg, #fff 0%, #e3f2fd 50%, #bbdefb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.chal-new-title {
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.dex-stats-title {
+  background: linear-gradient(135deg, #1a237e, #333);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #20 Dungeon Card Atmospheric Glow
+   ───────────────────────────────────────────────────────────────────────────── */
+.dungeon-card {
+  transition: all 0.3s var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+}
+.dungeon-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.04), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.dungeon-card:hover::before {
+  opacity: 1;
+}
+.dungeon-card:hover {
+  transform: translateX(4px) scale(1.01);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12), -4px 0 0 currentColor;
+  border-color: currentColor;
+}
+.dungeon-icon-wrapper {
+  transition: all 0.3s var(--ease-spring);
+}
+.dungeon-card:hover .dungeon-icon-wrapper {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #21 Battle Sprite Platform Reflections
+   ───────────────────────────────────────────────────────────────────────────── */
+.sprite-v2 {
+  position: relative;
+}
+.sprite-v2::after {
+  content: '';
+  position: absolute;
+  bottom: -15%;
+  left: 15%;
+  width: 70%;
+  height: 20%;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.2), transparent 70%);
+  filter: blur(6px);
+  transform: scaleY(0.5);
+  pointer-events: none;
+  animation: shadow-breathe 3s ease-in-out infinite;
+}
+@keyframes shadow-breathe {
+  0%, 100% { opacity: 0.6; transform: scaleY(0.5) scaleX(1); }
+  50% { opacity: 0.8; transform: scaleY(0.4) scaleX(1.1); }
+}
+.player-zone-v2 .sprite-v2,
+.enemy-zone-v2 .sprite-v2 {
+  animation: float-enhanced 3.5s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #22 Tooltip Hover Effects
+   ───────────────────────────────────────────────────────────────────────────── */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 6px 12px;
+  background: rgba(7, 21, 47, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.2s var(--ease-spring);
+  z-index: 1000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  backdrop-filter: blur(8px);
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #23 Home Stat Card Animations
+   ───────────────────────────────────────────────────────────────────────────── */
+.home-stat-card {
+  animation: statCardEnter 0.5s var(--ease-out-expo) backwards;
+  position: relative;
+  overflow: hidden;
+}
+.home-stat-card:nth-child(1) { animation-delay: 0.1s; }
+.home-stat-card:nth-child(2) { animation-delay: 0.15s; }
+.home-stat-card:nth-child(3) { animation-delay: 0.2s; }
+.home-stat-card:nth-child(4) { animation-delay: 0.25s; }
+@keyframes statCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.home-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+.home-stat-card:hover::before {
+  left: 100%;
+}
+.home-stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(242, 195, 107, 0.3);
+}
+.home-stat-card strong {
+  transition: transform 0.3s var(--ease-spring);
+}
+.home-stat-card:hover strong {
+  transform: scale(1.08);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #24 Themed Scrollbar Styling
+   ───────────────────────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(47,109,246,0.2) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(47,109,246,0.25), rgba(34,197,94,0.2));
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(47,109,246,0.45), rgba(34,197,94,0.35));
+}
+.home-command-panel::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(242,195,107,0.35), rgba(192,63,39,0.25));
+  border-radius: 999px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #25 Focus Ring Improvements
+   ───────────────────────────────────────────────────────────────────────────── */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 3px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px rgba(47,109,246,0.15);
+  transition: outline-offset 0.15s ease, box-shadow 0.15s ease;
+}
+.filter-chip:focus-visible {
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(47,109,246,0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #26 Skill Card Glow on Hover
+   ───────────────────────────────────────────────────────────────────────────── */
+.skill-card-pro {
+  transition: all 0.3s var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+}
+.skill-card-pro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  box-shadow: inset 0 0 30px rgba(var(--type-r, 100), var(--type-g, 100), var(--type-b, 255), 0.15);
+}
+.skill-card-pro:hover::after {
+  opacity: 1;
+}
+.skill-card-pro:hover {
+  transform: translateY(-4px) scale(1.01);
+  background: #2a2a3e;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3), 0 0 20px rgba(var(--type-r, 100), var(--type-g, 100), var(--type-b, 255), 0.1);
+}
+.skill-name {
+  transition: color 0.2s;
+}
+.skill-card-pro:hover .skill-name {
+  text-shadow: 0 0 10px rgba(255,255,255,0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #27 Mobile Party Bar Enhancement
+   ───────────────────────────────────────────────────────────────────────────── */
+.mobile-party-bar {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+  padding: 6px 14px;
+  gap: 6px;
+}
+.mobile-party-bar > * {
+  transition: transform 0.2s var(--ease-spring);
+}
+.mobile-party-bar > *:hover {
+  transform: scale(1.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #28 Noise Texture for Dark Backgrounds
+   ───────────────────────────────────────────────────────────────────────────── */
+.starter-screen::after,
+.league-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  mix-blend-mode: overlay;
+}
+.battle-stage-v2::before {
+  opacity: 0.5;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #29 Map Dock Spring Physics Hover
+   ───────────────────────────────────────────────────────────────────────────── */
+.dock-btn-capsule {
+  transition: all 0.35s var(--ease-spring);
+  will-change: transform;
+}
+.dock-btn-capsule:hover {
+  transform: scale(1.15) translateY(-4px);
+}
+.dock-btn-capsule:active {
+  transform: scale(0.9) translateY(0);
+  transition-duration: 0.08s;
+}
+.map-dock-capsule {
+  will-change: transform, background;
+}
+.map-dock-capsule:hover .dock-btn-capsule {
+  animation: dock-bounce 0.5s var(--ease-spring);
+}
+@keyframes dock-bounce {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-3px); }
+  60% { transform: translateY(1px); }
+  100% { transform: translateY(0); }
+}
+.map-dock-capsule:hover .dock-btn-capsule:nth-child(1) { animation-delay: 0s; }
+.map-dock-capsule:hover .dock-btn-capsule:nth-child(2) { animation-delay: 0.03s; }
+.map-dock-capsule:hover .dock-btn-capsule:nth-child(3) { animation-delay: 0.06s; }
+.map-dock-capsule:hover .dock-btn-capsule:nth-child(4) { animation-delay: 0.09s; }
+.map-dock-capsule:hover .dock-btn-capsule:nth-child(5) { animation-delay: 0.12s; }
+.map-dock-capsule:hover .dock-btn-capsule:nth-child(6) { animation-delay: 0.15s; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   #30 Typography Hierarchy & Letter Spacing
+   ───────────────────────────────────────────────────────────────────────────── */
+.cute-theme {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+.nav-title {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+.map-title {
+  letter-spacing: -0.02em;
+}
+.dex-stats-title {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.starter-name {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.dungeon-name {
+  letter-spacing: -0.02em;
+}
+.chal-new-title {
+  letter-spacing: -0.02em;
+}
+.home-command-head h2 {
+  letter-spacing: -0.03em;
+}
+.home-primary-btn strong {
+  letter-spacing: -0.02em;
+}
+.skill-name {
+  letter-spacing: -0.01em;
+}
+.home-kicker,
+.home-section-label {
+  letter-spacing: 0.25em;
+}
+.map-lvl-tag,
+.lock-text,
+.dex-progress-label,
+.dock-label {
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.home-footer-note {
+  letter-spacing: 0.08em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Additional Polish: Selection Color & Smooth Scrolling
+   ───────────────────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(47,109,246,0.25);
+  color: inherit;
+}
+::-moz-selection {
+  background: rgba(47,109,246,0.25);
+  color: inherit;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
