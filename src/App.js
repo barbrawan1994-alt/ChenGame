@@ -7900,154 +7900,111 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           }),
         })).filter(cat => cat.sections.length > 0)
       : filtered;
-    const resultSectionCount = results.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0);
-    const totalSectionCount = filtered.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0);
-    const guideStats = [
-      { label: '说明章节', value: GAME_GUIDE.length, icon: '📚' },
-      { label: '说明小节', value: GAME_GUIDE.reduce((sum, cat) => sum + (cat.sections?.length || 0), 0), icon: '🧭' },
-      { label: '核心属性', value: 24, icon: '⚡' },
-      { label: '精灵图鉴', value: POKEDEX.length, icon: '🐾' },
-    ];
 
     const guideFormatContent = (text) => {
       return text.split('\n').map((line, i) => {
         const trimmed = line.trim();
-        if (!trimmed) return <div key={i} className="guide-line-spacer" />;
+        if (!trimmed) return <div key={i} className="gd-spacer" />;
         const isBullet = /^[·•\-①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬]/.test(trimmed);
         const isLabel = /^[🔥☠️⚡❄️😴🟢🔵🟣🟠🔴⬜🟧🟪★⭐🌀🐲🕳️🌈⚙️💎🏅🏆🗺️🐉🎪🌸🔮🍰💕🌙💰🗡️☁️🌳🏖️🌺👤⚔️🛡️🌟👑🧿❤️💨📖🐾🪲🎣✨]/.test(trimmed);
         const isHeading = /^(攻击型|防御型|辅助型|恢复类|增伤类|防御类|状态类|超人系|动物系|自然系)/.test(trimmed) && trimmed.length < 30;
-        if (isHeading) return <div key={i} className="guide-text-heading">{trimmed}</div>;
-        if (isBullet || isLabel) return <div key={i} className="guide-text-bullet">{trimmed}</div>;
-        return <div key={i} className="guide-text-line">{trimmed}</div>;
+        if (isHeading) return <div key={i} className="gd-heading">{trimmed}</div>;
+        if (isBullet || isLabel) return <div key={i} className="gd-bullet">{trimmed}</div>;
+        return <div key={i} className="gd-line">{trimmed}</div>;
       });
     };
 
+    const toggleCat = (catId) => {
+      setGuideExpanded(prev => {
+        const current = prev[catId];
+        return { ...prev, [catId]: current === undefined ? false : !current };
+      });
+    };
+    const toggleSec = (secKey) => {
+      setGuideExpanded(prev => {
+        const current = prev[secKey];
+        return { ...prev, [secKey]: current === undefined ? false : !current };
+      });
+    };
+    const isCatOpen = (catId) => guideExpanded[catId] !== false;
+    const isSecOpenFn = (secKey) => guideExpanded[secKey] !== false;
+
     return (
-      <div className="guide-screen-redesign">
-        <header className="guide-topbar">
-          <button className="guide-back-btn" onClick={() => { setView(safeBack()); setGuideSearch(''); setGuideCat(null); }}>← 返回</button>
-          <div className="guide-title-lockup">
-            <span>Trainer manual</span>
-            <strong>{GAME_NAME} 手册</strong>
-          </div>
-          <div className="guide-version-pill">{GAME_VERSION_LABEL}</div>
+      <div className="gd-root">
+        <header className="gd-topbar">
+          <button type="button" className="gd-back" onClick={() => { setView(safeBack()); setGuideSearch(''); setGuideCat(null); }}>
+            <span>←</span> 返回
+          </button>
+          <h1 className="gd-title">{GAME_NAME} 游戏手册</h1>
+          <span className="gd-ver">{GAME_VERSION_LABEL}</span>
         </header>
 
-        <main className="guide-layout">
-          <aside className="guide-sidebar">
-            <section className="guide-cover-card">
-              <SuperSpiritIcon size={58} />
-              <div>
-                <span className="guide-cover-kicker">Super Spirit RPG</span>
-                <h1>读懂精灵对战，从这里开始</h1>
-                <p>围绕收集、属性克制、技能资源、捕捉进化和队伍构筑整理，扩展系统按“如何强化队伍”来阅读。</p>
-              </div>
-            </section>
-
-            <div className="guide-stat-grid">
-              {guideStats.map(stat => (
-                <div key={stat.label}>
-                  <span>{stat.icon}</span>
-                  <strong>{stat.value}</strong>
-                  <small>{stat.label}</small>
-                </div>
-              ))}
-            </div>
-
-            <div className="guide-search-box">
-              <span>🔍</span>
-              <input type="text" placeholder="搜索属性、捕捉、进化、国战..." value={guideSearch} onChange={e => setGuideSearch(e.target.value)} />
-              {q && <button onClick={() => setGuideSearch('')}>清空</button>}
-            </div>
-
-            <div className="guide-result-meta guide-result-meta-redesign">
-              <span>{q ? `找到 ${resultSectionCount} 个相关小节` : `当前显示 ${totalSectionCount} 个小节`}</span>
-            </div>
-
-            <nav className="guide-category-nav" aria-label="说明分类">
-              <button type="button" className={!guideCat ? 'is-active' : ''} onClick={() => setGuideCat(null)}>
-                <span>📋</span><strong>全部内容</strong><small>{GAME_GUIDE.length} 类</small>
+        <div className="gd-filterbar">
+          <div className="gd-search">
+            <input type="text" placeholder="搜索关键词..." value={guideSearch} onChange={e => setGuideSearch(e.target.value)} />
+            {q && <button type="button" onClick={() => setGuideSearch('')}>✕</button>}
+          </div>
+          <div className="gd-tabs">
+            <button type="button" className={!guideCat ? 'active' : ''} onClick={() => setGuideCat(null)}>全部</button>
+            {GAME_GUIDE.map(g => (
+              <button type="button" key={g.id} className={guideCat === g.id ? 'active' : ''} onClick={() => setGuideCat(g.id)}>
+                {g.icon} {g.title}
               </button>
-              {GAME_GUIDE.map(g => (
-                <button type="button" key={g.id} className={guideCat === g.id ? 'is-active' : ''} onClick={() => setGuideCat(g.id)} style={{ '--guide-accent': g.color }}>
-                  <span>{g.icon}</span><strong>{g.title}</strong><small>{g.sections.length} 节</small>
+            ))}
+          </div>
+        </div>
+
+        <div className="gd-scroll">
+          {results.length === 0 && (
+            <div className="gd-empty"><span>🔍</span><p>没有找到匹配的内容，试试其他关键词。</p></div>
+          )}
+          {results.map((cat) => {
+            const catOpen = isCatOpen(cat.id);
+            return (
+              <div key={cat.id} className="gd-category" style={{ '--accent': cat.color || '#8fd8ff' }}>
+                <button type="button" className={`gd-cat-head ${catOpen ? 'is-open' : ''}`} onClick={() => toggleCat(cat.id)}>
+                  <span className="gd-cat-icon">{cat.icon}</span>
+                  <span className="gd-cat-label">{cat.title}</span>
+                  <span className="gd-cat-count">{cat.sections.length} 节</span>
+                  <span className="gd-arrow">{catOpen ? '▼' : '▶'}</span>
                 </button>
-              ))}
-            </nav>
-          </aside>
-
-          <section className="guide-reader">
-            <div className="guide-reader-hero">
-              <div>
-                <span>推荐阅读路线</span>
-                <h2>先看新手入门，再看精灵养成与战斗体系</h2>
-                <p>如果只想快速上手，按“创建角色 → 地图探索 → 捕捉 → 道馆 → 图鉴/队伍培养”的顺序读即可。高级系统可以在卡关或想变强时再查。</p>
-              </div>
-              <div className="guide-route-chips">
-                <span>1 选择初始精灵</span>
-                <span>2 捕捉与进化</span>
-                <span>3 属性克制</span>
-                <span>4 道馆与秘境</span>
-              </div>
-            </div>
-
-            <div className="guide-reader-scroll">
-              {results.length === 0 && (
-                <div className="guide-empty-state">
-                  <div>🔍</div>
-                  <strong>没有找到匹配的内容</strong>
-                  <span>试试搜索“属性”“捕捉”“进化”“双打”或“国战”。</span>
-                </div>
-              )}
-              {results.map((cat) => {
-                const isExpanded = guideExpanded[cat.id] !== false;
-                return (
-                  <article key={cat.id} className="guide-category-card" style={{ '--guide-accent': cat.color }}>
-                    <button type="button" className="guide-category-head" onClick={() => setGuideExpanded(prev => ({...prev, [cat.id]: !isExpanded}))}>
-                      <span className="guide-category-icon">{cat.icon}</span>
-                      <span className="guide-category-copy"><strong>{cat.title}</strong>{cat.desc && <small>{cat.desc}</small>}</span>
-                      <span className="guide-section-count">{cat.sections.length} 节</span>
-                      <span className={isExpanded ? 'guide-chevron is-open' : 'guide-chevron'}>▶</span>
-                    </button>
-                    {isExpanded && (
-                      <div className="guide-section-list">
-                        {cat.sections.map((sec, si) => {
-                          const secKey = `${cat.id}_${si}`;
-                          const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
-                          const secOpen = autoOpen || (guideExpanded[secKey] !== undefined ? guideExpanded[secKey] : true);
-                          const hasSub = sec.sub && sec.sub.length > 0;
-                          return (
-                            <section key={si} className={secOpen ? 'guide-section-card is-open' : 'guide-section-card'}>
-                              <button className="guide-section-head" onClick={() => hasSub && setGuideExpanded(prev => ({...prev, [secKey]: !secOpen}))} type="button">
-                                <span className="guide-section-bar" />
-                                <strong>{sec.title}</strong>
-                                {hasSub && <small>{sec.sub.length} 条</small>}
-                                {hasSub && <span className={secOpen ? 'guide-chevron is-open' : 'guide-chevron'}>▶</span>}
-                              </button>
-                              {hasSub && secOpen && (
-                                <div className="guide-sub-list">
-                                  {sec.sub.map((item, idx) => (
-                                    <div key={idx} className="guide-sub-card">
-                                      <h3>{item.t}</h3>
-                                      <div className="guide-copy">{item.c ? (q ? highlightSearch(item.c, q) : guideFormatContent(item.c)) : null}</div>
-                                    </div>
-                                  ))}
+                {catOpen && (
+                  <div className="gd-sections">
+                    {cat.sections.map((sec, si) => {
+                      const secKey = `${cat.id}_${si}`;
+                      const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
+                      const secOpen = autoOpen || isSecOpenFn(secKey);
+                      const hasSub = sec.sub && sec.sub.length > 0;
+                      return (
+                        <div key={si} className={`gd-sec ${secOpen ? 'is-open' : ''}`}>
+                          <button type="button" className="gd-sec-head" onClick={() => hasSub && toggleSec(secKey)}>
+                            <span className="gd-sec-dot" />
+                            <span className="gd-sec-title">{sec.title}</span>
+                            {hasSub && <span className="gd-sec-count">{sec.sub.length} 条</span>}
+                            {hasSub && <span className="gd-arrow">{secOpen ? '▼' : '▶'}</span>}
+                          </button>
+                          {hasSub && secOpen && (
+                            <div className="gd-items">
+                              {sec.sub.map((item, idx) => (
+                                <div key={idx} className="gd-item">
+                                  <h4>{item.t}</h4>
+                                  <div className="gd-body">{item.c ? (q ? highlightSearch(item.c, q) : guideFormatContent(item.c)) : null}</div>
                                 </div>
-                              )}
-                              {!hasSub && sec.content && (
-                                <div className="guide-copy guide-copy-standalone">{q ? highlightSearch(sec.content, q) : guideFormatContent(sec.content)}</div>
-                              )}
-                            </section>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        </main>
+                              ))}
+                            </div>
+                          )}
+                          {!hasSub && sec.content && secOpen && (
+                            <div className="gd-body gd-standalone">{q ? highlightSearch(sec.content, q) : guideFormatContent(sec.content)}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
