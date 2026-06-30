@@ -172,15 +172,15 @@ const addBerries = (berries, id, amount) => {
 };
 
 const BREATHING_BUFFS = [
-  { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +20%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_atk = Math.floor((p.customBaseStats.p_atk || 50) * 1.2); } },
-  { id: 'def_up', name: '🪨 岩之呼吸', desc: '全队防御力 +20%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_def = Math.floor((p.customBaseStats.p_def || 50) * 1.2); } },
-  { id: 'spd_up', name: '⚡ 雷之呼吸', desc: '全队速度 +15%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.spd = Math.floor((p.customBaseStats.spd || 50) * 1.15); } },
-  { id: 'heal_turn', name: '🌊 水之呼吸', desc: '全队HP上限 +15%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.hp = Math.floor((p.customBaseStats.hp || 50) * 1.15); } },
-  { id: 'crit_up', name: '🐗 兽之呼吸', desc: '暴击率 +10%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.crit = (p.customBaseStats.crit || 0) + 10; } },
+  { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +15', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_atk = (p.customBaseStats.p_atk || 50) + 15; } },
+  { id: 'def_up', name: '🪨 岩之呼吸', desc: '全队防御力 +15', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_def = (p.customBaseStats.p_def || 50) + 15; } },
+  { id: 'spd_up', name: '⚡ 雷之呼吸', desc: '全队速度 +10', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.spd = (p.customBaseStats.spd || 50) + 10; } },
+  { id: 'heal_turn', name: '🌊 水之呼吸', desc: '全队HP上限 +12', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.hp = (p.customBaseStats.hp || 50) + 12; } },
+  { id: 'crit_up', name: '🐗 兽之呼吸', desc: '暴击率 +8%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.crit = (p.customBaseStats.crit || 0) + 8; } },
   { id: 'heal_all', name: '🦋 虫之呼吸', desc: '立即恢复全队 50% HP', type: 'instant' },
-  { id: 'chakra_atk', name: '🍥 螺旋丸之力', desc: '全队特攻+15% 攻击+10%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.s_atk = Math.floor((p.customBaseStats.s_atk || 50) * 1.15); p.customBaseStats.p_atk = Math.floor((p.customBaseStats.p_atk || 50) * 1.1); } },
-  { id: 'chakra_def', name: '🛡️ 须佐能乎', desc: '全队双防+18%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_def = Math.floor((p.customBaseStats.p_def || 50) * 1.18); p.customBaseStats.s_def = Math.floor((p.customBaseStats.s_def || 50) * 1.18); } },
-  { id: 'chakra_all', name: '🦊 九尾查克拉', desc: '全队全属性+8%', effect: (p) => { if (!p.customBaseStats) return; ['hp','p_atk','p_def','s_atk','s_def','spd'].forEach(s => { p.customBaseStats[s] = Math.floor((p.customBaseStats[s] || 50) * 1.08); }); } },
+  { id: 'chakra_atk', name: '🍥 螺旋丸之力', desc: '全队特攻+12 攻击+8', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.s_atk = (p.customBaseStats.s_atk || 50) + 12; p.customBaseStats.p_atk = (p.customBaseStats.p_atk || 50) + 8; } },
+  { id: 'chakra_def', name: '🛡️ 须佐能乎', desc: '全队双防+12', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_def = (p.customBaseStats.p_def || 50) + 12; p.customBaseStats.s_def = (p.customBaseStats.s_def || 50) + 12; } },
+  { id: 'chakra_all', name: '🦊 九尾查克拉', desc: '全队全属性+6', effect: (p) => { if (!p.customBaseStats) return; ['hp','p_atk','p_def','s_atk','s_def','spd'].forEach(s => { p.customBaseStats[s] = (p.customBaseStats[s] || 50) + 6; }); } },
 ];
 const ALL_SKILL_TMS = (() => {
   const existingKeys = new Set(TMS.map(t => `${t.type}_${t.name}`));
@@ -1228,13 +1228,19 @@ const [infinityState, setInfinityState] = useState(() => {
     if (!enemy) return;
     if (enemy.level > player.level - 10) { return; }
     const moves = player.combatMoves || [];
+    const playerStats = getStats(party[targetIdx] || player);
+    const hpPercent = player.currentHp / Math.max(1, playerStats.maxHp);
     let bestIdx = 0, bestScore = -1;
     moves.forEach((m, i) => {
       if (!canUseCombatMove(b, player, m, 'player')) return;
       let score = m.p || 0;
-      const typeMod = getTypeMod(m.t, enemy.type, enemy.type2);
-      score *= typeMod;
-      if (m.t === player.type || m.t === player.type2) score *= 1.5;
+      if (hpPercent < 0.35 && m.effect?.healPercent) {
+        score = 200;
+      } else {
+        const typeMod = getTypeMod(m.t, enemy.type, enemy.type2);
+        score *= typeMod;
+        if (m.t === player.type || m.t === player.type2) score *= 1.5;
+      }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
     if (bestScore < 0) return;
@@ -1890,7 +1896,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       let dot;
       if (unit.status === 'PSN' && unit.volatiles?.badlyPoisoned) {
         unit.volatiles.badlyPoisonedTurns = (unit.volatiles.badlyPoisonedTurns || 1) + 1;
-        dot = Math.floor(getStats(unit).maxHp * Math.min(0.5, unit.volatiles.badlyPoisonedTurns / 16));
+        dot = Math.floor(getStats(unit).maxHp * Math.min(0.25, unit.volatiles.badlyPoisonedTurns / 16));
       } else {
         dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
       }
@@ -1990,7 +1996,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         const ev = Math.floor(rawEv * evScale);
         
         let val = Math.floor((base + iv) * growth * shinyMod);
-        if (isHp) val = Math.floor(val * 2.5); 
+        if (isHp) val = Math.floor(val * 2.0); 
 
         if (natureStats[ivKey]) val = Math.floor(val * natureStats[ivKey]);
         
@@ -2927,9 +2933,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const tier = Math.min(3, Math.floor(index / db.length));
     if (power > 0 && tier > 0) {
         const baseName = template.name;
-        if (tier === 1) { name = `真·${baseName}`; power = Math.floor(power * 1.3); }
-        else if (tier === 2) { name = `超·${baseName}`; power = Math.floor(power * 1.6); }
-        else if (tier >= 3) { name = `神·${baseName}`; power = Math.floor(power * 2.0); }
+        if (tier === 1) { name = `真·${baseName}`; power = Math.floor(power * 1.2); }
+        else if (tier === 2) { name = `超·${baseName}`; power = Math.floor(power * 1.3); }
+        else if (tier >= 3) { name = `神·${baseName}`; power = Math.floor(power * 1.5); }
     }
     return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, priority: template.priority || 0, alwaysHit: template.alwaysHit || false, desc: template.desc || '' };
   };
@@ -3682,9 +3688,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // --- 融合逻辑处理函数 (使用完整混合算法) ---
   const getFusionCost = () => {
     const badgeCount = badges?.length || 0;
-    if (badgeCount >= 8) return 3000;
-    if (badgeCount >= 5) return 1000;
-    return 500;
+    if (badgeCount >= 8) return 30000;
+    if (badgeCount >= 5) return 15000;
+    return 5000;
   };
   const handleFusion = () => {
     if (!fusionParent || !fusionChild) return;
@@ -7441,7 +7447,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
               {NARUTO_CHALLENGES.map(ch => {
                 const unlocked = badges.length >= ch.badgeReq;
-                const completed = (narutoState.examsCompleted || 0) >= Math.max(1, ch.req) / 50;
+                const completed = (narutoState.completedChallenges || []).includes(ch.id) || (narutoState.examsCompleted || 0) >= ch.req;
                 return (
                   <div key={ch.id} style={{display:'flex',alignItems:'center',padding:'10px 14px',borderRadius:'10px',
                     background: completed ? 'rgba(76,175,80,0.08)' : unlocked ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.2)',
@@ -10558,7 +10564,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         trainerName = "试炼官";
     } else if (type === 'dungeon_shiny') {
         const enemyId = _.sample(context.pool);
-        const isShiny = Math.random() < 0.5;
+        const isShiny = Math.random() < 0.15;
         enemyParty.push(createPet(enemyId, _.random(context.lvl[0], context.lvl[1]), false, isShiny));
         dropGold = context.drop || 3000;
         trainerName = "稀有精灵";
@@ -10771,7 +10777,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
             dropGold = 5000;
             showMapToast('⚠️', '提示', '传说中的神兽降临了！', 1500);
          } else {
-            const fullPool = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+            const rawPool = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+            const seen = new Set();
+            const fullPool = rawPool.filter(pid => {
+              const p = POKEDEX.find(x => x.id === pid);
+              const key = p ? `${p.emoji}_${p.type}` : pid;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
             if (context.exclusivePool && Math.random() < 0.08) {
               enemyId = _.sample(context.exclusivePool);
             } else {
@@ -10780,7 +10794,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
          }
          enemyParty.push(createPet(enemyId, level, isBoss));
          if (isDouble) {
-           const fullPool2 = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+           const rawPool2 = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+           const seen2 = new Set();
+           const fullPool2 = rawPool2.filter(pid => {
+             const p = POKEDEX.find(x => x.id === pid);
+             const key = p ? `${p.emoji}_${p.type}` : pid;
+             if (seen2.has(key)) return false;
+             seen2.add(key);
+             return true;
+           });
            const enemyId2 = _.sample(fullPool2);
            const level2 = _.random(context.lvl[0], context.lvl[1]);
            enemyParty.push(createPet(enemyId2, level2, false));
@@ -11161,7 +11183,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const lv = Math.min(100, (badges?.length || 0) * 8 + 30);
       enemies.push(createPet(p.id, lv, true));
     }
-    const rewards = { gold: 800, exp: 200 };
+    const trialGold = 800 + (badges?.length || 0) * 200;
+    const rewards = { gold: trialGold, exp: 200 + (badges?.length || 0) * 50 };
     setActivityCenter(false);
     startBattle({ customParty: enemies, trainerName: '属性试炼', drop: rewards.gold }, 'elemental_trial', { type: 'elemental_trial', elementType: todayType, rewards });
   };
@@ -11918,7 +11941,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               addLog('组合忍术数据异常: 缺少属性');
             }
           } else if (combo.id === 'sealing' && target && target.currentHp > 0) {
-            const dmg = Math.floor(target.currentHp * 0.5);
+            const dmg = Math.floor(target.currentHp * 0.3);
             target.currentHp = Math.max(1, target.currentHp - dmg);
             addLog(`${combo.name} 封印了 ${target.name}，造成 ${dmg} 点伤害！`);
           } else if (combo.id === 'medical') {
@@ -12185,7 +12208,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           let dot;
           if (s.status === 'PSN' && s.volatiles?.badlyPoisoned) {
             s.volatiles.badlyPoisonedTurns = (s.volatiles.badlyPoisonedTurns || 1) + 1;
-            dot = Math.floor(getStats(u).maxHp * Math.min(0.5, s.volatiles.badlyPoisonedTurns / 16));
+            dot = Math.floor(getStats(u).maxHp * Math.min(0.25, s.volatiles.badlyPoisonedTurns / 16));
           } else if (s.status === 'BRN') {
             dot = Math.max(1, Math.floor(getStats(u).maxHp / 8));
           } else {
@@ -14086,13 +14109,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
       PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'], immune: ['DARK'] },
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'], immune: [] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'], immune: [] },
-      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: ['NORMAL'] },
+      GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: ['NORMAL'] },
       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'], immune: [] },
-      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: [] },
+      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: [] },
       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'], immune: [] },
       FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'], immune: [] },
       WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'], immune: [] },
-      LIGHT:   { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'], immune: [] },
+      LIGHT:   { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'], immune: [] },
       COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING', 'POISON'], immune: [] },
       SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC', 'GHOST', 'BUG'], immune: [] },
       GOD:     { weak: ['GOD'], strong: ['DRAGON', 'DARK', 'GHOST', 'PSYCHIC', 'FAIRY'], immune: [] },
@@ -14148,8 +14171,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (state.status) {
        state.turnCounters.status = (state.turnCounters.status || 0) + 1;
        
-       if (state.status !== 'SLP' && state.status !== 'FRZ' && state.turnCounters.status >= decayMinTurns && Math.random() < decayChance) {
-          const statusNames = { PAR:'麻痹', BRN:'灼伤', PSN:'中毒' };
+       if (state.turnCounters.status >= decayMinTurns && Math.random() < decayChance) {
+          const statusNames = { PAR:'麻痹', BRN:'灼伤', PSN:'中毒', SLP:'睡眠', FRZ:'冰冻' };
           const sName = statusNames[state.status] || '异常';
           
           state.status = null;
@@ -14274,7 +14297,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
     if (atkState.status === 'FRZ') {
-        const thawChance = (move.t === 'FIRE') ? 1.0 : 0.35;
+        const thawChance = (move.t === 'FIRE') ? 1.0 : 0.50;
         if (Math.random() > thawChance) {
             addLog(`${attacker.name} 被冻结了，无法动弹!`);
             _setAnim({ type: 'FREEZE', target: source === 'player' ? 'player' : 'enemy' }); 
@@ -14686,7 +14709,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const defKey = category === 'physical' ? 'p_def' : 's_def';
           if ((defState.stages[defKey] || 0) > 0) defVal = Math.floor(defVal / getStageMult(defState.stages[defKey]));
         }
-        if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.2);
+        if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.5);
         if (atkFE && atkFE.ignoreDefPercent) defVal = Math.floor(defVal * (1 - atkFE.ignoreDefPercent));
 
         const atkEquipFx = getEquipEffects(attacker);
@@ -14860,7 +14883,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (attacker.trait === 'adaptability' && isSTAB) {
             rawDmg *= (2.0 / 1.5);
         }
-        if (isCrit && attacker.trait === 'sniper') rawDmg *= 1.5;
+        if (isCrit && attacker.trait === 'sniper') rawDmg *= 1.3;
 
         let isImmune = false;
         if (typeMod === 0) {
@@ -15035,7 +15058,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               const accuracy = move.acc || 95;
               if (Math.random() * 100 > accuracy) { addLog(`追加第${h+2}击 未命中!`); continue; }
               const hitRoll = (0.75 + Math.random() * 0.25);
-              const extraDmg = Math.max(1, Math.floor(dmg * 0.55 * hitRoll));
+              const extraDmg = Math.max(1, Math.floor(dmg * 0.45 * hitRoll));
               defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
               addLog(`追加第${h+2}击! 造成 ${extraDmg} 伤害`);
             }
@@ -15208,7 +15231,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (domMH && domMH.turnsLeft > 0 && domMH.ownerSide === source && domMH.effect?.multiHitBoost) hits += 1;
             for (let h = 0; h < hits && defender.currentHp > 0; h++) {
               const hitRoll = (0.85 + Math.random() * 0.15);
-              const extraDmg = Math.max(1, Math.floor(dmg * 0.6 * hitRoll));
+              const extraDmg = Math.max(1, Math.floor(dmg * 0.45 * hitRoll));
               defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
               addLog(`追加第${h+2}击! 造成 ${extraDmg} 伤害`);
             }
@@ -16379,8 +16402,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setLeagueWins(prev => prev + 1);
             setLeagueRound(0); 
             setCompletedChallenges(prev => [...prev, 'LEAGUE_CHAMPION']); 
-            const candyCount = 3 + Math.min(5, Math.floor(leagueWins / 2));
-            const goldReward = Math.min(20000 + leagueWins * 8000, 80000);
+            const candyCount = 1 + Math.min(2, Math.floor(leagueWins / 3));
+            const goldReward = Math.min(15000 + leagueWins * 5000, 40000);
             setInventory(prev => ({...prev, max_candy: (prev.max_candy || 0) + candyCount}));
             setGold(g => g + goldReward);
             const rand = Math.random();
@@ -17176,7 +17199,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     let penaltyAmount = 0;
     if (!isArenaFight && !isWorldBoss && !isStoryFight && !isTowerOrTrial) {
       setGold(g => {
-        const penalty = Math.min(Math.floor(g * 0.1), 5000);
+        const penalty = Math.min(Math.floor(g * 0.05), 2000);
         penaltyAmount = penalty;
         return Math.max(0, g - penalty);
       });
@@ -17407,7 +17430,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!battle) return;
     if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.isBoss || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
     if (((inventory.balls || {})[ballType] || 0) <= 0) return addLog("球不足！");
-    if (party.length >= 6 && box.length >= 500) return addLog("⚠️ 存储箱已满(500/500)！请先释放精灵。");
+    const boxCap = 500 + (badges?.length || 0) * 50;
+    if (party.length >= 6 && box.length >= boxCap) return addLog(`⚠️ 存储箱已满(${box.length}/${boxCap})！请先释放精灵。`);
     try {
     
     // 1. 扣球并播放投掷动画
@@ -17565,7 +17589,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const lv = pet.level || 1;
     const shinyMult = pet.isShiny ? 3 : 1;
     const legendMult = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1);
-    const releaseGold = Math.min(2000, Math.floor((50 + lv * 10) * shinyMult * legendMult));
+    const releaseGold = Math.floor((lv * 50 + 200) * shinyMult * legendMult);
     const isLegend = LEGENDARY_POOL?.includes(pet.id);
     const isHighTier = HIGH_TIER_POOL?.includes(pet.id);
     const needsSpecialWarn = pet.isShiny || isLegend || isHighTier;
@@ -19810,7 +19834,7 @@ const renderMenu = () => {
       // 特殊限制
       if (dungeon.restriction === 'min_lvl_60') { if (party.some(p => p.level < 60)) { showMapToast('❌', '提示', '⛔ 队伍中所有精灵必须 ≥ Lv.60', 1500); return; } }
       if (dungeon.restriction === 'solo_run') { if (party.length > 1) { showMapToast('❌', '提示', '⛔ 英雄试炼只能携带 1 只精灵', 1500); return; } }
-      if (dungeon.restriction === 'lucky_nature') { const lucky = ['naive', 'hasty', 'quirky', 'serious', 'hardy']; if (!lucky.includes(party[0].nature)) { showMapToast('❌', '提示', '⛔ 首发精灵性格必须是幸运类(天真/急躁/浮躁/严肃/努力)', 1500); return; } }
+      if (dungeon.restriction === 'lucky_nature') { const lucky = ['naive', 'hasty', 'quirky', 'serious', 'hardy', 'jolly', 'timid', 'modest', 'adamant', 'bold']; if (!lucky.includes(party[0].nature)) { showMapToast('❌', '提示', '⛔ 首发精灵性格必须是幸运类(天真/急躁/浮躁/严肃/努力/开朗/胆小/内敛/固执/大胆)', 1500); return; } }
 
       if (dungeon.type === 'ragnarok' && party[0].level < 95) { showMapToast('❌', '提示', '⛔ 诸神黄昏要求首发精灵 Lv.95 以上！', 1500); return; }
       if (dungeon.type === 'double' && party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打擂台需要至少2只存活的精灵！', 1500); return; }
@@ -19848,7 +19872,7 @@ const renderMenu = () => {
       else if (dungeon.type === 'wild_survival') {
         const wsLv = Math.max(25, Math.min(55, party[0].level));
         showMapToast('✅', '提示', '🏕️ 野外求生！ 连续3波战斗，HP在波次间不回复！ 挺过去就能获得大量补给品！', 2000);
-        startBattle({ id: 992, name: '野外求生 第1波', lvl: [wsLv - 5, wsLv], pool: [1,4,7,10,25,43,66,92], drop: 300, bossRushWave: 1, rushName: '野外求生', dungeonId: 'wild_survival' }, 'boss_rush');
+        startBattle({ id: 992, name: '野外求生 第1波', lvl: [wsLv - 5, wsLv], pool: [1,4,7,10,25,43,66,92], drop: 800, bossRushWave: 1, rushName: '野外求生', dungeonId: 'wild_survival' }, 'boss_rush');
       }
       // --- 回忆试炼 (镜像挑战) ---
       else if (dungeon.type === 'memory_trial') {
@@ -24578,12 +24602,12 @@ const renderMenu = () => {
     const newSpeedRng = Math.floor(Math.random() * 71) + 40;
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    // 构建预览对象 (回到 5 级)
+    const rebirthLevel = Math.max(5, Math.floor(basePet.level * 0.3));
     const previewPet = {
         ...basePet,
-        level: 5,
+        level: rebirthLevel,
         exp: 0,
-        nextExp: 100, 
+        nextExp: calcNextExp(rebirthLevel), 
         ivs: newIvs,
         nature: newNature,
         isShiny: isNewShiny,
@@ -27348,7 +27372,7 @@ const renderMenu = () => {
                         fontSize:'9px', cursor:'pointer'}}>{t === 'all' ? '全部' : (TYPES[t]?.name || t)}</button>
                   ))}
                 </div>
-                <div style={{color: box.length >= 480 ? '#F44336' : box.length >= 450 ? '#FF9800' : '#888', fontSize:'11px', fontWeight: box.length >= 450 ? 700 : 400}}>存储箱 ({box.length}/500){box.length >= 480 ? ' ⚠️ 即将满！' : box.length >= 450 ? ' 空间不足' : ''}</div>
+                <div style={{color: box.length >= (500 + (badges?.length||0)*50) - 20 ? '#F44336' : box.length >= (500 + (badges?.length||0)*50) - 50 ? '#FF9800' : '#888', fontSize:'11px', fontWeight: box.length >= (500 + (badges?.length||0)*50) - 50 ? 700 : 400}}>存储箱 ({box.length}/{500 + (badges?.length||0)*50}){box.length >= (500 + (badges?.length||0)*50) - 20 ? ' ⚠️ 即将满！' : box.length >= (500 + (badges?.length||0)*50) - 50 ? ' 空间不足' : ''}</div>
               </div>
               <div className="pc-box-grid-tech" style={{ 
                   display:'grid', 

@@ -126,7 +126,7 @@ const ACHIEVEMENTS = [
   { id: 'challenge_48',    cat: 'GROWTH', rarity: 'LEGENDARY', name: '全塔制霸',     desc: '通关全部48座试炼塔',          check: s => s.challengesCompleted >= 48, reward: { title: '试炼之王', gold: 20000 } },
   { id: 'evo_master',      cat: 'GROWTH', rarity: 'RARE',      name: '进化达人',     desc: '累计进化精灵20次',            check: s => s.totalEvolutions >= 20, reward: { gold: 3000 } },
   { id: 'fusion_master',   cat: 'GROWTH', rarity: 'RARE',      name: '融合专家',     desc: '累计融合精灵15次',            check: s => s.totalFusions >= 15,   reward: { gold: 3000 } },
-  { id: 'gold_200k',       cat: 'ECONOMY', rarity: 'UNCOMMON',  name: '小富即安',     desc: '累计获得200,000金币',             check: s => s.totalGoldEarned >= 200000, reward: { gold: 2000 } },
+  { id: 'gold_200k',       cat: 'ECONOMY', rarity: 'UNCOMMON',  name: '小富即安',     desc: '累计获得200,000金币',             check: s => s.totalGoldEarned >= 200000, reward: { gold: 10000 } },
   { id: 'billionaire',     cat: 'ECONOMY', rarity: 'EPIC',      name: '财富神话',     desc: '累计获得1亿金币',                 check: s => s.totalGoldEarned >= 100000000, reward: { title: '亿万富翁', gold: 10000 } },
   { id: 'max_intimacy',    cat: 'GROWTH', rarity: 'RARE',      name: '亲密无间',     desc: '一只精灵亲密度达到255',       check: s => s.maxIntimacy >= 255,   reward: { title: '最佳拍档', gold: 3000 } },
   { id: 'skill_master',    cat: 'GROWTH', rarity: 'UNCOMMON',  name: '技能全才',     desc: '一只精灵学会8个不同技能',     check: s => s.maxSkillCount >= 8,    reward: { gold: 1500 } },

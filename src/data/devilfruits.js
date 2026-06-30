@@ -2671,10 +2671,10 @@ export function getRandomFruit(level, mode = 'trainer') {
   const weights = mode === 'wild'
     ? { COMMON: 60, RARE: 30, EPIC: 8, LEGENDARY: 2 }
     : level >= 40
-      ? { COMMON: 15, RARE: 35, EPIC: 35, LEGENDARY: 15 }
+      ? { COMMON: 25, RARE: 40, EPIC: 30, LEGENDARY: 5 }
       : level >= 25
-        ? { COMMON: 25, RARE: 40, EPIC: 28, LEGENDARY: 7 }
-        : { COMMON: 40, RARE: 40, EPIC: 17, LEGENDARY: 3 };
+        ? { COMMON: 35, RARE: 40, EPIC: 22, LEGENDARY: 3 }
+        : { COMMON: 50, RARE: 35, EPIC: 13, LEGENDARY: 2 };
 
   const entries = Object.entries(weights);
   const total = entries.reduce((s, [, w]) => s + w, 0);
