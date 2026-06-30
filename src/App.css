@@ -7840,8 +7840,8 @@ button:active {
 }
 
 .grid-screen-redesign .side-panel {
-  max-width: 220px !important;
-  min-width: 180px !important;
+  max-width: 240px !important;
+  min-width: 200px !important;
   border: 1px solid rgba(143,216,255,0.16) !important;
   border-radius: 20px !important;
   background:

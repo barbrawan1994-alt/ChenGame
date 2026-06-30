@@ -693,22 +693,27 @@ useEffect(() => {
                 if (residentIds.length > 0 && (ben.hpRegen > 0 || ben.expBonus > 0 || ben.intimacyBonus > 0)) {
                     const adjHpRegen = Math.floor(ben.hpRegen * (1 + spouseHealMult));
                     const adjIntimacy = Math.floor(ben.intimacyBonus * spouseIntimacyMult);
+                    const adjExp = ben.expBonus || 0;
                     setBox(prevBox => prevBox.map(p => {
                         if (!residentIds.includes(p.uid || p.id)) return p;
                         const maxHp = getStats(p).maxHp;
+                        const newExp = (p.exp || 0) + adjExp;
                         return {
                             ...p,
                             currentHp: Math.min(maxHp, (p.currentHp || maxHp) + adjHpRegen),
                             intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy),
+                            exp: p.level >= 100 ? 0 : newExp,
                         };
                     }));
                     setParty(prevParty => prevParty.map(p => {
                         if (!residentIds.includes(p.uid || p.id)) return p;
                         const maxHp = getStats(p).maxHp;
+                        const newExp = (p.exp || 0) + adjExp;
                         return {
                             ...p,
                             currentHp: Math.min(maxHp, (p.currentHp || maxHp) + adjHpRegen),
                             intimacy: Math.min(255, (p.intimacy || 0) + adjIntimacy),
+                            exp: p.level >= 100 ? 0 : newExp,
                         };
                     }));
                 }
@@ -1237,7 +1242,8 @@ const [infinityState, setInfinityState] = useState(() => {
       if (hpPercent < 0.35 && m.effect?.healPercent) {
         score = 200;
       } else {
-        const typeMod = getTypeMod(m.t, enemy.type, enemy.type2);
+        let typeMod = getTypeMod(m.t, enemy.type, b);
+        if (enemy.type2 && enemy.type2 !== enemy.type) typeMod *= getTypeMod(m.t, enemy.type2, b);
         score *= typeMod;
         if (m.t === player.type || m.t === player.type2) score *= 1.5;
       }
@@ -1245,9 +1251,9 @@ const [infinityState, setInfinityState] = useState(() => {
     });
     if (bestScore < 0) return;
     if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
-    const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx) : executeTurn(bestIdx), 250);
+    const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx, enemyIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
-  }, [autoBattle, battle?.phase, battle?.activeIdx, battle?.enemyActiveIdx, battle?.doubleSlot, battle?.isDouble]); // eslint-disable-line
+  }, [autoBattle, battle?.phase, battle?.activeIdx, battle?.enemyActiveIdx, battle?.doubleSlot, battle?.isDouble, battle?.turnCount]); // eslint-disable-line
 
   const battleResultHandledRef = useRef(false);
   const pendingJutsuWinForBountyRef = useRef(false);
@@ -1548,7 +1554,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                 const hasVolatileStatus = !!(pState.volatiles?.confused || pState.volatiles?.sleepTurns || pState.volatiles?.frozenTurns);
                 if (!pState.status && !hasVolatileStatus) { addLog("⚠️ 没有异常状态！"); return; }
                 pState.status = null;
-                if (pState.volatiles) { pState.volatiles.sleepTurns = 0; pState.volatiles.confused = 0; }
+                if (pState.volatiles) { pState.volatiles.sleepTurns = 0; pState.volatiles.confused = 0; pState.volatiles.frozenTurns = 0; }
                 logMsg = `使用了 ${item.name}，状态恢复正常！`;
                 used = true;
             } else {
@@ -2643,6 +2649,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     return;
                 }
             } else if (med.type === 'PP_ALL') {
+                 const allFull = (pet.moves || []).every(m => (m.pp || 0) >= (m.maxPP || 15));
+                 if (allFull) { showMapToast('⚠️', '提示', '所有技能PP已满。', 1500); return; }
                  (pet.moves || []).forEach(m => { m.pp = Math.min(m.maxPP || 15, (m.pp || 0) + (med.val || 10)); });
                  consumed = true;
                  msg = `技能 PP 已恢复！`;
@@ -2692,7 +2700,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             showMapToast('⚠️', '无法学习', '已经学会了该技能', 1500); return;
         }
         const newMove = { name: tm.name, p: tm.p, t: tm.type, pp: tm.pp, maxPP: tm.pp, desc: tm.desc };
-        if (pet.moves.length < 4) {
+        if ((pet.moves || []).length < 4) {
             pet.moves.push(newMove);
             consumed = true;
             msg = `📖 ${pet.name} 学会了 [${tm.name}]!`;
@@ -2923,7 +2931,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // ==========================================
   const getMoveByLevel = (type, level) => {
     const db = SKILL_DB[type] || SKILL_DB.NORMAL;
-    if (!db || db.length === 0) return { name: '撞击', power: 40, pp: 35, acc: 100, type: 'NORMAL', category: 'physical' };
+    if (!db || db.length === 0) return { name: '撞击', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100, category: 'physical' };
     const index = Math.floor(level / 5); 
     const template = db[index % db.length];
     let name = template.name;
@@ -4138,7 +4146,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const completed = [...(dc.taskCompleted || [])];
       GANG_TASKS.forEach(task => {
         if (task.type === type && !completed.includes(task.id)) {
-          tp[task.id] = (tp[task.id] || 0) + amount;
+          tp[task.id] = Math.min((tp[task.id] || 0) + amount, task.target);
           if (tp[task.id] >= task.target) {
             completed.push(task.id);
           }
@@ -5845,9 +5853,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         else if (picked.type === 'berry') { const berryId = BERRIES[picked.id] ? picked.id : 'oran'; const bCount = Math.floor((picked.count || 5) * bonusMult); setInventory(p => ({...p, berries: addBerries(p.berries, berryId, bCount)})); msg.push(`🍒 ${BERRIES[berryId]?.name || '树果'} x${bCount}`); }
         else if (picked.type === 'accessory_shard' || picked.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品 ${acc.name || '饰品'}`); } }
         else if (picked.type === 'egg' || picked.type === 'shiny_egg') {
-          const eggLvCap = picked.level || (300 + badges.length * 30);
-          const hi = Math.max(0, Math.min(POKEDEX.length - 1, eggLvCap));
-          const eggSpecies = POKEDEX[Math.floor(Math.random() * (hi + 1))];
+          const eggLvCap = picked.level || (20 + badges.length * 8);
+          const eligiblePool = POKEDEX.filter(p => (p.lvl || p.level || 1) <= eggLvCap && p.id <= 800);
+          const eggSpecies = eligiblePool.length > 0 ? eligiblePool[Math.floor(Math.random() * eligiblePool.length)] : POKEDEX[Math.floor(Math.random() * Math.min(100, POKEDEX.length))];
           if (eggSpecies) {
             const baseSteps = picked.type === 'shiny_egg' ? 150 : 300;
             const newEgg = { speciesId: eggSpecies.id, name: eggSpecies.name, stepsLeft: baseSteps, isShiny: picked.type === 'shiny_egg', hatchLevel: Math.min(100, Math.max(1, Math.floor((picked.level || 20) * 0.8))) };
@@ -8572,9 +8580,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           {/* 上交精灵 */}
           {!completed.includes('donate_pet') && party.length > 1 && (
             <button onClick={() => {
-              const eligible = party.filter(p => p.level >= 20);
-              if (eligible.length === 0) { showMapToast('⚠️', '无法上交', '没有 Lv.20 以上的精灵可上交', 1500); return; }
-              const petToGive = eligible[eligible.length - 1];
+              const petToGive = [...party].reverse().find(p => p.level >= 20);
+              if (!petToGive) { showMapToast('⚠️', '无法上交', '没有 Lv.20 以上的精灵可上交', 1500); return; }
               setConfirmModal({ title:'🐾 上交确认', msg:`确定上交 ${petToGive.name} (Lv.${petToGive.level}) 吗？此操作不可恢复！`, onOk: () => {
                 setParty(prev => prev.filter(p => p.uid !== petToGive.uid));
                 updateGangTaskProgress('donate_pet', 1);
@@ -9684,7 +9691,7 @@ const useGrowthItem = (petIndex, itemId) => {
           }
           const godId = _.sample(godPool);
           showMapToast('⚡', '祭坛召唤！', '强烈能量爆发！传说精灵出现！', 2000);
-          setTimeout(() => startBattle({ id: godId, name: '被祭坛召唤的神兽', lvl: [mapLv, mapLv], pool: [godId], drop: 5000 }, 'wild_god'), 1500);
+          setTimeout(() => startBattle({ id: currentMapId, name: '被祭坛召唤的神兽', lvl: [mapLv, mapLv], pool: [godId], drop: 5000 }, 'wild_god'), 1500);
         }
         return;
       }
@@ -11015,7 +11022,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const match = co.find(c => c.uid && (c.uid === p.uid || c.uid === p.id)) || co[i];
         if (match) {
           const maxHp = getStats(p).maxHp;
-          p.currentHp = match.hpRatio <= 0 ? 0 : Math.min(Math.max(1, Math.floor(maxHp * match.hpRatio)), maxHp);
+          p.currentHp = match.hpRatio <= 0 ? 0 : Math.min(Math.max(0, Math.floor(maxHp * match.hpRatio)), maxHp);
         }
       });
     }
@@ -14679,9 +14686,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let atkVal = category === 'physical' ? statsAtk.p_atk : statsAtk.s_atk;
         let defVal = category === 'physical' ? statsDef.p_def : statsDef.s_def;
         const synM = battleState.teamSynergyMult || 1;
-        if (synM > 1) {
-          if (source === 'player') atkVal = Math.floor(atkVal * synM);
-          if (source === 'enemy') defVal = Math.floor(defVal * synM);
+        if (synM > 1 && source === 'player') {
+          atkVal = Math.floor(atkVal * synM);
         }
 
         // 果实变身攻防倍率
@@ -15485,9 +15491,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (pet.currentHp <= 0) return pet;
       const activeCount = Math.max(1, bState.isDouble ? (bState.activeIdxs?.length || 2) : 1);
       const aliveCount = currentParty.filter(p => p.currentHp > 0).length || 1;
+      const benchCount = Math.max(1, aliveCount - activeCount);
       const shareRatio = isActive
-        ? (bState.isDouble ? 0.5 : (1.0 / activeCount))
-        : (0.5 / Math.max(1, aliveCount - activeCount));
+        ? (bState.isDouble ? 0.5 : 1.0)
+        : (0.3 / benchCount);
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
@@ -15565,7 +15572,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         if (pet.level % 5 === 0) {
-          const newMove = getMoveByLevel(pet.type, pet.level);
+          const moveType = (pet.level % 10 === 0 && pet.type2 && pet.type2 !== pet.type) ? pet.type2 : pet.type;
+          const newMove = getMoveByLevel(moveType, pet.level);
           if (!pet.moves) pet.moves = [];
           const alreadyHas = pet.moves.find(m => m.name === newMove.name);
           const alreadyPending = pet.pendingLearnMove && pet.pendingLearnMove.name === newMove.name;
@@ -15707,11 +15715,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       const handleWin = (finalParty) => {
        try {
-         if (!battle || battleResultHandledRef.current) return;
+         const battleSnapshot = battle;
+         if (!battleSnapshot || battleResultHandledRef.current) return;
          battleResultHandledRef.current = true;
-         if (battle._weatherOverride) setWeather('CLEAR');
+         if (battleSnapshot._weatherOverride) setWeather('CLEAR');
          {
-           const b = battle;
+           const b = battleSnapshot;
            const turnCount = b.turnCount || 0;
            const firstPet = finalParty?.[0];
            const leadPet = firstPet ? (POKEDEX.find(p => p.id === firstPet.id)?.name || firstPet.name || '未知') : '—';
@@ -15730,10 +15739,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         audioRef.current.loop = false; 
     }
     
-        if (battle.type === 'contest_bug') {
+        if (battleSnapshot.type === 'contest_bug') {
           const syncPartyFromBattle = (currentParty) => {
             return currentParty.map((p, idx) => {
-              const cs = battle.playerCombatStates?.[idx];
+              const cs = battleSnapshot.playerCombatStates?.[idx];
               if (cs) { p.currentHp = cs.currentHp; p.moves = cs.combatMoves?.slice(0, p.moves?.length) || p.moves; }
               return {...p};
             });
@@ -15764,10 +15773,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       try {
         const storyChapter = STORY_SCRIPT[storyProgress];
         if (storyChapter) {
-          const resolvedStep = battle.storyTaskStep != null ? battle.storyTaskStep : storyStep;
+          const resolvedStep = battleSnapshot.storyTaskStep != null ? battleSnapshot.storyTaskStep : storyStep;
           const currentTask = storyChapter.tasks?.find(t => t.step === resolvedStep);
           const isStoryMatch = currentTask && currentTask.type === 'battle' &&
-              (battle.storyTaskStep != null || battle.trainerName === currentTask.name);
+              (battleSnapshot.storyTaskStep != null || battleSnapshot.trainerName === currentTask.name);
           // debug: Story handleWin match check
           if (isStoryMatch) {
             storyHandled = true;
@@ -15826,24 +15835,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * bountyMult * streakMult * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
     if (goldGain > 0) setGold(g => g + goldGain);
     if (type === 'survival') {
-      const survivalGold = (battle.survivalWave || battle.meta?.wave || 1) * 100;
+      const survivalGold = (battleSnapshot.survivalWave || battleSnapshot.meta?.wave || 1) * 100;
       setGold(g => g + survivalGold);
     }
-    if (type === 'tower' && battle.meta?.type === 'tower' && battle.meta?.rewards) {
-      const wonFloor = battle.meta.floor;
+    if (type === 'tower' && battleSnapshot.meta?.type === 'tower' && battleSnapshot.meta?.rewards) {
+      const wonFloor = battleSnapshot.meta.floor;
       if (typeof wonFloor === 'number' && wonFloor > 0) setTowerFloor(wonFloor);
-      showMapToast('🗼', '挑战塔', `通过第${battle.meta.floor}层！获得${battle.meta.rewards.gold}金`, 2000);
+      showMapToast('🗼', '挑战塔', `通过第${battleSnapshot.meta.floor}层！获得${battleSnapshot.meta.rewards.gold}金`, 2000);
     }
-    if (type === 'elemental_trial' && battle.meta?.rewards) {
-      const r = battle.meta.rewards;
+    if (type === 'elemental_trial' && battleSnapshot.meta?.rewards) {
+      const r = battleSnapshot.meta.rewards;
       const expPart = r.exp > 0 ? ` · 经验分配约 ${r.exp}（按存活队员）` : '';
       showMapToast('🌈', '属性试炼胜利', `获得 ${r.gold || 0} 金币${expPart}`, 2500);
       addLog(`🌈 属性试炼胜利：金币 +${r.gold || 0}${r.exp > 0 ? ` · 队伍经验池 ${r.exp}` : ''}`);
     }
 
     const extraDrops = [];
-    if (type === 'elemental_trial' && battle.meta?.elementType && Math.random() < 0.35) {
-      const et = battle.meta.elementType;
+    if (type === 'elemental_trial' && battleSnapshot.meta?.elementType && Math.random() < 0.35) {
+      const et = battleSnapshot.meta.elementType;
       const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
       const pool = ALL_SKILL_TMS.filter(t => t.type === et);
       const tm = sampleWeightedTM(pool.length ? pool : ALL_SKILL_TMS, tmMaxTier);
@@ -15876,7 +15885,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const fruit = getFruitById(ep.devilFruit);
         if (fruit) {
           const dropRate = FRUIT_RARITY_CONFIG[fruit.rarity]?.dropRate || 0.05;
-          const boosted = (battle.isBoss || battle.isChallenge) ? dropRate * 2 : dropRate;
+          const boosted = (battleSnapshot.isBoss || battleSnapshot.isChallenge) ? dropRate * 2 : dropRate;
           if (Math.random() < boosted) {
             setFruitInventory(prev => [...prev, fruit.id]);
             addLog(`获得恶魔果实: ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]!`);
@@ -15912,7 +15921,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         
         // 1. 亲密度增长 (Intimacy 0-255)
         // 基础：出战+3，后台+1
-        const wasActive = battle.isDouble ? (battle.activeIdxs?.includes(index)) : (index === battle.activeIdx);
+        const wasActive = battleSnapshot.isDouble ? (battleSnapshot.activeIdxs?.includes(index)) : (index === battleSnapshot.activeIdx);
         let intGain = wasActive ? 3 : 1;
         
         // 加成：道馆/Boss/挑战塔/联盟 翻倍
@@ -15940,8 +15949,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         return newPet;
     });
-    if ((type === 'tower' || type === 'elemental_trial') && battle.meta?.rewards?.exp > 0) {
-      const expBonus = battle.meta.rewards.exp;
+    if ((type === 'tower' || type === 'elemental_trial') && battleSnapshot.meta?.rewards?.exp > 0) {
+      const expBonus = Math.floor(battleSnapshot.meta.rewards.exp * 0.5);
       const aliveCount = Math.max(1, updatedParty.filter(p => p.currentHp > 0).length);
       const per = Math.floor(expBonus / aliveCount);
       updatedParty = updatedParty.map(p => {
@@ -15965,21 +15974,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // --- 下面是原有的掉落和结算逻辑 (注意 setParty 使用 updatedParty) ---
 
-    if (['dungeon_stone','dungeon_stat','dungeon_shiny','boss_rush','type_challenge','survival','wild_double'].includes(battle.type) || battle.dungeonId) {
+    if (['dungeon_stone','dungeon_stat','dungeon_shiny','boss_rush','type_challenge','survival','wild_double'].includes(battleSnapshot.type) || battleSnapshot.dungeonId) {
       updateAchStat({ dungeonsCleared: 1 });
-      if (battle.dungeonId) {
+      if (battleSnapshot.dungeonId) {
         {
           const existingList = Array.isArray(achStats.clearedDungeonList) ? achStats.clearedDungeonList : [];
-          const newSet = new Set([...existingList, battle.dungeonId]);
+          const newSet = new Set([...existingList, battleSnapshot.dungeonId]);
           updateAchStat({ 
             uniqueDungeonsCleared: newSet.size,
             clearedDungeonList: [...newSet]
           });
         }
         const tier4Ids = ['infinity_castle','safari_zone','extreme_trial','treasure_maze','ragnarok'];
-        if (tier4Ids.includes(battle.dungeonId)) {
+        if (tier4Ids.includes(battleSnapshot.dungeonId)) {
           const existingT4 = Array.isArray(achStats.clearedT4List) ? achStats.clearedT4List : [];
-          const newT4Set = new Set([...existingT4, battle.dungeonId]);
+          const newT4Set = new Set([...existingT4, battleSnapshot.dungeonId]);
           updateAchStat({ 
             tier4DungeonsCleared: newT4Set.size,
             clearedT4List: [...newT4Set]
@@ -15988,13 +15997,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
     
-    const defeatedIsGod = (battle.enemyParty || []).some(e => LEGENDARY_POOL?.includes(e.id) || NEW_GOD_IDS?.includes(e.id) || FINAL_GOD_IDS?.includes(e.id));
+    const defeatedIsGod = (battleSnapshot.enemyParty || []).some(e => LEGENDARY_POOL?.includes(e.id) || NEW_GOD_IDS?.includes(e.id) || FINAL_GOD_IDS?.includes(e.id));
     if (defeatedIsGod) {
       const playerHasCosmic = updatedParty.some(p => p.type === 'COSMIC' || p.secondaryType === 'COSMIC');
       if (playerHasCosmic) updateAchStat({ cosmicGodKills: 1 });
     }
     // 1. 元素之塔 -> 掉落进化石
-    if (battle.type === 'dungeon_stone') {
+    if (battleSnapshot.type === 'dungeon_stone') {
         const stoneKeys = Object.keys(EVO_STONES);
         const rewardKey = _.sample(stoneKeys);
         const stone = EVO_STONES[rewardKey];
@@ -16007,9 +16016,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         extraDrops.push(`${stone.icon}${stone.name}`);
     }
     // 副本主题 TM（与秘境属性/玩法挂钩，概率额外掉落）
-    if (battle.dungeonId && Math.random() < 0.42) {
+    if (battleSnapshot.dungeonId && Math.random() < 0.42) {
       const themeById = { stone_tower: 'ROCK', speed_run: 'ELECTRIC', wild_survival: 'GRASS', hero_trial: 'FIGHT', mist_forest: 'GRASS', memory_trial: 'PSYCHIC', reverse_world: 'GHOST', double_arena: 'FIGHT', type_roulette: 'DRAGON', elite_rotation: 'DRAGON', shiny_valley: 'FAIRY', survival_arena: 'FIRE', boss_rush: 'DARK', ladder_trial: 'ICE', type_challenge: 'NORMAL', infinity_castle: 'GHOST', ragnarok: 'DRAGON', safari_zone: 'NORMAL', extreme_trial: 'DRAGON', treasure_maze: 'GROUND', hyakki: 'GHOST', hyakki_yako: 'GHOST' };
-      const th = themeById[battle.dungeonId];
+      const th = themeById[battleSnapshot.dungeonId];
       if (th) {
         const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
         const pool = ALL_SKILL_TMS.filter(t => t.type === th);
@@ -16022,7 +16031,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
     // 2. 英雄试炼 -> 掉落属性增强剂
-    if (battle.type === 'dungeon_stat' && battle.dungeonId !== 'speed_run') {
+    if (battleSnapshot.type === 'dungeon_stat' && battleSnapshot.dungeonId !== 'speed_run') {
         const growthItems = GROWTH_ITEMS.filter(i => i.id !== 'max_candy');
         const rewardItem = _.sample(growthItems);
         
@@ -16035,16 +16044,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // Boss Rush - 连战Boss塔
-    if (battle.type === 'boss_rush') {
-      const wave = battle.bossRushWave || 1;
-      const maxWaves = battle.dungeonId === 'ladder_trial' ? 5 : 3;
+    if (battleSnapshot.type === 'boss_rush') {
+      const wave = battleSnapshot.bossRushWave || 1;
+      const maxWaves = battleSnapshot.dungeonId === 'ladder_trial' ? 5 : 3;
       if (wave < maxWaves) {
         const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
-        const nextLvlBase = Math.min(100, (battle.enemyParty?.[0]?.level || 50) + 5);
-        const rushName = battle.rushName || battle.battleName?.replace(/第\d+层/, '').trim() || '首领塔';
-        const dungeonId = battle.dungeonId;
+        const nextLvlBase = Math.min(100, (battleSnapshot.enemyParty?.[0]?.level || 50) + 5);
+        const rushName = battleSnapshot.rushName || battleSnapshot.battleName?.replace(/第\d+层/, '').trim() || '首领塔';
+        const dungeonId = battleSnapshot.dungeonId;
         addLog(`🗼 ${rushName}第${wave}层通关！准备迎战第${wave + 1}层...`);
-        if (battle.dungeonId === 'ladder_trial') {
+        if (battleSnapshot.dungeonId === 'ladder_trial') {
           const ladderItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
           setInventory(prev => ({ ...prev, [ladderItem.id]: (prev[ladderItem.id]||0) + 1 }));
           addLog(`🪜 天梯奖励: ${ladderItem.emoji} ${ladderItem.name}!`);
@@ -16056,8 +16065,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }, 1000);
         return;
       } else {
-        const rushName = battle.rushName || '首领塔';
-        const rushDungeon = DUNGEONS.find(d => d.id === battle.dungeonId);
+        const rushName = battleSnapshot.rushName || '首领塔';
+        const rushDungeon = DUNGEONS.find(d => d.id === battleSnapshot.dungeonId);
         const rushTier = rushDungeon?.tier || 2;
         const bonusGold = rushTier <= 1 ? 2500 : rushTier <= 2 ? 5000 : rushTier <= 3 ? 8000 : 12000;
         setGold(g => g + bonusGold);
@@ -16066,7 +16075,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
         addLog(`🎁 通关奖励: ${rewardItem.emoji} ${rewardItem.name}!`);
         
-        if (battle.dungeonId === 'ladder_trial') {
+        if (battleSnapshot.dungeonId === 'ladder_trial') {
           const stoneKeys = Object.keys(EVO_STONES);
           const rndStone = _.sample(stoneKeys);
           setInventory(prev => ({ ...prev, stones: { ...prev.stones, [rndStone]: (prev.stones?.[rndStone]||0) + 1 } }));
@@ -16092,7 +16101,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setInventory(prev => ({ ...prev, max_candy: (prev.max_candy || 0) + 3 }));
           addLog(`🌟 诸神黄昏通关！获得 ✨闪光${rewardPet.name} + ${maxCandy.emoji}极限糖果 ×3！`);
         }
-        if (battle.dungeonId === 'wild_survival') {
+        if (battleSnapshot.dungeonId === 'wild_survival') {
           setInventory(prev => ({
             ...prev,
             berries: addBerries(prev.berries, 'oran', 5),
@@ -16104,8 +16113,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 属性试炼场/属性轮盘/回忆试炼 - 奖励TM
-    if (battle.type === 'type_challenge') {
-      const cType = battle.challengeType;
+    if (battleSnapshot.type === 'type_challenge') {
+      const cType = battleSnapshot.challengeType;
       if (cType) {
         const matchingTMs = ALL_SKILL_TMS.filter(tm => tm.type === cType);
         if (matchingTMs.length > 0) {
@@ -16117,12 +16126,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         }
       }
-      if (battle.dungeonId === 'type_roulette') {
+      if (battleSnapshot.dungeonId === 'type_roulette') {
         const rewardItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
         setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
         addLog(`🎰 属性轮盘奖励: ${rewardItem.emoji} ${rewardItem.name}!`);
       }
-      if (battle.dungeonId === 'memory_trial') {
+      if (battleSnapshot.dungeonId === 'memory_trial') {
         const allTMs = ALL_SKILL_TMS;
         if (allTMs.length > 0) {
           const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
@@ -16135,27 +16144,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
     // 竞速挑战 - 额外速度增强剂
-    if (battle.type === 'dungeon_stat' && battle.dungeonId === 'speed_run') {
-      if ((battle.turnCount ?? 0) <= 3) {
+    if (battleSnapshot.type === 'dungeon_stat' && battleSnapshot.dungeonId === 'speed_run') {
+      if ((battleSnapshot.turnCount ?? 0) <= 3) {
         const spdItem = GROWTH_ITEMS.find(i => i.stat === 'spd') || _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
         setInventory(prev => ({ ...prev, [spdItem.id]: (prev[spdItem.id]||0) + 2 }));
         addLog(`⚡ 竞速奖励！3回合内通关！获得 ${spdItem.emoji} ${spdItem.name} ×2！`);
       }
     }
     // 迷雾森林 - 额外精灵球
-    if (battle.type === 'dungeon_shiny' && battle.dungeonId === 'mist_forest') {
+    if (battleSnapshot.type === 'dungeon_shiny' && battleSnapshot.dungeonId === 'mist_forest') {
       const ballTypes = ['great', 'ultra', 'net', 'dusk'];
       const bonusBall = _.sample(ballTypes);
       const bonusCount = _.random(2, 5);
       setInventory(prev => ({ ...prev, balls: { ...prev.balls, [bonusBall]: (prev.balls[bonusBall]||0) + bonusCount } }));
       addLog(`🌫️ 迷雾森林奖励: ${BALLS[bonusBall]?.name || '精灵球'} ×${bonusCount}！`);
     }
-    if (battle.dungeonId === 'reverse_world') {
+    if (battleSnapshot.dungeonId === 'reverse_world') {
       const rewardItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
       setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
       addLog(`🔄 逆位空间奖励: ${rewardItem.emoji} ${rewardItem.name}！`);
     }
-    if (battle.dungeonId === 'double_arena') {
+    if (battleSnapshot.dungeonId === 'double_arena') {
       const rewardItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
       setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
       const _eqSample = _.sample(RANDOM_EQUIP_DB);
@@ -16165,12 +16174,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 生存竞技场 - 每波递增，不断变强
-    if (battle.type === 'survival') {
-      const wave = battle.survivalWave || 1;
+    if (battleSnapshot.type === 'survival') {
+      const wave = battleSnapshot.survivalWave || 1;
       const bonusGold = Math.floor(Math.min(wave, 10) * 500 + Math.max(0, wave - 10) * 200 + (wave >= 5 ? 500 : 0));
       setGold(g => g + bonusGold);
       addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
-      const nextLvl = Math.min(100, (battle.enemyParty?.[0]?.level || 70) + 3);
+      const nextLvl = Math.min(100, (battleSnapshot.enemyParty?.[0]?.level || 70) + 3);
       setParty(updatedParty);
       const _survivalBattleRef = { ...battle };
       setConfirmModal({ title:'🏟️ 竞技场', msg:`第${wave}波胜利！\n本波奖金 ${bonusGold} 金币\n继续挑战第${wave+1}波？(敌人等级+3)`, onOk: () => {
@@ -22113,7 +22122,7 @@ const renderMenu = () => {
     const ownerFaction = mapOwner && mapOwner !== 'neutral' ? FACTIONS[mapOwner] : null;
 
     return (
-      <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+      <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'10px', overflowY:'auto', maxHeight:'100%'}}>
         {/* 地图信息 */}
         <div className="panel-card" style={{padding:'16px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)', position:'relative', overflow:'hidden', borderLeft:`2px solid ${theme.color || '#4CAF50'}`}}>
           <div style={{position:'absolute', top:'-8px', right:'-8px', fontSize:'60px', opacity:0.06, pointerEvents:'none', transform:'rotate(-15deg)'}}>{currentMap.icon}</div>
@@ -22121,7 +22130,7 @@ const renderMenu = () => {
             <div style={{fontSize:'9px', color:theme.color, fontWeight:'700', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>当前位置</div>
             <div style={{fontSize:'18px', fontWeight:'900', color:'#e8f3ff', marginBottom:'6px'}}>{currentMap.name}</div>
             <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#b8d4f0', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
+              <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#e8f3ff', padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${theme.color}30`}}>Lv.{currentMap.lvl?.[0] || '?'}-{currentMap.lvl?.[1] || '?'}</span>
               <span style={{fontSize:'10px', background:theme.bg || '#f0f2f5', color:'#b8d4f0', padding:'3px 8px', borderRadius:'6px', fontWeight:'700'}}>{theme.name || '野外'}</span>
               {ownerFaction && <span style={{fontSize:'10px', background:ownerFaction.color+'15', color:ownerFaction.color, padding:'3px 8px', borderRadius:'6px', fontWeight:'700', border:`1px solid ${ownerFaction.color}30`}}>{ownerFaction.icon} {ownerFaction.name}领</span>}
             </div>
@@ -22165,7 +22174,7 @@ const renderMenu = () => {
           const isToday = dc && dc.date === today;
           const completed = isToday && dc.completed;
           return (
-            <div className="panel-card" style={{padding:'14px', background: completed ? 'linear-gradient(135deg,#E8F5E9,#fff)' : 'linear-gradient(135deg,#FFF8E1,#fff)', borderRadius:'14px', boxShadow:'none', border: completed ? '1px solid #4CAF50' : '1px solid #FF9800', borderLeft: completed ? '4px solid #4CAF50' : '4px solid #FF9800'}}>
+            <div className="panel-card" style={{padding:'14px', background: completed ? 'rgba(76,175,80,0.12)' : 'rgba(255,152,0,0.12)', borderRadius:'14px', boxShadow:'none', border: completed ? '1px solid #4CAF50' : '1px solid #FF9800', borderLeft: completed ? '4px solid #4CAF50' : '4px solid #FF9800'}}>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px'}}>
                 <span style={{fontSize:'11px', fontWeight:'700', color: completed ? '#4CAF50' : '#FF9800'}}>⚡ 每日挑战</span>
                 <span style={{fontSize:'9px', color:'#7fa8c8'}}>{today}</span>
@@ -22193,12 +22202,12 @@ const renderMenu = () => {
             <span style={{fontSize:'11px', color:'#e8f3ff', fontWeight:'700'}}>📜 冒险日志</span>
             <span style={{fontSize:'9px', cursor:'pointer', color:'#7fa8c8', fontWeight:'600'}} onClick={() => setGlobalLogs([])}>清空</span>
           </div>
-          <div className="log-list-container" style={{flex:1, overflowY:'auto', maxHeight:'200px', background:'#faf9f5', borderRadius:'8px', padding:'8px', border:'1px solid #f0ede6', fontSize:'11px', lineHeight:'1.6'}}>
+          <div className="log-list-container" style={{flex:1, overflowY:'auto', maxHeight:'200px', background:'rgba(0,0,0,0.25)', borderRadius:'8px', padding:'8px', border:'1px solid rgba(143,216,255,0.1)', fontSize:'11px', lineHeight:'1.6'}}>
             {globalLogs.length === 0 ? (
               <div style={{textAlign:'center', color:'#5888a8', marginTop:'15px', fontSize:'10px'}}>暂无日志</div>
             ) : (
               globalLogs.map((log, i) => (
-                <div key={i} style={{marginBottom:'4px', borderBottom:'1px dashed #ede8dc', paddingBottom:'3px', display:'flex'}}>
+                <div key={i} style={{marginBottom:'4px', borderBottom:'1px dashed rgba(143,216,255,0.1)', paddingBottom:'3px', display:'flex'}}>
                   <span style={{color:'#b8a88a', marginRight:'5px', minWidth:'32px', fontSize:'10px'}}>[{log.time}]</span>
                   <span style={{color:'#c8ddf0'}}>{log.msg}</span>
                 </div>
@@ -22377,15 +22386,15 @@ const renderMenu = () => {
                       PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'] },
                       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'] },
                       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'] },
-                      GHOST:   { weak: ['GHOST', 'DARK', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'] },
+                      GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'] },
                       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'] },
-                      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'GHOST', 'COSMIC'] },
+                      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'] },
                       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'] },
                       FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
                       WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'] },
-                      LIGHT:   { weak: ['DARK', 'GHOST'], strong: ['DARK', 'GHOST', 'POISON'] },
-                      COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING'] },
-                      SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC'] },
+                      LIGHT:   { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'] },
+                      COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING', 'POISON'] },
+                      SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC', 'GHOST', 'BUG'] },
                     };
                     const t1 = viewStatPet.type;
                     const t2 = viewStatPet.secondaryType;
@@ -22529,7 +22538,7 @@ const renderMenu = () => {
                         const baseInfo = POKEDEX.find(p => p.id === viewStatPet.id) || POKEDEX[0];
                         const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
                         const diversity = (baseInfo.id % 5) * 2 - 4;
-                        const growth = 1 + viewStatPet.level * 0.05;
+                        const growth = 1 + Math.min(2.5, Math.pow(viewStatPet.level / 100, 0.7) * 3.5);
 
                         const getBase = (k) => {
                             if (k === 'hp') return baseInfo.hp || 60;
