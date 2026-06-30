@@ -350,3 +350,8 @@ MAPS.forEach((map) => {
     map.pool = (map.pool || []).filter(id => ![149, 150, 151].includes(id));
   }
 });
+
+/** 主线道馆徽章数（地图 1–13，与成就「徽章大满贯」一致） */
+export const MAIN_GYM_BADGE_COUNT = 13;
+/** 战斗联盟解锁所需主线剧情进度（STORY_SCRIPT 索引，对应冠军之路章节） */
+export const LEAGUE_UNLOCK_STORY_INDEX = 12;

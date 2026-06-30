@@ -18,6 +18,7 @@ export * from './expedition';
 export * from './mine';
 export * from './bountyTemplates';
 export * from './training';
+export * from './infinityCastle';
 export * from './worldBoss';
 export * from './achievements';
 export * from './gang';

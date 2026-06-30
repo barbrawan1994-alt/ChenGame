@@ -7,8 +7,6 @@ import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
-import TCGScreen from './components/tcg/TCGScreen';
-import { createDefaultTCGState } from './data/tcg';
 
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
@@ -51,6 +49,8 @@ import {
   TIME_PHASES,
   WEATHERS,
   MAPS,
+  MAIN_GYM_BADGE_COUNT,
+  LEAGUE_UNLOCK_STORY_INDEX,
   STORY_SCRIPT,
   // SANGUO_STORY, // 三国志篇尚未接入，暂不导入
   TRAINER_NAMES,
@@ -70,12 +70,13 @@ import {
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
   KW_EQUIPMENT,
-  ARENA_RANKS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, ARENA_SEASON_REWARDS,
-  EXPEDITION_ZONES, EXPEDITION_EVENTS, DEFAULT_EXPEDITIONS, calcExpeditionBonus,
+  ARENA_RANKS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, ARENA_SEASON_REWARDS, arenaPreviewSeed, mulberry32, getArenaWeekTypes,
+  EXPEDITION_ZONES, EXPEDITION_EVENTS, EXPEDITION_BRANCH_EVENTS, DEFAULT_EXPEDITIONS, calcExpeditionBonus, pickExpeditionBranchEvent,
   MINE_ORES, MINE_TILES, MINE_EXCHANGE, MINE_GRID_SIZE, MINE_MAX_ENERGY, MINE_REGEN_INTERVAL, MINE_REQ_BADGES, DEFAULT_MINE_STATE, MINE_DEPTH_MILESTONES, generateMineGrid,
   BOUNTY_TEMPLATES, generateDailyBounties, getMasterChestReward, DEFAULT_BOUNTY_BOARD,
   TRAINING_CAMPS, TRAINING_TIERS, TRAINING_MAX_SLOTS, TRAINING_REQ_BADGES, TRAINING_EVENTS, DEFAULT_TRAINING_STATE, calcTrainingGain, TRAINING_MAX_EV, TRAINING_TOTAL_MAX_EV,
   WORLD_BOSSES, WORLD_BOSS_MAX_ATTEMPTS, WORLD_BOSS_REQ_BADGES, DEFAULT_WORLD_BOSS_STATE, getTodayBoss, scaleBossHp, scaleBossLevel,
+  getInfinityFloorModifier, isInfinityMilestoneFloor, getInfinityMilestoneReward, INFINITY_MILESTONE_FLOORS,
 } from './data';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
@@ -739,7 +740,14 @@ useEffect(() => {
     setInfinityState(prev => {
       if (!prev) return prev;
       newFloorVal = prev.floor + 1;
-      return { ...prev, floor: newFloorVal, status: 'selecting' };
+      const bestFloor = Math.max(prev.bestFloor || 0, newFloorVal);
+      return {
+        ...prev,
+        floor: newFloorVal,
+        status: 'selecting',
+        floorModifier: getInfinityFloorModifier(newFloorVal),
+        bestFloor,
+      };
     });
     if (newFloorVal > 0) updateAchStat({ maxInfinityFloor: newFloorVal });
   };
@@ -2924,9 +2932,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
     kingdomWar, dungeonCooldowns, activityRecords, dailyChallenge, autoBattle,
     infinityBestFloor: infinityState?.bestFloor || 0,
-    infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null } : null,
+    infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null, floorModifier: infinityState.floorModifier || null, bestFloor: infinityState.bestFloor || 0 } : null,
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
-    trainingState, worldBossState, raceState, tcgState, narutoState,
+    trainingState, worldBossState, raceState, narutoState,
     savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
@@ -3012,7 +3020,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [trainingState, setTrainingState] = useState(() => ({ ...DEFAULT_TRAINING_STATE, ...(savedData.trainingState || {}) }));
   const [worldBossState, setWorldBossState] = useState(() => ({ ...DEFAULT_WORLD_BOSS_STATE, ...(savedData.worldBossState || {}) }));
   const [raceState, setRaceState] = useState(() => savedData.raceState || { lastDate: '', dailyRaces: 0, totalWins: 0 });
-  const [tcgState, setTcgState] = useState(() => savedData.tcgState || createDefaultTCGState());
   const [raceResult, setRaceResult] = useState(null);
   const [narutoState, setNarutoState] = useState(() => {
     const loaded = { ...DEFAULT_NARUTO_STATE, ...(savedData.narutoState || {}) };
@@ -3638,7 +3645,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
      const renderInfinityCastle = () => {
     if (!infinityState) return null;
-    const { floor, status, buffs = [], buffOptions = [] } = infinityState;
+    const { floor, status, buffs = [], buffOptions = [], floorModifier, mode } = infinityState;
+    const mod = floorModifier || getInfinityFloorModifier(floor);
+    const bestFloor = Math.max(infinityState.bestFloor || 0, achStats.maxInfinityFloor || 0);
+    const nextMilestone = INFINITY_MILESTONE_FLOORS.find(f => f > floor) || (floor < 100 ? (floor % 10 === 0 ? floor + 5 : Math.ceil(floor / 10) * 10) : null);
 
     return (
       <div className="screen" style={{
@@ -3646,13 +3656,24 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center'
       }}>
         {/* 顶部信息 */}
-        <div style={{width:'100%', padding:'20px', display:'flex', justifyContent:'space-between', background:'rgba(255,255,255,0.05)'}}>
-            <div style={{fontSize:'20px', fontWeight:'bold', color:'#E040FB'}}>🏯 无限城 - 第 {floor} 层</div>
+        <div style={{width:'100%', padding:'20px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', background:'rgba(255,255,255,0.05)'}}>
+            <div>
+              <div style={{fontSize:'20px', fontWeight:'bold', color:'#E040FB'}}>🏯 无限城 - 第 {floor} 层</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>最佳纪录 {bestFloor} 层 · {mode === 'shallow' ? '浅层' : '深层'}模式</div>
+            </div>
             <button onClick={() => {
                 setConfirmModal({ title:'🏯 退出确认', msg:'确定要退出吗？进度将丢失，增益也会重置。', onOk: () => {
                     setInfinityState(null); setView('grid_map');
                 }})
             }} style={{background:'transparent', border:'1px solid #666', color:'#aaa', padding:'5px 15px', borderRadius:'20px', fontSize:'12px'}}>放弃</button>
+        </div>
+
+        {/* 层数词缀 */}
+        <div style={{width:'100%', padding:'8px 16px', display:'flex', gap:'10px', flexWrap:'wrap', alignItems:'center', background:'rgba(123,31,162,0.15)', borderBottom:'1px solid rgba(123,31,162,0.25)'}}>
+          <span style={{fontSize:'11px', color:'rgba(255,255,255,0.5)'}}>本层词缀</span>
+          <span style={{fontSize:'12px', fontWeight:'700', color:'#E1BEE7'}}>{mod.icon} {mod.name}</span>
+          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.45)'}}>{mod.desc}</span>
+          {nextMilestone && <span style={{marginLeft:'auto', fontSize:'10px', color:'#FFD700'}}>下个宝箱: 第{nextMilestone}层</span>}
         </div>
 
         {/* 已获 Buff 展示栏 */}
@@ -3693,7 +3714,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         >
                             <div style={{fontSize:'60px', filter:'drop-shadow(0 0 10px red)'}}>⛩️</div>
                             <div style={{marginTop:'15px', fontWeight:'bold', color:'#FF5252'}}>强烈的鬼气</div>
-                            <div style={{fontSize:'10px', color:'#bbb', marginTop:'5px'}}>高风险高回报</div>
+                            <div style={{fontSize:'10px', color:'#bbb', marginTop:'5px'}}>高风险高回报 · 奖励+30%</div>
                         </div>
                     </div>
                 </div>
@@ -5440,9 +5461,24 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (newUids.length === 0) { showMapToast('❌','提示','所选精灵已在远征中',1500); return; }
     setExpeditions(prev => {
       const prevDaily = prev.lastDate === today ? (prev.startedToday || 0) : 0;
-      return {...prev, lastDate: today, startedToday: prevDaily + 1, teams: [...prev.teams, { zoneId, petUids: newUids, startTime: Date.now(), duration: zone.duration }]};
+      const branchEvent = pickExpeditionBranchEvent();
+      return {...prev, lastDate: today, startedToday: prevDaily + 1, teams: [...prev.teams, { zoneId, petUids: newUids, startTime: Date.now(), duration: zone.duration, branchEventId: branchEvent.id, branchResolved: false }]};
     });
     showMapToast('🗺️', '出发', `探险队前往${zone.name}！`, 2000);
+  };
+
+  const resolveExpeditionBranch = (teamIdx, choiceId) => {
+    setExpeditions(prev => {
+      const teams = [...prev.teams];
+      const team = teams[teamIdx];
+      if (!team || team.branchResolved) return prev;
+      const event = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
+      const choice = event?.choices?.find(c => c.id === choiceId);
+      if (!choice) return prev;
+      teams[teamIdx] = { ...team, branchResolved: true, branchChoice: choice };
+      return { ...prev, teams };
+    });
+    showMapToast('📡', '决策已下达', '探险队继续执行任务...', 1500);
   };
 
   const collectExpedition = (teamIdx) => {
@@ -5457,12 +5493,24 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (!zone) return prev;
 
       const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
-      const bonusMult = calcExpeditionBonus(teamPets, zone);
+      let bonusMult = calcExpeditionBonus(teamPets, zone);
+      if (team.branchChoice) {
+        const fail = Math.random() < (team.branchChoice.failChance || 0);
+        if (fail) {
+          bonusMult *= 0.5;
+        } else {
+          bonusMult *= (team.branchChoice.rewardMult || 1);
+        }
+      }
 
       const rewardCount = 1 + Math.floor(Math.random() * 2);
       let msg = [];
       const eventText = EXPEDITION_EVENTS[Math.floor(Math.random() * EXPEDITION_EVENTS.length)];
       msg.push(eventText);
+      if (team.branchChoice) {
+        const event = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
+        msg.push(`${event?.title || '探险'}: ${team.branchChoice.label}${bonusMult < calcExpeditionBonus(teamPets, zone) ? ' (受阻)' : ''}`);
+      }
 
       for (let i = 0; i < rewardCount; i++) {
         const totalW = zone.rewards.reduce((s,r) => s + (r.weight || 0), 0);
@@ -5744,8 +5792,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       arenaPlayerParty = party.slice(0, 1);
     }
     if (ruleEffect === 'typeLock') {
-      const allowedTypes = ['FIRE','WATER','GRASS','ELECTRIC','ICE','FIGHT','PSYCHIC','DARK','DRAGON','FAIRY','NORMAL'];
-      const weekTypes = [allowedTypes[new Date().getDay() % allowedTypes.length], allowedTypes[(new Date().getDay() + 3) % allowedTypes.length]];
+      const weekTypes = getArenaWeekTypes();
       const validPets = party.filter(p => weekTypes.includes(p.type) || weekTypes.includes(p.secondaryType));
       if (validPets.length === 0) {
         const typeNames = weekTypes.map(t => TYPES[t]?.name || t).join('/');
@@ -5757,16 +5804,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (ruleEffect === 'solo' && arenaPlayerParty.length > 1) {
       arenaPlayerParty = arenaPlayerParty.slice(0, 1);
     }
-    let effectiveLvl = _.random(rank.enemyLvl[0], rank.enemyLvl[1]);
+    const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', getLocalDateStr()));
     let enemyCount = rank.enemyCount || 3;
     if (ruleEffect === 'solo') enemyCount = 1;
     const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 800 && !p.hidden);
     if (enemyPool.length === 0) { showMapToast('❌','数据异常','无可用精灵池',1500); return; }
     const enemyParty = [];
     for (let i = 0; i < enemyCount; i++) {
-      let lvl = Math.max(1, effectiveLvl + Math.floor(Math.random() * 5));
+      let lvl = Math.floor(rank.enemyLvl[0] + rng() * (rank.enemyLvl[1] - rank.enemyLvl[0] + 1));
       if (ruleEffect === 'levelCap50') lvl = Math.min(50, lvl);
-      const dex = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+      const dex = enemyPool[Math.floor(rng() * enemyPool.length)];
       const pet = createPet(dex.id, lvl);
       if (ruleEffect === 'halfHp') pet.currentHp = Math.floor(getStats(pet).maxHp * 0.5);
       enemyParty.push(pet);
@@ -5910,7 +5957,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'training', icon:'🏋️', name:'精灵特训', desc:'强化精灵能力', color:'#1565C0', badge: (Array.isArray(trainingState.slots) ? trainingState.slots : []).filter(s => Date.now() - s.startTime >= s.duration).length, onClick: () => { setActivityCenter(false); if (badges.length < TRAINING_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${TRAINING_REQ_BADGES} 枚徽章`,1500); return; } setView('training'); } },
       { id:'world_boss', icon:'👹', name:'世界首领', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
-      { id:'tcg', icon:'🃏', name:'精灵卡牌', desc:'TCG卡牌对战', color:'#6A1B9A', badge: (tcgState.battleRecord?.streak || 0) >= 3 ? '🔥' : 0, onClick: () => { setActivityCenter(false); setView('tcg'); } },
+      { id:'infinity', icon:'🏯', name:'无限城', desc:'Roguelike挑战', color:'#6A1B9A', badge: (achStats.maxInfinityFloor || 0) >= 25 ? '🔥' : 0, onClick: () => { setActivityCenter(false); if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } if (party[0].level >= 80) enterInfinityCastle('normal'); else if (party[0].level >= 40) enterInfinityCastle('shallow'); else showMapToast('⚠️','等级不足','浅层需首发Lv.40+',2000); } },
     ];
 
     return (
@@ -6075,6 +6122,25 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const rankIdx = ARENA_RANKS.indexOf(rank);
     const seasonStartMs = arenaState.seasonStartDate ? new Date(arenaState.seasonStartDate).getTime() : NaN;
     const seasonDaysLeft = Number.isFinite(seasonStartMs) ? Math.max(0, 14 - Math.floor((Date.now() - seasonStartMs) / MS_PER_DAY)) : 14;
+    const todayStr = getLocalDateStr();
+    const rule = ARENA_WEEKLY_RULES.find(r => r.id === arenaState.weeklyRule) || ARENA_WEEKLY_RULES[0];
+    const arenaPreview = (() => {
+      const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', todayStr));
+      let enemyCount = rank.enemyCount || 3;
+      if (rule?.effect === 'solo') enemyCount = 1;
+      const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 800 && !p.hidden);
+      const enemies = [];
+      for (let i = 0; i < enemyCount; i++) {
+        const lvl = Math.floor(rank.enemyLvl[0] + rng() * (rank.enemyLvl[1] - rank.enemyLvl[0] + 1));
+        const dex = enemyPool[Math.floor(rng() * enemyPool.length)] || enemyPool[0];
+        if (dex) enemies.push({ id: dex.id, name: dex.name, emoji: dex.emoji, type: dex.type, type2: dex.type2, level: lvl });
+      }
+      const enemyTypes = [...new Set(enemies.flatMap(e => [e.type, e.type2].filter(Boolean)))];
+      const counterTypes = Object.keys(TYPES || {}).filter(t => enemyTypes.some(et => getTypeMod(t, et) >= 1.5)).slice(0, 4);
+      const playerTypes = [...new Set(party.flatMap(p => [p.type, p.secondaryType].filter(Boolean)))];
+      const hasCounter = counterTypes.some(t => playerTypes.includes(t));
+      return { enemies, counterTypes, hasCounter };
+    })();
     return (
       <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d1b1b,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
@@ -6096,10 +6162,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             {arenaState.winStreak >= 3 && <div style={{marginTop:'6px',padding:'4px 12px',borderRadius:'20px',background:arenaState.winStreak>=10?'linear-gradient(90deg,#FF6D00,#F44336)':arenaState.winStreak>=5?'linear-gradient(90deg,#FFD700,#FF8F00)':'linear-gradient(90deg,#4CAF50,#2E7D32)',display:'inline-block',fontSize:'11px',fontWeight:'700'}}>🔥 {arenaState.winStreak}连胜{arenaState.winStreak>=10?' · 传说之火':arenaState.winStreak>=5?' · 势不可挡':''}</div>}
           </div>
           {(() => {
-            const rule = ARENA_WEEKLY_RULES.find(r => r.id === arenaState.weeklyRule) || ARENA_WEEKLY_RULES[new Date().getDay() % ARENA_WEEKLY_RULES.length];
             if (!rule) return null;
-            const allowedTypes = ['FIRE','WATER','GRASS','ELECTRIC','ICE','FIGHT','PSYCHIC','DARK','DRAGON','FAIRY','NORMAL'];
-            const weekTypes = [allowedTypes[new Date().getDay() % allowedTypes.length], allowedTypes[(new Date().getDay() + 3) % allowedTypes.length]];
+            const weekTypes = getArenaWeekTypes();
             const typeLockHint = rule.effect === 'typeLock' ? ` · 本周属性: ${weekTypes.map(t => TYPES[t]?.name || t).join(' / ')}` : '';
             const typeLockSub = rule.effect === 'typeLock' ? `本周开放属性: ${weekTypes.map(t => TYPES[t]?.name || t).join('、')}（队伍中需至少一只匹配主属性或副属性）` : (rule.desc || '特殊竞技规则生效中');
             return (
@@ -6109,6 +6173,23 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
             );
           })()}
+          <div style={{padding:'12px 14px',borderRadius:'14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',marginBottom:'12px'}}>
+            <div style={{fontSize:'11px',fontWeight:'700',color:'rgba(255,255,255,0.55)',marginBottom:'8px'}}>👁️ 今日对手预览（固定阵容）</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'8px'}}>
+              {arenaPreview.enemies.map((e, i) => (
+                <div key={i} style={{padding:'6px 10px',borderRadius:'10px',background:'rgba(0,0,0,0.25)',border:'1px solid rgba(255,255,255,0.08)',fontSize:'11px'}}>
+                  <span>{e.emoji || '❓'}</span> {e.name} <span style={{color:'rgba(255,255,255,0.45)'}}>Lv.{e.level}</span>
+                  <div style={{fontSize:'9px',color:TYPES[e.type]?.color || '#aaa'}}>{TYPES[e.type]?.name}{e.type2 ? `/${TYPES[e.type2]?.name}` : ''}</div>
+                </div>
+              ))}
+            </div>
+            {arenaPreview.counterTypes.length > 0 && (
+              <div style={{fontSize:'10px',color: arenaPreview.hasCounter ? '#81C784' : '#FFB74D',lineHeight:1.5}}>
+                {arenaPreview.hasCounter ? '✓ 队伍已有克制属性：' : '⚠ 建议携带克制属性：'}
+                {arenaPreview.counterTypes.map(t => TYPES[t]?.name || t).join('、')}
+              </div>
+            )}
+          </div>
           <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
             <button onClick={startArenaFight} disabled={arenaState.tickets<=0 || party.length===0} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:'linear-gradient(135deg,#E53935,#C62828)',color:'#fff',fontSize:'16px',fontWeight:'800',cursor:'pointer',boxShadow:'0 4px 15px rgba(229,57,53,0.3)'}}>⚔️ 开始挑战</button>
             <button onClick={()=>{if(gold<ARENA_TICKET_PRICE){showMapToast('❌','金币不足',`需要 ${ARENA_TICKET_PRICE} 金币`,1500);return;}setConfirmModal({title:'购买门票',msg:`花费 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买 1 张竞技场门票？`,onOk:()=>{setGold(g=>Math.max(0,g-ARENA_TICKET_PRICE));updateAchStat({ totalGoldSpent: ARENA_TICKET_PRICE });advanceBounty('spend_gold', null, ARENA_TICKET_PRICE);setArenaState(p=>({...p,tickets:Math.min(20, p.tickets+1)}));showMapToast('🎫','购买成功','获得 1 张门票',1500);}});}} style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>买门票 💰{ARENA_TICKET_PRICE.toLocaleString()}</button>
@@ -6157,16 +6238,35 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const elapsed = Date.now() - team.startTime;
                 const done = remaining <= 0;
                 const pct = Math.min(100, Math.floor(elapsed / Math.max(1, team.duration) * 100));
+                const branchEvent = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
+                const teamPets = (team.petUids || []).map(uid => party.find(p => p.uid === uid)).filter(Boolean);
+                const typeBonus = calcExpeditionBonus(teamPets, zone);
+                const needsBranch = !team.branchResolved && pct >= 40 && branchEvent;
                 return (
                   <div key={team.zoneId + '-' + ti} style={{padding:'14px',borderRadius:'14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',marginBottom:'10px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
                       <div style={{fontSize:'14px',fontWeight:'700'}}>{zone?.icon} {zone?.name || '未知'}</div>
-                      <span style={{fontSize:'11px',color:done?'#4CAF50':'#FFD700',fontWeight:'600'}}>{done ? '可领取' : `剩余 ${remainMin} 分钟 · ${pct}%`}</span>
+                      <span style={{fontSize:'11px',color:done?'#4CAF50':needsBranch?'#FF9800':'#FFD700',fontWeight:'600'}}>{done ? '可领取' : needsBranch ? '待决策' : `剩余 ${remainMin} 分钟 · ${pct}%`}</span>
                     </div>
+                    {typeBonus > 1 && <div style={{fontSize:'10px',color:'#81C784',marginBottom:'6px'}}>属性契合 ×{typeBonus.toFixed(1)}</div>}
                     <div style={{height:'4px',borderRadius:'2px',background:'rgba(255,255,255,0.1)',overflow:'hidden',marginBottom:'8px'}}>
-                      <div style={{width:`${pct}%`,height:'100%',background:done?'#4CAF50':'#FFD700',borderRadius:'2px',transition:'width 1s'}}/>
+                      <div style={{width:`${pct}%`,height:'100%',background:done?'#4CAF50':needsBranch?'#FF9800':'#FFD700',borderRadius:'2px',transition:'width 1s'}}/>
                     </div>
-                    <button onClick={()=>collectExpedition(ti)} disabled={!done} style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',background:done?'linear-gradient(135deg,#4CAF50,#2E7D32)':'rgba(255,255,255,0.05)',color:done?'#fff':'rgba(255,255,255,0.3)',fontSize:'12px',fontWeight:'700',cursor:done?'pointer':'not-allowed'}}>{done?'🎁 领取奖励':'探险进行中...'}</button>
+                    {needsBranch ? (
+                      <div style={{marginBottom:'8px'}}>
+                        <div style={{fontSize:'12px',fontWeight:'700',marginBottom:'4px'}}>{branchEvent.title}</div>
+                        <div style={{fontSize:'10px',color:'rgba(255,255,255,0.5)',marginBottom:'8px'}}>{branchEvent.desc}</div>
+                        <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                          {branchEvent.choices.map(ch => (
+                            <button key={ch.id} onClick={() => resolveExpeditionBranch(ti, ch.id)} style={{padding:'8px 10px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:'11px',textAlign:'left',cursor:'pointer'}}>
+                              <strong>{ch.label}</strong> <span style={{opacity:0.65}}>{ch.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                    <button onClick={()=>collectExpedition(ti)} disabled={!done || (team.branchEventId && !team.branchResolved)} style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',background:done && (!team.branchEventId || team.branchResolved)?'linear-gradient(135deg,#4CAF50,#2E7D32)':'rgba(255,255,255,0.05)',color:done && (!team.branchEventId || team.branchResolved)?'#fff':'rgba(255,255,255,0.3)',fontSize:'12px',fontWeight:'700',cursor:done && (!team.branchEventId || team.branchResolved)?'pointer':'not-allowed'}}>{done ? ((!team.branchEventId || team.branchResolved) ? '🎁 领取奖励' : '请先做出探险决策') : '探险进行中...'}</button>
+                    )}
                   </div>
                 );
               })}
@@ -15136,7 +15236,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       buffs: [],
       status: 'selecting',
       healUsed: false,
-      mode: mode
+      mode: mode,
+      floorModifier: getInfinityFloorModifier(1),
+      bestFloor: infinityState?.bestFloor || achStats.maxInfinityFloor || 0,
     });
     setView('infinity_castle');
   };
@@ -15221,12 +15323,35 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
+    const mod = infinityState.floorModifier || getInfinityFloorModifier(floor);
+    if (difficulty === 'hard') {
+      enemy.customStatMult = (enemy.customStatMult || 1) * 1.2;
+    }
+    if (mod?.enemyStatMult) {
+      const base = POKEDEX.find(d => d.id === enemy.id) || POKEDEX[0];
+      if (!enemy.customBaseStats) {
+        enemy.customBaseStats = {
+          hp: base.hp, p_atk: base.atk, p_def: base.def,
+          s_atk: base.atk, s_def: base.def, spd: base.spd, crit: 5,
+        };
+      }
+      Object.entries(mod.enemyStatMult).forEach(([k, v]) => {
+        if (k === 'crit') enemy.customBaseStats.crit = (enemy.customBaseStats.crit || 5) + v;
+        else enemy.customBaseStats[k] = Math.floor((enemy.customBaseStats[k] || 50) * v);
+      });
+    }
+    if (mod?.enemyEva) {
+      enemy.stages = { ...(enemy.stages || DEFAULT_BATTLE_STAGES), eva: (enemy.stages?.eva || 0) + mod.enemyEva };
+    }
+
+    const dropBonus = difficulty === 'hard' ? 1.3 : 1;
     startBattle({ 
         id: 888, 
         name: bossName || `无限城恶鬼 (Lv.${enemyLvl})`, 
         customParty: [enemy], 
-        drop: Math.floor(200 + floor * 50 + (isBoss ? 2000 : 0)),
-        dungeonId: 'infinity_castle'
+        drop: Math.floor((200 + floor * 50 + (isBoss ? 2000 : 0)) * dropBonus),
+        dungeonId: 'infinity_castle',
+        _infinityMod: mod?.id || null,
     }, 'infinity');
   };
 
@@ -15905,6 +16030,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 setAccessories(prev => [...prev, eqReward]);
                 addLog(`🎁 第${currentFloor}层奖励：获得 ${eqReward.displayName}！`);
             }
+        }
+        if (isInfinityMilestoneFloor(currentFloor)) {
+            const ms = getInfinityMilestoneReward(currentFloor);
+            setGold(g => g + ms.gold);
+            updateAchStat({ totalGoldEarned: ms.gold });
+            if (ms.item) {
+              const cat = ms.item === 'master_ball' ? 'balls' : 'meds';
+              setInventory(p => ({ ...p, [cat]: { ...p[cat], [ms.item]: (p[cat]?.[ms.item] || 0) + (ms.itemCount || 1) } }));
+            }
+            showMapToast('🎁', ms.label, `+${ms.gold.toLocaleString()} 金${ms.item ? ` · ${MEDICINES[ms.item]?.name || BALLS[ms.item]?.name || ms.item}×${ms.itemCount}` : ''}`, 3000);
         }
         if (currentFloor % 5 === 0) {
             const options = _.sampleSize(BREATHING_BUFFS, 3);
@@ -18848,9 +18983,10 @@ const renderMenu = () => {
   const totalPower = hasSave && party ? party.reduce((s, p) => { const st = getStats(p); return s + (p.level || 1) * 10 + (st.p_atk || 50) + (st.s_atk || 50); }, 0) : 0;
   const dailyTasksDone = hasSave ? Math.min((narutoState?.dailyMissions || 0), 5) : 0;
   const badgeCount = badges?.length || 0;
+  const leagueUnlocked = storyProgress >= LEAGUE_UNLOCK_STORY_INDEX;
   const commandStats = [
     { label: '队伍战力', value: hasSave ? totalPower.toLocaleString() : '待集结', hint: leadPet ? `${leadPet.nickname || leadPetDex?.name || '伙伴'} 领队` : '选择初始伙伴', tone: 'gold' },
-    { label: '徽章进度', value: `${badgeCount}/${MAPS.length}`, hint: badgeCount >= MAPS.length ? '联盟资格完成' : '继续挑战道馆', tone: 'blue' },
+    { label: '徽章进度', value: `${badgeCount}/${MAIN_GYM_BADGE_COUNT}`, hint: badgeCount >= MAIN_GYM_BADGE_COUNT ? '主线徽章已集齐' : '继续挑战道馆', tone: 'blue' },
     { label: '训练任务', value: `${dailyTasksDone}/5`, hint: dailyTasksDone >= 5 ? '今日已完成' : '完成任务强化队伍', tone: 'green' },
     { label: '忍术修行', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽 · ${jutsuCollCount} 忍术`, tone: 'red' },
   ];
@@ -18861,19 +18997,28 @@ const renderMenu = () => {
     { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
     { key:'general_dex', label:'三国名将', sub:`${collectedGenCount}/200`, icon:'📜' },
     { key:'achievements', label:'成就殿堂', sub:`${Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)}%`, icon:'🏆' },
-    { key:'tcg', label:'精灵卡牌', sub:`${tcgState.battleRecord?.wins || 0}胜 · ${tcgState.rankPoints || 0}分`, icon:'🃏' },
+    { key:null, label:'无限城', sub:`最佳 ${achStats.maxInfinityFloor || 0} 层`, icon:'🏯', action: () => {
+      if (!hasSave || !party?.length) { showMapToast('❌', '无法进入', '先开始冒险并组建队伍', 2000); return; }
+      if (party[0].level >= 80) enterInfinityCastle('normal');
+      else if (party[0].level >= 40) enterInfinityCastle('shallow');
+      else showMapToast('⚠️', '等级不足', '浅层需首发 Lv.40+', 2000);
+    } },
     { key:'guide', label:'冒险指南', sub:'规则说明', icon:'📖' },
     { key:'settings', label:'系统设置', sub:'选项', icon:'⚙️' },
     { key:null, label:'重置存档', sub:'重新开始', icon:'🔄', action: resetGame, danger: true },
   ];
   const nextObjective = hasSave
-    ? (badgeCount < MAPS.length ? `夺取第 ${badgeCount + 1} 枚徽章` : (playerFaction ? `${playerFaction.name} 阵营战线推进` : '挑战终局试炼'))
+    ? (badgeCount < MAIN_GYM_BADGE_COUNT
+        ? `夺取第 ${badgeCount + 1} 枚徽章`
+        : !leagueUnlocked
+          ? '完成冠军之路主线'
+          : (playerFaction ? `${playerFaction.name} 阵营战线推进` : '挑战终局试炼'))
     : '建立第一支冒险小队';
-  const homeProgress = hasSave ? Math.min(100, Math.round((badgeCount / Math.max(1, MAPS.length)) * 100)) : 0;
+  const homeProgress = hasSave ? Math.min(100, Math.round((badgeCount / Math.max(1, MAIN_GYM_BADGE_COUNT)) * 100)) : 0;
   const homeTrailSteps = [
     { label: '初始伙伴', meta: leadPet ? (leadPet.nickname || leadPetDex?.name || '已加入') : '待选择', done: !!leadPet },
-    { label: '徽章征途', meta: `${badgeCount}/${MAPS.length}`, done: badgeCount > 0 },
-    { label: '联盟资格', meta: badgeCount >= MAPS.length ? '已解锁' : `${Math.max(0, MAPS.length - badgeCount)} 枚后`, done: badgeCount >= MAPS.length },
+    { label: '徽章征途', meta: `${badgeCount}/${MAIN_GYM_BADGE_COUNT}`, done: badgeCount > 0 },
+    { label: '联盟资格', meta: leagueUnlocked ? '已解锁' : '冠军之路剧情后', done: leagueUnlocked },
   ];
 
   return (
@@ -27647,17 +27792,6 @@ const renderMenu = () => {
       {renderActivityCenter()}
       {renderActivityCenterModals()}
       {view === 'guide' && <GuideScreen onBack={() => setView(safeBack())} />}
-      {view === 'tcg' && (
-        <TCGScreen
-          tcgState={tcgState}
-          setTcgState={setTcgState}
-          gold={gold}
-          setGold={setGold}
-          onBack={() => setView(safeBack())}
-          showToast={showMapToast}
-          getLocalDateStr={getLocalDateStr}
-        />
-      )}
       {view === 'settings' && (
         <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',color:'#fff',display:'flex',flexDirection:'column'}}>
           <div style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',backdropFilter:'blur(12px)',flexShrink:0,height:'56px'}}>

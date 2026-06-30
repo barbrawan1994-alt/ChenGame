@@ -1,3 +1,40 @@
+export const EXPEDITION_BRANCH_EVENTS = [
+  {
+    id: 'fork_road',
+    title: '岔路口',
+    desc: '探险队发来讯号：前方出现岔路，如何前进？',
+    choices: [
+      { id: 'safe', label: '🛡️ 稳妥前行', desc: '奖励×0.9，零风险', rewardMult: 0.9, failChance: 0 },
+      { id: 'scout', label: '🔍 侦查探路', desc: '奖励×1.25，小概率受阻', rewardMult: 1.25, failChance: 0.15 },
+      { id: 'charge', label: '⚔️ 强行突破', desc: '奖励×1.6，可能遭遇伏击', rewardMult: 1.6, failChance: 0.35 },
+    ],
+  },
+  {
+    id: 'ancient_ruins',
+    title: '古代遗迹',
+    desc: '发现一处半塌的遗迹，队伍请求指示。',
+    choices: [
+      { id: 'safe', label: '📜 记录坐标', desc: '奖励×1.0，稳妥撤离', rewardMult: 1.0, failChance: 0 },
+      { id: 'scout', label: '🏺 小心发掘', desc: '奖励×1.35', rewardMult: 1.35, failChance: 0.2 },
+      { id: 'charge', label: '💥 破墙而入', desc: '奖励×1.7，陷阱风险高', rewardMult: 1.7, failChance: 0.4 },
+    ],
+  },
+  {
+    id: 'wild_pack',
+    title: '野生群落',
+    desc: '大量野生精灵挡住去路，它们似乎有领袖。',
+    choices: [
+      { id: 'safe', label: '🌿 绕路而行', desc: '奖励×0.85，避免冲突', rewardMult: 0.85, failChance: 0 },
+      { id: 'scout', label: '🎣 引开首领', desc: '奖励×1.3', rewardMult: 1.3, failChance: 0.18 },
+      { id: 'charge', label: '⚡ 正面驱逐', desc: '奖励×1.55，可能受伤减益', rewardMult: 1.55, failChance: 0.3 },
+    ],
+  },
+];
+
+export function pickExpeditionBranchEvent() {
+  return EXPEDITION_BRANCH_EVENTS[Math.floor(Math.random() * EXPEDITION_BRANCH_EVENTS.length)];
+}
+
 export const EXPEDITION_EVENTS = [
   '🌿 探险队在灌木丛中发现了隐藏的宝箱！',
   '⚔️ 遭遇了一群野生精灵的围攻，成功击退了它们！',

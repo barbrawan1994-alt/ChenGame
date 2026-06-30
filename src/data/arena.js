@@ -65,3 +65,26 @@ export const DEFAULT_ARENA_STATE = {
   seasonStartDate: '',
   seasonBestRank: 'bronze',
 };
+
+export function arenaPreviewSeed(rankId, ruleId, dateStr) {
+  let h = 0;
+  const s = `${rankId}|${ruleId}|${dateStr}`;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h) || 1;
+}
+
+export function mulberry32(seed) {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function getArenaWeekTypes(date = new Date()) {
+  const allowedTypes = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE', 'FIGHT', 'PSYCHIC', 'DARK', 'DRAGON', 'FAIRY', 'NORMAL'];
+  const day = date.getDay();
+  return [allowedTypes[day % allowedTypes.length], allowedTypes[(day + 3) % allowedTypes.length]];
+}
