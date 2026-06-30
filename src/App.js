@@ -2,6 +2,12 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { flushSync } from 'react-dom';
 import _ from 'lodash';
 
+import { getStats as getStatsRaw, getStageMult, calcNextExp } from './utils/statsCalculator';
+import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
+import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
+import SkillDexScreen from './components/screens/SkillDexScreen';
+import GuideScreen from './components/screens/GuideScreen';
+
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
 import { GSAPAnimations } from './engines/AnimationEngine';
@@ -13,7 +19,7 @@ import {
   SkillCastEffect,
   EnhancedBattleMessage 
 } from './engines/BattleEnhancements';
-import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG, GAME_NAME, GAME_EN_NAME, GAME_VERSION_LABEL, GAME_TAGLINE } from './data/constants';
+import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG, GAME_NAME, GAME_EN_NAME, GAME_VERSION_LABEL, GAME_TAGLINE, DEFAULT_BATTLE_STAGES, MS_PER_DAY, MS_PER_MINUTE, STAT_BUFF_MAP, LEAGUE_ROUNDS, WHEEL_FREE_SPINS_PER_DAY, WHEEL_PAID_SPIN_COST, WHEEL_PITY_INTERVAL, SEASON_NPC_NAMES, NINJA_ID_ORDER, SIDE_STORY_LINES, BREATHING_BUFFS, COMBO_JUTSU_LIST } from './data/constants';
 import { TYPES, TYPE_CHARM_BASE, TYPE_BIAS } from './data/types';
 import {
   BALLS,
@@ -163,19 +169,6 @@ const normalizeBerriesInventory = (b) => {
 // ==========================================
 // 提取的公共常量 (消除魔术数字/重复对象)
 // ==========================================
-const DEFAULT_BATTLE_STAGES = Object.freeze({ p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0, acc: 0, eva: 0, crit: 0 });
-const MS_PER_DAY = 86400000;
-const MS_PER_MINUTE = 60000;
-const STAT_BUFF_MAP = Object.freeze({ ATK: 'p_atk', DEF: 'p_def', SPD: 'spd', SATK: 's_atk', SDEF: 's_def' });
-const LEAGUE_ROUNDS = Object.freeze([
-  { name: '16强赛', level: 85, teamSize: 4 },
-  { name: '8强赛', level: 90, teamSize: 5 },
-  { name: '半决赛', level: 95, teamSize: 6 },
-  { name: '总决赛', level: 100, teamSize: 6 },
-]);
-const WHEEL_FREE_SPINS_PER_DAY = 3;
-const WHEEL_PAID_SPIN_COST = 1000;
-const WHEEL_PITY_INTERVAL = 10;
 
 /**
  * 通用加权随机抽样
@@ -203,17 +196,6 @@ const addBerries = (berries, id, amount) => {
   return o;
 };
 
-const BREATHING_BUFFS = [
-  { id: 'atk_up', name: '🔥 火之神神乐', desc: '全队攻击力 +15', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_atk = (p.customBaseStats.p_atk || 50) + 15; } },
-  { id: 'def_up', name: '🪨 岩之呼吸', desc: '全队防御力 +15', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_def = (p.customBaseStats.p_def || 50) + 15; } },
-  { id: 'spd_up', name: '⚡ 雷之呼吸', desc: '全队速度 +10', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.spd = (p.customBaseStats.spd || 50) + 10; } },
-  { id: 'heal_turn', name: '🌊 水之呼吸', desc: '全队HP上限 +12', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.hp = (p.customBaseStats.hp || 50) + 12; } },
-  { id: 'crit_up', name: '🐗 兽之呼吸', desc: '暴击率 +8%', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.crit = (p.customBaseStats.crit || 0) + 8; } },
-  { id: 'heal_all', name: '🦋 虫之呼吸', desc: '立即恢复全队 50% HP', type: 'instant' },
-  { id: 'chakra_atk', name: '🍥 螺旋丸之力', desc: '全队特攻+12 攻击+8', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.s_atk = (p.customBaseStats.s_atk || 50) + 12; p.customBaseStats.p_atk = (p.customBaseStats.p_atk || 50) + 8; } },
-  { id: 'chakra_def', name: '🛡️ 须佐能乎', desc: '全队双防+12', effect: (p) => { if (!p.customBaseStats) return; p.customBaseStats.p_def = (p.customBaseStats.p_def || 50) + 12; p.customBaseStats.s_def = (p.customBaseStats.s_def || 50) + 12; } },
-  { id: 'chakra_all', name: '🦊 九尾查克拉', desc: '全队全属性+6', effect: (p) => { if (!p.customBaseStats) return; ['hp','p_atk','p_def','s_atk','s_def','spd'].forEach(s => { p.customBaseStats[s] = (p.customBaseStats[s] || 50) + 6; }); } },
-];
 const ALL_SKILL_TMS = (() => {
   const existingKeys = new Set(TMS.map(t => `${t.type}_${t.name}`));
   const generated = [];
@@ -245,43 +227,6 @@ const ALL_SKILL_TMS = (() => {
   });
   return [...TMS, ...generated];
 })();
-
-const SEASON_NPC_NAMES = ['红莲','青岚','紫电','金刚','银河','碧落','玄武','朱雀','白虎','苍龙','烈焰','冰霜','雷神','风王','地藏','星辰','月华','日轮','天罡','地煞'];
-
-const COMBO_JUTSU_LIST = [
-  { id: 'fire_combo', name: '火遁·焰皇连弹', natures: ['FIRE', 'FIRE'], desc: '两只精灵同时发动火遁，合击火属性伤害', icon: '🔥🔥', minRank: 'genin', power: 60, chakraCost: 30, cat: 'special' },
-  { id: 'water_combo', name: '水遁·双龙暴潮', natures: ['WATER', 'WATER'], desc: '双重水遁形成暴潮', icon: '💧💧', minRank: 'genin', power: 60, chakraCost: 30, cat: 'special' },
-  { id: 'wind_combo', name: '风遁·真空大玉', natures: ['WIND', 'WIND'], desc: '双风叠加真空大玉', icon: '🌀🌀', minRank: 'genin', power: 60, chakraCost: 30, cat: 'special' },
-  { id: 'earth_combo', name: '土遁·双壁巨阵', natures: ['EARTH', 'EARTH'], desc: '双土壁碾压', icon: '🪨🪨', minRank: 'genin', power: 55, chakraCost: 28, cat: 'physical' },
-  { id: 'lightning_combo', name: '雷遁·千鸟双重', natures: ['LIGHTNING', 'LIGHTNING'], desc: '双重千鸟贯穿', icon: '⚡⚡', minRank: 'genin', power: 65, chakraCost: 32, cat: 'special' },
-  { id: 'water_fire', name: '沸遁·过热蒸汽', natures: ['WATER', 'FIRE'], desc: '水火交融产生高温蒸汽，造成伤害并降低命中', icon: '💧🔥', minRank: 'chunin', power: 80, chakraCost: 40, cat: 'special', effect: { accDown: 1 } },
-  { id: 'wind_fire', name: '灼遁·光轮疾风', natures: ['WIND', 'FIRE'], desc: '风助火势的灼遁追击', icon: '🌀🔥', minRank: 'chunin', power: 85, chakraCost: 42, cat: 'special' },
-  { id: 'earth_water', name: '溶遁·熔岩浊流', natures: ['EARTH', 'WATER'], desc: '岩浆与水流的融合攻击', icon: '🪨💧', minRank: 'chunin', power: 78, chakraCost: 38, cat: 'special' },
-  { id: 'lightning_water', name: '岚遁·雷云风暴', natures: ['LIGHTNING', 'WATER'], desc: '雷电注入水中的岚遁打击', icon: '⚡💧', minRank: 'jonin', power: 95, chakraCost: 55, cat: 'special' },
-  { id: 'wind_lightning', name: '磁遁·砂铁界法', natures: ['WIND', 'LIGHTNING'], desc: '操控磁力进行高速攻击', icon: '🌀⚡', minRank: 'jonin', power: 92, chakraCost: 52, cat: 'special' },
-  { id: 'fire_earth', name: '熔遁·鬼灯城壁', natures: ['FIRE', 'EARTH'], desc: '熔岩与土壁的熔遁合击', icon: '🔥🪨', minRank: 'chunin', power: 82, chakraCost: 44, cat: 'special', effect: { burn: 0.25 } },
-  { id: 'wind_water', name: '氷遁·黑龙暴风雪', natures: ['WIND', 'WATER'], desc: '风与水交织的暴风雪', icon: '🌀❄️', minRank: 'jonin', power: 98, chakraCost: 58, cat: 'special', effect: { freeze: 0.15 } },
-  { id: 'fire_lightning', name: '炎雷·天叢雲剣', natures: ['FIRE', 'LIGHTNING'], desc: '炎与雷合一的斩击', icon: '🔥⚡', minRank: 'jonin', power: 100, chakraCost: 60, cat: 'special' },
-  { id: 'earth_lightning', name: '土雷·磁暴岩阵', natures: ['EARTH', 'LIGHTNING'], desc: '土雷磁暴束缚对手', icon: '🪨⚡', minRank: 'chunin', power: 76, chakraCost: 36, cat: 'physical', effect: { paralyze: 0.2 } },
-  { id: 'earth_wind', name: '砂遁·砂塵大葬', natures: ['EARTH', 'WIND'], desc: '砂尘遮蔽并拖慢对手', icon: '🪨🌀', minRank: 'chunin', power: 74, chakraCost: 35, cat: 'physical', effect: { spdDown: 0.5 } },
-  { id: 'water_lightning_alt', name: '水雷·海神裁决', natures: ['WATER', 'LIGHTNING'], desc: '水雷交织的裁决一击', icon: '💧⚡', minRank: 'jonin', power: 105, chakraCost: 62, cat: 'special' },
-  { id: 'fire_wind_alt', name: '火風·灰燼颶風', natures: ['FIRE', 'WIND'], desc: '火风合一的灰烬飓风', icon: '🔥🌀', minRank: 'jonin', power: 108, chakraCost: 65, cat: 'special' },
-  { id: 'earth_fire', name: '灰遁·火山灰降', natures: ['EARTH', 'FIRE'], desc: '火山灰遮蔽视线并灼伤', icon: '🪨🔥', minRank: 'jonin', power: 96, chakraCost: 54, cat: 'special', effect: { burn: 0.2, accDown: 0.6 } },
-  { id: 'water_wind', name: '海遁·海嘯卷', natures: ['WATER', 'WIND'], desc: '海啸与狂风合一', icon: '💧🌀', minRank: 'jonin', power: 94, chakraCost: 52, cat: 'special' },
-  { id: 'triple_nature', name: '仙法·三性质变化', natures: ['FIRE', 'WIND', 'LIGHTNING'], desc: '三种性质同时变化，毁灭性一击', icon: '🔥🌀⚡', minRank: 'kage', power: 130, chakraCost: 90, cat: 'special' },
-  { id: 'triple_water', name: '仙法·海神三叉戟', natures: ['WATER', 'EARTH', 'LIGHTNING'], desc: '水·土·雷的仙法合击', icon: '💧🪨⚡', minRank: 'kage', power: 125, chakraCost: 85, cat: 'special' },
-  { id: 'triple_ice', name: '仙法·氷遁绝零', natures: ['WATER', 'WIND', 'EARTH'], desc: '零度冰遁三重奏', icon: '❄️🌀🪨', minRank: 'kage', power: 120, chakraCost: 82, cat: 'special' },
-  { id: 'triple_fire', name: '仙法·炎帝審判', natures: ['FIRE', 'EARTH', 'WIND'], desc: '炎帝与大地与狂风', icon: '🔥🪨🌀', minRank: 'kage', power: 128, chakraCost: 88, cat: 'special' },
-  { id: 'triple_storm', name: '仙法·雷遁風暴', natures: ['LIGHTNING', 'WIND', 'FIRE'], desc: '雷·风·炎的毁灭风暴', icon: '⚡🌀🔥', minRank: 'kage', power: 132, chakraCost: 92, cat: 'special' },
-  { id: 'all_five', name: '仙法·五遁大結界', natures: ['FIRE', 'WATER', 'WIND', 'EARTH', 'LIGHTNING'], desc: '集齐五遁的仙法大结界（队伍需至少三只不同性质精灵且场上双宠覆盖五遁）', icon: '🔯✨', minRank: 'kage', power: 140, chakraCost: 100, cat: 'special' },
-  { id: 'yin_yang', name: '陰陽遁·創造之力', natures: ['FIRE', 'WATER'], desc: '对立之火水交融的阴阳遁', icon: '☯️', minRank: 'kage', power: 135, chakraCost: 95, cat: 'special' },
-  { id: 'sealing', name: '封印忍術·屍鬼封盡', natures: ['FIRE', 'FIRE'], desc: '封印对手大量生命（特殊效果）', icon: '👻', minRank: 'jonin', power: 0, chakraCost: 70, cat: 'special', effect: { sealing: true } },
-  { id: 'medical', name: '忍法·百豪之力', natures: ['WATER', 'EARTH'], desc: '回复双方出战精灵体力', icon: '💚', minRank: 'chunin', power: 0, chakraCost: 45, cat: 'special', effect: { medical: true } },
-  { id: 'genjutsu', name: '幻術·無限月讀', natures: ['FIRE', 'WATER', 'WIND'], desc: '使敌方全体陷入长眠', icon: '🌙', minRank: 'kage', power: 0, chakraCost: 80, cat: 'special', effect: { genjutsu: true } },
-  { id: 'barrier', name: '結界·四紫炎陣', natures: ['FIRE', 'EARTH', 'LIGHTNING'], desc: '双方出战精灵数回合内免疫伤害', icon: '🛡️', minRank: 'jonin', power: 0, chakraCost: 55, cat: 'special', effect: { barrier: true } },
-];
-
-const NINJA_ID_ORDER = { academy: 0, genin: 1, chunin: 2, jonin: 3, kage: 4 };
 
 const getPetJutsuNatureSet = (pet) => {
   const set = new Set();
@@ -419,13 +364,6 @@ const getEquipEffects = (pet) => {
   });
   return effects;
 };
-
-const SIDE_STORY_LINES = [
-  { id: 'jjk',     name: '咒术回战篇', icon: '⛩️', startIdx: 13, endIdx: 22, chapters: 10, unlockBadges: 5, desc: '觉醒咒术之力，从渋谷事変到终结千年诅咒之王' },
-  { id: 'lycoris', name: '莉可莉丝篇', icon: '🎀', startIdx: 23, endIdx: 25, chapters: 3, unlockBadges: 4, desc: '搭档羁绊之旅，解锁搭档系统' },
-  { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 26, endIdx: 34, chapters: 9, unlockBadges: 8, desc: '十二门派与厌晚的史诗篇章' },
-  { id: 'crossworld', name: '异界征途篇', icon: '🌍', startIdx: 35, endIdx: 52, chapters: 18, unlockBadges: 13, desc: '次元裂隙降临，跨越七界的史诗冒险' },
-];
 
 const inferCompletedSideStories = (storyProg) => {
   return SIDE_STORY_LINES.filter(s => storyProg > s.endIdx).map(s => s.id);
@@ -575,7 +513,6 @@ export default function RPG(props) {
 
   // LycoReco咖啡厅
   const [cafe, setCafe] = useState(savedData.cafe || { ...DEFAULT_CAFE_STATE });
-  const [cafeTab, setCafeTab] = useState('overview');
 
   // 婚姻伴侣系统
   const [marriage, setMarriage] = useState(savedData.marriage || { ...DEFAULT_MARRIAGE_STATE });
@@ -756,10 +693,6 @@ useEffect(() => {
     return () => clearInterval(timer);
 }, []); // eslint-disable-line
 
-  const [skillFilter, setSkillFilter] = useState('ALL');
-  const [skillSearchTerm, setSkillSearchTerm] = useState('');
-  const [skillPage, setSkillPage] = useState(0);
-  const SKILL_PAGE_SIZE = 60;
  const [storyProgress, setStoryProgress] = useState(savedData.storyProgress || 0);
   const [storyStep, setStoryStep] = useState(savedData.storyStep || 0);
   const [sanguoProgress, setSanguoProgress] = useState(savedData.sanguoProgress || 0);
@@ -1117,8 +1050,6 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [pcSearch, setPcSearch] = useState('');
   const [pcSort, setPcSort] = useState('default');
   const [pcFilterType, setPcFilterType] = useState('all');
-  const [pcCompareA, setPcCompareA] = useState(null);
-  const [pcCompareB, setPcCompareB] = useState(null);
   const [pcBatchRelease, setPcBatchRelease] = useState(false);
   const [pcBatchSelected, setPcBatchSelected] = useState(new Set());
   const [confirmModal, setConfirmModal] = useState(null);
@@ -1377,9 +1308,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const [activityModal, setActivityModal] = useState(null);
   const [battleTooltip, setBattleTooltip] = useState(null);
   const [petPicker, setPetPicker] = useState(null);
-  const [guideSearch, setGuideSearch] = useState('');
-  const [guideExpanded, setGuideExpanded] = useState({});
-  const [guideCat, setGuideCat] = useState(null);
     // ==========================================
   
   // [新增] 核心逻辑函数群
@@ -1893,12 +1821,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
   };
 
     // ==========================================
-  function calcNextExp(lv, expMod = 1.0) {
-    let lateBonus = 0;
-    if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 2;
-    if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 4;
-    return Math.floor((lv * 100 + lateBonus) * expMod);
-  }
 
   const checkEvoCondition = (pet, evoDex) => {
     const condition = evoDex?.evoCondition;
@@ -1977,158 +1899,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
     return (move.pp || 0) > 0;
   };
 
-  // [核心] 属性计算函数 (含特性修正)
+  // [核心] 属性计算函数 - 委托给 utils/statsCalculator.js
   // ==========================================
-  const getStageMult = (stage) => {
-    if (!stage) return 1.0;
-    const s = Math.max(-6, Math.min(6, stage));
-    if (s >= 0) return (2 + s) / 2;
-    return 2 / (2 + Math.abs(s));
-  };
-
   function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
-    if (!pet) return { maxHp: 1, p_atk: 1, p_def: 1, s_atk: 1, s_def: 1, spd: 1, crit: 5 };
-    const isPlayerPet = gangBonusOverride === undefined;
-    const lvl = pet.level || 1;
-    const growth = 1 + Math.min(2.5, Math.pow(lvl / 100, 0.7) * 3.5); 
-    const shinyMod = pet.isFusedShiny ? 1.35 : (pet.isShiny ? 1.2 : 1.0);
-
-    let ivs = pet.ivs || { hp:0, p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, crit:0 };
-    const evs = pet.evs || {};
-    const natureKey = pet.nature || 'docile'; 
-    const natureStats = NATURE_DB[natureKey]?.stats || {};
-
-    const baseInfo = POKEDEX.find(p => p.id === pet.id) || POKEDEX[0];
-    const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
-
-    const diversity = (pet.diversityRng !== undefined) ? pet.diversityRng : ((baseInfo.id % 5) * 2 - 4);
-    const fallbackSpeed = (pet.speedRng !== undefined) ? pet.speedRng : (40 + (baseInfo.id * 7 % 70));
-
-    const statMult = pet.customStatMult || 1;
-    const baseStats = pet.customBaseStats || {
-        hp: Math.floor((baseInfo.hp || 60) * statMult),
-        p_atk: Math.floor(((baseInfo.p_atk || baseInfo.atk || 50) * bias.p + diversity) * statMult),
-        p_def: Math.floor(((baseInfo.p_def || baseInfo.def || 50) * bias.p) * statMult),
-        s_atk: Math.floor(((baseInfo.s_atk || baseInfo.atk || 50) * bias.s - diversity) * statMult),
-        s_def: Math.floor(((baseInfo.s_def || baseInfo.def || 50) * bias.s) * statMult),
-        spd: Math.floor((baseInfo.spd || fallbackSpeed) * statMult), 
-        crit: 5
-    };
-
-    // getStageMult is defined at module scope above
-
-    let chiefBonus = {}; 
-    if (isPlayerPet && pet.sectId && SECT_CHIEFS_CONFIG[pet.sectId]) {
-        const config = SECT_CHIEFS_CONFIG[pet.sectId];
-        if (currentTitle === config.title) {
-            chiefBonus = config.stats; 
-        }
-    }
-    const totalEv = Object.values(evs).reduce((s, v) => s + Math.max(0, v || 0), 0);
-    const evScale = totalEv > 510 ? 510 / totalEv : 1;
-    const calc = (base, ivKey, evKey, isHp = false) => {
-        const iv = Math.max(0, ivs[ivKey] || 0);
-        const rawEv = Math.min(252, Math.max(0, isHp ? Math.max(evs[evKey] || 0, evs.maxHp || 0) : (evs[evKey] || 0)));
-        const ev = Math.floor(rawEv * evScale);
-        
-        let val = Math.floor((base + iv) * growth * shinyMod);
-        if (isHp) val = Math.floor(val * 2.0); 
-
-        if (natureStats[ivKey]) val = Math.floor(val * natureStats[ivKey]);
-        
-        const currentEquips = pet.equips || [null, null];
-        currentEquips.forEach(equip => {
-            if (!equip) return;
-            let accData = null;
-            if (typeof equip === 'string') accData = ACCESSORY_DB.find(c => c.id === equip);
-            else if (typeof equip === 'object') accData = equip; 
-
-            if (accData) {
-                 const aType = accData.type === 'HYBRID' ? (accData.stat || 'ATK') : (accData.type || accData.stat); 
-                 if (isHp && aType === 'HP') val += accData.val;
-                 if (ivKey === 'p_atk' && aType === 'ATK') val += accData.val;
-                 if (ivKey === 's_atk' && aType === 'SATK') val += accData.val;
-                 if ((ivKey === 'p_def' || ivKey === 's_def') && aType === 'DEF') val += accData.val;
-                 if (ivKey === 's_def' && aType === 'SDEF') val += accData.val;
-                 if (ivKey === 'spd' && aType === 'SPD') val += accData.val;
-                 if (ivKey === 'spd' && accData.effect && accData.effect.id === 'bonus_spd') val += accData.effect.val;
-            }
-        });
-
-        val += Math.floor(ev / 4);
-
-        if (chiefBonus[ivKey]) {
-            val = Math.floor(val * chiefBonus[ivKey]);
-        }
-
-        // ▼▼▼ [新增] 特性面板修正 ▼▼▼
-        const trait = TRAIT_DB[pet.trait];
-        if (trait && trait.type === 'STAT') {
-            // 大力士：物攻翻倍
-            if (pet.trait === 'huge_power' && ivKey === 'p_atk') val = Math.floor(val * 2);
-            // 毅力：灼伤/中毒/麻痹下物攻1.5倍（睡眠/冰冻不触发）
-            if (pet.trait === 'guts' && ivKey === 'p_atk' && (status === 'BRN' || status === 'PSN' || status === 'PAR')) val = Math.floor(val * 1.5);
-        }
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-        if (!isHp && stages && stages[ivKey] !== undefined) {
-            val = Math.floor(val * getStageMult(stages[ivKey]));
-        }
-
-        if (status === 'PAR' && ivKey === 'spd') val = Math.floor(val * 0.5); 
-        if (status === 'BRN' && ivKey === 'p_atk' && pet.trait !== 'guts') val = Math.floor(val * 0.5); 
-
-        return val;
-    };
-
-    let finalCrit = Math.floor((baseStats.crit||5) + (ivs.crit||0) + (evs.crit||0) + (pet.level * 0.2));
-    if (chiefBonus.crit) finalCrit += chiefBonus.crit; 
-    (pet.equips||[]).forEach(equip => {
-      if (!equip) return;
-      const accData = typeof equip === 'string' ? ACCESSORY_DB.find(c=>c.id===equip) : equip;
-      if (accData && (accData.type||accData.stat) === 'CRIT') finalCrit += accData.val;
-    });
-
-    const sectId = pet.sectId || 1;
-    const sectLv = pet.sectLevel || 1;
-    let finalSpd = calc(baseStats.spd, 'spd', 'spd');
-    
-    if (sectId === 3) {
-        finalSpd = Math.floor(finalSpd * (1 + (sectLv * 0.02))); 
-    }
-
-    if (pet.fruitTransformed && pet.fruitEffects?.spdMult) {
-        finalSpd = Math.floor(finalSpd * pet.fruitEffects.spdMult);
-    }
-
-    const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : getGangSkillBonus(getGangSkills(gang));
-    const hsScore = isPlayerPet && typeof calcHouseScore === 'function' ? calcHouseScore((housing?.furniture || []).filter(f => f.placed)) : 0;
-    const hsTier = isPlayerPet && typeof getHousingScoreTier === 'function' ? getHousingScoreTier(hsScore) : null;
-    const housingAllStats = hsTier?.buff?.allStats || 0;
-    const intimacyAllStatsMult = isPlayerPet && (pet.intimacy || 0) >= 200 ? 1.10 : 1.0;
-    const applyGB = (val, pct) => {
-      let total = (pct || 0);
-      val = Math.floor(val * (1 + (housingAllStats || 0) / 100));
-      val = total > 0 ? Math.floor(val * (1 + total / 100)) : val;
-      if (intimacyAllStatsMult > 1) val = Math.floor(val * intimacyAllStatsMult);
-      return val;
-    };
-
-    const clampedCrit = Math.min(75, Math.max(0, finalCrit));
-    const finalPAtk = applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), (gangBonus.atk || 0));
-    const finalPDef = applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), (gangBonus.def || 0));
-
-    return {
-      maxHp: applyGB(calc(baseStats.hp, 'hp', 'hp', true), (gangBonus.hp||0)),
-      p_atk: finalPAtk,
-      p_def: finalPDef,
-      s_atk: applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk||0)),
-      s_def: applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def||0)),
-      spd:   applyGB(finalSpd, (gangBonus.spd||0)),
-      crit:  clampedCrit,
-      atk: finalPAtk,
-      def: finalPDef
-    };
+    return getStatsRaw(pet, stages, status, { currentTitle, gang, housing }, gangBonusOverride);
   }
 
   // ==========================================
@@ -2955,28 +2729,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
   };
 
   // ==========================================
-  // [前置] 按等级生成技能 (createPet 依赖)
+  // [前置] getMoveByLevel 已提取至 utils/petFactory.js
   // ==========================================
-  const getMoveByLevel = (type, level) => {
-    const db = SKILL_DB[type] || SKILL_DB.NORMAL;
-    if (!db || db.length === 0) return { name: '撞击', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100, category: 'physical' };
-    const index = Math.floor(level / 5); 
-    const template = db[index % db.length];
-    let name = template.name;
-    let power = (template.p !== undefined) ? template.p : 40;
-    let pp = template.pp || 15;
-    let acc = template.acc || 100; 
-    if (power >= 120) acc = 90;
-    if (power >= 150) acc = 80;
-    const tier = Math.min(3, Math.floor(index / db.length));
-    if (power > 0 && tier > 0) {
-        const baseName = template.name;
-        if (tier === 1) { name = `真·${baseName}`; power = Math.floor(power * 1.2); }
-        else if (tier === 2) { name = `超·${baseName}`; power = Math.floor(power * 1.3); }
-        else if (tier >= 3) { name = `神·${baseName}`; power = Math.floor(power * 1.5); }
-    }
-    return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, priority: template.priority || 0, alwaysHit: template.alwaysHit || false, desc: template.desc || '' };
-  };
 
   // ==========================================
   // [前置] 伴侣加成 (createPet 依赖)
@@ -2991,182 +2745,13 @@ const [viewStatPet, setViewStatPet] = useState(null);
   };
 
   // ==========================================
-  // [核心修复] 创建精灵 (含特性/亲密度/宠物风魅力评级)
+  // [核心修复] 创建精灵 - 委托给 utils/petFactory.js
   // ==========================================
   function createPet(dexId, level, isBoss = false, forceShiny = false) {
-    level = Math.min(100, Math.max(1, level));
-    let finalId = dexId;
-
-    // --- 1. 向下回溯 (De-evolution) ---
-    const visited = new Set();
-    while (true) {
-        if (visited.has(finalId)) break;
-        visited.add(finalId);
-        const preForm = POKEDEX.find(p => p.evo === finalId);
-        if (!preForm) break;
-        if (level < preForm.evoLvl) {
-            finalId = preForm.id;
-        } else {
-            break;
-        }
-    }
-
-    // --- 2. 向上进化 (Evolution) ---
-    for(let k=0; k<5; k++) {
-        const info = POKEDEX.find(p => p.id === finalId);
-        if (!info) break; 
-        if (info.evo && level >= info.evoLvl) {
-            if (info.evoCondition) break;
-            finalId = info.evo; 
-        } else {
-            break; 
-        }
-    }
-
-    let base = POKEDEX.find(p => p.id === finalId);
-    let _fallbackSpecies = false;
-    if (!base) {
-      console.warn(`[createPet] Unknown dexId: ${finalId}, falling back to POKEDEX[0]`);
-      _fallbackSpecies = true;
-      const targetNum = Number(finalId);
-      if (Number.isFinite(targetNum) && POKEDEX.length) {
-        let best = POKEDEX[0];
-        let bestDist = Infinity;
-        for (const p of POKEDEX) {
-          const pn = Number(p.id);
-          if (!Number.isFinite(pn)) continue;
-          const d = Math.abs(pn - targetNum);
-          if (d < bestDist) { bestDist = d; best = p; }
-        }
-        base = bestDist === Infinity ? POKEDEX[0] : best;
-      } else {
-        base = POKEDEX[0];
-      }
-    }
-    const spBs = getSpouseBonuses();
-    const baseShinyRate = 0.01 * (spBs.shinyRate || 1);
-    const isShiny = forceShiny || (!isBoss && Math.random() < baseShinyRate);
-    
-    const ivBoost = spBs.ivBoost || 0;
-    const randIV = () => Math.min(31, Math.floor(Math.random() * 32) + ivBoost); 
-    const ivs = {
-        hp: randIV(), p_atk: randIV(), p_def: randIV(),
-        s_atk: randIV(), s_def: randIV(), spd: randIV(),
-        crit: Math.floor(Math.random() * 6) 
-    };
-
-    const natureKeys = Object.keys(NATURE_DB);
-    const randomNature = natureKeys[Math.floor(Math.random() * natureKeys.length)];
-    const natureData = NATURE_DB[randomNature];
-    const expMod = natureData.exp || 1.0;
-
-    const diversityRng = Math.floor(Math.random() * 9) - 4; 
-    const speedRng = Math.floor(Math.random() * 71) + 40;
-
-    const sectId = Math.floor(Math.random() * 12) + 1; 
-    let autoSectLv = Math.floor(level / 10) + 1;
-    if (isBoss || isShiny) autoSectLv += 2;
-    const sectLevel = Math.max(1, Math.min(10, autoSectLv));
-
-    // --- [新增] 特性 (Trait) ---
-    const traitKeys = Object.keys(TRAIT_DB);
-    const randomTrait = traitKeys[Math.floor(Math.random() * traitKeys.length)];
-    
-    // --- [新增] 魅力值 (Charm) 与 宠物风评级 (Rank) ---
-    // 1. 获取属性基准分
-    const typeBaseCharm = TYPE_CHARM_BASE[base.type] || 30;
-    
-    // 2. 随机波动 (0-20)
-    const rngCharm = Math.floor(Math.random() * 21);
-    
-    // 3. 特殊加成
-    const shinyBonus = isShiny ? 30 : 0; 
-    const bossBonus = isBoss ? 20 : 0;   
-    
-    // 4. 计算总和 (上限100)
-    const charmVal = Math.min(100, typeBaseCharm + rngCharm + shinyBonus + bossBonus);
-
-    // 5. 计算魅力评级 (宠物风格)
-    let charmRank = '凶萌'; // 默认 D级
-    if (charmVal >= 90) charmRank = '万人迷';      // S级
-    else if (charmVal >= 75) charmRank = '人气王'; // A级
-    else if (charmVal >= 50) charmRank = '可爱鬼'; // B级
-    else if (charmVal >= 25) charmRank = '呆萌';   // C级
-    
-    // --- [新增] 亲密度 (Intimacy) ---
-    const intimacy = 50; 
-
-    const curseTalent = generateCurseTalent();
-
-    let newPet = {
-      ...base,
-      uid: Date.now() + Math.random(),
-      level,
-      exp: 0,
-      nextExp: calcNextExp(level, expMod),
-      nature: randomNature,
-      equip: null,
-      equips: [null, null],
-      moves: [], 
-      isBoss,
-      isShiny,
-      ivs, 
-      evs: {},
-      diversityRng, 
-      speedRng,
-      sectId: sectId,
-      sectLevel: sectLevel,
-      trait: randomTrait,
-      charm: charmVal,
-      charmRank: charmRank,
-      intimacy: intimacy,
-      curseTalent: curseTalent,
-      secondaryType: base.type2 || null,
-      _fallbackSpecies,
-    };
-
-    // --- 技能生成逻辑 ---
-    const moves = [];
-    const maxSkillIndex = Math.floor(level / 5);
-    const startIdx = Math.max(0, maxSkillIndex - 3);
-    
-    for (let i = startIdx; i <= maxSkillIndex; i++) {
-        const moveData = getMoveByLevel(base.type, i * 5); 
-        moves.push(moveData);
-    }
-
-    const hasDamageMove = moves.some(m => m.p > 0);
-    if (!hasDamageMove) {
-        let fallbackMove = { name: '撞击', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100, desc: '用身体猛撞对手的基本攻击' };
-        const typeSkills = SKILL_DB[base.type];
-        if (typeSkills && typeSkills.length > 0) {
-            const basicStab = typeSkills.find(s => s.p > 0);
-            if (basicStab) {
-                fallbackMove = {
-                    name: basicStab.name,
-                    p: basicStab.p,
-                    t: base.type, 
-                    pp: basicStab.pp || 35,
-                    maxPP: basicStab.pp || 35,
-                    acc: basicStab.acc || 100,
-                    effect: basicStab.effect,
-                    desc: basicStab.desc || ''
-                };
-            }
-        }
-        if (moves.length < 4) {
-            moves.push(fallbackMove);
-        } else {
-            moves[0] = fallbackMove;
-        }
-    }
-
-    newPet.moves = moves;
-
-    const stats = getStats(newPet);
-    newPet.currentHp = stats.maxHp;
-
-    return newPet;
+    return createPetRaw(dexId, level, isBoss, forceShiny, {
+      spouseBonuses: getSpouseBonuses(),
+      getStatsForPet: (pet) => getStats(pet),
+    });
   }
 
 // ... 在其他的 useEffect 附近添加 ...
@@ -7965,138 +7550,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     );
   };
 
-  const renderGuide = () => {
-    const filtered = guideCat ? GAME_GUIDE.filter(g => g.id === guideCat) : GAME_GUIDE;
-    const q = guideSearch.trim().toLowerCase();
-    const results = q
-      ? filtered.map(cat => ({
-          ...cat,
-          sections: cat.sections.filter(s => {
-            if (s.title.toLowerCase().includes(q)) return true;
-            if (s.content && s.content.toLowerCase().includes(q)) return true;
-            if (s.sub && s.sub.some(item => (item.t || '').toLowerCase().includes(q) || (item.c || '').toLowerCase().includes(q))) return true;
-            return false;
-          }),
-        })).filter(cat => cat.sections.length > 0)
-      : filtered;
-
-    const guideFormatContent = (text) => {
-      return text.split('\n').map((line, i) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={i} className="gd-spacer" />;
-        const isBullet = /^[·•\-①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬]/.test(trimmed);
-        const isLabel = /^[🔥☠️⚡❄️😴🟢🔵🟣🟠🔴⬜🟧🟪★⭐🌀🐲🕳️🌈⚙️💎🏅🏆🗺️🐉🎪🌸🔮🍰💕🌙💰🗡️☁️🌳🏖️🌺👤⚔️🛡️🌟👑🧿❤️💨📖🐾🪲🎣✨]/.test(trimmed);
-        const isHeading = /^(攻击型|防御型|辅助型|恢复类|增伤类|防御类|状态类|超人系|动物系|自然系)/.test(trimmed) && trimmed.length < 30;
-        if (isHeading) return <div key={i} className="gd-heading">{trimmed}</div>;
-        if (isBullet || isLabel) return <div key={i} className="gd-bullet">{trimmed}</div>;
-        return <div key={i} className="gd-line">{trimmed}</div>;
-      });
-    };
-
-    const toggleCat = (catId) => {
-      setGuideExpanded(prev => {
-        const current = prev[catId];
-        return { ...prev, [catId]: current === undefined ? false : !current };
-      });
-    };
-    const toggleSec = (secKey) => {
-      setGuideExpanded(prev => {
-        const current = prev[secKey];
-        return { ...prev, [secKey]: current === undefined ? false : !current };
-      });
-    };
-    const isCatOpen = (catId) => guideExpanded[catId] !== false;
-    const isSecOpenFn = (secKey) => guideExpanded[secKey] !== false;
-
-    return (
-      <div className="gd-root">
-        <header className="gd-topbar">
-          <button type="button" className="gd-back" onClick={() => { setView(safeBack()); setGuideSearch(''); setGuideCat(null); }}>
-            <span>←</span> 返回
-          </button>
-          <h1 className="gd-title">{GAME_NAME} 游戏手册</h1>
-          <span className="gd-ver">{GAME_VERSION_LABEL}</span>
-        </header>
-
-        <div className="gd-filterbar">
-          <div className="gd-search">
-            <input type="text" placeholder="搜索关键词..." value={guideSearch} onChange={e => setGuideSearch(e.target.value)} />
-            {q && <button type="button" onClick={() => setGuideSearch('')}>✕</button>}
-          </div>
-          <div className="gd-tabs">
-            <button type="button" className={!guideCat ? 'active' : ''} onClick={() => setGuideCat(null)}>全部</button>
-            {GAME_GUIDE.map(g => (
-              <button type="button" key={g.id} className={guideCat === g.id ? 'active' : ''} onClick={() => setGuideCat(g.id)}>
-                {g.icon} {g.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="gd-scroll">
-          {results.length === 0 && (
-            <div className="gd-empty"><span>🔍</span><p>没有找到匹配的内容，试试其他关键词。</p></div>
-          )}
-          {results.map((cat) => {
-            const catOpen = isCatOpen(cat.id);
-            return (
-              <div key={cat.id} className="gd-category" style={{ '--accent': cat.color || '#8fd8ff' }}>
-                <button type="button" className={`gd-cat-head ${catOpen ? 'is-open' : ''}`} onClick={() => toggleCat(cat.id)}>
-                  <span className="gd-cat-icon">{cat.icon}</span>
-                  <span className="gd-cat-label">{cat.title}</span>
-                  <span className="gd-cat-count">{cat.sections.length} 节</span>
-                  <span className="gd-arrow">{catOpen ? '▼' : '▶'}</span>
-                </button>
-                {catOpen && (
-                  <div className="gd-sections">
-                    {cat.sections.map((sec, si) => {
-                      const secKey = `${cat.id}_${si}`;
-                      const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
-                      const secOpen = autoOpen || isSecOpenFn(secKey);
-                      const hasSub = sec.sub && sec.sub.length > 0;
-                      return (
-                        <div key={si} className={`gd-sec ${secOpen ? 'is-open' : ''}`}>
-                          <button type="button" className="gd-sec-head" onClick={() => hasSub && toggleSec(secKey)}>
-                            <span className="gd-sec-dot" />
-                            <span className="gd-sec-title">{sec.title}</span>
-                            {hasSub && <span className="gd-sec-count">{sec.sub.length} 条</span>}
-                            {hasSub && <span className="gd-arrow">{secOpen ? '▼' : '▶'}</span>}
-                          </button>
-                          {hasSub && secOpen && (
-                            <div className="gd-items">
-                              {sec.sub.map((item, idx) => (
-                                <div key={idx} className="gd-item">
-                                  <h4>{item.t}</h4>
-                                  <div className="gd-body">{item.c ? (q ? highlightSearch(item.c, q) : guideFormatContent(item.c)) : null}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {!hasSub && sec.content && secOpen && (
-                            <div className="gd-body gd-standalone">{q ? highlightSearch(sec.content, q) : guideFormatContent(sec.content)}</div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const highlightSearch = (text, query) => {
-    if (!query) return text;
-    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
-    return parts.map((part, i) =>
-      part.toLowerCase() === query.toLowerCase()
-        ? <span key={i} style={{background:'rgba(255,193,7,0.3)', color:'#FFD54F', borderRadius:'2px', padding:'0 1px'}}>{part}</span>
-        : part
-    );
-  };
+  // renderGuide 已提取至 GuideScreen.js
 
   // ==========================================
   // 成就系统 - 渲染
@@ -18907,127 +18361,8 @@ const renderNameInput = () => {
   };
 
     // ==========================================
-  // 5. [修复] 技能大全 (图4修复 - 按钮文字)
+  // 5. 技能大全 (已提取至 SkillDexScreen.js)
   // ==========================================
-  const renderSkillDex = () => {
-    const filteredSkills = allSkills.filter(s => {
-      const matchType = skillFilter === 'ALL' || s.t === skillFilter || (skillFilter === 'STATUS' && s.category === 'status');
-      const matchSearch = s.name.includes(skillSearchTerm);
-      return matchType && matchSearch;
-    });
-
-    const getSkillCategory = (s) => {
-      if (s.category === 'status') return '变化';
-      return s.category === 'special' ? '特殊' : s.p > 0 ? '物理' : '变化';
-    };
-    const getPowerColor = (p) => {
-      if (p >= 120) return '#FF1744';
-      if (p >= 80) return '#FF9100';
-      if (p >= 40) return '#FFD600';
-      if (p > 0) return '#69F0AE';
-      return '#616161';
-    };
-    const getPowerRank = (p) => {
-      if (p >= 120) return 'S';
-      if (p >= 80) return 'A';
-      if (p >= 40) return 'B';
-      if (p > 0) return 'C';
-      return '-';
-    };
-
-    return (
-      <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #0a0a1a 0%, #111133 50%, #0a0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
-        {/* 顶栏 */}
-        <div style={{padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, background:'rgba(0,0,0,0.3)', backdropFilter:'blur(12px)'}}>
-          <button onClick={() => setView(safeBack())} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
-          <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'2px', background:'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>技能大百科</div>
-          <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>{filteredSkills.length} 技能</div>
-        </div>
-
-        {/* 搜索与筛选 */}
-        <div style={{padding:'12px 16px', flexShrink:0}}>
-          <div style={{position:'relative', marginBottom:'10px'}}>
-            <input type="text" placeholder="搜索技能名称..." value={skillSearchTerm} onChange={e => setSkillSearchTerm(e.target.value)}
-              style={{width:'100%', padding:'10px 14px 10px 36px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.05)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box'}} />
-            <svg style={{position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', opacity:0.3}} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="white" strokeWidth="2"/><path d="M21 21l-4.35-4.35" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
-          </div>
-          <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
-            <button onClick={()=>{setSkillFilter('ALL');setSkillPage(0);}} style={{padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter==='ALL' ? '#6366f1' : 'rgba(255,255,255,0.06)', color: skillFilter==='ALL' ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>全部</button>
-            <button onClick={()=>{setSkillFilter('STATUS');setSkillPage(0);}} style={{padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter==='STATUS' ? '#9C27B0' : 'rgba(255,255,255,0.06)', color: skillFilter==='STATUS' ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>变化</button>
-            {Object.keys(TYPES).map(t => (
-              <button key={t} onClick={()=>{setSkillFilter(t);setSkillPage(0);}} style={{padding:'5px 10px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter===t ? TYPES[t].color : 'rgba(255,255,255,0.06)', color: skillFilter===t ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>{TYPES[t].name}</button>
-            ))}
-        </div>
-              </div>
-
-        {/* 技能列表 */}
-        <div style={{flex:1, overflowY:'auto', padding:'0 16px 16px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px',padding:'0 4px'}}>
-            <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>共 {filteredSkills.length} 个技能</span>
-            {filteredSkills.length > SKILL_PAGE_SIZE && <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-              <button disabled={skillPage===0} onClick={()=>setSkillPage(p=>p-1)} style={{padding:'4px 10px',borderRadius:'8px',fontSize:'11px',cursor:skillPage===0?'default':'pointer',border:'none',background:skillPage===0?'rgba(255,255,255,0.05)':'rgba(99,102,241,0.3)',color:skillPage===0?'rgba(255,255,255,0.2)':'#fff'}}>上一页</button>
-              <span style={{fontSize:'11px',color:'rgba(255,255,255,0.5)'}}>{skillPage+1}/{Math.ceil(filteredSkills.length/SKILL_PAGE_SIZE)}</span>
-              <button disabled={(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length} onClick={()=>setSkillPage(p=>p+1)} style={{padding:'4px 10px',borderRadius:'8px',fontSize:'11px',cursor:(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length?'default':'pointer',border:'none',background:(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length?'rgba(255,255,255,0.05)':'rgba(99,102,241,0.3)',color:(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length?'rgba(255,255,255,0.2)':'#fff'}}>下一页</button>
-            </div>}
-          </div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'10px'}}>
-            {filteredSkills.slice(skillPage * SKILL_PAGE_SIZE, (skillPage + 1) * SKILL_PAGE_SIZE).map((skill, idx) => {
-              const typeColor = TYPES[skill.t]?.color || '#666';
-              const pwrColor = getPowerColor(skill.p);
-              const pwrRank = getPowerRank(skill.p);
-              return (
-                <div key={skill.id || skill.name + '_' + idx} style={{
-                  background:'rgba(255,255,255,0.03)', borderRadius:'14px', padding:'14px',
-                  border:`1px solid ${typeColor}20`, position:'relative', overflow:'hidden',
-                  transition:'all 0.2s'
-                }}
-                onMouseOver={e => { e.currentTarget.style.background=`${typeColor}10`; e.currentTarget.style.borderColor=`${typeColor}40`; e.currentTarget.style.transform='translateY(-2px)'; }}
-                onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor=`${typeColor}20`; e.currentTarget.style.transform=''; }}
-                >
-                  {/* 左侧色条 */}
-                  <div style={{position:'absolute', left:0, top:'12px', bottom:'12px', width:'3px', borderRadius:'0 3px 3px 0', background:typeColor}} />
-
-                  {/* 威力等级标识 */}
-                  {skill.p > 0 && <div style={{position:'absolute', top:'10px', right:'10px', width:'24px', height:'24px', borderRadius:'6px', background:`${pwrColor}20`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'900', color:pwrColor, border:`1px solid ${pwrColor}30`}}>{pwrRank}</div>}
-
-                  <div style={{paddingLeft:'10px'}}>
-                    {/* 名称行 */}
-                    <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-                      <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>{skill.name}</span>
-                      <span style={{fontSize:'9px', padding:'2px 8px', borderRadius:'8px', background:typeColor, color:'#fff', fontWeight:'600'}}>{TYPES[skill.t]?.name || '变化'}</span>
-            </div>
-
-                    {/* 数据行 */}
-                    <div style={{display:'flex', gap:'12px', fontSize:'11px', marginBottom: skill.desc ? '8px' : '0'}}>
-                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>威力</span>
-                        <span style={{fontWeight:'800', color: skill.p > 0 ? pwrColor : 'rgba(255,255,255,0.25)', fontSize:'14px'}}>{skill.p > 0 ? skill.p : '-'}</span>
-                      </div>
-                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>PP</span>
-                        <span style={{fontWeight:'700', color:'#42A5F5'}}>{skill.pp}</span>
-                      </div>
-                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>命中</span>
-                        <span style={{fontWeight:'700', color:'#66BB6A'}}>{skill.acc || 100}</span>
-                      </div>
-                      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                        <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>分类</span>
-                        <span style={{fontWeight:'600', color:'rgba(255,255,255,0.6)'}}>{getSkillCategory(skill)}</span>
-                      </div>
-                    </div>
-
-                    {/* 描述 */}
-                    {skill.desc && <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', lineHeight:'1.5', borderTop:'1px solid rgba(255,255,255,0.04)', paddingTop:'6px'}}>{skill.desc}</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
 
 const titleSpriteUrls = useMemo(() => {
@@ -19035,189 +18370,7 @@ const titleSpriteUrls = useMemo(() => {
   return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
 }, []);
 
-// ============ 道具 CSS 图标渲染系统 ============
-const renderBallCSS = (ballId, size = 40) => {
-  const b = BALL_ICONS[ballId];
-  if (!b) return null;
-  const bh = Math.max(2, size * 0.08);
-  const br = Math.max(6, size * 0.18);
-  return (
-    <div style={{width:size,height:size,position:'relative',borderRadius:'50%',overflow:'hidden',boxShadow:`0 2px 8px ${b.glow}, inset 0 1px 2px rgba(255,255,255,0.4)`,flexShrink:0}}>
-      <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',background:b.top}} />
-      <div style={{position:'absolute',bottom:0,left:0,right:0,height:'50%',background:b.bottom}} />
-      {b.stripes && <><div style={{position:'absolute',top:'12%',left:'8%',right:'8%',height:3,background:'rgba(255,0,0,0.4)',borderRadius:2}} /><div style={{position:'absolute',top:'24%',left:'15%',right:'15%',height:2,background:'rgba(255,0,0,0.3)',borderRadius:2}} /></>}
-      {b.bolt && <div style={{position:'absolute',top:'12%',left:'50%',transform:'translateX(-50%)',color:'#FFD600',fontSize:size*0.35,fontWeight:900,textShadow:'0 0 4px #FF6F00',lineHeight:1}}>⚡</div>}
-      {b.cross && <div style={{position:'absolute',top:'15%',left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:size*0.32,fontWeight:900,lineHeight:1}}>+</div>}
-      {b.letter && <div style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',color:'#E040FB',fontSize:size*0.3,fontWeight:900,textShadow:'0 0 6px rgba(224,64,251,0.6)',lineHeight:1}}>{b.letter}</div>}
-      {b.mesh && <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',background:'repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px)'}} />}
-      <div style={{position:'absolute',top:'50%',left:0,right:0,height:bh,transform:'translateY(-50%)',background:b.band,zIndex:2}} />
-      <div style={{position:'absolute',top:'50%',left:'50%',width:br,height:br,transform:'translate(-50%,-50%)',borderRadius:'50%',background:b.btn,border:`${Math.max(1,size*0.04)}px solid #555`,zIndex:3,boxShadow:'0 0 4px rgba(0,0,0,0.3)'}} />
-      <div style={{position:'absolute',top:'4%',left:'15%',width:size*0.2,height:size*0.1,background:'rgba(255,255,255,0.5)',borderRadius:'50%',transform:'rotate(-30deg)'}} />
-    </div>
-  );
-};
-
-const renderMedCSS = (medId, size = 40) => {
-  const m = MED_ICONS[medId];
-  if (!m) return null;
-  const s = size;
-  const wrap = {width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0};
-  const shineEl = m.shine ? <div style={{position:'absolute',top:'12%',right:'18%',width:4,height:4,background:'#fff',borderRadius:'50%',boxShadow:'0 0 6px #fff'}} /> : null;
-  if (m.shape === 'bottle') return (
-    <div style={wrap}>
-      <div style={{position:'absolute',top:'8%',left:'35%',right:'35%',height:'14%',background:m.cap,borderRadius:'3px 3px 0 0'}} />
-      <div style={{position:'absolute',top:'20%',left:'24%',right:'24%',height:'70%',background:`linear-gradient(135deg,${m.c},${m.c}dd)`,borderRadius:'4px 4px 8px 8px',boxShadow:`0 2px 8px ${m.c}40`,overflow:'hidden'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'35%',height:'100%',background:'rgba(255,255,255,0.2)',borderRadius:'4px 0 0 8px'}} />
-        {shineEl}
-      </div>
-      <div style={{position:'absolute',bottom:'22%',left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:s*0.2,fontWeight:900,textShadow:'0 1px 2px rgba(0,0,0,0.3)',lineHeight:1}}>{m.label}</div>
-    </div>
-  );
-  if (m.shape === 'flask') return (
-    <div style={wrap}>
-      <div style={{position:'absolute',top:'6%',left:'38%',right:'38%',height:'16%',background:m.cap,borderRadius:'3px 3px 1px 1px'}} />
-      <div style={{position:'absolute',top:'20%',left:'20%',right:'20%',height:'68%',background:`linear-gradient(135deg,${m.c},${m.c}cc)`,borderRadius:'30% 30% 50% 50%',boxShadow:`0 2px 8px ${m.c}40`,overflow:'hidden'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'30%',height:'100%',background:'rgba(255,255,255,0.2)'}} />
-        {shineEl}
-      </div>
-      <div style={{position:'absolute',bottom:'24%',left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:s*0.19,fontWeight:900,textShadow:'0 1px 2px rgba(0,0,0,0.3)',lineHeight:1}}>{m.label}</div>
-    </div>
-  );
-  if (m.shape === 'tube') return (
-    <div style={wrap}>
-      <div style={{position:'absolute',top:'14%',left:'30%',right:'30%',height:'62%',background:'linear-gradient(180deg,#f5f5f5,#e0e0e0)',borderRadius:6,boxShadow:'0 1px 4px rgba(0,0,0,0.15)',overflow:'hidden'}}>
-        <div style={{position:'absolute',bottom:0,left:0,right:0,height:'50%',background:m.c,opacity:0.7}} />
-      </div>
-      <div style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',width:8,height:8,background:m.accent,borderRadius:2}} />
-      <div style={{position:'absolute',bottom:'20%',left:'50%',transform:'translateX(-50%)',color:m.accent,fontSize:s*0.28,fontWeight:900,lineHeight:1}}>{m.sym}</div>
-    </div>
-  );
-  if (m.shape === 'crystal') return (
-    <div style={wrap}>
-      <div style={{width:s*0.6,height:s*0.7,background:`linear-gradient(135deg,${m.c},${m.accent})`,clipPath:'polygon(50% 0%,100% 35%,80% 100%,20% 100%,0% 35%)',boxShadow:`0 2px 10px ${m.c}60`,position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'40%',height:'100%',background:'rgba(255,255,255,0.3)'}} />
-        {shineEl}
-      </div>
-    </div>
-  );
-  if (m.shape === 'diamond') return (
-    <div style={wrap}>
-      <div style={{width:s*0.55,height:s*0.55,background:`linear-gradient(135deg,${m.c},${m.accent})`,transform:'rotate(45deg)',borderRadius:4,boxShadow:`0 2px 10px ${m.c}50`,position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'40%',height:'100%',background:'rgba(255,255,255,0.3)'}} />
-        {shineEl}
-      </div>
-    </div>
-  );
-  return null;
-};
-
-const renderStoneCSS = (stoneId, size = 40) => {
-  const st = STONE_ICONS[stoneId];
-  if (!st) return null;
-  const s = size;
-  const r = s * 0.14;
-  return (
-    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-      <div style={{width:s*0.72,height:s*0.72,background:`linear-gradient(135deg,${st.c1},${st.c2})`,borderRadius:r,transform:'rotate(12deg)',boxShadow:`0 2px 10px ${st.glow}60, inset 0 1px 2px rgba(255,255,255,0.4)`,position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'40%',height:'100%',background:'rgba(255,255,255,0.2)',borderRadius:`${r}px 0 0 ${r}px`}} />
-        <div style={{position:'absolute',top:'8%',right:'12%',width:s*0.1,height:s*0.1,background:'rgba(255,255,255,0.6)',borderRadius:'50%'}} />
-      </div>
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:s*0.38,fontWeight:900,textShadow:`0 1px 3px rgba(0,0,0,0.3), 0 0 8px ${st.glow}80`,lineHeight:1}}>{st.sym}</div>
-    </div>
-  );
-};
-
-const renderAccCSS = (accId, size = 40) => {
-  const a = ACC_ICONS[accId];
-  if (!a) return null;
-  const s = size;
-  const clips = {
-    star:'polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)',
-    crown:'polygon(0% 100%,10% 35%,30% 60%,50% 15%,70% 60%,90% 35%,100% 100%)',
-    shield:'polygon(50% 0%,100% 15%,95% 65%,50% 100%,5% 65%,0% 15%)',
-    trophy:'polygon(15% 0%,85% 0%,95% 30%,70% 55%,72% 65%,60% 65%,60% 80%,75% 85%,75% 100%,25% 100%,25% 85%,40% 80%,40% 65%,28% 65%,30% 55%,5% 30%)',
-    fang:'polygon(50% 0%,100% 30%,80% 100%,50% 85%,20% 100%,0% 30%)',
-    round:'',
-  };
-  const clip = clips[a.shape] || '';
-  return (
-    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-      <div style={{width:s*0.78,height:s*0.78,background:`linear-gradient(135deg,${a.c},${a.b})`,clipPath:clip||undefined,borderRadius:clip?undefined:'50%',boxShadow:`0 2px 8px ${a.c}40`,position:'relative'}} />
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#fff',fontSize:s*0.34,fontWeight:900,textShadow:'0 1px 2px rgba(0,0,0,0.4)',lineHeight:1}}>{a.sym}</div>
-    </div>
-  );
-};
-
-const renderGrowthCSS = (growthId, size = 40) => {
-  const g = GROWTH_ICONS[growthId];
-  if (!g) return null;
-  const s = size;
-  return (
-    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-      <div style={{width:s*0.78,height:s*0.78,background:g.bg,borderRadius:s*0.18,border:`2px solid ${g.c}`,boxShadow:`0 2px 6px ${g.c}30`,position:'relative',overflow:'hidden'}}>
-        {g.shine && <div style={{position:'absolute',top:'10%',right:'15%',width:5,height:5,background:'#fff',borderRadius:'50%',boxShadow:`0 0 6px ${g.c}`}} />}
-      </div>
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:g.c,fontSize:s*0.26,fontWeight:900,lineHeight:1}}>{g.sym}</div>
-    </div>
-  );
-};
-
-const renderTMCSS = (tmType, size = 40) => {
-  const color = TM_ICON_COLORS[tmType] || '#78909C';
-  const s = size;
-  return (
-    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-      <div style={{width:s*0.76,height:s*0.76,background:`radial-gradient(circle at 40% 40%,${color}cc,${color})`,borderRadius:'50%',boxShadow:`0 2px 8px ${color}50, inset 0 -2px 4px rgba(0,0,0,0.2)`,position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:'50%',left:'50%',width:s*0.28,height:s*0.28,transform:'translate(-50%,-50%)',background:'rgba(0,0,0,0.25)',borderRadius:'50%'}} />
-        <div style={{position:'absolute',top:'50%',left:'50%',width:s*0.08,height:s*0.08,transform:'translate(-50%,-50%)',background:'#fff',borderRadius:'50%'}} />
-        <div style={{position:'absolute',top:'6%',left:'22%',width:s*0.18,height:s*0.08,background:'rgba(255,255,255,0.4)',borderRadius:'50%',transform:'rotate(-25deg)'}} />
-      </div>
-      <div style={{position:'absolute',bottom:1,left:'50%',transform:'translateX(-50%)',color:'#fff',fontSize:s*0.16,fontWeight:800,background:color,padding:'0 3px',borderRadius:2,lineHeight:1.3}}>TM</div>
-    </div>
-  );
-};
-
-const renderMiscCSS = (size = 40) => {
-  const s = size;
-  return (
-    <div style={{width:s,height:s,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-      <div style={{width:s*0.7,height:s*0.7,background:'linear-gradient(135deg,#FCE4EC,#fff)',borderRadius:'50%',border:'2px solid #E91E63',boxShadow:'0 2px 6px rgba(233,30,99,0.3)'}} />
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',color:'#E91E63',fontSize:s*0.38,fontWeight:900,lineHeight:1}}>⟳</div>
-    </div>
-  );
-};
-
-const renderItemIcon = (category, itemId, size = 36, tmType) => {
-  if (category === 'ball') return renderBallCSS(itemId, size);
-  if (category === 'med') return renderMedCSS(itemId, size);
-  if (category === 'stone') return renderStoneCSS(itemId, size);
-  if (category === 'acc') return renderAccCSS(itemId, size);
-  if (category === 'growth') return renderGrowthCSS(itemId, size);
-  if (category === 'tm') return renderTMCSS(tmType || 'NORMAL', size);
-  if (category === 'misc') return renderMiscCSS(size);
-  return null;
-};
-
-const renderFruitCSSIcon = (fruitId, size = 44) => {
-  const icon = getFruitIcon(fruitId);
-  return (
-    <div style={{
-      width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-      background: icon.bg, position: 'relative', overflow: 'hidden',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: `0 2px 8px rgba(0,0,0,0.3), inset 0 1px 4px rgba(255,255,255,0.15)`,
-      flexShrink: 0, border: '2px solid rgba(255,255,255,0.12)'
-    }}>
-      {icon.pattern && <div style={{position:'absolute', inset:0, background:icon.pattern, borderRadius:'50%'}} />}
-      <span style={{
-        position:'relative', zIndex:1,
-        fontSize: `${Math.round(size * 0.5)}px`,
-        lineHeight: 1,
-        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
-      }}>{icon.symbol}</span>
-    </div>
-  );
-};
+// ============ 道具 CSS 图标渲染系统 (已提取至 components/ItemIcons.jsx) ============
 
 // ==========================================
 // 恶魔果实图鉴
@@ -27311,7 +26464,7 @@ const renderMenu = () => {
                   确认放生({pcBatchSelected.size})
                 </button>
               )}
-              <button className="btn-close" style={{background:'transparent', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer'}} onClick={() => { setPcMode(false); setPcBatchRelease(false); setPcBatchSelected(new Set()); setPcCompareA(null); setPcCompareB(null); }}>✕</button>
+              <button className="btn-close" style={{background:'transparent', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer'}} onClick={() => { setPcMode(false); setPcBatchRelease(false); setPcBatchSelected(new Set()); }}>✕</button>
             </div>
           </div>
           
@@ -28328,7 +27481,7 @@ const renderMenu = () => {
      
       {view === 'menu' && renderMenu()}
       {view === 'pokedex' && renderPokedex()}
-      {view === 'skill_dex' && renderSkillDex()}
+      {view === 'skill_dex' && <SkillDexScreen allSkills={allSkills} onBack={() => setView(safeBack())} />}
       {view === 'fruit_dex' && renderFruitDex()}
       {view === 'general_dex' && renderGeneralDex()}
       {view === 'world_map' && renderWorldMap()}
@@ -28396,7 +27549,7 @@ const renderMenu = () => {
       {view === 'naruto_story' && renderNarutoStory()}
       {renderActivityCenter()}
       {renderActivityCenterModals()}
-      {view === 'guide' && renderGuide()}
+      {view === 'guide' && <GuideScreen onBack={() => setView(safeBack())} />}
       {view === 'settings' && (
         <div className="screen" style={{background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',color:'#fff',display:'flex',flexDirection:'column'}}>
           <div style={{display:'flex',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',backdropFilter:'blur(12px)',flexShrink:0,height:'56px'}}>

@@ -1,0 +1,58 @@
+/* Housing screen styles */
+.housing-root {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #1a0a2e 0%, #0d1b2a 100%);
+  color: #fff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.housing-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.housing-tab {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+}
+.housing-tab.active {
+  background: linear-gradient(135deg, #7C4DFF, #536DFE);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(124, 77, 255, 0.3);
+}
+
+.housing-furniture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+
+.housing-furniture-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.housing-furniture-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(124, 77, 255, 0.3);
+  transform: translateY(-2px);
+}

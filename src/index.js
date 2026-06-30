@@ -2,6 +2,8 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import RPG from './App';
 import './App.css';
+import './styles/common.css';
+import './styles/enhancements.css';
 
 window.onerror = function(msg, src, line, col, err) {
   document.getElementById('root').innerHTML =
