@@ -4,7 +4,7 @@ export const SPIRIT_DOMAIN_RULES = {
   forest_growth: {
     id: 'forest_growth', name: '生长战场', icon: '🌿',
     desc: '每3回合藤蔓生长；木系站藤蔓回血；火系烧藤但全场灼烧',
-    vineGrowInterval: 3, vineBlockChance: 0.35, grassHealPct: 0.05, fireBurnField: true,
+    vineGrowInterval: 3, vineBlockChance: 0.25, grassHealPct: 0.05, fireBurnField: true,
   },
   fire_heat: {
     id: 'fire_heat', name: '持续高温', icon: '🔥',

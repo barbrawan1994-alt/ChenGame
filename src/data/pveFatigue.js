@@ -2,14 +2,14 @@
 
 export const FATIGUE_CONFIG = {
   maxFatigue: 100,
-  perBattle: 12,
-  perBossBattle: 20,
-  perInfinityFloor: 8,
-  restAtCenter: -40,
+  perBattle: 5,
+  perBossBattle: 12,
+  perInfinityFloor: 6,
+  restAtCenter: -50,
   restItemReduction: 25,
   refuseThreshold: 95,
-  speedPenaltyPer20: 0.03,
-  maxSpeedPenalty: 0.15,
+  speedPenaltyPer20: 0.02,
+  maxSpeedPenalty: 0.10,
 };
 
 export function getPetFatigue(pet) {

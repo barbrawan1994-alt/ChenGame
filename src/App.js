@@ -5565,8 +5565,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   }, [regionEcology]);
 
   const getTodayEcoEvent = useCallback((mapId) => {
-    return getActiveEcoEventForMap(mapId, getLocalDateStr(), ecoCrisisState.cleared || []);
-  }, [ecoCrisisState.cleared]);
+    return getActiveEcoEventForMap(mapId, getLocalDateStr(), ecoCrisisState.cleared || [], badges.length);
+  }, [ecoCrisisState.cleared, badges.length]);
 
   const applyMapEcologyDelta = (mapId, delta) => {
     setRegionEcology(prev => ({
@@ -5704,7 +5704,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     setEcoCrisisChoices(prev => ({ ...prev, [crisisId]: branchId }));
     setEcoBranchModal(null);
-    showMapToast(branch.label?.charAt(0) || '✓', '决策已记录', branch.desc, 2500);
+    showMapToast(branch.label?.slice(0, 2) || '✓', '决策已记录', branch.desc, 2500);
     runEcoCrisisStep(crisisId, stepIdx + 1);
   };
 
@@ -5738,7 +5738,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       startBattle({
         id: event.mapId,
         name: event.name,
-        customParty: [createPet(50, lvl, true)],
+        customParty: [createPet(65, lvl, true)],
         trainerName: '受困岩甲犀',
         drop: event.reward?.gold || 2000,
         _nonCombatRescue: event.id,
@@ -9947,7 +9947,7 @@ const useGrowthItem = (petIndex, itemId) => {
             currentHp: getStats(p).maxHp, 
             moves: (p.moves || []).map(m=>({...m, pp: m.maxPP || m.maxPp || 15})),
             status: null,
-            fatigue: Math.max(0, (p.fatigue || 0) - FATIGUE_CONFIG.restAtCenter),
+            fatigue: Math.max(0, (p.fatigue || 0) + FATIGUE_CONFIG.restAtCenter),
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
             volatiles: {}
         })));
@@ -10275,7 +10275,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (context?.ecoBossMechanics) extraBattleData.ecoBossMechanics = true;
     if (context?.bossPhases) extraBattleData.bossPhases = context.bossPhases;
     if (context?._nonCombatRescue) extraBattleData._nonCombatRescue = context._nonCombatRescue;
-    const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || []);
+    const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || [], badges.length);
     if (ecoEvt && !extraBattleData.ecoCrisis) {
       extraBattleData._ecoEvent = ecoEvt;
       if (ecoEvt.effects?.vineBlockBonus) extraBattleData._ecoVineBonus = ecoEvt.effects.vineBlockBonus;
@@ -15915,7 +15915,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       : (isBoss || type === 'world_boss' || battleSnapshot.ecoBossMechanics) ? FATIGUE_CONFIG.perBossBattle
       : FATIGUE_CONFIG.perBattle;
     finalParty = (finalParty || party).map(p => ({ ...p, fatigue: addFatigue(p, fatigueAmt) }));
-
+    setParty(finalParty);
     // ★★★ 剧情推进逻辑 (最优先执行，确保不被后续代码的异常阻断) ★★★
     let storyHandled = false;
     if (type === 'story_task' || type === 'story_mid') {
@@ -20249,23 +20249,23 @@ const renderMenu = () => {
                   return (
                     <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'8px', position:'relative', zIndex:3 }} onClick={e => e.stopPropagation()}>
                       {ecoEvt && (
-                        <span style={{ fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background: (ecoEvt.color || '#2E7D32') + '33', color: ecoEvt.color || '#2E7D32', fontWeight:'700' }} title={ecoEvt.summary}>{ecoEvt.icon} {ecoEvt.name}</span>
+                        <span style={{ fontSize:'12px', padding:'5px 10px', borderRadius:'8px', background: (ecoEvt.color || '#2E7D32') + '33', color: ecoEvt.color || '#2E7D32', fontWeight:'700' }} title={ecoEvt.summary}>{ecoEvt.icon} {ecoEvt.name}</span>
                       )}
                       {crisis && !crisisCleared && !isLocked && badges.length >= crisis.reqBadges && (
-                        <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'10px', fontWeight:'700', padding:'4px 10px', borderRadius:'10px', border:'none', cursor:'pointer', background: crisis.color || '#2E7D32', color:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.2)' }}>
+                        <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'10px', border:'none', cursor:'pointer', background: crisis.color || '#2E7D32', color:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.2)' }}>
                           {crisis.icon} 调查·{crisis.name}
                         </button>
                       )}
                       {crisisCleared && (
-                        <span style={{ fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background:'rgba(76,175,80,0.15)', color:'#2E7D32', fontWeight:'700' }}>✅ 生态已恢复</span>
+                        <span style={{ fontSize:'12px', padding:'5px 10px', borderRadius:'8px', background:'rgba(76,175,80,0.15)', color:'#2E7D32', fontWeight:'700' }}>✅ 生态已恢复</span>
                       )}
                       {bossHere && (
-                        <button type="button" onClick={() => { enterMap(m.id); setTimeout(() => startWorldBossFight(), 400); }} style={{ fontSize:'10px', fontWeight:'700', padding:'4px 10px', borderRadius:'10px', border:'none', cursor:'pointer', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff' }}>
+                        <button type="button" onClick={() => { enterMap(m.id); setTimeout(() => startWorldBossFight(), 400); }} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'10px', border:'none', cursor:'pointer', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff' }}>
                           {todayBoss.emoji} 异象·{todayBoss.name}
                         </button>
                       )}
                       {domainOpen && (
-                        <span style={{ fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background:'rgba(129,199,132,0.2)', color:'#1B5E20', fontWeight:'700' }}>{domain.icon} 道馆可挑战灵域试炼</span>
+                        <span style={{ fontSize:'12px', padding:'5px 10px', borderRadius:'8px', background:'rgba(129,199,132,0.2)', color:'#1B5E20', fontWeight:'700' }}>{domain.icon} 道馆可挑战灵域试炼</span>
                       )}
                     </div>
                   );
@@ -22122,8 +22122,8 @@ const renderMenu = () => {
         {/* 区域生态 */}
         <div className="panel-card" style={{padding:'14px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
-            <div style={{fontSize:'11px', color:'#e8f3ff', fontWeight:'700'}}>🔎 发现生态</div>
-            <div style={{fontSize:'10px', fontWeight:'700', color: caughtCount===totalCount ? '#4CAF50' : '#888'}}>{caughtCount}/{totalCount}</div>
+            <div style={{fontSize:'13px', color:'#e8f3ff', fontWeight:'700'}}>🔎 发现生态</div>
+            <div style={{fontSize:'12px', fontWeight:'700', color: caughtCount===totalCount ? '#4CAF50' : '#aaa'}}>{caughtCount}/{totalCount}</div>
           </div>
           <div style={{height:'4px', background:'rgba(143,216,255,0.08)', borderRadius:'2px', marginBottom:'10px', overflow:'hidden'}}>
             <div style={{width:progressPercent+'%', background:`linear-gradient(90deg, ${currentMap.color || '#4CAF50'}, ${currentMap.color || '#4CAF50'}80)`, height:'100%', transition:'width 0.5s', borderRadius:'2px'}} />
@@ -22158,20 +22158,20 @@ const renderMenu = () => {
           return (
             <div className="panel-card" style={{padding:'14px', background: completed ? 'rgba(76,175,80,0.12)' : 'rgba(255,152,0,0.12)', borderRadius:'14px', boxShadow:'none', border: completed ? '1px solid #4CAF50' : '1px solid #FF9800', borderLeft: completed ? '4px solid #4CAF50' : '4px solid #FF9800'}}>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px'}}>
-                <span style={{fontSize:'11px', fontWeight:'700', color: completed ? '#4CAF50' : '#FF9800'}}>⚡ 每日挑战</span>
-                <span style={{fontSize:'9px', color:'#7fa8c8'}}>{today}</span>
+                <span style={{fontSize:'13px', fontWeight:'700', color: completed ? '#4CAF50' : '#FF9800'}}>⚡ 每日挑战</span>
+                <span style={{fontSize:'11px', color:'#7fa8c8'}}>{today}</span>
               </div>
               {!isToday ? (
-                <div style={{textAlign:'center', fontSize:'11px', color:'#7fa8c8'}}>今日挑战加载中…</div>
+                <div style={{textAlign:'center', fontSize:'12px', color:'#7fa8c8'}}>今日挑战加载中…</div>
               ) : completed ? (
-                <div style={{textAlign:'center', fontSize:'11px', color:'#4CAF50', fontWeight:'700'}}>✅ 已完成！奖励已发放</div>
+                <div style={{textAlign:'center', fontSize:'12px', color:'#4CAF50', fontWeight:'700'}}>✅ 已完成！奖励已发放</div>
               ) : (
                 <div>
-                  <div style={{fontSize:'11px', color:'#c8ddf0', marginBottom:'6px'}}>使用 <span style={{color:TYPES[dc.type]?.color || '#333', fontWeight:'700'}}>{dc.typeName}</span> 系精灵赢得战斗</div>
+                  <div style={{fontSize:'12px', color:'#c8ddf0', marginBottom:'6px'}}>使用 <span style={{color:TYPES[dc.type]?.color || '#333', fontWeight:'700'}}>{dc.typeName}</span> 系精灵赢得战斗</div>
                   <div style={{height:'6px', background:'rgba(143,216,255,0.08)', borderRadius:'3px', overflow:'hidden'}}>
                     <div style={{width:`${Math.min(100, (dc.wins / dc.target) * 100)}%`, height:'100%', background:'linear-gradient(90deg,#FF9800,#F57C00)', transition:'width 0.3s', borderRadius:'3px'}} />
                   </div>
-                  <div style={{fontSize:'11px', color:'#8fb8d8', textAlign:'right', marginTop:'2px'}}>{dc.wins}/{dc.target}</div>
+                  <div style={{fontSize:'12px', color:'#8fb8d8', textAlign:'right', marginTop:'2px'}}>{dc.wins}/{dc.target}</div>
                 </div>
               )}
             </div>
@@ -22181,12 +22181,12 @@ const renderMenu = () => {
         {/* 探索日志 */}
         <div className="panel-card" style={{padding:'14px', background:'rgba(10,20,40,0.6)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(143,216,255,0.1)', flex:1, display:'flex', flexDirection:'column', minHeight:'120px'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
-            <span style={{fontSize:'11px', color:'#e8f3ff', fontWeight:'700'}}>📜 冒险日志</span>
-            <span style={{fontSize:'9px', cursor:'pointer', color:'#7fa8c8', fontWeight:'600'}} onClick={() => setGlobalLogs([])}>清空</span>
+            <span style={{fontSize:'13px', color:'#e8f3ff', fontWeight:'700'}}>📜 冒险日志</span>
+            <span style={{fontSize:'11px', cursor:'pointer', color:'#7fa8c8', fontWeight:'600'}} onClick={() => setGlobalLogs([])}>清空</span>
           </div>
-          <div className="log-list-container" style={{flex:1, overflowY:'auto', maxHeight:'200px', background:'rgba(0,0,0,0.25)', borderRadius:'8px', padding:'8px', border:'1px solid rgba(143,216,255,0.1)', fontSize:'11px', lineHeight:'1.6'}}>
+          <div className="log-list-container" style={{flex:1, overflowY:'auto', maxHeight:'200px', background:'rgba(0,0,0,0.25)', borderRadius:'8px', padding:'8px', border:'1px solid rgba(143,216,255,0.1)', fontSize:'12px', lineHeight:'1.6'}}>
             {globalLogs.length === 0 ? (
-              <div style={{textAlign:'center', color:'#5888a8', marginTop:'15px', fontSize:'10px'}}>暂无日志</div>
+              <div style={{textAlign:'center', color:'#5888a8', marginTop:'15px', fontSize:'11px'}}>暂无日志</div>
             ) : (
               globalLogs.map((log, i) => (
                 <div key={i} style={{marginBottom:'4px', borderBottom:'1px dashed rgba(143,216,255,0.1)', paddingBottom:'3px', display:'flex'}}>
@@ -23939,14 +23939,14 @@ const renderMenu = () => {
             if (!ch || ch.mapId !== currentMapId) return null;
             const task = ch.tasks?.find(t => t.step === storyStep);
             if (!task) return (
-              <div className="grid-quest-banner is-complete" style={{padding:'4px 12px', background:'rgba(76,175,80,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#4CAF50', fontWeight:'bold', textAlign:'center'}}>
+              <div className="grid-quest-banner is-complete" style={{padding:'6px 14px', background:'rgba(76,175,80,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'13px', color:'#2E7D32', fontWeight:'bold', textAlign:'center'}}>
                 ✅ 剧情任务已完成 · 前往道馆挑战馆主
               </div>
             );
             return (
-              <div className="grid-quest-banner" style={{padding:'4px 12px', background:'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'11px', color:'#E65100', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div className="grid-quest-banner" style={{padding:'6px 14px', background:'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'13px', color:'#BF360C', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center', border:'1px solid rgba(255,152,0,0.35)'}}>
                 <span>{task.type === 'battle' ? '⚔️' : '💬'} {task.name}</span>
-                <span style={{color:'#FF6D00'}}>📍({task.x},{task.y})</span>
+                <span style={{color:'#E65100', fontWeight:'800'}}>📍({task.x},{task.y})</span>
               </div>
             );
           })()}
@@ -23967,41 +23967,41 @@ const renderMenu = () => {
               <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
                 {ecoEvt && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '22', border:`1px solid ${(ecoEvt.color || '#2E7D32')}55` }}>
-                    <div style={{ fontSize:'11px', fontWeight:'700', color:'#1a1a2e' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
-                    <div style={{ fontSize:'10px', color:'#555', marginTop:'2px' }}>{ecoEvt.counterHint}</div>
+                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '22', border:`1px solid ${(ecoEvt.color || '#2E7D32')}55` }}>
+                    <div style={{ fontSize:'13px', fontWeight:'700', color:'#1a1a2e' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
+                    <div style={{ fontSize:'12px', color:'#333', marginTop:'3px' }}>{ecoEvt.counterHint}</div>
                   </div>
                 )}
                 {adaptSummary.maladapted > 0 && (
-                  <div style={{ padding:'6px 10px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'10px', color:'#E65100' }}>
+                  <div style={{ padding:'8px 12px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'12px', color:'#BF360C', fontWeight:'600' }}>
                     ⚠️ {adaptSummary.pressure.icon} {adaptSummary.pressure.name}压力 · {adaptSummary.maladapted}只不适应
                   </div>
                 )}
                 {crisis && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '22', border:`1px solid ${crisis.color || '#2E7D32'}55`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
-                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#1a1a2e' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
+                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '22', border:`1px solid ${crisis.color || '#2E7D32'}55`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
+                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#1a1a2e' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
                     {!(ecoCrisisState.cleared || []).includes(crisis.id) && (
-                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px', border:'none', background: crisis.color || '#2E7D32', color:'#fff', cursor:'pointer' }}>调查</button>
+                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background: crisis.color || '#2E7D32', color:'#fff', cursor:'pointer' }}>调查</button>
                     )}
                   </div>
                 )}
                 {bossHere && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'6px 12px', borderRadius:'10px', background:'rgba(183,28,28,0.12)', border:'1px solid rgba(183,28,28,0.35)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
-                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#B71C1C' }}>{todayBoss.emoji} 异象·{todayBoss.name}</span>
-                    <button type="button" onClick={startWorldBossFight} style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px', border:'none', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff', cursor:'pointer' }}>挑战</button>
+                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background:'rgba(183,28,28,0.12)', border:'1px solid rgba(183,28,28,0.35)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
+                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#B71C1C' }}>{todayBoss.emoji} 异象·{todayBoss.name}</span>
+                    <button type="button" onClick={startWorldBossFight} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff', cursor:'pointer' }}>挑战</button>
                   </div>
                 )}
                 </div>
                 {(rescues.length > 0 || puzzles.length > 0 || observations.length > 0) && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
                     {rescues.map(r => (
-                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'10px', padding:'4px 10px', borderRadius:'8px', border:'1px solid #81C784', background:'rgba(76,175,80,0.1)', cursor:'pointer' }}>{r.icon} {r.name}</button>
+                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'12px', padding:'5px 12px', borderRadius:'8px', border:'1px solid #81C784', background:'rgba(76,175,80,0.15)', color:'#1B5E20', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
                     ))}
                     {puzzles.map(p => (
-                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'10px', padding:'4px 10px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.1)', cursor:'pointer' }}>{p.icon} {p.name}</button>
+                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'12px', padding:'5px 12px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.15)', color:'#0D47A1', fontWeight:'600', cursor:'pointer' }}>{p.icon} {p.name}</button>
                     ))}
                     {observations.map(o => (
-                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'10px', padding:'4px 10px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.08)', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
+                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'12px', padding:'5px 12px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.12)', color:'#4A148C', fontWeight:'600', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
                     ))}
                   </div>
                 )}
@@ -25735,7 +25735,7 @@ const renderMenu = () => {
           <div style={{
             position:'absolute', top:'8px', left:'50%', transform:'translateX(-50%)', zIndex:25,
             background:'linear-gradient(90deg, rgba(76,175,80,0.9), rgba(56,142,60,0.85))',
-            color:'#fff', fontSize:'11px', fontWeight:'700', padding:'5px 14px', borderRadius:'20px',
+            color:'#fff', fontSize:'13px', fontWeight:'700', padding:'6px 16px', borderRadius:'20px',
             boxShadow:'0 4px 12px rgba(0,0,0,0.25)', whiteSpace:'nowrap', pointerEvents:'none',
           }}>
             {domainRuleInfo.icon} 灵域规则：{domainRuleInfo.name} — {domainRuleInfo.desc}
@@ -28814,7 +28814,7 @@ const renderMenu = () => {
                     <div style={{fontSize:'12px', fontWeight:'800', color:'#E65100'}}>{(gen.recruitCost/1000).toFixed(0)}K金</div>
                   </div>
                 </div>
-                <div style={{fontSize:'9px', color:'#64748b', textAlign:'center'}}>在国战地图探索时有概率遭遇，击败后可花费金币招募</div>
+                <div style={{fontSize:'11px', color:'#64748b', textAlign:'center'}}>在国战地图探索时有概率遭遇，击败后可花费金币招募</div>
               </div>
               <div style={{padding:'0 20px 16px', textAlign:'center'}}>
                 <button onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
@@ -29322,7 +29322,7 @@ const renderMenu = () => {
               const ev = nonCombatModal.event;
               return (
                 <>
-                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{ev.icon} 生态救助</div>
+                  <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginBottom:'4px'}}>{ev.icon} 生态救助</div>
                   <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', marginBottom:'10px'}}>{ev.name}</div>
                   <div style={{fontSize:'13px', color:'#ccc', lineHeight:1.7, marginBottom:'16px'}}>{ev.desc}</div>
                   {ev.branches ? (
@@ -29333,7 +29333,7 @@ const renderMenu = () => {
                         return (
                           <button key={bid} type="button" onClick={() => completeNonCombatRescue(ev, bid)} style={{padding:'12px 14px', borderRadius:'12px', border:'1px solid rgba(129,199,132,0.4)', background:'rgba(76,175,80,0.12)', color:'#E8F5E9', textAlign:'left', cursor:'pointer'}}>
                             <div style={{fontSize:'14px', fontWeight:'700'}}>{br.label}</div>
-                            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)', marginTop:'4px'}}>{br.desc}</div>
+                            <div style={{fontSize:'12px', color:'rgba(255,255,255,0.6)', marginTop:'4px'}}>{br.desc}</div>
                           </button>
                         );
                       })}
@@ -29348,7 +29348,7 @@ const renderMenu = () => {
               const pv = nonCombatModal.event;
               return (
                 <>
-                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{pv.icon} 环境谜题</div>
+                  <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginBottom:'4px'}}>{pv.icon} 环境谜题</div>
                   <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', marginBottom:'10px'}}>{pv.name}</div>
                   <div style={{fontSize:'13px', color:'#ccc', lineHeight:1.7, marginBottom:'16px'}}>{pv.desc}</div>
                   <button type="button" onClick={() => completeNonCombatPuzzle(pv)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#1565C0,#42A5F5)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>尝试解开</button>

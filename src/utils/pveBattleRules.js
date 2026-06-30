@@ -92,15 +92,15 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
   const hpPct = enemy.currentHp / maxHp;
   const phase = getBossPhaseForHp(phases, hpPct);
 
-  if (phase?.mechanic === 'meteor_summon' && player?.currentHp > 0 && Math.random() < 0.45) {
-    const meteorDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.06));
+  if (phase?.mechanic === 'meteor_summon' && player?.currentHp > 0 && Math.random() < 0.3) {
+    const meteorDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.05));
     player.currentHp = Math.max(0, player.currentHp - meteorDmg);
     if (addLog) addLog(`☄️ 小陨石坠落！${player.name} 受到 ${meteorDmg} 点伤害`);
     if (player.currentHp <= 0) playerDied = true;
   }
 
-  if (phase?.mechanic === 'vine_spread' && player?.currentHp > 0 && Math.random() < 0.5) {
-    const vineDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.05));
+  if (phase?.mechanic === 'vine_spread' && player?.currentHp > 0 && Math.random() < 0.35) {
+    const vineDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.04));
     player.currentHp = Math.max(0, player.currentHp - vineDmg);
     if (addLog) addLog(`🌿 黑藤吸收生命！${player.name} 失去 ${vineDmg} HP`);
     if (player.currentHp <= 0) playerDied = true;

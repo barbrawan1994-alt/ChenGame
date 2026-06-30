@@ -209,15 +209,15 @@ export function getEcoEventById(id) {
 }
 
 /** 按日期+地图决定当前活跃生态事件（与生态危机已通关互斥时优先危机） */
-export function getActiveEcoEventForMap(mapId, dateStr, clearedCrisisIds = []) {
+export function getActiveEcoEventForMap(mapId, dateStr, clearedCrisisIds = [], badges = 0) {
   const evt = getEcoEventByMapId(mapId);
   if (!evt) return null;
-  const crisisOnMap = { 1: 'crisis_forest_rampage', 4: 'crisis_black_lake', 10: 'crisis_desert_freeze' };
+  const crisisOnMap = { 1: 'crisis_forest_rampage', 4: 'crisis_black_lake', 6: 'crisis_robot_rampage', 9: 'crisis_red_aurora', 10: 'crisis_desert_freeze' };
   if (crisisOnMap[mapId] && !clearedCrisisIds.includes(crisisOnMap[mapId])) return null;
   const parts = (dateStr || '').split('-').map(n => parseInt(n, 10) || 0);
   const daySeed = parts[2] || 1;
   const weekSeed = Math.floor((parts[0] * 100 + (parts[1] || 1)) % 7);
-  const mapEvents = ECO_EVENTS.filter(e => e.mapId === mapId);
+  const mapEvents = ECO_EVENTS.filter(e => e.mapId === mapId && (badges >= (e.reqBadges || 0)));
   if (mapEvents.length === 0) return null;
   const idx = (daySeed + weekSeed + mapId) % mapEvents.length;
   return mapEvents[idx];

@@ -42,8 +42,8 @@ export function inferPetTags(pet) {
   const types = [pet.type, pet.secondaryType, pet.type2].filter(Boolean);
   types.forEach(t => (TYPE_TAG_MAP[t] || []).forEach(tag => tags.add(tag)));
   const name = pet.name || '';
-  if (LARGE_NAMES.test(name) || (pet.level || 0) >= 70) tags.add('large');
-  if (SMALL_NAMES.test(name) || (pet.level || 0) <= 20) tags.add('small');
+  if (LARGE_NAMES.test(name)) tags.add('large');
+  if (SMALL_NAMES.test(name)) tags.add('small');
   if (tags.has('large')) tags.delete('small');
   if (!tags.has('swarm') && !tags.has('solitary')) tags.add('beast');
   return [...tags];
@@ -60,14 +60,15 @@ export const TAG_RESTRICTIONS = {
 export function checkTagRestriction(party, restrictionId) {
   const rule = TAG_RESTRICTIONS[restrictionId];
   if (!rule) return { allowed: true };
-  const blocked = (party || []).filter(p => {
+  const validParty = (party || []).filter(p => p && p.currentHp > 0);
+  const blocked = validParty.filter(p => {
     const tags = inferPetTags(p);
     return rule.blocked?.some(t => tags.includes(t));
   });
-  if (blocked.length > 0) {
-    return { allowed: false, reason: rule.hint, blockedPets: blocked };
+  if (blocked.length > 0 && blocked.length >= Math.ceil(validParty.length * 0.5)) {
+    return { allowed: false, reason: `${rule.hint}（队伍中大多数不满足条件）`, blockedPets: blocked };
   }
-  return { allowed: true, rule };
+  return { allowed: true, rule, hasBlockedPets: blocked.length > 0 };
 }
 
 export function getTagBonusMult(pet, restrictionId) {
