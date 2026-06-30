@@ -27,7 +27,8 @@ export const ACH_RARITY = {
 // reward: { title, item, gold } — 金币奖励根据稀有度分级（普通500/稀有1000/史诗2000/传说5000/隐藏8000）
 const ACHIEVEMENTS = [
   // ===== 收集类 — 按图鉴→捕获→闪光→神兽→果实→属性分组，组内由易到难 =====
-  { id: 'catch_first',     cat: 'COLLECTION', rarity: 'COMMON',    name: '初出茅庐',     desc: '累计捕捉10只精灵',            check: s => s.totalCaught >= 10,   reward: { gold: 500 } },
+  { id: 'catch_1',         cat: 'COLLECTION', rarity: 'COMMON',    name: '初出茅庐',     desc: '捕捉第1只精灵',               check: s => s.totalCaught >= 1,    reward: { gold: 200 } },
+  { id: 'catch_first',     cat: 'COLLECTION', rarity: 'COMMON',    name: '初级训练家',   desc: '累计捕捉10只精灵',            check: s => s.totalCaught >= 10,   reward: { gold: 500 } },
   { id: 'dex_30',           cat: 'COLLECTION', rarity: 'COMMON',    name: '收藏爱好者',   desc: '图鉴中记录30种精灵',          check: s => s.dexCount >= 30,       reward: { gold: 800 } },
   { id: 'dex_80',          cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '精灵猎人',     desc: '图鉴中记录80种精灵',          check: s => s.dexCount >= 80,       reward: { gold: 2000 } },
   { id: 'catch_200',       cat: 'COLLECTION', rarity: 'RARE',      name: '精灵收割者',   desc: '累计捕捉200只精灵',           check: s => s.totalCaught >= 200,   reward: { gold: 3000 } },
@@ -132,7 +133,7 @@ const ACHIEVEMENTS = [
 
   // ===== 社交/生活类 — 按家园→活动赛事→PvP→帮派→婚姻分组 =====
   { id: 'house_first',     cat: 'SOCIAL', rarity: 'COMMON',    name: '安家落户',     desc: '将房子升级到2级',             check: s => s.houseLevel >= 2,      reward: { gold: 500 } },
-  { id: 'furniture_10',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '家具大师',     desc: '摆放20件家具',                check: s => s.furnitureCount >= 20, reward: { gold: 1500 } },
+  { id: 'furniture_20',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '家具大师',     desc: '摆放20件家具',                check: s => s.furnitureCount >= 20, reward: { gold: 1500 } },
   { id: 'full_house',      cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '温馨满屋',     desc: '房子家具数量达到30件',        check: s => s.furnitureCount >= 30, reward: { gold: 2000 } },
   { id: 'furniture_50',    cat: 'SOCIAL', rarity: 'RARE',      name: '装潢大师',     desc: '摆放50件家具',                check: s => s.furnitureCount >= 50, reward: { title: '装潢大师' } },
   { id: 'house_castle',    cat: 'SOCIAL', rarity: 'EPIC',      name: '城堡之主',     desc: '拥有精灵城堡或更高等级的房屋', check: s => s.houseLevel >= 5,      reward: { title: '城堡领主' } },

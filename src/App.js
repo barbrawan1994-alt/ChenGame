@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import _ from 'lodash';
+
+function useDebouncedValue(value, delay = 200) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setDebounced(value), delay); return () => clearTimeout(t); }, [value, delay]);
+  return debounced;
+}
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
 import { GSAPAnimations } from './engines/AnimationEngine';
@@ -1207,20 +1213,33 @@ const [infinityState, setInfinityState] = useState(() => {
     const b = battle;
     const _dSlot = b.phase === 'double_input_2' ? 1 : 0;
     const targetIdx = b.isDouble ? (b.activeIdxs?.[_dSlot] ?? b.activeIdx) : b.activeIdx;
-    const enemy = b.enemyParty?.[b.isDouble ? (b.enemyActiveIdxs?.[0] ?? b.enemyActiveIdx) : b.enemyActiveIdx];
     const player = b.playerCombatStates?.[targetIdx];
-    if (!enemy || !player) return;
+    if (!player) return;
+    // 双打时选择血最低的敌人作为目标
+    let enemyIdx = b.isDouble ? (b.enemyActiveIdxs?.[0] ?? b.enemyActiveIdx) : b.enemyActiveIdx;
+    if (b.isDouble && b.enemyActiveIdxs?.length > 1) {
+      const e0 = b.enemyParty?.[b.enemyActiveIdxs[0]];
+      const e1 = b.enemyParty?.[b.enemyActiveIdxs[1]];
+      if (e0 && e1 && e0.currentHp > 0 && e1.currentHp > 0) {
+        enemyIdx = e1.currentHp < e0.currentHp ? b.enemyActiveIdxs[1] : b.enemyActiveIdxs[0];
+      }
+    }
+    const enemy = b.enemyParty?.[enemyIdx];
+    if (!enemy) return;
     if (enemy.level > player.level - 10) { return; }
     const moves = player.combatMoves || [];
-    let bestIdx = 0, bestPow = -1;
+    let bestIdx = 0, bestScore = -1;
     moves.forEach((m, i) => {
-      if (canUseCombatMove(b, player, m, 'player') && (m.p || 0) > bestPow) {
-        bestPow = m.p || 0;
-        bestIdx = i;
-      }
+      if (!canUseCombatMove(b, player, m, 'player')) return;
+      let score = m.p || 0;
+      const typeMod = getTypeMod(m.t, enemy.type, enemy.type2);
+      score *= typeMod;
+      if (m.t === player.type || m.t === player.type2) score *= 1.5;
+      if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
-    if (bestPow < 0) return;
-    const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx) : executeTurn(bestIdx), 200);
+    if (bestScore < 0) return;
+    if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
+    const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
   }, [autoBattle, battle?.phase, battle?.activeIdx, battle?.enemyActiveIdx, battle?.doubleSlot, battle?.isDouble]); // eslint-disable-line
 
@@ -1392,16 +1411,23 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (enemy.status === 'SLP' || enemy.status === 'FRZ') baseRate *= 2.0;
       else if (enemy.status === 'PAR' || enemy.status === 'BRN' || enemy.status === 'PSN') baseRate *= 1.5;
 
+      // 治愈球捕获倍率
+      if (ballType === 'heal') baseRate *= 1.2;
+
       // 帮派+阵营捕获率加成
       const gangCatchBonus = getGangSkillBonus(getGangSkills(gang)).catchRate || 0;
       const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
       baseRate *= (1 + (gangCatchBonus + kwCatchBonus) / 100);
 
+      // 徽章加成：每枚徽章提升2%捕获率上限
+      const badgeBonus = 1 + (badges.length * 0.02);
+      baseRate *= badgeBonus;
+
       const etype = (POKEDEX.find(p => p.id === eid) || {}).type;
-      if (FINAL_GOD_IDS?.includes(eid) || etype === 'COSMIC' || etype === 'GOD') return Math.min(baseRate, 0.12);
-      if (NEW_GOD_IDS?.includes(eid) || LEGENDARY_POOL?.includes(eid)) return Math.min(baseRate, 0.30);
-      if (HIGH_TIER_POOL?.includes(eid)) return Math.min(baseRate, 0.50);
-      return Math.min(baseRate, 0.75);
+      if (FINAL_GOD_IDS?.includes(eid) || etype === 'COSMIC' || etype === 'GOD') return Math.min(baseRate, 0.12 + badges.length * 0.01);
+      if (NEW_GOD_IDS?.includes(eid) || LEGENDARY_POOL?.includes(eid)) return Math.min(baseRate, 0.30 + badges.length * 0.015);
+      if (HIGH_TIER_POOL?.includes(eid)) return Math.min(baseRate, 0.50 + badges.length * 0.02);
+      return Math.min(baseRate, 0.85);
   };
 
   // 2. 使用洗练药
@@ -1829,8 +1855,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
     // ==========================================
   function calcNextExp(lv, expMod = 1.0) {
     let lateBonus = 0;
-    if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 3;
-    if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 8;
+    if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 2;
+    if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 4;
     return Math.floor((lv * 100 + lateBonus) * expMod);
   }
 
@@ -1869,6 +1895,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
       }
       unit.currentHp = Math.max(0, unit.currentHp - dot);
+      if (side === 'player' && battleState) battleState._playerTookDamage = true;
       addLogFn(`${unit.name} 受到 ${unit.status === 'BRN' ? '灼伤' : unit.volatiles?.badlyPoisoned ? '剧毒' : '毒'} 伤害 ${dot}!`);
       if (unit.currentHp <= 0) {
         if (side === 'player') playerFainted = true;
@@ -1915,7 +1942,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
   function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
     if (!pet) return { maxHp: 1, p_atk: 1, p_def: 1, s_atk: 1, s_def: 1, spd: 1, crit: 5 };
     const isPlayerPet = gangBonusOverride === undefined;
-    const growth = 1 + (pet.level || 1) * 0.05; 
+    const lvl = pet.level || 1;
+    const growth = 1 + Math.pow(lvl / 100, 0.7) * 4; 
     const shinyMod = pet.isFusedShiny ? 1.35 : (pet.isShiny ? 1.2 : 1.0);
 
     let ivs = pet.ivs || { hp:0, p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, crit:0 };
@@ -2488,7 +2516,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
  const getMoveCategory = (type, move = null) => {
     if (move && move.category) return move.category;
     if (move && move.cat) return move.cat;
-    const physicalTypes = ['NORMAL', 'FIGHT', 'FLYING', 'GROUND', 'ROCK', 'BUG', 'GHOST', 'POISON', 'STEEL'];
+    const physicalTypes = ['NORMAL', 'FIGHT', 'FLYING', 'GROUND', 'ROCK', 'BUG', 'GHOST', 'STEEL'];
     return physicalTypes.includes(type) ? 'physical' : 'special';
   };
   
@@ -3256,22 +3284,29 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };};
 
   const persistSave = (silent = false) => {
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(buildSavePayload()));
-      setHasSave(true);
-      if (!silent) { setAutoSaveMsg('存档保存成功'); setTimeout(() => setAutoSaveMsg(''), 2000); }
-      return true;
-    } catch (e) {
-      console.error("存档保存失败", e);
-      if (e?.name === 'QuotaExceededError' || e?.code === 22) {
-        showMapToast('⚠️', '存储空间不足', '浏览器存储已满，请导出存档或清理数据以防丢档！', 6000);
-        setAutoSaveMsg('⚠️ 存储空间不足！请及时导出存档');
-        setTimeout(() => setAutoSaveMsg(''), 8000);
-      } else if (!silent) {
-        setAutoSaveMsg('存档保存失败！'); setTimeout(() => setAutoSaveMsg(''), 3000);
+    const doSave = () => {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(buildSavePayload()));
+        setHasSave(true);
+        if (!silent) { setAutoSaveMsg('存档保存成功'); setTimeout(() => setAutoSaveMsg(''), 2000); }
+        return true;
+      } catch (e) {
+        console.error("存档保存失败", e);
+        if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+          showMapToast('⚠️', '存储空间不足', '浏览器存储已满，请导出存档或清理数据以防丢档！', 6000);
+          setAutoSaveMsg('⚠️ 存储空间不足！请及时导出存档');
+          setTimeout(() => setAutoSaveMsg(''), 8000);
+        } else if (!silent) {
+          setAutoSaveMsg('存档保存失败！'); setTimeout(() => setAutoSaveMsg(''), 3000);
+        }
+        return false;
       }
-      return false;
+    };
+    if (silent && typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => doSave(), { timeout: 3000 });
+      return true;
     }
+    return doSave();
   };
 
   const [saving, setSaving] = useState(false);
@@ -12830,7 +12865,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         console.warn('Battle phase stuck, auto-recovering to input');
         return { ...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false };
       });
-    }, 25000);
+    }, 8000);
     return () => clearTimeout(timer);
   }, [battle?.phase, battle?.turnCount]);
 
@@ -13841,8 +13876,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (dotResult.playerFainted) playerDied = true;
 
     const singleHardBattle = !!(state?.isTrainer || state?.isGym || state?.isChallenge || state?.isStory || state?.isBoss);
-    const playerExpLogs = checkEffectExpiration(player, player, singleHardBattle);
-    const enemyExpLogs = checkEffectExpiration(enemy, enemy, singleHardBattle);
+    const isWildOnly = !singleHardBattle;
+    const playerExpLogs = isWildOnly ? checkEffectExpiration(player, player, false) : [];
+    const enemyExpLogs = isWildOnly ? checkEffectExpiration(enemy, enemy, false) : [];
     [...playerExpLogs, ...enemyExpLogs].forEach(l => addLog(l));
 
 	    // 咒力自然恢复
@@ -14785,7 +14821,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               }
             }
             if (move.jutsuId && source === 'player' && !move.isBijuu) {
-              setNarutoState(prev => ({ ...prev, jutsuMastery: { ...(prev.jutsuMastery || {}), [move.jutsuId]: ((prev.jutsuMastery || {})[move.jutsuId] || 0) + 1 } }));
+              setTimeout(() => setNarutoState(prev => ({ ...prev, jutsuMastery: { ...(prev.jutsuMastery || {}), [move.jutsuId]: ((prev.jutsuMastery || {})[move.jutsuId] || 0) + 1 } })), 0);
             }
             // 查克拉属性克制加成
             if (move.isJutsu) {
@@ -14996,8 +15032,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const domMHF = battleState.activeDomain;
             if (domMHF && domMHF.turnsLeft > 0 && domMHF.ownerSide === source && domMHF.effect?.multiHitBoost) extraHits += 1;
             for (let h = 0; h < extraHits && defender.currentHp > 0; h++) {
-              const hitRoll = (0.85 + Math.random() * 0.15);
-              const extraDmg = Math.max(1, Math.floor(dmg * 0.6 * hitRoll));
+              const accuracy = move.acc || 95;
+              if (Math.random() * 100 > accuracy) { addLog(`追加第${h+2}击 未命中!`); continue; }
+              const hitRoll = (0.75 + Math.random() * 0.25);
+              const extraDmg = Math.max(1, Math.floor(dmg * 0.55 * hitRoll));
               defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
               addLog(`追加第${h+2}击! 造成 ${extraDmg} 伤害`);
             }
@@ -15420,7 +15458,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const activeCount = Math.max(1, bState.isDouble ? (bState.activeIdxs?.length || 2) : 1);
       const aliveCount = currentParty.filter(p => p.currentHp > 0).length || 1;
       const shareRatio = isActive
-        ? (bState.isDouble ? 0.75 : (1.0 / activeCount))
+        ? (bState.isDouble ? 0.5 : (1.0 / activeCount))
         : (0.5 / Math.max(1, aliveCount - activeCount));
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
@@ -17369,6 +17407,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!battle) return;
     if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.isBoss || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
     if (((inventory.balls || {})[ballType] || 0) <= 0) return addLog("球不足！");
+    if (party.length >= 6 && box.length >= 500) return addLog("⚠️ 存储箱已满(500/500)！请先释放精灵。");
     try {
     
     // 1. 扣球并播放投掷动画
@@ -18075,6 +18114,7 @@ const renderNameInput = () => {
                 letterSpacing:'1px'
                 }}
             />
+            <span style={{fontSize:'10px',color:'rgba(255,255,255,0.4)',marginLeft:'4px'}}>{(tempName||'').length}/8</span>
             {!showStarters && (
         <button onClick={() => { 
                 if (!tempName.trim()) { showMapToast('ℹ️', '提示', '名字不能为空！', 2000); return; }
@@ -18375,8 +18415,9 @@ const renderNameInput = () => {
       }
       return true;
     }).filter(p => {
-      if (!dexSearchTerm) return true;
-      const term = dexSearchTerm.toLowerCase();
+      const _debouncedDexTerm = dexSearchTerm;
+      if (!_debouncedDexTerm) return true;
+      const term = _debouncedDexTerm.toLowerCase();
       return p.name.toLowerCase().includes(term) || String(p.id).includes(term);
     });
 
@@ -25628,8 +25669,9 @@ const renderMenu = () => {
 
         <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
             <button className="battle-control-pill" onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{ top: 8 }}>⏩ {battleSpeed}x</button>
-            <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title="弱敌自动战斗：我方等级高于对方10级及以上时自动出招" style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
+            <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title={autoBattle && battle?.enemyParty?.[battle.enemyActiveIdx] && battle?.playerCombatStates?.[battle.activeIdx] && battle.enemyParty[battle.enemyActiveIdx].level > battle.playerCombatStates[battle.activeIdx].level - 10 ? '未触发：敌方等级差不足10级' : '弱敌自动战斗：我方等级高于对方10级及以上时自动出招'} style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
             <button className="battle-control-pill" onClick={() => setShowTypeChart(true)} style={{ top: 84 }}>属性表</button>
+            <button className="battle-control-pill" onClick={() => setShowKeyHelp(h => !h)} style={{ top: 122, fontSize: '11px' }} title="快捷键: 1-4选技能 R逃跑 A自动">⌨️</button>
             {(battle.sharedPlayerMaxChakra > 0 || battle.sharedPlayerMaxCE > 0) && (
               <div style={{
                 position:'absolute', top:100, left:8, right:'auto', zIndex:20, pointerEvents:'none',
@@ -27306,7 +27348,7 @@ const renderMenu = () => {
                         fontSize:'9px', cursor:'pointer'}}>{t === 'all' ? '全部' : (TYPES[t]?.name || t)}</button>
                   ))}
                 </div>
-                <div style={{color:'#888', fontSize:'11px'}}>存储箱 ({box.length}/500)</div>
+                <div style={{color: box.length >= 480 ? '#F44336' : box.length >= 450 ? '#FF9800' : '#888', fontSize:'11px', fontWeight: box.length >= 450 ? 700 : 400}}>存储箱 ({box.length}/500){box.length >= 480 ? ' ⚠️ 即将满！' : box.length >= 450 ? ' 空间不足' : ''}</div>
               </div>
               <div className="pc-box-grid-tech" style={{ 
                   display:'grid', 

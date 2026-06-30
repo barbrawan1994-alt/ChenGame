@@ -5719,8 +5719,9 @@ button:active {
     height: auto !important;
   }
   .action-btn-h {
-    min-height: 40px !important;
-    font-size: 11px !important;
+    min-height: 44px !important;
+    font-size: 12px !important;
+    padding: 4px 10px !important;
   }
   .hud-card {
     min-width: 190px;
