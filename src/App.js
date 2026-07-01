@@ -11741,7 +11741,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           await enemyTurn(tempBattle);
           const playerDiedFromEnemy = tempBattle.playerCombatStates[tempBattle.activeIdx]?.currentHp <= 0;
           if (playerDiedFromEnemy) {
-            // enemyTurn已处理了玩家倒下(showSwitch或handleDefeat)，直接返回
+            return;
+          }
+          const enemyDiedDuringOwnTurn = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx]?.currentHp <= 0;
+          if (enemyDiedDuringOwnTurn) {
             return;
           }
           // 玩家后手 - 重新获取当前活跃敌人(可能被训练家AI换过)
