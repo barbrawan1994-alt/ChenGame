@@ -10814,14 +10814,15 @@ select:focus-visible,
 .codex-shell {
   position: relative;
   z-index: 1;
-  width: min(1500px, calc(100vw - 32px));
-  height: calc(100dvh - 32px);
-  margin: 16px auto;
-  display: flex;
+  width: min(1500px, calc(100% - 32px));
+  flex: 1 1 0;
   min-height: 0;
+  margin: 0 auto;
+  padding: 16px 0;
+  display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 .codex-hero,
 .codex-overview,
@@ -11196,6 +11197,7 @@ select:focus-visible,
 }
 .codex-grid {
   flex: 1;
+  height: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -11540,9 +11542,8 @@ select:focus-visible,
 
 @media (max-width: 980px) {
   .codex-shell {
-    width: calc(100vw - 20px);
-    height: calc(100dvh - 20px);
-    margin: 10px auto;
+    width: calc(100% - 20px);
+    padding: 10px 0;
   }
   .codex-hero,
   .codex-toolbar {

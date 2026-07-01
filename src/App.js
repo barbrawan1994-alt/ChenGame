@@ -19636,7 +19636,7 @@ const renderMenu = () => {
     { key:'skill_dex', label:'技能图鉴', sub:`${allSkills.length} 种`, icon:'⚡' },
     { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length} 种`, icon:'🍎' },
     { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
-    { key:'general_dex', label:'三国名将', sub:`${collectedGenCount}/200`, icon:'📜' },
+    { key:'general_dex', label:'三国名将', sub:`${collectedGenCount}/${SANGUO_GENERALS.length}`, icon:'📜' },
     { key:'achievements', label:'成就殿堂', sub:`${Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)}%`, icon:'🏆' },
     { key:null, label:'无限城', sub:`最佳 ${achStats.maxInfinityFloor || 0} 层`, icon:'🏯', action: () => {
       if (!hasSave || !party?.length) { showMapToast('❌', '无法进入', '先开始冒险并组建队伍', 2000); return; }
