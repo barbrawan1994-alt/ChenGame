@@ -6,6 +6,7 @@ import {
   shouldForestVineBlock, shouldGravitySkip, calcFireHeatPPExtra, applyStarShieldDamage,
   processDomainTurnStart, processBossMechanicsTurnEnd, getMirrorLakeMove, queueMirrorEcho,
   processWindTowerFollowUp, applyAdaptationToCombatState, isDarkMoonHidden, canDarkMoonScout,
+  applyMirrorEchoRecoil, applyParasiteHealRedirect, checkMirrorCloneReflect,
 } from './utils/pveBattleRules';
 
 import { getStats as getStatsRaw, getStageMult, calcNextExp } from './utils/statsCalculator';
@@ -89,7 +90,7 @@ import {
   getRegionPressure, getPartyAdaptationSummary, getAdaptationMult,
   getBossMechanicDef, checkForestWillEcology, ECO_LINKED_BOSSES,
   inferPetTags, checkTagRestriction, PET_TAG_DEFS,
-  FATIGUE_CONFIG, getPetFatigue, addFatigue, reduceFatigue, getFatigueLabel, canPetBattle,
+  FATIGUE_CONFIG, getPetFatigue, addFatigue, reduceFatigue, getFatigueLabel, canPetBattle, getFatigueSpeedMult,
   INFINITY_ROUTE_TYPES, pickRouteOptions, pickBlessingOptions, pickSkillMutation, applySkillMutation, SPIRIT_BLESSINGS,
   RESCUE_EVENTS, ENV_PUZZLES, OBSERVATION_TARGETS, getRescueEventsForMap, getPuzzlesForMap, getObservationsForMap,
 } from './data';
@@ -5671,6 +5672,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
     }
     const ecology = getMapEcology(crisis.mapId);
+    const branchMod = linkedBoss?.branchModifiers?.[branchId];
     startBattle({
       id: crisis.mapId,
       name: step.title,
@@ -5682,6 +5684,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       _regionEcology: ecology,
       ecoBossMechanics: !!step.bossKey,
       bossPhases: linkedBoss?.phases,
+      _skipMechanics: branchMod?.skipMechanic || [],
     }, 'eco_crisis');
   };
 
@@ -10017,7 +10020,7 @@ const useGrowthItem = (petIndex, itemId) => {
             setTimeout(() => startBattle(mapInfo, 'trainer'), 200);
           }
       } else if (roll < trainerRate + encounterRate) {
-          const isDouble = party.filter(p => p.currentHp > 0).length >= 2 && Math.random() < 0.25;
+          const isDouble = party.filter(p => p.currentHp > 0).length >= 2 && Math.random() < 0.12;
           setTimeout(() => startBattle(mapInfo, isDouble ? 'wild_double' : 'wild'), 200);
       }
     }
@@ -10238,6 +10241,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
      if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return; }
+     // Fix#12: 疲劳系统扩展 — 所有队员精疲力竭时阻止训练家/Boss战斗
+     const isHardType = type !== 'wild' && type !== 'wild_double';
+     if (isHardType && party.every(p => !canPetBattle(p))) {
+       showMapToast('😴', '队伍疲惫', '精灵过于疲劳，请前往精灵中心休息', 2500);
+       return;
+     }
      setIsDialogVisible(false);
      battleResultHandledRef.current = false;
     let isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
@@ -10274,6 +10283,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (context?._crisisBranch) extraBattleData._crisisBranch = context._crisisBranch;
     if (context?.ecoBossMechanics) extraBattleData.ecoBossMechanics = true;
     if (context?.bossPhases) extraBattleData.bossPhases = context.bossPhases;
+    if (context?._skipMechanics) extraBattleData._skipMechanics = context._skipMechanics;
     if (context?._nonCombatRescue) extraBattleData._nonCombatRescue = context._nonCombatRescue;
     const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || [], badges.length);
     if (ecoEvt && !extraBattleData.ecoCrisis) {
@@ -11655,6 +11665,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         let playerSpd = getStats(player, player.stages, player.status).spd;
         let enemySpd = getStats(enemy, enemy.stages, enemy.status).spd;
+        // Fix#11: 疲劳速度惩罚
+        const activePet = party[battle.activeIdx];
+        if (activePet?.fatigue > 0) playerSpd = Math.floor(playerSpd * getFatigueSpeedMult(activePet));
         if (tempBattle._arenaSpeedBoost || battle?._arenaSpeedBoost) { playerSpd = Math.floor(playerSpd * 1.5); enemySpd = Math.floor(enemySpd * 1.5); }
         const domSpd = tempBattle.activeDomain || battle?.activeDomain;
         if (domSpd && domSpd.turnsLeft > 0 && domSpd.effect) {
@@ -12324,6 +12337,25 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (u?.currentHp > 0 && u.trait === 'speed_boost' && (u.stages?.spd || 0) < 6) {
           u.stages.spd = Math.min(6, (u.stages?.spd || 0) + 1);
           addLog(`🏃 ${u.name} 的加速特性提升了速度！`);
+        }
+      }
+
+      // Fix#18: 双打灵域回合开始处理
+      if (tempBattle.domainRule) {
+        const pSlot = (tempBattle.activeIdxs || [])[0];
+        const eSlot = (tempBattle.enemyActiveIdxs || [])[0];
+        const dp = tempBattle.playerCombatStates?.[pSlot];
+        const de = tempBattle.enemyParty?.[eSlot];
+        if (dp && de) processDomainTurnStart(tempBattle, dp, de, addLog, getStats);
+      }
+      // Fix#18: 双打Boss机制
+      if ((tempBattle.type === 'world_boss' || tempBattle.ecoBossMechanics)) {
+        const pSlot = (tempBattle.activeIdxs || [])[0];
+        const eSlot = (tempBattle.enemyActiveIdxs || [])[0];
+        const dp = tempBattle.playerCombatStates?.[pSlot];
+        const de = tempBattle.enemyParty?.[eSlot];
+        if (dp && de && de.currentHp > 0) {
+          processBossMechanicsTurnEnd(tempBattle, dp, de, addLog, getStats);
         }
       }
 
@@ -13448,6 +13480,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     if (enemy.currentHp <= 0 || player.currentHp <= 0) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); return; }
 
+    // Fix#1: 灵域试炼回合开始处理（火灼、风眼、藤蔓回血）
+    if (state.domainRule) {
+      processDomainTurnStart(state, player, enemy, addLog, getStats);
+      if (player.currentHp <= 0) {
+        await handleDefeat(); return;
+      }
+    }
+
+    // Fix#7: 镜湖大招反伤
+    if (state._echoRecoilPending) {
+      const echoKilled = applyMirrorEchoRecoil(state, player, addLog, getStats);
+      if (echoKilled) { await handleDefeat(); return; }
+    }
+
     // 领域 enemySkipChance
     const dom = state.activeDomain;
     if (dom && dom.turnsLeft > 0 && dom.ownerSide === 'player' && dom.effect?.enemySkipChance) {
@@ -14382,15 +14428,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return false;
     }
 
-    if (source === 'player' && shouldForestVineBlock(battleState, source)) {
+    if (shouldForestVineBlock(battleState, source)) {
       addLog(`🌿 藤蔓封锁！${attacker.name} 的技能被阻挡了！`);
       await wait(800);
       return false;
     }
 
     if (shouldGravitySkip(battleState, source, attacker,
-      battleState.playerCombatStates?.[battleState.activeIdx],
-      battleState.enemyParty?.[battleState.enemyActiveIdx])) {
+      getStats(battleState.playerCombatStates?.[battleState.activeIdx] || attacker).spd,
+      getStats(battleState.enemyParty?.[battleState.enemyActiveIdx] || defender).spd)) {
       addLog(`🌌 重力扭曲！${attacker.name} 行动缓慢，本回合无法行动！`);
       await wait(800);
       return false;
@@ -14723,10 +14769,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
         else if (eff.type === 'HEAL') {
-            const cap = Math.min(0.5, eff.val || 0.5); 
-            const healAmount = Math.floor(getStats(attacker).maxHp * cap);
+            const healPct = eff.val || 0.5;
+            let healAmount = Math.floor(getStats(attacker).maxHp * healPct);
+            // Fix#4: 寄生治疗重定向
+            if (source === 'player' && battleState?._parasiteApplied) {
+              const enemy = battleState.enemyParty?.[battleState.enemyActiveIdx];
+              healAmount = applyParasiteHealRedirect(battleState, healAmount, enemy, addLog);
+            }
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + healAmount);
-            addLog(`${attacker.name} 恢复了体力!`);
+            addLog(`${attacker.name} 恢复了 ${healAmount} 体力!`);
             _setAnim({ type: 'HEAL', target: targetSide });
         }
         else if (eff.type === 'OHKO') {
@@ -14877,6 +14928,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         }
 
+        // 生态适应度修正
+        if (source === 'player' && atkState?._adaptMult && atkState._adaptMult !== 1) {
+          rawDmg *= atkState._adaptMult;
+        }
+
         const auraUnits = battleState.isDouble
           ? [...(battleState.playerCombatStates || []).filter(u => u?.currentHp > 0), ...(battleState.enemyParty || []).filter(u => u?.currentHp > 0)]
           : [attacker, defender];
@@ -14944,6 +15000,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (move.isCursed && atkState.cursedBoost) {
             rawDmg *= (1 + atkState.cursedBoost);
+        }
+
+        // Fix#13: 无限城祝福效果
+        const blessings = (battleState?.type === 'infinity' && infinityState?.blessings) || [];
+        if (source === 'player' && blessings.length > 0) {
+          if (blessings.some(b => b.effect === 'critChain') && battleState._critChainActive) {
+            rawDmg *= 1.2;
+            battleState._critChainActive = false;
+          }
+          if (blessings.some(b => b.typeBoost === move.t)) rawDmg *= 1.12;
         }
 
         // 忍术加成 (忍者段位 + 精通)
@@ -15107,6 +15173,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (typeMod >= 2.0) updateAchStat({ doubleEffectiveHits: 1 });
           if (isCrit) {
             if (battleState) battleState._battleCrits = (battleState._battleCrits || 0) + 1;
+            if (battleState && blessings.some(b => b.effect === 'critChain')) battleState._critChainActive = true;
           }
         }
 
@@ -15121,6 +15188,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (fx.id === 'endure' && !defender._endureUsed) { endured = true; defender._endureUsed = true; }
           });
           if (endured) { dmg = defender.currentHp - 1; survivalMsg = `🪶 ${defender.name} 的不死鸟羽发动，硬撑住了！`; }
+          else if (source === 'enemy' && blessings.some(b => b.effect === 'endureOnce') && !battleState._blessingEndureUsed) {
+            battleState._blessingEndureUsed = true;
+            dmg = defender.currentHp - 1;
+            survivalMsg = `🛡️ 不屈意志祝福发动！${defender.name} 硬撑住了！`;
+          }
           else if (source === 'enemy' && defender.intimacy >= 200 && Math.random() < 0.06) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 为了不让你伤心，撑住了攻击！`;
@@ -15146,6 +15218,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         if (source === 'player' && isDead && defender._preHitHp >= getStats(defender).maxHp * 0.95) updateAchStat({ oneHitKOs: 1 });
         if (source === 'player' && isDead && weatherBoosted) updateAchStat({ weatherSweepKills: 1 });
+
+        // Fix#3: 暗月侦查 — 使用侦查类型技能可揭示敌方信息
+        if (source === 'player' && battleState && canDarkMoonScout(move) && isDarkMoonHidden(battleState)) {
+          battleState._darkMoonScouted = true;
+          addLog(`🔍 侦查成功！暗月迷雾散去，敌方信息可见！`);
+        }
+
+        // Fix#6: 镜像分身反伤
+        if (source === 'player' && battleState?._mirrorClonesActive && dmg > 0) {
+          const reflectPct = checkMirrorCloneReflect(battleState, source, addLog);
+          if (reflectPct > 0) {
+            const reflectDmg = Math.max(1, Math.floor(getStats(attacker).maxHp * reflectPct));
+            attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
+            addLog(`${attacker.name} 受到 ${reflectDmg} 点镜像反伤！`);
+            dmg = 0;
+            defender.currentHp = Math.min(getStats(defender).maxHp, defender.currentHp + Math.min(dmg, getStats(defender).maxHp));
+          }
+        }
 
         // 果实攻击附带效果
         if (atkFE && !isDead && dmg > 0) {
@@ -25751,6 +25841,16 @@ const renderMenu = () => {
             boxShadow:'0 4px 12px rgba(0,0,0,0.25)', pointerEvents:'none',
           }}>
             {battle.worldBoss.emoji} 世界首领 · {(battle.enemyParty?.[0]?._starShield || 0) > 0 ? `星海护盾 ${battle.enemyParty[0]._starShield.toLocaleString()}` : battle._gravityActive ? '重力扭曲中' : '阶段机制激活'}
+          </div>
+        )}
+        {/* Fix#19: 战斗机制状态chips */}
+        {(battle.domainRule || battle._vineActive || battle._parasiteApplied || battle._mirrorClonesActive || battle._gravityActive) && (
+          <div style={{ position:'absolute', top: (domainRuleInfo ? 36 : 8) + (battle.type === 'world_boss' ? 28 : 0), right: 8, zIndex: 25, display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '180px' }}>
+            {battle._vineActive && <span style={{ fontSize:'9px', padding:'2px 6px', borderRadius:'8px', background:'rgba(76,175,80,0.2)', color:'#2E7D32', fontWeight:700 }}>🌿 藤蔓</span>}
+            {battle._parasiteApplied && <span style={{ fontSize:'9px', padding:'2px 6px', borderRadius:'8px', background:'rgba(156,39,176,0.2)', color:'#7B1FA2', fontWeight:700 }}>🦠 寄生</span>}
+            {battle._mirrorClonesActive && <span style={{ fontSize:'9px', padding:'2px 6px', borderRadius:'8px', background:'rgba(33,150,243,0.2)', color:'#1565C0', fontWeight:700 }}>🪞 分身</span>}
+            {battle._gravityActive && <span style={{ fontSize:'9px', padding:'2px 6px', borderRadius:'8px', background:'rgba(103,58,183,0.2)', color:'#4527A0', fontWeight:700 }}>🌌 重力</span>}
+            {battle._darkMoonScouted && <span style={{ fontSize:'9px', padding:'2px 6px', borderRadius:'8px', background:'rgba(255,152,0,0.2)', color:'#E65100', fontWeight:700 }}>🔍 侦查</span>}
           </div>
         )}
 
