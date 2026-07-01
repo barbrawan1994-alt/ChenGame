@@ -18412,260 +18412,211 @@ const grantContestReward = (config, score, subjectPet = null) => {
 const renderNameInput = () => {
   const nameReady = tempName.trim().length > 0;
   const showStarters = nameReady && starterOptions.length > 0;
+  const starterSummary = starterOptions.length > 0
+    ? starterOptions.map((p) => {
+        const stats = getStats(p);
+        const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
+        const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
+        const diversity = (baseInfo.id % 5) * 2 - 4;
+        const bstHp = baseInfo.hp || 60;
+        const bstPAtk = Math.floor((baseInfo.atk || 50) * bias.p) + diversity;
+        const bstPDef = Math.floor((baseInfo.def || 50) * bias.p);
+        const bstSAtk = Math.floor((baseInfo.atk || 50) * bias.s) - diversity;
+        const bstSDef = Math.floor((baseInfo.def || 50) * bias.s);
+        const bstSpd = baseInfo.spd || (40 + (baseInfo.id * 7 % 70));
+        const bst = bstHp + bstPAtk + bstPDef + bstSAtk + bstSDef + bstSpd;
+        return { pet: p, stats, bst };
+      })
+    : [];
+  const strongestStarter = starterSummary.reduce((best, item) => !best || item.bst > best.bst ? item : best, null);
+  const fastestStarter = starterSummary.reduce((best, item) => !best || item.stats.spd > best.stats.spd ? item : best, null);
 
   return (
-  <div className="screen" style={{
-      background: 'radial-gradient(ellipse at 20% 50%, #1a1a2e 0%, #16213e 40%, #0f3460 100%)',
-      display:'flex', flexDirection:'column', alignItems:'center',
-      minHeight:'100vh', position:'relative', overflow:'auto', padding:'40px 16px 60px'
-    }}>
-      {/* 背景装饰粒子 */}
-      {[...Array(12)].map((_, i) => (
-        <div key={i} style={{
-          position:'fixed', width: 4+((i*7+3)%7), height: 4+((i*7+3)%7),
-          borderRadius:'50%', background:`rgba(${100+((i*7919)%156)},${150+((i*6131)%101)},255,${0.15+(((i*4139)%21)/100)})`,
-          left:`${(i * 8371 + 2143) % 100}%`, top:`${(i * 6547 + 1231) % 100}%`,
-          animation:`float ${4+((i*5153)%7)}s ease-in-out infinite`, animationDelay:`${(i*3+1)%4}s`,
-          pointerEvents:'none'
-        }} />
-      ))}
+    <div className="screen starter-lab-screen">
+      <div className="starter-lab-sky" aria-hidden="true" />
+      <div className="starter-lab-grid" aria-hidden="true" />
+      <div className="starter-lab-orbit starter-lab-orbit-a" aria-hidden="true" />
+      <div className="starter-lab-orbit starter-lab-orbit-b" aria-hidden="true" />
 
-      {/* 顶部标题区 */}
-      <div style={{textAlign:'center', marginBottom:'32px', animation:'popIn 0.6s ease-out', position:'relative', zIndex:1}}>
-        <div style={{display:'flex',justifyContent:'center',marginBottom:'10px'}}><SuperSpiritIcon size={54} /></div>
-        <div style={{fontSize:'11px', letterSpacing:'6px', color:'rgba(255,255,255,0.45)', textTransform:'uppercase', marginBottom:'8px'}}>{GAME_EN_NAME}</div>
-        <div style={{fontSize:'28px', fontWeight:'900', color:'#fff', textShadow:'0 4px 20px rgba(100,190,255,0.45)'}}>{GAME_NAME} · 开启冒险</div>
-      </div>
-
-      {/* 名字输入卡片 */}
-    <div style={{
-        width:'100%', maxWidth:'420px', borderRadius:'24px', overflow:'hidden',
-        background:'rgba(255,255,255,0.06)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-        border:'1px solid rgba(255,255,255,0.1)', boxShadow:'0 20px 60px rgba(0,0,0,0.3)',
-        animation:'popIn 0.5s ease-out 0.1s backwards', position:'relative', zIndex:1
-      }}>
-        {/* 博士头像 + 对话 */}
-        <div style={{padding:'24px 24px 0', display:'flex', gap:'14px', alignItems:'flex-start'}}>
-        <div style={{
-            width:'52px', height:'52px', borderRadius:'50%', flexShrink:0,
-            background:'linear-gradient(135deg,#667eea,#764ba2)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            boxShadow:'0 4px 15px rgba(102,126,234,0.4)'
-          }}>
-            <img src={NPC_SPRITES.professor} alt="教授" style={{width:36, height:36, objectFit:'contain'}} />
+      <main className="starter-lab-shell" aria-label="选择初始精灵">
+        <header className="starter-lab-hero">
+          <SuperSpiritIcon className="starter-lab-logo" size={58} />
+          <div>
+            <span>{GAME_EN_NAME}</span>
+            <h1>{GAME_NAME} · 开启冒险</h1>
+            <p>{showStarters ? `${tempName}，从候选伙伴中选择一只作为你的初始精灵。` : '登记训练师档案，然后由博士为你准备初始伙伴。'}</p>
           </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:'13px', fontWeight:'700', color:'rgba(255,255,255,0.9)', marginBottom:'4px'}}>大木博士</div>
-            <div style={{fontSize:'12px', color:'rgba(255,255,255,0.55)', lineHeight:'1.6'}}>
-              {showStarters ? `${tempName}，选择一只精灵作为你的初始伙伴吧！` : '欢迎来到精灵世界！请先告诉我你的名字。'}
+        </header>
+
+        <section className="starter-lab-intake" aria-label="训练师档案">
+          <div className="starter-lab-professor">
+            <div className="starter-lab-avatar">
+              <img src={NPC_SPRITES.professor} alt="大木博士" />
+            </div>
+            <div className="starter-lab-dialogue">
+              <span>大木博士</span>
+              <strong>{showStarters ? '伙伴候选已准备完成' : '欢迎来到精灵研究所'}</strong>
+              <p>{showStarters ? `${tempName}，这批伙伴都有独特的属性倾向，请根据培养路线做出选择。` : '告诉我你的名字，我会为你筛选四只适合初次冒险的精灵。'}</p>
             </div>
           </div>
-        </div>
 
-        {/* 名字输入区 */}
-        <div style={{padding:'16px 24px 20px'}}>
-        <div style={{
-            display:'flex', alignItems:'center', gap:'10px',
-            background:'rgba(255,255,255,0.08)', borderRadius:'16px',
-            padding:'4px 4px 4px 16px',
-            border: tempName.trim() ? '1.5px solid rgba(102,126,234,0.6)' : '1.5px solid rgba(255,255,255,0.1)',
-            transition:'border 0.3s, box-shadow 0.3s',
-            boxShadow: tempName.trim() ? '0 0 20px rgba(102,126,234,0.15)' : 'none'
-          }}>
-            <span style={{fontSize:'16px', opacity:0.5}}>✏️</span>
-            <input 
-              type="text" aria-label="训练师名字" placeholder="输入你的名字..." value={tempName}
-              onChange={e => setTempName(e.target.value)} maxLength={8}
-              onKeyDown={e => { if (e.key === 'Enter' && tempName.trim() && starterOptions.length === 0) { e.stopPropagation(); setTrainerName(tempName.trim()); try { generateStarterOptions(); } catch(err) { console.error('Starter generation error:', err); generateStarterOptions(); } } }}
-                style={{
-                flex:1, padding:'12px 0', border:'none', background:'transparent',
-                fontSize:'15px', fontWeight:'600', color:'#fff', outline:'none',
-                letterSpacing:'1px'
+          <div className={nameReady ? 'starter-name-console is-ready' : 'starter-name-console'}>
+            <label htmlFor="trainer-name">训练师名字</label>
+            <div className="starter-name-row">
+              <span className="starter-pencil" aria-hidden="true">✎</span>
+              <input
+                id="trainer-name"
+                type="text"
+                aria-label="训练师名字"
+                placeholder="输入你的名字..."
+                value={tempName}
+                onChange={e => setTempName(e.target.value)}
+                maxLength={8}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && tempName.trim() && starterOptions.length === 0) {
+                    e.stopPropagation();
+                    setTrainerName(tempName.trim());
+                    try { generateStarterOptions(); } catch(err) { console.error('Starter generation error:', err); generateStarterOptions(); }
+                  }
                 }}
-            />
-            <span style={{fontSize:'10px',color:'rgba(255,255,255,0.4)',marginLeft:'4px'}}>{(tempName||'').length}/8</span>
-            {!showStarters && (
-        <button onClick={() => { 
-                if (!tempName.trim()) { showMapToast('ℹ️', '提示', '名字不能为空！', 2000); return; }
-                setTrainerName(tempName.trim()); try { generateStarterOptions(); } catch(err) { console.error('Starter generation error:', err); generateStarterOptions(); }
-        }} style={{
-                padding:'10px 20px', borderRadius:'12px', border:'none',
-                background: nameReady ? 'linear-gradient(135deg,#667eea,#764ba2)' : 'rgba(255,255,255,0.1)',
-                color: nameReady ? '#fff' : 'rgba(255,255,255,0.3)',
-                fontSize:'13px', fontWeight:'700', cursor: nameReady ? 'pointer' : 'default',
-                transition:'all 0.3s', boxShadow: nameReady ? '0 4px 15px rgba(102,126,234,0.4)' : 'none',
-                whiteSpace:'nowrap'
-              }}>确认</button>
-            )}
-            {showStarters && (
-              <div style={{padding:'8px 14px', borderRadius:'12px', background:'rgba(76,175,80,0.2)', border:'1px solid rgba(76,175,80,0.3)'}}>
-                <span style={{fontSize:'12px', color:'#81C784', fontWeight:'600'}}>✓ {tempName}</span>
-    </div>
-            )}
-  </div>
-        </div>
-      </div>
-
-      {/* 精灵选择区 */}
-      {showStarters && (
-        <div style={{width:'100%', maxWidth:'900px', marginTop:'28px', animation:'popIn 0.6s ease-out', position:'relative', zIndex:1}}>
-          <div style={{textAlign:'center', marginBottom:'20px'}}>
-            <div style={{fontSize:'12px', letterSpacing:'4px', color:'rgba(255,255,255,0.35)', textTransform:'uppercase'}}>Choose Your Partner</div>
-            <div style={{fontSize:'20px', fontWeight:'800', color:'#fff', marginTop:'4px', textShadow:'0 2px 10px rgba(0,0,0,0.3)'}}>选择你的命运伙伴</div>
-            <button onClick={() => generateStarterOptions()} style={{
-              marginTop:'12px', padding:'8px 28px', borderRadius:'25px', border:'1px solid rgba(255,255,255,0.2)',
-              background:'rgba(255,255,255,0.08)', backdropFilter:'blur(8px)', color:'rgba(255,255,255,0.7)',
-              fontSize:'13px', fontWeight:'600', cursor:'pointer', transition:'all 0.3s',
-              letterSpacing:'1px'
-            }}
-            className="reroll-btn"
-            >🎲 重新随机</button>
-        </div>
-        
-          <div style={{display:'flex', gap:'16px', justifyContent:'flex-start', flexWrap:'nowrap', overflowX:'auto', padding:'0 16px 12px', scrollSnapType:'x mandatory', WebkitOverflowScrolling:'touch'}}>
-          {starterOptions.length === 0 && (
-            <div style={{textAlign:'center', padding:'40px', color:'rgba(255,255,255,0.5)'}}>
-              <div style={{fontSize:'40px', marginBottom:'12px'}}>🎲</div>
-              <div>正在生成初始伙伴...</div>
-              <button onClick={() => generateStarterOptions()} style={{marginTop:'16px', padding:'10px 24px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.3)', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:'14px'}}>点击重新生成</button>
+              />
+              <span className="starter-name-count">{(tempName || '').length}/8</span>
+              {!showStarters ? (
+                <button
+                  type="button"
+                  className="starter-name-confirm"
+                  disabled={!nameReady}
+                  onClick={() => {
+                    if (!tempName.trim()) { showMapToast('ℹ️', '提示', '名字不能为空！', 2000); return; }
+                    setTrainerName(tempName.trim());
+                    try { generateStarterOptions(); } catch(err) { console.error('Starter generation error:', err); generateStarterOptions(); }
+                  }}
+                >
+                  确认
+                </button>
+              ) : (
+                <span className="starter-name-badge">已登记 {tempName}</span>
+              )}
             </div>
-          )}
-          {starterOptions.map((p, i) => {
-            const stats = getStats(p);
-            const typeConfig = TYPES[p.type] || TYPES.NORMAL;
-            const typeConfig2 = p.secondaryType ? (TYPES[p.secondaryType] || TYPES.NORMAL) : null;
-            const natureName = NATURE_DB[p.nature]?.name || '未知';
-              const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
-              const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
-              const diversity = (baseInfo.id % 5) * 2 - 4;
-              const bstHp = baseInfo.hp || 60;
-              const bstPAtk = Math.floor((baseInfo.atk || 50) * bias.p) + diversity;
-              const bstPDef = Math.floor((baseInfo.def || 50) * bias.p);
-              const bstSAtk = Math.floor((baseInfo.atk || 50) * bias.s) - diversity;
-              const bstSDef = Math.floor((baseInfo.def || 50) * bias.s);
-              const bstSpd = baseInfo.spd || (40 + (baseInfo.id * 7 % 70));
-              const bst = bstHp + bstPAtk + bstPDef + bstSAtk + bstSDef + bstSpd;
-            
-            return (
-                <div key={i} style={{
-                  minWidth:'220px', width:'220px', borderRadius:'20px', overflow:'hidden', cursor:'pointer',
-                  background:'rgba(255,255,255,0.05)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-                  border:'1px solid rgba(255,255,255,0.08)',
-                  boxShadow:'0 15px 40px rgba(0,0,0,0.25)',
-                  transition:'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                  animation:`popIn 0.5s ease-out ${0.15+i*0.12}s backwards`,
-                  position:'relative', scrollSnapAlign:'center', flexShrink:0
-                   }}
-                   onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-10px) scale(1.03)';
-                  e.currentTarget.style.boxShadow = `0 25px 60px ${typeConfig.color}40, 0 0 30px ${typeConfig.color}20`;
-                  e.currentTarget.style.borderColor = `${typeConfig.color}60`;
-                   }}
-                   onMouseLeave={e => {
-                  e.currentTarget.style.transform = '';
-                  e.currentTarget.style.boxShadow = '0 15px 40px rgba(0,0,0,0.25)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                   }}
-                onClick={() => confirmStarter(p)}
-              >
-                  {/* 顶部渐变 + 精灵形象 */}
-                <div style={{
-                    height:'140px', position:'relative', overflow:'hidden',
-                    background: typeConfig2
-                      ? `linear-gradient(135deg, ${typeConfig.color}cc, ${typeConfig2.color}88)`
-                      : `linear-gradient(135deg, ${typeConfig.color}cc, ${typeConfig.color}66)`
-                }}>
-                    <div style={{
-                      position:'absolute', inset:0,
-                      background:'radial-gradient(circle at 30% 80%, rgba(255,255,255,0.15) 0%, transparent 60%)'
-                    }} />
-                    <div style={{
-                      position:'absolute', right:'-15px', top:'-15px', fontSize:'90px', fontWeight:'900',
-                      color:'rgba(255,255,255,0.08)', transform:'rotate(-15deg)', pointerEvents:'none', lineHeight:1
-                    }}>#{String(p.id).padStart(3,'0')}</div>
-                    <div style={{
-                      position:'absolute', bottom:'-5px', left:'50%', transform:'translateX(-50%)',
-                      width:'90px', height:'90px', display:'flex', alignItems:'center', justifyContent:'center',
-                      filter:'drop-shadow(0 8px 20px rgba(0,0,0,0.3))',
-                      animation:`float 3.5s ease-in-out infinite`, animationDelay:`${i*0.3}s`
-                    }}>
-                        {renderAvatar(p)}
-                    </div>
-                </div>
+          </div>
+        </section>
 
-                  {/* 信息区 */}
-                  <div style={{padding:'16px'}}>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px'}}>
-                      <div style={{fontSize:'18px', fontWeight:'800', color:'#fff'}}>{p.name}</div>
-                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600'}}>Lv.5</div>
-                    </div>
-
-                    <div style={{display:'flex', gap:'6px', marginBottom:'14px', flexWrap:'wrap'}}>
-                      <span style={{
-                        background:`${typeConfig.color}25`, color:typeConfig.color, padding:'3px 10px',
-                        borderRadius:'8px', fontSize:'10px', fontWeight:'700', border:`1px solid ${typeConfig.color}40`
-                      }}>{typeConfig.name}</span>
-                      {typeConfig2 && (
-                      <span style={{
-                        background:`${typeConfig2.color}25`, color:typeConfig2.color, padding:'3px 10px',
-                        borderRadius:'8px', fontSize:'10px', fontWeight:'700', border:`1px solid ${typeConfig2.color}40`
-                      }}>{typeConfig2.name}</span>
-                      )}
-                      <span style={{
-                        background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.6)', padding:'3px 10px',
-                        borderRadius:'8px', fontSize:'10px', fontWeight:'600'
-                      }}>{natureName}</span>
-                    </div>
-
-                    {/* 六维属性 */}
-                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 16px', marginBottom:'12px'}}>
-                      {[
-                        { l:'HP',  v:stats.maxHp,  c:'#66BB6A', max:400 },
-                        { l:'速度', v:stats.spd,    c:'#FFA726', max:250 },
-                        { l:'物攻', v:stats.p_atk,  c:'#EF5350', max:250 },
-                        { l:'物防', v:stats.p_def,  c:'#42A5F5', max:250 },
-                        { l:'特攻', v:stats.s_atk,  c:'#AB47BC', max:250 },
-                        { l:'特防', v:stats.s_def,  c:'#5C6BC0', max:250 },
-                        ].map((s, idx) => (
-                        <div key={idx} style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                          <span style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'26px'}}>{s.l}</span>
-                          <div style={{flex:1, height:'4px', background:'rgba(255,255,255,0.08)', borderRadius:'2px', overflow:'hidden'}}>
-                            <div style={{
-                              width:`${Math.min(100, s.v/s.max*100)}%`, height:'100%',
-                              background:`linear-gradient(90deg, ${s.c}88, ${s.c})`, borderRadius:'2px',
-                              transition:'width 0.8s ease-out', animationDelay:`${0.3+idx*0.1}s`
-                            }} />
-                          </div>
-                          <span style={{fontSize:'11px', color:s.c, fontWeight:'800', width:'30px', textAlign:'right'}}>{s.v}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px',
-                      padding:'6px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.04)'}}>
-                      <span style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>种族值总和</span>
-                      <span style={{fontSize:'13px', fontWeight:'800', color:'rgba(255,255,255,0.8)'}}>{bst}</span>
-                    </div>
-
-                    <button style={{
-                      width:'100%', padding:'11px', borderRadius:'12px', border:'none',
-                      background:`linear-gradient(135deg, ${typeConfig.color}dd, ${typeConfig.color}99)`,
-                      color:'#fff', fontWeight:'700', fontSize:'13px', cursor:'pointer',
-                      boxShadow:`0 4px 15px ${typeConfig.color}40`,
-                      transition:'all 0.2s', letterSpacing:'2px'
-                    }}>就决定是你了！</button>
-                </div>
+        {showStarters ? (
+          <section className="starter-selection-panel" aria-label="初始伙伴候选">
+            <div className="starter-selection-head">
+              <div>
+                <span>Choose Your Partner</span>
+                <h2>选择你的初始伙伴</h2>
               </div>
-            );
-          })}
-        </div>
-        
-          <div style={{textAlign:'center', marginTop:'24px'}}>
-            <span style={{fontSize:'11px', color:'rgba(255,255,255,0.3)'}}>* 数值受性格与个体值影响 · 所见即所得</span>
-        </div>
-        </div>
-      )}
-      </div>
+              <div className="starter-selection-tools">
+                <div className="starter-compare-strip" aria-label="候选精灵概览">
+                  {strongestStarter && <span>最高总和 <b>{strongestStarter.pet.name}</b></span>}
+                  {fastestStarter && <span>最快速度 <b>{fastestStarter.pet.name}</b></span>}
+                </div>
+                <button type="button" className="starter-reroll-btn" onClick={() => generateStarterOptions()}>
+                  <span aria-hidden="true">↻</span>
+                  重新随机
+                </button>
+              </div>
+            </div>
+
+            {starterOptions.length === 0 ? (
+              <div className="starter-empty-state">
+                <strong>正在生成初始伙伴...</strong>
+                <button type="button" onClick={() => generateStarterOptions()}>点击重新生成</button>
+              </div>
+            ) : (
+              <div className="starter-card-grid">
+                {starterSummary.map(({ pet: p, stats, bst }, i) => {
+                  const typeConfig = TYPES[p.type] || TYPES.NORMAL;
+                  const typeConfig2 = p.secondaryType ? (TYPES[p.secondaryType] || TYPES.NORMAL) : null;
+                  const natureName = NATURE_DB[p.nature]?.name || '未知';
+                  const statRows = [
+                    { l:'HP',  v:stats.maxHp,  c:'#66BB6A', max:400 },
+                    { l:'速度', v:stats.spd,    c:'#FFA726', max:250 },
+                    { l:'物攻', v:stats.p_atk,  c:'#EF5350', max:250 },
+                    { l:'物防', v:stats.p_def,  c:'#42A5F5', max:250 },
+                    { l:'特攻', v:stats.s_atk,  c:'#AB47BC', max:250 },
+                    { l:'特防', v:stats.s_def,  c:'#5C6BC0', max:250 },
+                  ];
+
+                  return (
+                    <button
+                      type="button"
+                      className="starter-choice-card"
+                      key={`${p.id}-${p.nature}-${i}`}
+                      style={{
+                        '--starter-color': typeConfig.color,
+                        '--starter-color-2': typeConfig2?.color || typeConfig.color,
+                        animationDelay: `${0.08 + i * 0.08}s`,
+                      }}
+                      onClick={() => confirmStarter(p)}
+                      aria-label={`选择${p.name}作为初始伙伴`}
+                    >
+                      <span className="starter-choice-portrait">
+                        <span className="starter-dex-number">#{String(p.id).padStart(3,'0')}</span>
+                        <span className="starter-avatar-wrap">{renderAvatar(p)}</span>
+                      </span>
+
+                      <span className="starter-choice-body">
+                        <span className="starter-choice-title">
+                          <span>
+                            <small>初始候选 {i + 1}</small>
+                            <strong>{p.name}</strong>
+                          </span>
+                          <b>Lv.5</b>
+                        </span>
+
+                        <span className="starter-chip-row">
+                          <span className="starter-type-chip" style={{ '--chip-color': typeConfig.color }}>{typeConfig.name}</span>
+                          {typeConfig2 && <span className="starter-type-chip" style={{ '--chip-color': typeConfig2.color }}>{typeConfig2.name}</span>}
+                          <span className="starter-nature-chip">{natureName}</span>
+                        </span>
+
+                        <span className="starter-stat-grid">
+                          {statRows.map((s) => (
+                            <span className="starter-stat-row" key={s.l}>
+                              <span>{s.l}</span>
+                              <i aria-hidden="true"><em style={{ width: `${Math.min(100, s.v / s.max * 100)}%`, '--stat-color': s.c }} /></i>
+                              <b style={{ color: s.c }}>{s.v}</b>
+                            </span>
+                          ))}
+                        </span>
+
+                        <span className="starter-total-row">
+                          <span>种族值总和</span>
+                          <b>{bst}</b>
+                        </span>
+
+                        <span className="starter-choose-btn">就决定是你了！</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="starter-lab-note">数值受性格与个体值影响，所见即所得。可重新随机，但确认伙伴后将进入正式冒险。</p>
+          </section>
+        ) : (
+          <section className="starter-waiting-panel" aria-label="开始流程">
+            <div className="starter-waiting-orb">
+              <SuperSpiritIcon size={72} />
+            </div>
+            <div className="starter-waiting-copy">
+              <span>Partner Lab</span>
+              <h2>第一只伙伴正在等待登记</h2>
+              <p>输入名字后，博士会从图鉴中抽取四只适合培养的初始精灵。</p>
+            </div>
+            <div className="starter-step-row">
+              <span className={nameReady ? 'is-done' : ''}>登记名字</span>
+              <span>博士筛选</span>
+              <span>伙伴确认</span>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
     );
   };
 
@@ -19691,30 +19642,123 @@ const renderMenu = () => {
     { label: '徽章征途', meta: `${badgeCount}/${MAIN_GYM_BADGE_COUNT}`, done: badgeCount > 0 },
     { label: '联盟资格', meta: leagueUnlocked ? '已解锁' : '冠军之路剧情后', done: leagueUnlocked },
   ];
+  const teamPreview = hasSave && party?.length ? party.slice(0, 6) : [];
+  const petCollectionPct = Math.min(100, Math.round((caughtDex.length / Math.max(1, POKEDEX.length)) * 100));
+  const leadTypeName = TYPES[leadPetDex?.type]?.name || '未知';
+  const leadTypeColor = TYPES[leadPetDex?.type]?.color || '#8fd8ff';
+  const trainingFocus = hasSave
+    ? (dailyTasksDone >= 5 ? '今日训练已完成' : `今日还可完成 ${Math.max(0, 5 - dailyTasksDone)} 项训练`)
+    : '选择初始伙伴后开启训练';
+  const ranchStats = [
+    { label: '图鉴收集', value: `${caughtDex.length}/${POKEDEX.length}`, meta: `${petCollectionPct}%`, tone: 'dex' },
+    { label: '技能库', value: `${allSkills.length}`, meta: '可研习招式', tone: 'skill' },
+    { label: '队伍规模', value: hasSave ? `${party?.length || 0}/6` : '0/6', meta: leadPet ? `${leadTypeName}领队` : '待集结', tone: 'team' },
+  ];
 
   return (
-    <main className="screen home-screen" id="main-content">
+    <main className="screen home-screen home-ranch-screen" id="main-content">
       <a className="skip-link" href="#home-command">跳到系统入口</a>
-      <div className="home-bg home-bg-fire" />
-      <div className="home-bg home-bg-sigil" aria-hidden="true" />
-      <div className="home-bg home-bg-mountains" aria-hidden="true" />
-      <div className="home-grain" aria-hidden="true" />
+      <div className="home-ranch-sky" aria-hidden="true" />
+      <div className="home-ranch-field" aria-hidden="true" />
+      <div className="home-ranch-grid" aria-hidden="true" />
 
-      <section className="home-shell" aria-label={`${GAME_NAME}首页`}>
-        <aside className="home-hero-panel">
-          <div className="home-brand-mark">
-            <SuperSpiritIcon className="home-brand-icon" size={64} />
+      <section className="home-ranch-shell" aria-label={`${GAME_NAME}首页`}>
+        <section className="home-ranch-hero" aria-label="伙伴培育舱">
+          <div className="home-ranch-brand">
+            <SuperSpiritIcon className="home-ranch-logo" size={58} />
             <div>
-              <div className="home-kicker">{GAME_EN_NAME}</div>
-              <h1 className="home-title">{GAME_NAME}</h1>
+              <span>{GAME_EN_NAME}</span>
+              <h1>{GAME_NAME}</h1>
+              <p>{GAME_TAGLINE}</p>
             </div>
           </div>
-          <p className="home-subtitle">{GAME_TAGLINE}。属性克制、技能 PP、捕捉与进化是每一场冒险的核心。</p>
 
-          <div className="home-progress-rail" aria-label="冒险进度">
-            <div className="home-progress-copy">
-              <span>冒险完成度</span>
-              <strong>{homeProgress}%</strong>
+          <div className="home-ranch-stage">
+            <div className="home-ranch-ring" aria-hidden="true" />
+            <div className="home-ranch-pad" aria-hidden="true" />
+            <div className="home-ranch-partner" style={{ '--partner-type': leadTypeColor }}>
+              {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
+                <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
+              ) : (
+                <span title={leadPetDex?.name || '初始伙伴'}>{leadPetDex?.emoji || leadPet?.emoji || (hasSave ? '🐾' : '🔴')}</span>
+              )}
+            </div>
+            <div className="home-ranch-partner-card">
+              <span>{hasSave ? '当前领队' : '伙伴培育舱'}</span>
+              <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待选择初始伙伴'}</strong>
+              <small>{leadPet ? `Lv.${leadPet.level || 1} · ${leadTypeName}属性 · ${trainingFocus}` : '从第一只伙伴开始建立队伍'}</small>
+            </div>
+          </div>
+
+          <div className="home-team-roster" aria-label="当前队伍">
+            {teamPreview.length > 0 ? teamPreview.map((pet, idx) => {
+              const dex = POKEDEX.find(p => p.id === pet.id);
+              return (
+                <button type="button" className="home-team-slot is-filled" key={pet.uid || `${pet.id}-${idx}`} onClick={() => setViewStatPet(pet)} title={pet.nickname || dex?.name || pet.name}>
+                  {renderAvatar(pet)}
+                  <span>Lv.{pet.level || 1}</span>
+                </button>
+              );
+            }) : [0, 1, 2, 3, 4, 5].map(i => (
+              <div className="home-team-slot" key={i}>
+                {titleSprites[i % Math.max(1, titleSprites.length)] ? <img src={titleSprites[i % titleSprites.length]} alt="" onError={(ev) => { ev.currentTarget.style.display = 'none'; }} /> : <span>+</span>}
+              </div>
+            ))}
+          </div>
+
+          <button className="home-primary-btn home-ranch-primary" onClick={handleStartGame}>
+            <span className="home-primary-icon">🔴</span>
+            <span>
+              <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
+              <small>{hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name}` : nextObjective) : '选择伙伴，进入精灵世界'}</small>
+            </span>
+            <b aria-hidden="true">›</b>
+          </button>
+
+          <div className="home-ranch-statline">
+            {ranchStats.map(stat => (
+              <div className={`home-ranch-mini is-${stat.tone}`} key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.meta}</small>
+              </div>
+            ))}
+          </div>
+
+          <footer className="home-ranch-footer">
+            <span>{POKEDEX.length} 精灵</span>
+            <span>{JUTSU_DB.length} 忍术</span>
+            <span>{GAME_VERSION_LABEL}</span>
+          </footer>
+        </section>
+
+        <section className="home-command-panel home-ranch-dashboard" id="home-command" aria-label="冒险控制台">
+          <div className="home-command-head home-ranch-command-head">
+            <div>
+              <span className="home-section-label">训练家概览</span>
+              <h2>{nextObjective}</h2>
+              <p>{hasSave ? trainingFocus : '建立队伍后可以进行图鉴收集、道馆挑战、忍术修行与无限城探索。'}</p>
+            </div>
+            <div className="home-gold-pill">💎 {(achStats.totalGoldEarned ?? 0).toLocaleString()}</div>
+          </div>
+
+          <div className="home-stat-grid home-ranch-stat-grid">
+            {commandStats.map(stat => (
+              <article className={`home-stat-card is-${stat.tone}`} key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.hint}</small>
+              </article>
+            ))}
+          </div>
+
+          <article className="home-cultivation-card">
+            <div className="home-cultivation-head">
+              <div>
+                <span>培养路线</span>
+                <strong>伙伴成长与联盟资格</strong>
+              </div>
+              <b>{homeProgress}%</b>
             </div>
             <div className="home-progress-track">
               <span style={{ width: `${homeProgress}%` }} />
@@ -19728,72 +19772,10 @@ const renderMenu = () => {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="home-lead-card">
-            <div className="home-lead-orbit" aria-hidden="true" />
-            <div className="home-lead-avatar">
-              <span title={leadPetDex?.name || '初始伙伴'}>{leadPetDex?.emoji || leadPet?.emoji || (hasSave ? '🐾' : '🔴')}</span>
-            </div>
-            <div className="home-lead-copy">
-              <span className="home-lead-label">{hasSave ? '当前领队' : '新的冒险'}</span>
-              <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待选择初始伙伴'}</strong>
-              <small>{leadPet ? `Lv.${leadPet.level || 1} · ${TYPES[leadPetDex?.type]?.name || '未知'}属性` : '从第一只伙伴开始建立队伍'}</small>
-            </div>
-          </div>
-
-          <button className="home-primary-btn" onClick={handleStartGame}>
-            <span className="home-primary-icon">🔴</span>
-            <span>
-              <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-              <small>{hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name}` : '读取上次的冒险进度') : '成为训练家，进入精灵世界'}</small>
-            </span>
-            <b aria-hidden="true">›</b>
-          </button>
+          </article>
 
           {playerFaction && (
-          <div className="home-faction-strip" aria-label="阵营概览">
-            {FACTION_IDS.map(fid => {
-              const f = FACTIONS[fid];
-              const isP = kingdomWar?.faction === fid;
-              return (
-                <div className={isP ? 'home-faction-chip is-active' : 'home-faction-chip'} key={fid}>
-                  <span>{f.icon}</span>
-                  <strong>{f.name}</strong>
-                </div>
-              );
-            })}
-          </div>
-          )}
-
-          <footer className="home-footer-note">
-            <span>{POKEDEX.length} 精灵</span>
-            <span>{JUTSU_DB.length} 忍术</span>
-            <span>{GAME_VERSION_LABEL}</span>
-          </footer>
-        </aside>
-
-        <section className="home-command-panel" id="home-command">
-          <div className="home-command-head">
-            <div>
-              <span className="home-section-label">训练家概览</span>
-              <h2>{nextObjective}</h2>
-            </div>
-            <div className="home-gold-pill">💎 {(achStats.totalGoldEarned ?? 0).toLocaleString()}</div>
-          </div>
-
-          <div className="home-stat-grid">
-            {commandStats.map(stat => (
-              <article className={`home-stat-card is-${stat.tone}`} key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.hint}</small>
-              </article>
-            ))}
-          </div>
-
-          {playerFaction && (
-            <article className="home-war-card">
+            <article className="home-war-card home-ranch-war-card">
               <div className="home-war-main">
                 <span className="home-war-icon">{playerFaction.icon}</span>
                 <div>
@@ -19845,7 +19827,7 @@ const renderMenu = () => {
             </article>
           )}
 
-          <nav className="home-entry-grid" aria-label="系统入口">
+          <nav className="home-entry-grid home-ranch-entry-grid" aria-label="系统入口">
             {quickEntries.map(btn => (
               <button className={btn.danger ? 'home-entry-btn is-danger' : 'home-entry-btn'} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
                 <span className="home-entry-icon">{btn.icon}</span>
