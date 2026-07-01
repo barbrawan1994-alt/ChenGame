@@ -10821,6 +10821,16 @@ select:focus-visible,
   min-height: 0;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+}
+.codex-hero,
+.codex-overview,
+.codex-toolbar,
+.codex-bonus-strip {
+  flex-shrink: 0;
+}
+.codex-pagination {
+  flex-shrink: 0;
 }
 .codex-hero,
 .codex-overview,
@@ -11187,11 +11197,12 @@ select:focus-visible,
 .codex-grid {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 10px;
   align-content: start;
-  padding: 2px 2px 8px;
+  padding: 2px 2px 24px;
   scrollbar-color: rgba(185,231,255,0.24) transparent;
 }
 .codex-pet-grid {
