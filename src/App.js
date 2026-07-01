@@ -1313,6 +1313,41 @@ const [infinityState, setInfinityState] = useState(() => {
 
   const battleResultHandledRef = useRef(false);
   const pendingJutsuWinForBountyRef = useRef(false);
+  const playerTookDamageRef = useRef(false);
+  const markPlayerTookDamage = (battleState) => {
+    playerTookDamageRef.current = true;
+    if (!battleState) return;
+    battleState._playerTookDamage = true;
+    if (battleState._partyStartHp && battleState.playerCombatStates) {
+      if (!battleState._partyMinHp) battleState._partyMinHp = [...battleState._partyStartHp];
+      battleState.playerCombatStates.forEach((p, i) => {
+        if (p && p.currentHp != null) {
+          battleState._partyMinHp[i] = Math.min(battleState._partyMinHp[i] ?? p.currentHp, p.currentHp);
+        }
+      });
+    }
+  };
+  const auditPlayerHpLoss = (battleState, hpSnapshot) => {
+    if (!battleState?.playerCombatStates) return;
+    const snap = hpSnapshot || battleState._partyStartHp;
+    if (!snap) return;
+    battleState.playerCombatStates.forEach((p, i) => {
+      if (p && snap[i] != null && p.currentHp < snap[i]) markPlayerTookDamage(battleState);
+    });
+  };
+  const didPlayerTakeBattleDamage = (battleState, finalParty) => {
+    if (playerTookDamageRef.current) return true;
+    if (battleState?._playerTookDamage) return true;
+    const starts = battleState?._partyStartHp;
+    if (!starts) return false;
+    const mins = battleState?._partyMinHp;
+    if (mins?.some((m, i) => m != null && starts[i] != null && m < starts[i])) return true;
+    const combat = battleState?.playerCombatStates;
+    if (combat?.some((p, i) => p && starts[i] != null && p.currentHp < starts[i])) return true;
+    const team = finalParty;
+    if (team?.some((p, i) => p && starts[i] != null && p.currentHp < starts[i])) return true;
+    return false;
+  };
    // 🎵 [新增] 音频控制 Ref 和 State
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(savedData.isMuted ?? false); // 静音状态
@@ -1954,7 +1989,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
       }
       unit.currentHp = Math.max(0, unit.currentHp - dot);
-      if (side === 'player' && battleState) battleState._playerTookDamage = true;
+      if (side === 'player' && battleState) markPlayerTookDamage(battleState);
       addLogFn(`${unit.name} 受到 ${unit.status === 'BRN' ? '灼伤' : unit.volatiles?.badlyPoisoned ? '剧毒' : '毒'} 伤害 ${dot}!`);
       if (unit.currentHp <= 0) {
         if (side === 'player') playerFainted = true;
@@ -11161,9 +11196,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (pet && cs) cs._adaptMult = getAdaptationMult(pet, mapIdForEco);
     });
 
+    playerTookDamageRef.current = false;
+    const partyStartHp = battlePlayerParty.map(p => p?.currentHp ?? 0);
+
     setBattle({
       enemyParty: battleEnemyParty,
       playerCombatStates: battlePlayerParty,
+      _partyStartHp: partyStartHp,
+      _partyMinHp: [...partyStartHp],
+      _playerTookDamage: false,
       enemyActiveIdx: 0, 
       activeIdx, 
       phase: 'input', 
@@ -12494,6 +12535,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         setParty(currentParty);
         await wait(800);
+        auditPlayerHpLoss(tempBattle);
         pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
         handleWin(currentParty);
         return;
@@ -12563,8 +12605,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         pendingDoubleMove: undefined,
         phase: 'input',
         turnCount: (prev.turnCount || 0) + 1,
+        _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage || playerTookDamageRef.current,
+        _partyMinHp: tempBattle._partyMinHp || prev._partyMinHp,
         };
       });
+      auditPlayerHpLoss(tempBattle);
 
     } catch (e) {
       console.error("Double Battle Error:", e);
@@ -13340,6 +13385,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (vow.sacrifice.hpPercent) {
             const cost = Math.floor(getStats(player).maxHp * vow.sacrifice.hpPercent);
             player.currentHp = Math.max(1, player.currentHp - cost);
+            markPlayerTookDamage(battle);
             addLog(`📜 ${player.name} 献出 ${cost} HP!`);
         }
         if (vow.sacrifice.cePercent) {
@@ -13489,10 +13535,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [修改] 敌人回合 (含被动特性与天气结算)
   // ==========================================
   const enemyTurn = async (currentBattleState = null) => {
+   let state = currentBattleState || battle;
+   let turnPlayerHpSnapshot = state?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
    try {
     await wait(500);
 
-    const state = currentBattleState || battle;
+    state = currentBattleState || battle;
+    turnPlayerHpSnapshot = state?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
     if (!state) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); return; }
     const player = state.playerCombatStates?.[state.activeIdx];
     const enemy = state.enemyParty?.[state.enemyActiveIdx];
@@ -13773,6 +13822,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           addLog(`🤝 [敌方] ${enemy.name} 和 ${ePt.name} 发动协作技——【${eCombo.name}】！`);
           if (eIsCrit) addLog(`💥 暴击！`);
           player.currentHp = Math.max(0, player.currentHp - eDmg);
+          markPlayerTookDamage(state);
           addLog(`💥 ${eCombo.name} 对 ${player.name} 造成 ${eDmg} 点伤害！`);
 
           if (eCombo.effect) {
@@ -14069,6 +14119,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (weatherDmg > 0) {
             unit.currentHp = Math.max(0, unit.currentHp - weatherDmg);
+            if (isPlayer) markPlayerTookDamage(state);
             if (unit.currentHp <= 0 && isPlayer) playerDied = true;
         }
     };
@@ -14114,6 +14165,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             target.currentHp = Math.max(0, target.currentHp - dotDmg);
             addLog(`🌀 领域效果: ${target.name} 受到 ${dotDmg} 点领域伤害!`);
             if (target === player && target.currentHp <= 0) playerDied = true;
+            if (target === player) markPlayerTookDamage(state);
         }
         if (eff.healPerTurn > 0) {
             const owner = dom.ownerSide === 'player' ? player : enemy;
@@ -14269,11 +14321,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
           isolateTurns: state.isolateTurns || 0,
           phase: 'input',
           turnCount: (state.turnCount || prev?.turnCount || 0) + 1,
+          _playerTookDamage: state._playerTookDamage || prev._playerTookDamage || playerTookDamageRef.current,
+          _partyMinHp: state._partyMinHp || prev._partyMinHp,
       }));
     }
    } catch (e) {
       console.error("Enemy Turn Error:", e);
       setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
+    } finally {
+      auditPlayerHpLoss(state, turnPlayerHpSnapshot);
     }
   };
 
@@ -14447,6 +14503,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const performAction = async (attacker, defender, move, source, battleState) => {
     if (!battleState && !battle) return false;
     if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
+    const playerHpSnapshot = battleState?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
+    try {
     if (attacker.currentHp <= 0) return false;
     if (!attacker.stages) attacker.stages = { ...DEFAULT_BATTLE_STAGES };
     if (!defender.stages) defender.stages = { ...DEFAULT_BATTLE_STAGES };
@@ -14534,7 +14592,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 const confStats = getStats(attacker, atkState.stages, atkState.status);
                 const selfDmg = Math.max(1, Math.floor(((2 * (attacker.level || 1) / 5 + 2) * 40 * confStats.p_atk / (Math.max(1, confStats.p_def) * 50) + 2)));
             attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
-                if (source === 'player' && battleState) battleState._playerTookDamage = true;
+                if (source === 'player' && battleState) markPlayerTookDamage(battleState);
                 if (attacker.currentHp <= 0) {
                   atkState._diedFromConfusion = true;
                   addLog(`${attacker.name} 倒下了！`);
@@ -15258,7 +15316,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (isNaN(defender.currentHp)) defender.currentHp = 0;
         if (survivalMsg) addLog(survivalMsg);
         isDead = defender.currentHp <= 0;
-        if (dmg > 0 && source === 'enemy' && battleState) battleState._playerTookDamage = true;
+        if (dmg > 0 && source === 'enemy' && battleState) markPlayerTookDamage(battleState);
         if (dmg > 0 && source === 'player' && battleState) {
           battleState._lastPlayerMoveDmg = dmg;
           battleState._worldBossDmgDealt = (battleState._worldBossDmgDealt || 0) + dmg;
@@ -15459,7 +15517,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (recoilRate && !isDead) {
             const recoilDmg = Math.floor(dmg * Math.min(0.35, recoilRate));
             attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
-            if (source === 'player' && battleState) battleState._playerTookDamage = true;
+            if (source === 'player' && battleState) markPlayerTookDamage(battleState);
             addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
           }
           if (eff.drain) {
@@ -15640,7 +15698,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (isDead && koRecoilRate && dmg > 0) {
       const recoilDmg = Math.floor(dmg * Math.min(0.35, koRecoilRate));
       attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
-      if (source === 'player' && battleState) battleState._playerTookDamage = true;
+      if (source === 'player' && battleState) markPlayerTookDamage(battleState);
       addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
     }
 
@@ -15691,6 +15749,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     return isDead;
+    } finally {
+      auditPlayerHpLoss(battleState, playerHpSnapshot);
+    }
   };
 
    // ==========================================
@@ -15985,6 +16046,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
        try {
          const battleSnapshot = battle;
          if (!battleSnapshot || battleResultHandledRef.current) return;
+         auditPlayerHpLoss(battleSnapshot);
          battleResultHandledRef.current = true;
          if (battleSnapshot._weatherOverride) setWeather('CLEAR');
          {
@@ -17324,10 +17386,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     winAchUpdates.currentWinStreak = p => newStreak;
     winAchUpdates.maxWinStreak = newStreak;
     const activePet = battle.playerCombatStates?.[battle.activeIdx];
+    const playerLostHpInBattle = didPlayerTakeBattleDamage(battleSnapshot, finalParty);
     if (activePet) {
       const maxHp = getStats(party[battle.activeIdx] || activePet).maxHp;
       if (activePet.currentHp <= maxHp * 0.1) winAchUpdates.clutchWins = 1;
-      if (!battle._playerTookDamage) winAchUpdates.perfectWins = 1;
+      if (!playerLostHpInBattle) winAchUpdates.perfectWins = 1;
     }
     if (isTrainer && battle.playerCombatStates) {
       const combatTeam = battle.playerCombatStates.filter(p => p);
@@ -17381,8 +17444,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const pMaxSkill = Math.max(0, ...(party || []).map(p => p?.moves?.length || 0));
     if (pMaxSkill > 0) winAchUpdates.maxSkillCount = pMaxSkill;
     if (isTrainer && !battle._playerSwitched) winAchUpdates.noSwitchTrainerWins = 1;
-    if (!battle._playerTookDamage && battle.dungeonId) winAchUpdates.dungeonPerfectClears = 1;
-    if (!battle._playerTookDamage && isGym) winAchUpdates.perfectBossKills = 1;
+    if (!playerLostHpInBattle && battle.dungeonId) winAchUpdates.dungeonPerfectClears = 1;
+    if (!playerLostHpInBattle && isGym) winAchUpdates.perfectBossKills = 1;
     if (isTrainer && activePet) {
       const combatTeam = battle.playerCombatStates?.filter(p => p) || [];
       const aliveCount = combatTeam.filter(p => p.currentHp > 0).length;
