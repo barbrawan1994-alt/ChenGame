@@ -1947,8 +1947,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
       }
       let dot;
       if (unit.status === 'PSN' && unit.volatiles?.badlyPoisoned) {
-        unit.volatiles.badlyPoisonedTurns = (unit.volatiles.badlyPoisonedTurns || 1) + 1;
-        dot = Math.floor(getStats(unit).maxHp * Math.min(0.25, unit.volatiles.badlyPoisonedTurns / 16));
+        const turns = unit.volatiles.badlyPoisonedTurns || 1;
+        dot = Math.max(1, Math.floor(getStats(unit).maxHp * Math.min(0.25, turns / 16)));
+        unit.volatiles.badlyPoisonedTurns = turns + 1;
       } else {
         dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
       }
@@ -2630,6 +2631,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
         if (item.id === 'max_candy') {
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
             if (badges.length < 8) { showMapToast('🔒', '徽章不足', '神奇糖果需要 8 枚徽章后才能使用。', 2200); return; }
+            if ((inventory[item.id] || 0) <= 0) { showMapToast('❌', '提示', '道具数量不足！', 1500); return; }
             const oldLv = pet.level;
             pet.level = Math.min(100, pet.level + 20);
             pet.exp = 0;
@@ -2637,7 +2639,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             
             const dex = POKEDEX.find(p => p.id === pet.id);
             if (dex?.learnset) {
-              for (let lv = oldLv + 1; lv <= 100; lv++) {
+              for (let lv = oldLv + 1; lv <= pet.level; lv++) {
                 const learn = dex.learnset.filter(ls => ls.level === lv);
                 learn.forEach(ls => {
                   const move = allSkills.find(s => s.id === ls.move);
@@ -2664,9 +2666,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
             
             consumed = true;
             msg = `不可思议！${pet.name} 瞬间升到了 Lv.100！`;
-            setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 1) - 1)}));
+            setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}));
         } else if (item.id === 'exp_candy') {
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
+            if ((inventory.exp_candy || 0) <= 0) { showMapToast('❌', '提示', '道具数量不足！', 1500); return; }
 
             const candyCount = inventory.exp_candy || 0;
             const maxLevels = Math.min(candyCount, 100 - pet.level);
@@ -2762,7 +2765,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             }
 
             consumed = true;
-            setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 1) - 1)}));
+            setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}));
         } else {
             if (!pet.evs) pet.evs = {};
             if (!pet.evs[item.stat]) pet.evs[item.stat] = 0;
@@ -6973,7 +6976,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     if (enemies.length === 0) { showMapToast('❌','错误','无法生成对手',1500); return; }
     startBattle({ customParty: enemies, trainerName: `生存试炼·第${wave + 1}波` }, 'naruto_survival', { wave });
-    setNarutoExamUI(prev => prev ? ({ ...prev, survivalWave: wave + 1 }) : prev);
   };
 
   const advanceForest = () => {
@@ -14769,7 +14771,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                   targetState.volatiles.badlyPoisoned = true;
                   targetState.volatiles.badlyPoisonedTurns = 1;
                 }
-                if (eff.status === 'SLP') targetState.volatiles.sleepTurns = _.random(2, 4);
+                if (eff.status === 'SLP') { if (!targetState.volatiles) targetState.volatiles = {}; targetState.volatiles.sleepTurns = _.random(2, 4); }
                 const statusNames = { BRN:'灼伤', PSN:'中毒', PAR:'麻痹', SLP:'睡眠', FRZ:'冰冻' };
                 addLog(`${targetName} ${statusNames[eff.status] ? '陷入了' + statusNames[eff.status] + '状态' : '陷入了异常状态'}!`);
                 _setAnim({ type: eff.status, target: targetSide });
@@ -15410,26 +15412,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (move.effect && dmg > 0 && !isDead && !isImmune && !isDodged) {
           const eff = move.effect;
-          const _dt = defState.type, _dt2 = defState.type2 || defState.secondaryType;
-          if (eff.burn && !defState.status && !(_dt === 'FIRE' || _dt2 === 'FIRE') && Math.random() < eff.burn) {
-            defState.status = 'BRN'; addLog(`🔥 ${defender.name} 被灼伤了！`);
-          }
-          if (eff.paralyze && !defState.status && !(_dt === 'ELECTRIC' || _dt2 === 'ELECTRIC') && Math.random() < eff.paralyze) {
-            defState.status = 'PAR'; addLog(`⚡ ${defender.name} 被麻痹了！`);
-          }
-          if (eff.poison && !defState.status && !(_dt === 'POISON' || _dt2 === 'POISON' || _dt === 'STEEL' || _dt2 === 'STEEL') && Math.random() < (typeof eff.poison === 'number' ? eff.poison : 0.3)) {
-            defState.status = 'PSN'; addLog(`☠️ ${defender.name} 中毒了！`);
-          }
-          if (eff.freeze && !defState.status && !(_dt === 'ICE' || _dt2 === 'ICE') && Math.random() < eff.freeze) {
-            defState.status = 'FRZ'; addLog(`❄️ ${defender.name} 被冻结了！`);
-          }
           if (eff.flinch && Math.random() < eff.flinch) {
             defState.volatiles = { ...(defState.volatiles || {}), flinched: true };
             addLog(`${defender.name} 畏缩了！`);
-          }
-          if (eff.confuse && !defState.volatiles?.confused && Math.random() < eff.confuse) {
-            defState.volatiles = { ...(defState.volatiles || {}), confused: 3 };
-            addLog(`${defender.name} 陷入了混乱！`);
           }
           if (eff.defDown && Math.random() < (eff.defDown > 1 ? 1 : eff.defDown)) {
             defState.stages.p_def = Math.max(-6, (defState.stages.p_def || 0) - 1);
@@ -16923,7 +16908,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const mpGain = 18 + Math.floor(Math.random() * 14) + Math.floor((avgELv || 48) / 9);
         setKingdomWar(prev => {
             const next = { ...prev, warContribution: (prev.warContribution || 0) + contribGain, seasonContribution: (prev.seasonContribution || 0) + contribGain, lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain, factionTokens: (prev.factionTokens || 0) + tokenGain };
-            next.dailyCounts = { ...(next.dailyCounts || {}), kills: ((next.dailyCounts || {}).kills || 0) + 1 };
+            const today = getLocalDateStr();
+            const dc = (next.dailyCounts?.resetDate === today) ? (next.dailyCounts || {}) : { resetDate: today, kills: 0 };
+            next.dailyCounts = { ...dc, kills: (dc.kills || 0) + 1 };
             next.kwKills = (next.kwKills || prev.kwKills || 0) + 1;
             next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
             const midNum = Number(mapIdKw);
@@ -17274,14 +17261,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 忍者试炼生存试炼结算
     if (battle.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
-      const wave = narutoExamUI.survivalWave || 0;
+      const wave = (narutoExamUI.survivalWave || 0) + 1;
       if (wave >= (narutoExamUI.survivalWaves || 2)) {
         showMapToast('✅','生存试炼通过','不愧是有实力的忍者！进入死亡之森',2500);
         setBattle(null);
-        setNarutoExamUI(prev => prev ? ({ ...prev, phase: 'forest', forestProgress: 0, scrolls: { heaven: 0, earth: 0 } }) : prev);
+        setNarutoExamUI(prev => prev ? ({ ...prev, survivalWave: wave, phase: 'forest', forestProgress: 0, scrolls: { heaven: 0, earth: 0 } }) : prev);
       } else {
-        showMapToast('⚔️','第'+(wave+1)+'波通过','准备迎接下一波敌人！(不会回复HP)',2000);
+        showMapToast('⚔️','第'+wave+'波通过','准备迎接下一波敌人！(不会回复HP)',2000);
         setBattle(null);
+        setNarutoExamUI(prev => prev ? ({ ...prev, survivalWave: wave }) : prev);
         setView('naruto_exam');
       }
       return;
@@ -17591,6 +17579,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setView('naruto_exam');
       showMapToast('💀', '生存试炼失败', '实力不足，明日再战！', 3000);
     } else if (battle?.type === 'naruto_exam') {
+      setNarutoExamUI(null);
+      setNarutoState(prev => ({ ...prev, lastExamDate: getLocalDateStr() }));
       setView('naruto_exam');
       showMapToast('💀', '试炼失败', '忍者试炼失败，明日再挑战！', 3000);
     } else if (battle?.type === 'gang_war') {
@@ -17670,6 +17660,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (!combatState) return p;
             let newPet = { ...p };
             newPet.currentHp = combatState.currentHp;
+            newPet.status = combatState.status || null;
             newPet.moves = newPet.moves.map(m => {
                 const cm = combatState.combatMoves?.find(c => c.name === m.name && !c.isExtra);
                 return cm ? { ...m, pp: cm.pp } : m;
@@ -21937,6 +21928,13 @@ const renderMenu = () => {
                           <button onClick={() => {
                             if (!canAfford) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
                             setConfirmModal({ title:'🎖️ 令牌购买', msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`, onOk: () => {
+                            const currentTokens = kingdomWar?.factionTokens || 0;
+                            if (currentTokens < item.cost) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
+                            setKingdomWar(prev => {
+                              const newTokens = (prev.factionTokens || 0) - item.cost;
+                              if (newTokens < 0) return prev;
+                              return { ...prev, factionTokens: newTokens };
+                            });
                             if (item.id === 'heal_all') {
                               setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
                             } else if (item.id === 'exp_buff') {
@@ -21977,11 +21975,6 @@ const renderMenu = () => {
                               unlockTitle('乱世霸主');
                               showMapToast('👑', '传国玉玺', '解锁称号「乱世霸主」', 3000);
                             }
-                            setKingdomWar(prev => {
-                              const newTokens = (prev.factionTokens || 0) - item.cost;
-                              if (newTokens < 0) return prev;
-                              return { ...prev, factionTokens: newTokens };
-                            });
                             }});
                           }}
                           style={{
