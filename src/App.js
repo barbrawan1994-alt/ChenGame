@@ -1031,7 +1031,7 @@ const [pendingTask, setPendingTask] = useState(null);
 
   
   // 临时的输入状态
-  const [tempName, setTempName] = useState(''); 
+  const [tempName, setTempName] = useState(hasSave && party.length === 0 ? (savedData.trainerName || '') : ''); 
 
  
   // 1. 在 useState 区域添加这两个状态
@@ -3332,10 +3332,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const handleStartGame = () => {
-    if (hasSave) {
+    if (hasSave && party.length > 0) {
       setView('world_map');
     } else {
-      setView('name_input'); 
+      setView('name_input');
     }
   };
     // 打开装备选择弹窗
@@ -11710,6 +11710,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             ...prev,
             playerCombatStates: tempBattle.playerCombatStates.map(p => ({...p})),
             enemyParty: tempBattle.enemyParty.map(e => ({...e})),
+            _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage,
+            _playerSwitched: tempBattle._playerSwitched || prev._playerSwitched,
             ...extra,
           }));
         };
@@ -14532,6 +14534,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 const confStats = getStats(attacker, atkState.stages, atkState.status);
                 const selfDmg = Math.max(1, Math.floor(((2 * (attacker.level || 1) / 5 + 2) * 40 * confStats.p_atk / (Math.max(1, confStats.p_def) * 50) + 2)));
             attacker.currentHp = Math.max(0, attacker.currentHp - selfDmg);
+                if (source === 'player' && battleState) battleState._playerTookDamage = true;
                 if (attacker.currentHp <= 0) {
                   atkState._diedFromConfusion = true;
                   addLog(`${attacker.name} 倒下了！`);
@@ -15456,6 +15459,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (recoilRate && !isDead) {
             const recoilDmg = Math.floor(dmg * Math.min(0.35, recoilRate));
             attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
+            if (source === 'player' && battleState) battleState._playerTookDamage = true;
             addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
           }
           if (eff.drain) {
@@ -15636,6 +15640,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (isDead && koRecoilRate && dmg > 0) {
       const recoilDmg = Math.floor(dmg * Math.min(0.35, koRecoilRate));
       attacker.currentHp = Math.max(0, attacker.currentHp - recoilDmg);
+      if (source === 'player' && battleState) battleState._playerTookDamage = true;
       addLog(`${attacker.name} 受到了 ${recoilDmg} 反作用力伤害！`);
     }
 
