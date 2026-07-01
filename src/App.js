@@ -24099,9 +24099,9 @@ const renderMenu = () => {
               <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
                 {ecoEvt && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '22', border:`1px solid ${(ecoEvt.color || '#2E7D32')}55` }}>
-                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
-                    <div style={{ fontSize:'13px', color:'#333', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
+                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '33', border:`1px solid ${(ecoEvt.color || '#2E7D32')}66` }}>
+                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#e8f3ff' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
+                    <div style={{ fontSize:'13px', color:'rgba(232,243,255,0.8)', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
                   </div>
                 )}
                 {adaptSummary.maladapted > 0 && (
@@ -24110,8 +24110,8 @@ const renderMenu = () => {
                   </div>
                 )}
                 {crisis && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '22', border:`1px solid ${crisis.color || '#2E7D32'}55`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
-                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#1a1a2e' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
+                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '33', border:`1px solid ${crisis.color || '#2E7D32'}66`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
+                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#e8f3ff' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
                     {!(ecoCrisisState.cleared || []).includes(crisis.id) && (
                       <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background: crisis.color || '#2E7D32', color:'#fff', cursor:'pointer' }}>调查</button>
                     )}
@@ -24127,13 +24127,13 @@ const renderMenu = () => {
                 {(rescues.length > 0 || puzzles.length > 0 || observations.length > 0) && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
                     {rescues.map(r => (
-                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'12px', padding:'5px 12px', borderRadius:'8px', border:'1px solid #81C784', background:'rgba(76,175,80,0.15)', color:'#1B5E20', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
+                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #81C784', background:'rgba(76,175,80,0.25)', color:'#C8E6C9', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
                     ))}
                     {puzzles.map(p => (
-                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'12px', padding:'5px 12px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.15)', color:'#0D47A1', fontWeight:'600', cursor:'pointer' }}>{p.icon} {p.name}</button>
+                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.25)', color:'#BBDEFB', fontWeight:'600', cursor:'pointer' }}>{p.icon} {p.name}</button>
                     ))}
                     {observations.map(o => (
-                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'12px', padding:'5px 12px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.12)', color:'#4A148C', fontWeight:'600', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
+                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.25)', color:'#E1BEE7', fontWeight:'600', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
                     ))}
                   </div>
                 )}
