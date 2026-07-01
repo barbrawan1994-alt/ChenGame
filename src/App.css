@@ -10091,13 +10091,15 @@ select:focus-visible,
    ===================================================================== */
 .starter-lab-screen {
   box-sizing: border-box;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  inset: 0;
   padding: clamp(18px, 3vw, 42px);
   overflow-x: hidden;
   overflow-y: auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   color: #eef8ff;
   background:
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
@@ -10105,6 +10107,7 @@ select:focus-visible,
     linear-gradient(145deg, #06172f 0%, #13214b 44%, #07393e 100%);
   background-size: 76px 76px, 76px 76px, auto;
   isolation: isolate;
+  z-index: 100;
 }
 .starter-lab-screen::after {
   content: "";
@@ -10161,8 +10164,10 @@ select:focus-visible,
 }
 .starter-lab-shell {
   box-sizing: border-box;
-  width: min(860px, 90vw);
+  width: min(1060px, 94vw);
   max-width: 100%;
+  margin: 0 auto;
+  flex-shrink: 0;
   display: grid;
   gap: 18px;
   animation: popIn 0.45s ease-out both;
@@ -10416,7 +10421,7 @@ select:focus-visible,
 }
 .starter-card-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   align-items: stretch;
 }
@@ -10686,7 +10691,7 @@ select:focus-visible,
 
 @media (max-width: 1120px) {
   .starter-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .starter-lab-intake,
   .starter-selection-head {
@@ -10704,7 +10709,6 @@ select:focus-visible,
 @media (max-width: 720px) {
   .starter-lab-screen {
     padding: 12px;
-    place-items: start center;
   }
   .starter-lab-shell {
     width: 100%;
