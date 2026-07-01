@@ -10170,7 +10170,11 @@ select:focus-visible,
   flex-shrink: 0;
   display: grid;
   gap: 18px;
-  animation: popIn 0.45s ease-out both;
+  animation: starterShellIn 0.45s ease-out both;
+}
+@keyframes starterShellIn {
+  from { transform: scale(0.95) translateY(12px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
 }
 .starter-lab-hero,
 .starter-lab-intake,
