@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TYPES } from '../../data/types';
 
 const SKILL_PAGE_SIZE = 60;
@@ -10,106 +10,131 @@ export default React.memo(function SkillDexScreen({ allSkills, onBack }) {
 
   const filteredSkills = allSkills.filter(s => {
     const matchType = skillFilter === 'ALL' || s.t === skillFilter || (skillFilter === 'STATUS' && s.category === 'status');
-    const matchSearch = s.name.includes(skillSearchTerm);
+    const matchSearch = !skillSearchTerm || s.name.includes(skillSearchTerm);
     return matchType && matchSearch;
   });
+  const pageCount = Math.max(1, Math.ceil(filteredSkills.length / SKILL_PAGE_SIZE));
+  const safePage = Math.min(skillPage, pageCount - 1);
+  const visibleSkills = filteredSkills.slice(safePage * SKILL_PAGE_SIZE, (safePage + 1) * SKILL_PAGE_SIZE);
+
+  const skillStats = useMemo(() => {
+    const attackSkills = allSkills.filter(s => (s.p || 0) > 0);
+    const statusSkills = allSkills.filter(s => s.category === 'status' || !(s.p > 0));
+    const maxPower = attackSkills.reduce((max, s) => Math.max(max, s.p || 0), 0);
+    return { attack: attackSkills.length, status: statusSkills.length, maxPower };
+  }, [allSkills]);
 
   const getSkillCategory = (s) => {
-    if (s.category === 'status') return '\u53D8\u5316';
-    return s.category === 'special' ? '\u7279\u6B8A' : s.p > 0 ? '\u7269\u7406' : '\u53D8\u5316';
+    if (s.category === 'status') return '变化';
+    return s.category === 'special' ? '特殊' : s.p > 0 ? '物理' : '变化';
   };
   const getPowerColor = (p) => {
-    if (p >= 120) return '#FF1744';
-    if (p >= 80) return '#FF9100';
-    if (p >= 40) return '#FFD600';
-    if (p > 0) return '#69F0AE';
-    return '#616161';
+    if (p >= 120) return '#ff4d6d';
+    if (p >= 80) return '#ffb02e';
+    if (p >= 40) return '#e4e95d';
+    if (p > 0) return '#69f0ae';
+    return '#7c849c';
   };
   const getPowerRank = (p) => {
     if (p >= 120) return 'S';
     if (p >= 80) return 'A';
     if (p >= 40) return 'B';
     if (p > 0) return 'C';
-    return '-';
+    return '辅';
+  };
+  const setFilter = (filter) => {
+    setSkillFilter(filter);
+    setSkillPage(0);
   };
 
   return (
-    <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #0a0a1a 0%, #111133 50%, #0a0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
-      <div style={{padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, background:'rgba(0,0,0,0.3)', backdropFilter:'blur(12px)'}}>
-        <button onClick={onBack} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>{'\u2190'}</button>
-        <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'2px', background:'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>{'\u6280\u80FD\u5927\u767E\u79D1'}</div>
-        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.3)'}}>{filteredSkills.length} {'\u6280\u80FD'}</div>
-      </div>
+    <div className="screen codex-screen is-skill">
+      <div className="codex-shell">
+        <header className="codex-hero">
+          <button className="codex-back" onClick={onBack}>← 返回</button>
+          <div className="codex-title-block">
+            <span>Move Encyclopedia</span>
+            <h1>技能图鉴</h1>
+            <p>按属性、变化技和名称检索技能，快速比较威力、PP、命中与技能分类。</p>
+          </div>
+          <div className="codex-hero-count"><b>{filteredSkills.length}</b><span>/{allSkills.length} 技能</span></div>
+        </header>
 
-      <div style={{padding:'12px 16px', flexShrink:0}}>
-        <div style={{position:'relative', marginBottom:'10px'}}>
-          <input type="text" placeholder="\u641C\u7D22\u6280\u80FD\u540D\u79F0..." value={skillSearchTerm} onChange={e => setSkillSearchTerm(e.target.value)}
-            style={{width:'100%', padding:'10px 14px 10px 36px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.05)', color:'#fff', fontSize:'13px', outline:'none', boxSizing:'border-box'}} />
-          <svg style={{position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', opacity:0.3}} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="white" strokeWidth="2"/><path d="M21 21l-4.35-4.35" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
-        </div>
-        <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
-          <button onClick={()=>{setSkillFilter('ALL');setSkillPage(0);}} style={{padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter==='ALL' ? '#6366f1' : 'rgba(255,255,255,0.06)', color: skillFilter==='ALL' ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>{'\u5168\u90E8'}</button>
-          <button onClick={()=>{setSkillFilter('STATUS');setSkillPage(0);}} style={{padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter==='STATUS' ? '#9C27B0' : 'rgba(255,255,255,0.06)', color: skillFilter==='STATUS' ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>{'\u53D8\u5316'}</button>
-          {Object.keys(TYPES).map(t => (
-            <button key={t} onClick={()=>{setSkillFilter(t);setSkillPage(0);}} style={{padding:'5px 10px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none', flexShrink:0, background: skillFilter===t ? TYPES[t].color : 'rgba(255,255,255,0.06)', color: skillFilter===t ? '#fff' : 'rgba(255,255,255,0.5)', transition:'all 0.2s'}}>{TYPES[t].name}</button>
-          ))}
-        </div>
-      </div>
+        <section className="codex-overview">
+          <article className="codex-panel codex-progress-panel">
+            <div className="codex-sigil">⚡</div>
+            <div className="codex-panel-copy">
+              <span>Move Library</span>
+              <strong>{allSkills.length} 种技能</strong>
+              <p>{skillStats.attack} 个攻击技 · {skillStats.status} 个辅助/变化技，最高威力 {skillStats.maxPower}。</p>
+            </div>
+          </article>
+          <article className="codex-panel codex-stat-panel">
+            <div className="codex-panel-head"><span>当前筛选</span><b>{visibleSkills.length} 张</b></div>
+            <div className="codex-skill-tags">
+              <span>{skillFilter === 'ALL' ? '全部属性' : skillFilter === 'STATUS' ? '变化技能' : TYPES[skillFilter]?.name}</span>
+              <span>第 {safePage + 1} / {pageCount} 页</span>
+              <span>{skillSearchTerm ? `搜索: ${skillSearchTerm}` : '未输入搜索'}</span>
+            </div>
+          </article>
+          <article className="codex-panel codex-insight-panel">
+            <span>阅读提示</span>
+            <strong>S/A/B/C 威力分级</strong>
+            <p>卡片左侧颜色代表属性，右上角等级用于快速定位高威力技能。</p>
+          </article>
+        </section>
 
-      <div style={{flex:1, overflowY:'auto', padding:'0 16px 16px'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px',padding:'0 4px'}}>
-          <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>{'\u5171'} {filteredSkills.length} {'\u4E2A\u6280\u80FD'}</span>
-          {filteredSkills.length > SKILL_PAGE_SIZE && <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-            <button disabled={skillPage===0} onClick={()=>setSkillPage(p=>p-1)} style={{padding:'4px 10px',borderRadius:'8px',fontSize:'11px',cursor:skillPage===0?'default':'pointer',border:'none',background:skillPage===0?'rgba(255,255,255,0.05)':'rgba(99,102,241,0.3)',color:skillPage===0?'rgba(255,255,255,0.2)':'#fff'}}>{'\u4E0A\u4E00\u9875'}</button>
-            <span style={{fontSize:'11px',color:'rgba(255,255,255,0.5)'}}>{skillPage+1}/{Math.ceil(filteredSkills.length/SKILL_PAGE_SIZE)}</span>
-            <button disabled={(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length} onClick={()=>setSkillPage(p=>p+1)} style={{padding:'4px 10px',borderRadius:'8px',fontSize:'11px',cursor:(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length?'default':'pointer',border:'none',background:(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length?'rgba(255,255,255,0.05)':'rgba(99,102,241,0.3)',color:(skillPage+1)*SKILL_PAGE_SIZE>=filteredSkills.length?'rgba(255,255,255,0.2)':'#fff'}}>{'\u4E0B\u4E00\u9875'}</button>
-          </div>}
-        </div>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'10px'}}>
-          {filteredSkills.slice(skillPage * SKILL_PAGE_SIZE, (skillPage + 1) * SKILL_PAGE_SIZE).map((skill, idx) => {
-            const typeColor = TYPES[skill.t]?.color || '#666';
+        <section className="codex-toolbar">
+          <label className="codex-search">
+            <span>⌕</span>
+            <input type="text" placeholder="搜索技能名称..." value={skillSearchTerm} onChange={e => { setSkillSearchTerm(e.target.value); setSkillPage(0); }} />
+          </label>
+          <div className="codex-chip-row">
+            <button className={`codex-chip ${skillFilter === 'ALL' ? 'active' : ''}`} onClick={() => setFilter('ALL')}>全部</button>
+            <button className={`codex-chip ${skillFilter === 'STATUS' ? 'active' : ''}`} style={{'--chip-color': '#a855f7'}} onClick={() => setFilter('STATUS')}>变化</button>
+            {Object.keys(TYPES).map(t => (
+              <button key={t} className={`codex-chip ${skillFilter === t ? 'active' : ''}`} style={{'--chip-color': TYPES[t].color}} onClick={() => setFilter(t)}>{TYPES[t].name}</button>
+            ))}
+          </div>
+        </section>
+
+        <div className="codex-grid codex-skill-grid">
+          {visibleSkills.map((skill, idx) => {
+            const typeColor = TYPES[skill.t]?.color || '#6b7280';
             const pwrColor = getPowerColor(skill.p);
             const pwrRank = getPowerRank(skill.p);
             return (
-              <div key={skill.id || skill.name + '_' + idx} style={{
-                background:'rgba(255,255,255,0.03)', borderRadius:'14px', padding:'14px',
-                border:`1px solid ${typeColor}20`, position:'relative', overflow:'hidden',
-                transition:'all 0.2s'
-              }}
-              onMouseOver={e => { e.currentTarget.style.background=`${typeColor}10`; e.currentTarget.style.borderColor=`${typeColor}40`; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor=`${typeColor}20`; e.currentTarget.style.transform=''; }}
-              >
-                <div style={{position:'absolute', left:0, top:'12px', bottom:'12px', width:'3px', borderRadius:'0 3px 3px 0', background:typeColor}} />
-                {skill.p > 0 && <div style={{position:'absolute', top:'10px', right:'10px', width:'24px', height:'24px', borderRadius:'6px', background:`${pwrColor}20`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'900', color:pwrColor, border:`1px solid ${pwrColor}30`}}>{pwrRank}</div>}
-                <div style={{paddingLeft:'10px'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-                    <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>{skill.name}</span>
-                    <span style={{fontSize:'9px', padding:'2px 8px', borderRadius:'8px', background:typeColor, color:'#fff', fontWeight:'600'}}>{TYPES[skill.t]?.name || '\u53D8\u5316'}</span>
-                  </div>
-                  <div style={{display:'flex', gap:'12px', fontSize:'11px', marginBottom: skill.desc ? '8px' : '0'}}>
-                    <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                      <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>{'\u5A01\u529B'}</span>
-                      <span style={{fontWeight:'800', color: skill.p > 0 ? pwrColor : 'rgba(255,255,255,0.25)', fontSize:'14px'}}>{skill.p > 0 ? skill.p : '-'}</span>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                      <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>PP</span>
-                      <span style={{fontWeight:'700', color:'#42A5F5'}}>{skill.pp}</span>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                      <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>{'\u547D\u4E2D'}</span>
-                      <span style={{fontWeight:'700', color:'#66BB6A'}}>{skill.acc || 100}</span>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
-                      <span style={{color:'rgba(255,255,255,0.35)', fontSize:'10px'}}>{'\u5206\u7C7B'}</span>
-                      <span style={{fontWeight:'600', color:'rgba(255,255,255,0.6)'}}>{getSkillCategory(skill)}</span>
-                    </div>
-                  </div>
-                  {skill.desc && <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', lineHeight:'1.5', borderTop:'1px solid rgba(255,255,255,0.04)', paddingTop:'6px'}}>{skill.desc}</div>}
+              <article key={skill.id || skill.name + '_' + idx} className="codex-skill-card" style={{'--card-color': typeColor, '--power-color': pwrColor}}>
+                <div className="codex-skill-head">
+                  <strong>{skill.name}</strong>
+                  <span>{TYPES[skill.t]?.name || '变化'}</span>
                 </div>
-              </div>
+                <b className="codex-power-rank">{pwrRank}</b>
+                <div className="codex-skill-stats">
+                  <span>威力 <b>{skill.p > 0 ? skill.p : '-'}</b></span>
+                  <span>PP <b>{skill.pp}</b></span>
+                  <span>命中 <b>{skill.acc || 100}</b></span>
+                  <span>分类 <b>{getSkillCategory(skill)}</b></span>
+                </div>
+                {skill.desc && <p>{skill.desc}</p>}
+              </article>
             );
           })}
+          {filteredSkills.length === 0 && (
+            <div className="codex-empty">
+              <strong>未找到匹配技能</strong>
+              <span>请切换属性或修改搜索关键词。</span>
+            </div>
+          )}
         </div>
+
+        {pageCount > 1 && (
+          <div className="codex-pagination">
+            <button disabled={safePage === 0} onClick={() => setSkillPage(p => Math.max(0, p - 1))}>← 上页</button>
+            <span>{safePage + 1} / {pageCount} · {filteredSkills.length} 技能</span>
+            <button disabled={safePage >= pageCount - 1} onClick={() => setSkillPage(p => Math.min(pageCount - 1, p + 1))}>下页 →</button>
+          </div>
+        )}
       </div>
     </div>
   );

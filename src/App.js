@@ -18779,78 +18779,109 @@ const renderNameInput = () => {
       persistSave(true);
     };
 
+    const missingCount = total - caughtCount;
+
     return (
-      <div className="screen dex-screen">
-        <div className="nav-header glass-panel">
-          <button className="btn-back" onClick={() => setView(safeBack())}>🔙 返回</button>
-          <div className="nav-title">精灵图鉴</div>
-          <button className="btn-icon-only" onClick={syncDexData} style={{fontSize:'18px'}} title="修复图鉴数据">🔄</button>
-        </div>
-        
-        <div className="dex-container">
-          <div style={{padding:'8px 12px', marginBottom:'8px', borderRadius:'8px', background:'rgba(255,100,0,0.03)', border:'1px solid rgba(255,100,0,0.06)'}}>
-            <div style={{fontSize:'10px', fontWeight:'700', color:'#FFB300'}}>📖 图鉴奖励</div>
-            <div style={{fontSize:'9px', color:'rgba(0,0,0,0.45)', marginTop:'6px', display:'flex', flexDirection:'column', gap:'6px'}}>
-              {dexMilestoneDefs.map(m => {
-                const done = caughtDex.length >= m.need;
-                const claimed = !!dexMilestoneClaimed[m.key];
-                return (
-                  <button key={m.key} type="button" onClick={() => claimDexMilestone(m)} style={{ textAlign:'left', padding:'6px 8px', borderRadius:'8px', border:`1px solid ${done ? 'rgba(76,175,80,0.35)' : 'rgba(0,0,0,0.06)'}`, background: claimed ? 'rgba(76,175,80,0.08)' : done ? 'rgba(255,193,7,0.06)' : 'rgba(0,0,0,0.02)', cursor:'pointer', fontSize:'9px', color:'rgba(0,0,0,0.55)' }}>
-                    {done ? '✅' : '❌'} {m.text}
-                    {claimed ? ' · 已领取' : done ? ' · 点击领取' : ''}
-                  </button>
-                );
-              })}
+      <div className="screen codex-screen is-pet">
+        <div className="codex-shell">
+          <header className="codex-hero">
+            <button className="codex-back" onClick={() => setView(safeBack())}>← 返回</button>
+            <div className="codex-title-block">
+              <span>Spirit Archive</span>
+              <h1>精灵图鉴</h1>
+              <p>记录捕获、进化线、出没线索与图鉴奖励，训练家的长期研究档案。</p>
             </div>
-          </div>
-          <div className="dex-dashboard">
-            <div className="dex-progress-circle" style={{background: `conic-gradient(var(--primary-color) ${progress}%, #eee ${progress}%)`}}>
-              <div className="dex-progress-inner"><div>{progress}%</div><div className="dex-progress-label">完成度</div></div>
+            <button className="codex-tool-btn" onClick={syncDexData} title="修复图鉴数据">↻</button>
+          </header>
+
+          <section className="codex-overview">
+            <article className="codex-panel codex-progress-panel">
+              <div className="codex-ring" style={{'--progress': `${progress}%`}}>
+                <b>{progress}%</b>
+                <span>完成度</span>
+              </div>
+              <div className="codex-panel-copy">
+                <span>Collection Progress</span>
+                <strong>{caughtCount} / {total}</strong>
+                <p>{missingCount} 种等待登记，当前筛选命中 {filteredDex.length} 种。</p>
+              </div>
+            </article>
+
+            <article className="codex-panel codex-reward-panel">
+              <div className="codex-panel-head">
+                <span>图鉴奖励</span>
+                <b>{dexMilestoneDefs.filter(m => dexMilestoneClaimed[m.key]).length}/{dexMilestoneDefs.length}</b>
+              </div>
+              <div className="codex-reward-list">
+                {dexMilestoneDefs.map(m => {
+                  const done = caughtDex.length >= m.need;
+                  const claimed = !!dexMilestoneClaimed[m.key];
+                  return (
+                    <button key={m.key} type="button" className={`codex-reward ${done ? 'is-ready' : ''} ${claimed ? 'is-claimed' : ''}`} onClick={() => claimDexMilestone(m)}>
+                      <span>{claimed ? '已领' : done ? '可领' : `${Math.min(caughtCount, m.need)}/${m.need}`}</span>
+                      <b>{m.text}</b>
+                    </button>
+                  );
+                })}
+              </div>
+            </article>
+
+            <article className="codex-panel codex-insight-panel">
+              <span>研究焦点</span>
+              <strong>{dexFilter === 'caught' ? '已归档伙伴' : dexFilter === 'missing' ? '未捕获目标' : dexFilter.startsWith('type_') ? `${TYPES[dexFilter.replace('type_', '')]?.name || '属性'}系样本` : '全域样本库'}</strong>
+              <p>点击任意条目查看捕获状态、获取方式、最佳个体和进化家族。</p>
+            </article>
+          </section>
+
+          <section className="codex-toolbar">
+            <div className="codex-chip-row">
+              {[
+                ['all', '全部'],
+                ['caught', '已捕获'],
+                ['missing', '未捕获'],
+              ].map(([key, label]) => (
+                <button key={key} className={`codex-chip ${dexFilter === key ? 'active' : ''}`} onClick={() => { setDexFilter(key); setSelectedDexId(null); }}>{label}</button>
+              ))}
+              <select className="codex-select" aria-label="按属性筛选" value={dexFilter.startsWith('type_') ? dexFilter : ''} onChange={e => {setDexFilter(e.target.value || 'all'); setSelectedDexId(null);}}>
+                <option value="">按属性</option>
+                {Object.entries(TYPES).map(([k, v]) => <option key={k} value={`type_${k}`}>{v.name}</option>)}
+              </select>
             </div>
-            <div className="dex-stats-text">
-              <div className="dex-stats-title">收集进度</div>
-              <div className="dex-stats-subtitle">已捕获: {caughtCount} / {total}</div>
-            </div>
-          </div>
-          
-          <div className="dex-filters">
-            <div className={`filter-chip ${dexFilter==='all'?'active':''}`} onClick={()=>{setDexFilter('all'); setSelectedDexId(null);}}>全部</div>
-            <div className={`filter-chip ${dexFilter==='caught'?'active':''}`} onClick={()=>{setDexFilter('caught'); setSelectedDexId(null);}}>已捕获</div>
-            <div className={`filter-chip ${dexFilter==='missing'?'active':''}`} onClick={()=>{setDexFilter('missing'); setSelectedDexId(null);}}>未捕获</div>
-            <select aria-label="按属性筛选" value={dexFilter.startsWith('type_') ? dexFilter : ''} onChange={e => {setDexFilter(e.target.value || 'all'); setSelectedDexId(null);}} style={{padding:'4px 8px', borderRadius:'12px', border:'1px solid #ddd', fontSize:'13px', background:'#f8f8f8', cursor:'pointer'}}>
-              <option value="">按属性</option>
-              {Object.entries(TYPES).map(([k, v]) => <option key={k} value={`type_${k}`}>{v.name}</option>)}
-            </select>
-          </div>
-          <div style={{padding:'0 12px 8px'}}>
-            <input type="text" aria-label="搜索精灵名称或编号" placeholder="🔍 搜索精灵名称或编号..." value={dexSearchTerm} onChange={e => setDexSearchTerm(e.target.value)} style={{width:'100%', padding:'8px 12px', borderRadius:'10px', border:'1px solid #e0e0e0', fontSize:'13px', outline:'none', boxSizing:'border-box'}} />
-          </div>
-          
-                    <div className="dex-grid-refined">
+            <label className="codex-search">
+              <span>⌕</span>
+              <input type="text" aria-label="搜索精灵名称或编号" placeholder="搜索精灵名称或编号..." value={dexSearchTerm} onChange={e => setDexSearchTerm(e.target.value)} />
+            </label>
+          </section>
+
+          <div className="codex-grid codex-pet-grid">
             {filteredDex.length === 0 && (
-              <div style={{gridColumn:'1/-1',textAlign:'center',padding:'40px 20px',color:'#999'}}>
-                <div style={{fontSize:'36px',marginBottom:'8px',opacity:0.4}}>🔍</div>
-                <div style={{fontSize:'14px',fontWeight:'600'}}>未找到匹配的精灵</div>
-                <div style={{fontSize:'11px',marginTop:'4px',color:'#bbb'}}>请尝试其他搜索条件或清除筛选</div>
+              <div className="codex-empty">
+                <strong>未找到匹配的精灵</strong>
+                <span>请尝试其他搜索条件或清除筛选。</span>
               </div>
             )}
             {pagedDex.map(pet => {
               const isCaught = caughtDex.includes(pet.id);
               return (
-                <div key={pet.id} className={`dex-item ${isCaught ? 'caught' : 'missing'}`} onClick={() => setSelectedDexId(pet.id)} style={{cursor:'pointer'}}>
-                  <div className="dex-item-id">#{String(pet.id).padStart(3, '0')}</div>
-                  <div className="dex-item-icon" style={!isCaught ? {filter:'brightness(0.4) saturate(0)'} : {}}>{renderAvatar(pet)}</div>
-                  <div className="dex-item-name">{pet.name}</div>
-                  <div style={{display:'flex', gap:'2px'}}><div className="dex-type-dot" style={{background: TYPES[pet.type]?.color || '#999'}}></div>{pet.type2 && <div className="dex-type-dot" style={{background: TYPES[pet.type2]?.color || '#999'}}></div>}</div>
-                </div>
+                <button key={pet.id} type="button" className={`codex-pet-card ${isCaught ? 'caught' : 'missing'}`} onClick={() => setSelectedDexId(pet.id)}>
+                  <span className="codex-card-id">#{String(pet.id).padStart(3, '0')}</span>
+                  <span className="codex-caught-dot" />
+                  <div className="codex-pet-avatar" style={!isCaught ? {filter:'brightness(0.35) saturate(0)'} : {}}>{renderAvatar(pet)}</div>
+                  <strong>{pet.name}</strong>
+                  <div className="codex-type-row">
+                    <i style={{background: TYPES[pet.type]?.color || '#999'}} />
+                    {pet.type2 && <i style={{background: TYPES[pet.type2]?.color || '#999'}} />}
+                  </div>
+                </button>
               );
             })}
           </div>
+
           {dexPageCount > 1 && (
-            <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:'8px', padding:'12px 0'}}>
-              <button onClick={() => { dexPageRef.current = Math.max(0, dexPage - 1); setSelectedDexId(null); }} disabled={dexPage === 0} style={{padding:'6px 14px', borderRadius:'10px', border:'1px solid #ddd', background:dexPage===0?'#f0f0f0':'#fff', color:dexPage===0?'#ccc':'#333', fontSize:'12px', fontWeight:'600', cursor:dexPage===0?'not-allowed':'pointer'}}>◀ 上页</button>
-              <span style={{fontSize:'12px', color:'#666', fontWeight:'600'}}>{dexPage + 1} / {dexPageCount} ({filteredDex.length})</span>
-              <button onClick={() => { dexPageRef.current = Math.min(dexPageCount - 1, dexPage + 1); setSelectedDexId(null); }} disabled={dexPage >= dexPageCount - 1} style={{padding:'6px 14px', borderRadius:'10px', border:'1px solid #ddd', background:dexPage>=dexPageCount-1?'#f0f0f0':'#fff', color:dexPage>=dexPageCount-1?'#ccc':'#333', fontSize:'12px', fontWeight:'600', cursor:dexPage>=dexPageCount-1?'not-allowed':'pointer'}}>下页 ▶</button>
+            <div className="codex-pagination">
+              <button onClick={() => { dexPageRef.current = Math.max(0, dexPage - 1); setSelectedDexId(null); }} disabled={dexPage === 0}>← 上页</button>
+              <span>{dexPage + 1} / {dexPageCount} · {filteredDex.length} 种</span>
+              <button onClick={() => { dexPageRef.current = Math.min(dexPageCount - 1, dexPage + 1); setSelectedDexId(null); }} disabled={dexPage >= dexPageCount - 1}>下页 →</button>
             </div>
           )}
         </div>
@@ -19222,82 +19253,76 @@ const renderGeneralDex = () => {
   }, {});
 
   return (
-    <div style={{position:'fixed', inset:0, background:'linear-gradient(160deg, #0a0a1a 0%, #12081a 40%, #1a0d0d 70%, #0a1628 100%)', zIndex:9999, overflow:'auto'}}>
-      <div style={{maxWidth:'1100px', margin:'0 auto', padding:'24px 32px 60px'}}>
+    <div className="screen codex-screen is-general">
+      <div className="codex-shell">
+        <header className="codex-hero">
+          <button className="codex-back" onClick={() => setView(safeBack())}>← 返回</button>
+          <div className="codex-title-block">
+            <span>Chronicle Hall</span>
+            <h1>三国名将图鉴</h1>
+            <p>按阵营、稀有度和传记线索整理名将，查看收集进度、招募状态与全局加成。</p>
+          </div>
+          <div className="codex-hero-count"><b>{filteredR}</b><span>/{filteredGens.length} 当前筛选</span></div>
+        </header>
 
-        {/* 顶部栏 */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px'}}>
-          <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#ccc', padding:'8px 20px', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
-          <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>📜 三国名将图鉴</div>
-          <div style={{fontSize:'13px', color:'rgba(255,255,255,0.5)', fontWeight:'600'}}>{filteredGens.length} 位 · {filteredR} 已收集</div>
-        </div>
+        <section className="codex-overview">
+          <article className="codex-panel codex-progress-panel">
+            <div className="codex-ring" style={{'--progress': `${(totalR / SANGUO_GENERALS.length * 100).toFixed(1)}%`, '--codex-accent': themeColor}}>
+              <b>{Math.round(totalR / SANGUO_GENERALS.length * 100)}%</b>
+              <span>收集率</span>
+            </div>
+            <div className="codex-panel-copy">
+              <span>General Progress</span>
+              <strong>{totalR} / {SANGUO_GENERALS.length}</strong>
+              <p>{myFac ? `${myFac.name || '当前阵营'}名册正在扩充。` : '尚未绑定阵营，先从全名册筛选研究。'}</p>
+            </div>
+          </article>
 
-        {/* 信息栏：进度 + 抽卡 */}
-        <div style={{display:'flex', gap:'16px', marginBottom:'20px', flexWrap:'wrap'}}>
-          {/* 进度 */}
-          <div style={{flex:'1 1 400px', background:'rgba(255,255,255,0.04)', borderRadius:'14px', padding:'16px 20px', border:'1px solid rgba(255,255,255,0.06)'}}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
-              <span style={{fontSize:'15px', fontWeight:'800', color:'#fff'}}>收集进度</span>
-              <span style={{fontSize:'16px', fontWeight:'800', color: themeColor}}>{totalR} / {SANGUO_GENERALS.length}</span>
-            </div>
-            <div style={{height:'8px', borderRadius:'4px', background:'rgba(255,255,255,0.08)', marginBottom:'12px', overflow:'hidden'}}>
-              <div style={{height:'100%', width:`${(totalR / SANGUO_GENERALS.length * 100).toFixed(1)}%`, background:`linear-gradient(90deg, ${themeColor}, ${themeColor}cc)`, borderRadius:'4px', transition:'width 0.3s'}} />
-            </div>
-            <div style={{display:'flex', gap:'8px', justifyContent:'center', flexWrap:'wrap'}}>
+          <article className="codex-panel codex-stat-panel">
+            <div className="codex-panel-head"><span>阵营分布</span><b>{fStats.reduce((s, item) => s + item.got, 0)} 位</b></div>
+            <div className="codex-mini-bars">
               {fStats.map(({f, total, got}) => (
-                <span key={f} style={{fontSize:'12px', color: factionColors[f], fontWeight:'700', background:'rgba(255,255,255,0.06)', padding:'3px 12px', borderRadius:'6px'}}>
-                  {factionNames[f]} {got}/{total}
-                </span>
+                <div key={f} className="codex-mini-bar" style={{'--bar-color': factionColors[f]}}>
+                  <span>{factionNames[f]}</span>
+                  <i><em style={{width: `${total ? (got / total) * 100 : 0}%`}} /></i>
+                  <b>{got}/{total}</b>
+                </div>
               ))}
             </div>
-            {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
-              <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px', padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}>
-                <span style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', fontWeight:'600', width:'100%'}}>名将总加成:</span>
-                {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
-                  <span key={k} style={{fontSize:'11px', fontWeight:'700', color: themeColor, background: themeColor+'18', padding:'3px 8px', borderRadius:'5px'}}>{bonusLabels[k]||k}{formatGeneralBonusChip(k, v)}</span>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* 赛季抽卡 */}
-          {draws > 0 && (
-            <div onClick={doGeneralDraw} style={{flex:'0 0 220px', background:'linear-gradient(135deg, #B71C1C, #D32F2F)', borderRadius:'14px', padding:'20px', textAlign:'center', cursor:'pointer', boxShadow:'0 4px 20px rgba(183,28,28,0.4)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
-              <div style={{fontSize:'36px', marginBottom:'6px'}}>🎴</div>
-              <div style={{fontSize:'16px', fontWeight:'800', color:'#fff'}}>赛季抽卡</div>
-              <div style={{fontSize:'13px', color:'rgba(255,255,255,0.85)', marginTop:'4px'}}>剩余 <b>{draws}</b> 次</div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.6)', marginTop:'2px'}}>点击抽取名将</div>
-            </div>
-          )}
-        </div>
+          </article>
 
-        {/* 筛选栏 */}
-        <div style={{display:'flex', gap:'8px', marginBottom:'20px', alignItems:'center', flexWrap:'wrap'}}>
-          <div style={{display:'flex', gap:'4px', background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'4px'}}>
+          <article className={`codex-panel codex-draw-panel ${draws > 0 ? 'is-ready' : ''}`} onClick={draws > 0 ? doGeneralDraw : undefined}>
+            <span>赛季抽将</span>
+            <strong>{draws > 0 ? `${draws} 次可用` : '暂无次数'}</strong>
+            <p>{draws > 0 ? '点击抽取新的名将。' : '完成赛季目标后可获得招募机会。'}</p>
+          </article>
+        </section>
+
+        {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
+          <section className="codex-bonus-strip">
+            <span>名将总加成</span>
+            {Object.entries(totalBonus).filter(([,v]) => v > 0).map(([k,v]) => (
+              <b key={k} style={{'--bonus-color': themeColor}}>{bonusLabels[k]||k}{formatGeneralBonusChip(k, v)}</b>
+            ))}
+          </section>
+        )}
+
+        <section className="codex-toolbar">
+          <div className="codex-chip-row">
             {['all','wei','shu','wu','neutral'].map(f => (
-              <button key={f} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}
-                style={{fontSize:'13px', fontWeight:'700', padding:'6px 14px', borderRadius:'6px', border:'none', cursor:'pointer',
-                  background: genDexFilter.faction === f ? 'rgba(255,255,255,0.12)' : 'transparent',
-                  color: genDexFilter.faction === f ? (factionColors[f]||'#fff') : 'rgba(255,255,255,0.35)',
-                }}>{factionNames[f]}</button>
+              <button key={f} className={`codex-chip ${genDexFilter.faction === f ? 'active' : ''}`} style={{'--chip-color': factionColors[f] || themeColor}} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}>{factionNames[f]}</button>
             ))}
-          </div>
-          <div style={{display:'flex', gap:'4px'}}>
             {['all','SSR','SR','R'].map(r => (
-              <button key={r} onClick={() => setGenDexFilter(p => ({...p, rarity: r}))}
-                style={{fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'6px', border:'1px solid', cursor:'pointer',
-                  background: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.bgColor||'rgba(255,255,255,0.15)') : 'transparent',
-                  color: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.35)',
-                  borderColor: genDexFilter.rarity === r ? (GENERAL_RARITY_CONFIG[r]?.color||'#fff') : 'rgba(255,255,255,0.1)',
-                }}>{rarityNames[r]}</button>
+              <button key={r} className={`codex-chip ${genDexFilter.rarity === r ? 'active' : ''}`} style={{'--chip-color': GENERAL_RARITY_CONFIG[r]?.color || themeColor}} onClick={() => setGenDexFilter(p => ({...p, rarity: r}))}>{rarityNames[r]}</button>
             ))}
           </div>
-          <input type="text" placeholder="搜索名将..." value={genDexFilter.search}
-            onChange={e => setGenDexFilter(p => ({...p, search: e.target.value}))}
-            style={{width:'180px', fontSize:'13px', padding:'6px 12px', borderRadius:'8px', border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.06)', color:'#fff', outline:'none'}} />
-        </div>
+          <label className="codex-search is-compact">
+            <span>⌕</span>
+            <input type="text" placeholder="搜索名将或称号..." value={genDexFilter.search} onChange={e => setGenDexFilter(p => ({...p, search: e.target.value}))} />
+          </label>
+        </section>
 
-        {/* 名将卡片网格 */}
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'12px'}}>
+        <div className="codex-grid codex-general-grid">
           {filteredGens.map(gen => {
             const isR = recruitedIds.has(gen.id);
             const isCollected = (kw.collectedGeneralIds || []).includes(gen.id);
@@ -19306,40 +19331,17 @@ const renderGeneralDex = () => {
             const facColor = factionColors[gen.faction] || '#666';
             const bioData = GENERAL_BIOS[gen.id];
             return (
-              <div key={gen.id} onClick={() => setGenDexDetail(gen)} style={{
-                textAlign:'center', padding:'16px 8px 12px', borderRadius:'14px',
-                cursor:'pointer',
-                background: isR ? `linear-gradient(180deg, ${facColor}18, rgba(255,255,255,0.03))` : isCollected ? `linear-gradient(180deg, ${facColor}08, rgba(255,255,255,0.02))` : 'rgba(255,255,255,0.02)',
-                border:`1px solid ${isR ? facColor+'40' : isCollected ? facColor+'20' : 'rgba(255,255,255,0.05)'}`,
-                opacity: isR ? 1 : isCollected ? 0.75 : 0.55, transition:'all 0.25s',
-                position:'relative',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow=`0 8px 24px ${facColor}20`; e.currentTarget.style.opacity='1'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; e.currentTarget.style.opacity = isR ? '1' : isCollected ? '0.75' : '0.55'; }}>
-                {/* 稀有度角标 */}
-                <div style={{position:'absolute', top:'6px', right:'6px', fontSize:'9px', fontWeight:'800', color:rc.color||'#888', background:(rc.bgColor||'rgba(255,255,255,0.08)'), padding:'2px 6px', borderRadius:'4px', lineHeight:'1.3'}}>{rc.label||gen.rarity}</div>
-                {/* 正史/虚构标记 */}
-                {bioData && <div style={{position:'absolute', bottom:'4px', right:'4px', fontSize:'9px', fontWeight:'700', color: bioData.isHistorical ? 'rgba(76,175,80,0.6)' : 'rgba(255,152,0,0.6)'}}>{bioData.isHistorical ? '正史' : '虚构'}</div>}
-                {/* 头像 */}
-                <div style={{
-                  width:'56px', height:'56px', borderRadius:'50%', margin:'0 auto 8px',
-                  background: pt.bg,
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'28px', fontWeight:'900', color: pt.textColor,
-                  textShadow:'1px 1px 3px rgba(0,0,0,0.6)',
-                  border: `3px solid ${isR ? pt.border : isCollected ? pt.border+'80' : 'rgba(255,255,255,0.15)'}`,
-                  boxShadow: isR && gen.rarity === 'SSR' ? `0 0 14px ${pt.border}50` : 'none',
-                }}>{pt.surname}</div>
-                {/* 名字 */}
-                <div style={{fontSize:'14px', fontWeight:'800', color:'#fff', lineHeight:'1.3'}}>{gen.name}</div>
-                {/* 称号 */}
-                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', marginTop:'3px'}}>{gen.title}</div>
-                {/* 阵营 */}
-                <div style={{fontSize:'9px', color: facColor, fontWeight:'700', marginTop:'4px', opacity:0.7}}>{factionNames[gen.faction]||'群雄'}</div>
-                {/* 状态标记 */}
-                {isR && <div style={{position:'absolute', top:'6px', left:'6px', fontSize:'10px', color:'#4CAF50'}}>⚔️</div>}
-                {!isR && isCollected && <div style={{position:'absolute', top:'6px', left:'6px', fontSize:'9px', color:'rgba(255,255,255,0.4)'}}>✓</div>}
-              </div>
+              <button key={gen.id} type="button" onClick={() => setGenDexDetail(gen)} className={`codex-general-card ${isR ? 'is-recruited' : isCollected ? 'is-collected' : 'is-locked'}`} style={{'--card-color': facColor, '--rarity-color': rc.color || '#888'}}>
+                <span className="codex-rarity-badge">{rc.label||gen.rarity}</span>
+                <span className="codex-general-status">{isR ? '已招募' : isCollected ? '已收集' : '未遇见'}</span>
+                <div className="codex-general-portrait" style={{background: pt.bg, color: pt.textColor, borderColor: isR ? pt.border : isCollected ? pt.border+'80' : 'rgba(255,255,255,0.18)'}}>{pt.surname}</div>
+                <strong>{gen.name}</strong>
+                <p>{gen.title}</p>
+                <div className="codex-card-meta">
+                  <span style={{color: facColor}}>{factionNames[gen.faction]||'群雄'}</span>
+                  {bioData && <span>{bioData.isHistorical ? '正史' : '虚构'}</span>}
+                </div>
+              </button>
             );
           })}
         </div>
@@ -19407,71 +19409,85 @@ const renderFruitDex = () => {
     return parts;
   };
 
+  const ownedFruitCount = ownedFruitIds.size;
+  const fruitProgress = allFruits.length ? Math.round((ownedFruitCount / allFruits.length) * 100) : 0;
+  const categoryStats = categories.filter(c => c !== 'ALL').map(c => {
+    const items = allFruits.filter(f => f.category === c);
+    return { c, total: items.length, owned: items.filter(f => ownedFruitIds.has(f.id)).length };
+  });
+
   return (
-    <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg, #1a0a0a 0%, #2d0f0f 40%, #0f0a1a 100%)', color:'#fff', overflow:'hidden', display:'flex', flexDirection:'column'}}>
-      {/* 头部 */}
-      <div style={{padding:'16px 20px', display:'flex', alignItems:'center', gap:'12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0}}>
-        <button onClick={() => setView(safeBack())} style={{background:'none', border:'none', color:'#fff', fontSize:'20px', cursor:'pointer', padding:'4px'}}>←</button>
-        <div>
-          <div style={{fontSize:'18px', fontWeight:'800', letterSpacing:'1px'}}>恶魔果实图鉴</div>
-          <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>共 {allFruits.length} 种 · 已拥有 {ownedFruitIds.size} 种</div>
-        </div>
-      </div>
+    <div className="screen codex-screen is-fruit">
+      <div className="codex-shell">
+        <header className="codex-hero">
+          <button className="codex-back" onClick={() => setView(safeBack())}>← 返回</button>
+          <div className="codex-title-block">
+            <span>Devil Fruit Archive</span>
+            <h1>恶魔果实图鉴</h1>
+            <p>按系别与稀有度检索果实，查看变身增益、专属技能和获取方式。</p>
+          </div>
+          <div className="codex-hero-count"><b>{ownedFruitCount}</b><span>/{allFruits.length} 已拥有</span></div>
+        </header>
 
-      {/* 筛选 */}
-      <div style={{padding:'10px 16px', display:'flex', gap:'8px', flexShrink:0, flexWrap:'wrap'}}>
-        {categories.map(c => (
-          <button key={c} onClick={() => setCatFilter(c)} style={{
-            padding:'5px 12px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none',
-            background: catFilter === c ? catColors[c] : 'rgba(255,255,255,0.06)',
-            color: catFilter === c ? '#fff' : 'rgba(255,255,255,0.5)',
-            transition:'all 0.2s'
-          }}>{catNames[c]}</button>
-        ))}
-        <div style={{width:'1px', background:'rgba(255,255,255,0.1)', margin:'0 4px'}} />
-        {rarities.map(r => (
-          <button key={r} onClick={() => setRarFilter(r)} style={{
-            padding:'5px 10px', borderRadius:'16px', fontSize:'11px', fontWeight:'700', cursor:'pointer', border:'none',
-            background: rarFilter === r ? (FRUIT_RARITY_CONFIG[r]?.color || '#555') : 'rgba(255,255,255,0.06)',
-            color: rarFilter === r ? '#fff' : 'rgba(255,255,255,0.5)',
-            transition:'all 0.2s'
-          }}>{rarNames[r]}</button>
-        ))}
-      </div>
+        <section className="codex-overview">
+          <article className="codex-panel codex-progress-panel">
+            <div className="codex-ring" style={{'--progress': `${fruitProgress}%`}}>
+              <b>{fruitProgress}%</b>
+              <span>拥有率</span>
+            </div>
+            <div className="codex-panel-copy">
+              <span>Fruit Vault</span>
+              <strong>{filtered.length} 个条目</strong>
+              <p>当前筛选为 {catNames[catFilter]} · {rarNames[rarFilter]}，点击果实查看完整能力。</p>
+            </div>
+          </article>
+          <article className="codex-panel codex-stat-panel">
+            <div className="codex-panel-head"><span>系别进度</span><b>{ownedFruitCount} 种</b></div>
+            <div className="codex-mini-bars">
+              {categoryStats.map(({c, total, owned}) => (
+                <div key={c} className="codex-mini-bar" style={{'--bar-color': catColors[c]}}>
+                  <span>{catNames[c]}</span>
+                  <i><em style={{width: `${total ? (owned / total) * 100 : 0}%`}} /></i>
+                  <b>{owned}/{total}</b>
+                </div>
+              ))}
+            </div>
+          </article>
+          <article className="codex-panel codex-insight-panel">
+            <span>能力索引</span>
+            <strong>{rarNames[rarFilter]} · {catNames[catFilter]}</strong>
+            <p>保留原有变身效果、变身技能和掉落说明，便于训练前快速比对。</p>
+          </article>
+        </section>
 
-      {/* 果实列表 */}
-      <div style={{flex:1, overflowY:'auto', padding:'0 16px 16px'}}>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:'10px'}}>
+        <section className="codex-toolbar">
+          <div className="codex-chip-row">
+            {categories.map(c => (
+              <button key={c} className={`codex-chip ${catFilter === c ? 'active' : ''}`} style={{'--chip-color': catColors[c]}} onClick={() => setCatFilter(c)}>{catNames[c]}</button>
+            ))}
+            {rarities.map(r => (
+              <button key={r} className={`codex-chip ${rarFilter === r ? 'active' : ''}`} style={{'--chip-color': FRUIT_RARITY_CONFIG[r]?.color || '#ff9f43'}} onClick={() => setRarFilter(r)}>{rarNames[r]}</button>
+            ))}
+          </div>
+        </section>
+
+        <div className="codex-grid codex-fruit-grid">
           {filtered.map(fruit => {
             const rc = FRUIT_RARITY_CONFIG[fruit.rarity];
             const owned = ownedFruitIds.has(fruit.id);
             const catC = catColors[fruit.category];
             return (
-              <div key={fruit.id} onClick={() => setSelectedFruit(fruit)} style={{
-                background: `linear-gradient(160deg, ${rc.color}18, rgba(0,0,0,0.3))`,
-                border: `1px solid ${rc.color}${owned ? '60' : '25'}`,
-                borderRadius:'14px', padding:'12px 10px', cursor:'pointer',
-                transition:'all 0.25s', position:'relative', overflow:'hidden'
-              }}
-              onMouseOver={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow=`0 6px 20px ${rc.color}30`; }}
-              onMouseOut={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
-              >
-                {owned && <div style={{position:'absolute', top:'6px', right:'6px', width:'8px', height:'8px', borderRadius:'50%', background:'#4CAF50', boxShadow:'0 0 6px #4CAF5080'}} />}
-                <div style={{margin:'0 auto 8px'}}>
+              <button key={fruit.id} type="button" onClick={() => setSelectedFruit(fruit)} className={`codex-fruit-card ${owned ? 'owned' : ''}`} style={{'--card-color': rc.color, '--fruit-cat': catC}}>
+                <span className="codex-fruit-owned">{owned ? '已拥有' : '未拥有'}</span>
+                <div className="codex-fruit-icon">
                   {renderFruitCSSIcon(fruit.id, 44)}
                 </div>
-                <div style={{textAlign:'center'}}>
-                  <div style={{fontSize:'12px', fontWeight:'700', color:'#fff', marginBottom:'3px', lineHeight:'1.2'}}>{fruit.name}</div>
-                  <div style={{display:'flex', gap:'4px', justifyContent:'center', flexWrap:'wrap'}}>
-                    <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'8px', background:`${catC}30`, color:catC, fontWeight:'600'}}>
-                      {FRUIT_CATEGORY_NAMES[fruit.category]}
-                    </span>
-                    <span style={{fontSize:'9px', padding:'1px 6px', borderRadius:'8px', background:`${rc.color}30`, color:rc.color, fontWeight:'600'}}>
-                      {rc.label}
-                    </span>
-                  </div>
+                <strong>{fruit.name}</strong>
+                <div className="codex-card-meta">
+                  <span>{FRUIT_CATEGORY_NAMES[fruit.category]}</span>
+                  <span>{rc.label}</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
