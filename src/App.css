@@ -6341,7 +6341,7 @@ button:active {
 }
 
 /* =========================================
-   Super Spirit v12.0 Brand System
+   Super Spirit v13.0 Brand System
    ========================================= */
 .super-spirit-icon {
   display: inline-grid;
@@ -10090,11 +10090,17 @@ select:focus-visible,
    Starter partner lab redesign
    ===================================================================== */
 .starter-lab-screen {
+  box-sizing: border-box;
+  width: 100vw;
+  max-width: 100%;
   min-height: 100dvh;
   padding: clamp(18px, 3vw, 42px);
   overflow-x: hidden;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   color: #eef8ff;
   background:
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
@@ -10157,7 +10163,10 @@ select:focus-visible,
   animation-direction: reverse;
 }
 .starter-lab-shell {
-  width: min(1220px, 100%);
+  box-sizing: border-box;
+  width: min(1220px, calc(100vw - clamp(36px, 6vw, 84px)));
+  max-width: 100%;
+  margin-inline: auto;
   display: grid;
   gap: 18px;
   animation: popIn 0.45s ease-out both;
@@ -10700,6 +10709,9 @@ select:focus-visible,
   .starter-lab-screen {
     padding: 12px;
     align-items: flex-start;
+  }
+  .starter-lab-shell {
+    width: 100%;
   }
   .starter-lab-hero {
     grid-template-columns: 50px minmax(0, 1fr);
