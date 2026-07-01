@@ -5772,6 +5772,7 @@ button:active {
   background: #070b12;
   color: #f4ead8;
   isolation: isolate;
+  overflow: hidden;
 }
 .home-bg {
   position: absolute;
@@ -5840,7 +5841,7 @@ button:active {
   backdrop-filter: blur(18px);
 }
 .home-hero-panel {
-  min-height: 660px;
+  max-height: calc(100dvh - 60px);
   padding: clamp(24px, 4vw, 46px);
   border-radius: 26px 14px 26px 14px;
   display: flex;
@@ -9106,6 +9107,7 @@ select:focus-visible,
    ===================================================================== */
 .home-screen {
   padding: clamp(14px, 2.4vw, 30px);
+  overflow: hidden;
   background:
     linear-gradient(90deg, rgba(143,216,255,0.08) 1px, transparent 1px),
     linear-gradient(180deg, rgba(143,216,255,0.06) 1px, transparent 1px),
@@ -9139,7 +9141,7 @@ select:focus-visible,
     inset 0 1px 0 rgba(255,255,255,0.12);
 }
 .home-hero-panel {
-  min-height: min(720px, calc(100dvh - 60px));
+  max-height: calc(100dvh - 60px);
 }
 .home-brand-mark {
   padding-bottom: 16px;

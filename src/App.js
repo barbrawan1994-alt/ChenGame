@@ -2458,7 +2458,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (targetPetInfo) {
                 if (targetPetInfo.evoCondition && !checkEvoCondition(pet, targetPetInfo)) {
                     const cond = targetPetInfo.evoCondition;
-                    const hint = cond.time ? `需要在${cond.time === 'night' ? '夜晚' : '白天'}` : cond.intimacy ? `亲密度需≥${cond.intimacy}` : '条件不满足';
+                    const hint = cond.time ? `需要在${cond.time.toUpperCase() === 'NIGHT' ? '夜晚' : '白天'}` : cond.intimacy ? `亲密度需≥${cond.intimacy}` : '条件不满足';
                     showMapToast('❌', '进化条件不足', hint, 2000);
                     return;
                 }
@@ -11002,7 +11002,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // 火影忍术注入
         const jutsuMoves = [];
         const nRank = isEnemy ? getEnemyNinjaRank(p.level) : getNinjaRank(narutoState?.examsCompleted || 0);
-        if (nRank && nRank.id !== 'academy' && p.level >= 20) {
+        if (nRank && nRank.id !== 'academy' && p.level >= 30) {
           const petNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === p.type);
           const natureKey = petNature ? petNature[0] : null;
           const jutsuPool = natureKey ? getJutsuByNature(natureKey) : JUTSU_DB.filter(j => !j.nature);
@@ -11751,7 +11751,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
             queueMirrorEcho(tempBattle, actualMove);
           }
-          syncBattleState({ phase: 'input', enemyActiveIdx: tempBattle.enemyActiveIdx });
+          syncBattleState({ phase: 'busy', enemyActiveIdx: tempBattle.enemyActiveIdx });
           {
             const pcs = tempBattle.playerCombatStates[tempBattle.activeIdx];
             playerDiedFromSelfDmg = !!(pcs && (pcs.currentHp <= 0 || pcs._diedFromDot || pcs._diedFromConfusion));
@@ -11835,6 +11835,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           } else {
             await handleDefeat();
           } 
+        } else if (!enemyDied && !playerDiedFromSelfDmg) {
+          setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
         }
 
     } catch (e) {
@@ -11973,11 +11975,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             party,
           })
         ) {
-          const halfCost = Math.floor(combo.chakraCost / 2);
-          const otherHalf = combo.chakraCost - halfCost;
-          pet0.chakra = Math.max(0, (pet0.chakra || 0) - halfCost);
-          pet1.chakra = Math.max(0, (pet1.chakra || 0) - otherHalf);
-          poolChk = Math.max(pet0.chakra || 0, pet1.chakra || 0);
+          const totalCost = combo.chakraCost;
+          poolChk = Math.max(0, (tempBattle.sharedPlayerChakra || pet0.chakra || 0) - totalCost);
           tempBattle.sharedPlayerChakra = poolChk;
           for (const pIdx of tempBattle.activeIdxs || []) {
             const ps = tempBattle.playerCombatStates?.[pIdx];
@@ -12763,6 +12762,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const stab = (combo.type === p.type || combo.type === p.secondaryType || combo.type === pt.type || combo.type === pt.secondaryType) ? 1.5 : 1;
       let typeMod = getTypeMod(combo.type, e.type);
       if (e.secondaryType && e.secondaryType !== e.type) typeMod *= getTypeMod(combo.type, e.secondaryType);
+      if (typeMod === 0) {
+        addLog(`🤝 ${p.name} 和 ${pt.name} 尝试协作技——【${combo.name}】！但对 ${e.name} 没有效果...`);
+        setBattle(prev => ({
+          ...prev,
+          playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
+          enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
+          phase: 'busy',
+        }));
+        await wait(800);
+        await enemyTurn(tempBattle);
+        return;
+      }
       const critRate = Math.min(0.4, Math.max(0.05, (pStats.crit || 0) / 100 + 0.0625));
       const isCrit = combo.effect?.crit || Math.random() < critRate;
       const critMult = isCrit ? 1.5 : 1;
@@ -12812,7 +12823,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           await wait(1000);
           setAnimEffect(null);
         }
-        const nextEnemyIdx = tempBattle.enemyParty.findIndex((ep, i) => i > tempBattle.enemyActiveIdx && ep.currentHp > 0);
+        const nextEnemyIdx = tempBattle.enemyParty.findIndex((ep, i) => i !== tempBattle.enemyActiveIdx && ep.currentHp > 0);
         if (nextEnemyIdx !== -1) {
           setBattle(prev => prev ? ({
             ...prev,
@@ -12991,9 +13002,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setBattle(prev => {
         if (!prev || !recoverablePhases.has(prev.phase)) return prev;
         console.warn('Battle phase stuck, auto-recovering to input');
-        return { ...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false };
+        const activePet = prev.playerCombatStates?.[prev.activeIdx];
+        const needSwitch = activePet && activePet.currentHp <= 0 && prev.playerCombatStates.some(p => p.currentHp > 0);
+        return { ...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: needSwitch };
       });
-    }, 8000);
+    }, 12000);
     return () => clearTimeout(timer);
   }, [battle?.phase, battle?.turnCount]);
 
@@ -13478,7 +13491,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemy = state.enemyParty?.[state.enemyActiveIdx];
     if (!player || !enemy) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); return; }
 
-    if (enemy.currentHp <= 0 || player.currentHp <= 0) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); return; }
+    if (enemy.currentHp <= 0 || player.currentHp <= 0) {
+      if (player.currentHp <= 0) {
+        const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
+        if (hasAlive) {
+          setBattle(prev => prev ? ({...prev, showSwitch: true, phase: 'input'}) : null);
+        } else {
+          await handleDefeat();
+        }
+      } else {
+        setBattle(prev => prev ? ({...prev, phase: 'input'}) : null);
+      }
+      return;
+    }
 
     // Fix#1: 灵域试炼回合开始处理（火灼、风眼、藤蔓回血）
     if (state.domainRule) {
@@ -13753,6 +13778,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
 
           state.enemyComboUsed = true;
+          if (player.currentHp <= 0) {
+            const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
+            if (hasAlive) {
+              setBattle(prev => ({
+                ...prev, showSwitch: true, phase: 'input', enemyComboUsed: true,
+                turnCount: (prev?.turnCount || 0) + 1,
+                playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+                enemyParty: state.enemyParty.map(e => ({...e})),
+                logs: [`${player.name} 倒下了!`, ...(prev?.logs || [])],
+              }));
+            } else {
+              await handleDefeat();
+            }
+            return;
+          }
           setBattle(prev => ({
             ...prev, phase: 'input', enemyComboUsed: true,
             turnCount: (prev?.turnCount || 0) + 1,
@@ -15041,10 +15081,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 addLog(`${attacker.name} 的忍术属性克制了对手！`);
               }
             }
-            // 竞技场「忍术周」(jutsuBoost)：按段位递减加成，避免与高阶忍术被动叠乘过高
-            if (battleState?.type === 'arena' && (arenaState?.weeklyRule === 'jutsu' || battleState?._arenaJutsuBoost)) {
-              const arnk = source === 'player' ? (nrk?.id || 'academy') : (defender.level >= 80 ? 'kage' : defender.level >= 60 ? 'jonin' : defender.level >= 40 ? 'chunin' : 'genin');
-              // 竞技场忍术周：低段位获得更高加成作为追赶机制
+            // 竞技场「忍术周」(jutsuBoost)：仅玩家获得按段位递减加成
+            if (source === 'player' && battleState?.type === 'arena' && (arenaState?.weeklyRule === 'jutsu' || battleState?._arenaJutsuBoost)) {
+              const arnk = nrk?.id || 'academy';
               const arenaJutsuPct = arnk === 'kage' ? 0.05 : arnk === 'jonin' ? 0.08 : arnk === 'chunin' ? 0.10 : 0.15;
               rawDmg *= (1 + arenaJutsuPct);
             }
@@ -15225,15 +15264,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
           addLog(`🔍 侦查成功！暗月迷雾散去，敌方信息可见！`);
         }
 
-        // Fix#6: 镜像分身反伤
-        if (source === 'player' && battleState?._mirrorClonesActive && dmg > 0) {
+        // Fix#6: 镜像分身反伤 — 攻击假身时伤害无效并反伤
+        if (source === 'player' && battleState?._mirrorClonesActive && dmg > 0 && !isDead) {
           const reflectPct = checkMirrorCloneReflect(battleState, source, addLog);
           if (reflectPct > 0) {
+            defender.currentHp = Math.min(getStats(defender).maxHp, defender.currentHp + dmg);
+            isDead = false;
             const reflectDmg = Math.max(1, Math.floor(getStats(attacker).maxHp * reflectPct));
             attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
             addLog(`${attacker.name} 受到 ${reflectDmg} 点镜像反伤！`);
-            dmg = 0;
-            defender.currentHp = Math.min(getStats(defender).maxHp, defender.currentHp + Math.min(dmg, getStats(defender).maxHp));
           }
         }
 
@@ -16001,7 +16040,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battle;
+    const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battleSnapshot;
 
     const fatigueAmt = type === 'infinity' ? FATIGUE_CONFIG.perInfinityFloor
       : (isBoss || type === 'world_boss' || battleSnapshot.ecoBossMechanics) ? FATIGUE_CONFIG.perBossBattle
@@ -16071,9 +16110,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const bountyMult = isBounty ? 2 : 1;
     const streakCount = (achStats.currentWinStreak || 0) + 1;
     const streakMult = streakCount >= 20 ? 1.5 : streakCount >= 10 ? 1.3 : streakCount >= 5 ? 1.15 : 1.0;
+    const combinedBountyStreak = Math.min(bountyMult * streakMult, 2.5);
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
     const isNarutoExamOrSurvival = type === 'naruto_exam' || type === 'naruto_survival' || type === 'survival';
-    const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * bountyMult * streakMult * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
+    const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * combinedBountyStreak * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
     if (goldGain > 0) setGold(g => g + goldGain);
     if (type === 'survival') {
       const survivalGold = (battleSnapshot.survivalWave || battleSnapshot.meta?.wave || 1) * 100;
@@ -17155,7 +17195,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     try { checkTreasureUnlock('explore', { mapId }); } catch(e) { console.warn('treasure:', e); }
     
     const streakText = streakMult > 1 ? ` (🔥${streakCount}连胜+${Math.round((streakMult-1)*100)}%)` : '';
-    addLog(`🏆 胜利! EXP+${totalBattleExp.toLocaleString()} / 💰+${goldGain.toLocaleString()}${streakText}`);
+    addLog(`🏆 胜利! EXP≈${totalBattleExp.toLocaleString()} / 💰+${goldGain.toLocaleString()}${streakText}`);
 
     // 求婚任务 - 战斗胜利追踪
     if (marriage.pendingPropose) {
@@ -22084,7 +22124,7 @@ const renderMenu = () => {
             {[{icon:'🎖️', val:badges.length, label:'徽章'}, {icon:'📖', val:caughtDex.length, label:'图鉴'}, {icon:'💰', val:gold>=10000?Math.floor(gold/1000)+'k':gold, label:'金币'}, {icon:'💎', val:(achStats.totalGoldEarned ?? 0) >= 100000 ? Math.floor((achStats.totalGoldEarned ?? 0)/1000)+'k' : (achStats.totalGoldEarned ?? 0), label:'累计金'}].map((s,i) => (
               <div key={i} style={{flex:1, textAlign:'center', padding:'6px 4px', background:'rgba(143,216,255,0.04)', borderRadius:'8px'}}>
                 <div style={{fontSize:'14px', fontWeight:'800', color:'#e8f3ff'}}>{s.icon} {s.val}</div>
-                <div style={{fontSize:'9px', color:'#7fa8c8', marginTop:'1px'}}>{s.label}</div>
+                <div style={{fontSize:'10px', color:'#7fa8c8', marginTop:'1px'}}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -22153,7 +22193,7 @@ const renderMenu = () => {
               <div key={i} style={{background:'rgba(143,216,255,0.06)', padding:'6px', borderRadius:'8px', textAlign:'center'}}>
                 <div style={{fontSize:'14px'}}>{item.icon}</div>
                 <div style={{fontSize:'11px', fontWeight:'700', color:'#e8f3ff'}}>{item.val}</div>
-                <div style={{fontSize:'9px', color:'#7fa8c8'}}>{item.label}</div>
+                <div style={{fontSize:'10px', color:'#7fa8c8'}}>{item.label}</div>
               </div>
             ))}
           </div>
@@ -24059,13 +24099,13 @@ const renderMenu = () => {
               <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
                 {ecoEvt && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '22', border:`1px solid ${(ecoEvt.color || '#2E7D32')}55` }}>
-                    <div style={{ fontSize:'13px', fontWeight:'700', color:'#1a1a2e' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
-                    <div style={{ fontSize:'12px', color:'#333', marginTop:'3px' }}>{ecoEvt.counterHint}</div>
+                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '22', border:`1px solid ${(ecoEvt.color || '#2E7D32')}55` }}>
+                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
+                    <div style={{ fontSize:'13px', color:'#333', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
                   </div>
                 )}
                 {adaptSummary.maladapted > 0 && (
-                  <div style={{ padding:'8px 12px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'12px', color:'#BF360C', fontWeight:'600' }}>
+                  <div style={{ padding:'10px 14px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'13px', color:'#BF360C', fontWeight:'600' }}>
                     ⚠️ {adaptSummary.pressure.icon} {adaptSummary.pressure.name}压力 · {adaptSummary.maladapted}只不适应
                   </div>
                 )}
@@ -26731,16 +26771,17 @@ const renderMenu = () => {
                                               if (aliveEnemies.length > 1) {
                                                 const defT = aliveEnemies[0];
                                                 setBattle(prev => ({ ...prev, pendingDoubleMove: i, targetIdx: defT }));
-                                              } else if (aliveEnemies.length === 1) {
+                                              } else if (aliveEnemies.length >= 1) {
                                                 executeDoubleTurn(i, aliveEnemies[0]);
                                               } else {
-                                                executeTurn(i);
+                                                const fallbackIdx = battle.enemyParty?.findIndex(ep => ep.currentHp > 0) ?? 0;
+                                                executeDoubleTurn(i, fallbackIdx);
                                               }
                                             } else {
                                                 executeTurn(i);
                                             }
                                         }}
-                                    disabled={m.isCursed ? (((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy || 0) < (m.ceCost || 0) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isJutsu ? (((isDoubleBattle ? doubleCurrentPet : p)?.chakra || 0) < (m.chakraCost || 0) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
+                                    disabled={m.isCursed ? ((((battle.sharedPlayerCE ?? ((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy)) || 0) < (m.ceCost || 0)) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isJutsu ? ((((battle.sharedPlayerChakra ?? ((isDoubleBattle ? doubleCurrentPet : p)?.chakra)) || 0) < (m.chakraCost || 0)) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
                                         disabledReason={moveDisabledReason}
                                         index={i}
                                     />
@@ -26811,9 +26852,9 @@ const renderMenu = () => {
                             <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}>逃跑</button>
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed ? (() => {
                               const turnOk = battle.turnCount >= 3;
-                              const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.5;
+                              const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.6;
                               const canUse = turnOk && hpOk;
-                              const hint = !turnOk && !hpOk ? `回合≥3(还需${3-battle.turnCount}回合) 且 HP<50%` : !turnOk ? `回合≥3(还需${3-battle.turnCount}回合)` : 'HP<50%';
+                              const hint = !turnOk && !hpOk ? `回合≥3(还需${3-battle.turnCount}回合) 且 HP<60%` : !turnOk ? `回合≥3(还需${3-battle.turnCount}回合)` : 'HP<60%';
                               return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)} disabled={!canUse}>变身{!canUse ? `(${hint})` : ''}</button>;
                             })() : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return (cp.maxCE > 0 || (cp.maxChakra || 0) > 0) ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
@@ -26838,7 +26879,7 @@ const renderMenu = () => {
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
                     <span style={{color:'rgba(255,255,255,0.5)', fontWeight:'bold', fontSize:'16px', letterSpacing:'1px'}}>{battle.phase === 'busy' ? '回合结算中…' : battle.phase === 'anim' ? '动画播放中…' : battle.showSwitch ? '请选择替补精灵…' : '处理中…'}</span>
-                    <button className="battle-stuck-recover-btn" style={{padding:'10px 22px', background:'linear-gradient(180deg,#B45309,#92400E)', color:'#fff7ed', border:'1px solid rgba(255,255,255,0.28)', borderRadius:'12px', cursor:'pointer', fontSize:'14px', fontWeight:800, marginTop:8, minHeight:42, letterSpacing:'0.5px', textShadow:'0 1px 2px rgba(0,0,0,0.35)'}} onClick={() => { setBattle(prev => prev ? ({...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: false}) : null); }}>回合卡住时恢复输入</button>
+                    <button className="battle-stuck-recover-btn" style={{padding:'10px 22px', background:'linear-gradient(180deg,#B45309,#92400E)', color:'#fff7ed', border:'1px solid rgba(255,255,255,0.28)', borderRadius:'12px', cursor:'pointer', fontSize:'14px', fontWeight:800, marginTop:8, minHeight:42, letterSpacing:'0.5px', textShadow:'0 1px 2px rgba(0,0,0,0.35)'}} onClick={() => { setBattle(prev => { if (!prev) return null; const activePet = prev.playerCombatStates?.[prev.activeIdx]; const needSwitch = activePet && activePet.currentHp <= 0 && prev.playerCombatStates.some(p => p.currentHp > 0); return {...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: needSwitch}; }); }}>回合卡住时恢复输入</button>
                 </div>
             )}
         </div> 

@@ -756,7 +756,7 @@ const NEW_PETS_500 = [
   { id: 437, name: '无双霸王', type: 'FIGHT', emoji: '💪', hp: 95, atk: 120, def: 80, desc: '传说中的武道巅峰者，一拳之力可裂山川。' },
 
   // 3. 萤光蛾家族 (BUG)
-  { id: 438, name: '萤火虫', type: 'BUG', emoji: '🪲', hp: 35, atk: 30, def: 40, evo: 439, evoLvl: 16, desc: '夜晚发出温暖微光的小虫子。' },
+  { id: 438, name: '夜光虫', type: 'BUG', emoji: '🪲', hp: 35, atk: 30, def: 40, evo: 439, evoLvl: 16, desc: '夜晚发出温暖微光的小虫子。' },
   { id: 439, name: '幻光蛾', type: 'BUG', emoji: '🦋', hp: 55, atk: 65, def: 55, evo: 440, evoLvl: 34, desc: '翅膀上的鳞粉能折射出梦幻光芒。' },
   { id: 440, name: '彩翼天蛾', type: 'BUG', emoji: '🪻', hp: 75, atk: 100, def: 80, desc: '翅膀展开时如同七色彩虹，是森林的守护者。' },
 
@@ -882,7 +882,7 @@ const PETS_600 = [
   { id: 515, name: '暴风天使', type: 'WIND', emoji: '👼', hp: 75, atk: 80, def: 70, desc: '驾驭暴风的天使，守护旅人。' },
 
   // --- 光系精灵 (15种, 含进化链) ---
-  { id: 516, name: '萤火虫', type: 'LIGHT', emoji: '🪲', hp: 35, atk: 30, def: 30, evo: 517, evoLvl: 18, desc: '在夜晚发出温暖光芒的小虫子。' },
+  { id: 516, name: '荧光虫', type: 'LIGHT', emoji: '🪲', hp: 35, atk: 30, def: 30, evo: 517, evoLvl: 18, desc: '在夜晚发出温暖光芒的小虫子。' },
   { id: 517, name: '光辉蛾', type: 'LIGHT', emoji: '🦋', hp: 60, atk: 55, def: 50, evo: 518, evoLvl: 36, desc: '散发光辉的美丽蛾类精灵。' },
   { id: 518, name: '圣光帝蛾', type: 'LIGHT', emoji: '🦋', hp: 80, atk: 85, def: 70, desc: '周身散发神圣光辉的帝王蛾。' },
   { id: 519, name: '晨光猫', type: 'LIGHT', emoji: '🐱', hp: 40, atk: 40, def: 35, evo: 520, evoLvl: 20, desc: '在晨光中出现的神秘小猫。' },

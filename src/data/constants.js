@@ -12,7 +12,7 @@ export const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_mo
 export const GRID_W = 32; 
 export const GRID_H = 22; 
 
-export const STARTER_POOL_IDS = [1, 4, 7, 10, 13, 16, 19, 21, 23, 25, 27, 29, 32, 35, 37, 39, 41, 43, 46, 48, 50, 52, 54, 56, 58, 60, 63, 66, 69, 72, 74, 77, 79, 81, 84, 86, 88, 90, 92, 96, 98, 100, 102, 104, 109, 111, 116, 118, 120, 129, 133, 147, 152, 155, 158, 161, 164, 166, 172];
+export const STARTER_POOL_IDS = [1, 4, 7, 10, 13, 16, 19, 21, 23, 25, 27, 29, 32, 35, 37, 39, 41, 43, 46, 48, 50, 52, 54, 56, 58, 60, 63, 66, 69, 72, 74, 77, 79, 81, 84, 86, 88, 90, 92, 96, 98, 100, 102, 104, 109, 110, 116, 118, 120, 129, 133, 147, 152, 155, 158, 161, 164, 166, 172];
 export const BGM_SOURCES = {
   // 菜单：使用一段轻松的测试音乐
   MENU: 'https://jetta.vgmtreasurechest.com/soundtracks/pok-mon-25-the-album-2021/ibkutimk/10.%20Only%20Wanna%20Be%20With%20You%20-%20Pok%C3%A9mon%2025%20Version.mp3',
