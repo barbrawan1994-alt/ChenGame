@@ -10092,14 +10092,12 @@ select:focus-visible,
 .starter-lab-screen {
   box-sizing: border-box;
   width: 100%;
-  min-height: 100dvh;
+  height: 100%;
   padding: clamp(18px, 3vw, 42px);
   overflow-x: hidden;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   color: #eef8ff;
   background:
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
@@ -10163,9 +10161,8 @@ select:focus-visible,
 }
 .starter-lab-shell {
   box-sizing: border-box;
-  width: min(860px, calc(100vw - clamp(48px, 8vw, 120px)));
+  width: min(860px, 90vw);
   max-width: 100%;
-  margin-inline: auto;
   display: grid;
   gap: 18px;
   animation: popIn 0.45s ease-out both;
@@ -10707,7 +10704,7 @@ select:focus-visible,
 @media (max-width: 720px) {
   .starter-lab-screen {
     padding: 12px;
-    align-items: flex-start;
+    place-items: start center;
   }
   .starter-lab-shell {
     width: 100%;
