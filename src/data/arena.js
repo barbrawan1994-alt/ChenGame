@@ -21,7 +21,7 @@ export const ARENA_RANKS = [
     firstReward: { gold: 80000 },
     streakBonus: { 3: { gold: 20000 }, 5: { gold: 50000 } } },
   { id: 'master',   name: '大师', icon: '👑', color: '#FF6F00', maxStars: 3, noDropOnLoss: false,
-    enemyLvl: [90, 100], enemyCount: 6, reqBadges: 10,
+    enemyLvl: [90, 100], enemyCount: 6, reqBadges: 13,
     firstReward: { gold: 150000, title: '竞技大师' },
     streakBonus: { 3: { gold: 20000 }, 5: { gold: 50000, title: '无双霸主' } },
     seasonReward: { gold: 200000, accessory: 'trophy', title: '赛季王者' } },
@@ -47,7 +47,7 @@ export const ARENA_SEASON_REWARDS = [
   { rank: 'gold',     gold: 30000,  desc: '🥇 黄金赛季奖励' },
   { rank: 'platinum', gold: 60000,  desc: '💎 铂金赛季奖励' },
   { rank: 'diamond',  gold: 100000, desc: '💠 钻石赛季奖励' },
-  { rank: 'master',   gold: 200000, desc: '👑 大师赛季奖励' },
+  { rank: 'master',   gold: 200000, accessory: 'trophy', title: '赛季王者', desc: '👑 大师赛季奖励（含传说饰品+称号）' },
 ];
 
 export const DEFAULT_ARENA_STATE = {

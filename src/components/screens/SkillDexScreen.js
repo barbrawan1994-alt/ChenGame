@@ -10,7 +10,7 @@ export default React.memo(function SkillDexScreen({ allSkills, onBack }) {
 
   const filteredSkills = allSkills.filter(s => {
     const matchType = skillFilter === 'ALL' || s.t === skillFilter || (skillFilter === 'STATUS' && s.category === 'status');
-    const matchSearch = !skillSearchTerm || s.name.includes(skillSearchTerm);
+    const matchSearch = !skillSearchTerm || s.name.toLowerCase().includes(skillSearchTerm.toLowerCase());
     return matchType && matchSearch;
   });
   const pageCount = Math.max(1, Math.ceil(filteredSkills.length / SKILL_PAGE_SIZE));
@@ -24,9 +24,13 @@ export default React.memo(function SkillDexScreen({ allSkills, onBack }) {
     return { attack: attackSkills.length, status: statusSkills.length, maxPower };
   }, [allSkills]);
 
+  const PHYSICAL_TYPES = ['NORMAL', 'FIGHT', 'FLYING', 'GROUND', 'ROCK', 'BUG', 'GHOST', 'STEEL'];
   const getSkillCategory = (s) => {
-    if (s.category === 'status') return '变化';
-    return s.category === 'special' ? '特殊' : s.p > 0 ? '物理' : '变化';
+    if (s.category === 'status' || !(s.p > 0)) return '变化';
+    if (s.cat) return s.cat === 'physical' ? '物理' : '特殊';
+    if (s.category === 'special') return '特殊';
+    if (s.category === 'physical') return '物理';
+    return PHYSICAL_TYPES.includes(s.t) ? '物理' : '特殊';
   };
   const getPowerColor = (p) => {
     if (p >= 120) return '#ff4d6d';
@@ -53,7 +57,7 @@ export default React.memo(function SkillDexScreen({ allSkills, onBack }) {
         <header className="codex-hero">
           <button className="codex-back" onClick={onBack}>← 返回</button>
           <div className="codex-title-block">
-            <span>Move Encyclopedia</span>
+            <span>技能百科</span>
             <h1>技能图鉴</h1>
             <p>按属性、变化技和名称检索技能，快速比较威力、PP、命中与技能分类。</p>
           </div>
@@ -64,7 +68,7 @@ export default React.memo(function SkillDexScreen({ allSkills, onBack }) {
           <article className="codex-panel codex-progress-panel">
             <div className="codex-sigil">⚡</div>
             <div className="codex-panel-copy">
-              <span>Move Library</span>
+              <span>技能库</span>
               <strong>{allSkills.length} 种技能</strong>
               <p>{skillStats.attack} 个攻击技 · {skillStats.status} 个辅助/变化技，最高威力 {skillStats.maxPower}。</p>
             </div>

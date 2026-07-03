@@ -35,7 +35,12 @@ export function getMoveByLevel(type, level) {
     else if (tier >= 3) { name = `\u795E\u00B7${baseName}`; power = Math.floor(power * 1.5); }
   }
   power = Math.min(power, 250);
-  return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, priority: template.priority || 0, alwaysHit: template.alwaysHit || false, desc: template.desc || '' };
+  const move = { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, priority: template.priority || 0, alwaysHit: template.alwaysHit || false, desc: template.desc || '' };
+  if (template.recharge) move.recharge = true;
+  if (template.selfKO) move.selfKO = true;
+  if (template.cat) move.cat = template.cat;
+  if (template.category) move.category = template.category;
+  return move;
 }
 
 /**
@@ -146,7 +151,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
 
   let newPet = {
     ...base,
-    uid: Date.now() + Math.random(),
+    uid: `${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${Math.floor(Math.random() * 1e8)}`,
     level,
     exp: 0,
     nextExp: calcNextExp(level, expMod),

@@ -64,18 +64,18 @@ export function applyXinfaDamageMods(rawDmg, attacker, defender, ctx, battleLog)
   if (tier >= 2 && atkSect === 8) dmg *= 1.05;
   if (tier >= 3 && atkSect === 8 && defender?.status === 'PSN') dmg *= 1.18;
   if (tier >= 2 && atkSect === 9 && attacker?._sectComboTarget === defender?.uid) dmg *= 1.08;
-  if (tier >= 3 && atkSect === 9 && (attacker?._partySize || 6) >= 4) dmg *= 1.06;
+  if (tier >= 3 && atkSect === 9 && (attacker?._partySize ?? 0) >= 4) dmg *= 1.06;
   if (tier >= 2 && atkSect === 10) dmg *= 1.12;
   if (tier >= 2 && atkSect === 11) {
     attacker._purpleQi = (attacker._purpleQi || 0) + 1;
     if (attacker._purpleQi >= 3) { dmg *= 1.2; attacker._purpleQi = 0; battleLog?.('紫霞真气爆发！'); }
   }
-  if (tier >= 2 && atkSect === 12 && defender?._lastDamage > 80) dmg *= 1.1;
+  if (tier >= 2 && atkSect === 12 && rawDmg > 80) dmg *= 1.1;
   if (tier >= 3 && atkSect === 12) {
     if (attacker._sectShield > 0) dmg *= 1.08;
   }
 
-  return dmg;
+  return Number.isFinite(dmg) ? dmg : rawDmg;
 }
 
 export function applyMartialArtEffect(art, attacker, defender, rawDmg, addLog) {
@@ -117,7 +117,7 @@ export function buildMartialMove(artId) {
     maxPP: art.pp,
     t: art.type,
     type: art.type,
-    category: art.power === 0 ? 'status' : (['FIGHT', 'GROUND', 'STEEL'].includes(art.type) ? 'physical' : 'special'),
+    category: art.power === 0 ? 'status' : (['FIGHT', 'GROUND', 'STEEL', 'NORMAL', 'FLYING', 'ROCK', 'BUG', 'GHOST', 'DARK'].includes(art.type) ? 'physical' : 'special'),
     acc: 100,
     isMartialArt: true,
     martialArtId: art.id,
@@ -163,9 +163,18 @@ export function initBattleSectState(battleState, playerSectState) {
     if (p.sectId === 10 && getXinfaTier(ps.sectXinfaLevels, 10) >= 2) p._sectAnalysis = true;
     if (p.sectId === 2 && getXinfaTier(ps.sectXinfaLevels, 2) >= 2) {
       const max = p._maxHp || p.currentHp || 100;
-      p._sectShield = Math.floor(max * 0.08);
+      p._sectShield = Math.floor(max * 0.12);
     }
   });
+}
+
+export function applySectShieldAbsorb(defender, rawDmg, addLog) {
+  if (!defender || !defender._sectShield || defender._sectShield <= 0) return rawDmg;
+  const absorbed = Math.min(defender._sectShield, rawDmg);
+  defender._sectShield -= absorbed;
+  const remaining = rawDmg - absorbed;
+  if (addLog && absorbed > 0) addLog(`🛡️ 少林金钟罩吸收了 ${absorbed} 伤害！${defender._sectShield > 0 ? `(护盾剩余${defender._sectShield})` : '(护盾破碎)'}`);
+  return remaining;
 }
 
 export function onSectDodge(pet, battleState, addLog) {

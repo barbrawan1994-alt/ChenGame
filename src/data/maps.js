@@ -370,7 +370,7 @@ export const LEGEND_OBTAIN_RULES = [
   { petId: 891, name: '创世纪元兽', method: 'story_boss', requirement: '通关主线第13章后，在银河空间站触发隐藏剧情，击败时空裂隙中的Boss', badge: 13, mapId: 12 },
   { petId: 892, name: '终焉混沌龙', method: 'infinity_floor', requirement: '无限城挑战达到第50层后概率出现，击败后可捕获', floor: 50 },
   { petId: 893, name: '永夜支配者', method: 'time_event', requirement: '在夜晚+雨天条件下，于深渊裂谷(地图105)遭遇', mapId: 105, timePhase: 'NIGHT', weather: 'RAIN' },
-  { petId: 894, name: '黎明守望者', method: 'time_event', requirement: '在白天+晴朗条件下，于彩虹之桥(地图107)遭遇', mapId: 107, timePhase: 'DAY', weather: 'CLEAR' },
+  { petId: 894, name: '雷光守望者', method: 'time_event', requirement: '在白天+晴朗条件下，于彩虹之桥(地图107)遭遇', mapId: 107, timePhase: 'DAY', weather: 'CLEAR' },
   { petId: 895, name: '混沌织梦师', method: 'dungeon_clear', requirement: '完成幻境迷宫(地图103)精英副本3次后解锁', mapId: 103, clearCount: 3 },
   { petId: 896, name: '时空裁决者', method: 'achievement', requirement: '收集750只精灵后，在创世神殿获得', achieveCount: 750, mapId: 109 },
   { petId: 897, name: '虹光凤凰', method: 'ecology', requirement: '将彩虹之桥的所有生态指标提升至80%以上', mapId: 107, ecoThreshold: 80 },

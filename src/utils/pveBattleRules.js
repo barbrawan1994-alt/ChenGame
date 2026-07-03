@@ -20,7 +20,7 @@ export function shouldForestVineBlock(battleState, source) {
     const turn = (battleState.turnCount || 0) + 1;
     const growBonus = turn > 0 && turn % interval === 0 ? 0.15 : 0;
     const baseChance = (rule.vineBlockChance || 0.25) + growBonus + (battleState._ecoVineBonus || 0);
-    const chance = source === 'player' ? baseChance : baseChance * 0.6;
+    const chance = source === 'player' ? baseChance : baseChance * 0.8;
     return Math.random() < chance;
   }
   return false;
@@ -128,6 +128,13 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
     if (player.currentHp <= 0) playerDied = true;
     if (state._crisisBranch === 'heal') {
       enemy._vineAnger = (enemy._vineAnger || 0) + 1;
+      if (enemy._vineAnger >= 3) {
+        const angerDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.06));
+        player.currentHp = Math.max(0, player.currentHp - angerDmg);
+        if (addLog) addLog(`🌿💢 黑藤因治愈波动而暴怒！额外造成 ${angerDmg} 伤害`);
+        if (player.currentHp <= 0) playerDied = true;
+        enemy._vineAnger = 0;
+      }
     }
   }
 
@@ -220,10 +227,11 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
     if (addLog) addLog(`🪞 ${enemy.name} 产生了镜像分身！攻击假身会受到反伤`);
   }
 
-  // Fix#6: skill_echo 简化实现 — Boss复制玩家上一招（35%概率）
   if (phase?.mechanic === 'skill_echo' && !skipList.includes('skill_echo') && player?.currentHp > 0 && state._lastPlayerMove?.p > 0 && Math.random() < 0.35) {
     const echoMove = { ...state._lastPlayerMove, pp: 99 };
-    const echoDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : (player.maxHp || 100)) * 0.04));
+    const playerMaxHp = getStats ? getStats(player).maxHp : (player.maxHp || 100);
+    const echoPower = echoMove.p || 60;
+    const echoDmg = Math.max(1, Math.floor(playerMaxHp * Math.min(0.15, echoPower / 1000 + 0.03)));
     player.currentHp = Math.max(0, player.currentHp - echoDmg);
     if (addLog) addLog(`🔄 ${enemy.name} 回响了【${echoMove.name}】！${player.name} 受到 ${echoDmg} 伤害`);
     if (player.currentHp <= 0) playerDied = true;
@@ -361,4 +369,16 @@ export function checkMirrorCloneReflect(state, source, addLog) {
     if (addLog) addLog(`🪞 镜像分身消散！`);
   }
   return 0;
+}
+
+export function shouldPlayerSkipTurn(state) {
+  if (state?._playerSkipNextTurn) {
+    state._playerSkipNextTurn = false;
+    return true;
+  }
+  return false;
+}
+
+export function getBossRageMult(enemy) {
+  return enemy?._rageMult || 1;
 }

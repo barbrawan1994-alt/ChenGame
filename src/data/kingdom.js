@@ -32,8 +32,8 @@ export const FACTIONS = {
     color: '#4A148C', darkColor: '#311B92', lightColor: '#9C27B0',
     lord: '司马炎', motto: '天命归晋，一统河山',
     desc: '继承魏国基业的统一之国，兼具军事智谋与防御体系，生态建设强于他国。',
-    bonus: { gold: 6, exp: 6, catchRate: 1, contribution: 10, ecoBonus: 5 },
-    bonusDesc: '战功+10%, 金币+6%, 经验+6%, 捕获率+1%, 生态+5%',
+    bonus: { gold: 6, exp: 6, catchRate: 1, contribution: 10, ecoBonus: 5, sanctuaryBonus: 5 },
+    bonusDesc: '战功+10%, 金币+6%, 经验+6%, 捕获率+1%, 圣域/生态效率+5%',
   },
   /** 玩家不可选；名城争夺条中的 NPC 势力 */
   qun: {
@@ -52,7 +52,7 @@ export const ALL_FACTION_IDS = ['wei', 'shu', 'wu', 'jin', 'qun'];
 // 初始领土分配（群雄也持有一些地图）
 export const INITIAL_TERRITORIES = {
   1:  'shu', 2:  'jin', 3:  'jin', 4:  'wu',
-  5:  'wei', 6:  'shu', 7:  'wu',  8:  'wu',
+  5:  'wei', 6:  'shu', 7:  'wu',  8:  'wei',
   9:  'qun', 10: 'wei', 11: 'shu', 12: 'jin',
   13: 'qun',
   204: 'neutral', 205: 'neutral', 206: 'neutral',
@@ -311,6 +311,121 @@ export const getFactionTerritoryStats = (territories) => {
   return stats;
 };
 
+export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, seasonDaysLeft = 7 } = {}) => {
+  const territories = kw?.territories || {};
+  const faction = kw?.faction;
+  const stats = getFactionTerritoryStats(territories);
+  const myStats = faction ? (stats[faction] || { count: 0, totalTroops: 0 }) : { count: 0, totalTroops: 0 };
+  const rival = ALL_FACTION_IDS
+    .filter(fid => fid !== faction)
+    .map(fid => ({ fid, ...(stats[fid] || { count: 0, totalTroops: 0 }) }))
+    .sort((a, b) => b.count - a.count || b.totalTroops - a.totalTroops)[0];
+  const reserve = Math.max(0, Math.floor(kw?.kwManpowerReserve || 0));
+  let contestedAttempts = 0;
+  CONTESTED_MAP_IDS.forEach(mid => { contestedAttempts += Number((kw?.contestProgress || {})[`${mid}_attempts_${today}`]) || 0; });
+  const contestedMax = CONTESTED_MAP_IDS.length * 3;
+  const regularSieges = kw?.dailySiegeDate === today ? (kw?.dailySiegeCount || 0) : 0;
+  const overextended = myStats.count >= WAR_TICK_CONFIG.overextendThreshold;
+  const underdog = myStats.count <= 2;
+  const reserveState = reserve >= 420 ? '充足' : reserve >= 180 ? '可用' : '不足';
+  const enemyPressure = rival ? Math.max(0, (rival.count - myStats.count) * 12 + Math.floor((rival.totalTroops - myStats.totalTroops) / 35)) : 0;
+  const overextendPressure = overextended ? 26 : myStats.count >= WAR_TICK_CONFIG.overextendThreshold - 1 ? 14 : 0;
+  const reservePressure = reserve < 160 ? 28 : reserve < 320 ? 14 : 4;
+  const seasonPressure = seasonDaysLeft <= 2 ? 18 : seasonDaysLeft <= 4 ? 9 : 0;
+  const campaignDifficulty = clamp(enemyPressure + overextendPressure + reservePressure + seasonPressure, 8, 100);
+  const difficulty = campaignDifficulty >= 70
+    ? { label: '高压赛季', desc: '敌方或兵力压力偏高，强攻会带来明显反扑风险。', color: '#EF5350' }
+    : campaignDifficulty >= 42
+      ? { label: '中压拉扯', desc: '可以推进，但需要挑补给好、城防低的窗口。', color: '#F59E0B' }
+      : { label: '主动期', desc: '我方具备主动权，适合集中兵力扩大优势。', color: '#66BB6A' };
+  const posture = overextended
+    ? { label: '巩固防线', tone: '守', desc: '领地过多触发扩张惩罚，先补守军和清理争夺城。' }
+    : underdog
+      ? { label: '背水扩张', tone: '攻', desc: '领地较少，背水加成生效，适合集中兵力夺一城。' }
+      : reserve < 160
+        ? { label: '征兵整备', tone: '养', desc: '预备兵偏低，先打国战训练师补兵再攻城。' }
+        : { label: '稳步推进', tone: '衡', desc: '兵力与领土处于健康区间，可挑低防目标推进。' };
+
+  const recommendations = [];
+  if (reserve < 160) recommendations.push('先在国战地图击败敌国训练师补预备兵');
+  if (overextended) recommendations.push('优先守住接壤城池，避免远征');
+  if (contestedAttempts < contestedMax && reserve >= 80) recommendations.push('今日名城攻城次数未用完，可去「争夺」推进占领条');
+  if (regularSieges < 5 && reserve >= 60 && !overextended) recommendations.push('普通领土攻城仍有次数，挑胜率高的低防城');
+  if (seasonDaysLeft <= 2) recommendations.push('赛季末优先保排名和领每日收入');
+  if (recommendations.length === 0) recommendations.push('当前节奏稳定，继续刷战功和名将收集');
+
+  const assaultWindows = WAR_MAP_IDS
+    .filter(mid => {
+      const t = territories[mid];
+      if (!t || t.owner === faction || CONTESTED_MAP_IDS.includes(Number(mid))) return false;
+      return true;
+    })
+    .map(mid => {
+      const t = territories[mid];
+      const supply = getSupplyProfile(mid, faction, territories);
+      const garrison = getGarrisonTotal(t.garrison);
+      const score = Math.round((115 - (t.strength || 60)) + (140 - Math.min(140, garrison)) * 0.35 + (supply.mult - 0.8) * 60 + (t.owner === rival?.fid ? 12 : 0));
+      const risk = t.strength >= 70 || garrison >= 120 || supply.mult < 0.9
+        ? '高'
+        : t.strength >= 48 || garrison >= 82 ? '中' : '低';
+      return {
+        mapId: Number(mid),
+        owner: t.owner || 'neutral',
+        strength: t.strength || 0,
+        garrison,
+        supplyLabel: supply.label,
+        risk,
+        score,
+        advice: supply.mult < 0.9 ? '补给差，除非急需不要远征' : (t.strength <= 45 ? '城防薄弱，适合小队推进' : '需带足攻城兵和克制兵种'),
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const strategicLevers = [
+    {
+      label: '补给线',
+      value: assaultWindows[0]?.supplyLabel || '暂无',
+      desc: '相邻或低远征惩罚的目标胜率更稳，远征会放大战损。',
+    },
+    {
+      label: '反扑风险',
+      value: overextended ? '高' : rival && rival.count > myStats.count ? '中' : '低',
+      desc: overextended ? '领地过多时自然衰减加重，敌方更容易夺回边境。' : '领地健康时可以主动挑低防城。',
+    },
+    {
+      label: '赛季窗口',
+      value: `${seasonDaysLeft}天`,
+      desc: seasonDaysLeft <= 2 ? '赛季末重在保排名，少打高损攻城。' : '还有时间做征兵、攻城、守城的完整循环。',
+    },
+  ];
+
+  return {
+    posture,
+    difficulty,
+    campaignDifficulty,
+    rival: rival || null,
+    reserveState,
+    reserve,
+    contestedAttempts,
+    contestedMax,
+    regularSieges,
+    overextended,
+    underdog,
+    deployCapHint: Math.min(reserve, 200 + Math.max(0, rankIdx) * 40),
+    recommendations,
+    assaultWindows,
+    strategicLevers,
+    metrics: [
+      { label: '我方城池', value: `${myStats.count}/${WAR_MAP_IDS.length}` },
+      { label: '预备兵', value: `${reserveState} ${reserve}` },
+      { label: '名城次数', value: `${contestedAttempts}/${contestedMax}` },
+      { label: '最大调兵', value: `${Math.min(reserve, 380 + Math.max(0, rankIdx) * 72)}` },
+      { label: '战局压力', value: `${campaignDifficulty}/100` },
+    ],
+  };
+};
+
 /** 简易兵种克制计算（与kwSiege共享思路） */
 const TROOP_KEYS_K = ['shield', 'spear', 'cavalry', 'archer', 'siege', 'raider'];
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -475,7 +590,7 @@ const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
   return vulnerability + strategicValue + supplyScore + underdogIntent + overextendPenalty + noise;
 };
 
-// 执行一次 War Tick — 四方势力（魏蜀吴群雄）都参与攻城
+// 执行一次 War Tick — 五方势力（魏蜀吴晋+群雄NPC）都参与攻城
 export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, attackBuff, sectBonus = 0) => {
   const newTerritories = JSON.parse(JSON.stringify(territories));
   const log = [];
@@ -837,6 +952,8 @@ export const resetKingdomDailyCounts = (kw) => {
     return {
       ...kw,
       dailyCounts: { income: false, kills: 0, capitalReward: false, resetDate: today },
+      dailySiegeCount: 0,
+      dailySiegeDate: today,
     };
   }
   return kw;

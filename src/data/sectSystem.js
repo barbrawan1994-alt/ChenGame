@@ -419,6 +419,8 @@ export function calcSectKingdomPowerBonus(playerSect, sectRank, sectStances, pla
   if (!playerSect || sectRank < 3) return 0;
   let bonus = 0;
   for (let sid = 1; sid <= 12; sid++) {
+    const hasExplicitStance = sectStances?.[sid] || sectStances?.[String(sid)];
+    if (!hasExplicitStance && sid !== playerSect && sectRank < 8) continue;
     const stance = getSectFactionStance(sid, sectStances);
     if (stance && stance === playerFaction) {
       const rep = sectRank >= 5 ? 1.2 : 1;
@@ -426,6 +428,120 @@ export function calcSectKingdomPowerBonus(playerSect, sectRank, sectStances, pla
     }
   }
   return bonus;
+}
+
+const SECT_ARCHETYPE = {
+  1: { role: '突击', plan: '优先攻打城防偏低的前线，靠剑修攻坚快速打开缺口。', tags: ['攻城', '爆发'] },
+  2: { role: '镇守', plan: '适合防守关键城池，配合领地守护和盾卫降低战损。', tags: ['防守', '减伤'] },
+  3: { role: '机动', plan: '适合支援接壤战场，避开远征补给差的孤城。', tags: ['支援', '机动'] },
+  4: { role: '暗袭', plan: '适合消耗强敌城防，优先挑守军偏少但归属强国的目标。', tags: ['削弱', '奇袭'] },
+  5: { role: '后勤', plan: '适合拉长赛季收益，先补兵、稳收入，再打名城。', tags: ['续航', '资源'] },
+  6: { role: '火攻', plan: '适合名城与高城防目标，攻城器和弓弩收益更高。', tags: ['破城', '火攻'] },
+  7: { role: '控场', plan: '适合胶着战，先压低敌方优势城池再集中推进。', tags: ['控场', '拖战'] },
+  8: { role: '削弱', plan: '适合对付领地多的强势阵营，靠持续削弱降低反扑。', tags: ['毒耗', '压制'] },
+  9: { role: '民望', plan: '适合补足弱势阵营，优先做战功和日常声望任务。', tags: ['战功', '民心'] },
+  10: { role: '机关', plan: '适合守城与侦察，优先强化己方关键边境。', tags: ['城防', '情报'] },
+  11: { role: '精锐', plan: '适合高等级队伍打精英战役，收益稳定但需要名将支援。', tags: ['精英', '破防'] },
+  12: { role: '反制', plan: '适合防守反击，在己方领地较少时收益更明显。', tags: ['反击', '稳守'] },
+};
+
+export function evaluateSectStrategy({ sectPlayer, kingdomWar, party = [], badges = 0, territories = {} }) {
+  const ps = sectPlayer || DEFAULT_SECT_PLAYER_STATE;
+  const mainSectId = ps.playerSect;
+  const mainSect = mainSectId ? SECT_DB[mainSectId] : null;
+  const rank = getSectRankInfo(ps.sectRank || 0);
+  const res = ps.sectResources || DEFAULT_SECT_RESOURCES;
+  const partySectCount = party.filter(p => p?.sectId === mainSectId).length;
+  const stance = mainSectId ? getSectFactionStance(mainSectId, ps.sectStances) : null;
+  const kwFaction = kingdomWar?.faction || null;
+  const aligned = !!(stance && kwFaction && stance === kwFaction);
+  const archetype = SECT_ARCHETYPE[mainSectId] || { role: '未定', plan: '先拜入门派并完成日常，积累声望解锁国战立场。', tags: ['修行'] };
+  const repToNext = (() => {
+    const next = SECT_RANKS.find(r => r.rank === (ps.sectRank || 0) + 1);
+    if (!next) return null;
+    return Math.max(0, next.need - (res.reputation || 0));
+  })();
+  const ownTerr = kwFaction ? Object.values(territories || {}).filter(t => t.owner === kwFaction).length : 0;
+  const resBalance = Math.min(res.reputation || 0, res.contribution || 0, res.qiEssence || 0);
+  const subSectReady = !!ps.playerSubSect;
+  const dailyOpen = (ps.sectDailyTasks || []).filter(t => !t.completed).length;
+  const rankPressure = Math.max(0, 8 - (ps.sectRank || 0)) * 7;
+  const synergyPressure = Math.max(0, 2 - partySectCount) * 18;
+  const stancePressure = mainSectId && (ps.sectRank || 0) >= 8 && kwFaction && !aligned ? 20 : 0;
+  const resourcePressure = resBalance < 120 ? 14 : resBalance < 320 ? 7 : 0;
+  const difficultyScore = Math.max(0, Math.min(100, rankPressure + synergyPressure + stancePressure + resourcePressure + (dailyOpen > 2 ? 8 : 0)));
+  const difficulty = difficultyScore >= 66
+    ? { label: '修行吃紧', desc: '身份、资源或阵容有明显短板，先补基础再打高难玩法。', color: '#EF5350' }
+    : difficultyScore >= 38
+      ? { label: '路线成型', desc: '核心方向已经明确，但副修、国战立场和同门上阵仍会拉开差距。', color: '#F59E0B' }
+      : { label: '可冲高阶', desc: '当前门派体系比较完整，可以把资源投到高收益挑战。', color: '#66BB6A' };
+
+  const stanceOptions = ['wei', 'shu', 'wu', 'jin'].map(fid => {
+    const same = fid === kwFaction;
+    const current = fid === stance;
+    const sectLean = SECT_FACTION_LEAN[mainSectId]?.kwBonus;
+    let score = 40;
+    if (same) score += 28;
+    if (current) score += 16;
+    if (ownTerr <= 2 && same) score += 10;
+    if (ownTerr >= 7 && same) score -= 8;
+    return {
+      factionId: fid,
+      current,
+      score,
+      label: sectLean?.label || archetype.role,
+      desc: same ? '与当前国战阵营同向，门派国力加成会直接生效。' : '可作为未来转向或牵制思路，但当前收益较低。',
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  const priorities = [];
+  if (!mainSectId) priorities.push({ label: '拜入门派', desc: `获得 ${SECT_JOIN_REQ_BADGES} 枚徽章后选择主修门派。` });
+  else if ((ps.sectRank || 0) < 3) priorities.push({ label: '升到内门', desc: repToNext != null ? `还差 ${repToNext} 声望，解锁秘境和阵容加成。` : '继续完成门派任务。' });
+  else if ((ps.sectDailyTasks || []).some(t => !t.completed)) priorities.push({ label: '清门派日常', desc: '日常是声望和贡献的稳定来源，优先完成可领取项。' });
+  if (mainSectId && partySectCount < 2) priorities.push({ label: '补门派精灵', desc: '队伍里同门精灵越多，心法和共鸣越容易形成主轴。' });
+  if (mainSectId && (ps.sectRank || 0) >= 8 && kwFaction && !aligned) priorities.push({ label: '调整国战立场', desc: `建议倾向 ${kwFaction}，让门派加成参与国战。` });
+  if (mainSectId && !subSectReady && (ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK) priorities.push({ label: '选择副修', desc: '副修会带来组合技和第二成长曲线，但会分散贡献投入。' });
+  if (priorities.length === 0) priorities.push({ label: archetype.role + '路线', desc: archetype.plan });
+
+  const depthRules = [
+    {
+      label: '主修 / 副修取舍',
+      value: subSectReady ? '双修开启' : (ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK ? '可选副修' : '主修优先',
+      desc: subSectReady ? '双修提升上限，但贡献和秘卷会被分流。' : '先把主修心法和身份做起来，避免战力虚高。',
+    },
+    {
+      label: '阵容共鸣',
+      value: `${partySectCount}/${Math.max(1, party.length || 0)}`,
+      desc: partySectCount >= 2 ? '已具备同门轴心，可追求组合技。' : '同门不足时，门派加成难以稳定转成实战优势。',
+    },
+    {
+      label: '阵营代价',
+      value: aligned ? '同向' : kwFaction ? '错位' : '未参战',
+      desc: aligned ? '国战收益会放大门派路线。' : '错位时适合刷门派日常，别硬打国战高压目标。',
+    },
+  ];
+
+  return {
+    mainSect,
+    rank,
+    archetype,
+    stance,
+    aligned,
+    partySectCount,
+    repToNext,
+    difficulty,
+    difficultyScore,
+    depthRules,
+    priorities,
+    stanceOptions,
+    metrics: [
+      { label: '同门上阵', value: `${partySectCount}/${party.length || 0}` },
+      { label: '声望', value: `${res.reputation || 0}` },
+      { label: '贡献', value: `${res.contribution || 0}` },
+      { label: '国战同向', value: aligned ? '是' : '否' },
+      { label: '路线压力', value: `${difficultyScore}/100` },
+    ],
+  };
 }
 
 export function getComboSkillKey(mainSect, subSect) {

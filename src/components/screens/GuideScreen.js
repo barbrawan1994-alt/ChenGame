@@ -108,7 +108,7 @@ export default React.memo(function GuideScreen({ onBack }) {
                 <div className="gd-sections">
                   {cat.sections.map((sec, si) => {
                     const secKey = `${cat.id}_${si}`;
-                    const autoOpen = q && sec.sub && sec.sub.some(item => item.t.toLowerCase().includes(q) || item.c.toLowerCase().includes(q));
+                    const autoOpen = q && sec.sub && sec.sub.some(item => (item.t || '').toLowerCase().includes(q) || (item.c || '').toLowerCase().includes(q));
                     const secOpen = autoOpen || isSecOpenFn(secKey);
                     const hasSub = sec.sub && sec.sub.length > 0;
                     return (

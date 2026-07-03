@@ -73,8 +73,8 @@ export const DEVIL_FRUITS = {
     transformMove: { name: '糯糯白连冲', t: 'FIGHT', p: 95, pp: 6, acc: 100, isFruitMove: true },
   },
   df_pero: {
-    id: 'df_pero', name: '甜甜果实', category: 'PARAMECIA', rarity: 'EPIC',
-    desc: '甜蜜气息削弱对手，每回合回复HP并降低对手攻击',
+    id: 'df_pero', name: '灵魂果实', category: 'PARAMECIA', rarity: 'EPIC',
+    desc: '操控灵魂的力量，每回合回复HP并降低对手攻击',
     duration: 4,
     transform: {
       healPerTurn: 0.08, enemyAtkDown: 1, defMult: 1.3,

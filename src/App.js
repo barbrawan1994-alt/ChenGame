@@ -112,7 +112,7 @@ import {
   SECT_XINFA, SECT_SHOP_ITEMS, SECT_RESOURCE_LABELS, SECT_ALLIANCES, SECT_FACTION_LEAN, SECT_JIANGHU_EVENTS, SECT_COMBO_SKILLS,
   getSectRankByRep, getSectRankInfo, getLearnableMartialArts, getMartialArtById, getSectMartialArts,
   generateSectDailyTasks, getActiveJianghuEvent, getComboSkillKey, calcSectKingdomPowerBonus,
-  getSectFactionStance, SECT_REALM_BY_SECT,
+  getSectFactionStance, evaluateSectStrategy, SECT_REALM_BY_SECT,
 } from './data';
 import {
   getPlayerSectCombatContext, applyXinfaDamageMods, applyMartialArtEffect, buildMartialMove,
@@ -148,6 +148,7 @@ import {
   GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
   GANG_ICONS, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
   getGangRank, getGangSkillBonus, getGangSkills, getGangMaxSkills, getGangWarLevel, getGangWarReward, stripGangCombatBonus,
+  evaluateGangWarTarget, buildGangCommandPlan,
   generateCafeRecruits, DEFAULT_GANG_STATE, PERSONAL_SKILL_COST_MULT, PERSONAL_SKILL_BASE_COST,
 } from './data/gang';
 import {
@@ -166,7 +167,7 @@ import {
   executeWarTick, checkSeasonEnd, applySeasonRewards, resetKingdomDailyCounts,
   KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS, CONTESTED_MAP_IDS,
   getCapitalSiegeTargets, getGarrisonTotal, getFactionTerritoryStats,
-  generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
+  buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
 } from './data/kingdom';
 import {
@@ -2779,6 +2780,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const jianghuEvt = getActiveJianghuEvent();
     const comboKey = getComboSkillKey(ps.playerSect, ps.playerSubSect);
     const comboSkill = comboKey ? SECT_COMBO_SKILLS[comboKey] : null;
+    const sectStrategy = evaluateSectStrategy({ sectPlayer: ps, kingdomWar, party, badges: badges.length, territories: kingdomWar?.territories || {} });
 
     return (
       <div className="screen" style={{background: '#121212', color: '#fff', display:'flex', flexDirection:'column'}}>
@@ -2807,11 +2809,75 @@ const [viewStatPet, setViewStatPet] = useState(null);
           {sectHubTab === 'overview' && (
             <div>
               {ps.playerSect ? (
-                <div style={{ background:`linear-gradient(135deg, ${mainSect.color}44, #1e1e1e)`, border:`1px solid ${mainSect.color}`, borderRadius:'12px', padding:'16px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'22px', fontWeight:'bold', color: mainSect.color }}>{mainSect.emoji} {mainSect.name}</div>
-                  <div style={{ fontSize:'13px', color:'#ccc', marginTop:'6px' }}>身份：{rankInfo.name} · 声望 {res.reputation || 0}</div>
-                  <div style={{ fontSize:'12px', color:'#aaa', marginTop:'8px' }}>解锁：{(rankInfo.unlocks || []).join(' · ')}</div>
-                  {ps.playerSubSect && <div style={{ marginTop:'8px', fontSize:'12px', color:'#81C784' }}>副修：{SECT_DB[ps.playerSubSect]?.name}</div>}
+                <div style={{ background:`linear-gradient(135deg, ${mainSect.color}33, #161b22 58%, #0b1220)`, border:`1px solid ${mainSect.color}66`, borderRadius:'14px', padding:'16px', marginBottom:'16px', boxShadow:`0 12px 34px ${mainSect.color}18` }}>
+                  <div style={{display:'flex', gap:'14px', alignItems:'flex-start', marginBottom:'14px'}}>
+                    <div style={{width:'54px', height:'54px', borderRadius:'14px', background:`linear-gradient(135deg, ${mainSect.color}, #111827)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', boxShadow:`0 8px 20px ${mainSect.color}30`}}>{mainSect.emoji}</div>
+                    <div style={{flex:1, minWidth:0}}>
+                      <div style={{ fontSize:'22px', fontWeight:'900', color: '#fff', letterSpacing:'1px' }}>{mainSect.name} · {sectStrategy.archetype.role}</div>
+                      <div style={{ fontSize:'12px', color:'#cbd5e1', marginTop:'5px', lineHeight:1.6 }}>{sectStrategy.archetype.plan}</div>
+                      <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'8px'}}>
+                        {sectStrategy.archetype.tags.map(tag => <span key={tag} style={{fontSize:'10px', padding:'3px 8px', borderRadius:'999px', background:`${mainSect.color}22`, color:mainSect.color, border:`1px solid ${mainSect.color}40`, fontWeight:'800'}}>{tag}</span>)}
+                        <span style={{fontSize:'10px', padding:'3px 8px', borderRadius:'999px', background:'rgba(255,255,255,0.08)', color:'#e5e7eb'}}>身份 {rankInfo.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(110px, 1fr))', gap:'8px', marginBottom:'12px'}}>
+                    {sectStrategy.metrics.map(m => (
+                      <div key={m.label} style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'10px'}}>
+                        <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'700'}}>{m.label}</div>
+                        <div style={{fontSize:'15px', color:'#fff', fontWeight:'900', marginTop:'3px'}}>{m.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{marginBottom:'12px', background:`linear-gradient(135deg, ${sectStrategy.difficulty.color}22, rgba(0,0,0,0.18))`, border:`1px solid ${sectStrategy.difficulty.color}55`, borderRadius:'12px', padding:'11px 12px', display:'flex', justifyContent:'space-between', gap:'12px', alignItems:'center'}}>
+                    <div>
+                      <div style={{fontSize:'12px', color:sectStrategy.difficulty.color, fontWeight:'900'}}>修行难度 · {sectStrategy.difficulty.label}</div>
+                      <div style={{fontSize:'10px', color:'#cbd5e1', lineHeight:1.5, marginTop:'3px'}}>{sectStrategy.difficulty.desc}</div>
+                    </div>
+                    <div style={{fontSize:'18px', color:'#fff', fontWeight:'900', flexShrink:0}}>{sectStrategy.difficultyScore}</div>
+                  </div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'10px'}}>
+                    <div style={{background:'rgba(0,0,0,0.22)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px'}}>
+                      <div style={{fontSize:'12px', fontWeight:'900', color:'#e5e7eb', marginBottom:'8px'}}>下一步优先级</div>
+                      {sectStrategy.priorities.slice(0, 3).map((p, i) => (
+                        <div key={p.label} style={{display:'flex', gap:'8px', marginTop:i ? '8px' : 0}}>
+                          <span style={{width:'20px', height:'20px', borderRadius:'8px', background:`${mainSect.color}30`, color:mainSect.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'900', flexShrink:0}}>{i + 1}</span>
+                          <div>
+                            <div style={{fontSize:'12px', color:'#fff', fontWeight:'800'}}>{p.label}</div>
+                            <div style={{fontSize:'10px', color:'#94a3b8', lineHeight:1.5}}>{p.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{background:'rgba(0,0,0,0.22)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px'}}>
+                      <div style={{fontSize:'12px', fontWeight:'900', color:'#e5e7eb', marginBottom:'8px'}}>国战立场推荐</div>
+                      {sectStrategy.stanceOptions.slice(0, 4).map(opt => {
+                        const f = FACTIONS[opt.factionId];
+                        return (
+                          <button key={opt.factionId} type="button" disabled={(ps.sectRank || 0) < 8}
+                            onClick={() => changeSectFactionStance(ps.playerSect, opt.factionId)}
+                            style={{width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px', marginBottom:'6px', padding:'7px 9px', borderRadius:'9px', border:`1px solid ${opt.current ? f.color : 'rgba(255,255,255,0.1)'}`, background: opt.current ? `${f.color}22` : 'rgba(255,255,255,0.05)', color:'#fff', cursor:(ps.sectRank || 0) < 8 ? 'not-allowed' : 'pointer', opacity:(ps.sectRank || 0) < 8 ? 0.5 : 1}}>
+                            <span style={{fontSize:'11px', fontWeight:'800'}}>{f.icon} {f.fullName}</span>
+                            <span style={{fontSize:'10px', color: opt.current ? f.lightColor : '#94a3b8'}}>{opt.current ? '当前' : opt.label}</span>
+                          </button>
+                        );
+                      })}
+                      {(ps.sectRank || 0) < 8 && <div style={{fontSize:'10px', color:'#94a3b8', lineHeight:1.5}}>代掌门后可调整立场，当前仅展示推荐。</div>}
+                    </div>
+                    <div style={{background:'rgba(0,0,0,0.22)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px'}}>
+                      <div style={{fontSize:'12px', fontWeight:'900', color:'#e5e7eb', marginBottom:'8px'}}>路线取舍</div>
+                      {sectStrategy.depthRules.map(rule => (
+                        <div key={rule.label} style={{marginBottom:'8px'}}>
+                          <div style={{display:'flex', justifyContent:'space-between', gap:'8px'}}>
+                            <span style={{fontSize:'11px', color:'#fff', fontWeight:'800'}}>{rule.label}</span>
+                            <span style={{fontSize:'10px', color:mainSect.color, fontWeight:'900'}}>{rule.value}</span>
+                          </div>
+                          <div style={{fontSize:'10px', color:'#94a3b8', lineHeight:1.45, marginTop:'2px'}}>{rule.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {ps.playerSubSect && <div style={{ marginTop:'10px', fontSize:'12px', color:'#81C784' }}>副修：{SECT_DB[ps.playerSubSect]?.name}</div>}
                   {comboSkill && <div style={{ marginTop:'8px', fontSize:'12px', color:'#FFD54F' }}>组合技：{comboSkill.name} — {comboSkill.desc}</div>}
                   {(ps.sectRank || 0) >= 8 && ps.playerSect && (
                     <div style={{ marginTop:'12px' }}>
@@ -9712,6 +9778,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const bonus = getGangSkillBonus(skills);
     const gangReadyTasks = GANG_TASKS.filter(task => (dc.taskCompleted || []).includes(task.id) && !(dc.taskCompleted || []).includes(task.id + '_claimed')).length;
     const gangDailyDone = (dc.taskCompleted || []).filter(id => String(id).endsWith('_claimed')).length;
+    const partyAvgLevelForGang = party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 1;
 
     const headerStyle = {background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5};
     const cardStyle = {background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'12px', padding:'14px', marginBottom:'10px'};
@@ -9741,6 +9808,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const renderGangOverview = () => {
       const memberCount = gangInfo?.members?.length || 0;
       const maxMembers = GANG_MAX_MEMBERS(gangInfo?.level || 1);
+      const commandPlan = buildGangCommandPlan({ gangInfo, gang, dailyCounts: dc, kingdomWar, partyAvgLevel: partyAvgLevelForGang });
       return (
         <div>
           <div style={{...cardStyle, display:'flex', alignItems:'center', gap:'14px', background:'linear-gradient(135deg, rgba(255,111,0,0.15), rgba(255,143,0,0.05))'}}>
@@ -9750,6 +9818,65 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'12px', color:'#aaa', marginTop:'2px'}}>{gangInfo?.desc}</div>
               <div style={{fontSize:'12px', color:'#FFD700', marginTop:'4px'}}>帮派等级: Lv.{gangInfo?.level || 1} · 战力 {gangInfo?.power || 0}</div>
               {gangInfo?.perkDesc && <div style={{fontSize:'11px', color:'#66BB6A', marginTop:'3px'}}>🎁 帮派特色: {gangInfo.perkDesc}</div>}
+            </div>
+          </div>
+
+          <div style={{...cardStyle, background:'linear-gradient(135deg, rgba(15,23,42,0.92), rgba(30,41,59,0.86))', border:'1px solid rgba(148,163,184,0.22)', boxShadow:'0 12px 34px rgba(0,0,0,0.18)'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px', marginBottom:'12px'}}>
+              <div>
+                <div style={{fontSize:'12px', color:'#fbbf24', fontWeight:'900', letterSpacing:'1px'}}>今日指挥台</div>
+                <div style={{fontSize:'18px', fontWeight:'900', color:'#fff', marginTop:'3px'}}>{commandPlan.focus.label}</div>
+                <div style={{fontSize:'11px', color:'#cbd5e1', marginTop:'4px', lineHeight:1.55}}>{commandPlan.focus.desc}</div>
+              </div>
+              <button type="button" onClick={() => setGangTab(commandPlan.warLeft > 0 ? 'war' : 'tasks')} style={{...btnPrimary, padding:'8px 14px', borderRadius:'12px', fontSize:'11px', flexShrink:0}}>
+                {commandPlan.warLeft > 0 ? '去帮战' : '做任务'}
+              </button>
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(92px, 1fr))', gap:'8px', marginBottom:'12px'}}>
+              {commandPlan.metrics.map(m => (
+                <div key={m.label} style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'9px'}}>
+                  <div style={{fontSize:'10px', color:'#94a3b8', fontWeight:'700'}}>{m.label}</div>
+                  <div style={{fontSize:'14px', color:'#fff', fontWeight:'900', marginTop:'2px'}}>{m.value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'10px'}}>
+              <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'11px', color:'#e5e7eb', fontWeight:'900', marginBottom:'8px'}}>任务优先</div>
+                {commandPlan.taskPlan.slice(0, 3).map(t => (
+                  <div key={t.id} style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'7px'}}>
+                    <span style={{fontSize:'15px'}}>{t.icon}</span>
+                    <div style={{flex:1, minWidth:0}}>
+                      <div style={{fontSize:'11px', color:'#fff', fontWeight:'800', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{t.name}</div>
+                      <div style={{fontSize:'10px', color:t.done && !t.claimed ? '#86efac' : '#94a3b8'}}>{t.claimed ? '已领取' : t.done ? '可领取' : `${t.progress}/${t.target}`}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'11px', color:'#e5e7eb', fontWeight:'900', marginBottom:'8px'}}>技能路线</div>
+                {(commandPlan.skillPlan.length ? commandPlan.skillPlan : GANG_SKILLS.slice(0, 3)).slice(0, 3).map(s => (
+                  <div key={s.id} style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'7px'}}>
+                    <span style={{fontSize:'15px'}}>{s.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:'11px', color:'#fff', fontWeight:'800'}}>{s.name}</div>
+                      <div style={{fontSize:'10px', color:'#94a3b8'}}>Lv.{s.curLv || 0}/{s.maxLv || 0}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'11px', color:'#e5e7eb', fontWeight:'900', marginBottom:'8px'}}>经营取舍</div>
+                {commandPlan.depthLevers.map(lever => (
+                  <div key={lever.label} style={{marginBottom:'8px'}}>
+                    <div style={{display:'flex', justifyContent:'space-between', gap:'8px'}}>
+                      <span style={{fontSize:'11px', color:'#fff', fontWeight:'800'}}>{lever.label}</span>
+                      <span style={{fontSize:'10px', color:'#fbbf24', fontWeight:'900'}}>{lever.value}</span>
+                    </div>
+                    <div style={{fontSize:'10px', color:'#94a3b8', lineHeight:1.45, marginTop:'2px'}}>{lever.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -9920,22 +10047,35 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const rankObj = getCurrentGangRank();
       const canWar = rankObj && GANG_RANKS.indexOf(rankObj) >= 1;
       const warCount = dc.warCount || 0;
-      const targets = GANG_PRESETS.filter(g => g.id !== gang.gangId);
+      const targets = GANG_PRESETS
+        .filter(g => g.id !== gang.gangId)
+        .map(target => ({ target, preview: evaluateGangWarTarget({ targetGang: target, ownGang: gangInfo, rank: rankObj, kingdomWar, partyAvgLevel: partyAvgLevelForGang }) }))
+        .sort((a, b) => (b.preview?.rewardScore || 0) - (a.preview?.rewardScore || 0));
       return (
         <div>
           <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>⚔️ 帮战</div>
           <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>
-            今日帮战: {warCount}/{GANG_WAR_CONFIG.maxDaily} · {!canWar ? '需达到精英以上才能参与帮战' : '选择对手发起帮战'}
+            今日帮战: {warCount}/{GANG_WAR_CONFIG.maxDaily} · {!canWar ? '需达到精英以上才能参与帮战' : '按收益与风险排序，优先打推荐目标'}
           </div>
-          {canWar && targets.map(target => {
+          {canWar && targets.map(({ target, preview }) => {
             const reward = getGangWarReward(target);
             const enemyLv = getGangWarLevel(target);
             return (
-              <div key={target.id} style={{...cardStyle, display:'flex', alignItems:'center', gap:'10px'}}>
+              <div key={target.id} style={{...cardStyle, display:'grid', gridTemplateColumns:'auto minmax(0, 1fr) auto', alignItems:'center', gap:'10px', border: preview?.winChance >= 0.56 ? '1px solid rgba(102,187,106,0.35)' : cardStyle.border}}>
                 <span style={{fontSize:'28px'}}>{target.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:'bold', fontSize:'13px'}}>{target.name} <span style={{color:'#999', fontSize:'11px'}}>Lv.{target.level}</span></div>
                   <div style={{fontSize:'11px', color:'#aaa'}}>对手等级 ~Lv.{enemyLv} · 奖励 {reward.funds}资金 + {reward.contribution}帮贡</div>
+                  {preview && (
+                    <div style={{display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'6px'}}>
+                      <span style={{fontSize:'10px', color:'#86efac', background:'rgba(34,197,94,0.12)', padding:'2px 7px', borderRadius:'999px'}}>胜率 {Math.round(preview.winChance * 100)}%</span>
+                      <span style={{fontSize:'10px', color:'#fbbf24', background:'rgba(251,191,36,0.12)', padding:'2px 7px', borderRadius:'999px'}}>{preview.riskLabel}</span>
+                      <span style={{fontSize:'10px', color:'#fca5a5', background:'rgba(239,68,68,0.12)', padding:'2px 7px', borderRadius:'999px'}}>难度 {preview.difficultyScore}</span>
+                      {(preview.advice || []).slice(0, 1).map(tip => <span key={tip} style={{fontSize:'10px', color:'#cbd5e1', background:'rgba(255,255,255,0.07)', padding:'2px 7px', borderRadius:'999px'}}>{tip}</span>)}
+                      <span style={{fontSize:'10px', color:'#bae6fd', background:'rgba(56,189,248,0.1)', padding:'2px 7px', borderRadius:'999px'}}>{preview.counterplay}</span>
+                      {(preview.preparation || []).slice(0, 1).map(tip => <span key={tip} style={{fontSize:'10px', color:'#ddd6fe', background:'rgba(139,92,246,0.1)', padding:'2px 7px', borderRadius:'999px'}}>{tip}</span>)}
+                    </div>
+                  )}
                 </div>
                 <button disabled={warCount >= GANG_WAR_CONFIG.maxDaily} onClick={() => {
                   if (warCount >= GANG_WAR_CONFIG.maxDaily) { showMapToast('❌', '提示', '今日帮战次数已用完', 1500); return; }
@@ -22742,6 +22882,7 @@ const renderMenu = () => {
             const today = getLocalDateStr();
             const dailyReset = kw.dailyCounts.resetDate !== today;
             const canClaimIncome = dailyReset || !kw.dailyCounts.income;
+            const strategicBrief = buildKingdomStrategicBrief(kw, { today, rankIdx, seasonDaysLeft });
 
             const promoChallenge = nextRank ? RANK_PROMOTION_CHALLENGES[nextRank.id] : null;
 
@@ -22915,6 +23056,79 @@ const renderMenu = () => {
                         </div>
                       </div>
                     )}
+                    <div style={{background:`linear-gradient(135deg, ${myFaction.darkColor}, #0f172a 68%, #111827)`, borderRadius:'16px', padding:'16px', color:'#fff', boxShadow:`0 12px 34px ${myFaction.color}24`, border:`1px solid ${myFaction.color}55`}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px', marginBottom:'12px'}}>
+                        <div>
+                          <div style={{fontSize:'11px', color:myFaction.lightColor, fontWeight:'900', letterSpacing:'1.5px'}}>战略态势 · {strategicBrief.posture.tone}</div>
+                          <div style={{fontSize:'22px', fontWeight:'900', marginTop:'4px'}}>{strategicBrief.posture.label}</div>
+                          <div style={{fontSize:'12px', color:'rgba(255,255,255,0.75)', marginTop:'5px', lineHeight:1.6}}>{strategicBrief.posture.desc}</div>
+                          <div style={{display:'inline-flex', alignItems:'center', gap:'8px', marginTop:'8px', padding:'5px 9px', borderRadius:'999px', background:`${strategicBrief.difficulty.color}22`, border:`1px solid ${strategicBrief.difficulty.color}55`, color:strategicBrief.difficulty.color, fontSize:'10px', fontWeight:'900'}}>
+                            战局难度 {strategicBrief.campaignDifficulty}/100 · {strategicBrief.difficulty.label}
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setKwTab(strategicBrief.reserve < 160 ? 'territory' : (strategicBrief.contestedAttempts < strategicBrief.contestedMax ? 'contested' : 'territory'))}
+                          style={{border:'1px solid rgba(255,255,255,0.24)', background:'rgba(255,255,255,0.12)', color:'#fff', borderRadius:'12px', padding:'8px 12px', fontSize:'11px', fontWeight:'800', cursor:'pointer', flexShrink:0}}>
+                          {strategicBrief.reserve < 160 ? '去征兵' : '去行动'}
+                        </button>
+                      </div>
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(96px, 1fr))', gap:'8px', marginBottom:'12px'}}>
+                        {strategicBrief.metrics.map(m => (
+                          <div key={m.label} style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'9px'}}>
+                            <div style={{fontSize:'10px', color:'#cbd5e1', fontWeight:'700'}}>{m.label}</div>
+                            <div style={{fontSize:'14px', color:'#fff', fontWeight:'900', marginTop:'2px'}}>{m.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(190px, 1fr))', gap:'10px'}}>
+                        <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                          <div style={{fontSize:'11px', fontWeight:'900', color:'#e5e7eb', marginBottom:'7px'}}>行动建议</div>
+                          {strategicBrief.recommendations.slice(0, 3).map((tip, i) => (
+                            <div key={tip} style={{display:'flex', gap:'7px', alignItems:'flex-start', marginTop:i ? '7px' : 0}}>
+                              <span style={{width:'18px', height:'18px', borderRadius:'7px', background:`${myFaction.color}44`, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'900', flexShrink:0}}>{i + 1}</span>
+                              <span style={{fontSize:'11px', color:'#cbd5e1', lineHeight:1.45}}>{tip}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                          <div style={{fontSize:'11px', fontWeight:'900', color:'#e5e7eb', marginBottom:'7px'}}>主要对手</div>
+                          {strategicBrief.rival ? (
+                            <div style={{display:'flex', alignItems:'center', gap:'9px'}}>
+                              <span style={{fontSize:'24px'}}>{FACTIONS[strategicBrief.rival.fid]?.icon || '🏴'}</span>
+                              <div>
+                                <div style={{fontSize:'13px', color:'#fff', fontWeight:'900'}}>{FACTIONS[strategicBrief.rival.fid]?.fullName || strategicBrief.rival.fid}</div>
+                                <div style={{fontSize:'10px', color:'#94a3b8'}}>领地 {strategicBrief.rival.count} · 驻军 {strategicBrief.rival.totalTroops}</div>
+                              </div>
+                            </div>
+                          ) : <div style={{fontSize:'11px', color:'#94a3b8'}}>暂无对手数据</div>}
+                        </div>
+                        <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                          <div style={{fontSize:'11px', fontWeight:'900', color:'#e5e7eb', marginBottom:'7px'}}>战略杠杆</div>
+                          {strategicBrief.strategicLevers.map(lever => (
+                            <div key={lever.label} style={{marginBottom:'7px'}}>
+                              <div style={{display:'flex', justifyContent:'space-between', gap:'8px'}}>
+                                <span style={{fontSize:'11px', color:'#fff', fontWeight:'800'}}>{lever.label}</span>
+                                <span style={{fontSize:'10px', color:myFaction.lightColor, fontWeight:'900'}}>{lever.value}</span>
+                              </div>
+                              <div style={{fontSize:'10px', color:'#94a3b8', lineHeight:1.42, marginTop:'2px'}}>{lever.desc}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{background:'rgba(0,0,0,0.22)', borderRadius:'12px', padding:'10px'}}>
+                          <div style={{fontSize:'11px', fontWeight:'900', color:'#e5e7eb', marginBottom:'7px'}}>攻城窗口</div>
+                          {strategicBrief.assaultWindows.length ? strategicBrief.assaultWindows.map(w => (
+                            <button key={w.mapId} type="button" onClick={() => setKwTab('territory')}
+                              style={{width:'100%', border:'1px solid rgba(255,255,255,0.09)', background:'rgba(255,255,255,0.05)', color:'#fff', borderRadius:'10px', padding:'8px', marginBottom:'6px', textAlign:'left', cursor:'pointer'}}>
+                              <div style={{display:'flex', justifyContent:'space-between', gap:'8px'}}>
+                                <span style={{fontSize:'11px', fontWeight:'900'}}>#{w.mapId} {FACTIONS[w.owner]?.icon || '⚑'} {FACTIONS[w.owner]?.name || '中立'}</span>
+                                <span style={{fontSize:'10px', color:w.risk === '高' ? '#fca5a5' : w.risk === '中' ? '#fbbf24' : '#86efac', fontWeight:'900'}}>风险{w.risk}</span>
+                              </div>
+                              <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'3px'}}>城防 {w.strength} · 驻军 {w.garrison} · {w.supplyLabel}</div>
+                              <div style={{fontSize:'10px', color:'#cbd5e1', marginTop:'3px'}}>{w.advice}</div>
+                            </button>
+                          )) : <div style={{fontSize:'11px', color:'#94a3b8'}}>暂无可攻普通领地，去争夺名城或巩固防线。</div>}
+                        </div>
+                      </div>
+                    </div>
                     {(() => {
                       const todayStr = getLocalDateStr();
                       const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));

@@ -1,7 +1,7 @@
 import { TYPES } from '../data/types';
 
 const TYPE_CHART = {
-  NORMAL: { weak: [], strong: [], immune: ['GHOST'] },
+  NORMAL: { weak: ['ROCK', 'STEEL'], strong: [], immune: ['GHOST'] },
   FIRE: { weak: ['WATER', 'ROCK', 'GROUND'], strong: ['GRASS', 'ICE', 'BUG', 'STEEL'], immune: [] },
   WATER: { weak: ['ELECTRIC', 'GRASS'], strong: ['FIRE', 'GROUND', 'ROCK'], immune: [] },
   GRASS: { weak: ['FIRE', 'ICE', 'POISON', 'FLYING', 'BUG'], strong: ['WATER', 'GROUND', 'ROCK'], immune: [] },
@@ -44,10 +44,12 @@ export function getTypeEffectiveness(atkType, defTypes) {
 }
 
 export function calcDamage({ power, atkStat, defStat, level, stab, typeEff, critical, random }) {
-  if (power <= 0) return 0;
+  if (!power || power <= 0) return 0;
+  const safeLevel = Math.max(1, level || 1);
   const safeDef = Math.max(1, defStat || 1);
-  const levelFactor = ((2 * level) / 5 + 2);
-  const baseDmg = Math.floor((levelFactor * power * atkStat) / (50 * safeDef)) + 2;
+  const safeAtk = Math.max(1, atkStat || 1);
+  const levelFactor = ((2 * safeLevel) / 5 + 2);
+  const baseDmg = Math.floor((levelFactor * power * safeAtk) / (50 * safeDef)) + 2;
   const stabMult = stab ? 1.5 : 1;
   const critMult = critical ? 1.5 : 1;
   const rng = random !== undefined ? random : (0.85 + Math.random() * 0.15);

@@ -106,7 +106,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
 
     const trait = TRAIT_DB[pet.trait];
     if (trait && trait.type === 'STAT') {
-      if (pet.trait === 'huge_power' && ivKey === 'p_atk') val = Math.floor(val * 2);
+      if (pet.trait === 'huge_power' && ivKey === 'p_atk') val = Math.floor(val * 1.5);
       if (pet.trait === 'guts' && ivKey === 'p_atk' && (status === 'BRN' || status === 'PSN' || status === 'PAR')) val = Math.floor(val * 1.5);
     }
 
@@ -133,16 +133,16 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
   let finalSpd = calc(baseStats.spd, 'spd', 'spd');
 
   if (sectId === 3 && sectLv > 0) {
-    finalSpd = Math.floor(finalSpd * (1 + (sectLv * 0.02)) * sectEffectMult);
+    finalSpd = Math.floor(finalSpd * (1 + (sectLv * 0.012)) * sectEffectMult);
   } else if (sectId > 0 && sectEffectMult > 1 && sectLv > 0) {
-    finalSpd = Math.floor(finalSpd * (1 + (sectLv * 0.005) * (sectEffectMult - 1)));
+    finalSpd = Math.floor(finalSpd * (1 + (sectLv * 0.008) * (sectEffectMult - 1)));
   }
 
   if (pet.fruitTransformed && pet.fruitEffects?.spdMult) {
     finalSpd = Math.floor(finalSpd * pet.fruitEffects.spdMult);
   }
 
-  const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : (gang ? getGangSkillBonus(getGangSkills(gang, gangSkillCapBonus || 0), gangSkillMult) : {});
+  const gangBonus = gangBonusOverride !== undefined ? gangBonusOverride : (isPlayerPet && gang ? getGangSkillBonus(getGangSkills(gang, gangSkillCapBonus || 0), gangSkillMult) : {});
   const resonance = isPlayerPet ? calcSectResonanceBonus(pet, playerSect, playerSubSect) : null;
   const resBonus = resonance?.bonus || {};
   const relic = isPlayerPet ? (relicEffects || {}) : {};
@@ -176,7 +176,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
     p_atk: applyAwaken(finalPAtk),
     p_def: applyAwaken(finalPDef),
     s_atk: applyAwaken(applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk || 0) + resPct('s_atk'))),
-    s_def: applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))),
+    s_def: Math.floor(applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))) * relicDefMult),
     spd: Math.floor(applyAwaken(applyGB(finalSpd, (gangBonus.spd || 0) + resPct('spd'))) * relicSpdMult),
     crit: Math.min(75, Math.max(0, clampedCrit + (resBonus.critRate || 0))),
     atk: applyAwaken(finalPAtk),

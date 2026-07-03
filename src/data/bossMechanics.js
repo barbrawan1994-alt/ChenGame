@@ -257,7 +257,7 @@ export const ECO_LINKED_BOSSES = {
       { hpPct: 1.0, name: '潮涌', buff: { s_atk: 1 }, mechanic: 'vine_spread' },
       { hpPct: 0.5, name: '毒潮', buff: { s_atk: 2, spd: 1 }, mechanic: 'blood_mist' },
     ],
-    branchMods: { soothe: { bossStatMult: 0.9 }, fight: { bossStatMult: 1.1 } },
+    branchModifiers: { soothe: { bossStatMult: 0.9 }, fight: { bossStatMult: 1.1 } },
   },
   mech_overlord: {
     id: 'mech_overlord',
@@ -270,7 +270,7 @@ export const ECO_LINKED_BOSSES = {
       { hpPct: 1.0, name: '启动', buff: { p_def: 1 }, mechanic: 'skill_echo' },
       { hpPct: 0.4, name: '过载', buff: { p_atk: 2, spd: 1 }, mechanic: 'core_rampage' },
     ],
-    branchMods: { soothe: { bossStatMult: 0.85 }, fight: { bossStatMult: 1.1 } },
+    branchModifiers: { soothe: { bossStatMult: 0.85 }, fight: { bossStatMult: 1.1 } },
   },
   nightmare_lord: {
     id: 'nightmare_lord',
@@ -284,7 +284,7 @@ export const ECO_LINKED_BOSSES = {
       { hpPct: 0.6, name: '深层梦境', buff: { s_atk: 2, eva: 1 }, mechanic: 'parasite' },
       { hpPct: 0.3, name: '梦境崩塌', buff: { s_atk: 3, spd: 2 }, mechanic: 'core_rampage' },
     ],
-    branchMods: { soothe: { bossStatMult: 0.8 }, fight: { bossStatMult: 1.15 } },
+    branchModifiers: { soothe: { bossStatMult: 0.8 }, fight: { bossStatMult: 1.15 } },
   },
 };
 
@@ -300,7 +300,7 @@ export const MIST_ONI_FINAL = {
     { hpPct: 0.6, name: '鬼血觉醒', buff: { p_atk: 2, spd: 1 }, mechanic: 'parasite' },
     { hpPct: 0.3, name: '鬼化暴走', buff: { p_atk: 3, s_atk: 2 }, mechanic: 'core_rampage' },
   ],
-  branchMods: { soothe: { bossStatMult: 0.75 }, fight: { bossStatMult: 1.2 } },
+  branchModifiers: { soothe: { bossStatMult: 0.75 }, fight: { bossStatMult: 1.2 } },
 };
 
 // Register in linked bosses

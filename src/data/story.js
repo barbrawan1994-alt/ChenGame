@@ -179,7 +179,7 @@ export const STORY_SCRIPT = [
       { name: "仙剑大侠·李逍遥", text: "不错...比我预想的要强。我们后会有期——别让我失望。" },
       { name: "系统", text: "苍的过去...和日蚀队究竟有什么关联？" }
     ],
-    reward: { gold: 4000, items: [{id:'berry', count:10}], pokemon: {id: 123, level: 25} }
+    reward: { gold: 4000, items: [{id:'oran', count:10}], pokemon: {id: 123, level: 25} }
   },
 
   // ===== 第五章：熔岩火山 =====
@@ -1027,7 +1027,7 @@ export const STORY_SCRIPT = [
       { name: "乙骨憂太", text: "（微笑）里香也说——你是她见过最强的人类。这是最高的赞美。" },
       { name: "系统", text: "「千年诅咒·终焉」——宿傩被彻底封印！获得称号「呪術之巔」！全队咒术达到究极形态！" }
     ],
-    reward: { gold: 300000, balls: { master: 5 }, items: [{ id: 'exp_candy', count: 5 }, { id: 'vit_crit', count: 5 }] }
+    reward: { gold: 300000, balls: { master: 5 }, items: [{ id: 'exp_candy', count: 5 }, { id: 'vit_crit', count: 5 }], unlockTitle: '呪術之巔' }
   },
 
   // ===== 莉可莉丝篇·序章：来自DA的委托 =====
@@ -1478,7 +1478,7 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "门派风云篇·完。十二门派联盟+厌晚合力击败太虚教！" },
       { name: "系统", text: "奖励：所有门派好感度+50，解锁隐藏称号【武林盟主】，厌晚好感度大幅提升" }
     ],
-    reward: { gold: 150000, balls: { master: 5 } }
+    reward: { gold: 150000, balls: { master: 5 }, unlockTitle: '武林盟主', sectAffinityBonus: 50 }
   },
 
   // ==========================================
@@ -2087,7 +2087,7 @@ export const STORY_SCRIPT = [
       { name: "系统", text: "【异界征途篇·完】跨越七个次元世界的冒险落幕！" },
       { name: "系统", text: "奖励：解锁隐藏称号【万界旅者】，所有同伴好感度MAX，获得200000金币+大师球×5" }
     ],
-    reward: { gold: 200000, balls: { master: 5 } }
+    reward: { gold: 200000, balls: { master: 5 }, unlockTitle: '万界旅者' }
   }
 ];
 

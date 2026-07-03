@@ -76,6 +76,8 @@ export const SIDE_STORY_LINES = [
   { id: 'lycoris', name: '莉可莉丝篇', icon: '🎀', startIdx: 23, endIdx: 25, chapters: 3, unlockBadges: 4, desc: '搭档羁绊之旅，解锁搭档系统' },
   { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 26, endIdx: 34, chapters: 9, unlockBadges: 8, desc: '十二门派与厌晚的史诗篇章' },
   { id: 'crossworld', name: '异界征途篇', icon: '🌍', startIdx: 35, endIdx: 52, chapters: 18, unlockBadges: 13, desc: '次元裂隙降临，跨越七界的史诗冒险' },
+  { id: 'naruto', name: '火影忍者篇', icon: '🍥', startIdx: 0, endIdx: 19, chapters: 20, unlockBadges: 5, desc: '踏上忍者之路，从学院到影级的忍道传说', isNarutoArc: true },
+  { id: 'sanguo', name: '三国志篇', icon: '⚔️', startIdx: 0, endIdx: 11, chapters: 12, unlockBadges: 13, desc: '四国争霸时代，体验三国英雄的史诗征途', isSanguoArc: true },
 ];
 
 export const BREATHING_BUFFS = [

@@ -18,7 +18,7 @@ const WU_GENERALS = [
   '诸葛瑾','张昭','顾雍','步骘','全琮','吕范','贺齐','孙桓','孙翊','朱桓',
 ];
 const JIN_GENERALS = [
-  '司马懿','司马师','司马昭','司马炎','羊祜','杜预','王濬','贾充','张华','陈寿',
+  '司马师','司马昭','司马炎','羊祜','杜预','王濬','贾充','张华','陈寿','文鸯',
   '王浑','王戎','裴秀','荀勖','卫瓘','马隆','唐彬','胡奋','石苞','陆机',
   '陆云','刘琨','祖逖','桓温','谢安','谢玄','陶侃','王导','庾亮','刘牢之',
 ];
@@ -78,7 +78,7 @@ export const GANG_PRESETS = [
   // === 蜀国 (4) ===
   {
     id: 'storm_riders', name: '风暴骑士团', icon: '⚡', leader: '姜维',
-    style: '快速成长', level: 3, power: 2400, desc: '追求极速成长的精锐骑士，经验获取遥遥领先', faction: 'shu',
+    style: '快速成长', level: 4, power: 3200, desc: '追求极速成长的精锐骑士，经验获取遥遥领先', faction: 'shu',
     color: '#F57F17',
     perkDesc: '经验+6%, 捕获率+1%',
     members: Array.from({length: 8}, (_, i) => ({
@@ -102,7 +102,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'wild_pack', name: '野狼帮', icon: '🐺', leader: '马超',
-    style: '野外猎手', level: 2, power: 1800, desc: '野性十足的冒险者，精灵捕获率极高', faction: 'shu',
+    style: '野外猎手', level: 4, power: 2800, desc: '野性十足的冒险者，精灵捕获率极高', faction: 'shu',
     color: '#6D4C41',
     perkDesc: '捕获率+3%, 经验+2%',
     members: Array.from({length: 6}, (_, i) => ({
@@ -339,6 +339,146 @@ export const getGangWarReward = (targetGang) => {
   return {
     funds: GANG_WAR_CONFIG.baseFunds + lv * GANG_WAR_CONFIG.fundsPerLevel,
     contribution: GANG_WAR_CONFIG.baseContribution + lv * GANG_WAR_CONFIG.contributionPerLevel,
+  };
+};
+
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+const getRankIndex = (rankId) => Math.max(0, GANG_RANKS.findIndex(r => r.id === rankId));
+
+export const evaluateGangWarTarget = ({ targetGang, ownGang, rank, kingdomWar, partyAvgLevel = 50 }) => {
+  if (!targetGang) return null;
+  const reward = getGangWarReward(targetGang);
+  const enemyLv = getGangWarLevel(targetGang);
+  const ownRankIdx = getRankIndex(rank?.id || 'member');
+  const ownPower = (ownGang?.power || 1200) + partyAvgLevel * 38 + ownRankIdx * 220 + ((kingdomWar?.faction && ownGang?.faction === kingdomWar.faction) ? 260 : 0);
+  const enemyPower = (targetGang.power || 1200) + enemyLv * 34 + (targetGang.wins || 0) * 18;
+  const pressure = ownPower / Math.max(1, enemyPower);
+  const winChance = clamp(0.12 + (pressure / (pressure + 0.95)) * 0.8, 0.12, 0.9);
+  const rewardScore = Math.round(reward.contribution * 1.4 + reward.funds / 180 + enemyLv * 0.35);
+  const riskLabel = winChance >= 0.72 ? '稳胜' : winChance >= 0.56 ? '可战' : winChance >= 0.42 ? '胶着' : '高危';
+  const difficultyScore = Math.round(clamp((1 - winChance) * 72 + enemyLv * 0.22 + Math.max(0, (targetGang.wins || 0) - (ownGang?.wins || 0)) * 1.8, 8, 96));
+  const preparation = [];
+  if (partyAvgLevel < enemyLv - 8) preparation.push(`首发均级建议提升到 Lv.${Math.max(1, enemyLv - 6)} 左右`);
+  if (winChance < 0.62) preparation.push('先做帮派任务换帮贡，补战力/贡献类技能');
+  if (kingdomWar?.faction && targetGang.faction === kingdomWar.faction) preparation.push('同阵营目标会牵制盟友，除非急缺资金不建议打');
+  if ((ownGang?.funds || 0) < 5000 && reward.funds >= 5000) preparation.push('资金短缺时可冒险打高资金目标');
+  const advice = [];
+  if (winChance < 0.5) advice.push('先提升首发等级或帮派技能');
+  if (targetGang.faction && kingdomWar?.faction && targetGang.faction !== kingdomWar.faction) advice.push('敌国帮派，胜利会顺带推进国战任务');
+  if ((targetGang.skills?.gs_trade || 0) >= 2) advice.push('商队型目标，资金收益更高');
+  if ((targetGang.skills?.gs_contrib || 0) >= 2) advice.push('军功型目标，帮贡回报更好');
+
+  return {
+    targetId: targetGang.id,
+    enemyLv,
+    reward,
+    pressure,
+    winChance,
+    riskLabel,
+    difficultyScore,
+    rewardScore,
+    preparation: preparation.length ? preparation : ['无需额外准备，适合作为今日稳定目标'],
+    counterplay: winChance < 0.56 ? '先打低风险目标滚资源，再回头挑战' : (rewardScore >= 90 ? '高收益窗口，适合消耗一次帮战次数' : '收益一般，按任务需求选择'),
+    advice: advice.length ? advice : ['配置均衡，可作为今日帮战目标'],
+  };
+};
+
+export const buildGangCommandPlan = ({ gangInfo, gang, dailyCounts, kingdomWar, partyAvgLevel = 50 }) => {
+  const completed = dailyCounts?.taskCompleted || [];
+  const progress = dailyCounts?.taskProgress || {};
+  const rank = getGangRank(gang?.contribution || 0, gang?.isOwner);
+  const rankIdx = getRankIndex(rank?.id);
+  const skills = getGangSkills(gang);
+  const bonus = getGangSkillBonus(skills);
+  const aligned = !!(kingdomWar?.faction && gangInfo?.faction === kingdomWar.faction);
+  const warLeft = Math.max(0, GANG_WAR_CONFIG.maxDaily - (dailyCounts?.warCount || 0));
+
+  const taskPlan = GANG_TASKS
+    .map(task => {
+      const rawProgress = Math.min(progress[task.id] || 0, task.target);
+      const done = completed.includes(task.id);
+      const claimed = completed.includes(`${task.id}_claimed`);
+      let score = done && !claimed ? 120 : 30 + (rawProgress / Math.max(1, task.target)) * 45;
+      if (task.type.startsWith('kw') && kingdomWar?.faction) score += aligned ? 28 : 14;
+      if (task.type === 'battle_win') score += partyAvgLevel >= 35 ? 12 : -8;
+      if (task.type === 'donate_gold') score += (gang?.isOwner || (gang?.contribution || 0) < 600) ? 10 : -4;
+      if (claimed) score = -10;
+      return { ...task, progress: rawProgress, done, claimed, score: Math.round(score) };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const skillWeights = {
+    gs_contrib: kingdomWar?.faction ? 1.35 : 0.85,
+    gs_territory: aligned ? 1.25 : 0.9,
+    gs_trade: (gang?.isOwner || bonus.trade < 1000) ? 1.15 : 0.95,
+    gs_exp: partyAvgLevel < 70 ? 1.2 : 0.9,
+    gs_power: rankIdx >= 2 ? 1.12 : 0.92,
+    gs_catch: 1.0,
+    gs_gold: 1.0,
+    gs_eco: 0.92,
+    gs_fusion: 0.95,
+  };
+  const skillPlan = GANG_SKILLS
+    .map(skill => {
+      const maxLv = getGangMaxSkills(gang)[skill.id] || 0;
+      const curLv = gang?.isOwner ? maxLv : Math.min(gang?.personalSkills?.[skill.id] || 0, maxLv);
+      const room = Math.max(0, maxLv - curLv);
+      const weight = skillWeights[skill.id] || 1;
+      return { ...skill, curLv, maxLv, score: Math.round(room * weight * 100 + (maxLv > 0 ? 10 : 0)) };
+    })
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const economyPressure = (gang?.isOwner && (gang?.customGang?.funds || 0) < 8000) || (!gang?.isOwner && (gang?.contribution || 0) < 260);
+  const warPressure = warLeft > 0 && partyAvgLevel < 45;
+  const managementLoad = Math.min(100, Math.round(
+    (economyPressure ? 28 : 8) +
+    (warLeft / Math.max(1, GANG_WAR_CONFIG.maxDaily)) * 24 +
+    (taskPlan.filter(t => !t.claimed && !t.done).length / Math.max(1, GANG_TASKS.length)) * 22 +
+    (aligned ? 8 : kingdomWar?.faction ? 16 : 6) +
+    Math.max(0, 3 - rankIdx) * 5
+  ));
+  const depthLevers = [
+    {
+      label: '资金 vs 帮贡',
+      value: gang?.isOwner ? `${gang?.customGang?.funds || 0}资金` : `${gang?.contribution || 0}帮贡`,
+      desc: gang?.isOwner ? '帮主优先开技能上限，成员才有成长空间。' : '成员要在个人技能和职位晋升之间分配帮贡。',
+    },
+    {
+      label: '帮战次数',
+      value: `${warLeft}/${GANG_WAR_CONFIG.maxDaily}`,
+      desc: warLeft > 0 ? '高风险目标会吃掉当日机会，先确认收益是否值得。' : '今日帮战打满，转向任务和技能投资。',
+    },
+    {
+      label: '国战协同',
+      value: aligned ? '同阵营' : kingdomWar?.faction ? '错位' : '未参战',
+      desc: aligned ? '国战任务和贡献技能收益更高。' : '错位时优先通用成长，避免资源被两条线拉扯。',
+    },
+  ];
+
+  const focus = aligned
+    ? { label: '阵营协同', desc: '帮派与国战阵营一致，优先做国战任务和贡献技能。' }
+    : kingdomWar?.faction
+      ? { label: '双线经营', desc: '帮派与阵营不一致，先做通用任务，帮战挑高收益目标。' }
+      : { label: '成长储备', desc: '未加入国战，先靠日常、经验和商队把帮贡滚起来。' };
+
+  return {
+    focus,
+    rank,
+    aligned,
+    warLeft,
+    managementLoad,
+    depthLevers,
+    taskPlan,
+    skillPlan,
+    metrics: [
+      { label: '帮贡效率', value: `+${bonus.contrib || 0}%` },
+      { label: '商队收入', value: `${bonus.trade || 0}/日` },
+      { label: '领地防御', value: `+${bonus.territory || 0}` },
+      { label: '今日帮战', value: `${warLeft}/${GANG_WAR_CONFIG.maxDaily}` },
+      { label: '管理压力', value: `${managementLoad}/100` },
+    ],
   };
 };
 
