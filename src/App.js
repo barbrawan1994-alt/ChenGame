@@ -7702,7 +7702,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'world_boss', icon:'👹', name:'世界首领', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
       { id:'infinity', icon:'🏯', name:'无限城', desc:'Roguelike挑战', color:'#6A1B9A', badge: (achStats.maxInfinityFloor || 0) >= 25 ? '🔥' : 0, onClick: () => { setActivityCenter(false); if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } if (party[0].level >= 80) enterInfinityCastle('normal'); else if (party[0].level >= 40) enterInfinityCastle('shallow'); else showMapToast('⚠️','等级不足','浅层需首发Lv.40+',2000); } },
-      { id:'fusion', icon:'🔗', name:'六系统融合', desc:'忍术·果实·门派·名将·国战', color:'#4527A0', badge: getUnlockedFusionSystems(badges.length).length >= 4 ? '✨' : 0, onClick: () => { setActivityCenter(false); setFusionHubOpen(true); } },
     ];
     const readyEntries = entries.filter(e => !!e.badge);
     const todayFocus = [
@@ -7776,6 +7775,23 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           }} style={{gridColumn:'1 / -1', padding:'11px 10px',borderRadius:'12px',background:'rgba(100,200,255,0.05)',border:'1px solid rgba(100,200,255,0.12)',color:'#81D4FA',fontSize:'11px',fontWeight:'700',cursor:'pointer',textAlign:'center'}}>
             🔄 精灵交换 {lastPetTradeDate === today ? '(今日已用)' : '(每日1次)'}
           </button>
+          </div>
+
+          <div className="activity-hub-section-title">进阶系统</div>
+          <div className="activity-hub-action-grid" style={{display:'grid', gridTemplateColumns:'1fr', gap:'10px'}}>
+            <button className="activity-hub-action" type="button" onClick={() => { setActivityCenter(false); setFusionHubOpen(true); }} style={{
+              padding:'14px 16px', borderRadius:'14px', textAlign:'left', cursor:'pointer',
+              border:'1px solid rgba(167,139,250,0.35)',
+              background:'linear-gradient(135deg, rgba(69,39,160,0.22), rgba(123,31,162,0.10))', color:'#fff',
+              display:'flex', alignItems:'center', gap:'14px',
+            }}>
+              <div style={{fontSize:'28px', lineHeight:1}}>🔗</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:'14px', fontWeight:800}}>跨体系融合中心</div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'3px'}}>忍术秘境 · 果实海域 · 门派秘境 · 古战场 · 国战任务 · 将魂战术</div>
+              </div>
+              {getUnlockedFusionSystems(badges.length).length >= 4 && <span style={{fontSize:'16px'}}>✨</span>}
+            </button>
           </div>
 
           <div className="activity-hub-section-title">记录与收集</div>
