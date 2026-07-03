@@ -175,7 +175,7 @@ export const CONTEST_CONFIG = {
 // 特殊副本体系 — 按难度分层
 // ==========================================
 export const DUNGEONS = [
-  // === Tier 1: 入门级 (1~3徽章) ===
+  // === Tier 1~2: 入门级 (1~5徽章) ===
   { id: 'mist_forest', name: '迷雾森林', desc: '浓雾中的神秘遭遇，闪光精灵出没 (需5徽章)',
     type: 'mist_forest', color: '#78909C', icon: '🌫️', recLvl: 30,
     rarity: '稀有', stars: 2, tier: 2, reqBadges: 5,

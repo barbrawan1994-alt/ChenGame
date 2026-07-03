@@ -1,4 +1,4 @@
-/** 段位徽章门槛：2→4→6→8→10；钻石起为 10 枚，与大师同为终局门槛（铂金仍为 8→10 的明确进阶）。 */
+/** 段位徽章门槛：2→4→6→8→10→13；钻石 10 枚，大师 13 枚为终局门槛。 */
 export const ARENA_RANKS = [
   { id: 'bronze',   name: '青铜', icon: '🥉', color: '#CD7F32', maxStars: 3, noDropOnLoss: true,
     enemyLvl: [20, 40], enemyCount: 3, reqBadges: 2,

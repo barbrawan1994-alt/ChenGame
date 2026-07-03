@@ -16630,6 +16630,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     if (!move.alwaysHit && move.acc !== 0 && Math.random() * 100 > finalHitChance) {
         addLog(`但是没有命中!`);
+        if (source === 'enemy' && battleState) battleState._dodgesInBattle = (battleState._dodgesInBattle || 0) + 1;
         await wait(1000);
         return false;
     }
@@ -17223,8 +17224,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (typeMod >= 2.0) updateAchStat({ doubleEffectiveHits: 1 });
           if (isCrit) {
             if (battleState) battleState._battleCrits = (battleState._battleCrits || 0) + 1;
+            if (battleState && source === 'player') {
+              battleState._consecutiveCrits = (battleState._consecutiveCrits || 0) + 1;
+              battleState._maxConsecutiveCrits = Math.max(battleState._maxConsecutiveCrits || 0, battleState._consecutiveCrits);
+            }
             if (battleState && blessings.some(b => b.effect === 'critChain')) battleState._critChainActive = true;
             if (battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_CRIT);
+          } else if (source === 'player' && battleState) {
+            battleState._consecutiveCrits = 0;
           }
         }
         if (isDodged && source === 'enemy' && battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_DODGE);
@@ -19303,6 +19310,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         addLog(`🏅 获得第${bc}枚徽章！奖励 ${milestoneGold} 金币！`);
         if (bc === 1) {
           setTimeout(() => showMapToast('💡', '进阶提示', '尝试在商店购买高级精灵球提升捕获率！', 3000), 400);
+          updateAchStat({ speedrunFirstBadge: p => Math.min(p || 9999, Math.floor((Date.now() - (savedDataRef.current?._startTime || Date.now())) / 60000)) });
         }
         if (bc === 3) {
           setInventory(inv => ({ ...inv, balls: { ...inv.balls, great: (inv.balls.great || 0) + 10 } }));
@@ -19666,6 +19674,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 隐藏成就追踪
     if (battle.turnCount) winAchUpdates.maxLongestBattle = battle.turnCount;
     if (isTrainer && battle.turnCount && battle.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
+    if (isTrainer && battle.turnCount && battle.turnCount <= 1 && enemyParty.length >= 6) winAchUpdates.fullTeamWipeOneRound = 1;
+    if (isGym && party?.length >= 6) {
+      const speciesSet = new Set(party.map(p => p?.id));
+      if (speciesSet.size === 1) winAchUpdates.sameSpeciesGymWin = 1;
+    }
+    if (activePet && activePet.level === 1) winAchUpdates.lv1MiracleWins = 1;
+    if (gold >= 100000 && !isTrainer) winAchUpdates.richDefeatCount = 1;
+    if (isGym && party?.every(p => {
+      const pType = p?.type;
+      return pType === 'ROCK' || p?.secondaryType === 'ROCK' || p?.type2 === 'ROCK';
+    })) winAchUpdates.fullRockTeam = 1;
     if (activePet && activePet.activeVow && activePet.currentHp > 0 && activePet.currentHp <= Math.max(1, Math.floor(getStats(activePet).maxHp * 0.05))) winAchUpdates.clutchVowWin = 1;
     const playerHadFruit = battle.playerCombatStates?.some(p => p?.fruitUsed);
     const enemyHadFruit = battle.enemyParty?.some(e => e?.fruitUsed || e?.fruitTransformed);
@@ -19693,6 +19712,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       };
     }
     if (battle._battleCrits) winAchUpdates.maxCritsInBattle = battle._battleCrits;
+    if (battle._maxConsecutiveCrits) winAchUpdates.maxConsecutiveCrits = battle._maxConsecutiveCrits;
+    if (battle._dodgesInBattle) winAchUpdates.maxDodgesInBattle = battle._dodgesInBattle;
+    const enemyStatusTypes = new Set();
+    (battle.enemyParty || []).forEach(e => { if (e?.status) enemyStatusTypes.add(e.status); });
+    if (enemyStatusTypes.size >= 5) winAchUpdates.allStatusInflicted = 1;
     const pMaxInt = Math.max(0, ...(party || []).map(p => p?.intimacy || 0));
     if (pMaxInt > 0) winAchUpdates.maxIntimacy = pMaxInt;
     const pMaxSkill = Math.max(0, ...(party || []).map(p => p?.moves?.length || 0));

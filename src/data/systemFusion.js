@@ -1,4 +1,4 @@
-/** v14.1 六系统融合 — 门派映射 / 觉醒三档 / 国战PVE / 解锁节奏 */
+/** v15.0 六系统融合 — 门派映射 / 觉醒三档 / 国战PVE / 解锁节奏 */
 
 import { SECT_DB, SECT_COUNT } from './sects';
 import { canAwakenPet as baseCanAwakenPet } from './resonance';
@@ -81,7 +81,7 @@ export const AWAKENING_TIERS = {
   strategic: {
     id: 'strategic', name: '战略觉醒', icon: '⚔️',
     requirements: { needsFruitAwaken: true, needsSectResonance: true, needsGeneralTactic: true, kwContribMin: 500, needsBattlefieldClear: true },
-    rewards: { statMult: 1.08, kwContribMult: 1.1, sanctuaryBonus: 0.05, title: '战略觉醒者', prefix: '⚔️🌟' },
+    rewards: { statMult: 1.08, kwContribMult: 1.1, sanctuaryBonus: 0.05, title: '战略觉醒者', prefix: '⚔️🍎🌟' },
   },
 };
 
@@ -183,7 +183,7 @@ export const GENERAL_PVE_TACTICS = {
 
 /** 国战 PVE 任务 — 影响国家指标（有上限，防膨胀） */
 export const KINGDOM_PVE_TASKS = [
-  { id: 'kw_escort_grain', name: '护送粮草', icon: '🌾', reqBadges: 5, cooldownTurns: 3, cost: { grain: 5 }, reward: { kwManpower: 20, gold: 2000 }, ecoCost: null },
+  { id: 'kw_escort_grain', name: '护送粮草', icon: '🌾', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwManpower: 20, gold: 2000 }, ecoCost: null },
   { id: 'kw_purify_border', name: '净化边境', icon: '💧', reqBadges: 4, cooldownTurns: 2, cost: { energy: 10 }, reward: { guardianScore: 5, kwContrib: 30 }, ecoDelta: { pollution: -10 } },
   { id: 'kw_repair_wall', name: '修复城墙', icon: '🧱', reqBadges: 6, cooldownTurns: 4, cost: { gold: 2000, energy: 10 }, reward: { kwContrib: 50, gold: 2500 }, territoryStrength: 2 },
   { id: 'kw_repel_rampage', name: '击退暴走潮', icon: '⚔️', reqBadges: 5, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 40, guardianScore: 8 }, ecoDelta: { stability: 10 } },
@@ -280,7 +280,7 @@ export function calcFusionPveBonuses(ctx = {}) {
     if (ctx.jutsuSynergy.skipExploreStep) bonuses.skipExploreStep = true;
   }
   bonuses.purifyBonus = Math.min(30, bonuses.purifyBonus);
-  bonuses.protectBonus = Math.min(0.25, bonuses.protectBonus);
+  bonuses.protectBonus = Math.max(0, Math.min(0.25, bonuses.protectBonus));
   bonuses.captureBonus = Math.min(0.2, bonuses.captureBonus);
   bonuses.bossMultReduce = Math.min(0.1, bonuses.bossMultReduce);
   bonuses.escapeTurnReduce = Math.min(2, bonuses.escapeTurnReduce);

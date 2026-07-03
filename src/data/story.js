@@ -201,8 +201,8 @@ export const STORY_SCRIPT = [
       { step: 2, x: 22, y: 5, type: 'battle', enemyId: 105, name: '日蚀队 精英卫队', text: "干部正在进行伟大的实验！进化是精灵的宿命——不，是义务！", emoji: '💂',
         eliteParty: [{ id: 105, level: 44 }, { id: 104, level: 42 }, { id: 126, level: 41 }, { id: 42, level: 39 }]
       },
-      { step: 3, x: 12, y: 8, type: 'battle', enemyId: 126, name: '日蚀队 干部·炎', text: "够了！既然你要保护弱者，那就让我展示真正的力量！火焰不是温暖——是毁灭！", emoji: '🔥',
-        eliteParty: [{ id: 126, level: 46 }, { id: 105, level: 44 }, { id: 104, level: 43 }, { id: 42, level: 42 }]
+      { step: 3, x: 12, y: 8, type: 'battle', enemyId: 6, name: '日蚀队 干部·炎', text: "够了！既然你要保护弱者，那就让我展示真正的力量！火焰不是温暖——是毁灭！", emoji: '🔥',
+        eliteParty: [{ id: 6, level: 46 }, { id: 14, level: 44 }, { id: 105, level: 43 }, { id: 42, level: 42 }]
       },
       { step: 4, x: 20, y: 14, type: 'battle', enemyId: 94, name: '暗影执行者·厌晚', text: '（岩浆的红光映出她冷峻的侧脸）干部·炎那种货色...还不配当我的对手。你呢？让我看看你有没有资格。', emoji: '🌙',
         eliteParty: [
@@ -215,7 +215,7 @@ export const STORY_SCRIPT = [
         ]
       }
     ],
-    midEvent: { enemyId: 126, name: '日蚀队 干部·炎' },
+    midEvent: { enemyId: 6, name: '日蚀队 干部·炎' },
     outro: [
       { name: "日蚀队 干部·炎", text: "不可能...我的精灵明明更强...为什么你这种保护弱者的人能赢？" },
       { name: "馆主 夏伯", text: "因为真正的力量不来自强迫——而来自信任。这只伊布，它拥有无限的进化可能性。" },

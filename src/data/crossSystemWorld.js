@@ -1,4 +1,4 @@
-/** v14.2 跨体系大世界玩法框架 — 忍术/果实/呼吸法/门派/国战融合 */
+/** v15.0 跨体系大世界玩法框架 — 忍术/果实/呼吸法/门派/国战融合 */
 
 import { FUSION_UNLOCK_SCHEDULE } from './systemFusion';
 
@@ -14,7 +14,7 @@ export const PLAYER_BUILD_LAYERS = [
 /** 玩家本体三大流派 */
 export const PLAYER_STYLES = {
   ninja: { id: 'ninja', name: '忍者流', icon: '🍥', source: '忍术', desc: '结印、分身、封印、潜入', pveFocus: ['purify', 'puzzle', 'stealth'] },
-  breathing: { id: 'breathing', name: '剑士流', icon: '⚔️', source: '呼吸法', desc: '连段、爆发、夜战斩鬼', pveFocus: ['boss', 'night', 'protect'] },
+  breathing: { id: 'breathing', name: '呼吸法流', icon: '🌀', source: '呼吸法', desc: '连段、爆发、夜战斩鬼', pveFocus: ['boss', 'night', 'protect'] },
   sect: { id: 'sect', name: '武修流', icon: '🥋', source: '门派', desc: '心法、防守、持续作战', pveFocus: ['protect', 'kingdom', 'eco'] },
 };
 

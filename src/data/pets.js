@@ -121,7 +121,7 @@ const BASE_POKEDEX = [
   { id: 117, name: '霸王花', type: 'GRASS', emoji: '🍄', hp: 75, atk: 85, def: 85, evo: 318, evoLvl: 50 }, // 新增进化
   { id: 118, name: '喵喵', type: 'NORMAL', emoji: '😺', hp: 40, atk: 45, def: 35, evo: 119, evoLvl: 28 },
   { id: 119, name: '猫老大', type: 'NORMAL', emoji: '🐆', hp: 65, atk: 70, def: 60, evo: 319, evoLvl: 50 }, // 新增进化
-  { id: 120, name: '可达鸭', type: 'WATER', emoji: '🐥', hp: 50, atk: 52, def: 48, evo: 28, evoLvl: 33 },
+  { id: 120, name: '可达鸭', type: 'WATER', emoji: '🐥', hp: 50, atk: 52, def: 48, evo: 29, evoLvl: 33 },
   { id: 121, name: '肯泰罗', type: 'NORMAL', emoji: '🐂', hp: 75, atk: 100, def: 95, evo: 320, evoLvl: 45 }, // 新增进化
   { id: 122, name: '大奶罐', type: 'NORMAL', emoji: '🐄', hp: 95, atk: 80, def: 105, evo: 321, evoLvl: 45 }, // 新增进化
   { id: 123, name: '拉普拉斯', type: 'ICE', emoji: '🦕', hp: 130, atk: 85, def: 80, evo: 322, evoLvl: 60 }, // 新增进化
@@ -1229,7 +1229,7 @@ const DUAL_TYPE_MAP = {
   // 神系/宇宙级传说
   150:'COSMIC', 254:'LIGHT', 258:'COSMIC', 271:'COSMIC', 341:'DARK', 95:'COSMIC',
   // 风系副属性（填补WIND作为secondary=0的空缺）
-  37:'WIND', 443:'WIND', 629:'WIND', 227:'WIND', 386:'WIND',
+  37:'WIND', 443:'WIND', 227:'WIND', 386:'WIND',
   // 音波系扩充
   210:'SOUND', 504:'SOUND',
   // 治愈系扩充

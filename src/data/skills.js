@@ -1,6 +1,6 @@
 // ==========================================
 // [重构] 全属性技能库 (每系 8-30 个，含威力与PP；稀有属性补强至8+)
-// Total: ~486 skills (including injected V18 skills)
+// Total: ~535 skills (including injected V18 skills)
 // ==========================================
 const SKILL_DB = {
   NORMAL: [
@@ -8,21 +8,21 @@ const SKILL_DB = {
     { name: '电光一闪', p: 40, pp: 30, priority: 1, desc: '以极快速度冲击，必定先制' },
     { name: '劈开', p: 70, pp: 20, desc: '用尖锐的爪子劈砍对手' },
     { name: '必杀门牙', p: 80, pp: 15, desc: '用锋利的门牙狠狠咬住对手' },
-    { name: '猛撞', p: 90, pp: 20, desc: '拼命猛撞，自身也受到反伤' },
+    { name: '猛撞', p: 90, pp: 20, desc: '拼命猛撞，自身也受到反伤', recoil: 0.25 },
     { name: '巨声', p: 90, pp: 10, desc: '释放巨大声波冲击对手' },
-    { name: '舍身冲撞', p: 120, pp: 15, desc: '不顾一切的猛烈冲撞，附带反伤' },
+    { name: '舍身冲撞', p: 120, pp: 15, desc: '不顾一切的猛烈冲撞，附带反伤', recoil: 0.33 },
     { name: '破坏死光', p: 150, pp: 5, desc: '释放强烈光束，下回合需蓄力', recharge: true },
     { name: '终极冲击', p: 150, pp: 5, desc: '全力冲撞，下回合需休息', recharge: true },
-    { name: '大爆炸', p: 250, pp: 1, desc: '引发大爆炸，自身濒死', selfKO: true }
+    { name: '大爆炸', p: 200, pp: 1, desc: '引发大爆炸，自身濒死', selfKO: true }
   ],
   FIRE: [
     { name: '火花', p: 40, pp: 25, desc: '喷出小火焰攻击对手' },
     { name: '火焰轮', p: 60, pp: 25, desc: '裹着火焰高速旋转冲撞' },
-    { name: '火焰拳', p: 75, pp: 15, desc: '带着火焰的拳击，可能造成灼伤' },
+    { name: '火焰拳', p: 75, pp: 15, desc: '带着火焰的拳击，可能造成灼伤', effect: { type: 'STATUS', status: 'BRN', chance: 0.1 } },
     { name: '喷射火焰', p: 90, pp: 15, desc: '吐出灼热火焰喷射对手' },
     { name: '热风', p: 95, pp: 10, desc: '吐出灼热气息攻击，可能灼伤' },
     { name: '大字爆炎', p: 110, pp: 5, desc: '释放大字形烈焰包围对手' },
-    { name: '闪焰冲锋', p: 120, pp: 15, desc: '被火焰包裹猛烈冲锋，附带反伤' },
+    { name: '闪焰冲锋', p: 120, pp: 15, desc: '被火焰包裹猛烈冲锋，附带反伤', recoil: 0.33 },
     { name: '过热', p: 130, pp: 5, desc: '全力释放火焰，之后特攻下降', effect: { selfDebuff: { stat: 's_atk', val: 2 } } },
     { name: '爆裂燃烧', p: 150, pp: 5, desc: '超高温爆裂燃烧一切' },
     { name: 'V热焰', p: 150, pp: 5, desc: '以超极温火焰焚尽一切的究极招式，使用后特攻降低', effect: { selfDebuff: { stat: 's_atk', val: 2 } } }
@@ -42,30 +42,30 @@ const SKILL_DB = {
   GRASS: [
     { name: '藤鞭', p: 45, pp: 25, desc: '用细长藤蔓抽打对手' },
     { name: '飞叶快刀', p: 55, pp: 25, desc: '飞射锋利叶片切割对手' },
-    { name: '终极吸取', p: 75, pp: 10, desc: '吸取对手体力回复自身HP' },
+    { name: '终极吸取', p: 75, pp: 10, desc: '吸取对手体力回复自身HP', effect: { type: 'DRAIN', val: 0.5 } },
     { name: '能量球', p: 90, pp: 10, desc: '凝聚自然能量发射球体' },
     { name: '种子炸弹', p: 80, pp: 15, desc: '散射坚硬种子轰击对手' },
     { name: '花瓣舞', p: 120, pp: 10, desc: '撒出花瓣持续攻击，之后陷入混乱', effect: { selfConfuse: true } },
-    { name: '日光束', p: 120, pp: 10, desc: '汇聚太阳光射出光线，需蓄力' },
-    { name: '木槌', p: 120, pp: 15, desc: '用坚硬身体猛击，附带反伤' },
+    { name: '日光束', p: 120, pp: 10, desc: '汇聚太阳光射出光线，需蓄力', recharge: true },
+    { name: '木槌', p: 120, pp: 15, desc: '用坚硬身体猛击，附带反伤', recoil: 0.33 },
     { name: '飞叶风暴', p: 130, pp: 5, desc: '用锋利树叶卷起风暴攻击' },
     { name: '疯狂植物', p: 150, pp: 5, desc: '召唤巨大树根猛击，需休息', recharge: true }
   ],
   ELECTRIC: [
     { name: '电击', p: 40, pp: 30, desc: '放出微弱电流攻击对手' },
     { name: '电球', p: 60, pp: 20, desc: '投掷电气球体轰击' },
-    { name: '雷电拳', p: 75, pp: 15, desc: '带电的拳击，可能使对手麻痹' },
+    { name: '雷电拳', p: 75, pp: 15, desc: '带电的拳击，可能使对手麻痹', effect: { type: 'STATUS', status: 'PAR', chance: 0.1 } },
     { name: '放电', p: 80, pp: 15, desc: '向周围释放强烈电击' },
     { name: '十万伏特', p: 90, pp: 15, desc: '释放强力电击猛烈攻击' },
     { name: '打雷', p: 110, pp: 10, desc: '召唤雷电劈下，可能麻痹' },
-    { name: '伏特攻击', p: 120, pp: 15, desc: '裹着电流猛冲，附带反伤' },
+    { name: '伏特攻击', p: 120, pp: 15, desc: '裹着电流猛冲，附带反伤', recoil: 0.33 },
     { name: '电磁炮', p: 120, pp: 5, desc: '发射电磁加速炮弹轰击' },
     { name: '雷击', p: 130, pp: 5, desc: '从天空降下雷击打击对手' },
     { name: '千万伏特', p: 160, pp: 1, desc: '皮卡丘的究极电击招式，需蓄力' }
   ],
   ICE: [
     { name: '冰砾', p: 40, pp: 30, desc: '投掷冰块攻击对手' },
-    { name: '冰冻牙', p: 65, pp: 15, desc: '用冰冻的牙齿咬击，可能冰冻' },
+    { name: '冰冻牙', p: 65, pp: 15, desc: '用冰冻的牙齿咬击，可能冰冻', effect: { type: 'STATUS', status: 'FRZ', chance: 0.1 } },
     { name: '极光束', p: 65, pp: 20, desc: '释放极光束攻击对手' },
     { name: '冰柱坠击', p: 85, pp: 10, desc: '让冰柱从天而降砸击对手' },
     { name: '急冻光线', p: 90, pp: 10, desc: '发射冰冻光线，可能冰冻对手' },
@@ -81,7 +81,7 @@ const SKILL_DB = {
     { name: '波导弹', p: 80, pp: 20, alwaysHit: true, desc: '发射波导力量追踪对手，必中' },
     { name: '流星拳', p: 90, pp: 10, desc: '如流星般高速连续出拳' },
     { name: '爆裂拳', p: 100, pp: 5, desc: '蓄力的重拳，可能混乱对手' },
-    { name: '近身战', p: 120, pp: 5, desc: '贴身搏击，自身防御下降' },
+    { name: '近身战', p: 120, pp: 5, desc: '贴身搏击，自身防御下降', selfDebuff: { stat: 'def', stages: -1 } },
     { name: '真气弹', p: 120, pp: 5, acc: 70, desc: '发射气功波攻击，命中率稍低' },
     { name: '真气拳', p: 150, pp: 5, acc: 90, desc: '集中全身气力的致命一拳，命中率稍低' }
   ],
@@ -112,13 +112,13 @@ const SKILL_DB = {
     { name: '钻孔啄', p: 80, pp: 20, desc: '旋转飞行钻击对手' },
     { name: '飞翔', p: 90, pp: 15, desc: '飞上高空后俯冲攻击' },
     { name: '暴风·天空', p: 110, pp: 10, desc: '掀起猛烈暴风攻击，可能混乱' },
-    { name: '勇鸟猛攻', p: 120, pp: 15, desc: '勇敢地猛冲，附带反伤' },
+    { name: '勇鸟猛攻', p: 120, pp: 15, desc: '勇敢地猛冲，附带反伤', recoil: 0.33 },
     { name: '神鸟特攻', p: 140, pp: 5, desc: '蓄力后发动的究极飞行攻击' },
-    { name: '画龙点睛', p: 120, pp: 5, desc: '全力一击后自身能力下降' }
+    { name: '画龙点睛', p: 120, pp: 5, desc: '全力一击后自身能力下降', selfDebuff: { stat: 'atk', stages: -1 } }
   ],
   PSYCHIC: [
     { name: '念力', p: 50, pp: 25, desc: '用念力攻击对手' },
-    { name: '幻象光线', p: 65, pp: 20, desc: '发射幻象光线，可能混乱' },
+    { name: '幻象光线', p: 65, pp: 20, desc: '发射幻象光线，可能混乱', effect: { type: 'CONFUSE', chance: 0.1 } },
     { name: '精神利刃', p: 70, pp: 20, desc: '用意念凝聚刀刃切割' },
     { name: '意念头锤', p: 80, pp: 15, desc: '集中精神力量头锤攻击' },
     { name: '精神强念', p: 90, pp: 10, desc: '释放强烈精神力量攻击' },
@@ -132,7 +132,7 @@ const SKILL_DB = {
     { name: '虫咬', p: 60, pp: 20, desc: '用锐利虫牙咬击对手' },
     { name: '银色旋风', p: 60, pp: 5, desc: '卷起银色旋风，可能全属性提升' },
     { name: '十字剪', p: 80, pp: 15, desc: '用镰刀般的爪交叉切割' },
-    { name: '吸血', p: 80, pp: 10, desc: '吸取对手体力回复自身' },
+    { name: '吸血', p: 80, pp: 10, desc: '吸取对手体力回复自身', effect: { type: 'DRAIN', val: 0.5 } },
     { name: '虫鸣', p: 90, pp: 10, desc: '发出强烈虫鸣声波攻击' },
     { name: '迎头一击', p: 90, pp: 10, desc: '用坚硬头部迎面撞击' },
     { name: '大角撞击', p: 120, pp: 10, desc: '用巨大角猛烈撞击对手' }
@@ -146,7 +146,7 @@ const SKILL_DB = {
     { name: '钻石风暴', p: 100, pp: 5, desc: '掀起钻石风暴攻击' },
     { name: '流星光束', p: 120, pp: 10, desc: '蓄力后发射流星般光束' },
     { name: '岩石炮', p: 150, pp: 5, desc: '发射巨大岩石炮弹轰击' },
-    { name: '双刃头锤', p: 150, pp: 5, desc: '用坚硬头部猛撞，附带反伤' }
+    { name: '双刃头锤', p: 150, pp: 5, desc: '用坚硬头部猛撞，附带反伤', recoil: 0.5 }
   ],
   GHOST: [
     { name: '惊吓', p: 30, pp: 15, desc: '突然出现吓唬对手' },
@@ -167,8 +167,8 @@ const SKILL_DB = {
     { name: '龙之俯冲', p: 100, pp: 10, desc: '从天空俯冲以龙之力量攻击' },
     { name: '亚空裂斩', p: 100, pp: 5, desc: '切裂空间的强力斩击' },
     { name: '巨兽斩', p: 100, pp: 5, desc: '传说之剑的强力斩击' },
-    { name: '逆鳞', p: 120, pp: 10, desc: '暴怒连续攻击，之后陷入混乱' },
-    { name: '流星群', p: 130, pp: 5, desc: '召唤流星群轰击，之后特攻下降' },
+    { name: '逆鳞', p: 120, pp: 10, desc: '暴怒连续攻击，之后陷入混乱', selfConfuse: true },
+    { name: '流星群', p: 130, pp: 5, desc: '召唤流星群轰击，之后特攻下降', selfDebuff: { stat: 'spa', stages: -2 } },
     { name: '时光咆哮', p: 150, pp: 5, desc: '扭曲时空的咆哮攻击，需休息' }
   ],
   STEEL: [
@@ -185,7 +185,7 @@ const SKILL_DB = {
   FAIRY: [
     { name: '妖精之风', p: 40, pp: 30, desc: '释放妖精之风攻击对手' },
     { name: '魅惑之声', p: 40, pp: 15, desc: '发出魅惑的声音攻击' },
-    { name: '吸取之吻', p: 50, pp: 10, desc: '吻击对手并吸收HP' },
+    { name: '吸取之吻', p: 50, pp: 10, desc: '吻击对手并吸收HP', effect: { type: 'DRAIN', val: 0.75 } },
     { name: '魔法闪耀', p: 80, pp: 10, desc: '释放魔法光芒照射对手' },
     { name: '嬉闹', p: 90, pp: 10, desc: '扑向对手嬉戏攻击' },
     { name: '月亮之力', p: 95, pp: 15, desc: '借助月亮之力发动攻击' },
@@ -415,7 +415,7 @@ const SIDE_EFFECT_SKILLS = [
   { name: '泥巴射击', t: 'GROUND', p: 55, pp: 15, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 1.0 }, desc: '100%降低速度' },
   { name: '重踏', t: 'GROUND', p: 60, pp: 20, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 1.0 }, desc: '100%降低速度' },
   { name: '浊流', t: 'WATER', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.3 }, desc: '30%降低命中' },
-  { name: '暗黑爆破', t: 'DARK', p: 85, pp: 10, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.4 }, desc: '40%降低命中' },
+  { name: '暗黑爆裂', t: 'DARK', p: 85, pp: 10, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.4 }, desc: '40%降低命中' },
 
   // --- 8. 混乱系列 ---
   { name: '水之波动', t: 'WATER', p: 60, pp: 20, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '20%概率混乱' },
