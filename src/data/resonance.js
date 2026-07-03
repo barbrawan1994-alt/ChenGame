@@ -215,7 +215,7 @@ export const ECOLOGY_GUARDIANS = [
   { id: 'guardian_fairy', ecosystem: 'FAIRY', name: '星辉仙灵', petId: 49, icon: '✨', trait: 'ecoguard_starlight', desc: '入场治愈全队8%HP，妖精技能+10%' },
   { id: 'guardian_electric', ecosystem: 'ELECTRIC', name: '雷霆守卫', petId: 35, icon: '⚡', trait: 'ecoguard_spark', desc: '入场麻痹敌方30%概率，电系技能+10%' },
   { id: 'guardian_ground', ecosystem: 'GROUND', name: '大地守望', petId: 99, icon: '🌋', trait: 'ecoguard_quake', desc: '入场降低敌方命中1阶，地面技能+10%' },
-  { id: 'guardian_poison', ecosystem: 'POISON', name: '毒瘴圣灵', petId: 61, icon: '☠️', trait: 'ecoguard_toxin', desc: '入场敌方中毒25%概率，毒系伤害+10%' },
+  { id: 'guardian_poison', ecosystem: 'POISON', name: '毒瘴圣灵', petId: 185, icon: '☠️', trait: 'ecoguard_toxin', desc: '入场敌方中毒25%概率，毒系伤害+10%' },
 ];
 
 export const GUARDIAN_MILESTONES = [

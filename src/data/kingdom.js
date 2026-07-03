@@ -313,21 +313,166 @@ export const getFactionTerritoryStats = (territories) => {
 
 /** 简易兵种克制计算（与kwSiege共享思路） */
 const TROOP_KEYS_K = ['shield', 'spear', 'cavalry', 'archer', 'siege', 'raider'];
-const troopCounterScore = (atkGarrison, defGarrison) => {
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+const getTroopMatchMultLocal = (attackerType, defenderType) => {
   const ring = { shield: 0, spear: 1, cavalry: 2, archer: 3, siege: 4, raider: 5 };
+  const ia = ring[attackerType];
+  const ib = ring[defenderType];
+  if (ia == null || ib == null) return 1;
+  if (ia === ib) return 1;
+  const d = (ib - ia + 6) % 6;
+  if (d === 1 || d === 2) return 1.25;
+  if (d === 4 || d === 5) return 0.8;
+  return 1;
+};
+
+const troopCounterScore = (atkGarrison, defGarrison) => {
   let atkSum = 0, score = 0;
   for (const aid of TROOP_KEYS_K) {
     const av = atkGarrison[aid] || 0;
     atkSum += av;
     for (const did of TROOP_KEYS_K) {
       const dv = defGarrison[did] || 0;
-      const d = (ring[did] - ring[aid] + 6) % 6;
-      const mult = (d === 1 || d === 2) ? 1.25 : (d === 4 || d === 5) ? 0.8 : 1;
+      const mult = getTroopMatchMultLocal(aid, did);
       score += av * dv * mult;
     }
   }
   const defSum = TROOP_KEYS_K.reduce((s, t) => s + (defGarrison[t] || 0), 0) || 1;
   return score / (atkSum * defSum || 1);
+};
+
+const normalizeTroopAllocationK = (allocation) => {
+  const out = {};
+  TROOP_KEYS_K.forEach(k => { out[k] = Math.max(0, Math.floor(Number(allocation?.[k]) || 0)); });
+  return out;
+};
+
+const getLeadershipMultK = (recruitedGenerals = [], generalIds = []) => {
+  const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
+  const gens = uniqIds.map(id => (recruitedGenerals || []).find(g => String(g?.id) === id)).filter(Boolean);
+  let lead = 1;
+  gens.forEach(g => {
+    const r = g.rarity;
+    lead += (r === 'SSR' || r === 3) ? 0.11 : (r === 'SR' || r === 2) ? 0.065 : 0.038;
+  });
+  return { lead: Math.min(1.38, lead), gens };
+};
+
+const getSupplyProfile = (mapId, playerFaction, territories) => {
+  const n = Number(mapId);
+  const ownMaps = WAR_MAP_IDS.filter(id => !CONTESTED_MAP_IDS.includes(Number(id)) && territories?.[id]?.owner === playerFaction);
+  const targetIndex = WAR_MAP_IDS.indexOf(n);
+  const adjacent = targetIndex >= 0 && ownMaps.some(id => {
+    const idx = WAR_MAP_IDS.indexOf(Number(id));
+    return idx >= 0 && Math.abs(idx - targetIndex) <= 1;
+  });
+  if (adjacent) return { mult: 1.08, label: '接壤补给', desc: '邻近我方领地，攻城推进更稳定' };
+  if (ownMaps.length <= 1) return { mult: 0.94, label: '孤军突进', desc: '己方领地少，后勤薄弱但易触发背水加成' };
+  return { mult: 0.86, label: '远征补给', desc: '不接壤我方领地，战损与失败风险上升' };
+};
+
+const getRiskLabel = (chance) => {
+  if (chance >= 0.72) return '优势';
+  if (chance >= 0.55) return '可战';
+  if (chance >= 0.38) return '胶着';
+  return '高危';
+};
+
+const getSuggestedAllocation = (defGarrison, deploy) => {
+  const safeDeploy = Math.max(0, Math.floor(Number(deploy) || 0));
+  if (safeDeploy <= 0) return {};
+  const weights = {};
+  for (const aid of TROOP_KEYS_K) {
+    let score = 0.08;
+    for (const did of TROOP_KEYS_K) {
+      score += (defGarrison?.[did] || 0) * getTroopMatchMultLocal(aid, did);
+    }
+    weights[aid] = Math.max(0.08, score);
+  }
+  const total = TROOP_KEYS_K.reduce((s, k) => s + weights[k], 0) || 1;
+  const out = {};
+  let assigned = 0;
+  TROOP_KEYS_K.forEach((k, i) => {
+    const v = i === TROOP_KEYS_K.length - 1 ? safeDeploy - assigned : Math.floor(safeDeploy * weights[k] / total);
+    out[k] = Math.max(0, v);
+    assigned += out[k];
+  });
+  return out;
+};
+
+export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [] }) => {
+  const t = territories?.[mapId];
+  if (!t) return { canAttack: false, reason: '目标领地不存在', winChance: 0, riskLabel: '不可攻' };
+  if (t.owner === playerFaction) return { canAttack: false, reason: '无法攻击己方领地', winChance: 0, riskLabel: '不可攻' };
+  if (CONTESTED_MAP_IDS.includes(Number(mapId))) return { canAttack: false, reason: '名城请在争夺页攻城', winChance: 0, riskLabel: '不可攻' };
+
+  const alloc = normalizeTroopAllocationK(allocation);
+  const deploy = TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
+  const defGarrison = t.garrison || generateGarrison(t.owner || 'qun', Math.max(40, Math.floor((t.strength || 50) * 1.2)));
+  const defTotal = Math.max(1, TROOP_KEYS_K.reduce((s, k) => s + (defGarrison[k] || 0), 0));
+  const counter = troopCounterScore(alloc, defGarrison);
+  const { lead, gens } = getLeadershipMultK(recruitedGenerals, generalIds);
+  const supply = getSupplyProfile(mapId, playerFaction, territories || {});
+  const ownCount = getFactionTerritoryCount(playerFaction, territories || {});
+  const defenderCount = t.owner && t.owner !== 'neutral' ? getFactionTerritoryCount(t.owner, territories || {}) : 0;
+  const overextendMult = ownCount >= WAR_TICK_CONFIG.overextendThreshold ? 0.93 : 1;
+  const underdogMult = ownCount <= 2 ? 1.07 : 1;
+  const defenderResolve = t.owner === 'neutral' ? 0.86 : clamp(0.92 + defenderCount * 0.018, 0.92, 1.16);
+  const attackPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult;
+  const defensePower = defTotal * ((t.strength || 50) / 100) * defenderResolve;
+  const pressure = attackPower / Math.max(1, defensePower);
+  const winChance = deploy < 60 ? 0 : clamp(0.08 + (pressure / (pressure + 1.15)) * 0.84, 0.08, 0.92);
+  const lossRate = deploy < 60 ? 0 : clamp(0.30 - winChance * 0.14 + Math.max(0, 1 - counter) * 0.08 + (supply.mult < 1 ? 0.04 : 0), 0.09, 0.48);
+  const expectedLoss = Math.min(deploy, Math.floor(deploy * lossRate));
+  const expectedStrengthChange = winChance >= 0.5
+    ? -Math.floor(11 + pressure * 6 + counter * 6 + Math.min(8, gens.length * 3))
+    : Math.floor(3 + (1 - winChance) * 7);
+  const advice = [];
+  if (deploy < 60) advice.push('至少投入 60 兵力');
+  if (counter < 0.95) advice.push('兵种被守军克制，建议按推荐配兵调整');
+  if (supply.mult < 1) advice.push('远征目标补给较差，建议先夺取相邻领地');
+  if (gens.length < 2) advice.push('携带 2 到 3 名武将可显著降低波动');
+  if (ownCount >= WAR_TICK_CONFIG.overextendThreshold) advice.push('己方领地过多，扩张惩罚生效，注意巩固防线');
+
+  return {
+    canAttack: deploy >= 60,
+    reason: deploy < 60 ? '兵力不足 60，无法攻城' : '',
+    allocation: alloc,
+    deploy,
+    defGarrison,
+    defTotal,
+    counter,
+    leadership: lead,
+    selectedGenerals: gens,
+    supply,
+    pressure,
+    winChance,
+    riskLabel: getRiskLabel(winChance),
+    expectedLoss,
+    expectedLossRate: lossRate,
+    expectedStrengthChange,
+    suggestedAllocation: getSuggestedAllocation(defGarrison, deploy),
+    advice: advice.length ? advice : ['当前配兵可执行，注意观察战损'],
+  };
+};
+
+const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
+  const t = territories?.[mapId];
+  if (!t || t.owner === attackerFid || CONTESTED_MAP_IDS.includes(Number(mapId))) return -Infinity;
+  const defender = t.owner || 'neutral';
+  const strength = Math.max(1, Number(t.strength) || 50);
+  const garrisonTotal = Math.max(1, getGarrisonTotal(t.garrison));
+  const supply = getSupplyProfile(mapId, attackerFid, territories || {});
+  const attackerCount = getFactionTerritoryCount(attackerFid, territories || {});
+  const defenderCount = defender !== 'neutral' ? getFactionTerritoryCount(defender, territories || {}) : 0;
+  const vulnerability = (110 - strength) * 1.15 + Math.max(0, 140 - garrisonTotal) * 0.28;
+  const strategicValue = 24 + defenderCount * 3 + (defender === 'neutral' ? 8 : 0);
+  const supplyScore = supply.mult >= 1 ? 20 : supply.mult >= 0.9 ? 4 : -16;
+  const underdogIntent = attackerFid === weakestFaction ? 18 : 0;
+  const overextendPenalty = attackerCount >= WAR_TICK_CONFIG.overextendThreshold ? -14 : 0;
+  const noise = Math.random() * 14;
+  return vulnerability + strategicValue + supplyScore + underdogIntent + overextendPenalty + noise;
 };
 
 // 执行一次 War Tick — 四方势力（魏蜀吴群雄）都参与攻城
@@ -378,9 +523,11 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     });
     if (targets.length === 0) continue;
 
-    targets.sort((a, b) => (newTerritories[a].strength || 0) - (newTerritories[b].strength || 0));
-    const topN = targets.slice(0, Math.max(3, Math.ceil(targets.length * 0.4)));
-    const targetMapId = topN[Math.floor(Math.random() * topN.length)];
+    const scoredTargets = targets
+      .map(mid => ({ mid, score: scoreAiWarTarget(attackerFid, mid, newTerritories, weakest) }))
+      .sort((a, b) => b.score - a.score);
+    const topN = scoredTargets.slice(0, Math.max(2, Math.ceil(scoredTargets.length * 0.3)));
+    const targetMapId = topN[Math.floor(Math.random() * topN.length)]?.mid || scoredTargets[0]?.mid;
     const target = newTerritories[targetMapId];
     const defenderFid = target.owner === 'neutral' ? null : target.owner;
 
@@ -395,7 +542,8 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     const defGarrison = target.garrison || generateGarrison(defenderFid || 'qun', 60);
     const counterMod = troopCounterScore(atkGarrison, defGarrison);
 
-    let atkRoll = atkPower * (0.7 + Math.random() * 0.6) * counterMod;
+    const supply = getSupplyProfile(targetMapId, attackerFid, newTerritories);
+    let atkRoll = atkPower * (0.7 + Math.random() * 0.6) * counterMod * supply.mult;
     atkRoll *= (cfg.aiAggressionBonus || 1);
     const defRoll = defPower * (target.strength / 100) * (0.8 + Math.random() * 0.4);
 
@@ -524,44 +672,40 @@ export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territor
   if (!t || t.owner === playerFaction) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '无法攻击己方领地' };
   if (CONTESTED_MAP_IDS.includes(Number(mapId))) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '名城请在争夺页攻城' };
 
-  const alloc = {};
-  const KT = ['shield', 'spear', 'cavalry', 'archer', 'siege', 'raider'];
-  KT.forEach(k => { alloc[k] = Math.max(0, Math.floor(Number(allocation?.[k]) || 0)); });
-  const deploy = KT.reduce((s, k) => s + alloc[k], 0);
+  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds });
+  const alloc = evalResult.allocation || normalizeTroopAllocationK(allocation);
+  const deploy = evalResult.deploy || TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
   if (deploy < 60) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '兵力不足60，无法攻城' };
 
-  const defGarrison = t.garrison || generateGarrison(t.owner || 'qun', Math.max(40, Math.floor(t.strength * 1.2)));
-  const counter = troopCounterScore(alloc, defGarrison);
-
-  const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
-  const gens = uniqIds.map(id => (recruitedGenerals || []).find(g => String(g?.id) === id)).filter(Boolean);
-  let lead = 1;
-  gens.forEach(g => {
-    const r = g.rarity;
-    lead += (r === 'SSR' || r === 3) ? 0.11 : (r === 'SR' || r === 2) ? 0.065 : 0.038;
-  });
-  lead = Math.min(1.38, lead);
-
-  const defTotal = KT.reduce((s, k) => s + (defGarrison[k] || 0), 0);
-  const atkStr = deploy * counter * lead;
-  const defStr = defTotal * (t.strength / 100) * (0.85 + Math.random() * 0.3);
-
-  const victory = atkStr > defStr;
-  const lossRate = victory ? 0.10 + Math.random() * 0.12 : 0.20 + Math.random() * 0.15;
+  const victory = Math.random() < evalResult.winChance;
+  const lossNoise = victory ? (0.82 + Math.random() * 0.3) : (1.05 + Math.random() * 0.32);
+  const lossRate = (evalResult.expectedLossRate || 0.2) * lossNoise;
   const manpowerLost = Math.min(deploy, Math.floor(deploy * Math.min(0.5, lossRate)));
 
   let strengthChange = 0;
   if (victory) {
-    strengthChange = -Math.floor(15 + counter * 8 + gens.length * 3 + Math.random() * 10);
+    const baseBreak = Math.abs(evalResult.expectedStrengthChange || 14);
+    strengthChange = -Math.floor(baseBreak * (0.78 + Math.random() * 0.42));
   } else {
-    strengthChange = Math.floor(3 + Math.random() * 5);
+    strengthChange = Math.floor(3 + (1 - (evalResult.winChance || 0)) * 6 + Math.random() * 4);
   }
 
   const detail = victory
-    ? `攻势凌厉！守军损失惨重，城防大幅削弱 (${strengthChange})。`
-    : `攻城受挫，守军顽强抵抗，城防有所恢复 (+${strengthChange})。`;
+    ? `${evalResult.supply?.label || '攻势'}奏效，守军阵线被撕开，城防削弱 ${Math.abs(strengthChange)}。`
+    : `${evalResult.riskLabel || '高危'}攻城受挫，守军重整城防 (+${strengthChange})。`;
 
-  return { victory, strengthChange, manpowerLost, detail, atkTroops: alloc, defTroops: defGarrison };
+  return {
+    victory,
+    strengthChange,
+    manpowerLost,
+    detail,
+    atkTroops: alloc,
+    defTroops: evalResult.defGarrison,
+    winChance: evalResult.winChance,
+    riskLabel: evalResult.riskLabel,
+    counter: evalResult.counter,
+    supply: evalResult.supply,
+  };
 };
 
 export const isFactionCapitalOnly = (faction, territories) => {

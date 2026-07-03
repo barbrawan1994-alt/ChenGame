@@ -13,7 +13,7 @@ export const BALLS = {
   // 适合打神兽/Boss战
   timer:  { id: 'timer',  name: '计时球', rate: 1.0, price: 1000, icon: '⏳', desc: '回合越多捕获率越高；倍率1+回合×0.3，上限4.0倍（与战斗结算一致）' },
   // 适合捕捉后直接用
-  heal:   { id: 'heal',   name: '治愈球', rate: 1.2, price: 250,  icon: '💖', desc: '捕获率×1.2，捕获后恢复满体力' }
+  heal:   { id: 'heal',   name: '治愈球', rate: 1.0, price: 500,  icon: '💖', desc: '捕获率×1.0，捕获后恢复满体力' }
 };
 
 export const MEDICINES = {

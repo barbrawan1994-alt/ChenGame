@@ -200,7 +200,7 @@ const SKILL_DB = {
     { name: '夜袭', p: 50, pp: 20, priority: 1, desc: '趁黑夜突袭，必定先手' },
     { name: '制裁光砾', p: 100, pp: 5, desc: '以制裁之力发射暗之光' },
     { name: '暗影突袭', p: 90, pp: 15, desc: '从暗影中发动突然袭击' },
-    { name: '恶意追击', p: 60, pp: 20, desc: '暗系追击技能，对低HP对手威力翻倍' },
+    { name: '恶意追击', p: 60, pp: 20, effect: { type: 'DOUBLE_LOW_HP' }, desc: '暗系追击技能，对低HP对手威力翻倍' },
     { name: '暗冥强击', p: 110, pp: 5, desc: '凝聚黑暗之力的致命一击' },
     { name: '无尽暗夜', p: 140, pp: 3, desc: '将对手拖入无尽的黑暗中' },
   ],
@@ -283,14 +283,14 @@ const SKILL_DB = {
   ],
   HEAL: [
     { name: '生命水滴', p: 0, pp: 15, val: 0.25, desc: '恢复25%最大HP' },
-    { name: '净化之光', p: 60, pp: 20, desc: '释放净化光芒攻击，有几率解除异常状态' },
+    { name: '净化之光', p: 60, pp: 20, effect: { type: 'CURE_STATUS', chance: 0.5 }, desc: '释放净化光芒攻击，50%概率解除自身异常状态' },
     { name: '自我再生', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' },
     { name: '生命脉冲', p: 80, pp: 10, desc: '将生命力转化为攻击能量' },
     { name: '光合作用', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
-    { name: '回春一击', p: 90, pp: 8, desc: '以愈合之力攻击对手，自身回复造成伤害的25%' },
+    { name: '回春一击', p: 90, pp: 8, effect: { type: 'DRAIN', val: 0.25 }, desc: '以愈合之力攻击对手，自身回复造成伤害的25%' },
     { name: '月光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
     { name: '圣愈裁决', p: 110, pp: 5, desc: '以愈合神力的终极攻击' },
-    { name: '祈愿', p: 0, pp: 10, val: 0.5, delayed: true, desc: '下回合恢复50%最大HP' },
+    { name: '祈愿', p: 0, pp: 10, val: 0.5, desc: '虔诚祈愿，恢复50%最大HP' },
     { name: '晨光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
     { name: '治愈波动', p: 0, pp: 10, val: 0.5, desc: '恢复目标50%最大HP' },
     { name: '羽栖', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' }
@@ -724,7 +724,7 @@ const NEW_SKILLS_V18 = [
   { name: '星际冲击', t: 'COSMIC', p: 95, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.2 }, desc: '来自宇宙的陨星冲击，20%降速' },
   { name: '超声波炮', t: 'SOUND', p: 88, pp: 12, effect: { type: 'STATUS', status: 'CON', chance: 0.25 }, desc: '超声波集中炮击，25%混乱' },
   { name: '烈风斩', t: 'WIND', p: 85, pp: 14, desc: '凝聚烈风化为利刃斩出' },
-  { name: '治愈冲击', t: 'HEAL', p: 70, pp: 15, effect: { type: 'HEAL', val: 0.15 }, desc: '治愈能量化为攻击，附带15%回复' },
+  { name: '治愈冲击', t: 'HEAL', p: 70, pp: 15, effect: { type: 'DRAIN', val: 0.15 }, desc: '治愈能量化为攻击，附带15%吸血回复' },
   { name: '神罚', t: 'GOD', p: 130, pp: 8, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '神之惩罚降临，30%削甲' },
   { name: '焚天炎舞', t: 'FIRE', p: 95, pp: 10, effect: { type: 'STATUS', status: 'BRN', chance: 0.25 }, desc: '焚天之舞，25%灼伤' },
   { name: '冰封绝对', t: 'ICE', p: 105, pp: 8, effect: { type: 'STATUS', status: 'FRZ', chance: 0.2 }, desc: '绝对零度的冰封，20%冻结' },
@@ -762,7 +762,13 @@ const NEW_SKILLS_V18 = [
 const injectNewSkillsV18 = () => {
   NEW_SKILLS_V18.forEach(skill => {
     if (!SKILL_DB[skill.t]) SKILL_DB[skill.t] = [];
-    if (!SKILL_DB[skill.t].find(s => s.name === skill.name)) {
+    const existing = SKILL_DB[skill.t].find(s => s.name === skill.name);
+    if (existing) {
+      if (skill.p !== undefined && skill.p > existing.p) existing.p = skill.p;
+      if (skill.effect && !existing.effect) existing.effect = skill.effect;
+      if (skill.pp && skill.pp !== existing.pp) existing.pp = skill.pp;
+      if (skill.desc && !existing.desc) existing.desc = skill.desc;
+    } else {
       SKILL_DB[skill.t].push(skill);
     }
   });

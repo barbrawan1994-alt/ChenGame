@@ -9,21 +9,32 @@ import { pickSectIdForPet } from '../data/sectSystem';
 export function getMoveByLevel(type, level) {
   const db = SKILL_DB[type] || SKILL_DB.NORMAL;
   if (!db || db.length === 0) return { name: '\u649E\u51FB', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100, category: 'physical' };
+  const maxPowerForLevel = level < 20 ? 80 : level < 40 ? 110 : level < 60 ? 130 : level < 80 ? 150 : 200;
+  const eligible = db.filter(s => {
+    if (s.effect?.type === 'OHKO') return level >= 70;
+    const p = s.p !== undefined ? s.p : 0;
+    if (p > maxPowerForLevel) return false;
+    if (p >= 200 && level < 90) return false;
+    return true;
+  });
+  const pool = eligible.length > 0 ? eligible : db.filter(s => (s.p || 0) <= 80);
+  const finalPool = pool.length > 0 ? pool : [db[0]];
   const index = Math.floor(level / 5);
-  const template = db[index % db.length];
+  const template = finalPool[index % finalPool.length];
   let name = template.name;
   let power = (template.p !== undefined) ? template.p : 40;
   let pp = template.pp || 15;
   let acc = template.acc || 100;
   if (power >= 120) acc = 90;
   if (power >= 150) acc = 80;
-  const tier = Math.min(3, Math.floor(index / db.length));
+  const tier = Math.min(3, Math.floor(index / finalPool.length));
   if (power > 0 && tier > 0) {
     const baseName = template.name;
     if (tier === 1) { name = `\u771F\u00B7${baseName}`; power = Math.floor(power * 1.2); }
     else if (tier === 2) { name = `\u8D85\u00B7${baseName}`; power = Math.floor(power * 1.3); }
     else if (tier >= 3) { name = `\u795E\u00B7${baseName}`; power = Math.floor(power * 1.5); }
   }
+  power = Math.min(power, 250);
   return { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, priority: template.priority || 0, alwaysHit: template.alwaysHit || false, desc: template.desc || '' };
 }
 
@@ -111,11 +122,11 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   const speedRng = Math.floor(Math.random() * 71) + 40;
 
   const sectId = pickSectIdForPet(base);
-  let autoSectLv = Math.floor(level / 10) + 1;
-  if (isBoss || isShiny) autoSectLv += 2;
+  let autoSectLv = isBoss ? Math.floor(level / 10) + 1 : 1;
+  if (isShiny) autoSectLv = Math.max(autoSectLv, 2);
   const sectLevel = Math.max(1, Math.min(10, autoSectLv));
 
-  const traitKeys = Object.keys(TRAIT_DB);
+  const traitKeys = Object.keys(TRAIT_DB).filter(k => !k.startsWith('ecoguard_'));
   const randomTrait = traitKeys[Math.floor(Math.random() * traitKeys.length)];
 
   const typeBaseCharm = TYPE_CHARM_BASE[base.type] || 30;

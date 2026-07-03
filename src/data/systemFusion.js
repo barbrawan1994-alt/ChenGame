@@ -168,12 +168,12 @@ export const KINGDOM_PVE_TASKS = [
   { id: 'kw_purify_border', name: '净化边境', icon: '💧', reqBadges: 4, cooldownTurns: 2, cost: { energy: 10 }, reward: { guardianScore: 5, kwContrib: 30 }, ecoDelta: { pollution: -10 } },
   { id: 'kw_repair_wall', name: '修复城墙', icon: '🧱', reqBadges: 6, cooldownTurns: 4, cost: { gold: 2000, energy: 10 }, reward: { kwContrib: 50, gold: 2500 }, territoryStrength: 2 },
   { id: 'kw_repel_rampage', name: '击退暴走潮', icon: '⚔️', reqBadges: 5, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 40, guardianScore: 8 }, ecoDelta: { stability: 10 } },
-  { id: 'kw_build_sanctuary', name: '建设圣域', icon: '⛩️', reqBadges: 7, cooldownTurns: 6, cost: { gold: 3000, energy: 20 }, reward: { kwContrib: 60, gold: 5000 }, requiresSanctuaryLv: 2, prereq: ['kw_purify_border'] },
+  { id: 'kw_build_sanctuary', name: '建设圣域', icon: '⛩️', reqBadges: 7, cooldownTurns: 6, cost: { gold: 5000, energy: 20 }, reward: { kwContrib: 60, gold: 3000, guardianScore: 15 }, requiresSanctuaryLv: 2, prereq: ['kw_purify_border'] },
   { id: 'kw_reclaim_mine', name: '夺回矿场', icon: '⛏️', reqBadges: 5, cooldownTurns: 4, cost: { energy: 20 }, reward: { kwContrib: 80, gold: 8000 }, requiresCrisis: 'crisis_canyon_mine', prereq: ['kw_repair_wall'] },
   { id: 'kw_night_patrol', name: '边境夜巡', icon: '🌙', reqBadges: 6, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 70, guardianScore: 10, gold: 6000 }, requiresUnlock: 'kw_night_patrol', ecoDelta: { stability: 8 } },
   { id: 'kw_seal_guardian', name: '封印守护', icon: '⛩️', reqBadges: 9, cooldownTurns: 8, cost: { energy: 30, gold: 5000 }, reward: { kwContrib: 100, guardianScore: 15, gold: 10000 }, requiresUnlock: 'kw_seal_guardian', ecoDelta: { spirit: 10, stability: 12 }, prereq: ['kw_night_patrol'] },
   { id: 'kw_field_hospital', name: '战场救护', icon: '💊', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwContrib: 40, gold: 3000, generalFragment: 'hua_tuo' }, ecoDelta: { stability: 5 } },
-  { id: 'kw_jin_unify', name: '一统之路', icon: '🐉', reqBadges: 8, cooldownTurns: 10, cost: { energy: 30, gold: 8000 }, reward: { kwContrib: 90, gold: 9000, generalFragment: 'sima_yi' }, ecoDelta: { stability: 15, spirit: 8 }, prereq: ['kw_seal_guardian', 'kw_reclaim_mine'] },
+  { id: 'kw_jin_unify', name: '一统之路', icon: '🐉', reqBadges: 10, cooldownTurns: 10, cost: { energy: 30, gold: 8000 }, reward: { kwContrib: 90, gold: 9000, generalFragment: 'sima_yi' }, ecoDelta: { stability: 15, spirit: 8 }, prereq: ['kw_seal_guardian', 'kw_reclaim_mine'] },
 ];
 
 /** 国家政策（占领区域后可选，PVE 行为影响，conflicts 互斥） */

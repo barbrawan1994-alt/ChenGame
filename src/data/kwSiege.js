@@ -51,6 +51,7 @@ const TROOP_WEIGHT = {
 };
 
 const QUN_LEADERS = ['吕布', '袁绍', '董卓残部', '西凉铁骑', '黄巾余党', '汉中张鲁', '南中蛮兵'];
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 /** 与 generals.js 一致：稀有度为字符串 SSR / SR / R（兼容旧数字 3/2/1） */
 const rarityLeadership = (r) => {
@@ -95,6 +96,7 @@ export const getContestMapProgress = (contestProgress, mapId) => {
     wei: Math.max(0, Math.floor(Number(raw.wei) || 0)),
     shu: Math.max(0, Math.floor(Number(raw.shu) || 0)),
     wu: Math.max(0, Math.floor(Number(raw.wu) || 0)),
+    jin: Math.max(0, Math.floor(Number(raw.jin) || 0)),
     qun: Math.max(0, Math.floor(Number(raw.qun) || 0)),
   };
 };
@@ -195,6 +197,121 @@ export const syncContestedTerritoryOwners = (contestProgress, territories) => {
   return terr;
 };
 
+const getRiskLabel = (chance) => {
+  if (chance >= 0.72) return '优势';
+  if (chance >= 0.55) return '可破';
+  if (chance >= 0.38) return '胶着';
+  return '高危';
+};
+
+const getDominantContestFaction = (prog, playerFaction) => {
+  return CONTEST_BAR_IDS
+    .filter(fid => fid !== playerFaction)
+    .sort((a, b) => (prog[b] || 0) - (prog[a] || 0))[0] || 'qun';
+};
+
+const getSuggestedAllocation = (defWeights, deploy) => {
+  const safeDeploy = Math.max(0, Math.floor(Number(deploy) || 0));
+  if (safeDeploy <= 0) return {};
+  const weights = {};
+  for (const aid of KW_TROOP_IDS) {
+    let score = 0.08;
+    for (const did of KW_TROOP_IDS) score += (defWeights?.[did] || 0) * getTroopMatchMult(aid, did);
+    weights[aid] = Math.max(0.08, score);
+  }
+  const total = KW_TROOP_IDS.reduce((s, k) => s + weights[k], 0) || 1;
+  const out = {};
+  let assigned = 0;
+  KW_TROOP_IDS.forEach((k, i) => {
+    const v = i === KW_TROOP_IDS.length - 1 ? safeDeploy - assigned : Math.floor(safeDeploy * weights[k] / total);
+    out[k] = Math.max(0, v);
+    assigned += out[k];
+  });
+  return out;
+};
+
+export const evaluateKwSiegeBattle = ({
+  mapId,
+  playerFaction,
+  allocation,
+  generalIds,
+  recruitedGenerals = [],
+  mapProgress,
+  mapLvlMin = 50,
+  mapLvlMax = 80,
+  avgPartyLevel = 55,
+}) => {
+  const alloc = normalizeAllocation(allocation);
+  const deploy = sumAlloc(alloc);
+  if (!playerFaction || !['wei', 'shu', 'wu', 'jin'].includes(playerFaction)) {
+    return { canAttack: false, reason: '未加入可参战势力', winChance: 0, riskLabel: '不可攻', allocation: alloc, deploy };
+  }
+  if (deploy < 80) {
+    return { canAttack: false, reason: '兵力不足 80，无法形成攻城阵势', winChance: 0, riskLabel: '不可攻', allocation: alloc, deploy };
+  }
+
+  const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
+  const gens = uniqIds.map(id => recruitedGenerals.find(g => String(g?.id) === id)).filter(Boolean);
+  let lead = 1;
+  gens.forEach(g => { lead += rarityLeadership(g.rarity || 1); });
+  lead = Math.min(1.38, lead);
+
+  const defWeights = inferDefenseWeights(mapProgress);
+  const counter = expectedCounterMult(alloc, defWeights);
+  const lo = Math.max(1, Number(mapLvlMin) || 50);
+  const hi = Math.max(lo, Number(mapLvlMax) || 80);
+  const midLv = (lo + hi) / 2;
+  const wallBase = 138 + (midLv - 50) * 2.05;
+  const rawP = mapProgress || {};
+  const prog = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
+  for (const k of CONTEST_BAR_IDS) prog[k] = Math.max(0, Number(rawP[k]) || 0);
+  const others = CONTEST_BAR_IDS
+    .filter(fid => fid !== playerFaction)
+    .reduce((s, fid) => s + (prog[fid] || 0), 0);
+  const av = Math.min(100, Math.max(15, Number(avgPartyLevel) || 55));
+  const wallHp = Math.max(52, wallBase * (1 + others * 0.0065) * (0.92 + av * 0.0018));
+  const atkW = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0) * (TROOP_WEIGHT[tid] || 1), 0);
+  const qunBoost = ((prog.qun || 0) / (1 + others * 0.5)) * 0.012;
+  const expectedRoundDamage = atkW * lead * counter * (1.05 - qunBoost * 0.35);
+  const expectedDamage = expectedRoundDamage * 7;
+  const pressure = expectedDamage / Math.max(1, wallHp);
+  const winChance = clamp(0.06 + (pressure / (pressure + 1.05)) * 0.88, 0.06, 0.94);
+  const expectedLossRate = clamp(0.24 - winChance * 0.1 + Math.max(0, 1 - counter) * 0.08 + (others > 120 ? 0.035 : 0), 0.1, 0.52);
+  const expectedLoss = Math.min(deploy, Math.floor(deploy * expectedLossRate));
+  const expectedOccupationGain = winChance >= 0.5
+    ? Math.floor(10 + pressure * 8 + counter * 5 + Math.min(6, gens.length * 2))
+    : Math.floor(2 + winChance * 5);
+  const dominantFaction = getDominantContestFaction(prog, playerFaction);
+  const advice = [];
+  if (counter < 0.96) advice.push('兵种克制不足，建议按推荐配兵调整');
+  if ((prog.qun || 0) > 80) advice.push('群雄盘踞较深，战损会偏高');
+  if (gens.length < 2) advice.push('携带 2 到 3 名武将可提升破城稳定性');
+  if (winChance < 0.45) advice.push('建议先继续征兵或等待争夺条削弱守方');
+
+  return {
+    canAttack: true,
+    reason: '',
+    mapId,
+    allocation: alloc,
+    deploy,
+    selectedGenerals: gens,
+    defWeights,
+    suggestedAllocation: getSuggestedAllocation(defWeights, deploy),
+    counter,
+    leadership: lead,
+    wallHp,
+    expectedDamage,
+    pressure,
+    winChance,
+    riskLabel: getRiskLabel(winChance),
+    expectedLoss,
+    expectedLossRate,
+    expectedOccupationGain,
+    dominantFaction,
+    advice: advice.length ? advice : ['当前攻城配置稳定，可执行'],
+  };
+};
+
 /**
  * 攻城推演：玩家派遣兵力 + 至多 3 名已招募武将
  * @returns {{ victory:boolean, occupationGain:number, manpowerLost:number, wallRemainPct:number, detail:string }}
@@ -210,9 +327,20 @@ export const runKwSiegeBattle = ({
   mapLvlMax = 80,
   avgPartyLevel = 55,
 }) => {
-  const alloc = normalizeAllocation(allocation);
-  const deploy = sumAlloc(alloc);
-  if (!playerFaction || !['wei', 'shu', 'wu'].includes(playerFaction)) {
+  const preview = evaluateKwSiegeBattle({
+    mapId,
+    playerFaction,
+    allocation,
+    generalIds,
+    recruitedGenerals,
+    mapProgress,
+    mapLvlMin,
+    mapLvlMax,
+    avgPartyLevel,
+  });
+  const alloc = preview.allocation || normalizeAllocation(allocation);
+  const deploy = preview.deploy || sumAlloc(alloc);
+  if (!playerFaction || !['wei', 'shu', 'wu', 'jin'].includes(playerFaction)) {
     return { victory: false, occupationGain: 0, manpowerLost: 0, wallRemainPct: 100, detail: '未加入势力，无法攻城。' };
   }
   if (deploy < 80) {
@@ -221,49 +349,19 @@ export const runKwSiegeBattle = ({
 
   const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
   const gens = uniqIds.map(id => recruitedGenerals.find(g => String(g?.id) === id)).filter(Boolean);
-  let lead = 1;
-  gens.forEach(g => { lead += rarityLeadership(g.rarity || 1); });
-  lead = Math.min(1.38, lead);
-
-  const defWeights = inferDefenseWeights(mapProgress);
-  const counter = expectedCounterMult(alloc, defWeights);
-
-  const lo = Math.max(1, Number(mapLvlMin) || 50);
-  const hi = Math.max(lo, Number(mapLvlMax) || 80);
-  const midLv = (lo + hi) / 2;
-  const wallBase = 138 + (midLv - 50) * 2.05;
-  const rawP = mapProgress || {};
-  const prog = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
-  for (const k of CONTEST_BAR_IDS) prog[k] = Math.max(0, Number(rawP[k]) || 0);
-  const others = CONTEST_BAR_IDS
-    .filter(fid => fid !== playerFaction)
-    .reduce((s, fid) => s + (prog[fid] || 0), 0);
-  const av = Math.min(100, Math.max(15, Number(avgPartyLevel) || 55));
-  const wallHp = Math.max(
-    52,
-    wallBase * (1 + others * 0.0065) * (0.92 + av * 0.0018),
-  );
-
-  const atkW = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0) * (TROOP_WEIGHT[tid] || 1), 0);
-  let wall = wallHp;
-  const rounds = 7;
-  for (let r = 0; r < rounds; r++) {
-    const noise = 0.88 + Math.random() * 0.26;
-    const qunBoost = ((prog.qun || 0) / (1 + others * 0.5)) * 0.012;
-    const dmg = atkW * lead * counter * noise * (1.05 - qunBoost * 0.35);
-    wall -= dmg;
-  }
+  const wallHp = preview.wallHp || 100;
+  const wall = wallHp - (preview.expectedDamage || 0) * (0.82 + Math.random() * 0.36);
 
   const victory = wall <= 0;
   const margin = victory ? Math.min(2.2, Math.abs(wall) / wallHp + 0.4) : Math.max(0, 1 - wall / wallHp);
 
   const lossRate = victory
-    ? 0.12 + Math.random() * 0.1 + (1 - counter) * 0.06
-    : 0.22 + Math.random() * 0.14 + (counter < 0.95 ? 0.08 : 0);
+    ? (preview.expectedLossRate || 0.18) * (0.78 + Math.random() * 0.28)
+    : (preview.expectedLossRate || 0.26) * (1.06 + Math.random() * 0.34);
 
   const manpowerLost = Math.min(deploy, Math.floor(deploy * Math.min(0.55, lossRate)));
   const occupationGain = victory
-    ? Math.floor(11 + margin * 9 + counter * 5 + Math.min(6, gens.length * 2))
+    ? Math.floor((preview.expectedOccupationGain || 14) * (0.82 + margin * 0.24))
     : Math.floor(2 + Math.random() * 3);
 
   const wallRemainPct = Math.max(0, Math.round((Math.max(0, wall) / wallHp) * 100));
@@ -279,5 +377,8 @@ export const runKwSiegeBattle = ({
     manpowerLost,
     wallRemainPct,
     detail,
+    winChance: preview.winChance,
+    riskLabel: preview.riskLabel,
+    counter: preview.counter,
   };
 };
