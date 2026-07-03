@@ -23,7 +23,14 @@ const TYPE_COLORS = {
   STEEL: { primary: '#B8B8B8', secondary: '#D0D0D0', accent: '#E8E8E8' },
   FAIRY: { primary: '#FFB6D9', secondary: '#FFC8E5', accent: '#FFD6ED' },
   GOD: { primary: '#FFD700', secondary: '#FFE66D', accent: '#FFF89C' },
-  NORMAL: { primary: '#F5F5F5', secondary: '#FAFAFA', accent: '#FFFFFF' }
+  NORMAL: { primary: '#F5F5F5', secondary: '#FAFAFA', accent: '#FFFFFF' },
+  DARK: { primary: '#5C5470', secondary: '#705B76', accent: '#2D2B3D' },
+  WIND: { primary: '#B2EBF2', secondary: '#E0F7FA', accent: '#80DEEA' },
+  LIGHT: { primary: '#FFF9C4', secondary: '#FFFDE7', accent: '#FFF59D' },
+  COSMIC: { primary: '#311B92', secondary: '#5C35B0', accent: '#B388FF' },
+  SOUND: { primary: '#4DD0E1', secondary: '#80DEEA', accent: '#E0F7FA' },
+  TIME: { primary: '#7E57C2', secondary: '#9575CD', accent: '#D1C4E9' },
+  CHAOS: { primary: '#B71C1C', secondary: '#D32F2F', accent: '#FF8A80' }
 };
 
 // 基础形状组件

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="雷霆宙斯 original avatar">
+  
+  <defs>
+    <linearGradient id="bga262" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff27a"/>
+      <stop offset=".55" stop-color="#f9c80e"/>
+      <stop offset="1" stop-color="#7a5200"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#fff27a"/>
+      <stop offset=".6" stop-color="#f9c80e"/>
+      <stop offset="1" stop-color="#7a5200"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#fff27a"/>
+      <stop offset=".72" stop-color="#f9c80e"/>
+      <stop offset="1" stop-color="#7a5200"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#7a5200" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bga262)"/>
+  <circle cx="128" cy="128" r="107" fill="#fff" opacity=".12"/>
+  <circle cx="128" cy="128" r="98" fill="#ffffff" opacity=".18"/>
+  <g opacity=".35"><circle cx="214" cy="163" r="0.9" fill="#fff" opacity="0.59"/><circle cx="209" cy="158" r="2.3" fill="#fff" opacity="0.43"/><circle cx="156" cy="72" r="2.6" fill="#fff" opacity="0.63"/><circle cx="113" cy="78" r="2.7" fill="#fff" opacity="0.48"/><circle cx="240" cy="100" r="3.2" fill="#fff" opacity="0.29"/><circle cx="233" cy="64" r="2.3" fill="#fff" opacity="0.33"/><circle cx="200" cy="122" r="0.9" fill="#fff" opacity="0.69"/><circle cx="48" cy="50" r="1.8" fill="#fff" opacity="0.70"/><circle cx="188" cy="182" r="1.0" fill="#fff" opacity="0.46"/><circle cx="9" cy="42" r="0.9" fill="#fff" opacity="0.34"/></g>
+  <g transform="rotate(-2 128 128)">
+    <ellipse cx="128" cy="149" rx="49" ry="55" fill="url(#body)" filter="url(#softShadow)"/><circle cx="128" cy="94" r="39" fill="url(#head)"/><ellipse cx="128" cy="88" rx="68" ry="18" fill="none" stroke="#fff27a" stroke-width="7" opacity=".75" transform="rotate(-12 128 88)"/><path d="M128 34 L138 59 L166 60 L143 75 L151 102 L128 85 L105 102 L113 75 L90 60 L118 59 Z" fill="#f9c80e"/><ellipse cx="112" cy="107" rx="7" ry="8" fill="#14213d"/><ellipse cx="144" cy="107" rx="7" ry="8" fill="#14213d"/><circle cx="115" cy="103" r="2.3" fill="#fff"/><circle cx="147" cy="103" r="2.3" fill="#fff"/><circle cx="128" cy="86" r="7" fill="#fff27a" opacity=".9"/>
+  </g>
+  <path d="M42 198 C82 222 171 226 216 184" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".22"/>
+</svg>

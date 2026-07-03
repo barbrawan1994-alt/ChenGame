@@ -7,10 +7,13 @@ const path = require('path');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 function createWindow() {
+  const isDev = process.env.npm_lifecycle_event === "start";
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     title: "超级精灵",
+    icon: path.join(__dirname, "assets/icon.png"),
+    fullscreen: !isDev,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
@@ -21,10 +24,11 @@ function createWindow() {
   // 开发环境加载 localhost，生产环境加载打包文件
   const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, 'dist/index.html')}`;
   
-  if (process.env.npm_lifecycle_event === "start") {
+  if (isDev) {
     win.loadURL('http://localhost:3000');
   } else {
     win.loadURL(startUrl);
+    win.setFullScreen(true);
   }
 }
 

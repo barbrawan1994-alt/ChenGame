@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 768" role="img" aria-label="繁花神鹿 original portrait">
+  
+  <defs>
+    <linearGradient id="bgp418" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c7f7a4"/>
+      <stop offset=".55" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#c7f7a4"/>
+      <stop offset=".6" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#c7f7a4"/>
+      <stop offset=".72" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1f6f43" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="768" rx="48" fill="url(#bgp418)"/>
+  <rect x="24" y="24" width="464" height="720" rx="40" fill="#ffffff" opacity=".08"/>
+  <g opacity=".42"><circle cx="61" cy="287" r="2.8" fill="#fff" opacity="0.51"/><circle cx="501" cy="723" r="1.3" fill="#fff" opacity="0.36"/><circle cx="292" cy="613" r="2.4" fill="#fff" opacity="0.45"/><circle cx="78" cy="96" r="2.1" fill="#fff" opacity="0.38"/><circle cx="391" cy="158" r="0.8" fill="#fff" opacity="0.51"/><circle cx="500" cy="134" r="2.4" fill="#fff" opacity="0.54"/><circle cx="405" cy="369" r="3.0" fill="#fff" opacity="0.47"/><circle cx="36" cy="498" r="1.7" fill="#fff" opacity="0.29"/><circle cx="177" cy="493" r="1.4" fill="#fff" opacity="0.45"/><circle cx="35" cy="604" r="2.8" fill="#fff" opacity="0.68"/><circle cx="434" cy="23" r="1.2" fill="#fff" opacity="0.60"/><circle cx="170" cy="271" r="3.0" fill="#fff" opacity="0.54"/><circle cx="57" cy="95" r="2.4" fill="#fff" opacity="0.33"/><circle cx="34" cy="281" r="1.0" fill="#fff" opacity="0.52"/><circle cx="350" cy="673" r="1.6" fill="#fff" opacity="0.40"/><circle cx="29" cy="335" r="1.0" fill="#fff" opacity="0.30"/><circle cx="369" cy="316" r="0.9" fill="#fff" opacity="0.42"/><circle cx="160" cy="741" r="2.0" fill="#fff" opacity="0.68"/><circle cx="79" cy="651" r="2.1" fill="#fff" opacity="0.44"/><circle cx="461" cy="455" r="1.2" fill="#fff" opacity="0.56"/><circle cx="239" cy="547" r="1.6" fill="#fff" opacity="0.60"/><circle cx="461" cy="619" r="2.3" fill="#fff" opacity="0.53"/><circle cx="10" cy="439" r="1.2" fill="#fff" opacity="0.26"/><circle cx="504" cy="289" r="1.3" fill="#fff" opacity="0.33"/><circle cx="389" cy="306" r="2.3" fill="#fff" opacity="0.68"/><circle cx="5" cy="135" r="0.9" fill="#fff" opacity="0.66"/><circle cx="346" cy="641" r="3.1" fill="#fff" opacity="0.70"/><circle cx="6" cy="767" r="2.7" fill="#fff" opacity="0.56"/></g>
+  <path d="M18 704 C124 595 205 659 256 580 C314 666 392 596 494 704 V768 H18Z" fill="#1f6f43" opacity=".18"/>
+  <ellipse cx="256" cy="662" rx="150" ry="34" fill="#1f6f43" opacity=".28"/>
+  <g transform="translate(0 122)">
+    <path d="M231.4 400.7 C128.9 376.1 83.80000000000001 265.4 198.60000000000002 275.65" fill="#43b957" opacity=".82"/><path d="M280.6 400.7 C383.1 376.1 428.2 265.4 313.4 275.65" fill="#43b957" opacity=".82"/><ellipse cx="256" cy="339.2" rx="98.39999999999999" ry="116.85" fill="url(#body)" filter="url(#softShadow)"/><path d="M256 138.3 C169.9 175.20000000000002 161.7 259.25 256 251.05 C350.3 259.25 342.1 175.20000000000002 256 138.3Z" fill="#c7f7a4"/><circle cx="256" cy="253.1" r="77.89999999999999" fill="url(#head)"/><ellipse cx="223.2" cy="253.1" rx="14.349999999999998" ry="16.4" fill="#14213d"/><ellipse cx="288.8" cy="253.1" rx="14.349999999999998" ry="16.4" fill="#14213d"/><circle cx="229.35" cy="244.9" r="4.714999999999999" fill="#fff"/><circle cx="294.95" cy="244.9" r="4.714999999999999" fill="#fff"/><circle cx="256" cy="210.05" r="14.349999999999998" fill="#c7f7a4" opacity=".9"/>
+  </g>
+  <path d="M74 126 C170 65 334 65 438 126" stroke="#fff" stroke-width="16" stroke-linecap="round" opacity=".16"/>
+  <path d="M63 676 C162 718 344 718 449 662" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".16"/>
+</svg>

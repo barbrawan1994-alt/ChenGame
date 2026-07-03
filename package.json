@@ -1,19 +1,23 @@
 {
   "name": "super-spirit",
-  "version": "13.0.0",
+  "version": "14.3.0",
   "description": "超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。",
   "main": "main.js",
   "scripts": {
     "start": "concurrently \"cross-env BROWSER=none npm run web\" \"wait-on http://localhost:3000 && electron .\"",
     "web": "webpack serve --mode development --hot",
     "build": "webpack --mode production",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "generate-icon": "node scripts/generate-icon.js",
+    "generate-general-portraits": "node scripts/generate-general-portraits.mjs"
   },
   "build": {
     "appId": "com.super.spirit",
     "productName": "超级精灵",
+    "icon": "assets/icon.png",
     "mac": {
       "category": "public.app-category.games",
+      "icon": "assets/icon.png",
       "target": [
         "dmg",
         "zip"
@@ -21,7 +25,8 @@
     },
     "files": [
       "dist/**/*",
-      "main.js"
+      "main.js",
+      "assets/icon.png"
     ],
     "directories": {
       "buildResources": "assets"
@@ -52,6 +57,7 @@
     "electron": "^26.2.1",
     "electron-builder": "^24.6.4",
     "html-webpack-plugin": "^5.5.3",
+    "sharp": "^0.35.2",
     "style-loader": "^3.3.3",
     "wait-on": "^7.0.1",
     "webpack": "^5.88.2",

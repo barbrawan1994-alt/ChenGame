@@ -95,6 +95,41 @@ const TYPE_COLORS = {
     primary: '#F5F5F5', secondary: '#FAFAFA', accent: '#FFFFFF', 
     dark: '#C4C4C4', light: '#FFFFFF', glow: '#9E9E9E',
     gradient: ['#F5F5F5', '#FAFAFA', '#FFFFFF', '#9E9E9E']
+  },
+  DARK: {
+    primary: '#5C5470', secondary: '#705B76', accent: '#2D2B3D',
+    dark: '#3D3852', light: '#8B7F9E', glow: '#9C27B0',
+    gradient: ['#5C5470', '#705B76', '#2D2B3D', '#9C27B0']
+  },
+  WIND: {
+    primary: '#B2EBF2', secondary: '#E0F7FA', accent: '#80DEEA',
+    dark: '#7AB8C0', light: '#E0F7FA', glow: '#4DD0E1',
+    gradient: ['#B2EBF2', '#E0F7FA', '#80DEEA', '#4DD0E1']
+  },
+  LIGHT: {
+    primary: '#FFF9C4', secondary: '#FFFDE7', accent: '#FFF59D',
+    dark: '#CCC79D', light: '#FFFDE7', glow: '#FFD600',
+    gradient: ['#FFF9C4', '#FFFDE7', '#FFF59D', '#FFD600']
+  },
+  COSMIC: {
+    primary: '#311B92', secondary: '#5C35B0', accent: '#B388FF',
+    dark: '#1A0E5C', light: '#D1C4E9', glow: '#651FFF',
+    gradient: ['#311B92', '#5C35B0', '#B388FF', '#651FFF']
+  },
+  SOUND: {
+    primary: '#4DD0E1', secondary: '#80DEEA', accent: '#E0F7FA',
+    dark: '#35A0B0', light: '#E0F7FA', glow: '#00BCD4',
+    gradient: ['#4DD0E1', '#80DEEA', '#E0F7FA', '#00BCD4']
+  },
+  TIME: {
+    primary: '#7E57C2', secondary: '#9575CD', accent: '#D1C4E9',
+    dark: '#5C3D8F', light: '#EDE7F6', glow: '#B388FF',
+    gradient: ['#7E57C2', '#9575CD', '#D1C4E9', '#B388FF']
+  },
+  CHAOS: {
+    primary: '#B71C1C', secondary: '#D32F2F', accent: '#FF8A80',
+    dark: '#7F1313', light: '#FFCDD2', glow: '#FF1744',
+    gradient: ['#B71C1C', '#D32F2F', '#FF8A80', '#FF1744']
   }
 };
 

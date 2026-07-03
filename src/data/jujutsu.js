@@ -106,6 +106,10 @@ export const TYPE_TECHNIQUES = {
           moveType: 'HEAL', effect: { healPercent: 0.5 }, desc: '完全掌握的反转术式' },
   GOD: { id: 'ct_void', name: '虛式·茈', ceCost: 60, p: 160, pp: 10, cat: 'special',
          moveType: 'GOD', effect: { ignoreDefense: true }, desc: '虚与实的碰撞——无法防御的一击' },
+  TIME: { id: 'ct_time_stop', name: '時止·刹那', ceCost: 50, p: 130, pp: 8, cat: 'special',
+          moveType: 'TIME', effect: { spdDown: 2, skipTurn: 0.3 }, desc: '冻结对手的时间，强制减速并30%跳过行动' },
+  CHAOS: { id: 'ct_entropy_burst', name: '混沌術式·熵爆', ceCost: 55, p: 140, pp: 8, cat: 'special',
+           moveType: 'CHAOS', effect: { confuse: 0.5, sDefDown: 1 }, desc: '引爆混沌能量，50%混乱+降特防' },
 };
 
 // 领域展开
@@ -179,14 +183,21 @@ export const DOMAINS = {
   GOD: { name: '神域·创世纪', turns: 5, ceCost: 100,
          effect: { atkBoost: 2.0, defBoost: 1.5, spdBoost: 1.5, dot: 0 },
          desc: '神之领域，全属性大幅提升' },
+  TIME: { name: '时空领域·永劫回归', turns: 4, ceCost: 95,
+          effect: { spdBoost: 2.0, atkBoost: 1.4, enemySkipChance: 0.2, dot: 0 },
+          desc: '时空冻结领域，速度翻倍，攻击+40%，敌方20%概率被时停' },
+  CHAOS: { name: '混沌领域·万象崩壊', turns: 3, ceCost: 95,
+           effect: { atkBoost: 1.6, enemyDefDown: 0.6, enemyAccDown: 0.7, dot: 0.06 },
+           desc: '混沌领域，攻击+60%，敌方防御-40%，命中-30%，每回合混沌侵蚀6%' },
 };
 
 // 缚誓系统 (每个缚誓都需要最低咒力门槛 ceCost)
 export const BINDING_VOWS = [
   { id: 'vow_power', name: '以命搏命', ceCost: 20,
     sacrifice: { hpPercent: 0.4 },
-    reward: { atkMult: 2.0, turns: 1 },
-    desc: '消耗20CE+40%HP，下一次攻击伤害2.0倍(仅一次，使用任何技能后立即失效)' },
+    reward: { atkMult: 1.8, turns: 1 },
+    cooldown: 5,
+    desc: '消耗20CE+40%HP，下一次攻击伤害1.8倍(仅一次，5回合冷却)' },
   { id: 'vow_reveal', name: '术式开示', ceCost: 15,
     sacrifice: { revealMoves: true },
     reward: { ceMult: 1.5, turns: 3 },
@@ -197,8 +208,9 @@ export const BINDING_VOWS = [
     desc: '消耗25CE，3回合不能换人但防御+50%' },
   { id: 'vow_burn', name: '焚尽咒力', ceCost: 40,
     sacrifice: { cePercent: 0.5 },
-    reward: { nextMovePower: 2.0, turns: 1 },
-    desc: '消耗40CE+燃烧50%剩余咒力，下一招威力2.0倍' },
+    reward: { nextMovePower: 1.8, turns: 1 },
+    cooldown: 5,
+    desc: '消耗40CE+燃烧50%剩余咒力，下一招威力1.8倍(5回合冷却)' },
   { id: 'vow_speed', name: '瞬身之誓', ceCost: 30,
     sacrifice: { defMult: 0.5, turns: 2 },
     reward: { spdMult: 2.0, turns: 2 },
@@ -292,9 +304,9 @@ export const HYAKKI_YAKO_CONFIG = {
     miniBosses: ['mahito', 'jogo'],
   },
   rewards: {
-    gold: 50000,
-    expMult: 3,
-    guaranteedFurniture: { quality: 'LEGENDARY', pool: ['cursed_altar', 'sukuna_finger'] },
+    gold: 25000,
+    expMult: 2,
+    guaranteedFurniture: { quality: 'EPIC', pool: ['cursed_altar', 'sukuna_finger'] },
   }
 };
 

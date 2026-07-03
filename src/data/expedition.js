@@ -118,7 +118,7 @@ export const EXPEDITION_ZONES = [
       { type: 'gold', min: 8000, max: 20000, weight: 18 },
       { type: 'mineral', id: 'stardust', count: 2, weight: 22 },
       { type: 'accessory', count: 1, weight: 20 },
-      { type: 'shiny_egg', level: 50, weight: 15 },
+      { type: 'shiny_egg', level: 50, weight: 5 },
       { type: 'egg', level: 60, weight: 25 },
     ]
   },

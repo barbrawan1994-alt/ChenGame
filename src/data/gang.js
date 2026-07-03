@@ -17,7 +17,12 @@ const WU_GENERALS = [
   '程普','韩当','周泰','凌统','丁奉','徐盛','蒋钦','潘璋','朱然','陆抗',
   '诸葛瑾','张昭','顾雍','步骘','全琮','吕范','贺齐','孙桓','孙翊','朱桓',
 ];
-const RECRUIT_NAMES = [...WEI_GENERALS, ...SHU_GENERALS, ...WU_GENERALS];
+const JIN_GENERALS = [
+  '司马懿','司马师','司马昭','司马炎','羊祜','杜预','王濬','贾充','张华','陈寿',
+  '王浑','王戎','裴秀','荀勖','卫瓘','马隆','唐彬','胡奋','石苞','陆机',
+  '陆云','刘琨','祖逖','桓温','谢安','谢玄','陶侃','王导','庾亮','刘牢之',
+];
+const RECRUIT_NAMES = [...WEI_GENERALS, ...SHU_GENERALS, ...WU_GENERALS, ...JIN_GENERALS];
 
 export const GANG_PRESETS = [
   // === 魏国 (4) ===
@@ -29,7 +34,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 12}, (_, i) => ({
       name: WEI_GENERALS[i % WEI_GENERALS.length], level: 40 + i * 3, contribution: 100 + i * 50,
     })),
-    skills: { gs_gold: 2, gs_exp: 1, gs_contrib: 2, gs_territory: 0, gs_trade: 1, gs_catch: 0 },
+    skills: { gs_gold: 2, gs_exp: 1, gs_contrib: 2, gs_territory: 0, gs_trade: 1, gs_catch: 0, gs_power: 2, gs_eco: 1, gs_fusion: 1 },
     wins: 24,
     teamPool: [6, 9, 65, 94, 130, 143, 149, 168, 199, 241],
   },
@@ -41,7 +46,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 10}, (_, i) => ({
       name: WEI_GENERALS[(i + 10) % WEI_GENERALS.length], level: 35 + i * 3, contribution: 80 + i * 40,
     })),
-    skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 0, gs_territory: 1, gs_trade: 0, gs_catch: 2 },
+    skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 0, gs_territory: 1, gs_trade: 0, gs_catch: 2, gs_power: 1, gs_eco: 1, gs_fusion: 2 },
     wins: 18,
     teamPool: [3, 18, 33, 94, 138, 190, 206, 241, 434, 437],
   },
@@ -53,7 +58,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 14}, (_, i) => ({
       name: WEI_GENERALS[(i + 5) % WEI_GENERALS.length], level: 45 + i * 3, contribution: 120 + i * 55,
     })),
-    skills: { gs_gold: 0, gs_exp: 0, gs_contrib: 1, gs_territory: 3, gs_trade: 2, gs_catch: 0 },
+    skills: { gs_gold: 0, gs_exp: 0, gs_contrib: 1, gs_territory: 3, gs_trade: 2, gs_catch: 0, gs_power: 2, gs_eco: 2, gs_fusion: 1 },
     wins: 30,
     teamPool: [9, 65, 69, 134, 135, 136, 139, 169, 190, 225],
   },
@@ -65,7 +70,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 12}, (_, i) => ({
       name: WEI_GENERALS[(i + 15) % WEI_GENERALS.length], level: 42 + i * 3, contribution: 110 + i * 50,
     })),
-    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 0, gs_catch: 1 },
+    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 0, gs_catch: 1, gs_power: 2, gs_eco: 1, gs_fusion: 2 },
     wins: 28,
     teamPool: [6, 9, 65, 94, 130, 143, 149, 199, 241, 443],
   },
@@ -79,7 +84,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 8}, (_, i) => ({
       name: SHU_GENERALS[(i + 10) % SHU_GENERALS.length], level: 30 + i * 4, contribution: 60 + i * 35,
     })),
-    skills: { gs_gold: 0, gs_exp: 3, gs_contrib: 1, gs_territory: 0, gs_trade: 1, gs_catch: 1 },
+    skills: { gs_gold: 0, gs_exp: 3, gs_contrib: 1, gs_territory: 0, gs_trade: 1, gs_catch: 1, gs_power: 1, gs_eco: 2, gs_fusion: 1 },
     wins: 12,
     teamPool: [3, 18, 130, 143, 160, 182, 446, 449, 455, 459],
   },
@@ -91,7 +96,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 11}, (_, i) => ({
       name: SHU_GENERALS[(i + 5) % SHU_GENERALS.length], level: 38 + i * 3, contribution: 90 + i * 45,
     })),
-    skills: { gs_gold: 2, gs_exp: 0, gs_contrib: 0, gs_territory: 1, gs_trade: 3, gs_catch: 0 },
+    skills: { gs_gold: 2, gs_exp: 0, gs_contrib: 0, gs_territory: 1, gs_trade: 3, gs_catch: 0, gs_power: 1, gs_eco: 1, gs_fusion: 1 },
     wins: 22,
     teamPool: [6, 9, 140, 149, 168, 199, 443, 452, 461, 465],
   },
@@ -103,7 +108,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 6}, (_, i) => ({
       name: SHU_GENERALS[(i + 20) % SHU_GENERALS.length], level: 25 + i * 4, contribution: 40 + i * 30,
     })),
-    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 0, gs_territory: 0, gs_trade: 1, gs_catch: 3 },
+    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 0, gs_territory: 0, gs_trade: 1, gs_catch: 3, gs_power: 1, gs_eco: 2, gs_fusion: 1 },
     wins: 6,
     teamPool: [3, 6, 18, 33, 69, 130, 143, 160, 168, 199],
   },
@@ -115,7 +120,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 11}, (_, i) => ({
       name: SHU_GENERALS[(i + 15) % SHU_GENERALS.length], level: 40 + i * 3, contribution: 95 + i * 48,
     })),
-    skills: { gs_gold: 1, gs_exp: 0, gs_contrib: 2, gs_territory: 2, gs_trade: 1, gs_catch: 0 },
+    skills: { gs_gold: 1, gs_exp: 0, gs_contrib: 2, gs_territory: 2, gs_trade: 1, gs_catch: 0, gs_power: 2, gs_eco: 1, gs_fusion: 1 },
     wins: 20,
     teamPool: [6, 9, 140, 149, 160, 182, 199, 443, 465, 469],
   },
@@ -129,7 +134,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 10}, (_, i) => ({
       name: WU_GENERALS[(i + 5) % WU_GENERALS.length], level: 36 + i * 3, contribution: 85 + i * 42,
     })),
-    skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 1, gs_territory: 1, gs_trade: 0, gs_catch: 1 },
+    skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 1, gs_territory: 1, gs_trade: 0, gs_catch: 1, gs_power: 1, gs_eco: 2, gs_fusion: 1 },
     wins: 20,
     teamPool: [33, 65, 94, 138, 139, 182, 206, 437, 463, 467],
   },
@@ -141,7 +146,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 15}, (_, i) => ({
       name: WU_GENERALS[(i + 10) % WU_GENERALS.length], level: 50 + i * 3, contribution: 150 + i * 60,
     })),
-    skills: { gs_gold: 3, gs_exp: 0, gs_contrib: 0, gs_territory: 0, gs_trade: 3, gs_catch: 0 },
+    skills: { gs_gold: 3, gs_exp: 0, gs_contrib: 0, gs_territory: 0, gs_trade: 3, gs_catch: 0, gs_power: 1, gs_eco: 1, gs_fusion: 1 },
     wins: 35,
     teamPool: [9, 65, 94, 130, 139, 149, 190, 206, 241, 443],
   },
@@ -153,7 +158,7 @@ export const GANG_PRESETS = [
     members: Array.from({length: 12}, (_, i) => ({
       name: WU_GENERALS[i % WU_GENERALS.length], level: 38 + i * 3, contribution: 100 + i * 50,
     })),
-    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 0, gs_catch: 1 },
+    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 0, gs_catch: 1, gs_power: 2, gs_eco: 1, gs_fusion: 2 },
     wins: 26,
     teamPool: [33, 65, 94, 138, 182, 206, 437, 463, 467, 471],
   },
@@ -165,9 +170,59 @@ export const GANG_PRESETS = [
     members: Array.from({length: 9}, (_, i) => ({
       name: WU_GENERALS[(i + 20) % WU_GENERALS.length], level: 34 + i * 3, contribution: 75 + i * 40,
     })),
-    skills: { gs_gold: 1, gs_exp: 1, gs_contrib: 1, gs_territory: 2, gs_trade: 1, gs_catch: 0 },
+    skills: { gs_gold: 1, gs_exp: 1, gs_contrib: 1, gs_territory: 2, gs_trade: 1, gs_catch: 0, gs_power: 1, gs_eco: 2, gs_fusion: 1 },
     wins: 16,
     teamPool: [9, 33, 65, 94, 138, 139, 182, 437, 463, 479],
+  },
+
+  // === 晋国 (4) ===
+  {
+    id: 'xuanwu_guard', name: '玄武卫', icon: '🐢', leader: '羊祜',
+    style: '铁壁统御', level: 6, power: 3600, desc: '司马家嫡系精锐，统一天下的钢铁意志', faction: 'jin',
+    color: '#4A148C',
+    perkDesc: '领地防御+6, 国战贡献+20%, 贡献+10%',
+    members: Array.from({length: 13}, (_, i) => ({
+      name: JIN_GENERALS[i % JIN_GENERALS.length], level: 44 + i * 3, contribution: 115 + i * 55,
+    })),
+    skills: { gs_gold: 1, gs_exp: 0, gs_contrib: 2, gs_territory: 3, gs_trade: 1, gs_catch: 0, gs_power: 2, gs_eco: 1, gs_fusion: 2 },
+    wins: 32,
+    teamPool: [9, 65, 87, 94, 130, 139, 190, 199, 241, 443],
+  },
+  {
+    id: 'tianluo_net', name: '天罗网', icon: '🕸️', leader: '贾充',
+    style: '情报操控', level: 5, power: 3100, desc: '遍布天下的情报网络，无人能逃其掌控', faction: 'jin',
+    color: '#311B92',
+    perkDesc: '捕获率+2%, 经验+4%, 金币+2%',
+    members: Array.from({length: 11}, (_, i) => ({
+      name: JIN_GENERALS[(i + 8) % JIN_GENERALS.length], level: 38 + i * 3, contribution: 90 + i * 45,
+    })),
+    skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 1, gs_territory: 0, gs_trade: 1, gs_catch: 2, gs_power: 1, gs_eco: 1, gs_fusion: 2 },
+    wins: 22,
+    teamPool: [3, 18, 33, 94, 132, 138, 206, 434, 437, 441],
+  },
+  {
+    id: 'longxiang_army', name: '龙骧军', icon: '🐉', leader: '王濬',
+    style: '灭国水师', level: 7, power: 4200, desc: '楼船万里，顺流而下灭东吴的传奇水师', faction: 'jin',
+    color: '#1A237E',
+    perkDesc: '国战贡献+30%, 商队收入+1000金/日',
+    members: Array.from({length: 15}, (_, i) => ({
+      name: JIN_GENERALS[(i + 5) % JIN_GENERALS.length], level: 48 + i * 3, contribution: 140 + i * 60,
+    })),
+    skills: { gs_gold: 0, gs_exp: 1, gs_contrib: 3, gs_territory: 1, gs_trade: 2, gs_catch: 0, gs_power: 2, gs_eco: 2, gs_fusion: 1 },
+    wins: 36,
+    teamPool: [22, 24, 65, 94, 130, 149, 182, 199, 443, 465],
+  },
+  {
+    id: 'beifu_elite', name: '北府精锐', icon: '🦁', leader: '谢玄',
+    style: '以少胜多', level: 5, power: 3300, desc: '淝水之战以少胜多，北府兵名震天下', faction: 'jin',
+    color: '#0D47A1',
+    perkDesc: '经验+4%, 国战贡献+20%, 领地防御+4',
+    members: Array.from({length: 12}, (_, i) => ({
+      name: JIN_GENERALS[(i + 20) % JIN_GENERALS.length], level: 40 + i * 3, contribution: 100 + i * 50,
+    })),
+    skills: { gs_gold: 1, gs_exp: 2, gs_contrib: 2, gs_territory: 2, gs_trade: 0, gs_catch: 0, gs_power: 1, gs_eco: 2, gs_fusion: 2 },
+    wins: 26,
+    teamPool: [6, 9, 65, 130, 143, 160, 190, 199, 241, 469],
   },
 ];
 
@@ -190,6 +245,8 @@ export const GANG_SKILLS = [
   { id: 'gs_trade',     name: '商队贸易', desc: '每日被动收入{val}金',     maxLv: 3, costPerLv: 6000, valPerLv: 500,icon: '🐫' },
   { id: 'gs_catch',     name: '精灵亲和', desc: '捕获率+{val}%',          maxLv: 3, costPerLv: 8000, valPerLv: 1,  icon: '🎯' },
   { id: 'gs_power',    name: '武力精进', desc: '全队HP/物攻/物防/特攻/特防+{val}%（PvE生效）', maxLv: 3, costPerLv: 8000, valPerLv: 2,  icon: '💪' },
+  { id: 'gs_eco',      name: '生态守望', desc: '圣域建设费用-{val}%',      maxLv: 3, costPerLv: 6000, valPerLv: 5,  icon: '🌿' },
+  { id: 'gs_fusion',   name: '融合先驱', desc: '跨体系PVE效率+{val}%',     maxLv: 3, costPerLv: 7000, valPerLv: 5,  icon: '✨' },
 ];
 
 export const GANG_TASKS = [
@@ -199,7 +256,8 @@ export const GANG_TASKS = [
   { id: 'donate_pet',  name: '精灵上供', desc: '上交1只Lv20+精灵',  type: 'donate_pet',  target: 1,    reward: 50, gold: 500,  icon: '🐾' },
   { id: 'explore',     name: '领地巡逻', desc: '探索3张不同地图',    type: 'explore_map', target: 3,    reward: 25, gold: 800,  icon: '🗺️' },
   { id: 'kw_battle',   name: '国战先锋', desc: '击败3个敌国训练师', type: 'kw_kill',     target: 3,    reward: 40, gold: 1500, icon: '🏴' },
-  { id: 'kw_campaign', name: '名将之路', desc: '通关1个三国副本',   type: 'kw_campaign', target: 1,    reward: 80, gold: 3000, icon: '👑' },
+  { id: 'kw_campaign', name: '名将之路', desc: '通关1个四国副本',   type: 'kw_campaign', target: 1,    reward: 80, gold: 3000, icon: '👑' },
+  { id: 'kw_contrib',  name: '国战功勋', desc: '获得100点国战战功', type: 'kw_contrib',  target: 100,  reward: 50, gold: 2000, icon: '🎖️' },
 ];
 
 export const GANG_WAR_CONFIG = {
@@ -227,18 +285,27 @@ export const getGangRank = (contribution, isOwner) => {
   return rank;
 };
 
-export const getGangSkillBonus = (skills) => {
-  if (!skills) return { atk: 0, def: 0, s_atk: 0, s_def: 0, hp: 0, spd: 0, gold: 0, exp: 0, contrib: 0, territory: 0, trade: 0, catchRate: 0 };
-  const power = (skills.gs_power || 0) * 2;
+export const getGangSkillBonus = (skills, mult = 1) => {
+  if (!skills) return { atk: 0, def: 0, s_atk: 0, s_def: 0, hp: 0, spd: 0, gold: 0, exp: 0, contrib: 0, territory: 0, trade: 0, catchRate: 0, sanctuaryCostReduce: 0, fusionPveBonus: 0 };
+  const m = Math.max(1, mult || 1);
+  const power = (skills.gs_power || 0) * 2 * m;
   return {
     atk: power, def: power, s_atk: power, s_def: power, hp: power, spd: 0,
-    gold:      (skills.gs_gold      || 0) * 2,
-    exp:       (skills.gs_exp       || 0) * 2,
-    contrib:   (skills.gs_contrib   || 0) * 10,
-    territory: (skills.gs_territory || 0) * 2,
-    trade:     (skills.gs_trade     || 0) * 500,
-    catchRate: (skills.gs_catch     || 0) * 1,
+    gold:      Math.floor((skills.gs_gold      || 0) * 2 * m),
+    exp:       Math.floor((skills.gs_exp       || 0) * 2 * m),
+    contrib:   Math.floor((skills.gs_contrib   || 0) * 10 * m),
+    territory: Math.floor((skills.gs_territory || 0) * 2 * m),
+    trade:     Math.floor((skills.gs_trade     || 0) * 500 * m),
+    catchRate: Math.floor((skills.gs_catch     || 0) * 1 * m),
+    sanctuaryCostReduce: Math.floor((skills.gs_eco || 0) * 5 * m),
+    fusionPveBonus: Math.floor((skills.gs_fusion || 0) * 5 * m),
   };
+};
+
+/** PvP/竞技场：移除 gs_power 等战斗属性加成，保留经济类加成 */
+export const stripGangCombatBonus = (bonus) => {
+  if (!bonus) return { atk: 0, def: 0, s_atk: 0, s_def: 0, hp: 0, spd: 0, gold: 0, exp: 0, contrib: 0, territory: 0, trade: 0, catchRate: 0, sanctuaryCostReduce: 0, fusionPveBonus: 0 };
+  return { ...bonus, atk: 0, def: 0, s_atk: 0, s_def: 0, hp: 0, spd: 0 };
 };
 
 export const getGangMaxSkills = (gang) => {
@@ -248,13 +315,14 @@ export const getGangMaxSkills = (gang) => {
   return preset ? preset.skills : {};
 };
 
-export const getGangSkills = (gang) => {
+export const getGangSkills = (gang, capBonus = 0) => {
   if (!gang || !gang.gangId) return {};
   const maxSkills = getGangMaxSkills(gang);
   const personal = gang.personalSkills || {};
   const result = {};
+  const bonusCap = Math.max(0, capBonus || 0);
   for (const skill of GANG_SKILLS) {
-    const cap = maxSkills[skill.id] || 0;
+    const cap = (maxSkills[skill.id] || 0) + bonusCap;
     const cur = personal[skill.id] || 0;
     result[skill.id] = Math.min(cur, cap);
   }

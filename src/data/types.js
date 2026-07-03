@@ -22,7 +22,9 @@ export const TYPES = {
   HEAL: { name: '治愈', color: '#81C784', bg: '#E8F5E9' },
   COSMIC: { name: '宇宙', color: '#1A237E', bg: '#E8EAF6' },
   SOUND: { name: '音波', color: '#AD1457', bg: '#FCE4EC' },
-  GOD: { name: '神', color: '#333333', bg: '#D7CCC8' }
+  GOD: { name: '神', color: '#333333', bg: '#D7CCC8' },
+  TIME: { name: '时空', color: '#7E57C2', bg: '#EDE7F6' },
+  CHAOS: { name: '混沌', color: '#4A0072', bg: '#F3E5F5' }
 };
 // ==========================================
 // [新增] 属性魅力基准值 (决定初始魅力下限)
@@ -51,7 +53,9 @@ export const TYPE_CHARM_BASE = {
   WIND: 45,    // 风：飘逸
   LIGHT: 55,   // 光：圣洁
   COSMIC: 60,  // 宇宙：神秘深邃
-  SOUND: 35    // 音波：韵律
+  SOUND: 35,    // 音波：韵律
+  TIME: 55,     // 时空：深邃神秘
+  CHAOS: 40     // 混沌：不可名状
 };
 
 export const TYPE_BIAS = {
@@ -78,5 +82,7 @@ export const TYPE_BIAS = {
   HEAL:    { p: 0.7, s: 1.1 },  // 偏特攻，辅助型
   COSMIC:  { p: 0.9, s: 1.3 },  // 偏特攻
   SOUND:   { p: 1.0, s: 1.1 },  // 略偏特攻
-  GOD:     { p: 1.2, s: 1.2 }   // 神 (均衡强化但不碾压)
+  GOD:     { p: 1.2, s: 1.2 },  // 神 (均衡强化但不碾压)
+  TIME:    { p: 0.8, s: 1.2 },  // 偏特攻，操控型
+  CHAOS:   { p: 1.1, s: 1.1 }   // 混沌 (均衡偏高)
 };

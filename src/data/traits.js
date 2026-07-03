@@ -41,9 +41,24 @@ export const TRAIT_DB = {
   drought:     { name: '日照', desc: '出场时召唤晴天天气', type: 'ENTRY' },
   snow_warning: { name: '降雪', desc: '出场时召唤冰雹天气', type: 'ENTRY' },
   magic_guard: { name: '魔法防御', desc: '不受技能以外的伤害（天气/中毒/灼伤等）', type: 'PASSIVE' },
+  shell_armor: { name: '硬壳盔甲', desc: '对手攻击不会出暴击', type: 'PASSIVE' },
   magic_bounce: { name: '魔法反射', desc: '将对手的变化技能反弹回去', type: 'BATTLE' },
   fairy_aura:  { name: '妖精气场', desc: '场上所有妖精系技能威力提升33%', type: 'BATTLE' },
-  dark_aura:   { name: '暗黑气场', desc: '场上所有恶系技能威力提升33%', type: 'BATTLE' },
+
+  // --- 生态守护者特性 ---
+  ecoguard_regen:   { name: '生态再生', desc: '每回合回复5%最大HP', type: 'PASSIVE' },
+  ecoguard_shield:  { name: '生态护盾', desc: '入场获得15%最大HP护盾', type: 'ENTRY' },
+  ecoguard_blaze:   { name: '生态烈焰', desc: '火系技能伤害+15%', type: 'BATTLE' },
+  ecoguard_phantom: { name: '生态幻影', desc: '首回合闪避+25%', type: 'ENTRY' },
+  ecoguard_frost:   { name: '生态寒霜', desc: '入场降低对手速度1阶', type: 'ENTRY' },
+  ecoguard_rockwall:{ name: '岩壁守护', desc: '入场获得岩盾，物理防御+20%', type: 'ENTRY' },
+  ecoguard_overclock:{ name: '钢芯超频', desc: '入场暴击率+10%，每回合回复3%HP', type: 'PASSIVE' },
+  ecoguard_dragon:  { name: '龙脉守护', desc: '龙系技能伤害+15%，入场灵气+5', type: 'BATTLE' },
+  ecoguard_gale:    { name: '苍穹疾风', desc: '入场速度+1阶，风系技能+10%', type: 'ENTRY' },
+  ecoguard_starlight:{ name: '星辉仙灵', desc: '入场治愈全队8%HP，妖精技能+10%', type: 'ENTRY' },
+  ecoguard_spark:   { name: '雷霆守卫', desc: '入场麻痹敌方30%概率，电系技能+10%', type: 'ENTRY' },
+  ecoguard_quake:   { name: '大地震怒', desc: '入场降低敌方命中1阶，地面技能+10%', type: 'ENTRY' },
+  ecoguard_toxin:   { name: '毒瘴守灵', desc: '入场敌方中毒25%概率，毒系技能+10%', type: 'ENTRY' },
 };
 
 // ==========================================

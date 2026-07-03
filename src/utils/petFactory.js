@@ -4,6 +4,7 @@ import { TYPE_CHARM_BASE } from '../data/types';
 import { SKILL_DB } from '../data/skills';
 import { generateCurseTalent } from '../data/jujutsu';
 import { calcNextExp } from './statsCalculator';
+import { pickSectIdForPet } from '../data/sectSystem';
 
 export function getMoveByLevel(type, level) {
   const db = SKILL_DB[type] || SKILL_DB.NORMAL;
@@ -41,15 +42,19 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   let finalId = dexId;
 
   const visited = new Set();
-  while (true) {
-    if (visited.has(finalId)) break;
-    visited.add(finalId);
-    const preForm = POKEDEX.find(p => p.evo === finalId);
-    if (!preForm) break;
-    if (level < preForm.evoLvl) {
-      finalId = preForm.id;
-    } else {
-      break;
+  const requestedEntry = POKEDEX.find(p => p.id === finalId);
+  const hasEvoConditionTarget = requestedEntry && POKEDEX.some(p => p.evo === finalId && p.evoCondition);
+  if (!hasEvoConditionTarget) {
+    while (true) {
+      if (visited.has(finalId)) break;
+      visited.add(finalId);
+      const preForm = POKEDEX.find(p => p.evo === finalId);
+      if (!preForm) break;
+      if (level < preForm.evoLvl) {
+        finalId = preForm.id;
+      } else {
+        break;
+      }
     }
   }
 
@@ -89,7 +94,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   const baseShinyRate = 0.01 * (spBs.shinyRate || 1);
   const isShiny = forceShiny || (!isBoss && Math.random() < baseShinyRate);
 
-  const ivBoost = spBs.ivBoost || 0;
+  const ivBoost = isBoss ? 0 : (spBs.ivBoost || 0);
   const randIV = () => Math.min(31, Math.floor(Math.random() * 32) + ivBoost);
   const ivs = {
     hp: randIV(), p_atk: randIV(), p_def: randIV(),
@@ -105,7 +110,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   const diversityRng = Math.floor(Math.random() * 9) - 4;
   const speedRng = Math.floor(Math.random() * 71) + 40;
 
-  const sectId = Math.floor(Math.random() * 12) + 1;
+  const sectId = pickSectIdForPet(base);
   let autoSectLv = Math.floor(level / 10) + 1;
   if (isBoss || isShiny) autoSectLv += 2;
   const sectLevel = Math.max(1, Math.min(10, autoSectLv));
@@ -162,6 +167,16 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   for (let i = startIdx; i <= maxSkillIndex; i++) {
     const moveData = getMoveByLevel(base.type, i * 5);
     moves.push(moveData);
+  }
+
+  // Add one secondary-type move for dual-type pets
+  const secType = base.type2 || base.secondaryType;
+  if (secType && secType !== base.type && moves.length < 4) {
+    const secIdx = Math.max(1, Math.floor(maxSkillIndex * 0.7));
+    const secMove = getMoveByLevel(secType, secIdx * 5);
+    if (secMove && !moves.find(m => m.name === secMove.name)) {
+      moves.push(secMove);
+    }
   }
 
   const hasDamageMove = moves.some(m => m.p > 0);

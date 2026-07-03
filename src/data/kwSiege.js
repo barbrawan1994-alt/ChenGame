@@ -7,8 +7,8 @@ import { CONTESTED_MAP_IDS } from './kingdom';
 
 export const CONTESTED_SIEGE_MAP_IDS = CONTESTED_MAP_IDS;
 
-/** 争夺条参与方：魏蜀吴 + 群雄 AI */
-export const CONTEST_BAR_IDS = ['wei', 'shu', 'wu', 'qun'];
+/** 争夺条参与方：魏蜀吴晋 + 群雄 AI */
+export const CONTEST_BAR_IDS = ['wei', 'shu', 'wu', 'jin', 'qun'];
 
 export const MANPOWER_RESERVE_CAP = 2800;
 
@@ -102,7 +102,7 @@ export const getContestMapProgress = (contestProgress, mapId) => {
 /** 由城池争夺条推导出「守城方兵种倾向」 */
 export const inferDefenseWeights = (mapProgress) => {
   const raw = mapProgress || {};
-  const p = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  const p = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
   for (const k of CONTEST_BAR_IDS) p[k] = Math.max(0, Number(raw[k]) || 0);
   const total = CONTEST_BAR_IDS.reduce((s, k) => s + (p[k] || 0), 0) || 1;
   const base = {
@@ -118,6 +118,7 @@ export const inferDefenseWeights = (mapProgress) => {
     wei: { shield: 0.08, cavalry: 0.06, spear: 0.02, archer: -0.02, siege: 0.02, raider: -0.04 },
     shu: { spear: 0.08, archer: 0.06, shield: 0.02, raider: 0.02, cavalry: -0.04, siege: -0.02 },
     wu: { archer: 0.08, raider: 0.06, spear: 0.02, shield: -0.02, cavalry: 0.02, siege: -0.04 },
+    jin: { cavalry: 0.06, shield: 0.06, siege: 0.04, spear: 0.02, archer: -0.02, raider: -0.04 },
     qun: { cavalry: 0.08, raider: 0.08, spear: 0.02, archer: 0.02, shield: -0.04, siege: -0.04 },
   };
   const w = { ...base };
@@ -138,9 +139,9 @@ export const inferDefenseWeights = (mapProgress) => {
  */
 export const resolveContestedMapOwner = (mapProgress, incumbent = null, mapId = 0) => {
   const raw = mapProgress || {};
-  const p = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  const p = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
   for (const k of CONTEST_BAR_IDS) p[k] = Math.max(0, Number(raw[k]) || 0);
-  const PRIORITY = { wei: 0, shu: 1, wu: 2, qun: 3 };
+  const PRIORITY = { wei: 0, shu: 1, wu: 2, jin: 3, qun: 4 };
   let maxV = -1;
   for (const fid of CONTEST_BAR_IDS) maxV = Math.max(maxV, p[fid] || 0);
   if (maxV < CONTEST_CAPTURE_THRESHOLD) return 'neutral';
@@ -161,15 +162,15 @@ export const tickContestOccupationAI = (contestProgress, playerFaction, avgLevel
   const aiScale = Math.min(1.12, Math.max(0.82, 0.85 + (lv - 55) * 0.004));
 
   for (const mid of CONTESTED_SIEGE_MAP_IDS) {
-    const cur = { wei: 0, shu: 0, wu: 0, qun: 0, ...getContestMapProgress(cp, mid) };
+    const cur = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0, ...getContestMapProgress(cp, mid) };
     const roll = () => Math.max(0, Math.round((0.75 + Math.random() * 1.35) * aiScale));
     cur.qun = Math.min(480, (cur.qun || 0) + roll() + (Math.random() < 0.22 ? 1 : 0));
-    for (const fid of ['wei', 'shu', 'wu']) {
+    for (const fid of ['wei', 'shu', 'wu', 'jin']) {
       const antiPlayer = playerFaction && fid !== playerFaction ? 1.18 : 1;
       const gain = Math.round(roll() * 0.88 * antiPlayer);
       cur[fid] = Math.min(480, (cur[fid] || 0) + gain);
     }
-    if (playerFaction && ['wei', 'shu', 'wu'].includes(playerFaction)) {
+    if (playerFaction && ['wei', 'shu', 'wu', 'jin'].includes(playerFaction)) {
       cur.qun = Math.max(0, (cur.qun || 0) - (Math.random() < 0.32 ? 1 : 0));
     }
     const sum = CONTEST_BAR_IDS.reduce((s, k) => s + (cur[k] || 0), 0);
@@ -232,7 +233,7 @@ export const runKwSiegeBattle = ({
   const midLv = (lo + hi) / 2;
   const wallBase = 138 + (midLv - 50) * 2.05;
   const rawP = mapProgress || {};
-  const prog = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  const prog = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
   for (const k of CONTEST_BAR_IDS) prog[k] = Math.max(0, Number(rawP[k]) || 0);
   const others = CONTEST_BAR_IDS
     .filter(fid => fid !== playerFaction)

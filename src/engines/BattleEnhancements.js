@@ -13,15 +13,27 @@ export const AnimatedPetSprite = ({ pet, side, onAnimationComplete }) => {
     }
   }, [pet, onAnimationComplete]);
 
+  const petName = pet?.name || pet?.petName || '?';
+  const petIcon = pet?.icon || '🐾';
+
   return (
     <div
       ref={spriteRef}
       className={side === 'player' ? 'anim-entrance-player' : 'anim-entrance-enemy'}
       style={{
         position: 'relative',
-        transform: side === 'player' ? 'scaleX(-1)' : 'none'
+        transform: side === 'player' ? 'scaleX(-1)' : 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '2.5rem',
+        minWidth: 60,
+        minHeight: 60,
       }}
-    />
+      title={petName}
+    >
+      {petIcon}
+    </div>
   );
 };
 
@@ -34,12 +46,14 @@ const TYPE_COLORS = {
   FLYING:'#42A5F5',PSYCHIC:'#EC407A',BUG:'#9CCC65',ROCK:'#8D6E63',
   GHOST:'#7E57C2',DRAGON:'#FF7043',STEEL:'#78909C',FAIRY:'#F06292',
   DARK:'#546E7A',NORMAL:'#90A4AE',GOD:'#FFD54F',HEAL:'#66BB6A',
-  WIND:'#81D4FA',LIGHT:'#FFF176'
+  WIND:'#81D4FA',LIGHT:'#FFF176',COSMIC:'#1A237E',SOUND:'#AD1457',
+  TIME:'#7E57C2',CHAOS:'#4A0072'
 };
 const TYPE_NAMES = {
   FIRE:'火',WATER:'水',GRASS:'草',ELECTRIC:'电',ICE:'冰',FIGHT:'斗',POISON:'毒',GROUND:'地',
   FLYING:'飞',PSYCHIC:'超',BUG:'虫',ROCK:'岩',GHOST:'鬼',DRAGON:'龙',STEEL:'钢',FAIRY:'妖',
-  DARK:'恶',NORMAL:'普',GOD:'神',HEAL:'回',WIND:'风',LIGHT:'光',COSMIC:'宇',SOUND:'音'
+  DARK:'恶',NORMAL:'普',GOD:'神',HEAL:'回',WIND:'风',LIGHT:'光',COSMIC:'宇',SOUND:'音',
+  TIME:'时',CHAOS:'混'
 };
 
 /** 火影忍术查克拉性质 → 与 CHAKRA_NATURE_MAP 一致的展示用 emoji */
@@ -50,7 +64,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
 
   const c = TYPE_COLORS[move.t] || '#90A4AE';
   const tName = TYPE_NAMES[move.t] || move.t;
-  const maxPpCap = (move.maxPP || move.maxPp || 15);
+  const maxPpCap = move.maxPP ?? move.maxPp ?? 15;
   const ppRatio = maxPpCap > 0 ? Math.max(0, Math.min(1, (move.pp || 0) / maxPpCap)) : 0;
   const ppColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
   const hasDesc = move.desc && move.desc.length > 0;
@@ -73,122 +87,115 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
       style={{
         width:'100%', height:'100%', boxSizing:'border-box',
         background: disabled
-          ? 'linear-gradient(160deg, rgba(42,42,58,0.75), rgba(25,25,36,0.85))'
-          : hovered
-            ? `radial-gradient(circle at 18% 0%, ${c}2e, transparent 38%), linear-gradient(160deg, rgba(40,40,69,0.98), rgba(24,24,43,0.96))`
-            : `linear-gradient(160deg, rgba(42,42,69,0.96), rgba(27,27,48,0.98))`,
-        border:'none', borderRadius:'12px', padding:'0',
+          ? 'linear-gradient(135deg, #2d3748, #1a202c)'
+          : `linear-gradient(135deg, ${c}dd, ${c}99)`,
+        border: 'none',
+        borderRadius:'10px', padding:'0',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.55 : 1,
+        opacity: disabled ? 0.6 : 1,
         position:'relative', overflow:'hidden',
-        transition:'transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, opacity 0.16s ease',
-        transform: hovered && !disabled ? 'translateY(-1px) scale(1.02)' : 'none',
+        transition:'transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease',
+        transform: hovered && !disabled ? 'translateY(-2px) scale(1.01)' : 'none',
+        filter: hovered && !disabled ? 'brightness(1.1)' : 'none',
         boxShadow: hovered && !disabled
-          ? `0 8px 22px ${c}38, inset 0 0 0 1.5px ${c}90, inset 0 1px 0 rgba(255,255,255,0.08)`
-          : `0 2px 8px rgba(0,0,0,0.42), inset 0 0 0 1px ${c}30, inset 0 1px 0 rgba(255,255,255,0.04)`,
-        display:'flex', flexDirection:'column',
+          ? `0 8px 24px ${c}50`
+          : `0 3px 10px rgba(0,0,0,0.35)`,
+        display:'flex', flexDirection:'column', alignItems:'stretch',
         textAlign:'left',
       }}
     >
-      {/* 左侧类型色条 */}
+      {/* 左侧高亮条 */}
       <div style={{
-        position:'absolute', left:0, top:0, bottom:0, width:'5px',
-        background:`linear-gradient(180deg, ${c}, ${c}88)`,
-        borderRadius:'12px 0 0 12px',
-        boxShadow:`0 0 8px ${c}40`,
-      }} />
-
-      {/* 顶部高光 */}
-      <div style={{
-        position:'absolute', top:0, left:4, right:0, height:'1px',
-        background:`linear-gradient(90deg, ${c}40, transparent 60%)`,
+        position:'absolute', left:0, top:0, bottom:0, width:'4px',
+        background:'rgba(255,255,255,0.5)',
+        borderRadius:'10px 0 0 10px',
       }} />
 
       {/* 主内容 */}
       <div style={{
         flex:1, display:'flex', flexDirection:'column', justifyContent:'center',
-        padding:'6px 9px 5px 14px', gap:'3px', minHeight:0, overflow:'hidden',
+        padding:'8px 14px 7px 14px', gap:'4px', minHeight:0, overflow:'hidden',
+        width:'100%', boxSizing:'border-box',
       }}>
         {/* 行1: 技能名 + 属性徽章 + 威力 */}
-        <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+        <div style={{display:'flex', alignItems:'center', gap:'8px', width:'100%'}}>
           <span style={{
-            fontSize:'13px', fontWeight:'800', color:'#f8fafc',
+            fontSize:'16px', fontWeight:'900', color:'#fff',
             letterSpacing:'0.3px', lineHeight:1.2,
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             flex:1, minWidth:0,
-            textShadow:'0 1px 2px rgba(0,0,0,0.3)',
+            textShadow:'0 1px 3px rgba(0,0,0,0.4)',
           }}>{move.name}</span>
           {move.effectivenessHint ? (
-            <span style={{ fontSize: '12px', flexShrink: 0, lineHeight: 1 }} title="相对当前目标的属性效果">{move.effectivenessHint}</span>
+            <span style={{ fontSize: '14px', flexShrink: 0, lineHeight: 1 }} title="相对当前目标的属性效果">{move.effectivenessHint}</span>
           ) : null}
-          {(move.isCursed || move.isExtra || move.isJutsu) && (
+          {(move.isCursed || move.isExtra || move.isJutsu || move.isMartialArt || move.isFruitMove) && (
             <span style={{
-              fontSize:'8px', padding:'1px 4px', borderRadius:'3px', flexShrink:0,
-              background: move.isJutsu ? (move.isBijuu ? 'linear-gradient(135deg, #d84315, #ff6e40)' : 'linear-gradient(135deg, #e65100, #ff9100)') : move.isCursed ? 'linear-gradient(135deg, #7c3aed, #9333ea)' : 'linear-gradient(135deg, #d97706, #f59e0b)',
-              color:'#fff', fontWeight:'700', lineHeight:'1.5',
-              boxShadow: move.isJutsu ? '0 0 6px rgba(255,111,0,0.4)' : move.isCursed ? '0 0 6px rgba(124,58,237,0.3)' : '0 0 6px rgba(217,119,6,0.3)',
-            }}>{move.isJutsu ? (move.isBijuu ? '兽' : (jutsuNatureEmoji ? `${jutsuNatureEmoji}忍` : '忍')) : move.isCursed ? '咒' : '果'}</span>
+              fontSize:'11px', padding:'2px 6px', borderRadius:'4px', flexShrink:0,
+              background: move.isMartialArt ? 'rgba(198,40,40,0.5)' : move.isFruitMove ? 'rgba(255,152,0,0.5)' : 'rgba(0,0,0,0.3)', color:'#fff', fontWeight:'700', lineHeight:'1.4',
+            }}>{move.isMartialArt ? '武' : move.isFruitMove ? '果' : move.isJutsu ? (move.isBijuu ? '兽' : (jutsuNatureEmoji ? `${jutsuNatureEmoji}忍` : '忍')) : move.isCursed ? '咒' : '装'}</span>
           )}
           <span style={{
-            fontSize:'9px', padding:'2px 5px', borderRadius:'4px', flexShrink:0,
-            background:`${c}dd`, color:'#fff', fontWeight:'800',
+            fontSize:'11px', padding:'2px 8px', borderRadius:'4px', flexShrink:0,
+            background:'rgba(255,255,255,0.25)', color:'#fff', fontWeight:'800',
             lineHeight:'1.4', letterSpacing:'0.5px',
-            boxShadow:`0 1px 4px ${c}40`,
           }}>{tName}</span>
           <span style={{
-            fontSize:'12px', fontWeight:'800', flexShrink:0,
-            color: move.power > 0
-              ? (move.power >= 150 ? '#FF5252' : move.power >= 100 ? c : 'rgba(255,255,255,0.7)')
-              : 'rgba(255,255,255,0.2)',
-            minWidth:'22px', textAlign:'right',
-            textShadow: move.power >= 100 ? `0 0 6px ${c}40` : 'none',
-          }}>{move.power > 0 ? move.power : '—'}</span>
+            fontSize:'18px', fontWeight:'900', flexShrink:0,
+            color:'#fff',
+            minWidth:'30px', textAlign:'right',
+            textShadow:'0 1px 3px rgba(0,0,0,0.3)',
+          }}>{(move.p || move.power) > 0 ? (move.p || move.power) : '—'}</span>
         </div>
 
         {/* 行2: 技能描述 */}
         {hasDesc && (
           <div style={{
-            fontSize:'9.5px', lineHeight:'1.35',
-            color: hovered ? 'rgba(255,255,255,0.68)' : 'rgba(255,255,255,0.42)',
+            fontSize:'12px', lineHeight:'1.4',
+            color:'rgba(255,255,255,0.85)',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-            transition:'color 0.15s',
+            textShadow:'0 1px 2px rgba(0,0,0,0.3)',
           }}>{move.desc}</div>
         )}
 
         {/* 行3: PP条 + CE消耗 */}
-        <div style={{display:'flex', alignItems:'center', gap:'5px', marginTop:'2px'}}>
+        <div style={{display:'flex', alignItems:'center', gap:'8px', marginTop:'3px', width:'100%'}}>
           <div style={{
-            flex:1, height:'3px', borderRadius:'2px',
-            background:'rgba(255,255,255,0.1)', overflow:'hidden',
+            flex:1, height:'6px', borderRadius:'3px',
+            background:'rgba(0,0,0,0.25)', overflow:'hidden',
           }}>
             <div style={{
-              width:`${ppRatio * 100}%`, height:'100%', borderRadius:'2px',
-              background: `linear-gradient(90deg, ${ppColor}, ${ppColor}cc)`,
+              width:`${ppRatio * 100}%`, height:'100%', borderRadius:'3px',
+              background:'linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7))',
               transition:'width 0.3s',
-              boxShadow: ppRatio <= 0.2 ? `0 0 4px ${ppColor}` : 'none',
             }} />
           </div>
           <span style={{
-            fontSize:'9px', fontWeight:'600', flexShrink:0, lineHeight:1,
-            color: ppRatio <= 0.2 ? '#F44336' : 'rgba(255,255,255,0.4)',
+            fontSize:'12px', fontWeight:'800', flexShrink:0, lineHeight:1,
+            color:'rgba(255,255,255,0.9)',
+            textShadow:'0 1px 2px rgba(0,0,0,0.3)',
           }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{Math.max(0, move.pp || 0)}/{maxPpCap}</span>
           {move.isCursed && move.ceCost > 0 && (
             <span style={{
-              fontSize:'8px', color:'#a78bfa', fontWeight:'600', flexShrink:0,
-              background:'rgba(124,58,237,0.2)', padding:'1px 4px', borderRadius:'3px',
-              boxShadow:'0 0 4px rgba(124,58,237,0.15)',
+              fontSize:'11px', color:'#fff', fontWeight:'700', flexShrink:0,
+              background:'rgba(0,0,0,0.3)', padding:'2px 6px', borderRadius:'4px',
             }}>咒{move.ceCost}</span>
           )}
           {move.isJutsu && move.chakraCost > 0 && (
             <span style={{
-              fontSize:'8px', color:'#FFB74D', fontWeight:'600', flexShrink:0,
-              background:'rgba(255,111,0,0.2)', padding:'1px 4px', borderRadius:'3px',
-              boxShadow:'0 0 4px rgba(255,111,0,0.15)',
+              fontSize:'11px', color:'#fff', fontWeight:'700', flexShrink:0,
+              background:'rgba(0,0,0,0.3)', padding:'2px 6px', borderRadius:'4px',
             }}>🍥{move.chakraCost}</span>
+          )}
+          {move.isMartialArt && move.momentumCost > 0 && (
+            <span style={{
+              fontSize:'11px', color:'#fff', fontWeight:'700', flexShrink:0,
+              background:'rgba(198,40,40,0.4)', padding:'2px 6px', borderRadius:'4px',
+            }}>⚔️{move.momentumCost}</span>
           )}
         </div>
         {disabled && readableDisabledReason ? (
-          <div style={{ fontSize: '10px', color: '#FCA5A5', marginTop: '2px', lineHeight: 1.2, paddingLeft: '2px', fontWeight: 800 }}>无法使用 · {readableDisabledReason}</div>
+          <div style={{ fontSize: '11px', color: '#FCA5A5', marginTop: '2px', lineHeight: 1.2, fontWeight: 800 }}>无法使用 · {readableDisabledReason}</div>
         ) : null}
       </div>
 
@@ -214,7 +221,7 @@ export const SkillCastEffect = ({ type, x, y, onComplete }) => {
   }, [type, onComplete]);
 
   if (!visible) return null;
-  const colors = { FIRE:'#FF5722', WATER:'#2196F3', ELECTRIC:'#FFC107', GRASS:'#4CAF50', ICE:'#00BCD4', FIGHT:'#E53935', POISON:'#9C27B0', GROUND:'#795548', FLYING:'#64B5F6', PSYCHIC:'#E91E63', BUG:'#8BC34A', ROCK:'#A1887F', GHOST:'#7E57C2', DRAGON:'#7C4DFF', DARK:'#424242', STEEL:'#90A4AE', FAIRY:'#F48FB1' };
+  const colors = { FIRE:'#FF5722', WATER:'#2196F3', ELECTRIC:'#FFC107', GRASS:'#4CAF50', ICE:'#00BCD4', FIGHT:'#E53935', POISON:'#9C27B0', GROUND:'#795548', FLYING:'#64B5F6', PSYCHIC:'#E91E63', BUG:'#8BC34A', ROCK:'#A1887F', GHOST:'#7E57C2', DRAGON:'#7C4DFF', DARK:'#424242', STEEL:'#90A4AE', FAIRY:'#F48FB1', WIND:'#81D4FA', LIGHT:'#FFF176', COSMIC:'#B388FF', SOUND:'#80DEEA', GOD:'#FFD54F', HEAL:'#66BB6A', NORMAL:'#BDBDBD', TIME:'#9575CD', CHAOS:'#D32F2F' };
   const c = colors[type] || '#fff';
   return (
     <div style={{position:'absolute', left:x||'50%', top:y||'50%', transform:'translate(-50%,-50%)', width:'40px', height:'40px', borderRadius:'50%', background:`radial-gradient(circle, ${c}80, transparent)`, animation:'shiny-flash 0.6s ease-out', pointerEvents:'none', zIndex:100}} />
@@ -279,9 +286,9 @@ export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => 
   const latest = allLogs[0] || '等待行动';
   const classifyLog = (msg) => {
     const text = String(msg || '');
-    if (/暴击|效果拔群|捕获成功|胜利|获得|升级|进化/.test(text)) return 'is-good';
-    if (/没有效果|失败|晕厥|中毒|灼伤|麻痹|冰冻|睡眠|伤害/.test(text)) return 'is-danger';
-    if (/回合|天气|领域|蓄力|交换|派出/.test(text)) return 'is-info';
+    if (/暴击|效果拔群|捕获成功|胜利|获得|升级|进化|觉醒|结契|净化成功|封印成功|守护成功/.test(text)) return 'is-good';
+    if (/没有效果|失败|晕厥|中毒|灼伤|麻痹|冰冻|睡眠|伤害|鬼化|污染|暴走/.test(text)) return 'is-danger';
+    if (/回合|天气|领域|蓄力|交换|派出|呼吸法|封印|圣域|夜战/.test(text)) return 'is-info';
     return 'is-neutral';
   };
 

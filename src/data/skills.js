@@ -1,6 +1,6 @@
 // ==========================================
-// [重构] 全属性技能库 (每系 8-10 个，含威力与PP)
-// Total: ~421 skills
+// [重构] 全属性技能库 (每系 8-30 个，含威力与PP；稀有属性补强至8+)
+// Total: ~440 skills
 // ==========================================
 const SKILL_DB = {
   NORMAL: [
@@ -11,9 +11,9 @@ const SKILL_DB = {
     { name: '猛撞', p: 90, pp: 20, desc: '拼命猛撞，自身也受到反伤' },
     { name: '巨声', p: 90, pp: 10, desc: '释放巨大声波冲击对手' },
     { name: '舍身冲撞', p: 120, pp: 15, desc: '不顾一切的猛烈冲撞，附带反伤' },
-    { name: '破坏死光', p: 150, pp: 5, desc: '释放强烈光束，下回合需蓄力' },
-    { name: '终极冲击', p: 150, pp: 5, desc: '全力冲撞，下回合需休息' },
-    { name: '大爆炸', p: 200, pp: 1, desc: '引发大爆炸，自身濒死' }
+    { name: '破坏死光', p: 150, pp: 5, desc: '释放强烈光束，下回合需蓄力', recharge: true },
+    { name: '终极冲击', p: 150, pp: 5, desc: '全力冲撞，下回合需休息', recharge: true },
+    { name: '大爆炸', p: 250, pp: 1, desc: '引发大爆炸，自身濒死', selfKO: true }
   ],
   FIRE: [
     { name: '火花', p: 40, pp: 25, desc: '喷出小火焰攻击对手' },
@@ -49,7 +49,7 @@ const SKILL_DB = {
     { name: '日光束', p: 120, pp: 10, desc: '汇聚太阳光射出光线，需蓄力' },
     { name: '木槌', p: 120, pp: 15, desc: '用坚硬身体猛击，附带反伤' },
     { name: '飞叶风暴', p: 130, pp: 5, desc: '用锋利树叶卷起风暴攻击' },
-    { name: '疯狂植物', p: 150, pp: 5, desc: '召唤巨大树根猛击，需休息' }
+    { name: '疯狂植物', p: 150, pp: 5, desc: '召唤巨大树根猛击，需休息', recharge: true }
   ],
   ELECTRIC: [
     { name: '电击', p: 40, pp: 30, desc: '放出微弱电流攻击对手' },
@@ -72,7 +72,7 @@ const SKILL_DB = {
     { name: '冰锤', p: 100, pp: 10, desc: '挥舞巨大冰锤猛砸' },
     { name: '暴风雪', p: 110, pp: 5, desc: '掀起猛烈暴风雪，可能冰冻' },
     { name: '冰封世界', p: 120, pp: 5, desc: '将周围冻结的极寒攻击' },
-    { name: '绝对零度', p: 200, pp: 1, acc: 30, desc: '释放绝对零度冷气，命中率极低但一击必杀' }
+    { name: '绝对零度', p: 0, pp: 1, acc: 30, desc: '释放绝对零度冷气，命中率极低但一击必杀', effect: { type: 'OHKO' } }
   ],
   FIGHT: [
     { name: '碎岩', p: 40, pp: 15, desc: '用拳头碎裂岩石般攻击' },
@@ -103,7 +103,7 @@ const SKILL_DB = {
     { name: '十万马力', p: 95, pp: 10, desc: '用全力践踏对手' },
     { name: '地震', p: 100, pp: 10, desc: '引发地震攻击周围所有目标' },
     { name: '断崖之剑', p: 120, pp: 10, desc: '大地之王的断崖攻击' },
-    { name: '地裂', p: 200, pp: 1, acc: 30, desc: '使大地裂开将对手吞噬，命中率极低' }
+    { name: '地裂', p: 0, pp: 1, acc: 30, desc: '使大地裂开将对手吞噬，命中率极低', effect: { type: 'OHKO' } }
   ],
   FLYING: [
     { name: '起风', p: 40, pp: 35, desc: '扇动翅膀掀起狂风攻击' },
@@ -260,19 +260,40 @@ const SKILL_DB = {
     { name: '万物交响', p: 150, pp: 3, desc: '融合万物之声的交响攻击' },
     { name: '宇宙乐章', p: 180, pp: 1, desc: '演奏宇宙起源的终极乐章' }
   ],
+  TIME: [
+    { name: '时间波纹', p: 40, pp: 25, desc: '释放微小的时间波纹攻击' },
+    { name: '时空乱流', p: 60, pp: 18, desc: '卷入时空乱流的攻击' },
+    { name: '加速冲击', p: 75, pp: 15, desc: '在加速状态下猛烈撞击' },
+    { name: '因果律乱', p: 85, pp: 10, desc: '扰乱因果时序的攻击' },
+    { name: '轮回之力', p: 95, pp: 8, desc: '积蓄轮回之力的攻击' },
+    { name: '时空撕裂', p: 110, pp: 5, desc: '撕裂时空的维度攻击' },
+    { name: '纪元碾压', p: 130, pp: 3, desc: '以亿年时光重压对手' },
+    { name: '时停', p: 75, pp: 8, priority: 2, desc: '停止对方时间的先制攻击' },
+    { name: '永劫轮回', p: 160, pp: 2, desc: '将对手卷入永恒轮回的终极攻击' }
+  ],
+  CHAOS: [
+    { name: '混沌弹', p: 45, pp: 25, desc: '投掷不稳定的混沌能量球' },
+    { name: '混沌脉冲', p: 65, pp: 18, desc: '释放混沌能量脉冲' },
+    { name: '悖论之箭', p: 80, pp: 12, desc: '逻辑悖论具象化之箭' },
+    { name: '虚无吞噬', p: 90, pp: 10, desc: '吞噬一切的混沌之力' },
+    { name: '存在否定', p: 95, pp: 8, desc: '否定对手存在的攻击' },
+    { name: '次元崩壊', p: 110, pp: 6, desc: '引发次元崩坏的猛攻' },
+    { name: '混沌风暴', p: 140, pp: 3, desc: '召唤混沌风暴摧毁一切' },
+    { name: '秩序终结', p: 170, pp: 2, desc: '终结一切秩序的终极混沌' }
+  ],
   HEAL: [
-    { name: '自我再生', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' },
-    { name: '光合作用', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
-    { name: '月光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
-    { name: '祈愿', p: 0, pp: 10, val: 0.5, desc: '下回合恢复50%最大HP' },
     { name: '生命水滴', p: 0, pp: 15, val: 0.25, desc: '恢复25%最大HP' },
+    { name: '净化之光', p: 60, pp: 20, desc: '释放净化光芒攻击，有几率解除异常状态' },
+    { name: '自我再生', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' },
+    { name: '生命脉冲', p: 80, pp: 10, desc: '将生命力转化为攻击能量' },
+    { name: '光合作用', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
+    { name: '回春一击', p: 90, pp: 8, desc: '以愈合之力攻击对手，自身回复造成伤害的25%' },
+    { name: '月光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
+    { name: '圣愈裁决', p: 110, pp: 5, desc: '以愈合神力的终极攻击' },
+    { name: '祈愿', p: 0, pp: 10, val: 0.5, delayed: true, desc: '下回合恢复50%最大HP' },
     { name: '晨光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
     { name: '治愈波动', p: 0, pp: 10, val: 0.5, desc: '恢复目标50%最大HP' },
-    { name: '羽栖', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' },
-    { name: '净化之光', p: 60, pp: 20, desc: '释放净化光芒攻击，有几率解除异常状态' },
-    { name: '生命脉冲', p: 80, pp: 10, desc: '将生命力转化为攻击能量' },
-    { name: '回春一击', p: 90, pp: 8, desc: '以愈合之力攻击对手，自身回复造成伤害的25%' },
-    { name: '圣愈裁决', p: 110, pp: 5, desc: '以愈合神力的终极攻击' }
+    { name: '羽栖', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' }
   ]
 };
 // ==========================================
@@ -501,7 +522,7 @@ const ADVANCED_SKILLS = [
   { name: '终焉之影', t: 'DARK', p: 140, pp: 3, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '终焉暗影，140威力+30%混乱' },
 
   // --- 神系 (1) ---
-  { name: '天启审判', t: 'GOD', p: 160, pp: 3, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '天之审判降临，160威力+50%大幅降防' },
+  { name: '天启审判', t: 'GOD', p: 160, pp: 5, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '天之审判降临，160威力+50%大幅降防' },
 
   // --- 风系 (3) ---
   { name: '真空斩月', t: 'WIND', p: 100, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 0.4 }, desc: '月形风刃，100威力+40%加速' },
@@ -620,14 +641,16 @@ const injectStatusSkills = () => {
 };
 // 立即执行注入
 injectStatusSkills();
-// [自动注入] 将伤害+特效技能合并到 SKILL_DB
+// [自动注入] 将伤害+特效技能合并到 SKILL_DB（更新已有同名技能的效果）
 const injectSideEffectSkills = () => {
   SIDE_EFFECT_SKILLS.forEach(skill => {
     if (!SKILL_DB[skill.t]) SKILL_DB[skill.t] = [];
-    // 避免重复
-    if (!SKILL_DB[skill.t].find(s => s.name === skill.name)) {
-        // 插入到列表末尾，作为强力技能
-        SKILL_DB[skill.t].push(skill);
+    const existing = SKILL_DB[skill.t].find(s => s.name === skill.name);
+    if (existing) {
+      if (skill.effect && !existing.effect) Object.assign(existing, { effect: skill.effect });
+      if (skill.acc && !existing.acc) existing.acc = skill.acc;
+    } else {
+      SKILL_DB[skill.t].push(skill);
     }
   });
 };
@@ -656,4 +679,94 @@ const injectNewSkillsV17 = () => {
 };
 injectNewSkillsV17();
 
-export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS, ADVANCED_SKILLS, NEW_SKILLS_V17 };
+// ==========================================
+// V18 新增50技能（含时空系、混沌系、辅助/状态技能）
+// ==========================================
+const NEW_SKILLS_V18 = [
+  // --- 时空系 (8) ---
+  { name: '时间减速', t: 'TIME', p: 0, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 1.0 }, desc: '减缓对方时间流速，必定降速一级' },
+  { name: '时光倒流', t: 'TIME', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.35 }, desc: '将自身时间回溯，恢复35%HP' },
+  { name: '时空撕裂', t: 'TIME', p: 110, pp: 5, desc: '撕裂时空的维度攻击' },
+  { name: '加速世界', t: 'TIME', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 1.0 }, desc: '加速自身时间流，提速一级' },
+  { name: '纪元碾压', t: 'TIME', p: 130, pp: 3, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '以亿年时光重压对手，50%降速' },
+  { name: '因果律乱', t: 'TIME', p: 85, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.4 }, desc: '扰乱因果时序，40%混乱' },
+  { name: '时停', t: 'TIME', p: 75, pp: 8, priority: 2, desc: '停止对方时间的先制攻击' },
+  { name: '轮回之力', t: 'TIME', p: 95, pp: 8, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '积蓄轮回之力攻击，30%自升攻' },
+  // --- 混沌系 (8) ---
+  { name: '混沌脉冲', t: 'CHAOS', p: 80, pp: 15, desc: '释放不稳定的混沌能量脉冲' },
+  { name: '秩序瓦解', t: 'CHAOS', p: 0, pp: 10, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 1.0 }, desc: '瓦解对手的秩序防御，必降物防' },
+  { name: '虚无吞噬', t: 'CHAOS', p: 100, pp: 8, effect: { type: 'HEAL', val: 0.25 }, desc: '吞噬对手化为自身能量，回复25%HP' },
+  { name: '次元崩壊', t: 'CHAOS', p: 120, pp: 5, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.3 }, desc: '次元崩坏扭曲空间，30%降命中' },
+  { name: '悖论之箭', t: 'CHAOS', p: 90, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.35 }, desc: '逻辑悖论具象化之箭，35%混乱' },
+  { name: '熵增', t: 'CHAOS', p: 0, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 1.0 }, desc: '使对手陷入熵增混乱，必定降特防一级' },
+  { name: '混沌风暴', t: 'CHAOS', p: 140, pp: 3, desc: '召唤混沌风暴摧毁一切' },
+  { name: '存在否定', t: 'CHAOS', p: 95, pp: 6, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.4 }, desc: '否定对手的存在意义，40%降攻' },
+  // --- 辅助/状态技能 (14) ---
+  { name: '铁壁', t: 'STEEL', p: 0, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 2, chance: 1.0 }, desc: '将防御提升至铁壁级别' },
+  { name: '冥想', t: 'PSYCHIC', p: 0, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 2, chance: 1.0 }, desc: '深度冥想大幅提升特攻' },
+  { name: '龙之舞', t: 'DRAGON', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '神秘舞蹈提升攻击与速度' },
+  { name: '光合成', t: 'GRASS', p: 0, pp: 8, effect: { type: 'HEAL', val: 0.5 }, desc: '吸收阳光恢复50%生命值' },
+  { name: '剧毒', t: 'POISON', p: 0, pp: 10, effect: { type: 'STATUS', status: 'PSN', chance: 1.0 }, desc: '使对手陷入剧毒状态' },
+  { name: '鬼火', t: 'GHOST', p: 0, pp: 15, effect: { type: 'STATUS', status: 'BRN', chance: 1.0 }, desc: '鬼火缠身，必定灼伤' },
+  { name: '电磁波', t: 'ELECTRIC', p: 0, pp: 20, effect: { type: 'STATUS', status: 'PAR', chance: 1.0 }, desc: '释放电磁波，必定麻痹' },
+  { name: '催眠术', t: 'PSYCHIC', p: 0, pp: 10, effect: { type: 'STATUS', status: 'SLP', chance: 0.75 }, desc: '施加催眠暗示，75%入睡' },
+  { name: '治愈铃声', t: 'HEAL', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.6 }, desc: '清脆铃声回复60%HP并清除异常' },
+  { name: '结界', t: 'LIGHT', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 2, chance: 1.0 }, desc: '展开光之结界大幅提升特防' },
+  { name: '诅咒', t: 'DARK', p: 0, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '施加诅咒必定降低对手攻击' },
+  { name: '大地恢复', t: 'GROUND', p: 0, pp: 8, effect: { type: 'HEAL', val: 0.4 }, desc: '汲取大地之力恢复40%HP' },
+  { name: '风之加护', t: 'WIND', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 1.0 }, desc: '风之加护必定提升速度' },
+  { name: '寒冰护甲', t: 'ICE', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_def', val: 1, chance: 1.0 }, desc: '凝结冰铠提升物防' },
+  // --- 各属性补充伤害技能 (20) ---
+  { name: '时空乱流', t: 'TIME', p: 70, pp: 15, desc: '卷入时空乱流的中威力攻击' },
+  { name: '混沌弹', t: 'CHAOS', p: 65, pp: 18, desc: '投掷不稳定的混沌能量球' },
+  { name: '断罪之光', t: 'LIGHT', p: 100, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.25 }, desc: '光之审判贯穿对手，25%降特防' },
+  { name: '深渊凝视', t: 'DARK', p: 85, pp: 12, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '深渊般的凝视令人恐惧，30%混乱' },
+  { name: '星际冲击', t: 'COSMIC', p: 95, pp: 10, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.2 }, desc: '来自宇宙的陨星冲击，20%降速' },
+  { name: '超声波炮', t: 'SOUND', p: 88, pp: 12, effect: { type: 'STATUS', status: 'CON', chance: 0.25 }, desc: '超声波集中炮击，25%混乱' },
+  { name: '烈风斩', t: 'WIND', p: 85, pp: 14, desc: '凝聚烈风化为利刃斩出' },
+  { name: '治愈冲击', t: 'HEAL', p: 70, pp: 15, effect: { type: 'HEAL', val: 0.15 }, desc: '治愈能量化为攻击，附带15%回复' },
+  { name: '神罚', t: 'GOD', p: 130, pp: 8, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 0.3 }, desc: '神之惩罚降临，30%削甲' },
+  { name: '焚天炎舞', t: 'FIRE', p: 95, pp: 10, effect: { type: 'STATUS', status: 'BRN', chance: 0.25 }, desc: '焚天之舞，25%灼伤' },
+  { name: '冰封绝对', t: 'ICE', p: 105, pp: 8, effect: { type: 'STATUS', status: 'FRZ', chance: 0.2 }, desc: '绝对零度的冰封，20%冻结' },
+  { name: '大地震颤', t: 'GROUND', p: 100, pp: 10, desc: '引发大规模地震的强力攻击' },
+  { name: '精神爆发', t: 'PSYCHIC', p: 105, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.2 }, desc: '精神能量爆发，20%降特防' },
+  { name: '百万吨拳', t: 'FIGHT', p: 100, pp: 10, desc: '承载百万吨力量的全力一拳' },
+  { name: '暗影爆裂', t: 'GHOST', p: 95, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '暗影能量爆裂，20%混乱' },
+  { name: '金属音波', t: 'STEEL', p: 0, pp: 12, effect: { type: 'DEBUFF', stat: 's_def', val: 2, chance: 1.0 }, desc: '刺耳金属音大幅降低对手特防' },
+  { name: '花粉风暴', t: 'BUG', p: 80, pp: 12, effect: { type: 'STATUS', status: 'PSN', chance: 0.3 }, desc: '释放毒性花粉风暴，30%中毒' },
+  { name: '龙星群', t: 'DRAGON', p: 130, pp: 5, desc: '召唤龙之星群轰炸' },
+  { name: '月光闪耀', t: 'FAIRY', p: 90, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.2 }, desc: '月光能量攻击，20%提升特攻' },
+  { name: '巨岩封锁', t: 'ROCK', p: 85, pp: 12, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '巨岩封路，50%降速' },
+  // --- 补充稀有属性技能 ---
+  { name: '神威镇压', t: 'GOD', p: 90, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '神威压制，30%降攻' },
+  { name: '创世之光', t: 'GOD', p: 75, pp: 15, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.3 }, desc: '远古创世光芒，30%提升特攻' },
+  { name: '神命终结', t: 'GOD', p: 150, pp: 5, acc: 85, desc: '一击定命的神之终焉' },
+  { name: '星云爆发', t: 'COSMIC', p: 110, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '星云能量爆发，30%降特防' },
+  { name: '引力坍缩', t: 'COSMIC', p: 75, pp: 15, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '引力场坍缩，50%降速' },
+  { name: '暗物质冲击', t: 'COSMIC', p: 95, pp: 10, desc: '暗物质凝聚的强力冲击' },
+  { name: '虫洞穿越', t: 'COSMIC', p: 60, pp: 18, desc: '打开虫洞进行快速攻击' },
+  { name: '超新星', t: 'COSMIC', p: 140, pp: 5, acc: 85, effect: { type: 'DEBUFF', stat: 'p_def', val: 2, chance: 0.5 }, desc: '超新星爆发，85命中+50%大幅降防' },
+  { name: '音爆突刺', t: 'SOUND', p: 95, pp: 10, desc: '音速突破的高速穿刺' },
+  { name: '共鸣破碎', t: 'SOUND', p: 110, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.3 }, desc: '共鸣频率破碎防御，30%降特防' },
+  { name: '安魂曲', t: 'SOUND', p: 70, pp: 12, effect: { type: 'STATUS', status: 'SLP', chance: 0.2 }, desc: '催眠旋律，20%入睡' },
+  { name: '次声波', t: 'SOUND', p: 55, pp: 20, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.4 }, desc: '次声波干扰感官，40%降命中' },
+  { name: '雷鸣战鼓', t: 'SOUND', p: 80, pp: 14, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.25 }, desc: '战鼓激昂，25%提升物攻' },
+  { name: '时间裂隙', t: 'TIME', p: 75, pp: 15, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.4 }, desc: '时间裂隙减速，40%降速' },
+  { name: '永恒之矛', t: 'TIME', p: 110, pp: 8, desc: '凝聚永恒之力的一击' },
+  { name: '时光回溯', t: 'TIME', p: 0, pp: 8, effect: { type: 'HEAL', val: 0.3 }, desc: '回溯时间恢复30%HP' },
+  { name: '混沌漩涡', t: 'CHAOS', p: 85, pp: 12, effect: { type: 'STATUS', status: 'CON', chance: 0.35 }, desc: '混沌漩涡吞噬理智，35%混乱' },
+  { name: '熵增之箭', t: 'CHAOS', p: 100, pp: 10, desc: '混沌熵增凝聚为箭的一击' },
+  { name: '虚无侵蚀', t: 'CHAOS', p: 65, pp: 15, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 0.4 }, desc: '虚无力量侵蚀，40%降特防' },
+];
+
+const injectNewSkillsV18 = () => {
+  NEW_SKILLS_V18.forEach(skill => {
+    if (!SKILL_DB[skill.t]) SKILL_DB[skill.t] = [];
+    if (!SKILL_DB[skill.t].find(s => s.name === skill.name)) {
+      SKILL_DB[skill.t].push(skill);
+    }
+  });
+};
+injectNewSkillsV18();
+
+export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS, ADVANCED_SKILLS, NEW_SKILLS_V17, NEW_SKILLS_V18 };

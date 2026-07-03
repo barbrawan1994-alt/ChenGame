@@ -52,6 +52,13 @@ export const PARTNER_COMBOS = {
   DRAGON_STEEL:   { name: '钢龙之怒',   power: 140, type: 'DRAGON',   cat: 'physical', effect: { },                                         desc: '钢铁巨龙的毁灭一击' },
   FAIRY_WIND:     { name: '精灵旋舞',   power: 115, type: 'FAIRY',    cat: 'special', effect: { healPercent: 0.08, spdUp: 1 },              desc: '仙灵在风中翩翩起舞' },
   NORMAL_FIGHT:   { name: '全力突击',   power: 120, type: 'FIGHT',    cat: 'physical', effect: { atkUp: 1 },                                desc: '蓄力后的全力一击' },
+  TIME_CHAOS:     { name: '因果崩坏',   power: 150, type: 'CHAOS',   cat: 'special', effect: { confuse: 0.4 },                             desc: '时间与混沌交织摧毁因果律' },
+  TIME_PSYCHIC:   { name: '预知终焉',   power: 130, type: 'TIME',    cat: 'special', effect: { spdUp: 1 },                                 desc: '洞悉时间线发动精准打击' },
+  TIME_DRAGON:    { name: '亘古龙吼',   power: 140, type: 'DRAGON',  cat: 'special', effect: { },                                          desc: '回响于亘古的龙之咆哮' },
+  TIME_COSMIC:    { name: '宇宙年轮',   power: 135, type: 'COSMIC',  cat: 'special', effect: { spAtkUp: 1 },                               desc: '宇宙亿年岁月的能量凝聚' },
+  CHAOS_DARK:     { name: '深渊虚无',   power: 135, type: 'DARK',    cat: 'special', effect: { healPercent: 0.1, defDown: 1 },             desc: '混沌与黑暗吞噬一切' },
+  CHAOS_DRAGON:   { name: '灭世狂潮',   power: 145, type: 'CHAOS',   cat: 'special', effect: { },                                          desc: '混沌巨龙的毁灭之力' },
+  CHAOS_GHOST:    { name: '虚妄噬灵',   power: 125, type: 'GHOST',   cat: 'special', effect: { confuse: 0.3, poison: 0.2 },               desc: '虚妄中吞噬灵魂' },
 };
 
 export const getPartnerComboKey = (type1, type2) => {

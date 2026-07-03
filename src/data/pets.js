@@ -171,7 +171,7 @@ const BASE_POKEDEX = [
   { id: 167, name: '勒克猫', type: 'ELECTRIC', emoji: '⚡', hp: 60, atk: 85, def: 49, evo: 168, evoLvl: 30 },
   { id: 168, name: '伦琴猫', type: 'ELECTRIC', emoji: '🐯', hp: 80, atk: 120, def: 79 },
   { id: 169, name: '战槌龙', type: 'ROCK', emoji: '🦕', hp: 97, atk: 165, def: 60 },
-  { id: 170, name: '护城龙', type: 'STEEL', emoji: '🛡️', hp: 60, atk: 52, def: 168 },
+  { id: 170, name: '护城龙', type: 'STEEL', emoji: '🛡️', hp: 80, atk: 52, def: 128 },
   { id: 171, name: '蜂女王', type: 'BUG', emoji: '🐝', hp: 70, atk: 80, def: 102, evo: 327, evoLvl: 55 }, // 新增进化
   { id: 172, name: '帕奇利兹', type: 'ELECTRIC', emoji: '🐿️', hp: 60, atk: 45, def: 70, evo: 328, evoLvl: 40 }, // 新增进化
   { id: 173, name: '泳圈鼬', type: 'WATER', emoji: '🦦', hp: 55, atk: 65, def: 35, evo: 174, evoLvl: 26 },
@@ -211,7 +211,7 @@ const BASE_POKEDEX = [
   { id: 205, name: '铁甲犀牛II', type: 'STEEL', emoji: '🦏', hp: 60, atk: 60, def: 100, evo: 206, evoLvl: 40 },
   { id: 206, name: '合金暴龙', type: 'STEEL', emoji: '🦖', hp: 95, atk: 125, def: 105 },
   { id: 207, name: '幻影猫', type: 'GHOST', emoji: '🐈‍⬛', hp: 50, atk: 70, def: 40, evo: 208, evoLvl: 30 },
-  { id: 208, name: '暗影刺客', type: 'GHOST', emoji: '🥷', hp: 60, atk: 130, def: 60 },
+  { id: 208, name: '幽影忍者', type: 'GHOST', emoji: '🥷', hp: 60, atk: 130, def: 60 },
   { id: 209, name: '雷鸣鸟', type: 'ELECTRIC', emoji: '🐦', hp: 50, atk: 70, def: 50, evo: 210, evoLvl: 35 },
   { id: 210, name: '雷电法王', type: 'ELECTRIC', emoji: '🧙‍♂️', hp: 70, atk: 135, def: 70 },
   { id: 211, name: '深海灯笼', type: 'WATER', emoji: '🏮', hp: 80, atk: 60, def: 60, evo: 212, evoLvl: 32 },
@@ -1120,7 +1120,7 @@ const EXTRA_PETS_700 = [
   { id: 685, name: '雷鸣神鹫', type: 'FLYING', emoji: '🦅', hp: 85, atk: 105, def: 72, spd: 110, desc: '展翅即引雷霆，传说中的雷鸟化身。' },
   // === 单体精灵 ===
   { id: 686, name: '机械朋克', type: 'STEEL',  emoji: '🤖', hp: 82, atk: 90, def: 95, spd: 58, desc: '由废弃零件自我组装的朋克风格机器人。' },
-  { id: 687, name: '暗影刺客', type: 'DARK',   emoji: '🗡️', hp: 72, atk: 115, def: 55, spd: 108, desc: '在黑暗中一击必杀的冷酷刺客。' },
+  { id: 687, name: '夜刃暗杀者', type: 'DARK',   emoji: '🗡️', hp: 72, atk: 115, def: 55, spd: 108, desc: '在黑暗中一击必杀的冷酷刺客。' },
   { id: 688, name: '极地雪狐', type: 'ICE',    emoji: '🦊', hp: 68, atk: 78, def: 60, spd: 95, desc: '毛色纯白如雪，在暴风雪中来去自如。' },
   { id: 689, name: '大地陶偶', type: 'GROUND', emoji: '🏺', hp: 92, atk: 72, def: 105, spd: 38, desc: '远古文明遗留的活体陶俑守护者。' },
   { id: 690, name: '虹彩蝶仙', type: 'BUG',   emoji: '🦋', hp: 65, atk: 55, def: 50, spd: 100, desc: '翅膀散发七彩鳞粉的梦幻蝴蝶。' },
@@ -1128,7 +1128,7 @@ const EXTRA_PETS_700 = [
   { id: 691, name: '天照金凰', type: 'LIGHT',  emoji: '🔆', hp: 110, atk: 140, def: 100, spd: 115, desc: '沐浴在永恒圣光中的黄金凤凰，万物因其而生。' },
   { id: 692, name: '月读银狼', type: 'DARK',   emoji: '🌙', hp: 100, atk: 145, def: 90, spd: 130, desc: '在月光下化身的银色巨狼，掌管夜之支配。' },
   { id: 693, name: '须佐战神', type: 'FIGHT',  emoji: '⚔️', hp: 120, atk: 160, def: 110, spd: 95, desc: '挥舞天丛云剑的绝世战神。' },
-  { id: 694, name: '混沌终焉', type: 'GHOST',  emoji: '💀', hp: 130, atk: 150, def: 105, spd: 100, desc: '吞噬万物的终极虚空存在，混沌的化身。' },
+  { id: 694, name: '混沌终焉', type: 'CHAOS',  emoji: '💀', hp: 130, atk: 150, def: 105, spd: 100, desc: '吞噬万物的终极虚空存在，混沌的化身。' },
   { id: 695, name: '圣域守护', type: 'FAIRY',  emoji: '🛡️', hp: 140, atk: 110, def: 150, spd: 85, desc: '守护世界结界的圣域骑士，防御无可匹敌。' },
   { id: 696, name: '奥米加兽', type: 'DRAGON', emoji: '🐉', hp: 120, atk: 155, def: 120, spd: 110, desc: '融合勇气与友情之力的究极龙骑士。' },
   { id: 697, name: '灾厄魔神', type: 'POISON', emoji: '☠️', hp: 115, atk: 135, def: 115, spd: 105, desc: '七大灾厄的集合体，所到之处万物凋零。' },
@@ -1190,7 +1190,7 @@ const DUAL_TYPE_MAP = {
   139:'DARK', 169:'DRAGON', 190:'GROUND', 226:'FAIRY', 250:'COSMIC',
   278:'STEEL', 311:'FLYING', 325:'WATER', 345:'COSMIC', 492:'COSMIC',
   // === 幽灵系 ===
-  56:'DARK', 130:'DARK', 144:'DRAGON', 146:'DARK', 236:'WATER',
+  56:'DARK', 130:'PSYCHIC', 144:'DRAGON', 146:'DARK', 236:'WATER',
   255:'DARK', 265:'FLYING', 274:'DARK', 338:'DARK', 390:'STEEL',
   484:'PSYCHIC', 498:'WATER', 694:'DARK',
   // === 龙系 ===
@@ -1225,6 +1225,29 @@ const DUAL_TYPE_MAP = {
   // 暂无，新属性主要作为type2分配
   // === 神系 ===
   283:'COSMIC', 431:'COSMIC', 700:'COSMIC',
+  // === v14.2 双属性扩充（填补WIND/GOD/SOUND/HEAL等组合空缺） ===
+  // 神系/宇宙级传说
+  150:'COSMIC', 254:'LIGHT', 258:'COSMIC', 271:'COSMIC', 341:'DARK', 95:'COSMIC',
+  // 风系副属性（填补WIND作为secondary=0的空缺）
+  37:'WIND', 443:'WIND', 629:'WIND', 227:'WIND', 386:'WIND',
+  // 音波系扩充
+  210:'SOUND', 504:'SOUND',
+  // 治愈系扩充
+  245:'HEAL', 321:'HEAL', 342:'HEAL', 418:'HEAL',
+  // 光系/妖精扩充
+  360:'LIGHT', 649:'FAIRY', 523:'FAIRY',
+  // 火/岩/地面
+  370:'GROUND', 202:'ROCK', 613:'STEEL', 543:'DRAGON',
+  // 龙系
+  621:'FIRE', 467:'WATER',
+  // 幽灵/暗
+  19:'FIRE', 309:'POISON', 347:'WATER',
+  // 普通→暗/钢
+  319:'DARK', 324:'STEEL', 326:'COSMIC',
+  // 冰/水
+  123:'WATER', 371:'WATER',
+  // 钢→宇宙
+  411:'COSMIC',
 };
 
 // 主属性重分配 (少量修正)
@@ -1289,13 +1312,13 @@ const SANGUO_PETS = [
   { id: 752, name: '水幕蛛将', type: 'WATER', type2: 'BUG', emoji: '🕸️', hp: 72, atk: 78, def: 78 },
   { id: 753, name: '草刃螳卒', type: 'GRASS', type2: 'BUG', emoji: '🌿', hp: 44, atk: 52, def: 42, evo: 754, evoLvl: 34 },
   { id: 754, name: '花刃螳将', type: 'GRASS', type2: 'FIGHT', emoji: '🌺', hp: 72, atk: 95, def: 68 },
-  { id: 755, name: '荧菇幽灵', type: 'GRASS', type2: 'FAIRY', emoji: '🍄', hp: 48, atk: 42, def: 48 },
+  { id: 755, name: '月斑眠菇', type: 'GRASS', type2: 'FAIRY', emoji: '🍄', hp: 48, atk: 42, def: 48 },
   { id: 756, name: '幻菇仙姬', type: 'GRASS', type2: 'FAIRY', emoji: '💡', hp: 78, atk: 82, def: 82 },
   { id: 757, name: '焰蜈幼卒', type: 'POISON', type2: 'FIRE', emoji: '🦎', hp: 44, atk: 52, def: 40, evo: 758, evoLvl: 33 },
   { id: 758, name: '焰蜈毒将', type: 'POISON', type2: 'FIRE', emoji: '🔥', hp: 72, atk: 92, def: 68 },
   { id: 759, name: '绒甲幼熊', type: 'NORMAL', type2: 'FIGHT', emoji: '🧸', hp: 55, atk: 72, def: 48, evo: 760, evoLvl: 27 },
   { id: 760, name: '裂臂熊将', type: 'NORMAL', type2: 'FIGHT', emoji: '🐻', hp: 92, atk: 110, def: 82 },
-  { id: 761, name: '甜果灵童', type: 'GRASS', type2: 'FAIRY', emoji: '🍓', hp: 44, atk: 42, def: 42, evo: 762, evoLvl: 18 },
+  { id: 761, name: '月萤花灵', type: 'GRASS', type2: 'FAIRY', emoji: '🌸', hp: 44, atk: 42, def: 42, evo: 762, evoLvl: 18 },
   { id: 762, name: '甜果舞姬', type: 'GRASS', type2: 'FAIRY', emoji: '🎪', hp: 58, atk: 62, def: 58, evo: 763, evoLvl: 39 },
   { id: 763, name: '果冠女帝', type: 'GRASS', type2: 'FIGHT', emoji: '🫅', hp: 78, atk: 105, def: 78 },
   { id: 764, name: '花环仙使', type: 'FAIRY', type2: 'HEAL', emoji: '💐', hp: 58, atk: 62, def: 68 },
@@ -1339,13 +1362,129 @@ const SANGUO_PETS = [
 
 // Build POKEDEX
 const POKEDEX = [];
+// v14.4 新增精灵 (ID 801-900): 含时空系、混沌系及更多进化链
+const NEW_PETS_800 = [
+  // --- 时空系进化链 (801-810) ---
+  { id: 801, name: '沙漏幼虫', type: 'TIME', emoji: '⏳', hp: 38, atk: 42, def: 45, spd: 50, evo: 802, evoLvl: 20, desc: '体内流淌着时间之沙的小虫。' },
+  { id: 802, name: '时蛹结晶', type: 'TIME', type2: 'BUG', emoji: '🔮', hp: 55, atk: 50, def: 80, spd: 35, evo: 803, evoLvl: 36, desc: '在时间茧中沉睡进化。' },
+  { id: 803, name: '永恒蝶皇', type: 'TIME', type2: 'FLYING', emoji: '🦋', hp: 78, atk: 95, def: 72, spd: 120, desc: '振翅间可扭曲时间流速。' },
+  { id: 804, name: '时钟兔', type: 'TIME', emoji: '🐰', hp: 50, atk: 55, def: 48, spd: 85, evo: 805, evoLvl: 28, desc: '总是迟到又总是准时的奇妙生物。' },
+  { id: 805, name: '逆时仓鼠', type: 'TIME', type2: 'PSYCHIC', emoji: '🐹', hp: 72, atk: 88, def: 65, spd: 115, desc: '能在不同时态间切换形态的奇妙灵鼠。' },
+  { id: 806, name: '时空裂隙兽', type: 'TIME', type2: 'DRAGON', emoji: '🌀', hp: 95, atk: 120, def: 90, spd: 95, desc: '游荡在时空裂缝中的古龙。' },
+  { id: 807, name: '钟摆灵', type: 'TIME', type2: 'GHOST', emoji: '🕰️', hp: 68, atk: 75, def: 70, spd: 60, evo: 808, evoLvl: 35, desc: '被困在古钟中的灵魂。' },
+  { id: 808, name: '末日钟魔', type: 'TIME', type2: 'GHOST', emoji: '⏰', hp: 88, atk: 110, def: 92, spd: 80, desc: '倒计时归零时降临灾厄。' },
+  { id: 809, name: '瞬迁猫', type: 'TIME', emoji: '🐱', hp: 55, atk: 60, def: 45, spd: 130, desc: '能在瞬间移动到任何去过的地方。' },
+  { id: 810, name: '纪元守卫', type: 'TIME', type2: 'STEEL', emoji: '🛡️', hp: 105, atk: 85, def: 135, spd: 50, desc: '守护时间线不被篡改的古代机关兽。' },
+  // --- 混沌系进化链 (811-820) ---
+  { id: 811, name: '浑沌晶体', type: 'CHAOS', emoji: '💎', hp: 42, atk: 48, def: 42, spd: 55, evo: 812, evoLvl: 22, desc: '由混沌之海凝结的不稳定晶体生命。' },
+  { id: 812, name: '畸变晶花', type: 'CHAOS', type2: 'POISON', emoji: '🌸', hp: 65, atk: 78, def: 65, spd: 60, evo: 813, evoLvl: 40, desc: '体内蕴含扭曲空间的结晶花朵。' },
+  { id: 813, name: '虚妄魔神', type: 'CHAOS', type2: 'DARK', emoji: '👁️', hp: 92, atk: 130, def: 85, spd: 100, desc: '降临时令万物秩序崩溃。' },
+  { id: 814, name: '裂痕蜥', type: 'CHAOS', type2: 'GROUND', emoji: '🦎', hp: 55, atk: 70, def: 60, spd: 65, evo: 815, evoLvl: 30, desc: '行走时地面会产生维度裂缝。' },
+  { id: 815, name: '深渊裂龙', type: 'CHAOS', type2: 'DRAGON', emoji: '🐉', hp: 88, atk: 115, def: 90, spd: 85, desc: '从次元裂缝中觉醒的混沌巨龙。' },
+  { id: 816, name: '混沌海蛇', type: 'CHAOS', type2: 'WATER', emoji: '🐍', hp: 75, atk: 60, def: 55, spd: 70, evo: 817, evoLvl: 32, desc: '使周围水域逐渐混沌化的海蛇。' },
+  { id: 817, name: '末世海蛇皇', type: 'CHAOS', type2: 'WATER', emoji: '🐍', hp: 95, atk: 90, def: 75, spd: 88, desc: '能溶解一切规则的混沌海蛇之王。' },
+  { id: 818, name: '噪声魔', type: 'CHAOS', type2: 'SOUND', emoji: '📡', hp: 70, atk: 95, def: 55, spd: 105, desc: '发出使理智崩溃的混沌噪声。' },
+  { id: 819, name: '悖论贤者', type: 'CHAOS', type2: 'PSYCHIC', emoji: '🔯', hp: 80, atk: 105, def: 80, spd: 90, desc: '思考自相矛盾命题的混沌智者。' },
+  { id: 820, name: '原初混沌', type: 'CHAOS', type2: 'GOD', emoji: '🌑', hp: 110, atk: 140, def: 100, spd: 90, desc: '宇宙诞生前的混沌本体。' },
+  // --- 新进化链：火/电/水混合 (821-830) ---
+  { id: 821, name: '岩浆蝾螈', type: 'FIRE', type2: 'GROUND', emoji: '🔥', hp: 50, atk: 65, def: 55, spd: 45, evo: 822, evoLvl: 24, desc: '栖息在火山熔岩中的两栖精灵。' },
+  { id: 822, name: '烈焰地龙', type: 'FIRE', type2: 'GROUND', emoji: '🌋', hp: 80, atk: 105, def: 85, spd: 70, desc: '能引发小型火山喷发。' },
+  { id: 823, name: '雷云雏鹰', type: 'ELECTRIC', type2: 'FLYING', emoji: '⚡', hp: 45, atk: 58, def: 40, spd: 80, evo: 824, evoLvl: 26, desc: '在雷云中孵化的幼鹰。' },
+  { id: 824, name: '暴风雷鹫', type: 'ELECTRIC', type2: 'FLYING', emoji: '🦅', hp: 72, atk: 95, def: 62, spd: 120, desc: '翱翔雷云之上的猛禽之王。' },
+  { id: 825, name: '露水仙子', type: 'WATER', type2: 'FAIRY', emoji: '💧', hp: 48, atk: 35, def: 50, spd: 55, evo: 826, evoLvl: 22, desc: '凝结晨露而生的小仙子。' },
+  { id: 826, name: '虹光仙女', type: 'WATER', type2: 'FAIRY', emoji: '🌈', hp: 75, atk: 65, def: 80, spd: 78, desc: '守护瀑布的虹光仙女。' },
+  { id: 827, name: '寒铁矿蛾', type: 'ICE', type2: 'STEEL', emoji: '🪶', hp: 55, atk: 50, def: 75, spd: 40, evo: 828, evoLvl: 30, desc: '在极寒矿脉中结晶的飞蛾。' },
+  { id: 828, name: '冻晶铁鸟', type: 'ICE', type2: 'STEEL', emoji: '🐧', hp: 80, atk: 72, def: 115, spd: 55, desc: '钢铁羽翼覆满永冻晶体的铁鸟。' },
+  { id: 829, name: '菌丝幼芽', type: 'GRASS', type2: 'POISON', emoji: '🍄', hp: 42, atk: 40, def: 55, spd: 35, evo: 830, evoLvl: 25, desc: '地底菌落的初始形态。' },
+  { id: 830, name: '腐蚀菌王', type: 'GRASS', type2: 'POISON', emoji: '☠️', hp: 78, atk: 85, def: 90, spd: 42, desc: '孢子含有强烈腐蚀毒素。' },
+  // --- 独立强力精灵 (831-850) ---
+  { id: 831, name: '镜面剑士', type: 'STEEL', type2: 'PSYCHIC', emoji: '🪞', hp: 72, atk: 108, def: 95, spd: 88, desc: '以镜面般的刀身反射招式。' },
+  { id: 832, name: '星尘凤凰', type: 'COSMIC', type2: 'FIRE', emoji: '🌟', hp: 90, atk: 125, def: 80, spd: 105, desc: '浴火重生于星辰之间。' },
+  { id: 833, name: '深渊鲛姬', type: 'WATER', type2: 'DARK', emoji: '🧜', hp: 82, atk: 100, def: 70, spd: 110, desc: '深海中引诱猎物的神秘存在。' },
+  { id: 834, name: '雷霆战熊', type: 'ELECTRIC', type2: 'FIGHT', emoji: '🐻', hp: 95, atk: 120, def: 90, spd: 65, desc: '拳头蕴含百万伏特的格斗之王。' },
+  { id: 835, name: '极光冰马', type: 'ICE', type2: 'LIGHT', emoji: '🐴', hp: 80, atk: 105, def: 75, spd: 115, desc: '在极光中奔跑的圣光之马。' },
+  { id: 836, name: '翡翠风蛇', type: 'WIND', type2: 'GRASS', emoji: '🐍', hp: 70, atk: 90, def: 65, spd: 125, desc: '乘风疾行的翠绿飞蛇。' },
+  { id: 837, name: '音律花灵', type: 'SOUND', type2: 'FAIRY', emoji: '🌸', hp: 68, atk: 55, def: 70, spd: 80, desc: '歌声能让万花绽放。' },
+  { id: 838, name: '黑洞蟹', type: 'COSMIC', type2: 'ROCK', emoji: '🦀', hp: 100, atk: 95, def: 130, spd: 25, desc: '甲壳能制造微型黑洞吞噬攻击。' },
+  { id: 839, name: '时光树精', type: 'TIME', type2: 'GRASS', emoji: '🌲', hp: 95, atk: 70, def: 100, spd: 55, desc: '见证千年历史的古树之灵。' },
+  { id: 840, name: '混沌猫灵', type: 'CHAOS', type2: 'GHOST', emoji: '🐈‍⬛', hp: 68, atk: 88, def: 60, spd: 118, desc: '同时存在又不存在的量子猫。' },
+  { id: 841, name: '裂空飞鱼', type: 'FLYING', type2: 'TIME', emoji: '🐟', hp: 65, atk: 80, def: 55, spd: 135, desc: '能在时间缝隙中穿梭的鱼。' },
+  { id: 842, name: '重力铁球', type: 'STEEL', type2: 'GROUND', emoji: '⚙️', hp: 90, atk: 60, def: 140, spd: 20, desc: '拥有恒星级重力的机械球体。' },
+  { id: 843, name: '幻影舞者', type: 'GHOST', type2: 'FAIRY', emoji: '💃', hp: 65, atk: 45, def: 60, spd: 115, desc: '翩翩起舞中消耗猎物生命。' },
+  { id: 844, name: '旭日麒麟', type: 'LIGHT', type2: 'FIRE', emoji: '🦌', hp: 88, atk: 110, def: 88, spd: 98, desc: '黎明时分出现的圣兽。' },
+  { id: 845, name: '深渊鲸灵', type: 'WATER', type2: 'GHOST', emoji: '🐳', hp: 120, atk: 80, def: 90, spd: 45, desc: '游弋于深海墓地的巨鲸亡魂。' },
+  { id: 846, name: '结晶花蜘蛛', type: 'BUG', type2: 'ICE', emoji: '🕷️', hp: 62, atk: 85, def: 78, spd: 95, desc: '用冰丝结出美丽死亡之网。' },
+  { id: 847, name: '熔岩巨兽', type: 'FIRE', type2: 'ROCK', emoji: '🗿', hp: 100, atk: 115, def: 105, spd: 35, desc: '浑身覆满流动岩浆的巨兽。' },
+  { id: 848, name: '雷毒幼蜥', type: 'ELECTRIC', type2: 'WATER', emoji: '🦎', hp: 75, atk: 100, def: 60, spd: 108, desc: '体内蕴含电毒的幼蜥蜴。' },
+  { id: 849, name: '紫雾狐仙', type: 'POISON', type2: 'FAIRY', emoji: '🦊', hp: 70, atk: 88, def: 65, spd: 110, desc: '释放迷幻紫雾的九尾妖狐。' },
+  { id: 850, name: '铁壁龟将', type: 'STEEL', type2: 'WATER', emoji: '🐢', hp: 110, atk: 65, def: 145, spd: 20, desc: '甲壳由深海压缩铁矿构成。' },
+  // --- 三阶段进化链 (851-870) ---
+  { id: 851, name: '时沙鼠', type: 'TIME', type2: 'GROUND', emoji: '🐭', hp: 40, atk: 45, def: 40, spd: 70, evo: 852, evoLvl: 18, desc: '在沙漠中收集时间之沙。' },
+  { id: 852, name: '沙时狐', type: 'TIME', type2: 'GROUND', emoji: '🦊', hp: 60, atk: 68, def: 55, spd: 90, evo: 853, evoLvl: 36, desc: '用时间沙暴困住猎物。' },
+  { id: 853, name: '沙暴时神', type: 'TIME', type2: 'GROUND', emoji: '🏜️', hp: 85, atk: 100, def: 80, spd: 115, desc: '操纵沙暴中的时间之力。' },
+  { id: 854, name: '暗焰幼崽', type: 'CHAOS', type2: 'FIRE', emoji: '🔥', hp: 45, atk: 55, def: 40, spd: 60, evo: 855, evoLvl: 20, desc: '燃烧着混沌之焰的幼兽。' },
+  { id: 855, name: '裂焰铠士', type: 'CHAOS', type2: 'FIRE', emoji: '🐕', hp: 68, atk: 85, def: 60, spd: 88, evo: 856, evoLvl: 40, desc: '混沌之焰包裹铠甲的战士。' },
+  { id: 856, name: '灭世炎魔', type: 'CHAOS', type2: 'FIRE', emoji: '👿', hp: 92, atk: 135, def: 80, spd: 98, desc: '传说中焚毁世界的混沌火焰之主。' },
+  { id: 857, name: '水晶蚕', type: 'BUG', type2: 'LIGHT', emoji: '🐛', hp: 38, atk: 30, def: 60, spd: 30, evo: 858, evoLvl: 16, desc: '吐出光之丝线的蚕宝宝。' },
+  { id: 858, name: '彩茧', type: 'BUG', type2: 'LIGHT', emoji: '🥚', hp: 55, atk: 35, def: 95, spd: 20, evo: 859, evoLvl: 30, desc: '在光茧中积蓄能量。' },
+  { id: 859, name: '辉翼战虫', type: 'BUG', type2: 'LIGHT', emoji: '🦋', hp: 80, atk: 90, def: 72, spd: 105, desc: '翅膀散发光芒的战斗甲虫。' },
+  { id: 860, name: '铁锈螺', type: 'STEEL', type2: 'POISON', emoji: '🐌', hp: 45, atk: 40, def: 70, spd: 20, evo: 861, evoLvl: 22, desc: '外壳由废弃金属锈蚀而成。' },
+  { id: 861, name: '蚀铁甲虫', type: 'STEEL', type2: 'POISON', emoji: '🪲', hp: 68, atk: 72, def: 100, spd: 30, evo: 862, evoLvl: 38, desc: '能腐蚀最坚硬的合金。' },
+  { id: 862, name: '锈蚀帝王', type: 'STEEL', type2: 'POISON', emoji: '👑', hp: 90, atk: 95, def: 130, spd: 40, desc: '钢铁与毒素的完美融合体。' },
+  { id: 863, name: '棉花云兔', type: 'FLYING', type2: 'FAIRY', emoji: '☁️', hp: 50, atk: 35, def: 45, spd: 65, evo: 864, evoLvl: 20, desc: '乘坐棉花云飘浮的可爱兔子。' },
+  { id: 864, name: '暴风花灵', type: 'FLYING', type2: 'FAIRY', emoji: '🌼', hp: 70, atk: 55, def: 65, spd: 95, evo: 865, evoLvl: 36, desc: '开心时绽放花朵，生气时暴风骤雨。' },
+  { id: 865, name: '天际掠鸟', type: 'FLYING', type2: 'FAIRY', emoji: '🦅', hp: 88, atk: 78, def: 82, spd: 118, desc: '翱翔天际的神秘飞鸟。' },
+  { id: 866, name: '音符蝌蚪', type: 'SOUND', type2: 'WATER', emoji: '🎵', hp: 42, atk: 40, def: 38, spd: 50, evo: 867, evoLvl: 18, desc: '叫声如同美妙音符。' },
+  { id: 867, name: '旋律蛙', type: 'SOUND', type2: 'WATER', emoji: '🐸', hp: 65, atk: 65, def: 58, spd: 75, evo: 868, evoLvl: 34, desc: '能用歌声催眠整片沼泽。' },
+  { id: 868, name: '交响泥蟾', type: 'SOUND', type2: 'WATER', emoji: '🎶', hp: 88, atk: 92, def: 78, spd: 95, desc: '其鸣叫能引发震动级声浪。' },
+  { id: 869, name: '暗夜豹', type: 'DARK', type2: 'TIME', emoji: '🐆', hp: 65, atk: 110, def: 50, spd: 120, desc: '在时间停滞中发动致命一击。' },
+  { id: 870, name: '极昼鸾凤', type: 'LIGHT', type2: 'TIME', emoji: '🕊️', hp: 90, atk: 105, def: 85, spd: 110, desc: '能使白昼永恒的神鸟。' },
+  // --- 双属性特色精灵 (871-890) ---
+  { id: 871, name: '霜月灵猫', type: 'ICE', type2: 'FAIRY', emoji: '🐱', hp: 65, atk: 50, def: 60, spd: 100, evo: 872, evoLvl: 32, desc: '月圆之夜才会出现的冰灵猫。' },
+  { id: 872, name: '冰铁战猫', type: 'ICE', type2: 'FAIRY', emoji: '😼', hp: 82, atk: 78, def: 80, spd: 118, desc: '铁爪覆满永冻晶体的战斗猫。' },
+  { id: 873, name: '地裂利爪', type: 'GROUND', type2: 'POISON', emoji: '🐾', hp: 62, atk: 90, def: 80, spd: 65, desc: '尖爪与毒液能溶解岩石。' },
+  { id: 874, name: '彩虹蜂鸟', type: 'FLYING', type2: 'LIGHT', emoji: '🐦', hp: 55, atk: 75, def: 50, spd: 130, desc: '飞行轨迹划出彩虹弧线。' },
+  { id: 875, name: '梦魇幽马', type: 'DARK', type2: 'GHOST', emoji: '🐴', hp: 85, atk: 120, def: 88, spd: 75, desc: '在噩梦中狩猎灵魂的幽灵战马。' },
+  { id: 876, name: '珊瑚仙子', type: 'WATER', type2: 'HEAL', emoji: '🪸', hp: 78, atk: 50, def: 85, spd: 60, desc: '能治愈海洋污染的圣洁存在。' },
+  { id: 877, name: '雷岩巨人', type: 'ELECTRIC', type2: 'ROCK', emoji: '🗿', hp: 100, atk: 110, def: 110, spd: 30, desc: '体内蕴含电磁矿石的古代巨人。' },
+  { id: 878, name: '冥界花', type: 'GHOST', type2: 'GRASS', emoji: '🥀', hp: 72, atk: 95, def: 68, spd: 82, desc: '绽放在墓地中的冥界之花。' },
+  { id: 879, name: '风暴鹰王', type: 'WIND', type2: 'ELECTRIC', emoji: '🦅', hp: 82, atk: 105, def: 70, spd: 120, desc: '振翅引发雷暴的风之王。' },
+  { id: 880, name: '金刚猿', type: 'FIGHT', type2: 'ROCK', emoji: '🦍', hp: 98, atk: 130, def: 95, spd: 55, desc: '拳头硬如金刚石的格斗猿。' },
+  { id: 881, name: '蒸汽机械兽', type: 'FIRE', type2: 'STEEL', emoji: '🤖', hp: 85, atk: 95, def: 105, spd: 70, desc: '以蒸汽驱动的古代机械生物。' },
+  { id: 882, name: '量子灵鸟', type: 'PSYCHIC', type2: 'CHAOS', emoji: '🦜', hp: 60, atk: 85, def: 55, spd: 125, desc: '存在于多个平行宇宙中的灵鸟。' },
+  { id: 883, name: '荆棘玫瑰龙', type: 'DRAGON', type2: 'GRASS', emoji: '🌹', hp: 85, atk: 110, def: 80, spd: 90, desc: '用荆棘护体的优雅飞龙。' },
+  { id: 884, name: '极寒机甲', type: 'ICE', type2: 'STEEL', emoji: '🧊', hp: 92, atk: 88, def: 120, spd: 55, desc: '在绝对零度中运转的机甲战士。' },
+  { id: 885, name: '日蚀火灵', type: 'DARK', type2: 'FIRE', emoji: '🐠', hp: 68, atk: 100, def: 60, spd: 108, desc: '遮蔽太阳的黑焰之灵。' },
+  { id: 886, name: '苔藓巨熊', type: 'GRASS', type2: 'GROUND', emoji: '🐻', hp: 120, atk: 95, def: 100, spd: 30, desc: '活了千年背上长满苔藓的巨熊。' },
+  { id: 887, name: '幻梦灵鱼', type: 'PSYCHIC', type2: 'WATER', emoji: '🐟', hp: 70, atk: 80, def: 60, spd: 95, desc: '身体释放致幻毒素的灵鱼。' },
+  { id: 888, name: '星辰海豚', type: 'COSMIC', type2: 'WATER', emoji: '🐬', hp: 68, atk: 88, def: 65, spd: 100, desc: '遨游在星际之海中的海豚精灵。' },
+  { id: 889, name: '混沌影刃', type: 'CHAOS', type2: 'STEEL', emoji: '⚔️', hp: 78, atk: 125, def: 80, spd: 100, desc: '由混沌凝聚成刃的斩击者。' },
+  { id: 890, name: '时空漂流者', type: 'TIME', type2: 'COSMIC', emoji: '🧭', hp: 110, atk: 120, def: 100, spd: 120, desc: '在不同时代间永恒漂流。' },
+  // --- 传说/特殊获取精灵 (891-900) ---
+  { id: 891, name: '创世纪元兽', type: 'TIME', type2: 'GOD', emoji: '🦁', hp: 115, atk: 135, def: 110, spd: 100, desc: '记录万物起源的时间守护神。' },
+  { id: 892, name: '终焉混沌龙', type: 'CHAOS', type2: 'DRAGON', emoji: '🐲', hp: 120, atk: 145, def: 105, spd: 95, desc: '宇宙终结时降临的混沌之龙。' },
+  { id: 893, name: '永夜支配者', type: 'DARK', type2: 'TIME', emoji: '🌑', hp: 100, atk: 130, def: 95, spd: 110, desc: '让时间永远停留在黑夜的支配者。' },
+  { id: 894, name: '雷光守望者', type: 'LIGHT', type2: 'TIME', emoji: '☀️', hp: 100, atk: 120, def: 100, spd: 115, desc: '以雷光之力驱散黑暗的守护者。' },
+  { id: 895, name: '混沌织梦师', type: 'CHAOS', type2: 'PSYCHIC', emoji: '🧠', hp: 88, atk: 115, def: 85, spd: 108, desc: '将梦境扭曲为混沌现实。' },
+  { id: 896, name: '时空裁决者', type: 'TIME', type2: 'STEEL', emoji: '⚖️', hp: 105, atk: 110, def: 120, spd: 80, desc: '审判扰乱时空者的最高法官。' },
+  { id: 897, name: '虹光凤凰', type: 'LIGHT', type2: 'FLYING', emoji: '🦚', hp: 95, atk: 115, def: 88, spd: 112, desc: '七色羽毛蕴含万物之光。' },
+  { id: 898, name: '深渊吞噬者', type: 'CHAOS', type2: 'DARK', emoji: '🕳️', hp: 110, atk: 140, def: 90, spd: 85, desc: '吞噬一切光明的深渊之兽。' },
+  { id: 899, name: '永劫时龙', type: 'TIME', type2: 'DRAGON', emoji: '⌛', hp: 115, atk: 138, def: 108, spd: 95, desc: '控制万物时间流逝的太古龙。' },
+  { id: 900, name: '始源混沌神', type: 'CHAOS', type2: 'GOD', emoji: '♾️', hp: 115, atk: 138, def: 105, spd: 82, desc: '万物诞生之前的终极混沌。' },
+  // --- 结契专属精灵 (bonding quests) ---
+  { id: 901, name: '雾鹿灵', type: 'WATER', type2: 'PSYCHIC', emoji: '🦌', hp: 68, atk: 55, def: 72, spd: 88, desc: '终年栖息于雾月湖畔，蹄印散发幽蓝灵光的温顺鹿灵。' },
+  { id: 902, name: '雾隐幼灵', type: 'GHOST', type2: 'FAIRY', emoji: '🌫️', hp: 52, atk: 48, def: 55, spd: 72, desc: '鬼雾山事件后幸存的幼体，具有净化鬼血的先天体质。' },
+  { id: 903, name: '灾厄幼灵', type: 'FIRE', type2: 'PSYCHIC', emoji: '🔥', hp: 65, atk: 78, def: 58, spd: 80, desc: '被封印削弱的灾厄核心残片化生的幼体，体内蕴含古老查克拉。' },
+  { id: 904, name: '岩甲犀', type: 'GROUND', type2: 'ROCK', emoji: '🦏', hp: 95, atk: 92, def: 115, spd: 35, desc: '矿山深处的巨型犀兽，岩石外甲刀枪不入。' },
+];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
     UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600,
-    ...GODS_610, ...DIGIMON_PETS, ...EXTRA_PETS_700, ...SANGUO_PETS
+    ...GODS_610, ...DIGIMON_PETS, ...EXTRA_PETS_700, ...SANGUO_PETS,
+    ...NEW_PETS_800
 ];
-const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 800);
+const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 900);
 for(let i=1; i<=MAX_DEX_ID; i++) {
   const existing = ALL_SOURCE_DATA.find(p => p.id === i);
   if (existing) {
@@ -1360,4 +1499,4 @@ for(let i=1; i<=MAX_DEX_ID; i++) {
   }
 }
 
-export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS, EXTRA_PETS_700, SANGUO_PETS };
+export { POKEDEX, BASE_POKEDEX, EXTRA_EVOS, FINAL_GODS, CRYSTAL_PETS, NEW_EVO_CHAINS, GOD_PETS, TIME_WEATHER_PETS, STONE_EVO_PETS, STONE_EVO_RULES, UNIQUE_REWARD_PET, NEW_PETS_500, PETS_600, GODS_610, DIGIMON_PETS, EXTRA_PETS_700, SANGUO_PETS, NEW_PETS_800 };

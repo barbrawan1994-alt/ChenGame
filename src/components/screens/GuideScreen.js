@@ -7,7 +7,7 @@ function highlightSearch(text, query) {
   const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
   return parts.map((part, i) =>
     part.toLowerCase() === query.toLowerCase()
-      ? <span key={i} style={{background:'rgba(255,193,7,0.3)', color:'#FFD54F', borderRadius:'2px', padding:'0 1px'}}>{part}</span>
+      ? <span key={i} style={{background:'rgba(255,193,7,0.3)', color:'#FFD54F', borderRadius:'2px', padding:'0 2px'}}>{part}</span>
       : part
   );
 }
@@ -35,11 +35,11 @@ export default React.memo(function GuideScreen({ onBack }) {
     return text.split('\n').map((line, i) => {
       const trimmed = line.trim();
       if (!trimmed) return <div key={i} className="gd-spacer" />;
-      const isBullet = /^[\u00B7\u2022\-\u2460\u2461\u2462\u2463\u2464\u2465\u2466\u2467\u2468\u2469\u246A\u246B\u246C]/.test(trimmed);
-      const isLabel = /^[\uD83D\uDD25\u2620\uFE0F\u26A1\u2744\uFE0F\uD83D\uDE34\uD83D\uDFE2\uD83D\uDD35\uD83D\uDFE3\uD83D\uDFE0\uD83D\uDD34\u2B1C\uD83D\uDFE7\uD83D\uDFEA\u2605\u2B50\uD83C\uDF00]/.test(trimmed);
-      const isHeading = /^(\u653B\u51FB\u578B|\u9632\u5FA1\u578B|\u8F85\u52A9\u578B|\u6062\u590D\u7C7B|\u589E\u4F24\u7C7B|\u9632\u5FA1\u7C7B|\u72B6\u6001\u7C7B|\u8D85\u4EBA\u7CFB|\u52A8\u7269\u7CFB|\u81EA\u7136\u7CFB)/.test(trimmed) && trimmed.length < 30;
+      const isBullet = /^[·•\-①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬]/.test(trimmed);
+      const isEmoji = /^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}⚪🟠🟣⚡☠🔥❄😴😵⭐🪲🎣✨]/u.test(trimmed);
+      const isHeading = /^(攻击型|防御型|辅助型|恢复类|增伤类|防御类|状态类|超人系|动物系|自然系)/.test(trimmed) && trimmed.length < 30;
       if (isHeading) return <div key={i} className="gd-heading">{trimmed}</div>;
-      if (isBullet || isLabel) return <div key={i} className="gd-bullet">{trimmed}</div>;
+      if (isBullet || isEmoji) return <div key={i} className="gd-bullet">{trimmed}</div>;
       return <div key={i} className="gd-line">{trimmed}</div>;
     });
   };
@@ -59,34 +59,40 @@ export default React.memo(function GuideScreen({ onBack }) {
   const isCatOpen = (catId) => guideExpanded[catId] !== false;
   const isSecOpenFn = (secKey) => guideExpanded[secKey] !== false;
 
+  const totalSections = GAME_GUIDE.reduce((a, c) => a + c.sections.length, 0);
+
   return (
     <div className="gd-root">
       <header className="gd-topbar">
         <button type="button" className="gd-back" onClick={onBack}>
-          <span>{'\u2190'}</span> {'\u8FD4\u56DE'}
+          <span>{'\u2190'}</span> 返回
         </button>
-        <h1 className="gd-title">{GAME_NAME} {'\u6E38\u620F\u624B\u518C'}</h1>
+        <h1 className="gd-title">{GAME_NAME} 冒险手册</h1>
         <span className="gd-ver">{GAME_VERSION_LABEL}</span>
       </header>
 
       <div className="gd-filterbar">
         <div className="gd-search">
-          <input type="text" placeholder={'\u641C\u7D22\u5173\u952E\u8BCD...'} value={guideSearch} onChange={e => setGuideSearch(e.target.value)} />
-          {q && <button type="button" onClick={() => setGuideSearch('')}>{'\u2715'}</button>}
+          <span style={{opacity:0.5, fontSize:'14px'}}>🔍</span>
+          <input type="text" placeholder="搜索关键词..." value={guideSearch} onChange={e => setGuideSearch(e.target.value)} />
+          {q && <button type="button" onClick={() => setGuideSearch('')}>✕</button>}
         </div>
         <div className="gd-tabs">
-          <button type="button" className={!guideCat ? 'active' : ''} onClick={() => setGuideCat(null)}>{'\u5168\u90E8'}</button>
+          <button type="button" className={!guideCat ? 'active' : ''} onClick={() => setGuideCat(null)}>
+            全部
+          </button>
           {GAME_GUIDE.map(g => (
             <button type="button" key={g.id} className={guideCat === g.id ? 'active' : ''} onClick={() => setGuideCat(g.id)}>
               {g.icon} {g.title}
             </button>
           ))}
         </div>
+        {!q && <span className="gd-meta">{GAME_GUIDE.length} 章 · {totalSections} 节</span>}
       </div>
 
       <div className="gd-scroll">
         {results.length === 0 && (
-          <div className="gd-empty"><span>{'\uD83D\uDD0D'}</span><p>{'\u6CA1\u6709\u627E\u5230\u5339\u914D\u7684\u5185\u5BB9\uFF0C\u8BD5\u8BD5\u5176\u4ED6\u5173\u952E\u8BCD\u3002'}</p></div>
+          <div className="gd-empty"><span>🔍</span><p>没有找到匹配的内容，试试其他关键词。</p></div>
         )}
         {results.map((cat) => {
           const catOpen = isCatOpen(cat.id);
@@ -95,8 +101,8 @@ export default React.memo(function GuideScreen({ onBack }) {
               <button type="button" className={`gd-cat-head ${catOpen ? 'is-open' : ''}`} onClick={() => toggleCat(cat.id)}>
                 <span className="gd-cat-icon">{cat.icon}</span>
                 <span className="gd-cat-label">{cat.title}</span>
-                <span className="gd-cat-count">{cat.sections.length} {'\u8282'}</span>
-                <span className="gd-arrow">{catOpen ? '\u25BC' : '\u25B6'}</span>
+                <span className="gd-cat-count">{cat.sections.length} 节</span>
+                <span className="gd-arrow">{catOpen ? '▼' : '▶'}</span>
               </button>
               {catOpen && (
                 <div className="gd-sections">
@@ -110,8 +116,8 @@ export default React.memo(function GuideScreen({ onBack }) {
                         <button type="button" className="gd-sec-head" onClick={() => hasSub && toggleSec(secKey)}>
                           <span className="gd-sec-dot" />
                           <span className="gd-sec-title">{sec.title}</span>
-                          {hasSub && <span className="gd-sec-count">{sec.sub.length} {'\u6761'}</span>}
-                          {hasSub && <span className="gd-arrow">{secOpen ? '\u25BC' : '\u25B6'}</span>}
+                          {hasSub && <span className="gd-sec-count">{sec.sub.length} 条</span>}
+                          {hasSub && <span className="gd-arrow">{secOpen ? '▼' : '▶'}</span>}
                         </button>
                         {hasSub && secOpen && (
                           <div className="gd-items">

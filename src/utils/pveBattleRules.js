@@ -17,7 +17,7 @@ export function shouldForestVineBlock(battleState, source) {
   if (!rule) return false;
   if (rule.id === 'forest_growth' || battleState.domainRule === 'forest_vine') {
     const interval = rule.vineGrowInterval || 3;
-    const turn = battleState.turnCount || 0;
+    const turn = (battleState.turnCount || 0) + 1;
     const growBonus = turn > 0 && turn % interval === 0 ? 0.15 : 0;
     const baseChance = (rule.vineBlockChance || 0.25) + growBonus + (battleState._ecoVineBonus || 0);
     const chance = source === 'player' ? baseChance : baseChance * 0.6;
@@ -104,7 +104,7 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
   if (!state || enemy?.currentHp <= 0) return { playerDied: false };
   let playerDied = false;
   const wb = state.worldBoss;
-  const phases = wb?.phases;
+  const phases = wb?.phases ?? state.bossPhases;
   if (!phases && !state.ecoBossMechanics) return { playerDied };
 
   const maxHp = getStats ? getStats(enemy).maxHp : (enemy.maxHp || 1);
@@ -131,7 +131,67 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
     }
   }
 
-  if (phase?.mechanic === 'forest_will') {
+  if (phase?.mechanic === 'sand_quicksand' && !skipList.includes('sand_quicksand') && player?.currentHp > 0 && Math.random() < 0.32) {
+    const sandDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.045));
+    player.currentHp = Math.max(0, player.currentHp - sandDmg);
+    if (addLog) addLog(`🏜️ 流沙下陷！${player.name} 失去 ${sandDmg} HP`);
+    if (player.currentHp <= 0) playerDied = true;
+  }
+
+  if (phase?.mechanic === 'core_rampage' && !skipList.includes('core_rampage') && player?.currentHp > 0 && Math.random() < 0.4) {
+    const coreDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.06));
+    player.currentHp = Math.max(0, player.currentHp - coreDmg);
+    if (addLog) addLog(`💥 砂核蓄力爆发！${player.name} 受到 ${coreDmg} 点冲击`);
+    if (player.currentHp <= 0) playerDied = true;
+    if (state.battleObjective === 'purify') {
+      state._purifyProgress = Math.min(100, (state._purifyProgress ?? 100) + 8);
+      if (addLog) addLog(`⚠️ 砂核暴走使净化进度回退！`);
+    }
+  }
+
+  if (phase?.mechanic === 'rock_armor' && !skipList.includes('rock_armor') && !enemy._rockArmor) {
+    enemy._rockArmor = true;
+    enemy._ecoShield = (enemy._ecoShield || 0) + Math.floor(maxHp * 0.15);
+    if (addLog) addLog(`🪨 ${enemy.name} 岩壁护甲展开！土系攻击更有效`);
+  }
+
+  if (phase?.mechanic === 'blood_mist' && !skipList.includes('blood_mist') && player?.currentHp > 0 && Math.random() < 0.28) {
+    const mistDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.035));
+    player.currentHp = Math.max(0, player.currentHp - mistDmg);
+    if (addLog) addLog(`🌫️ 血雾侵蚀！${player.name} 失去 ${mistDmg} HP（光系/封印可驱散）`);
+    if (player.currentHp <= 0) playerDied = true;
+  }
+
+  if (phase?.mechanic === 'tail_flame' && !skipList.includes('tail_flame') && player?.currentHp > 0 && Math.random() < 0.32) {
+    const flameDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.05));
+    player.currentHp = Math.max(0, player.currentHp - flameDmg);
+    if (addLog) addLog(`🔥 尾炎横扫！${player.name} 受到 ${flameDmg} 点伤害（水系/封印可减伤）`);
+    if (player.currentHp <= 0) playerDied = true;
+  }
+
+  if (phase?.mechanic === 'chakra_drain' && !skipList.includes('chakra_drain') && player?.currentHp > 0 && Math.random() < 0.3) {
+    if (player.moves?.length) {
+      const m = player.moves[Math.floor(Math.random() * player.moves.length)];
+      if (m && m.pp > 0) m.pp = Math.max(0, m.pp - 1);
+    }
+    const drainDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.025));
+    player.currentHp = Math.max(0, player.currentHp - drainDmg);
+    if (addLog) addLog(`💧 查克拉吸取！${player.name} PP 被吸走，失去 ${drainDmg} HP（雷系可打断）`);
+    if (player.currentHp <= 0) playerDied = true;
+  }
+
+  if (phase?.mechanic === 'seal_resist' && !skipList.includes('seal_resist') && !enemy._sealResist) {
+    const chakraOk = (state._chapterVars?.chakraReserve ?? 0) >= 50;
+    enemy._sealResist = true;
+    if (!chakraOk) {
+      enemy._ecoShield = (enemy._ecoShield || 0) + Math.floor(maxHp * 0.2);
+      if (addLog) addLog(`⛩️ ${enemy.name} 封印抗性展开！查克拉储备不足，输出大幅降低`);
+    } else if (addLog) {
+      addLog(`⛩️ 查克拉节点已激活，封印抗性被削弱！`);
+    }
+  }
+
+  if (phase?.mechanic === 'forest_will' && !skipList.includes('forest_will')) {
     const ecology = state._regionEcology;
     if (checkForestWillEcology(ecology)) {
       if (!enemy._forestAid && addLog) {
@@ -139,8 +199,9 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
         enemy._forestAid = true;
       }
       if (player?.currentHp > 0) {
-        const heal = Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.03);
-        player.currentHp = Math.min(getStats ? getStats(player).maxHp : player.maxHp, player.currentHp + heal);
+        const pMaxHp = getStats ? getStats(player).maxHp : (player.maxHp || 100);
+        const heal = Math.max(1, Math.floor(pMaxHp * 0.03));
+        player.currentHp = Math.min(pMaxHp, player.currentHp + heal);
       }
     }
   }
@@ -159,13 +220,29 @@ export function processBossMechanicsTurnEnd(state, player, enemy, addLog, getSta
     if (addLog) addLog(`🪞 ${enemy.name} 产生了镜像分身！攻击假身会受到反伤`);
   }
 
-  // Fix#6: skill_echo 简化实现 — Boss复制玩家上一招
-  if (phase?.mechanic === 'skill_echo' && state._lastPlayerMove?.p > 0) {
+  // Fix#6: skill_echo 简化实现 — Boss复制玩家上一招（35%概率）
+  if (phase?.mechanic === 'skill_echo' && !skipList.includes('skill_echo') && player?.currentHp > 0 && state._lastPlayerMove?.p > 0 && Math.random() < 0.35) {
     const echoMove = { ...state._lastPlayerMove, pp: 99 };
-    const echoDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : player.maxHp) * 0.04));
+    const echoDmg = Math.max(1, Math.floor((getStats ? getStats(player).maxHp : (player.maxHp || 100)) * 0.04));
     player.currentHp = Math.max(0, player.currentHp - echoDmg);
     if (addLog) addLog(`🔄 ${enemy.name} 回响了【${echoMove.name}】！${player.name} 受到 ${echoDmg} 伤害`);
     if (player.currentHp <= 0) playerDied = true;
+  }
+
+  // dream_song: 催眠声波 — 30%概率使玩家下回合无法行动
+  if (phase?.mechanic === 'dream_song' && !skipList.includes('dream_song') && player?.currentHp > 0 && Math.random() < 0.3) {
+    state._playerSkipNextTurn = true;
+    if (addLog) addLog(`🎵 ${enemy.name} 发出了催眠歌声！${player.name} 陷入迷惑，下回合无法行动`);
+  }
+
+  // rage_stack: 狂怒叠加 — Boss每回合叠加攻击力
+  if (phase?.mechanic === 'rage_stack' && !skipList.includes('rage_stack') && enemy?.currentHp > 0) {
+    state._bossRageStacks = (state._bossRageStacks || 0) + 1;
+    const rageMult = 1 + state._bossRageStacks * 0.08;
+    enemy._rageMult = Math.min(2.5, rageMult);
+    if (state._bossRageStacks % 3 === 0 && addLog) {
+      addLog(`💢 ${enemy.name} 的怒气持续累积！攻击力 ×${enemy._rageMult.toFixed(1)}`);
+    }
   }
 
   state._gravityActive = phase?.mechanic === 'gravity_field';
@@ -216,8 +293,8 @@ export function processWindTowerFollowUp(state, player, enemy, performAction, ad
   const rule = getSpiritDomainRule(state?.domainRule);
   if (!rule || (rule.id !== 'wind_tower' && state.domainRule !== 'wind_tower')) return null;
   if (!player || !enemy || player.currentHp <= 0 || enemy.currentHp <= 0) return null;
-  const pSpd = getStats(player).spd * (state._playerAdaptMult || 1);
-  const eSpd = getStats(enemy).spd;
+  const pSpd = getStats(player, player.stages, player.status).spd * (player._adaptMult || 1);
+  const eSpd = getStats(enemy, enemy.stages, enemy.status).spd;
   if (pSpd === eSpd) return null;
   const fasterSide = pSpd > eSpd ? 'player' : 'enemy';
   const faster = pSpd > eSpd ? player : enemy;
@@ -250,20 +327,21 @@ export function isDarkMoonHidden(battleState) {
   return (rule?.id === 'dark_moon' || battleState?.domainRule === 'dark_moon') && !battleState?._darkMoonScouted;
 }
 
-// Fix#3: 暗月侦查判定
+// Fix#3: 暗月侦查判定（光系/超能系/妖精系可侦查）
 export function canDarkMoonScout(move) {
   const rule = getSpiritDomainRule('dark_moon');
-  return rule?.scoutTypes?.includes(move?.t);
+  const scoutTypes = rule?.scoutTypes || ['FAIRY', 'PSYCHIC', 'LIGHT'];
+  return scoutTypes.includes(move?.t);
 }
 
 // Fix#4: 寄生治疗重定向 — 返回实际治疗量(扣除流向Boss的部分)
-export function applyParasiteHealRedirect(state, healAmount, enemy, addLog) {
+export function applyParasiteHealRedirect(state, healAmount, enemy, addLog, getStats) {
   if (!state?._parasiteApplied || !enemy || enemy.currentHp <= 0) return healAmount;
   const redirectPct = 0.5;
   const redirected = Math.floor(healAmount * redirectPct);
   const actual = healAmount - redirected;
   if (redirected > 0) {
-    const maxHp = enemy.maxHp || 9999;
+    const maxHp = getStats ? getStats(enemy).maxHp : (enemy.maxHp || 9999);
     enemy.currentHp = Math.min(maxHp, enemy.currentHp + redirected);
     if (addLog) addLog(`🦠 寄生吸收！${redirected} 点治疗流向了Boss`);
   }

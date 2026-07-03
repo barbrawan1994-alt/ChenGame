@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="冰霜巨像 original avatar">
+  
+  <defs>
+    <linearGradient id="bga288" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d7fbff"/>
+      <stop offset=".55" stop-color="#71d6e8"/>
+      <stop offset="1" stop-color="#318aa3"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#d7fbff"/>
+      <stop offset=".6" stop-color="#71d6e8"/>
+      <stop offset="1" stop-color="#318aa3"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#d7fbff"/>
+      <stop offset=".72" stop-color="#71d6e8"/>
+      <stop offset="1" stop-color="#318aa3"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#318aa3" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bga288)"/>
+  <circle cx="128" cy="128" r="110" fill="#fff" opacity=".12"/>
+  <circle cx="128" cy="128" r="101" fill="#ffffff" opacity=".18"/>
+  <g opacity=".35"><circle cx="209" cy="73" r="1.9" fill="#fff" opacity="0.59"/><circle cx="44" cy="67" r="1.5" fill="#fff" opacity="0.63"/><circle cx="27" cy="112" r="1.9" fill="#fff" opacity="0.35"/><circle cx="197" cy="25" r="1.2" fill="#fff" opacity="0.40"/><circle cx="163" cy="29" r="1.2" fill="#fff" opacity="0.68"/><circle cx="15" cy="96" r="1.7" fill="#fff" opacity="0.33"/><circle cx="101" cy="115" r="1.0" fill="#fff" opacity="0.63"/><circle cx="96" cy="230" r="2.4" fill="#fff" opacity="0.45"/><circle cx="1" cy="45" r="2.3" fill="#fff" opacity="0.58"/><circle cx="60" cy="6" r="2.3" fill="#fff" opacity="0.33"/></g>
+  <g transform="rotate(0 128 128)">
+    <path d="M76 95 L110 60 H155 L187 102 L172 176 H83 Z" fill="url(#body)" filter="url(#softShadow)"/><path d="M100 71 L123 28 L140 67 Z" fill="#d7fbff"/><path d="M145 73 L171 39 L170 86 Z" fill="#71d6e8"/><rect x="98" y="119" width="60" height="15" rx="7" fill="#318aa3" opacity=".38"/><circle cx="114" cy="126" r="5" fill="#d7fbff"/><circle cx="142" cy="126" r="5" fill="#d7fbff"/><circle cx="128" cy="86" r="7" fill="#d7fbff" opacity=".9"/>
+  </g>
+  <path d="M42 198 C82 222 171 226 216 184" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".22"/>
+</svg>

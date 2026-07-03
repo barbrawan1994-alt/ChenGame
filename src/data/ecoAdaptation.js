@@ -52,11 +52,11 @@ export const PRESSURE_RULES = {
     hint: '暗/幽灵/超能适应暗域，妖精/一般系易恐慌',
   },
   spirit: {
-    adapted: ['PSYCHIC', 'FAIRY', 'COSMIC'],
+    adapted: ['PSYCHIC', 'FAIRY', 'COSMIC', 'TIME'],
     maladapted: ['NORMAL', 'FIGHT'],
     adaptedMult: 1.05,
     maladaptMult: 0.93,
-    hint: '超能/妖精/宇宙系灵压适应，一般/格斗系吃力',
+    hint: '超能/妖精/宇宙/时空系灵压适应，一般/格斗系吃力',
   },
   wind: {
     adapted: ['FLYING', 'ELECTRIC'],
@@ -71,6 +71,13 @@ export const PRESSURE_RULES = {
     adaptedMult: 1.05,
     maladaptMult: 0.9,
     hint: '毒/钢/地面适应沼泽，草/妖精易中毒',
+  },
+  chaos: {
+    adapted: ['CHAOS', 'DARK', 'GHOST'],
+    maladapted: ['FAIRY', 'LIGHT'],
+    adaptedMult: 1.06,
+    maladaptMult: 0.9,
+    hint: '混沌/暗/幽灵系适应混乱域，妖精/光系受压制',
   },
   normal: {
     adapted: [],

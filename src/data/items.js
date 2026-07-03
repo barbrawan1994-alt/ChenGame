@@ -9,7 +9,7 @@ export const BALLS = {
   // 对应遗迹工厂(Map3)、幽灵古堡(Map7)、银河空间站(Map12)
   dusk:   { id: 'dusk',   name: '黑暗球', rate: 3.5, price: 1000, icon: '🌑', desc: '在工厂/古堡/宇宙或抓幽灵系时效果拔群' },
   // 适合开局直接扔
-  quick:  { id: 'quick',  name: '先机球', rate: 5.0, price: 1500, icon: '⚡', desc: '战斗前3回合使用效果极佳' },
+  quick:  { id: 'quick',  name: '先机球', rate: 1.0, price: 1500, icon: '⚡', desc: '前3回合×3.0，之后×1.0' },
   // 适合打神兽/Boss战
   timer:  { id: 'timer',  name: '计时球', rate: 1.0, price: 1000, icon: '⏳', desc: '回合越多捕获率越高；倍率1+回合×0.3，上限4.0倍（与战斗结算一致）' },
   // 适合捕捉后直接用
@@ -104,6 +104,12 @@ export const TMS = [
   { id: 'tm_sound1',  name: '共鸣爆破', type: 'SOUND',   p: 70,  pp: 15, price: 3000,  desc: '音波系基础技能，共鸣频率爆破', tier: 1, shopSell: true },
   { id: 'tm_sound2',  name: '死亡咏叹', type: 'SOUND',   p: 100, pp: 8,  price: 8000,  desc: '音波系进阶技能，死亡之歌', tier: 2 },
   { id: 'tm_sound3',  name: '寂灭之音', type: 'SOUND',   p: 130, pp: 3,  price: 25000, desc: '音波系终极大招，万物寂灭', tier: 4 },
+  { id: 'tm_time1',   name: '时空乱流', type: 'TIME',    p: 60,  pp: 18, price: 3500,  desc: '时空系基础技能，卷入时空乱流', tier: 1, shopSell: true },
+  { id: 'tm_time2',   name: '时空撕裂', type: 'TIME',    p: 110, pp: 5,  price: 9000,  desc: '时空系进阶技能，撕裂维度', tier: 2 },
+  { id: 'tm_time3',   name: '纪元碾压', type: 'TIME',    p: 130, pp: 3,  price: 28000, desc: '时空系终极大招，亿年时光重压', tier: 4 },
+  { id: 'tm_chaos1',  name: '混沌脉冲', type: 'CHAOS',   p: 65,  pp: 18, price: 3500,  desc: '混沌系基础技能，释放不稳定能量', tier: 1, shopSell: true },
+  { id: 'tm_chaos2',  name: '次元崩壊', type: 'CHAOS',   p: 110, pp: 6,  price: 9000,  desc: '混沌系进阶技能，引发次元崩坏', tier: 2 },
+  { id: 'tm_chaos3',  name: '混沌风暴', type: 'CHAOS',   p: 140, pp: 3,  price: 30000, desc: '混沌系终极大招，毁灭一切', tier: 4 },
 ];
 
 export const MISC_ITEMS = {

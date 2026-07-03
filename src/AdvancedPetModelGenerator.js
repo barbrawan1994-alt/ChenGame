@@ -23,7 +23,14 @@ const TYPE_COLORS = {
   STEEL: { primary: '#B8B8B8', secondary: '#D0D0D0', accent: '#E8E8E8', dark: '#939393' },
   FAIRY: { primary: '#FFB6D9', secondary: '#FFC8E5', accent: '#FFD6ED', dark: '#CC9199' },
   GOD: { primary: '#FFD700', secondary: '#FFE66D', accent: '#FFF89C', dark: '#CCAD00' },
-  NORMAL: { primary: '#F5F5F5', secondary: '#FAFAFA', accent: '#FFFFFF', dark: '#C4C4C4' }
+  NORMAL: { primary: '#F5F5F5', secondary: '#FAFAFA', accent: '#FFFFFF', dark: '#C4C4C4' },
+  DARK: { primary: '#5C5470', secondary: '#705B76', accent: '#2D2B3D', dark: '#3D3852' },
+  WIND: { primary: '#B2EBF2', secondary: '#E0F7FA', accent: '#80DEEA', dark: '#7AB8C0' },
+  LIGHT: { primary: '#FFF9C4', secondary: '#FFFDE7', accent: '#FFF59D', dark: '#CCC79D' },
+  COSMIC: { primary: '#311B92', secondary: '#5C35B0', accent: '#B388FF', dark: '#1A0E5C' },
+  SOUND: { primary: '#4DD0E1', secondary: '#80DEEA', accent: '#E0F7FA', dark: '#35A0B0' },
+  TIME: { primary: '#7E57C2', secondary: '#9575CD', accent: '#D1C4E9', dark: '#5C3D8F' },
+  CHAOS: { primary: '#B71C1C', secondary: '#D32F2F', accent: '#FF8A80', dark: '#7F1313' }
 };
 
 // 基础SVG组件

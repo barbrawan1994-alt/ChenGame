@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="拳击猴 original avatar">
+  
+  <defs>
+    <linearGradient id="bga569" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc0a6"/>
+      <stop offset=".55" stop-color="#d95f3d"/>
+      <stop offset="1" stop-color="#7a271d"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#ffc0a6"/>
+      <stop offset=".6" stop-color="#d95f3d"/>
+      <stop offset="1" stop-color="#7a271d"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#ffc0a6"/>
+      <stop offset=".72" stop-color="#d95f3d"/>
+      <stop offset="1" stop-color="#7a271d"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#7a271d" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bga569)"/>
+  <circle cx="128" cy="128" r="113" fill="#fff" opacity=".12"/>
+  <circle cx="128" cy="128" r="104" fill="#ffffff" opacity=".18"/>
+  <g opacity=".35"><circle cx="13" cy="161" r="3.0" fill="#fff" opacity="0.37"/><circle cx="88" cy="236" r="2.3" fill="#fff" opacity="0.52"/><circle cx="68" cy="30" r="2.7" fill="#fff" opacity="0.42"/><circle cx="241" cy="41" r="2.2" fill="#fff" opacity="0.58"/><circle cx="71" cy="188" r="0.9" fill="#fff" opacity="0.46"/><circle cx="184" cy="219" r="2.4" fill="#fff" opacity="0.51"/><circle cx="156" cy="106" r="1.6" fill="#fff" opacity="0.43"/><circle cx="29" cy="133" r="2.7" fill="#fff" opacity="0.40"/><circle cx="62" cy="227" r="3.1" fill="#fff" opacity="0.26"/><circle cx="17" cy="210" r="1.4" fill="#fff" opacity="0.34"/></g>
+  <g transform="rotate(5 128 128)">
+    <ellipse cx="128" cy="159" rx="54" ry="49" fill="url(#body)" filter="url(#softShadow)"/><circle cx="128" cy="97" r="42" fill="url(#head)"/><path d="M76 141 C28 132 45 190 84 180" fill="#7a271d"/><path d="M180 141 C228 132 211 190 172 180" fill="#7a271d"/><path d="M101 56 H155 L165 79 Q128 93 91 79 Z" fill="#ffc0a6" opacity=".85"/><ellipse cx="112" cy="107" rx="7" ry="8" fill="#14213d"/><ellipse cx="144" cy="107" rx="7" ry="8" fill="#14213d"/><circle cx="115" cy="103" r="2.3" fill="#fff"/><circle cx="147" cy="103" r="2.3" fill="#fff"/><circle cx="128" cy="86" r="7" fill="#ffc0a6" opacity=".9"/>
+  </g>
+  <path d="M42 198 C82 222 171 226 216 184" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".22"/>
+</svg>

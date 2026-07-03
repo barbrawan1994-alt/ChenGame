@@ -1,5 +1,5 @@
 // ==========================================
-// 国战系统 - 魏蜀吴三国争霸
+// 国战系统 - 魏蜀吴晋四国争霸
 // ==========================================
 
 export const FACTIONS = {
@@ -27,25 +27,33 @@ export const FACTIONS = {
     bonus: { gold: 12, exp: 5, catchRate: 3, contribution: 8 },
     bonusDesc: '金币+12%, 经验+5%, 捕获率+3%, 战功+8%',
   },
+  jin: {
+    id: 'jin', name: '晋', fullName: '晋国', icon: '🐉',
+    color: '#4A148C', darkColor: '#311B92', lightColor: '#9C27B0',
+    lord: '司马炎', motto: '天命归晋，一统河山',
+    desc: '继承魏国基业的统一之国，兼具军事智谋与防御体系，生态建设强于他国。',
+    bonus: { gold: 6, exp: 6, catchRate: 1, contribution: 10, ecoBonus: 5 },
+    bonusDesc: '战功+10%, 金币+6%, 经验+6%, 捕获率+1%, 生态+5%',
+  },
   /** 玩家不可选；名城争夺条中的 NPC 势力 */
   qun: {
     id: 'qun', name: '群雄', fullName: '诸侯群雄', icon: '🏴',
     color: '#6A1B9A', darkColor: '#4A148C', lightColor: '#BA68C8',
     lord: '诸侯', motto: '乱世逐鹿',
-    desc: '吕布袁绍等诸侯联军，在洛阳荆州汉中与三国角力，不享受阵营天赋但会分走占领积分。',
+    desc: '吕布袁绍等诸侯联军，在洛阳荆州汉中与四国角力，不享受阵营天赋但会分走占领积分。',
     bonus: { gold: 0, exp: 0, catchRate: 0, contribution: 0 },
     bonusDesc: '名城争夺 NPC',
   },
 };
 
-export const FACTION_IDS = ['wei', 'shu', 'wu'];
-export const ALL_FACTION_IDS = ['wei', 'shu', 'wu', 'qun'];
+export const FACTION_IDS = ['wei', 'shu', 'wu', 'jin'];
+export const ALL_FACTION_IDS = ['wei', 'shu', 'wu', 'jin', 'qun'];
 
 // 初始领土分配（群雄也持有一些地图）
 export const INITIAL_TERRITORIES = {
-  1:  'shu', 2:  'shu', 3:  'wei', 4:  'wu',
+  1:  'shu', 2:  'jin', 3:  'jin', 4:  'wu',
   5:  'wei', 6:  'shu', 7:  'wu',  8:  'wu',
-  9:  'qun', 10: 'wei', 11: 'shu', 12: 'wei',
+  9:  'qun', 10: 'wei', 11: 'shu', 12: 'jin',
   13: 'qun',
   204: 'neutral', 205: 'neutral', 206: 'neutral',
 };
@@ -61,6 +69,7 @@ export const FACTION_TROOP_BIAS = {
   wei: { shield: 0.22, spear: 0.12, cavalry: 0.24, archer: 0.14, siege: 0.16, raider: 0.12 },
   shu: { shield: 0.14, spear: 0.24, cavalry: 0.12, archer: 0.20, siege: 0.12, raider: 0.18 },
   wu:  { shield: 0.12, spear: 0.14, cavalry: 0.16, archer: 0.26, siege: 0.10, raider: 0.22 },
+  jin: { shield: 0.20, spear: 0.16, cavalry: 0.18, archer: 0.16, siege: 0.18, raider: 0.12 },
   qun: { shield: 0.10, spear: 0.14, cavalry: 0.28, archer: 0.10, siege: 0.12, raider: 0.26 },
 };
 
@@ -164,6 +173,7 @@ export const FACTION_TRAINER_NAMES = {
   wei: ['铁卫', '锋将', '暗探', '重甲兵', '先锋官', '军师', '虎豹骑', '典军校尉'],
   shu: ['义士', '锦马超', '仁勇卫', '白耳兵', '无当飞军', '军策师', '虎贲将', '龙骑士'],
   wu: ['锐士', '甘宁水手', '弓弩手', '江东猛虎', '水军都督', '火攻师', '锦帆贼', '破浪将'],
+  jin: ['玄武卫', '龙骧将', '北府兵', '天罗使', '铁甲骑', '洛阳校尉', '征南将', '护国师'],
 };
 
 // 令牌商店
@@ -255,7 +265,7 @@ export const initTerritories = () => {
 };
 
 // 计算阵营国力
-export const calcFactionPower = (factionId, territories, gangPresets, playerFaction, playerAvgLevel) => {
+export const calcFactionPower = (factionId, territories, gangPresets, playerFaction, playerAvgLevel, sectBonus = 0) => {
   const gangPower = gangPresets
     .filter(g => g.faction === factionId)
     .reduce((sum, g) => sum + (g.power || 0), 0);
@@ -265,7 +275,7 @@ export const calcFactionPower = (factionId, territories, gangPresets, playerFact
 
   let playerBonus = 0;
   if (playerFaction === factionId) {
-    playerBonus = 1000 + (playerAvgLevel || 50) * 20;
+    playerBonus = 1000 + (playerAvgLevel || 50) * 20 + (sectBonus || 0);
   }
 
   return gangPower + territoryBonus + playerBonus;
@@ -291,7 +301,7 @@ export const getWeakestFaction = (territories) => {
 
 /** 获取各势力领土分布统计（用于UI显示） */
 export const getFactionTerritoryStats = (territories) => {
-  const stats = { wei: { count: 0, totalTroops: 0 }, shu: { count: 0, totalTroops: 0 }, wu: { count: 0, totalTroops: 0 }, qun: { count: 0, totalTroops: 0 }, neutral: { count: 0, totalTroops: 0 } };
+  const stats = { wei: { count: 0, totalTroops: 0 }, shu: { count: 0, totalTroops: 0 }, wu: { count: 0, totalTroops: 0 }, jin: { count: 0, totalTroops: 0 }, qun: { count: 0, totalTroops: 0 }, neutral: { count: 0, totalTroops: 0 } };
   for (const t of Object.values(territories || {})) {
     const key = t.owner || 'neutral';
     if (!stats[key]) stats[key] = { count: 0, totalTroops: 0 };
@@ -321,7 +331,7 @@ const troopCounterScore = (atkGarrison, defGarrison) => {
 };
 
 // 执行一次 War Tick — 四方势力（魏蜀吴群雄）都参与攻城
-export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, attackBuff) => {
+export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, attackBuff, sectBonus = 0) => {
   const newTerritories = JSON.parse(JSON.stringify(territories));
   const log = [];
   const weakest = getWeakestFaction(newTerritories);
@@ -376,9 +386,9 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
 
     const atkPower = attackerFid === 'qun'
       ? 2500 + Math.floor(Math.random() * 1500)
-      : calcFactionPower(attackerFid, newTerritories, gangPresets, playerFaction, playerAvgLevel);
+      : calcFactionPower(attackerFid, newTerritories, gangPresets, playerFaction, playerAvgLevel, attackerFid === playerFaction ? sectBonus : 0);
     const defPower = defenderFid
-      ? calcFactionPower(defenderFid, newTerritories, gangPresets, playerFaction, playerAvgLevel)
+      ? calcFactionPower(defenderFid, newTerritories, gangPresets, playerFaction, playerAvgLevel, defenderFid === playerFaction ? sectBonus : 0)
       : 3000;
 
     const atkGarrison = generateGarrison(attackerFid, Math.floor(60 + Math.random() * 80));
@@ -674,7 +684,7 @@ export const KINGDOM_CAMPAIGNS = [
 ];
 
 // 都城地图ID
-export const CAPITAL_MAP_IDS = { wei: 201, shu: 202, wu: 203 };
+export const CAPITAL_MAP_IDS = { wei: 201, shu: 202, wu: 203, jin: 207 };
 
 // 重置每日计数
 export const resetKingdomDailyCounts = (kw) => {

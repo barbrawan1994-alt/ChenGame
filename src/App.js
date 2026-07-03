@@ -14,6 +14,7 @@ import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
+import { HudEventFeed, useHudEvents } from './hooks/useHudEvents';
 
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
@@ -58,6 +59,7 @@ import {
   MAPS,
   MAIN_GYM_BADGE_COUNT,
   LEAGUE_UNLOCK_STORY_INDEX,
+  LEGEND_OBTAIN_RULES,
   STORY_SCRIPT,
   // SANGUO_STORY, // 三国志篇尚未接入，暂不导入
   TRAINER_NAMES,
@@ -85,15 +87,39 @@ import {
   WORLD_BOSSES, WORLD_BOSS_MAX_ATTEMPTS, WORLD_BOSS_REQ_BADGES, DEFAULT_WORLD_BOSS_STATE, getTodayBoss, scaleBossHp, scaleBossLevel,
   getInfinityFloorModifier, isInfinityMilestoneFloor, getInfinityMilestoneReward, INFINITY_MILESTONE_FLOORS,
   SPIRIT_DOMAINS, getSpiritDomainByMapId, getSpiritDomainRule,
-  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById, MORAL_BRANCHES, getMoralBranch, checkBranchRequirements,
+  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById, isMapEcoRestored, parseBossRouteModifiers, MORAL_BRANCHES, getMoralBranch, checkBranchRequirements, checkRouteRequirements,
   ECO_EVENTS, getActiveEcoEventForMap, getEcoEventByMapId, getDefaultEcologyForMap, applyEcologyDelta, getEcologyTier, ECO_METRIC_LABELS,
+  getRegionStage, REGION_STAGE_DEFS, REGION_CHAINS, applyRegionChains,
   getRegionPressure, getPartyAdaptationSummary, getAdaptationMult,
   getBossMechanicDef, checkForestWillEcology, ECO_LINKED_BOSSES,
   inferPetTags, checkTagRestriction, PET_TAG_DEFS,
   FATIGUE_CONFIG, getPetFatigue, addFatigue, reduceFatigue, getFatigueLabel, canPetBattle, getFatigueSpeedMult,
   INFINITY_ROUTE_TYPES, pickRouteOptions, pickBlessingOptions, pickSkillMutation, applySkillMutation, SPIRIT_BLESSINGS,
   RESCUE_EVENTS, ENV_PUZZLES, OBSERVATION_TARGETS, getRescueEventsForMap, getPuzzlesForMap, getObservationsForMap,
+  BONDING_QUESTS, getBondingQuestById, getBondingQuestsForMap, checkBondingStepRequirements, checkBondingEcology, BONDING_STEP_TYPES, WILD_PET_STATES,
+  SANCTUARY_FACILITIES, SANCTUARY_SYNERGY, DEFAULT_SANCTUARY, getFacilityDef, calcSanctuaryEcoBonus, getSanctuaryUpgradeCost, checkSynergyMatch,
+  SECT_ECO_ROLES, GENERAL_PVE_TACTICS, KINGDOM_PVE_TASKS, AWAKENING_TIERS, calcFusionPveBonuses, checkJutsuPetSynergy, getUnlockedFusionSystems, getSectEcoRole, getPartySectIds, checkAwakeningTier, getPetAwakeningTier, FUSION_UNLOCK_SCHEDULE,
+  JUTSU_SECRET_REALMS, getJutsuRealmById, getAvailableJutsuRealms,
+  FRUIT_SEA_ZONES, getFruitSeaZoneById, getAvailableFruitSeaZones,
+  SECT_SECRET_REALMS, getSectRealmById, getAvailableSectRealms,
+  ANCIENT_BATTLEFIELDS, getBattlefieldById, getAvailableBattlefields, BOSS_STAT_MULTIPLIER, BOSS_HP_MULTIPLIER,
+  NATIONAL_CALAMITIES, getActiveNationalCalamities, getCalamityById,
+  CANYON_CHAPTER_ID, CANYON_VARS_DEFAULT, CANYON_VAR_LABELS, applyCanyonVarDelta, getCanyonBossModifiers, resolveCanyonEnding, getCanyonRegionLabel, getCanyonStepUnlocks,
+  GHOST_CHAPTER_ID, GHOST_VARS_DEFAULT, GHOST_VAR_LABELS, applyGhostVarDelta, getGhostBossModifiers, resolveGhostEnding, getGhostRegionLabel, getGhostStepUnlocks,
+  SEAL_CHAPTER_ID, SEAL_VARS_DEFAULT, SEAL_VAR_LABELS, applySealVarDelta, getSealBossModifiers, resolveSealEnding, getSealRegionLabel, getSealStepUnlocks,
+  PLAYER_STYLES, BREATHING_PVE_STYLES, FUSION_PLAY_TEMPLATES, BUILD_PRESETS, KINGDOM_POSITIONS, getUnlockedCrossSystems, calcCrossSystemPveBonuses, mergePveBonuses,
+  DEFAULT_SECT_PLAYER_STATE, DEFAULT_SECT_RESOURCES, SECT_RANKS, SECT_JOIN_REQ_BADGES, SECT_SUB_SECT_REQ_RANK, SECT_SWITCH_REP_COST,
+  SECT_XINFA, SECT_SHOP_ITEMS, SECT_RESOURCE_LABELS, SECT_ALLIANCES, SECT_FACTION_LEAN, SECT_JIANGHU_EVENTS, SECT_COMBO_SKILLS,
+  getSectRankByRep, getSectRankInfo, getLearnableMartialArts, getMartialArtById, getSectMartialArts,
+  generateSectDailyTasks, getActiveJianghuEvent, getComboSkillKey, calcSectKingdomPowerBonus,
+  getSectFactionStance, SECT_REALM_BY_SECT,
 } from './data';
+import {
+  getPlayerSectCombatContext, applyXinfaDamageMods, applyMartialArtEffect, buildMartialMove,
+  getAvailableMartialMoves, gainSectMomentum, spendSectMomentum, initBattleSectState,
+  SECT_MOMENTUM_MAX, SECT_MOMENTUM_PER_CRIT, SECT_MOMENTUM_PER_DODGE, SECT_MOMENTUM_PER_HEAL, SECT_MOMENTUM_PER_REFLECT, SECT_MOMENTUM_PER_KILL,
+  getXinfaEffectDesc, onSectDodge, onSectHeal, applySectDeathSave,
+} from './utils/sectLogic';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
   COMMON_TECHNIQUES, TYPE_TECHNIQUES, DOMAINS, BINDING_VOWS,
@@ -121,9 +147,17 @@ import {
 import {
   GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
   GANG_ICONS, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
-  getGangRank, getGangSkillBonus, getGangSkills, getGangMaxSkills, getGangWarLevel, getGangWarReward,
+  getGangRank, getGangSkillBonus, getGangSkills, getGangMaxSkills, getGangWarLevel, getGangWarReward, stripGangCombatBonus,
   generateCafeRecruits, DEFAULT_GANG_STATE, PERSONAL_SKILL_COST_MULT, PERSONAL_SKILL_BASE_COST,
 } from './data/gang';
+import {
+  AWAKENING_MOVES, getAwakeningMove, canAwakenPet, calcResonanceBonuses,
+  getEquippedRelicEffects, rollInfinityRelic, getRelicById, MAX_EQUIPPED_RELICS, RELIC_RARITY,
+  isRegionBlessed, getEcologyGuardianForMap, getGuardianPointsForBranch, GUARDIAN_MILESTONES,
+  getUnclaimedGuardianMilestones, isGangKingdomAligned, getGangSkillCapBonus, BLESSED_SHINY_BONUS,
+  GUARDIAN_ENCOUNTER_RATE, INFINITY_RELICS, getDuplicateRelicGold, getFruitTransformMinTurn,
+  mergeStatEffectMults, expireTranscendenceBoost, getEffectiveShinyBonus, TRANSCENDENCE_STAGE_BOOST,
+} from './data/resonance';
 import {
   FACTIONS, FACTION_IDS, ALL_FACTION_IDS, INITIAL_TERRITORIES, WAR_MAP_IDS,
   MILITARY_RANKS, getMilitaryRank, FACTION_TRAINER_NAMES, TOKEN_SHOP,
@@ -135,6 +169,13 @@ import {
   generateGarrison, runTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
 } from './data/kingdom';
+import {
+  DEFAULT_KINGDOM_SIM_STATE, initKingdomSimTerritories, executeTurn,
+  NATION_STYLE_BONUS, SCENARIOS, JIN_CAMPAIGNS,
+  INFLUENCE_LEVELS, getInfluenceLevel, calcBattleRating, BATTLE_RATINGS,
+  DEFAULT_HQ_STATE, DISPATCH_MISSIONS, AI_GANGS_INITIAL,
+  MEMBER_ROLES, generateMember, WAR_MAP_NODES,
+} from './data/kingdomWar';
 import {
   MANPOWER_RESERVE_CAP,
   KW_TROOP_TYPES,
@@ -419,6 +460,8 @@ const SuperSpiritIcon = ({ className = '', size = 56, label = GAME_NAME }) => (
   </span>
 );
 
+const IS_ELECTRON = typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent);
+
 export default function RPG(props) {
   // ==========================================
   // 提取的共享内联样式常量 (减少重复对象创建)
@@ -446,12 +489,52 @@ export default function RPG(props) {
         if (sd && (!sd.arenaState || !Array.isArray(sd.arenaState.rewardsClaimed))) {
           sd.arenaState = { ...DEFAULT_ARENA_STATE, ...(sd.arenaState || {}), rewardsClaimed: sd.arenaState?.rewardsClaimed || [] };
         }
+        const sv = sd?.saveVersion || 0;
+        if (sv < 28) {
+          if (!sd.relics) sd.relics = { equipped: [], owned: [] };
+          if (sd.guardianScore == null) sd.guardianScore = 0;
+          if (!Array.isArray(sd.guardianMilestonesClaimed)) sd.guardianMilestonesClaimed = [];
+          if (!sd.narutoState) sd.narutoState = {};
+          if (!sd.kingdomWar || Object.keys(sd.kingdomWar).length === 0) sd.kingdomWar = { ...DEFAULT_KINGDOM_WAR };
+          sd.saveVersion = 28;
+        }
+        if (sv < 29) {
+          if (!sd.sanctuaryState) sd.sanctuaryState = { ...DEFAULT_SANCTUARY, facilities: {}, residents: [] };
+          if (!sd.bondingProgress) sd.bondingProgress = {};
+          if (!sd.ecoCrisisRoutes) sd.ecoCrisisRoutes = {};
+          sd.saveVersion = 29;
+        }
+        if (sv < 30) {
+          if (!sd.fusionState) sd.fusionState = { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null };
+          sd.saveVersion = 30;
+        }
+        if (sv < 31) {
+          if (!sd.kingdomSim) sd.kingdomSim = { ...DEFAULT_KINGDOM_SIM_STATE };
+          if (!sd.gangHQ) sd.gangHQ = { ...DEFAULT_HQ_STATE };
+          sd.saveVersion = 31;
+        }
+        if (sv < 32) {
+          if (!sd.sectPlayer) {
+            sd.sectPlayer = { ...DEFAULT_SECT_PLAYER_STATE, sectResources: { ...DEFAULT_SECT_RESOURCES } };
+          } else {
+            const dsp = { ...DEFAULT_SECT_PLAYER_STATE, sectResources: { ...DEFAULT_SECT_RESOURCES } };
+            for (const key of Object.keys(dsp)) {
+              if (sd.sectPlayer[key] === undefined) sd.sectPlayer[key] = dsp[key];
+            }
+          }
+          sd.saveVersion = 32;
+        }
         if (process.env.NODE_ENV === 'development') console.log("✅ 成功读取存档:", savedDataRef.current.trainerName);
       } else {
         savedDataRef.current = {};
       }
     } catch (e) {
       console.error("存档读取失败", e);
+      const rawSave = localStorage.getItem(SAVE_KEY);
+      if (rawSave) {
+        try { localStorage.setItem(SAVE_KEY + '_backup', rawSave); } catch(be) {}
+        console.log("已将损坏存档备份至 " + SAVE_KEY + '_backup');
+      }
       savedDataRef.current = {};
       saveCorruptedRef.current = true;
     }
@@ -517,6 +600,19 @@ export default function RPG(props) {
   const [towerFloor, setTowerFloor] = useState(savedData.towerFloor || 0);
   const [viewedIntros, setViewedIntros] = useState(savedData.viewedIntros || []);
   const [sectTitles, setSectTitles] = useState(savedData.sectTitles || []);
+  const [sectPlayer, setSectPlayer] = useState(() => ({
+    ...DEFAULT_SECT_PLAYER_STATE,
+    ...(savedData.sectPlayer || {}),
+    sectResources: { ...DEFAULT_SECT_RESOURCES, ...(savedData.sectPlayer?.sectResources || {}) },
+    sectXinfaLevels: { ...(savedData.sectPlayer?.sectXinfaLevels || {}) },
+    sectMartialArts: [...(savedData.sectPlayer?.sectMartialArts || [])],
+    sectEventLog: [...(savedData.sectPlayer?.sectEventLog || [])],
+    sectDailyTasks: [...(savedData.sectPlayer?.sectDailyTasks || [])],
+    sectStances: { ...(savedData.sectPlayer?.sectStances || {}) },
+    sectRealmProgress: { ...(savedData.sectPlayer?.sectRealmProgress || {}) },
+    sectChiefTrials: [...(savedData.sectPlayer?.sectChiefTrials || [])],
+  }));
+  const [sectHubTab, setSectHubTab] = useState('overview');
   const [leagueWins, setLeagueWins] = useState(savedData.leagueWins || 0);
   const [dexMilestoneClaimed, setDexMilestoneClaimed] = useState(() => ({ p10: false, p25: false, p50: false, p100: false, ...(savedData.dexMilestoneClaimed || {}) }));
   const [lastPetTradeDate, setLastPetTradeDate] = useState(savedData.lastPetTradeDate || savedData.lastTradeDate || '');
@@ -529,6 +625,12 @@ export default function RPG(props) {
   const [partnerModal, setPartnerModal] = useState(false);
   const [skillInheritModal, setSkillInheritModal] = useState(null);
   const [comboUsedThisBattle, setComboUsedThisBattle] = useState(false);
+
+  // 跨界共鸣系统
+  const [relics, setRelics] = useState(() => savedData.relics || { equipped: [], owned: [] });
+  const [guardianScore, setGuardianScore] = useState(savedData.guardianScore || 0);
+  const [guardianMilestonesClaimed, setGuardianMilestonesClaimed] = useState(savedData.guardianMilestonesClaimed || []);
+  const [relicDropModal, setRelicDropModal] = useState(null);
 
   // LycoReco咖啡厅
   const [cafe, setCafe] = useState(savedData.cafe || { ...DEFAULT_CAFE_STATE });
@@ -574,10 +676,28 @@ export default function RPG(props) {
   const [genDexDetail, setGenDexDetail] = useState(null);
   const [generalDrawResult, setGeneralDrawResult] = useState(null);
 
+  // 单人国战模拟系统
+  const [kingdomSim, setKingdomSim] = useState(() => {
+    const saved = savedData.kingdomSim || { ...DEFAULT_KINGDOM_SIM_STATE };
+    if (!saved.nationStats) saved.nationStats = { ...DEFAULT_KINGDOM_SIM_STATE.nationStats };
+    if (!saved.territories || Object.keys(saved.territories).length === 0) {
+      saved.territories = initKingdomSimTerritories();
+    }
+    if (!saved.aiGangs || saved.aiGangs.length === 0) {
+      saved.aiGangs = JSON.parse(JSON.stringify(AI_GANGS_INITIAL));
+    }
+    return saved;
+  });
+
+  // 帮派驻地系统
+  const [gangHQ, setGangHQ] = useState(() => {
+    return savedData.gangHQ || { ...DEFAULT_HQ_STATE };
+  });
+
   const [dailyChallenge, setDailyChallenge] = useState(savedData.dailyChallenge || null);
 
   // 成就系统
-  const [achStats, setAchStats] = useState(savedData.achStats || { ...DEFAULT_ACH_STATS });
+  const [achStats, setAchStats] = useState(() => ({ ...DEFAULT_ACH_STATS, ...(savedData.achStats || {}) }));
   const [weatherTypesSet, setWeatherTypesSet] = useState(() =>
     new Set(Array.isArray(savedData.weatherTypesSet) ? savedData.weatherTypesSet : [])
   );
@@ -693,7 +813,7 @@ useEffect(() => {
                             const newMax = getStats(pet).maxHp;
                             if (pet.currentHp > 0) pet.currentHp = Math.min(newMax, pet.currentHp + (newMax - oldMax));
                         }
-                        if (!pet.canEvolve && pet.evo && pet.level >= (pet.evoLvl || 30) && !pet.isEvolved) pet.canEvolve = true;
+                        if (!pet.canEvolve && pet.evo && pet.level >= (pet.evoLvl || 30) && !pet.isEvolved && !POKEDEX.find(d => d.id === pet.id)?.evoCondition) pet.canEvolve = true;
                         const maxHp = getStats(pet).maxHp;
                         return { ...pet, currentHp: Math.min(maxHp, (pet.currentHp || maxHp) + adjHpRegen), intimacy: Math.min(255, (pet.intimacy || 0) + adjIntimacy) };
                     }));
@@ -710,7 +830,7 @@ useEffect(() => {
                             const newMax = getStats(pet).maxHp;
                             if (pet.currentHp > 0) pet.currentHp = Math.min(newMax, pet.currentHp + (newMax - oldMax));
                         }
-                        if (!pet.canEvolve && pet.evo && pet.level >= (pet.evoLvl || 30) && !pet.isEvolved) pet.canEvolve = true;
+                        if (!pet.canEvolve && pet.evo && pet.level >= (pet.evoLvl || 30) && !pet.isEvolved && !POKEDEX.find(d => d.id === pet.id)?.evoCondition) pet.canEvolve = true;
                         const maxHp = getStats(pet).maxHp;
                         return { ...pet, currentHp: Math.min(maxHp, (pet.currentHp || maxHp) + adjHpRegen), intimacy: Math.min(255, (pet.intimacy || 0) + adjIntimacy) };
                     }));
@@ -772,8 +892,15 @@ useEffect(() => {
   // 2. 选择呼吸法 Buff
   const selectInfinityBuff = (buff) => {
     if (buff.effect && typeof buff.effect === 'string') {
-      setInfinityState(prev => ({ ...prev, blessings: [...(prev.blessings || []), buff] }));
-      showMapToast(buff.icon || '✨', buff.name, buff.desc, 2000);
+      const MAX_BLESSINGS = 6;
+      let added = false;
+      setInfinityState(prev => {
+        const cur = prev.blessings || [];
+        if (cur.length >= MAX_BLESSINGS || cur.some(b => b.id === buff.id)) return prev;
+        added = true;
+        return { ...prev, blessings: [...cur, buff] };
+      });
+      showMapToast(added ? (buff.icon || '✨') : '⚠️', added ? buff.name : '无法添加', added ? buff.desc : '祝福已满或重复', 2000);
       nextInfinityFloor();
       return;
     }
@@ -833,7 +960,7 @@ useEffect(() => {
     if (route.id === 'merchant') {
       const cost = route.cost || 500;
       if (gold < cost) { showMapToast('💰', '金币不足', `需要 ${cost} 金`, 1500); return; }
-      setGold(g => g - cost);
+      setGold(g => Math.max(0, g - cost));
       updateAchStat({ totalGoldSpent: cost });
       setParty(prev => prev.map(p => {
         const s = getStats(p);
@@ -847,7 +974,7 @@ useEffect(() => {
     if (route.id === 'heal_spring') {
       setParty(prev => prev.map(p => {
         const s = getStats(p);
-        return { ...p, currentHp: Math.min(s.maxHp, Math.floor(s.maxHp * 0.7)), fatigue: reduceFatigue(p, 35) };
+        return { ...p, currentHp: Math.min(s.maxHp, p.currentHp + Math.floor(s.maxHp * 0.3)), fatigue: reduceFatigue(p, 35) };
       }));
       showMapToast('💚', '治疗泉', '泉水治愈了队伍的伤势', 2000);
       nextInfinityFloor();
@@ -867,7 +994,30 @@ useEffect(() => {
     }
     if (route.id === 'spirit_event') {
       const tempId = _.sample([1, 4, 7, 25, 43]) || 1;
-      showMapToast('🐾', '灵兽事件', `一只野生精灵加入了临时同行（本层有效）`, 2500);
+      showMapToast('🐾', '精灵事件', `一只野生精灵加入了临时同行（本层有效）`, 2500);
+      nextInfinityFloor();
+      return;
+    }
+    if (route.id === 'eco_puzzle') {
+      const puzzle = _.sample(ENV_PUZZLES.filter(p => (infinityState?.floor || 0) >= 5)) || ENV_PUZZLES[0];
+      showMapToast('🧩', '生态解谜', puzzle?.name || '解开机关', 2500);
+      setGold(g => g + 800);
+      nextInfinityFloor();
+      return;
+    }
+    if (route.id === 'bonding') {
+      showMapToast('💫', '结契事件', '遭遇可结契野生精灵，亲密度+10', 2500);
+      setParty(prev => prev.map((p, i) => i === 0 ? { ...p, intimacy: Math.min(255, (p.intimacy || 0) + 10) } : p));
+      nextInfinityFloor();
+      return;
+    }
+    if (route.id === 'sanctuary_rest') {
+      setParty(prev => prev.map(p => {
+        const s = getStats(p);
+        return { ...p, currentHp: Math.min(s.maxHp, p.currentHp + Math.floor(s.maxHp * 0.4)), fatigue: reduceFatigue(p, 40) };
+      }));
+      applyMapEcologyDelta(currentMapId || 1, { pollution: -5, stability: 5 });
+      showMapToast('🏡', '圣域休息', '体力恢复，区域污染减轻', 2500);
       nextInfinityFloor();
       return;
     }
@@ -881,25 +1031,18 @@ const [pendingTask, setPendingTask] = useState(null);
   // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
   const imageMap = useMemo(() => {
     const map = {};
-    // 注意：这里 pokemon_images 要和 manifest.json 里的 data_source_id 一致
     const sourceItems = props?.data?.pokemon_images?.items || [];
     
     sourceItems.forEach(item => {
-      // 1. 获取 ID (确保是数字)
       const id = Number(item.pet_id?.value);
-      
-      // 2. 获取图片 URL (使用更兼容的读取方式)
       let imgUrl = null;
       const files = item.pet_img?.value;
       
       if (Array.isArray(files) && files.length > 0) {
         const firstFile = files[0];
-        // 优先尝试获取中等尺寸缩略图 (link.medium)，如果没有则尝试直接获取 link 或 url
-        // 伙伴云的图片对象结构可能是 { link: { medium: "..." } } 也可能是 { url: "..." }
         imgUrl = firstFile?.link?.medium || firstFile?.link || firstFile?.url;
       }
 
-      // 3. 只有当 ID 和 图片地址 都存在时才存入映射表
       if (id && imgUrl) {
         map[id] = imgUrl;
       }
@@ -941,16 +1084,23 @@ const [pendingTask, setPendingTask] = useState(null);
     return { type: 'emoji', emoji: pet.emoji || '🐾' };
   };
   
-  const renderAvatar = (pet, isEnemy = false) => {
+  const renderAvatar = (pet, isEnemy = false, variant = 'avatar') => {
     if (!pet) return null;
-    const visual = generatePetVisual(pet);
+    const visual = generatePetVisual(pet, variant);
     
     if (visual.type === 'image' || visual.type === 'pixel') {
       const fallbackUrls = getSpriteFallbackUrls(pet);
       const tc = TYPES[pet.type]?.color || '#999';
       const isDigimon = visual.url && visual.url.includes('digi-api.com');
       return (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          minWidth: '1em',
+          minHeight: variant === 'portrait' ? '1.4em' : '1em',
+          aspectRatio: variant === 'portrait' ? '2 / 3' : '1 / 1',
+        }}>
           <img 
             src={visual.url} 
             alt={pet.name} 
@@ -1064,6 +1214,7 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
   }, [currentMapId, mapWeathers]);
 
   const [leagueRound, setLeagueRound] = useState(savedData.leagueRound || 0);
+  const [leagueRunNoDamage, setLeagueRunNoDamage] = useState(savedData.leagueRunNoDamage || false);
   // 在 RPG 组件内部
 
 // 还需要一个控制头像选择弹窗的状态
@@ -1147,6 +1298,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [gymEntryModal, setGymEntryModal] = useState(null);
   const [ecoCrisisModal, setEcoCrisisModal] = useState(null);
   const [ecoBranchModal, setEcoBranchModal] = useState(null);
+  const [ecoRouteModal, setEcoRouteModal] = useState(null);
   const [nonCombatModal, setNonCombatModal] = useState(null);
   const [statTooltip, setStatTooltip] = React.useState(null); 
   // 筛选和详情
@@ -1258,6 +1410,7 @@ const [infinityState, setInfinityState] = useState(() => {
   const [showTypeChart, setShowTypeChart] = useState(false);
   const battleSpeedRef = useRef(1);
   useEffect(() => { battleSpeedRef.current = battleSpeed; }, [battleSpeed]);
+  const hudEvents = useHudEvents({ party, gold, battle, view });
   const [menuLeadSpriteErr, setMenuLeadSpriteErr] = useState(false);
   useEffect(() => { setMenuLeadSpriteErr(false); }, [party[0]?.uid, party[0]?.id]);
   const inventoryRef = useRef(inventory);
@@ -1305,7 +1458,7 @@ const [infinityState, setInfinityState] = useState(() => {
       }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
-    if (bestScore < 0) { bestIdx = 0; }
+    if (bestScore < 0) { bestIdx = -1; }
     if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
     const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx, enemyIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
@@ -1348,6 +1501,37 @@ const [infinityState, setInfinityState] = useState(() => {
     if (team?.some((p, i) => p && starts[i] != null && p.currentHp < starts[i])) return true;
     return false;
   };
+  const handleWinRef = useRef(null);
+  const checkBattleObjectiveMet = (battleState) => {
+    const obj = battleState?.battleObjective;
+    if (!obj) return false;
+    if (obj === 'escape') return (battleState.turnCount || 0) >= (battleState.objectiveTurns || 10);
+    if (obj === 'purify') return (battleState._purifyProgress ?? 100) <= 0;
+    if (obj === 'protect') return (battleState._protectHp ?? 0) > 0 && (battleState.turnCount || 0) >= (battleState.objectiveTurns || 8);
+    if (obj === 'capture_alive') return (battleState.enemyParty || []).length > 0 && battleState.enemyParty.every(e => !e || e._capturedAlive);
+    return false;
+  };
+  const canWinByObjective = (bs) => {
+    if (!bs?.battleObjective) return true;
+    return checkBattleObjectiveMet(bs);
+  };
+  const shouldBlockStandardWin = (bs) => {
+    const obj = bs?.battleObjective;
+    if (!obj) return false;
+    if (obj === 'capture_alive') {
+      const enemies = bs.enemyParty || [];
+      if (enemies.some(e => e && e.currentHp <= 0 && !e._capturedAlive)) return 'fail';
+      if (!enemies.every(e => !e || e._capturedAlive)) return 'wait';
+    }
+    if (['purify', 'escape', 'protect'].includes(obj) && !checkBattleObjectiveMet(bs)) return 'wait';
+    return false;
+  };
+  const getObjectiveHint = (obj) => ({
+    purify: '净化战：使用妖精/草/冰/超能系技能降低污染值',
+    protect: '守护战：保护目标存活至指定回合',
+    capture_alive: '活捕战：制服敌人但不可击杀',
+    escape: '逃脱战：撑过指定回合即胜',
+  }[obj] || '');
    // 🎵 [新增] 音频控制 Ref 和 State
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(savedData.isMuted ?? false); // 静音状态
@@ -1511,13 +1695,13 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (enemy.status === 'SLP' || enemy.status === 'FRZ') baseRate *= 2.0;
       else if (enemy.status === 'PAR' || enemy.status === 'BRN' || enemy.status === 'PSN') baseRate *= 1.5;
 
-      // 治愈球捕获倍率
-      if (ballType === 'heal') baseRate *= 1.2;
+      // 治愈球：捕获后恢复满HP（倍率已在ball.rate中计算）
 
       // 帮派+阵营捕获率加成
-      const gangCatchBonus = getGangSkillBonus(getGangSkills(gang)).catchRate || 0;
+      const gangCatchBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar))).catchRate || 0;
       const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
-      baseRate *= (1 + (gangCatchBonus + kwCatchBonus) / 100);
+      const relicCatchBonus = getEquippedRelicEffects(relics).catchRateBonus || 0;
+      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus, 40) / 100);
 
       // 徽章加成：每枚徽章提升2%捕获率上限
       const badgeBonus = 1 + Math.min(badges.length, 10) * 0.015;
@@ -2000,8 +2184,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
   };
 
   const getInitialResource = (maxValue, config = {}) => {
-    const configuredPct = Number.isFinite(config.initialPercent) ? config.initialPercent : 0;
-    const pct = configuredPct > 0 ? configuredPct : 0.25;
+    const configuredPct = Number.isFinite(config.initialPercent) ? config.initialPercent : 0.25;
+    const pct = configuredPct;
     return Math.max(0, Math.min(maxValue || 0, Math.floor((maxValue || 0) * pct)));
   };
 
@@ -2028,14 +2212,149 @@ const [viewStatPet, setViewStatPet] = useState(null);
         && (move.pp === undefined || move.pp > 0)
         && !((unit?.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0);
     }
+    if (move.isMartialArt) {
+      const hasPP = (move.pp === undefined || move.pp > 0);
+      const hasMomentum = !(move.momentumCost > 0 && (battleState?._sectMomentum || 0) < move.momentumCost);
+      return hasPP && hasMomentum;
+    }
     return (move.pp || 0) > 0;
   };
 
   // [核心] 属性计算函数 - 委托给 utils/statsCalculator.js
   // ==========================================
   function getStats(pet, stages = null, status = null, gangBonusOverride = undefined) {
-    return getStatsRaw(pet, stages, status, { currentTitle, gang, housing }, gangBonusOverride);
+    const relicFx = getEquippedRelicEffects(relics);
+    const resonanceFx = pet ? calcResonanceBonuses(pet, getResonanceContext()) : {};
+    const merged = mergeStatEffectMults(relicFx, resonanceFx);
+    return getStatsRaw(pet, stages, status, {
+      currentTitle, gang, housing,
+      relicEffects: relicFx,
+      gangSkillCapBonus: getGangSkillCapBonus(kingdomWar),
+      sectEffectMult: merged.sectEffectMult,
+      gangSkillMult: relicFx.gangSkillMult || 1,
+      playerSect: sectPlayer?.playerSect,
+      playerSubSect: sectPlayer?.playerSubSect,
+    }, gangBonusOverride);
   }
+
+  const getAllOwnedPets = () => [...(party || []), ...(box || [])];
+
+  const getFruitMinTurn = () => getFruitTransformMinTurn(getEquippedRelicEffects(relics));
+
+  const awakenPet = (petUid) => {
+    const pet = party.find(p => p.uid === petUid) || box.find(p => p.uid === petUid);
+    if (!pet) return;
+    const check = canAwakenPet(pet, getAllOwnedPets());
+    if (!check.ok) { showMapToast('🔒', '无法觉醒', check.reason, 2500); return; }
+    const moveTemplate = getAwakeningMove(pet.type || 'NORMAL');
+    const awakenMove = { ...moveTemplate, maxPP: moveTemplate.maxPP || moveTemplate.pp, isAwakenMove: true };
+    const applyAwaken = (p) => {
+      if (p.uid !== petUid) return p;
+      const moves = [...(p.moves || [])];
+      const emptyIdx = moves.findIndex(m => !m);
+      if (emptyIdx >= 0) moves[emptyIdx] = awakenMove;
+      else if (moves.length < 4) moves.push(awakenMove);
+      else {
+        const replaceIdx = moves.findIndex(m => !m?.isAwakenMove && (m?.p || 0) <= 80);
+        moves[replaceIdx >= 0 ? replaceIdx : 3] = awakenMove;
+      }
+      const baseName = (p.name || '').replace(/^[🌟✨]+/, '');
+      return { ...p, awakened: true, moves, name: `🌟${baseName}` };
+    };
+    setParty(prev => prev.map(applyAwaken));
+    setBox(prev => prev.map(applyAwaken));
+    updateAchStat({ petsAwakened: 1 });
+    showMapToast('✨', '精灵觉醒！', `${pet.name} 觉醒成功，获得觉醒技「${awakenMove.name}」`, 3500);
+    setFusionState(prev => ({ ...prev, awakeningTiers: { ...(prev.awakeningTiers || {}), [petUid]: 'normal' } }));
+  };
+
+  const upgradeAwakeningTier = (petUid, tierId) => {
+    const pet = party.find(p => p.uid === petUid) || box.find(p => p.uid === petUid);
+    if (!pet) return;
+    const check = checkAwakeningTier(pet, tierId, { fusionState, kingdomWar });
+    if (!check.ok) { showMapToast('🔒', '条件不足', check.reason, 2500); return; }
+    const tier = AWAKENING_TIERS[tierId];
+    const applyTier = (p) => {
+      if (p.uid !== petUid) return p;
+      const baseName = (p.name || '').replace(/^[🌟🍎⚔️✨]+/, '');
+      const prefix = tierId === 'strategic' ? '⚔️🍎🌟' : '🍎🌟';
+      return { ...p, name: `${prefix}${baseName}` };
+    };
+    setParty(prev => prev.map(applyTier));
+    setBox(prev => prev.map(applyTier));
+    if (viewStatPet?.uid === petUid) setViewStatPet(prev => applyTier(prev));
+    setFusionState(prev => ({ ...prev, awakeningTiers: { ...(prev.awakeningTiers || {}), [petUid]: tierId } }));
+    if (tier.rewards?.title) unlockTitle(tier.rewards.title);
+    updateAchStat({ fusionAwakeningTiers: 1 });
+    showMapToast(tier.icon, tier.name, `${pet.name} 完成${tier.name}！`, 3500);
+  };
+
+  const equipRelic = (relicId) => {
+    if (!relics.owned?.includes(relicId)) return;
+    setRelics(prev => {
+      const equipped = [...(prev.equipped || [])];
+      if (equipped.includes(relicId)) {
+        return { ...prev, equipped: equipped.filter(id => id !== relicId) };
+      }
+      if (equipped.length >= MAX_EQUIPPED_RELICS) {
+        showMapToast('⚠️', '遗物槽已满', `最多装备 ${MAX_EQUIPPED_RELICS} 个遗物`, 2000);
+        return prev;
+      }
+      equipped.push(relicId);
+      return { ...prev, equipped };
+    });
+  };
+
+  const grantRelicDrop = (relic) => {
+    if (!relic) return;
+    const alreadyOwned = (relics.owned || []).includes(relic.id);
+    if (alreadyOwned) {
+      const goldComp = getDuplicateRelicGold(relic);
+      setGold(g => g + goldComp);
+      updateAchStat({ totalGoldEarned: goldComp });
+      showMapToast('♻️', '重复遗物', `${relic.name} 已拥有，转化为 ${goldComp.toLocaleString()} 金币`, 2500);
+      return;
+    }
+    setRelics(prev => {
+      const owned = [...new Set([...(prev.owned || []), relic.id])];
+      return { ...prev, owned };
+    });
+    updateAchStat({ relicsCollected: 1 });
+    setRelicDropModal(relic);
+  };
+
+  const addGuardianScore = (pts) => {
+    if (!pts) return;
+    const relicMult = getEquippedRelicEffects(relics).guardianScoreMult || 1;
+    const gain = Math.max(1, Math.floor(pts * relicMult));
+    setGuardianScore(prev => prev + gain);
+    updateAchStat({ guardianScoreTotal: gain });
+  };
+
+  useEffect(() => {
+    const unclaimed = getUnclaimedGuardianMilestones(guardianScore, guardianMilestonesClaimed);
+    if (!unclaimed.length) return;
+    unclaimed.forEach(m => {
+      if (m.reward?.title) unlockTitle(m.reward.title);
+      if (m.reward?.gold) { setGold(g => g + m.reward.gold); updateAchStat({ totalGoldEarned: m.reward.gold }); }
+      if (m.reward?.item) {
+        const isBall = m.reward.item.includes('ball');
+        const cat = isBall ? 'balls' : 'meds';
+        setInventory(p => ({ ...p, [cat]: { ...p[cat], [m.reward.item]: (p[cat]?.[m.reward.item] || 0) + (m.reward.itemCount || 1) } }));
+      }
+      if (m.reward?.petId) {
+        const gp = createPet(m.reward.petId, m.reward.petLevel || 70, true, !!m.reward.shiny);
+        gp.name = `🌿${gp.name}`;
+        if (party.length < 6) setParty(prev => [...prev, gp]);
+        else setBox(prev => [...prev, gp]);
+        if (!caughtDex.includes(m.reward.petId)) setCaughtDex(prev => [...prev, m.reward.petId]);
+      }
+      setGuardianMilestonesClaimed(c => [...new Set([...(c || []), m.score])]);
+    });
+  }, [guardianScore, guardianMilestonesClaimed.length]); // eslint-disable-line
+
+  const getResonanceContext = () => ({ narutoState, kingdomWar, gang, allPets: getAllOwnedPets(), fusionState, sanctuaryState, regionEcology, currentMapId });
+  const getActiveResonanceForPet = (pet) => calcResonanceBonuses(pet, getResonanceContext());
 
   // ==========================================
   // [新增] 启动门派首席挑战
@@ -2111,174 +2430,587 @@ const [viewStatPet, setViewStatPet] = useState(null);
       });
   };
 
+  const ensureSectDailyTasks = () => {
+    setSectPlayer(prev => {
+      const today = getLocalDateStr();
+      if (prev.sectDailyDate === today && (prev.sectDailyTasks || []).length >= 5) return prev;
+      return {
+        ...prev,
+        sectDailyDate: today,
+        sectDailyTasks: generateSectDailyTasks(today, prev.playerSect),
+      };
+    });
+  };
+
+  useEffect(() => { if (sectPlayer?.playerSect) ensureSectDailyTasks(); }, []); // eslint-disable-line
+  useEffect(() => {
+    const timer = setInterval(() => { if (sectPlayer?.playerSect) ensureSectDailyTasks(); }, 60000);
+    return () => clearInterval(timer);
+  }, [sectPlayer?.playerSect]); // eslint-disable-line
+
+  const addSectResources = (delta) => {
+    setSectPlayer(prev => {
+      const sectResources = { ...prev.sectResources };
+      Object.entries(delta || {}).forEach(([k, v]) => { sectResources[k] = (sectResources[k] || 0) + v; });
+      const reputation = sectResources.reputation || 0;
+      const sectRank = getSectRankByRep(reputation);
+      return { ...prev, sectResources, sectRank };
+    });
+  };
+
+  const joinPlayerSect = (sectId) => {
+    if (badges.length < SECT_JOIN_REQ_BADGES) {
+      showMapToast('🔒', '未解锁', `需要至少 ${SECT_JOIN_REQ_BADGES} 枚徽章才能拜入门派`, 2500); return;
+    }
+    if (sectPlayer.playerSect) {
+      showMapToast('⚠️', '已入门派', '更换门派需消耗1500声望', 2000); return;
+    }
+    const sect = SECT_DB[sectId];
+    setSectPlayer(prev => {
+      const newRep = (prev.sectResources?.reputation || 0) + 50;
+      return {
+        ...prev,
+        playerSect: sectId,
+        sectRank: getSectRankByRep(newRep),
+        sectResources: { ...prev.sectResources, reputation: newRep },
+        sectXinfaLevels: { ...prev.sectXinfaLevels, [sectId]: 1 },
+        sectMartialArts: prev.sectMartialArts?.includes(`s${sectId}_basic`) ? prev.sectMartialArts : [...(prev.sectMartialArts || []), `s${sectId}_basic`],
+      };
+    });
+    ensureSectDailyTasks();
+    showMapToast(sect?.emoji || '🏔️', '拜入成功', `你已拜入【${sect?.name}】，成为记名弟子！`, 3500);
+  };
+
+  const switchPlayerSect = (sectId) => {
+    if ((sectPlayer.sectResources?.reputation || 0) < SECT_SWITCH_REP_COST) {
+      showMapToast('❌', '声望不足', `更换门派需要 ${SECT_SWITCH_REP_COST} 声望`, 2000); return;
+    }
+    setSectPlayer(prev => {
+      const newRep = prev.sectResources.reputation - SECT_SWITCH_REP_COST;
+      const newSectArts = (prev.sectMartialArts || []).filter(artId => {
+        const art = getSectMartialArts(sectId).find(a => a.id === artId);
+        return !!art;
+      });
+      return {
+        ...prev,
+        playerSect: sectId,
+        playerSubSect: null,
+        sectResources: { ...prev.sectResources, reputation: Math.max(0, newRep) },
+        sectMartialArts: newSectArts,
+        sectRank: getSectRankByRep(Math.max(0, newRep)),
+        sectXinfaLevels: { ...prev.sectXinfaLevels, [sectId]: Math.max(1, prev.sectXinfaLevels?.[sectId] || 1) },
+      };
+    });
+    showMapToast('🔄', '改换门庭', `你已改修【${SECT_DB[sectId]?.name}】，旧门派武学已清除`, 3000);
+  };
+
+  const setPlayerSubSectFn = (sectId) => {
+    if ((sectPlayer.sectRank || 0) < SECT_SUB_SECT_REQ_RANK) {
+      showMapToast('🔒', '未解锁', `身份达到【${SECT_RANKS[4]?.name}】后可副修`, 2500); return;
+    }
+    if (sectId === sectPlayer.playerSect) { showMapToast('⚠️', '提示', '不能与主修门派相同', 1500); return; }
+    setSectPlayer(prev => ({ ...prev, playerSubSect: sectId }));
+    showMapToast('📜', '副修门派', `副修【${SECT_DB[sectId]?.name}】（获得50%效果）`, 2500);
+  };
+
+  const upgradePlayerXinfa = (sectId) => {
+    const cur = sectPlayer.sectXinfaLevels?.[sectId] || 1;
+    if (cur >= 3) { showMapToast('✅', '已满级', '心法已达高阶', 1500); return; }
+    const nextTier = cur + 1;
+    const tierDef = SECT_XINFA[sectId]?.tiers?.find(t => t.tier === nextTier);
+    if (!tierDef) return;
+    if ((sectPlayer.sectRank || 0) < (tierDef.needRank || 1)) {
+      showMapToast('🔒', '身份不足', `需要${getSectRankInfo(tierDef.needRank)?.name}`, 2000); return;
+    }
+    if ((sectPlayer.sectResources?.qiEssence || 0) < tierDef.qiCost) {
+      showMapToast('❌', '真气不足', `需要 ${tierDef.qiCost} 心法真气`, 2000); return;
+    }
+    setSectPlayer(prev => ({
+      ...prev,
+      sectXinfaLevels: { ...prev.sectXinfaLevels, [sectId]: nextTier },
+      sectResources: { ...prev.sectResources, qiEssence: prev.sectResources.qiEssence - tierDef.qiCost },
+    }));
+    showMapToast('✨', '心法突破', `${SECT_XINFA[sectId]?.name} · ${tierDef.name}`, 2500);
+  };
+
+  const learnSectMartialArt = (artId) => {
+    const art = getMartialArtById(artId);
+    if (!art) return;
+    if ((sectPlayer.sectMartialArts || []).includes(artId)) {
+      showMapToast('✅', '已学会', '你已经领悟此武学', 1500); return;
+    }
+    if ((sectPlayer.sectRank || 0) < art.needRank) {
+      showMapToast('🔒', '身份不足', `需要${getSectRankInfo(art.needRank)?.name}`, 2000); return;
+    }
+    if (art.needTrial && !(sectPlayer.sectChiefTrials || []).includes(art.sectId)) {
+      showMapToast('🔒', '需试炼', '完成掌门试炼后方可领悟镇派绝学', 2500); return;
+    }
+    if ((sectPlayer.sectResources?.scrollPage || 0) < (art.scrollCost || 0)) {
+      showMapToast('❌', '残页不足', `需要 ${art.scrollCost} 武学残页`, 2000); return;
+    }
+    setSectPlayer(prev => ({
+      ...prev,
+      sectMartialArts: prev.sectMartialArts?.includes(artId) ? prev.sectMartialArts : [...(prev.sectMartialArts || []), artId],
+      sectResources: { ...prev.sectResources, scrollPage: prev.sectResources.scrollPage - (art.scrollCost || 0) },
+    }));
+    showMapToast('📖', '领悟武学', `学会【${art.name}】`, 2500);
+  };
+
+  const buyFromSectShop = (item) => {
+    const cost = item.cost || 0;
+    const resKey = item.resource || 'contribution';
+    if ((sectPlayer.sectRank || 0) < (item.needRank || 0)) {
+      showMapToast('🔒', '身份不足', `需要更高门派身份`, 2000); return;
+    }
+    if ((sectPlayer.sectResources?.[resKey] || 0) < cost) {
+      showMapToast('❌', '不足', `${SECT_RESOURCE_LABELS[resKey] || resKey}不足`, 2000); return;
+    }
+    if (item.dailyLimit) {
+      const today = new Date().toDateString();
+      const bought = sectPlayer._shopPurchases?.[today]?.[item.id] || 0;
+      if (bought >= item.dailyLimit) {
+        showMapToast('❌', '限购', '今日已购买此物品', 2000); return;
+      }
+    }
+    setSectPlayer(prev => {
+      const sectResources = { ...prev.sectResources, [resKey]: prev.sectResources[resKey] - cost };
+      if (item.grant) Object.entries(item.grant).forEach(([k, v]) => { sectResources[k] = (sectResources[k] || 0) + v; });
+      const reputation = sectResources.reputation || 0;
+      const today = new Date().toDateString();
+      const shopPurchases = { ...(prev._shopPurchases || {}) };
+      if (item.dailyLimit) {
+        if (!shopPurchases[today]) shopPurchases[today] = {};
+        shopPurchases[today][item.id] = (shopPurchases[today][item.id] || 0) + 1;
+      }
+      return { ...prev, sectResources, sectRank: getSectRankByRep(reputation), _shopPurchases: shopPurchases };
+    });
+    if (item.balls) setInventory(prev => ({ ...prev, balls: { ...prev.balls, ...Object.fromEntries(Object.entries(item.balls).map(([k, v]) => [k, (prev.balls?.[k] || 0) + v])) } }));
+    if (item.itemGrant) setInventory(prev => ({ ...prev, misc: { ...prev.misc, [item.itemGrant]: (prev.misc?.[item.itemGrant] || 0) + (item.itemGrantCount || 1) } }));
+    if (sectPlayer?.playerSect) advanceSectDaily('sect_contrib', cost);
+    showMapToast('🛒', '兑换成功', item.name, 2000);
+  };
+
+  const advanceSectDaily = (taskId, amount = 1) => {
+    const today = getLocalDateStr();
+    setSectPlayer(prev => {
+      let tasks = prev.sectDailyTasks || [];
+      if (prev.sectDailyDate !== today || tasks.length < 5) {
+        tasks = generateSectDailyTasks(today, prev.playerSect);
+      }
+      tasks = tasks.map(t => {
+        if (t.id !== taskId || t.completed || t.date !== today) return t;
+        const progress = Math.min(t.target, (t.progress || 0) + amount);
+        const completed = progress >= t.target;
+        return { ...t, progress, completed };
+      });
+      const justCompleted = tasks.filter((t, i) => t.completed && !(prev.sectDailyTasks?.[i]?.completed));
+      let sectResources = { ...prev.sectResources };
+      justCompleted.forEach(t => {
+        sectResources.reputation = (sectResources.reputation || 0) + (t.rep || 0);
+        sectResources.contribution = (sectResources.contribution || 0) + (t.contrib || 0);
+      });
+      return { ...prev, sectDailyDate: today, sectDailyTasks: tasks, sectResources, sectRank: getSectRankByRep(sectResources.reputation || 0) };
+    });
+  };
+
+  const claimAllSectDaily = () => {
+    ensureSectDailyTasks();
+    const tasks = sectPlayer.sectDailyTasks || [];
+    const done = tasks.filter(t => t.completed).length;
+    const total = tasks.length;
+    if (!total) { showMapToast('📋', '日常', '今日任务尚未刷新', 1500); return; }
+    showMapToast('📋', '日常进度', `已完成 ${done}/${total} 项（奖励在达成时自动发放）`, 2000);
+  };
+
+  const handleJianghuEventChoice = (eventId, choiceId) => {
+    const evt = SECT_JIANGHU_EVENTS.find(e => e.id === eventId) || getActiveJianghuEvent();
+    const choice = evt?.choices?.find(c => c.id === choiceId);
+    if (!choice) return;
+    const repDelta = choice.rep || {};
+    const penalty = choice.penalty || {};
+    setSectPlayer(prev => {
+      const sectResources = { ...prev.sectResources };
+      Object.entries(repDelta).forEach(([sid, v]) => {
+        if (parseInt(sid, 10) === prev.playerSect) sectResources.reputation = (sectResources.reputation || 0) + v;
+      });
+      Object.entries(penalty).forEach(([sid, v]) => {
+        if (parseInt(sid, 10) === prev.playerSect) sectResources.reputation = Math.max(0, (sectResources.reputation || 0) + v);
+      });
+      if (choice.grant) Object.entries(choice.grant).forEach(([k, v]) => { sectResources[k] = (sectResources[k] || 0) + v; });
+      return {
+        ...prev,
+        sectResources,
+        sectRank: getSectRankByRep(sectResources.reputation || 0),
+        sectEventLog: [...(prev.sectEventLog || []), { eventId: evt.id, choiceId, date: getLocalDateStr() }],
+      };
+    });
+    if (penalty.eco) applyMapEcologyDelta(currentMapId, { pollution: penalty.eco, vegetation: penalty.eco });
+    showMapToast(evt.icon, evt.name, choice.label, 3000);
+  };
+
+  const changeSectFactionStance = (sectId, factionId) => {
+    if ((sectPlayer.sectRank || 0) < 8) {
+      showMapToast('🔒', '未解锁', '代掌门方可改变门派在国战中的立场', 2500); return;
+    }
+    setSectPlayer(prev => ({
+      ...prev,
+      sectStances: { ...prev.sectStances, [sectId]: factionId },
+    }));
+    showMapToast('🏳️', '立场变更', `${SECT_DB[sectId]?.name} 倾向 ${FACTIONS[factionId]?.fullName || factionId}`, 3000);
+  };
+
+  const startChiefTrial = (sectId) => {
+    if ((sectPlayer.sectRank || 0) < 4) {
+      showMapToast('🔒', '未解锁', '亲传弟子方可挑战掌门试炼', 2500); return;
+    }
+    if ((sectPlayer.sectResources?.masterToken || 0) < 1 && !(sectPlayer.sectChiefTrials || []).includes(sectId)) {
+      showMapToast('🔒', '需掌门令', '门派商店可兑换掌门令', 2500); return;
+    }
+    const config = SECT_CHIEFS_CONFIG[sectId];
+    const sectInfo = SECT_DB[sectId];
+    if (!config) return;
+    if (party.length < 3) { showMapToast('⚠️', '队伍不足', '掌门试炼需要至少3只精灵', 2000); return; }
+    setConfirmModal({ title: '👑 掌门试炼', msg: `挑战【${sectInfo.name}】掌门幻影？`, onOk: () => {
+      const enemyParty = [];
+      const teamIds = SECT_TEAMS[sectId] || [];
+      const playerMaxLv = Math.max(...party.map(p => p.level || 1));
+      const baseLv = Math.min(100, Math.max(70, playerMaxLv + 10));
+      teamIds.forEach((petId, idx) => {
+        const pet = createPet(petId, idx === 0 ? baseLv + 5 : baseLv, true, idx === 0);
+        pet.sectId = parseInt(sectId, 10);
+        pet.sectLevel = 10;
+        pet.customStatMult = 1.2;
+        if (idx === 0) pet.name = `[掌门] ${pet.name}`;
+        enemyParty.push(pet);
+      });
+      startBattle({ id: 8100 + sectId, name: `${config.title}·掌门试炼`, customParty: enemyParty, drop: 15000, _isChiefTrial: true, _chiefTrialSectId: sectId }, 'sect_challenge');
+    }});
+  };
+
+  const startSectRealmFromHub = (realmId) => {
+    const def = getSectRealmById(realmId);
+    if (!def) return;
+    if (badges.length < def.reqBadges) { showMapToast('🔒', '未解锁', `需要 ${def.reqBadges} 徽章`, 2000); return; }
+    const partySectIds = [...new Set(party.map(p => p.sectId).filter(Boolean))];
+    const available = getAvailableSectRealms(badges.length, partySectIds, fusionState.sectRealmsCleared || []);
+    if (!available.find(r => r.id === realmId)) {
+      showMapToast('❌', '条件不足', '队伍需有对应门派精灵或已通关', 2500); return;
+    }
+    const stepIdx = sectPlayer.sectRealmProgress?.[realmId] || 0;
+    const step = def.steps?.[stepIdx];
+    if (!step) { showMapToast('✅', '已完成', '该秘境已通关', 1500); return; }
+    if (step.type === 'puzzle' || step.type === 'explore' || step.type === 'soothe') {
+      const reqTypes = step.reqTypes || [];
+      const hasType = party.some(p => reqTypes.includes(p.type) || reqTypes.includes(p.type2));
+      if (reqTypes.length && !hasType) {
+        showMapToast('❌', '条件不足', `需要${reqTypes.join('/')}系精灵`, 2500); return;
+      }
+      setSectPlayer(prev => ({
+        ...prev,
+        sectRealmProgress: { ...prev.sectRealmProgress, [realmId]: stepIdx + 1 },
+        sectResources: { ...prev.sectResources, contribution: (prev.sectResources.contribution || 0) + 20 },
+      }));
+      addSectResources({ reputation: 25 });
+      if (stepIdx + 1 >= def.steps.length) completeSectRealm(realmId, def);
+      else showMapToast('✅', step.title, step.text, 3500);
+      return;
+    }
+    const enemyParty = [];
+    if (step.type === 'boss' || step.bossId) {
+      const boss = createPet(step.bossId || 1, step.lvl || 55, true, true);
+      boss.name = step.enemyName || boss.name;
+      enemyParty.push(boss);
+    } else {
+      const pool = step.pool || [1];
+      const lvl = step.lvl || [40, 50];
+      const count = step.count || 2;
+      for (let i = 0; i < count; i++) enemyParty.push(createPet(pool[Math.floor(Math.random() * pool.length)], _.random(lvl[0], lvl[1]), true));
+    }
+    startBattle({
+      id: def.mapId || currentMapId,
+      name: def.name,
+      customParty: enemyParty,
+      trainerName: step.enemyName || def.name,
+      drop: step.drop || def.reward?.gold || 5000,
+      _sectRealm: { realmId, stepIdx },
+    }, 'sect_realm');
+  };
+
+  const completeSectRealm = (realmId, def) => {
+    if ((fusionState.sectRealmsCleared || []).includes(realmId)) return;
+    setFusionState(prev => ({ ...prev, sectRealmsCleared: [...(prev.sectRealmsCleared || []), realmId] }));
+    const r = def.reward || {};
+    if (r.gold) setGold(g => g + r.gold);
+    if (r.title) unlockTitle(r.title);
+    addSectResources({ contribution: r.sectContrib || 50, scrollPage: r.scrollPage || 0, reputation: 80 });
+    const finalArt = getSectMartialArts(def.sectIds?.[0]).find(a => a.tier === 'final');
+    if (finalArt && sectPlayer.playerSect === def.sectIds?.[0]) {
+      setSectPlayer(prev => ({
+        ...prev,
+        sectMartialArts: prev.sectMartialArts?.includes(finalArt.id) ? prev.sectMartialArts : [...(prev.sectMartialArts || []), finalArt.id],
+      }));
+    }
+    updateAchStat({ fusionDungeonsCleared: 1 });
+    showMapToast(def.icon, '秘境通关', `${def.name} — ${r.title || '奖励已发放'}`, 4000);
+  };
+
    // ==========================================
   // [完整版] 门派顶峰界面 (含阵容预览与点击交互)
   // ==========================================
   const renderSectSummit = () => {
+    const ps = sectPlayer;
+    const mainSect = ps.playerSect ? SECT_DB[ps.playerSect] : null;
+    const rankInfo = getSectRankInfo(ps.sectRank || 0);
+    const res = ps.sectResources || DEFAULT_SECT_RESOURCES;
+    const tabs = [
+      { id: 'overview', label: '总览' },
+      { id: 'join', label: ps.playerSect ? '身份' : '拜入' },
+      { id: 'xinfa', label: '心法', lock: !ps.playerSect },
+      { id: 'martial', label: '武学', lock: !ps.playerSect },
+      { id: 'daily', label: '日常', lock: !ps.playerSect },
+      { id: 'shop', label: '商店', lock: !ps.playerSect },
+      { id: 'realm', label: '秘境', lock: (ps.sectRank || 0) < 3 },
+      { id: 'jianghu', label: '江湖', lock: (ps.sectRank || 0) < 5 },
+      { id: 'challenge', label: '挑战' },
+    ];
+    const partySectIds = [...new Set(party.map(p => p.sectId).filter(Boolean))];
+    const availRealms = getAvailableSectRealms(badges.length, partySectIds, fusionState.sectRealmsCleared || []);
+    const jianghuEvt = getActiveJianghuEvent();
+    const comboKey = getComboSkillKey(ps.playerSect, ps.playerSubSect);
+    const comboSkill = comboKey ? SECT_COMBO_SKILLS[comboKey] : null;
+
     return (
       <div className="screen" style={{background: '#121212', color: '#fff', display:'flex', flexDirection:'column'}}>
-               {/* 顶部导航 - [修正] 移除 glass-panel，强制深色背景以适配白字 */}
-        <div className="nav-header" style={{
-            borderBottom:'1px solid #333', 
-            background: '#1e1e1e', // 🟢 强制深色背景 (解决白底看不见字的问题)
-            padding: '15px 20px',  // 增加一点内边距
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            position: 'sticky', top: 0, zIndex: 10 // 保持在顶部
-        }}>
-          <button className="btn-back" onClick={() => setView(safeBack())} style={{
-              color:'#fff', 
-              background: '#333',
-              border: '1px solid #555',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              display: 'flex', alignItems: 'center', gap: '5px'
-          }}>
-              <span>🔙</span> 返回
-          </button>
-          
-          <div className="nav-title" style={{fontSize:'18px', fontWeight:'bold', color:'#fff'}}>🏔️ 门派顶峰</div>
-          
-          <div className="nav-coin" style={{
-              background:'#333', color:'#FFD700', 
-              padding:'5px 12px', borderRadius:'20px', 
-              fontSize:'12px', fontWeight:'bold', border:'1px solid #555'
-          }}>
-              🏆 已征服: {sectTitles.length}/{Object.keys(SECT_DB).length}
-          </div>
+        <div className="nav-header" style={{ borderBottom:'1px solid #333', background: '#1e1e1e', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
+          <button className="btn-back" onClick={() => setView(safeBack())} style={{ color:'#fff', background: '#333', border: '1px solid #555', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>🔙 返回</button>
+          <div className="nav-title" style={{fontSize:'17px', fontWeight:'bold', color:'#fff'}}>🏔️ 武侠门派</div>
+          <div style={{ fontSize:'11px', color:'#FFD700', textAlign:'right' }}>{mainSect ? <span>{mainSect.emoji} {rankInfo.name}</span> : <span>未拜入</span>}</div>
         </div>
-
-        {/* 门派列表 */}
-        <div style={{flex:1, overflowY:'auto', padding:'20px', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:'15px'}}>
+        {ps.playerSect && (
+          <div style={{ padding:'10px 16px', background:'#1a1a1a', borderBottom:'1px solid #333', display:'flex', flexWrap:'wrap', gap:'8px', fontSize:'11px' }}>
+            {Object.entries(SECT_RESOURCE_LABELS).map(([k, label]) => (
+              <span key={k} style={{ background:'#2a2a2a', padding:'4px 8px', borderRadius:'6px' }}>{label}: <b style={{color:'#FFD700'}}>{res[k] || 0}</b></span>
+            ))}
+          </div>
+        )}
+        <div style={{ display:'flex', gap:'4px', padding:'8px 12px', overflowX:'auto', flexShrink:0, borderBottom:'1px solid #333', background:'#161616' }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => !t.lock && setSectHubTab(t.id)} disabled={t.lock}
+              style={{ padding:'6px 12px', borderRadius:'8px', border:'none', cursor: t.lock ? 'not-allowed' : 'pointer', fontSize:'12px', fontWeight:'bold', whiteSpace:'nowrap',
+                background: sectHubTab === t.id ? '#4CAF50' : '#333', color: t.lock ? '#666' : '#fff', opacity: t.lock ? 0.5 : 1 }}>
+              {t.label}{t.lock ? '🔒' : ''}
+            </button>
+          ))}
+        </div>
+        <div style={{flex:1, overflowY:'auto', padding:'16px'}}>
+          {sectHubTab === 'overview' && (
+            <div>
+              {ps.playerSect ? (
+                <div style={{ background:`linear-gradient(135deg, ${mainSect.color}44, #1e1e1e)`, border:`1px solid ${mainSect.color}`, borderRadius:'12px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'22px', fontWeight:'bold', color: mainSect.color }}>{mainSect.emoji} {mainSect.name}</div>
+                  <div style={{ fontSize:'13px', color:'#ccc', marginTop:'6px' }}>身份：{rankInfo.name} · 声望 {res.reputation || 0}</div>
+                  <div style={{ fontSize:'12px', color:'#aaa', marginTop:'8px' }}>解锁：{(rankInfo.unlocks || []).join(' · ')}</div>
+                  {ps.playerSubSect && <div style={{ marginTop:'8px', fontSize:'12px', color:'#81C784' }}>副修：{SECT_DB[ps.playerSubSect]?.name}</div>}
+                  {comboSkill && <div style={{ marginTop:'8px', fontSize:'12px', color:'#FFD54F' }}>组合技：{comboSkill.name} — {comboSkill.desc}</div>}
+                  {(ps.sectRank || 0) >= 8 && ps.playerSect && (
+                    <div style={{ marginTop:'12px' }}>
+                      <div style={{ fontSize:'11px', color:'#aaa', marginBottom:'6px' }}>门派国战立场（代掌门可改）</div>
+                      <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                        {['wei','shu','wu','jin'].map(fid => (
+                          <button key={fid} onClick={() => changeSectFactionStance(ps.playerSect, fid)}
+                            disabled={(ps.sectRank || 0) < 8}
+                            style={{ padding:'4px 10px', borderRadius:'6px', border:'1px solid #555', background: getSectFactionStance(ps.playerSect, ps.sectStances) === fid ? '#4CAF50' : ((ps.sectRank || 0) < 8 ? '#222' : '#333'), color: (ps.sectRank || 0) < 8 ? '#666' : '#fff', fontSize:'11px', cursor: (ps.sectRank || 0) < 8 ? 'not-allowed' : 'pointer', opacity: (ps.sectRank || 0) < 8 ? 0.5 : 1 }}>
+                            {FACTIONS[fid]?.fullName || fid}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ textAlign:'center', padding:'30px', color:'#aaa' }}>
+                  <div style={{ fontSize:'48px' }}>🏔️</div>
+                  <div style={{ marginTop:'12px' }}>获得 {SECT_JOIN_REQ_BADGES} 枚徽章后可拜入门派</div>
+                  <button onClick={() => setSectHubTab('join')} style={{ marginTop:'16px', padding:'10px 24px', background:'#4CAF50', border:'none', borderRadius:'8px', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>选择门派</button>
+                </div>
+              )}
+              <div style={{ fontSize:'13px', fontWeight:'bold', marginBottom:'8px' }}>门派联盟</div>
+              {Object.values(SECT_ALLIANCES).map(al => (
+                <div key={al.name} style={{ background:'#1e1e1e', borderRadius:'8px', padding:'10px', marginBottom:'8px', border:'1px solid #333' }}>
+                  <div style={{ fontWeight:'bold', color:'#FFD700' }}>{al.name}</div>
+                  <div style={{ fontSize:'11px', color:'#aaa' }}>{al.desc}</div>
+                  <div style={{ display:'flex', gap:'6px', marginTop:'6px', flexWrap:'wrap' }}>
+                    {al.sects.map(sid => <span key={sid} style={{ fontSize:'11px', background:'#333', padding:'2px 6px', borderRadius:'4px' }}>{SECT_DB[sid]?.emoji} {SECT_DB[sid]?.name}</span>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {sectHubTab === 'join' && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'12px' }}>
+              {Object.keys(SECT_DB).map(key => {
+                const id = parseInt(key, 10);
+                const sect = SECT_DB[id];
+                const isMain = ps.playerSect === id;
+                const isSub = ps.playerSubSect === id;
+                return (
+                  <div key={id} style={{ background: isMain ? `linear-gradient(135deg, ${sect.color}55, #111)` : '#1e1e1e', border: isMain ? `2px solid ${sect.color}` : '1px solid #333', borderRadius:'10px', padding:'12px' }}>
+                    <div style={{ fontSize:'20px' }}>{sect.emoji} <span style={{ color: sect.color, fontWeight:'bold' }}>{sect.name}</span></div>
+                    <div style={{ fontSize:'11px', color:'#aaa', margin:'6px 0' }}>{sect.desc}</div>
+                    {!ps.playerSect && badges.length >= SECT_JOIN_REQ_BADGES && (
+                      <button onClick={() => joinPlayerSect(id)} style={{ width:'100%', padding:'8px', marginTop:'8px', background: sect.color, border:'none', borderRadius:'6px', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>拜入此派</button>
+                    )}
+                    {ps.playerSect && ps.playerSect !== id && (ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK && !isSub && (
+                      <button onClick={() => setPlayerSubSectFn(id)} style={{ width:'100%', padding:'6px', marginTop:'6px', background:'#2196F3', border:'none', borderRadius:'6px', color:'#fff', fontSize:'11px', cursor:'pointer' }}>设为副修</button>
+                    )}
+                    {ps.playerSect && ps.playerSect !== id && (
+                      <button onClick={() => switchPlayerSect(id)} style={{ width:'100%', padding:'6px', marginTop:'4px', background:'#555', border:'none', borderRadius:'6px', color:'#ccc', fontSize:'10px', cursor:'pointer' }}>改修（-{SECT_SWITCH_REP_COST}声望）</button>
+                    )}
+                    {isMain && <div style={{ marginTop:'8px', color:'#4CAF50', fontSize:'12px', fontWeight:'bold' }}>✓ 主修门派</div>}
+                    {isSub && <div style={{ marginTop:'8px', color:'#2196F3', fontSize:'12px' }}>副修中（50%效果）</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {sectHubTab === 'xinfa' && ps.playerSect && (
+            <div>
+              {[ps.playerSect, ps.playerSubSect].filter(Boolean).map(sid => {
+                const xf = SECT_XINFA[sid];
+                const curTier = ps.sectXinfaLevels?.[sid] || 1;
+                const isSub = sid === ps.playerSubSect;
+                return (
+                  <div key={sid} style={{ background:'#1e1e1e', borderRadius:'10px', padding:'14px', marginBottom:'12px', border:'1px solid #333' }}>
+                    <div style={{ fontWeight:'bold', color: SECT_DB[sid]?.color }}>{SECT_DB[sid]?.emoji} {xf?.name}{isSub ? ' (副修·最高中阶)' : ''}</div>
+                    {xf?.tiers.map(t => (
+                      <div key={t.tier} style={{ marginTop:'8px', padding:'8px', background: curTier >= t.tier ? 'rgba(76,175,80,0.15)' : '#252525', borderRadius:'6px', fontSize:'12px' }}>
+                        <span style={{ fontWeight:'bold' }}>{t.name}</span> {curTier >= t.tier ? '✓' : ''} — {t.desc || '初阶心法（现有战斗被动）'}
+                        {curTier === t.tier && t.tier < 3 && !isSub && (
+                          <button onClick={() => upgradePlayerXinfa(sid)} style={{ marginLeft:'8px', padding:'4px 10px', background:'#FF9800', border:'none', borderRadius:'4px', color:'#fff', fontSize:'11px', cursor:'pointer' }}>
+                            突破（{(SECT_XINFA[sid]?.tiers?.[t.tier]?.qiCost) || 0}真气）
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {sectHubTab === 'martial' && ps.playerSect && (
+            <div>
+              {getSectMartialArts(ps.playerSect).map(art => {
+                const learned = (ps.sectMartialArts || []).includes(art.id);
+                return (
+                  <div key={art.id} style={{ background:'#1e1e1e', borderRadius:'8px', padding:'12px', marginBottom:'8px', border: learned ? '1px solid #4CAF50' : '1px solid #333' }}>
+                    <div style={{ fontWeight:'bold' }}>{learned ? '✓ ' : ''}{art.name} <span style={{ fontSize:'10px', color:'#888' }}>[{art.type}] 威力{art.power}</span></div>
+                    <div style={{ fontSize:'11px', color:'#aaa' }}>{art.desc}</div>
+                    {!learned && (
+                      <button onClick={() => learnSectMartialArt(art.id)} style={{ marginTop:'6px', padding:'6px 12px', background:'#673AB7', border:'none', borderRadius:'6px', color:'#fff', fontSize:'11px', cursor:'pointer' }}>
+                        领悟（需{getSectRankInfo(art.needRank)?.name} · {art.scrollCost || 0}残页）
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {sectHubTab === 'daily' && ps.playerSect && (
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'12px' }}>
+                <span style={{ fontWeight:'bold' }}>今日门派任务</span>
+                <button onClick={claimAllSectDaily} style={{ padding:'6px 12px', background:'#4CAF50', border:'none', borderRadius:'6px', color:'#fff', fontSize:'11px', cursor:'pointer' }}>查看进度</button>
+              </div>
+              {(ps.sectDailyTasks || []).map(t => (
+                <div key={t.id} style={{ background:'#1e1e1e', borderRadius:'8px', padding:'10px', marginBottom:'8px', border: t.completed ? '1px solid #4CAF50' : '1px solid #333' }}>
+                  <div style={{ fontWeight:'bold', fontSize:'13px' }}>{t.name} {t.completed ? '✅' : ''}</div>
+                  <div style={{ fontSize:'11px', color:'#aaa' }}>{t.desc}</div>
+                  <div style={{ fontSize:'11px', marginTop:'4px' }}>进度 {t.progress || 0}/{t.target} · 声望+{t.rep} 贡献+{t.contrib}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {sectHubTab === 'shop' && ps.playerSect && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px' }}>
+              {SECT_SHOP_ITEMS.map(item => (
+                <div key={item.id} style={{ background:'#1e1e1e', borderRadius:'8px', padding:'12px', border:'1px solid #333' }}>
+                  <div style={{ fontWeight:'bold' }}>{item.name}</div>
+                  <div style={{ fontSize:'11px', color:'#aaa' }}>{item.desc || ''}</div>
+                  <div style={{ fontSize:'11px', color:'#FFD700', marginTop:'4px' }}>{item.cost} {SECT_RESOURCE_LABELS[item.resource] || '贡献'}</div>
+                  <button onClick={() => buyFromSectShop(item)} style={{ width:'100%', marginTop:'8px', padding:'6px', background:'#FF9800', border:'none', borderRadius:'6px', color:'#fff', cursor:'pointer', fontSize:'11px' }}>兑换</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {sectHubTab === 'realm' && (
+            <div>
+              {availRealms.length === 0 ? <div style={{ color:'#aaa', textAlign:'center', padding:'20px' }}>暂无可用秘境（需内门弟子身份+对应门派精灵）</div> : availRealms.map(realm => {
+                const stepIdx = ps.sectRealmProgress?.[realm.id] || 0;
+                const cleared = (fusionState.sectRealmsCleared || []).includes(realm.id);
+                return (
+                  <div key={realm.id} style={{ background:'#1e1e1e', borderRadius:'10px', padding:'12px', marginBottom:'10px', border: cleared ? '1px solid #4CAF50' : '1px solid #333' }}>
+                    <div style={{ fontWeight:'bold' }}>{realm.icon} {realm.name} {cleared ? '✓已通关' : `步骤 ${stepIdx + 1}/${realm.steps?.length || 0}`}</div>
+                    <div style={{ fontSize:'11px', color:'#aaa' }}>{realm.summary || realm.desc}</div>
+                    {!cleared && <button onClick={() => startSectRealmFromHub(realm.id)} style={{ marginTop:'8px', padding:'8px 16px', background:'#9C27B0', border:'none', borderRadius:'6px', color:'#fff', cursor:'pointer' }}>进入秘境</button>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {sectHubTab === 'jianghu' && !jianghuEvt && (
+            <div style={{ background:'#1e1e1e', borderRadius:'12px', padding:'24px', textAlign:'center', color:'#888' }}>
+              <div style={{ fontSize:'32px', marginBottom:'8px' }}>🍃</div>
+              <div style={{ fontSize:'14px' }}>江湖暂时风平浪静</div>
+              <div style={{ fontSize:'11px', color:'#666', marginTop:'6px' }}>事件每周轮换，请稍后再来</div>
+            </div>
+          )}
+          {sectHubTab === 'jianghu' && jianghuEvt && (
+            <div style={{ background:'#1e1e1e', borderRadius:'12px', padding:'16px', border:'1px solid #444' }}>
+              <div style={{ fontSize:'20px', fontWeight:'bold' }}>{jianghuEvt.icon} {jianghuEvt.name}</div>
+              <div style={{ fontSize:'13px', color:'#ccc', margin:'10px 0' }}>{jianghuEvt.desc}</div>
+              {jianghuEvt.choices.map(c => (
+                <button key={c.id} onClick={() => handleJianghuEventChoice(jianghuEvt.id, c.id)}
+                  style={{ display:'block', width:'100%', marginBottom:'8px', padding:'10px', background:'#333', border:'1px solid #555', borderRadius:'8px', color:'#fff', textAlign:'left', cursor:'pointer', fontSize:'13px' }}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {sectHubTab === 'challenge' && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:'15px' }}>
             {Object.keys(SECT_DB).map(key => {
                 const id = parseInt(key);
                 const sect = SECT_DB[id];
                 const chief = SECT_CHIEFS_CONFIG[id];
-                const teamIds = SECT_TEAMS[id] || []; // 获取该门派的阵容
+                const teamIds = SECT_TEAMS[id] || [];
                 const isConquered = sectTitles.includes(id);
-                // 🔥 检查当前是否激活 (已征服 且 佩戴了对应称号)
                 const isActive = isConquered && currentTitle === chief.title;
-
                 return (
-                    <div key={id} style={{
-                        background: isActive ? `linear-gradient(135deg, ${sect.color}66, #000)` : (isConquered ? '#2a2a2a' : '#1e1e1e'),
-                        border: isActive ? `2px solid ${sect.color}` : '1px solid #333',
-                        borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden',
-                        boxShadow: isActive ? `0 0 20px ${sect.color}66` : 'none',
-                        transition: '0.3s',
-                        display: 'flex', flexDirection: 'column'
-                    }}>
-                        {/* 背景水印 */}
-                        <div style={{position:'absolute', right:'-10px', bottom:'-10px', fontSize:'80px', opacity:0.1, pointerEvents:'none'}}>
-                            {sect.emoji}
-                        </div>
-
-                        {/* 卡片头部：图标与名称 */}
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', marginBottom:'10px'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                <div style={{fontSize:'32px', background:'#333', width:'50px', height:'50px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                                    {sect.emoji}
-                                </div>
-                                <div>
-                                    <div style={{fontWeight:'bold', fontSize:'18px', color: sect.color}}>{sect.name}</div>
-                                    <div style={{fontSize:'11px', color:'#aaa', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'180px'}}>{sect.desc}</div>
-                                </div>
-                            </div>
-                            {isConquered && (
-                                <div style={{
-                                    background: isActive ? '#00E676' : '#555', 
-                                    color:'#fff', padding:'4px 8px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'
-                                }}>
-                                    {isActive ? '✨ 已激活' : '未佩戴'}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 首席信息与Buff */}
-                        <div style={{fontSize:'12px', color:'#ccc', lineHeight:'1.5', background:'rgba(0,0,0,0.3)', padding:'10px', borderRadius:'8px', marginBottom:'10px'}}>
-                            <div style={{marginBottom:'4px'}}>👑 <span style={{fontWeight:'bold'}}>{chief.title}：{chief.name}</span></div>
-                            <div style={{fontStyle:'italic', opacity:0.8, marginBottom:'8px'}}>"{chief.quote}"</div>
-                            
-                            {/* 显示 Buff 详情 */}
-                            <div style={{borderTop:'1px dashed #555', paddingTop:'8px', color: isActive ? '#fff' : '#888'}}>
-                                <span style={{background: sect.color, color:'#fff', padding:'1px 4px', borderRadius:'3px', fontSize:'10px', marginRight:'5px'}}>增益</span>
-                                <strong>{chief.buffName}</strong>: {chief.buffDesc}
+                    <div key={id} style={{ background: isActive ? `linear-gradient(135deg, ${sect.color}66, #000)` : (isConquered ? '#2a2a2a' : '#1e1e1e'), border: isActive ? `2px solid ${sect.color}` : '1px solid #333', borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{position:'absolute', right:'-10px', bottom:'-10px', fontSize:'80px', opacity:0.1, pointerEvents:'none'}}>{sect.emoji}</div>
+                        <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px'}}>
+                            <div style={{fontSize:'32px'}}>{sect.emoji}</div>
+                            <div>
+                                <div style={{fontWeight:'bold', fontSize:'18px', color: sect.color}}>{sect.name}</div>
+                                <div style={{fontSize:'11px', color:'#aaa'}}>👑 {chief.title}：{chief.name}</div>
                             </div>
                         </div>
-
-                        {/* ▼▼▼ 守关阵容展示区 (可点击) ▼▼▼ */}
-                        <div 
-                            onClick={() => openSectTeamDetail(id)} 
-                            style={{
-                                marginBottom:'15px', cursor: 'pointer', 
-                                transition: 'transform 0.2s',
-                                background: 'rgba(255,255,255,0.03)',
-                                borderRadius: '8px',
-                                padding: '8px'
-                            }}
-                            onMouseOver={e => {
-                                e.currentTarget.style.transform = 'scale(1.02)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                            }}
-                            onMouseOut={e => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                            }}
-                        >
-                            <div style={{fontSize:'10px', color:'#666', marginBottom:'5px', fontWeight:'bold', display:'flex', justifyContent:'space-between'}}>
-                                <span>守关阵容</span>
-                                <span style={{color: sect.color, opacity: 0.8}}>🔍 点击查看详情</span>
-                            </div>
-                            <div style={{display:'flex', gap:'6px', overflowX:'auto'}}>
-                                {teamIds.map((petId, idx) => {
-                                    // 获取精灵信息用于展示头像
-                                    const petInfo = POKEDEX.find(p => p.id === petId) || { emoji: '❓' };
-                                    return (
-                                        <div key={idx} title={petInfo.name} style={{
-                                            width:'32px', height:'32px', borderRadius:'50%', 
-                                            background:'#333', border:`1px solid ${idx===0 ? '#FFD700' : '#555'}`, // 队长金色边框
-                                            display:'flex', alignItems:'center', justifyContent:'center',
-                                            fontSize:'20px', flexShrink:0, position:'relative'
-                                        }}>
-                                            {renderAvatar(petInfo)}
-                                            {idx === 0 && <div style={{position:'absolute', bottom:'-2px', right:'-2px', fontSize:'8px'}}>👑</div>}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                        <div style={{fontSize:'12px', color:'#ccc', background:'rgba(0,0,0,0.3)', padding:'8px', borderRadius:'8px', marginBottom:'10px' }}>
+                            <strong>{chief.buffName}</strong>: {chief.buffDesc}
                         </div>
-                        {/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */}
-
-                        {/* 底部操作按钮 */}
-                        <div style={{marginTop:'auto', display:'flex', gap:'10px'}}>
-                            <button 
-                                onClick={() => startSectChallenge(id)}
-                                style={{
-                                    flex:1, padding:'10px', borderRadius:'8px', border:'none', cursor:'pointer',
-                                    background: isConquered ? '#333' : sect.color,
-                                    color: isConquered ? '#aaa' : '#fff',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                {isConquered ? '再次切磋' : '发起挑战'}
+                        <div onClick={() => openSectTeamDetail(id)} style={{ marginBottom:'10px', cursor:'pointer', fontSize:'10px', color: sect.color }}>🔍 查看守关阵容 ({teamIds.length}只)</div>
+                        <div style={{marginTop:'auto', display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                            <button onClick={() => startSectChallenge(id)} style={{ flex:1, minWidth:'100px', padding:'8px', borderRadius:'8px', border:'none', cursor:'pointer', background: isConquered ? '#333' : sect.color, color: isConquered ? '#aaa' : '#fff', fontWeight:'bold' }}>
+                                {isConquered ? '守关切磋' : '守关挑战'}
                             </button>
-                            
-                            {/* 快捷佩戴按钮 */}
+                            {(ps.sectRank || 0) >= 4 && (
+                              <button onClick={() => startChiefTrial(id)} style={{ flex:1, minWidth:'100px', padding:'8px', borderRadius:'8px', border:'none', cursor:'pointer', background:'#9C27B0', color:'#fff', fontWeight:'bold', fontSize:'11px' }}>
+                                掌门试炼
+                              </button>
+                            )}
                             {isConquered && !isActive && (
-                                <button 
-                                    onClick={() => {
-                                        setCurrentTitle(chief.title);
-                                        showMapToast('🏅', '称号已激活', `${chief.title} · ${sect.name}加成已生效`, 2500);
-                                    }}
-                                    style={{
-                                        flex:1, padding:'10px', borderRadius:'8px', border:'none', cursor:'pointer',
-                                        background: '#2196F3', color: '#fff', fontWeight: 'bold'
-                                    }}
-                                >
+                                <button onClick={() => { setCurrentTitle(chief.title); showMapToast('🏅', '称号已激活', `${chief.title} · ${sect.name}加成已生效`, 2500); }}
+                                    style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', cursor:'pointer', background: '#2196F3', color: '#fff', fontWeight: 'bold' }}>
                                     佩戴称号
                                 </button>
                             )}
@@ -2286,6 +3018,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     </div>
                 );
             })}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2700,7 +3434,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             }
             
             consumed = true;
-            msg = `不可思议！${pet.name} 瞬间升到了 Lv.100！`;
+            msg = `不可思议！${pet.name} 提升了 ${pet.level - oldLv} 级，现在是 Lv.${pet.level}！`;
             setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}));
         } else if (item.id === 'exp_candy') {
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
@@ -2733,8 +3467,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
                             p.id = evoDex.id;
                             p.name = p.isFusedShiny ? `异色·${evoDex.name}` : p.isShiny ? `✨${evoDex.name}` : evoDex.name;
                             p.type = evoDex.type;
-                            if (evoDex.type2) p.secondaryType = evoDex.type2;
-                            else if (evoDex.secondaryType) p.secondaryType = evoDex.secondaryType;
+                            if (evoDex.type2) { p.secondaryType = evoDex.type2; p.type2 = evoDex.type2; }
+                            else if (evoDex.secondaryType) { p.secondaryType = evoDex.secondaryType; p.type2 = evoDex.secondaryType; }
+                            else { p.secondaryType = null; p.type2 = null; }
                             p.isEvolved = !evoDex.evo;
                             p.evo = evoDex.evo || null;
                             p.evoLvl = evoDex.evoLvl || null;
@@ -2783,8 +3518,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     pet.id = evoDex.id;
                     pet.name = pet.isFusedShiny ? `异色·${evoDex.name}` : pet.isShiny ? `✨${evoDex.name}` : evoDex.name;
                     pet.type = evoDex.type;
-                    if (evoDex.type2) pet.secondaryType = evoDex.type2;
-                    else if (evoDex.secondaryType) pet.secondaryType = evoDex.secondaryType;
+                    if (evoDex.type2) { pet.secondaryType = evoDex.type2; pet.type2 = evoDex.type2; }
+                    else if (evoDex.secondaryType) { pet.secondaryType = evoDex.secondaryType; pet.type2 = evoDex.secondaryType; }
+                    else { pet.secondaryType = null; pet.type2 = null; }
                     pet.isEvolved = !evoDex.evo;
                     pet.evo = evoDex.evo || null;
                     pet.evoLvl = evoDex.evoLvl || null;
@@ -3033,17 +3769,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
     const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
     return {
-    saveVersion: 27,
-    trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles,
+    saveVersion: 32,
+    trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles, sectPlayer,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
     dexMilestoneClaimed, lastPetTradeDate, lastTradeDate: lastPetTradeDate,
-    leagueWins, leagueRound, unlockedTitles, currentTitle, housing, fruitInventory, achStats,
+    leagueWins, leagueRound, leagueRunNoDamage, unlockedTitles, currentTitle, housing, fruitInventory, achStats,
     unlockedAchs, storyProgress, storyStep, sanguoProgress, sanguoStep,
     completedSideStories: [...completedSideStories], activeSideStory,
     mainStoryProgress, mainStoryStep, sideStoryStates, cafe, marriage, gang,
-    kingdomWar, dungeonCooldowns, activityRecords, dailyChallenge, autoBattle,
+    kingdomWar, kingdomSim, gangHQ, dungeonCooldowns, activityRecords, dailyChallenge, autoBattle,
     infinityBestFloor: infinityState?.bestFloor || 0,
-    infinityRunState: infinityState != null && infinityState.status ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, blessings: infinityState.blessings, routeOptions: infinityState.routeOptions, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null, floorModifier: infinityState.floorModifier || null, bestFloor: infinityState.bestFloor || 0 } : null,
+    infinityRunState: infinityState != null && (infinityState.status || infinityState.floor > 1) ? { floor: infinityState.floor, mode: infinityState.mode, healUsed: infinityState.healUsed, buffs: infinityState.buffs, blessings: infinityState.blessings, routeOptions: infinityState.routeOptions, status: infinityState.status || 'idle', buffOptions: infinityState.buffOptions || null, floorModifier: infinityState.floorModifier || null, bestFloor: infinityState.bestFloor || 0 } : null,
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
     trainingState, worldBossState, raceState, narutoState,
     spiritDomainsCleared, ecoCrisisState, ecoCrisisChoices, regionEcology, observationLog,
@@ -3051,6 +3787,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
     battleRecords,
+    relics, guardianScore, guardianMilestonesClaimed,
+    sanctuaryState, bondingProgress, ecoCrisisRoutes, fusionState,
   };};
 
   const persistSave = (silent = false) => {
@@ -3137,6 +3875,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [ecoCrisisChoices, setEcoCrisisChoices] = useState(() => savedData.ecoCrisisChoices || {});
   const [regionEcology, setRegionEcology] = useState(() => savedData.regionEcology || {});
   const [observationLog, setObservationLog] = useState(() => savedData.observationLog || []);
+  const [sanctuaryState, setSanctuaryState] = useState(() => ({ ...DEFAULT_SANCTUARY, ...(savedData.sanctuaryState || {}), facilities: savedData.sanctuaryState?.facilities || {} }));
+  const [bondingProgress, setBondingProgress] = useState(() => savedData.bondingProgress || {});
+  const [ecoCrisisRoutes, setEcoCrisisRoutes] = useState(() => savedData.ecoCrisisRoutes || {});
+  const [fusionState, setFusionState] = useState(() => savedData.fusionState || { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null });
+  const [fusionHubOpen, setFusionHubOpen] = useState(false);
+  const [fusionHubTab, setFusionHubTab] = useState('overview');
+  const [bondingModal, setBondingModal] = useState(null);
   const [raceResult, setRaceResult] = useState(null);
   const [narutoState, setNarutoState] = useState(() => {
     const loaded = { ...DEFAULT_NARUTO_STATE, ...(savedData.narutoState || {}) };
@@ -3216,10 +3961,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setAchStats(prev => {
       const next = { ...prev };
       next.dexCount = caughtDex.length;
-      next.totalCaught = Math.max(prev.totalCaught || 0, caughtDex.length);
+      // totalCaught 仅由 capture 事件递增，不用图鉴长度覆盖
       next.badgeCount = badges.length;
       next.leagueWins = leagueWins;
       next.sectChiefsDefeated = (sectTitles || []).length;
+      next.sectPlayerRank = sectPlayer?.sectRank || 0;
+      next.sectJoined = sectPlayer?.playerSect ? 1 : 0;
+      next.sectChiefTrials = (sectPlayer?.sectChiefTrials || []).length;
+      next.sectRealmsCleared = (fusionState?.sectRealmsCleared || []).length;
+      next.sectJianghuEvents = (sectPlayer?.sectEventLog || []).length;
       next.uniqueFruits = [...new Set(fruitInventory || [])].length;
       const allChallengeIds = new Set([...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES].map(c => c.id));
       next.challengesCompleted = (completedChallenges || []).filter(id => allChallengeIds.has(id)).length;
@@ -3233,9 +3983,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.eliteTeamReady = team.length >= 6 && team.every(p => (p?.level || 0) >= 50);
       next.fullLv100Team = team.length >= 6 && team.every(p => (p?.level || 0) >= 100);
       const types = new Set();
+      const typesAll = new Set();
       (caughtDex || []).forEach(id => {
         const p = POKEDEX.find(pk => pk.id === id);
-        if (p) { types.add(p.type); if (p.type2) types.add(p.type2); }
+        if (p) {
+          if (p.type) { types.add(p.type); typesAll.add(p.type); }
+          if (p.type2) { types.add(p.type2); typesAll.add(p.type2); }
+        }
       });
       next.typesCollected = types.size;
       const houseTier = {'tent':1,'cabin':2,'house':3,'mansion':4,'castle':5,'beach_house':5,'garden_villa':5,'cloud_loft':6,'crystal_palace':7,'world_tree':8};
@@ -3251,17 +4005,22 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         return s;
       }, 0);
       const hsTierObj = getHousingScoreTier ? getHousingScoreTier(hsScore) : null;
-      next.housingScoreTier = hsTierObj ? HOUSING_SCORE_TIERS.indexOf(hsTierObj) : 0;
+      next.housingScoreTier = hsTierObj ? Math.max(0, HOUSING_SCORE_TIERS.indexOf(hsTierObj)) : 0;
       next.mapsVisited = Object.keys(mapProgress || {}).length;
       const explorableMapIds = MAPS.filter(m => !m.noEncounter).map(m => String(m.id));
       const progressedMapIds = new Set(Object.keys(mapProgress || {}));
       next.allMapsUnlocked = explorableMapIds.length > 0 && explorableMapIds.every(id => progressedMapIds.has(id));
       // 队伍属性多样性
       const partyTypes = new Set((party || []).map(p => p?.type).filter(Boolean));
+      const partyTypesAll = new Set();
+      (party || []).forEach(p => {
+        if (p?.type) partyTypesAll.add(p.type);
+        if (p?.type2 || p?.secondaryType) partyTypesAll.add(p.type2 || p.secondaryType);
+      });
       next.partyTypeDiv = partyTypes.size;
-      next.uniquePartyTypes = partyTypes.size;
-      // 双属性/宇宙/音波收藏统计
-      let dualCount = 0, cosmicCount = 0, soundCount = 0;
+      next.uniquePartyTypes = partyTypesAll.size;
+      // 双属性/宇宙/音波/时空/混沌收藏统计
+      let dualCount = 0, cosmicCount = 0, soundCount = 0, timeCount = 0, chaosCount = 0;
       (caughtDex || []).forEach(id => {
         const pk = POKEDEX.find(p => p.id === id);
         if (!pk) return;
@@ -3269,10 +4028,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (pk.type && t2) dualCount++;
         if (pk.type === 'COSMIC' || t2 === 'COSMIC') cosmicCount++;
         if (pk.type === 'SOUND' || t2 === 'SOUND') soundCount++;
+        if (pk.type === 'TIME' || t2 === 'TIME') timeCount++;
+        if (pk.type === 'CHAOS' || t2 === 'CHAOS') chaosCount++;
       });
       next.dualTypeCaught = dualCount;
       next.cosmicCaught = cosmicCount;
       next.soundCaught = soundCount;
+      next.timeCaught = timeCount;
+      next.chaosCaught = chaosCount;
       // 隐藏成就：全队闪光
       next.fullShinyTeam = (party || []).length >= 6 && (party || []).every(p => p?.isShiny || p?.isFusedShiny);
       // 队伍门派多样性
@@ -3300,7 +4063,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         next.kwSSRGenerals = rg.filter(g => g.rarity === 'SSR').length;
         next.kwGenFactions = new Set(rg.map(g => g.faction).filter(f => f && f !== 'neutral')).size;
         next.kwGenDexTotal = (kingdomWar.collectedGeneralIds || []).length;
-        next.kwContribution = kingdomWar.warContribution || 0;
+        next.kwContribution = kingdomWar.lifetimeContribution || kingdomWar.warContribution || 0;
         next.kwCampaignsCleared = (kingdomWar.completedCampaigns || []).length;
         const chb = kingdomWar.completedHistoricalBattles || [];
         next.hbCompleted = chb.length;
@@ -3321,22 +4084,25 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         next.chuninExams = narutoState.examsCompleted || 0;
         next.narutoChalsCompleted = (narutoState.completedChallenges || []).length;
         const mst = narutoState.jutsuMastery || {};
-        next.jutsuMasteredCount = Object.values(mst).filter(v => v >= 3).length;
-        next.jutsuSkilledCount = Object.values(mst).filter(v => v >= 10).length;
+        next.jutsuMasteredCount = Object.values(mst).filter(v => v >= 25).length;
+        next.jutsuSkilledCount = Object.values(mst).filter(v => v >= 25).length;
         next.jutsuOugiCount = Object.values(mst).filter(v => v >= 100).length;
       }
       next.raceWins = raceState?.totalWins || prev.raceWins || 0;
+      next.petsAwakened = Math.max(prev.petsAwakened || 0, allP.filter(p => p?.awakened).length);
+      next.relicsCollected = Math.max(prev.relicsCollected || 0, (relics?.owned || []).length);
+      next.guardianScoreTotal = Math.max(prev.guardianScoreTotal || 0, guardianScore || 0);
       if (kingdomWar?.faction) {
         const chb = kingdomWar.completedHistoricalBattles || [];
         next.hbCompleted = chb.length;
       }
       return next;
     });
-  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress, gang, marriage, kingdomWar, narutoState, raceState]);
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, unlockedAchs, party, box, housing, mapProgress, gang, marriage, kingdomWar, narutoState, raceState, relics, guardianScore, sectPlayer, fusionState]);
 
   useEffect(() => {
     syncAchStats();
-  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, party, box, housing, mapProgress, unlockedAchs, gang, marriage, kingdomWar, narutoState, raceState]);
+  }, [caughtDex, badges, leagueWins, sectTitles, fruitInventory, completedChallenges, party, box, housing, mapProgress, unlockedAchs, gang, marriage, kingdomWar, narutoState, raceState, relics, guardianScore, sectPlayer, fusionState]);
 
   useEffect(() => {
     if (caughtDex.length > 0) checkDexTitles(caughtDex.length);
@@ -3364,6 +4130,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (currentCount >= 550) unlockTitle('万物通晓');
       if (currentCount >= 700) unlockTitle('传说收藏家');
       if (currentCount >= 800) unlockTitle('图鉴完成者');
+      if (currentCount >= 899) unlockTitle('终极图鉴大师');
   };
 
   const handleStartGame = () => {
@@ -3884,7 +4651,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (party.length === 0) return;
     const today = getLocalDateStr();
     if (dailyChallenge && dailyChallenge.date === today) return;
-    const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'FIGHT', 'PSYCHIC', 'DARK', 'DRAGON'];
+    const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'FIGHT', 'PSYCHIC', 'DARK', 'DRAGON', 'ICE', 'FAIRY', 'WIND', 'LIGHT', 'COSMIC', 'SOUND', 'TIME', 'CHAOS', 'NORMAL', 'POISON', 'GROUND', 'FLYING', 'BUG', 'ROCK', 'GHOST', 'STEEL'];
     const challengeType = types[Math.floor(Math.random() * types.length)];
     const typeName = TYPES[challengeType]?.name || challengeType;
     setDailyChallenge({ date: today, type: challengeType, typeName, wins: 0, target: 3, completed: false });
@@ -4179,6 +4946,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         divorceDate: new Date().toISOString(),
         lastSpouseGiftDate: null,
       }));
+      setAchStats(prev => ({ ...prev, marriageComplete: 0 }));
       showMapToast('💔', '离婚', `${candidate.name} 与你离婚`, 2000);
     }});
   };
@@ -4517,13 +5285,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         </section>
 
         <div className="housing-tab-bar" style={{display:'flex', gap:'6px', justifyContent:'flex-start', margin:'10px 0', overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:'4px', scrollbarWidth:'none'}}>
-          {['overview','furniture','residents','garden','treasure','shop','upgrade','cafe','dating'].map(tab => (
+          {['overview','furniture','residents','garden','sanctuary','treasure','shop','upgrade','cafe','dating'].map(tab => (
             <button key={tab} className={housingTab === tab ? 'is-active' : ''} onClick={() => setHousingTab(tab)}
               style={{padding:'6px 12px', borderRadius:'20px', border:'none', cursor:'pointer',
-                background: housingTab === tab ? (tab === 'cafe' ? '#C62828' : tab === 'dating' ? '#E91E63' : tab === 'garden' ? '#43A047' : tab === 'treasure' ? '#FF8F00' : '#8D6E63') : '#fff',
+                background: housingTab === tab ? (tab === 'cafe' ? '#C62828' : tab === 'dating' ? '#E91E63' : tab === 'garden' ? '#43A047' : tab === 'sanctuary' ? '#7B1FA2' : tab === 'treasure' ? '#FF8F00' : '#8D6E63') : '#fff',
                 color: housingTab === tab ? '#fff' : '#666', fontWeight:'bold', fontSize:'11px',
                 boxShadow: housingTab === tab ? '0 4px 12px rgba(141,110,99,0.4)' : 'none'}}>
-              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', garden:'🌱 花园', treasure:'✨ 珍藏', shop:'🛒 商店', upgrade:'⬆️ 升级', cafe:'☕ 咖啡厅', dating:'💕 约会'}[tab]}
+              {{overview:'🏠 概览', furniture:'🪑 家具', residents:'🐾 入住', garden:'🌱 花园', sanctuary:'⛩️ 圣域', treasure:'✨ 珍藏', shop:'🛒 商店', upgrade:'⬆️ 升级', cafe:'☕ 咖啡厅', dating:'💕 约会'}[tab]}
             </button>
           ))}
         </div>
@@ -4828,6 +5596,45 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           )}
 
           {/* ========== 珍藏阁 ========== */}
+          {housingTab === 'sanctuary' && (
+            <div style={{maxWidth:'640px', margin:'0 auto'}}>
+              <div style={{background:'linear-gradient(135deg,#6A1B9A,#8E24AA)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px'}}>
+                <div style={{fontWeight:'bold', fontSize:'18px'}}>⛩️ 精灵圣域</div>
+                <div style={{fontSize:'12px', opacity:0.85}}>区域生态据点 · 设施升级可提升对应地图生态指标</div>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:'10px'}}>
+                {SANCTUARY_FACILITIES.map(f => {
+                  const lv = sanctuaryState.facilities?.[f.id] || 0;
+                  const cost = getSanctuaryUpgradeCost(f.id, lv);
+                  return (
+                    <div key={f.id} style={{background:'#fff', borderRadius:'12px', padding:'14px', border:'1px solid #e0e0e0', boxShadow:'0 2px 8px rgba(0,0,0,0.05)'}}>
+                      <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'4px'}}>{f.icon} {f.name} <span style={{color:'#7B1FA2'}}>Lv.{lv}/{f.maxLevel}</span></div>
+                      <div style={{fontSize:'11px', color:'#666', marginBottom:'10px', lineHeight:1.4}}>{f.desc}</div>
+                      <button onClick={() => upgradeSanctuaryFacility(f.id)} disabled={lv >= f.maxLevel}
+                        style={{padding:'8px 14px', borderRadius:'10px', border:'none', cursor: lv >= f.maxLevel ? 'default' : 'pointer',
+                          background: lv >= f.maxLevel ? '#eee' : 'linear-gradient(135deg,#7B1FA2,#AB47BC)', color: lv >= f.maxLevel ? '#999' : '#fff', fontWeight:'bold', fontSize:'12px'}}>
+                        {lv >= f.maxLevel ? '已满级' : `升级 · ${cost?.toLocaleString()}金`}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{marginTop:'16px', background:'#f3e5f5', borderRadius:'12px', padding:'14px'}}>
+                <div style={{fontWeight:'bold', fontSize:'13px', marginBottom:'8px', color:'#6A1B9A'}}>🌺 精灵协同（选择激活一种）</div>
+                {SANCTUARY_SYNERGY.map(s => (
+                  <div key={s.id} onClick={() => {
+                    if (sanctuaryState.synergyActive === s.id) { setSanctuaryState(prev => ({ ...prev, synergyActive: null })); return; }
+                    if (!checkSynergyMatch(s.id, sanctuaryState.residents || [])) { showMapToast('⚠️', '协同失败', `缺少所需属性精灵：${s.petNames.join('、')}`, 2500); return; }
+                    setSanctuaryState(prev => ({ ...prev, synergyActive: s.id }));
+                  }} style={{fontSize:'11px', color: sanctuaryState.synergyActive === s.id ? '#6A1B9A' : '#555', marginBottom:'8px', lineHeight:1.4, padding:'8px 10px', borderRadius:'8px', cursor:'pointer', background: sanctuaryState.synergyActive === s.id ? 'rgba(106,27,154,0.1)' : 'transparent', border: sanctuaryState.synergyActive === s.id ? '1px solid rgba(106,27,154,0.3)' : '1px solid transparent'}}>
+                    <strong>{s.name}</strong>（{s.petNames.join(' + ')}）— {s.desc}
+                    {sanctuaryState.synergyActive === s.id && <span style={{marginLeft:'8px', color:'#4CAF50', fontWeight:'bold'}}>✓ 已激活</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {housingTab === 'treasure' && (
             <div style={{maxWidth:'600px', margin:'0 auto'}}>
               <div style={{background:'linear-gradient(135deg,#FF8F00,#FFA726)', borderRadius:'16px', padding:'20px', color:'#fff', marginBottom:'16px'}}>
@@ -5608,10 +6415,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   }, [ecoCrisisState.cleared, badges.length]);
 
   const applyMapEcologyDelta = (mapId, delta) => {
-    setRegionEcology(prev => ({
-      ...prev,
-      [mapId]: applyEcologyDelta(prev[mapId] || getDefaultEcologyForMap(mapId), delta),
-    }));
+    if (!mapId || !delta || !Object.keys(delta).length) return;
+    setRegionEcology(prev => {
+      const updated = {
+        ...prev,
+        [mapId]: applyEcologyDelta(prev[mapId] || getDefaultEcologyForMap(mapId), delta),
+      };
+      return applyRegionChains(updated);
+    });
   };
 
   const startSpiritDomainBattle = (domain) => {
@@ -5650,32 +6461,121 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }, 'spirit_domain');
   };
 
+  const applyChapterStepProgress = (crisisId, step, routeExtra) => {
+    if (!step) return;
+    if (crisisId === CANYON_CHAPTER_ID) {
+      setFusionState(prev => {
+        const cur = prev.canyonChapter?.vars || CANYON_VARS_DEFAULT;
+        let vars = applyCanyonVarDelta(cur, step.varDelta);
+        if (routeExtra?.varDelta) vars = applyCanyonVarDelta(vars, routeExtra.varDelta);
+        const clues = [...new Set([...(prev.fruitClues || []), ...getCanyonStepUnlocks(step, vars)])];
+        return { ...prev, canyonChapter: { ...(prev.canyonChapter || {}), vars, lastRegion: step.region }, fruitClues: clues };
+      });
+    } else if (crisisId === GHOST_CHAPTER_ID) {
+      setFusionState(prev => {
+        const cur = prev.ghostChapter?.vars || GHOST_VARS_DEFAULT;
+        let vars = applyGhostVarDelta(cur, step.varDelta);
+        if (routeExtra?.varDelta) vars = applyGhostVarDelta(vars, routeExtra.varDelta);
+        const clues = [...new Set([...(prev.fruitClues || []), ...getGhostStepUnlocks(step, vars)])];
+        return { ...prev, ghostChapter: { ...(prev.ghostChapter || {}), vars, lastRegion: step.region }, fruitClues: clues };
+      });
+    } else if (crisisId === SEAL_CHAPTER_ID) {
+      setFusionState(prev => {
+        const cur = prev.sealChapter?.vars || SEAL_VARS_DEFAULT;
+        let vars = applySealVarDelta(cur, step.varDelta);
+        if (routeExtra?.varDelta) vars = applySealVarDelta(vars, routeExtra.varDelta);
+        const clues = [...new Set([...(prev.fruitClues || []), ...getSealStepUnlocks(step, vars)])];
+        return { ...prev, sealChapter: { ...(prev.sealChapter || {}), vars, lastRegion: step.region }, fruitClues: clues };
+      });
+    }
+  };
+
+  const getChapterVars = (crisisId) => {
+    if (crisisId === CANYON_CHAPTER_ID) return fusionState.canyonChapter?.vars;
+    if (crisisId === GHOST_CHAPTER_ID) return fusionState.ghostChapter?.vars;
+    if (crisisId === SEAL_CHAPTER_ID) return fusionState.sealChapter?.vars;
+    return null;
+  };
+
+  const resolveChapterEnding = (crisisId, crisis, routeId, branchId, vars) => {
+    if (crisisId === CANYON_CHAPTER_ID) return resolveCanyonEnding(crisis.endings || [], { routeId, branchId, vars });
+    if (crisisId === GHOST_CHAPTER_ID) return resolveGhostEnding(crisis.endings || [], { routeId, branchId, vars });
+    if (crisisId === SEAL_CHAPTER_ID) return resolveSealEnding(crisis.endings || [], { routeId, branchId, vars });
+    return (crisis.endings || []).find(e => {
+      const conds = e.conditions || [];
+      if (!conds.length) return false;
+      return conds.every(c => {
+        if (c.startsWith('branch:')) return branchId === c.slice(7);
+        if (c.startsWith('route:')) return routeId === c.slice(6);
+        return false;
+      });
+    }) || (crisis.endings || [])[0];
+  };
+
   const runEcoCrisisStep = (crisisId, stepIdx) => {
     const crisis = getEcoCrisisById(crisisId);
     if (!crisis || stepIdx >= crisis.steps.length) {
       if (crisis) {
         const branchId = ecoCrisisChoices[crisisId];
+        const routeId = ecoCrisisRoutes[crisisId];
         const branch = branchId ? getMoralBranch(branchId) : null;
+        const chapterVars = getChapterVars(crisisId);
+        const ending = resolveChapterEnding(crisisId, crisis, routeId, branchId, chapterVars);
         setEcoCrisisState(prev => ({
           cleared: [...new Set([...(prev.cleared || []), crisisId])],
           active: null,
         }));
-        const ecoDelta = { ...(crisis.ecologyReward || {}), ...(branch?.ecology || {}) };
+        const ecoDelta = { ...(crisis.ecologyReward || {}), ...(branch?.ecology || {}), ...(ending?.ecoDelta || {}) };
         applyMapEcologyDelta(crisis.mapId, ecoDelta);
-        const evt = getEcoEventByMapId?.(crisis.mapId);
+        const evt = getActiveEcoEventForMap(crisis.mapId, getLocalDateStr(), [...(ecoCrisisState.cleared || []), crisisId], badges.length);
         if (evt?.resolveEcology) applyMapEcologyDelta(crisis.mapId, evt.resolveEcology);
-        if (crisis.reward?.gold) setGold(g => g + crisis.reward.gold);
+        addGuardianScore(getGuardianPointsForBranch(branchId || 'fight') + 5);
+        updateAchStat({ ecoCrisesCleared: 1 });
+        const rewardGold = ending?.rewards?.gold ?? crisis.reward?.gold ?? 0;
+        if (rewardGold) { setGold(g => g + rewardGold); updateAchStat({ totalGoldEarned: rewardGold }); }
+        if (ending?.rewards?.title) unlockTitle(ending.rewards.title);
+        if (ending?.unlocks?.length) {
+          setFusionState(prev => ({ ...prev, crisisUnlocks: [...new Set([...(prev.crisisUnlocks || []), ...ending.unlocks])] }));
+          ending.unlocks.forEach(u => {
+            if (u.startsWith('bond_')) showMapToast('💫', '结契解锁', `${u} 可在地图上进行结契`, 3000);
+          });
+        }
+        setFusionState(prev => ({
+          ...prev,
+          ecoBranchTaken: true,
+          ...(crisisId === CANYON_CHAPTER_ID ? { canyonChapter: { ...prev.canyonChapter, completed: true, endingId: ending?.id } } : {}),
+          ...(crisisId === GHOST_CHAPTER_ID ? { ghostChapter: { ...prev.ghostChapter, completed: true, endingId: ending?.id } } : {}),
+          ...(crisisId === SEAL_CHAPTER_ID ? { sealChapter: { ...prev.sealChapter, completed: true, endingId: ending?.id } } : {}),
+        }));
+        if (crisisId === CANYON_CHAPTER_ID) updateAchStat({ canyonChapterCleared: 1 });
+        if (crisisId === GHOST_CHAPTER_ID) updateAchStat({ ghostChapterCleared: 1 });
+        if (crisisId === SEAL_CHAPTER_ID) updateAchStat({ sealChapterCleared: 1 });
         if (crisis.reward?.item) {
-          const cat = crisis.reward.item.includes('ball') ? 'balls' : crisis.reward.item.includes('stone') ? 'stones' : 'meds';
+          const ballIds = ['poke','great','ultra','quick','heal','master','timer','dusk','luxury','net','dive','repeat','heavy','love','dream','beast'];
+          const stoneIds = ['fire_stone','water_stone','thunder_stone','leaf_stone','moon_stone','sun_stone','dusk_stone','dawn_stone','ice_stone','shiny_stone'];
+          const cat = ballIds.includes(crisis.reward.item) ? 'balls' : stoneIds.includes(crisis.reward.item) || crisis.reward.item.includes('stone') ? 'stones' : 'meds';
           setInventory(p => ({ ...p, [cat]: { ...p[cat], [crisis.reward.item]: (p[cat]?.[crisis.reward.item] || 0) + (crisis.reward.itemCount || 1) } }));
         }
-        showMapToast('🌿', '生态恢复', `${crisis.name} 调查完成！区域生态已更新`, 3500);
+        showMapToast('🌿', ending?.narrative ? '结局达成' : '生态恢复', ending?.narrative || `${crisis.name} 调查完成！区域生态已更新`, 4000);
       }
       setEcoCrisisModal(null);
       setEcoBranchModal(null);
       return;
     }
     const step = crisis.steps[stepIdx];
+    const routeGateStep = crisis.routeStep ?? 0;
+    if (crisis.routes?.length && !ecoCrisisRoutes[crisisId]) {
+      if (step?.type === 'route' || stepIdx === routeGateStep) {
+        setEcoRouteModal({ crisisId, stepIdx, crisis });
+        return;
+      }
+    }
+    if (step.type === 'route') {
+      if (!ecoCrisisRoutes[crisisId]) {
+        setEcoRouteModal({ crisisId, stepIdx, crisis });
+        return;
+      }
+    }
     if (step.type === 'branch') {
       setEcoBranchModal({ crisisId, stepIdx, crisis, prompt: crisis.branchPrompt });
       return;
@@ -5691,18 +6591,40 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const count = step.count || 3;
     const enemyParty = [];
     const branchId = ecoCrisisChoices[crisisId];
+    const routeId = ecoCrisisRoutes[crisisId];
     const branch = branchId ? getMoralBranch(branchId) : null;
     const linkedBoss = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
+    const routeMods = parseBossRouteModifiers(crisis, branchId, routeId, branch?.bossMult || 1);
+    const leadSect = party[0]?.sectId;
+    const chapterMods = crisisId === CANYON_CHAPTER_ID
+      ? getCanyonBossModifiers(getChapterVars(crisisId), routeId, branchId)
+      : crisisId === GHOST_CHAPTER_ID
+        ? getGhostBossModifiers(getChapterVars(crisisId), routeId, branchId)
+        : crisisId === SEAL_CHAPTER_ID
+          ? getSealBossModifiers(getChapterVars(crisisId), routeId, branchId)
+          : { bossMult: 1, skipMechanics: [], spawnAdds: 0 };
+    const battleObjective = routeMods.objectiveOverride || step.objective;
+    const crossBonuses = calcCrossSystemPveBonuses({ playerStyle: fusionState.playerStyle, nightBattle: step.nightBattle || timePhase === 'NIGHT', kwPosition: fusionState.kwPosition });
+    const chakraAff = calcChakraAffinity(narutoState?.jutsuMastery);
+    const jutsuSynergy = chakraAff ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[chakraAff]?.gameType) : null;
+    const fusionBonuses = mergePveBonuses(
+      calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionState.generalTacticId, jutsuSynergy }),
+      crossBonuses
+    );
     if (step.type === 'boss') {
       const bossLvl = Array.isArray(step.lvl) ? step.lvl : (step.lvl || lvl[1]);
       const boss = createPet(step.bossId || step.pool?.[0] || 1, bossLvl, true, true);
       boss.name = step.enemyName || linkedBoss?.name || boss.name;
-      boss.customStatMult = 1.2 * (branch?.bossMult || 1);
+      boss.customStatMult = 1.2 * routeMods.bossMult * (chapterMods.bossMult || 1);
       if (linkedBoss) {
         boss.type = linkedBoss.type;
         boss.secondaryType = linkedBoss.secondaryType;
       }
       enemyParty.push(boss);
+      for (let a = 0; a < routeMods.spawnAdds + (chapterMods.spawnAdds || 0); a++) {
+        const pid = step.pool?.[Math.floor(Math.random() * (step.pool?.length || 1))] || step.bossId || 1;
+        enemyParty.push(createPet(pid, bossLvl - 5, true));
+      }
     } else {
       for (let i = 0; i < count; i++) {
         const pid = step.pool[Math.floor(Math.random() * step.pool.length)];
@@ -5710,7 +6632,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
     }
     const ecology = getMapEcology(crisis.mapId);
-    const branchMod = linkedBoss?.branchModifiers?.[branchId];
+    const branchMod = (linkedBoss?.branchModifiers || linkedBoss?.branchMods)?.[branchId];
+    const protectHpBase = Math.floor(getStats(party[0] || {}).maxHp * (0.6 + (fusionBonuses.protectBonus || 0)));
+    const nightMult = (step.nightBattle || timePhase === 'NIGHT') ? 1.08 : 1;
+    if (nightMult > 1) enemyParty.forEach(e => { e.customStatMult = (e.customStatMult || 1) * nightMult; });
     startBattle({
       id: crisis.mapId,
       name: step.title,
@@ -5722,8 +6647,286 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       _regionEcology: ecology,
       ecoBossMechanics: !!step.bossKey,
       bossPhases: linkedBoss?.phases,
-      _skipMechanics: branchMod?.skipMechanic || [],
+      _skipMechanics: [...(branchMod?.skipMechanic || []), ...routeMods.skipMechanics, ...(chapterMods.skipMechanics || [])],
+      _nightBattle: !!(step.nightBattle || timePhase === 'NIGHT'),
+      _chapterVars: getChapterVars(crisisId) || undefined,
+      ...(battleObjective ? {
+        battleObjective,
+        objectiveTurns: step.objectiveTurns || 8,
+        objectiveTarget: step.objectiveTarget || 0,
+        _purifyProgress: battleObjective === 'purify' ? 100 : undefined,
+        _protectHp: battleObjective === 'protect' ? protectHpBase : undefined,
+        _protectMaxHp: battleObjective === 'protect' ? protectHpBase : undefined,
+        _fusionBonuses: fusionBonuses,
+      } : {}),
     }, 'eco_crisis');
+  };
+
+  const advanceBondingStep = (questId) => {
+    const quest = getBondingQuestById(questId);
+    if (!quest) return;
+    const prog = bondingProgress[questId] || { step: 0, completed: false };
+    if (prog.completed) { showMapToast('✓', '已完成', `${quest.name} 结契已完成`, 2000); return; }
+    const step = quest.steps[prog.step];
+    if (!step) return;
+    const eco = getMapEcology(quest.mapId);
+    if (!checkBondingEcology(quest, eco)) {
+      showMapToast('🌿', '生态不足', '区域生态尚未达到结契要求', 2500);
+      return;
+    }
+    const req = checkBondingStepRequirements(step, party);
+    if (!req.ok) { showMapToast('❌', '条件不足', req.reason, 2500); return; }
+    if (quest.reqTags?.length && !party.some(p => inferPetTags(p).some(t => quest.reqTags.includes(t)))) {
+      showMapToast('❌', '条件不足', `需要带有 ${quest.reqTags.join('/')} 标签的精灵`, 2500);
+      return;
+    }
+    if (prog.step >= quest.steps.length - 1) {
+      const newPet = createPet(quest.petId, Math.max(15, (party[0]?.level || 20) - 5), false, Math.random() < 0.1);
+      newPet.name = quest.petName || newPet.name;
+      if (quest.types?.length) {
+        newPet.type = quest.types[0];
+        newPet.secondaryType = quest.types[1] || null;
+      }
+      newPet.intimacy = Math.min(255, Math.max((step.rewardIntimacy || 80) + 30, (party[0]?.intimacy || 0) + 20));
+      newPet.bonded = true;
+      if (party.length < 6) setParty(prev => [...prev, newPet]);
+      else setBox(prev => [...prev, newPet]);
+      if (!caughtDex.includes(quest.petId)) setCaughtDex(prev => [...prev, quest.petId]);
+      if (quest.reward?.title) unlockTitle(quest.reward.title);
+      if (quest.reward?.gold) setGold(g => g + quest.reward.gold);
+      if (quest.reward?.item) {
+        const cat = BALLS[quest.reward.item] ? 'balls' : quest.reward.item.includes('stone') ? 'stones' : 'meds';
+        setInventory(p => ({ ...p, [cat]: { ...p[cat], [quest.reward.item]: (p[cat]?.[quest.reward.item] || 0) + (quest.reward.itemCount || 1) } }));
+      }
+      if (quest.ecology) applyMapEcologyDelta(quest.mapId, quest.ecology);
+      addGuardianScore(10);
+      updateAchStat({ bondingCompleted: (achStats.bondingCompleted || 0) + 1 });
+      setBondingProgress(prev => ({ ...prev, [questId]: { step: quest.steps.length, completed: true } }));
+      showMapToast(quest.icon || '💫', '结契成功', `${quest.petName} 与你建立了羁绊！`, 3500);
+      setBondingModal(null);
+      return;
+    }
+    setBondingProgress(prev => ({ ...prev, [questId]: { step: (prog.step || 0) + 1, completed: false } }));
+    showMapToast(BONDING_STEP_TYPES[step.type]?.icon || '✓', step.title, step.text, 3000);
+  };
+
+  const upgradeSanctuaryFacility = (facilityId) => {
+    const def = getFacilityDef(facilityId);
+    if (!def) return;
+    const curLv = sanctuaryState.facilities?.[facilityId] || 0;
+    if (curLv >= def.maxLevel) { showMapToast('⬆️', '已满级', `${def.name} 已达最高等级`, 2000); return; }
+    const cost = getSanctuaryUpgradeCost(facilityId, curLv);
+    if (gold < cost) { showMapToast('💰', '金币不足', `需要 ${cost} 金币`, 2000); return; }
+    setGold(g => Math.max(0, g - cost));
+    updateAchStat({ totalGoldSpent: cost });
+    const prevFacilities = sanctuaryState.facilities || {};
+    const nextFacilities = { ...prevFacilities, [facilityId]: curLv + 1 };
+    setSanctuaryState(prev => ({
+      ...prev,
+      mapId: prev.mapId || currentMapId,
+      facilities: nextFacilities,
+    }));
+    const prevBonus = calcSanctuaryEcoBonus({ facilities: prevFacilities });
+    const nextBonus = calcSanctuaryEcoBonus({ facilities: nextFacilities });
+    const delta = {};
+    Object.keys({ ...prevBonus, ...nextBonus }).forEach(k => {
+      const d = (nextBonus[k] || 0) - (prevBonus[k] || 0);
+      if (d) delta[k] = d;
+    });
+    if (Object.keys(delta).length) applyMapEcologyDelta(sanctuaryState.mapId || currentMapId, delta);
+    updateAchStat({ sanctuaryUpgrades: 1 });
+    showMapToast(def.icon, '圣域升级', `${def.name} Lv.${curLv + 1}`, 2500);
+  };
+
+  const completeKingdomPveTask = (taskId) => {
+    const task = KINGDOM_PVE_TASKS.find(t => t.id === taskId);
+    if (!task || (fusionState.kingdomTasksDone || []).includes(taskId)) return;
+    if (badges.length < (task.reqBadges || 0)) { showMapToast('🔒', '未解锁', `需要 ${task.reqBadges} 枚徽章`, 2000); return; }
+    if (task.prereq?.length) {
+      const done = fusionState.kingdomTasksDone || [];
+      if (!task.prereq.every(p => done.includes(p))) { showMapToast('❌', '前置未完成', '需先完成前置国战任务', 2500); return; }
+    }
+    if (task.cost) {
+      if (task.cost.gold && gold < task.cost.gold) { showMapToast('💰', '金币不足', `需要 ${task.cost.gold} 金币`, 2500); return; }
+      if (task.cost.energy && (kingdomWar?.kwManpowerReserve || 0) < task.cost.energy) { showMapToast('⚡', '兵力不足', `需要 ${task.cost.energy} 兵力`, 2500); return; }
+    }
+    if (task.requiresCrisis && !(ecoCrisisState.cleared || []).includes(task.requiresCrisis)) {
+      showMapToast('❌', '条件不足', '需先完成对应灵灾副本', 2500); return;
+    }
+    if (task.requiresSanctuaryLv) {
+      const maxLv = Math.max(0, ...Object.values(sanctuaryState.facilities || {}));
+      if (maxLv < task.requiresSanctuaryLv) { showMapToast('⛩️', '圣域不足', `需要圣域设施 Lv.${task.requiresSanctuaryLv}`, 2500); return; }
+    }
+    if (task.requiresUnlock && !(fusionState.crisisUnlocks || []).includes(task.requiresUnlock)) {
+      showMapToast('❌', '条件不足', '需先完成对应灵灾章节结局', 2500); return;
+    }
+    if (task.cost?.gold) setGold(g => g - task.cost.gold);
+    if (task.cost?.energy) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - task.cost.energy) }));
+    setFusionState(prev => ({ ...prev, kingdomTasksDone: [...(prev.kingdomTasksDone || []), taskId] }));
+    const r = task.reward || {};
+    if (r.gold) setGold(g => g + r.gold);
+    if (r.guardianScore) addGuardianScore(r.guardianScore);
+    if (r.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + r.kwContrib }));
+    if (r.kwManpower) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.min(999, (prev.kwManpowerReserve || 0) + r.kwManpower) }));
+    if (r.generalFragment) {
+      setKingdomWar(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
+      showMapToast('🎖️', '名将碎片', `获得 ${r.generalFragment} 碎片 ×1`, 2500);
+    }
+    if (task.ecoDelta) applyMapEcologyDelta(currentMapId, task.ecoDelta);
+    showMapToast(task.icon, '国战任务完成', task.name, 3000);
+  };
+
+  const startFusionDungeon = (type, id) => {
+    let def, clearedKey, clearedArr;
+    if (type === 'jutsu') { def = getJutsuRealmById(id); clearedKey = 'jutsuRealmsCleared'; }
+    else if (type === 'fruit') { def = getFruitSeaZoneById(id); clearedKey = 'fruitTrialsCleared'; }
+    else if (type === 'sect') { def = getSectRealmById(id); clearedKey = 'sectRealmsCleared'; }
+    else if (type === 'battlefield') { def = getBattlefieldById(id); clearedKey = 'battlefieldsCleared'; }
+    else return;
+    if (!def || (fusionState[clearedKey] || []).includes(id)) return;
+    if (badges.length < def.reqBadges) { showMapToast('🔒', '未解锁', `需要 ${def.reqBadges} 枚徽章`, 2000); return; }
+    const dungeonProgress = fusionState[`${type}_progress_${id}`] || 0;
+    const combatSteps = (def.steps || []).filter(s => s.type === 'boss' || s.type === 'battle');
+    const step = combatSteps[dungeonProgress] || combatSteps[combatSteps.length - 1];
+    if (!step) return;
+    const isFinalStep = !combatSteps[dungeonProgress + 1];
+    const leadSect = party[0]?.sectId;
+    const chakraAff2 = calcChakraAffinity(narutoState?.jutsuMastery);
+    const jutsuSyn2 = chakraAff2 ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[chakraAff2]?.gameType) : null;
+    const fusionBonuses = calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionState.generalTacticId, jutsuSynergy: jutsuSyn2 });
+    const protectHpBase = Math.floor(getStats(party[0] || {}).maxHp * (0.6 + (fusionBonuses.protectBonus || 0)));
+    const enemyParty = [];
+    if (step.type === 'boss' || step.bossKey) {
+      const boss = createPet(step.bossId || 1, step.lvl || 40, true, true);
+      boss.name = step.enemyName || boss.name;
+      const linked = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
+      if (linked) { boss.type = linked.type; boss.secondaryType = linked.secondaryType; }
+      if (type === 'battlefield') {
+        boss.customStatMult = (boss.customStatMult || 1) * BOSS_STAT_MULTIPLIER;
+        boss.currentHp = Math.floor((boss.currentHp || boss.stats?.hp || 100) * BOSS_HP_MULTIPLIER);
+        boss.stats = boss.stats ? { ...boss.stats, hp: Math.floor(boss.stats.hp * BOSS_HP_MULTIPLIER) } : boss.stats;
+        boss.isBoss = true;
+      }
+      enemyParty.push(boss);
+    } else {
+      const pool = step.pool || [1]; const lvl = step.lvl || [30, 40]; const count = step.count || 3;
+      for (let i = 0; i < count; i++) enemyParty.push(createPet(pool[Math.floor(Math.random() * pool.length)], _.random(lvl[0], lvl[1]), true));
+    }
+    startBattle({
+      id: def.mapId || currentMapId,
+      name: def.name,
+      customParty: enemyParty,
+      trainerName: step.enemyName || def.name,
+      drop: step.drop || def.reward?.gold || 3000,
+      _fusionDungeon: { type, id, clearedKey, isFinalStep },
+      ecoBossMechanics: !!step.bossKey,
+      bossPhases: step.bossKey ? ECO_LINKED_BOSSES[step.bossKey]?.phases : undefined,
+      ...(step.objective ? {
+        battleObjective: step.objective,
+        objectiveTurns: step.objectiveTurns || 8,
+        _purifyProgress: step.objective === 'purify' ? 100 : undefined,
+        _protectHp: step.objective === 'protect' ? protectHpBase : undefined,
+        _protectMaxHp: step.objective === 'protect' ? protectHpBase : undefined,
+        _fusionBonuses: fusionBonuses,
+      } : {}),
+    }, 'eco_crisis');
+    setFusionHubOpen(false);
+  };
+
+  const participateCalamity = (calamityId) => {
+    const cal = getCalamityById(calamityId);
+    if (!cal) return;
+    const thisWeek = new Date().toISOString().slice(0, 10).replace(/-/g, '').slice(0, 6);
+    const weekKey = `${calamityId}_${thisWeek}`;
+    if ((fusionState.calamitiesParticipated || []).includes(weekKey)) return;
+    if (badges.length < cal.reqBadges) return;
+    setFusionState(prev => ({ ...prev, calamitiesParticipated: [...(prev.calamitiesParticipated || []).filter(k => k.includes(thisWeek)), weekKey] }));
+    addGuardianScore(cal.reward?.guardianScore || 10);
+    if (cal.reward?.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + cal.reward.kwContrib }));
+    if (cal.reward?.gold) setGold(g => g + cal.reward.gold);
+    if (cal.reward?.title) unlockTitle(cal.reward.title);
+    const rawEco = cal.nationEffects || {};
+    const calEco = {};
+    Object.entries(rawEco).forEach(([k, v]) => { calEco[k] = -v; });
+    if (!Object.keys(calEco).length) Object.assign(calEco, { pollution: -8, stability: 10 });
+    applyMapEcologyDelta(currentMapId, calEco);
+    updateAchStat({ fusionCalamities: 1 });
+    showMapToast(cal.icon, '国土灵灾', `${cal.name} 已参与净化`, 3500);
+  };
+
+  const selectGeneralTactic = (tacticId) => {
+    setFusionState(prev => ({ ...prev, generalTacticId: tacticId }));
+    const t = GENERAL_PVE_TACTICS[tacticId];
+    showMapToast(t?.icon || '🏇', '将魂战术', `已装备 ${t?.name || tacticId} 的 PVE 战术`, 2500);
+  };
+
+  const selectPlayerStyle = (mainId, subId) => {
+    setFusionState(prev => ({ ...prev, playerStyle: { ...(prev.playerStyle || {}), main: mainId, sub: subId || prev.playerStyle?.sub } }));
+    const s = PLAYER_STYLES[mainId];
+    showMapToast(s?.icon || '🧑', '主修流派', `已设 ${s?.name || mainId}`, 2500);
+  };
+
+  const selectBreathingStyle = (breathingId) => {
+    const advanced = ['insect', 'mist'];
+    if (advanced.includes(breathingId) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock')) {
+      showMapToast('🔒', '未解锁', '需完成鬼雾山「完整净化」结局', 2500);
+      return;
+    }
+    setFusionState(prev => ({ ...prev, playerStyle: { ...(prev.playerStyle || {}), breathingStyle: breathingId } }));
+    const b = BREATHING_PVE_STYLES[breathingId];
+    showMapToast(b?.icon || '⚔️', '呼吸法战术', `已选 ${b?.name || breathingId}（PVE效率）`, 2500);
+  };
+
+  const selectKwPosition = (posId) => {
+    setFusionState(prev => ({ ...prev, kwPosition: posId }));
+    const p = KINGDOM_POSITIONS.find(x => x.id === posId);
+    showMapToast(p?.icon || '🏰', '国战职位', `已设 ${p?.name || posId}`, 2500);
+  };
+
+  const selectEcoRoute = (crisisId, stepIdx, routeId) => {
+    const crisis = getEcoCrisisById(crisisId);
+    const route = (crisis?.routes || []).find(r => r.id === routeId);
+    if (!route) return;
+    const req = checkRouteRequirements(route, party);
+    if (!req.ok) {
+      showMapToast('❌', '条件不足', `需要队伍中有 ${req.reqTypes?.join('/')} 系精灵`, 2000);
+      return;
+    }
+    setEcoCrisisRoutes(prev => ({ ...prev, [crisisId]: routeId }));
+    if (route.ecoDelta) applyMapEcologyDelta(crisis.mapId, route.ecoDelta);
+    if (crisisId === CANYON_CHAPTER_ID && route.varDelta) {
+      setFusionState(prev => ({
+        ...prev,
+        canyonChapter: {
+          ...(prev.canyonChapter || {}),
+          vars: applyCanyonVarDelta(prev.canyonChapter?.vars || CANYON_VARS_DEFAULT, route.varDelta),
+          routeId,
+        },
+      }));
+    }
+    if (crisisId === GHOST_CHAPTER_ID && route.varDelta) {
+      setFusionState(prev => ({
+        ...prev,
+        ghostChapter: {
+          ...(prev.ghostChapter || {}),
+          vars: applyGhostVarDelta(prev.ghostChapter?.vars || GHOST_VARS_DEFAULT, route.varDelta),
+          routeId,
+        },
+      }));
+    }
+    if (crisisId === SEAL_CHAPTER_ID && route.varDelta) {
+      setFusionState(prev => ({
+        ...prev,
+        sealChapter: {
+          ...(prev.sealChapter || {}),
+          vars: applySealVarDelta(prev.sealChapter?.vars || SEAL_VARS_DEFAULT, route.varDelta),
+          routeId,
+        },
+      }));
+    }
+    setEcoRouteModal(null);
+    showMapToast('🛤️', route.name, '调查路线已选定', 2500);
+    runEcoCrisisStep(crisisId, stepIdx);
   };
 
   const selectEcoBranch = (crisisId, stepIdx, branchId) => {
@@ -5740,10 +6943,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return;
     }
     if (branch.cost?.gold) {
-      setGold(g => g - branch.cost.gold);
+      setGold(g => Math.max(0, g - branch.cost.gold));
       updateAchStat({ totalGoldSpent: branch.cost.gold });
     }
     setEcoCrisisChoices(prev => ({ ...prev, [crisisId]: branchId }));
+    addGuardianScore(getGuardianPointsForBranch(branchId));
     setEcoBranchModal(null);
     showMapToast(branch.label?.slice(0, 2) || '✓', '决策已记录', branch.desc, 2500);
     runEcoCrisisStep(crisisId, stepIdx + 1);
@@ -5753,13 +6957,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const r = event?.reward || {};
     if (r.gold) setGold(g => g + r.gold);
     if (r.item) {
-      const cat = r.item.includes('ball') ? 'balls' : r.item.includes('stone') ? 'stones' : 'meds';
+      const cat = BALLS[r.item] ? 'balls' : r.item.includes('stone') ? 'stones' : 'meds';
       setInventory(p => ({ ...p, [cat]: { ...p[cat], [r.item]: (p[cat]?.[r.item] || 0) + (r.itemCount || 1) } }));
     }
     if (r.title) unlockTitle(r.title);
     if (r.intimacy) {
-      setParty(prev => prev.map((p, i) => i === 0 ? { ...p, intimacy: (p.intimacy || 0) + r.intimacy } : p));
+      setParty(prev => prev.map((p, i) => i === 0 ? { ...p, intimacy: Math.min(255, (p.intimacy || 0) + r.intimacy) } : p));
     }
+    if (r.guardianScore) addGuardianScore(r.guardianScore);
   };
 
   const completeNonCombatRescue = (event, branchId) => {
@@ -5799,7 +7004,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         return;
       }
       if (branch.cost?.gold) {
-        setGold(g => g - branch.cost.gold);
+        setGold(g => Math.max(0, g - branch.cost.gold));
         updateAchStat({ totalGoldSpent: branch.cost.gold });
       }
     } else {
@@ -5829,6 +7034,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
     }
     grantNonCombatReward(event);
+    addGuardianScore(3);
     setObservationLog(prev => [...prev, event.id]);
     if (event.ecology) applyMapEcologyDelta(event.mapId, event.ecology);
     setNonCombatModal(null);
@@ -5885,10 +7091,31 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return;
     }
     setEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: 0 } }));
+    if (crisisId === CANYON_CHAPTER_ID) {
+      setFusionState(prev => ({
+        ...prev,
+        canyonChapter: { vars: { ...CANYON_VARS_DEFAULT }, started: true, endingId: null },
+      }));
+    }
+    if (crisisId === GHOST_CHAPTER_ID) {
+      setFusionState(prev => ({
+        ...prev,
+        ghostChapter: { vars: { ...GHOST_VARS_DEFAULT }, started: true, endingId: null },
+      }));
+    }
+    if (crisisId === SEAL_CHAPTER_ID) {
+      setFusionState(prev => ({
+        ...prev,
+        sealChapter: { vars: { ...SEAL_VARS_DEFAULT }, started: true, endingId: null },
+      }));
+    }
     runEcoCrisisStep(crisisId, 0);
   };
 
   const advanceEcoCrisis = (crisisId, fromStep) => {
+    const crisis = getEcoCrisisById(crisisId);
+    const step = crisis?.steps?.[fromStep];
+    if (step) applyChapterStepProgress(crisisId, step);
     setEcoCrisisModal(null);
     runEcoCrisisStep(crisisId, fromStep + 1);
   };
@@ -5947,7 +7174,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         else if (picked.type === 'accessory_shard' || picked.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品 ${acc.name || '饰品'}`); } }
         else if (picked.type === 'egg' || picked.type === 'shiny_egg') {
           const eggLvCap = picked.level || (20 + badges.length * 8);
-          const eligiblePool = POKEDEX.filter(p => (p.lvl || p.level || 1) <= eggLvCap && p.id <= 800);
+          const legendIds = (LEGEND_OBTAIN_RULES || []).map(r => r.petId);
+          const eligiblePool = POKEDEX.filter(p => (p.lvl || p.level || 1) <= eggLvCap && p.id <= 900 && !p.hidden && !legendIds.includes(p.id));
           const eggSpecies = eligiblePool.length > 0 ? eligiblePool[Math.floor(Math.random() * eligiblePool.length)] : POKEDEX[Math.floor(Math.random() * Math.min(100, POKEDEX.length))];
           if (eggSpecies) {
             const baseSteps = picked.type === 'shiny_egg' ? 150 : 300;
@@ -6117,6 +7345,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       customStatMult: 1.5 + Math.max(0, badges.length - 6) * 0.1,
       moves: [0,1,2,3].map(i => getMoveByLevel(boss.type, bossLv - i * 5)),
       trait: boss.traits?.[0] || 'pressure',
+      trait2: boss.traits?.[1] || null,
     };
     const stats = getStats(enemyPet, null, null, {});
     const enemyPartyMember = {
@@ -6176,6 +7405,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           const lastMs = pending[pending.length - 1];
           showMapToast('🏆', '里程碑达成', lastMs.desc, 3500);
         }
+        const totalDmg = prev._totalDmgDealt || 0;
+        if (totalDmg > 0) updateAchStat({ worldBossBestDamage: totalDmg });
         if (prev._defeated) {
           const bossR = boss?.rewards || {};
           setGold(g => g + (bossR.gold || 2000));
@@ -6184,7 +7415,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           updateAchStat({ worldBossesDefeated: 1 });
           showMapToast('🎊', '首领击破！', `${boss.name} 已被击败！获得 ${(bossR.gold||2000).toLocaleString()}金${bossR.exp_candy ? ` + ${bossR.exp_candy}经验糖` : ''}${bossR.tickets ? ` + ${bossR.tickets}竞技票` : ''}`, 4000);
         }
-        updateAchStat({ worldBossBestDamage: () => Math.max(prev.bestDamage || 0, prev._totalDmgDealt || 0) });
         const { _pendingMilestones, _defeated, _totalDmgDealt, ...clean } = prev;
         return clean;
       });
@@ -6219,7 +7449,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', getLocalDateStr()));
     let enemyCount = rank.enemyCount || 3;
     if (ruleEffect === 'solo') enemyCount = 1;
-    const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 800 && !p.hidden);
+    let enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 900 && !p.hidden);
+    if (ruleEffect === 'typeLock') {
+      const weekTypes = getArenaWeekTypes();
+      const typePool = enemyPool.filter(p => weekTypes.includes(p.type) || weekTypes.includes(p.type2));
+      if (typePool.length > 0) enemyPool = typePool;
+    }
     if (enemyPool.length === 0) { showMapToast('❌','数据异常','无可用精灵池',1500); return; }
     const enemyParty = [];
     for (let i = 0; i < enemyCount; i++) {
@@ -6227,6 +7462,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (ruleEffect === 'levelCap50') lvl = Math.min(50, lvl);
       const dex = enemyPool[Math.floor(rng() * enemyPool.length)];
       const pet = createPet(dex.id, lvl);
+      pet.isEnemy = true;
       if (ruleEffect === 'halfHp') pet.currentHp = Math.floor(getStats(pet).maxHp * 0.5);
       enemyParty.push(pet);
     }
@@ -6370,36 +7606,59 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'world_boss', icon:'👹', name:'世界首领', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
       { id:'infinity', icon:'🏯', name:'无限城', desc:'Roguelike挑战', color:'#6A1B9A', badge: (achStats.maxInfinityFloor || 0) >= 25 ? '🔥' : 0, onClick: () => { setActivityCenter(false); if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } if (party[0].level >= 80) enterInfinityCastle('normal'); else if (party[0].level >= 40) enterInfinityCastle('shallow'); else showMapToast('⚠️','等级不足','浅层需首发Lv.40+',2000); } },
+      { id:'fusion', icon:'🔗', name:'六系统融合', desc:'忍术·果实·门派·名将·国战', color:'#4527A0', badge: getUnlockedFusionSystems(badges.length).length >= 4 ? '✨' : 0, onClick: () => { setActivityCenter(false); setFusionHubOpen(true); } },
+    ];
+    const readyEntries = entries.filter(e => !!e.badge);
+    const todayFocus = [
+      { label: '轮盘免费', value: freeWheelAvail ? '可用' : `${wheelSpinsLeft} 次余量`, hot: freeWheelAvail },
+      { label: '远征归队', value: pendingExpeditions, hot: pendingExpeditions > 0 },
+      { label: '赏金奖励', value: unclaimedBounties, hot: unclaimedBounties > 0 },
+      { label: '矿洞能量', value: Math.max(0, Number(mineState.energy) || 0), hot: badges.length >= MINE_REQ_BADGES },
     ];
 
     return (
-      <div style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setActivityCenter(false)}>
-        <div onClick={e=>e.stopPropagation()} style={{width:'420px',maxWidth:'92vw',background:'linear-gradient(145deg,#0f0c29,#302b63,#24243e)',borderRadius:'24px',padding:'28px',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.1)'}}>
-          <div style={{textAlign:'center',marginBottom:'24px'}}>
-            <div style={{fontSize:'28px',marginBottom:'6px'}}>🎪</div>
-            <div style={{fontSize:'20px',fontWeight:'800',color:'#fff',letterSpacing:'2px'}}>活动中心</div>
-            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.4)',marginTop:'4px'}}>丰富玩法等你挑战</div>
+      <div className="activity-hub-overlay" style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setActivityCenter(false)}>
+        <div className="activity-hub-panel" onClick={e=>e.stopPropagation()} style={{width:'420px',maxWidth:'92vw',background:'linear-gradient(145deg,#0f0c29,#302b63,#24243e)',borderRadius:'24px',padding:'28px',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.1)'}}>
+          <header className="activity-hub-hero">
+            <div className="activity-hub-emblem">🎪</div>
+            <div>
+              <span>Daily Operations</span>
+              <h2>活动中心</h2>
+              <p>{readyEntries.length > 0 ? `有 ${readyEntries.length} 个玩法正在等待处理` : '日常玩法、挑战与记录都在这里。'}</p>
+            </div>
+            <button type="button" onClick={()=>setActivityCenter(false)} aria-label="关闭活动中心">×</button>
+          </header>
+
+          <div className="activity-hub-focus" aria-label="今日待办">
+            {todayFocus.map(item => (
+              <div className={item.hot ? 'is-hot' : ''} key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
           </div>
-          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',marginBottom:'8px',fontWeight:'600'}}>日常玩法</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+
+          <div className="activity-hub-section-title">日常玩法</div>
+          <div className="activity-hub-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
             {entries.map(e => (
-              <button key={e.id} onClick={e.onClick} style={{position:'relative',background:`linear-gradient(135deg,${e.color}22,${e.color}08)`,border:`1px solid ${e.color}40`,borderRadius:'16px',padding:'16px 12px',cursor:'pointer',textAlign:'center',transition:'all 0.2s'}}>
-                <div style={{fontSize:'32px',marginBottom:'6px'}}>{e.icon}</div>
-                <div style={{fontSize:'14px',fontWeight:'700',color:'#fff'}}>{e.name}</div>
-                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{e.desc}</div>
-                {e.badge > 0 && <div style={{position:'absolute',top:'6px',right:'6px',minWidth:'20px',height:'20px',borderRadius:'10px',padding:'0 4px',background:'#E53935',color:'#fff',fontSize:'11px',fontWeight:'800',display:'flex',alignItems:'center',justifyContent:'center'}}>{e.id === 'mining' ? `⚡${e.badge}` : (e.badge > 99 ? '99+' : e.badge)}</div>}
+              <button key={e.id} className="activity-hub-card" onClick={e.onClick} style={{'--activity-color': e.color, position:'relative',background:`linear-gradient(135deg,${e.color}22,${e.color}08)`,border:`1px solid ${e.color}40`,borderRadius:'16px',padding:'16px 12px',cursor:'pointer',textAlign:'center',transition:'all 0.2s'}}>
+                <div className="activity-hub-card-icon" style={{fontSize:'32px',marginBottom:'6px'}}>{e.icon}</div>
+                <div className="activity-hub-card-name" style={{fontSize:'14px',fontWeight:'700',color:'#fff'}}>{e.name}</div>
+                <div className="activity-hub-card-desc" style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{e.desc}</div>
+                {!!e.badge && <div className="activity-hub-badge" style={{position:'absolute',top:'6px',right:'6px',minWidth:'20px',height:'20px',borderRadius:'10px',padding:'0 4px',background:'#E53935',color:'#fff',fontSize:'11px',fontWeight:'800',display:'flex',alignItems:'center',justifyContent:'center'}}>{e.id === 'mining' ? `⚡${e.badge}` : (Number(e.badge) > 99 ? '99+' : e.badge)}</div>}
               </button>
             ))}
           </div>
-          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',margin:'16px 0 8px',fontWeight:'600'}}>挑战与交换</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-            <button type="button" onClick={() => startTowerChallenge()} style={{padding:'12px 8px',borderRadius:'12px',background:'rgba(255,193,7,0.08)',border:'1px solid rgba(255,193,7,0.25)',color:'#FFD54F',fontSize:'11px',fontWeight:'700',cursor:'pointer',textAlign:'center'}}>
+
+          <div className="activity-hub-section-title">挑战与交换</div>
+          <div className="activity-hub-action-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+            <button className="activity-hub-action is-gold" type="button" onClick={() => startTowerChallenge()} style={{padding:'12px 8px',borderRadius:'12px',background:'rgba(255,193,7,0.08)',border:'1px solid rgba(255,193,7,0.25)',color:'#FFD54F',fontSize:'11px',fontWeight:'700',cursor:'pointer',textAlign:'center'}}>
               🗼 挑战塔<br /><span style={{fontSize:'9px',opacity:0.85}}>当前第{towerFloor}层 · 下一检查点 {(Math.floor(towerFloor / 5) + 1) * 5}层</span>
             </button>
-            <button type="button" onClick={() => startElementalTrial()} style={{padding:'12px 8px',borderRadius:'12px',background:'rgba(33,150,243,0.08)',border:'1px solid rgba(33,150,243,0.25)',color:'#64B5F6',fontSize:'11px',fontWeight:'700',cursor:'pointer',textAlign:'center'}}>
+            <button className="activity-hub-action is-blue" type="button" onClick={() => startElementalTrial()} style={{padding:'12px 8px',borderRadius:'12px',background:'rgba(33,150,243,0.08)',border:'1px solid rgba(33,150,243,0.25)',color:'#64B5F6',fontSize:'11px',fontWeight:'700',cursor:'pointer',textAlign:'center'}}>
               {['🔥','💧','⚡','🌿','🪨','🕊️','👊'][(new Date().getDay() + 6) % 7]} 属性试炼<br /><span style={{fontSize:'9px',opacity:0.85}}>周{['一','二','三','四','五','六','日'][(new Date().getDay() + 6) % 7]} · {['火','水','雷','草','地','飞','格斗'][(new Date().getDay() + 6) % 7]}</span>
             </button>
-            <button type="button" onClick={() => {
+            <button className="activity-hub-action is-wide is-cyan" type="button" onClick={() => {
             if (lastPetTradeDate === today) { showMapToast('⏳', '交换冷却', '每日仅可交换 1 次精灵', 1800); return; }
             if (party.length < 2) { showMapToast('❌', '失败', '队伍至少需要2只精灵', 1500); return; }
             const poolN = Math.min(POKEDEX.length, 40 + (badges?.length || 0) * 35);
@@ -6422,9 +7681,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             🔄 精灵交换 {lastPetTradeDate === today ? '(今日已用)' : '(每日1次)'}
           </button>
           </div>
-          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.45)',margin:'16px 0 8px',fontWeight:'600'}}>记录与收集</div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'4px'}}>
-            <button type="button" onClick={() => { setActivityCenter(false); setShowBattleRecords(true); }} style={{
+
+          <div className="activity-hub-section-title">记录与收集</div>
+          <div className="activity-hub-action-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'4px'}}>
+            <button className="activity-hub-action is-blue" type="button" onClick={() => { setActivityCenter(false); setShowBattleRecords(true); }} style={{
               padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(100,181,246,0.35)',
               background:'linear-gradient(135deg, rgba(33,150,243,0.18), rgba(33,150,243,0.06))', color:'#fff',
             }}>
@@ -6432,7 +7692,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'11px', fontWeight:700, marginTop:'4px'}}>回放记录</div>
               <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>最近20场摘要</div>
             </button>
-            <button type="button" onClick={() => { setActivityCenter(false); setShowSeasonRank(true); }} style={{
+            <button className="activity-hub-action is-gold" type="button" onClick={() => { setActivityCenter(false); setShowSeasonRank(true); }} style={{
               padding:'12px 6px', borderRadius:'12px', textAlign:'center', cursor:'pointer', border:'1px solid rgba(255,193,7,0.35)',
               background:'linear-gradient(135deg, rgba(255,193,7,0.18), rgba(255,193,7,0.06))', color:'#fff',
             }}>
@@ -6441,7 +7701,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'9px', color:'rgba(255,255,255,0.45)', marginTop:'2px'}}>第{arenaState.season || 1}赛季</div>
             </button>
           </div>
-          <button onClick={()=>setActivityCenter(false)} style={{width:'100%',marginTop:'16px',padding:'10px',borderRadius:'12px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.6)',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>关闭</button>
         </div>
       </div>
     );
@@ -6540,7 +7799,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', todayStr));
       let enemyCount = rank.enemyCount || 3;
       if (rule?.effect === 'solo') enemyCount = 1;
-      const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 800 && !p.hidden);
+      const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 900 && !p.hidden);
       const enemies = [];
       for (let i = 0; i < enemyCount; i++) {
         const lvl = Math.floor(rank.enemyLvl[0] + rng() * (rank.enemyLvl[1] - rank.enemyLvl[0] + 1));
@@ -6722,10 +7981,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const elapsed = Date.now() - prev.lastRegenTime;
       const ticks = Math.floor(elapsed / MINE_REGEN_INTERVAL);
       if (ticks <= 0) return prev;
-      const newEnergy = Math.min(MINE_MAX_ENERGY, prev.energy + ticks);
+      const mineBonus = getEquippedRelicEffects(relics).mineEnergyBonus || 0;
+      const newEnergy = Math.min(MINE_MAX_ENERGY, prev.energy + ticks * (1 + mineBonus));
       return {...prev, energy: newEnergy, lastRegenTime: prev.lastRegenTime + ticks * MINE_REGEN_INTERVAL};
     });
-  }, []);
+  }, [relics]);
 
   useEffect(() => {
     regenMineEnergy();
@@ -7002,10 +8262,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       enemies.push({
         id: base.id, name: base.name, type: base.type, type2: base.type2,
         level: lvl, currentHp: hp, isWild: false,
-        moves: (base.learnset || []).filter(m => m.lv <= lvl).slice(-4).map(m => ({
+        moves: ((base.learnset || []).filter(m => m.lv <= lvl).slice(-4).map(m => ({
           name: m.name, p: m.p || 50, pp: m.pp || 15, maxPP: m.pp || 15,
           t: m.type || base.type, effect: m.effect,
-        })),
+        }))).concat(
+          (base.learnset || []).length === 0 ? [{ name: '突击', p: 50, pp: 20, maxPP: 20, t: base.type || 'NORMAL' }] : []
+        ),
         trait: base.traits?.[0] || null, nature: 'adamant',
       });
     }
@@ -7104,26 +8366,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const diff = narutoExamUI.difficulty || getExamDifficulty(getNinjaRank(narutoState.examsCompleted || 0));
     const baseLv = Math.max(...party.map(p => p.level || 1));
     const enemyLv = baseLv + bracket.enemyLvlRange[0] + diff.finalsExtra + Math.floor(Math.random() * (bracket.enemyLvlRange[1] - bracket.enemyLvlRange[0]));
-    const enemyPool = POKEDEX.filter(pd => pd.tier >= 3 && pd.tier <= 5);
+    const enemyPool = POKEDEX.filter(pd => pd.id > 0 && !pd.hidden && (pd.hp || pd.atk) >= 70);
     const enemyCount = (round >= 2 ? 3 : 2) + (diff.finalsExtra >= 7 ? 1 : 0);
     const enemies = [];
     for (let i = 0; i < enemyCount; i++) {
-      const base = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+      const base = enemyPool.length ? enemyPool[Math.floor(Math.random() * enemyPool.length)] : POKEDEX.find(p => p.id === 6);
       if (!base) continue;
-      const createPetFn = (base2, lvl) => {
-        const stats = base2.baseStats || {};
-        const hp = Math.floor(((stats.hp || 50) * 2 * lvl / 100 + lvl + 10));
-        return {
-          id: base2.id, name: base2.name, type: base2.type, type2: base2.type2,
-          level: lvl, currentHp: hp, isWild: false,
-          moves: (base2.learnset || []).filter(m => m.lv <= lvl).slice(-4).map(m => ({
-            name: m.name, p: m.p || 50, pp: m.pp || 15, maxPP: m.pp || 15,
-            t: m.type || base2.type, effect: m.effect,
-          })),
-          trait: base2.traits?.[0] || null, nature: 'adamant',
-        };
-      };
-      enemies.push(createPetFn(base, enemyLv + i * 2));
+      enemies.push(createPet(base.id, enemyLv + i * 2, true));
     }
     if (enemies.length === 0) { showMapToast('❌','错误','无法生成对手',1500); return; }
     startBattle({ customParty: enemies, trainerName: `${bracket.name}对手` }, 'naruto_exam', { round });
@@ -7481,31 +8730,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🍥 忍者系统</div>
           <div style={{width:'60px'}}></div>
         </div>
-        {narutoLocked ? (
-          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px',gap:'20px'}}>
-            <div style={{fontSize:'64px',opacity:0.6}}>🔒</div>
-            <div style={{fontSize:'22px',fontWeight:'900',color:'#FFB74D'}}>忍者系统尚未解锁</div>
-            <div style={{fontSize:'14px',color:'rgba(255,255,255,0.5)',textAlign:'center',lineHeight:1.8,maxWidth:'320px'}}>
-              需要获得 <span style={{color:'#FF6F00',fontWeight:'800'}}>3 枚徽章</span> 才能解锁忍者系统的所有功能。
-              <br/><br/>
-              当前徽章：{badges.length} / 3
-            </div>
-            <div style={{width:'200px',height:'8px',borderRadius:'4px',background:'rgba(255,255,255,0.08)',overflow:'hidden',marginTop:'8px'}}>
-              <div style={{height:'100%',borderRadius:'4px',background:'linear-gradient(90deg,#FF6F00,#FF8F00)',width:`${Math.min(100, (badges.length / 3) * 100)}%`,transition:'width 0.5s'}} />
-            </div>
-            <div style={{marginTop:'16px',padding:'16px 24px',borderRadius:'14px',background:'rgba(255,111,0,0.06)',border:'1px solid rgba(255,111,0,0.15)',textAlign:'center',maxWidth:'340px'}}>
-              <div style={{fontSize:'12px',color:'#FFB74D',fontWeight:'700',marginBottom:'8px'}}>🍥 忍者系统预览</div>
-              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',lineHeight:1.7}}>
-                · 200种忍术 · 查克拉战斗系统<br/>
-                · 忍者段位晋升 · 生存试炼<br/>
-                · 9只尾兽收集 · 尾兽化变身<br/>
-                · 30种组合忍术（双打专用）<br/>
-                · 火影主线剧情20章
-              </div>
-            </div>
+        {narutoLocked && (
+          <div style={{padding:'10px 20px',background:'linear-gradient(90deg,rgba(255,111,0,0.15),rgba(255,143,0,0.08))',borderBottom:'1px solid rgba(255,111,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center',gap:'12px',flexShrink:0}}>
+            <span style={{fontSize:'14px'}}>🔒</span>
+            <span style={{fontSize:'13px',color:'#FFB74D',fontWeight:'700'}}>需要获得 <span style={{color:'#FF6F00'}}>3 枚徽章</span> 才能使用忍者系统（当前 {badges.length}/3）</span>
           </div>
-        ) : (
-        <div style={{flex:1,overflow:'auto',padding:'20px',display:'flex',flexDirection:'column',gap:'16px'}}>
+        )}
+        <div style={{flex:1,overflow:'auto',padding:'20px',display:'flex',flexDirection:'column',gap:'16px',...(narutoLocked ? {pointerEvents:'none',opacity:0.6,filter:'grayscale(0.3)'} : {})}}>
           {/* 段位信息 */}
           <div style={{padding:'20px',borderRadius:'16px',background:'linear-gradient(145deg,rgba(255,111,0,0.12),rgba(255,143,0,0.06))',border:'1px solid rgba(255,111,0,0.2)'}}>
             <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'12px'}}>
@@ -7627,7 +8858,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
           </div>
         </div>
-        )}
       </div>
     );
   };
@@ -8100,6 +9330,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const total = ACHIEVEMENTS.length;
     const unlocked = unlockedAchs.length;
     const pct = total > 0 ? Math.round((unlocked / total) * 100) : 0;
+    const unlockedSet = new Set(unlockedAchs);
     const cats = ['ALL', ...Object.keys(ACH_CATEGORY)];
     const catFiltered = achCatFilter === 'ALL' ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => a.cat === achCatFilter);
     const rarityMatch = (a) => {
@@ -8112,116 +9343,156 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return true;
     };
     const filtered = catFiltered.filter(rarityMatch);
+    const rareUnlocked = ACHIEVEMENTS.filter(a => unlockedSet.has(a.id) && ['EPIC', 'LEGENDARY'].includes(a.rarity)).length;
+    const hiddenUnlocked = ACHIEVEMENTS.filter(a => unlockedSet.has(a.id) && a.hidden).length;
+    const rewardGold = ACHIEVEMENTS.reduce((sum, ach) => unlockedSet.has(ach.id) ? sum + (ach.reward?.gold || 0) : sum, 0);
+    const nextTarget = ACHIEVEMENTS.find(ach => !unlockedSet.has(ach.id) && !ach.hidden) || ACHIEVEMENTS.find(ach => !unlockedSet.has(ach.id));
+    const rarityFilters = [
+      { key: '全部', label: '全部', count: catFiltered.length },
+      { key: '普通', label: '普通', count: catFiltered.filter(a => (a.rarity || 'COMMON') === 'COMMON').length },
+      { key: '稀有', label: '稀有', count: catFiltered.filter(a => ['UNCOMMON', 'RARE'].includes(a.rarity || 'COMMON')).length },
+      { key: '史诗', label: '史诗', count: catFiltered.filter(a => a.rarity === 'EPIC').length },
+      { key: '传说', label: '传说', count: catFiltered.filter(a => a.rarity === 'LEGENDARY').length },
+    ];
+
     return (
-      <div style={{position:'fixed', inset:0, background:'linear-gradient(170deg, #0a0a1a 0%, #111827 50%, #0a1628 100%)', zIndex:3000, display:'flex', flexDirection:'column', overflow:'hidden'}}>
-        {/* Header */}
-        <div style={{padding:'20px 24px 16px', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
-            <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'600'}}>← 返回</button>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', letterSpacing:'2px'}}>成就大厅</div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>{unlocked} / {total} 已解锁</div>
+      <main className="achievement-screen" aria-label="成就大厅">
+        <div className="achievement-backdrop" aria-hidden="true" />
+        <section className="achievement-shell">
+          <header className="achievement-hero">
+            <div className="achievement-toolbar">
+              <button type="button" className="achievement-back-btn" onClick={() => setView(safeBack())}>
+                <span aria-hidden="true">←</span>
+                <span>返回</span>
+              </button>
+              <div className="achievement-title">
+                <span className="achievement-kicker">Trainer Chronicle</span>
+                <h1>成就大厅</h1>
+              </div>
+              <div className="achievement-total-pill">{unlocked} / {total}</div>
             </div>
-            <div style={{width:'70px'}} />
-          </div>
-          {/* Progress bar */}
-          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-            <div style={{flex:1, height:'8px', background:'rgba(255,255,255,0.06)', borderRadius:'4px', overflow:'hidden'}}>
-              <div style={{width:`${pct}%`, height:'100%', borderRadius:'4px', background:'linear-gradient(90deg, #FFD700, #FF8F00)', transition:'width 0.5s', boxShadow:'0 0 10px rgba(255,215,0,0.3)'}} />
+
+            <div className="achievement-overview">
+              <div className="achievement-progress-ring" style={{ '--achievement-progress': `${pct}%` }}>
+                <span>{pct}%</span>
+                <small>完成度</small>
+              </div>
+              <div className="achievement-hero-copy">
+                <p>记录你的收集、战斗、探索与隐藏挑战进度。</p>
+                <div className="achievement-progress-track" aria-label={`成就完成度 ${pct}%`}>
+                  <span style={{ width: `${pct}%` }} />
+                </div>
+                <div className="achievement-next">
+                  <span>下一目标</span>
+                  <strong>{nextTarget ? nextTarget.name : '已完成全部成就'}</strong>
+                  <small>{nextTarget ? (nextTarget.hidden ? nextTarget.hint || '隐藏条件等待发现' : nextTarget.desc) : '你已经把大厅点亮了。'}</small>
+                </div>
+              </div>
+              <div className="achievement-stat-stack">
+                <div>
+                  <span>高阶成就</span>
+                  <strong>{rareUnlocked}</strong>
+                </div>
+                <div>
+                  <span>隐藏发现</span>
+                  <strong>{hiddenUnlocked}</strong>
+                </div>
+                <div>
+                  <span>奖励金币</span>
+                  <strong>{rewardGold.toLocaleString()}</strong>
+                </div>
+              </div>
             </div>
-            <span style={{fontSize:'13px', color:'#FFD700', fontWeight:'800', flexShrink:0}}>{pct}%</span>
-          </div>
-          {/* Category tabs */}
-          <div style={{display:'flex', gap:'6px', marginTop:'12px', overflowX:'auto', paddingBottom:'4px'}}>
+          </header>
+
+          <nav className="achievement-category-tabs" aria-label="成就分类">
             {cats.map(c => {
               const isAll = c === 'ALL';
-              const cat = ACH_CATEGORY[c];
+              const cat = ACH_CATEGORY[c] || {};
               const active = achCatFilter === c;
+              const catItems = isAll ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => a.cat === c);
+              const catDone = catItems.filter(a => unlockedSet.has(a.id)).length;
               return (
-                <button key={c} onClick={() => setAchCatFilter(c)} style={{
-                  background: active ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: active ? '1px solid rgba(255,215,0,0.4)' : '1px solid rgba(255,255,255,0.06)',
-                  color: active ? '#FFD700' : 'rgba(255,255,255,0.5)',
-                  padding:'5px 12px', borderRadius:'8px', fontSize:'11px', fontWeight:'700',
-                  cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.2s'
-                }}>
-                  {isAll ? '全部' : `${cat.icon} ${cat.name}`}
+                <button
+                  key={c}
+                  type="button"
+                  className={active ? 'is-active' : ''}
+                  onClick={() => setAchCatFilter(c)}
+                >
+                  <span className="achievement-tab-icon">{isAll ? '🏆' : cat.icon || '◆'}</span>
+                  <span>
+                    <strong>{isAll ? '全部' : cat.name}</strong>
+                    <small>{catDone}/{catItems.length}</small>
+                  </span>
                 </button>
               );
             })}
-          </div>
-          <div style={{display:'flex', gap:'4px', marginTop:'10px', flexWrap:'wrap', paddingBottom:'4px'}}>
-            {['全部','普通','稀有','史诗','传说'].map(r => (
-              <button key={r} onClick={()=>setAchFilter(r)} style={{
-                padding:'4px 10px', borderRadius:'6px', fontSize:'10px',
-                border:'1px solid '+(achFilter===r?'#FFD54F30':'rgba(255,255,255,0.05)'),
-                background:achFilter===r?'rgba(255,215,0,0.08)':'transparent',
-                color:achFilter===r?'#FFD54F':'rgba(255,255,255,0.3)', cursor:'pointer'
-              }}>{r}</button>
+          </nav>
+
+          <div className="achievement-filter-row" aria-label="稀有度筛选">
+            {rarityFilters.map(r => (
+              <button
+                key={r.key}
+                type="button"
+                className={achFilter === r.key ? 'is-active' : ''}
+                onClick={() => setAchFilter(r.key)}
+              >
+                <span>{r.label}</span>
+                <small>{r.count}</small>
+              </button>
             ))}
           </div>
-        </div>
-        {/* Achievement grid - 滚动容器与Grid分离，防止flex+grid压缩行高 */}
-        <div style={{flex:1, overflowY:'auto', padding:'16px 20px'}}>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'10px'}}>
-            {filtered.map(ach => {
-              const done = unlockedAchs.includes(ach.id);
-              const cat = ACH_CATEGORY[ach.cat] || { icon: '🏆', name: '成就' };
-              const rar = ACH_RARITY[ach.rarity] || { color: '#888', name: '未知' };
-              const isHidden = ach.hidden && !done;
-              return (
-                <div key={ach.id} style={{
-                  background: done ? `linear-gradient(135deg, ${rar.color}12, ${rar.color}06)` : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${done ? `${rar.color}40` : 'rgba(255,255,255,0.04)'}`,
-                  borderRadius:'14px', padding:'14px 16px', position:'relative',
-                  opacity: done ? 1 : 0.6, transition:'all 0.2s'
-                }}>
-                  {done && <div style={{position:'absolute', top:0, left:0, right:0, height:'2px', background:`linear-gradient(90deg, transparent, ${rar.color}, transparent)`, borderRadius:'14px 14px 0 0'}} />}
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px'}}>
-                    <div style={{display:'flex', alignItems:'center', gap:'8px', flex:1, minWidth:0}}>
-                      <div style={{
-                        width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
-                        background: done ? `linear-gradient(135deg, ${rar.color}30, ${rar.color}15)` : 'rgba(255,255,255,0.04)',
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        fontSize:'18px', border: done ? `1px solid ${rar.color}40` : '1px solid rgba(255,255,255,0.06)'
-                      }}>
-                        {done ? (cat?.icon || '🏆') : (isHidden ? '❓' : cat?.icon || '📋')}
+
+          <section className="achievement-content" aria-label="成就列表">
+            <div className="achievement-grid">
+              {filtered.map(ach => {
+                const done = unlockedSet.has(ach.id);
+                const cat = ACH_CATEGORY[ach.cat] || { icon: '🏆', name: '成就' };
+                const rar = ACH_RARITY[ach.rarity] || { color: '#888', name: '未知', stars: 1 };
+                const isHidden = ach.hidden && !done;
+                return (
+                  <article
+                    key={ach.id}
+                    className={`achievement-card ${done ? 'is-unlocked' : 'is-locked'}`}
+                    style={{ '--rarity-color': rar.color }}
+                  >
+                    <div className="achievement-card-glow" aria-hidden="true" />
+                    <div className="achievement-card-main">
+                      <div className="achievement-medal" aria-hidden="true">
+                        {done ? (cat?.icon || '🏆') : (isHidden ? '?' : cat?.icon || '◆')}
                       </div>
-                      <div style={{minWidth:0, flex:1}}>
-                        <div style={{fontSize:'13px', fontWeight:'800', color: done ? '#fff' : 'rgba(255,255,255,0.5)'}}>
-                          {isHidden ? '???' : ach.name}
+                      <div className="achievement-card-copy">
+                        <div className="achievement-card-meta">
+                          <span>{cat?.name || '成就'}</span>
+                          <b>{rar.name}</b>
                         </div>
-                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px', lineHeight:'1.4'}}>
-                          {isHidden ? (ach.hint || '达成隐藏条件后解锁') : ach.desc}
-                        </div>
+                        <h2>{isHidden ? '???' : ach.name}</h2>
+                        <p>{isHidden ? (ach.hint || '达成隐藏条件后解锁') : ach.desc}</p>
                       </div>
                     </div>
-                    <div style={{flexShrink:0, fontSize:'10px', letterSpacing:'1px', color: done ? rar.color : 'rgba(255,255,255,0.15)', marginLeft:'6px'}}>
-                      {'★'.repeat(rar.stars)}{'☆'.repeat(5 - rar.stars)}
+                    <div className="achievement-card-foot">
+                      <span className="achievement-stars" aria-label={`${rar.stars || 1} 星`}>
+                        {'★'.repeat(rar.stars || 1)}{'☆'.repeat(5 - (rar.stars || 1))}
+                      </span>
+                      <div className="achievement-reward-row">
+                        {ach.reward?.gold && <span>+{ach.reward.gold.toLocaleString()} 金币</span>}
+                        {ach.reward?.title && <span>称号 {ach.reward.title}</span>}
+                      </div>
+                      <strong>{done ? '已完成' : '未解锁'}</strong>
                     </div>
-                  </div>
-                  <div style={{display:'flex', alignItems:'center', gap:'6px', marginTop:'4px', flexWrap:'wrap'}}>
-                    <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:`${rar.color}15`, color:rar.color, fontWeight:'700', border:`1px solid ${rar.color}20`}}>
-                      {rar.name}
-                    </span>
-                    {ach.reward?.gold && (
-                      <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(255,215,0,0.1)', color:'#FFD700', fontWeight:'700'}}>
-                        +{ach.reward.gold.toLocaleString()} 金币
-                      </span>
-                    )}
-                    {ach.reward?.title && (
-                      <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(156,39,176,0.1)', color:'#CE93D8', fontWeight:'700'}}>
-                        称号: {ach.reward.title}
-                      </span>
-                    )}
-                    {done && <span style={{marginLeft:'auto', fontSize:'10px', color:'#43a047', fontWeight:'700'}}>✓ 已完成</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+                  </article>
+                );
+              })}
+            </div>
+            {filtered.length === 0 && (
+              <div className="achievement-empty">
+                <strong>没有匹配的成就</strong>
+                <span>换一个分类或稀有度看看。</span>
+              </div>
+            )}
+          </section>
+        </section>
+      </main>
     );
   };
 
@@ -8276,7 +9547,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'28px', marginBottom:'6px'}}>🔒</div>
               <div style={{fontSize:'15px', fontWeight:'bold', color:'#FFB74D'}}>联盟尚未开放</div>
               <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginTop:'6px'}}>需完成第12章【冠军之路】主线剧情后解锁</div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>当前进度: 第{storyProgress + 1}章 / {STORY_SCRIPT.length}章</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>当前进度: 第{Math.min(storyProgress + 1, 13)}章 / 13章（主线）</div>
                 </div>
           )}
 
@@ -8365,6 +9636,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 if (!isUnlocked) { showMapToast('ℹ️', '提示', '需通关【冠军之路】剧情后解锁战斗联盟', 2000); return; }
                         if(party.length < 1) { showMapToast('👥', '队伍', '请先携带精灵！', 1500); return; }
                         setLeagueRound(1);
+                        setLeagueRunNoDamage(true);
                     }} style={{
                 width:'100%', padding:'16px', borderRadius:'25px', border:'none',
                 background: isUnlocked ? 'linear-gradient(135deg, #FFD700, #FFA000)' : 'linear-gradient(135deg, #555, #777)',
@@ -8387,7 +9659,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 
                 {leagueRound > 0 && (
               <button type="button" className="hover-text-bright" style={{textAlign:'center', marginTop:'12px', fontSize:'12px', color:'rgba(255,255,255,0.35)', cursor:'pointer', background:'none', border:'none', padding:'8px 16px'}}
-                onClick={() => { setConfirmModal({ title:'弃权退赛', msg:'确定要弃权吗？当前联赛进度将丢失。', onOk:() => setLeagueRound(0) }); }}>
+                onClick={() => { setConfirmModal({ title:'弃权退赛', msg:'确定要弃权吗？当前联赛进度将丢失。', onOk:() => { setLeagueRound(0); setLeagueRunNoDamage(false); } }); }}>
                 弃权退赛
               </button>
                 )}
@@ -8408,6 +9680,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const dc = rawDc.resetDate === today ? rawDc : { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: rawDc.cafeRecruits || [], resetDate: today };
     const skills = getGangSkills(gang);
     const bonus = getGangSkillBonus(skills);
+    const gangReadyTasks = GANG_TASKS.filter(task => (dc.taskCompleted || []).includes(task.id) && !(dc.taskCompleted || []).includes(task.id + '_claimed')).length;
+    const gangDailyDone = (dc.taskCompleted || []).filter(id => String(id).endsWith('_claimed')).length;
 
     const headerStyle = {background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5};
     const cardStyle = {background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'12px', padding:'14px', marginBottom:'10px'};
@@ -8420,7 +9694,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const canJoinGang = leaveCooldown <= 0;
 
     if (!gang.gangId) {
-      return (<div className="screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{marginBottom:'24px'}}><div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } setConfirmModal({ title:'🏴 加入帮派', msg:'确定要加入「'+g.name+'」吗？', onOk: () => { setGang(prev => ({...prev, gangId: g.id, gangName: g.name, role:'member', joinDate: Date.now(), contribution:0, leaveTime: null, dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: getLocalDateStr() }, members: [...(g.members || [])]})); showMapToast('🎉','加入成功','欢迎加入'+g.name+'！',1500); }}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
+      return (<div className="screen gang-command-screen gang-join-screen" style={{background:'linear-gradient(135deg,#0d1117,#161b22,#1a2332)', color:'#fff', display:'flex', flexDirection:'column', overflow:'hidden'}}><div className="gang-command-header" style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}><button onClick={() => setView(safeBack())} style={{...btnSecondary}}>⬅ 返回</button><div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>🏴 帮派系统</div><div style={{width:60}} /></div><div className="gang-command-body" style={{flex:1, overflowY:'auto', padding:'20px'}}>{!canJoinGang && (<div style={{padding:'12px 16px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', marginBottom:'16px', textAlign:'center'}}><div style={{fontSize:'13px', color:'#ef5350', fontWeight:'bold'}}>⏳ 退帮冷却中</div><div style={{fontSize:'12px', color:'#aaa', marginTop:'4px'}}>还需等待约 {leaveHoursLeft} 小时才能加入新帮派</div></div>)}<div className="gang-join-hero" style={{textAlign:'center', marginBottom:'24px'}}><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #DAA520, #FFD700)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'3px', marginBottom:'8px'}}>帮派系统</div><div style={{fontSize:'12px', color:'#8b949e', lineHeight:'1.6'}}>加入帮派后可领俸禄、做任务、打帮战、学技能<br/>{kingdomWar.faction ? <span style={{color: FACTIONS[kingdomWar.faction]?.lightColor || '#90CAF9'}}>已加入{FACTIONS[kingdomWar.faction]?.fullName} · 显示同阵营帮派</span> : '每个国家各有4个特色帮派可供选择'}</div></div>{(kingdomWar.faction ? [kingdomWar.faction] : FACTION_IDS).map(fid => { const faction = FACTIONS[fid]; const fGangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="gang-faction-section" style={{marginBottom:'24px'}}><div className="gang-faction-banner" style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 16px', borderRadius:'12px', background:'linear-gradient(135deg, '+faction.color+'20, '+faction.darkColor+'15)', border:'1px solid '+faction.color+'30'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:faction.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 4px 12px '+faction.color+'40'}}>{faction.icon}</div><div style={{flex:1}}><div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>{faction.fullName}</div><div style={{fontSize:'11px', color:faction.lightColor, opacity:0.8}}>「{faction.motto}」 · 主公: {faction.lord}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:'10px', color:'#8b949e'}}>国运加成</div><div style={{fontSize:'11px', color:faction.lightColor, fontWeight:'600'}}>{faction.bonusDesc}</div></div></div><div className="gang-preset-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>{fGangs.map(g => (<div key={g.id} className="gang-preset-card" style={{borderRadius:'14px', overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'all 0.3s ease'}} onMouseEnter={e => { e.currentTarget.style.borderColor=faction.color+'60'; e.currentTarget.style.boxShadow='0 8px 24px '+faction.color+'20'; e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform=''; }}><div style={{padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.05)'}}><div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}><span style={{fontSize:'26px'}}>{g.icon}</span><div style={{flex:1}}><div style={{fontWeight:'800', fontSize:'15px', color:'#e6edf3'}}>{g.name}</div><div style={{fontSize:'10px', color:'#8b949e'}}>{g.style} · Lv.{g.level}</div></div></div><div style={{fontSize:'11px', color:'#8b949e', lineHeight:'1.5'}}>{g.desc}</div></div><div style={{padding:'10px 16px 14px'}}>{g.perkDesc && (<div style={{fontSize:'11px', color:faction.lightColor, marginBottom:'6px', padding:'5px 8px', borderRadius:'6px', background:faction.color+'12', border:'1px solid '+faction.color+'20'}}>🎁 {g.perkDesc}</div>)}<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'11px', color:'#8b949e', marginBottom:'10px'}}><span>帮主: {g.leader}</span><span>成员 {g.members.length}人</span></div><button onClick={() => { if (!canJoinGang) { showMapToast('⏳', '退帮冷却', `还需等待约 ${leaveHoursLeft} 小时`, 2000); return; } setConfirmModal({ title:'🏴 加入帮派', msg:'确定要加入「'+g.name+'」吗？', onOk: () => { setGang(prev => ({...prev, gangId: g.id, gangName: g.name, role:'member', joinDate: Date.now(), contribution:0, leaveTime: null, dailyCounts: { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: generateCafeRecruits(), resetDate: getLocalDateStr() }, members: [...(g.members || [])]})); showMapToast('🎉','加入成功','欢迎加入'+g.name+'！',1500); }}); }} style={{width:'100%', padding:'10px', border:'none', borderRadius:'10px', cursor:'pointer', background:'linear-gradient(135deg, '+faction.color+', '+faction.darkColor+')', color:'#fff', fontWeight:'700', fontSize:'13px', letterSpacing:'1px', boxShadow:'0 4px 12px '+faction.color+'30', transition:'all 0.2s ease'}}>加入帮派</button></div></div>))}</div></div>); })}</div></div>);
     }
 
     // 有帮派
@@ -8848,19 +10122,26 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     };
 
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
-        <div style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}>
+      <div className="screen gang-command-screen" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', color:'#fff', display:'flex', flexDirection:'column', position:'relative', overflow:'hidden'}}>
+        <div className="gang-command-header" style={{...headerStyle, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px'}}>
           <button onClick={() => setView(safeBack())} style={btnSecondary}>⬅ 返回</button>
           <div style={{fontSize:'16px', letterSpacing:'2px', fontWeight:'800', color:'#fff'}}>{gangInfo?.icon} {gangInfo?.name || '帮派'}</div>
           <div style={{fontSize:'12px', color:'#FFD700'}}>{rank.icon} {rank.name}</div>
         </div>
 
-        <div style={{padding:'6px 16px',fontSize:'11px',color:'#94a3b8',background:'rgba(0,0,0,0.3)'}}>
+        <div className="gang-command-breadcrumb" style={{padding:'6px 16px',fontSize:'11px',color:'#94a3b8',background:'rgba(0,0,0,0.3)'}}>
           🗺️ 地图 › 🏴 {gangInfo?.name || '帮派'} › {tabs.find(t => t.id === gangTab)?.icon} {tabs.find(t => t.id === gangTab)?.label}
         </div>
-        <div style={{display:'flex', gap:'0', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0, overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none'}}>
+        <div className="gang-command-strip" aria-label="帮派今日状态">
+          <div><span>今日任务</span><strong>{gangDailyDone}/{GANG_TASKS.length}</strong></div>
+          <div className={gangReadyTasks > 0 ? 'is-hot' : ''}><span>可领取</span><strong>{gangReadyTasks}</strong></div>
+          <div><span>帮战次数</span><strong>{dc.warCount || 0}/{GANG_WAR_CONFIG.maxDaily}</strong></div>
+          <div><span>帮贡</span><strong>{gang.contribution || 0}</strong></div>
+          <div><span>金币加成</span><strong>+{bonus.gold || 0}%</strong></div>
+        </div>
+        <div className="gang-command-tabs" style={{display:'flex', gap:'0', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0, overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none'}}>
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => { setGangTab(tab.id); setViewGangMember(null); }} style={{
+            <button key={tab.id} className={gangTab === tab.id ? 'is-active' : ''} onClick={() => { setGangTab(tab.id); setViewGangMember(null); }} style={{
               flex:1, padding:'10px 0', background: gangTab === tab.id ? 'rgba(255,215,0,0.1)' : 'transparent',
               border:'none', borderBottom: gangTab === tab.id ? '2px solid #FFD700' : '2px solid transparent',
               color: gangTab === tab.id ? '#FFD700' : 'rgba(255,255,255,0.55)', cursor:'pointer', fontSize:'12px', fontWeight:'bold', whiteSpace:'nowrap',
@@ -8870,7 +10151,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           ))}
         </div>
 
-        <div style={{flex:1, overflowY:'auto', padding:'16px'}}>
+        <div className="gang-command-content" style={{flex:1, overflowY:'auto', padding:'16px'}}>
           {gangTab === 'overview' && renderGangOverview()}
           {gangTab === 'tasks' && renderGangTasks()}
           {gangTab === 'members' && (() => {
@@ -10280,9 +11561,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
      if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return; }
      // Fix#12: 疲劳系统扩展 — 所有队员精疲力竭时阻止训练家/Boss战斗
      const isHardType = type !== 'wild' && type !== 'wild_double';
-     if (isHardType && party.every(p => !canPetBattle(p))) {
-       showMapToast('😴', '队伍疲惫', '精灵过于疲劳，请前往精灵中心休息', 2500);
-       return;
+     if (party.every(p => !canPetBattle(p))) {
+       if (isHardType) {
+         showMapToast('😴', '队伍疲惫', '精灵过于疲劳，请前往精灵中心休息', 2500);
+         return;
+       }
+       showMapToast('😴', '疲劳警告', '队伍疲劳严重，建议尽快休息', 1500);
      }
      setIsDialogVisible(false);
      battleResultHandledRef.current = false;
@@ -10318,10 +11602,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (context?._regionEcology) extraBattleData._regionEcology = context._regionEcology;
     else extraBattleData._regionEcology = getMapEcology(mapIdForEco);
     if (context?._crisisBranch) extraBattleData._crisisBranch = context._crisisBranch;
+    if (context?._isChiefTrial) extraBattleData._isChiefTrial = true;
+    if (context?._chiefTrialSectId) extraBattleData._chiefTrialSectId = context._chiefTrialSectId;
+    if (context?._sectRealm) extraBattleData._sectRealm = context._sectRealm;
+    if (context?.id != null) extraBattleData.id = context.id;
     if (context?.ecoBossMechanics) extraBattleData.ecoBossMechanics = true;
     if (context?.bossPhases) extraBattleData.bossPhases = context.bossPhases;
     if (context?._skipMechanics) extraBattleData._skipMechanics = context._skipMechanics;
     if (context?._nonCombatRescue) extraBattleData._nonCombatRescue = context._nonCombatRescue;
+    if (context?.battleObjective) {
+      extraBattleData.battleObjective = context.battleObjective;
+      extraBattleData.objectiveTurns = context.objectiveTurns;
+      extraBattleData.objectiveTarget = context.objectiveTarget;
+      extraBattleData._purifyProgress = context._purifyProgress;
+      extraBattleData._protectHp = context._protectHp;
+      extraBattleData._protectMaxHp = context._protectMaxHp;
+      if (context._fusionBonuses) extraBattleData._fusionBonuses = context._fusionBonuses;
+    }
+    if (context?._fusionDungeon) extraBattleData._fusionDungeon = context._fusionDungeon;
     const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || [], badges.length);
     if (ecoEvt && !extraBattleData.ecoCrisis) {
       extraBattleData._ecoEvent = ecoEvt;
@@ -10527,7 +11825,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       trainerName = `馆主 ${context.gymName || (context.name ? context.name.slice(0,2) : '???')}`;
     }
     // -------------------------------------------------
-    // 9a. 三国名将
+    // 9a. 四国名将
     // -------------------------------------------------
     else if (type === 'general') {
       const gen = challengeId?.generalData;
@@ -10857,20 +12155,34 @@ const grantContestReward = (config, score, subjectPet = null) => {
          let level = _.random(context.lvl[0], context.lvl[1]);
          const canMeetLegend = badges.length >= 6;
          const legendRate = badges.length >= 12 ? 0.015 : badges.length >= 10 ? 0.012 : badges.length >= 8 ? 0.008 : 0.005;
-         if (canMeetLegend && Math.random() < legendRate) {
+         let legendObtainTriggered = false;
+         if (LEGEND_OBTAIN_RULES && LEGEND_OBTAIN_RULES.length > 0) {
+           const timeEventRules = LEGEND_OBTAIN_RULES.filter(r => r.method === 'time_event' && r.mapId === context.id);
+           for (const rule of timeEventRules) {
+             const matchTime = !rule.timePhase || timePhase === rule.timePhase;
+             const matchWeather = !rule.weather || weather === rule.weather;
+             const rate = rule.encounterRate || 0.02;
+             if (matchTime && matchWeather && Math.random() < rate) {
+               enemyId = rule.petId;
+               level = (context.lvl?.[1] || 80) + 5;
+               dropGold = 8000;
+               legendObtainTriggered = true;
+               showMapToast('⚠️', '稀有遭遇', `传说精灵 ${rule.name} 出现了！`, 2500);
+               break;
+             }
+           }
+         }
+         if (!legendObtainTriggered && canMeetLegend && Math.random() < legendRate) {
             enemyId = _.sample(LEGENDARY_POOL);
             const mapMaxLvl = context.lvl ? context.lvl[1] : 70;
             level = mapMaxLvl + _.random(1, 10);
             dropGold = 5000;
             showMapToast('⚠️', '提示', '传说中的神兽降临了！', 1500);
-         } else {
+         } else if (!legendObtainTriggered) {
             const rawPool = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
-            const seen = new Set();
+            const legendIds = new Set((LEGEND_OBTAIN_RULES || []).map(r => r.petId));
             const fullPool = rawPool.filter(pid => {
-              const p = POKEDEX.find(x => x.id === pid);
-              const key = p ? `${p.emoji}_${p.type}` : pid;
-              if (seen.has(key)) return false;
-              seen.add(key);
+              if (legendIds.has(pid)) return false;
               return true;
             });
             const pickWeighted = (pool) => {
@@ -10900,7 +12212,41 @@ const grantContestReward = (config, score, subjectPet = null) => {
               enemyId = pickWeighted(fullPool);
             }
          }
-         enemyParty.push(createPet(enemyId, level, isBoss));
+         const mapEco = extraBattleData._regionEcology || getMapEcology(context.id);
+         const mapTypeInfo = MAPS.find(m => m.id === context.id);
+         const blessed = isRegionBlessed(mapEco);
+         let forceGuardian = false;
+         if (blessed) {
+           const guardianTpl = getEcologyGuardianForMap(mapTypeInfo?.type);
+           if (guardianTpl && Math.random() < GUARDIAN_ENCOUNTER_RATE) {
+             enemyId = guardianTpl.petId;
+             forceGuardian = true;
+             level = Math.min(100, Math.max(level, (context.lvl?.[1] || level) + 5));
+             showMapToast(guardianTpl.icon, '生态守护者', `${guardianTpl.name} 降临了！`, 2500);
+             updateAchStat({ ecoGuardianEncounters: 1 });
+           }
+         }
+         const spawnWildPet = (eid, lv) => {
+           const wildPet = createPet(eid, lv, isBoss);
+           if (forceGuardian) {
+             const guardianTpl = getEcologyGuardianForMap(mapTypeInfo?.type);
+             wildPet.name = `${guardianTpl?.icon || '🌿'}${guardianTpl?.name || '生态守护者'}`;
+             wildPet.isEcoGuardian = true;
+             if (guardianTpl?.trait) wildPet.trait = guardianTpl.trait;
+             wildPet.customStatMult = Math.max(wildPet.customStatMult || 1, 1.15);
+           } else if (blessed && !wildPet.isShiny) {
+             const shinyBonus = getEffectiveShinyBonus(getEquippedRelicEffects(relics), {
+               blessed: true,
+               nightPhase: timePhase === 'NIGHT',
+             });
+             if (Math.random() < shinyBonus) {
+               wildPet.isShiny = true;
+               if (!wildPet.name?.startsWith('✨')) wildPet.name = `✨${wildPet.name}`;
+             }
+           }
+           return wildPet;
+         };
+         enemyParty.push(spawnWildPet(enemyId, level));
          if (isDouble) {
            const rawPool2 = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
            const seen2 = new Set();
@@ -10913,7 +12259,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
            });
            const enemyId2 = _.sample(fullPool2);
            const level2 = _.random(context.lvl[0], context.lvl[1]);
-           enemyParty.push(createPet(enemyId2, level2, false));
+           enemyParty.push(spawnWildPet(enemyId2, level2));
          }
     }
 
@@ -10992,10 +12338,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return null;
         }).filter(Boolean);
         
-        const combatMoves = [...(p.moves || []), ...equipMoves].map(m => ({
+        let combatMoves = [...(p.moves || []), ...equipMoves].map(m => ({
             ...m,
-            pp: Math.min(m.pp || 5, m.maxPP || m.maxPp || m.pp || 5) 
+            pp: m.maxPP || m.maxPp || m.pp || 5
         }));
+        if (combatMoves.length === 0) {
+          combatMoves = [{ name: '撞击', p: 40, pp: 35, maxPP: 35, t: p.type || 'NORMAL', acc: 100 }];
+        }
 
         const baseStats = POKEDEX.find(pd => pd.id === p.id) || {};
         const grade = getCurseGrade(p.customBaseStats || baseStats, p.curseTalent || 0);
@@ -11100,7 +12449,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     };
 
 
-    const battleEnemyParty = enemyParty.map(p => initBattleState(p, true));
+    const battleEnemyParty = enemyParty.map(p => { const s = initBattleState(p, true); s.isEnemy = true; return s; });
     const battlePlayerParty = playerPartyForBattle.map(p => initBattleState(p, false)); 
 
     if (extraBattleData._arenaLevelCap) {
@@ -11199,16 +12548,72 @@ const grantContestReward = (config, score, subjectPet = null) => {
     playerTookDamageRef.current = false;
     const partyStartHp = battlePlayerParty.map(p => p?.currentHp ?? 0);
 
-    setBattle({
+    const relicFxBattle = getEquippedRelicEffects(relics);
+    const isPveBattle = actualType !== 'pvp' && actualType !== 'arena';
+    const stageBonus = isPveBattle ? (relicFxBattle.battleStartStages || 0) : 0;
+    const activePetData = party[activeIdx];
+    const resonanceFxBattle = activePetData ? getActiveResonanceForPet(activePetData) : { transcendence: false };
+    const transcendenceBoost = resonanceFxBattle.transcendence ? TRANSCENDENCE_STAGE_BOOST : 0;
+    if (battlePlayerParty[activeIdx]) {
+      const cs = battlePlayerParty[activeIdx];
+      if (!cs.stages) cs.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
+      const boost = stageBonus + transcendenceBoost;
+      if (boost > 0) {
+        ['p_atk','p_def','s_atk','s_def','spd'].forEach(k => { cs.stages[k] = (cs.stages[k] || 0) + boost; });
+      }
+    }
+    const kwAlignBonus = isGangKingdomAligned(gang, kingdomWar) && (actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege') ? 1.1 : 1;
+    const battleOpenLogs = [];
+    if (resonanceFxBattle.transcendence) battleOpenLogs.push(`✨ 终极共鸣发动！${activePetData?.name || '精灵'} 获得首回合超越爆发！`);
+    battleEnemyParty.forEach((ep, ei) => {
+      if (!ep?.isEcoGuardian) return;
+      if (!ep.stages) ep.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
+      const enemyNoGang = { atk:0, def:0, s_atk:0, s_def:0, hp:0, spd:0, gold:0, exp:0 };
+      if (ep.trait === 'ecoguard_shield') {
+        ep._ecoShield = Math.floor(getStats(ep, ep.stages, ep.status, enemyNoGang).maxHp * 0.15);
+      }
+      if (ep.trait === 'ecoguard_phantom') {
+        ep.stages.eva = (ep.stages.eva || 0) + 2;
+        ep._ecoPhantomActive = true;
+      }
+      if (ep.trait === 'ecoguard_frost' && battlePlayerParty[activeIdx]) {
+        const pp = battlePlayerParty[activeIdx];
+        if (!pp.stages) pp.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
+        pp.stages.spd = Math.max(-6, (pp.stages.spd || 0) - 1);
+        if (ei === 0) battleOpenLogs.push(`❄️ ${ep.name} 的寒霜降低了你的速度！`);
+      }
+    });
+    const comboCount = (resonanceFxBattle.activeCombos || []).filter(c => c.id !== 'ultimate').length;
+    if (resonanceFxBattle.transcendence) updateAchStat({ ultimateResonance: 1 });
+
+    if (sectPlayer?.playerSect) {
+      const isPvPArena = actualType === 'pvp' || actualType === 'arena';
+      battlePlayerParty.forEach(p => {
+        if (p) {
+          let martial = getAvailableMartialMoves(sectPlayer).map(m => ({...m}));
+          if (isPvPArena) martial = martial.filter(m => m.tier === 'basic' || m.tier === 'advanced');
+          p.combatMoves = [...(p.combatMoves || []), ...martial];
+        }
+      });
+    }
+    battlePlayerParty.forEach(p => {
+      if (p) { p._maxHp = getStats(p).maxHp; p._stats = getStats(p); }
+    });
+
+    const battleObj = {
       enemyParty: battleEnemyParty,
       playerCombatStates: battlePlayerParty,
+      _playerSectState: sectPlayer,
+      _sectMomentum: 0,
       _partyStartHp: partyStartHp,
       _partyMinHp: [...partyStartHp],
       _playerTookDamage: false,
+      _playerDirectAttack: false,
+      _resonanceComboCount: comboCount,
       enemyActiveIdx: 0, 
       activeIdx, 
       phase: 'input', 
-      logs: [isDouble && enemyParty.length > 1 ? `遭遇了 ${enemyParty[0].name} 和 ${enemyParty[1].name}！双打战斗！` : (actualType === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isSpiritDomain ? `🌀 灵域试炼开始！规则：${extraBattleData._domainRuleName || '特殊战场'}` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`)))],
+      logs: [...battleOpenLogs, isDouble && enemyParty.length > 1 ? `遭遇了 ${enemyParty[0].name} 和 ${enemyParty[1].name}！双打战斗！` : (actualType === 'pvp' ? `PvP 对战开始！对手由AI控制，请选择行动` : (isSpiritDomain ? `🌀 灵域试炼开始！规则：${extraBattleData._domainRuleName || '特殊战场'}` : (isTrainer ? `${trainerName} 发起了挑战!` : `遭遇 ${enemyParty[0].name}!`)))],
       mapId: context?.id,
       drop: dropGold,
       isBoss,
@@ -11239,8 +12644,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       sharedEnemyChakra: getInitialResource(eTeamMaxChakra, CHAKRA_CONFIG), sharedEnemyCE: getInitialResource(eTeamMaxCE, CURSED_ENERGY_CONFIG),
       sharedEnemyMaxChakra: eTeamMaxChakra, sharedEnemyMaxCE: eTeamMaxCE,
       targetIdx: isDouble && doubleEnemyIdxs?.length ? (doubleEnemyIdxs.find(i => enemyParty[i]?.currentHp > 0) ?? doubleEnemyIdxs[0]) : undefined,
+      _relicFx: relicFxBattle,
+      _resonanceFx: resonanceFxBattle,
+      _transcendenceBoost: transcendenceBoost,
+      _transcendenceTargetIdx: 0,
+      _kwAlignBonus: kwAlignBonus,
       ...extraBattleData,
-    });
+    };
+    initBattleSectState(battleObj, sectPlayer);
+    setBattle(battleObj);
     
     setShowBallMenu(false);
     setView('battle');
@@ -11260,6 +12672,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             if ((badges?.length || 0) === 0) {
               showMapToast('💡', '战术提示', '注意利用属性克制获得1.5x伤害加成！', 3000);
+            }
+            if (extraBattleData.battleObjective) {
+              addLog(`📋 战斗目标：${getObjectiveHint(extraBattleData.battleObjective)}`);
             }
         } catch (e) {
             console.error('startBattle post-enter animation', e);
@@ -11291,8 +12706,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   const startElementalTrial = () => {
-    const types = ['FIRE', 'WATER', 'ELECTRIC', 'GRASS', 'GROUND', 'FLYING', 'FIGHT'];
-    const dayIdx = (new Date().getDay() + 6) % 7;
+    const types = ['FIRE', 'WATER', 'ELECTRIC', 'GRASS', 'GROUND', 'FLYING', 'FIGHT', 'ICE', 'DRAGON', 'DARK', 'PSYCHIC', 'COSMIC', 'TIME', 'CHAOS'];
+    const dayIdx = Math.floor(Date.now() / 86400000) % types.length;
     const todayType = types[dayIdx];
     const typePets = POKEDEX.filter(p => p.type === todayType || p.type2 === todayType || p.secondaryType === todayType);
     if (typePets.length < 3) { showMapToast('❌', '错误', '属性精灵不足', 1500); return; }
@@ -11339,7 +12754,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           if (player) {
               let typeMod = getTypeMod(m.t, player.type);
-              if (player.secondaryType && player.secondaryType !== player.type) typeMod *= getTypeMod(m.t, player.secondaryType);
+              const pType2 = player.secondaryType || player.type2;
+              if (pType2 && pType2 !== player.type) typeMod *= getTypeMod(m.t, pType2);
               score *= Math.max(typeMod, 0.3);
           }
           score += Math.random() * 20;
@@ -11558,6 +12974,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
         const newPet = combatStates[newIdx];
+    if (sectPlayer?.playerSect && newPet && !newPet.combatMoves?.some(m => m.isMartialArt)) {
+      const martial = getAvailableMartialMoves(sectPlayer).map(m => ({...m}));
+      newPet.combatMoves = [...(newPet.combatMoves || []), ...martial];
+    }
 
     const nextBattleState = {
         ...battle,
@@ -11565,6 +12985,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         showSwitch: false,
         phase: 'anim',
         _playerSwitched: true,
+        _resonanceFx: getActiveResonanceForPet(newPet),
         logs: [`去吧 ${newPet.name}!`, ...battle.logs]
     };
 
@@ -11631,8 +13052,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (!enemyMove && damageMoves.length > 0) {
         const scored = damageMoves.map(m => {
           let typeMod = getTypeMod(m.t, player.type, state);
-          if (player.secondaryType) typeMod *= getTypeMod(m.t, player.secondaryType, state);
-          const isSTAB = m.t === enemy.type || m.t === enemy.secondaryType;
+          const pType2 = player.secondaryType || player.type2;
+          if (pType2) typeMod *= getTypeMod(m.t, pType2, state);
+          const eType2 = enemy.secondaryType || enemy.type2;
+          const isSTAB = m.t === enemy.type || m.t === eType2;
           return { m, score: (m.p || 40) * typeMod * (isSTAB ? 1.5 : 1) };
         }).sort((a, b) => b.score - a.score);
         enemyMove = Math.random() < 0.7 ? scored[0].m : _.sample(damageMoves);
@@ -11661,13 +13084,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let tempBattle = _.cloneDeep(battle); 
        const tempPlayerState = tempBattle.playerCombatStates[battle.activeIdx];
         const move = tempPlayerState.combatMoves?.[moveIdx];
-        const normalMoves = (tempPlayerState.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
+        const normalMoves = (tempPlayerState.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu && !m.isMartialArt);
         const allNormalPPZero = normalMoves.length === 0 || normalMoves.every(m => m.pp <= 0);
         const cursedMoves = (tempPlayerState.combatMoves || []).filter(m => m.isCursed);
         const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
         const jutsuMoves = (tempPlayerState.combatMoves || []).filter(m => m.isJutsu);
         const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
-        const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable;
+        const martialMoves = (tempPlayerState.combatMoves || []).filter(m => m.isMartialArt);
+        const allMartialUnusable = martialMoves.length === 0 || martialMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
+        const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable && allMartialUnusable;
         let useStruggle = false;
         if (!move && !allMovesExhausted) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
         if (allMovesExhausted) {
@@ -11680,6 +13105,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const availableCE = (tempBattle.sharedPlayerMaxCE || 0) > 0 ? (tempBattle.sharedPlayerCE || 0) : (tempPlayerState.cursedEnergy || 0);
             if (availableCE < (move.ceCost || 0)) {
                 showMapToast('❌', '提示', '咒力不足！', 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
+            }
+        } else if (move?.isMartialArt && !useStruggle) {
+            const mcost = move.momentumCost || 0;
+            if (mcost > 0 && (tempBattle._sectMomentum || 0) < mcost) {
+                showMapToast('❌', '气势不足', `需要 ${mcost} 点气势`, 1500);
+                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
+            }
+            if (move.pp !== undefined && move.pp <= 0) {
+                showMapToast('❌', '提示', '武学PP耗尽！', 1500);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
             }
         } else if (move?.isJutsu && !useStruggle) {
@@ -11752,7 +13187,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             playerCombatStates: tempBattle.playerCombatStates.map(p => ({...p})),
             enemyParty: tempBattle.enemyParty.map(e => ({...e})),
             _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage,
+            _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
             _playerSwitched: tempBattle._playerSwitched || prev._playerSwitched,
+            _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
             ...extra,
           }));
         };
@@ -11830,7 +13267,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
                     }).filter(Boolean);
 
                     const cursedMoves = (cs.combatMoves || []).filter(m => m.isCursed);
-                    const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves];
+                    const martialMoves = (cs.combatMoves || []).filter(m => m.isMartialArt);
+                    const jutsuMoves = (cs.combatMoves || []).filter(m => m.isJutsu);
+                    const fruitMoves = (cs.combatMoves || []).filter(m => m.isFruitMove);
+                    const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves, ...jutsuMoves, ...fruitMoves];
 
                     return {
                         ...cs,
@@ -11922,7 +13362,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     let move = p.combatMoves?.[moveIdx];
-    const normalMovesD = (p.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
+    const normalMovesD = (p.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu && !m.isMartialArt);
     const allNormalPPZeroD = normalMovesD.length === 0 || normalMovesD.every(m => m.pp <= 0);
     const sharedCEForDouble = (battle.sharedPlayerMaxCE || 0) > 0 ? (battle.sharedPlayerCE || 0) : (p.cursedEnergy || 0);
     const sharedChakraForDouble = (battle.sharedPlayerMaxChakra || 0) > 0 ? (battle.sharedPlayerChakra || 0) : (p.chakra || 0);
@@ -11930,7 +13370,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const allCursedUnusableD = cursedMovesD.length === 0 || cursedMovesD.every(m => sharedCEForDouble < (m.ceCost || 0) || (p.cursedCooldowns?.[m.id || m.name] || 0) > 0);
     const jutsuMovesD = (p.combatMoves || []).filter(m => m.isJutsu);
     const allJutsuUnusableD = jutsuMovesD.length === 0 || jutsuMovesD.every(m => sharedChakraForDouble < (m.chakraCost || 0) || m.pp <= 0 || (p.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
-    const allMovesExhaustedD = allNormalPPZeroD && allCursedUnusableD && allJutsuUnusableD;
+    const martialMovesD = (p.combatMoves || []).filter(m => m.isMartialArt);
+    const allMartialUnusableD = martialMovesD.length === 0 || martialMovesD.every(m => !canUseCombatMove(battle, p, m, 'player'));
+    const allMovesExhaustedD = allNormalPPZeroD && allCursedUnusableD && allJutsuUnusableD && allMartialUnusableD;
     if (!move && !allMovesExhaustedD) return;
     let useStruggleD = false;
     if (allMovesExhaustedD) useStruggleD = true;
@@ -12138,13 +13580,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         pet.chakra = Math.min(pet.maxChakra || 0, poolChk);
         pet.cursedEnergy = Math.min(pet.maxCE || 0, poolCE);
         let move = (pet.combatMoves || [])[action.moveIdx];
-        const normD = (pet.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu);
+        const normD = (pet.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu && !m.isMartialArt);
         const allNormEmptyD = normD.length === 0 || normD.every(m => m.pp <= 0);
         const curseD = (pet.combatMoves || []).filter(m => m.isCursed);
         const allCurseBadD = curseD.length === 0 || curseD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
         const jutsuD = (pet.combatMoves || []).filter(m => m.isJutsu);
         const allJutsuBadD = jutsuD.length === 0 || jutsuD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
-        const allExD = allNormEmptyD && allCurseBadD && allJutsuBadD;
+        const martD = (pet.combatMoves || []).filter(m => m.isMartialArt);
+        const allMartBadD = martD.length === 0 || martD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
+        const allExD = allNormEmptyD && allCurseBadD && allJutsuBadD && allMartBadD;
         if (allExD || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
           move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } };
         }
@@ -12275,6 +13719,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           enemyParty: (tempBattle.enemyParty || []).map(e => ({...e})),
           activeIdxs: [...(tempBattle.activeIdxs || [])],
           enemyActiveIdxs: [...(tempBattle.enemyActiveIdxs || [])],
+          _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
         }));
         setAnimEffect(null);
         await wait(600);
@@ -12459,7 +13904,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           if ((firstAliveP.maxChakra || 0) > 0) {
             const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
-            const cRegen = CHAKRA_CONFIG.regenPerTurn + (nrk?.id === 'kage' ? 5 : nrk?.id === 'jonin' ? 3 : nrk?.id === 'chunin' ? 2 : nrk?.id === 'genin' ? 1 : 0);
+            const cRegen = Math.floor((CHAKRA_CONFIG.regenPerTurn + (nrk?.id === 'kage' ? 5 : nrk?.id === 'jonin' ? 3 : nrk?.id === 'chunin' ? 2 : nrk?.id === 'genin' ? 1 : 0)) * (getEquippedRelicEffects(relics).chakraRegenMult || 1));
             firstAliveP.chakra = Math.min(firstAliveP.maxChakra, (firstAliveP.chakra || 0) + cRegen);
             tempBattle.sharedPlayerChakra = Math.min(tempBattle.sharedPlayerMaxChakra || firstAliveP.maxChakra, firstAliveP.chakra || 0);
           }
@@ -12475,6 +13920,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
         const es = tempBattle.enemyParty?.[eIdx];
+        if (es && es.currentHp > 0 && es.isEcoGuardian && es.trait === 'ecoguard_regen') {
+          const heal = Math.floor(getStats(es).maxHp * 0.05);
+          es.currentHp = Math.min(getStats(es).maxHp, es.currentHp + heal);
+          if (heal > 0) addLog(`🌿 ${es.name} 生态再生回复 ${heal} HP!`);
+        }
         if (es && es.currentHp > 0 && es.fruitTransformed && es.fruitTurnsLeft > 0) {
           const fe = es.fruitEffects;
           if (fe?.healPerTurn) { const heal = Math.floor(getStats(es).maxHp * fe.healPerTurn); es.currentHp = Math.min(getStats(es).maxHp, es.currentHp + heal); addLog(`🍎 ${es.name} 回复了 ${heal} HP!`); }
@@ -12587,12 +14037,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       setBattle(prev => {
         if (!prev) return null;
-        return {
+        const next = {
         ...prev,
         sharedPlayerChakra: tempBattle.sharedPlayerChakra ?? prev.sharedPlayerChakra,
         sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
         sharedEnemyChakra: tempBattle.sharedEnemyChakra ?? prev.sharedEnemyChakra,
         sharedEnemyCE: tempBattle.sharedEnemyCE ?? prev.sharedEnemyCE,
+        _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
         playerCombatStates: (tempBattle.playerCombatStates || []).map(p => ({...p})),
         enemyParty: (tempBattle.enemyParty || []).map(e => ({...e})),
         activeIdxs: newActiveIdxs,
@@ -12606,8 +14057,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         phase: 'input',
         turnCount: (prev.turnCount || 0) + 1,
         _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage || playerTookDamageRef.current,
+        _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
         _partyMinHp: tempBattle._partyMinHp || prev._partyMinHp,
         };
+        return expireTranscendenceBoost(next);
       });
       auditPlayerHpLoss(tempBattle);
 
@@ -12965,6 +14418,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (!kingdomWar.faction) return;
     const _party = partyRef.current;
     const avgLv = _party.length > 0 ? Math.floor(_party.reduce((s, p) => s + (p?.level || 1), 0) / _party.length) : 50;
+    const sectKwBonus = calcSectKingdomPowerBonus(sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, kingdomWar.faction);
 
     // 离线追赶
     if (kingdomWar.lastTick) {
@@ -12974,7 +14428,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let terr = { ...kingdomWar.territories };
         let allLogs = [];
         for (let i = 0; i < missedTicks; i++) {
-          const result = executeWarTick(terr, GANG_PRESETS, kingdomWar.faction, avgLv, false);
+          const result = executeWarTick(terr, GANG_PRESETS, kingdomWar.faction, avgLv, false, sectKwBonus);
           terr = result.territories;
           allLogs = [...allLogs, ...result.log];
         }
@@ -13013,7 +14467,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!prev.faction) return prev;
         const _p = partyRef.current;
         const freshAvgLv = _p.length > 0 ? Math.floor(_p.reduce((s, p) => s + (p?.level || 1), 0) / _p.length) : 50;
-        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, freshAvgLv, prev.attackBuff);
+        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, freshAvgLv, prev.attackBuff, calcSectKingdomPowerBonus(sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, prev.faction));
         const gangTerrBonus = getGangSkillBonus(getGangSkills(gangRef.current)).territory || 0;
         const genTerrBonus = calcGeneralsTotalBonus(prev.recruitedGenerals || []).territory || 0;
         const totalTerrBonus = gangTerrBonus + genTerrBonus;
@@ -13045,7 +14499,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (tickSeasonWon) updateAchStat({ kwSeasonWins: 1 });
     }, WAR_TICK_CONFIG.intervalMs);
     return () => clearInterval(warInterval);
-  }, [kingdomWar.faction]);
+  }, [kingdomWar.faction, sectPlayer?.playerSect, sectPlayer?.sectRank, sectPlayer?.sectStances]);
+
+  // 单人国战模拟：每日推进一回合
+  useEffect(() => {
+    if (!kingdomSim.enabled || !kingdomSim.playerFaction) return;
+    advanceKingdomSimTurn();
+    resolveDispatch();
+  }, [kingdomSim.enabled, kingdomSim.playerFaction]); // eslint-disable-line
 
   useEffect(() => {
     const recoverablePhases = new Set(['busy', 'anim']);
@@ -13081,6 +14542,53 @@ const grantContestReward = (config, score, subjectPet = null) => {
       totalContribution: kw.lifetimeContribution ?? kw.warContribution ?? 0,
       hasHegemonTitle: (kw.seasonTitles || []).some(t => t.includes('霸主') || t.includes('hegemon')),
     };
+  };
+
+  // 单人国战回合推进
+  const advanceKingdomSimTurn = () => {
+    if (!kingdomSim.enabled || !kingdomSim.playerFaction) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (kingdomSim.lastTurnDate === today) return;
+    setKingdomSim(prev => {
+      const newState = executeTurn(prev);
+      newState.lastTurnDate = today;
+      // 应用国家风格加成（仅首30回合有效，之后停止增长）
+      for (const [fid, bonus] of Object.entries(NATION_STYLE_BONUS)) {
+        const stats = newState.nationStats[fid];
+        if (!stats) continue;
+        if (newState.turn > 30) continue;
+        for (const [key, val] of Object.entries(bonus)) {
+          const base = 50 + val;
+          if ((stats[key] || 0) < base) stats[key] = Math.min(base, (stats[key] || 0) + Math.floor(val * 0.1));
+        }
+      }
+      return newState;
+    });
+  };
+
+  // 帮派派遣结算
+  const resolveDispatch = () => {
+    setGangHQ(prev => {
+      const now = Date.now();
+      const updatedDispatch = [];
+      const completedIds = [];
+      for (const d of (prev.dispatch || [])) {
+        const elapsed = (now - (d.startTime || now)) / (1000 * 60 * 60);
+        if (elapsed >= (d.duration || 3)) {
+          completedIds.push(d.id);
+        } else {
+          updatedDispatch.push(d);
+        }
+      }
+      if (completedIds.length === 0) return prev;
+      const members = (prev.members || []).map(m => {
+        if (completedIds.includes(m.assignment)) {
+          return { ...m, assignment: null, fatigue: Math.min(100, (m.fatigue || 0) + 15) };
+        }
+        return m;
+      });
+      return { ...prev, dispatch: updatedDispatch, members };
+    });
   };
 
   const doGeneralDraw = () => {
@@ -13304,14 +14812,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const domainDef = DOMAINS[state.domainType];
     if (!domainDef) { showMapToast('❌','无法展开','该精灵无法展开领域!',1500); return; }
     if (state.usedDomain) { showMapToast('❌','已使用','本场战斗已使用过领域展开!',1500); return; }
-    if ((state.cursedEnergy || 0) < domainDef.ceCost) { showMapToast('❌','咒力不足',`需要 ${domainDef.ceCost} CE`,1500); return; }
+    if (getBattleResourceValue(battle, state, 'player', 'ce') < domainDef.ceCost) { showMapToast('❌','咒力不足',`需要 ${domainDef.ceCost} CE`,1500); return; }
     if (battle.activeDomain?.ownerSide === 'player') { showMapToast('❌','领域冲突','你的领域已在展开中!',1500); return; }
 
     setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
     try {
         let tempBattle = _.cloneDeep(battle);
         const player = tempBattle.playerCombatStates[domainIdx];
-        player.cursedEnergy -= domainDef.ceCost;
+        if ((tempBattle.sharedPlayerMaxCE || 0) > 0) {
+          tempBattle.sharedPlayerCE = Math.max(0, (tempBattle.sharedPlayerCE || 0) - domainDef.ceCost);
+        } else {
+          player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - domainDef.ceCost);
+        }
         player.usedDomain = true;
         tempBattle.activeDomain = {
             name: domainDef.name,
@@ -13332,6 +14844,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             ...prev,
             playerCombatStates: tempBattle.playerCombatStates,
             activeDomain: tempBattle.activeDomain,
+            sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
         }));
         await wait(500);
         if (battle.isDouble) {
@@ -13372,13 +14885,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let tempBattle = _.cloneDeep(battle);
         const player = tempBattle.playerCombatStates[vowIdx];
 
-        if (vow.ceCost && (player.cursedEnergy || 0) < vow.ceCost) {
+        if (vow.ceCost && getBattleResourceValue(battle, player, 'player', 'ce') < vow.ceCost) {
             addLog(`📜 咒力不足! 需要 ${vow.ceCost} 咒力`);
             setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
             return;
         }
         if (vow.ceCost) {
-            player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - vow.ceCost);
+            if ((tempBattle.sharedPlayerMaxCE || 0) > 0) {
+              tempBattle.sharedPlayerCE = Math.max(0, (tempBattle.sharedPlayerCE || 0) - vow.ceCost);
+            } else {
+              player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - vow.ceCost);
+            }
             addLog(`🔮 消耗 ${vow.ceCost} 咒力`);
         }
         updateAchStat({ vowsUsed: 1 });
@@ -13418,6 +14935,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setBattle(prev => ({
             ...prev,
             playerCombatStates: tempBattle.playerCombatStates,
+            sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
         }));
         await wait(500);
         if (battle.isDouble) {
@@ -13458,6 +14976,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       : tempBattle.enemyParty[tempBattle.enemyActiveIdx];
 
     if (!unit || !unit.devilFruit || unit.fruitUsed || unit.fruitTransformed) return;
+    const fruitMinTurn = getFruitTransformMinTurn(getEquippedRelicEffects(relics));
+    if (side === 'player' && (tempBattle.turnCount || 0) < fruitMinTurn) {
+      showMapToast('⚠️', '无法变身', `需要第 ${fruitMinTurn} 回合后才能变身（还需 ${fruitMinTurn - (tempBattle.turnCount || 0)} 回合）`, 2000);
+      return;
+    }
     const maxHp = getStats(unit)?.maxHp || unit.currentHp || 100;
     const curHp = unit.currentHp != null ? unit.currentHp : maxHp;
     if (curHp > maxHp * 0.6) {
@@ -13474,7 +14997,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     unit.fruitTransformed = true;
     unit.fruitUsed = true;
-    unit.fruitTurnsLeft = Math.max(2, fruit.duration || 3);
+    const fruitResonance = side === 'player' ? getActiveResonanceForPet(unit) : {};
+    unit.fruitTurnsLeft = Math.max(2, (fruit.duration || 3) + (fruitResonance.fruitDurationBonus || 0));
     unit.fruitEffects = { ...fruit.transform };
 
     if (fruit.transform.hpMult) {
@@ -14004,7 +15528,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return null;
           }).filter(Boolean);
           const cursedMoves = (cs.combatMoves || []).filter(m => m.isCursed);
-          const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves];
+          const martialMoves2 = (cs.combatMoves || []).filter(m => m.isMartialArt);
+          const jutsuMoves2 = (cs.combatMoves || []).filter(m => m.isJutsu);
+          const fruitMoves2 = (cs.combatMoves || []).filter(m => m.isFruitMove);
+          const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves2, ...jutsuMoves2, ...fruitMoves2];
           return {
             ...cs,
             level: updatedPet.level,
@@ -14322,8 +15849,22 @@ const grantContestReward = (config, score, subjectPet = null) => {
           phase: 'input',
           turnCount: (state.turnCount || prev?.turnCount || 0) + 1,
           _playerTookDamage: state._playerTookDamage || prev._playerTookDamage || playerTookDamageRef.current,
-          _partyMinHp: state._partyMinHp || prev._partyMinHp,
+          _playerDirectAttack: state._playerDirectAttack || prev._playerDirectAttack,
+          _purifyProgress: state._purifyProgress ?? prev?._purifyProgress,
+          _protectHp: state._protectHp ?? prev?._protectHp,
+          _protectMaxHp: state._protectMaxHp ?? prev?._protectMaxHp,
+          battleObjective: state.battleObjective || prev?.battleObjective,
+          objectiveTurns: state.objectiveTurns || prev?.objectiveTurns,
       }));
+      if (checkBattleObjectiveMet(state)) {
+        const winParty = state.playerCombatStates.map((p, i) => {
+          const uid = p?.uid;
+          const partyPet = uid ? party.find(pp => pp.uid === uid) : party[i];
+          return { ...(partyPet || party[i] || {}), ...p };
+        });
+        if (handleWinRef.current) await handleWinRef.current(winParty);
+        return;
+      }
     }
    } catch (e) {
       console.error("Enemy Turn Error:", e);
@@ -14340,30 +15881,32 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const getTypeMod = (moveType, targetType, battleOverride) => {
     const chart = {
-      NORMAL:  { weak: ['ROCK', 'STEEL'], strong: [], immune: ['GHOST'] },
+      NORMAL:  { weak: [], strong: [], immune: ['GHOST'] },
       FIRE:    { weak: ['WATER', 'ROCK', 'GROUND'], strong: ['GRASS', 'ICE', 'BUG', 'STEEL'], immune: [] },
       WATER:   { weak: ['GRASS', 'ELECTRIC'], strong: ['FIRE', 'GROUND', 'ROCK'], immune: [] },
       GRASS:   { weak: ['FIRE', 'ICE', 'POISON', 'FLYING', 'BUG'], strong: ['WATER', 'GROUND', 'ROCK'], immune: [] },
-      ELECTRIC:{ weak: ['GROUND'], strong: ['WATER', 'FLYING'], immune: ['GROUND'] },
+      ELECTRIC:{ weak: ['GROUND'], strong: ['WATER', 'FLYING'], immune: [] },
       ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL', 'SOUND'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'], immune: [] },
-      FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'STEEL', 'DARK'], immune: ['GHOST'] },
+      FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'DARK', 'STEEL'], immune: ['GHOST'] },
       POISON:  { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'], immune: ['STEEL'] },
       GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'], immune: ['FLYING'] },
       FLYING:  { weak: ['ELECTRIC', 'ICE', 'ROCK', 'COSMIC'], strong: ['GRASS', 'FIGHT', 'BUG'], immune: [] },
       PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'], immune: ['DARK'] },
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'], immune: [] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'], immune: [] },
-      GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: ['NORMAL'] },
+      GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'], immune: ['NORMAL', 'FIGHT'] },
       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'], immune: [] },
-      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'], immune: [] },
-      STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'], immune: [] },
-      FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'], immune: [] },
+      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'], immune: ['PSYCHIC'] },
+      STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC', 'LIGHT'], immune: ['POISON'] },
+      FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK', 'CHAOS'], immune: [] },
       WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'], immune: [] },
-      LIGHT:   { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'], immune: [] },
+      LIGHT:   { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG', 'CHAOS'], immune: [] },
       COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING', 'POISON'], immune: [] },
       SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC', 'GHOST', 'BUG'], immune: [] },
       GOD:     { weak: ['GOD'], strong: ['DRAGON', 'DARK', 'GHOST', 'PSYCHIC', 'FAIRY'], immune: [] },
       HEAL:    { weak: ['POISON', 'DARK', 'GHOST'], strong: ['FIGHT', 'DRAGON', 'BUG'], immune: [] },
+      TIME:    { weak: ['DARK', 'GHOST'], strong: ['DRAGON', 'PSYCHIC', 'GROUND', 'ICE', 'CHAOS'], immune: [] },
+      CHAOS:   { weak: ['FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'COSMIC', 'NORMAL', 'STEEL', 'TIME'], immune: [] },
     };
 
     const info = chart[moveType];
@@ -14547,6 +16090,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return false;
     }
 
+    // 0.5 蓄力回合（破坏死光等）
+    if (atkState.volatiles?.recharging) {
+        atkState.volatiles.recharging = false;
+        addLog(`${attacker.name} 需要休息，无法行动！`);
+        await wait(800);
+        return false;
+    }
+
     // 1. 异常状态判定
     if (atkState.status === 'SLP') {
         if (!atkState.volatiles.sleepTurns || atkState.volatiles.sleepTurns <= 0) atkState.volatiles.sleepTurns = 2 + Math.floor(Math.random() * 3);
@@ -14638,6 +16189,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!atkState.cursedCooldowns) atkState.cursedCooldowns = {};
         atkState.cursedCooldowns[move.id || move.name] = 2;
         addLog(`🔮 消耗 ${move.ceCost} 咒力 (剩余${atkState.cursedEnergy})`);
+    } else if (move.isMartialArt) {
+        const mcost = move.momentumCost || 0;
+        if (mcost > 0 && !spendSectMomentum(battleState, mcost)) {
+            addLog(`${attacker.name} 气势不足，无法施展 ${move.name}!`);
+            return false;
+        }
+        if (move.pp !== undefined && move.pp <= 0) {
+            addLog(`${attacker.name} 的 ${move.name} PP耗尽！`);
+            return false;
+        }
+        if (move.pp > 0) move.pp = Math.max(0, move.pp - 1);
+        const art = getMartialArtById(move.martialArtId);
+        if (art?.momentumGain) gainSectMomentum(battleState, art.momentumGain);
+        addLog(`🥋 施展门派武学【${move.name}】`);
     } else if (move.isJutsu && move.chakraCost > 0) {
         const jCd = atkState.jutsuCooldowns?.[move.jutsuId || move.name] || 0;
         if (jCd > 0) {
@@ -14645,7 +16210,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return false;
         }
         const availableChakra = getShared('chakra');
-        if (availableChakra < move.chakraCost) {
+        const resonanceFx = source === 'player' ? (battleState._resonanceFx || getActiveResonanceForPet(attacker)) : {};
+        const effectiveChakraCost = Math.max(1, Math.floor((move.chakraCost || 0) * (resonanceFx.chakraCostMult || 1)));
+        if (availableChakra < effectiveChakraCost) {
             addLog(`${attacker.name} 查克拉不足，无法施展 ${move.name}!`);
             return false;
         }
@@ -14653,11 +16220,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`${attacker.name} 的 ${move.name} PP耗尽！`);
             return false;
         }
-        setShared('chakra', availableChakra - move.chakraCost);
+        setShared('chakra', availableChakra - effectiveChakraCost);
         if (move.pp > 0) move.pp = Math.max(0, move.pp - 1);
         if (!atkState.jutsuCooldowns) atkState.jutsuCooldowns = {};
         atkState.jutsuCooldowns[move.jutsuId || move.name] = 2;
-        addLog(`🍥 消耗 ${move.chakraCost} 查克拉 (剩余${atkState.chakra})`);
+        addLog(`🍥 消耗 ${effectiveChakraCost} 查克拉 (剩余${atkState.chakra})`);
     } else {
         if (move.pp === undefined && !move.isJutsu && !move.isCursed) {
             move.pp = move.maxPP || 15;
@@ -14766,6 +16333,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const heal = Math.floor(max * healFrac);
             attacker.currentHp = Math.min(max, attacker.currentHp + heal);
             addLog(`${attacker.name} 恢复了 ${heal} 点体力!`);
+            if (source === 'player') onSectHeal(battleState);
             _setAnim({ type: 'HEAL', target: source === 'player' ? 'player' : 'enemy' });
             await wait(1000); _setAnim(null);
             return false;
@@ -14889,13 +16457,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         else if (eff.type === 'OHKO') {
             if (defender.isBoss) {
               addLog(`${defender.name} 是首领级别，一击必杀无效！`);
-            } else if (Math.random() < (eff.chance || 0.3)) {
+            } else {
               defender.currentHp = 0;
               addLog(`💀 ${defender.name} 被一击必杀了！`);
               _setAnim({ type: move.t || 'ICE', target: source === 'player' ? 'enemy' : 'player' });
               isDead = true;
-            } else {
-              addLog(`但是没有命中！`);
             }
         }
         else if (eff.type === 'RESET') {
@@ -14941,8 +16507,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // === 伤害类技能 ===
         const noGang = { atk:0, def:0, s_atk:0, s_def:0, hp:0, spd:0, gold:0, exp:0 };
         const enemyGB = battleState.trainerGangBonus || noGang;
-        const atkGB = source === 'player' ? undefined : enemyGB;
-        const defGB = source === 'player' ? enemyGB : undefined;
+        const pvpNoPower = battleState.isPvP ? stripGangCombatBonus(getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), getEquippedRelicEffects(relics).gangSkillMult || 1)) : undefined;
+        const atkGB = source === 'player' ? (battleState.isPvP ? pvpNoPower : undefined) : enemyGB;
+        const defGB = source === 'player' ? enemyGB : (battleState.isPvP ? pvpNoPower : undefined);
         const statsAtk = getStats(attacker, atkState.stages, atkState.status, atkGB); 
         const statsDef = getStats(defender, defState.stages, defState.status, defGB);
         const category = getMoveCategory(move.t, move);
@@ -14951,6 +16518,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const synM = battleState.teamSynergyMult || 1;
         if (synM > 1 && source === 'player') {
           atkVal = Math.floor(atkVal * synM);
+        }
+        if (source === 'player') {
+          const resonanceFx = battleState._resonanceFx || getActiveResonanceForPet(attacker);
+          const relicFx = battleState._relicFx || getEquippedRelicEffects(relics);
+          const dmgMult = (resonanceFx.skillDamageMult || 1) * (relicFx.skillDamageMult || 1);
+          if (dmgMult > 1) atkVal = Math.floor(atkVal * dmgMult);
+          if ((battleState._kwAlignBonus || 1) > 1) atkVal = Math.floor(atkVal * battleState._kwAlignBonus);
         }
 
         // 果实变身攻防倍率
@@ -14977,6 +16551,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (domForCrit && domForCrit.turnsLeft > 0 && domForCrit.effect && domForCrit.ownerSide === source && domForCrit.effect.critBoost) critStage += domForCrit.effect.critBoost;
         let critChance = Math.max(source === 'player' ? 1 : 0, Math.min(40, statsAtk.crit * (1 + critStage * 0.5)));
         if (source === 'player' && (attacker.intimacy || 0) >= 100) critChance += 5;
+        if (defender.trait === 'shell_armor') critChance = 0;
         if (Math.random() * 100 < critChance) isCrit = true;
 
         if (isCrit && defState?.stages) {
@@ -14999,7 +16574,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let typeMod = getTypeMod(move.t, defender.type);
         if (defSecType && defSecType !== defender.type) typeMod *= getTypeMod(move.t, defSecType);
         const levelBase = attacker.level * 0.8 + 5;
-        const movePower = move.p || 40;
+        const movePower = (move.isMartialArt && move.p === 0) ? 0 : (move.p || 40);
         const powerFactor = movePower * 0.5 + 10;
         const ratio = atkVal / Math.max(1, defVal);
         const statFactor = Math.pow(ratio, 0.65);
@@ -15133,7 +16708,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
               }
             }
             if (move.jutsuId && source === 'player' && !move.isBijuu) {
-              setTimeout(() => setNarutoState(prev => ({ ...prev, jutsuMastery: { ...(prev.jutsuMastery || {}), [move.jutsuId]: ((prev.jutsuMastery || {})[move.jutsuId] || 0) + 1 } })), 0);
+              const masteryMult = getEquippedRelicEffects(relics).jutsuMasteryMult || 1;
+              const masteryGain = masteryMult >= 1.15 ? (Math.random() < 0.25 ? 2 : 1) : 1;
+              setTimeout(() => setNarutoState(prev => ({ ...prev, jutsuMastery: { ...(prev.jutsuMastery || {}), [move.jutsuId]: ((prev.jutsuMastery || {})[move.jutsuId] || 0) + masteryGain } })), 0);
+              if (attacker && !attacker.hasJutsuTraining) attacker.hasJutsuTraining = true;
             }
             // 查克拉属性克制加成
             if (move.isJutsu) {
@@ -15206,16 +16784,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const dodgeChance = 0.02 + defSectLv * 0.01;
             if (Math.random() < dodgeChance) {
                 rawDmg = 0; isDodged = true; addLog(`💨 ${defender.name} 施展凌波微步，闪避了攻击！`);
+                if (source === 'player') onSectDodge(defender, battleState, addLog);
             }
         }
         if (atkSect === 4 && atkSectLv > 0 && isCrit) rawDmg *= (1 + (0.1 + atkSectLv * 0.05));
         if (atkSect === 10 && atkSectLv > 0) rawDmg *= (1 + (0.05 + atkSectLv * 0.02));
         if (atkSect === 11 && atkSectLv > 0 && category === 'special') rawDmg *= (1 + (0.02 + atkSectLv * 0.01));
+        if (attacker.trait === 'ecoguard_blaze' && attacker.isEcoGuardian && move.t === 'FIRE') rawDmg *= 1.15;
+
+        if (source === 'player') {
+          const sectMult = (battleState._resonanceFx?.sectEffectMult || 1) * (battleState._relicFx?.sectEffectMult || 1);
+          if (sectMult > 1) {
+            if (atkSect === 1 && atkSectLv > 0) rawDmg *= (1 + (sectMult - 1) * 0.5);
+            if (atkSect === 4 && atkSectLv > 0 && isCrit) rawDmg *= (1 + (sectMult - 1) * 0.3);
+            if (atkSect === 10 && atkSectLv > 0) rawDmg *= (1 + (sectMult - 1) * 0.4);
+          }
+        }
+
+        const sectCtx = getPlayerSectCombatContext(attacker, battleState);
+        attacker._maxHp = attacker._maxHp || getStats(attacker).maxHp;
+        attacker._stats = attacker._stats || getStats(attacker);
+        if (move?.isMartialArt) {
+          const art = getMartialArtById(move.martialArtId);
+          rawDmg = applyMartialArtEffect(art, attacker, defender, rawDmg, addLog);
+        }
+        if (sectCtx.isMainSectPet || sectCtx.isSubSectPet) {
+          rawDmg = applyXinfaDamageMods(rawDmg, attacker, defender, sectCtx, addLog);
+        }
+        defender._lastDamage = rawDmg;
 
         rawDmg = Math.min(rawDmg, 99999);
         if (!Number.isFinite(rawDmg) || rawDmg < 0) rawDmg = 1;
         dmg = Math.floor(rawDmg);
-        if (!isImmune && !isDodged) {
+        if (!isImmune && !isDodged && !(move.isMartialArt && move.p === 0)) {
         dmg = Math.max(1, dmg); 
         }
         if (dmg > 0 && source === 'player' && battleState?.type === 'world_boss') {
@@ -15279,8 +16880,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (isCrit) {
             if (battleState) battleState._battleCrits = (battleState._battleCrits || 0) + 1;
             if (battleState && blessings.some(b => b.effect === 'critChain')) battleState._critChainActive = true;
+            if (battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_CRIT);
           }
         }
+        if (isDodged && source === 'enemy' && battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_DODGE);
 
         let survivalMsg = null;
         if (defender.trait === 'sturdy' && defender.currentHp === statsDef.maxHp && dmg >= defender.currentHp) {
@@ -15311,15 +16914,78 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           dmg = shieldDmg;
         }
+        if (dmg > 0 && (defender._ecoShield || 0) > 0) {
+          const absorbed = Math.min(defender._ecoShield, dmg);
+          defender._ecoShield -= absorbed;
+          dmg -= absorbed;
+          if (absorbed > 0) addLog(`🌿 生态护盾吸收 ${absorbed.toLocaleString()} 伤害`);
+        }
 
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
         if (isNaN(defender.currentHp)) defender.currentHp = 0;
+        if (defender.currentHp <= 0 && source !== 'player') {
+          applySectDeathSave(defender, addLog);
+        }
+        if (battleState?.battleObjective === 'capture_alive' && source === 'player' && defender.currentHp <= 0 && move.p > 0) {
+          defender.currentHp = 1;
+          defender._capturedAlive = true;
+          isDead = false;
+          addLog(`🎯 ${defender.name} 被成功制服！`);
+        } else if (battleState?.battleObjective === 'capture_alive' && source === 'player' && defender.currentHp <= 0 && !defender._capturedAlive) {
+          addLog(`💀 ${defender.name} 被击杀，活捕任务失败！`);
+          setTimeout(() => handleDefeat(), 600);
+          return 'capture_fail';
+        }
         if (survivalMsg) addLog(survivalMsg);
-        isDead = defender.currentHp <= 0;
+        if (move.selfKO && attacker.currentHp > 0) {
+          attacker.currentHp = 0;
+          addLog(`💥 ${attacker.name} 因大爆炸的反作用力倒下了！`);
+        }
+        if (move.recharge) {
+          if (!atkState.volatiles) atkState.volatiles = {};
+          atkState.volatiles.recharging = true;
+        }
+        isDead = defender._capturedAlive ? false : (defender.currentHp <= 0);
+        if (isDead && source === 'player' && battleState) {
+          attacker._sectKillChain = true;
+          gainSectMomentum(battleState, SECT_MOMENTUM_PER_KILL);
+        }
+        if (source === 'player' && battleState?.battleObjective === 'purify' && ['FAIRY', 'LIGHT', 'GRASS', 'PSYCHIC', 'WATER', 'ICE'].includes(move.t)) {
+          const basePurify = move.p > 0 ? 12 : 18;
+          const purifyBonus = battleState._fusionBonuses?.purifyBonus || 0;
+          const purifyAmt = Math.max(4, Math.floor(basePurify * (1 + purifyBonus / 100)));
+          battleState._purifyProgress = Math.max(0, (battleState._purifyProgress ?? 100) - purifyAmt);
+          addLog(`✨ 净化进度 ${100 - (battleState._purifyProgress ?? 0)}%（剩余 ${battleState._purifyProgress}%）`);
+          if (checkBattleObjectiveMet(battleState) && handleWinRef.current) {
+            battleState._objectiveWinPending = true;
+            const winParty = battleState.playerCombatStates.map((p, i) => ({ ...(party[i] || {}), ...p }));
+            await handleWinRef.current(winParty);
+            return 'objective_win';
+          }
+        }
+        if (source === 'player' && battleState?.battleObjective === 'capture_alive' && checkBattleObjectiveMet(battleState) && handleWinRef.current) {
+          battleState._objectiveWinPending = true;
+          const winParty = battleState.playerCombatStates.map((p, i) => ({ ...(party[i] || {}), ...p }));
+          await handleWinRef.current(winParty);
+          return 'objective_win';
+        }
+        if (source === 'enemy' && battleState?.battleObjective === 'protect' && dmg > 0) {
+          battleState._protectHp = Math.max(0, (battleState._protectHp ?? 0) - Math.floor(dmg * 0.4));
+          addLog(`🛡️ 守护目标剩余 ${battleState._protectHp}/${battleState._protectMaxHp || '?'} HP`);
+          if (battleState._protectHp <= 0) {
+            addLog('💔 守护目标被击破，任务失败！');
+            setTimeout(() => handleDefeat(), 600);
+            return 'protect_fail';
+          }
+        }
         if (dmg > 0 && source === 'enemy' && battleState) markPlayerTookDamage(battleState);
         if (dmg > 0 && source === 'player' && battleState) {
           battleState._lastPlayerMoveDmg = dmg;
           battleState._worldBossDmgDealt = (battleState._worldBossDmgDealt || 0) + dmg;
+          if (move.p > 0) battleState._playerDirectAttack = true;
+        }
+        if (source === 'player' && isDead && typeMod < 1) {
+          updateAchStat({ typeDisadvantageWins: 1 });
         }
         if (source === 'player' && isDead && defender._preHitHp >= getStats(defender).maxHp * 0.95) updateAchStat({ oneHitKOs: 1 });
         if (source === 'player' && isDead && weatherBoosted) updateAchStat({ weatherSweepKills: 1 });
@@ -15379,7 +17045,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
               if (Math.random() * 100 > accuracy) { addLog(`追加第${h+2}击 未命中!`); continue; }
               const hitRoll = (0.75 + Math.random() * 0.25);
               const extraDmg = Math.max(1, Math.floor(dmg * 0.45 * hitRoll));
-              defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
+              if (battleState?.battleObjective === 'capture_alive') {
+                defender.currentHp = Math.max(1, defender.currentHp - extraDmg);
+                if (defender.currentHp <= 1) { defender.currentHp = 1; defender._capturedAlive = true; }
+              } else {
+                defender.currentHp = Math.max(0, defender.currentHp - extraDmg);
+              }
               addLog(`追加第${h+2}击! 造成 ${extraDmg} 伤害`);
             }
             isDead = defender.currentHp <= 0;
@@ -15429,15 +17100,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (reflectDmg > 0) {
                 attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
                 addLog(`🥊 打狗棒法反弹了 ${reflectDmg} 点伤害！`);
+                if (source !== 'player') gainSectMomentum(battleState, SECT_MOMENTUM_PER_REFLECT);
             }
         }
-        if (atkSect === 6 && atkSectLv > 0 && !defState.status && move.p > 0 && Math.random() < (0.05 + atkSectLv * 0.02)) {
+        if (atkSect === 6 && atkSectLv > 0 && !defState.status && move.p > 0 && defender.type !== 'FIRE' && Math.random() < (0.05 + atkSectLv * 0.02)) {
             defState.status = 'BRN'; addLog(`🔥 圣火令触发，${defender.name} 灼伤了！`);
         }
-        if (defSect === 7 && defSectLv > 0 && !atkState.status && move.p > 0 && Math.random() < (0.03 + defSectLv * 0.01)) {
+        if (defSect === 7 && defSectLv > 0 && !atkState.status && move.p > 0 && attacker.type !== 'ICE' && Math.random() < (0.03 + defSectLv * 0.01)) {
             atkState.status = 'FRZ'; addLog(`❄️ 寒冰劲护体，${attacker.name} 被冻结了！`);
         }
-        if (atkSect === 8 && atkSectLv > 0 && !defState.status && move.p > 0 && Math.random() < (0.05 + atkSectLv * 0.02)) {
+        if (atkSect === 8 && atkSectLv > 0 && !defState.status && move.p > 0 && defender.type !== 'POISON' && defender.type !== 'STEEL' && Math.random() < (0.05 + atkSectLv * 0.02)) {
             defState.status = 'PSN'; addLog(`☠️ 千蛛手触发，${defender.name} 中毒了！`);
         }
         if (atkSect === 5 && attacker.currentHp > 0 && dmg > 0) {
@@ -15455,6 +17127,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (reflectDmg > 0) {
                 attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
                 addLog(`☯️ 太极功以柔克刚，反弹了 ${reflectDmg} 点特攻伤害！`);
+                if (source !== 'player') gainSectMomentum(battleState, SECT_MOMENTUM_PER_REFLECT);
             }
         }
 
@@ -15601,6 +17274,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 defState.stages.p_atk = Math.max(-6, (defState.stages.p_atk || 0) - ceMoveEff.atkDown);
                 defState.stages.s_atk = Math.max(-6, (defState.stages.s_atk || 0) - ceMoveEff.atkDown);
                 addLog(`🔮 ${defender.name} 的攻击下降了!`);
+            }
+            if (ceMoveEff.defDown) {
+                const defDrop = typeof ceMoveEff.defDown === 'number' && ceMoveEff.defDown <= 6 ? Math.max(1, Math.floor(ceMoveEff.defDown)) : 1;
+                defState.stages.p_def = Math.max(-6, (defState.stages.p_def || 0) - defDrop);
+                defState.stages.s_def = Math.max(-6, (defState.stages.s_def || 0) - defDrop);
+                addLog(`🔮 ${defender.name} 的防御下降了!`);
             }
             if (ceMoveEff.breakBarrier) {
                 if (defState?.volatiles) defState.volatiles.protected = false;
@@ -15798,15 +17477,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
         ? (bState.isDouble ? 0.5 : 1.0)
         : (0.3 / benchCount);
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
-      const gangExpBonus = getGangSkillBonus(getGangSkills(gang)).exp;
+      const gangExpBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), getEquippedRelicEffects(relics).gangSkillMult || 1).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
       const kwExpBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.exp || 0) : 0;
       const kwExpBuff = (kingdomWar?.expBuffBattles > 0) ? 25 : 0;
+      const relicExpMult = getEquippedRelicEffects(relics).expMult || 1;
       const lvlDiff = pet.level - deadEnemy.level;
       const underLvlBonus = lvlDiff < -10 ? 1.5 : lvlDiff < -5 ? 1.2 : 1.0;
       const lvlPenalty = lvlDiff > 20 ? 0.4 : lvlDiff > 10 ? 0.5 : lvlDiff > 5 ? 0.8 : 1.0;
       const rkPerk = getRankPerkEffects(kingdomWar);
-      let expGain = Math.floor(baseExp * shareRatio * lvlPenalty * underLvlBonus * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100) * (rkPerk.battleExpMult || 1) * (rkPerk.allBonusMult || 1));
+      let expGain = Math.floor(baseExp * shareRatio * lvlPenalty * underLvlBonus * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100) * (rkPerk.battleExpMult || 1) * (rkPerk.allBonusMult || 1) * relicExpMult);
       if (!Number.isFinite(expGain) || expGain < 0) expGain = 0;
       
       if (pet.level >= 100) { pet.exp = 0; return pet; }
@@ -15874,7 +17554,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         if (pet.level % 5 === 0) {
-          const moveType = (pet.level % 10 === 0 && pet.type2 && pet.type2 !== pet.type) ? pet.type2 : pet.type;
+          const secType = pet.secondaryType || pet.type2;
+          const moveType = (pet.level % 10 === 0 && secType && secType !== pet.type) ? secType : pet.type;
           const newMove = getMoveByLevel(moveType, pet.level);
           if (!pet.moves) pet.moves = [];
           const alreadyHas = pet.moves.find(m => m.name === newMove.name);
@@ -15911,6 +17592,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (party[0].level < minLv) { 
         showMapToast('⚠️', '等级不足', `${mode === 'shallow' ? '浅层' : '深层'}模式需首发 Lv.${minLv}+`, 2500); 
         return; 
+    }
+    
+    if (infinityState && infinityState.floor > 1 && infinityState.status && infinityState.mode === mode) {
+      showMapToast('🏯', '无限城', `继续第 ${infinityState.floor} 层探索`, 2500);
+      setInfinityState(prev => ({ ...prev, status: 'selecting', routeOptions: prev.routeOptions || pickRouteOptions(prev.floor) }));
+      setView('infinity_castle');
+      return;
     }
     
     showMapToast('🚪', '无限城', mode === 'shallow' ? '浅层探索开始！敌人较弱' : '琵琶声响起...不断战斗才能生存', 2500);
@@ -16043,12 +17731,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
 
       const handleWin = (finalParty) => {
+       handleWinRef.current = handleWin;
        try {
          const battleSnapshot = battle;
          if (!battleSnapshot || battleResultHandledRef.current) return;
          auditPlayerHpLoss(battleSnapshot);
          battleResultHandledRef.current = true;
          if (battleSnapshot._weatherOverride) setWeather('CLEAR');
+         if (battleSnapshot?.battleObjective && !checkBattleObjectiveMet(battleSnapshot)) {
+           const block = shouldBlockStandardWin(battleSnapshot);
+           battleResultHandledRef.current = false;
+           if (block === 'fail') { handleDefeat(); return; }
+           showMapToast('❌', '目标未达成', getObjectiveHint(battleSnapshot.battleObjective), 3000);
+           setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
+           return;
+         }
          {
            const b = battleSnapshot;
            const turnCount = b.turnCount || 0;
@@ -16100,8 +17797,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const fatigueAmt = type === 'infinity' ? FATIGUE_CONFIG.perInfinityFloor
       : (isBoss || type === 'world_boss' || battleSnapshot.ecoBossMechanics) ? FATIGUE_CONFIG.perBossBattle
       : FATIGUE_CONFIG.perBattle;
-    finalParty = (finalParty || party).map(p => ({ ...p, fatigue: addFatigue(p, fatigueAmt) }));
+    finalParty = (finalParty || party).map(p => {
+      let f = addFatigue(p, fatigueAmt);
+      if (p.fruitUsed && p.devilFruit) f = Math.min(100, f + 15);
+      return { ...p, fatigue: f };
+    });
     setParty(finalParty);
+    if (sectPlayer?.playerSect) {
+      advanceSectDaily('sect_win', 1);
+    }
     // ★★★ 剧情推进逻辑 (最优先执行，确保不被后续代码的异常阻断) ★★★
     let storyHandled = false;
     if (type === 'story_task' || type === 'story_mid') {
@@ -16158,17 +17862,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
       totalBattleExp += bExp;
     });
 
-    const gangGoldBonus = getGangSkillBonus(getGangSkills(gang)).gold;
+    const gangGoldBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar))).gold;
     const genGoldBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.gold||0), 0);
     const kwGoldBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.gold || 0) : 0;
     const rankBattlePerk = getRankPerkEffects(kingdomWar);
+    const relicFxWin = getEquippedRelicEffects(relics);
+    const activePetForRes = finalParty[battleSnapshot.activeIdx] || finalParty[0];
+    const resonanceGoldMult = activePetForRes ? (getActiveResonanceForPet(activePetForRes).goldMult || 1) : 1;
     const bountyMult = isBounty ? 2 : 1;
     const streakCount = (achStats.currentWinStreak || 0) + 1;
     const streakMult = streakCount >= 20 ? 1.5 : streakCount >= 10 ? 1.3 : streakCount >= 5 ? 1.15 : 1.0;
     const combinedBountyStreak = Math.min(bountyMult * streakMult, 2.5);
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
     const isNarutoExamOrSurvival = type === 'naruto_exam' || type === 'naruto_survival' || type === 'survival';
-    const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor((drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * combinedBountyStreak * (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0));
+    const goldMultCap = 3.5;
+    const baseDropGold = (drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * combinedBountyStreak;
+    const goldMult = (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0) * resonanceGoldMult * (relicFxWin.goldMult || 1);
+    const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor(baseDropGold * Math.min(goldMult, goldMultCap));
     if (goldGain > 0) setGold(g => g + goldGain);
     if (type === 'survival') {
       const survivalGold = (battleSnapshot.survivalWave || battleSnapshot.meta?.wave || 1) * 100;
@@ -16587,13 +18297,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 5. 门派挑战特殊逻辑
-    if (battle.type === 'sect_challenge') {
-        const sectId = battle.id - 8000;
+    if (battleSnapshot.type === 'sect_challenge') {
+        const isChiefTrial = battleSnapshot._isChiefTrial || (battleSnapshot.id >= 8100 && battleSnapshot.id < 8200);
+        const sectId = isChiefTrial ? (battleSnapshot._chiefTrialSectId || battleSnapshot.id - 8100) : battleSnapshot.id - 8000;
         const chiefInfo = SECT_CHIEFS_CONFIG[sectId];
         const sectInfo = SECT_DB[sectId];
 
         if (!chiefInfo || !sectInfo) {
             setParty(updatedParty); setBattle(null); setView('menu'); return;
+        }
+
+        if (isChiefTrial) {
+            setSectPlayer(prev => {
+              const already = (prev.sectChiefTrials || []).includes(sectId);
+              return {
+                ...prev,
+                sectChiefTrials: [...new Set([...(prev.sectChiefTrials || []), sectId])],
+                sectResources: {
+                  ...prev.sectResources,
+                  masterToken: already ? prev.sectResources?.masterToken : Math.max(0, (prev.sectResources?.masterToken || 0) - 1),
+                  scrollPage: (prev.sectResources?.scrollPage || 0) + 5,
+                  qiEssence: (prev.sectResources?.qiEssence || 0) + 100,
+                  reputation: (prev.sectResources?.reputation || 0) + 150,
+                  contribution: (prev.sectResources?.contribution || 0) + 80,
+                },
+                sectRank: getSectRankByRep((prev.sectResources?.reputation || 0) + 150),
+              };
+            });
+            advanceSectDaily('sect_challenge', 1);
+            showMapToast('👑', '掌门试炼通关', `通过【${sectInfo.name}】掌门试炼！获得武学残页与心法真气`, 4000);
+            setParty(updatedParty);
+            setBattle(null);
+            setView('sect_summit');
+            return;
         }
 
         if (!sectTitles.includes(sectId)) {
@@ -16602,12 +18338,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const _eqS2 = _.sample(RANDOM_EQUIP_DB);
             const rewardEquip = _eqS2 ? createUniqueEquip(_eqS2.id) : null;
             if (rewardEquip) { setAccessories(prev => [...prev, rewardEquip]); addLog(`获得战利品: ${rewardEquip.displayName}`); }
+            addSectResources({ reputation: 100, contribution: 50, scrollPage: 2 });
             showMapToast('🏆', '挑战成功', `击败了 ${chiefInfo.name}，夺得【${chiefInfo.title}】称号！佩戴后激活全队${sectInfo.name}加成：${chiefInfo.buffName}`, 4000);
         } else {
             const repeatGold = Math.min(8000, 2000 + (sectTitles.length * 500));
             setGold(g => g + repeatGold);
+            addSectResources({ reputation: 30, contribution: 20 });
             showMapToast('🥋', '切磋结束', `你仍是【${chiefInfo.title}】· 获得 💰${repeatGold}金币`, 2000);
         }
+        advanceSectDaily('sect_challenge', 1);
         
         setParty(updatedParty);
         setBattle(null);
@@ -16729,10 +18468,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setGold(g => g + ms.gold);
             updateAchStat({ totalGoldEarned: ms.gold });
             if (ms.item) {
-              const cat = ms.item === 'master_ball' ? 'balls' : 'meds';
+              const cat = BALLS[ms.item] ? 'balls' : 'meds';
               setInventory(p => ({ ...p, [cat]: { ...p[cat], [ms.item]: (p[cat]?.[ms.item] || 0) + (ms.itemCount || 1) } }));
             }
             showMapToast('🎁', ms.label, `+${ms.gold.toLocaleString()} 金${ms.item ? ` · ${MEDICINES[ms.item]?.name || BALLS[ms.item]?.name || ms.item}×${ms.itemCount}` : ''}`, 3000);
+        }
+        if (currentFloor > 0 && currentFloor % 10 === 0) {
+            grantRelicDrop(rollInfinityRelic(currentFloor, relics?.owned || []));
+        }
+        // LEGEND_OBTAIN_RULES - infinity_floor rewards
+        if (LEGEND_OBTAIN_RULES) {
+          const floorRewards = LEGEND_OBTAIN_RULES.filter(r => r.method === 'infinity_floor' && r.floor && currentFloor >= r.floor);
+          for (const rule of floorRewards) {
+            const alreadyOwned = (pc || []).some(p => p?.dexId === rule.petId) || (party || []).some(p => p?.dexId === rule.petId);
+            if (!alreadyOwned) {
+              const legendPet = createPet(rule.petId, Math.max(60, currentFloor));
+              setPc(prev => [...prev, legendPet]);
+              if (!caughtDex.includes(rule.petId)) setCaughtDex(prev => [...prev, rule.petId]);
+              showMapToast('🌟', '传说奖励', `到达第${currentFloor}层！获得 ${rule.name}！`, 3000);
+            }
+          }
         }
         if (currentFloor % 5 === 0) {
             const breathOpts = _.sampleSize(BREATHING_BUFFS, 2);
@@ -16744,7 +18499,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             nextInfinityFloor();
         }
         setInfinityState(prev => {
-          if (prev && (prev.floor || 0) >= 30 && !prev.healUsed) updateAchStat({ infinityNoHeal30: 1 });
+          if (prev && (prev.floor || 0) >= 30 && !prev.healUsed) {
+            setTimeout(() => updateAchStat({ infinityNoHeal30: 1 }), 0);
+          }
           return prev;
         });
         setBattle(null);
@@ -16754,6 +18511,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 8. 战斗联盟逻辑
     if (battle.type === 'league') {
+        const leagueLostHp = didPlayerTakeBattleDamage(battleSnapshot, finalParty);
+        if (leagueLostHp) setLeagueRunNoDamage(false);
         if (leagueRound < 4) {
            const nextRound = leagueRound + 1;
            setLeagueRound(nextRound);
@@ -16765,6 +18524,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         } else {
             unlockTitle('联盟冠军');
             if (leagueWins + 1 >= 5) unlockTitle('传奇霸主');
+            if (leagueRunNoDamage && !leagueLostHp) updateAchStat({ leaguePerfectRun: 1 });
+            setLeagueRunNoDamage(false);
             setLeagueWins(prev => prev + 1);
             setLeagueRound(0); 
             setCompletedChallenges(prev => [...prev, 'LEAGUE_CHAMPION']); 
@@ -16855,6 +18616,24 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const fundsText = (gang.isOwner && gang.customGang) ? `\n💰 ${reward.funds} 帮派资金` : '';
         showMapToast('⚔️', '帮战胜利', `${fundsText} · 帮贡 +${reward.contribution}${chestText || ''}`, 2500);
         updateGangTaskProgress('battle_win', 1);
+        if (kingdomWar?.faction) {
+          const kwBonus = Math.floor(50 * (getEquippedRelicEffects(relics).kwContribMult || 1));
+          setKingdomWar(prev => {
+            const next = {
+              ...prev,
+              warContribution: (prev.warContribution || 0) + kwBonus,
+              seasonContribution: (prev.seasonContribution || 0) + kwBonus,
+              lifetimeContribution: (prev.lifetimeContribution || 0) + kwBonus,
+            };
+            next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+            return next;
+          });
+          updateGangTaskProgress('kw_contrib', kwBonus);
+          if (isGangKingdomAligned(gang, kingdomWar)) {
+            showMapToast('🏴', '帮派国战联动', `同阵营加成：额外获得 ${kwBonus} 战功`, 2000);
+            updateAchStat({ gangKwLinkWins: 1 });
+          }
+        }
         updateAchStat({ battlesWon: 1 });
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
@@ -16964,11 +18743,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 9b. 国战胜利
     if (battle.type === 'kingdom_war') {
+        const hpPct = party.reduce((s, p) => s + (p.currentHp || 0), 0) / Math.max(1, party.reduce((s, p) => s + (p.stats?.hp || p.hp || 100), 0));
+        const allSurvived = party.every(p => (p.currentHp || 0) > 0);
+        const rating = calcBattleRating({ hpPercent: hpPct, turnsUsed: battle.turnCount || 10, maxTurns: 20, allSurvived, bossKilled: true });
+        const ratingData = BATTLE_RATINGS[rating] || BATTLE_RATINGS.C;
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
         const kwContribBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.contribution || 0) : 0;
         const genContribBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.contrib||0), 0);
         const kwPerkFx = getRankPerkEffects(kingdomWar);
-        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + (gangBonusContrib + kwContribBonus + genContribBonus) / 100) * (kwPerkFx.allBonusMult || 1));
+        const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + (gangBonusContrib + kwContribBonus + genContribBonus) / 100) * (kwPerkFx.allBonusMult || 1) * (ratingData.lootMult || 1));
         const tokenGain = Math.floor((2 + Math.floor(Math.random() * 3)) * (kwPerkFx.tokenMult || 1));
         const mapIdKw = battle.mapId || currentMapId;
         const avgELv = (battle.enemyParty || []).reduce((s, e) => s + (e?.level || 0), 0) / Math.max(1, (battle.enemyParty || []).length);
@@ -17006,7 +18789,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateGangTaskProgress('kw_kill', 1);
         updateGangTaskProgress('battle_win', 1);
         const factionData = FACTIONS[battle.kwEnemyFaction] || { fullName: '敌国' };
-        showMapToast('⚔️',`国战胜利`,`战功+${contribGain} | 令牌+${tokenGain} | 征兵+${mpGain}`,3000);
+        showMapToast('⚔️',`国战胜利 ${ratingData.icon}${rating}`,`战功+${contribGain} | 令牌+${tokenGain} | 征兵+${mpGain}`,3000);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
         setBattle(null);
@@ -17150,7 +18933,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setDialogQueue(storyChapter.outro);
           setCurrentDialogIndex(0);
           setIsDialogVisible(true);
-          if (storyChapter.reward?.gold) setGold(g => g + storyChapter.reward.gold);
+          if (storyChapter.reward?.gold) { setGold(g => g + storyChapter.reward.gold); updateAchStat({ totalGoldEarned: storyChapter.reward.gold }); }
           if (storyChapter.reward?.balls) {
              setInventory(inv => {
                 const newBalls = {...inv.balls};
@@ -17294,7 +19077,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 竞技场结算
-    if (battle.type === 'arena') handleArenaResult(true);
+    if (battle.type === 'arena') {
+      handleArenaResult(true);
+      setBattle(null);
+      setView('arena');
+      showMapToast('🏆', '竞技场胜利', '段位星数 +1，继续加油！', 2500);
+      return;
+    }
 
     if (battle.type === 'spirit_domain' && battle.spiritDomain) {
       const sd = battle.spiritDomain;
@@ -17306,8 +19095,62 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
 
-    if (battle.type === 'eco_crisis' && battle.ecoCrisis) {
-      const { crisisId, stepIdx } = battle.ecoCrisis;
+    if ((battleSnapshot.type === 'eco_crisis' || battleSnapshot.type === 'sect_realm') && battleSnapshot._sectRealm) {
+      const { realmId, stepIdx } = battleSnapshot._sectRealm;
+      const def = getSectRealmById(realmId);
+      setSectPlayer(prev => ({
+        ...prev,
+        sectRealmProgress: { ...prev.sectRealmProgress, [realmId]: stepIdx + 1 },
+        sectResources: { ...prev.sectResources, contribution: (prev.sectResources?.contribution || 0) + 30, reputation: (prev.sectResources?.reputation || 0) + 40 },
+        sectRank: getSectRankByRep((prev.sectResources?.reputation || 0) + 40),
+      }));
+      if (def && stepIdx + 1 >= (def.steps?.length || 0)) completeSectRealm(realmId, def);
+      else showMapToast('✅', '秘境进展', `${def?.name || '秘境'} 第${stepIdx + 1}步完成`, 2500);
+      setParty(finalParty);
+      setBattle(null);
+      setView('sect_summit');
+      return;
+    }
+
+    if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._fusionDungeon) {
+      const { type, id, clearedKey, isFinalStep } = battleSnapshot._fusionDungeon;
+      let def;
+      if (type === 'jutsu') def = getJutsuRealmById(id);
+      else if (type === 'fruit') def = getFruitSeaZoneById(id);
+      else if (type === 'sect') def = getSectRealmById(id);
+      else if (type === 'battlefield') def = getBattlefieldById(id);
+      if (!isFinalStep) {
+        setFusionState(prev => ({ ...prev, [`${type}_progress_${id}`]: (prev[`${type}_progress_${id}`] || 0) + 1 }));
+        showMapToast('⚔️', '阶段通过', `${def?.name || id} — 进入下一阶段`, 2500);
+        setBattle(null);
+        setView('world_map');
+        return;
+      }
+      setFusionState(prev => ({ ...prev, [clearedKey]: [...new Set([...(prev[clearedKey] || []), id])], [`${type}_progress_${id}`]: undefined }));
+      if (def?.reward?.gold) setGold(g => g + def.reward.gold);
+      if (def?.reward?.title) unlockTitle(def.reward.title);
+      if (def?.reward?.item) {
+        const cat = BALLS[def.reward.item] ? 'balls' : def.reward.item.includes('stone') ? 'stones' : 'meds';
+        setInventory(p => ({ ...p, [cat]: { ...p[cat], [def.reward.item]: (p[cat]?.[def.reward.item] || 0) + (def.reward.itemCount || 1) } }));
+      }
+      if (def?.reward?.generalFragment) setFusionState(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [def.reward.generalFragment]: (prev.generalFragments?.[def.reward.generalFragment] || 0) + 1 } }));
+      if (type === 'fruit' && def?.reward?.fruitTrialClear) setFusionState(prev => ({ ...prev, fruitTrialsCleared: [...new Set([...(prev.fruitTrialsCleared || []), id])] }));
+      if (def?.ecologyReward) applyMapEcologyDelta(def.mapId || currentMapId, def.ecologyReward);
+      updateAchStat({ fusionDungeonsCleared: 1 });
+      showMapToast('✨', '融合副本通关', def?.name || id, 3500);
+      setBattle(null);
+      setView('world_map');
+      return;
+    }
+    if (battleSnapshot.type === 'eco_crisis' && battleSnapshot.ecoCrisis) {
+      if (battleSnapshot.battleObjective && !checkBattleObjectiveMet(battleSnapshot)) {
+        battleResultHandledRef.current = false;
+        showMapToast('❌', '目标未达成', '本次战斗的特殊目标尚未完成', 2500);
+        setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
+        return;
+      }
+      const { crisisId, stepIdx } = battleSnapshot.ecoCrisis;
+      setEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx + 1 } }));
       setBattle(null);
       setView('world_map');
       setTimeout(() => runEcoCrisisStep(crisisId, stepIdx + 1), 500);
@@ -17444,6 +19287,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const pMaxSkill = Math.max(0, ...(party || []).map(p => p?.moves?.length || 0));
     if (pMaxSkill > 0) winAchUpdates.maxSkillCount = pMaxSkill;
     if (isTrainer && !battle._playerSwitched) winAchUpdates.noSwitchTrainerWins = 1;
+    if (isTrainer && !battle._playerDirectAttack && (battle.turnCount || 0) > 0) winAchUpdates.pacifistWins = 1;
+    if (battle._resonanceComboCount > 0) winAchUpdates.maxResonanceCombos = battle._resonanceComboCount;
     if (!playerLostHpInBattle && battle.dungeonId) winAchUpdates.dungeonPerfectClears = 1;
     if (!playerLostHpInBattle && isGym) winAchUpdates.perfectBossKills = 1;
     if (isTrainer && activePet) {
@@ -17864,12 +19709,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       await wait(2200); 
       setAnimEffect(null);
 
+      setBattle(prev => prev ? ({...prev, phase: 'caught'}) : prev);
       addLog(`✨ 成功捕捉 ${enemy.name}!`);
       if (!caughtDex.includes(enemy.id)) setCaughtDex(prev => [...prev, enemy.id]);
 
       // 成就追踪
       const catchAchUpdates = { totalCaught: 1 };
       if (enemy.isShiny) catchAchUpdates.shinyCaught = 1;
+      const enemyMaxHp = getStats(enemy).maxHp;
+      if ((enemy.currentHp || 0) >= enemyMaxHp * 0.99 && ballType !== 'master') catchAchUpdates.fullHpCatches = 1;
       if (LEGENDARY_POOL && LEGENDARY_POOL.includes(enemy.id)) {
         const uniqueLegends = new Set([...(caughtDex || [])].filter(id => LEGENDARY_POOL.includes(id)));
         uniqueLegends.add(enemy.id);
@@ -17880,6 +19728,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (marriage.pendingPropose) updateQuestProgress(marriage.pendingPropose, 'catch', 1);
       updateAchStat(catchAchUpdates);
       advanceBounty('catch', enemy.type);
+      if (enemy.type2 || enemy.secondaryType) advanceBounty('catch', enemy.type2 || enemy.secondaryType);
 
       // 生成新精灵对象 (野外捕获的精灵不保留恶魔果实)
       const newPet = { ...enemy, uid: Date.now() };
@@ -17918,9 +19767,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
       // 3. 普通捕捉：入队或存入电脑 (use functional state to avoid stale closure)
+      let caughtToParty = false;
       setParty(prev => {
         const synced = syncCurrentParty(prev);
         if (synced.length < 6) {
+          caughtToParty = true;
           return [...synced, newPet];
         } else {
           setBox(bPrev => [...bPrev, newPet]);
@@ -17931,7 +19782,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       
       await wait(1000);
       const newDex = !caughtDex.includes(newPet.id);
-      const location = goesToParty ? '已加入队伍' : '已发送到电脑';
+      const location = caughtToParty ? '已加入队伍' : '已发送到电脑';
       showMapToast('🎊', `捕获成功！`, `${newPet.isShiny ? '✨闪光！' : ''}${newPet.name} Lv.${newPet.level} · ${location}${newDex ? ' · 📖图鉴+1' : ''}`, 4500, {
         actionLabel: '查看',
         onAction: () => {
@@ -17942,6 +19793,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         },
       });
       setCatchInspectPet(newPet);
+      if (sectPlayer?.playerSect) advanceSectDaily('sect_catch', 1);
       setBattle(null);
       setView('grid_map');
 
@@ -17963,7 +19815,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     } catch (e) {
       console.error("Catch Error:", e);
-      setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
+      setBattle(prev => {
+        if (!prev) return null;
+        if (prev.phase === 'caught') return null;
+        return { ...prev, phase: 'input' };
+      });
     }
   };
 
@@ -18822,7 +20678,7 @@ const renderNameInput = () => {
       { key: 'p10', need: Math.floor(POKEDEX.length * 0.1), text: `10% (${Math.floor(POKEDEX.length * 0.1)}种): 金币1000` },
       { key: 'p25', need: Math.floor(POKEDEX.length * 0.25), text: '25%: 稀有球×5' },
       { key: 'p50', need: Math.floor(POKEDEX.length * 0.5), text: '50%: 大师球×1' },
-      { key: 'p100', need: POKEDEX.length, text: '100%: 传说称号' },
+      { key: 'p100', need: POKEDEX.length - 1, text: '99.9%: 传说称号+始源混沌神(收集899种后自动获得)' },
     ];
     const claimDexMilestone = (m) => {
       if (dexMilestoneClaimed[m.key]) { showMapToast('ℹ️', '已领取', '该档奖励已领取过', 1500); return; }
@@ -18832,7 +20688,18 @@ const renderNameInput = () => {
         if (m.key === 'p10') { setGold(g => g + 1000); showMapToast('🎁', '图鉴奖励', '获得 1000 金币！', 2500); }
         else if (m.key === 'p25') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } })); showMapToast('🎁', '图鉴奖励', '获得 超级球×5！', 2500); }
         else if (m.key === 'p50') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } })); showMapToast('🎁', '图鉴奖励', '获得 大师球×1！', 2500); }
-        else if (m.key === 'p100') { unlockTitle('图鉴完成者'); showMapToast('🎁', '图鉴奖励', '解锁称号：图鉴完成者！', 2500); }
+        else if (m.key === 'p100') {
+          unlockTitle('终极图鉴大师');
+          const pet900 = POKEDEX.find(p => p.id === 900);
+          if (pet900) {
+            const rewardPet = createPet(900, 80, false, true);
+            setPC(prev => [...prev, rewardPet]);
+            if (!caughtDex.includes(900)) setCaughtDex(prev => [...prev, 900]);
+            showMapToast('🎁', '图鉴终极奖励', '解锁称号+获得始源混沌神！已送入电脑', 3500);
+          } else {
+            showMapToast('🎁', '图鉴奖励', '解锁称号：终极图鉴大师！', 2500);
+          }
+        }
         return { ...prev, [m.key]: true };
       });
       persistSave(true);
@@ -19281,7 +21148,7 @@ const titleSpriteUrls = useMemo(() => {
 // ==========================================
 
 // ==========================================
-// 三国名将图鉴 (独立页面)
+// 四国名将图鉴 (独立页面)
 // ==========================================
 const renderGeneralDex = () => {
   const kw = kingdomWar || {};
@@ -19289,8 +21156,9 @@ const renderGeneralDex = () => {
   const recruitedIds = new Set(recruited.map(g => g.id));
   const myFac = kw.faction ? FACTIONS[kw.faction] : null;
   const themeColor = myFac?.color || '#B71C1C';
-  const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', neutral:'群雄' };
-  const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', neutral:'#616161' };
+  const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', jin:'晋', neutral:'群雄' };
+  const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', jin:'#4A148C', neutral:'#616161' };
+  const factionLightColors = { wei:'#42A5F5', shu:'#66BB6A', wu:'#FF7043', jin:'#CE93D8', neutral:'#9E9E9E' };
   const rarityNames = { all:'全部', SSR:'SSR', SR:'SR', R:'R' };
   const bonusLabels = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
   const filteredGens = SANGUO_GENERALS.filter(g => {
@@ -19301,7 +21169,7 @@ const renderGeneralDex = () => {
   });
   const totalR = SANGUO_GENERALS.filter(g => recruitedIds.has(g.id)).length;
   const filteredR = filteredGens.filter(g => recruitedIds.has(g.id)).length;
-  const fStats = ['wei','shu','wu','neutral'].map(f => {
+  const fStats = ['wei','shu','wu','jin','neutral'].map(f => {
     const all = SANGUO_GENERALS.filter(g => g.faction === f);
     return { f, total: all.length, got: all.filter(g => recruitedIds.has(g.id)).length };
   });
@@ -19318,7 +21186,7 @@ const renderGeneralDex = () => {
           <button className="codex-back" onClick={() => setView(safeBack())}>← 返回</button>
           <div className="codex-title-block">
             <span>Chronicle Hall</span>
-            <h1>三国名将图鉴</h1>
+            <h1>五阵营名将图鉴</h1>
             <p>按阵营、稀有度和传记线索整理名将，查看收集进度、招募状态与全局加成。</p>
           </div>
           <div className="codex-hero-count"><b>{filteredR}</b><span>/{filteredGens.length} 当前筛选</span></div>
@@ -19368,7 +21236,7 @@ const renderGeneralDex = () => {
 
         <section className="codex-toolbar">
           <div className="codex-chip-row">
-            {['all','wei','shu','wu','neutral'].map(f => (
+            {['all','wei','shu','wu','jin','neutral'].map(f => (
               <button key={f} className={`codex-chip ${genDexFilter.faction === f ? 'active' : ''}`} style={{'--chip-color': factionColors[f] || themeColor}} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}>{factionNames[f]}</button>
             ))}
             {['all','SSR','SR','R'].map(r => (
@@ -19393,11 +21261,11 @@ const renderGeneralDex = () => {
               <button key={gen.id} type="button" onClick={() => setGenDexDetail(gen)} className={`codex-general-card ${isR ? 'is-recruited' : isCollected ? 'is-collected' : 'is-locked'}`} style={{'--card-color': facColor, '--rarity-color': rc.color || '#888'}}>
                 <span className="codex-rarity-badge">{rc.label||gen.rarity}</span>
                 <span className="codex-general-status">{isR ? '已招募' : isCollected ? '已收集' : '未遇见'}</span>
-                <div className="codex-general-portrait" style={{background: pt.bg, color: pt.textColor, borderColor: isR ? pt.border : isCollected ? pt.border+'80' : 'rgba(255,255,255,0.18)'}}>{pt.surname}</div>
+                <div className="codex-general-portrait" style={{background: pt.bg, color: pt.textColor, borderColor: isR ? pt.border : isCollected ? pt.border+'80' : 'rgba(255,255,255,0.18)', overflow:'hidden'}}>{renderGeneralPortraitFace(gen, pt, pt.surname, isR || isCollected)}</div>
                 <strong>{gen.name}</strong>
                 <p>{gen.title}</p>
                 <div className="codex-card-meta">
-                  <span style={{color: facColor}}>{factionNames[gen.faction]||'群雄'}</span>
+                  <span style={{color: factionLightColors[gen.faction] || '#9E9E9E', fontWeight: 700}}>{factionNames[gen.faction]||'群雄'}</span>
                   {bioData && <span>{bioData.isHistorical ? '正史' : '虚构'}</span>}
                 </div>
               </button>
@@ -19654,6 +21522,30 @@ const renderFruitDex = () => {
   );
 };
 
+const renderGeneralPortraitFace = (gen, portrait = getGeneralPortrait(gen), fallbackText = portrait?.surname || '?', showImage = true) => (
+  <>
+    {showImage && portrait?.imageUrl && (
+      <img
+        src={portrait.imageUrl}
+        alt={`${gen?.name || '名将'}头像`}
+        loading="lazy"
+        style={{ width:'100%', height:'100%', borderRadius:'inherit', objectFit:'cover', display:'block' }}
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+          const fallback = e.currentTarget.nextElementSibling;
+          if (fallback) fallback.style.display = 'flex';
+        }}
+      />
+    )}
+    <span style={{
+      width:'100%', height:'100%', display: showImage && portrait?.imageUrl ? 'none' : 'flex',
+      alignItems:'center', justifyContent:'center',
+    }}>
+      {fallbackText}
+    </span>
+  </>
+);
+
 const renderMenu = () => {
   const resetGame = () => {
     setConfirmModal({ title: '⚠️ 删除存档', msg: '确定要删除所有存档并重新开始吗？\n此操作不可恢复！', onOk: () => {
@@ -19688,14 +21580,14 @@ const renderMenu = () => {
     { label: '队伍战力', value: hasSave ? totalPower.toLocaleString() : '待集结', hint: leadPet ? `${leadPet.nickname || leadPetDex?.name || '伙伴'} 领队` : '选择初始伙伴', tone: 'gold' },
     { label: '徽章进度', value: `${badgeCount}/${MAIN_GYM_BADGE_COUNT}`, hint: badgeCount >= MAIN_GYM_BADGE_COUNT ? '主线徽章已集齐' : '继续挑战道馆', tone: 'blue' },
     { label: '训练任务', value: `${dailyTasksDone}/5`, hint: dailyTasksDone >= 5 ? '今日已完成' : '完成任务强化队伍', tone: 'green' },
-    { label: '忍术修行', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽 · ${jutsuCollCount} 忍术`, tone: 'red' },
+    { label: '忍术修行', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽，${jutsuCollCount} 忍术`, tone: 'red' },
   ];
   const quickEntries = [
     { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, icon:'📚' },
     { key:'skill_dex', label:'技能图鉴', sub:`${allSkills.length} 种`, icon:'⚡' },
     { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length} 种`, icon:'🍎' },
     { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
-    { key:'general_dex', label:'三国名将', sub:`${collectedGenCount}/${SANGUO_GENERALS.length}`, icon:'📜' },
+    { key:'general_dex', label:'名将图鉴', sub:`${collectedGenCount}/${SANGUO_GENERALS.length}`, icon:'📜' },
     { key:'achievements', label:'成就殿堂', sub:`${Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)}%`, icon:'🏆' },
     { key:null, label:'无限城', sub:`最佳 ${achStats.maxInfinityFloor || 0} 层`, icon:'🏯', action: () => {
       if (!hasSave || !party?.length) { showMapToast('❌', '无法进入', '先开始冒险并组建队伍', 2000); return; }
@@ -19732,97 +21624,113 @@ const renderMenu = () => {
     { label: '技能库', value: `${allSkills.length}`, meta: '可研习招式', tone: 'skill' },
     { label: '队伍规模', value: hasSave ? `${party?.length || 0}/6` : '0/6', meta: leadPet ? `${leadTypeName}领队` : '待集结', tone: 'team' },
   ];
+  const starterGallery = (titleSprites || []).slice(0, 5);
+  const missionCards = [
+    { label: '下一步', value: nextObjective, meta: hasSave ? trainingFocus : '创建存档后开启主线' },
+    { label: '当前资源', value: `${gold.toLocaleString()} 金币`, meta: `累计收益 ${(achStats.totalGoldEarned ?? 0).toLocaleString()}` },
+    { label: '队伍状态', value: hasSave && party?.length ? `${party.length}/6 已集结` : '等待伙伴', meta: leadPet ? `${leadPet.nickname || leadPetDex?.name || '首发伙伴'} 可以出战` : '先选择初始伙伴' },
+  ];
+  const entryGroups = [
+    { title: '收藏与资料', items: quickEntries.slice(0, 6) },
+    { title: '挑战与系统', items: quickEntries.slice(6) },
+  ];
 
   return (
-    <main className="screen home-screen home-ranch-screen" id="main-content">
+    <main className="screen home-screen home-gate-screen" id="main-content">
       <a className="skip-link" href="#home-command">跳到系统入口</a>
-      <div className="home-ranch-sky" aria-hidden="true" />
-      <div className="home-ranch-field" aria-hidden="true" />
-      <div className="home-ranch-grid" aria-hidden="true" />
+      <div className="home-gate-sky" aria-hidden="true" />
+      <div className="home-gate-terrain" aria-hidden="true" />
+      <div className="home-gate-lines" aria-hidden="true" />
 
-      <section className="home-ranch-shell" aria-label={`${GAME_NAME}首页`}>
-        <section className="home-ranch-hero" aria-label="伙伴培育舱">
-          <div className="home-ranch-brand">
-            <SuperSpiritIcon className="home-ranch-logo" size={58} />
+      <section className="home-gate-shell" aria-label={`${GAME_NAME}首页`}>
+        <section className="home-gate-hero" aria-label="主城入口">
+          <div className="home-gate-brand">
+            <SuperSpiritIcon className="home-gate-logo" size={62} />
             <div>
               <span>{GAME_EN_NAME}</span>
               <h1>{GAME_NAME}</h1>
-              <p>{GAME_TAGLINE}</p>
+              <p>收集伙伴，挑战道馆，推进阵营与忍术修行。</p>
             </div>
           </div>
 
-          <div className="home-ranch-stage">
-            <div className="home-ranch-ring" aria-hidden="true" />
-            <div className="home-ranch-pad" aria-hidden="true" />
-            <div className="home-ranch-partner" style={{ '--partner-type': leadTypeColor }}>
-              {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
-                <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
-              ) : (
-                <span title={leadPetDex?.name || '初始伙伴'}>{leadPetDex?.emoji || leadPet?.emoji || (hasSave ? '🐾' : '🔴')}</span>
-              )}
+          <div className="home-gate-showcase">
+            <div className="home-gate-orbit" aria-hidden="true" />
+            <div className="home-gate-summon-pad" aria-hidden="true" />
+            <div className="home-gate-lead-card" style={{ '--lead-type': leadTypeColor }}>
+              <div className="home-gate-lead-art">
+                {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
+                  <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
+                ) : (
+                  <span title={leadPetDex?.name || '初始伙伴'}>{leadPetDex?.emoji || leadPet?.emoji || (hasSave ? '🐾' : '🔴')}</span>
+                )}
+              </div>
+              <div className="home-gate-lead-info">
+                <span>{hasSave ? '当前领队' : '初始伙伴'}</span>
+                <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待你的第一只伙伴'}</strong>
+                <small>{leadPet ? `Lv.${leadPet.level || 1}，${leadTypeName}属性` : '开始冒险后解锁队伍养成'}</small>
+              </div>
             </div>
-            <div className="home-ranch-partner-card">
-              <span>{hasSave ? '当前领队' : '伙伴培育舱'}</span>
-              <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待选择初始伙伴'}</strong>
-              <small>{leadPet ? `Lv.${leadPet.level || 1} · ${leadTypeName}属性 · ${trainingFocus}` : '从第一只伙伴开始建立队伍'}</small>
+            <div className="home-gate-starter-fan" aria-label="可选伙伴预览">
+              {starterGallery.map((src, idx) => (
+                <span key={`${src}-${idx}`}>
+                  <img src={src} alt="" onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />
+                </span>
+              ))}
             </div>
           </div>
 
-          <div className="home-team-roster" aria-label="当前队伍">
+          <button className="home-gate-primary" onClick={handleStartGame}>
+            <span className="home-gate-primary-icon">🔴</span>
+            <span>
+              <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
+              <small>{hasSave ? nextObjective : '选择伙伴，进入精灵世界'}</small>
+            </span>
+            <b aria-hidden="true">›</b>
+          </button>
+
+          <div className="home-gate-team" aria-label="当前队伍">
             {teamPreview.length > 0 ? teamPreview.map((pet, idx) => {
               const dex = POKEDEX.find(p => p.id === pet.id);
               return (
-                <button type="button" className="home-team-slot is-filled" key={pet.uid || `${pet.id}-${idx}`} onClick={() => setViewStatPet(pet)} title={pet.nickname || dex?.name || pet.name}>
+                <button type="button" className="home-gate-team-slot is-filled" key={pet.uid || `${pet.id}-${idx}`} onClick={() => setViewStatPet(pet)} title={pet.nickname || dex?.name || pet.name}>
                   {renderAvatar(pet)}
                   <span>Lv.{pet.level || 1}</span>
                 </button>
               );
             }) : [0, 1, 2, 3, 4, 5].map(i => (
-              <div className="home-team-slot" key={i}>
+              <div className="home-gate-team-slot" key={i}>
                 {titleSprites[i % Math.max(1, titleSprites.length)] ? <img src={titleSprites[i % titleSprites.length]} alt="" onError={(ev) => { ev.currentTarget.style.display = 'none'; }} /> : <span>+</span>}
               </div>
             ))}
           </div>
 
-          <button className="home-primary-btn home-ranch-primary" onClick={handleStartGame}>
-            <span className="home-primary-icon">🔴</span>
-            <span>
-              <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-              <small>{hasSave ? (playerFaction ? `${playerFaction.fullName} · ${playerRank?.name}` : nextObjective) : '选择伙伴，进入精灵世界'}</small>
-            </span>
-            <b aria-hidden="true">›</b>
-          </button>
-
-          <div className="home-ranch-statline">
+          <div className="home-gate-mini-grid">
             {ranchStats.map(stat => (
-              <div className={`home-ranch-mini is-${stat.tone}`} key={stat.label}>
+              <div className={`home-gate-mini is-${stat.tone}`} key={stat.label}>
                 <span>{stat.label}</span>
                 <strong>{stat.value}</strong>
                 <small>{stat.meta}</small>
               </div>
             ))}
           </div>
-
-          <footer className="home-ranch-footer">
-            <span>{POKEDEX.length} 精灵</span>
-            <span>{JUTSU_DB.length} 忍术</span>
-            <span>{GAME_VERSION_LABEL}</span>
-          </footer>
         </section>
 
-        <section className="home-command-panel home-ranch-dashboard" id="home-command" aria-label="冒险控制台">
-          <div className="home-command-head home-ranch-command-head">
+        <section className="home-gate-command" id="home-command" aria-label="冒险控制台">
+          <div className="home-gate-command-top">
             <div>
-              <span className="home-section-label">训练家概览</span>
+              <span className="home-gate-eyebrow">训练家作战台</span>
               <h2>{nextObjective}</h2>
-              <p>{hasSave ? trainingFocus : '建立队伍后可以进行图鉴收集、道馆挑战、忍术修行与无限城探索。'}</p>
+              <p>{hasSave ? trainingFocus : '建立队伍后，可以进入图鉴收集、道馆挑战、阵营推进与无限城探索。'}</p>
             </div>
-            <div className="home-gold-pill">💎 {(achStats.totalGoldEarned ?? 0).toLocaleString()}</div>
+            <div className="home-gate-wallet">
+              <span>金币</span>
+              <strong>{gold.toLocaleString()}</strong>
+            </div>
           </div>
 
-          <div className="home-stat-grid home-ranch-stat-grid">
+          <div className="home-gate-stat-grid">
             {commandStats.map(stat => (
-              <article className={`home-stat-card is-${stat.tone}`} key={stat.label}>
+              <article className={`home-gate-stat is-${stat.tone}`} key={stat.label}>
                 <span>{stat.label}</span>
                 <strong>{stat.value}</strong>
                 <small>{stat.hint}</small>
@@ -19830,20 +21738,30 @@ const renderMenu = () => {
             ))}
           </div>
 
-          <article className="home-cultivation-card">
-            <div className="home-cultivation-head">
+          <div className="home-gate-mission-row">
+            {missionCards.map(card => (
+              <article className="home-gate-mission" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+                <small>{card.meta}</small>
+              </article>
+            ))}
+          </div>
+
+          <article className="home-gate-route">
+            <div className="home-gate-route-head">
               <div>
                 <span>培养路线</span>
                 <strong>伙伴成长与联盟资格</strong>
               </div>
               <b>{homeProgress}%</b>
             </div>
-            <div className="home-progress-track">
+            <div className="home-gate-progress">
               <span style={{ width: `${homeProgress}%` }} />
             </div>
-            <div className="home-progress-steps">
+            <div className="home-gate-steps">
               {homeTrailSteps.map(step => (
-                <div className={step.done ? 'home-progress-step is-done' : 'home-progress-step'} key={step.label}>
+                <div className={step.done ? 'home-gate-step is-done' : 'home-gate-step'} key={step.label}>
                   <i aria-hidden="true" />
                   <span>{step.label}</span>
                   <small>{step.meta}</small>
@@ -19853,16 +21771,16 @@ const renderMenu = () => {
           </article>
 
           {playerFaction && (
-            <article className="home-war-card home-ranch-war-card">
+            <article className="home-gate-war" style={{ '--faction-primary': playerFaction.color }}>
               <div className="home-war-main">
                 <span className="home-war-icon">{playerFaction.icon}</span>
                 <div>
                   <strong>{playerFaction.fullName}</strong>
-                  <small>{playerRank?.icon} {playerRank?.name} · 已控领地 {myTerrCountMenu}</small>
+                  <small>{playerRank?.icon} {playerRank?.name}，已控领地 {myTerrCountMenu}</small>
                 </div>
               </div>
               {gangName && (
-                <div className="home-gang-pill">
+                <div className="home-gate-gang">
                   <span>{gangIcon}</span>
                   <strong>{gangName}</strong>
                   <small>帮贡 {gang.contribution || 0}</small>
@@ -19886,7 +21804,7 @@ const renderMenu = () => {
           )}
 
           {recruitedGens.length > 0 && (
-            <article className="home-generals-card">
+            <article className="home-gate-generals">
               <div className="home-card-title">
                 <span>麾下名将 {recruitedCount}/{MAX_RECRUITED_GENERALS}</span>
                 <button onClick={() => setView('general_dex')}>图鉴 {collectedGenCount}/{SANGUO_GENERALS.length}</button>
@@ -19894,10 +21812,11 @@ const renderMenu = () => {
               <div className="home-generals-row">
                 {recruitedGens.slice(0, MAX_RECRUITED_GENERALS).map((g, i) => {
                   const rc = GENERAL_RARITY_CONFIG[g.rarity] || {};
+                  const pt = getGeneralPortrait(g);
                   return (
                     <div className="home-general-token" key={g.id || i} style={{ '--general-color': rc.color || '#d6aa4f', '--general-bg': rc.bgColor || 'rgba(214,170,79,0.14)' }}>
                       <span>{g.icon}</span>
-                      <strong>{g.name?.[0]}</strong>
+                      <strong style={{ overflow:'hidden' }}>{renderGeneralPortraitFace(g, pt, g.name?.[0] || '?')}</strong>
                     </div>
                   );
                 })}
@@ -19905,17 +21824,24 @@ const renderMenu = () => {
             </article>
           )}
 
-          <nav className="home-entry-grid home-ranch-entry-grid" aria-label="系统入口">
-            {quickEntries.map(btn => (
-              <button className={btn.danger ? 'home-entry-btn is-danger' : 'home-entry-btn'} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
-                <span className="home-entry-icon">{btn.icon}</span>
-                <span>
-                  <strong>{btn.label}</strong>
-                  <small>{btn.sub}</small>
-                </span>
-              </button>
+          <div className="home-gate-entry-board" aria-label="系统入口">
+            {entryGroups.map(group => (
+              <section className="home-gate-entry-group" key={group.title}>
+                <h3>{group.title}</h3>
+                <nav className="home-gate-entry-grid" aria-label={group.title}>
+                  {group.items.map(btn => (
+                    <button className={btn.danger ? 'home-gate-entry is-danger' : 'home-gate-entry'} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
+                      <span className="home-gate-entry-icon">{btn.icon}</span>
+                      <span>
+                        <strong>{btn.label}</strong>
+                        <small>{btn.sub}</small>
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+              </section>
             ))}
-          </nav>
+          </div>
         </section>
       </section>
     </main>
@@ -20032,10 +21958,10 @@ const renderMenu = () => {
       }
       // --- 属性轮盘 ---
       else if (dungeon.type === 'type_roulette') {
-        const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'PSYCHIC', 'DARK', 'FIGHT', 'DRAGON', 'ICE', 'GHOST'];
+        const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'PSYCHIC', 'DARK', 'FIGHT', 'DRAGON', 'ICE', 'GHOST', 'COSMIC', 'SOUND', 'TIME', 'CHAOS'];
         const chosenTypes = _.sampleSize(types, 3);
-        const typeNames = { FIRE:'火', WATER:'水', GRASS:'草', ELECTRIC:'电', PSYCHIC:'超能', DARK:'暗', FIGHT:'格斗', DRAGON:'龙', ICE:'冰', GHOST:'幽灵' };
-        const typePools = { FIRE:[11,12,13,14,15], WATER:[22,24,26,28,30], GRASS:[1,2,3,4,41], ELECTRIC:[34,85,87,88,89], PSYCHIC:[63,64,65,100,101], DARK:[54,55,56,59,90], FIGHT:[62,66,68,106,214], DRAGON:[182,183,196,208,447], ICE:[86,87,124,144,215], GHOST:[92,93,94,200,292] };
+        const typeNames = { FIRE:'火', WATER:'水', GRASS:'草', ELECTRIC:'电', PSYCHIC:'超能', DARK:'暗', FIGHT:'格斗', DRAGON:'龙', ICE:'冰', GHOST:'幽灵', COSMIC:'宇宙', SOUND:'音波', TIME:'时空', CHAOS:'混沌' };
+        const typePools = { FIRE:[11,12,13,14,15], WATER:[22,24,26,28,30], GRASS:[1,2,3,4,41], ELECTRIC:[34,85,87,88,89], PSYCHIC:[63,64,65,100,101], DARK:[54,55,56,59,90], FIGHT:[62,66,68,106,214], DRAGON:[182,183,196,208,447], ICE:[86,87,124,144,215], GHOST:[92,93,94,200,292], COSMIC:[832,838,888,789,790], SOUND:[837,866,867,868,818], TIME:[801,804,806,807,809], CHAOS:[811,814,816,819,840] };
         const allPool = chosenTypes.flatMap(t => typePools[t] || [1,2,3]);
         const trLv = Math.max(55, Math.min(85, party[0].level));
         showMapToast('🎰', '属性轮盘', `今日：${chosenTypes.map(t => typeNames[t]).join('+')}`, 2500);
@@ -20084,10 +22010,10 @@ const renderMenu = () => {
       }
       // --- 属性试炼场 ---
       else if (dungeon.type === 'type_challenge') {
-        const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'PSYCHIC', 'DARK', 'FIGHT', 'DRAGON'];
+        const types = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'PSYCHIC', 'DARK', 'FIGHT', 'DRAGON', 'ICE', 'GHOST', 'COSMIC', 'SOUND', 'TIME', 'CHAOS'];
         const chosenType = _.sample(types);
-        const typeNames = { FIRE:'火', WATER:'水', GRASS:'草', ELECTRIC:'电', PSYCHIC:'超能', DARK:'暗', FIGHT:'格斗', DRAGON:'龙' };
-        const typePools = { FIRE:[11,12,13,14,15], WATER:[22,24,26,28,30], GRASS:[1,2,3,4,41], ELECTRIC:[34,85,87,88,89], PSYCHIC:[63,64,65,100,101], DARK:[54,55,56,59,90], FIGHT:[62,66,68,106,214], DRAGON:[182,183,196,208,447] };
+        const typeNames = { FIRE:'火', WATER:'水', GRASS:'草', ELECTRIC:'电', PSYCHIC:'超能', DARK:'暗', FIGHT:'格斗', DRAGON:'龙', ICE:'冰', GHOST:'幽灵', COSMIC:'宇宙', SOUND:'音波', TIME:'时空', CHAOS:'混沌' };
+        const typePools = { FIRE:[11,12,13,14,15], WATER:[22,24,26,28,30], GRASS:[1,2,3,4,41], ELECTRIC:[34,85,87,88,89], PSYCHIC:[63,64,65,100,101], DARK:[54,55,56,59,90], FIGHT:[62,66,68,106,214], DRAGON:[182,183,196,208,447], ICE:[86,87,124,144,215], GHOST:[92,93,94,200,292], COSMIC:[832,838,888,789,790], SOUND:[837,866,867,868,818], TIME:[801,804,806,807,809], CHAOS:[811,814,816,819,840] };
         showMapToast('🎯', '属性试炼', `今日：${typeNames[chosenType]} 系`, 2500);
         const tcLvl = Math.max(30, Math.min(party[0].level, 90));
         startBattle({ id: 991, name: `${typeNames[chosenType]}系试炼`, lvl: [tcLvl - 5, tcLvl + 5], pool: typePools[chosenType] || [1,2,3], drop: 1500, challengeType: chosenType, dungeonId: dungeon.id }, 'type_challenge');
@@ -20419,7 +22345,26 @@ const renderMenu = () => {
                   {(() => {
                     const eco = getMapEcology(m.id);
                     const tier = getEcologyTier(eco);
-                    return <span style={{ '--metric-color': tier.color, fontSize:'10px' }}>🌿 {tier.label}</span>;
+                    const rStage = getRegionStage(m.id, eco, ecoCrisisState.cleared || [], badges.length);
+                    const chainAlerts = REGION_CHAINS.filter(chain => {
+                      if (chain.toMap !== m.id && !chain.global) return false;
+                      const fromEco = getMapEcology(chain.fromMap);
+                      return Object.entries(chain.condition || {}).every(([k, cond]) => {
+                        const val = fromEco[k] ?? 50;
+                        if (cond.min != null) return val >= cond.min;
+                        if (cond.max != null) return val <= cond.max;
+                        return true;
+                      });
+                    });
+                    return (
+                      <>
+                        <span style={{ '--metric-color': tier.color, fontSize:'10px' }}>🌿 {tier.label}</span>
+                        <span style={{ '--metric-color': '#7B1FA2', fontSize:'10px' }} title={rStage.desc}>{rStage.icon} 阶段{rStage.stage}</span>
+                        {chainAlerts.slice(0, 1).map((chain, ci) => (
+                          <span key={ci} style={{ '--metric-color': '#E65100', fontSize:'10px' }} title={chain.label}>🔗 连锁</span>
+                        ))}
+                      </>
+                    );
                   })()}
                 </div>
 
@@ -20430,14 +22375,14 @@ const renderMenu = () => {
                 )}
 
                 {(() => {
-                  const crisis = getEcoCrisisByMapId(m.id);
-                  const crisisCleared = crisis && (ecoCrisisState.cleared || []).includes(crisis.id);
+                  const crisis = getEcoCrisisByMapId(m.id, ecoCrisisState.cleared || [], badges.length);
+                  const mapEcoRestored = isMapEcoRestored(m.id, ecoCrisisState.cleared || []);
                   const todayBoss = getTodayBoss(getLocalDateStr());
                   const bossHere = todayBoss?.spawnMapId === m.id && badges.length >= WORLD_BOSS_REQ_BADGES && !isLocked;
                   const domain = getSpiritDomainByMapId(m.id);
                   const domainOpen = domain && badges.length >= domain.reqBadges && !spiritDomainsCleared.includes(domain.id);
                   const ecoEvt = !isLocked ? getTodayEcoEvent(m.id) : null;
-                  if (!crisis && !bossHere && !domainOpen && !crisisCleared && !ecoEvt) return null;
+                  if (!crisis && !bossHere && !domainOpen && !mapEcoRestored && !ecoEvt) return null;
                   return (
                     <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'8px', position:'relative', zIndex:3 }} onClick={e => e.stopPropagation()}>
                       {ecoEvt && (
@@ -20448,7 +22393,7 @@ const renderMenu = () => {
                           {crisis.icon} 调查·{crisis.name}
                         </button>
                       )}
-                      {crisisCleared && (
+                      {mapEcoRestored && (
                         <span style={{ fontSize:'12px', padding:'5px 10px', borderRadius:'8px', background:'rgba(76,175,80,0.15)', color:'#2E7D32', fontWeight:'700' }}>✅ 生态已恢复</span>
                       )}
                       {bossHere && (
@@ -20459,6 +22404,11 @@ const renderMenu = () => {
                       {domainOpen && (
                         <span style={{ fontSize:'12px', padding:'5px 10px', borderRadius:'8px', background:'rgba(129,199,132,0.2)', color:'#1B5E20', fontWeight:'700' }}>{domain.icon} 道馆可挑战灵域试炼</span>
                       )}
+                      {getBondingQuestsForMap(m.id, badges.length, Object.keys(bondingProgress).filter(k => bondingProgress[k]?.completed), getMapEcology(m.id), fusionState.crisisUnlocks || []).slice(0, 1).map(q => (
+                        <button key={q.id} type="button" onClick={() => setBondingModal(q)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'10px', border:'none', cursor:'pointer', background:'#7B1FA2', color:'#fff' }}>
+                          {q.icon} 结契·{q.name}
+                        </button>
+                      ))}
                     </div>
                   );
                 })()}
@@ -20695,18 +22645,20 @@ const renderMenu = () => {
         </div>
 
         {/* --- 国战 --- */}
-        <div style={{display: mapTab==='kingdom'?'block':'none', paddingBottom:'40px'}}>
+        <div className="kingdom-command-panel" style={{display: mapTab==='kingdom'?'block':'none', paddingBottom:'40px'}}>
           {(() => {
             const kw = kingdomWar;
-            const hasJoined = !!kw.faction;
+            const validFactionIds = FACTION_IDS.filter(fid => FACTIONS[fid]);
+            const hasJoined = !!(kw.faction && FACTIONS[kw.faction]);
 
             if (!hasJoined) {
               const fd = {
                 wei: { generals: '张辽、夏侯惇、许褚、典韦', strategy: '铁骑破阵', capital: '洛阳', stronghold: '兵精粮足，铁骑天下' },
                 shu: { generals: '关羽、张飞、赵云、马超', strategy: '仁义为先', capital: '成都', stronghold: '卧龙凤雏，天下归心' },
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
+                jin: { generals: '司马懿、邓艾、钟会、羊祜', strategy: '谋定天下', capital: '邺城', stronghold: '深谋远虑，一统山河' },
               };
-              return (<div style={{padding:'0'}}><div style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 天 下 三 分 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>三国争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>魏蜀吴三国并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{FACTION_IDS.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid]; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} style={{flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
+              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -20744,12 +22696,13 @@ const renderMenu = () => {
             ];
 
             return (
-              <div style={{padding:'0 12px', background:'linear-gradient(180deg, #0d1117, #161b22)', borderRadius:'12px', margin:'0 -4px', paddingTop:'12px', paddingBottom:'12px'}}>
+              <div className="kingdom-dashboard" style={{padding:'0 12px', background:'linear-gradient(180deg, #0d1117, #161b22)', borderRadius:'12px', margin:'0 -4px', paddingTop:'12px', paddingBottom:'12px'}}>
                 {/* 阵营横幅 */}
-                <div style={{
+                <div className="kingdom-banner" style={{
                   background:`linear-gradient(135deg, ${myFaction.darkColor}, ${myFaction.color})`,
                   borderRadius:'16px', padding:'16px', color:'#fff', marginBottom:'12px',
                   boxShadow:`0 4px 15px ${myFaction.color}40`,
+                  '--faction-color': myFaction.color,
                 }}>
                   <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px'}}>
                     <span style={{fontSize:'28px'}}>{myFaction.icon}</span>
@@ -20773,11 +22726,18 @@ const renderMenu = () => {
                     <span style={{background:'rgba(255,255,255,0.2)', padding:'2px 8px', borderRadius:'6px'}}>将领 {(kw.recruitedGenerals||[]).length}/{rank.maxGenerals||12}</span>
                   </div>
                 </div>
+                <div className="kingdom-war-summary" aria-label="国战态势">
+                  <div><span>我方领地</span><strong>{myTerrCount}/{totalWarMaps}</strong></div>
+                  <div><span>赛季剩余</span><strong>{seasonDaysLeft}天</strong></div>
+                  <div><span>今日收入</span><strong>{canClaimIncome ? '可领取' : '已领取'}</strong></div>
+                  <div><span>阵营令牌</span><strong>{kw.factionTokens || 0}</strong></div>
+                  <div><span>名将</span><strong>{(kw.recruitedGenerals||[]).length}/{rank.maxGenerals||12}</strong></div>
+                </div>
 
                 {/* 子Tab */}
-                <div style={{display:'flex', gap:'6px', marginBottom:'12px', overflowX:'auto', paddingBottom:'4px'}}>
+                <div className="kingdom-subtabs" style={{display:'flex', gap:'6px', marginBottom:'12px', overflowX:'auto', paddingBottom:'4px'}}>
                   {kwSubTabs.map(tab => (
-                    <button key={tab.id} onClick={() => setKwTab(tab.id)}
+                    <button key={tab.id} className={kwTab === tab.id ? 'is-active' : ''} onClick={() => setKwTab(tab.id)}
                       style={{
                         background: kwTab === tab.id ? myFaction.color : '#f1f5f9',
                         color: kwTab === tab.id ? '#fff' : '#64748b',
@@ -20910,7 +22870,7 @@ const renderMenu = () => {
                         </div>
                       );
                     })()}
-                    {/* 四方势力对比 */}
+                    {/* 五阵营势力对比（含群雄）*/}
                     <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                       <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>四方势力对比（含群雄）</div>
                       {ALL_FACTION_IDS.map(fid => {
@@ -21015,7 +22975,7 @@ const renderMenu = () => {
                     <div style={{display:'grid', gap:'12px'}}>
                       <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                         <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b', marginBottom:'4px'}}>⚔️ 麾下将领 ({recruited.length}/{rank.maxGenerals || MAX_RECRUITED_GENERALS})</div>
-                        <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>在野外遭遇三国名将，击败后可花费金币招募。将领提供奖励加成（金币、经验、贡献等），不影响战斗属性。</div>
+                        <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>在野外遭遇四国名将，击败后可花费金币招募。将领提供奖励加成（金币、经验、贡献等），不影响战斗属性。</div>
                         {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
                           <div style={{display:'flex', flexWrap:'wrap', gap:'6px', padding:'8px 10px', background:'#f8fafc', borderRadius:'10px', border:'1px solid #e2e8f0'}}>
                             <span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>总加成:</span>
@@ -21029,7 +22989,7 @@ const renderMenu = () => {
                         <div style={{textAlign:'center', padding:'30px', color:'#64748b'}}>
                           <div style={{fontSize:'40px', marginBottom:'10px'}}>⚔️</div>
                           <div style={{fontSize:'13px'}}>尚未招募任何将领</div>
-                          <div style={{fontSize:'11px', marginTop:'4px', color:'#64748b'}}>在野外地图探索时有机会遭遇三国名将</div>
+                          <div style={{fontSize:'11px', marginTop:'4px', color:'#64748b'}}>在野外地图探索时有机会遭遇四国名将</div>
                         </div>
                       ) : (
                         <div style={{display:'grid', gap:'8px'}}>
@@ -21047,9 +23007,9 @@ const renderMenu = () => {
                                     textShadow:'1px 1px 2px rgba(0,0,0,0.5)',
                                     border: `2px solid ${portrait.border}`,
                                     boxShadow: gen.rarity === 'SSR' ? `0 0 10px ${portrait.border}60` : 'none',
-                                    flexShrink: 0, position:'relative',
+                                    flexShrink: 0, position:'relative', overflow:'hidden',
                                   }}>
-                                    {portrait.surname}
+                                    {renderGeneralPortraitFace(gen, portrait, portrait.surname)}
                                     <div style={{position:'absolute', bottom:-1, right:-1, fontSize:'8px', background:rc.bgColor||'#333', color:rc.color||'#999', padding:'0 3px', borderRadius:'3px', fontWeight:'800', border:`1px solid ${rc.color||'#666'}30`}}>{rc.label?.charAt(0)}</div>
                                   </div>
                                   <div style={{flex:1}}>
@@ -21080,8 +23040,8 @@ const renderMenu = () => {
                       <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                         {(() => {
                           const recruitedIds = new Set(recruited.map(g => g.id));
-                          const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', neutral:'群雄' };
-                          const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', neutral:'#616161' };
+                          const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', jin:'晋', neutral:'群雄' };
+                          const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', jin:'#4A148C', neutral:'#616161' };
                           const rarityNames = { all:'全部', SSR:'SSR', SR:'SR', R:'R' };
                           const filteredGens = SANGUO_GENERALS.filter(g => {
                             if (genDexFilter.faction !== 'all' && g.faction !== genDexFilter.faction) return false;
@@ -21091,7 +23051,7 @@ const renderMenu = () => {
                           });
                           const totalRecruited = SANGUO_GENERALS.filter(g => recruitedIds.has(g.id)).length;
                           const filteredRecruited = filteredGens.filter(g => recruitedIds.has(g.id)).length;
-                          const factionStats = ['wei','shu','wu','neutral'].map(f => {
+                          const factionStats = ['wei','shu','wu','jin','neutral'].map(f => {
                             const all = SANGUO_GENERALS.filter(g => g.faction === f);
                             const got = all.filter(g => recruitedIds.has(g.id));
                             return { f, total: all.length, got: got.length };
@@ -21099,7 +23059,7 @@ const renderMenu = () => {
                           return (
                             <div>
                               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
-                                <div style={{fontSize:'14px', fontWeight:'800', color:'#1e293b'}}>📖 三国名将图鉴</div>
+                                <div style={{fontSize:'14px', fontWeight:'800', color:'#1e293b'}}>📖 四国名将图鉴</div>
                                 <div style={{fontSize:'11px', color:'#64748b', fontWeight:'600'}}>{totalRecruited}/{SANGUO_GENERALS.length} 已收集</div>
                               </div>
                               <div style={{display:'flex', gap:'4px', marginBottom:'10px', background:'#f1f5f9', borderRadius:'8px', padding:'3px'}}>
@@ -21161,9 +23121,9 @@ const renderMenu = () => {
                                         textShadow: isR ? '1px 1px 2px rgba(0,0,0,0.4)' : 'none',
                                         border: `2px solid ${isR ? pt.border : '#ccc'}`,
                                         boxShadow: isR && gen.rarity === 'SSR' ? `0 0 8px ${pt.border}60` : 'none',
-                                        position:'relative',
+                                        position:'relative', overflow:'hidden',
                                       }}>
-                                        {isR ? pt.surname : '?'}
+                                        {renderGeneralPortraitFace(gen, pt, isR ? pt.surname : '?', isR)}
                                         <div style={{position:'absolute', bottom:-2, right:-2, fontSize:'9px', background:rc.bgColor||'#333', color:rc.color||'#999', padding:'0 2px', borderRadius:'3px', fontWeight:'800', lineHeight:'1.3'}}>{rc.label?.charAt(0)}</div>
                                       </div>
                                       <div style={{fontSize:'10px', fontWeight:'700', color: isR ? '#1e293b' : '#64748b', marginTop:'4px'}}>{isR ? gen.name : '???'}</div>
@@ -21184,9 +23144,9 @@ const renderMenu = () => {
                 {kwTab === 'campaigns' && (
                   <div>
                     <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>⚔️ {myFaction.fullName} · 历史战役</div>
-                    <div style={{fontSize:'11px', color:'#64748b', marginBottom:'16px'}}>与三国名将并肩作战！通关战役可获得大量战功、令牌和金币。</div>
+                    <div style={{fontSize:'11px', color:'#64748b', marginBottom:'16px'}}>与四国名将并肩作战！通关战役可获得大量战功、令牌和金币。</div>
                     <div style={{display:'grid', gap:'12px'}}>
-                      {KINGDOM_CAMPAIGNS.filter(c => c.faction === kw.faction).map(campaign => {
+                      {[...KINGDOM_CAMPAIGNS, ...JIN_CAMPAIGNS].filter(c => c.faction === kw.faction).map(campaign => {
                         const isCompleted = (kw.completedCampaigns || []).includes(campaign.id);
                         const avgLv = party.length > 0 ? Math.floor(party.reduce((s,p) => s + p.level, 0) / party.length) : 1;
                         const tooWeak = avgLv < campaign.lvl - 15;
@@ -21304,7 +23264,8 @@ const renderMenu = () => {
                                               border: `1.5px solid ${portrait.border}`, display:'flex', alignItems:'center', justifyContent:'center',
                                               fontSize:'12px', fontWeight:'900', color: portrait.textColor,
                                               textShadow:'1px 1px 1px rgba(0,0,0,0.4)',
-                                            }}>{portrait.surname}</div>
+                                              overflow:'hidden',
+                                            }}>{renderGeneralPortraitFace(gen, portrait, portrait.surname)}</div>
                                           );
                                         })}
                                       </div>
@@ -22471,8 +24432,8 @@ const renderMenu = () => {
                 return (
                 <>
                 {/* 1. 头部信息 */}
-                <div style={{padding:'20px 20px 0', display:'flex', alignItems:'center', position:'relative'}}>
-                    <div style={{
+                <div className="pet-detail-header" style={{padding:'20px 20px 0', display:'flex', alignItems:'center', position:'relative'}}>
+                    <div className="pet-grade-badge" aria-label={`综合评价 ${grade}`} style={{
                         position:'absolute', right:'16px', top:'10px', 
                         fontSize:'28px', fontWeight:'900', color: gradeColor,
                         border: `3px solid ${gradeColor}`, borderRadius:'50%', width:'44px', height:'44px',
@@ -22529,7 +24490,7 @@ const renderMenu = () => {
                         })()}
                         </div>
                     </div>
-                    <button onClick={() => setViewStatPet(null)} style={{marginLeft:'auto', border:'none', background:'transparent', fontSize:'24px', color:'#999'}}>×</button>
+                    <button className="pet-detail-close" aria-label="关闭精灵详情" title="关闭" onClick={() => setViewStatPet(null)} style={{marginLeft:'auto', border:'none', background:'transparent', fontSize:'24px', color:'#999'}}>×</button>
                 </div>
                 {(() => {
                   const dexE = POKEDEX.find(p => p.id === viewStatPet.id);
@@ -22562,15 +24523,19 @@ const renderMenu = () => {
                       PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'] },
                       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'] },
                       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'] },
-                      GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'] },
+                      GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'] },
                       DRAGON:  { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'] },
-                      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT'] },
+                      DARK:    { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'] },
                       STEEL:   { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC'] },
-                      FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK'] },
+                      FAIRY:   { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK', 'CHAOS'] },
                       WIND:    { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'] },
-                      LIGHT:   { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG'] },
+                      LIGHT:   { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG', 'CHAOS'] },
                       COSMIC:  { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING', 'POISON'] },
                       SOUND:   { weak: ['GROUND', 'STEEL', 'ROCK'], strong: ['ICE', 'FAIRY', 'PSYCHIC', 'GHOST', 'BUG'] },
+                      GOD:     { weak: ['GOD'], strong: ['DRAGON', 'DARK', 'GHOST', 'PSYCHIC', 'FAIRY'] },
+                      HEAL:    { weak: ['POISON', 'DARK', 'GHOST'], strong: ['FIGHT', 'DRAGON', 'BUG'] },
+                      TIME:    { weak: ['DARK', 'GHOST'], strong: ['DRAGON', 'PSYCHIC', 'GROUND', 'ICE', 'CHAOS'] },
+                      CHAOS:   { weak: ['FAIRY', 'LIGHT'], strong: ['PSYCHIC', 'COSMIC', 'NORMAL', 'STEEL', 'TIME'] },
                     };
                     const t1 = viewStatPet.type;
                     const t2 = viewStatPet.secondaryType;
@@ -22831,6 +24796,38 @@ const renderMenu = () => {
                 );
             })()}
 
+            {/* 结契标记 */}
+            {viewStatPet.bonded && (
+              <div style={{margin:'0 20px 10px', padding:'8px 14px', borderRadius:'10px', background:'linear-gradient(90deg,#311B92,#512DA8)', color:'#fff', fontSize:'12px', fontWeight:'700', textAlign:'center'}}>
+                💫 结契精灵 · 初始亲密度更高
+              </div>
+            )}
+
+            {/* 精灵标签 */}
+            {(() => {
+              const tagIds = inferPetTags(viewStatPet);
+              if (!tagIds.length) return null;
+              return (
+                <div style={{margin:'0 20px 12px', background:'linear-gradient(135deg,#f3e5f5,#e8eaf6)', borderRadius:'12px', padding:'12px 14px', border:'1px solid #ce93d8'}}>
+                  <div style={{fontSize:'10px', color:'#7B1FA2', fontWeight:'bold', marginBottom:'8px'}}>精灵标签 · 探索与副本适性</div>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                    {tagIds.map(tid => {
+                      const def = PET_TAG_DEFS[tid];
+                      if (!def) return null;
+                      return (
+                        <span key={tid} title={def.desc} style={{fontSize:'11px', padding:'4px 10px', borderRadius:'14px', background:'#fff', border:'1px solid #b39ddb', color:'#512DA8', fontWeight:'700', cursor:'help'}}>
+                          {def.icon} {def.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div style={{fontSize:'9px', color:'#888', marginTop:'6px', lineHeight:1.4}}>
+                    标签影响副本通行、生态互动与远征祝福。巨型精灵无法进入窄洞，水栖精灵适合水下遗迹。
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* 🔥 [修复] 特性/魅力/亲密度 展示卡片 🔥 */}
             <div style={{margin:'0 20px 15px', background:'#fff', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', justifyContent:'space-between', border:'1px solid #eee'}}>
                 
@@ -22905,7 +24902,7 @@ const renderMenu = () => {
               <div style={{margin:'0 20px 12px', padding:'8px', borderRadius:'8px', background:'rgba(255,215,0,0.03)', border:'1px solid rgba(255,215,0,0.08)'}}>
                 <div style={{fontSize:'10px', fontWeight:'700', color:'#FFD54F', marginBottom:'4px'}}>🌟 天赋能力</div>
                 <div style={{ fontSize: '9px', color: 'rgba(0,0,0,0.45)', marginBottom: '6px', lineHeight: 1.45 }}>以下能力随亲密度解锁，仅在战斗中生效；与咒术天赋、门派加成独立计算。</div>
-                {[{ need: 100, label: '全力一击 (暴击率+5%)' }, { need: 150, label: '坚韧意志 (HP低于20%时防御+30%)' }, { need: 200, label: '灵魂共鸣 (属性加成+10%)' }].map(row => {
+                {[{ need: 100, label: '全力一击 (暴击率+5%)' }, { need: 150, label: '坚韧意志 (HP低于20%时防御+30%)' }, { need: 200, label: '灵魂共鸣 (属性加成+5%)' }].map(row => {
                   const int = viewStatPet.intimacy || 0;
                   const prev = row.need === 100 ? 80 : row.need === 150 ? 100 : 150;
                   const pct = Math.max(0, Math.min(100, ((int - prev) / (row.need - prev)) * 100));
@@ -22936,7 +24933,12 @@ const renderMenu = () => {
 
             {/* 3. 门派详情与升级卡片 */}
             {(() => {
-                const sect = SECT_DB[viewStatPet.sectId || 1];
+                const sect = viewStatPet.sectId ? SECT_DB[viewStatPet.sectId] : null;
+                if (!sect) return (
+                  <div style={{margin:'0 20px 15px', background:'#f5f5f5', border:'1px solid #ddd', borderRadius:'12px', padding:'12px', textAlign:'center', color:'#999', fontSize:'13px'}}>
+                    该精灵尚未加入门派
+                  </div>
+                );
                 const lv = viewStatPet.sectLevel || 1;
                 const cost = getSectUpgradeCost(lv);
                 const isMax = lv >= 10;
@@ -22953,6 +24955,10 @@ const renderMenu = () => {
                     newParty[idx].sectLevel = lv + 1;
                     setParty(newParty);
                     setViewStatPet(newParty[idx]);
+                    if (sectPlayer?.playerSect) {
+                      advanceSectDaily('sect_train', 1);
+                      advanceSectDaily('sect_contrib', cost);
+                    }
                     showMapToast('✅', '心法突破', `${sect.name} 第 ${lv + 1} 层`, 2500);
                 };
 
@@ -22986,6 +24992,63 @@ const renderMenu = () => {
                         </div>
                     </div>
                 );
+            })()}
+
+            {/* 3.4 跨界共鸣 & 精灵觉醒 */}
+            {(() => {
+              const resonance = getActiveResonanceForPet(viewStatPet);
+              const awakenCheck = canAwakenPet(viewStatPet, getAllOwnedPets());
+              return (
+                <div style={{margin:'0 20px 15px', background:'linear-gradient(135deg,#1a1035,#2d1b69)', border:'1px solid rgba(167,139,250,0.35)', borderRadius:'12px', padding:'12px', color:'#fff'}}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                    <div style={{fontWeight:'800', fontSize:'14px', color:'#c4b5fd'}}>✨ 跨界共鸣</div>
+                    {viewStatPet.awakened && <span style={{fontSize:'11px', background:'rgba(255,213,79,0.2)', color:'#FFD54F', padding:'3px 8px', borderRadius:'8px', fontWeight:'700'}}>已觉醒</span>}
+                  </div>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'10px'}}>
+                    {(resonance.activeCombos || []).length === 0 ? (
+                      <span style={{fontSize:'11px', color:'rgba(255,255,255,0.45)'}}>装备咒术/果实/门派并提升忍术精通以激活共鸣</span>
+                    ) : (resonance.activeCombos || []).map(c => (
+                      <span key={c.id} title={c.desc} style={{fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#e9d5ff'}}>{c.icon} {c.name}</span>
+                    ))}
+                  </div>
+                  {!viewStatPet.awakened && (
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'10px', paddingTop:'8px', borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.5)', lineHeight:1.5}}>
+                        觉醒条件：Lv.100 · 亲密度200 · EV400+ · 果实 · 传承
+                        {!awakenCheck.ok && <div style={{color:'#fca5a5', marginTop:'2px'}}>{awakenCheck.reason}</div>}
+                      </div>
+                      <button type="button" disabled={!awakenCheck.ok} onClick={() => awakenPet(viewStatPet.uid)} style={{
+                        padding:'8px 14px', borderRadius:'10px', border:'none', cursor: awakenCheck.ok ? 'pointer' : 'not-allowed',
+                        background: awakenCheck.ok ? 'linear-gradient(135deg,#FFD54F,#FF8F00)' : 'rgba(255,255,255,0.08)',
+                        color: awakenCheck.ok ? '#1a1035' : '#888', fontSize:'12px', fontWeight:'800', flexShrink:0
+                      }}>🌟 觉醒</button>
+                    </div>
+                  )}
+                  {viewStatPet.awakened && (() => {
+                    const curTier = getPetAwakeningTier(viewStatPet.uid, fusionState) || 'normal';
+                    const fruitCheck = checkAwakeningTier(viewStatPet, 'fruit', { fusionState, kingdomWar });
+                    const stratCheck = checkAwakeningTier(viewStatPet, 'strategic', { fusionState, kingdomWar });
+                    return (
+                      <div style={{paddingTop:'8px', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', flexDirection:'column', gap:'8px'}}>
+                        <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)'}}>觉醒三档：普通 ✓ · 果实 {curTier === 'fruit' || curTier === 'strategic' ? '✓' : '—'} · 战略 {curTier === 'strategic' ? '✓' : '—'}</div>
+                        {curTier === 'normal' && (
+                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
+                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)'}}>🍎 果实觉醒：绑定果实 + 完成果实海域试炼{!fruitCheck.ok && <div style={{color:'#fca5a5'}}>{fruitCheck.reason}</div>}</div>
+                            <button type="button" disabled={!fruitCheck.ok} onClick={() => upgradeAwakeningTier(viewStatPet.uid, 'fruit')} style={{padding:'6px 12px', borderRadius:'8px', border:'none', cursor: fruitCheck.ok ? 'pointer' : 'not-allowed', background: fruitCheck.ok ? 'linear-gradient(135deg,#ef5350,#ff9800)' : 'rgba(255,255,255,0.08)', color: fruitCheck.ok ? '#fff' : '#888', fontSize:'11px', fontWeight:'700'}}>果实觉醒</button>
+                          </div>
+                        )}
+                        {curTier === 'fruit' && (
+                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
+                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)'}}>⚔️ 战略觉醒：门派 + 将魂战术 + 国战贡献500 + 古战场{!stratCheck.ok && <div style={{color:'#fca5a5'}}>{stratCheck.reason}</div>}</div>
+                            <button type="button" disabled={!stratCheck.ok} onClick={() => upgradeAwakeningTier(viewStatPet.uid, 'strategic')} style={{padding:'6px 12px', borderRadius:'8px', border:'none', cursor: stratCheck.ok ? 'pointer' : 'not-allowed', background: stratCheck.ok ? 'linear-gradient(135deg,#7e57c2,#4527a0)' : 'rgba(255,255,255,0.08)', color: stratCheck.ok ? '#fff' : '#888', fontSize:'11px', fontWeight:'700'}}>战略觉醒</button>
+                          </div>
+                        )}
+                        {curTier === 'strategic' && <div style={{fontSize:'10px', color:'#FFD54F'}}>⚔️ 已完成战略觉醒，解锁国战特技与圣域加成</div>}
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
             })()}
 
             {/* 3.5 恶魔果实 */}
@@ -24147,7 +26210,7 @@ const renderMenu = () => {
           {/* 生态危机 / 世界首领异象横幅 */}
           {(() => {
             const activeCrisis = ecoCrisisState.active ? getEcoCrisisById(ecoCrisisState.active.crisisId) : null;
-            const mapCrisis = getEcoCrisisByMapId(currentMapId);
+            const mapCrisis = getEcoCrisisByMapId(currentMapId, ecoCrisisState.cleared || []);
             const crisis = (activeCrisis?.mapId === currentMapId ? activeCrisis : null) || (!(ecoCrisisState.cleared || []).includes(mapCrisis?.id) ? mapCrisis : null);
             const todayBoss = getTodayBoss(getLocalDateStr());
             const bossHere = todayBoss?.spawnMapId === currentMapId && badges.length >= WORLD_BOSS_REQ_BADGES;
@@ -24590,7 +26653,7 @@ const renderMenu = () => {
   // 3. 华丽大赛 - 开始
   const startBeautyContest = () => {
     if (party.length === 0) return;
-    const pet = party[0];
+    const pet = { ...party[0] };
     if (!pet.moves || pet.moves.length === 0) {
       const fallbackMoves = [
         { name: '亮相', power: 0, p: 0, pp: 20, acc: 100, t: pet.type || 'NORMAL', category: 'status' },
@@ -24616,7 +26679,7 @@ const renderMenu = () => {
     else if (move.p <= 60) score += 15;
     else score += 8;
 
-    if (['FAIRY', 'WATER', 'ICE', 'GRASS'].includes(move.t)) {
+    if (['FAIRY', 'WATER', 'ICE', 'GRASS', 'LIGHT', 'COSMIC', 'SOUND', 'TIME'].includes(move.t)) {
         score += 8;
         msg = `✨ ${move.name} 非常华丽！`;
     } else {
@@ -24642,6 +26705,190 @@ const renderMenu = () => {
         history: [...prev.history, move.name],
         log: [`Round ${prev.round}: ${msg} (+${score})`, ...prev.log]
     }));
+  };
+
+   // 🔥 六系统融合中心
+  const renderFusionHub = () => {
+    if (!fusionHubOpen) return null;
+    const unlocked = getUnlockedFusionSystems(badges.length);
+    const crossUnlocked = getUnlockedCrossSystems(badges.length);
+    const tabs = [
+      { id: 'overview', label: '总览', icon: '🔗' },
+      { id: 'style', label: '流派构筑', icon: '🧑' },
+      { id: 'crossworld', label: '跨体系', icon: '🌍' },
+      { id: 'jutsu', label: '忍术秘境', icon: '⛩️', need: 'jutsu_realm' },
+      { id: 'fruit', label: '果实海域', icon: '🍎', need: 'fruit_sea' },
+      { id: 'sect', label: '门派秘境', icon: '📜', need: 'sect_realm' },
+      { id: 'battlefield', label: '古战场', icon: '⚔️', need: 'ancient_battlefield' },
+      { id: 'calamity', label: '国土灵灾', icon: '🌊', need: 'national_calamity' },
+      { id: 'kingdom', label: '国战任务', icon: '🏰', need: 'kingdom_pve' },
+      { id: 'general', label: '将魂战术', icon: '🏇', need: 'general_tactic' },
+    ];
+    const today = new Date().toISOString().slice(0, 10);
+    const activeCalamities = getActiveNationalCalamities(today, badges.length);
+    const renderDungeonCard = (def, type, clearedKey) => {
+      const cleared = (fusionState[clearedKey] || []).includes(def.id);
+      const locked = badges.length < def.reqBadges;
+      return (
+        <div key={def.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px', marginBottom:'10px'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px'}}>
+            <div>
+              <div style={{fontWeight:'800', fontSize:'14px', color:'#fff'}}>{def.icon} {def.name}</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'4px', lineHeight:1.5}}>{def.summary}</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>需要 {def.reqBadges} 徽章 · 奖励 {def.reward?.gold || 0} 金</div>
+            </div>
+            {cleared ? <span style={{fontSize:'11px', color:'#81C784', fontWeight:'700'}}>已通关</span>
+              : locked ? <span style={{fontSize:'11px', color:'#888'}}>🔒</span>
+              : <button onClick={() => startFusionDungeon(type, def.id)} style={{padding:'6px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(135deg,#4527A0,#7B1FA2)', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', flexShrink:0}}>挑战</button>}
+          </div>
+        </div>
+      );
+    };
+    return (
+      <div className="modal-overlay" onClick={() => setFusionHubOpen(false)} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2600}}>
+        <div onClick={e => e.stopPropagation()} style={{width:'min(520px,95vw)', maxHeight:'85vh', background:'linear-gradient(180deg,#1a1035,#0f0a1f)', borderRadius:'18px', border:'1px solid rgba(167,139,250,0.35)', display:'flex', flexDirection:'column', overflow:'hidden', color:'#fff'}}>
+          <div style={{padding:'16px 18px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div style={{fontSize:'18px', fontWeight:'900', color:'#c4b5fd'}}>🔗 跨体系融合中心</div>
+              <button onClick={() => setFusionHubOpen(false)} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'50%', width:'28px', height:'28px', cursor:'pointer'}}>×</button>
+            </div>
+            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>精灵 · 忍术 · 果实 · 呼吸法 · 门派 · 名将 · 国战</div>
+            <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px'}}>
+              {tabs.map(t => (
+                <button key={t.id} onClick={() => setFusionHubTab(t.id)} style={{
+                  padding:'5px 10px', borderRadius:'8px', border:'none', cursor:'pointer', fontSize:'10px', fontWeight:'700',
+                  background: fusionHubTab === t.id ? 'rgba(167,139,250,0.35)' : 'rgba(255,255,255,0.06)',
+                  color: fusionHubTab === t.id ? '#fff' : 'rgba(255,255,255,0.55)'
+                }}>{t.icon} {t.label}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{padding:'14px 18px', overflowY:'auto', flex:1}}>
+            {fusionHubTab === 'overview' && (
+              <div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.6)', lineHeight:1.7, marginBottom:'12px'}}>
+                  已解锁系统：{FUSION_UNLOCK_SCHEDULE.filter(s => badges.length >= s.badges).map(s => s.label).join(' · ') || '精灵生态基础'}
+                </div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', lineHeight:1.6}}>
+                  · 样板① 赤砂峡谷（5徽章）— 六系统融合<br/>
+                  · 样板② 鬼雾山夜行（6徽章，回声山谷）— 呼吸法/夜战/鬼化<br/>
+                  · 样板③ 忍界封印战（9徽章，古代工厂）— 查克拉/封印/尾兽级Boss<br/>
+                  · 呼吸法/将魂仅影响 PVE 效率，不改战斗属性<br/>
+                  · 主修流派+副修+呼吸法战术在「流派构筑」设置
+                </div>
+              </div>
+            )}
+            {fusionHubTab === 'style' && (
+              <div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.55)', marginBottom:'10px'}}>主修流派（选1）· 副修可选 · 呼吸法为 PVE 战术加成</div>
+                {Object.values(PLAYER_STYLES).map(s => (
+                  <div key={s.id} onClick={() => selectPlayerStyle(s.id, fusionState.playerStyle?.sub)} style={{
+                    padding:'10px 12px', marginBottom:'8px', borderRadius:'10px', cursor:'pointer',
+                    background: fusionState.playerStyle?.main === s.id ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
+                    border: fusionState.playerStyle?.main === s.id ? '1px solid rgba(167,139,250,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                    <div style={{fontWeight:'700', fontSize:'13px'}}>{s.icon} {s.name}</div>
+                    <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>{s.desc}</div>
+                  </div>
+                ))}
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:'12px 0 8px'}}>呼吸法 PVE 战术</div>
+                {Object.values(BREATHING_PVE_STYLES).map(b => {
+                  const advLocked = ['insect', 'mist'].includes(b.id) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
+                  return (
+                  <div key={b.id} onClick={() => !advLocked && selectBreathingStyle(b.id)} style={{
+                    padding:'8px 10px', marginBottom:'6px', borderRadius:'8px', cursor: advLocked ? 'not-allowed' : 'pointer', fontSize:'11px', opacity: advLocked ? 0.45 : 1,
+                    background: fusionState.playerStyle?.breathingStyle === b.id ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.03)',
+                    border: fusionState.playerStyle?.breathingStyle === b.id ? '1px solid rgba(79,195,247,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                  }}>{b.icon} {b.name} — {b.passive?.purifyBonus ? `净化+${b.passive.purifyBonus}%` : ''}{b.passive?.protectBonus ? ` 守护+${Math.round(b.passive.protectBonus*100)}%` : ''}{advLocked ? ' 🔒鬼雾山净化' : ''}</div>
+                  );
+                })}
+                {crossUnlocked.includes('kw_positions') && (
+                  <>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:'12px 0 8px'}}>国战职位偏好</div>
+                    {KINGDOM_POSITIONS.map(p => (
+                      <div key={p.id} onClick={() => selectKwPosition(p.id)} style={{
+                        padding:'8px 10px', marginBottom:'6px', borderRadius:'8px', cursor:'pointer', fontSize:'11px',
+                        background: fusionState.kwPosition === p.id ? 'rgba(255,213,79,0.12)' : 'rgba(255,255,255,0.03)',
+                      }}>{p.icon} {p.name}</div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+            {fusionHubTab === 'crossworld' && (
+              <div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.55)', marginBottom:'10px'}}>融合玩法模板（数据层，逐步实装交互）</div>
+                {FUSION_PLAY_TEMPLATES.map(t => (
+                  <div key={t.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'10px', marginBottom:'8px'}}>
+                    <div style={{fontWeight:'700'}}>{t.icon} {t.name}</div>
+                    <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>{t.summary}</div>
+                    <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', marginTop:'4px'}}>系统：{(t.systems || []).join(' · ')}</div>
+                  </div>
+                ))}
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:'12px 0 8px'}}>推荐构筑</div>
+                {BUILD_PRESETS.map(p => (
+                  <div key={p.id} style={{fontSize:'10px', padding:'8px', marginBottom:'6px', background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}>
+                    {p.icon} <strong>{p.name}</strong> — {p.note}
+                  </div>
+                ))}
+              </div>
+            )}
+            {fusionHubTab === 'jutsu' && unlocked.includes('jutsu_realm') && JUTSU_SECRET_REALMS.map(r => renderDungeonCard(r, 'jutsu', 'jutsuRealmsCleared'))}
+            {fusionHubTab === 'jutsu' && !unlocked.includes('jutsu_realm') && <div style={{fontSize:'12px', color:'#888'}}>需要 3 枚徽章解锁忍术秘境</div>}
+            {fusionHubTab === 'fruit' && unlocked.includes('fruit_sea') && FRUIT_SEA_ZONES.map(r => renderDungeonCard(r, 'fruit', 'fruitTrialsCleared'))}
+            {fusionHubTab === 'fruit' && !unlocked.includes('fruit_sea') && <div style={{fontSize:'12px', color:'#888'}}>需要 5 枚徽章解锁恶魔果实海域</div>}
+            {fusionHubTab === 'sect' && unlocked.includes('sect_realm') && SECT_SECRET_REALMS.map(r => renderDungeonCard(r, 'sect', 'sectRealmsCleared'))}
+            {fusionHubTab === 'sect' && !unlocked.includes('sect_realm') && <div style={{fontSize:'12px', color:'#888'}}>需要 6 枚徽章解锁门派秘境</div>}
+            {fusionHubTab === 'battlefield' && unlocked.includes('ancient_battlefield') && ANCIENT_BATTLEFIELDS.map(r => renderDungeonCard(r, 'battlefield', 'battlefieldsCleared'))}
+            {fusionHubTab === 'battlefield' && !unlocked.includes('ancient_battlefield') && <div style={{fontSize:'12px', color:'#888'}}>需要 7 枚徽章解锁三国古战场</div>}
+            {fusionHubTab === 'calamity' && unlocked.includes('national_calamity') && activeCalamities.map(cal => {
+              const thisWeek = new Date().toISOString().slice(0, 10).replace(/-/g, '').slice(0, 6);
+              const done = (fusionState.calamitiesParticipated || []).includes(`${cal.id}_${thisWeek}`);
+              return (
+                <div key={cal.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px', marginBottom:'10px'}}>
+                  <div style={{fontWeight:'800', fontSize:'14px'}}>{cal.icon} {cal.name}</div>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'4px'}}>{cal.summary}</div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'8px'}}>
+                    <span style={{fontSize:'10px', color:'rgba(255,255,255,0.35)'}}>本周活跃 · 需 {cal.reqBadges} 徽章</span>
+                    {done ? <span style={{color:'#81C784', fontSize:'11px'}}>已参与</span>
+                      : badges.length >= cal.reqBadges ? <button onClick={() => participateCalamity(cal.id)} style={{padding:'6px 12px', borderRadius:'8px', border:'none', background:'#1565C0', color:'#fff', fontSize:'11px', cursor:'pointer'}}>参与净化</button>
+                      : <span style={{color:'#888', fontSize:'11px'}}>🔒</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {fusionHubTab === 'calamity' && !unlocked.includes('national_calamity') && <div style={{fontSize:'12px', color:'#888'}}>需要 8 枚徽章解锁国土灵灾</div>}
+            {fusionHubTab === 'kingdom' && unlocked.includes('kingdom_pve') && KINGDOM_PVE_TASKS.map(task => {
+              const done = (fusionState.kingdomTasksDone || []).includes(task.id);
+              return (
+                <div key={task.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px', marginBottom:'10px'}}>
+                  <div style={{fontWeight:'800', fontSize:'14px'}}>{task.icon} {task.name}</div>
+                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>需 {task.reqBadges} 徽章 · 奖励 {task.reward?.gold || 0} 金 + 国战贡献</div>
+                  <div style={{marginTop:'8px', textAlign:'right'}}>
+                    {done ? <span style={{color:'#81C784', fontSize:'11px'}}>已完成</span>
+                      : badges.length >= task.reqBadges ? <button onClick={() => completeKingdomPveTask(task.id)} style={{padding:'6px 12px', borderRadius:'8px', border:'none', background:'#2E7D32', color:'#fff', fontSize:'11px', cursor:'pointer'}}>完成</button>
+                      : <span style={{color:'#888', fontSize:'11px'}}>🔒</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {fusionHubTab === 'kingdom' && !unlocked.includes('kingdom_pve') && <div style={{fontSize:'12px', color:'#888'}}>需要 8 枚徽章解锁国战 PVE 任务</div>}
+            {fusionHubTab === 'general' && unlocked.includes('general_tactic') && Object.values(GENERAL_PVE_TACTICS).map(gt => (
+              <div key={gt.generalId} onClick={() => selectGeneralTactic(gt.generalId)} style={{
+                background: fusionState.generalTacticId === gt.generalId ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
+                border: fusionState.generalTacticId === gt.generalId ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius:'12px', padding:'12px', marginBottom:'10px', cursor:'pointer'
+              }}>
+                <div style={{fontWeight:'800', fontSize:'14px'}}>{gt.icon} {gt.name} <span style={{fontSize:'10px', color:'rgba(255,255,255,0.4)'}}>· PVE战术</span></div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)', marginTop:'4px'}}>{gt.passive?.label} — {gt.passive?.desc}</div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>{gt.order?.label} · 适合：{(gt.bestFor || []).join('、')}</div>
+              </div>
+            ))}
+            {fusionHubTab === 'general' && !unlocked.includes('general_tactic') && <div style={{fontSize:'12px', color:'#888'}}>需要 7 枚徽章解锁将魂战术</div>}
+          </div>
+        </div>
+      </div>
+    );
   };
 
    // 🔥 [美化] 报名弹窗 (含排行榜)
@@ -24744,7 +26991,7 @@ const renderMenu = () => {
     const newParty = [...party];
     const pet = newParty[petIdx];
 
-    if (!pet.evo || pet.level < pet.evoLvl || !pet.canEvolve) {
+    if (!pet.evo || pet.level < (pet.evoLvl || 30) || !pet.canEvolve) {
         showMapToast('❌', '提示', '条件不满足，无法进化。', 1500);
         return;
     }
@@ -25000,155 +27247,136 @@ const renderMenu = () => {
       if (bagCategory === '其他') return !heals && !ball && !evo && !battle;
       return true;
     };
+    const searchNeedle = (bagSearch || '').trim().toLowerCase();
+    const visibleItems = currentItems
+      .filter(matchesBagCategory)
+      .filter(item => !searchNeedle || (item.name || '').toLowerCase().includes(searchNeedle) || (item.desc || '').toLowerCase().includes(searchNeedle));
 
     return (
-      <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(10,10,30,0.7)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000}}>
-        <div style={{width:'880px',maxWidth:'95vw',height:'600px',maxHeight:'90vh',background:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',borderRadius:'24px',display:'flex',overflow:'hidden',boxShadow:'0 25px 60px rgba(0,0,0,0.5),0 0 120px rgba(100,100,255,0.08)',border:'1px solid rgba(255,255,255,0.08)'}}>
-            {/* 左侧导航 */}
-            <div style={{width:'170px',background:'rgba(0,0,0,0.3)',borderRight:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',flexShrink:0}}>
-                <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                <div style={{fontSize:'18px',fontWeight:'900',color:'#fff',letterSpacing:'2px',marginBottom:'4px'}}>🎒 背包</div>
-                    <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>💰 {gold.toLocaleString()} 金币</div>
-                    <div style={{display:'flex',gap:'4px',marginTop:'8px',flexWrap:'wrap'}}>
-                      {[{k:'count',l:'数量'},{k:'price',l:'价格'},{k:'name',l:'名称'}].map(o => (
-                        <button key={o.k} type="button" onClick={() => setBagItemSort(o.k)} style={{
-                          fontSize:'9px',padding:'3px 6px',borderRadius:'6px',border:bagItemSort===o.k?'1px solid #7c4dff':'1px solid rgba(255,255,255,0.12)',
-                          background:bagItemSort===o.k?'rgba(124,77,255,0.35)':'transparent',color:'#fff',cursor:'pointer',fontWeight:700
-                        }}>{o.l}</button>
-                      ))}
-                    </div>
-                </div>
-                <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
-                  {tabConfig.map(tab=>{
+      <div className="modal-overlay inventory-overlay">
+        <div className="inventory-console" style={{'--bag-accent': activeTab.color}}>
+          <aside className="inventory-drawer">
+            <div className="inventory-brand">
+              <span className="inventory-brand-icon">🎒</span>
+              <div>
+                <strong>背包</strong>
+                <small>金币 {gold.toLocaleString()}</small>
+              </div>
+            </div>
+            <div className="inventory-sort-panel">
+              <span>排序</span>
+              <div className="inventory-sort-row">
+                {[{k:'count',l:'数量'},{k:'price',l:'价格'},{k:'name',l:'名称'}].map(o => (
+                  <button key={o.k} type="button" className={`inventory-sort-chip ${bagItemSort===o.k?'active':''}`} onClick={() => setBagItemSort(o.k)}>{o.l}</button>
+                ))}
+              </div>
+            </div>
+            <nav className="inventory-tab-list">
+              {tabConfig.map(tab=>{
                     const isActive = effBagTab===tab.id;
                     return (
-                      <div key={tab.id} onClick={()=>setBagTab(tab.id)} style={{
-                        padding:'10px 14px',margin:'2px 8px',borderRadius:'10px',cursor:'pointer',
-                        display:'flex',alignItems:'center',gap:'8px',transition:'all 0.2s',
-                        background:isActive?`linear-gradient(90deg,${tab.color}30,transparent)`:'transparent',
-                        borderLeft:isActive?`3px solid ${tab.color}`:'3px solid transparent',
-                      }}>
-                        <span style={{fontSize:'16px',filter:isActive?'none':'grayscale(0.5) opacity(0.6)'}}>{tab.icon}</span>
-                        <span style={{fontSize:'12px',fontWeight:isActive?'700':'500',color:isActive?'#fff':'rgba(255,255,255,0.45)',transition:'all 0.2s'}}>{tab.label}</span>
-                    </div>
+                      <button key={tab.id} type="button" className={`inventory-tab-button ${isActive?'active':''}`} onClick={()=>setBagTab(tab.id)} style={{'--tab-accent':tab.color}}>
+                        <span>{tab.icon}</span>
+                        <strong>{tab.label}</strong>
+                      </button>
                     );
                   })}
+            </nav>
+            <button className="inventory-close-button" onClick={()=>setView(party.length>0?getBackToMapView():'menu')}>关闭背包</button>
+          </aside>
+
+          <section className="inventory-stage">
+            <header className="inventory-header">
+              <div className="inventory-title-group">
+                <span className="inventory-title-icon">{activeTab.icon}</span>
+                <div>
+                  <h2>{activeTab.label}</h2>
+                  <p>{currentItems.length}种 · {totalItems}件 · 当前显示{visibleItems.length}种</p>
                 </div>
-                <button onClick={()=>setView(party.length>0?getBackToMapView():'menu')} style={{
-                  margin:'10px 12px 16px',padding:'10px',borderRadius:'12px',border:'1px solid rgba(255,255,255,0.1)',
-                  background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:'600',cursor:'pointer',transition:'all 0.2s',
-                }}>关闭背包</button>
+              </div>
+              <label className="inventory-search">
+                <span>🔍</span>
+                <input value={bagSearch} onChange={e=>setBagSearch(e.target.value)} placeholder="搜索名称或效果" />
+              </label>
+            </header>
+
+            <div className="inventory-filter-bar">
+                  {['全部','回复','精灵球','进化','战斗','其他'].map(cat => (
+                <button key={cat} type="button" className={`inventory-filter-chip ${bagCategory===cat?'active':''}`} onClick={() => setBagCategory(cat)}>{cat}</button>
+                  ))}
             </div>
 
-            {/* 右侧物品区 */}
-            <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0}}>
-                {/* 顶栏 */}
-                <div style={{padding:'16px 20px',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-                        <span style={{fontSize:'20px'}}>{activeTab.icon}</span>
-                        <span style={{fontSize:'16px',fontWeight:'800',color:'#fff',letterSpacing:'1px'}}>{activeTab.label}</span>
-                        <span style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.06)',padding:'2px 10px',borderRadius:'10px'}}>{currentItems.length}种 · {totalItems}件</span>
-                    </div>
-                    <input value={bagSearch} onChange={e=>setBagSearch(e.target.value)} placeholder="🔍 搜索..." style={{
-                      width:'140px',padding:'4px 10px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:'11px',outline:'none'
-                    }}/>
+            <div className="inventory-grid-wrap">
+              {visibleItems.length === 0 ? (
+                <div className="inventory-empty">
+                  <div>📦</div>
+                  <strong>{currentItems.length === 0 ? '暂无此类物品' : '没有符合条件的物品'}</strong>
+                  <span>{currentItems.length === 0 ? '可通过商店购买、战斗掉落或活动获取' : '换个分类或搜索词试试'}</span>
                 </div>
-                <div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px', padding:'0 20px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                  {['全部','回复','精灵球','进化','战斗','其他'].map(cat => (
-                    <button key={cat} type="button" onClick={() => setBagCategory(cat)} style={{
-                      padding:'3px 8px', borderRadius:'6px', fontSize:'9px', fontWeight:'600',
-                      border:'1px solid '+(bagCategory===cat?'rgba(255,100,0,0.3)':'rgba(255,255,255,0.06)'),
-                      background:bagCategory===cat?'rgba(255,100,0,0.1)':'transparent',
-                      color:bagCategory===cat?'#FFB300':'rgba(255,255,255,0.4)', cursor:'pointer'
-                    }}>{cat}</button>
-                  ))}
-                </div>
-                
-                {/* 物品网格 */}
-                <div style={{flex:1,padding:'16px 20px',overflowY:'auto'}}>
-                    {currentItems.length === 0 ? (
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.2)'}}>
-                      <div style={{fontSize:'48px',marginBottom:'12px',opacity:0.4}}>📦</div>
-                      <div style={{fontSize:'14px',fontWeight:'600'}}>暂无此类物品</div>
-                      <div style={{fontSize:'11px',marginTop:'4px',color:'rgba(255,255,255,0.15)'}}>可通过商店购买、战斗掉落或活动获取</div>
-                        </div>
-                    ) : (
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'10px',alignContent:'start'}}>
-                      {currentItems.filter(matchesBagCategory).filter(item => !bagSearch || (item.name||'').toLowerCase().includes(bagSearch.toLowerCase()) || (item.desc||'').toLowerCase().includes(bagSearch.toLowerCase())).map((item,idx)=>{
+              ) : (
+                <div className="inventory-item-grid">
+                  {visibleItems.map((item,idx)=>{
                         const isFruit = currentCat === 'fruit';
                         const itemPrice = item.price || 0;
                         const autoRarity = itemPrice >= 10000 ? '#FF6D00' : itemPrice >= 3000 ? '#AB47BC' : itemPrice >= 1000 ? '#42A5F5' : null;
                         const rarityColor = isFruit && item.rarity ? (FRUIT_RARITY_CONFIG[item.rarity]?.color || '#666') : (autoRarity || activeTab.color);
                         return (
-                          <div key={idx} onClick={()=>handleItemClick(item,currentCat)} style={{
-                            background:'rgba(255,255,255,0.04)',borderRadius:'14px',padding:'14px 10px 12px',
-                            display:'flex',flexDirection:'column',alignItems:'center',cursor:'pointer',
-                            border:`1px solid rgba(255,255,255,0.06)`,position:'relative',transition:'all 0.25s',
-                          }}
-                          onMouseEnter={e=>{e.currentTarget.style.background='rgba(255,255,255,0.1)';e.currentTarget.style.borderColor=`${rarityColor}60`;e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow=`0 8px 20px ${rarityColor}15`;}}
-                          onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,0.04)';e.currentTarget.style.borderColor='rgba(255,255,255,0.06)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>
-                            <span style={{position:'absolute',top:'6px',right:'6px',background:`${rarityColor}cc`,color:'#fff',fontSize:'9px',padding:'1px 7px',borderRadius:'8px',fontWeight:'700'}}>x{item.count}</span>
-                            {isFruit && item.equipped > 0 && <span style={{position:'absolute',top:'6px',left:'6px',fontSize:'9px',color:'#4CAF50',fontWeight:'700',background:'rgba(76,175,80,0.15)',padding:'1px 5px',borderRadius:'6px'}}>装备{item.equipped}</span>}
-                            <div style={{marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',minHeight:36}}>{renderItemIcon(item,36)}</div>
-                            <div style={{fontSize:'11px',fontWeight:'700',color:'#fff',textAlign:'center',lineHeight:'1.3',height:'28px',overflow:'hidden',wordBreak:'break-word',overflow:'hidden',textOverflow:'ellipsis'}}>{item.name}</div>
-                            {isFruit && <div style={{fontSize:'9px',color:rarityColor,fontWeight:'600',marginTop:'2px'}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label}</div>}
-                            {currentCat==='tm'&&item.type&&item.p>0&&<div style={{fontSize:'9px',color:TYPES[item.type]?.color||'#888',fontWeight:'600',marginTop:'2px'}}>威力{item.p}</div>}
-                            </div>
+                          <button key={`${item.id || item.name}_${idx}`} type="button" className="inventory-item-card" onClick={()=>handleItemClick(item,currentCat)} style={{'--item-accent': rarityColor}}>
+                            <span className="inventory-count">x{item.count}</span>
+                            {isFruit && item.equipped > 0 && <span className="inventory-equipped">装备{item.equipped}</span>}
+                            <div className="inventory-item-icon">{renderItemIcon(item,42)}</div>
+                            <strong>{item.name}</strong>
+                            {isFruit && <small style={{color:rarityColor}}>{FRUIT_RARITY_CONFIG[item.rarity]?.label}</small>}
+                            {currentCat==='tm'&&item.type&&item.p>0&&<small style={{color:TYPES[item.type]?.color||'#9aa8c7'}}>威力{item.p}</small>}
+                          </button>
                         );
                       })}
-                    </div>
-                    )}
                 </div>
+              )}
             </div>
+          </section>
         </div>
 
         {/* 物品详情弹窗 */}
         {selectedBagItem && (
-          <div className="modal-overlay" onClick={()=>setSelectedBagItem(null)} style={{position:'fixed',inset:0,zIndex:2000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <div onClick={e=>e.stopPropagation()} style={{
-              width:'320px',maxWidth:'90vw',background:'linear-gradient(145deg,#1a1a2e,#16213e)',borderRadius:'20px',padding:'24px',
-              display:'flex',flexDirection:'column',alignItems:'center',boxShadow:'0 20px 50px rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.08)'
-            }}>
-              <div style={{width:'72px',height:'72px',borderRadius:'16px',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'14px'}}>
+          <div className="modal-overlay inventory-detail-overlay" onClick={()=>setSelectedBagItem(null)}>
+            <div className="inventory-detail-card" onClick={e=>e.stopPropagation()} style={{'--bag-accent': activeTab.color}}>
+              <div className="inventory-detail-icon">
                 {renderItemIcon(selectedBagItem,52)}
               </div>
-              <div style={{fontSize:'17px',fontWeight:'800',color:'#fff',marginBottom:'4px'}}>{selectedBagItem.name}</div>
-              {selectedBagItem.count > 0 && <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginBottom:'10px'}}>持有 x{selectedBagItem.count}</div>}
-              <div style={{fontSize:'12px',color:'rgba(255,255,255,0.6)',textAlign:'center',background:'rgba(255,255,255,0.04)',padding:'12px 14px',borderRadius:'12px',width:'100%',lineHeight:'1.6',marginBottom:'16px',border:'1px solid rgba(255,255,255,0.04)'}}>{selectedBagItem.desc}</div>
+              <h3>{selectedBagItem.name}</h3>
+              {selectedBagItem.count > 0 && <span className="inventory-detail-count">持有 x{selectedBagItem.count}</span>}
+              <p className="inventory-detail-desc">{selectedBagItem.desc}</p>
               {selectedBagItem.category === 'fruit' && (
-                <div style={{width:'100%',marginBottom:'14px'}}>
-                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'8px',fontWeight:'600'}}>装备到精灵:</div>
-                  <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                <div className="inventory-fruit-equip">
+                  <div>装备到精灵</div>
+                  <div className="inventory-fruit-list">
                     {party.map((pet,pi)=>(
                       <button key={pi} onClick={()=>{
                         if (pet.devilFruit===selectedBagItem.id){setParty(prev=>prev.map((pp,i)=>i===pi?{...pp,devilFruit:null}:pp));setFruitInventory(prev=>[...prev,selectedBagItem.id]);showMapToast('🍎', '卸下果实', `${pet.name} · ${selectedBagItem.name}`, 2000);}
                         else{if(pet.devilFruit)setFruitInventory(prev=>[...prev,pet.devilFruit]);const fruitId=selectedBagItem.id;setFruitInventory(prev=>{const i=prev.indexOf(fruitId);if(i===-1)return prev;const n=[...prev];n.splice(i,1);return n;});setParty(prev=>prev.map((pp,i)=>i===pi?{...pp,devilFruit:selectedBagItem.id}:pp));showMapToast('🍎', '装备果实', `${selectedBagItem.name} → ${pet.name}`, 2000);}
                         setSelectedBagItem(null);
-                      }} style={{padding:'6px 10px',borderRadius:'8px',fontSize:'10px',cursor:'pointer',fontWeight:'600',
-                        border:pet.devilFruit===selectedBagItem.id?'1px solid #4CAF50':'1px solid rgba(255,255,255,0.1)',
-                        background:pet.devilFruit===selectedBagItem.id?'rgba(76,175,80,0.15)':'rgba(255,255,255,0.05)',
-                        color:pet.devilFruit===selectedBagItem.id?'#4CAF50':'rgba(255,255,255,0.6)',
-                      }}>
+                      }} className={pet.devilFruit===selectedBagItem.id?'active':''}>
                         {pet.name} Lv.{pet.level} {pet.devilFruit===selectedBagItem.id?'✓卸下':pet.devilFruit?'↻替换':''}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
-              <div style={{display:'flex',gap:'10px',width:'100%'}}>
-                <button onClick={()=>setSelectedBagItem(null)} style={{flex:1,padding:'11px',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',borderRadius:'12px',cursor:'pointer',color:'rgba(255,255,255,0.6)',fontWeight:'600',fontSize:'12px'}}>关闭</button>
+              <div className="inventory-detail-actions">
+                <button className="secondary" onClick={()=>setSelectedBagItem(null)}>关闭</button>
                 {['meds','tm','growth','stone','cursed','berry'].includes(selectedBagItem.category) && (
-                  <button onClick={handleUseBtn} style={{flex:1,padding:'11px',border:'none',background:`linear-gradient(135deg,${activeTab.color},${activeTab.color}cc)`,borderRadius:'12px',fontWeight:'700',color:'#fff',cursor:'pointer',fontSize:'12px',boxShadow:`0 4px 12px ${activeTab.color}40`}}>使用</button>
+                  <button className="primary" onClick={handleUseBtn}>使用</button>
                 )}
                 {selectedBagItem.id === 'exp_candy' && selectedBagItem.count > 1 && (
                   <button onClick={()=>{
                     setUsingItem({ id:'exp_candy', category:'growth', data: selectedBagItem, batch: true });
                     setSelectedBagItem(null); setView('team');
-                  }} style={{flex:1,padding:'11px',border:'none',background:'linear-gradient(135deg,#FF6D00,#FF9800cc)',borderRadius:'12px',fontWeight:'700',color:'#fff',cursor:'pointer',fontSize:'12px',boxShadow:'0 4px 12px rgba(255,109,0,0.4)'}}>批量使用 ({selectedBagItem.count})</button>
+                  }} className="primary warm">批量使用 ({selectedBagItem.count})</button>
                 )}
-                    </div>
-                </div>
             </div>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -25346,7 +27574,7 @@ const renderMenu = () => {
   // [精致小巧版] 战斗界面 (含环境特效 + 完整UI + 修复布局)
   // ==========================================
   const renderBattle = () => {
-    if (!battle) return null;
+    if (!battle) { setTimeout(() => setView('grid_map'), 0); return null; }
     
     const isDoubleBattle = battle.isDouble;
     const p = isDoubleBattle
@@ -25410,10 +27638,10 @@ const renderMenu = () => {
             width: size, height: size, borderRadius: '50%', background: p.bg,
             border: `2px solid ${p.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: Math.floor(size * 0.5), fontWeight: '900', color: p.textColor,
-            textShadow: '1px 1px 2px rgba(0,0,0,0.5)', position: 'relative',
+            textShadow: '1px 1px 2px rgba(0,0,0,0.5)', position: 'relative', overflow:'hidden',
             boxShadow: isSSR ? `0 0 8px ${p.border}80, inset 0 -2px 4px rgba(0,0,0,0.3)` : `inset 0 -2px 4px rgba(0,0,0,0.3)`,
           }}>
-            {p.surname}
+            {renderGeneralPortraitFace(gen, p, p.surname)}
             <div style={{
               position:'absolute', bottom: -2, right: -2, fontSize: Math.max(8, Math.floor(size * 0.22)),
               background: rc.bgColor || '#333', color: rc.color || '#999', padding: '0 3px',
@@ -25446,8 +27674,8 @@ const renderMenu = () => {
               width:'14px', height:'14px', borderRadius:'50%',
               background: (FACTION_PORTRAIT_COLORS[g.faction] || FACTION_PORTRAIT_COLORS.neutral).bg,
               fontSize:'8px', fontWeight:'900', color:'#fff', textShadow:'0 1px 1px rgba(0,0,0,0.5)',
-              border:'1px solid rgba(255,255,255,0.3)',
-            }}>{(g.name || '?').charAt(0)}</span>
+              border:'1px solid rgba(255,255,255,0.3)', overflow:'hidden',
+            }}>{renderGeneralPortraitFace(g, getGeneralPortrait(g), (g.name || '?').charAt(0))}</span>
           ))}
           {generals.length > 2 && <span style={{fontSize:'8px', opacity:0.8}}>+{generals.length - 2}</span>}
         </span>
@@ -25490,7 +27718,9 @@ const renderMenu = () => {
 
     // 🔥 门派徽章渲染函数 (胶囊样式 + 点击弹出详情)
     const renderSectBadge = (pet, side) => {
-        const s = SECT_DB[pet.sectId || 1];
+        if (!pet.sectId) return null;
+        const s = SECT_DB[pet.sectId];
+        if (!s) return null;
         const lv = pet.sectLevel || 1; 
         const effectText = s.effect ? s.effect(lv) : s.desc;
         const tooltipKey = `${side}_sect`;
@@ -25521,8 +27751,9 @@ const renderMenu = () => {
         const pet = side === 'player' 
             ? battle.playerCombatStates?.[battle.isDouble ? battle.activeIdxs?.[0] : battle.activeIdx]
             : battle.enemyParty?.[battle.isDouble ? battle.enemyActiveIdxs?.[0] : battle.enemyActiveIdx];
-        if (!pet) return null;
-        const s = SECT_DB[pet.sectId || 1];
+        if (!pet || !pet.sectId) return null;
+        const s = SECT_DB[pet.sectId];
+        if (!s) return null;
         const lv = pet.sectLevel || 1;
         const effectText = s.effect ? s.effect(lv) : s.desc;
         return (
@@ -25580,6 +27811,8 @@ const renderMenu = () => {
       GROUND:'vfx-ground', FLYING:'vfx-flying', PSYCHIC:'vfx-psychic', BUG:'vfx-bug',
       ROCK:'vfx-rock', GHOST:'vfx-ghost', DRAGON:'vfx-dragon', STEEL:'vfx-steel',
       FAIRY:'vfx-fairy', DARK:'vfx-dark', GOD:'vfx-god',
+      WIND:'vfx-flying', LIGHT:'vfx-fairy', COSMIC:'vfx-dragon', SOUND:'vfx-psychic',
+      TIME:'vfx-psychic', CHAOS:'vfx-fire',
       HEAL:'vfx-heal', BUFF:'vfx-heal', DEBUFF:'vfx-fire',
       PROTECT:'vfx-steel', SLEEP:'vfx-psychic', PARALYSIS:'vfx-electric',
       FREEZE:'vfx-ice', CONFUSION:'vfx-psychic',
@@ -25597,6 +27830,9 @@ const renderMenu = () => {
         ICE:'rgba(179,229,252,0.25)', DRAGON:'rgba(255,180,0,0.3)', PSYCHIC:'rgba(244,143,177,0.2)',
         GHOST:'rgba(126,87,194,0.25)', GOD:'rgba(255,213,79,0.35)', DOMAIN:'rgba(255,213,79,0.3)',
         FIGHT:'rgba(255,112,67,0.2)', FAIRY:'rgba(248,187,208,0.2)',
+        COSMIC:'rgba(49,27,146,0.3)', SOUND:'rgba(77,208,225,0.2)',
+        TIME:'rgba(126,87,194,0.3)', CHAOS:'rgba(183,28,28,0.3)',
+        WIND:'rgba(178,235,242,0.2)', LIGHT:'rgba(255,249,196,0.25)',
       }[type];
 
       const pos = {
@@ -25849,8 +28085,9 @@ const renderMenu = () => {
               fontSize:'60px', fontWeight:'900', color: portrait.textColor,
               textShadow:'2px 2px 6px rgba(0,0,0,0.6)',
               boxShadow: gen.rarity === 'SSR' ? `0 0 20px ${portrait.border}60, 0 0 40px ${portrait.border}30` : `0 0 12px rgba(0,0,0,0.3)`,
+              overflow:'hidden',
             }}>
-              {portrait.surname}
+              {renderGeneralPortraitFace(gen, portrait, portrait.surname)}
             </div>
             <div style={{position:'absolute', bottom:'8px', left:'50%', transform:'translateX(-50%)', background:rc.bgColor||'#333', color:rc.color||'#999', fontSize:'12px', fontWeight:'800', padding:'2px 10px', borderRadius:'6px', whiteSpace:'nowrap', border:`1px solid ${rc.color||'#666'}40`}}>
               {gen.name} · {gen.title}
@@ -25859,7 +28096,7 @@ const renderMenu = () => {
         );
       }
       const spriteUrl = getNpcSprite(name, battle);
-      return <img src={spriteUrl} alt="精灵" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => { e.target.style.display='none'; }} />;
+      return <img src={spriteUrl} alt="精灵" style={{width:'100%', height:'100%', objectFit:'contain'}} onError={e => { e.target.style.display='none'; e.target.parentNode.insertAdjacentHTML('beforeend', '<span style="font-size:48px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">🧢</span>'); }} />;
     };
     
     let bgClass = 'bg-grass'; 
@@ -25904,7 +28141,7 @@ const renderMenu = () => {
                             );
                         })}
                     </div>
-                    <button onClick={() => setBattle(prev => ({...prev, showSwitch: false}))} style={{width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background: '#f0f0f0', color: '#666', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', transition: '0.2s'}} onMouseOver={e => e.target.style.background='#e0e0e0'} onMouseOut={e => e.target.style.background='#f0f0f0'}>取消</button>
+                    <button onClick={() => { const activePet = battle.playerCombatStates?.[battle.activeIdx]; if (activePet && activePet.currentHp <= 0) { showMapToast('⚠️', '提示', '当前精灵已濒死，必须换人！', 1500); return; } setBattle(prev => ({...prev, showSwitch: false})); }} style={{width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background: '#f0f0f0', color: '#666', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', transition: '0.2s'}} onMouseOver={e => e.target.style.background='#e0e0e0'} onMouseOut={e => e.target.style.background='#f0f0f0'}>取消</button>
                 </div>
             </div>
         </div>
@@ -26600,6 +28837,15 @@ const renderMenu = () => {
                           {(battle.sharedPlayerMaxCE || 0) > 0 && ` · 咒力 ${battle.sharedPlayerCE ?? 0}/${battle.sharedPlayerMaxCE || 100}`}
                         </div>
                         )}
+                        {sectPlayer?.playerSect && battle._sectMomentum != null && (
+                            <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
+                                <span style={{fontSize:'10px', color:'#C62828', fontWeight:'bold'}}>⚔️气势</span>
+                                <div style={{flex:1, height:'6px', background:'rgba(198,40,40,0.15)', borderRadius:'3px', overflow:'hidden', border:'1px solid rgba(198,40,40,0.2)'}}>
+                                    <div style={{width:`${Math.min(100, ((battle._sectMomentum||0)/SECT_MOMENTUM_MAX)*100)}%`, height:'100%', background:'linear-gradient(90deg, #B71C1C, #E53935)', transition:'width 0.3s'}}></div>
+                                </div>
+                                <span style={{fontSize:'9px', color:'#EF9A9A'}}>{battle._sectMomentum||0}/{SECT_MOMENTUM_MAX}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -26775,7 +29021,15 @@ const renderMenu = () => {
                     })()}
                     {/* 技能网格 - 占满上方空间 */}
                     {(!isDoubleBattle || battle.pendingDoubleMove === undefined) && (
-                    <div className="moves-grid-v2">
+                    <div className="moves-grid-v2" style={{
+                      gridTemplateColumns: (() => {
+                        const cnt = (isDoubleBattle ? (doubleCurrentPet || p) : p)?.combatMoves?.length || 0;
+                        if (cnt <= 2) return 'repeat(2, 1fr)';
+                        if (cnt <= 4) return 'repeat(2, 1fr)';
+                        if (cnt <= 6) return 'repeat(3, 1fr)';
+                        return 'repeat(4, 1fr)';
+                      })()
+                    }}>
                             {(() => {
                             const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
                             const activeMoves = skillPet?.combatMoves || [];
@@ -26786,12 +29040,16 @@ const renderMenu = () => {
                                     if (m.isCursed) {
                                       const cCd = cp?.cursedCooldowns?.[m.id || m.name] || 0;
                                       if (cCd > 0) moveDisabledReason = `(CD:${cCd})`;
-                                      else if ((cp?.cursedEnergy || 0) < (m.ceCost || 0)) moveDisabledReason = '(咒力不足)';
+                                      else if (getBattleResourceValue(battle, cp, 'player', 'ce') < (m.ceCost || 0)) moveDisabledReason = '(咒力不足)';
+                                    } else if (m.isMartialArt) {
+                                      const mcost = m.momentumCost || 0;
+                                      if (mcost > 0 && (battle._sectMomentum || 0) < mcost) moveDisabledReason = '(气势不足)';
+                                      else if ((m.pp || 0) <= 0) moveDisabledReason = '(无PP)';
                                     } else if (m.isJutsu) {
                                       const jCd = cp?.jutsuCooldowns?.[m.jutsuId || m.name] || 0;
                                       if (jCd > 0) moveDisabledReason = `(CD:${jCd})`;
                                       else if ((m.pp || 0) <= 0) moveDisabledReason = '(无PP)';
-                                      else if ((cp?.chakra || 0) < (m.chakraCost || 0)) moveDisabledReason = '(查克拉不足)';
+                                      else if (getBattleResourceValue(battle, cp, 'player', 'chakra') < (m.chakraCost || 0)) moveDisabledReason = '(查克拉不足)';
                                     } else if ((m.pp || 0) <= 0) {
                                       moveDisabledReason = '(无PP)';
                                     }
@@ -26823,6 +29081,8 @@ const renderMenu = () => {
                                         isExtra: m.isExtra,
                                         isJutsu: m.isJutsu,
                                         chakraCost: m.chakraCost,
+                                        isMartialArt: m.isMartialArt,
+                                        momentumCost: m.momentumCost,
                                         isBijuu: m.isBijuu,
                                         }}
                                         onClick={() => { 
@@ -26843,7 +29103,7 @@ const renderMenu = () => {
                                                 executeTurn(i);
                                             }
                                         }}
-                                    disabled={m.isCursed ? ((((battle.sharedPlayerCE ?? ((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy)) || 0) < (m.ceCost || 0)) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isJutsu ? ((((battle.sharedPlayerChakra ?? ((isDoubleBattle ? doubleCurrentPet : p)?.chakra)) || 0) < (m.chakraCost || 0)) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
+                                    disabled={m.isCursed ? ((((battle.sharedPlayerCE ?? ((isDoubleBattle ? doubleCurrentPet : p)?.cursedEnergy)) || 0) < (m.ceCost || 0)) || ((isDoubleBattle ? doubleCurrentPet : p)?.cursedCooldowns?.[m.id || m.name] || 0) > 0) : m.isMartialArt ? (((m.momentumCost || 0) > (battle._sectMomentum || 0)) || m.pp <= 0) : m.isJutsu ? ((((battle.sharedPlayerChakra ?? ((isDoubleBattle ? doubleCurrentPet : p)?.chakra)) || 0) < (m.chakraCost || 0)) || m.pp <= 0 || ((isDoubleBattle ? doubleCurrentPet : p)?.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0) : (m.pp <= 0)}
                                         disabledReason={moveDisabledReason}
                                         index={i}
                                     />
@@ -26913,11 +29173,12 @@ const renderMenu = () => {
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}>交换</button>
                             <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}>逃跑</button>
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed ? (() => {
-                              const turnOk = battle.turnCount >= 3;
+                              const minTurn = getFruitMinTurn();
+                              const turnOk = battle.turnCount >= minTurn;
                               const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.6;
                               const canUse = turnOk && hpOk;
-                              const hint = !turnOk && !hpOk ? `回合≥3(还需${3-battle.turnCount}回合) 且 HP<60%` : !turnOk ? `回合≥3(还需${3-battle.turnCount}回合)` : 'HP<60%';
-                              return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)} disabled={!canUse}>变身{!canUse ? `(${hint})` : ''}</button>;
+                              const hint = !turnOk && !hpOk ? `回合≥${minTurn}(还需${minTurn - battle.turnCount}回合) 且 HP<60%` : !turnOk ? `回合≥${minTurn}(还需${minTurn - battle.turnCount}回合)` : 'HP<60%';
+                              return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)}>变身{!canUse ? `(${hint})` : ''}</button>;
                             })() : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return (cp.maxCE > 0 || (cp.maxChakra || 0) > 0) ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.hasDomain && !cp.usedDomain && !battle.activeDomain ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={(cp.cursedEnergy||0) < (DOMAINS[cp.domainType]?.ceCost||999)}>领域</button> : null; })()}
@@ -27289,12 +29550,26 @@ const renderMenu = () => {
     const availAcc = accByTier[tier];
     const filteredShopTmIds = availTMs.filter(tmId => !shopTMFilter || ((ALL_SKILL_TMS.find(t => t.id === tmId)?.type || 'NORMAL') === shopTMFilter));
     const pagedShopTmIds = filteredShopTmIds.slice(0, shopTmsVisibleCount);
+    const nextTierNeed = tier === 1 ? 3 : tier === 2 ? 6 : tier === 3 ? 9 : null;
+    const nextTierLeft = nextTierNeed ? Math.max(0, nextTierNeed - badgeCount) : 0;
+    const shelfCounts = {
+      balls: availBalls.length,
+      items: availMeds.length,
+      berries: availBerryIds.length,
+      tms: filteredShopTmIds.length,
+      stones: showStones ? Object.keys(EVO_STONES).length : 0,
+      growth: availGrowth.length,
+      accessories: availAcc.length,
+      cursed: showCursed ? Object.values(CURSED_ITEMS).filter(item => item && item.price > 0).length : 0,
+      special: showSpecial ? 1 : 0,
+    };
 
     const renderShopCard = (key, icon, name, desc, unitPrice, buyType, extra) => {
                 const count = buyCounts[key] || 1;
       const totalPrice = unitPrice * count;
                 return (
-        <div key={key} style={{
+        <article key={key} className="market-item-card" style={{
+          '--market-accent': extra?.borderColor || tierColor,
           background:'linear-gradient(145deg, #ffffff, #f8f9ff)', borderRadius:'16px',
           padding:'18px 14px 14px', display:'flex', flexDirection:'column', alignItems:'center',
           textAlign:'center', border:'1px solid #e8eaf6', position:'relative',
@@ -27304,28 +29579,29 @@ const renderMenu = () => {
         onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';}}
         onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}
         >
-          {extra?.tag && <span style={{position:'absolute',top:'-6px',right:'8px',background:extra.tagColor||'#4CAF50',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>{extra.tag}</span>}
-          <div style={{fontSize:'36px',marginBottom:'8px',filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{icon}</div>
-          <div style={{fontSize:'13px',fontWeight:'800',color:'#1a1a2e',marginBottom:'3px'}}>{name}</div>
-          <div title={desc} style={{fontSize:'11px',color:'#888',height:'32px',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',lineHeight:'16px',marginBottom:'4px',whiteSpace:'normal'}}>{desc}</div>
-          {buyType === 'ball' && <div style={{fontSize:'11px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.balls?.[key.replace('ball_','')]||0}</div>}
-          {buyType === 'item' && <div style={{fontSize:'11px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.meds?.[key] || inventory[key] || 0}</div>}
-          {buyType === 'berry' && <div style={{fontSize:'11px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {normalizeBerriesInventory(inventory.berries)[key] || 0}</div>}
-          {buyType === 'stone' && <div style={{fontSize:'11px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {inventory.stones?.[key] || 0}</div>}
-          {buyType === 'cursed' && <div style={{fontSize:'11px',color:'#5C6BC0',fontWeight:'700',marginBottom:'4px'}}>持有: {(inventory.cursed || {})[key] || 0}</div>}
-          <div style={{fontSize:'14px',fontWeight:'900',color:'#F57C00',marginBottom:'10px'}}>{count > 1 ? `💰 ${unitPrice.toLocaleString()} × ${count} = ${totalPrice.toLocaleString()}金` : `💰 ${totalPrice.toLocaleString()}金`}</div>
-          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px',background:'#f0f0f5',padding:'3px 6px',borderRadius:'16px'}}>
-            <div onClick={()=>updateBuyCount(key,-1)} style={{width:'36px',height:'36px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'16px',userSelect:'none'}}>-</div>
-            <span style={{fontSize:'14px',fontWeight:'700',minWidth:'24px',textAlign:'center'}}>{count}</span>
-            <div onClick={()=>updateBuyCount(key,1)} style={{width:'36px',height:'36px',borderRadius:'50%',background:'#e0e0e0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'16px',userSelect:'none'}}>+</div>
-            <div onClick={()=>{const maxAfford=Math.min(99,Math.floor(gold/unitPrice));if(maxAfford>0)setBuyCounts(p=>({...p,[key]:maxAfford}))}} style={{width:'36px',height:'36px',borderRadius:'50%',background:'linear-gradient(135deg,#FFD54F,#FFA726)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:'bold',fontSize:'9px',color:'#fff',userSelect:'none',textShadow:'0 1px 1px rgba(0,0,0,0.3)'}}>已满</div>
+          {extra?.tag && <span className="market-item-tag" style={{background:extra.tagColor||'#4CAF50'}}>{extra.tag}</span>}
+          <div className="market-item-icon">{icon}</div>
+          <div className="market-item-name">{name}</div>
+          <div className="market-item-desc" title={desc}>{desc}</div>
+          {buyType === 'ball' && <div className="market-owned">持有: {inventory.balls?.[key.replace('ball_','')]||0}</div>}
+          {buyType === 'item' && <div className="market-owned">持有: {inventory.meds?.[key] || inventory[key] || 0}</div>}
+          {buyType === 'berry' && <div className="market-owned">持有: {normalizeBerriesInventory(inventory.berries)[key] || 0}</div>}
+          {buyType === 'stone' && <div className="market-owned">持有: {inventory.stones?.[key] || 0}</div>}
+          {buyType === 'cursed' && <div className="market-owned">持有: {(inventory.cursed || {})[key] || 0}</div>}
+          <div className="market-price">{count > 1 ? `💰 ${unitPrice.toLocaleString()} × ${count} = ${totalPrice.toLocaleString()}金` : `💰 ${totalPrice.toLocaleString()}金`}</div>
+          <div className="market-qty-stepper">
+            <button type="button" onClick={()=>updateBuyCount(key,-1)}>-</button>
+            <span>{count}</span>
+            <button type="button" onClick={()=>updateBuyCount(key,1)}>+</button>
+            <button type="button" className="is-max" onClick={()=>{const maxAfford=Math.min(99,Math.floor(gold/unitPrice));if(maxAfford>0)setBuyCounts(p=>({...p,[key]:maxAfford}))}}>MAX</button>
                     </div>
           <button onClick={()=>buyItemPro(key,unitPrice,buyType)} disabled={gold < totalPrice}
+            className="market-buy-btn"
             style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=totalPrice?'pointer':'not-allowed',
               background:gold>=totalPrice?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
               color:gold>=totalPrice?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=totalPrice?'0 3px 8px rgba(0,0,0,0.15)':'none'
           }}>购买</button>
-                  </div>
+                  </article>
                 );
     };
 
@@ -27340,40 +29616,48 @@ const renderMenu = () => {
       ...(showCursed?[{id:'cursed',label:'咒具',icon:'🔮'}]:[]),
       ...(showSpecial?[{id:'special',label:'特殊',icon:'✨'}]:[]),
     ];
+    const activeShelf = tabs.find(t => t.id === shopTab) || tabs[0];
 
                 return (
-      <div className="modal-overlay">
-        <div className="shop-modal-pro" style={{background:'linear-gradient(180deg,#f8f9ff,#eef1ff)',borderRadius:'20px'}}>
-          <div className="shop-nav-sidebar" style={{background:'linear-gradient(180deg,#1a1a2e,#16213e)',borderRight:'none',padding:'0',borderRadius:'20px 0 0 20px'}}>
-            <div style={{padding:'18px 12px',textAlign:'center',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',fontWeight:'600',marginBottom:'4px'}}>{mapInfo.name}</div>
-              <div style={{fontSize:'14px',fontWeight:'800',color:tierColor,letterSpacing:'1px'}}>{tierName}</div>
+      <div className="modal-overlay market-overlay">
+        <div className="shop-modal-pro market-console" style={{'--market-accent': tierColor, background:'linear-gradient(180deg,#f8f9ff,#eef1ff)',borderRadius:'20px'}}>
+          <aside className="shop-nav-sidebar market-sidebar" style={{background:'linear-gradient(180deg,#1a1a2e,#16213e)',borderRight:'none',padding:'0',borderRadius:'20px 0 0 20px'}}>
+            <div className="market-brand">
+              <span>{mapInfo.name}</span>
+              <strong>{tierName}</strong>
+              <small>{badgeCount} 枚徽章 · {nextTierNeed ? `距下一阶 ${nextTierLeft} 枚` : '最高阶货架'}</small>
                     </div>
             {tabs.map(t=>(
-              <div key={t.id} className={`shop-nav-item ${shopTab===t.id?'active':''}`}
+              <button key={t.id} type="button" className={`shop-nav-item market-nav-item ${shopTab===t.id?'active':''}`}
                 style={{padding:'12px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',fontWeight:'600',
                   color:shopTab===t.id?'#fff':'rgba(255,255,255,0.5)',
                   background:shopTab===t.id?`linear-gradient(90deg,${tierColor}40,transparent)`:'transparent',
                   borderLeft:shopTab===t.id?`3px solid ${tierColor}`:'3px solid transparent',
                   transition:'background 0.35s ease, color 0.25s ease, border-color 0.35s ease, padding 0.2s ease'}}
                 onClick={()=>setShopTab(t.id)}>
-                <span style={{fontSize:'16px'}}>{t.icon}</span>{t.label}
-                  </div>
+                <span>{t.icon}</span>
+                <strong>{t.label}</strong>
+                <small>{shelfCounts[t.id] || 0}</small>
+                  </button>
             ))}
-            <div style={{marginTop:'auto',padding:'14px',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-              <div style={{textAlign:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>持有金币</div>
-              <div style={{textAlign:'center',fontSize:'18px',fontWeight:'900',color:'#FFD54F'}}>💰 {gold.toLocaleString()}</div>
+            <div className="market-wallet">
+              <span>持有金币</span>
+              <strong>💰 {gold.toLocaleString()}</strong>
                     </div>
-            <button style={{margin:'8px 12px 14px',padding:'8px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.7)',fontSize:'12px',fontWeight:'600',cursor:'pointer'}} onClick={()=>setShopMode(false)}>关闭商店</button>
-                  </div>
+            <button className="market-close-btn" style={{margin:'8px 12px 14px',padding:'8px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.7)',fontSize:'12px',fontWeight:'600',cursor:'pointer'}} onClick={()=>setShopMode(false)}>关闭商店</button>
+                  </aside>
 
           <div className="shop-content-area shop-tab-content-enter" style={{padding:'20px',overflowY:'auto',transition:'opacity 0.35s ease, transform 0.3s ease'}} key={shopTab}>
-            <div style={{marginBottom:'14px',padding:'10px 14px',borderRadius:'12px',background:`linear-gradient(90deg,${tierColor}22,transparent)`,border:`1px solid ${tierColor}44`,fontSize:'12px',fontWeight:'700',color:'#1a1a2e',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'6px',flexWrap:'wrap'}}>
-              <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap',width:'100%'}}>
-                <span>🏪 商店等级: {['', '初级', '进阶', '高级', '顶级'][tier]}</span>
-                <span style={{fontSize:'11px',fontWeight:'600',color:'#546e7a'}}>（当前 {badgeCount} 枚徽章）</span>
+            <div className="market-shelf-hero" style={{marginBottom:'14px',padding:'10px 14px',borderRadius:'12px',background:`linear-gradient(90deg,${tierColor}22,transparent)`,border:`1px solid ${tierColor}44`,fontSize:'12px',fontWeight:'700',color:'#1a1a2e',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'6px',flexWrap:'wrap'}}>
+              <div className="market-shelf-title">
+                <span className="market-shelf-icon">{activeShelf.icon}</span>
+                <div>
+                  <strong>{activeShelf.label}</strong>
+                  <small>{shelfCounts[shopTab] || 0} 件可购 · {['', '初级', '进阶', '高级', '顶级'][tier]}货架</small>
+                </div>
+                <b>💰 {gold.toLocaleString()}</b>
               </div>
-              <div style={{fontSize:'11px',fontWeight:'600',color:'#546e7a',lineHeight:1.45}}>
+              <div className="market-unlock-note" style={{fontSize:'11px',fontWeight:'600',color:'#546e7a',lineHeight:1.45}}>
                 解锁条件：初级需徽章{'<'}3枚 · 进阶3~5枚 · 高级6~8枚 · 顶级≥9枚。{tier < 4 ? `再获得 ${Math.max(0, (tier === 1 ? 3 : tier === 2 ? 6 : 9) - badgeCount)} 枚徽章升至「${['','进阶','高级','顶级'][tier]}商店」。` : '已解锁顶级商品池。'}
               </div>
             </div>
@@ -27706,6 +29990,14 @@ const renderMenu = () => {
                          }}
                     >
                       {pcBatchRelease && pcBatchSelected.has(origIdx) && <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(229,57,53,0.3)',borderRadius:'8px',zIndex:1}}/>}
+                      {(() => {
+                        const ivs = p.ivs || {};
+                        const ivSum = Object.values(ivs).reduce((s, v) => s + (v || 0), 0);
+                        const ivPct = (ivSum / 186) * 100;
+                        const letter = ivPct >= 80 ? 'S' : ivPct >= 50 ? 'A' : ivPct >= 30 ? 'B' : 'C';
+                        const lColor = ivPct >= 80 ? '#FFD700' : ivPct >= 50 ? '#FF4081' : ivPct >= 30 ? '#2196F3' : '#9E9E9E';
+                        return <div style={{position:'absolute', top:1, left:2, fontSize:'8px', fontWeight:'bold', color: lColor, textShadow:'0 0 3px rgba(0,0,0,0.8)'}}>{letter}</div>;
+                      })()}
                       {renderAvatar(p)}
                       <div style={{fontSize:'9px', color:'#aaa', marginTop:'1px'}}>Lv{p.level}</div>
                       {p.isShiny && <div style={{position:'absolute', top:1, right:2, fontSize:'8px'}}>✨</div>}
@@ -28344,6 +30636,21 @@ const renderMenu = () => {
     const finishEvo = () => {
         if (step < 3) return;
         const newDex = POKEDEX.find(p => p.id === newPet.id);
+        const safeNewPet = { id: newPet.id, name: newPet.name, type: newPet.type, type2: newPet.type2, emoji: newPet.emoji, hp: newPet.hp, atk: newPet.atk, def: newPet.def, spd: newPet.spd, trait: newPet.trait };
+        if (safeNewPet.type !== oldPet.type) {
+          const newMoves = [];
+          const existingNames = new Set();
+          (oldPet.moves || []).forEach(m => {
+            if (m.t === safeNewPet.type || m.t === safeNewPet.type2 || m.t === 'NORMAL') {
+              newMoves.push(m); existingNames.add(m.name);
+            }
+          });
+          for (let i = newMoves.length; i < 4; i++) {
+            const m = getMoveByLevel(safeNewPet.type, oldPet.level - (4 - i) * 5);
+            if (m && !existingNames.has(m.name)) { newMoves.push(m); existingNames.add(m.name); }
+          }
+          if (newMoves.length > 0) safeNewPet.moves = newMoves.slice(0, 4);
+        }
         
         setParty(prev => {
           const newParty = [...prev];
@@ -28353,48 +30660,53 @@ const renderMenu = () => {
           if (!target || target.uid !== oldPet.uid) {
             const realIdx = newParty.findIndex(p => p.uid === oldPet.uid);
             if (realIdx < 0) { showMapToast('⚠️', '进化异常', '未找到目标精灵，进化已取消', 3000); setEvoAnim(null); return prev; }
+            const evoMoves = safeNewPet.moves?.length ? safeNewPet.moves : oldPet.moves;
             Object.assign(newParty[realIdx], {
-              ...newPet, uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
-              moves: oldPet.moves, equip: oldPet.equip, equips: oldPet.equips,
+              ...safeNewPet, uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
+              moves: evoMoves, equip: oldPet.equip, equips: oldPet.equips,
               nature: oldPet.nature, ivs: oldPet.ivs, evs: oldPet.evs,
               isShiny: oldPet.isShiny, isFusedShiny: oldPet.isFusedShiny,
+              name: oldPet.isShiny ? (oldPet.isFusedShiny ? `异色·${safeNewPet.name}` : `✨${safeNewPet.name}`) : safeNewPet.name,
               intimacy: oldPet.intimacy, charm: oldPet.charm,
-              trait: newPet.trait || oldPet.trait,
-              secondaryType: newPet.type2 || (oldPet.customBaseStats ? oldPet.secondaryType : null),
+              trait: safeNewPet.trait || oldPet.trait,
+              secondaryType: safeNewPet.type2 || (oldPet.customBaseStats ? oldPet.secondaryType : null),
               sectId: oldPet.sectId, sectLevel: oldPet.sectLevel, devilFruit: oldPet.devilFruit,
               diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
               cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
-              customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
+              customBaseStats: oldPet.isFusedShiny ? oldPet.customBaseStats : null, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
               isEvolved: !newDex?.evo, evo: newDex?.evo || null, evoLvl: newDex?.evoLvl || null
             });
             newParty[realIdx].currentHp = getStats(newParty[realIdx]).maxHp;
             return newParty;
           }
+          const evoMoves2 = safeNewPet.moves?.length ? safeNewPet.moves : oldPet.moves;
           Object.assign(newParty[idx], {
-            ...newPet, uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
-            moves: oldPet.moves, equip: oldPet.equip, equips: oldPet.equips,
+            ...safeNewPet, uid: oldPet.uid, level: oldPet.level, exp: oldPet.exp, nextExp: oldPet.nextExp,
+            moves: evoMoves2, equip: oldPet.equip, equips: oldPet.equips,
             nature: oldPet.nature, ivs: oldPet.ivs, evs: oldPet.evs,
             isShiny: oldPet.isShiny, isFusedShiny: oldPet.isFusedShiny,
+            name: oldPet.isShiny ? (oldPet.isFusedShiny ? `异色·${safeNewPet.name}` : `✨${safeNewPet.name}`) : safeNewPet.name,
             intimacy: oldPet.intimacy, charm: oldPet.charm,
-            trait: newPet.trait || oldPet.trait,
-            secondaryType: newPet.type2 || (oldPet.customBaseStats ? oldPet.secondaryType : null),
+            trait: safeNewPet.trait || oldPet.trait,
+            secondaryType: safeNewPet.type2 || (oldPet.customBaseStats ? oldPet.secondaryType : null),
             sectId: oldPet.sectId, sectLevel: oldPet.sectLevel, devilFruit: oldPet.devilFruit,
             diversityRng: oldPet.diversityRng, speedRng: oldPet.speedRng,
             cursedTechnique: oldPet.cursedTechnique, hasDomain: oldPet.hasDomain, domainType: oldPet.domainType,
-            customBaseStats: oldPet.customBaseStats, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
+            customBaseStats: oldPet.isFusedShiny ? oldPet.customBaseStats : null, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
             isEvolved: !newDex?.evo, evo: newDex?.evo || null, evoLvl: newDex?.evoLvl || null
           });
           newParty[idx].currentHp = getStats(newParty[idx]).maxHp;
           return newParty;
         });
         
-        // 开图鉴
         setCaughtDex(prev => prev.includes(newPet.id) ? prev : [...prev, newPet.id]);
         
         updateAchStat({ totalEvolutions: 1 });
         advanceBounty('evolve');
         setEvoAnim(null);
     };
+
+    if (step === 3) { setTimeout(() => { if (evoAnim) finishEvo(); }, 8000); }
 
     return (
         <div className="modal-overlay" style={{
@@ -28600,6 +30912,7 @@ const renderMenu = () => {
       </svg>
          {/* 🎵 [新增] 隐藏的音频元素 */}
       <audio ref={audioRef} loop />
+      <HudEventFeed events={hudEvents} />
 
      
       {view === 'menu' && renderMenu()}
@@ -28608,8 +30921,8 @@ const renderMenu = () => {
       {view === 'fruit_dex' && renderFruitDex()}
       {view === 'general_dex' && renderGeneralDex()}
       {view === 'world_map' && renderWorldMap()}
+      {(view === 'grid_map' || view === 'bag') && renderGridMap()}
       {view === 'bag' && renderBag()}
-      {view === 'grid_map' && renderGridMap()}
       {view === 'merchant' && !merchantItems && (
         <div className="screen" style={{background:'linear-gradient(135deg,#2c1810,#4a2c17)', color:'#fff', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px'}}>
           <div style={{fontSize:'40px', marginBottom:'10px'}}>🧳</div>
@@ -28722,10 +31035,40 @@ const renderMenu = () => {
               </div>
             </div>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
+              <div style={{fontSize:'13px',fontWeight:'700',color:'#a78bfa',marginBottom:'8px'}}>🏯 无限遗物 · 生态恩赐</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginBottom:'10px'}}>遗物来自无限城堡每10层 · 最多装备 {MAX_EQUIPPED_RELICS} 个 · 生态分 {guardianScore}</div>
+              <div style={{display:'grid', gap:'8px', maxHeight:'220px', overflowY:'auto'}}>
+                {(relics.owned || []).length === 0 ? (
+                  <div style={{fontSize:'12px', color:'rgba(255,255,255,0.35)', textAlign:'center', padding:'12px'}}>暂无遗物，挑战无限城堡获取</div>
+                ) : INFINITY_RELICS.filter(r => (relics.owned || []).includes(r.id)).map(r => {
+                  const equipped = (relics.equipped || []).includes(r.id);
+                  const rarity = RELIC_RARITY[r.rarity];
+                  return (
+                    <button key={r.id} type="button" onClick={() => equipRelic(r.id)} style={{
+                      textAlign:'left', padding:'10px 12px', borderRadius:'10px', cursor:'pointer',
+                      border:`1px solid ${equipped ? '#a78bfa' : 'rgba(255,255,255,0.1)'}`,
+                      background: equipped ? 'rgba(167,139,250,0.2)' : 'rgba(0,0,0,0.2)', color:'#fff'
+                    }}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <span style={{fontWeight:'700', fontSize:'13px'}}>{r.icon} {r.name}</span>
+                        <span style={{fontSize:'10px', color: rarity?.color || '#aaa'}}>{equipped ? '已装备' : rarity?.name}</span>
+                      </div>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.5)', marginTop:'4px'}}>{r.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#ef4444',marginBottom:'12px'}}>⚠️ 危险操作</div>
-              <button onClick={() => setConfirmModal({title:'⚠️ 删除存档',msg:'确定要删除所有存档并重新开始吗？\n此操作不可恢复！',onOk:() => { isResettingRef.current = true; localStorage.removeItem(SAVE_KEY); window.location.replace(window.location.href); }})} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+              <button onClick={() => setConfirmModal({title:'⚠️ 删除存档',msg:'确定要删除所有存档并重新开始吗？\n此操作不可恢复！',onOk:() => { isResettingRef.current = true; localStorage.removeItem(SAVE_KEY); window.location.replace(window.location.href); }})} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer',marginBottom:'10px'}}>
                 🗑️ 删除存档
               </button>
+              {IS_ELECTRON && (
+                <button onClick={() => window.close()} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+                  ✕ 退出游戏
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -28744,7 +31087,7 @@ const renderMenu = () => {
                 const chart = {
                   FIRE:'🔥火',WATER:'💧水',GRASS:'🌿草',ELECTRIC:'⚡电',ICE:'❄冰',FIGHT:'🥊格',POISON:'☠毒',
                   GROUND:'🌍地',FLYING:'🦅飞',PSYCHIC:'🔮超',BUG:'🐛虫',ROCK:'🪨岩',GHOST:'👻幽',DRAGON:'🐉龙',
-                  DARK:'🌑恶',STEEL:'⚙钢',FAIRY:'🧚仙',NORMAL:'⬜普',WIND:'🌪风',LIGHT:'☀光',HEAL:'💚愈',COSMIC:'🌌宇',SOUND:'🔔音',GOD:'✨神'
+                  DARK:'🌑恶',STEEL:'⚙钢',FAIRY:'🧚仙',NORMAL:'⬜普',WIND:'🌪风',LIGHT:'☀光',HEAL:'💚愈',COSMIC:'🌌宇',SOUND:'🔔音',GOD:'✨神',TIME:'⏳时',CHAOS:'🌀混'
                 };
                 const types = Object.keys(chart);
                 return types.map(t => {
@@ -28764,6 +31107,7 @@ const renderMenu = () => {
         </div>
       )}
       {renderActivityModal()} 
+      {renderFusionHub()}
       {renderEquipModal()} 
       {renderDialogOverlay()} 
       {renderPvPModal()} 
@@ -28915,7 +31259,8 @@ const renderMenu = () => {
                   border:'3px solid rgba(255,255,255,0.3)',
                   boxShadow: gen.rarity === 'SSR' ? '0 0 25px rgba(255,255,255,0.3)' : 'none',
                   animation: gen.rarity === 'SSR' ? 'pulse 1.5s ease-in-out infinite' : 'none',
-                }}>{pt.surname}</div>
+                  overflow:'hidden',
+                }}>{renderGeneralPortraitFace(gen, pt, pt.surname)}</div>
                 <div style={{marginTop:'12px', fontSize:'22px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}</div>
                 <div style={{fontSize:'12px', color:'rgba(255,255,255,0.7)', marginTop:'4px'}}>{gen.title}</div>
                 <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
@@ -28969,7 +31314,8 @@ const renderMenu = () => {
                   textShadow:'2px 2px 4px rgba(0,0,0,0.5)',
                   border:`3px solid rgba(255,255,255,0.3)`,
                   boxShadow: gen.rarity === 'SSR' ? '0 0 20px rgba(255,255,255,0.3)' : 'none',
-                }}>{pt.surname}</div>
+                  overflow:'hidden',
+                }}>{renderGeneralPortraitFace(gen, pt, pt.surname)}</div>
                 <div style={{marginTop:'10px', fontSize:'20px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}{bioData?.courtesy ? ` · 字${bioData.courtesy}` : ''}</div>
                 <div style={{fontSize:'12px', color:'rgba(255,255,255,0.8)', marginTop:'4px'}}>{gen.title}{bioData?.years ? ` (${bioData.years})` : ''}</div>
                 <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
@@ -29068,7 +31414,8 @@ const renderMenu = () => {
                         fontSize: '20px', fontWeight: '900', color: portrait.textColor,
                         textShadow: '1px 1px 2px rgba(0,0,0,0.5)', flexShrink: 0,
                         boxShadow: gen.rarity === 'SSR' ? `0 0 8px ${portrait.border}80` : 'none',
-                      }}>{portrait.surname}</div>
+                        overflow:'hidden',
+                      }}>{renderGeneralPortraitFace(gen, portrait, portrait.surname)}</div>
                       <div style={{flex:1, minWidth:0}}>
                         <div style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
                           <span style={{fontWeight:'800', fontSize:'14px'}}>{gen.name}</span>
@@ -29450,6 +31797,18 @@ const renderMenu = () => {
           </div>
         </div>
       )}
+      {relicDropModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100005}} onClick={() => setRelicDropModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a1035,#311b92)', borderRadius:'20px', padding:'28px', maxWidth:'360px', width:'90%', border:'1px solid rgba(167,139,250,0.4)', textAlign:'center', color:'#fff'}}>
+            <div style={{fontSize:'48px', marginBottom:'12px'}}>{relicDropModal.icon}</div>
+            <div style={{fontSize:'11px', color: RELIC_RARITY[relicDropModal.rarity]?.color || '#aaa', fontWeight:'700', marginBottom:'6px'}}>{RELIC_RARITY[relicDropModal.rarity]?.name} 遗物</div>
+            <div style={{fontSize:'20px', fontWeight:'900', color:'#e9d5ff', marginBottom:'8px'}}>{relicDropModal.name}</div>
+            <div style={{fontSize:'13px', color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:'20px'}}>{relicDropModal.desc}</div>
+            <button type="button" onClick={() => { equipRelic(relicDropModal.id); setRelicDropModal(null); }} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background:'linear-gradient(135deg,#a78bfa,#7c3aed)', color:'#fff', fontWeight:'800', cursor:'pointer', marginBottom:'8px'}}>立即装备</button>
+            <button type="button" onClick={() => setRelicDropModal(null)} style={{width:'100%', padding:'10px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.15)', background:'transparent', color:'#aaa', cursor:'pointer'}}>稍后管理</button>
+          </div>
+        </div>
+      )}
       {/* 主题化确认弹窗 */}
       {confirmModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100002, animation:'fadeIn 0.2s ease-out'}} onClick={() => { (confirmModal.onCancel)?.(); setConfirmModal(null); }}>
@@ -29491,11 +31850,63 @@ const renderMenu = () => {
           <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a2e1a,#0a1a2e)', borderRadius:'20px', padding:'24px', maxWidth:'400px', width:'92%', border:`1px solid ${ecoCrisisModal.crisis?.color || '#2E7D32'}44`, boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
             <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{ecoCrisisModal.crisis?.icon} {ecoCrisisModal.crisis?.name}</div>
             <div style={{fontSize:'17px', fontWeight:'800', color:'#fff', marginBottom:'12px'}}>{ecoCrisisModal.step?.title}</div>
+            {ecoCrisisModal.step?.region && (() => {
+              const regionLabel = ecoCrisisModal.crisisId === CANYON_CHAPTER_ID
+                ? getCanyonRegionLabel(ecoCrisisModal.step.region)
+                : ecoCrisisModal.crisisId === GHOST_CHAPTER_ID
+                  ? getGhostRegionLabel(ecoCrisisModal.step.region)
+                  : ecoCrisisModal.crisisId === SEAL_CHAPTER_ID
+                    ? getSealRegionLabel(ecoCrisisModal.step.region)
+                    : null;
+              const isGhost = ecoCrisisModal.crisisId === GHOST_CHAPTER_ID;
+              const isSeal = ecoCrisisModal.crisisId === SEAL_CHAPTER_ID;
+              return regionLabel ? (
+                <div style={{fontSize:'10px', color: isGhost ? '#CE93D8' : isSeal ? '#64B5F6' : '#FFB74D', marginBottom:'8px', padding:'4px 8px', background: isGhost ? 'rgba(74,20,140,0.25)' : isSeal ? 'rgba(21,101,192,0.25)' : 'rgba(230,81,0,0.15)', borderRadius:'6px', display:'inline-block'}}>{regionLabel}{ecoCrisisModal.step.nightBattle ? ' · 🌙夜战' : ''}</div>
+              ) : null;
+            })()}
+            {ecoCrisisModal.crisisId === CANYON_CHAPTER_ID && fusionState.canyonChapter?.vars && (
+              <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginBottom:'10px'}}>
+                {Object.entries(CANYON_VAR_LABELS).slice(0, 4).map(([k, meta]) => (
+                  <span key={k} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)'}}>{meta.icon} {meta.label} {fusionState.canyonChapter.vars[k]}</span>
+                ))}
+              </div>
+            )}
+            {ecoCrisisModal.crisisId === GHOST_CHAPTER_ID && fusionState.ghostChapter?.vars && (
+              <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginBottom:'10px'}}>
+                {Object.entries(GHOST_VAR_LABELS).slice(0, 4).map(([k, meta]) => (
+                  <span key={k} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(74,20,140,0.2)', color:'rgba(255,255,255,0.55)'}}>{meta.icon} {meta.label} {fusionState.ghostChapter.vars[k]}</span>
+                ))}
+              </div>
+            )}
+            {ecoCrisisModal.crisisId === SEAL_CHAPTER_ID && fusionState.sealChapter?.vars && (
+              <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginBottom:'10px'}}>
+                {Object.entries(SEAL_VAR_LABELS).slice(0, 4).map(([k, meta]) => (
+                  <span key={k} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(21,101,192,0.2)', color:'rgba(255,255,255,0.55)'}}>{meta.icon} {meta.label} {fusionState.sealChapter.vars[k]}</span>
+                ))}
+              </div>
+            )}
             <div style={{fontSize:'13px', color:'#ccc', lineHeight:1.7, marginBottom:'16px'}}>{ecoCrisisModal.step?.text}</div>
             {ecoCrisisModal.step?.choices && (
               <div style={{fontSize:'11px', color:'#81C784', marginBottom:'12px', padding:'8px', background:'rgba(76,175,80,0.1)', borderRadius:'8px'}}>✓ 选择：{ecoCrisisModal.step.choices[0]}</div>
             )}
             <button onClick={() => advanceEcoCrisis(ecoCrisisModal.crisisId, ecoCrisisModal.stepIdx)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background: ecoCrisisModal.crisis?.color || 'linear-gradient(90deg,#2E7D32,#43A047)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>继续调查 →</button>
+          </div>
+        </div>
+      )}
+      {ecoRouteModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100004}} onClick={() => setEcoRouteModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#1a2e1a,#0a1a2e)', borderRadius:'20px', padding:'24px', maxWidth:'420px', width:'92%', border:`1px solid ${ecoRouteModal.crisis?.color || '#2E7D32'}55`, boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginBottom:'4px'}}>{ecoRouteModal.crisis?.icon} 调查路线</div>
+            <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', marginBottom:'10px'}}>选择本次调查的处理路线</div>
+            <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+              {(ecoRouteModal.crisis?.routes || []).map(route => (
+                <button key={route.id} type="button" onClick={() => selectEcoRoute(ecoRouteModal.crisisId, ecoRouteModal.stepIdx, route.id)} style={{padding:'12px 14px', borderRadius:'12px', border:'1px solid rgba(100,181,246,0.4)', background:'rgba(33,150,243,0.12)', color:'#E3F2FD', textAlign:'left', cursor:'pointer'}}>
+                  <div style={{fontSize:'14px', fontWeight:'700'}}>{route.name} · {route.difficulty === 'hard' ? '困难' : route.difficulty === 'medium' ? '中等' : '简单'}</div>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)', marginTop:'4px'}}>{route.reqTypes ? `需要 ${route.reqTypes.join('/')} 系` : '无特殊要求'}</div>
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setEcoRouteModal(null)} style={{width:'100%', marginTop:'12px', padding:'8px', borderRadius:'10px', border:'1px solid #444', background:'transparent', color:'#888', fontSize:'12px', cursor:'pointer'}}>稍后再决定</button>
           </div>
         </div>
       )}
@@ -29517,6 +31928,35 @@ const renderMenu = () => {
               })}
             </div>
             <button type="button" onClick={() => setEcoBranchModal(null)} style={{width:'100%', marginTop:'12px', padding:'8px', borderRadius:'10px', border:'1px solid #444', background:'transparent', color:'#888', fontSize:'12px', cursor:'pointer'}}>稍后再决定</button>
+          </div>
+        </div>
+      )}
+      {bondingModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100005}} onClick={() => setBondingModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'linear-gradient(135deg,#311B92,#512DA8)', borderRadius:'20px', padding:'24px', maxWidth:'420px', width:'92%', border:'1px solid rgba(186,104,200,0.4)', boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+            <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginBottom:'4px'}}>{bondingModal.icon} 精灵结契</div>
+            <div style={{fontSize:'17px', fontWeight:'800', color:'#fff', marginBottom:'8px'}}>{bondingModal.name}</div>
+            <div style={{fontSize:'13px', color:'#E1BEE7', lineHeight:1.7, marginBottom:'14px'}}>{bondingModal.summary}</div>
+            {(() => {
+              const prog = bondingProgress[bondingModal.id] || { step: 0, completed: false };
+              const step = bondingModal.steps[prog.step];
+              const stepDef = step ? BONDING_STEP_TYPES[step.type] : null;
+              return (
+                <>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginBottom:'8px'}}>进度 {Math.min(prog.step + 1, bondingModal.steps.length)}/{bondingModal.steps.length}</div>
+                  {step && (
+                    <div style={{background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px', marginBottom:'14px'}}>
+                      <div style={{fontSize:'14px', fontWeight:'700', color:'#fff'}}>{stepDef?.icon} {step.title}</div>
+                      <div style={{fontSize:'12px', color:'#ccc', marginTop:'6px', lineHeight:1.6}}>{step.text}</div>
+                    </div>
+                  )}
+                  <button type="button" onClick={() => advanceBondingStep(bondingModal.id)} style={{width:'100%', padding:'12px', borderRadius:'12px', border:'none', background:'linear-gradient(90deg,#AB47BC,#CE93D8)', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer'}}>
+                    {prog.completed ? '已完成' : (step?.type === 'bond' ? '完成结契 💫' : '继续下一步 →')}
+                  </button>
+                </>
+              );
+            })()}
+            <button type="button" onClick={() => setBondingModal(null)} style={{width:'100%', marginTop:'10px', padding:'8px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'#ccc', fontSize:'12px', cursor:'pointer'}}>关闭</button>
           </div>
         </div>
       )}

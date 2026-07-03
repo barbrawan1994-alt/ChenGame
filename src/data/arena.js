@@ -23,7 +23,8 @@ export const ARENA_RANKS = [
   { id: 'master',   name: '大师', icon: '👑', color: '#FF6F00', maxStars: 3, noDropOnLoss: false,
     enemyLvl: [90, 100], enemyCount: 6, reqBadges: 10,
     firstReward: { gold: 150000, title: '竞技大师' },
-    streakBonus: { 3: { gold: 30000 }, 5: { gold: 80000, title: '无双霸主' } } },
+    streakBonus: { 3: { gold: 20000 }, 5: { gold: 50000, title: '无双霸主' } },
+    seasonReward: { gold: 200000, accessory: 'trophy', title: '赛季王者' } },
 ];
 
 export const ARENA_WEEKLY_RULES = [
@@ -84,7 +85,7 @@ export function mulberry32(seed) {
 }
 
 export function getArenaWeekTypes(date = new Date()) {
-  const allowedTypes = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE', 'FIGHT', 'PSYCHIC', 'DARK', 'DRAGON', 'FAIRY', 'NORMAL'];
+  const allowedTypes = ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE', 'FIGHT', 'PSYCHIC', 'DARK', 'DRAGON', 'FAIRY', 'NORMAL', 'WIND', 'LIGHT', 'COSMIC', 'SOUND', 'TIME', 'CHAOS', 'POISON', 'GROUND', 'FLYING', 'BUG', 'ROCK', 'GHOST', 'STEEL', 'HEAL', 'GOD'];
   const day = date.getDay();
   return [allowedTypes[day % allowedTypes.length], allowedTypes[(day + 3) % allowedTypes.length]];
 }

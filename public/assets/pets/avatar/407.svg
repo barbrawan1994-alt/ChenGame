@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="丛林巨像 original avatar">
+  
+  <defs>
+    <linearGradient id="bga407" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c7f7a4"/>
+      <stop offset=".55" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#c7f7a4"/>
+      <stop offset=".6" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#c7f7a4"/>
+      <stop offset=".72" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1f6f43" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bga407)"/>
+  <circle cx="128" cy="128" r="112" fill="#fff" opacity=".12"/>
+  <circle cx="128" cy="128" r="103" fill="#ffffff" opacity=".18"/>
+  <g opacity=".35"><circle cx="33" cy="224" r="2.5" fill="#fff" opacity="0.49"/><circle cx="192" cy="85" r="1.1" fill="#fff" opacity="0.60"/><circle cx="214" cy="201" r="2.8" fill="#fff" opacity="0.61"/><circle cx="43" cy="91" r="1.6" fill="#fff" opacity="0.44"/><circle cx="47" cy="21" r="2.2" fill="#fff" opacity="0.55"/><circle cx="187" cy="123" r="1.4" fill="#fff" opacity="0.62"/><circle cx="214" cy="24" r="1.6" fill="#fff" opacity="0.43"/><circle cx="35" cy="87" r="1.7" fill="#fff" opacity="0.51"/><circle cx="206" cy="230" r="3.1" fill="#fff" opacity="0.57"/><circle cx="190" cy="176" r="1.6" fill="#fff" opacity="0.52"/></g>
+  <g transform="rotate(3 128 128)">
+    <path d="M76 95 L110 60 H155 L187 102 L172 176 H83 Z" fill="url(#body)" filter="url(#softShadow)"/><path d="M100 71 L123 28 L140 67 Z" fill="#c7f7a4"/><path d="M145 73 L171 39 L170 86 Z" fill="#43b957"/><rect x="98" y="119" width="60" height="15" rx="7" fill="#1f6f43" opacity=".38"/><circle cx="114" cy="126" r="5" fill="#c7f7a4"/><circle cx="142" cy="126" r="5" fill="#c7f7a4"/><path d="M108 82 Q128 93 148 82" stroke="#c7f7a4" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>
+  </g>
+  <path d="M42 198 C82 222 171 226 216 184" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".22"/>
+</svg>

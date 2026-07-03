@@ -139,7 +139,7 @@ export const WORLD_BOSSES = [
     bossKey: 'black_vine_king',
     phases: [
       { hpPct: 1.0, mechanic: 'vine_spread', msg: '黑藤鹿王召唤黑藤蔓延！' },
-      { hpPct: 0.5, mechanic: 'parasite', msg: '黑藤鹿王寄生了一只己方灵兽！' },
+      { hpPct: 0.5, mechanic: 'parasite', msg: '黑藤鹿王寄生了一只己方精灵！' },
       { hpPct: 0.25, mechanic: 'forest_will', msg: '森林意志苏醒…' },
     ],
     rewards: { gold: 9000, exp_candy: 3, tickets: 2 },
@@ -178,7 +178,7 @@ export const WORLD_BOSSES = [
     traits: ['pressure', 'multiscale'],
     phases: [
       { hpPct: 1.0, mechanic: 'meteor_summon', buff: null, msg: '陨星巨鲸召唤小陨石坠落！' },
-      { hpPct: 0.66, mechanic: 'gravity_field', buff: { spd: -2 }, msg: '重力扭曲！速度慢的灵兽行动困难！' },
+      { hpPct: 0.66, mechanic: 'gravity_field', buff: { spd: -2 }, msg: '重力扭曲！速度慢的精灵行动困难！' },
       { hpPct: 0.33, mechanic: 'star_dream', buff: { s_def: 2 }, msg: '进入星海梦境！光/超能/妖精系才能破盾！', shield: 8000 },
     ],
     rewards: { gold: 12000, exp_candy: 4, tickets: 3 },
@@ -231,7 +231,7 @@ export function getTodayBoss(dateStr) {
 }
 
 export function scaleBossHp(boss, badges) {
-  const mult = 1 + Math.max(0, badges - 6) * 0.12;
+  const mult = 1 + Math.max(0, badges - 6) * 0.08;
   return Math.floor(boss.baseHp * mult);
 }
 

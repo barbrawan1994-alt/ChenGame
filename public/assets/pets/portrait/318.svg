@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 768" role="img" aria-label="腐化食人花 original portrait">
+  
+  <defs>
+    <linearGradient id="bgp318" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c7f7a4"/>
+      <stop offset=".55" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#c7f7a4"/>
+      <stop offset=".6" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#c7f7a4"/>
+      <stop offset=".72" stop-color="#43b957"/>
+      <stop offset="1" stop-color="#1f6f43"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1f6f43" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="768" rx="48" fill="url(#bgp318)"/>
+  <rect x="24" y="24" width="464" height="720" rx="40" fill="#ffffff" opacity=".08"/>
+  <g opacity=".42"><circle cx="386" cy="405" r="3.1" fill="#fff" opacity="0.30"/><circle cx="278" cy="579" r="2.1" fill="#fff" opacity="0.29"/><circle cx="493" cy="98" r="3.2" fill="#fff" opacity="0.36"/><circle cx="105" cy="60" r="1.2" fill="#fff" opacity="0.38"/><circle cx="46" cy="335" r="1.3" fill="#fff" opacity="0.43"/><circle cx="488" cy="611" r="3.1" fill="#fff" opacity="0.58"/><circle cx="430" cy="567" r="2.8" fill="#fff" opacity="0.69"/><circle cx="337" cy="204" r="3.1" fill="#fff" opacity="0.30"/><circle cx="354" cy="405" r="1.7" fill="#fff" opacity="0.55"/><circle cx="185" cy="463" r="2.9" fill="#fff" opacity="0.62"/><circle cx="218" cy="632" r="1.7" fill="#fff" opacity="0.31"/><circle cx="290" cy="482" r="2.0" fill="#fff" opacity="0.69"/><circle cx="393" cy="107" r="1.1" fill="#fff" opacity="0.40"/><circle cx="383" cy="693" r="1.8" fill="#fff" opacity="0.26"/><circle cx="338" cy="341" r="1.4" fill="#fff" opacity="0.40"/><circle cx="24" cy="204" r="3.0" fill="#fff" opacity="0.43"/><circle cx="391" cy="442" r="2.4" fill="#fff" opacity="0.27"/><circle cx="486" cy="168" r="2.1" fill="#fff" opacity="0.31"/><circle cx="353" cy="741" r="3.0" fill="#fff" opacity="0.35"/><circle cx="272" cy="639" r="1.4" fill="#fff" opacity="0.58"/><circle cx="383" cy="246" r="1.6" fill="#fff" opacity="0.30"/><circle cx="345" cy="617" r="1.8" fill="#fff" opacity="0.65"/><circle cx="392" cy="387" r="1.7" fill="#fff" opacity="0.67"/><circle cx="239" cy="302" r="3.0" fill="#fff" opacity="0.36"/><circle cx="86" cy="18" r="3.1" fill="#fff" opacity="0.43"/><circle cx="364" cy="470" r="2.7" fill="#fff" opacity="0.41"/><circle cx="147" cy="125" r="0.9" fill="#fff" opacity="0.36"/><circle cx="505" cy="553" r="2.4" fill="#fff" opacity="0.51"/></g>
+  <path d="M18 704 C124 595 205 659 256 580 C314 666 392 596 494 704 V768 H18Z" fill="#1f6f43" opacity=".18"/>
+  <ellipse cx="256" cy="662" rx="150" ry="34" fill="#1f6f43" opacity=".28"/>
+  <g transform="translate(0 122)">
+    <path d="M231.4 400.7 C128.9 376.1 83.80000000000001 265.4 198.60000000000002 275.65" fill="#43b957" opacity=".82"/><path d="M280.6 400.7 C383.1 376.1 428.2 265.4 313.4 275.65" fill="#43b957" opacity=".82"/><ellipse cx="256" cy="339.2" rx="98.39999999999999" ry="116.85" fill="url(#body)" filter="url(#softShadow)"/><path d="M256 138.3 C169.9 175.20000000000002 161.7 259.25 256 251.05 C350.3 259.25 342.1 175.20000000000002 256 138.3Z" fill="#c7f7a4"/><circle cx="256" cy="253.1" r="77.89999999999999" fill="url(#head)"/><ellipse cx="223.2" cy="253.1" rx="14.349999999999998" ry="16.4" fill="#14213d"/><ellipse cx="288.8" cy="253.1" rx="14.349999999999998" ry="16.4" fill="#14213d"/><circle cx="229.35" cy="244.9" r="4.714999999999999" fill="#fff"/><circle cx="294.95" cy="244.9" r="4.714999999999999" fill="#fff"/><path d="M256 183.4 L278.55 212.10000000000002 L256 242.85 L233.45 212.10000000000002 Z" fill="#c7f7a4" opacity=".92"/>
+  </g>
+  <path d="M74 126 C170 65 334 65 438 126" stroke="#fff" stroke-width="16" stroke-linecap="round" opacity=".16"/>
+  <path d="M63 676 C162 718 344 718 449 662" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".16"/>
+</svg>

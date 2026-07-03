@@ -1,11 +1,11 @@
 /**
- * Three Kingdoms (三国) generals — recruitment & encounter data for faction-themed RPG.
- * Factions: wei (魏), shu (蜀), wu (吴), neutral (独立/群雄).
+ * Four Kingdoms (四国) generals — recruitment & encounter data for faction-themed RPG.
+ * Factions: wei (魏), shu (蜀), wu (吴), jin (晋), neutral (独立/群雄).
  */
 
-const FACTIONS = ['wei', 'shu', 'wu', 'neutral'];
+const FACTIONS = ['wei', 'shu', 'wu', 'jin', 'neutral'];
 
-/** @typedef {'wei'|'shu'|'wu'|'neutral'} GeneralFaction */
+/** @typedef {'wei'|'shu'|'wu'|'jin'|'neutral'} GeneralFaction */
 /** @typedef {'SSR'|'SR'|'R'} GeneralRarity */
 
 /**
@@ -87,7 +87,7 @@ function G(raw) {
   return { ...raw, recruitCost, bonus: bonusFor(raw.rarity, raw.id) };
 }
 
-/** 300 generals: 75 per faction — SSR / SR / R balanced. */
+/** 375 generals: 75 per faction (wei/shu/wu/jin/neutral) — SSR / SR / R balanced. */
 const RAW_GENERALS = [
   // Wei (50) — 6 SSR / 12 SR / 32 R
   G({ id: 'wei_cao_cao', name: '曹操', title: '魏武帝', faction: 'wei', rarity: 'SSR', teamLevel: 88, teamSize: 6, desc: '乱世奸雄，挟天子以令诸侯。', icon: '🦁' }),
@@ -326,6 +326,83 @@ const RAW_GENERALS = [
   G({ id: 'wu_xia_hou_cheng', name: '贺邵', title: '中书令', faction: 'wu', rarity: 'R', teamLevel: 59, teamSize: 3, desc: '忠言逆耳，被孙皓杀害。', icon: '📣' }),
   G({ id: 'wu_lou_xuan', name: '楼玄', title: '宫下镇', faction: 'wu', rarity: 'R', teamLevel: 58, teamSize: 3, desc: '直言进谏，遭孙皓流放。', icon: '🏔️' }),
 
+  // Jin (75) — 6 SSR / 16 SR / 53 R
+  G({ id: 'jin_sima_yi', name: '司马懿', title: '宣帝', faction: 'jin', rarity: 'SSR', teamLevel: 90, teamSize: 6, desc: '鹰视狼顾，三代谋权终统天下。', icon: '🦊' }),
+  G({ id: 'jin_sima_yan', name: '司马炎', title: '武帝', faction: 'jin', rarity: 'SSR', teamLevel: 85, teamSize: 5, desc: '代魏建晋，一统三国。', icon: '👑' }),
+  G({ id: 'jin_yang_hu', name: '羊祜', title: '征南大将军', faction: 'jin', rarity: 'SSR', teamLevel: 86, teamSize: 5, desc: '仁德将军，灭吴总设计师。', icon: '🕊️' }),
+  G({ id: 'jin_du_yu', name: '杜预', title: '征南大将军', faction: 'jin', rarity: 'SSR', teamLevel: 84, teamSize: 5, desc: '文武全才，破竹之势灭东吴。', icon: '🎋' }),
+  G({ id: 'jin_xie_an', name: '谢安', title: '太傅', faction: 'jin', rarity: 'SSR', teamLevel: 88, teamSize: 6, desc: '东山再起，淝水之战总指挥。', icon: '⛰️' }),
+  G({ id: 'jin_xie_xuan', name: '谢玄', title: '北府将军', faction: 'jin', rarity: 'SSR', teamLevel: 86, teamSize: 5, desc: '北府兵缔造者，淝水大捷。', icon: '🦁' }),
+  G({ id: 'jin_sima_shi', name: '司马师', title: '大将军', faction: 'jin', rarity: 'SR', teamLevel: 78, teamSize: 5, desc: '铁腕治国，废曹芳立曹髦。', icon: '🔗' }),
+  G({ id: 'jin_sima_zhao', name: '司马昭', title: '晋王', faction: 'jin', rarity: 'SR', teamLevel: 77, teamSize: 5, desc: '路人皆知其心，灭蜀总策划。', icon: '🦅' }),
+  G({ id: 'jin_wang_jun', name: '王濬', title: '龙骧将军', faction: 'jin', rarity: 'SR', teamLevel: 79, teamSize: 5, desc: '楼船下益州，金陵王气收。', icon: '🚢' }),
+  G({ id: 'jin_deng_ai', name: '邓艾', title: '征西将军', faction: 'jin', rarity: 'SR', teamLevel: 80, teamSize: 5, desc: '偷渡阴平，奇兵灭蜀。', icon: '⛰️' }),
+  G({ id: 'jin_zhong_hui', name: '钟会', title: '镇西将军', faction: 'jin', rarity: 'SR', teamLevel: 78, teamSize: 5, desc: '伐蜀主帅，野心勃勃。', icon: '🗝️' }),
+  G({ id: 'jin_jia_chong', name: '贾充', title: '车骑将军', faction: 'jin', rarity: 'SR', teamLevel: 75, teamSize: 4, desc: '开国功臣，谋定社稷。', icon: '🎭' }),
+  G({ id: 'jin_zhang_hua', name: '张华', title: '司空', faction: 'jin', rarity: 'SR', teamLevel: 74, teamSize: 4, desc: '博学多才，力主灭吴。', icon: '📚' }),
+  G({ id: 'jin_zu_ti', name: '祖逖', title: '奋威将军', faction: 'jin', rarity: 'SR', teamLevel: 78, teamSize: 5, desc: '闻鸡起舞，中流击楫。', icon: '🐓' }),
+  G({ id: 'jin_huan_wen', name: '桓温', title: '大司马', faction: 'jin', rarity: 'SR', teamLevel: 79, teamSize: 5, desc: '三次北伐，权倾朝野。', icon: '🗡️' }),
+  G({ id: 'jin_liu_kun', name: '刘琨', title: '并州刺史', faction: 'jin', rarity: 'SR', teamLevel: 76, teamSize: 4, desc: '孤城抗胡，闻鸡起舞。', icon: '🌅' }),
+  G({ id: 'jin_tao_kan', name: '陶侃', title: '大将军', faction: 'jin', rarity: 'SR', teamLevel: 77, teamSize: 5, desc: '运甓之勤，平定苏峻。', icon: '🧱' }),
+  G({ id: 'jin_wang_dao', name: '王导', title: '丞相', faction: 'jin', rarity: 'SR', teamLevel: 76, teamSize: 4, desc: '江左管夷吾，东晋开国。', icon: '📜' }),
+  G({ id: 'jin_ma_long', name: '马隆', title: '平虏护军', faction: 'jin', rarity: 'SR', teamLevel: 75, teamSize: 4, desc: '平定凉州，威震西陲。', icon: '🏔️' }),
+  G({ id: 'jin_yu_liang', name: '庾亮', title: '征西将军', faction: 'jin', rarity: 'SR', teamLevel: 73, teamSize: 4, desc: '南渡名臣，掌握朝政。', icon: '🌙' }),
+  G({ id: 'jin_wang_hun', name: '王浑', title: '征东大将军', faction: 'jin', rarity: 'SR', teamLevel: 74, teamSize: 4, desc: '伐吴功臣，横江破敌。', icon: '⚓' }),
+  G({ id: 'jin_chen_shou', name: '陈寿', title: '治书侍御史', faction: 'jin', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '《三国志》作者，史家之绝唱。', icon: '📖' }),
+  G({ id: 'jin_pei_xiu', name: '裴秀', title: '司空', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '地图学之父，制图六体。', icon: '🗺️' }),
+  G({ id: 'jin_xun_xu', name: '荀勖', title: '中书监', faction: 'jin', rarity: 'R', teamLevel: 67, teamSize: 3, desc: '博学善音律，西晋名臣。', icon: '🎵' }),
+  G({ id: 'jin_wei_guan', name: '卫瓘', title: '太保', faction: 'jin', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '计杀邓艾钟会，平定蜀乱。', icon: '⚖️' }),
+  G({ id: 'jin_tang_bin', name: '唐彬', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '灭吴水战先锋。', icon: '⚓' }),
+  G({ id: 'jin_hu_fen', name: '胡奋', title: '镇南将军', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '西晋名将，镇守荆州。', icon: '🛡️' }),
+  G({ id: 'jin_shi_bao2', name: '石苞', title: '大司马', faction: 'jin', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '伐吴功臣，镇守淮南。', icon: '🏰' }),
+  G({ id: 'jin_wang_rong', name: '王戎', title: '司徒', faction: 'jin', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '竹林七贤之一，灭吴有功。', icon: '🎍' }),
+  G({ id: 'jin_lu_ji', name: '陆机', title: '文学家', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '陆逊之孙，文才绝世。', icon: '✒️' }),
+  G({ id: 'jin_lu_yun', name: '陆云', title: '清河太守', faction: 'jin', rarity: 'R', teamLevel: 62, teamSize: 3, desc: '与兄陆机齐名，清正有为。', icon: '☁️' }),
+  G({ id: 'jin_liu_lao_zhi', name: '刘牢之', title: '北府将军', faction: 'jin', rarity: 'R', teamLevel: 73, teamSize: 4, desc: '北府兵猛将，淝水先锋。', icon: '🐎' }),
+  G({ id: 'jin_wen_qiao', name: '温峤', title: '骠骑将军', faction: 'jin', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '平定王敦之乱，燃犀照水。', icon: '🔥' }),
+  G({ id: 'jin_huan_yi', name: '桓伊', title: '右军将军', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '淝水之战先锋，善吹笛。', icon: '🎶' }),
+  G({ id: 'jin_su_jun', name: '苏峻', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '流民帅叛乱，攻陷建康。', icon: '⚔️' }),
+  G({ id: 'jin_wang_jing', name: '王经', title: '雍州刺史', faction: 'jin', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '洮西败于姜维，死节不屈。', icon: '💀' }),
+  G({ id: 'jin_wen_yang', name: '文鸯', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 74, teamSize: 4, desc: '单骑退雄兵，勇冠当世。', icon: '🐎' }),
+  G({ id: 'jin_zhuge_xu', name: '诸葛绪', title: '雍州刺史', faction: 'jin', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '伐蜀偏师，未竟全功。', icon: '🏔️' }),
+  G({ id: 'jin_yang_jun', name: '杨骏', title: '太傅', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '晋武帝岳父，八王之乱祸首。', icon: '⚠️' }),
+  G({ id: 'jin_sima_liang', name: '司马亮', title: '汝南王', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '八王之乱首殉者。', icon: '🔗' }),
+  G({ id: 'jin_sima_wei', name: '司马玮', title: '楚王', faction: 'jin', rarity: 'R', teamLevel: 66, teamSize: 4, desc: '少年勇武，卷入八王之乱。', icon: '🗡️' }),
+  G({ id: 'jin_sima_yue', name: '司马越', title: '东海王', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '八王之乱最终胜者。', icon: '👑' }),
+  G({ id: 'jin_sima_ying', name: '司马颖', title: '成都王', faction: 'jin', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '八王之乱中势大一时。', icon: '🏰' }),
+  G({ id: 'jin_sima_rui', name: '司马睿', title: '元帝', faction: 'jin', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '衣冠南渡，建立东晋。', icon: '🌊' }),
+  G({ id: 'jin_xi_jian', name: '郗鉴', title: '车骑将军', faction: 'jin', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '东晋重臣，平苏峻之乱。', icon: '🛡️' }),
+  G({ id: 'jin_huan_chong', name: '桓冲', title: '车骑将军', faction: 'jin', rarity: 'R', teamLevel: 71, teamSize: 4, desc: '桓温之弟，忠于晋室。', icon: '🏔️' }),
+  G({ id: 'jin_xie_shi', name: '谢石', title: '卫将军', faction: 'jin', rarity: 'R', teamLevel: 72, teamSize: 4, desc: '淝水之战前线总指挥。', icon: '⚔️' }),
+  G({ id: 'jin_xie_yan', name: '谢琰', title: '卫将军', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '谢安之子，守御有功。', icon: '🌟' }),
+  G({ id: 'jin_zhu_xu', name: '朱序', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '襄阳守将，淝水阵前呼"败了"。', icon: '📣' }),
+  G({ id: 'jin_duan_zhi', name: '段灼', title: '散骑常侍', faction: 'jin', rarity: 'R', teamLevel: 62, teamSize: 3, desc: '为邓艾鸣冤上书。', icon: '📜' }),
+  G({ id: 'jin_he_pan', name: '何攀', title: '廷尉', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '灭吴参谋，献计有功。', icon: '💡' }),
+  G({ id: 'jin_wang_xiang', name: '王祥', title: '太保', faction: 'jin', rarity: 'R', teamLevel: 61, teamSize: 3, desc: '卧冰求鲤，至孝典范。', icon: '❄️' }),
+  G({ id: 'jin_shan_tao', name: '山涛', title: '吏部尚书', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '竹林七贤之一，善鉴识人才。', icon: '🎋' }),
+  G({ id: 'jin_ruan_ji', name: '阮籍', title: '步兵校尉', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '竹林七贤，佯狂避祸。', icon: '🍶' }),
+  G({ id: 'jin_ji_kang', name: '嵇康', title: '中散大夫', faction: 'jin', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '竹林七贤之首，广陵绝响。', icon: '🎵' }),
+  G({ id: 'jin_xiang_xiu', name: '向秀', title: '散骑侍郎', faction: 'jin', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '竹林七贤，思旧赋传世。', icon: '🍂' }),
+  G({ id: 'jin_wang_rong2', name: '王衍', title: '太尉', faction: 'jin', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '清谈误国，西晋亡国罪臣。', icon: '💬' }),
+  G({ id: 'jin_liu_yi', name: '刘毅', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '北府名将，与刘裕争锋。', icon: '⚔️' }),
+  G({ id: 'jin_yu_liang_chi', name: '庾翼', title: '安西将军', faction: 'jin', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '庾亮之弟，北伐未成。', icon: '🏹' }),
+  G({ id: 'jin_huan_xuan', name: '桓玄', title: '楚帝', faction: 'jin', rarity: 'R', teamLevel: 72, teamSize: 4, desc: '桓温之子，篡晋称帝。', icon: '👹' }),
+  G({ id: 'jin_liu_yu', name: '刘裕', title: '宋武帝', faction: 'jin', rarity: 'R', teamLevel: 78, teamSize: 5, desc: '气吞万里如虎，灭晋建宋。', icon: '🐯' }),
+  G({ id: 'jin_mu_rong_chui', name: '慕容垂', title: '燕主', faction: 'jin', rarity: 'R', teamLevel: 75, teamSize: 4, desc: '十六国名将，败桓温于枋头。', icon: '🐉' }),
+  G({ id: 'jin_fu_jian', name: '苻坚', title: '天王', faction: 'jin', rarity: 'R', teamLevel: 76, teamSize: 5, desc: '百万之师淝水惨败。', icon: '💀' }),
+  G({ id: 'jin_fu_rong', name: '苻融', title: '阳平公', faction: 'jin', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '苻坚之弟，淝水阵亡。', icon: '😢' }),
+  G({ id: 'jin_duan_qin', name: '段钦', title: '护军', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '刘琨麾下忠将，坚守并州。', icon: '🏰' }),
+  G({ id: 'jin_zhou_chu', name: '周处', title: '平西将军', faction: 'jin', rarity: 'R', teamLevel: 71, teamSize: 4, desc: '除三害之英雄，战死沙场。', icon: '🐉' }),
+  G({ id: 'jin_mao_bao', name: '毛宝', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '放龟获救，传奇名将。', icon: '🐢' }),
+  G({ id: 'jin_he_wu_ji', name: '何无忌', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '北府名将，讨伐桓玄功臣。', icon: '⚔️' }),
+  G({ id: 'jin_tan_dao_ji', name: '檀道济', title: '征南将军', faction: 'jin', rarity: 'R', teamLevel: 74, teamSize: 4, desc: '唱筹量沙，三十六计。', icon: '🧮' }),
+  G({ id: 'jin_wang_xian_zhi', name: '王羲之', title: '右军将军', faction: 'jin', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '书圣，兰亭序传世。', icon: '✒️' }),
+  G({ id: 'jin_gu_rong_zhi', name: '顾荣', title: '散骑常侍', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '南渡功臣，辅佐司马睿。', icon: '🌊' }),
+  G({ id: 'jin_he_chong', name: '贺充', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '江东名士，南渡佐命。', icon: '🎖️' }),
+  G({ id: 'jin_zhu_bo', name: '祝伯', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '淝水之战左翼将领。', icon: '🏹' }),
+  G({ id: 'jin_sun_en', name: '孙恩', title: '乱贼', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '五斗米道叛乱，扰乱东晋。', icon: '🌀' }),
+  G({ id: 'jin_yu_yi', name: '虞翊', title: '武陵太守', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '增灶退敌，善用奇谋。', icon: '🔥' }),
+
   // Neutral (50) — 6 SSR / 12 SR / 32 R
   G({ id: 'neu_lv_bu', name: '吕布', title: '飞将', faction: 'neutral', rarity: 'SSR', teamLevel: 88, teamSize: 5, desc: '天下第一，然反复难制。', icon: '🐺' }),
   G({ id: 'neu_dong_zhuo', name: '董卓', title: '相国', faction: 'neutral', rarity: 'SSR', teamLevel: 82, teamSize: 5, desc: '祸乱洛阳，群雄共讨之。', icon: '👹' }),
@@ -453,6 +530,7 @@ export const FACTION_PORTRAIT_COLORS = {
   wei: { bg: 'linear-gradient(135deg, #1565C0, #0D47A1)', border: '#42A5F5', text: '#E3F2FD' },
   shu: { bg: 'linear-gradient(135deg, #2E7D32, #1B5E20)', border: '#66BB6A', text: '#E8F5E9' },
   wu: { bg: 'linear-gradient(135deg, #E65100, #BF360C)', border: '#FF7043', text: '#FBE9E7' },
+  jin: { bg: 'linear-gradient(135deg, #4A148C, #311B92)', border: '#9C27B0', text: '#F3E5F5' },
   neutral: { bg: 'linear-gradient(135deg, #616161, #424242)', border: '#9E9E9E', text: '#F5F5F5' },
 };
 
@@ -460,7 +538,8 @@ export function getGeneralPortrait(general) {
   const fc = FACTION_PORTRAIT_COLORS[general.faction] || FACTION_PORTRAIT_COLORS.neutral;
   const rc = GENERAL_RARITY_CONFIG[general.rarity] || {};
   const surname = general.name.charAt(0);
-  return { surname, bg: fc.bg, border: fc.border, textColor: fc.text, rarityColor: rc.color || '#999', rarityBg: rc.bgColor || '#333' };
+  const imageUrl = general.portrait || (general.id ? `/assets/generals/${general.id}.svg` : null);
+  return { surname, imageUrl, bg: fc.bg, border: fc.border, textColor: fc.text, rarityColor: rc.color || '#999', rarityBg: rc.bgColor || '#333' };
 }
 
 export function generateEnemyGenerals(enemyLevel, enemyFaction) {
@@ -468,7 +547,7 @@ export function generateEnemyGenerals(enemyLevel, enemyFaction) {
   const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
   const count = enemyLevel >= 80 ? rand(2, 4) : enemyLevel >= 60 ? rand(1, 3) : rand(0, 2);
   if (count === 0) return [];
-  const fac = ['wei', 'shu', 'wu'].includes(enemyFaction) ? enemyFaction : 'neutral';
+  const fac = ['wei', 'shu', 'wu', 'jin'].includes(enemyFaction) ? enemyFaction : 'neutral';
   const pool = SANGUO_GENERALS.filter(g => Math.abs(g.teamLevel - enemyLevel) <= 20);
   if (pool.length === 0) return [];
   const result = [];

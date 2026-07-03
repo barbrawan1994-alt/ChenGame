@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 768" role="img" aria-label="暗夜猎豹 original portrait">
+  
+  <defs>
+    <linearGradient id="bgp319" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4e8d8"/>
+      <stop offset=".55" stop-color="#b78f68"/>
+      <stop offset="1" stop-color="#6d4f3f"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#f4e8d8"/>
+      <stop offset=".6" stop-color="#b78f68"/>
+      <stop offset="1" stop-color="#6d4f3f"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#f4e8d8"/>
+      <stop offset=".72" stop-color="#b78f68"/>
+      <stop offset="1" stop-color="#6d4f3f"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#6d4f3f" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="768" rx="48" fill="url(#bgp319)"/>
+  <rect x="24" y="24" width="464" height="720" rx="40" fill="#ffffff" opacity=".08"/>
+  <g opacity=".42"><circle cx="85" cy="190" r="2.3" fill="#fff" opacity="0.26"/><circle cx="188" cy="281" r="2.4" fill="#fff" opacity="0.45"/><circle cx="32" cy="657" r="3.0" fill="#fff" opacity="0.62"/><circle cx="31" cy="13" r="1.8" fill="#fff" opacity="0.27"/><circle cx="45" cy="19" r="1.8" fill="#fff" opacity="0.64"/><circle cx="478" cy="675" r="3.1" fill="#fff" opacity="0.58"/><circle cx="384" cy="545" r="2.6" fill="#fff" opacity="0.61"/><circle cx="277" cy="95" r="1.8" fill="#fff" opacity="0.48"/><circle cx="92" cy="383" r="2.4" fill="#fff" opacity="0.63"/><circle cx="447" cy="511" r="1.0" fill="#fff" opacity="0.58"/><circle cx="480" cy="8" r="1.3" fill="#fff" opacity="0.70"/><circle cx="81" cy="227" r="3.2" fill="#fff" opacity="0.42"/><circle cx="224" cy="472" r="2.6" fill="#fff" opacity="0.40"/><circle cx="123" cy="71" r="1.8" fill="#fff" opacity="0.39"/><circle cx="283" cy="749" r="1.2" fill="#fff" opacity="0.43"/><circle cx="126" cy="152" r="1.7" fill="#fff" opacity="0.40"/><circle cx="63" cy="263" r="1.1" fill="#fff" opacity="0.44"/><circle cx="415" cy="521" r="1.5" fill="#fff" opacity="0.51"/><circle cx="272" cy="230" r="1.6" fill="#fff" opacity="0.61"/><circle cx="258" cy="741" r="2.9" fill="#fff" opacity="0.28"/><circle cx="45" cy="28" r="2.5" fill="#fff" opacity="0.53"/><circle cx="215" cy="260" r="2.7" fill="#fff" opacity="0.69"/><circle cx="372" cy="361" r="1.3" fill="#fff" opacity="0.63"/><circle cx="37" cy="304" r="2.7" fill="#fff" opacity="0.53"/><circle cx="301" cy="133" r="1.8" fill="#fff" opacity="0.67"/><circle cx="181" cy="727" r="2.6" fill="#fff" opacity="0.48"/><circle cx="56" cy="576" r="2.7" fill="#fff" opacity="0.30"/><circle cx="152" cy="253" r="1.7" fill="#fff" opacity="0.58"/></g>
+  <path d="M0 590 C76 555 120 612 197 582 C277 551 327 614 413 581 C462 562 489 570 512 585 V768 H0Z" fill="#6d4f3f" opacity=".22"/>
+  <ellipse cx="256" cy="662" rx="150" ry="34" fill="#6d4f3f" opacity=".28"/>
+  <g transform="translate(0 122)">
+    <path d="M149.4 435.54999999999995 C100.20000000000002 304.35 167.85000000000002 156.75 264.2 154.70000000000002 C379 150.60000000000002 420 298.2 352.35 435.54999999999995 C317.5 400.7 288.8 458.1 256 419.15 C221.15 458.1 188.35000000000002 400.7 149.4 435.54999999999995Z" fill="url(#body)" filter="url(#softShadow)"/><circle cx="219.1" cy="253.1" r="16.4" fill="#1b1638"/><circle cx="292.9" cy="253.1" r="16.4" fill="#1b1638"/><path d="M239.6 312.55 Q256 331 280.6 310.5" stroke="#1b1638" stroke-width="10.25" fill="none" stroke-linecap="round"/><path d="M126.85000000000002 326.9 C40.75000000000003 296.15 83.80000000000001 201.85000000000002 137.10000000000002 238.75" fill="#b78f68" opacity=".35"/><path d="M385.15 326.9 C471.25 296.15 428.2 201.85000000000002 374.9 238.75" fill="#b78f68" opacity=".35"/><path d="M215 201.85000000000002 Q256 224.4 297 201.85000000000002" stroke="#f4e8d8" stroke-width="10.25" fill="none" stroke-linecap="round" opacity=".8"/>
+  </g>
+  <path d="M74 126 C170 65 334 65 438 126" stroke="#fff" stroke-width="16" stroke-linecap="round" opacity=".16"/>
+  <path d="M63 676 C162 718 344 718 449 662" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".16"/>
+</svg>

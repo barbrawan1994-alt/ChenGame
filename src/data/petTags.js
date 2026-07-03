@@ -1,4 +1,4 @@
-/** 灵兽标签系统 — 用于副本限制、联携与生态互动 */
+/** 精灵标签系统 — 用于副本限制、联携与生态互动 */
 
 export const PET_TAG_DEFS = {
   small: { id: 'small', name: '小型', icon: '🐭', desc: '体型娇小，闪避高但易被击飞' },
@@ -31,10 +31,16 @@ const TYPE_TAG_MAP = {
   GROUND: ['large'],
   NORMAL: ['beast'],
   FIGHT: ['beast'],
+  COSMIC: ['spirit'],
+  SOUND: ['spirit'],
+  WIND: ['flying'],
+  LIGHT: ['spirit'],
+  TIME: ['spirit', 'nocturnal'],
+  CHAOS: ['nocturnal', 'large'],
 };
 
 const LARGE_NAMES = /巨|王|霸|神|龙|象|鲸|泰坦|主|魔/;
-const SMALL_NAMES = /苗|幼|小|崽|球|灵|鼠|雀|蝶|萤/;
+const SMALL_NAMES = /苗|幼|小|崽|球|鼠|雀|蝶|萤|眠菇/;
 
 export function inferPetTags(pet) {
   if (!pet) return [];
@@ -45,15 +51,15 @@ export function inferPetTags(pet) {
   if (LARGE_NAMES.test(name)) tags.add('large');
   if (SMALL_NAMES.test(name)) tags.add('small');
   if (tags.has('large')) tags.delete('small');
-  if (!tags.has('swarm') && !tags.has('solitary')) tags.add('beast');
+  if (!tags.has('swarm') && !tags.has('solitary') && !tags.has('spirit') && !tags.has('plant') && !tags.has('mechanical')) tags.add('beast');
   return [...tags];
 }
 
 export const TAG_RESTRICTIONS = {
-  narrow_cave: { blocked: ['large'], hint: '巨型灵兽无法进入窄洞' },
-  underwater_ruins: { penalized: ['aquatic'], bonus: ['aquatic'], maladaptSpd: 0.7, hint: '非水栖灵兽水下行动变慢' },
-  shadow_castle: { bonus: ['spirit'], trapImmune: ['spirit'], hint: '灵体灵兽不触发幽影陷阱' },
-  swarm_nest: { bonus: ['swarm'], swarmMult: 1.25, hint: '群居灵兽联携效果增强' },
+  narrow_cave: { blocked: ['large'], hint: '巨型精灵无法进入窄洞' },
+  underwater_ruins: { penalized: ['beast', 'spirit', 'mechanical'], bonus: ['aquatic'], maladaptSpd: 0.7, hint: '非水栖精灵水下行动变慢' },
+  shadow_castle: { bonus: ['spirit'], trapImmune: ['spirit'], hint: '灵体精灵不触发幽影陷阱' },
+  swarm_nest: { bonus: ['swarm'], swarmMult: 1.25, hint: '群居精灵联携效果增强' },
   mechanical_tower: { risk: ['mechanical'], overloadChance: 0.1, hint: '雷系技能可能过载机械机关' },
 };
 

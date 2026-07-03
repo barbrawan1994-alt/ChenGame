@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="梦境编织者 original avatar">
+  
+  <defs>
+    <linearGradient id="bga273" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd7f3"/>
+      <stop offset=".55" stop-color="#f47ac2"/>
+      <stop offset="1" stop-color="#8e3b89"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".36" cy=".25" r=".76">
+      <stop offset="0" stop-color="#ffd7f3"/>
+      <stop offset=".6" stop-color="#f47ac2"/>
+      <stop offset="1" stop-color="#8e3b89"/>
+    </radialGradient>
+    <radialGradient id="head" cx=".36" cy=".26" r=".72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset=".2" stop-color="#ffd7f3"/>
+      <stop offset=".72" stop-color="#f47ac2"/>
+      <stop offset="1" stop-color="#8e3b89"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#8e3b89" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bga273)"/>
+  <circle cx="128" cy="128" r="113" fill="#fff" opacity=".12"/>
+  <circle cx="128" cy="128" r="104" fill="#ffffff" opacity=".18"/>
+  <g opacity=".35"><circle cx="69" cy="35" r="1.6" fill="#fff" opacity="0.69"/><circle cx="194" cy="216" r="1.1" fill="#fff" opacity="0.52"/><circle cx="153" cy="110" r="2.4" fill="#fff" opacity="0.60"/><circle cx="161" cy="140" r="1.1" fill="#fff" opacity="0.39"/><circle cx="61" cy="44" r="1.9" fill="#fff" opacity="0.64"/><circle cx="119" cy="194" r="0.9" fill="#fff" opacity="0.36"/><circle cx="32" cy="145" r="3.1" fill="#fff" opacity="0.46"/><circle cx="11" cy="240" r="1.9" fill="#fff" opacity="0.62"/><circle cx="190" cy="158" r="3.2" fill="#fff" opacity="0.55"/><circle cx="105" cy="236" r="0.8" fill="#fff" opacity="0.66"/></g>
+  <g transform="rotate(2 128 128)">
+    <path d="M76 196 C52 132 85 60 132 59 C188 57 208 129 175 196 C158 179 144 207 128 188 C111 207 95 179 76 196Z" fill="url(#body)" filter="url(#softShadow)"/><circle cx="110" cy="107" r="8" fill="#1b1638"/><circle cx="146" cy="107" r="8" fill="#1b1638"/><path d="M120 136 Q128 145 140 135" stroke="#1b1638" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M65 143 C23 128 44 82 70 100" fill="#f47ac2" opacity=".35"/><path d="M191 143 C233 128 212 82 186 100" fill="#f47ac2" opacity=".35"/><circle cx="128" cy="86" r="7" fill="#ffd7f3" opacity=".9"/>
+  </g>
+  <path d="M42 198 C82 222 171 226 216 184" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".22"/>
+</svg>

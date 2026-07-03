@@ -434,10 +434,10 @@ export const FOREST_EVENTS = [
 ];
 
 export const EXAM_FINALS_BRACKETS = [
-  { round: 1, name: '预选赛', enemyLvlRange: [0, 5], reward: { gold: 2000 } },
-  { round: 2, name: '八强赛', enemyLvlRange: [3, 8], reward: { gold: 3000 } },
-  { round: 3, name: '半决赛', enemyLvlRange: [5, 12], reward: { gold: 5000 } },
-  { round: 4, name: '决赛', enemyLvlRange: [8, 15], reward: { gold: 8000, title: '忍者试炼冠军' } },
+  { round: 1, name: '预选赛', enemyLvlRange: [-5, 0], reward: { gold: 2000 }, scaleToPlayer: true },
+  { round: 2, name: '八强赛', enemyLvlRange: [-3, 3], reward: { gold: 3000 }, scaleToPlayer: true },
+  { round: 3, name: '半决赛', enemyLvlRange: [0, 5], reward: { gold: 5000 }, scaleToPlayer: true },
+  { round: 4, name: '决赛', enemyLvlRange: [3, 8], reward: { gold: 8000, title: '忍者试炼冠军' }, scaleToPlayer: true },
 ];
 
 export const NARUTO_CHALLENGES = [
@@ -520,7 +520,7 @@ export const NARUTO_STORY_CHAPTERS = [
     stages: [
       { name: '宇智波鼬的幻术', desc: '在追踪途中遭遇鼬的分身阻截', bossName: '鼬(分身)', bossLevel: 50, bossCount: 1, reward: { gold: 6000 } },
       { name: '蝎的百傀儡', desc: '与砂隐傀儡大师赤砂之蝎交战', bossName: '赤砂之蝎', bossLevel: 53, bossCount: 1, reward: { gold: 7000 } },
-      { name: '迪达拉的艺术', desc: '追击带走我爱罗的爆炸艺术家迪达拉', bossName: '迪达拉', bossLevel: 52, bossCount: 1, reward: { gold: 7000, jutsu: 'c0_art' } },
+      { name: '迪达拉的艺术', desc: '追击带走我爱罗的爆炸艺术家迪达拉', bossName: '迪达拉', bossLevel: 52, bossCount: 1, reward: { gold: 7000, jutsu: 'clay_bomb' } },
       { name: '救出风影', desc: '解除封印，唤醒沉睡的我爱罗', bossName: '晓封印守卫', bossLevel: 55, bossCount: 2, isDouble: true, reward: { gold: 10000, title: '晓之克星' } },
     ],
     epilogue: '千代婆婆用"己生转生"换回了我爱罗的生命。目送她安详离去的身影，你更加坚定了守护羁绊的决心。但晓组织还有更多令人胆寒的成员在暗中等待……',
