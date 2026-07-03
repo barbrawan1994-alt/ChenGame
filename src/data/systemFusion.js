@@ -1,9 +1,10 @@
 /** v14.1 六系统融合 — 门派映射 / 觉醒三档 / 国战PVE / 解锁节奏 */
 
-import { SECT_DB } from './sects';
+import { SECT_DB, SECT_COUNT } from './sects';
 import { canAwakenPet as baseCanAwakenPet } from './resonance';
 
-/** 12 武侠门派 → 生态 PVE 心法角色（映射方案，不替换现有门派战斗被动） */
+/** 30 武侠门派 → 生态 PVE 心法角色（映射方案，不替换现有门派战斗被动） */
+
 export const SECT_ECO_ROLES = {
   1:  { ecoRole: 'burst',    label: '爆发清障', desc: '快速焚烧/压制污染，生态恢复较慢', branches: ['fight'], ecoDelta: { pollution: -20, vegetation: -5 } },
   2:  { ecoRole: 'defense',  label: '筑城防守', desc: '国战防守、地形建设、矿洞探索', branches: ['relocate'], ecoDelta: { stability: 20 } },
@@ -17,6 +18,24 @@ export const SECT_ECO_ROLES = {
   10: { ecoRole: 'puzzle',   label: '机关解谜', desc: '古代遗迹、机械精灵、根系分析', branches: ['heal'], ecoDelta: { spirit: 10, stability: 10 } },
   11: { ecoRole: 'control',  label: '元素联动', desc: '阵法、控制、元素机关', branches: ['heal', 'soothe'], ecoDelta: { spirit: 12 } },
   12: { ecoRole: 'balance',  label: '调和双方', desc: '调停冲突、资源交换', branches: ['soothe', 'relocate'], ecoDelta: { stability: 18, diversity: 8 } },
+  13: { ecoRole: 'burst',    label: '连击清障', desc: '快速多段输出压制污染精灵', branches: ['fight'], ecoDelta: { pollution: -12, stability: 5 } },
+  14: { ecoRole: 'burst',    label: '破甲攻坚', desc: 'Boss破防、高防目标压制', branches: ['fight'], ecoDelta: { stability: 8 } },
+  15: { ecoRole: 'sustain',  label: '嗜血续航', desc: '持久战、吸血维持战线', branches: ['fight'], ecoDelta: { stability: -3 } },
+  16: { ecoRole: 'burst',    label: '双态奇袭', desc: '节奏型爆发，风险与收益并存', branches: ['fight'], ecoDelta: { spirit: 8 } },
+  17: { ecoRole: 'defense',  label: '屏障守城', desc: '护盾防守、边境据点保护', branches: ['relocate'], ecoDelta: { stability: 15 } },
+  18: { ecoRole: 'counter',  label: '反击诱敌', desc: '防守反击、诱敌深入', branches: ['soothe'], ecoDelta: { stability: 10 } },
+  19: { ecoRole: 'balance',  label: '天龙均衡', desc: '全面发展、各类任务皆可', branches: ['heal', 'soothe'], ecoDelta: { diversity: 10, stability: 8 } },
+  20: { ecoRole: 'burst',    label: '背水死战', desc: '低血爆发、险境翻盘', branches: ['fight'], ecoDelta: { stability: -5 } },
+  21: { ecoRole: 'control',  label: '雷法控场', desc: '麻痹控场、限制敌方行动', branches: ['heal'], ecoDelta: { pollution: -8 } },
+  22: { ecoRole: 'control',  label: '星宿削弱', desc: '持续弱化、消耗战优势', branches: ['soothe'], ecoDelta: { pollution: -10 } },
+  23: { ecoRole: 'control',  label: '灵鹫威压', desc: '削弱攻击、保护队友', branches: ['soothe'], ecoDelta: { spirit: 10 } },
+  24: { ecoRole: 'control',  label: '泰山重压', desc: '降速压制、控速先手', branches: ['fight'], ecoDelta: { stability: 6 } },
+  25: { ecoRole: 'burst',    label: '点苍精准', desc: '高命中狙击、PVP优势', branches: ['fight'], ecoDelta: { stability: 5 } },
+  26: { ecoRole: 'synergy',  label: '衡山同门', desc: '同门派协同、团队增益', branches: ['relocate'], ecoDelta: { stability: 12, diversity: 5 } },
+  27: { ecoRole: 'weather',  label: '雪山天时', desc: '依赖天气加成、雪天优势', branches: ['heal'], ecoDelta: { water: 10, pollution: -8 } },
+  28: { ecoRole: 'burst',    label: '青城先手', desc: '首回合爆发、速攻战术', branches: ['fight'], ecoDelta: { stability: 4 } },
+  29: { ecoRole: 'defense',  label: '嵩山铁壁', desc: '濒死护命、高风险防守', branches: ['relocate'], ecoDelta: { stability: 14 } },
+  30: { ecoRole: 'burst',    label: '神霄雷罚', desc: '百分比真伤、高HP目标', branches: ['fight'], ecoDelta: { spirit: 8, pollution: -5 } },
 };
 
 /** 忍术 × 精灵属性联携（PVE 效率加成，非战斗数值膨胀） */
@@ -198,7 +217,7 @@ export const FUSION_UNLOCK_SCHEDULE = [
 ];
 
 export function getSectEcoRole(sectId) {
-  if (!sectId || sectId < 1 || sectId > 12) return null;
+  if (!sectId || sectId < 1 || sectId > SECT_COUNT) return null;
   return SECT_ECO_ROLES[sectId] || null;
 }
 
@@ -237,6 +256,10 @@ export function calcFusionPveBonuses(ctx = {}) {
     else if (role?.ecoRole === 'mobility') bonuses.escapeTurnReduce += 1;
     else if (role?.ecoRole === 'puzzle') bonuses.skipPuzzleStep = true;
     else if (role?.ecoRole === 'balance') { bonuses.purifyBonus += 4; bonuses.protectBonus += 0.05; }
+    else if (role?.ecoRole === 'synergy') { bonuses.protectBonus += 0.06; bonuses.bossMultReduce += 0.02; }
+    else if (role?.ecoRole === 'weather') bonuses.purifyBonus += 6;
+    else if (role?.ecoRole === 'counter') { bonuses.protectBonus += 0.08; bonuses.bossMultReduce += 0.03; }
+    else if (role?.ecoRole === 'sustain') { bonuses.captureBonus += 0.05; bonuses.protectBonus += 0.05; }
   }
   if (ctx.generalTacticId) {
     const gt = getGeneralTactic(ctx.generalTacticId);

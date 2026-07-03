@@ -1,7 +1,14 @@
 // ==========================================
-// [新增] 门派系统配置 (12大门派)
+// 门派系统配置 (30大门派)
 // ==========================================
-export const SECT_DB = {
+import {
+  SECT_DB_EXTENDED,
+  SECT_CHIEFS_EXTENDED,
+  SECT_TEAMS_EXTENDED,
+  SECT_COUNT,
+} from './sectsExtended';
+
+const SECT_DB_BASE = {
   1: { name: '蜀山派', emoji: '⚔️', color: '#2196F3', desc: '御剑术：提升造成的伤害', 
        effect: (lv) => `最终伤害提升 ${3 + lv * 2}%` },
   2: { name: '少林寺', emoji: '🛡️', color: '#FFC107', desc: '金钟罩：减少受到的伤害', 
@@ -27,10 +34,14 @@ export const SECT_DB = {
   12:{ name: '武当派', emoji: '☯️', color: '#009688', desc: '太极功：以柔克刚，反弹特攻伤害', 
        effect: (lv) => `受特攻时反弹 ${5 + lv * 3}% 伤害` },
 };
+
+export const SECT_DB = { ...SECT_DB_BASE, ...SECT_DB_EXTENDED };
+export { SECT_COUNT };
+
 // ==========================================
-// [更新] 门派首席配置 (含专属Buff定义)
+// 门派首席配置 (含专属Buff定义)
 // ==========================================
-export const SECT_CHIEFS_CONFIG = {
+const SECT_CHIEFS_BASE = {
   1: { 
       name: '李逍遥', title: '蜀山首席', ace: 281, // 斩铁剑圣
       quote: '御剑乘风来，除魔天地间！', 
@@ -118,6 +129,7 @@ export const SECT_CHIEFS_CONFIG = {
   },
 };
 
+export const SECT_CHIEFS_CONFIG = { ...SECT_CHIEFS_BASE, ...SECT_CHIEFS_EXTENDED };
 
 // 门派升级消耗公式 (指数增长)
 export const getSectUpgradeCost = (currentLv) => {
@@ -125,9 +137,9 @@ export const getSectUpgradeCost = (currentLv) => {
     return currentLv * 2000; // 1级升2级2000，9级升10级18000
 };
 // ==========================================
-// [新增] 门派对战阵容预览 (ID对应 POKEDEX)
+// 门派对战阵容预览 (ID对应 POKEDEX)
 // ==========================================
-export const SECT_TEAMS = {
+const SECT_TEAMS_BASE = {
   1: [281, 300, 340, 449, 599, 182],   // 蜀山 (剑/龙): 斩铁剑圣, 虹光龙神, 灭世魔龙, 天空龙王, 星辰龙, 烈咬陆鲨
   2: [278, 353, 437, 65, 499, 573],    // 少林 (格斗/岩): 金刚不坏, 泰坦神, 无双霸王, 巨岩兵, 岩石泰坦, 相扑力士
   3: [344, 443, 336, 505, 249, 506],   // 逍遥 (速/飞): 光速神鹰, 暴风之翼, 天空之神, 疾风隼, 音速鸟, 风暴凤凰
@@ -141,3 +153,5 @@ export const SECT_TEAMS = {
   11:[223, 319, 512, 514, 442, 163],   // 华山 (剑/速): 镰刀螳螂, 暗夜猎豹, 风刃螳螂, 风行者, 岚翼鹰, 姆克鹰
   12:[150, 141, 206, 361, 308, 307],   // 武当 (一般/防): 梦幻, 水都守护, 合金暴龙, 古文明遗物, 泰坦巨熊, 皇家狮鹫
 };
+
+export const SECT_TEAMS = { ...SECT_TEAMS_BASE, ...SECT_TEAMS_EXTENDED };

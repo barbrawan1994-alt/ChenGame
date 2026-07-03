@@ -75,6 +75,44 @@ export function applyXinfaDamageMods(rawDmg, attacker, defender, ctx, battleLog)
     if (attacker._sectShield > 0) dmg *= 1.08;
   }
 
+  // 扩展门派 13–30 心法
+  if (tier >= 2 && atkSect === 13 && Math.random() < 0.15) { dmg *= 1.12; battleLog?.('峨眉剑意连击！'); }
+  if (tier >= 3 && atkSect === 13) dmg *= 1.08;
+  if (tier >= 2 && atkSect === 14) dmg *= 1.05;
+  if (tier >= 3 && atkSect === 14 && (defender?.stages?.p_def || 0) > 0) dmg *= 1.12;
+  if (tier >= 2 && atkSect === 15) dmg *= 1.03;
+  if (tier >= 3 && atkSect === 15 && attacker?.currentHp < (attacker?._maxHp || 999) * 0.4) dmg *= 1.15;
+  if (tier >= 2 && atkSect === 16) dmg *= 1.05;
+  if (tier >= 3 && atkSect === 16) dmg *= 1.10;
+  if (tier >= 2 && atkSect === 17 && attacker?._sectShield > 0) dmg *= 1.06;
+  if (tier >= 3 && atkSect === 17 && !attacker?._sectShield) dmg *= 1.08;
+  if (tier >= 2 && atkSect === 18 && Math.random() < 0.12) { dmg *= 1.10; battleLog?.('玉女反击蓄力！'); }
+  if (tier >= 3 && atkSect === 18) dmg *= 1.12;
+  if (tier >= 2 && atkSect === 19) dmg *= 1.03;
+  if (tier >= 3 && atkSect === 19) dmg *= 1.10;
+  if (tier >= 2 && atkSect === 20 && attacker?.currentHp < (attacker?._maxHp || 999) * 0.5) dmg *= 1.08;
+  if (tier >= 3 && atkSect === 20 && attacker?.currentHp < (attacker?._maxHp || 999) * 0.3) dmg *= 1.15;
+  if (tier >= 2 && atkSect === 21 && Math.random() < 0.10) { defender.status = defender.status || 'PAR'; battleLog?.('天山雷诀麻痹！'); }
+  if (tier >= 3 && atkSect === 21 && defender?.status === 'PAR') dmg *= 1.18;
+  if (tier >= 2 && atkSect === 22) dmg *= 1.05;
+  if (tier >= 3 && atkSect === 22 && (defender?.stages?.p_atk || 0) < 0) { attacker.stages = attacker.stages || {}; attacker.stages.p_atk = Math.min(6, (attacker.stages.p_atk || 0) + 1); battleLog?.('吸星换月！'); }
+  if (tier >= 2 && atkSect === 23 && Math.random() < 0.10) { defender.volatiles = { ...defender.volatiles, sectCharmed: 2 }; battleLog?.('灵鹫威压！'); }
+  if (tier >= 3 && atkSect === 23 && defender?.volatiles?.sectCharmed) dmg *= 1.12;
+  if (tier >= 2 && atkSect === 24 && (defender?.stages?.spd || 0) < 0) dmg *= 1.08;
+  if (tier >= 3 && atkSect === 24) dmg *= 1.06;
+  if (tier >= 2 && atkSect === 25) dmg *= 1.05;
+  if (tier >= 3 && atkSect === 25 && (defender?.stages?.eva || 0) > 0) dmg *= 1.10;
+  if (tier >= 2 && atkSect === 26) dmg *= 1.04;
+  if (tier >= 3 && atkSect === 26) dmg *= 1.06;
+  if (tier >= 2 && atkSect === 27) dmg *= 1.05;
+  if (tier >= 3 && atkSect === 27) dmg *= 1.10;
+  if (tier >= 2 && atkSect === 28) dmg *= 1.08;
+  if (tier >= 3 && atkSect === 28) dmg *= 1.06;
+  if (tier >= 2 && atkSect === 29 && attacker?.currentHp < (attacker?._maxHp || 999) * 0.3) dmg *= 1.10;
+  if (tier >= 3 && atkSect === 29 && attacker?._sectEndureUsed) dmg *= 1.20;
+  if (tier >= 2 && atkSect === 30) dmg *= 1.04;
+  if (tier >= 3 && atkSect === 30) dmg *= 1.10;
+
   return Number.isFinite(dmg) ? dmg : rawDmg;
 }
 
@@ -164,6 +202,10 @@ export function initBattleSectState(battleState, playerSectState) {
     if (p.sectId === 2 && getXinfaTier(ps.sectXinfaLevels, 2) >= 2) {
       const max = p._maxHp || p.currentHp || 100;
       p._sectShield = Math.floor(max * 0.12);
+    }
+    if (p.sectId === 17 && getXinfaTier(ps.sectXinfaLevels, 17) >= 2) {
+      const max = p._maxHp || p.currentHp || 100;
+      p._sectShield = Math.floor(max * 0.06);
     }
   });
 }

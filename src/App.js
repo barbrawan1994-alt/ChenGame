@@ -53,6 +53,7 @@ import {
   SECT_DB,
   SECT_CHIEFS_CONFIG,
   SECT_TEAMS,
+  SECT_COUNT,
   getSectUpgradeCost,
   TIME_PHASES,
   WEATHERS,
@@ -120,6 +121,10 @@ import {
   SECT_MOMENTUM_MAX, SECT_MOMENTUM_PER_CRIT, SECT_MOMENTUM_PER_DODGE, SECT_MOMENTUM_PER_HEAL, SECT_MOMENTUM_PER_REFLECT, SECT_MOMENTUM_PER_KILL,
   getXinfaEffectDesc, onSectDodge, onSectHeal, applySectDeathSave,
 } from './utils/sectLogic';
+import {
+  applyExtendedSectPreDamage, applyExtendedSectDefMods, applyExtendedSectPostDamage,
+  trySectEndure, applySectCharmAttackPenalty, refreshSectBarrier,
+} from './utils/sectPassivesExtended';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
   COMMON_TECHNIQUES, TYPE_TECHNIQUES, DOMAINS, BINDING_VOWS,
@@ -6957,7 +6962,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const selectPlayerStyle = (mainId, subId) => {
-    setFusionState(prev => ({ ...prev, playerStyle: { ...(prev.playerStyle || {}), main: mainId, sub: subId || prev.playerStyle?.sub } }));
+    setFusionState(prev => ({ ...prev, playerStyle: { ...(prev.playerStyle || {}), main: mainId, sub: subId === undefined ? prev.playerStyle?.sub : subId } }));
     const s = PLAYER_STYLES[mainId];
     showMapToast(s?.icon || '🧑', '主修流派', `已设 ${s?.name || mainId}`, 2500);
   };
@@ -16974,6 +16979,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (atkSect === 1 && atkSectLv > 0) rawDmg *= (1 + (0.03 + atkSectLv * 0.02)); 
         if (defSect === 2 && defSectLv > 0) rawDmg *= (1 - (0.03 + defSectLv * 0.02));
+        rawDmg = applyExtendedSectDefMods(rawDmg, { defender, defSect, defSectLv, battleState });
         if (defSect === 3 && defSectLv > 0) {
             const dodgeChance = 0.02 + defSectLv * 0.01;
             if (Math.random() < dodgeChance) {
@@ -17004,6 +17010,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         if (sectCtx.isMainSectPet || sectCtx.isSubSectPet) {
           rawDmg = applyXinfaDamageMods(rawDmg, attacker, defender, sectCtx, addLog);
+        }
+        const sectPassiveParty = source === 'player'
+          ? (battleState?.playerCombatStates || [])
+          : (battleState?.enemyParty || []);
+        rawDmg = applyExtendedSectPreDamage(rawDmg, {
+          attacker, defender, atkSect, atkSectLv, defSect, defSectLv,
+          battleState, weather, move, category, getStats, party: sectPassiveParty,
+        });
+        if (attacker?.volatiles?.sectCharmed) {
+          rawDmg *= applySectCharmAttackPenalty(attacker, atkState);
         }
         defender._lastDamage = rawDmg;
 
@@ -17098,6 +17114,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
           else if (source === 'enemy' && defender.intimacy >= 200 && Math.random() < 0.06) {
             dmg = defender.currentHp - 1;
             survivalMsg = `${defender.name} 为了不让你伤心，撑住了攻击！`;
+          }
+          else {
+            if (trySectEndure(defender, defSect, defSectLv, dmg, addLog)) {
+              dmg = defender.currentHp - 1;
+            }
           }
         }
 
@@ -17329,6 +17350,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 if (source !== 'player') gainSectMomentum(battleState, SECT_MOMENTUM_PER_REFLECT);
             }
         }
+        applyExtendedSectPostDamage({
+          attacker, defender, atkSect, atkSectLv, defSect, defSectLv,
+          dmg, move, category, isDead, defState, atkState, battleState, source, getStats,
+        }, addLog, { gainMomentum: gainSectMomentum });
 
         if (category === 'physical' && !isDead) {
             if (defender.trait === 'static' && Math.random() < 0.3 && !attacker.status) {
@@ -17864,7 +17889,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const minSectLv = Math.floor(floor / 10);
     const maxSectLv = Math.min(10, 3 + Math.floor(floor / 8));
     
-    enemy.sectId = _.random(1, 12); // 随机分配一个门派(12个门派)
+    enemy.sectId = _.random(1, SECT_COUNT);
     enemy.sectLevel = Math.min(10, _.random(minSectLv, maxSectLv));
     
     // 3. 装备技能强化 (Equipment Skills)
@@ -27131,121 +27156,408 @@ const renderMenu = () => {
     ];
     const today = new Date().toISOString().slice(0, 10);
     const activeCalamities = getActiveNationalCalamities(today, badges.length);
+    const currentStyle = PLAYER_STYLES[fusionState.playerStyle?.main] || null;
+    const currentSubStyle = PLAYER_STYLES[fusionState.playerStyle?.sub] || null;
+    const currentBreathing = BREATHING_PVE_STYLES[fusionState.playerStyle?.breathingStyle || 'water'];
+    const currentKwPosition = KINGDOM_POSITIONS.find(p => p.id === fusionState.kwPosition);
+    const currentBonuses = calcCrossSystemPveBonuses({
+      playerStyle: fusionState.playerStyle || {},
+      kwPosition: fusionState.kwPosition,
+    });
+    const unlockedLabels = FUSION_UNLOCK_SCHEDULE.filter(s => badges.length >= s.badges).map(s => s.label);
+    const nextUnlock = FUSION_UNLOCK_SCHEDULE.find(s => badges.length < s.badges);
+    const readableBonuses = [
+      currentBonuses.purifyBonus ? { label: '净化效率', value: `+${currentBonuses.purifyBonus}%`, tone: '#7dd3fc' } : null,
+      currentBonuses.protectBonus ? { label: '守护收益', value: `+${Math.round(currentBonuses.protectBonus * 100)}%`, tone: '#86efac' } : null,
+      currentBonuses.captureBonus ? { label: '捕获辅助', value: `+${Math.round(currentBonuses.captureBonus * 100)}%`, tone: '#fbbf24' } : null,
+      currentBonuses.bossMultReduce ? { label: 'Boss压制', value: `-${Math.round(currentBonuses.bossMultReduce * 100)}%`, tone: '#fca5a5' } : null,
+      currentBonuses.escapeTurnReduce ? { label: '逃脱回合', value: `-${currentBonuses.escapeTurnReduce}`, tone: '#c4b5fd' } : null,
+      currentBonuses.exploreSpeedBonus ? { label: '探索速度', value: `+${currentBonuses.exploreSpeedBonus}`, tone: '#67e8f9' } : null,
+    ].filter(Boolean);
+    const applyBuildPreset = (preset) => {
+      const advancedLocked = ['insect', 'mist'].includes(preset.breathing) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
+      setFusionState(prev => ({
+        ...prev,
+        playerStyle: {
+          ...(prev.playerStyle || {}),
+          main: preset.main,
+          breathingStyle: advancedLocked ? (prev.playerStyle?.breathingStyle || 'water') : preset.breathing,
+        },
+        generalTacticId: preset.general || prev.generalTacticId,
+      }));
+      showMapToast(preset.icon || '🧭', '构筑方案', `已套用 ${preset.name}${advancedLocked ? '（高级呼吸法未解锁，已保留当前呼吸法）' : ''}`, 2600);
+    };
+    const fusionAccentByType = {
+      jutsu: '#8b5cf6',
+      fruit: '#ef4444',
+      sect: '#f59e0b',
+      battlefield: '#60a5fa',
+    };
+    const stepTypeText = {
+      puzzle: '解谜',
+      battle: '战斗',
+      boss: '首领',
+      explore: '探索',
+    };
+    const rewardText = (reward = {}) => {
+      const parts = [];
+      if (reward.gold) parts.push(`${reward.gold.toLocaleString()} 金`);
+      if (reward.item) parts.push(`${reward.item} x${reward.itemCount || 1}`);
+      if (reward.jutsuMastery) parts.push(`忍术熟练 +${reward.jutsuMastery}`);
+      if (reward.title) parts.push(`称号「${reward.title}」`);
+      return parts.length ? parts.join(' · ') : '特殊资源';
+    };
+    const renderLockedFusionPanel = ({ icon, title, need, desc }) => (
+      <div style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'16px', padding:'18px', textAlign:'center'}}>
+        <div style={{fontSize:'34px', marginBottom:'8px'}}>{icon}</div>
+        <div style={{fontSize:'15px', fontWeight:'900', color:'#fff'}}>{title}</div>
+        <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)', marginTop:'6px', lineHeight:1.55}}>{desc}</div>
+        <div style={{display:'inline-flex', marginTop:'12px', padding:'6px 11px', borderRadius:'999px', background:'rgba(255,255,255,0.08)', color:'#c4b5fd', fontSize:'11px', fontWeight:'900'}}>需要 {need} 枚徽章</div>
+      </div>
+    );
     const renderDungeonCard = (def, type, clearedKey) => {
       const cleared = (fusionState[clearedKey] || []).includes(def.id);
       const locked = badges.length < def.reqBadges;
+      const accent = fusionAccentByType[type] || '#8b5cf6';
+      const steps = def.steps || [];
       return (
-        <div key={def.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px', marginBottom:'10px'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px'}}>
-            <div>
-              <div style={{fontWeight:'800', fontSize:'14px', color:'#fff'}}>{def.icon} {def.name}</div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'4px', lineHeight:1.5}}>{def.summary}</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>需要 {def.reqBadges} 徽章 · 奖励 {def.reward?.gold || 0} 金</div>
+        <div key={def.id} style={{background:`linear-gradient(160deg, ${accent}16, rgba(255,255,255,0.035))`, border:`1px solid ${cleared ? '#86efac66' : locked ? 'rgba(255,255,255,0.07)' : `${accent}44`}`, borderRadius:'15px', padding:'13px', minHeight:'190px', display:'flex', flexDirection:'column'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'10px'}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:'900', fontSize:'14px', color:'#fff'}}>{def.icon} {def.name}</div>
+              <div style={{fontSize:'10px', color:accent, fontWeight:'900', marginTop:'4px'}}>需要 {def.reqBadges} 徽章 · 地图 #{def.mapId || '-'}</div>
             </div>
-            {cleared ? <span style={{fontSize:'11px', color:'#81C784', fontWeight:'700'}}>已通关</span>
-              : locked ? <span style={{fontSize:'11px', color:'#888'}}>🔒</span>
-              : <button onClick={() => startFusionDungeon(type, def.id)} style={{padding:'6px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(135deg,#4527A0,#7B1FA2)', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', flexShrink:0}}>挑战</button>}
+            <span style={{fontSize:'10px', padding:'4px 8px', borderRadius:'999px', background: cleared ? 'rgba(34,197,94,0.14)' : locked ? 'rgba(255,255,255,0.06)' : `${accent}20`, color: cleared ? '#86efac' : locked ? 'rgba(255,255,255,0.45)' : '#fff', fontWeight:'900', flexShrink:0}}>
+              {cleared ? '已通关' : locked ? '未解锁' : '可挑战'}
+            </span>
+          </div>
+          <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', marginTop:'8px', lineHeight:1.55}}>{def.summary}</div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'9px'}}>
+            {(def.mechanics || []).slice(0, 4).map(m => (
+              <span key={m} style={{fontSize:'9px', padding:'3px 7px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>{m.replaceAll('_', ' ')}</span>
+            ))}
+          </div>
+          {steps.length > 0 && (
+            <div style={{display:'grid', gridTemplateColumns:`repeat(${Math.min(3, steps.length)}, minmax(0, 1fr))`, gap:'6px', marginTop:'10px'}}>
+              {steps.slice(0, 3).map((step, idx) => (
+                <div key={`${def.id}_${idx}`} style={{background:'rgba(0,0,0,0.22)', borderRadius:'9px', padding:'7px'}}>
+                  <div style={{fontSize:'9px', color:accent, fontWeight:'900'}}>{stepTypeText[step.type] || step.type || '阶段'} {idx + 1}</div>
+                  <div style={{fontSize:'10px', color:'#fff', fontWeight:'800', marginTop:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{step.title || step.enemyName || '试炼'}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{fontSize:'10px', color:'rgba(255,255,255,0.48)', lineHeight:1.45, marginTop:'10px'}}>奖励：{rewardText(def.reward)}</div>
+          <div style={{marginTop:'auto', paddingTop:'10px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
+            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.42)'}}>
+              {locked ? `还差 ${Math.max(0, def.reqBadges - badges.length)} 枚徽章` : cleared ? '可作为路线完成记录' : '适合检验当前构筑'}
+            </div>
+            {cleared ? <span style={{fontSize:'11px', color:'#86efac', fontWeight:'900'}}>完成</span>
+              : locked ? <span style={{fontSize:'11px', color:'rgba(255,255,255,0.32)', fontWeight:'900'}}>锁定</span>
+              : <button onClick={() => startFusionDungeon(type, def.id)} style={{padding:'7px 12px', borderRadius:'10px', border:'none', background:`linear-gradient(135deg, ${accent}, #4c1d95)`, color:'#fff', fontSize:'11px', fontWeight:'900', cursor:'pointer', flexShrink:0}}>挑战</button>}
+          </div>
+        </div>
+      );
+    };
+    const renderDungeonSection = ({ icon, title, desc, advice, items, type, clearedKey, need, lockedDesc }) => {
+      const locked = !unlocked.includes(type === 'jutsu' ? 'jutsu_realm' : type === 'fruit' ? 'fruit_sea' : type === 'sect' ? 'sect_realm' : 'ancient_battlefield');
+      const clearedCount = (fusionState[clearedKey] || []).length;
+      const accent = fusionAccentByType[type] || '#8b5cf6';
+      if (locked) return renderLockedFusionPanel({ icon, title, need, desc: lockedDesc || desc });
+      return (
+        <div>
+          <div style={{background:`linear-gradient(135deg, ${accent}22, rgba(255,255,255,0.04))`, border:`1px solid ${accent}40`, borderRadius:'16px', padding:'14px', marginBottom:'12px'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px'}}>
+              <div>
+                <div style={{fontSize:'16px', color:'#fff', fontWeight:'900'}}>{icon} {title}</div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.55, marginTop:'5px'}}>{desc}</div>
+              </div>
+              <div style={{textAlign:'right', flexShrink:0}}>
+                <div style={{fontSize:'18px', color:'#fff', fontWeight:'900'}}>{clearedCount}/{items.length}</div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)'}}>完成</div>
+              </div>
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'7px', marginTop:'12px'}}>
+              {advice.map(a => (
+                <div key={a.label} style={{background:'rgba(0,0,0,0.22)', borderRadius:'10px', padding:'8px'}}>
+                  <div style={{fontSize:'10px', color:accent, fontWeight:'900'}}>{a.label}</div>
+                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.62)', marginTop:'3px', lineHeight:1.35}}>{a.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(230px, 1fr))', gap:'10px'}}>
+            {items.map(r => renderDungeonCard(r, type, clearedKey))}
           </div>
         </div>
       );
     };
     return (
       <div className="modal-overlay" onClick={() => setFusionHubOpen(false)} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2600}}>
-        <div onClick={e => e.stopPropagation()} style={{width:'min(520px,95vw)', maxHeight:'85vh', background:'linear-gradient(180deg,#1a1035,#0f0a1f)', borderRadius:'18px', border:'1px solid rgba(167,139,250,0.35)', display:'flex', flexDirection:'column', overflow:'hidden', color:'#fff'}}>
-          <div style={{padding:'16px 18px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+        <div onClick={e => e.stopPropagation()} style={{width:'min(760px,95vw)', maxHeight:'88vh', background:'linear-gradient(180deg,#17102d,#0e0a1d 62%,#090713)', borderRadius:'20px', border:'1px solid rgba(167,139,250,0.35)', display:'flex', flexDirection:'column', overflow:'hidden', color:'#fff', boxShadow:'0 24px 80px rgba(0,0,0,0.55)'}}>
+          <div style={{padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.08)', background:'linear-gradient(135deg, rgba(124,58,237,0.24), rgba(15,23,42,0.1))'}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-              <div style={{fontSize:'18px', fontWeight:'900', color:'#c4b5fd'}}>🔗 跨体系融合中心</div>
-              <button onClick={() => setFusionHubOpen(false)} style={{background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'50%', width:'28px', height:'28px', cursor:'pointer'}}>×</button>
+              <div>
+                <div style={{fontSize:'20px', fontWeight:'900', color:'#ede9fe'}}>🔗 跨体系融合中心</div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', marginTop:'4px'}}>把精灵、忍术、果实、门派、名将和国战组合成一套 PVE 路线</div>
+              </div>
+              <button onClick={() => setFusionHubOpen(false)} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', borderRadius:'50%', width:'34px', height:'34px', cursor:'pointer', fontSize:'18px'}}>×</button>
             </div>
-            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>精灵 · 忍术 · 果实 · 呼吸法 · 门派 · 名将 · 国战</div>
-            <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px'}}>
-              {tabs.map(t => (
-                <button key={t.id} onClick={() => setFusionHubTab(t.id)} style={{
-                  padding:'5px 10px', borderRadius:'8px', border:'none', cursor:'pointer', fontSize:'10px', fontWeight:'700',
-                  background: fusionHubTab === t.id ? 'rgba(167,139,250,0.35)' : 'rgba(255,255,255,0.06)',
-                  color: fusionHubTab === t.id ? '#fff' : 'rgba(255,255,255,0.55)'
-                }}>{t.icon} {t.label}</button>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(128px, 1fr))', gap:'8px', marginTop:'14px'}}>
+              {[
+                { label:'主修', value: currentStyle ? `${currentStyle.icon} ${currentStyle.name}` : '未选择' },
+                { label:'副修', value: currentSubStyle ? `${currentSubStyle.icon} ${currentSubStyle.name}` : '可选' },
+                { label:'呼吸法', value: currentBreathing ? `${currentBreathing.icon} ${currentBreathing.name}` : '未选择' },
+                { label:'国战职位', value: currentKwPosition ? `${currentKwPosition.icon} ${currentKwPosition.name}` : '未设置' },
+              ].map(item => (
+                <div key={item.label} style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'9px 10px'}}>
+                  <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', fontWeight:'700'}}>{item.label}</div>
+                  <div style={{fontSize:'12px', color:'#fff', fontWeight:'900', marginTop:'3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{item.value}</div>
+                </div>
               ))}
+            </div>
+            <div style={{display:'flex', flexWrap:'wrap', gap:'7px', marginTop:'12px'}}>
+              {tabs.map(t => {
+                const locked = t.need && !unlocked.includes(t.need);
+                return (
+                  <button key={t.id} disabled={locked} onClick={() => !locked && setFusionHubTab(t.id)} style={{
+                    padding:'7px 11px', borderRadius:'10px', border:'1px solid '+(fusionHubTab === t.id ? 'rgba(196,181,253,0.5)' : 'rgba(255,255,255,0.08)'), cursor: locked ? 'not-allowed' : 'pointer', fontSize:'11px', fontWeight:'800',
+                    background: fusionHubTab === t.id ? 'rgba(167,139,250,0.34)' : 'rgba(255,255,255,0.06)',
+                    color: locked ? 'rgba(255,255,255,0.28)' : fusionHubTab === t.id ? '#fff' : 'rgba(255,255,255,0.62)',
+                    opacity: locked ? 0.65 : 1,
+                  }}>{t.icon} {t.label}{locked ? ' 🔒' : ''}</button>
+                );
+              })}
             </div>
           </div>
           <div style={{padding:'14px 18px', overflowY:'auto', flex:1}}>
             {fusionHubTab === 'overview' && (
               <div>
-                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.6)', lineHeight:1.7, marginBottom:'12px'}}>
-                  已解锁系统：{FUSION_UNLOCK_SCHEDULE.filter(s => badges.length >= s.badges).map(s => s.label).join(' · ') || '精灵生态基础'}
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:'10px', marginBottom:'12px'}}>
+                  <div style={{background:'linear-gradient(135deg, rgba(34,211,238,0.16), rgba(124,58,237,0.12))', border:'1px solid rgba(125,211,252,0.26)', borderRadius:'14px', padding:'13px'}}>
+                    <div style={{fontSize:'11px', color:'#7dd3fc', fontWeight:'900'}}>这页的作用</div>
+                    <div style={{fontSize:'15px', color:'#fff', fontWeight:'900', marginTop:'5px'}}>配置 PVE 解法</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.55, marginTop:'5px'}}>选择主修、副修、呼吸法和职位，影响净化、守护、Boss压制、探索与国战任务效率。</div>
+                  </div>
+                  <div style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'13px'}}>
+                    <div style={{fontSize:'11px', color:'#c4b5fd', fontWeight:'900'}}>当前进度</div>
+                    <div style={{fontSize:'15px', color:'#fff', fontWeight:'900', marginTop:'5px'}}>{badges.length} 枚徽章</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', lineHeight:1.55, marginTop:'5px'}}>
+                      {nextUnlock ? `下一阶段：${nextUnlock.badges} 徽章解锁「${nextUnlock.label}」` : '融合系统已进入完整阶段'}
+                    </div>
+                  </div>
+                  <div style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'13px'}}>
+                    <div style={{fontSize:'11px', color:'#86efac', fontWeight:'900'}}>当前收益</div>
+                    <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'8px'}}>
+                      {readableBonuses.length ? readableBonuses.map(b => (
+                        <span key={b.label} style={{fontSize:'10px', padding:'4px 8px', borderRadius:'999px', background:`${b.tone}18`, color:b.tone, border:`1px solid ${b.tone}30`, fontWeight:'800'}}>{b.label} {b.value}</span>
+                      )) : <span style={{fontSize:'11px', color:'rgba(255,255,255,0.55)'}}>先到「流派构筑」选择路线</span>}
+                    </div>
+                  </div>
                 </div>
-                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.45)', lineHeight:1.6}}>
-                  · 样板① 赤砂峡谷（5徽章）— 六系统融合<br/>
-                  · 样板② 鬼雾山夜行（6徽章，回声山谷）— 呼吸法/夜战/鬼化<br/>
-                  · 样板③ 忍界封印战（9徽章，古代工厂）— 查克拉/封印/尾兽级Boss<br/>
-                  · 呼吸法/将魂仅影响 PVE 效率，不改战斗属性<br/>
-                  · 主修流派+副修+呼吸法战术在「流派构筑」设置
+                <div style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'13px', marginBottom:'12px'}}>
+                  <div style={{fontSize:'12px', color:'#fff', fontWeight:'900', marginBottom:'9px'}}>已解锁内容</div>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:'7px'}}>
+                    {(unlockedLabels.length ? unlockedLabels : ['精灵生态基础']).map(label => (
+                      <span key={label} style={{fontSize:'10px', padding:'5px 9px', borderRadius:'999px', background:'rgba(167,139,250,0.16)', color:'#ddd6fe', border:'1px solid rgba(167,139,250,0.26)', fontWeight:'800'}}>{label}</span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(190px, 1fr))', gap:'10px'}}>
+                  {[
+                    { icon:'🧭', title:'先选路线', desc:'在「流派构筑」确定主修和呼吸法，这是所有 PVE 加成的核心。', action:'去构筑', tab:'style' },
+                    { icon:'🗺️', title:'再选玩法', desc:'秘境、海域、古战场和国战任务会用到不同解法。', action:'看跨体系', tab:'crossworld' },
+                    { icon:'🎯', title:'最后补短板', desc:'缺净化选水/虫，缺守护选岩/武修，缺爆发选炎/剑士。', action:'套方案', tab:'crossworld' },
+                  ].map(card => (
+                    <button key={card.title} type="button" onClick={() => setFusionHubTab(card.tab)} style={{textAlign:'left', background:'rgba(0,0,0,0.22)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'13px', color:'#fff', cursor:'pointer'}}>
+                      <div style={{fontSize:'22px'}}>{card.icon}</div>
+                      <div style={{fontSize:'13px', fontWeight:'900', marginTop:'5px'}}>{card.title}</div>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.55)', lineHeight:1.5, marginTop:'4px'}}>{card.desc}</div>
+                      <div style={{fontSize:'10px', color:'#c4b5fd', fontWeight:'900', marginTop:'9px'}}>{card.action}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
             {fusionHubTab === 'style' && (
               <div>
-                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.55)', marginBottom:'10px'}}>主修流派（选1）· 副修可选 · 呼吸法为 PVE 战术加成</div>
-                {Object.values(PLAYER_STYLES).map(s => (
-                  <div key={s.id} onClick={() => selectPlayerStyle(s.id, fusionState.playerStyle?.sub)} style={{
-                    padding:'10px 12px', marginBottom:'8px', borderRadius:'10px', cursor:'pointer',
-                    background: fusionState.playerStyle?.main === s.id ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
-                    border: fusionState.playerStyle?.main === s.id ? '1px solid rgba(167,139,250,0.4)' : '1px solid rgba(255,255,255,0.08)',
-                  }}>
-                    <div style={{fontWeight:'700', fontSize:'13px'}}>{s.icon} {s.name}</div>
-                    <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>{s.desc}</div>
-                  </div>
-                ))}
-                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:'12px 0 8px'}}>呼吸法 PVE 战术</div>
+                <div style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'12px', marginBottom:'12px'}}>
+                  <div style={{fontSize:'13px', color:'#fff', fontWeight:'900'}}>构筑会影响什么？</div>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', lineHeight:1.6, marginTop:'5px'}}>主修决定解题方向，副修补短板；呼吸法和国战职位提供轻量 PVE 加成，不直接改战斗面板。</div>
+                </div>
+                <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'0 0 8px'}}>1. 主修流派</div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:'9px', marginBottom:'14px'}}>
+                  {Object.values(PLAYER_STYLES).map(s => {
+                    const active = fusionState.playerStyle?.main === s.id;
+                    return (
+                      <button key={s.id} type="button" onClick={() => selectPlayerStyle(s.id, fusionState.playerStyle?.sub === s.id ? null : fusionState.playerStyle?.sub)} style={{
+                        textAlign:'left', padding:'12px', borderRadius:'14px', cursor:'pointer', color:'#fff',
+                        background: active ? 'linear-gradient(135deg, rgba(167,139,250,0.28), rgba(79,70,229,0.16))' : 'rgba(255,255,255,0.04)',
+                        border: active ? '1px solid rgba(196,181,253,0.55)' : '1px solid rgba(255,255,255,0.08)',
+                      }}>
+                        <div style={{display:'flex', justifyContent:'space-between', gap:'8px'}}>
+                          <span style={{fontWeight:'900', fontSize:'13px'}}>{s.icon} {s.name}</span>
+                          {active && <span style={{fontSize:'10px', color:'#86efac', fontWeight:'900'}}>主修</span>}
+                        </div>
+                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.55)', marginTop:'5px', lineHeight:1.45}}>{s.desc}</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'8px'}}>
+                          {(s.pveFocus || []).map(f => <span key={f} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'999px', background:'rgba(255,255,255,0.08)', color:'#cbd5e1'}}>{f}</span>)}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'0 0 8px'}}>2. 副修补强</div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:'7px', marginBottom:'14px'}}>
+                  <button type="button" onClick={() => selectPlayerStyle(fusionState.playerStyle?.main || 'sect', null)} style={{padding:'7px 11px', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.1)', background: !fusionState.playerStyle?.sub ? 'rgba(167,139,250,0.24)' : 'rgba(255,255,255,0.05)', color:'#fff', fontSize:'11px', fontWeight:'800', cursor:'pointer'}}>不设副修</button>
+                  {Object.values(PLAYER_STYLES).filter(s => s.id !== fusionState.playerStyle?.main).map(s => (
+                    <button key={s.id} type="button" onClick={() => selectPlayerStyle(fusionState.playerStyle?.main || s.id, s.id)} style={{padding:'7px 11px', borderRadius:'10px', border:'1px solid '+(fusionState.playerStyle?.sub === s.id ? 'rgba(196,181,253,0.55)' : 'rgba(255,255,255,0.1)'), background: fusionState.playerStyle?.sub === s.id ? 'rgba(167,139,250,0.24)' : 'rgba(255,255,255,0.05)', color:'#fff', fontSize:'11px', fontWeight:'800', cursor:'pointer'}}>{s.icon} {s.name}</button>
+                  ))}
+                </div>
+                <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'0 0 8px'}}>3. 呼吸法 PVE 战术</div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:'8px'}}>
                 {Object.values(BREATHING_PVE_STYLES).map(b => {
                   const advLocked = ['insect', 'mist'].includes(b.id) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
                   return (
-                  <div key={b.id} onClick={() => !advLocked && selectBreathingStyle(b.id)} style={{
-                    padding:'8px 10px', marginBottom:'6px', borderRadius:'8px', cursor: advLocked ? 'not-allowed' : 'pointer', fontSize:'11px', opacity: advLocked ? 0.45 : 1,
+                  <button key={b.id} type="button" onClick={() => !advLocked && selectBreathingStyle(b.id)} style={{
+                    textAlign:'left', padding:'10px', borderRadius:'12px', cursor: advLocked ? 'not-allowed' : 'pointer', fontSize:'11px', opacity: advLocked ? 0.45 : 1, color:'#fff',
                     background: fusionState.playerStyle?.breathingStyle === b.id ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.03)',
                     border: fusionState.playerStyle?.breathingStyle === b.id ? '1px solid rgba(79,195,247,0.4)' : '1px solid rgba(255,255,255,0.06)',
-                  }}>{b.icon} {b.name} — {b.passive?.purifyBonus ? `净化+${b.passive.purifyBonus}%` : ''}{b.passive?.protectBonus ? ` 守护+${Math.round(b.passive.protectBonus*100)}%` : ''}{advLocked ? ' 🔒鬼雾山净化' : ''}</div>
+                  }}>
+                    <div style={{fontWeight:'900'}}>{b.icon} {b.name}{advLocked ? ' 🔒' : ''}</div>
+                    <div style={{fontSize:'10px', color:'rgba(255,255,255,0.55)', marginTop:'4px'}}>
+                      {b.passive?.purifyBonus ? `净化+${b.passive.purifyBonus}% ` : ''}
+                      {b.passive?.protectBonus ? `守护+${Math.round(b.passive.protectBonus*100)}% ` : ''}
+                      {b.passive?.captureBonus ? `捕获+${Math.round(b.passive.captureBonus*100)}% ` : ''}
+                      {b.passive?.bossMultReduce ? `Boss压制-${Math.round(b.passive.bossMultReduce*100)}% ` : ''}
+                      {advLocked ? '需鬼雾山完整净化' : ''}
+                    </div>
+                    <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'7px'}}>
+                      {(b.bestFor || []).map(f => <span key={f} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'999px', background:'rgba(79,195,247,0.12)', color:'#bae6fd'}}>{f}</span>)}
+                    </div>
+                  </button>
                   );
                 })}
+                </div>
                 {crossUnlocked.includes('kw_positions') && (
                   <>
-                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:'12px 0 8px'}}>国战职位偏好</div>
+                    <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'14px 0 8px'}}>4. 国战职位偏好</div>
+                    <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'7px'}}>
                     {KINGDOM_POSITIONS.map(p => (
-                      <div key={p.id} onClick={() => selectKwPosition(p.id)} style={{
-                        padding:'8px 10px', marginBottom:'6px', borderRadius:'8px', cursor:'pointer', fontSize:'11px',
-                        background: fusionState.kwPosition === p.id ? 'rgba(255,213,79,0.12)' : 'rgba(255,255,255,0.03)',
-                      }}>{p.icon} {p.name}</div>
+                      <button key={p.id} type="button" onClick={() => selectKwPosition(p.id)} style={{
+                        padding:'8px 10px', borderRadius:'10px', cursor:'pointer', fontSize:'11px', color:'#fff', fontWeight:'800',
+                        border:'1px solid '+(fusionState.kwPosition === p.id ? 'rgba(255,213,79,0.45)' : 'rgba(255,255,255,0.08)'),
+                        background: fusionState.kwPosition === p.id ? 'rgba(255,213,79,0.14)' : 'rgba(255,255,255,0.04)',
+                      }}>{p.icon} {p.name}</button>
                     ))}
+                    </div>
                   </>
                 )}
               </div>
             )}
             {fusionHubTab === 'crossworld' && (
               <div>
-                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.55)', marginBottom:'10px'}}>融合玩法模板（数据层，逐步实装交互）</div>
-                {FUSION_PLAY_TEMPLATES.map(t => (
-                  <div key={t.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'10px', marginBottom:'8px'}}>
-                    <div style={{fontWeight:'700'}}>{t.icon} {t.name}</div>
-                    <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', marginTop:'4px'}}>{t.summary}</div>
-                    <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', marginTop:'4px'}}>系统：{(t.systems || []).join(' · ')}</div>
+                <div style={{background:'linear-gradient(135deg, rgba(14,165,233,0.16), rgba(124,58,237,0.14))', border:'1px solid rgba(125,211,252,0.24)', borderRadius:'16px', padding:'14px', marginBottom:'12px'}}>
+                  <div style={{fontSize:'16px', color:'#fff', fontWeight:'900'}}>🌍 跨体系作战台</div>
+                  <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.55, marginTop:'5px'}}>这里不是单独副本，而是给复杂玩法选“解题模板”：哪些系统一起用、适合什么事件、当前构筑该补什么。</div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'7px', marginTop:'12px'}}>
+                    {[
+                      { label:'当前主轴', value: currentStyle ? currentStyle.name : '未设置' },
+                      { label:'战术侧重', value: currentBreathing ? currentBreathing.name : '未设置' },
+                      { label:'已解锁模板', value: `${FUSION_PLAY_TEMPLATES.length} 套` },
+                      { label:'可套构筑', value: `${BUILD_PRESETS.length} 套` },
+                    ].map(item => (
+                      <div key={item.label} style={{background:'rgba(0,0,0,0.2)', borderRadius:'10px', padding:'8px'}}>
+                        <div style={{fontSize:'10px', color:'#7dd3fc', fontWeight:'900'}}>{item.label}</div>
+                        <div style={{fontSize:'12px', color:'#fff', fontWeight:'900', marginTop:'3px'}}>{item.value}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:'12px 0 8px'}}>推荐构筑</div>
-                {BUILD_PRESETS.map(p => (
-                  <div key={p.id} style={{fontSize:'10px', padding:'8px', marginBottom:'6px', background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}>
-                    {p.icon} <strong>{p.name}</strong> — {p.note}
-                  </div>
-                ))}
+                </div>
+                <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', marginBottom:'8px'}}>玩法模板</div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))', gap:'9px', marginBottom:'14px'}}>
+                  {FUSION_PLAY_TEMPLATES.map(t => (
+                    <div key={t.id} style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'13px', padding:'12px'}}>
+                      <div style={{fontWeight:'900', color:'#fff'}}>{t.icon} {t.name}</div>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.55)', marginTop:'5px', lineHeight:1.45}}>{t.summary}</div>
+                      <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'8px'}}>
+                        {(t.systems || []).map(sys => <span key={sys} style={{fontSize:'9px', padding:'2px 6px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>{sys}</span>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', marginBottom:'8px'}}>一键推荐构筑</div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'8px'}}>
+                  {BUILD_PRESETS.map(p => (
+                    <button key={p.id} type="button" onClick={() => applyBuildPreset(p)} style={{fontSize:'10px', textAlign:'left', padding:'10px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', color:'#fff', cursor:'pointer'}}>
+                      <div style={{fontSize:'12px', fontWeight:'900'}}>{p.icon} {p.name}</div>
+                      <div style={{color:'rgba(255,255,255,0.55)', lineHeight:1.45, marginTop:'4px'}}>{p.note}</div>
+                      <div style={{color:'#c4b5fd', marginTop:'7px', fontWeight:'900'}}>主修 {PLAYER_STYLES[p.main]?.name || p.main} · {BREATHING_PVE_STYLES[p.breathing]?.name || p.breathing}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            {fusionHubTab === 'jutsu' && unlocked.includes('jutsu_realm') && JUTSU_SECRET_REALMS.map(r => renderDungeonCard(r, 'jutsu', 'jutsuRealmsCleared'))}
-            {fusionHubTab === 'jutsu' && !unlocked.includes('jutsu_realm') && <div style={{fontSize:'12px', color:'#888'}}>需要 3 枚徽章解锁忍术秘境</div>}
-            {fusionHubTab === 'fruit' && unlocked.includes('fruit_sea') && FRUIT_SEA_ZONES.map(r => renderDungeonCard(r, 'fruit', 'fruitTrialsCleared'))}
-            {fusionHubTab === 'fruit' && !unlocked.includes('fruit_sea') && <div style={{fontSize:'12px', color:'#888'}}>需要 5 枚徽章解锁恶魔果实海域</div>}
-            {fusionHubTab === 'sect' && unlocked.includes('sect_realm') && SECT_SECRET_REALMS.map(r => renderDungeonCard(r, 'sect', 'sectRealmsCleared'))}
-            {fusionHubTab === 'sect' && !unlocked.includes('sect_realm') && <div style={{fontSize:'12px', color:'#888'}}>需要 6 枚徽章解锁门派秘境</div>}
-            {fusionHubTab === 'battlefield' && unlocked.includes('ancient_battlefield') && ANCIENT_BATTLEFIELDS.map(r => renderDungeonCard(r, 'battlefield', 'battlefieldsCleared'))}
-            {fusionHubTab === 'battlefield' && !unlocked.includes('ancient_battlefield') && <div style={{fontSize:'12px', color:'#888'}}>需要 7 枚徽章解锁三国古战场</div>}
+            {fusionHubTab === 'jutsu' && renderDungeonSection({
+              icon: '⛩️',
+              title: '忍术秘境',
+              desc: '偏解谜和封印的挑战线，产出忍术熟练、卷轴资源和特殊称号。适合忍者流或需要净化/潜入能力的构筑。',
+              lockedDesc: '收集 3 枚徽章后开放。这里会开始引入封印柱、分身机关和查克拉节点。',
+              need: 3,
+              items: JUTSU_SECRET_REALMS,
+              type: 'jutsu',
+              clearedKey: 'jutsuRealmsCleared',
+              advice: [
+                { label:'推荐主修', value:'忍者流最稳，武修流可用高坦度硬过守卫战。' },
+                { label:'准备方向', value:'带火/水/风、暗系或灵体标签精灵，能减少试错。' },
+                { label:'收益用途', value:'提升忍术熟练，后续封印战和跨体系模板会用到。' },
+              ],
+            })}
+            {fusionHubTab === 'fruit' && renderDungeonSection({
+              icon: '🍎',
+              title: '果实海域',
+              desc: '围绕恶魔果实、海域规则和特殊状态的挑战线，适合给核心精灵补一套规则型能力。',
+              lockedDesc: '收集 5 枚徽章后开放。果实海域会把精灵构筑和海域限制联系起来。',
+              need: 5,
+              items: FRUIT_SEA_ZONES,
+              type: 'fruit',
+              clearedKey: 'fruitTrialsCleared',
+              advice: [
+                { label:'推荐主修', value:'剑士流打 Boss 更快，忍者流适合处理特殊机关。' },
+                { label:'准备方向', value:'优先带主力精灵和解除异常的道具，注意海域限制。' },
+                { label:'收益用途', value:'给精灵补规则能力，适合中后期构筑成型。' },
+              ],
+            })}
+            {fusionHubTab === 'sect' && renderDungeonSection({
+              icon: '📜',
+              title: '门派秘境',
+              desc: '围绕心法、门派立场和阵容共鸣的长期成长线。适合补防守、续航和持续作战能力。',
+              lockedDesc: '收集 6 枚徽章后开放。建议先确定主修门派再进入秘境。',
+              need: 6,
+              items: SECT_SECRET_REALMS,
+              type: 'sect',
+              clearedKey: 'sectRealmsCleared',
+              advice: [
+                { label:'推荐主修', value:'武修流收益最高，副修可补忍术或呼吸法短板。' },
+                { label:'准备方向', value:'带同门精灵，优先提升门派声望和心法层级。' },
+                { label:'收益用途', value:'强化门派路线，影响后续国战和高压 PVE。' },
+              ],
+            })}
+            {fusionHubTab === 'battlefield' && renderDungeonSection({
+              icon: '⚔️',
+              title: '三国古战场',
+              desc: '偏战斗和国战联动的高压挑战线，适合检验队伍强度、将魂战术和攻防取舍。',
+              lockedDesc: '收集 7 枚徽章后开放。这里会把战斗强度、名将和国战收益串起来。',
+              need: 7,
+              items: ANCIENT_BATTLEFIELDS,
+              type: 'battlefield',
+              clearedKey: 'battlefieldsCleared',
+              advice: [
+                { label:'推荐主修', value:'剑士流适合速攻，武修流适合守城和持久战。' },
+                { label:'准备方向', value:'补好回复、克制属性和国战职位，避免高战损。' },
+                { label:'收益用途', value:'推进将魂、古战场和国战贡献的中后期循环。' },
+              ],
+            })}
             {fusionHubTab === 'calamity' && unlocked.includes('national_calamity') && activeCalamities.map(cal => {
               const thisWeek = new Date().toISOString().slice(0, 10).replace(/-/g, '').slice(0, 6);
               const done = (fusionState.calamitiesParticipated || []).includes(`${cal.id}_${thisWeek}`);
@@ -31008,7 +31320,7 @@ const renderMenu = () => {
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(80px, 1fr))', gap:'12px'}}>
               {[
                 { label:'冠军次数', val: leagueWins || 0, icon:'🏆' },
-                { label:'门派掌门', val: `${achStats.sectChiefsDefeated || 0}/12`, icon:'🏔️' },
+                { label:'门派掌门', val: `${achStats.sectChiefsDefeated || 0}/${SECT_COUNT}`, icon:'🏔️' },
                 { label:'成就', val: `${unlockedAchs.length}/${ACHIEVEMENTS.length}`, icon:'🎖️' },
                 { label:'最佳连胜', val: achStats.maxWinStreak || 0, icon:'🔥' },
                 { label:'无限城', val: `${infinityState?.bestFloor || 0}F`, icon:'🏯' },

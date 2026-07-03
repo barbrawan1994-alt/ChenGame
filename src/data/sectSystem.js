@@ -1,5 +1,23 @@
 /** 武侠门派系统 v14.4 — 玩家身份、心法、武学、共鸣、国战、江湖事件 */
-import { SECT_DB } from './sects';
+import { SECT_DB, SECT_COUNT } from './sects';
+import {
+  SECT_MARTIAL_ARTS_EXTENDED,
+  SECT_XINFA_EXTENDED,
+  SECT_PET_RESONANCE_EXTENDED,
+  SECT_FACTION_LEAN_EXTENDED,
+  SECT_ARCHETYPE_EXTENDED,
+  SECT_COMBO_SKILLS_EXTENDED,
+  SECT_REALM_BY_SECT_EXTENDED,
+  SECT_TYPE_WEIGHTS_PATCH,
+} from './sectSystemExtended';
+
+function mergeTypeWeights(base, patch) {
+  const merged = { ...base };
+  for (const [type, sids] of Object.entries(patch || {})) {
+    merged[type] = [...new Set([...(merged[type] || []), ...sids])];
+  }
+  return merged;
+}
 
 export const SECT_JOIN_REQ_BADGES = 3;
 export const SECT_SUB_SECT_REQ_RANK = 5;
@@ -129,6 +147,8 @@ export const SECT_MARTIAL_ARTS = {
   ),
 };
 
+Object.assign(SECT_MARTIAL_ARTS, SECT_MARTIAL_ARTS_EXTENDED);
+
 export const SECT_XINFA = {
   1: { name: '蜀山剑意', tiers: [
     { tier: 1, name: '初阶', qiCost: 0, needRank: 1, effectKey: 'base' },
@@ -192,6 +212,8 @@ export const SECT_XINFA = {
   ]},
 };
 
+Object.assign(SECT_XINFA, SECT_XINFA_EXTENDED);
+
 export const SECT_PET_RESONANCE = {
   1:  { types: ['WIND', 'DRAGON', 'FLYING'], bonus: { atk: 1.10, spd: 1.05 } },
   2:  { types: ['ROCK', 'GROUND', 'STEEL'], bonus: { def: 1.10, hp: 1.05 } },
@@ -207,7 +229,9 @@ export const SECT_PET_RESONANCE = {
   12: { types: ['WATER', 'PSYCHIC', 'FAIRY'], bonus: { s_def: 1.10, hp: 1.04 } },
 };
 
-export const SECT_TYPE_WEIGHTS = {
+Object.assign(SECT_PET_RESONANCE, SECT_PET_RESONANCE_EXTENDED);
+
+export const SECT_TYPE_WEIGHTS = mergeTypeWeights({
   FIRE: [6, 1, 11], WATER: [12, 5, 7], GRASS: [5, 8], ELECTRIC: [10, 4],
   ICE: [7, 12], FIGHT: [2, 9, 11], PSYCHIC: [10, 11, 12, 3], DARK: [4, 8],
   DRAGON: [1, 6], STEEL: [2, 10], FAIRY: [5, 11], NORMAL: [9, 12],
@@ -215,7 +239,7 @@ export const SECT_TYPE_WEIGHTS = {
   TIME: [10, 12], CHAOS: [4, 8], HEAL: [5], GOD: [2, 12],
   POISON: [8, 4], GROUND: [2, 9], FLYING: [1, 3], BUG: [8],
   ROCK: [2, 7], GHOST: [4, 8],
-};
+}, SECT_TYPE_WEIGHTS_PATCH);
 
 export const SECT_FACTION_LEAN = {
   1: { default: 'shu', changeable: true, kwBonus: { attack: 0.06, label: '剑修攻坚' } },
@@ -232,10 +256,12 @@ export const SECT_FACTION_LEAN = {
   12: { default: 'shu', changeable: true, kwBonus: { counter: 0.08, label: '太极守城' } },
 };
 
+Object.assign(SECT_FACTION_LEAN, SECT_FACTION_LEAN_EXTENDED);
+
 export const SECT_ALLIANCES = {
-  righteous: { name: '正派联盟', sects: [1, 2, 11, 12, 5], desc: '守护秩序与精灵共存' },
-  neutral: { name: '江湖中立', sects: [3, 10, 7, 9], desc: '根据局势选择立场' },
-  shadow: { name: '暗线势力', sects: [4, 8, 6], desc: '手段激进但非必然邪恶' },
+  righteous: { name: '正派联盟', sects: [1, 2, 5, 9, 11, 12, 17, 19, 26], desc: '守护秩序与精灵共存' },
+  neutral: { name: '江湖中立', sects: [3, 7, 10, 21], desc: '根据局势选择立场' },
+  shadow: { name: '暗线势力', sects: [4, 6, 8, 13, 14, 15, 16, 18, 20, 22, 23, 24, 25, 27, 28, 29, 30], desc: '手段激进但非必然邪恶' },
 };
 
 export const SECT_DAILY_TASK_POOL = [
@@ -297,11 +323,17 @@ export const SECT_COMBO_SKILLS = {
   '6_7': { name: '冰火相克', power: 115, type: 'FIRE', desc: '明教+昆仑：灼烧+冻结' },
 };
 
+Object.assign(SECT_COMBO_SKILLS, SECT_COMBO_SKILLS_EXTENDED);
+
 export const SECT_REALM_BY_SECT = {
   1: 'sect_jianzhong', 2: 'sect_shaolin', 3: 'sect_xiaoyao', 4: 'sect_tangmen',
   5: 'sect_qingmu', 6: 'sect_yanyang', 7: 'sect_canghai', 8: 'sect_wudu',
   9: 'sect_gaibang', 10: 'sect_xingji', 11: 'sect_huashan', 12: 'sect_wudang',
 };
+
+Object.assign(SECT_REALM_BY_SECT, SECT_REALM_BY_SECT_EXTENDED);
+
+export { SECT_COUNT };
 
 export function getSectRankByRep(rep) {
   let rank = 0;
@@ -326,7 +358,7 @@ export function pickSectIdForPet(petBase, rng = Math.random) {
     });
   }
   const keys = Object.keys(weights);
-  if (keys.length === 0) return Math.floor(rng() * 12) + 1;
+  if (keys.length === 0) return Math.floor(rng() * SECT_COUNT) + 1;
   const total = keys.reduce((s, k) => s + weights[k], 0);
   let roll = rng() * total;
   for (const k of keys) {
@@ -418,7 +450,7 @@ export function getSectFactionStance(sectId, sectStances) {
 export function calcSectKingdomPowerBonus(playerSect, sectRank, sectStances, playerFaction) {
   if (!playerSect || sectRank < 3) return 0;
   let bonus = 0;
-  for (let sid = 1; sid <= 12; sid++) {
+  for (let sid = 1; sid <= SECT_COUNT; sid++) {
     const hasExplicitStance = sectStances?.[sid] || sectStances?.[String(sid)];
     if (!hasExplicitStance && sid !== playerSect && sectRank < 8) continue;
     const stance = getSectFactionStance(sid, sectStances);
@@ -443,6 +475,7 @@ const SECT_ARCHETYPE = {
   10: { role: '机关', plan: '适合守城与侦察，优先强化己方关键边境。', tags: ['城防', '情报'] },
   11: { role: '精锐', plan: '适合高等级队伍打精英战役，收益稳定但需要名将支援。', tags: ['精英', '破防'] },
   12: { role: '反制', plan: '适合防守反击，在己方领地较少时收益更明显。', tags: ['反击', '稳守'] },
+  ...SECT_ARCHETYPE_EXTENDED,
 };
 
 export function evaluateSectStrategy({ sectPlayer, kingdomWar, party = [], badges = 0, territories = {} }) {
