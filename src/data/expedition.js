@@ -118,7 +118,7 @@ export const EXPEDITION_ZONES = [
       { type: 'gold', min: 8000, max: 20000, weight: 18 },
       { type: 'mineral', id: 'stardust', count: 2, weight: 22 },
       { type: 'accessory', count: 1, weight: 20 },
-      { type: 'shiny_egg', level: 50, weight: 5 },
+      { type: 'shiny_egg', level: 50, weight: 2 },
       { type: 'egg', level: 60, weight: 25 },
     ]
   },
@@ -126,7 +126,7 @@ export const EXPEDITION_ZONES = [
     id: 'ninja_war', name: '忍界大战战场', icon: '🍥', desc: '第四次忍界大战的遗迹，火系、格斗系、电系、风系精灵获得加成',
     color: '#FF6F00', reqBadges: 6, duration: 12 * 60 * 1000,
     bonusTypes: ['FIRE', 'FIGHT', 'ELECTRIC', 'WIND'],
-    bonusMultiplier: 1.45,
+    bonusMultiplier: 1.35,
     rewards: [
       { type: 'gold', min: 3000, max: 8000, weight: 20 },
       { type: 'tm', weight: 20 },

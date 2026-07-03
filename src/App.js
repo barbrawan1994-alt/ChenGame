@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import {
   shouldForestVineBlock, shouldGravitySkip, calcFireHeatPPExtra, applyStarShieldDamage,
-  processDomainTurnStart, processBossMechanicsTurnEnd, getMirrorLakeMove, queueMirrorEcho,
+  processDomainTurnStart, processBossMechanicsTurnEnd, getBossRageMult, getMirrorLakeMove, queueMirrorEcho,
   processWindTowerFollowUp, applyAdaptationToCombatState, isDarkMoonHidden, canDarkMoonScout,
   applyMirrorEchoRecoil, applyParasiteHealRedirect, checkMirrorCloneReflect,
 } from './utils/pveBattleRules';
@@ -111,7 +111,7 @@ import {
   PLAYER_STYLES, BREATHING_PVE_STYLES, FUSION_PLAY_TEMPLATES, BUILD_PRESETS, KINGDOM_POSITIONS, getUnlockedCrossSystems, calcCrossSystemPveBonuses, mergePveBonuses,
   DEFAULT_SECT_PLAYER_STATE, DEFAULT_SECT_RESOURCES, SECT_RANKS, SECT_JOIN_REQ_BADGES, SECT_SUB_SECT_REQ_RANK, SECT_SWITCH_REP_COST,
   SECT_XINFA, SECT_SHOP_ITEMS, SECT_RESOURCE_LABELS, SECT_ALLIANCES, SECT_FACTION_LEAN, SECT_JIANGHU_EVENTS, SECT_COMBO_SKILLS,
-  getSectRankByRep, getSectRankInfo, getLearnableMartialArts, getMartialArtById, getSectMartialArts,
+  getSectRankByRep, getSectRankInfo, getLearnableMartialArts, getMartialArtById, getSectMartialArts, getXinfaTier,
   generateSectDailyTasks, getActiveJianghuEvent, getComboSkillKey, calcSectKingdomPowerBonus,
   getSectFactionStance, evaluateSectStrategy, SECT_REALM_BY_SECT,
 } from './data';
@@ -120,10 +120,11 @@ import {
   getAvailableMartialMoves, gainSectMomentum, spendSectMomentum, initBattleSectState,
   SECT_MOMENTUM_MAX, SECT_MOMENTUM_PER_CRIT, SECT_MOMENTUM_PER_DODGE, SECT_MOMENTUM_PER_HEAL, SECT_MOMENTUM_PER_REFLECT, SECT_MOMENTUM_PER_KILL,
   getXinfaEffectDesc, onSectDodge, onSectHeal, applySectDeathSave,
+  applySectShieldAbsorb,
 } from './utils/sectLogic';
 import {
   applyExtendedSectPreDamage, applyExtendedSectDefMods, applyExtendedSectPostDamage,
-  trySectEndure, applySectCharmAttackPenalty, refreshSectBarrier,
+  trySectEndure, applySectCharmAttackPenalty,
 } from './utils/sectPassivesExtended';
 import {
   CURSED_ENERGY_CONFIG, CURSE_GRADES, getCurseGrade, getMaxCE, generateCurseTalent,
@@ -433,7 +434,7 @@ const getEquipEffects = (pet) => {
 };
 
 const inferCompletedSideStories = (storyProg) => {
-  return SIDE_STORY_LINES.filter(s => storyProg > s.endIdx).map(s => s.id);
+  return SIDE_STORY_LINES.filter(s => s.id !== 'naruto' && s.id !== 'sanguo' && storyProg > s.endIdx).map(s => s.id);
 };
 
 const SuperSpiritIcon = ({ className = '', size = 56, label = GAME_NAME }) => (
@@ -1660,8 +1661,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (ballType === 'dusk') {
           const isDarkMap = mapInfo && ['factory', 'ghost', 'space'].includes(mapInfo.type);
           const eTypes = [enemy.type, enemy.type2 || enemy.secondaryType].filter(Boolean);
-          const isGhostType = eTypes.some(t => t === 'GHOST');
-          if (isDarkMap || isGhostType) rate = 3.5;
+          const isGhostOrDark = eTypes.some(t => t === 'GHOST' || t === 'DARK');
+          if (isDarkMap || isGhostOrDark) rate = 3.5;
       }
       // 先机球：前 3 回合
       if (ballType === 'quick') {
@@ -1910,7 +1911,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                    : Math.floor(maxHp * (v || 50) / 100);
                faintedState.currentHp = Math.min(maxHp, healAmt);
                faintedState.status = null;
-               faintedState.volatiles = { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 };
+               faintedState.volatiles = { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false };
                logMsg = `使用了 ${item.name}，${party[faintedIdx]?.name || '伙伴'} 恢复了战斗能力！`;
                used = true;
              } else {
@@ -2145,11 +2146,16 @@ const [viewStatPet, setViewStatPet] = useState(null);
     // ==========================================
 
   const checkEvoCondition = (pet, evoDex) => {
-    const condition = evoDex?.evoCondition;
+    // 进化条件定义在进化前形态上，优先读取当前形态，回退到目标形态
+    const srcDex = POKEDEX.find(p => p.id === pet.id);
+    const condition = srcDex?.evoCondition || evoDex?.evoCondition;
     if (!condition) return true;
-    if (condition.time && condition.time !== timePhase) return false;
+    const tp = (condition.time || '').toUpperCase();
+    if (tp && tp !== timePhase) return false;
     if (condition.weather && condition.weather !== weather) return false;
     if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) return false;
+    // 道具进化条件不能通过升级/糖果触发，需使用对应进化石
+    if (condition.item) return false;
     return true;
   };
 
@@ -2178,6 +2184,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
         unit.volatiles.badlyPoisonedTurns = turns + 1;
       } else {
         dot = Math.max(1, Math.floor(getStats(unit).maxHp / 8));
+      }
+      // 门派8五毒心法：中毒DOT+20%（对敌方中毒精灵）
+      if (unit.status === 'PSN' && side === 'enemy') {
+        const ps = battleState?._playerSectState;
+        if (ps?.playerSect === 8 && getXinfaTier(ps.sectXinfaLevels, 8) >= 3) dot = Math.floor(dot * 1.2);
       }
       unit.currentHp = Math.max(0, unit.currentHp - dot);
       if (side === 'player' && battleState) markPlayerTookDamage(battleState);
@@ -2293,6 +2304,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     setFusionState(prev => ({ ...prev, awakeningTiers: { ...(prev.awakeningTiers || {}), [petUid]: tierId } }));
     if (tier.rewards?.title) unlockTitle(tier.rewards.title);
     updateAchStat({ fusionAwakeningTiers: 1 });
+    if (tierId === 'strategic') updateAchStat({ strategicAwakeningCount: 1 });
     showMapToast(tier.icon, tier.name, `${pet.name} 完成${tier.name}！`, 3500);
   };
 
@@ -2345,7 +2357,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (m.reward?.title) unlockTitle(m.reward.title);
       if (m.reward?.gold) { setGold(g => g + m.reward.gold); updateAchStat({ totalGoldEarned: m.reward.gold }); }
       if (m.reward?.item) {
-        const isBall = m.reward.item.includes('ball');
+        const isBall = !!BALLS[m.reward.item] || m.reward.item.includes('ball');
         const cat = isBall ? 'balls' : 'meds';
         setInventory(p => ({ ...p, [cat]: { ...p[cat], [m.reward.item]: (p[cat]?.[m.reward.item] || 0) + (m.reward.itemCount || 1) } }));
       }
@@ -2703,7 +2715,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if (!available.find(r => r.id === realmId)) {
       showMapToast('❌', '条件不足', '队伍需有对应门派精灵或已通关', 2500); return;
     }
-    const stepIdx = sectPlayer.sectRealmProgress?.[realmId] || 0;
+    const stepIdx = fusionState[`sect_progress_${realmId}`] || sectPlayer.sectRealmProgress?.[realmId] || 0;
     const step = def.steps?.[stepIdx];
     if (!step) { showMapToast('✅', '已完成', '该秘境已通关', 1500); return; }
     if (step.type === 'puzzle' || step.type === 'explore' || step.type === 'soothe') {
@@ -2712,11 +2724,17 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (reqTypes.length && !hasType) {
         showMapToast('❌', '条件不足', `需要${reqTypes.join('/')}系精灵`, 2500); return;
       }
+      const reqTags = step.reqTags || [];
+      if (reqTags.length) {
+        const hasTag = party.some(p => { const tags = inferPetTags(p) || []; return reqTags.some(t => tags.includes(t)); });
+        if (!hasTag) { showMapToast('❌', '条件不足', `需要具备${reqTags.join('/')}标签的精灵`, 2500); return; }
+      }
       setSectPlayer(prev => ({
         ...prev,
         sectRealmProgress: { ...prev.sectRealmProgress, [realmId]: stepIdx + 1 },
         sectResources: { ...prev.sectResources, contribution: (prev.sectResources.contribution || 0) + 20 },
       }));
+      setFusionState(prev => ({ ...prev, [`sect_progress_${realmId}`]: stepIdx + 1 }));
       addSectResources({ reputation: 25 });
       if (stepIdx + 1 >= def.steps.length) completeSectRealm(realmId, def);
       else showMapToast('✅', step.title, step.text, 3500);
@@ -2738,7 +2756,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
       name: def.name,
       customParty: enemyParty,
       trainerName: step.enemyName || def.name,
-      drop: step.drop || def.reward?.gold || 5000,
+      drop: step.drop || 3000,
+      battleObjective: step.objective,
+      objectiveTurns: step.objectiveTurns,
       _sectRealm: { realmId, stepIdx },
     }, 'sect_realm');
   };
@@ -2749,6 +2769,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const r = def.reward || {};
     if (r.gold) setGold(g => g + r.gold);
     if (r.title) unlockTitle(r.title);
+    if (r.generalFragment) {
+      setKingdomWar(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
+      showMapToast('🎖️', '名将碎片', `获得 ${r.generalFragment} 碎片 ×1`, 2500);
+    }
     addSectResources({ contribution: r.sectContrib || 50, scrollPage: r.scrollPage || 0, reputation: 80 });
     const finalArt = getSectMartialArts(def.sectIds?.[0]).find(a => a.tier === 'final');
     if (finalArt && sectPlayer.playerSect === def.sectIds?.[0]) {
@@ -3298,8 +3322,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
             const targetPetInfo = POKEDEX.find(p => p.id === targetId);
             
             if (targetPetInfo) {
-                if (targetPetInfo.evoCondition && !checkEvoCondition(pet, targetPetInfo)) {
-                    const cond = targetPetInfo.evoCondition;
+                const srcPetInfo = POKEDEX.find(p => p.id === pet.id);
+                const stoneEvoCond = srcPetInfo?.evoCondition || targetPetInfo.evoCondition;
+                if (stoneEvoCond && !checkEvoCondition(pet, targetPetInfo)) {
+                    const cond = stoneEvoCond;
                     const hint = cond.time ? `需要在${cond.time.toUpperCase() === 'NIGHT' ? '夜晚' : '白天'}` : cond.intimacy ? `亲密度需≥${cond.intimacy}` : '条件不满足';
                     showMapToast('❌', '进化条件不足', hint, 2000);
                     return;
@@ -3499,7 +3525,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
             pet.currentHp = newStats.maxHp; 
 
             if (dex?.evo && !pet.isEvolved && pet.level >= (dex.evoLvl || 30)) {
-              if (!dex.evoCondition) {
+              const maxEvoDex = POKEDEX.find(p => p.id === dex.evo);
+              if (checkEvoCondition(pet, maxEvoDex)) {
                 pet.canEvolve = true;
               }
             }
@@ -3526,12 +3553,24 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     p.level = targetLv;
                     p.exp = 0;
                     p.nextExp = calcNextExp(p.level, NATURE_DB[p.nature || 'docile']?.exp || 1.0);
+                    const oldMaxHp = getStats({...p, level: oldLv}).maxHp;
                     const ns = getStats(p);
-                    p.currentHp = ns.maxHp;
+                    const hpDiff = Math.max(0, ns.maxHp - oldMaxHp);
+                    p.currentHp = Math.min(ns.maxHp, p.currentHp + hpDiff);
                     let evoMsg = '';
                     const pdx = POKEDEX.find(px => px.id === p.id);
-                    if (pdx?.evo && p.level >= (pdx.evoLvl || 30) && !p.isEvolved && !pdx.evoCondition) {
-                        const evoDex = POKEDEX.find(px => px.id === pdx.evo);
+                    let candyEvoTarget = pdx?.evo;
+                    if (pdx?.evoAlt) {
+                      for (const alt of pdx.evoAlt) {
+                        let altOk = true;
+                        if (alt.condition.time && alt.condition.time !== timePhase) altOk = false;
+                        if (alt.condition.weather && alt.condition.weather !== weather) altOk = false;
+                        if (alt.condition.intimacy && (p.intimacy || 0) < alt.condition.intimacy) altOk = false;
+                        if (altOk) { candyEvoTarget = alt.target; break; }
+                      }
+                    }
+                    if (candyEvoTarget && p.level >= (pdx?.evoLvl || 30) && !p.isEvolved && checkEvoCondition(p, POKEDEX.find(px => px.id === candyEvoTarget))) {
+                        const evoDex = POKEDEX.find(px => px.id === candyEvoTarget);
                         if (evoDex) {
                             const oldType = p.type;
                             p.id = evoDex.id;
@@ -3567,10 +3606,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
                             });
                         }
                     }
-                    p.intimacy = Math.min(255, (p.intimacy || 0) + usedCount * 3);
+                    p.intimacy = Math.min(255, (p.intimacy || 0) + usedCount);
                     setParty(np);
                     setInventory(prev => ({...prev, exp_candy: Math.max(0, (prev.exp_candy || 0) - usedCount)}));
-                    showMapToast('🍬', '批量升级', `${p.name} Lv.${oldLv} → Lv.${p.level}${evoMsg} (糖果x${usedCount}, 亲密度+${usedCount*3})`, 3000);
+                    showMapToast('🍬', '批量升级', `${p.name} Lv.${oldLv} → Lv.${p.level}${evoMsg} (糖果x${usedCount}, 亲密度+${usedCount})`, 3000);
                     setUsingItem(null); setView('bag');
                 }});
                 return;
@@ -3584,26 +3623,24 @@ const [viewStatPet, setViewStatPet] = useState(null);
             const newStats = getStats(pet);
             const hpDiff = newStats.maxHp - getStats({...pet, level: oldLv}).maxHp;
             pet.currentHp = Math.min(newStats.maxHp, pet.currentHp + Math.max(0, hpDiff));
+            // 升级学技能
+            const lsData = POKEDEX.find(p => p.id === pet.id);
+            if (lsData?.learnset) {
+              lsData.learnset.filter(ls => ls.level === pet.level).forEach(ls => {
+                const newMove = getMoveByLevel(pet.type, ls.level);
+                if (newMove && !pet.moves?.some(m => m.name === newMove.name)) {
+                  if ((pet.moves?.length || 0) < 4) { pet.moves = [...(pet.moves || []), newMove]; }
+                  else { pet.pendingLearnMove = newMove; }
+                }
+              });
+            }
 
-            const pokedex = POKEDEX.find(p => p.id === pet.id);
+            const pokedex = lsData;
             if (pokedex?.evo && pet.level >= (pokedex.evoLvl || 30) && !pet.isEvolved) {
-                let batchEvoOk = true;
                 const evoDex = POKEDEX.find(p => p.id === pokedex.evo);
-                if (!checkEvoCondition(pet, evoDex)) batchEvoOk = false;
-                if (batchEvoOk && evoDex) {
-                    pet.id = evoDex.id;
-                    pet.name = pet.isFusedShiny ? `异色·${evoDex.name}` : pet.isShiny ? `✨${evoDex.name}` : evoDex.name;
-                    pet.type = evoDex.type;
-                    if (evoDex.type2) { pet.secondaryType = evoDex.type2; pet.type2 = evoDex.type2; }
-                    else if (evoDex.secondaryType) { pet.secondaryType = evoDex.secondaryType; pet.type2 = evoDex.secondaryType; }
-                    else { pet.secondaryType = null; pet.type2 = null; }
-                    pet.isEvolved = !evoDex.evo;
-                    pet.evo = evoDex.evo || null;
-                    pet.evoLvl = evoDex.evoLvl || null;
-                    pet.canEvolve = false;
-                    if (evoDex.hp) { pet.hp = evoDex.hp; pet.atk = evoDex.atk; pet.def = evoDex.def; pet.s_atk = evoDex.s_atk; pet.s_def = evoDex.s_def; pet.spd = evoDex.spd; }
-                    if (evoDex.trait) pet.trait = evoDex.trait;
-                    msg = `🎉 ${pet.name} 进化了！Lv.${oldLv} → Lv.${pet.level}！`;
+                if (checkEvoCondition(pet, evoDex) && evoDex) {
+                    pet.canEvolve = true;
+                    msg = `🍬 ${pet.name} 升到了 Lv.${pet.level}！(✨进化征兆!)`;
                 } else {
                     msg = `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
                 }
@@ -4040,7 +4077,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       // totalCaught 仅由 capture 事件递增，不用图鉴长度覆盖
       next.badgeCount = badges.length;
       next.leagueWins = leagueWins;
-      next.sectChiefsDefeated = (sectTitles || []).length;
+      next.sectChiefsDefeated = Math.max((sectPlayer?.sectChiefTrials || []).length, (sectPlayer?.sectTitles || []).length);
       next.sectPlayerRank = sectPlayer?.sectRank || 0;
       next.sectJoined = sectPlayer?.playerSect ? 1 : 0;
       next.sectChiefTrials = (sectPlayer?.sectChiefTrials || []).length;
@@ -6171,7 +6208,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     { id: 'ether', name: 'PP补剂 ×3', icon: '🧪', color: '#2196F3', weight: 14, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+3}})); } },
     { id: 'ball', name: '超级球 ×3', icon: '🔵', color: '#1E88E5', weight: 12, action: () => { setInventory(prev => ({...prev, balls:{...prev.balls, great:(prev.balls.great||0)+3}})); } },
     { id: 'candy', name: '经验糖果', icon: '🍬', color: '#E91E63', weight: 6, action: () => { setInventory(prev => ({...prev, exp_candy:(prev.exp_candy||0)+1})); } },
-    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: Math.min(20, (prev.tickets || 0) + 1)})); } },
+    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (prev.tickets || 0) + 1)})); } },
     { id: 'jutsu_scroll', name: '忍术卷轴', icon: '🍥', color: '#FF6F00', weight: 4, action: () => { setGold(g => g + 3000); updateAchStat({ totalGoldEarned: 3000 }); const rj = JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)]; setNarutoState(prev => ({...prev, jutsuScrolls: [...(prev.jutsuScrolls || []), rj.id], jutsuCollection: [...new Set([...(prev.jutsuCollection || []), rj.id])]})); showMapToast('🍥','忍术卷轴',`获得3000金币 + 忍术【${rj.name}】`,1500); } },
   ];
 
@@ -6221,7 +6258,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const grantBountyReward = (reward = {}) => {
     if (reward.gold) { setGold(g => g + reward.gold); updateAchStat({ totalGoldEarned: reward.gold }); }
-    if (reward.tickets) setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + (reward.tickets || 0))}));
+    if (reward.tickets) setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + (reward.tickets || 0))}));
   };
 
   const refreshBounties = () => {
@@ -6256,7 +6293,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const bonus5 = Math.floor(1500 + badges.length * 200);
         setGold(g => g + bonus5);
         updateAchStat({ totalGoldEarned: bonus5 });
-        setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + 1)}));
+        setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + 1)}));
         setTimeout(() => showMapToast('🌟', '5连赏金!', `额外奖励 💰${bonus5} + 🎫1竞技票！`, 3000), 600);
       }
       showMapToast('🎁', '赏金领取', `获得 ${reward.gold || 0} 金币${reward.tickets ? ` + ${reward.tickets} 竞技票` : ''}`, 2000);
@@ -6269,7 +6306,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (!prev.allCompleted || prev.masterChestClaimed) return prev;
       const chest = getMasterChestReward(badges.length);
       if (chest.gold) setGold(g => g + chest.gold);
-      if (chest.tickets) setArenaState(a => ({...a, tickets: Math.min(20, (a.tickets || 0) + chest.tickets)}));
+      if (chest.tickets) setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + chest.tickets)}));
       if (chest.berries) setInventory(inv => ({...inv, berries: addBerries(inv.berries, 'oran', chest.berries)}));
       showMapToast('🏆', '大师宝箱', `全部完成！${chest.desc}`, 3500);
       updateAchStat({ totalGoldEarned: chest.gold || 0 });
@@ -6476,7 +6513,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const event = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
       const choice = event?.choices?.find(c => c.id === choiceId);
       if (!choice) return prev;
-      teams[teamIdx] = { ...team, branchResolved: true, branchChoice: choice };
+      const branchFailed = choice.failChance ? Math.random() < choice.failChance : false;
+      teams[teamIdx] = { ...team, branchResolved: true, branchChoice: choice, branchFailed };
       return { ...prev, teams };
     });
     showMapToast('📡', '决策已下达', '探险队继续执行任务...', 1500);
@@ -6816,7 +6854,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const completeKingdomPveTask = (taskId) => {
     const task = KINGDOM_PVE_TASKS.find(t => t.id === taskId);
-    if (!task || (fusionState.kingdomTasksDone || []).includes(taskId)) return;
+    if (!task) return;
+    const kwCooldowns = fusionState.kingdomTaskCooldowns || {};
+    const lastDone = kwCooldowns[taskId] || 0;
+    const cd = task.cooldownTurns || 999;
+    const kwTurn = kingdomWar?.currentTurn || 0;
+    if (lastDone > 0 && kwTurn - lastDone < cd) {
+      showMapToast('⏳', '冷却中', `需等待 ${cd - (kwTurn - lastDone)} 回合`, 2000); return;
+    }
     if (badges.length < (task.reqBadges || 0)) { showMapToast('🔒', '未解锁', `需要 ${task.reqBadges} 枚徽章`, 2000); return; }
     if (task.prereq?.length) {
       const done = fusionState.kingdomTasksDone || [];
@@ -6840,7 +6885,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (task.cost?.gold) setGold(g => g - task.cost.gold);
     if (task.cost?.energy) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - task.cost.energy) }));
     if (task.cost?.grain) setKingdomWar(prev => ({ ...prev, grainReserve: Math.max(0, (prev.grainReserve || 0) - task.cost.grain) }));
-    setFusionState(prev => ({ ...prev, kingdomTasksDone: [...(prev.kingdomTasksDone || []), taskId] }));
+    setFusionState(prev => ({
+      ...prev,
+      kingdomTasksDone: [...(prev.kingdomTasksDone || []), taskId],
+      kingdomTaskCooldowns: { ...(prev.kingdomTaskCooldowns || {}), [taskId]: kingdomWar?.currentTurn || 0 },
+    }));
     const r = task.reward || {};
     if (r.gold) setGold(g => g + r.gold);
     if (r.guardianScore) addGuardianScore(r.guardianScore);
@@ -6863,16 +6912,28 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     else return;
     if (!def || (fusionState[clearedKey] || []).includes(id)) return;
     if (badges.length < def.reqBadges) { showMapToast('🔒', '未解锁', `需要 ${def.reqBadges} 枚徽章`, 2000); return; }
+    if (type === 'sect' && def.sectIds?.length) {
+      const partySectIds = [...new Set(party.map(p => p.sectId).filter(Boolean))];
+      if (!def.sectIds.some(sid => partySectIds.includes(sid))) {
+        showMapToast('❌', '条件不足', '队伍需有对应门派精灵', 2500); return;
+      }
+    }
     const dungeonProgress = fusionState[`${type}_progress_${id}`] || 0;
     const allSteps = def.steps || [];
-    const combatSteps = allSteps.filter(s => s.type === 'boss' || s.type === 'battle');
-    const step = combatSteps[dungeonProgress] || combatSteps[combatSteps.length - 1];
+    // 按顺序处理所有步骤（包括非战斗步骤），不再跳过
+    const step = allSteps[dungeonProgress];
     if (!step) return;
-    const stepIdx = allSteps.indexOf(step);
-    const preSteps = allSteps.slice(0, stepIdx).filter(s => s.type === 'explore' || s.type === 'puzzle');
-    if (preSteps.length > 0 && dungeonProgress === 0) {
-      const narratives = preSteps.map(s => s.text || s.title).join('\n');
-      showMapToast('📜', def.name, narratives.slice(0, 60) + '...', 3000);
+    if (step.type === 'explore' || step.type === 'puzzle' || step.type === 'soothe') {
+      const reqTypes = step.reqTypes || [];
+      if (reqTypes.length && !party.some(p => reqTypes.includes(p.type) || reqTypes.includes(p.type2))) {
+        showMapToast('❌', '条件不足', `需要${reqTypes.join('/')}系精灵`, 2500); return;
+      }
+      setFusionState(prev => ({ ...prev, [`${type}_progress_${id}`]: dungeonProgress + 1 }));
+      showMapToast('✅', step.title || def.name, step.text || '探索完成', 3500);
+      if (dungeonProgress + 1 >= allSteps.length) {
+        if (type === 'sect') completeSectRealm(id, def);
+      }
+      return;
     }
     const isFinalStep = !combatSteps[dungeonProgress + 1];
     const leadSect = party[0]?.sectId;
@@ -7235,8 +7296,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
       let bonusMult = calcExpeditionBonus(teamPets, zone);
       if (team.branchChoice) {
-        const fail = Math.random() < (team.branchChoice.failChance || 0);
-        if (fail) {
+        if (team.branchFailed) {
           bonusMult *= 0.5;
         } else {
           bonusMult *= (team.branchChoice.rewardMult || 1);
@@ -7426,6 +7486,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const today = getLocalDateStr();
     if (worldBossState.bossDate !== today) {
       refreshWorldBoss();
+      showMapToast('🔄', '首领刷新', '今日世界首领已刷新，请再次点击挑战！', 2500);
       return;
     }
     const st = worldBossState;
@@ -7452,7 +7513,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const enemyPartyMember = {
       ...enemyPet, currentHp: remainHp, maxHp: bossHp,
       stages: { ...DEFAULT_BATTLE_STAGES },
-      volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
+      volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false },
     };
 
     startBattle({
@@ -7477,7 +7538,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         totalDamage: newTotal,
         defeated,
         bestDamage: Math.max(prev.bestDamage || 0, totalDmgDealt),
-        totalBossesDefeated: defeated ? (prev.totalBossesDefeated || 0) + 1 : (prev.totalBossesDefeated || 0),
+        totalBossesDefeated: (defeated && !prev.defeated) ? (prev.totalBossesDefeated || 0) + 1 : (prev.totalBossesDefeated || 0),
       };
 
       const unclaimedMs = boss.milestones.filter(m => {
@@ -7488,7 +7549,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         next.claimedMilestones = [...(prev.claimedMilestones || []), ...unclaimedMs.map(m => m.dmg)];
         next._pendingMilestones = unclaimedMs;
       }
-      if (defeated) next._defeated = true;
+      if (defeated && !prev.defeated) next._defeated = true;
       next._totalDmgDealt = totalDmgDealt;
       return next;
     });
@@ -7510,10 +7571,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (totalDmg > 0) updateAchStat({ worldBossBestDamage: totalDmg });
         if (prev._defeated) {
           const bossR = boss?.rewards || {};
-          setGold(g => g + (bossR.gold || 2000));
+          const bossGoldAmt = bossR.gold || 2000;
+          setGold(g => g + bossGoldAmt);
           if (bossR.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + bossR.exp_candy }));
           if (bossR.tickets) setArenaState(a => ({ ...a, tickets: (a.tickets || 0) + bossR.tickets }));
-          updateAchStat({ worldBossesDefeated: 1 });
+          updateAchStat({ worldBossesDefeated: 1, totalGoldEarned: bossGoldAmt });
           showMapToast('🎊', '首领击破！', `${boss.name} 已被击败！获得 ${(bossR.gold||2000).toLocaleString()}金${bossR.exp_candy ? ` + ${bossR.exp_candy}经验糖` : ''}${bossR.tickets ? ` + ${bossR.tickets}竞技票` : ''}`, 4000);
         }
         const { _pendingMilestones, _defeated, _totalDmgDealt, ...clean } = prev;
@@ -7523,9 +7585,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const startArenaFight = () => {
-    const rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
+    let rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
     if (arenaState.tickets <= 0) { showMapToast('🎫','门票不足',`可花 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买门票`,1500); return; }
-    if (badges.length < rank.reqBadges) { showMapToast('❌','徽章不足',`需要 ${rank.reqBadges} 枚徽章`,1500); return; }
+    if (badges.length < rank.reqBadges) {
+      const validRank = [...ARENA_RANKS].reverse().find(r => badges.length >= r.reqBadges) || ARENA_RANKS[0];
+      setArenaState(prev => ({ ...prev, rank: validRank.id, stars: 0 }));
+      showMapToast('📉', '段位调整', `徽章不足，自动降至${validRank.name}段位`, 2500);
+      return;
+    }
     if (party.length === 0) { showMapToast('❌','无精灵','队伍为空',1500); return; }
     const rule = ARENA_WEEKLY_RULES.find(r => r.id === arenaState.weeklyRule) || ARENA_WEEKLY_RULES[0];
     const ruleEffect = rule.effect;
@@ -7606,6 +7673,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (curRankOrder > bestRankOrder) next.seasonBestRank = next.rank;
 
         const nextRankData = ARENA_RANKS[rankIdx + 1];
+        if (next.stars >= rank.maxStars && rankIdx < ARENA_RANKS.length - 1 && nextRankData && badges.length < nextRankData.reqBadges) {
+          showMapToast('🔒', '晋级受阻', `需要 ${nextRankData.reqBadges} 枚徽章晋升${nextRankData.name}`, 3000);
+        }
         if (next.stars >= rank.maxStars && rankIdx < ARENA_RANKS.length - 1 && badges.length >= (nextRankData?.reqBadges || 0)) {
           next.rank = nextRankData.id;
           next.stars = 0;
@@ -7634,8 +7704,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const today = getLocalDateStr();
     setArenaState(prev => {
       if (prev.lastTicketDate === today) return prev;
-      const weekDay = new Date().getDay();
-      const ruleIdx = weekDay % ARENA_WEEKLY_RULES.length;
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const weekNum = Math.floor(((now - startOfYear) / 86400000 + startOfYear.getDay()) / 7);
+      const ruleIdx = weekNum % ARENA_WEEKLY_RULES.length;
       const ticketCap = ARENA_DAILY_FREE_TICKETS * 3;
       const next = {
         ...prev,
@@ -7654,7 +7726,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           const bestRank = prev.seasonBestRank || prev.rank || 'bronze';
           const srData = ARENA_SEASON_REWARDS.find(sr => sr.rank === bestRank);
           if (srData?.gold) setGold(g => g + srData.gold);
-          if (srData) showMapToast('🏆', '赛季结算', `第${prev.season || 1}赛季结束！${bestRank}段位奖励 💰${(srData.gold || 0).toLocaleString()}`, 4000);
+          if (srData?.accessory) setInventory(inv => ({ ...inv, accessories: [...(inv.accessories || []), srData.accessory] }));
+          if (srData?.title) setUnlockedTitles(t => [...new Set([...t, srData.title])]);
+          if (srData) {
+            const extraDesc = [srData.accessory ? '+ 奖杯' : '', srData.title ? `+ 称号「${srData.title}」` : ''].filter(Boolean).join(' ');
+            showMapToast('🏆', '赛季结算', `第${prev.season || 1}赛季结束！${bestRank}段位奖励 💰${(srData.gold || 0).toLocaleString()} ${extraDesc}`, 4000);
+          }
           next.season = (prev.season || 1) + 1;
           next.seasonStartDate = today;
           next.seasonBestRank = 'bronze';
@@ -7784,15 +7861,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
           <div className="activity-hub-section-title">进阶系统</div>
           <div className="activity-hub-action-grid" style={{display:'grid', gridTemplateColumns:'1fr', gap:'10px'}}>
-            <button className="activity-hub-action" type="button" onClick={() => { setActivityCenter(false); setFusionHubOpen(true); }} style={{
+            <button className="activity-hub-action" type="button" onClick={() => { if (badges.length < 6) { showMapToast('🔒','未解锁',`需要6枚徽章解锁融合中心（当前${badges.length}枚）`,2500); return; } setActivityCenter(false); setFusionHubOpen(true); }} style={{
               padding:'14px 16px', borderRadius:'14px', textAlign:'left', cursor:'pointer',
               border:'1px solid rgba(167,139,250,0.35)',
               background:'linear-gradient(135deg, rgba(69,39,160,0.22), rgba(123,31,162,0.10))', color:'#fff',
-              display:'flex', alignItems:'center', gap:'14px',
+              display:'flex', alignItems:'center', gap:'14px', opacity: badges.length >= 6 ? 1 : 0.5,
             }}>
               <div style={{fontSize:'28px', lineHeight:1}}>🔗</div>
               <div style={{flex:1}}>
-                <div style={{fontSize:'14px', fontWeight:800}}>跨体系融合中心</div>
+                <div style={{fontSize:'14px', fontWeight:800}}>跨体系融合中心 {badges.length < 6 ? '🔒' : ''}</div>
                 <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'3px'}}>忍术秘境 · 果实海域 · 门派秘境 · 古战场 · 国战任务 · 将魂战术</div>
               </div>
               {getUnlockedFusionSystems(badges.length).length >= 4 && <span style={{fontSize:'16px'}}>✨</span>}
@@ -7980,7 +8057,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </div>
           <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
             <button onClick={startArenaFight} disabled={arenaState.tickets<=0 || party.length===0} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:'linear-gradient(135deg,#E53935,#C62828)',color:'#fff',fontSize:'16px',fontWeight:'800',cursor:'pointer',boxShadow:'0 4px 15px rgba(229,57,53,0.3)'}}>⚔️ 开始挑战</button>
-            <button onClick={()=>{if(gold<ARENA_TICKET_PRICE){showMapToast('❌','金币不足',`需要 ${ARENA_TICKET_PRICE} 金币`,1500);return;}setConfirmModal({title:'购买门票',msg:`花费 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买 1 张竞技场门票？`,onOk:()=>{setGold(g=>Math.max(0,g-ARENA_TICKET_PRICE));updateAchStat({ totalGoldSpent: ARENA_TICKET_PRICE });advanceBounty('spend_gold', null, ARENA_TICKET_PRICE);setArenaState(p=>({...p,tickets:Math.min(20, p.tickets+1)}));showMapToast('🎫','购买成功','获得 1 张门票',1500);}});}} style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>买门票 💰{ARENA_TICKET_PRICE.toLocaleString()}</button>
+            <button onClick={()=>{if(gold<ARENA_TICKET_PRICE){showMapToast('❌','金币不足',`需要 ${ARENA_TICKET_PRICE} 金币`,1500);return;}setConfirmModal({title:'购买门票',msg:`花费 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买 1 张竞技场门票？`,onOk:()=>{setGold(g=>Math.max(0,g-ARENA_TICKET_PRICE));updateAchStat({ totalGoldSpent: ARENA_TICKET_PRICE });advanceBounty('spend_gold', null, ARENA_TICKET_PRICE);setArenaState(p=>({...p,tickets:Math.min(ARENA_DAILY_FREE_TICKETS*3, p.tickets+1)}));showMapToast('🎫','购买成功','获得 1 张门票',1500);}});}} style={{padding:'14px 20px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>买门票 💰{ARENA_TICKET_PRICE.toLocaleString()}</button>
           </div>
           <div style={{padding:'10px 14px',borderRadius:'12px',background:'rgba(76,175,80,0.06)',border:'1px solid rgba(76,175,80,0.12)',marginBottom:'16px'}}>
             <div style={{fontSize:'11px',fontWeight:'700',color:'#4CAF50',marginBottom:'4px'}}>🏆 赛季奖励预览</div>
@@ -9992,7 +10069,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return (
         <div>
           <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px'}}>📋 每日任务</div>
-          {GANG_TASKS.map(task => {
+          {GANG_TASKS.filter(task => !task.reqKingdom || kingdomWar?.nation).map(task => {
             const progress = tp[task.id] || 0;
             const isDone = completed.includes(task.id);
             const isClaimed = completed.includes(task.id + '_claimed');
@@ -10499,7 +10576,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         p.currentHp = Math.min(stats.maxHp, p.currentHp + 15);
       } else if (berry.type === 'PP') {
         const mvs = p.moves || [];
-        if (mvs[0]) mvs[0].pp = Math.min(mvs[0].maxPP || 15, (mvs[0].pp || 0) + (berry.val || 10));
+        const lowestPP = mvs.reduce((best, m, i) => (!best || (m.pp || 0) < (best.pp || 0)) ? { ...m, idx: i } : best, null);
+        if (lowestPP && mvs[lowestPP.idx]) mvs[lowestPP.idx].pp = Math.min(mvs[lowestPP.idx].maxPP || 15, (mvs[lowestPP.idx].pp || 0) + (berry.val || 10));
       } else {
         p.currentHp = Math.min(stats.maxHp, p.currentHp + 25);
       }
@@ -10522,6 +10600,19 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (p.nextExp <= 0) p.nextExp = 999999;
       const newMaxHp = getStats(p).maxHp;
       if (p.currentHp > 0) p.currentHp = Math.min(newMaxHp, p.currentHp + (newMaxHp - oldMaxHp));
+      const pdx = POKEDEX.find(px => px.id === p.id);
+      if (pdx?.learnset) {
+        pdx.learnset.filter(ls => ls.level === p.level).forEach(ls => {
+          const nm = getMoveByLevel(p.type, ls.level);
+          if (nm && !p.moves?.some(m => m.name === nm.name)) {
+            if ((p.moves?.length || 0) < 4) p.moves = [...(p.moves || []), nm];
+          }
+        });
+      }
+      if (pdx?.evo && p.level >= (pdx.evoLvl || 30) && !p.isEvolved && checkEvoCondition(p, POKEDEX.find(px => px.id === pdx.evo))) {
+        p.canEvolve = true;
+        showMapToast('✨', '进化征兆', `${p.name} 可以进化了！`, 2500);
+      }
     }
     
     const oldInt = p.intimacy || 0;
@@ -10610,6 +10701,7 @@ const useGrowthItem = (petIndex, itemId) => {
 
     if (item.stat === 'level_up' || item.stat === 'level_max') {
       if (pet.level >= 100) { showMapToast('❌', '提示', '已满级！', 1500); return; }
+      if (item.stat === 'level_max' && badges.length < 8) { showMapToast('🔒', '未解锁', '需要8枚徽章才能使用神奇糖果', 2000); return; }
       const oldLv = pet.level;
       pet.level = item.stat === 'level_max' ? 100 : Math.min(100, pet.level + 1);
       pet.nextExp = calcNextExp(pet.level, NATURE_DB[pet.nature || 'docile']?.exp || 1.0);
@@ -11838,7 +11930,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 // 确保 PvP 导入的数据也有特性字段，如果没有则随机一个
                 trait: p.trait || (k => k[Math.floor(Math.random() * k.length)])(Object.keys(TRAIT_DB)),
                 stages: { ...DEFAULT_BATTLE_STAGES },
-                volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
+                volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false },
                 combatMoves: moves,
                 maxHp: stats.maxHp
             };
@@ -11856,7 +11948,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const hp = isHalfHp ? Math.floor(stats.maxHp * 0.5) : stats.maxHp;
             return {...p, currentHp: hp, maxHp: stats.maxHp, status: null,
               stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
-              volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 }};
+              volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false }};
         });
         trainerName = context.trainerName || '竞技场对手';
         dropGold = context.drop || 1000;
@@ -11865,7 +11957,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         enemyParty = (context.customParty || []).map(p => ({
             ...p,
             stages: p.stages || { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
-            volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
+            volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false },
         }));
         trainerName = context.trainerName || '世界首领';
         dropGold = context?.rewards?.gold ?? context?.drop ?? 2000;
@@ -12307,7 +12399,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const stats = getStats(p, null, null, {});
             return {...p, currentHp: stats.maxHp, maxHp: stats.maxHp, status: null,
               stages: p.stages || { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
-              volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 }};
+              volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false }};
         });
         trainerName = context.trainerName || '忍界之敌';
         if (type === 'naruto_story') {
@@ -12327,7 +12419,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const stats = getStats(p, null, null, {});
             return {...p, currentHp: stats.maxHp, maxHp: stats.maxHp, status: null,
               stages: p.stages || { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
-              volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 }};
+              volatiles: p.volatiles || { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false }};
         });
         trainerName = context.trainerName || (type === 'tower' ? '精灵挑战塔' : '属性试炼');
         dropGold = challengeId?.rewards?.gold ?? context.drop ?? 0;
@@ -12614,7 +12706,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             status: p.status === 'CON' ? null : p.status, 
             // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             
-            volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: 0 },
+            volatiles: { protected: false, confused: 0, sleepTurns: 0, badlyPoisoned: false },
             turnCounters: { status: 0, stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 } },
             cursedEnergy: getInitialResource(maxCE, CURSED_ENERGY_CONFIG),
             maxCE,
@@ -13625,7 +13717,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (ps) {
           ps.chakra = Math.min(ps.maxChakra || 0, poolChk);
           ps.cursedEnergy = Math.min(ps.maxCE || 0, poolCE);
-          if (ps.volatiles) ps.volatiles.protected = false;
         }
       }
       const ePoolChk = tempBattle.sharedEnemyChakra || 0;
@@ -13635,7 +13726,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (es) {
           es.chakra = Math.min(es.maxChakra || 0, ePoolChk);
           es.cursedEnergy = Math.min(es.maxCE || 0, ePoolCE);
-          if (es.volatiles) es.volatiles.protected = false;
         }
       }
 
@@ -13896,9 +13986,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
               const ep = tempBattle.enemyParty?.[tIdx];
               if (!ep || ep.currentHp <= 0) tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
               const tgt = tIdx !== undefined ? tempBattle.enemyParty?.[tIdx] : null;
-              if (tgt && tgt.currentHp > 0) {
+              const tgtState = tgt ? (tempBattle.enemyParty?.[tIdx]) : null;
+              const tgtVol = tgtState?.volatiles;
+              if (tgt && tgt.currentHp > 0 && !(tgtVol?.protected) && !(tempBattle.battleGoal === 'capture_alive' && tgt.currentHp <= Math.floor(getStats(tgt).maxHp * 0.15))) {
                 const sync = Math.max(1, Math.floor(baseDmg * 0.15));
-                tgt.currentHp = Math.max(0, tgt.currentHp - sync);
+                tgt.currentHp = Math.max(tempBattle.battleGoal === 'capture_alive' ? 1 : 0, tgt.currentHp - sync);
                 showMapToast('⚡', '协同攻击', '队友追加了一次攻击！', 1500);
                 addLog(`⚡ 协同追击对 ${tgt.name} 造成额外 ${sync} 伤害！`);
               }
@@ -13967,26 +14059,39 @@ const grantContestReward = (config, score, subjectPet = null) => {
           tempBattle.activeDomain = null;
         }
       }
+      // 双打回合末：清除 protect 状态（所有行动执行完毕后才清）
+      for (const pIdx of (tempBattle.activeIdxs || [])) {
+        const ps = tempBattle.playerCombatStates?.[pIdx];
+        if (ps?.volatiles) ps.volatiles.protected = false;
+      }
+      for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
+        const es = tempBattle.enemyParty?.[eIdx];
+        if (es?.volatiles) es.volatiles.protected = false;
+      }
       // 双打回合末DOT (灼伤/中毒) — 每个在场精灵结算一次
       const allDoubleActives = [
         ...((tempBattle.activeIdxs || []).map(i => ({ u: tempBattle.playerCombatStates?.[i], s: tempBattle.playerCombatStates?.[i] }))),
         ...((tempBattle.enemyActiveIdxs || []).map(i => ({ u: tempBattle.enemyParty?.[i], s: tempBattle.enemyParty?.[i] }))),
       ];
+      const isEnemyUnit = (unit) => (tempBattle.enemyActiveIdxs || []).some(i => tempBattle.enemyParty?.[i] === unit);
       for (const { u, s } of allDoubleActives) {
         if (!u || !s || u.currentHp <= 0) continue;
         if (u.trait === 'magic_guard') continue;
         if (s.status === 'BRN' || s.status === 'PSN') {
           let dot;
           if (s.status === 'PSN' && s.volatiles?.badlyPoisoned) {
-            s.volatiles.badlyPoisonedTurns = (s.volatiles.badlyPoisonedTurns || 1) + 1;
-            dot = Math.floor(getStats(u).maxHp * Math.min(0.25, s.volatiles.badlyPoisonedTurns / 16));
-          } else if (s.status === 'BRN') {
-            dot = Math.max(1, Math.floor(getStats(u).maxHp / 8));
+            const turns = s.volatiles.badlyPoisonedTurns || 1;
+            dot = Math.max(1, Math.floor(getStats(u).maxHp * Math.min(0.25, turns / 16)));
+            s.volatiles.badlyPoisonedTurns = turns + 1;
           } else {
             dot = Math.max(1, Math.floor(getStats(u).maxHp / 8));
           }
+          if (s.status === 'PSN' && isEnemyUnit(u)) {
+            const ps2 = tempBattle._playerSectState;
+            if (ps2?.playerSect === 8 && getXinfaTier(ps2.sectXinfaLevels, 8) >= 3) dot = Math.floor(dot * 1.2);
+          }
           u.currentHp = Math.max(0, u.currentHp - dot);
-          addLog(`${u.name} 受到 ${s.status === 'BRN' ? '灼伤' : '中毒'} 伤害 ${dot}!`);
+          addLog(`${u.name} 受到 ${s.status === 'BRN' ? '灼伤' : s.volatiles?.badlyPoisoned ? '剧毒' : '中毒'} 伤害 ${dot}!`);
         }
       }
 
@@ -14025,22 +14130,25 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
       }
 
-      // Fix#18: 双打灵域回合开始处理
+      // 双打灵域：每个玩家精灵只与第一个敌方精灵处理一次（避免N×M重复触发）
       if (tempBattle.domainRule) {
-        const pSlot = (tempBattle.activeIdxs || [])[0];
-        const eSlot = (tempBattle.enemyActiveIdxs || [])[0];
-        const dp = tempBattle.playerCombatStates?.[pSlot];
-        const de = tempBattle.enemyParty?.[eSlot];
-        if (dp && de) processDomainTurnStart(tempBattle, dp, de, addLog, getStats);
+        const eSlot0 = (tempBattle.enemyActiveIdxs || [])[0];
+        const de0 = tempBattle.enemyParty?.[eSlot0];
+        if (de0) {
+          for (const pSlot of (tempBattle.activeIdxs || [])) {
+            const dp = tempBattle.playerCombatStates?.[pSlot];
+            if (dp && dp.currentHp > 0) processDomainTurnStart(tempBattle, dp, de0, addLog, getStats);
+          }
+        }
       }
-      // Fix#18: 双打Boss机制
+      // 双打Boss机制：每回合只调用一次（取第一个玩家和第一个敌方）
       if ((tempBattle.type === 'world_boss' || tempBattle.ecoBossMechanics)) {
-        const pSlot = (tempBattle.activeIdxs || [])[0];
         const eSlot = (tempBattle.enemyActiveIdxs || [])[0];
-        const dp = tempBattle.playerCombatStates?.[pSlot];
         const de = tempBattle.enemyParty?.[eSlot];
-        if (dp && de && de.currentHp > 0) {
-          processBossMechanicsTurnEnd(tempBattle, dp, de, addLog, getStats);
+        const pSlot0 = (tempBattle.activeIdxs || [])[0];
+        const dp0 = tempBattle.playerCombatStates?.[pSlot0];
+        if (de && de.currentHp > 0 && dp0 && dp0.currentHp > 0) {
+          processBossMechanicsTurnEnd(tempBattle, dp0, de, addLog, getStats);
         }
       }
 
@@ -16087,9 +16195,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
       ICE:     { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL', 'SOUND'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'], immune: [] },
       FIGHT:   { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'DARK', 'STEEL'], immune: ['GHOST'] },
       POISON:  { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'], immune: ['STEEL'] },
-      GROUND:  { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'], immune: ['FLYING'] },
+      GROUND:  { weak: ['WATER', 'GRASS', 'ICE', 'WIND'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'], immune: ['FLYING'] },
       FLYING:  { weak: ['ELECTRIC', 'ICE', 'ROCK', 'COSMIC'], strong: ['GRASS', 'FIGHT', 'BUG'], immune: [] },
-      PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'], immune: ['DARK'] },
+      PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'], immune: [] },
       BUG:     { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'], immune: [] },
       ROCK:    { weak: ['WATER', 'GRASS', 'FIGHT', 'GROUND', 'STEEL'], strong: ['FIRE', 'ICE', 'FLYING', 'BUG', 'SOUND'], immune: [] },
       GHOST:   { weak: ['DARK'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'], immune: ['NORMAL', 'FIGHT'] },
@@ -16201,7 +16309,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
       }
     }
-    if ((berry.type === 'HP' || berry.type === 'HP_PCT') && ratio > 0 && ratio < 0.5) {
+    if ((berry.type === 'HP' || berry.type === 'HP_PCT') && ratio > 0 && ratio <= 0.5) {
       const heal = berry.type === 'HP' ? (berry.val || 30) : Math.floor(maxH * (berry.val || 0.25));
       defenderPet.currentHp = Math.min(maxH, defenderPet.currentHp + heal);
       addLog(`🍒 ${defenderPet.name} 的 ${berry.name} 恢复了体力！`);
@@ -16434,6 +16542,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (battleState.domainRule === 'fire_heat' && move.t === 'WATER' && ppCost > 1) {
               addLog(`🔥 高温环境使水系技能额外消耗 PP！`);
             }
+            move._ppBeforeUse = move.pp;
             move.pp = Math.max(0, move.pp - ppCost);
         }
     }
@@ -16459,12 +16568,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
     await wait(1000);
 
     // 守住逻辑 (移到显示技能名之后)
-    const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self');
+    const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self' && move.effect.type !== 'BUFF');
+    const _refundPP = () => { if (move._ppBeforeUse !== undefined) { move.pp = move._ppBeforeUse; delete move._ppBeforeUse; } };
     if (move.p > 0 && (defState.volatiles?.comboBarrierTurns || 0) > 0) {
         addLog(`🛡️ ${defender.name} 的结界挡下了伤害！`);
         _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' });
         await wait(1200);
         _setAnim(null);
+        _refundPP();
         return false;
     }
     if (defState.volatiles?.protected && isAttackOrDebuff) {
@@ -16472,6 +16583,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
         await wait(1200); 
         _setAnim(null);
+        _refundPP();
         return false;
     }
     
@@ -16494,6 +16606,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const atkFE_early = atkState.fruitTransformed ? atkState.fruitEffects : null;
     if (defFE && defFE.typeImmune && move.t === defFE.typeImmune && move.p > 0) {
         addLog(`${defender.name} 的果实能力免疫了 ${move.t} 属性攻击!`);
+        _refundPP();
         await wait(1000);
         return false;
     }
@@ -16650,6 +16763,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + healAmount);
             addLog(`${attacker.name} 恢复了 ${healAmount} 体力!`);
+            if (eff.cureStatus && atkState.status) {
+              addLog(`🌸 ${attacker.name} 的异常状态被治愈了！`);
+              atkState.status = null; attacker.status = null;
+            }
             _setAnim({ type: 'HEAL', target: targetSide });
         }
         else if (eff.type === 'OHKO') {
@@ -16724,6 +16841,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (dmgMult > 1) atkVal = Math.floor(atkVal * dmgMult);
           if ((battleState._kwAlignBonus || 1) > 1) atkVal = Math.floor(atkVal * battleState._kwAlignBonus);
         }
+        if (source === 'enemy') {
+          const rageMult = getBossRageMult(attacker);
+          if (rageMult > 1) atkVal = Math.floor(atkVal * rageMult);
+        }
 
         // 果实变身攻防倍率
         const atkFE = atkState.fruitTransformed ? atkState.fruitEffects : null;
@@ -16747,7 +16868,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (atkFE && atkFE.critBoost) critStage += atkFE.critBoost;
         const domForCrit = battleState.activeDomain;
         if (domForCrit && domForCrit.turnsLeft > 0 && domForCrit.effect && domForCrit.ownerSide === source && domForCrit.effect.critBoost) critStage += domForCrit.effect.critBoost;
-        let critChance = Math.max(source === 'player' ? 1 : 0, Math.min(40, statsAtk.crit * (1 + critStage * 0.5)));
+        const baseCritMin = source === 'player' ? 1 : (attacker.isBoss ? 3 : 1);
+        let critChance = Math.max(baseCritMin, Math.min(40, statsAtk.crit * (1 + critStage * 0.5)));
         if (source === 'player' && (attacker.intimacy || 0) >= 100) critChance += 5;
         if (defender.trait === 'shell_armor') critChance = 0;
         if (Math.random() * 100 < critChance) isCrit = true;
@@ -16756,6 +16878,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const defKey = category === 'physical' ? 'p_def' : 's_def';
           if ((defState.stages[defKey] || 0) > 0) defVal = Math.floor(defVal / getStageMult(defState.stages[defKey]));
         }
+        const baseDefVal = defVal;
         if (ceMoveEff.ignoreDefense) defVal = Math.floor(defVal * 0.5);
         if (atkFE && atkFE.ignoreDefPercent) defVal = Math.floor(defVal * (1 - atkFE.ignoreDefPercent));
 
@@ -16765,6 +16888,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (fx.id === 'ignore_def') defVal = Math.floor(defVal * (1 - fx.val));
           if (fx.id === 'void_heart' && fx.ignDef) defVal = Math.floor(defVal * (1 - fx.ignDef));
         });
+        defVal = Math.max(Math.floor(baseDefVal * 0.25), defVal);
 
         const atkSecType = attacker.type2 || attacker.secondaryType;
         const defSecType = defender.type2 || defender.secondaryType;
@@ -16774,6 +16898,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const levelBase = attacker.level * 0.8 + 5;
         let movePower = (move.isMartialArt && move.p === 0) ? 0 : (move.p || 40);
         if (move.effect?.type === 'DOUBLE_LOW_HP' && defender.currentHp / Math.max(1, getStats(defender).maxHp) <= 0.5) movePower *= 2;
+        if (movePower > 150) movePower = 150 + (movePower - 150) * 0.4;
         const powerFactor = movePower * 0.5 + 10;
         const ratio = atkVal / Math.max(1, defVal);
         const statFactor = Math.pow(ratio, 0.65);
@@ -16867,8 +16992,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         const vow = atkState.activeVow;
         if (vow && vow.turnsLeft > 0) {
-            if (vow.reward.atkMult) { rawDmg *= vow.reward.atkMult; vow.turnsLeft = 0; }
-            if (vow.reward.nextMovePower) { rawDmg *= vow.reward.nextMovePower; vow.turnsLeft = 0; }
+            let vowConsumed = false;
+            if (vow.reward.atkMult) { rawDmg *= vow.reward.atkMult; vowConsumed = true; }
+            if (vow.reward.nextMovePower) { rawDmg *= vow.reward.nextMovePower; vowConsumed = true; }
+            if (vowConsumed) vow.turnsLeft = 0;
         }
         const defVow = defState.activeVow;
         if (defVow && defVow.turnsLeft > 0) {
@@ -16927,7 +17054,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             // 竞技场「忍术周」(jutsuBoost)：仅玩家获得按段位递减加成
             if (source === 'player' && battleState?.type === 'arena' && (arenaState?.weeklyRule === 'jutsu' || battleState?._arenaJutsuBoost)) {
               const arnk = nrk?.id || 'academy';
-              const arenaJutsuPct = arnk === 'kage' ? 0.05 : arnk === 'jonin' ? 0.08 : arnk === 'chunin' ? 0.10 : 0.15;
+              const arenaJutsuPct = arnk === 'kage' ? 0.15 : arnk === 'jonin' ? 0.12 : arnk === 'chunin' ? 0.08 : 0.05;
               rawDmg *= (1 + arenaJutsuPct);
             }
         }
@@ -16978,13 +17105,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const defSectLv = defender.sectLevel || 0;
 
         if (atkSect === 1 && atkSectLv > 0) rawDmg *= (1 + (0.03 + atkSectLv * 0.02)); 
-        if (defSect === 2 && defSectLv > 0) rawDmg *= (1 - (0.03 + defSectLv * 0.02));
+        if (defSect === 2 && defSectLv > 0) rawDmg *= Math.max(0.2, 1 - (0.03 + defSectLv * 0.02));
         rawDmg = applyExtendedSectDefMods(rawDmg, { defender, defSect, defSectLv, battleState });
         if (defSect === 3 && defSectLv > 0) {
             const dodgeChance = 0.02 + defSectLv * 0.01;
             if (Math.random() < dodgeChance) {
                 rawDmg = 0; isDodged = true; addLog(`💨 ${defender.name} 施展凌波微步，闪避了攻击！`);
-                if (source === 'player') onSectDodge(defender, battleState, addLog);
+                onSectDodge(defender, battleState, addLog);
             }
         }
         if (atkSect === 4 && atkSectLv > 0 && isCrit) rawDmg *= (1 + (0.1 + atkSectLv * 0.05));
@@ -17063,9 +17190,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             defEquipFx.forEach(fx => {
               if (fx.id === 'reduce_special' && category === 'special') {
                 rawDmg *= (1 - fx.val);
-                dmg = Math.max(1, Math.floor(rawDmg));
               }
             });
+            dmg = Math.max(1, Math.floor(rawDmg));
           }
         }
 
@@ -17134,6 +17261,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           defender._ecoShield -= absorbed;
           dmg -= absorbed;
           if (absorbed > 0) addLog(`🌿 生态护盾吸收 ${absorbed.toLocaleString()} 伤害`);
+        }
+        if (dmg > 0 && (defender._sectShield || 0) > 0) {
+          dmg = applySectShieldAbsorb(defender, dmg, addLog);
         }
 
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
@@ -17534,19 +17664,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
                      targetState.stages[statName] = Math.max(-6, Math.min(6, (targetState.stages[statName] || 0) + delta));
                      addLog(`追加效果: ${targetName} 的能力变化了!`);
                      _setAnim({ type: eff.type, target: targetSide });
-                 } else if (eff.type === 'STATUS' && !targetState.status) {
-                     const _st = targetState.type, _st2 = targetState.type2 || targetState.secondaryType;
-                     const statusImmune = (eff.status === 'BRN' && (_st === 'FIRE' || _st2 === 'FIRE')) ||
-                       (eff.status === 'FRZ' && (_st === 'ICE' || _st2 === 'ICE')) ||
-                       (eff.status === 'PSN' && (_st === 'POISON' || _st2 === 'POISON' || _st === 'STEEL' || _st2 === 'STEEL')) ||
-                       (eff.status === 'PAR' && (_st === 'ELECTRIC' || _st2 === 'ELECTRIC'));
-                     if (!statusImmune) {
-                       targetState.status = eff.status;
-                       if (eff.status === 'SLP') { targetState.volatiles = { ...(targetState.volatiles || {}), sleepTurns: _.random(2, 4) }; }
-                       addLog(`追加效果: ${targetName} 陷入了异常状态!`);
-                       _setAnim({ type: eff.status, target: targetSide });
-                     }
-                 }
+                } else if (eff.type === 'STATUS' && eff.status === 'CON') {
+                    if (!targetState.volatiles?.confused) {
+                      targetState.volatiles = { ...(targetState.volatiles || {}), confused: 3 };
+                      addLog(`追加效果: ${targetName} 陷入了混乱!`);
+                      _setAnim({ type: 'CONFUSION', target: targetSide });
+                    }
+                } else if (eff.type === 'STATUS' && !targetState.status) {
+                    const _st = targetState.type, _st2 = targetState.type2 || targetState.secondaryType;
+                    const statusImmune = (eff.status === 'BRN' && (_st === 'FIRE' || _st2 === 'FIRE')) ||
+                      (eff.status === 'FRZ' && (_st === 'ICE' || _st2 === 'ICE')) ||
+                      (eff.status === 'PSN' && (_st === 'POISON' || _st2 === 'POISON' || _st === 'STEEL' || _st2 === 'STEEL')) ||
+                      (eff.status === 'PAR' && (_st === 'ELECTRIC' || _st2 === 'ELECTRIC'));
+                    if (!statusImmune) {
+                      targetState.status = eff.status;
+                      if (eff.status === 'SLP') { targetState.volatiles = { ...(targetState.volatiles || {}), sleepTurns: _.random(2, 4) }; }
+                      if (eff.status === 'PSN' && (eff.toxic || move.name === '剧毒')) {
+                        targetState.volatiles = { ...(targetState.volatiles || {}), badlyPoisoned: true, badlyPoisonedTurns: 1 };
+                      }
+                      addLog(`追加效果: ${targetName} 陷入了异常状态!`);
+                      _setAnim({ type: eff.status, target: targetSide });
+                    }
+                }
                  await wait(800); _setAnim(null);
              }
 
@@ -17582,7 +17721,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                  addLog(`😴 ${defender.name} 睡着了!`);
                  _setAnim({ type: 'SLEEP', target: defSide }); await wait(800); _setAnim(null);
              }
-             if (eff.healPercent) {
+             if (eff.healPercent && !move.isMartialArt) {
                  const heal = Math.floor(getStats(attacker).maxHp * eff.healPercent);
                  attacker.currentHp = Math.min(getStats(attacker).maxHp, attacker.currentHp + heal);
                  addLog(`💚 ${attacker.name} 恢复了 ${heal} HP!`);
@@ -17596,6 +17735,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
              if (eff.defUp) { atkState.stages.p_def = Math.min(6, (atkState.stages.p_def || 0) + eff.defUp); addLog(`⬆️ ${attacker.name} 的防御提升了!`); }
              if (eff.spAtkUp || eff.sAtkUp) { atkState.stages.s_atk = Math.min(6, (atkState.stages.s_atk || 0) + (eff.spAtkUp || eff.sAtkUp)); addLog(`⬆️ ${attacker.name} 的特攻提升了!`); }
              if (eff.spdUp) { atkState.stages.spd = Math.min(6, (atkState.stages.spd || 0) + eff.spdUp); addLog(`⬆️ ${attacker.name} 的速度提升了!`); }
+             if (eff.selfDebuff) {
+                 const sd = eff.selfDebuff;
+                 if (!atkState.stages) atkState.stages = {};
+                 atkState.stages[sd.stat] = Math.max(-6, Math.min(6, (atkState.stages[sd.stat] || 0) - (sd.val || 1)));
+                 const _sn = { p_atk:'物攻', p_def:'物防', s_atk:'特攻', s_def:'特防', spd:'速度' }[sd.stat] || sd.stat;
+                 addLog(`↩️ ${attacker.name} 的 [${_sn}] 作为反作用下降了!`);
+             }
+             if (eff.selfConfuse && !atkState.volatiles?.confused) {
+                 atkState.volatiles = { ...(atkState.volatiles || {}), confused: 3 };
+                 addLog(`😵 ${attacker.name} 因剧烈消耗陷入混乱!`);
+             }
         }
     }
 
@@ -17764,14 +17914,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
               pet.evo = altTarget;
               meetsCondition = true;
             } else {
-              // 检查默认进化目标的条件
+              // 进化条件定义在当前形态上，不在目标形态
               meetsCondition = true;
-              const defaultEvoData = POKEDEX.find(p => p.id === pet.evo);
-              const condition = defaultEvoData?.evoCondition;
-            if (condition) {
-                if (condition.time && condition.time !== timePhase) meetsCondition = false;
+              const condition = evoData?.evoCondition;
+              if (condition) {
+                const cTime = (condition.time || '').toUpperCase();
+                if (cTime && cTime !== timePhase) meetsCondition = false;
                 if (condition.weather && condition.weather !== weather) meetsCondition = false;
                 if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) meetsCondition = false;
+                if (condition.item) meetsCondition = false;
               }
             }
         }
@@ -19173,12 +19324,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return newBadges;
       });
     }
-    if (isGym && mapId && storyChapter && storyChapter.mapId === mapId) {
+    if (isGym && mapId && storyChapter && storyChapter.mapId === mapId && gymIsNewBadge) {
           try { checkTreasureUnlock('gym', { mapId }); } catch(e) { console.warn('treasure:', e); }
           setDialogQueue(storyChapter.outro);
           setCurrentDialogIndex(0);
           setIsDialogVisible(true);
           if (storyChapter.reward?.gold) { setGold(g => g + storyChapter.reward.gold); updateAchStat({ totalGoldEarned: storyChapter.reward.gold }); }
+          if (storyChapter.reward?.unlockTitle) { unlockTitle(storyChapter.reward.unlockTitle); }
+          if (storyChapter.reward?.sectAffinityBonus) {
+            const bonus = storyChapter.reward.sectAffinityBonus;
+            setSectPlayer(prev => ({ ...prev, sectResources: { ...(prev.sectResources || {}), reputation: (prev.sectResources?.reputation || 0) + bonus } }));
+            showMapToast('📜', '门派好感', `所有门派声望 +${bonus}`, 2500);
+          }
           if (storyChapter.reward?.balls) {
              setInventory(inv => {
                 const newBalls = {...inv.balls};
@@ -19196,6 +19353,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
                     newInv.balls[it.id] = (newInv.balls[it.id] || 0) + it.count;
                   } else if (it.id === 'berry') {
                     newInv.berries = addBerries(newInv.berries, 'oran', it.count);
+                  } else if (BERRIES[it.id]) {
+                    newInv.berries = addBerries(newInv.berries, it.id, it.count);
                   } else if (CURSED_ITEMS[it.id]) {
                     newInv.cursed[it.id] = (newInv.cursed[it.id] || 0) + it.count;
                   } else {
@@ -20106,8 +20265,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       ? `\n\n⚠️ 这是一只${[pet.isShiny && '闪光', isLegend && '传说', !isLegend && isHighTier && '珍稀'].filter(Boolean).join('/')}精灵，确定要放生吗？`
       : '';
     const runRelease = () => {
+      const releasedUid = pet.uid;
       setBox(prev => prev.filter((_, i) => i !== selectedBoxIdx));
       setGold(g => g + releaseGold);
+      if (releasedUid) setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => uid !== releasedUid) }));
       showMapToast('🕊️', '放生成功', `${pet.name} 回归自然，获得 ${releaseGold.toLocaleString()} 金币`, 2500);
       setSelectedBoxIdx(null);
     };
@@ -22405,10 +22566,12 @@ const renderMenu = () => {
                   {availableLines.map(line => {
                     const done = completedSideStories.has(line.id);
                     const hasSave = sideStoryStates[line.id];
+                    const isNotReady = line.id === 'naruto' || line.id === 'sanguo';
                     return (
                       <div key={line.id}
                         onClick={() => {
                           if (done) return;
+                          if (isNotReady) { showMapToast('🔒', '即将开放', `${line.name}支线即将开放，敬请期待！`, 2500); return; }
                           setMainStoryProgress(storyProgress);
                           setMainStoryStep(storyStep);
                           setActiveSideStory(line.id);
@@ -27717,8 +27880,12 @@ const renderMenu = () => {
     if (sourceDex?.evoCondition) {
       const cond = sourceDex.evoCondition;
       if (cond.intimacy && (pet.intimacy || pet.friendship || 0) < cond.intimacy) { showMapToast('❌', '亲密度不足', `需要亲密度 ${cond.intimacy}`, 2000); return; }
-      if (cond.time === 'day' && new Date().getHours() < 6 || cond.time === 'day' && new Date().getHours() >= 18) { showMapToast('❌', '时间不对', '需要白天进化', 2000); return; }
-      if (cond.time === 'night' && new Date().getHours() >= 6 && new Date().getHours() < 18) { showMapToast('❌', '时间不对', '需要夜晚进化', 2000); return; }
+      const condTime = (cond.time || '').toUpperCase();
+      if (condTime && condTime !== timePhase) {
+        const tLabel = { DAY: '白天', NIGHT: '夜晚', DUSK: '黄昏' }[condTime] || condTime;
+        showMapToast('❌', '时间不对', `需要${tLabel}进化`, 2000); return;
+      }
+      if (cond.weather && cond.weather !== weather) { showMapToast('❌', '天气不对', `需要特定天气进化`, 2000); return; }
       if (cond.item && !((inventory.stones || {})[cond.item] > 0)) { showMapToast('❌', '缺少道具', `需要 ${cond.item}`, 2000); return; }
     }
 
@@ -30581,9 +30748,17 @@ const renderMenu = () => {
                   const selectedSet = new Set(pcBatchSelected);
                   const batchGold = [...selectedSet].reduce((sum, idx) => { const pet = box[idx]; if (!pet) return sum; const lv = pet.level || 1; const shinyM = pet.isShiny ? 3 : 1; const legM = LEGENDARY_POOL?.includes(pet.id) ? 5 : (HIGH_TIER_POOL?.includes(pet.id) ? 2 : 1); return sum + Math.min(2000, Math.floor((50 + lv * 10) * shinyM * legM)); }, 0);
                   const hasSpecial = [...selectedSet].some(idx => { const pet = box[idx]; return pet && (pet.isShiny || LEGENDARY_POOL?.includes(pet.id) || HIGH_TIER_POOL?.includes(pet.id)); });
+                  const expUids = new Set((expeditions?.teams || []).flatMap(t => t.petUids || []));
+                  const inExpedition = [...selectedSet].filter(idx => box[idx]?.uid && expUids.has(box[idx].uid));
+                  if (inExpedition.length > 0) {
+                    showMapToast('❌', '无法放生', `${inExpedition.length}只精灵正在远征中，请先取消`, 2500);
+                    return;
+                  }
                   const execBatch = () => {
+                    const releasedUids = [...selectedSet].map(idx => box[idx]?.uid).filter(Boolean);
                     setBox(prev => prev.filter((_, i) => !selectedSet.has(i)));
                     setGold(g => g + batchGold);
+                    if (releasedUids.length) setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => !releasedUids.includes(uid)) }));
                     showMapToast('👋', '批量放生', `${selectedSet.size}只精灵回归自然，获得 ${batchGold.toLocaleString()} 金币`, 2500);
                     setPcBatchSelected(new Set());
                     setPcBatchRelease(false);
@@ -31404,6 +31579,18 @@ const renderMenu = () => {
             if (m && !existingNames.has(m.name)) { newMoves.push(m); existingNames.add(m.name); }
           }
           if (newMoves.length > 0) safeNewPet.moves = newMoves.slice(0, 4);
+        } else if (newDex?.learnset) {
+          // 同属性进化：补充新形态可学技能填满空位（不移除已有技能）
+          const merged = [...(oldPet.moves || [])];
+          const names = new Set(merged.map(m => m.name));
+          newDex.learnset
+            .filter(ls => (ls.level || 1) <= oldPet.level)
+            .forEach(ls => {
+              if (merged.length >= 4) return;
+              const mv = allSkills.find(s => s.id === ls.move);
+              if (mv && !names.has(mv.name)) { merged.push({ ...mv, pp: mv.maxPP || 15 }); names.add(mv.name); }
+            });
+          if (merged.length > 0) safeNewPet.moves = merged.slice(0, 4);
         }
         
         setParty(prev => {

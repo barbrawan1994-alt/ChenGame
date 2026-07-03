@@ -92,8 +92,10 @@ export function applyXinfaDamageMods(rawDmg, attacker, defender, ctx, battleLog)
   if (tier >= 3 && atkSect === 19) dmg *= 1.10;
   if (tier >= 2 && atkSect === 20 && attacker?.currentHp < (attacker?._maxHp || 999) * 0.5) dmg *= 1.08;
   if (tier >= 3 && atkSect === 20 && attacker?.currentHp < (attacker?._maxHp || 999) * 0.3) dmg *= 1.15;
-  if (tier >= 2 && atkSect === 21 && Math.random() < 0.10) { defender.status = defender.status || 'PAR'; battleLog?.('天山雷诀麻痹！'); }
-  if (tier >= 3 && atkSect === 21 && defender?.status === 'PAR') dmg *= 1.18;
+  if (atkSect === 21 && defender?.status === 'PAR') {
+    if (tier >= 3) dmg *= 1.18;
+    else if (tier >= 2) dmg *= 1.10;
+  }
   if (tier >= 2 && atkSect === 22) dmg *= 1.05;
   if (tier >= 3 && atkSect === 22 && (defender?.stages?.p_atk || 0) < 0) { attacker.stages = attacker.stages || {}; attacker.stages.p_atk = Math.min(6, (attacker.stages.p_atk || 0) + 1); battleLog?.('吸星换月！'); }
   if (tier >= 2 && atkSect === 23 && Math.random() < 0.10) { defender.volatiles = { ...defender.volatiles, sectCharmed: 2 }; battleLog?.('灵鹫威压！'); }
@@ -123,17 +125,26 @@ export function applyMartialArtEffect(art, attacker, defender, rawDmg, addLog) {
     const spd = attacker._stats?.spd || 100;
     if (spd > 120) dmg *= 1.08;
   }
+  const _dt = defender?.type, _dt2 = defender?.type2 || defender?.secondaryType;
+  const _canStatus = (st) => {
+    if (defender?.status) return false;
+    if (st === 'BRN') return _dt !== 'FIRE' && _dt2 !== 'FIRE';
+    if (st === 'FRZ') return _dt !== 'ICE' && _dt2 !== 'ICE';
+    if (st === 'PSN') return _dt !== 'POISON' && _dt2 !== 'POISON' && _dt !== 'STEEL' && _dt2 !== 'STEEL';
+    if (st === 'PAR') return _dt !== 'ELECTRIC' && _dt2 !== 'ELECTRIC';
+    return true;
+  };
   if (art.desc?.includes('破防') && defender?.stages?.p_def < 0) dmg *= 1.3;
-  if (art.burnChance && Math.random() < art.burnChance) {
+  if (art.burnChance && Math.random() < art.burnChance && _canStatus('BRN')) {
     defender.status = 'BRN';
     addLog?.(`${defender.name} 被灼伤！`);
   }
-  if (art.poisonChance && Math.random() < art.poisonChance) {
+  if (art.poisonChance && Math.random() < art.poisonChance && _canStatus('PSN')) {
     defender.status = 'PSN';
     addLog?.(`${defender.name} 中毒！`);
   }
   if (art.freezeChance && Math.random() < art.freezeChance) {
-    if (Math.random() < 0.5) defender.status = 'FRZ';
+    if (Math.random() < 0.5 && _canStatus('FRZ')) defender.status = 'FRZ';
     else defender.volatiles = { ...defender.volatiles, slowed: true };
   }
   if (art.healRatio && attacker) {
@@ -162,7 +173,11 @@ export function buildMartialMove(artId) {
     momentumCost: art.momentumCost || 0,
     desc: art.desc,
   };
-  if (art.healRatio) move.effect = { healPercent: art.healRatio };
+  if (art.healRatio) {
+    move.effect = art.power === 0
+      ? { type: 'HEAL', val: art.healRatio }
+      : { healPercent: art.healRatio };
+  }
   return move;
 }
 
@@ -215,7 +230,10 @@ export function applySectShieldAbsorb(defender, rawDmg, addLog) {
   const absorbed = Math.min(defender._sectShield, rawDmg);
   defender._sectShield -= absorbed;
   const remaining = rawDmg - absorbed;
-  if (addLog && absorbed > 0) addLog(`🛡️ 少林金钟罩吸收了 ${absorbed} 伤害！${defender._sectShield > 0 ? `(护盾剩余${defender._sectShield})` : '(护盾破碎)'}`);
+  if (addLog && absorbed > 0) {
+    const shieldName = defender.sectId === 17 ? '恒山玄冰盾' : '少林金钟罩';
+    addLog(`🛡️ ${shieldName}吸收了 ${absorbed} 伤害！${defender._sectShield > 0 ? `(护盾剩余${defender._sectShield})` : '(护盾破碎)'}`);
+  }
   return remaining;
 }
 

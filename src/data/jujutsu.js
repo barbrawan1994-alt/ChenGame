@@ -407,8 +407,8 @@ export const GOD_TECHNIQUES = {
 
 // 咒术觉醒条件
 export const AWAKENING_CONDITIONS = {
-  byLevel: 50,
-  byIntimacy: 100,
+  byLevel: 70,
+  byIntimacy: 150,
   specialAwakenings: [
     { petId: 150, technique: 'ct_void', condition: 'level >= 50' },
     { petId: 68,  technique: 'ct_divergent_fist', condition: 'intimacy >= 200' },

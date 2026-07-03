@@ -23,9 +23,9 @@ const SKILL_DB = {
     { name: '热风', p: 95, pp: 10, desc: '吐出灼热气息攻击，可能灼伤' },
     { name: '大字爆炎', p: 110, pp: 5, desc: '释放大字形烈焰包围对手' },
     { name: '闪焰冲锋', p: 120, pp: 15, desc: '被火焰包裹猛烈冲锋，附带反伤' },
-    { name: '过热', p: 130, pp: 5, desc: '全力释放火焰，之后特攻下降' },
+    { name: '过热', p: 130, pp: 5, desc: '全力释放火焰，之后特攻下降', effect: { selfDebuff: { stat: 's_atk', val: 2 } } },
     { name: '爆裂燃烧', p: 150, pp: 5, desc: '超高温爆裂燃烧一切' },
-    { name: 'V热焰', p: 150, pp: 5, desc: '以超极温火焰焚尽一切的究极招式，使用后特攻降低' }
+    { name: 'V热焰', p: 150, pp: 5, desc: '以超极温火焰焚尽一切的究极招式，使用后特攻降低', effect: { selfDebuff: { stat: 's_atk', val: 2 } } }
   ],
   WATER: [
     { name: '水枪', p: 40, pp: 25, desc: '喷出水柱攻击对手' },
@@ -45,7 +45,7 @@ const SKILL_DB = {
     { name: '终极吸取', p: 75, pp: 10, desc: '吸取对手体力回复自身HP' },
     { name: '能量球', p: 90, pp: 10, desc: '凝聚自然能量发射球体' },
     { name: '种子炸弹', p: 80, pp: 15, desc: '散射坚硬种子轰击对手' },
-    { name: '花瓣舞', p: 120, pp: 10, desc: '撒出花瓣持续攻击，之后混乱' },
+    { name: '花瓣舞', p: 120, pp: 10, desc: '撒出花瓣持续攻击，之后陷入混乱', effect: { selfConfuse: true } },
     { name: '日光束', p: 120, pp: 10, desc: '汇聚太阳光射出光线，需蓄力' },
     { name: '木槌', p: 120, pp: 15, desc: '用坚硬身体猛击，附带反伤' },
     { name: '飞叶风暴', p: 130, pp: 5, desc: '用锋利树叶卷起风暴攻击' },
@@ -282,18 +282,18 @@ const SKILL_DB = {
     { name: '秩序终结', p: 170, pp: 2, desc: '终结一切秩序的终极混沌' }
   ],
   HEAL: [
-    { name: '生命水滴', p: 0, pp: 15, val: 0.25, desc: '恢复25%最大HP' },
+    { name: '生命水滴', p: 0, pp: 15, effect: { type: 'HEAL', val: 0.25 }, desc: '恢复25%最大HP' },
     { name: '净化之光', p: 60, pp: 20, effect: { type: 'CURE_STATUS', chance: 0.5 }, desc: '释放净化光芒攻击，50%概率解除自身异常状态' },
-    { name: '自我再生', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' },
+    { name: '自我再生', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' },
     { name: '生命脉冲', p: 80, pp: 10, desc: '将生命力转化为攻击能量' },
-    { name: '光合作用', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
+    { name: '圣光沐浴', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.5 }, desc: '用圣光沐浴身体，恢复50%最大HP' },
     { name: '回春一击', p: 90, pp: 8, effect: { type: 'DRAIN', val: 0.25 }, desc: '以愈合之力攻击对手，自身回复造成伤害的25%' },
-    { name: '月光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
+    { name: '月光', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' },
     { name: '圣愈裁决', p: 110, pp: 5, desc: '以愈合神力的终极攻击' },
-    { name: '祈愿', p: 0, pp: 10, val: 0.5, desc: '虔诚祈愿，恢复50%最大HP' },
-    { name: '晨光', p: 0, pp: 5, val: 0.5, desc: '恢复50%最大HP' },
-    { name: '治愈波动', p: 0, pp: 10, val: 0.5, desc: '恢复目标50%最大HP' },
-    { name: '羽栖', p: 0, pp: 10, val: 0.5, desc: '恢复50%最大HP' }
+    { name: '祈愿', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '虔诚祈愿，恢复50%最大HP' },
+    { name: '晨光', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' },
+    { name: '治愈波动', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复目标50%最大HP' },
+    { name: '羽栖', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' }
   ]
 };
 // ==========================================
@@ -384,7 +384,7 @@ const SIDE_EFFECT_SKILLS = [
   { name: '冰冻之风', t: 'ICE', p: 55, pp: 15, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 1.0 }, desc: '100%降低对手速度' },
   { name: '急冻光线', t: 'ICE', p: 90, pp: 10, effect: { type: 'STATUS', status: 'FRZ', chance: 0.1 }, desc: '10%概率冰冻' },
   { name: '暴风雪', t: 'ICE', p: 110, pp: 5, effect: { type: 'STATUS', status: 'FRZ', chance: 0.3 }, desc: '30%概率冰冻' },
-  { name: '冰柱坠击', t: 'ICE', p: 85, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.3 }, desc: '30%概率畏缩(这里用混乱代替)' },
+  { name: '冰柱坠击', t: 'ICE', p: 85, pp: 10, effect: { flinch: 0.3 }, desc: '冰柱砸击，30%概率使对手畏缩' },
   { name: '极寒冷焰', t: 'ICE', p: 140, pp: 5, effect: { type: 'STATUS', status: 'BRN', chance: 0.3 }, desc: '奇特的冰系技能，30%灼伤' },
 
   // --- 4. 中毒系列 (毒系) ---
@@ -695,7 +695,7 @@ const NEW_SKILLS_V18 = [
   // --- 混沌系 (8) ---
   { name: '混沌脉冲', t: 'CHAOS', p: 80, pp: 15, desc: '释放不稳定的混沌能量脉冲' },
   { name: '秩序瓦解', t: 'CHAOS', p: 0, pp: 10, effect: { type: 'DEBUFF', stat: 'p_def', val: 1, chance: 1.0 }, desc: '瓦解对手的秩序防御，必降物防' },
-  { name: '虚无吞噬', t: 'CHAOS', p: 100, pp: 8, effect: { type: 'HEAL', val: 0.25 }, desc: '吞噬对手化为自身能量，回复25%HP' },
+  { name: '虚无吞噬', t: 'CHAOS', p: 100, pp: 8, effect: { type: 'DRAIN', val: 0.25 }, desc: '吞噬对手化为自身能量，回复造成伤害25%的HP' },
   { name: '次元崩壊', t: 'CHAOS', p: 120, pp: 5, effect: { type: 'DEBUFF', stat: 'acc', val: 1, chance: 0.3 }, desc: '次元崩坏扭曲空间，30%降命中' },
   { name: '悖论之箭', t: 'CHAOS', p: 90, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.35 }, desc: '逻辑悖论具象化之箭，35%混乱' },
   { name: '熵增', t: 'CHAOS', p: 0, pp: 8, effect: { type: 'DEBUFF', stat: 's_def', val: 1, chance: 1.0 }, desc: '使对手陷入熵增混乱，必定降特防一级' },
@@ -710,7 +710,7 @@ const NEW_SKILLS_V18 = [
   { name: '鬼火', t: 'GHOST', p: 0, pp: 15, effect: { type: 'STATUS', status: 'BRN', chance: 1.0 }, desc: '鬼火缠身，必定灼伤' },
   { name: '电磁波', t: 'ELECTRIC', p: 0, pp: 20, effect: { type: 'STATUS', status: 'PAR', chance: 1.0 }, desc: '释放电磁波，必定麻痹' },
   { name: '催眠术', t: 'PSYCHIC', p: 0, pp: 10, effect: { type: 'STATUS', status: 'SLP', chance: 0.75 }, desc: '施加催眠暗示，75%入睡' },
-  { name: '治愈铃声', t: 'HEAL', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.6 }, desc: '清脆铃声回复60%HP并清除异常' },
+  { name: '治愈铃声', t: 'HEAL', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.6, cureStatus: true }, desc: '清脆铃声回复60%HP并清除异常' },
   { name: '结界', t: 'LIGHT', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 2, chance: 1.0 }, desc: '展开光之结界大幅提升特防' },
   { name: '诅咒', t: 'DARK', p: 0, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '施加诅咒必定降低对手攻击' },
   { name: '大地恢复', t: 'GROUND', p: 0, pp: 8, effect: { type: 'HEAL', val: 0.4 }, desc: '汲取大地之力恢复40%HP' },
@@ -766,7 +766,6 @@ const injectNewSkillsV18 = () => {
     if (existing) {
       if (skill.p !== undefined && skill.p > existing.p) existing.p = skill.p;
       if (skill.effect && !existing.effect) existing.effect = skill.effect;
-      if (skill.pp && skill.pp !== existing.pp) existing.pp = skill.pp;
       if (skill.desc && !existing.desc) existing.desc = skill.desc;
     } else {
       SKILL_DB[skill.t].push(skill);

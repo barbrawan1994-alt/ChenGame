@@ -255,9 +255,12 @@ export const GANG_TASKS = [
   { id: 'donate_gold', name: '资金捐献', desc: '捐献5000金币给帮派', type: 'donate_gold', target: 5000, reward: 40, gold: 0,    icon: '💰' },
   { id: 'donate_pet',  name: '精灵上供', desc: '上交1只Lv20+精灵',  type: 'donate_pet',  target: 1,    reward: 50, gold: 500,  icon: '🐾' },
   { id: 'explore',     name: '领地巡逻', desc: '探索3张不同地图',    type: 'explore_map', target: 3,    reward: 25, gold: 800,  icon: '🗺️' },
-  { id: 'kw_battle',   name: '国战先锋', desc: '击败3个敌国训练师', type: 'kw_kill',     target: 3,    reward: 40, gold: 1500, icon: '🏴' },
-  { id: 'kw_campaign', name: '名将之路', desc: '通关1个四国副本',   type: 'kw_campaign', target: 1,    reward: 80, gold: 3000, icon: '👑' },
-  { id: 'kw_contrib',  name: '国战功勋', desc: '获得100点国战战功', type: 'kw_contrib',  target: 100,  reward: 50, gold: 2000, icon: '🎖️' },
+  { id: 'kw_battle',   name: '国战先锋', desc: '击败3个敌国训练师', type: 'kw_kill',     target: 3,    reward: 40, gold: 1500, icon: '🏴', reqKingdom: true },
+  { id: 'kw_campaign', name: '名将之路', desc: '通关1个四国副本',   type: 'kw_campaign', target: 1,    reward: 80, gold: 3000, icon: '👑', reqKingdom: true },
+  { id: 'kw_contrib',  name: '国战功勋', desc: '获得100点国战战功', type: 'kw_contrib',  target: 100,  reward: 50, gold: 2000, icon: '🎖️', reqKingdom: true },
+  { id: 'catch_3',     name: '精灵收集', desc: '捕捉3只精灵',       type: 'catch',       target: 3,    reward: 30, gold: 1000, icon: '🎯' },
+  { id: 'heal_5',      name: '治愈师',   desc: '治愈5次精灵',       type: 'heal',        target: 5,    reward: 25, gold: 800,  icon: '💊' },
+  { id: 'evolve_1',    name: '进化训练', desc: '进化1只精灵',       type: 'evolve',      target: 1,    reward: 35, gold: 1200, icon: '✨' },
 ];
 
 export const GANG_WAR_CONFIG = {

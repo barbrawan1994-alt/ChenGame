@@ -243,9 +243,9 @@ const ACHIEVEMENTS = [
     hint: '提示：不依赖药品的勇气——深渊中只有战斗',
     check: s => s.infinityNoHeal30 >= 1, reward: { title: '无药行者' }, hidden: true },
   { id: 'secret_all_sects',  cat: 'SECRET', rarity: 'LEGENDARY',
-    name: '三十门全通',  desc: '击败全部30位门派掌门且队伍中有8种不同门派的精灵',
+    name: '三十门全通',  desc: '击败全部30位门派掌门且队伍中有6种不同门派的精灵',
     hint: '提示：武林中有三十条路——你能全部走一遍吗？',
-    check: s => s.sectChiefsDefeated >= 30 && s.partySectDiv >= 8, reward: { title: '武林至尊' }, hidden: true },
+    check: s => s.sectChiefsDefeated >= 30 && s.partySectDiv >= 6, reward: { title: '武林至尊' }, hidden: true },
   { id: 'secret_triple_sys',  cat: 'SECRET', rarity: 'LEGENDARY',
     name: '三系合一',    desc: '在同一场战斗中使用领域展开+缚誓+果实变身',
     hint: '提示：将咒术、誓约与恶魔之力在一场战斗中全部释放…',
@@ -594,9 +594,12 @@ export const DEFAULT_ACH_STATS = {
   fusionDungeonsCleared: 0,
   fusionCalamities: 0,
   fusionAwakeningTiers: 0,
+  strategicAwakeningCount: 0,
   canyonChapterCleared: 0,
   ghostChapterCleared: 0,
   sealChapterCleared: 0,
+  clearedDungeonList: [],
+  clearedT4List: [],
 };
 
 export default ACHIEVEMENTS;

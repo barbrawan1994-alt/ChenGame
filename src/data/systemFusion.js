@@ -76,12 +76,12 @@ export const AWAKENING_TIERS = {
   fruit: {
     id: 'fruit', name: '恶魔果实觉醒', icon: '🍎',
     requirements: { needsNormalAwaken: true, needsDevilFruit: true, fruitTrialClear: true, pveFruitUse: 1 },
-    rewards: { fruitDurationBonus: 1, mapEcoBonus: { vegetation: 5 }, unlockExpeditionBlessing: true },
+    rewards: { statMult: 1.05, fruitDurationBonus: 1, mapEcoBonus: { vegetation: 5 }, unlockExpeditionBlessing: true, prefix: '🍎🌟' },
   },
   strategic: {
     id: 'strategic', name: '战略觉醒', icon: '⚔️',
     requirements: { needsFruitAwaken: true, needsSectResonance: true, needsGeneralTactic: true, kwContribMin: 500, needsBattlefieldClear: true },
-    rewards: { kwContribMult: 1.1, sanctuaryBonus: 0.05, title: '战略觉醒者', prefix: '⚔️🌟' },
+    rewards: { statMult: 1.08, kwContribMult: 1.1, sanctuaryBonus: 0.05, title: '战略觉醒者', prefix: '⚔️🌟' },
   },
 };
 

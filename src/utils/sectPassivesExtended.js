@@ -64,8 +64,8 @@ export function applyExtendedSectDefMods(rawDmg, ctx) {
 
   if (defSect === 16) {
     const odd = turn % 2 === 1;
-    if (odd) dmg *= 1.10;
-    else dmg *= 0.92;
+    if (odd) dmg *= 0.92;
+    else dmg *= 0.88;
   }
   if (defSect === 17) {
     refreshSectBarrier(defender, defSectLv, turn);
@@ -116,9 +116,15 @@ export function applyExtendedSectPostDamage(ctx, addLog, helpers = {}) {
     addLog?.(`🏔️ 泰山压顶：${defender.name} 速度下降！`);
   }
   if (atkSect === 30 && atkSectLv > 0) {
-    const trueDmg = Math.max(1, Math.floor(maxDefHp * (atkSectLv * 0.008)));
-    defender.currentHp = Math.max(0, defender.currentHp - trueDmg);
-    addLog?.(`🌩️ 神霄雷罚造成 ${trueDmg} 点真伤！`);
+    const cdKey = '_shenxiaoTrueDmgCd';
+    if (!(attacker[cdKey] > 0)) {
+      const trueDmg = Math.min(dmg, Math.max(1, Math.floor(maxDefHp * (atkSectLv * 0.008))));
+      defender.currentHp = Math.max(0, defender.currentHp - trueDmg);
+      addLog?.(`🌩️ 神霄雷罚造成 ${trueDmg} 点真伤！`);
+      attacker[cdKey] = 2;
+    } else {
+      attacker[cdKey]--;
+    }
   }
   if (defSect === 18 && defSectLv > 0 && move.p > 0 && Math.random() < (0.05 + defSectLv * 0.02)) {
     const counterDmg = Math.max(1, Math.floor(dmg * 0.5));

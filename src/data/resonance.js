@@ -231,7 +231,9 @@ export function getAwakeningMove(type) {
 
 export function getPetTotalEv(pet) {
   const evs = pet?.evs || {};
-  return Object.values(evs).reduce((s, v) => s + Math.max(0, v || 0), 0);
+  // 与 statsCalculator 的 EV_STAT_KEYS 保持一致（crit 努力值不计入 510 上限与觉醒门槛）
+  const EV_STAT_KEYS = ['hp', 'p_atk', 'p_def', 's_atk', 's_def', 'spd'];
+  return EV_STAT_KEYS.reduce((s, k) => s + Math.max(0, evs[k] || 0), 0);
 }
 
 export function hasUsedSkillInherit(allPets = []) {
@@ -273,7 +275,7 @@ export function buildResonanceContext(pet, { narutoState, kingdomWar, gang, allP
   const jjkAwakened = isJjkAwakened(pet);
   const maxJutsuMasteryLevel = getMaxJutsuMasteryLevel(narutoState?.jutsuMastery);
   const hasDevilFruit = !!pet?.devilFruit;
-  const hasSect = !!(pet?.sectId);
+  const hasSect = !!(pet?.sectId && (pet.sectLevel || 0) >= 2);
   const gangPreset = gang?.gangId ? GANG_PRESETS.find(g => g.id === gang.gangId) : null;
   const gangFaction = gangPreset?.faction;
   const playerFaction = kingdomWar?.faction;

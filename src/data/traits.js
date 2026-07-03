@@ -9,7 +9,7 @@ export const TRAIT_DB = {
   swarm:       { name: '虫之预感', desc: 'HP<1/3时，虫系技能威力提升50%', type: 'BATTLE' },
 
   // --- 面板修正类 ---
-  huge_power:  { name: '大力士', desc: '物理攻击力变为原来的2倍', type: 'STAT' },
+  huge_power:  { name: '大力士', desc: '物理攻击力提升50%', type: 'STAT' },
   guts:        { name: '毅力', desc: '处于异常状态时，物攻提升50%', type: 'STAT' },
   
   // --- 出场触发类 (ENTRY) ---
@@ -29,7 +29,7 @@ export const TRAIT_DB = {
 
   // --- 回合/退场类 ---
   speed_boost: { name: '加速', desc: '每回合结束时，速度提升1级(+50%)', type: 'PASSIVE' },
-  regenerator: { name: '再生力', desc: '交换下场或战斗结束时，恢复1/3最大HP', type: 'OTHER' },
+  regenerator: { name: '再生力', desc: '交换下场时恢复1/3最大HP', type: 'OTHER' },
   prankster:   { name: '恶作剧之心', desc: '变化类技能(无伤害)必定先手', type: 'BATTLE' },
 
   // --- 世界首领 / 天气与场地类 ---

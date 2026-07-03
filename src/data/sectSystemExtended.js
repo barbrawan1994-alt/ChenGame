@@ -211,23 +211,24 @@ export const SECT_XINFA_EXTENDED = {
   ]},
 };
 
+// 键名须与 calcSectResonanceBonus 消费端一致：atk/def/s_atk/s_def/hp/spd/critRate
 export const SECT_PET_RESONANCE_EXTENDED = {
   13: { types: ['FAIRY', 'FIGHT', 'WIND'], bonus: { atk: 1.08, spd: 1.04 } },
-  14: { types: ['FIGHT', 'GROUND'], bonus: { p_atk: 1.10, def: 1.04 } },
+  14: { types: ['FIGHT', 'GROUND'], bonus: { atk: 1.10, def: 1.04 } },
   15: { types: ['DARK', 'FIGHT'], bonus: { atk: 1.10, hp: 1.04 } },
   16: { types: ['PSYCHIC', 'LIGHT', 'DARK'], bonus: { s_atk: 1.10, spd: 1.05 } },
   17: { types: ['STEEL', 'WATER', 'FAIRY'], bonus: { def: 1.10, hp: 1.06 } },
   18: { types: ['ICE', 'PSYCHIC', 'FLYING'], bonus: { s_def: 1.08, spd: 1.05 } },
   19: { types: ['NORMAL', 'PSYCHIC', 'LIGHT'], bonus: { atk: 1.06, def: 1.06, hp: 1.04 } },
-  20: { types: ['FIGHT', 'GROUND'], bonus: { p_atk: 1.08, hp: 1.06 } },
+  20: { types: ['FIGHT', 'GROUND'], bonus: { atk: 1.08, hp: 1.06 } },
   21: { types: ['ELECTRIC', 'ICE'], bonus: { s_atk: 1.10, spd: 1.04 } },
   22: { types: ['POISON', 'DARK'], bonus: { s_atk: 1.08, spd: 1.04 } },
   23: { types: ['PSYCHIC', 'FAIRY'], bonus: { s_atk: 1.08, s_def: 1.06 } },
-  24: { types: ['ROCK', 'GROUND'], bonus: { p_atk: 1.08, def: 1.05 } },
-  25: { types: ['FLYING', 'NORMAL'], bonus: { p_atk: 1.08, critRate: 6 } },
+  24: { types: ['ROCK', 'GROUND'], bonus: { atk: 1.08, def: 1.05 } },
+  25: { types: ['FLYING', 'NORMAL'], bonus: { atk: 1.08, critRate: 6 } },
   26: { types: ['WATER', 'NORMAL'], bonus: { atk: 1.06, hp: 1.08 } },
   27: { types: ['ICE', 'WIND'], bonus: { s_atk: 1.10, s_def: 1.04 } },
-  28: { types: ['FIGHT', 'WIND'], bonus: { p_atk: 1.08, spd: 1.06 } },
+  28: { types: ['FIGHT', 'WIND'], bonus: { atk: 1.08, spd: 1.06 } },
   29: { types: ['STEEL', 'ICE'], bonus: { def: 1.10, hp: 1.06 } },
   30: { types: ['ELECTRIC', 'LIGHT'], bonus: { s_atk: 1.12, spd: 1.03 } },
 };

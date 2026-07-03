@@ -33,7 +33,7 @@ export const ARENA_WEEKLY_RULES = [
   { id: 'solo',      name: '单挑模式', icon: '🎯', desc: '仅允许1v1决斗', effect: 'solo' },
   { id: 'type_lock', name: '属性限定', icon: '🎨', desc: '仅限本周指定属性', effect: 'typeLock' },
   { id: 'handicap',  name: '逆境突破', icon: '💪', desc: '初始全队扣50% HP', effect: 'halfHp' },
-  { id: 'speed',     name: '极速对决', icon: '⚡', desc: '速度决定一切，先手必杀', effect: 'speedBoost' },
+  { id: 'speed',     name: '极速对决', icon: '⚡', desc: '速度提升1.5倍，先手优势巨大', effect: 'speedBoost' },
   { id: 'double',    name: '双打狂欢', icon: '👥', desc: '所有对战为2v2双打', effect: 'forcedDouble' },
   { id: 'jutsu',     name: '忍术之战', icon: '🍥', desc: '忍术技能伤害+5~15%（低段位15%、影级5%，递减追赶）', effect: 'jutsuBoost' },
 ];

@@ -1,3 +1,4 @@
+// [DEPRECATED] 此文件未被引用，所有战斗逻辑在 App.js 中内联实现。保留作参考。
 import { TYPES } from '../data/types';
 
 const TYPE_CHART = {
@@ -9,7 +10,7 @@ const TYPE_CHART = {
   ICE: { weak: ['FIRE', 'FIGHT', 'ROCK', 'STEEL', 'SOUND'], strong: ['GRASS', 'GROUND', 'FLYING', 'DRAGON', 'WIND'], immune: [] },
   FIGHT: { weak: ['FLYING', 'PSYCHIC', 'FAIRY'], strong: ['NORMAL', 'ICE', 'ROCK', 'DARK', 'STEEL'], immune: ['GHOST'] },
   POISON: { weak: ['GROUND', 'PSYCHIC'], strong: ['GRASS', 'FAIRY'], immune: ['STEEL'] },
-  GROUND: { weak: ['WATER', 'GRASS', 'ICE'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'], immune: ['FLYING'] },
+  GROUND: { weak: ['WATER', 'GRASS', 'ICE', 'WIND'], strong: ['FIRE', 'ELECTRIC', 'POISON', 'ROCK', 'STEEL', 'SOUND'], immune: ['FLYING'] },
   FLYING: { weak: ['ELECTRIC', 'ICE', 'ROCK', 'COSMIC'], strong: ['GRASS', 'FIGHT', 'BUG'], immune: [] },
   PSYCHIC: { weak: ['BUG', 'GHOST', 'DARK', 'SOUND', 'COSMIC'], strong: ['FIGHT', 'POISON'], immune: ['DARK'] },
   BUG: { weak: ['FIRE', 'FLYING', 'ROCK'], strong: ['GRASS', 'PSYCHIC', 'DARK'], immune: [] },
@@ -18,7 +19,7 @@ const TYPE_CHART = {
   DRAGON: { weak: ['ICE', 'DRAGON', 'FAIRY', 'COSMIC'], strong: ['DRAGON'], immune: [] },
   STEEL: { weak: ['FIRE', 'FIGHT', 'GROUND'], strong: ['ICE', 'ROCK', 'FAIRY', 'SOUND', 'COSMIC', 'LIGHT'], immune: ['POISON'] },
   FAIRY: { weak: ['POISON', 'STEEL', 'SOUND'], strong: ['FIGHT', 'DRAGON', 'DARK', 'CHAOS'], immune: [] },
-  DARK: { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'], immune: ['PSYCHIC'] },
+  DARK: { weak: ['FIGHT', 'BUG', 'FAIRY'], strong: ['PSYCHIC', 'GHOST', 'COSMIC', 'LIGHT', 'TIME'], immune: [] },
   WIND: { weak: ['ICE', 'ROCK', 'ELECTRIC'], strong: ['GRASS', 'BUG', 'FIGHT', 'GROUND'], immune: [] },
   LIGHT: { weak: ['STEEL'], strong: ['DARK', 'GHOST', 'POISON', 'BUG', 'CHAOS'], immune: [] },
   COSMIC: { weak: ['DARK', 'GHOST', 'STEEL'], strong: ['DRAGON', 'PSYCHIC', 'FLYING', 'POISON'], immune: [] },

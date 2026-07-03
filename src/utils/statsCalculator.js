@@ -51,9 +51,9 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
   const statMult = pet.customStatMult || 1;
   const baseStats = pet.customBaseStats || {
     hp: Math.floor((baseInfo.hp || 60) * statMult),
-    p_atk: Math.floor(((baseInfo.p_atk || baseInfo.atk || 50) * bias.p + diversity) * statMult),
-    p_def: Math.floor(((baseInfo.p_def || baseInfo.def || 50) * bias.p) * statMult),
-    s_atk: Math.floor(((baseInfo.s_atk || baseInfo.atk || 50) * bias.s - diversity) * statMult),
+    p_atk: Math.max(1, Math.floor(((baseInfo.p_atk || baseInfo.atk || 50) * bias.p + diversity) * statMult)),
+    p_def: Math.max(1, Math.floor(((baseInfo.p_def || baseInfo.def || 50) * bias.p) * statMult)),
+    s_atk: Math.max(1, Math.floor(((baseInfo.s_atk || baseInfo.atk || 50) * bias.s - diversity) * statMult)),
     s_def: Math.floor(((baseInfo.s_def || baseInfo.def || 50) * bias.s) * statMult),
     spd: Math.floor((baseInfo.spd || fallbackSpeed) * statMult),
     crit: 5
@@ -120,7 +120,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
     return val;
   };
 
-  let finalCrit = Math.floor((baseStats.crit || 5) + (ivs.crit || 0) + Math.floor((evs.crit || 0) / 4) + (pet.level * 0.2));
+  let finalCrit = Math.floor((baseStats.crit || 5) + (ivs.crit || 0) + (evs.crit || 0) + (pet.level * 0.2));
   if (chiefBonus.crit) finalCrit += chiefBonus.crit;
   (pet.equips || []).forEach(equip => {
     if (!equip) return;
@@ -155,7 +155,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
   const hsScore = isPlayerPet && typeof calcHouseScore === 'function' ? calcHouseScore((housing?.furniture || []).filter(f => f.placed)) : 0;
   const hsTier = isPlayerPet && typeof getHousingScoreTier === 'function' ? getHousingScoreTier(hsScore) : null;
   const housingAllStats = hsTier?.buff?.allStats || 0;
-  const intimacyAllStatsMult = isPlayerPet && (pet.intimacy || 0) >= 200 ? 1.05 : 1.0;
+  const intimacyAllStatsMult = isPlayerPet && (pet.intimacy || 0) >= 230 ? 1.05 : 1.0;
   const applyGB = (val, pct) => {
     let total = (pct || 0);
     val = Math.floor(val * (1 + (housingAllStats || 0) / 100));
@@ -171,13 +171,17 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
 
   const applyAwaken = (val) => Math.floor(val * awakenMult * relicAllStats);
 
+  const capStat = (v, base, isHp) => {
+    const cap = isHp ? Math.max(999, base * 8) : Math.max(500, base * 6);
+    return Math.min(cap, v);
+  };
   return {
-    maxHp: applyAwaken(applyGB(calc(baseStats.hp, 'hp', 'hp', true), (gangBonus.hp || 0) + resPct('hp'))),
-    p_atk: applyAwaken(finalPAtk),
-    p_def: applyAwaken(finalPDef),
-    s_atk: applyAwaken(applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk || 0) + resPct('s_atk'))),
-    s_def: Math.floor(applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))) * relicDefMult),
-    spd: Math.floor(applyAwaken(applyGB(finalSpd, (gangBonus.spd || 0) + resPct('spd'))) * relicSpdMult),
+    maxHp: capStat(applyAwaken(applyGB(calc(baseStats.hp, 'hp', 'hp', true), (gangBonus.hp || 0) + resPct('hp'))), baseStats.hp, true),
+    p_atk: capStat(applyAwaken(finalPAtk), baseStats.p_atk),
+    p_def: capStat(applyAwaken(finalPDef), baseStats.p_def),
+    s_atk: capStat(applyAwaken(applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk || 0) + resPct('s_atk'))), baseStats.s_atk),
+    s_def: capStat(Math.floor(applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))) * relicDefMult), baseStats.s_def),
+    spd: capStat(Math.floor(applyAwaken(applyGB(finalSpd, (gangBonus.spd || 0) + resPct('spd'))) * relicSpdMult), baseStats.spd),
     crit: Math.min(75, Math.max(0, clampedCrit + (resBonus.critRate || 0))),
     atk: applyAwaken(finalPAtk),
     def: applyAwaken(finalPDef)

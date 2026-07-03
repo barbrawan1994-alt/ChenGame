@@ -173,6 +173,9 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
     intimacy: intimacy,
     curseTalent: curseTalent,
     secondaryType: base.type2 || null,
+    isEvolved: !base.evo,
+    canEvolve: false,
+    pendingLearnMove: null,
     _fallbackSpecies,
   };
 
