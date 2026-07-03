@@ -179,6 +179,42 @@ export const GENERAL_PVE_TACTICS = {
     order: { label: '战令·小霸王', desc: '多目标战斗效率+12%', swarmDamageBonus: 0.12 },
     bestFor: ['逃脱', '群战', '速攻'],
   },
+  pang_tong: {
+    generalId: 'pang_tong', name: '庞统', icon: '🪶', role: 'scheme_master',
+    passive: { label: '军策·连环', desc: '解谜跳过一次，Boss弱化2%', bossMultReduce: 0.02, skipPuzzleStep: true },
+    order: { label: '战令·连环计', desc: '机关/封印战效率+10%', purifyBonus: 10 },
+    bestFor: ['解谜', '封印', '机关'],
+  },
+  huang_yueying: {
+    generalId: 'huang_yueying', name: '黄月英', icon: '⚙️', role: 'engineer',
+    passive: { label: '军策·机巧', desc: '净化+7%，守护+6%', purifyBonus: 7, protectBonus: 0.06 },
+    order: { label: '战令·木牛流马', desc: '探索步骤可跳过一次', skipExploreStep: true },
+    bestFor: ['遗迹', '机关', '守护'],
+  },
+  gan_ning: {
+    generalId: 'gan_ning', name: '甘宁', icon: '🛶', role: 'raider',
+    passive: { label: '军策·锦帆', desc: '逃脱回合-1，捕获+8%', escapeTurnReduce: 1, captureBonus: 0.08 },
+    order: { label: '战令·夜袭', desc: '首步骤战斗效率+15%', firstStepBonus: 0.15 },
+    bestFor: ['突袭', '海域', '逃脱'],
+  },
+  diao_chan: {
+    generalId: 'diao_chan', name: '貂蝉', icon: '🎐', role: 'controller',
+    passive: { label: '军策·离间', desc: '捕获+10%，Boss弱化2%', captureBonus: 0.1, bossMultReduce: 0.02 },
+    order: { label: '战令·扰阵', desc: '多目标战斗效率+10%', swarmDamageBonus: 0.1 },
+    bestFor: ['控制', '捕获', '群战'],
+  },
+  ma_chao: {
+    generalId: 'ma_chao', name: '马超', icon: '🐎', role: 'shock_cavalry',
+    passive: { label: '军策·铁骑', desc: 'Boss弱化4%，逃脱回合-1', bossMultReduce: 0.04, escapeTurnReduce: 1 },
+    order: { label: '战令·突阵', desc: '首步骤Boss战效率+18%', firstStepBonus: 0.18 },
+    bestFor: ['突袭', '首领', '速攻'],
+  },
+  sun_quan: {
+    generalId: 'sun_quan', name: '孙权', icon: '🌊', role: 'administrator',
+    passive: { label: '军策·制衡', desc: '守护+8%，净化+4%', protectBonus: 0.08, purifyBonus: 4 },
+    order: { label: '战令·江表', desc: '非战斗步骤效率+12%', nonCombatBonus: 0.12 },
+    bestFor: ['守护', '后勤', '均衡'],
+  },
 };
 
 /** 国战 PVE 任务 — 影响国家指标（有上限，防膨胀） */
@@ -270,6 +306,7 @@ export function calcFusionPveBonuses(ctx = {}) {
       bonuses.escapeTurnReduce += gt.passive.escapeTurnReduce || 0;
       bonuses.bossMultReduce += gt.passive.bossMultReduce || 0;
       if (gt.passive.skipPuzzleStep) bonuses.skipPuzzleStep = true;
+      if (gt.passive.skipExploreStep) bonuses.skipExploreStep = true;
     }
   }
   if (ctx.jutsuSynergy) {

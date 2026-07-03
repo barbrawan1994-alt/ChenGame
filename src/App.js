@@ -4649,7 +4649,47 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     );
   };
      const renderInfinityCastle = () => {
-    if (!infinityState) return null;
+    if (!infinityState) {
+      const bestFloor = achStats.maxInfinityFloor || 0;
+      const leaderLv = party?.[0]?.level || 0;
+      const canShallow = leaderLv >= 40;
+      const canNormal = leaderLv >= 80;
+      return (
+        <div className="screen" style={{ background:'linear-gradient(180deg, #1a0b2e 0%, #000 100%)', color:'#fff', display:'flex', flexDirection:'column', alignItems:'center' }}>
+          <div style={{width:'100%', padding:'20px', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,255,255,0.05)'}}>
+            <div style={{fontSize:'20px', fontWeight:'bold', color:'#E040FB'}}>🏯 无限城</div>
+            <button onClick={() => setView('grid_map')} style={{background:'transparent', border:'1px solid #666', color:'#aaa', padding:'5px 15px', borderRadius:'20px', fontSize:'12px'}}>返回</button>
+          </div>
+          <div style={{flex:1, display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', padding:'20px', textAlign:'center', maxWidth:'500px'}}>
+            <div style={{fontSize:'64px', marginBottom:'16px'}}>🏯</div>
+            <div style={{fontSize:'18px', fontWeight:'bold', color:'#E1BEE7', marginBottom:'8px'}}>欢迎来到无限城</div>
+            <div style={{fontSize:'13px', color:'rgba(255,255,255,0.6)', lineHeight:1.7, marginBottom:'24px'}}>
+              无限城是一座永无尽头的试炼之塔。每层随机遭遇敌人，战斗胜利后可选择路线和呼吸法加成。
+              每10层出现强力Boss。层数越高敌人越强，挑战你的极限！
+            </div>
+            <div style={{fontSize:'12px', color:'#FFD700', marginBottom:'24px'}}>🏆 历史最高纪录：第 {bestFloor} 层</div>
+            <div style={{display:'flex', flexDirection:'column', gap:'12px', width:'100%', maxWidth:'300px'}}>
+              <button onClick={() => { if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } enterInfinityCastle('shallow'); }} disabled={!canShallow} style={{
+                padding:'14px', borderRadius:'12px', fontSize:'14px', fontWeight:'bold', cursor: canShallow ? 'pointer' : 'not-allowed',
+                background: canShallow ? 'linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%)' : 'rgba(255,255,255,0.08)',
+                color: canShallow ? '#fff' : 'rgba(255,255,255,0.3)', border: canShallow ? '1px solid #9C27B0' : '1px solid rgba(255,255,255,0.1)',
+              }}>🌙 浅层探索（首发 Lv.40+）{!canShallow && leaderLv > 0 ? ` — 当前 Lv.${leaderLv}` : ''}</button>
+              <button onClick={() => { if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } enterInfinityCastle('normal'); }} disabled={!canNormal} style={{
+                padding:'14px', borderRadius:'12px', fontSize:'14px', fontWeight:'bold', cursor: canNormal ? 'pointer' : 'not-allowed',
+                background: canNormal ? 'linear-gradient(135deg, #B71C1C 0%, #D32F2F 100%)' : 'rgba(255,255,255,0.08)',
+                color: canNormal ? '#fff' : 'rgba(255,255,255,0.3)', border: canNormal ? '1px solid #EF5350' : '1px solid rgba(255,255,255,0.1)',
+              }}>🔥 深层挑战（首发 Lv.80+）{!canNormal && leaderLv > 0 ? ` — 当前 Lv.${leaderLv}` : ''}</button>
+            </div>
+            <div style={{marginTop:'24px', fontSize:'11px', color:'rgba(255,255,255,0.35)', lineHeight:1.6}}>
+              · 浅层模式敌人较弱，适合练习<br/>
+              · 深层模式奖励更丰厚，每5层可选呼吸法加成<br/>
+              · 每10层出现Boss，击败后获得大量奖励<br/>
+              · 里程碑层（5/15/25/35…95层）有额外补给箱
+            </div>
+          </div>
+        </div>
+      );
+    }
     const { floor, status, buffs = [], buffOptions = [], floorModifier, mode } = infinityState;
     const mod = floorModifier || getInfinityFloorModifier(floor);
     const bestFloor = Math.max(infinityState.bestFloor || 0, achStats.maxInfinityFloor || 0);
@@ -7038,7 +7078,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const selectBreathingStyle = (breathingId) => {
-    const advanced = ['insect', 'mist'];
+    const advanced = ['insect', 'mist', 'sun', 'moon'];
     if (advanced.includes(breathingId) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock')) {
       showMapToast('🔒', '未解锁', '需完成鬼雾山「完整净化」结局', 2500);
       return;
@@ -7793,7 +7833,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'training', icon:'🏋️', name:'精灵特训', desc:'强化精灵能力', color:'#1565C0', badge: (Array.isArray(trainingState.slots) ? trainingState.slots : []).filter(s => Date.now() - s.startTime >= s.duration).length, onClick: () => { setActivityCenter(false); if (badges.length < TRAINING_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${TRAINING_REQ_BADGES} 枚徽章`,1500); return; } setView('training'); } },
       { id:'world_boss', icon:'👹', name:'世界首领', desc:'每日强敌挑战', color:'#B71C1C', badge: (worldBossState.attempts || 0) < WORLD_BOSS_MAX_ATTEMPTS && !worldBossState.defeated ? 1 : 0, onClick: () => { setActivityCenter(false); if (badges.length < WORLD_BOSS_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${WORLD_BOSS_REQ_BADGES} 枚徽章`,1500); return; } refreshWorldBoss(); setView('world_boss'); } },
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < 5 ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
-      { id:'infinity', icon:'🏯', name:'无限城', desc:'Roguelike挑战', color:'#6A1B9A', badge: (achStats.maxInfinityFloor || 0) >= 25 ? '🔥' : 0, onClick: () => { setActivityCenter(false); if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } if (party[0].level >= 80) enterInfinityCastle('normal'); else if (party[0].level >= 40) enterInfinityCastle('shallow'); else showMapToast('⚠️','等级不足','浅层需首发Lv.40+',2000); } },
+      { id:'infinity', icon:'🏯', name:'无限城', desc:'Roguelike挑战', color:'#6A1B9A', badge: (achStats.maxInfinityFloor || 0) >= 25 ? '🔥' : 0, onClick: () => { setActivityCenter(false); setView('infinity_castle'); } },
     ];
     const readyEntries = entries.filter(e => !!e.badge);
     const todayFocus = [
@@ -27460,19 +27500,31 @@ const renderMenu = () => {
       currentBonuses.bossMultReduce ? { label: 'Boss压制', value: `-${Math.round(currentBonuses.bossMultReduce * 100)}%`, tone: '#fca5a5' } : null,
       currentBonuses.escapeTurnReduce ? { label: '逃脱回合', value: `-${currentBonuses.escapeTurnReduce}`, tone: '#c4b5fd' } : null,
       currentBonuses.exploreSpeedBonus ? { label: '探索速度', value: `+${currentBonuses.exploreSpeedBonus}`, tone: '#67e8f9' } : null,
+      currentBonuses.skipPuzzleStep ? { label: '解谜跳过', value: '1次', tone: '#ddd6fe' } : null,
+      currentBonuses.skipExploreStep ? { label: '探索跳过', value: '1次', tone: '#bae6fd' } : null,
+      currentBonuses.puzzleHintBonus ? { label: '机关提示', value: '开启', tone: '#fde68a' } : null,
     ].filter(Boolean);
     const applyBuildPreset = (preset) => {
-      const advancedLocked = ['insect', 'mist'].includes(preset.breathing) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
+      const advancedLocked = ['insect', 'mist', 'sun', 'moon'].includes(preset.breathing) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
+      const kwLocked = !!preset.kwPosition && !crossUnlocked.includes('kw_positions');
+      const generalLocked = !!preset.general && !unlocked.includes('general_tactic');
       setFusionState(prev => ({
         ...prev,
         playerStyle: {
           ...(prev.playerStyle || {}),
           main: preset.main,
+          sub: preset.sub || null,
           breathingStyle: advancedLocked ? (prev.playerStyle?.breathingStyle || 'water') : preset.breathing,
         },
-        generalTacticId: preset.general || prev.generalTacticId,
+        kwPosition: kwLocked ? prev.kwPosition : (preset.kwPosition || prev.kwPosition),
+        generalTacticId: generalLocked ? prev.generalTacticId : (preset.general || prev.generalTacticId),
       }));
-      showMapToast(preset.icon || '🧭', '构筑方案', `已套用 ${preset.name}${advancedLocked ? '（高级呼吸法未解锁，已保留当前呼吸法）' : ''}`, 2600);
+      const lockNotes = [
+        advancedLocked ? '高级呼吸法未解锁' : null,
+        kwLocked ? '国战职位未解锁' : null,
+        generalLocked ? '将魂战术未解锁' : null,
+      ].filter(Boolean);
+      showMapToast(preset.icon || '🧭', '构筑方案', `已套用 ${preset.name}${lockNotes.length ? `（${lockNotes.join('，')}，已保留当前设置）` : ''}`, 2600);
     };
     const fusionAccentByType = {
       jutsu: '#8b5cf6',
@@ -27674,6 +27726,38 @@ const renderMenu = () => {
                   <div style={{fontSize:'13px', color:'#fff', fontWeight:'900'}}>构筑会影响什么？</div>
                   <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', lineHeight:1.6, marginTop:'5px'}}>主修决定解题方向，副修补短板；呼吸法和国战职位提供轻量 PVE 加成，不直接改战斗面板。</div>
                 </div>
+                <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'0 0 8px'}}>推荐流派模板</div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'8px', marginBottom:'14px'}}>
+                  {BUILD_PRESETS.map(p => {
+                    const active = fusionState.playerStyle?.main === p.main
+                      && (fusionState.playerStyle?.sub || null) === (p.sub || null)
+                      && fusionState.playerStyle?.breathingStyle === p.breathing
+                      && (!p.kwPosition || fusionState.kwPosition === p.kwPosition)
+                      && (!p.general || fusionState.generalTacticId === p.general);
+                    const advancedLocked = ['insect', 'mist', 'sun', 'moon'].includes(p.breathing) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
+                    const kwLocked = !!p.kwPosition && !crossUnlocked.includes('kw_positions');
+                    const generalLocked = !!p.general && !unlocked.includes('general_tactic');
+                    const hasLockedLayer = advancedLocked || kwLocked || generalLocked;
+                    return (
+                      <button key={p.id} type="button" onClick={() => applyBuildPreset(p)} style={{
+                        textAlign:'left', padding:'10px', borderRadius:'12px', color:'#fff', cursor:'pointer',
+                        background: active ? 'linear-gradient(135deg, rgba(34,197,94,0.18), rgba(167,139,250,0.16))' : 'rgba(255,255,255,0.04)',
+                        border: active ? '1px solid rgba(134,239,172,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      }}>
+                        <div style={{display:'flex', justifyContent:'space-between', gap:'8px', alignItems:'center'}}>
+                          <span style={{fontSize:'12px', fontWeight:'900'}}>{p.icon} {p.name}</span>
+                          <span style={{fontSize:'9px', color: hasLockedLayer ? '#fbbf24' : active ? '#86efac' : '#c4b5fd', fontWeight:'900'}}>{hasLockedLayer ? '部分未解锁' : p.difficulty || '构筑'}</span>
+                        </div>
+                        <div style={{fontSize:'10px', color:'rgba(255,255,255,0.55)', lineHeight:1.45, marginTop:'5px'}}>{p.note}</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'8px'}}>
+                          <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'999px', background:'rgba(167,139,250,0.14)', color:'#ddd6fe'}}>{PLAYER_STYLES[p.main]?.name || p.main}</span>
+                          {p.sub && <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>副修 {PLAYER_STYLES[p.sub]?.name || p.sub}</span>}
+                          <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'999px', background:'rgba(79,195,247,0.12)', color:'#bae6fd'}}>{BREATHING_PVE_STYLES[p.breathing]?.name || p.breathing}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
                 <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'0 0 8px'}}>1. 主修流派</div>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:'9px', marginBottom:'14px'}}>
                   {Object.values(PLAYER_STYLES).map(s => {
@@ -27706,7 +27790,7 @@ const renderMenu = () => {
                 <div style={{fontSize:'12px', color:'#c4b5fd', fontWeight:'900', margin:'0 0 8px'}}>3. 呼吸法 PVE 战术</div>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:'8px'}}>
                 {Object.values(BREATHING_PVE_STYLES).map(b => {
-                  const advLocked = ['insect', 'mist'].includes(b.id) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
+                  const advLocked = ['insect', 'mist', 'sun', 'moon'].includes(b.id) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
                   return (
                   <button key={b.id} type="button" onClick={() => !advLocked && selectBreathingStyle(b.id)} style={{
                     textAlign:'left', padding:'10px', borderRadius:'12px', cursor: advLocked ? 'not-allowed' : 'pointer', fontSize:'11px', opacity: advLocked ? 0.45 : 1, color:'#fff',
@@ -27719,6 +27803,8 @@ const renderMenu = () => {
                       {b.passive?.protectBonus ? `守护+${Math.round(b.passive.protectBonus*100)}% ` : ''}
                       {b.passive?.captureBonus ? `捕获+${Math.round(b.passive.captureBonus*100)}% ` : ''}
                       {b.passive?.bossMultReduce ? `Boss压制-${Math.round(b.passive.bossMultReduce*100)}% ` : ''}
+                      {b.passive?.exploreSpeedBonus ? `探索+${b.passive.exploreSpeedBonus} ` : ''}
+                      {b.passive?.puzzleHintBonus ? '机关提示 ' : ''}
                       {advLocked ? '需鬼雾山完整净化' : ''}
                     </div>
                     <div style={{display:'flex', flexWrap:'wrap', gap:'4px', marginTop:'7px'}}>
@@ -27781,7 +27867,8 @@ const renderMenu = () => {
                     <button key={p.id} type="button" onClick={() => applyBuildPreset(p)} style={{fontSize:'10px', textAlign:'left', padding:'10px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', color:'#fff', cursor:'pointer'}}>
                       <div style={{fontSize:'12px', fontWeight:'900'}}>{p.icon} {p.name}</div>
                       <div style={{color:'rgba(255,255,255,0.55)', lineHeight:1.45, marginTop:'4px'}}>{p.note}</div>
-                      <div style={{color:'#c4b5fd', marginTop:'7px', fontWeight:'900'}}>主修 {PLAYER_STYLES[p.main]?.name || p.main} · {BREATHING_PVE_STYLES[p.breathing]?.name || p.breathing}</div>
+                      <div style={{color:'#c4b5fd', marginTop:'7px', fontWeight:'900'}}>主修 {PLAYER_STYLES[p.main]?.name || p.main} · {p.sub ? `副修 ${PLAYER_STYLES[p.sub]?.name || p.sub} · ` : ''}{BREATHING_PVE_STYLES[p.breathing]?.name || p.breathing}</div>
+                      <div style={{color:'rgba(255,255,255,0.36)', marginTop:'4px'}}>职位 {KINGDOM_POSITIONS.find(x => x.id === p.kwPosition)?.name || '可选'} · 将魂 {GENERAL_PVE_TACTICS[p.general]?.name || '可选'}</div>
                     </button>
                   ))}
                 </div>
