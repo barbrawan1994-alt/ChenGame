@@ -189,6 +189,9 @@ export const DOMAINS = {
   CHAOS: { name: '混沌领域·万象崩壊', turns: 3, ceCost: 95,
            effect: { atkBoost: 1.6, enemyDefDown: 0.6, enemyAccDown: 0.7, dot: 0.06 },
            desc: '混沌领域，攻击+60%，敌方防御-40%，命中-30%，每回合混沌侵蚀6%' },
+  HEAL: { name: '圣愈领域·涅槃净土', turns: 4, ceCost: 80,
+          effect: { healPerTurn: 0.15, atkBoost: 1.0, enemyAtkDown: 0.8, dot: 0 },
+          desc: '治愈领域，每回合回复15%HP，敌方攻击-20%' },
 };
 
 // 缚誓系统 (每个缚誓都需要最低咒力门槛 ceCost)

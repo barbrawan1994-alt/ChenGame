@@ -1230,7 +1230,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
 // 【新增】全局探索日志状态
   const [globalLogs, setGlobalLogs] = useState([
-    { time: '系统', msg: '欢迎来到宝可梦 RPG 世界！' },
+    { time: '系统', msg: '欢迎来到超级精灵 RPG 世界！' },
     { time: '系统', msg: '请使用方向键或 WASD 移动。' }
   ]);
    const [messageBox, setMessageBox] = useState(null); 
@@ -9553,7 +9553,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 <span>返回</span>
               </button>
               <div className="achievement-title">
-                <span className="achievement-kicker">Trainer Chronicle</span>
+                <span className="achievement-kicker">冒险纪事</span>
                 <h1>成就大厅</h1>
               </div>
               <div className="achievement-total-pill">{unlocked} / {total}</div>
@@ -11536,7 +11536,7 @@ const useGrowthItem = (petIndex, itemId) => {
         return;
       }
 
-      // 宝可梦中心 (Tile 8)
+      // 精灵中心 (Tile 8)
       if (tileType === 8) {
         const injuredCount = party.filter(p => p.currentHp < getStats(p).maxHp || p.status || (p.moves||[]).some(m => m.pp < (m.maxPP||15))).length;
         setParty(prev => prev.map(p => ({
@@ -22071,6 +22071,56 @@ const renderMenu = () => {
     { label: '当前资源', value: `${gold.toLocaleString()} 金币`, meta: `累计收益 ${(achStats.totalGoldEarned ?? 0).toLocaleString()}` },
     { label: '队伍状态', value: hasSave && party?.length ? `${party.length}/6 已集结` : '等待伙伴', meta: leadPet ? `${leadPet.nickname || leadPetDex?.name || '首发伙伴'} 可以出战` : '先选择初始伙伴' },
   ];
+  const fusionSystems = [
+    {
+      label: '精灵主轴',
+      icon: '🔴',
+      meta: `${caughtDex.length}/${POKEDEX.length} 图鉴 · ${badgeCount}/${MAIN_GYM_BADGE_COUNT} 徽章`,
+      progress: petCollectionPct,
+      tone: 'spirit',
+      action: () => setView('pokedex'),
+    },
+    {
+      label: '忍术修行',
+      icon: '🍥',
+      meta: `${ninjaRank?.name || '忍者学员'} · ${jutsuCollCount}/${JUTSU_DB.length} 卷轴`,
+      progress: Math.min(100, Math.round((jutsuCollCount / Math.max(1, JUTSU_DB.length)) * 100)),
+      tone: 'ninja',
+      action: () => setView('naruto_exam'),
+    },
+    {
+      label: '果实海域',
+      icon: '🍎',
+      meta: `${new Set(fruitInventory || []).size}/${getAllFruits().length} 果实 · 战术变身`,
+      progress: Math.min(100, Math.round((new Set(fruitInventory || []).size / Math.max(1, getAllFruits().length)) * 100)),
+      tone: 'sea',
+      action: () => setView('fruit_dex'),
+    },
+    {
+      label: '三国阵线',
+      icon: playerFaction?.icon || '🛡️',
+      meta: playerFaction ? `${playerFaction.name} · ${myTerrCountMenu} 领地 · ${recruitedCount}/${MAX_RECRUITED_GENERALS} 名将` : '加入阵营后开启国战',
+      progress: kingdomWar?.faction ? Math.min(100, Math.round((myTerrCountMenu / Math.max(1, WAR_MAP_IDS?.length || 16)) * 100)) : 0,
+      tone: 'kingdom',
+      action: () => { setMapTab('kingdom'); setView('world_map'); },
+    },
+    {
+      label: '无限城',
+      icon: '🏯',
+      meta: `最佳 ${achStats.maxInfinityFloor || 0} 层 · 高压爬塔`,
+      progress: Math.min(100, Math.round(((achStats.maxInfinityFloor || 0) / 100) * 100)),
+      tone: 'slayer',
+      action: () => setView('infinity_castle'),
+    },
+    {
+      label: '武侠门派',
+      icon: '🥋',
+      meta: sectPlayer?.playerSect ? `门派 Rank ${sectPlayer.sectRank || 1} · ${(sectPlayer.sectMartialArts || []).length} 武学` : '加入门派后开启心法',
+      progress: sectPlayer?.playerSect ? Math.min(100, Math.round(((sectPlayer.sectRank || 1) / 10) * 100)) : 0,
+      tone: 'wuxia',
+      action: () => setView('sect_summit'),
+    },
+  ];
   const entryGroups = [
     { title: '收藏与资料', items: quickEntries.slice(0, 6) },
     { title: '挑战与系统', items: quickEntries.slice(6) },
@@ -22088,14 +22138,24 @@ const renderMenu = () => {
           <div className="home-gate-brand">
             <SuperSpiritIcon className="home-gate-logo" size={62} />
             <div>
-              <span>{GAME_EN_NAME}</span>
+              <div className="home-gate-version-row">
+                <span>{GAME_EN_NAME}</span>
+                <b>{GAME_VERSION_LABEL}</b>
+              </div>
               <h1>{GAME_NAME}</h1>
-              <p>收集伙伴，挑战道馆，推进阵营与忍术修行。</p>
+              <p>以精灵收集与队伍培养为核心，串联忍术、果实、国战、无限城与武侠门派的长期冒险。</p>
             </div>
           </div>
 
           <div className="home-gate-showcase">
             <div className="home-gate-orbit" aria-hidden="true" />
+            <div className="home-gate-system-wheel" aria-hidden="true">
+              {fusionSystems.map((sys, idx) => (
+                <span className={`home-system-token is-${sys.tone}`} key={sys.label} style={{ '--token-index': idx }}>
+                  {sys.icon}
+                </span>
+              ))}
+            </div>
             <div className="home-gate-summon-pad" aria-hidden="true" />
             <div className="home-gate-lead-card" style={{ '--lead-type': leadTypeColor }}>
               <div className="home-gate-lead-art">
@@ -22118,6 +22178,15 @@ const renderMenu = () => {
                 </span>
               ))}
             </div>
+          </div>
+
+          <div className="home-gate-fusion-ribbon" aria-label="版本体系">
+            <span>精灵主轴</span>
+            <span>忍术卷轴</span>
+            <span>果实海域</span>
+            <span>三国阵线</span>
+            <span>无限城</span>
+            <span>武侠门派</span>
           </div>
 
           <button className="home-gate-primary" onClick={handleStartGame}>
@@ -22188,6 +22257,25 @@ const renderMenu = () => {
               </article>
             ))}
           </div>
+
+          <article className="home-gate-fusion-board">
+            <div className="home-card-title">
+              <span>v15.0 融合体系</span>
+              <small>精灵养成为主线，其他体系提供战术、资源与挑战层</small>
+            </div>
+            <div className="home-fusion-grid">
+              {fusionSystems.map(sys => (
+                <button type="button" className={`home-fusion-card is-${sys.tone}`} key={sys.label} onClick={sys.action}>
+                  <span className="home-fusion-icon">{sys.icon}</span>
+                  <span className="home-fusion-copy">
+                    <strong>{sys.label}</strong>
+                    <small>{sys.meta}</small>
+                    <i className="home-fusion-meter" aria-hidden="true"><em style={{ width: `${sys.progress}%` }} /></i>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </article>
 
           <article className="home-gate-route">
             <div className="home-gate-route-head">
@@ -22344,7 +22432,7 @@ const renderMenu = () => {
       if (party[0].level < dungeon.recLvl) { showMapToast('⛔', '等级不足', `需要首发 Lv.${dungeon.recLvl}`, 1500); return; }
 
       // 徽章门槛
-      const reqBadges = dungeon.reqBadges || { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 10, hyakki: 6 }[dungeon.type] || 0;
+      const reqBadges = dungeon.reqBadges || { gold: 2, exp: 1, stone: 5, stat: 5, gold_pro: 6, shiny_hunt: 8, infinity: 10, hyakki: 10 }[dungeon.type] || 0;
       if (badges.length < reqBadges) { showMapToast('⛔', '徽章不足', `需要 ${reqBadges} 枚 · 当前 ${badges.length}`, 1500); return; }
 
       // 特殊限制
@@ -27397,11 +27485,13 @@ const renderMenu = () => {
       battle: '战斗',
       boss: '首领',
       explore: '探索',
+      soothe: '安抚',
     };
     const rewardText = (reward = {}) => {
       const parts = [];
+      const itemNameMap = { great:'高级精灵球', ultra:'超级精灵球', master:'大师球', fire_stone:'火之石', water_stone:'水之石', thunder_stone:'雷之石', leaf_stone:'叶之石', moon_stone:'月之石', sun_stone:'日之石', ice_stone:'冰之石', dawn_stone:'觉醒之石', dusk_stone:'暗之石', shiny_stone:'光之石' };
       if (reward.gold) parts.push(`${reward.gold.toLocaleString()} 金`);
-      if (reward.item) parts.push(`${reward.item} x${reward.itemCount || 1}`);
+      if (reward.item) parts.push(`${itemNameMap[reward.item] || reward.item} x${reward.itemCount || 1}`);
       if (reward.jutsuMastery) parts.push(`忍术熟练 +${reward.jutsuMastery}`);
       if (reward.title) parts.push(`称号「${reward.title}」`);
       return parts.length ? parts.join(' · ') : '特殊资源';
@@ -27433,7 +27523,7 @@ const renderMenu = () => {
           <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', marginTop:'8px', lineHeight:1.55}}>{def.summary}</div>
           <div style={{display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'9px'}}>
             {(def.mechanics || []).slice(0, 4).map(m => (
-              <span key={m} style={{fontSize:'9px', padding:'3px 7px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>{({'seal_pillars':'封印柱','element_sequence':'属性序列','momentum_battle':'气势战','escort_vip':'护送','multi_path':'多路线','darkness':'黑暗','timed_waves':'限时波','puzzle':'解谜','stealth':'潜行','boss_rush':'连战','survival':'生存','trap_maze':'陷阱迷宫','formation':'阵法','wind_pressure':'风压','qi_flow':'气脉','balance':'均衡','meditation':'冥想','speed_run':'竞速','defense':'防御','endurance':'耐力'}[m] || m.replaceAll('_', ' '))}</span>
+              <span key={m} style={{fontSize:'9px', padding:'3px 7px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>{({'seal_pillars':'封印柱','element_sequence':'属性序列','momentum_battle':'气势战','escort_vip':'护送','multi_path':'多路线','darkness':'黑暗','timed_waves':'限时波','puzzle':'解谜','stealth':'潜行','boss_rush':'连战','survival':'生存','trap_maze':'陷阱迷宫','formation':'阵法','wind_pressure':'风压','qi_flow':'气脉','balance':'均衡','meditation':'冥想','speed_run':'竞速','defense':'防御','endurance':'耐力','perception_hint':'感知提示','fruit_seal_boss':'果实封印首领','stealth_route':'潜行路线','clone_puzzle':'分身解谜','chakra_nodes':'查克拉节点','chakra_restore':'查克拉恢复','heal_jutsu_trial':'医疗忍术试炼','water_restriction':'水域限制','fruit_trial':'果实试炼','fruit_copy_boss':'果实复制首领','storm_field':'风暴场','fruit_lightning':'果实雷击','island_hop':'跳岛','ice_restriction':'冰域限制','frozen_fruit':'冰封果实','heat_puzzle':'热力解谜','gravity_field':'重力场','heavy_advantage':'重量优势','fruit_gravity_contest':'重力果实挑战'}[m] || m)}</span>
             ))}
           </div>
           {steps.length > 0 && (
@@ -27519,11 +27609,11 @@ const renderMenu = () => {
               {tabs.map(t => {
                 const locked = t.need && !unlocked.includes(t.need);
                 return (
-                  <button key={t.id} disabled={locked} onClick={() => !locked && setFusionHubTab(t.id)} style={{
-                    padding:'7px 11px', borderRadius:'10px', border:'1px solid '+(fusionHubTab === t.id ? 'rgba(196,181,253,0.5)' : 'rgba(255,255,255,0.08)'), cursor: locked ? 'not-allowed' : 'pointer', fontSize:'11px', fontWeight:'800',
+                  <button key={t.id} onClick={() => setFusionHubTab(t.id)} style={{
+                    padding:'7px 11px', borderRadius:'10px', border:'1px solid '+(fusionHubTab === t.id ? 'rgba(196,181,253,0.5)' : 'rgba(255,255,255,0.08)'), cursor:'pointer', fontSize:'11px', fontWeight:'800',
                     background: fusionHubTab === t.id ? 'rgba(167,139,250,0.34)' : 'rgba(255,255,255,0.06)',
-                    color: locked ? 'rgba(255,255,255,0.28)' : fusionHubTab === t.id ? '#fff' : 'rgba(255,255,255,0.62)',
-                    opacity: locked ? 0.65 : 1,
+                    color: locked ? 'rgba(255,255,255,0.45)' : fusionHubTab === t.id ? '#fff' : 'rgba(255,255,255,0.62)',
+                    opacity: locked ? 0.72 : 1,
                   }}>{t.icon} {t.label}{locked ? ' 🔒' : ''}</button>
                 );
               })}
@@ -27773,7 +27863,7 @@ const renderMenu = () => {
                 </div>
               );
             })}
-            {fusionHubTab === 'calamity' && !unlocked.includes('national_calamity') && <div style={{fontSize:'12px', color:'#888'}}>需要 8 枚徽章解锁国土灵灾</div>}
+            {fusionHubTab === 'calamity' && !unlocked.includes('national_calamity') && renderLockedFusionPanel({ icon:'🌊', title:'国土灵灾', need:8, desc:'当你获得 8 枚徽章后，国土灵灾将会开放。此玩法涉及大规模事件净化，需要跨体系协作。' })}
             {fusionHubTab === 'kingdom' && unlocked.includes('kingdom_pve') && KINGDOM_PVE_TASKS.map(task => {
               const done = (fusionState.kingdomTasksDone || []).includes(task.id);
               return (
@@ -27788,7 +27878,7 @@ const renderMenu = () => {
                 </div>
               );
             })}
-            {fusionHubTab === 'kingdom' && !unlocked.includes('kingdom_pve') && <div style={{fontSize:'12px', color:'#888'}}>需要 8 枚徽章解锁国战 PVE 任务</div>}
+            {fusionHubTab === 'kingdom' && !unlocked.includes('kingdom_pve') && renderLockedFusionPanel({ icon:'🏰', title:'国战任务', need:8, desc:'当你获得 8 枚徽章后，国战 PVE 任务将会开放。包含护送、进攻和防御等多种任务，产出国战贡献和资源。' })}
             {fusionHubTab === 'general' && unlocked.includes('general_tactic') && Object.values(GENERAL_PVE_TACTICS).map(gt => (
               <div key={gt.generalId} onClick={() => selectGeneralTactic(gt.generalId)} style={{
                 background: fusionState.generalTacticId === gt.generalId ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
@@ -27800,7 +27890,7 @@ const renderMenu = () => {
                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'2px'}}>{gt.order?.label} · 适合：{(gt.bestFor || []).join('、')}</div>
               </div>
             ))}
-            {fusionHubTab === 'general' && !unlocked.includes('general_tactic') && <div style={{fontSize:'12px', color:'#888'}}>需要 7 枚徽章解锁将魂战术</div>}
+            {fusionHubTab === 'general' && !unlocked.includes('general_tactic') && renderLockedFusionPanel({ icon:'🏇', title:'将魂战术', need:7, desc:'当你获得 7 枚徽章后，将魂战术将会开放。可以选择一位三国名将，获得独特的 PVE 战术加成。' })}
           </div>
         </div>
       </div>
@@ -30772,8 +30862,8 @@ const renderMenu = () => {
             borderBottom: '1px solid #333'
           }}>
             <div className="pc-title-tech" style={{fontSize: '18px', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'10px'}}>
-                <span style={{color:'#00E676', fontSize:'12px'}}>● ONLINE</span> 
-                PC 宝可梦管理终端
+                <span style={{color:'#00E676', fontSize:'12px'}}>● 在线</span> 
+                精灵管理终端
             </div>
             <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
               <button onClick={() => { setPcBatchRelease(p => !p); setPcBatchSelected(new Set()); }} style={{background: pcBatchRelease ? '#E53935' : '#333',border:'1px solid #555',color:'#fff',padding:'4px 10px',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>

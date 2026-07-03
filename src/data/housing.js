@@ -326,6 +326,7 @@ export const calcHouseScore = (placedFurniture) => {
 
 export const calcResidentBenefits = (placedFurniture) => {
   let hpRegen = 0, expBonus = 0, intimacyBonus = 0, ceRegen = 0;
+  let allStats = 0, intimacyMult = 1, ceMaxBonus = 0, hpRegenMult = 1, expMult = 1;
   for (const f of placedFurniture) {
     const def = FURNITURE_DB.find(d => d.id === f.baseId);
     if (!def) continue;
@@ -337,7 +338,21 @@ export const calcResidentBenefits = (placedFurniture) => {
     intimacyBonus += Math.floor((eff.intimacyBonus || 0) * mult);
     ceRegen += Math.floor((eff.ceRegen || 0) * mult);
   }
-  return { hpRegen, expBonus, intimacyBonus, ceRegen };
+  const placedIds = placedFurniture.map(f => f.baseId);
+  for (const set of FURNITURE_SETS) {
+    if (set.items.every(id => placedIds.includes(id))) {
+      const b = set.bonus || {};
+      allStats += b.allStats || 0;
+      if (b.intimacyMult) intimacyMult *= b.intimacyMult;
+      ceMaxBonus += b.ceMaxBonus || 0;
+      if (b.hpRegenMult) hpRegenMult *= b.hpRegenMult;
+      if (b.expMult) expMult *= b.expMult;
+    }
+  }
+  hpRegen = Math.floor(hpRegen * hpRegenMult);
+  expBonus = Math.floor(expBonus * expMult);
+  intimacyBonus = Math.floor(intimacyBonus * intimacyMult);
+  return { hpRegen, expBonus, intimacyBonus, ceRegen, allStats, ceMaxBonus };
 };
 
 export const DEFAULT_HOUSING_STATE = {
@@ -409,7 +424,7 @@ export const TREASURE_COLLECTIONS = [
       { id: 'badge_13', name: '创世徽章',   icon: '🏆', score: 30, condition: 'gym', mapId: 13 },
       { id: 'badge_99', name: '日蚀徽章',   icon: '💀', score: 25, condition: 'gym', mapId: 99 },
       { id: 'badge_100', name: '咒术徽章',  icon: '🔮', score: 25, condition: 'gym', mapId: 100 },
-      { id: 'badge_101', name: 'DA徽章',    icon: '🎀', score: 25, condition: 'gym', mapId: 101 },
+      { id: 'badge_101', name: '千束徽章',    icon: '🎀', score: 25, condition: 'gym', mapId: 101 },
       { id: 'badge_102', name: '武道徽章',   icon: '🏯', score: 30, condition: 'gym', mapId: 102 },
     ],
   },

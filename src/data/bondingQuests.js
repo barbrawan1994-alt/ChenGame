@@ -30,7 +30,7 @@ export const BONDING_QUESTS = [
     id: 'bond_mist_deer',
     name: '雾鹿灵结契',
     icon: '🦌',
-    mapId: 4,
+    mapId: 2,
     reqBadges: 3,
     petId: 901,
     petName: '雾鹿灵',

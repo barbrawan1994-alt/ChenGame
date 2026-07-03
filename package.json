@@ -1,6 +1,6 @@
 {
   "name": "super-spirit",
-  "version": "14.3.0",
+  "version": "15.0.0",
   "description": "超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。",
   "main": "main.js",
   "scripts": {

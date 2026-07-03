@@ -208,7 +208,7 @@ export const ECOLOGY_GUARDIANS = [
   { id: 'guardian_fire', ecosystem: 'FIRE', name: '熔心守望', petId: 6, icon: '🔥', trait: 'ecoguard_blaze', desc: '火系伤害+15%' },
   { id: 'guardian_ghost', ecosystem: 'GHOST', name: '幽林使者', petId: 94, icon: '👻', trait: 'ecoguard_phantom', desc: '首回合闪避+25%' },
   { id: 'guardian_ice', ecosystem: 'ICE', name: '极寒守护', petId: 78, icon: '❄️', trait: 'ecoguard_frost', desc: '入场降低敌方速度1阶' },
-  { id: 'guardian_rock', ecosystem: 'ROCK', name: '岩岭守护', petId: 74, icon: '🪨', trait: 'ecoguard_rockwall', desc: '入场获得岩盾，物理防御+20%' },
+  { id: 'guardian_rock', ecosystem: 'ROCK', name: '岩岭守护', petId: 15, icon: '🪨', trait: 'ecoguard_rockwall', desc: '入场获得岩盾，物理防御+20%' },
   { id: 'guardian_steel', ecosystem: 'STEEL', name: '钢城哨兵', petId: 87, icon: '⚙️', trait: 'ecoguard_overclock', desc: '入场暴击率+10%，每回合回复3%HP' },
   { id: 'guardian_dragon', ecosystem: 'DRAGON', name: '龙脉看守', petId: 81, icon: '🐲', trait: 'ecoguard_dragon', desc: '龙系技能伤害+15%，入场时灵气+5' },
   { id: 'guardian_flying', ecosystem: 'FLYING', name: '苍穹守望', petId: 43, icon: '🦅', trait: 'ecoguard_gale', desc: '入场速度+1阶，风系技能+10%' },

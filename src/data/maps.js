@@ -376,7 +376,7 @@ export const LEGEND_OBTAIN_RULES = [
   { petId: 897, name: '虹光凤凰', method: 'ecology', requirement: '将彩虹之桥的所有生态指标提升至80%以上', mapId: 107, ecoThreshold: 80 },
   { petId: 898, name: '深渊吞噬者', method: 'world_boss', requirement: '世界Boss·深渊之主击败后低概率获得（5%）', dropRate: 0.05 },
   { petId: 899, name: '永劫时龙', method: 'fusion', requirement: '使用时空裂隙兽(806)+深渊裂龙(815)在创世神殿融合', materials: [806, 815], mapId: 109 },
-  { petId: 900, name: '始源混沌神', method: 'collection', requirement: '收集全部900只精灵后自动获得（图鉴完成奖励）', dexCount: 899 },
+  { petId: 900, name: '始源混沌神', method: 'collection', requirement: '收集全部904只精灵后自动获得（图鉴完成奖励）', dexCount: 904 },
   // 中强精灵特殊获取
   { petId: 820, name: '原初混沌', method: 'infinity_floor', requirement: '无限城挑战达到第30层，击败混沌领域Boss', floor: 30 },
   { petId: 810, name: '纪元守卫', method: 'story_boss', requirement: '完成时空主线后在遗迹工厂隐藏房间发现', badge: 8, mapId: 3 },

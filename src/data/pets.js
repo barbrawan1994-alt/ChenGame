@@ -1347,7 +1347,7 @@ const SANGUO_PETS = [
   { id: 787, name: '原野守神', type: 'GRASS', type2: 'FAIRY', emoji: '🌴', hp: 115, atk: 125, def: 110 },
   { id: 788, name: '碧海守神', type: 'WATER', type2: 'FAIRY', emoji: '🌊', hp: 108, atk: 122, def: 115 },
   { id: 789, name: '星尘幼灵', type: 'COSMIC', type2: 'LIGHT', emoji: '☁️', hp: 42, atk: 35, def: 38, evo: 790, evoLvl: 43 },
-  { id: 790, name: '金茧星胎', type: 'COSMIC', type2: 'LIGHT', emoji: '🥚', hp: 62, atk: 45, def: 95 },
+  { id: 790, name: '金茧星胎', type: 'COSMIC', type2: 'LIGHT', emoji: '🥚', hp: 62, atk: 45, def: 95, evo: 791, evoLvl: 55 },
   { id: 791, name: '冠灵仁帝', type: 'STEEL', type2: 'LIGHT', emoji: '☀️', hp: 122, atk: 142, def: 108 },
   { id: 792, name: '月华蝠灵', type: 'GHOST', type2: 'COSMIC', emoji: '🌙', hp: 118, atk: 138, def: 102 },
   { id: 793, name: '虚空浮母', type: 'POISON', type2: 'COSMIC', emoji: '🪼', hp: 98, atk: 110, def: 85 },

@@ -1,6 +1,6 @@
 // ==========================================
 // [重构] 全属性技能库 (每系 8-30 个，含威力与PP；稀有属性补强至8+)
-// Total: ~535 skills (including injected V18 skills)
+// Total: ~485 skills (including injected V18 skills)
 // ==========================================
 const SKILL_DB = {
   NORMAL: [
@@ -25,11 +25,11 @@ const SKILL_DB = {
     { name: '闪焰冲锋', p: 120, pp: 15, desc: '被火焰包裹猛烈冲锋，附带反伤', recoil: 0.33 },
     { name: '过热', p: 130, pp: 5, desc: '全力释放火焰，之后特攻下降', effect: { selfDebuff: { stat: 's_atk', val: 2 } } },
     { name: '爆裂燃烧', p: 150, pp: 5, desc: '超高温爆裂燃烧一切' },
-    { name: 'V热焰', p: 150, pp: 5, desc: '以超极温火焰焚尽一切的究极招式，使用后特攻降低', effect: { selfDebuff: { stat: 's_atk', val: 2 } } }
+    { name: '超极焰', p: 150, pp: 5, desc: '以超极温火焰焚尽一切的究极招式，使用后特攻降低', effect: { selfDebuff: { stat: 's_atk', val: 2 } } }
   ],
   WATER: [
     { name: '水枪', p: 40, pp: 25, desc: '喷出水柱攻击对手' },
-    { name: '泡沫光线', p: 65, pp: 20, desc: '发射泡沫光线，可能降速' },
+    { name: '泡沫光线', p: 65, pp: 20, desc: '发射泡沫光线，可能降速', effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.1 } },
     { name: '水流裂破', p: 85, pp: 10, desc: '用高压水刀切裂对手' },
     { name: '冲浪', p: 90, pp: 15, desc: '掀起巨浪冲击全场' },
     { name: '浊流', p: 90, pp: 10, desc: '用混浊的水流攻击，降低命中' },
@@ -57,11 +57,11 @@ const SKILL_DB = {
     { name: '雷电拳', p: 75, pp: 15, desc: '带电的拳击，可能使对手麻痹', effect: { type: 'STATUS', status: 'PAR', chance: 0.1 } },
     { name: '放电', p: 80, pp: 15, desc: '向周围释放强烈电击' },
     { name: '十万伏特', p: 90, pp: 15, desc: '释放强力电击猛烈攻击' },
-    { name: '打雷', p: 110, pp: 10, desc: '召唤雷电劈下，可能麻痹' },
+    { name: '打雷', p: 110, pp: 10, acc: 70, desc: '召唤雷电劈下，可能麻痹', effect: { type: 'STATUS', status: 'PAR', chance: 0.3 } },
     { name: '伏特攻击', p: 120, pp: 15, desc: '裹着电流猛冲，附带反伤', recoil: 0.33 },
     { name: '电磁炮', p: 120, pp: 5, desc: '发射电磁加速炮弹轰击' },
     { name: '雷击', p: 130, pp: 5, desc: '从天空降下雷击打击对手' },
-    { name: '千万伏特', p: 160, pp: 1, desc: '皮卡丘的究极电击招式，需蓄力' }
+    { name: '千万伏特', p: 160, pp: 1, desc: '皮卡丘的究极电击招式，需蓄力', recharge: true }
   ],
   ICE: [
     { name: '冰砾', p: 40, pp: 30, desc: '投掷冰块攻击对手' },
@@ -81,7 +81,7 @@ const SKILL_DB = {
     { name: '波导弹', p: 80, pp: 20, alwaysHit: true, desc: '发射波导力量追踪对手，必中' },
     { name: '流星拳', p: 90, pp: 10, desc: '如流星般高速连续出拳' },
     { name: '爆裂拳', p: 100, pp: 5, desc: '蓄力的重拳，可能混乱对手' },
-    { name: '近身战', p: 120, pp: 5, desc: '贴身搏击，自身防御下降', selfDebuff: { stat: 'def', stages: -1 } },
+    { name: '近身战', p: 120, pp: 5, desc: '贴身搏击，自身防御下降', effect: { selfDebuff: { stat: 'p_def', val: 1 } } },
     { name: '真气弹', p: 120, pp: 5, acc: 70, desc: '发射气功波攻击，命中率稍低' },
     { name: '真气拳', p: 150, pp: 5, acc: 90, desc: '集中全身气力的致命一拳，命中率稍低' }
   ],
@@ -114,23 +114,23 @@ const SKILL_DB = {
     { name: '暴风·天空', p: 110, pp: 10, desc: '掀起猛烈暴风攻击，可能混乱' },
     { name: '勇鸟猛攻', p: 120, pp: 15, desc: '勇敢地猛冲，附带反伤', recoil: 0.33 },
     { name: '神鸟特攻', p: 140, pp: 5, desc: '蓄力后发动的究极飞行攻击' },
-    { name: '画龙点睛', p: 120, pp: 5, desc: '全力一击后自身能力下降', selfDebuff: { stat: 'atk', stages: -1 } }
+    { name: '画龙点睛', p: 120, pp: 5, desc: '全力一击后自身能力下降', effect: { selfDebuff: { stat: 'p_atk', val: 1 } } }
   ],
   PSYCHIC: [
     { name: '念力', p: 50, pp: 25, desc: '用念力攻击对手' },
-    { name: '幻象光线', p: 65, pp: 20, desc: '发射幻象光线，可能混乱', effect: { type: 'CONFUSE', chance: 0.1 } },
+    { name: '幻象光线', p: 65, pp: 20, desc: '发射幻象光线，可能混乱', effect: { type: 'STATUS', status: 'CON', chance: 0.1 } },
     { name: '精神利刃', p: 70, pp: 20, desc: '用意念凝聚刀刃切割' },
     { name: '意念头锤', p: 80, pp: 15, desc: '集中精神力量头锤攻击' },
     { name: '精神强念', p: 90, pp: 10, desc: '释放强烈精神力量攻击' },
-    { name: '食梦', p: 100, pp: 15, desc: '吃掉睡眠对手的梦回复HP' },
+    { name: '食梦', p: 100, pp: 15, desc: '吃掉睡眠对手的梦回复HP', effect: { type: 'DRAIN', val: 0.5 } },
     { name: '精神击破', p: 100, pp: 10, desc: '用精神力量击破对手意志' },
     { name: '预知未来', p: 120, pp: 10, desc: '预见未来的攻击将在稍后命中' },
-    { name: '棱镜镭射', p: 160, pp: 10, desc: '发射棱镜光线的究极精神攻击' }
+    { name: '棱镜镭射', p: 160, pp: 5, desc: '发射棱镜光线的究极精神攻击', recharge: true }
   ],
   BUG: [
     { name: '连斩', p: 40, pp: 20, desc: '连续斩击越打越强' },
     { name: '虫咬', p: 60, pp: 20, desc: '用锐利虫牙咬击对手' },
-    { name: '银色旋风', p: 60, pp: 5, desc: '卷起银色旋风，可能全属性提升' },
+    { name: '银色旋风', p: 60, pp: 5, desc: '卷起银色旋风，可能全属性提升', effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, stat2: 'p_def', stat3: 'spd', chance: 0.1 } },
     { name: '十字剪', p: 80, pp: 15, desc: '用镰刀般的爪交叉切割' },
     { name: '吸血', p: 80, pp: 10, desc: '吸取对手体力回复自身', effect: { type: 'DRAIN', val: 0.5 } },
     { name: '虫鸣', p: 90, pp: 10, desc: '发出强烈虫鸣声波攻击' },
@@ -167,9 +167,9 @@ const SKILL_DB = {
     { name: '龙之俯冲', p: 100, pp: 10, desc: '从天空俯冲以龙之力量攻击' },
     { name: '亚空裂斩', p: 100, pp: 5, desc: '切裂空间的强力斩击' },
     { name: '巨兽斩', p: 100, pp: 5, desc: '传说之剑的强力斩击' },
-    { name: '逆鳞', p: 120, pp: 10, desc: '暴怒连续攻击，之后陷入混乱', selfConfuse: true },
-    { name: '流星群', p: 130, pp: 5, desc: '召唤流星群轰击，之后特攻下降', selfDebuff: { stat: 'spa', stages: -2 } },
-    { name: '时光咆哮', p: 150, pp: 5, desc: '扭曲时空的咆哮攻击，需休息' }
+    { name: '逆鳞', p: 120, pp: 10, desc: '暴怒连续攻击，之后陷入混乱', effect: { selfConfuse: true } },
+    { name: '流星群', p: 130, pp: 5, desc: '召唤流星群轰击，之后特攻下降', effect: { selfDebuff: { stat: 's_atk', val: 2 } } },
+    { name: '时光咆哮', p: 150, pp: 5, desc: '扭曲时空的咆哮攻击，需休息', recharge: true }
   ],
   STEEL: [
     { name: '子弹拳', p: 40, pp: 30, priority: 1, desc: '如子弹般的拳击，必定先制' },
@@ -268,7 +268,7 @@ const SKILL_DB = {
     { name: '轮回之力', p: 95, pp: 8, desc: '积蓄轮回之力的攻击' },
     { name: '时空撕裂', p: 110, pp: 5, desc: '撕裂时空的维度攻击' },
     { name: '纪元碾压', p: 130, pp: 3, desc: '以亿年时光重压对手' },
-    { name: '时停', p: 75, pp: 8, priority: 2, desc: '停止对方时间的先制攻击' },
+    { name: '时停', p: 40, pp: 8, priority: 2, desc: '停止对方时间的先制攻击' },
     { name: '永劫轮回', p: 160, pp: 2, desc: '将对手卷入永恒轮回的终极攻击' }
   ],
   CHAOS: [
@@ -284,7 +284,7 @@ const SKILL_DB = {
   HEAL: [
     { name: '生命水滴', p: 0, pp: 15, effect: { type: 'HEAL', val: 0.25 }, desc: '恢复25%最大HP' },
     { name: '净化之光', p: 60, pp: 20, effect: { type: 'CURE_STATUS', chance: 0.5 }, desc: '释放净化光芒攻击，50%概率解除自身异常状态' },
-    { name: '自我再生', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' },
+    { name: '生机回流', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '集中生命能量，恢复50%最大HP' },
     { name: '生命脉冲', p: 80, pp: 10, desc: '将生命力转化为攻击能量' },
     { name: '圣光沐浴', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.5 }, desc: '用圣光沐浴身体，恢复50%最大HP' },
     { name: '回春一击', p: 90, pp: 8, effect: { type: 'DRAIN', val: 0.25 }, desc: '以愈合之力攻击对手，自身回复造成伤害的25%' },
@@ -293,7 +293,7 @@ const SKILL_DB = {
     { name: '祈愿', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '虔诚祈愿，恢复50%最大HP' },
     { name: '晨光', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' },
     { name: '治愈波动', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复目标50%最大HP' },
-    { name: '羽栖', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '恢复50%最大HP' }
+    { name: '温羽庇护', p: 0, pp: 10, effect: { type: 'HEAL', val: 0.5 }, desc: '用温暖羽翼庇护自身，恢复50%最大HP' }
   ]
 };
 // ==========================================
@@ -690,7 +690,7 @@ const NEW_SKILLS_V18 = [
   { name: '加速世界', t: 'TIME', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'spd', val: 1, chance: 1.0 }, desc: '加速自身时间流，提速一级' },
   { name: '纪元碾压', t: 'TIME', p: 130, pp: 3, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '以亿年时光重压对手，50%降速' },
   { name: '因果律乱', t: 'TIME', p: 85, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.4 }, desc: '扰乱因果时序，40%混乱' },
-  { name: '时停', t: 'TIME', p: 75, pp: 8, priority: 2, desc: '停止对方时间的先制攻击' },
+  { name: '时停', t: 'TIME', p: 40, pp: 8, priority: 2, desc: '停止对方时间的先制攻击' },
   { name: '轮回之力', t: 'TIME', p: 95, pp: 8, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 0.3 }, desc: '积蓄轮回之力攻击，30%自升攻' },
   // --- 混沌系 (8) ---
   { name: '混沌脉冲', t: 'CHAOS', p: 80, pp: 15, desc: '释放不稳定的混沌能量脉冲' },
@@ -707,10 +707,10 @@ const NEW_SKILLS_V18 = [
   { name: '龙之舞', t: 'DRAGON', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '神秘舞蹈提升攻击与速度' },
   { name: '光合成', t: 'GRASS', p: 0, pp: 8, effect: { type: 'HEAL', val: 0.5 }, desc: '吸收阳光恢复50%生命值' },
   { name: '剧毒', t: 'POISON', p: 0, pp: 10, effect: { type: 'STATUS', status: 'PSN', chance: 1.0 }, desc: '使对手陷入剧毒状态' },
-  { name: '鬼火', t: 'GHOST', p: 0, pp: 15, effect: { type: 'STATUS', status: 'BRN', chance: 1.0 }, desc: '鬼火缠身，必定灼伤' },
+  { name: '幽魂鬼火', t: 'GHOST', p: 0, pp: 15, effect: { type: 'STATUS', status: 'BRN', chance: 1.0 }, desc: '幽灵之火缠身，必定灼伤' },
   { name: '电磁波', t: 'ELECTRIC', p: 0, pp: 20, effect: { type: 'STATUS', status: 'PAR', chance: 1.0 }, desc: '释放电磁波，必定麻痹' },
   { name: '催眠术', t: 'PSYCHIC', p: 0, pp: 10, effect: { type: 'STATUS', status: 'SLP', chance: 0.75 }, desc: '施加催眠暗示，75%入睡' },
-  { name: '治愈铃声', t: 'HEAL', p: 0, pp: 5, effect: { type: 'HEAL', val: 0.6, cureStatus: true }, desc: '清脆铃声回复60%HP并清除异常' },
+  { name: '治愈铃声', t: 'HEAL', p: 0, pp: 3, effect: { type: 'HEAL', val: 0.5, cureStatus: true }, desc: '清脆铃声回复50%HP并清除异常' },
   { name: '结界', t: 'LIGHT', p: 0, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_def', val: 2, chance: 1.0 }, desc: '展开光之结界大幅提升特防' },
   { name: '诅咒', t: 'DARK', p: 0, pp: 10, effect: { type: 'DEBUFF', stat: 'p_atk', val: 1, chance: 1.0 }, desc: '施加诅咒必定降低对手攻击' },
   { name: '大地恢复', t: 'GROUND', p: 0, pp: 8, effect: { type: 'HEAL', val: 0.4 }, desc: '汲取大地之力恢复40%HP' },
@@ -733,7 +733,7 @@ const NEW_SKILLS_V18 = [
   { name: '百万吨拳', t: 'FIGHT', p: 100, pp: 10, desc: '承载百万吨力量的全力一拳' },
   { name: '暗影爆裂', t: 'GHOST', p: 95, pp: 10, effect: { type: 'STATUS', status: 'CON', chance: 0.2 }, desc: '暗影能量爆裂，20%混乱' },
   { name: '金属音波', t: 'STEEL', p: 0, pp: 12, effect: { type: 'DEBUFF', stat: 's_def', val: 2, chance: 1.0 }, desc: '刺耳金属音大幅降低对手特防' },
-  { name: '花粉风暴', t: 'BUG', p: 80, pp: 12, effect: { type: 'STATUS', status: 'PSN', chance: 0.3 }, desc: '释放毒性花粉风暴，30%中毒' },
+  { name: '毒粉风暴', t: 'BUG', p: 80, pp: 12, effect: { type: 'STATUS', status: 'PSN', chance: 0.3 }, desc: '释放毒性花粉风暴，30%中毒' },
   { name: '龙星群', t: 'DRAGON', p: 130, pp: 5, desc: '召唤龙之星群轰炸' },
   { name: '月光闪耀', t: 'FAIRY', p: 90, pp: 10, effect: { type: 'BUFF', target: 'self', stat: 's_atk', val: 1, chance: 0.2 }, desc: '月光能量攻击，20%提升特攻' },
   { name: '巨岩封锁', t: 'ROCK', p: 85, pp: 12, effect: { type: 'DEBUFF', stat: 'spd', val: 1, chance: 0.5 }, desc: '巨岩封路，50%降速' },

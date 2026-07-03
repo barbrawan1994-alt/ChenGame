@@ -38,6 +38,7 @@ export function getMoveByLevel(type, level) {
   const move = { name, p: power, t: type, pp, maxPP: pp, val: template.val, effect: template.effect, acc, priority: template.priority || 0, alwaysHit: template.alwaysHit || false, desc: template.desc || '' };
   if (template.recharge) move.recharge = true;
   if (template.selfKO) move.selfKO = true;
+  if (template.recoil) move.recoil = template.recoil;
   if (template.cat) move.cat = template.cat;
   if (template.category) move.category = template.category;
   return move;

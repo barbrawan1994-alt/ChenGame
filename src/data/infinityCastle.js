@@ -16,7 +16,7 @@ export function getInfinityFloorModifier(floor) {
 }
 
 /** 里程碑层：通关后额外宝箱（不含 10/50 等特殊层） */
-export const INFINITY_MILESTONE_FLOORS = [5, 15, 35, 45, 55, 65, 85, 95];
+export const INFINITY_MILESTONE_FLOORS = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95];
 
 export function isInfinityMilestoneFloor(floor) {
   return INFINITY_MILESTONE_FLOORS.includes(floor);

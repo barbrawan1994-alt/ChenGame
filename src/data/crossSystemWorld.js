@@ -13,20 +13,20 @@ export const PLAYER_BUILD_LAYERS = [
 
 /** 玩家本体三大流派 */
 export const PLAYER_STYLES = {
-  ninja: { id: 'ninja', name: '忍者流', icon: '🍥', source: '忍术', desc: '结印、分身、封印、潜入', pveFocus: ['purify', 'puzzle', 'stealth'] },
-  breathing: { id: 'breathing', name: '呼吸法流', icon: '🌀', source: '呼吸法', desc: '连段、爆发、夜战斩鬼', pveFocus: ['boss', 'night', 'protect'] },
-  sect: { id: 'sect', name: '武修流', icon: '🥋', source: '门派', desc: '心法、防守、持续作战', pveFocus: ['protect', 'kingdom', 'eco'] },
+  ninja: { id: 'ninja', name: '忍者流', icon: '🍥', source: '忍术', desc: '结印、分身、封印、潜入', pveFocus: ['净化', '解谜', '潜行'] },
+  breathing: { id: 'breathing', name: '呼吸法流', icon: '🌀', source: '呼吸法', desc: '连段、爆发、夜战斩鬼', pveFocus: ['首领', '夜战', '守护'] },
+  sect: { id: 'sect', name: '武修流', icon: '🥋', source: '门派', desc: '心法、防守、持续作战', pveFocus: ['守护', '国战', '生态'] },
 };
 
 /** 呼吸法 PVE 战术（轻量，不改战斗属性） */
 export const BREATHING_PVE_STYLES = {
-  water: { id: 'water', name: '水之呼吸', icon: '🌊', passive: { protectBonus: 0.12, purifyBonus: 5 }, bestFor: ['protect', 'long_fight'] },
-  fire: { id: 'fire', name: '炎之呼吸', icon: '🔥', passive: { bossMultReduce: 0.06, purifyBonus: 8 }, ecoPenalty: { vegetation: -1 }, bestFor: ['boss', 'burst'] },
-  thunder: { id: 'thunder', name: '雷之呼吸', icon: '⚡', passive: { bossMultReduce: 0.06, escapeTurnReduce: 1 }, bestFor: ['assassinate', 'interrupt'] },
-  wind: { id: 'wind', name: '风之呼吸', icon: '🌀', passive: { captureBonus: 0.1, exploreSpeedBonus: 0.5 }, bestFor: ['swarm', 'mobility'] },
-  stone: { id: 'stone', name: '岩之呼吸', icon: '🪨', passive: { protectBonus: 0.14, bossMultReduce: 0.04 }, bestFor: ['protect', 'siege'] },
-  insect: { id: 'insect', name: '蟲之呼吸', icon: '🦋', passive: { captureBonus: 0.15, purifyBonus: 6 }, bestFor: ['weak_point', 'demon'] },
-  mist: { id: 'mist', name: '霞之呼吸', icon: '🌫️', passive: { puzzleHintBonus: true, captureBonus: 0.12 }, bestFor: ['stealth', 'night'] },
+  water: { id: 'water', name: '水之呼吸', icon: '🌊', passive: { protectBonus: 0.12, purifyBonus: 5 }, bestFor: ['守护', '持久战'] },
+  fire: { id: 'fire', name: '炎之呼吸', icon: '🔥', passive: { bossMultReduce: 0.06, purifyBonus: 8 }, ecoPenalty: { vegetation: -1 }, bestFor: ['首领', '爆发'] },
+  thunder: { id: 'thunder', name: '雷之呼吸', icon: '⚡', passive: { bossMultReduce: 0.06, escapeTurnReduce: 1 }, bestFor: ['斩杀', '打断'] },
+  wind: { id: 'wind', name: '风之呼吸', icon: '🌀', passive: { captureBonus: 0.1, exploreSpeedBonus: 0.5 }, bestFor: ['群战', '机动'] },
+  stone: { id: 'stone', name: '岩之呼吸', icon: '🪨', passive: { protectBonus: 0.14, bossMultReduce: 0.04 }, bestFor: ['守护', '攻城'] },
+  insect: { id: 'insect', name: '蟲之呼吸', icon: '🦋', passive: { captureBonus: 0.15, purifyBonus: 6 }, bestFor: ['弱点', '斩鬼'] },
+  mist: { id: 'mist', name: '霞之呼吸', icon: '🌫️', passive: { puzzleHintBonus: true, captureBonus: 0.12 }, bestFor: ['潜行', '夜战'] },
 };
 
 /** 跨体系解锁节奏（扩展 v14.1，徽章门槛递进） */
@@ -40,11 +40,11 @@ export const CROSS_SYSTEM_UNLOCK = [
 
 /** 融合玩法模板（PVE 导向） */
 export const FUSION_PLAY_TEMPLATES = [
-  { id: 'tpl_ghost_night', name: '国土鬼夜灵灾', icon: '🌙', systems: ['breathing', 'jutsu', 'sect', 'kingdom'], summary: '白天调查→黄昏布防→夜晚斩鬼与封印' },
-  { id: 'tpl_seastone_port', name: '海楼石港口争夺', icon: '⚓', systems: ['devil_fruit', 'jutsu', 'kingdom', 'general'], summary: '果实受限海域，港口与国战航线' },
-  { id: 'tpl_tailed_seal', name: '尾兽级封印战', icon: '⛩️', systems: ['jutsu', 'breathing', 'fruit', 'kingdom'], summary: '多人封印阵，查克拉节点与破尾' },
-  { id: 'tpl_sect_kw', name: '门派国战争夺', icon: '📜', systems: ['sect', 'kingdom', 'general'], summary: '遗迹控制权决定设施类型' },
-  { id: 'tpl_demon_fruit', name: '鬼果融合事件', icon: '👹', systems: ['breathing', 'jutsu', 'fruit', 'sect'], summary: '鬼化+果实，净化/封印/击杀多结局' },
+  { id: 'tpl_ghost_night', name: '国土鬼夜灵灾', icon: '🌙', systems: ['呼吸法', '忍术', '门派', '国战'], summary: '白天调查→黄昏布防→夜晚斩鬼与封印' },
+  { id: 'tpl_seastone_port', name: '海楼石港口争夺', icon: '⚓', systems: ['恶魔果实', '忍术', '国战', '名将'], summary: '果实受限海域，港口与国战航线' },
+  { id: 'tpl_tailed_seal', name: '尾兽级封印战', icon: '⛩️', systems: ['忍术', '呼吸法', '果实', '国战'], summary: '多人封印阵，查克拉节点与破尾' },
+  { id: 'tpl_sect_kw', name: '门派国战争夺', icon: '📜', systems: ['门派', '国战', '名将'], summary: '遗迹控制权决定设施类型' },
+  { id: 'tpl_demon_fruit', name: '鬼果融合事件', icon: '👹', systems: ['呼吸法', '忍术', '果实', '门派'], summary: '鬼化+果实，净化/封印/击杀多结局' },
 ];
 
 /** 国战职位（与门派/系统偏好） */

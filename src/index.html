@@ -12,19 +12,20 @@
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background: #07152f; }
         #splash-loader {
-            position: fixed; inset: 0; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 22px; background:
-                radial-gradient(circle at 35% 20%, rgba(143,216,255,0.22), transparent 28%),
-                radial-gradient(circle at 70% 75%, rgba(34,197,94,0.18), transparent 32%),
+            position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; box-sizing: border-box;
+            background:
+                linear-gradient(118deg, rgba(255,56,86,0.14), transparent 25% 70%, rgba(255,213,79,0.12)),
+                linear-gradient(214deg, transparent 0 48%, rgba(34,197,94,0.12) 49% 50%, transparent 51%),
                 linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
                 linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(142deg, #07152f, #0c244f 55%, #061429);
+                linear-gradient(142deg, #07152f, #0b2942 52%, #161936 100%);
             background-size: auto, auto, 76px 76px, 76px 76px, auto;
             z-index: 99999; transition: opacity 0.5s;
         }
         #splash-loader::before {
-            content: ""; position: absolute; width: min(520px, 58vw); aspect-ratio: 1; border-radius: 50%;
-            border: 1px dashed rgba(143,216,255,0.18); box-shadow: inset 0 0 90px rgba(143,216,255,0.06);
+            content: ""; position: absolute; width: min(620px, 70vw); aspect-ratio: 1; border-radius: 50%;
+            border: 1px dashed rgba(143,216,255,0.2); box-shadow: inset 0 0 90px rgba(143,216,255,0.06);
+            animation: splashSpin 46s linear infinite;
         }
         #splash-loader::after {
             content: ""; position: absolute; inset: auto 0 0; height: 34%; pointer-events: none;
@@ -34,42 +35,67 @@
                 linear-gradient(342deg, rgba(8,43,78,0.45) 0 45%, transparent 46%);
         }
         #splash-loader .splash-card {
-            position: relative; z-index: 1; width: min(680px, calc(100vw - 40px)); box-sizing: border-box;
-            display: grid; justify-items: center; padding: 30px 28px 28px; border-radius: 8px;
+            position: relative; z-index: 1; width: min(760px, calc(100vw - 40px)); box-sizing: border-box;
+            display: grid; justify-items: stretch; gap: 18px; padding: 28px; border-radius: 8px;
             border: 1px solid rgba(177,232,255,0.18);
             background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035)), rgba(5,19,42,0.7);
             box-shadow: 0 24px 70px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.12);
             backdrop-filter: blur(18px) saturate(1.16);
         }
-        #splash-loader .title { font-size: clamp(32px, 5vw, 48px); font-weight: 900; color: transparent; letter-spacing: 6px; margin-bottom: 8px; font-family: "Arial Black", "PingFang SC", sans-serif; background: linear-gradient(90deg,#fff,#8fd8ff,#ffd54f,#9df7c7); -webkit-background-clip: text; background-clip: text; text-shadow: 0 14px 42px rgba(47,109,246,0.35); }
-        #splash-loader .sub { display: flex; align-items: center; gap: 12px; font-size: 12px; color: rgba(248,251,255,0.62); letter-spacing: 5px; margin-bottom: 22px; font-family: "PingFang SC", sans-serif; text-transform: uppercase; }
-        #splash-loader .version { letter-spacing: 1px; padding: 4px 8px; border-radius: 8px; color: #fff5c7; border: 1px solid rgba(255,213,79,0.25); background: rgba(255,213,79,0.08); }
-        #splash-loader .feature-row { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 22px; }
-        #splash-loader .feature { min-width: 0; padding: 12px; border-radius: 8px; border: 1px solid rgba(177,232,255,0.13); background: rgba(255,255,255,0.055); color: rgba(232,243,255,0.62); font: 700 12px/1.4 "PingFang SC", sans-serif; text-align: left; }
+        #splash-loader .splash-head { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 16px; align-items: center; }
+        #splash-loader .splash-mark { width: 74px; height: 74px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04)), rgba(6,17,36,0.72); border: 1px solid rgba(143,216,255,0.22); box-shadow: 0 18px 40px rgba(0,0,0,0.3); }
+        #splash-loader .splash-ball { width: 50px; height: 50px; border-radius: 50%; position: relative; overflow: hidden; background: linear-gradient(#ff3856 0 46%, #07152f 47% 55%, #f8fbff 56%); box-shadow: inset 0 0 0 3px #07152f, 0 0 28px rgba(143,216,255,0.18); }
+        #splash-loader .splash-ball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 17px; height: 17px; transform: translate(-50%,-50%); border-radius: 50%; background: #9df7c7; border: 5px solid #07152f; }
+        #splash-loader .title { min-width: 0; font-size: clamp(36px, 6vw, 62px); line-height: 0.95; font-weight: 950; color: transparent; letter-spacing: 0; margin: 0 0 8px; font-family: "Arial Black", "PingFang SC", sans-serif; background: linear-gradient(90deg,#fff,#8fd8ff,#fff2aa,#9df7c7); -webkit-background-clip: text; background-clip: text; text-shadow: 0 14px 42px rgba(47,109,246,0.35); overflow-wrap: anywhere; }
+        #splash-loader .sub { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: rgba(248,251,255,0.62); letter-spacing: 4px; font-family: "PingFang SC", sans-serif; text-transform: uppercase; }
+        #splash-loader .version { letter-spacing: 1px; padding: 5px 9px; border-radius: 8px; color: #fff5c7; border: 1px solid rgba(255,213,79,0.28); background: rgba(255,213,79,0.09); }
+        #splash-loader .system-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+        #splash-loader .system { min-width: 0; padding: 10px 8px; border-radius: 8px; border: 1px solid rgba(177,232,255,0.13); background: rgba(255,255,255,0.055); color: rgba(232,243,255,0.74); font: 850 11px/1.2 "PingFang SC", sans-serif; text-align: center; white-space: nowrap; }
+        #splash-loader .system.is-main { color: #fff; border-color: rgba(255,56,86,0.34); background: rgba(255,56,86,0.1); }
+        #splash-loader .feature-row { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        #splash-loader .feature { min-width: 0; padding: 12px; border-radius: 8px; border: 1px solid rgba(177,232,255,0.13); background: rgba(255,255,255,0.055); color: rgba(232,243,255,0.62); font: 700 12px/1.45 "PingFang SC", sans-serif; text-align: left; }
         #splash-loader .feature strong { display: block; margin-bottom: 4px; color: #eef8ff; font-size: 13px; }
-        #splash-loader .bar-wrap { width: min(360px, 82vw); height: 5px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(143,216,255,0.16); }
+        #splash-loader .bar-wrap { justify-self: center; width: min(420px, 82vw); height: 5px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(143,216,255,0.16); }
         #splash-loader .bar { width: 30%; height: 100%; background: linear-gradient(90deg, #2f6df6, #22c55e, #ffd54f); border-radius: 999px; animation: splashLoad 1.5s ease-in-out infinite; }
-        #splash-loader .status { margin-top: 12px; color: rgba(232,243,255,0.46); font: 800 11px/1 "PingFang SC", sans-serif; letter-spacing: 2px; }
+        #splash-loader .status { justify-self: center; color: rgba(232,243,255,0.46); font: 800 11px/1 "PingFang SC", sans-serif; letter-spacing: 2px; }
         @media (max-width: 640px) {
             #splash-loader .splash-card { padding: 24px 18px; }
-            #splash-loader .feature-row { grid-template-columns: 1fr; }
+            #splash-loader .splash-head { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+            #splash-loader .feature-row, #splash-loader .system-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             #splash-loader .sub { flex-wrap: wrap; justify-content: center; letter-spacing: 3px; }
         }
+        @media (max-width: 420px) {
+            #splash-loader .system-strip { grid-template-columns: 1fr; }
+        }
         @keyframes splashLoad { 0%{width:10%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:10%;margin-left:90%} }
+        @keyframes splashSpin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="splash-loader">
         <div class="splash-card">
-            <div class="title">超级精灵</div>
-            <div class="sub"><span>Super Spirit</span><span class="version">v15.0</span></div>
+            <div class="splash-head">
+                <div class="splash-mark"><div class="splash-ball"></div></div>
+                <div>
+                    <div class="title">超级精灵</div>
+                    <div class="sub"><span>Super Spirit</span><span class="version">v15.0 跨体系融合</span></div>
+                </div>
+            </div>
+            <div class="system-strip">
+                <div class="system is-main">🔴 精灵主轴</div>
+                <div class="system">🍥 忍术卷轴</div>
+                <div class="system">🍎 果实海域</div>
+                <div class="system">🛡️ 三国阵线</div>
+                <div class="system">🏯 无限城</div>
+                <div class="system">🥋 武侠门派</div>
+            </div>
             <div class="feature-row">
-                <div class="feature"><strong>伙伴培养</strong>收集、进化、配置你的冠军队伍</div>
-                <div class="feature"><strong>属性对战</strong>克制、技能 PP 与回合节奏并重</div>
-                <div class="feature"><strong>长期冒险</strong>图鉴、道馆、忍术与无限城同步推进</div>
+                <div class="feature"><strong>冠军队伍</strong>收集、进化、配置首发与后备伙伴</div>
+                <div class="feature"><strong>跨体系战术</strong>属性克制、忍术、果实与武学同步成长</div>
+                <div class="feature"><strong>长期目标</strong>道馆、国战、门派与无限城分线推进</div>
             </div>
             <div class="bar-wrap"><div class="bar"></div></div>
-            <div class="status">正在同步训练家档案</div>
+            <div class="status">正在同步 v15.0 训练家档案</div>
         </div>
     </div>
     <div id="root"></div>

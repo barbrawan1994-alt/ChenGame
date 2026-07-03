@@ -19,7 +19,7 @@ export const FRUIT_CATEGORY_NAMES = {
 // 200种恶魔果实（与游戏内图鉴/说明一致）
 // ============================================================
 export const DEVIL_FRUITS = {
-  // ===================== 超人系 (17种) =====================
+  // ===================== 超人系 (74种) =====================
   df_gomu: {
     id: 'df_gomu', name: '橡胶果实', category: 'PARAMECIA', rarity: 'LEGENDARY',
     desc: '身体变成橡胶，免疫电系攻击，物攻与速度大幅提升',
@@ -187,7 +187,7 @@ export const DEVIL_FRUITS = {
       effect: { type: 'STATUS', status: 'PSN', chance: 0.5, target: 'enemy' } },
   },
 
-  // ===================== 动物系 (17种) =====================
+  // ===================== 动物系 (69种) =====================
   df_hito_buddha: {
     id: 'df_hito_buddha', name: '人人果实·大佛形态', category: 'ZOAN', rarity: 'LEGENDARY',
     desc: '化身巨大金佛，全属性大幅提升，冲击波威力极高',
@@ -354,7 +354,7 @@ export const DEVIL_FRUITS = {
     transformMove: { name: '玄武壁垒', t: 'WATER', p: 70, pp: 10, acc: 100, isFruitMove: true },
   },
 
-  // ===================== 自然系 (17种) =====================
+  // ===================== 自然系 (57种) =====================
   df_magu: {
     id: 'df_magu', name: '岩浆果实', category: 'LOGIA', rarity: 'LEGENDARY',
     desc: '身体化为岩浆，火系技能威力翻倍，灼伤概率100%',

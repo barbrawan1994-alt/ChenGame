@@ -126,7 +126,7 @@ export const STORY_SCRIPT = [
     ],
     midEvent: { enemyId: 81, name: '日蚀队 首席科学家' },
     outro: [
-      { name: "馆主 马志士", text: "Wow! 你救下了多边兽的核心人格！科学家逃走了，但计划的关键数据已被你摧毁。" },
+      { name: "馆主 马志士", text: "太棒了！你救下了多边兽的核心人格！科学家逃走了，但计划的关键数据已被你摧毁。" },
       { name: "馆主 马志士", text: "不过...他提到的'阿尔忒弥斯计划'只是整个计划的冰山一角。更大的阴谋正在酝酿。" },
       { name: "系统", text: "获得奖励：精灵【多边兽】加入了队伍！" },
       { name: "系统", text: "获得情报：'阿尔忒弥斯计划'——日蚀队正在各地收集特殊能量..." }
@@ -157,8 +157,8 @@ export const STORY_SCRIPT = [
       { step: 3, x: 25, y: 15, type: 'battle', enemyId: 118, name: '日蚀队 潜水员', text: "这片海域已经被征用了！虚空结晶的能量采集不能中断！", emoji: '🤿',
         eliteParty: [{ id: 118, level: 35 }, { id: 27, level: 33 }, { id: 24, level: 32 }]
       },
-      { step: 4, x: 10, y: 10, type: 'battle', enemyId: 130, name: '被虚空侵蚀的 暴鲤龙', text: "吼！！！（痛苦地翻滚着，身上的虚空结晶不断生长。它已经失去了理智。）", emoji: '🐉',
-        eliteParty: [{ id: 130, level: 38 }, { id: 118, level: 36 }, { id: 27, level: 35 }]
+      { step: 4, x: 10, y: 10, type: 'battle', enemyId: 235, name: '被虚空侵蚀的 海啸王', text: "吼！！！（痛苦地翻滚着，身上的虚空结晶不断生长。它已经失去了理智。）", emoji: '🐉',
+        eliteParty: [{ id: 235, level: 38 }, { id: 212, level: 36 }, { id: 27, level: 35 }]
       },
       { step: 5, x: 22, y: 3, type: 'battle', enemyId: 94, name: '暗影执行者·厌晚', text: '（海面上的薄雾中，一只小船缓缓靠岸。厌晚踩着礁石走来）虚空结晶...这东西比我想象的有趣。你呢？比上次有趣了一点。', emoji: '🌙',
         eliteParty: [
@@ -170,9 +170,9 @@ export const STORY_SCRIPT = [
         ]
       }
     ],
-    midEvent: { enemyId: 130, name: '被虚空侵蚀的 暴鲤龙' },
+    midEvent: { enemyId: 235, name: '被虚空侵蚀的 海啸王' },
     outro: [
-      { name: "馆主 小霞", text: "谢谢你净化了大海！暴鲤龙恢复了正常——它之前只是太痛苦了。" },
+      { name: "馆主 小霞", text: "谢谢你净化了大海！海啸王恢复了正常——它之前只是太痛苦了。" },
       { name: "馆主 小霞", text: "这只小拉普拉斯是族群里最小的一只。它亲眼看着你拯救了大海，想要跟随你。" },
       { name: "竞争对手·苍", text: "...（苍远远地看着你，转身离去。你注意到他胸前别着一个日蚀队的旧徽章。）" },
       { name: "系统", text: "获得奖励：精灵【拉普拉斯】加入了队伍！" },
@@ -300,11 +300,11 @@ export const STORY_SCRIPT = [
           { id: 126, level: 46 }
         ]
       },
-      { step: 4, x: 15, y: 10, type: 'battle', enemyId: 94, name: '噬魂 耿鬼', text: "多么美味的悲伤和愤怒！让我尝尝你的灵魂——哦，还有那个男孩的...", emoji: '👿',
-        eliteParty: [{ id: 94, level: 56 }, { id: 59, level: 54 }, { id: 54, level: 53 }, { id: 93, level: 52 }, { id: 130, level: 50 }]
+      { step: 4, x: 15, y: 10, type: 'battle', enemyId: 338, name: '噬魂 耿鬼', text: "多么美味的悲伤和愤怒！让我尝尝你的灵魂——哦，还有那个男孩的...", emoji: '👿',
+        eliteParty: [{ id: 338, level: 56 }, { id: 236, level: 54 }, { id: 390, level: 53 }, { id: 309, level: 52 }, { id: 357, level: 50 }]
       }
     ],
-    midEvent: { enemyId: 94, name: '噬魂 耿鬼' },
+    midEvent: { enemyId: 338, name: '噬魂 耿鬼' },
     outro: [
       { name: "竞争对手·苍", text: "...三年前，日蚀队承诺能治好我的精灵。我相信了他们。结果...它被改造成了兵器，然后...被销毁了。" },
       { name: "竞争对手·苍", text: "那天之后我发誓要亲手毁掉日蚀队。所以我加入了他们...卧底...三年了。" },
