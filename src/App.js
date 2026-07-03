@@ -27209,7 +27209,7 @@ const renderMenu = () => {
               { id: 'team', icon: '🛡️', label: '伙伴', action: () => setTeamMode(true) },
               { id: 'shop', icon: '🛍️', label: '商店', action: () => setShopMode(true) },
               { id: 'fusion', icon: '🧬', label: '融合', action: () => setFusionMode(true) },
-              { id: 'fusion_hub', icon: '🏛️', label: '战略枢纽', action: () => setFusionHubOpen(true) },
+              { id: 'fusion_hub', icon: '🔴', label: '战术室', action: () => setFusionHubOpen(true) },
               { id: 'bag', icon: '🎒', label: '背包' },
               { id: 'pvp', icon: '⚔️', label: '对战', action: () => setPvpMode(true) },
               { id: 'league', icon: '🏆', label: '联盟' },
@@ -27464,7 +27464,7 @@ const renderMenu = () => {
     }));
   };
 
-   // 🏛️ 战略枢纽（跨体系 PVE 规划）
+   // 🔴 训练家战术室（跨体系 PVE 构筑规划）
   const renderFusionHub = () => {
     if (!fusionHubOpen) return null;
     const unlocked = getUnlockedFusionSystems(badges.length);
@@ -27639,8 +27639,8 @@ const renderMenu = () => {
           <div style={{padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.08)', background:'linear-gradient(135deg, rgba(124,58,237,0.24), rgba(15,23,42,0.1))'}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <div>
-                <div style={{fontSize:'20px', fontWeight:'900', color:'#ede9fe'}}>🏛️ 战略枢纽</div>
-                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', marginTop:'4px'}}>精灵、忍术、果实、门派、名将和国战——在这里规划你的跨体系 PVE 路线</div>
+                <div style={{fontSize:'20px', fontWeight:'900', color:'#ede9fe'}}>🔴 训练家战术室</div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', marginTop:'4px'}}>围绕精灵队伍配置跨体系 PVE 构筑：忍术、果实、门派、名将与国战都服务于伙伴养成。</div>
               </div>
               <button onClick={() => setFusionHubOpen(false)} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', borderRadius:'50%', width:'34px', height:'34px', cursor:'pointer', fontSize:'18px'}}>×</button>
             </div>
@@ -27684,7 +27684,7 @@ const renderMenu = () => {
                     <div style={{fontSize:'11px', color:'#c4b5fd', fontWeight:'900'}}>当前进度</div>
                     <div style={{fontSize:'15px', color:'#fff', fontWeight:'900', marginTop:'5px'}}>{badges.length} 枚徽章</div>
                     <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', lineHeight:1.55, marginTop:'5px'}}>
-                      {nextUnlock ? `下一阶段：${nextUnlock.badges} 徽章解锁「${nextUnlock.label}」` : '战略枢纽已进入完整阶段'}
+                      {nextUnlock ? `下一阶段：${nextUnlock.badges} 徽章解锁「${nextUnlock.label}」` : '训练家战术室已进入完整阶段'}
                     </div>
                   </div>
                   <div style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'13px'}}>
