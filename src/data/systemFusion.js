@@ -6,58 +6,61 @@ import { canAwakenPet as baseCanAwakenPet } from './resonance';
 /** 30 武侠门派 → 生态 PVE 心法角色（映射方案，不替换现有门派战斗被动） */
 
 export const SECT_ECO_ROLES = {
-  1:  { ecoRole: 'burst',    label: '爆发清障', desc: '快速焚烧/压制污染，生态恢复较慢', branches: ['fight'], ecoDelta: { pollution: -20, vegetation: -5 } },
-  2:  { ecoRole: 'defense',  label: '筑城防守', desc: '国战防守、地形建设、矿洞探索', branches: ['relocate'], ecoDelta: { stability: 20 } },
+  1:  { ecoRole: 'burst',    label: '爆发清障', desc: '快速焚烧/压制污染，生态恢复较慢', branches: ['fight'], ecoDelta: { pollution: -15, vegetation: -3 } },
+  2:  { ecoRole: 'defense',  label: '筑城防守', desc: '国战防守、地形建设、矿洞探索', branches: ['relocate'], ecoDelta: { stability: 15 } },
   3:  { ecoRole: 'mobility', label: '机动侦查', desc: '潜入、双线、逃脱战优势', branches: ['soothe'], ecoDelta: { diversity: 10 } },
   4:  { ecoRole: 'burst',    label: '精准破防', desc: 'Boss 破防、精英压制', branches: ['fight'], ecoDelta: { stability: 10 } },
-  5:  { ecoRole: 'heal',     label: '生态修复', desc: '净化、治疗、安抚植物精灵', branches: ['heal', 'soothe'], ecoDelta: { vegetation: 20, pollution: -15 } },
-  6:  { ecoRole: 'burst',    label: '火焰控制', desc: '清理藤蔓/污染，需控制强度', branches: ['fight'], ecoDelta: { pollution: -15, vegetation: -8 } },
-  7:  { ecoRole: 'control',  label: '冰封净化', desc: '冻结污染源、湖泊探索', branches: ['heal'], ecoDelta: { water: 15, pollution: -10 } },
-  8:  { ecoRole: 'control',  label: '毒素分析', desc: '识别污染根源、暗线任务', branches: ['soothe'], ecoDelta: { pollution: -12 } },
-  9:  { ecoRole: 'defense',  label: '组织防线', desc: '护送、据点保护、NPC 防线', branches: ['relocate'], ecoDelta: { stability: 15 } },
-  10: { ecoRole: 'puzzle',   label: '机关解谜', desc: '古代遗迹、机械精灵、根系分析', branches: ['heal'], ecoDelta: { spirit: 10, stability: 10 } },
-  11: { ecoRole: 'control',  label: '元素联动', desc: '阵法、控制、元素机关', branches: ['heal', 'soothe'], ecoDelta: { spirit: 12 } },
-  12: { ecoRole: 'balance',  label: '调和双方', desc: '调停冲突、资源交换', branches: ['soothe', 'relocate'], ecoDelta: { stability: 18, diversity: 8 } },
-  13: { ecoRole: 'burst',    label: '连击清障', desc: '快速多段输出压制污染精灵', branches: ['fight'], ecoDelta: { pollution: -12, stability: 5 } },
-  14: { ecoRole: 'burst',    label: '破甲攻坚', desc: 'Boss破防、高防目标压制', branches: ['fight'], ecoDelta: { stability: 8 } },
+  5:  { ecoRole: 'heal',     label: '生态修复', desc: '净化、治疗、安抚植物精灵', branches: ['heal', 'soothe'], ecoDelta: { vegetation: 15, pollution: -12 } },
+  6:  { ecoRole: 'burst',    label: '火焰控制', desc: '清理藤蔓/污染，需控制强度', branches: ['fight'], ecoDelta: { pollution: -12, vegetation: -5 } },
+  7:  { ecoRole: 'control',  label: '冰封净化', desc: '冻结污染源、湖泊探索', branches: ['heal'], ecoDelta: { water: 12, pollution: -8 } },
+  8:  { ecoRole: 'control',  label: '毒素分析', desc: '识别污染根源、暗线任务', branches: ['soothe'], ecoDelta: { pollution: -10 } },
+  9:  { ecoRole: 'defense',  label: '组织防线', desc: '护送、据点保护、NPC 防线', branches: ['relocate'], ecoDelta: { stability: 12 } },
+  10: { ecoRole: 'puzzle',   label: '机关解谜', desc: '古代遗迹、机械精灵、根系分析', branches: ['heal'], ecoDelta: { spirit: 8, stability: 8 } },
+  11: { ecoRole: 'control',  label: '元素联动', desc: '阵法、控制、元素机关', branches: ['heal', 'soothe'], ecoDelta: { spirit: 10 } },
+  12: { ecoRole: 'balance',  label: '调和双方', desc: '调停冲突、资源交换', branches: ['soothe', 'relocate'], ecoDelta: { stability: 14, diversity: 6 } },
+  13: { ecoRole: 'burst',    label: '连击清障', desc: '快速多段输出压制污染精灵', branches: ['fight'], ecoDelta: { pollution: -10, stability: 4 } },
+  14: { ecoRole: 'burst',    label: '破甲攻坚', desc: 'Boss破防、高防目标压制', branches: ['fight'], ecoDelta: { stability: 6 } },
   15: { ecoRole: 'sustain',  label: '嗜血续航', desc: '持久战、吸血维持战线', branches: ['fight'], ecoDelta: { stability: -3 } },
-  16: { ecoRole: 'burst',    label: '双态奇袭', desc: '节奏型爆发，风险与收益并存', branches: ['fight'], ecoDelta: { spirit: 8 } },
-  17: { ecoRole: 'defense',  label: '屏障守城', desc: '护盾防守、边境据点保护', branches: ['relocate'], ecoDelta: { stability: 15 } },
-  18: { ecoRole: 'counter',  label: '反击诱敌', desc: '防守反击、诱敌深入', branches: ['soothe'], ecoDelta: { stability: 10 } },
-  19: { ecoRole: 'balance',  label: '天龙均衡', desc: '全面发展、各类任务皆可', branches: ['heal', 'soothe'], ecoDelta: { diversity: 10, stability: 8 } },
+  16: { ecoRole: 'burst',    label: '双态奇袭', desc: '节奏型爆发，风险与收益并存', branches: ['fight'], ecoDelta: { spirit: 6 } },
+  17: { ecoRole: 'defense',  label: '屏障守城', desc: '护盾防守、边境据点保护', branches: ['relocate'], ecoDelta: { stability: 12 } },
+  18: { ecoRole: 'counter',  label: '反击诱敌', desc: '防守反击、诱敌深入', branches: ['soothe'], ecoDelta: { stability: 8 } },
+  19: { ecoRole: 'balance',  label: '天龙均衡', desc: '全面发展、各类任务皆可', branches: ['heal', 'soothe'], ecoDelta: { diversity: 8, stability: 6 } },
   20: { ecoRole: 'burst',    label: '背水死战', desc: '低血爆发、险境翻盘', branches: ['fight'], ecoDelta: { stability: -5 } },
-  21: { ecoRole: 'control',  label: '雷法控场', desc: '麻痹控场、限制敌方行动', branches: ['heal'], ecoDelta: { pollution: -8 } },
-  22: { ecoRole: 'control',  label: '星宿削弱', desc: '持续弱化、消耗战优势', branches: ['soothe'], ecoDelta: { pollution: -10 } },
-  23: { ecoRole: 'control',  label: '灵鹫威压', desc: '削弱攻击、保护队友', branches: ['soothe'], ecoDelta: { spirit: 10 } },
-  24: { ecoRole: 'control',  label: '泰山重压', desc: '降速压制、控速先手', branches: ['fight'], ecoDelta: { stability: 6 } },
-  25: { ecoRole: 'burst',    label: '点苍精准', desc: '高命中狙击、PVP优势', branches: ['fight'], ecoDelta: { stability: 5 } },
-  26: { ecoRole: 'synergy',  label: '衡山同门', desc: '同门派协同、团队增益', branches: ['relocate'], ecoDelta: { stability: 12, diversity: 5 } },
-  27: { ecoRole: 'weather',  label: '雪山天时', desc: '依赖天气加成、雪天优势', branches: ['heal'], ecoDelta: { water: 10, pollution: -8 } },
+  21: { ecoRole: 'control',  label: '雷法控场', desc: '麻痹控场、限制敌方行动', branches: ['heal'], ecoDelta: { pollution: -6 } },
+  22: { ecoRole: 'control',  label: '星宿削弱', desc: '持续弱化、消耗战优势', branches: ['soothe'], ecoDelta: { pollution: -8 } },
+  23: { ecoRole: 'control',  label: '灵鹫威压', desc: '削弱攻击、保护队友', branches: ['soothe'], ecoDelta: { spirit: 8 } },
+  24: { ecoRole: 'control',  label: '泰山重压', desc: '降速压制、控速先手', branches: ['fight'], ecoDelta: { stability: 5 } },
+  25: { ecoRole: 'burst',    label: '点苍精准', desc: '高命中狙击、PVP优势', branches: ['fight'], ecoDelta: { stability: 4 } },
+  26: { ecoRole: 'synergy',  label: '衡山同门', desc: '同门派协同、团队增益', branches: ['relocate'], ecoDelta: { stability: 10, diversity: 4 } },
+  27: { ecoRole: 'weather',  label: '雪山天时', desc: '依赖天气加成、雪天优势', branches: ['heal'], ecoDelta: { water: 8, pollution: -6 } },
   28: { ecoRole: 'burst',    label: '青城先手', desc: '首回合爆发、速攻战术', branches: ['fight'], ecoDelta: { stability: 4 } },
-  29: { ecoRole: 'defense',  label: '嵩山铁壁', desc: '濒死护命、高风险防守', branches: ['relocate'], ecoDelta: { stability: 14 } },
-  30: { ecoRole: 'burst',    label: '神霄雷罚', desc: '百分比真伤、高HP目标', branches: ['fight'], ecoDelta: { spirit: 8, pollution: -5 } },
+  29: { ecoRole: 'defense',  label: '嵩山铁壁', desc: '濒死护命、高风险防守', branches: ['relocate'], ecoDelta: { stability: 12 } },
+  30: { ecoRole: 'burst',    label: '神霄雷罚', desc: '百分比真伤、高HP目标', branches: ['fight'], ecoDelta: { spirit: 6, pollution: -4 } },
 };
 
-/** 忍术 × 精灵属性联携（PVE 效率加成，非战斗数值膨胀） */
+/** 忍术 × 精灵属性联携（PVE 效率加成，非战斗数值膨胀）
+ *  jutsuElement 使用 CHAKRA_NATURE_MAP 映射后的 gameType（FIRE/WATER/ELECTRIC/WIND/GROUND）*/
 export const JUTSU_PET_SYNERGY = [
-  { jutsuElement: 'WATER', petTypes: ['WATER', 'ELECTRIC'], effect: 'conductive_field', label: '导电水域', desc: '净化战进度 +15%', purifyBonus: 15 },
-  { jutsuElement: 'FIRE', petTypes: ['FIRE', 'WIND', 'FLYING'], effect: 'fire_vortex', label: '火焰旋风', desc: '群怪战效率提升', captureBonus: 0.1 },
-  { jutsuElement: 'GROUND', petTypes: ['GROUND', 'ROCK', 'GRASS'], effect: 'forest_wall', label: '森林壁垒', desc: '守护战目标 HP +15%', protectBonus: 0.15 },
-  { jutsuElement: 'ELECTRIC', petTypes: ['ELECTRIC', 'STEEL'], effect: 'purify_seal', label: '净化封印', desc: '净化战每回合额外 -8%', purifyBonus: 8 },
-  { jutsuElement: 'GROUND', petTypes: ['DARK', 'GHOST', 'GROUND'], effect: 'shadow_lure', label: '影分身诱敌', desc: '活捕战容错 +1 次失误', captureBonus: 0.15 },
+  { jutsuElement: 'WATER', petTypes: ['WATER', 'ELECTRIC'], effect: 'conductive_field', label: '导电水域', desc: '净化战进度 +10%', purifyBonus: 10 },
+  { jutsuElement: 'FIRE', petTypes: ['FIRE', 'FLYING'], effect: 'fire_vortex', label: '火焰旋风', desc: '群怪战效率提升', captureBonus: 0.08 },
+  { jutsuElement: 'GROUND', petTypes: ['GROUND', 'ROCK', 'GRASS'], effect: 'forest_wall', label: '森林壁垒', desc: '守护战目标 HP +10%', protectBonus: 0.10 },
+  { jutsuElement: 'ELECTRIC', petTypes: ['ELECTRIC', 'STEEL'], effect: 'purify_seal', label: '净化封印', desc: '净化战每回合额外 -6%', purifyBonus: 6 },
+  { jutsuElement: 'GROUND', petTypes: ['DARK', 'GHOST', 'GROUND'], effect: 'shadow_lure', label: '影分身诱敌', desc: '活捕战容错 +1 次失误', captureBonus: 0.10 },
   { jutsuElement: 'WATER', petTypes: ['ICE', 'WATER'], effect: 'frozen_path', label: '冰封路径', desc: '逃脱战所需回合 -1', escapeTurnReduce: 1 },
   { jutsuElement: 'WIND', petTypes: ['FLYING', 'BUG'], effect: 'scout_wind', label: '感知侦查', desc: '跳过一个探索步骤', skipExploreStep: true },
-  { jutsuElement: 'FIRE', petTypes: ['TIME', 'COSMIC'], effect: 'time_blaze', label: '时空燃烧', desc: '净化战效率 +12%，时空系回合加速', purifyBonus: 12 },
-  { jutsuElement: 'WIND', petTypes: ['CHAOS', 'DARK'], effect: 'chaos_gale', label: '混沌风暴', desc: '群怪战混沌属性伤害 +20%', captureBonus: 0.12 },
-  { jutsuElement: 'ELECTRIC', petTypes: ['TIME', 'ELECTRIC'], effect: 'chrono_bolt', label: '时空雷鸣', desc: '净化战每回合额外 -10%', purifyBonus: 10 },
+  { jutsuElement: 'FIRE', petTypes: ['TIME', 'COSMIC'], effect: 'time_blaze', label: '时空燃烧', desc: '净化战效率 +8%，时空系回合加速', purifyBonus: 8 },
+  { jutsuElement: 'WIND', petTypes: ['CHAOS', 'DARK'], effect: 'chaos_gale', label: '混沌风暴', desc: '群怪战混沌属性伤害 +15%', captureBonus: 0.08 },
+  { jutsuElement: 'ELECTRIC', petTypes: ['TIME', 'ELECTRIC'], effect: 'chrono_bolt', label: '时空雷鸣', desc: '净化战每回合额外 -7%', purifyBonus: 7 },
 ];
 
 /** 恶魔果实 PVE 限制与生态型分类 */
 export const FRUIT_PVE_RULES = {
   maxPerPet: 1,
   overuseFatigue: 15,
+  waterRestrictedCategories: ['LOGIA'],
   waterRestrictedTypes: ['FIRE', 'GROUND'],
   sealSuppressesTurns: 2,
+  maxFatiguePerBattle: 45,
   ecoTypes: {
     element: { label: '元素型', maps: ['fire', 'water', 'ice'], effect: 'terrain_change' },
     transform: { label: '变身型', maps: ['cave', 'sky'], effect: 'form_shift' },
@@ -66,7 +69,7 @@ export const FRUIT_PVE_RULES = {
   },
 };
 
-/** 觉醒三档 */
+/** 觉醒三档 — 总叠乘上限参见 resonance.js MAX_COMBINED_STAT_MULT (1.25) */
 export const AWAKENING_TIERS = {
   normal: {
     id: 'normal', name: '普通觉醒', icon: '🌟',
@@ -81,7 +84,7 @@ export const AWAKENING_TIERS = {
   strategic: {
     id: 'strategic', name: '战略觉醒', icon: '⚔️',
     requirements: { needsFruitAwaken: true, needsSectResonance: true, needsGeneralTactic: true, kwContribMin: 500, needsBattlefieldClear: true },
-    rewards: { statMult: 1.08, kwContribMult: 1.1, sanctuaryBonus: 0.05, title: '战略觉醒者', prefix: '⚔️🍎🌟' },
+    rewards: { statMult: 1.05, kwContribMult: 1.1, sanctuaryBonus: 0.05, title: '战略觉醒者', prefix: '⚔️🍎🌟' },
   },
 };
 
@@ -89,19 +92,19 @@ export const AWAKENING_TIERS = {
 export const GENERAL_PVE_TACTICS = {
   zhuge_liang: {
     generalId: 'zhuge_liang', name: '诸葛亮', icon: '🧠', role: 'strategist',
-    passive: { label: '军策·元素联动', desc: '净化/守护战目标效率 +12%', purifyBonus: 12, protectBonus: 0.12 },
+    passive: { label: '军策·元素联动', desc: '净化+8%，守护+8%', purifyBonus: 8, protectBonus: 0.08 },
     order: { label: '战令·八阵图', desc: '跳过一个解谜步骤', skipPuzzleStep: true },
     bestFor: ['净化', '守护', '机械首领'],
   },
   guan_yu: {
     generalId: 'guan_yu', name: '关羽', icon: '🐉', role: 'warlord',
-    passive: { label: '军策·破防', desc: 'Boss 战 bossMult -0.05', bossMultReduce: 0.05 },
-    order: { label: '战令·斩将', desc: '活捕战进度 +12%', captureBonus: 0.12 },
+    passive: { label: '军策·破防', desc: 'Boss 战 bossMult -0.04', bossMultReduce: 0.04 },
+    order: { label: '战令·斩将', desc: '活捕战进度 +8%', captureBonus: 0.08 },
     bestFor: ['首领', '活捕'],
   },
   zhao_yun: {
     generalId: 'zhao_yun', name: '赵云', icon: '🏇', role: 'cavalry',
-    passive: { label: '军策·护主', desc: '守护战目标 HP +15%', protectBonus: 0.15 },
+    passive: { label: '军策·护主', desc: '守护战目标 HP +10%', protectBonus: 0.10 },
     order: { label: '战令·单骑救主', desc: '逃脱战回合 -1', escapeTurnReduce: 1 },
     bestFor: ['守护', '逃脱', '护送'],
   },
@@ -127,8 +130,8 @@ export const GENERAL_PVE_TACTICS = {
   },
   zhang_liao: {
     generalId: 'zhang_liao', name: '张辽', icon: '🐺', role: 'vanguard',
-    passive: { label: '军策·威震', desc: '守护战目标防御+15%', protectBonus: 0.15 },
-    order: { label: '战令·逍遥津', desc: '以少敌多时伤害+12%', eliteBonus: 0.12 },
+    passive: { label: '军策·威震', desc: '守护战目标防御+10%', protectBonus: 0.10 },
+    order: { label: '战令·逍遥津', desc: '以少敌多时伤害+10%', eliteBonus: 0.10 },
     bestFor: ['守护', '防御', '以少敌多'],
   },
   cao_cao: {
@@ -169,8 +172,8 @@ export const GENERAL_PVE_TACTICS = {
   },
   lu_bu: {
     generalId: 'lu_bu', name: '吕布', icon: '🗡️', role: 'berserker',
-    passive: { label: '军策·无双', desc: 'Boss弱化8%，但守护战-5%', bossMultReduce: 0.08, protectBonus: -0.05 },
-    order: { label: '战令·方天画戟', desc: '首步骤Boss战伤害+25%', firstStepBonus: 0.25 },
+    passive: { label: '军策·无双', desc: 'Boss弱化6%，但守护战-5%', bossMultReduce: 0.06, protectBonus: -0.05 },
+    order: { label: '战令·方天画戟', desc: '首步骤Boss战伤害+20%', firstStepBonus: 0.20 },
     bestFor: ['首领', '爆发', '单挑'],
   },
   sun_ce: {
@@ -219,36 +222,36 @@ export const GENERAL_PVE_TACTICS = {
 
 /** 国战 PVE 任务 — 影响国家指标（有上限，防膨胀） */
 export const KINGDOM_PVE_TASKS = [
-  { id: 'kw_escort_grain', name: '护送粮草', icon: '🌾', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwManpower: 20, gold: 2000 }, ecoCost: null },
-  { id: 'kw_purify_border', name: '净化边境', icon: '💧', reqBadges: 4, cooldownTurns: 2, cost: { energy: 10 }, reward: { guardianScore: 5, kwContrib: 30 }, ecoDelta: { pollution: -10 } },
-  { id: 'kw_repair_wall', name: '修复城墙', icon: '🧱', reqBadges: 6, cooldownTurns: 4, cost: { gold: 2000, energy: 10 }, reward: { kwContrib: 50, gold: 2500 }, territoryStrength: 2 },
-  { id: 'kw_repel_rampage', name: '击退暴走潮', icon: '⚔️', reqBadges: 5, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 40, guardianScore: 8 }, ecoDelta: { stability: 10 } },
-  { id: 'kw_build_sanctuary', name: '建设圣域', icon: '⛩️', reqBadges: 7, cooldownTurns: 6, cost: { gold: 5000, energy: 20 }, reward: { kwContrib: 60, gold: 3000, guardianScore: 15 }, requiresSanctuaryLv: 2, prereq: ['kw_purify_border'] },
-  { id: 'kw_reclaim_mine', name: '夺回矿场', icon: '⛏️', reqBadges: 5, cooldownTurns: 4, cost: { energy: 20 }, reward: { kwContrib: 80, gold: 8000 }, requiresCrisis: 'crisis_canyon_mine', prereq: ['kw_repair_wall'] },
-  { id: 'kw_night_patrol', name: '边境夜巡', icon: '🌙', reqBadges: 6, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 70, guardianScore: 10, gold: 6000 }, requiresUnlock: 'kw_night_patrol', ecoDelta: { stability: 8 } },
-  { id: 'kw_seal_guardian', name: '封印守护', icon: '⛩️', reqBadges: 9, cooldownTurns: 8, cost: { energy: 30, gold: 5000 }, reward: { kwContrib: 100, guardianScore: 15, gold: 10000 }, requiresUnlock: 'kw_seal_guardian', ecoDelta: { spirit: 10, stability: 12 }, prereq: ['kw_night_patrol'] },
-  { id: 'kw_field_hospital', name: '战场救护', icon: '💊', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwContrib: 40, gold: 3000, generalFragment: 'hua_tuo' }, ecoDelta: { stability: 5 } },
-  { id: 'kw_jin_unify', name: '一统之路', icon: '🐉', reqBadges: 10, cooldownTurns: 10, cost: { energy: 30, gold: 8000 }, reward: { kwContrib: 90, gold: 9000, generalFragment: 'sima_yi' }, ecoDelta: { stability: 15, spirit: 8 }, prereq: ['kw_seal_guardian', 'kw_reclaim_mine'] },
+  { id: 'kw_escort_grain', name: '护送粮草', icon: '🌾', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwManpower: 15, gold: 1500 }, ecoCost: null },
+  { id: 'kw_purify_border', name: '净化边境', icon: '💧', reqBadges: 5, cooldownTurns: 2, cost: { energy: 10 }, reward: { guardianScore: 4, kwContrib: 25 }, ecoDelta: { pollution: -8 } },
+  { id: 'kw_repair_wall', name: '修复城墙', icon: '🧱', reqBadges: 6, cooldownTurns: 4, cost: { gold: 2000, energy: 10 }, reward: { kwContrib: 40, gold: 2000 }, territoryStrength: 2 },
+  { id: 'kw_repel_rampage', name: '击退暴走潮', icon: '⚔️', reqBadges: 5, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 35, guardianScore: 6 }, ecoDelta: { stability: 8 } },
+  { id: 'kw_field_hospital', name: '战场救护', icon: '💊', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwContrib: 30, gold: 2000, generalFragment: 'hua_tuo' }, ecoDelta: { stability: 4 } },
+  { id: 'kw_build_sanctuary', name: '建设圣域', icon: '⛩️', reqBadges: 7, cooldownTurns: 6, cost: { gold: 5000, energy: 20 }, reward: { kwContrib: 50, gold: 2500, guardianScore: 10 }, requiresSanctuaryLv: 2, prereq: ['kw_purify_border'] },
+  { id: 'kw_reclaim_mine', name: '夺回矿场', icon: '⛏️', reqBadges: 6, cooldownTurns: 4, cost: { energy: 20 }, reward: { kwContrib: 60, gold: 5000 }, requiresCrisis: 'crisis_canyon_mine', prereq: ['kw_repair_wall'] },
+  { id: 'kw_night_patrol', name: '边境夜巡', icon: '🌙', reqBadges: 8, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 50, guardianScore: 8, gold: 4000 }, requiresUnlock: 'breathing_pve', ecoDelta: { stability: 6 } },
+  { id: 'kw_seal_guardian', name: '封印守护', icon: '⛩️', reqBadges: 9, cooldownTurns: 8, cost: { energy: 30, gold: 5000 }, reward: { kwContrib: 80, guardianScore: 12, gold: 7000 }, requiresUnlock: 'seal_boss', ecoDelta: { spirit: 8, stability: 10 }, prereq: ['kw_night_patrol'] },
+  { id: 'kw_jin_unify', name: '一统之路', icon: '🐉', reqBadges: 10, cooldownTurns: 10, cost: { energy: 30, gold: 8000 }, reward: { kwContrib: 70, gold: 6000, generalFragment: 'sima_yi' }, ecoDelta: { stability: 10, spirit: 6 }, prereq: ['kw_seal_guardian', 'kw_reclaim_mine'] },
 ];
 
 /** 国家政策（占领区域后可选，PVE 行为影响，conflicts 互斥） */
 export const NATION_POLICIES = {
-  military: { name: '军事开发', icon: '⚔️', bonus: { kwManpower: 15 }, penalty: { pollution: 8 }, conflicts: ['eco', 'sanctuary'], desc: '军备提升快，生态下降' },
-  eco: { name: '生态保护', icon: '🌿', bonus: { shinyRate: 0.05 }, penalty: { goldMult: 0.9 }, conflicts: ['military'], desc: '稀有精灵率提升，资源较慢' },
-  trade: { name: '商业贸易', icon: '💰', bonus: { goldMult: 1.15 }, penalty: { stability: -5 }, conflicts: [], desc: '金币增加，易引黑市' },
-  relic: { name: '古迹研究', icon: '🏛️', bonus: { spirit: 10 }, penalty: { pollution: 5 }, conflicts: ['eco'], desc: '遗迹开放，机械灵灾略增' },
-  sect: { name: '门派共治', icon: '📜', bonus: { sectEffectMult: 1.08 }, penalty: {}, conflicts: [], desc: '门派贡献提升，效果平均' },
-  sanctuary: { name: '精灵圣域', icon: '⛩️', bonus: { ecoStability: 15 }, penalty: { goldCost: 1.2 }, conflicts: ['military'], desc: '生态稳定，建设成本高' },
+  military: { name: '军事开发', icon: '⚔️', bonus: { kwManpower: 12 }, penalty: { pollution: 6 }, conflicts: ['eco', 'sanctuary'], desc: '军备提升快，生态下降' },
+  eco: { name: '生态保护', icon: '🌿', bonus: { shinyRate: 0.03 }, penalty: { goldMult: 0.92 }, conflicts: ['military', 'relic'], desc: '稀有精灵率提升，资源较慢' },
+  trade: { name: '商业贸易', icon: '💰', bonus: { goldMult: 1.12 }, penalty: { stability: -4 }, conflicts: [], desc: '金币增加，易引黑市' },
+  relic: { name: '古迹研究', icon: '🏛️', bonus: { spirit: 8 }, penalty: { pollution: 4 }, conflicts: ['eco'], desc: '遗迹开放，机械灵灾略增' },
+  sect: { name: '门派共治', icon: '📜', bonus: { sectEffectMult: 1.06 }, penalty: {}, conflicts: [], desc: '门派贡献提升，效果平均' },
+  sanctuary: { name: '精灵圣域', icon: '⛩️', bonus: { ecoStability: 12 }, penalty: { goldCost: 1.15 }, conflicts: ['military'], desc: '生态稳定，建设成本高' },
 };
 
-/** 系统解锁节奏（按徽章递增） */
+/** 系统解锁节奏（按徽章递增，与 gameGuide 中的解锁路线图一致） */
 export const FUSION_UNLOCK_SCHEDULE = [
   { chapter: 1, badges: 0, systems: ['pet', 'eco_basic', 'bonding'], label: '精灵生态基础' },
   { chapter: 2, badges: 3, systems: ['jutsu', 'jutsu_realm'], label: '忍术系统' },
   { chapter: 3, badges: 5, systems: ['devil_fruit', 'fruit_sea', 'kingdom_sim', 'gang_hq', 'dispatch'], label: '恶魔果实 & 国战模拟' },
   { chapter: 4, badges: 6, systems: ['sect_eco', 'sect_realm'], label: '门派生态心法' },
   { chapter: 5, badges: 7, systems: ['general_tactic', 'ancient_battlefield'], label: '名将战术' },
-  { chapter: 6, badges: 8, systems: ['kingdom_pve', 'national_calamity', 'fusion_resonance'], label: '国战与国土灵灾' },
+  { chapter: 6, badges: 8, systems: ['kingdom_pve', 'national_calamity', 'fusion_resonance', 'kw_night_patrol'], label: '国战与国土灵灾' },
   { chapter: 7, badges: 10, systems: ['strategic_awaken', 'fusion_hub'], label: '终局融合' },
 ];
 
@@ -282,20 +285,20 @@ export function getGeneralTactic(generalId) {
 }
 
 export function calcFusionPveBonuses(ctx = {}) {
-  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false };
+  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, exploreSpeedBonus: 0, puzzleHintBonus: false };
   if (ctx.sectId) {
     const role = getSectEcoRole(ctx.sectId);
-    if (role?.ecoRole === 'heal') bonuses.purifyBonus += 8;
-    else if (role?.ecoRole === 'defense') bonuses.protectBonus += 0.1;
-    else if (role?.ecoRole === 'burst') bonuses.bossMultReduce += 0.04;
-    else if (role?.ecoRole === 'control') bonuses.captureBonus += 0.08;
-    else if (role?.ecoRole === 'mobility') bonuses.escapeTurnReduce += 1;
-    else if (role?.ecoRole === 'puzzle') bonuses.skipPuzzleStep = true;
-    else if (role?.ecoRole === 'balance') { bonuses.purifyBonus += 4; bonuses.protectBonus += 0.05; }
-    else if (role?.ecoRole === 'synergy') { bonuses.protectBonus += 0.06; bonuses.bossMultReduce += 0.02; }
-    else if (role?.ecoRole === 'weather') bonuses.purifyBonus += 6;
-    else if (role?.ecoRole === 'counter') { bonuses.protectBonus += 0.08; bonuses.bossMultReduce += 0.03; }
-    else if (role?.ecoRole === 'sustain') { bonuses.captureBonus += 0.05; bonuses.protectBonus += 0.05; }
+    if (role?.ecoRole === 'heal') bonuses.purifyBonus += 6;
+    else if (role?.ecoRole === 'defense') bonuses.protectBonus += 0.08;
+    else if (role?.ecoRole === 'burst') bonuses.bossMultReduce += 0.03;
+    else if (role?.ecoRole === 'control') bonuses.captureBonus += 0.06;
+    else if (role?.ecoRole === 'mobility') { bonuses.escapeTurnReduce += 1; bonuses.exploreSpeedBonus += 0.15; }
+    else if (role?.ecoRole === 'puzzle') { bonuses.skipPuzzleStep = true; bonuses.puzzleHintBonus = true; }
+    else if (role?.ecoRole === 'balance') { bonuses.purifyBonus += 3; bonuses.protectBonus += 0.04; }
+    else if (role?.ecoRole === 'synergy') { bonuses.protectBonus += 0.05; bonuses.bossMultReduce += 0.02; }
+    else if (role?.ecoRole === 'weather') bonuses.purifyBonus += 5;
+    else if (role?.ecoRole === 'counter') { bonuses.protectBonus += 0.06; bonuses.bossMultReduce += 0.02; }
+    else if (role?.ecoRole === 'sustain') { bonuses.captureBonus += 0.04; bonuses.protectBonus += 0.04; }
   }
   if (ctx.generalTacticId) {
     const gt = getGeneralTactic(ctx.generalTacticId);
@@ -316,11 +319,12 @@ export function calcFusionPveBonuses(ctx = {}) {
     bonuses.escapeTurnReduce += ctx.jutsuSynergy.escapeTurnReduce || 0;
     if (ctx.jutsuSynergy.skipExploreStep) bonuses.skipExploreStep = true;
   }
-  bonuses.purifyBonus = Math.min(30, bonuses.purifyBonus);
-  bonuses.protectBonus = Math.max(0, Math.min(0.25, bonuses.protectBonus));
-  bonuses.captureBonus = Math.min(0.2, bonuses.captureBonus);
-  bonuses.bossMultReduce = Math.min(0.1, bonuses.bossMultReduce);
+  bonuses.purifyBonus = Math.min(25, bonuses.purifyBonus);
+  bonuses.protectBonus = Math.max(-0.1, Math.min(0.20, bonuses.protectBonus));
+  bonuses.captureBonus = Math.min(0.18, bonuses.captureBonus);
+  bonuses.bossMultReduce = Math.min(0.08, bonuses.bossMultReduce);
   bonuses.escapeTurnReduce = Math.min(2, bonuses.escapeTurnReduce);
+  bonuses.exploreSpeedBonus = Math.min(0.5, bonuses.exploreSpeedBonus);
   return bonuses;
 }
 
@@ -354,7 +358,8 @@ export function checkAwakeningTier(pet, tierId, ctx = {}) {
     if (!pet.awakened) return { ok: false, reason: '需先普通觉醒' };
     const reqs = [];
     if (!pet.devilFruit) reqs.push('绑定恶魔果实');
-    if (!(fusionState.fruitTrialsCleared || []).length) reqs.push('完成任意果实海域试炼');
+    const trialsCleared = fusionState.fruitTrialsCleared || [];
+    if (!Array.isArray(trialsCleared) || trialsCleared.length === 0) reqs.push('完成任意果实海域试炼');
     if ((pet.fruitUseCount || 0) < 1) reqs.push('至少使用过1次恶魔果实变身');
     return reqs.length ? { ok: false, reason: `还需：${reqs.join('、')}` } : { ok: true };
   }

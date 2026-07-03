@@ -23,17 +23,17 @@ export const PLAYER_STYLES = {
 
 /** 呼吸法 PVE 战术（轻量，不改战斗属性） */
 export const BREATHING_PVE_STYLES = {
-  water: { id: 'water', name: '水之呼吸', icon: '🌊', passive: { protectBonus: 0.12, purifyBonus: 5 }, bestFor: ['守护', '持久战'] },
-  fire: { id: 'fire', name: '炎之呼吸', icon: '🔥', passive: { bossMultReduce: 0.06, purifyBonus: 8 }, ecoPenalty: { vegetation: -1 }, bestFor: ['首领', '爆发'] },
-  thunder: { id: 'thunder', name: '雷之呼吸', icon: '⚡', passive: { bossMultReduce: 0.06, escapeTurnReduce: 1 }, bestFor: ['斩杀', '打断'] },
-  wind: { id: 'wind', name: '风之呼吸', icon: '🌀', passive: { captureBonus: 0.1, exploreSpeedBonus: 0.5 }, bestFor: ['群战', '机动'] },
-  stone: { id: 'stone', name: '岩之呼吸', icon: '🪨', passive: { protectBonus: 0.14, bossMultReduce: 0.04 }, bestFor: ['守护', '攻城'] },
-  flower: { id: 'flower', name: '花之呼吸', icon: '🌸', passive: { purifyBonus: 4, captureBonus: 0.08 }, bestFor: ['安抚', '结契'] },
-  beast: { id: 'beast', name: '兽之呼吸', icon: '🐗', passive: { bossMultReduce: 0.04, escapeTurnReduce: 1, exploreSpeedBonus: 0.3 }, bestFor: ['追猎', '突袭'] },
-  insect: { id: 'insect', name: '蟲之呼吸', icon: '🦋', passive: { captureBonus: 0.15, purifyBonus: 6 }, bestFor: ['弱点', '斩鬼'] },
-  mist: { id: 'mist', name: '霞之呼吸', icon: '🌫️', passive: { puzzleHintBonus: true, captureBonus: 0.12 }, bestFor: ['潜行', '夜战'] },
-  sun: { id: 'sun', name: '日之呼吸', icon: '☀️', passive: { bossMultReduce: 0.08, purifyBonus: 6 }, ecoPenalty: { heat: 1 }, bestFor: ['终局首领', '破局'] },
-  moon: { id: 'moon', name: '月之呼吸', icon: '🌙', passive: { puzzleHintBonus: true, bossMultReduce: 0.05, captureBonus: 0.06 }, bestFor: ['夜战', '解谜'] },
+  water: { id: 'water', name: '水之呼吸', icon: '🌊', passive: { protectBonus: 0.08, purifyBonus: 4 }, bestFor: ['守护', '持久战'] },
+  fire: { id: 'fire', name: '炎之呼吸', icon: '🔥', passive: { bossMultReduce: 0.04, purifyBonus: 5 }, ecoPenalty: { vegetation: -2 }, bestFor: ['首领', '爆发'] },
+  thunder: { id: 'thunder', name: '雷之呼吸', icon: '⚡', passive: { bossMultReduce: 0.035, escapeTurnReduce: 1 }, bestFor: ['斩杀', '打断'] },
+  wind: { id: 'wind', name: '风之呼吸', icon: '🌀', passive: { captureBonus: 0.06, exploreSpeedBonus: 0.35 }, bestFor: ['群战', '机动'] },
+  stone: { id: 'stone', name: '岩之呼吸', icon: '🪨', passive: { protectBonus: 0.08, bossMultReduce: 0.025 }, bestFor: ['守护', '攻城'] },
+  flower: { id: 'flower', name: '花之呼吸', icon: '🌸', passive: { purifyBonus: 3, captureBonus: 0.06 }, bestFor: ['安抚', '结契'] },
+  beast: { id: 'beast', name: '兽之呼吸', icon: '🐗', passive: { bossMultReduce: 0.03, escapeTurnReduce: 1, exploreSpeedBonus: 0.25 }, bestFor: ['追猎', '突袭'] },
+  insect: { id: 'insect', name: '蟲之呼吸', icon: '🦋', passive: { captureBonus: 0.08, purifyBonus: 4 }, bestFor: ['弱点', '斩鬼'] },
+  mist: { id: 'mist', name: '霞之呼吸', icon: '🌫️', passive: { puzzleHintBonus: true, captureBonus: 0.08 }, bestFor: ['潜行', '夜战'] },
+  sun: { id: 'sun', name: '日之呼吸', icon: '☀️', passive: { bossMultReduce: 0.05, purifyBonus: 4 }, ecoPenalty: { heat: 1 }, bestFor: ['终局首领', '破局'] },
+  moon: { id: 'moon', name: '月之呼吸', icon: '🌙', passive: { puzzleHintBonus: true, bossMultReduce: 0.03, captureBonus: 0.04 }, bestFor: ['夜战', '解谜'] },
 };
 
 /** 跨体系解锁节奏（扩展 v14.1，徽章门槛递进） */
@@ -42,7 +42,7 @@ export const CROSS_SYSTEM_UNLOCK = [
   { chapter: 8, badges: 6, systems: ['breathing_pve', 'ghost_chapter', 'night_battle'], label: '呼吸法与夜战' },
   { chapter: 9, badges: 8, systems: ['sea_kw', 'seastone', 'fruit_awaken_t2'], label: '海域国战' },
   { chapter: 10, badges: 9, systems: ['seal_boss', 'chakra_nodes', 'kw_positions'], label: '封印战与国家Boss' },
-  { chapter: 11, badges: 10, systems: ['cross_templates', 'build_presets', 'endgame_fusion'], label: '终局跨体系融合' },
+  { chapter: 11, badges: 11, systems: ['cross_templates', 'build_presets', 'endgame_fusion'], label: '终局跨体系融合' },
 ].sort((a, b) => a.badges - b.badges || a.chapter - b.chapter);
 
 /** 融合玩法模板（PVE 导向） */
@@ -72,10 +72,10 @@ export const KINGDOM_POSITIONS = [
 
 /** 推荐构筑模板 */
 export const BUILD_PRESETS = [
-  { id: 'preset_balanced', name: '冠军均衡流', icon: '🔴', main: 'trainer', sub: 'sect', breathing: 'water', kwPosition: 'kw_beastmaster', sectHint: 11, general: 'liu_bei', petTypes: ['NORMAL', 'FIGHT', 'GRASS'], difficulty: '入门', note: '精灵为核心，稳定推进图鉴、守护和安抚' },
+  { id: 'preset_balanced', name: '冠军均衡流', icon: '🔴', main: 'trainer', sub: 'sect', breathing: 'water', kwPosition: 'kw_beastmaster', sectHint: 19, general: 'liu_bei', petTypes: ['NORMAL', 'FIGHT', 'GRASS'], difficulty: '入门', note: '精灵为核心，稳定推进图鉴、守护和安抚' },
   { id: 'preset_capture', name: '图鉴捕获流', icon: '📚', main: 'trainer', sub: 'ninja', breathing: 'wind', kwPosition: 'kw_scout', sectHint: 5, general: 'yang_hu', petTypes: ['FAIRY', 'GRASS', 'FLYING'], difficulty: '入门', note: '提高捕获和探索效率，适合补图鉴' },
   { id: 'preset_water_heal', name: '水系净化流', icon: '💧', main: 'sect', sub: 'trainer', breathing: 'water', kwPosition: 'kw_logistics', sectHint: 7, general: 'hua_tuo', petTypes: ['WATER', 'GRASS'], difficulty: '稳健', note: '鬼化净化、后勤和长线守护更舒服' },
-  { id: 'preset_spirit', name: '精灵守护流', icon: '🌿', main: 'trainer', sub: 'sect', breathing: 'flower', kwPosition: 'kw_spirit', sectHint: 5, general: 'liu_bei', petTypes: ['FAIRY', 'GRASS', 'HEAL'], difficulty: '稳健', note: '结契、安抚、生态修复路线' },
+  { id: 'preset_spirit', name: '精灵守护流', icon: '🌿', main: 'trainer', sub: 'sect', breathing: 'flower', kwPosition: 'kw_spirit', sectHint: 5, general: 'liu_bei', petTypes: ['FAIRY', 'GRASS', 'WATER'], difficulty: '稳健', note: '结契、安抚、生态修复路线' },
   { id: 'preset_fire_burst', name: '火攻爆发流', icon: '🔥', main: 'breathing', sub: 'commander', breathing: 'fire', kwPosition: 'kw_vanguard', sectHint: 6, general: 'zhou_yu', petTypes: ['FIRE', 'DRAGON'], difficulty: '进阶', note: 'Boss 和群怪压制强，生态任务需控火' },
   { id: 'preset_siege', name: '国战防守流', icon: '🧱', main: 'commander', sub: 'sect', breathing: 'stone', kwPosition: 'kw_guard', sectHint: 2, general: 'cao_cao', petTypes: ['STEEL', 'ROCK'], difficulty: '稳健', note: '城防、护送和资源任务的低风险路线' },
   { id: 'preset_mechanic', name: '机械策略流', icon: '⚙️', main: 'fruit', sub: 'ninja', breathing: 'thunder', kwPosition: 'kw_engineer', sectHint: 10, general: 'zhuge_liang', petTypes: ['ELECTRIC', 'STEEL'], difficulty: '进阶', note: '遗迹、机关、砂核和打断路线' },
@@ -84,8 +84,8 @@ export const BUILD_PRESETS = [
   { id: 'preset_raid', name: '奇袭追猎流', icon: '🐺', main: 'fruit', sub: 'ninja', breathing: 'beast', kwPosition: 'kw_raider', sectHint: 3, general: 'gan_ning', petTypes: ['DARK', 'FIGHT', 'FLYING'], difficulty: '高压', note: '高机动突袭，适合限时和逃脱任务' },
   { id: 'preset_formation', name: '八阵控场流', icon: '🧠', main: 'commander', sub: 'ninja', breathing: 'moon', kwPosition: 'kw_strategist', sectHint: 10, general: 'zhuge_liang', petTypes: ['PSYCHIC', 'STEEL'], difficulty: '进阶', note: '解谜、封印、国战调度和控场' },
   { id: 'preset_duel', name: '一骑决斗流', icon: '🐉', main: 'breathing', sub: 'fruit', breathing: 'thunder', kwPosition: 'kw_vanguard', sectHint: 4, general: 'guan_yu', petTypes: ['ELECTRIC', 'FIGHT', 'DRAGON'], difficulty: '高压', note: '单体首领和斩将强，守护任务需补坦度' },
-  { id: 'preset_chaos', name: '混沌掌控流', icon: '🌀', main: 'fruit', sub: 'breathing', breathing: 'sun', kwPosition: 'kw_vanguard', sectHint: 4, general: 'lu_bu', petTypes: ['CHAOS', 'TIME'], difficulty: '高压', note: '终局爆发强，但对队伍练度要求高' },
-  { id: 'preset_mediator', name: '仁政调停流', icon: '🕊️', main: 'commander', sub: 'trainer', breathing: 'flower', kwPosition: 'kw_mediator', sectHint: 7, general: 'yang_hu', petTypes: ['FAIRY', 'WATER', 'GRASS'], difficulty: '稳健', note: '低战损完成安抚、后勤和生态任务' },
+  { id: 'preset_chaos', name: '混沌掌控流', icon: '🌀', main: 'fruit', sub: 'breathing', breathing: 'sun', kwPosition: 'kw_vanguard', sectHint: 1, general: 'lu_bu', petTypes: ['CHAOS', 'DRAGON'], difficulty: '高压', note: '终局爆发强，但对队伍练度要求高' },
+  { id: 'preset_mediator', name: '仁政调停流', icon: '🕊️', main: 'commander', sub: 'trainer', breathing: 'flower', kwPosition: 'kw_mediator', sectHint: 12, general: 'yang_hu', petTypes: ['FAIRY', 'WATER', 'GRASS'], difficulty: '稳健', note: '低战损完成安抚、后勤和生态任务' },
 ];
 
 export function getUnlockedCrossSystems(badgeCount) {
@@ -116,12 +116,12 @@ const KW_POSITION_BONUSES = {
 };
 
 const STYLE_PVE_BONUSES = {
-  trainer: { captureBonus: 0.06, protectBonus: 0.04, purifyBonus: 2 },
-  ninja: { purifyBonus: 4, exploreSpeedBonus: 0.25 },
-  breathing: { bossMultReduce: 0.02 },
-  fruit: { captureBonus: 0.04, bossMultReduce: 0.03 },
-  sect: { protectBonus: 0.06, purifyBonus: 2 },
-  commander: { protectBonus: 0.04, purifyBonus: 2 },
+  trainer: { captureBonus: 0.04, protectBonus: 0.04, purifyBonus: 2 },
+  ninja: { purifyBonus: 2, exploreSpeedBonus: 0.20, puzzleHintBonus: true },
+  breathing: { bossMultReduce: 0.015, protectBonus: 0.02, purifyBonus: 1 },
+  fruit: { captureBonus: 0.03, bossMultReduce: 0.02 },
+  sect: { protectBonus: 0.05, purifyBonus: 2 },
+  commander: { protectBonus: 0.03, purifyBonus: 2 },
 };
 
 function applyScaledBonuses(target, source = {}, scale = 1) {
@@ -159,12 +159,12 @@ export function calcCrossSystemPveBonuses(ctx = {}) {
   }
   if (ctx.nightBattle) {
     if (style.breathingStyle === 'mist' || style.breathingStyle === 'moon') {
-      bonuses.purifyBonus += style.breathingStyle === 'mist' ? 10 : 6;
-      bonuses.bossMultReduce += style.breathingStyle === 'mist' ? 0.05 : 0.03;
+      bonuses.purifyBonus += style.breathingStyle === 'mist' ? 6 : 4;
+      bonuses.bossMultReduce += style.breathingStyle === 'mist' ? 0.03 : 0.02;
       bonuses.nightBonus = true;
     } else if (style.main === 'breathing') {
-      bonuses.purifyBonus += 5;
-      bonuses.bossMultReduce += 0.02;
+      bonuses.purifyBonus += 3;
+      bonuses.bossMultReduce += 0.01;
       bonuses.nightBonus = true;
     }
   }
@@ -190,9 +190,24 @@ export function calcCrossSystemPveBonuses(ctx = {}) {
   if ((style.main === 'breathing' && style.sub === 'fruit') || (style.main === 'fruit' && style.sub === 'breathing')) {
     bonuses.bossMultReduce += 0.02;
   }
+  if ((style.main === 'trainer' && style.sub === 'breathing') || (style.main === 'breathing' && style.sub === 'trainer')) {
+    bonuses.protectBonus += 0.02;
+    bonuses.bossMultReduce += 0.01;
+  }
+  if ((style.main === 'trainer' && style.sub === 'commander') || (style.main === 'commander' && style.sub === 'trainer')) {
+    bonuses.captureBonus += 0.02;
+    bonuses.protectBonus += 0.02;
+  }
+  if ((style.main === 'sect' && style.sub === 'commander') || (style.main === 'commander' && style.sub === 'sect')) {
+    bonuses.protectBonus += 0.04;
+  }
+  if ((style.main === 'fruit' && style.sub === 'sect') || (style.main === 'sect' && style.sub === 'fruit')) {
+    bonuses.purifyBonus += 2;
+    bonuses.protectBonus += 0.02;
+  }
   bonuses.purifyBonus = Math.min(35, bonuses.purifyBonus);
   bonuses.bossMultReduce = Math.min(0.15, bonuses.bossMultReduce);
-  bonuses.protectBonus = Math.min(0.35, bonuses.protectBonus);
+  bonuses.protectBonus = Math.max(-0.1, Math.min(0.35, bonuses.protectBonus));
   bonuses.captureBonus = Math.min(0.3, bonuses.captureBonus);
   bonuses.escapeTurnReduce = Math.min(2, bonuses.escapeTurnReduce);
   bonuses.exploreSpeedBonus = Math.min(1.0, bonuses.exploreSpeedBonus || 0);
@@ -201,16 +216,16 @@ export function calcCrossSystemPveBonuses(ctx = {}) {
 
 export function mergePveBonuses(fusionBonuses = {}, crossBonuses = {}) {
   return {
-    purifyBonus: Math.min(50, (fusionBonuses.purifyBonus || 0) + (crossBonuses.purifyBonus || 0)),
-    protectBonus: Math.min(0.45, (fusionBonuses.protectBonus || 0) + (crossBonuses.protectBonus || 0)),
-    captureBonus: Math.min(0.35, (fusionBonuses.captureBonus || 0) + (crossBonuses.captureBonus || 0)),
+    purifyBonus: Math.min(40, (fusionBonuses.purifyBonus || 0) + (crossBonuses.purifyBonus || 0)),
+    protectBonus: Math.max(-0.1, Math.min(0.35, (fusionBonuses.protectBonus || 0) + (crossBonuses.protectBonus || 0))),
+    captureBonus: Math.min(0.30, (fusionBonuses.captureBonus || 0) + (crossBonuses.captureBonus || 0)),
     escapeTurnReduce: Math.min(3, (fusionBonuses.escapeTurnReduce || 0) + (crossBonuses.escapeTurnReduce || 0)),
-    bossMultReduce: Math.min(0.2, (fusionBonuses.bossMultReduce || 0) + (crossBonuses.bossMultReduce || 0)),
+    bossMultReduce: Math.min(0.15, (fusionBonuses.bossMultReduce || 0) + (crossBonuses.bossMultReduce || 0)),
     skipPuzzleStep: !!(fusionBonuses.skipPuzzleStep || crossBonuses.skipPuzzleStep),
     skipExploreStep: !!(fusionBonuses.skipExploreStep || crossBonuses.skipExploreStep),
     nightBonus: !!crossBonuses.nightBonus,
     ecoPenalty: crossBonuses.ecoPenalty || null,
-    exploreSpeedBonus: Math.min(1.0, crossBonuses.exploreSpeedBonus || 0),
-    puzzleHintBonus: !!crossBonuses.puzzleHintBonus,
+    exploreSpeedBonus: Math.min(0.8, (fusionBonuses.exploreSpeedBonus || 0) + (crossBonuses.exploreSpeedBonus || 0)),
+    puzzleHintBonus: !!(fusionBonuses.puzzleHintBonus || crossBonuses.puzzleHintBonus),
   };
 }
