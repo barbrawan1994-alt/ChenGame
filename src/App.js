@@ -19548,7 +19548,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (type === 'fruit' && def?.reward?.fruitTrialClear) setFusionState(prev => ({ ...prev, fruitTrialsCleared: [...new Set([...(prev.fruitTrialsCleared || []), id])] }));
       if (def?.ecologyReward) applyMapEcologyDelta(def.mapId || currentMapId, def.ecologyReward);
       updateAchStat({ fusionDungeonsCleared: 1 });
-      showMapToast('✨', '融合副本通关', def?.name || id, 3500);
+      showMapToast('✨', '秘境副本通关', def?.name || id, 3500);
       setBattle(null);
       setView('world_map');
       return;
@@ -27057,7 +27057,7 @@ const renderMenu = () => {
               { id: 'team', icon: '🛡️', label: '伙伴', action: () => setTeamMode(true) },
               { id: 'shop', icon: '🛍️', label: '商店', action: () => setShopMode(true) },
               { id: 'fusion', icon: '🧬', label: '融合', action: () => setFusionMode(true) },
-              { id: 'fusion_hub', icon: '🔗', label: '融合中心', action: () => { if (badges.length < 6) { showMapToast('🔒','未解锁',`需要6枚徽章解锁融合中心（当前${badges.length}枚）`,2500); return; } setFusionHubOpen(true); } },
+              { id: 'fusion_hub', icon: '🏛️', label: '战略枢纽', action: () => setFusionHubOpen(true) },
               { id: 'bag', icon: '🎒', label: '背包' },
               { id: 'pvp', icon: '⚔️', label: '对战', action: () => setPvpMode(true) },
               { id: 'league', icon: '🏆', label: '联盟' },
@@ -27312,13 +27312,13 @@ const renderMenu = () => {
     }));
   };
 
-   // 🔥 六系统融合中心
+   // 🏛️ 战略枢纽（跨体系 PVE 规划）
   const renderFusionHub = () => {
     if (!fusionHubOpen) return null;
     const unlocked = getUnlockedFusionSystems(badges.length);
     const crossUnlocked = getUnlockedCrossSystems(badges.length);
     const tabs = [
-      { id: 'overview', label: '总览', icon: '🔗' },
+      { id: 'overview', label: '总览', icon: '🏛️' },
       { id: 'style', label: '流派构筑', icon: '🧑' },
       { id: 'crossworld', label: '跨体系', icon: '🌍' },
       { id: 'jutsu', label: '忍术秘境', icon: '⛩️', need: 'jutsu_realm' },
@@ -27473,8 +27473,8 @@ const renderMenu = () => {
           <div style={{padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.08)', background:'linear-gradient(135deg, rgba(124,58,237,0.24), rgba(15,23,42,0.1))'}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <div>
-                <div style={{fontSize:'20px', fontWeight:'900', color:'#ede9fe'}}>🔗 跨体系融合中心</div>
-                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', marginTop:'4px'}}>把精灵、忍术、果实、门派、名将和国战组合成一套 PVE 路线</div>
+                <div style={{fontSize:'20px', fontWeight:'900', color:'#ede9fe'}}>🏛️ 战略枢纽</div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', marginTop:'4px'}}>精灵、忍术、果实、门派、名将和国战——在这里规划你的跨体系 PVE 路线</div>
               </div>
               <button onClick={() => setFusionHubOpen(false)} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', borderRadius:'50%', width:'34px', height:'34px', cursor:'pointer', fontSize:'18px'}}>×</button>
             </div>
@@ -27518,7 +27518,7 @@ const renderMenu = () => {
                     <div style={{fontSize:'11px', color:'#c4b5fd', fontWeight:'900'}}>当前进度</div>
                     <div style={{fontSize:'15px', color:'#fff', fontWeight:'900', marginTop:'5px'}}>{badges.length} 枚徽章</div>
                     <div style={{fontSize:'11px', color:'rgba(255,255,255,0.58)', lineHeight:1.55, marginTop:'5px'}}>
-                      {nextUnlock ? `下一阶段：${nextUnlock.badges} 徽章解锁「${nextUnlock.label}」` : '融合系统已进入完整阶段'}
+                      {nextUnlock ? `下一阶段：${nextUnlock.badges} 徽章解锁「${nextUnlock.label}」` : '战略枢纽已进入完整阶段'}
                     </div>
                   </div>
                   <div style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'14px', padding:'13px'}}>
