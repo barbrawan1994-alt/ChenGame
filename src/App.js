@@ -1424,6 +1424,7 @@ const [infinityState, setInfinityState] = useState(() => {
   const inventoryRef = useRef(inventory);
   useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
   const [postBattleQuickHeal, setPostBattleQuickHeal] = useState(false);
+  useEffect(() => { if (view !== 'grid_map') setPostBattleQuickHeal(false); }, [view]);
   const [catchInspectPet, setCatchInspectPet] = useState(null);
   const [bagItemSort, setBagItemSort] = useState('count');
   const [autoSaveIntervalMin, setAutoSaveIntervalMin] = useState(savedData.autoSaveIntervalMin ?? 1);
@@ -1450,23 +1451,26 @@ const [infinityState, setInfinityState] = useState(() => {
     const moves = player.combatMoves || [];
     const playerStats = getStats(party[targetIdx] || player);
     const hpPercent = player.currentHp / Math.max(1, playerStats.maxHp);
-    let bestIdx = 0, bestScore = -1;
+    let bestIdx = -1, bestScore = -Infinity;
     moves.forEach((m, i) => {
       if (!canUseCombatMove(b, player, m, 'player')) return;
       let score = m.p || 0;
       if (hpPercent < 0.35 && m.effect?.healPercent) {
         score = 200;
-      } else {
+      } else if (m.p > 0) {
         let typeMod = getTypeMod(m.t, enemy.type, b);
         const enemyType2 = enemy.secondaryType || enemy.type2;
         if (enemyType2 && enemyType2 !== enemy.type) typeMod *= getTypeMod(m.t, enemyType2, b);
+        if (typeMod === 0) return;
         score *= typeMod;
         const playerType2 = player.secondaryType || player.type2;
         if (m.t === player.type || m.t === playerType2) score *= 1.5;
+      } else {
+        score = 1;
       }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     });
-    if (bestScore < 0) { bestIdx = -1; }
+    if (bestIdx < 0) { bestIdx = 0; }
     if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
     const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx, enemyIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
@@ -1754,7 +1758,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     pet.currentHp = stats.maxHp; // 洗练后回满血
 
     setParty(newParty);
-    showMapToast('✨', '洗练完成', `性格变为：${NATURE_DB[pet.nature].name}${pet.isShiny ? ' 🌟闪光！' : ''}`, 2500);
+    showMapToast('✨', '洗练完成', `性格变为：${NATURE_DB[pet.nature]?.name || pet.nature}${pet.isShiny ? ' 🌟闪光！' : ''}`, 2500);
   };
 
 
@@ -3584,7 +3588,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
                             p.evoLvl = evoDex.evoLvl || null;
                             p.canEvolve = false;
                             if (evoDex.hp) { p.hp = evoDex.hp; p.atk = evoDex.atk; p.def = evoDex.def; p.s_atk = evoDex.s_atk; p.s_def = evoDex.s_def; p.spd = evoDex.spd; }
-                            if (evoDex.trait) p.trait = evoDex.trait;
                             if (p.type !== oldType) {
                               const newMoves = [];
                               (p.moves || []).forEach(m => { if (m.t === p.type || m.t === p.type2 || m.t === 'NORMAL') newMoves.push(m); });
@@ -3602,6 +3605,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                                 const move = allSkills.find(s => s.id === ls.move);
                                 if (move && !p.moves.some(m => m.id === move.id)) {
                                     if (p.moves.length < 4) p.moves.push({ ...move, pp: move.maxPP || 15 });
+                                    else if (!p.pendingLearnMove) p.pendingLearnMove = { ...move, pp: move.maxPP || 15 };
                                 }
                             });
                         }
@@ -3991,7 +3995,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [sanctuaryState, setSanctuaryState] = useState(() => ({ ...DEFAULT_SANCTUARY, ...(savedData.sanctuaryState || {}), facilities: savedData.sanctuaryState?.facilities || {} }));
   const [bondingProgress, setBondingProgress] = useState(() => savedData.bondingProgress || {});
   const [ecoCrisisRoutes, setEcoCrisisRoutes] = useState(() => savedData.ecoCrisisRoutes || {});
-  const [fusionState, setFusionState] = useState(() => savedData.fusionState || { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null });
+  const [fusionState, setFusionState] = useState(() => {
+    const defaultFS = { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null, generalFragments: {}, kingdomTaskCooldowns: {} };
+    if (!savedData.fusionState) return defaultFS;
+    return { ...defaultFS, ...savedData.fusionState, playerStyle: { ...defaultFS.playerStyle, ...(savedData.fusionState.playerStyle || {}) }, awakeningTiers: savedData.fusionState.awakeningTiers || {} };
+  });
   const [fusionHubOpen, setFusionHubOpen] = useState(false);
   const [fusionHubTab, setFusionHubTab] = useState('overview');
   const [bondingModal, setBondingModal] = useState(null);
@@ -4796,6 +4804,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const tp = { ...(dc.taskProgress || {}) };
       const completed = [...(dc.taskCompleted || [])];
       GANG_TASKS.forEach(task => {
+        if (task.reqKingdom && !kingdomWar?.faction) return;
         if (task.type === type && !completed.includes(task.id)) {
           tp[task.id] = Math.min((tp[task.id] || 0) + amount, task.target);
           if (tp[task.id] >= task.target) {
@@ -7323,7 +7332,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           for (const r of zone.rewards) { roll -= (r.weight || 0); if (roll <= 0) { picked = r; break; } }
         }
         if (picked.type === 'gold') { const lo = Math.min(picked.min || 0, picked.max || 0); const hi = Math.max(picked.min || 0, picked.max || 0); const amt = Math.floor(_.random(lo, hi) * bonusMult); setGold(g => g + amt); updateAchStat({ totalGoldEarned: amt }); msg.push(`💰 ${amt}金币`); }
-        else if (picked.type === 'med') { setInventory(p => ({...p, meds:{...p.meds, [picked.id]:(p.meds[picked.id]||0)+picked.count}})); msg.push(`🧪 ${picked.id} x${picked.count}`); }
+        else if (picked.type === 'med') { setInventory(p => ({...p, meds:{...p.meds, [picked.id]:(p.meds[picked.id]||0)+picked.count}})); msg.push(`🧪 ${MEDICINES[picked.id]?.name || picked.id} x${picked.count}`); }
         else if (picked.type === 'stone') { setInventory(p => ({...p, stones:{...p.stones, [picked.id]:(p.stones[picked.id]||0)+picked.count}})); msg.push(`💎 进化石 x${picked.count}`); }
         else if (picked.type === 'mineral') { const mCount = Math.floor(picked.count * bonusMult); setMineState(ms => ({...ms, minerals:{...ms.minerals, [picked.id]:(ms.minerals[picked.id]||0)+mCount}})); msg.push(`${MINE_ORES[picked.id]?.icon||'⛏️'} ${MINE_ORES[picked.id]?.name||picked.id} x${mCount}`); }
         else if (picked.type === 'tm') {
@@ -7359,6 +7368,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       advanceBounty('expedition');
       updateAchStat({ expeditionsCompleted: 1 });
       const next = {...prev, teams: prev.teams.filter((_,i) => i !== teamIdx)};
+      setTimeout(() => persistSave(true), 100);
       return next;
     });
   };
@@ -7857,23 +7867,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           }} style={{gridColumn:'1 / -1', padding:'11px 10px',borderRadius:'12px',background:'rgba(100,200,255,0.05)',border:'1px solid rgba(100,200,255,0.12)',color:'#81D4FA',fontSize:'11px',fontWeight:'700',cursor:'pointer',textAlign:'center'}}>
             🔄 精灵交换 {lastPetTradeDate === today ? '(今日已用)' : '(每日1次)'}
           </button>
-          </div>
-
-          <div className="activity-hub-section-title">进阶系统</div>
-          <div className="activity-hub-action-grid" style={{display:'grid', gridTemplateColumns:'1fr', gap:'10px'}}>
-            <button className="activity-hub-action" type="button" onClick={() => { if (badges.length < 6) { showMapToast('🔒','未解锁',`需要6枚徽章解锁融合中心（当前${badges.length}枚）`,2500); return; } setActivityCenter(false); setFusionHubOpen(true); }} style={{
-              padding:'14px 16px', borderRadius:'14px', textAlign:'left', cursor:'pointer',
-              border:'1px solid rgba(167,139,250,0.35)',
-              background:'linear-gradient(135deg, rgba(69,39,160,0.22), rgba(123,31,162,0.10))', color:'#fff',
-              display:'flex', alignItems:'center', gap:'14px', opacity: badges.length >= 6 ? 1 : 0.5,
-            }}>
-              <div style={{fontSize:'28px', lineHeight:1}}>🔗</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:'14px', fontWeight:800}}>跨体系融合中心 {badges.length < 6 ? '🔒' : ''}</div>
-                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.5)', marginTop:'3px'}}>忍术秘境 · 果实海域 · 门派秘境 · 古战场 · 国战任务 · 将魂战术</div>
-              </div>
-              {getUnlockedFusionSystems(badges.length).length >= 4 && <span style={{fontSize:'16px'}}>✨</span>}
-            </button>
           </div>
 
           <div className="activity-hub-section-title">记录与收集</div>
@@ -10069,7 +10062,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return (
         <div>
           <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'12px'}}>📋 每日任务</div>
-          {GANG_TASKS.filter(task => !task.reqKingdom || kingdomWar?.nation).map(task => {
+          {GANG_TASKS.filter(task => !task.reqKingdom || kingdomWar?.faction).map(task => {
             const progress = tp[task.id] || 0;
             const isDone = completed.includes(task.id);
             const isClaimed = completed.includes(task.id + '_claimed');
@@ -10401,7 +10394,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           🗺️ 地图 › 🏴 {gangInfo?.name || '帮派'} › {tabs.find(t => t.id === gangTab)?.icon} {tabs.find(t => t.id === gangTab)?.label}
         </div>
         <div className="gang-command-strip" aria-label="帮派今日状态">
-          <div><span>今日任务</span><strong>{gangDailyDone}/{GANG_TASKS.length}</strong></div>
+          <div><span>今日任务</span><strong>{gangDailyDone}/{GANG_TASKS.filter(t => !t.reqKingdom || kingdomWar?.faction).length}</strong></div>
           <div className={gangReadyTasks > 0 ? 'is-hot' : ''}><span>可领取</span><strong>{gangReadyTasks}</strong></div>
           <div><span>帮战次数</span><strong>{dc.warCount || 0}/{GANG_WAR_CONFIG.maxDaily}</strong></div>
           <div><span>帮贡</span><strong>{gang.contribution || 0}</strong></div>
@@ -11853,6 +11846,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
      }
      setIsDialogVisible(false);
      battleResultHandledRef.current = false;
+     setComboUsedThisBattle(false);
+     setAnimEffect(null);
     let isDouble = type === 'wild_double' || type === 'trainer_double' || (context && context.isDouble);
     const actualType = type === 'wild_double' ? 'wild' : type === 'trainer_double' ? 'trainer' : type;
     let isBoss = actualType === 'boss' || actualType === 'challenge' || actualType === 'story_mid' || actualType === 'story_task' || actualType === 'eclipse_leader' || actualType === 'world_boss' || (actualType === 'tower' && challengeId?.isBoss);
@@ -13258,7 +13253,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         addLog(`${currentPet.name} 的 [再生力] 恢复了体力！`);
     }
 
+        if (currentPet.volatiles?.flinched) currentPet.volatiles.flinched = false;
         const newPet = combatStates[newIdx];
+        if (newPet.volatiles?.flinched) newPet.volatiles.flinched = false;
     if (sectPlayer?.playerSect && newPet && !newPet.combatMoves?.some(m => m.isMartialArt)) {
       const martial = getAvailableMartialMoves(sectPlayer).map(m => ({...m}));
       newPet.combatMoves = [...(newPet.combatMoves || []), ...martial];
@@ -13479,9 +13476,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }));
         };
 
+        const domSkip = tempBattle.activeDomain;
+        const playerSuppressed = domSkip && domSkip.turnsLeft > 0 && domSkip.ownerSide === 'enemy' && domSkip.effect?.enemySkipChance && Math.random() < domSkip.effect.enemySkipChance;
+        if (playerSuppressed) {
+          addLog(`🌀 ${player.name} 被敌方领域压制，无法行动！`);
+          await wait(800);
+        }
+
         if (playerFirst) {
           // 玩家先手
-          enemyDied = await performAction(player, enemy, actualMove, 'player', tempBattle);
+          enemyDied = !playerSuppressed && await performAction(player, enemy, actualMove, 'player', tempBattle);
           if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
             queueMirrorEcho(tempBattle, actualMove);
           }
@@ -13496,6 +13500,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (actualMove.effect?.type !== 'PROTECT') {
               if (tempBattle.playerCombatStates[tempBattle.activeIdx]?.volatiles) tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.protected = false;
             }
+            if (tempBattle.playerCombatStates[tempBattle.activeIdx]?.volatiles) tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.flinched = false;
+            if (tempBattle.enemyParty[tempBattle.enemyActiveIdx]?.volatiles) tempBattle.enemyParty[tempBattle.enemyActiveIdx].volatiles.flinched = false;
             await wait(1200);
             await enemyTurn(tempBattle);
           } else if (enemyDied || playerDiedFromSelfDmg) {
@@ -13517,7 +13523,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           // 玩家后手 - 重新获取当前活跃敌人(可能被训练家AI换过)
           const currentEnemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
           if (!currentEnemy) { syncBattleState({ phase: 'input' }); return; }
-          enemyDied = await performAction(player, currentEnemy, actualMove, 'player', tempBattle);
+          enemyDied = !playerSuppressed && await performAction(player, currentEnemy, actualMove, 'player', tempBattle);
           if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
             queueMirrorEcho(tempBattle, actualMove);
           }
@@ -14059,14 +14065,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
           tempBattle.activeDomain = null;
         }
       }
-      // 双打回合末：清除 protect 状态（所有行动执行完毕后才清）
+      // 双打回合末：清除 protect / flinch 状态
       for (const pIdx of (tempBattle.activeIdxs || [])) {
         const ps = tempBattle.playerCombatStates?.[pIdx];
-        if (ps?.volatiles) ps.volatiles.protected = false;
+        if (ps?.volatiles) { ps.volatiles.protected = false; ps.volatiles.flinched = false; }
       }
       for (const eIdx of (tempBattle.enemyActiveIdxs || [])) {
         const es = tempBattle.enemyParty?.[eIdx];
-        if (es?.volatiles) es.volatiles.protected = false;
+        if (es?.volatiles) { es.volatiles.protected = false; es.volatiles.flinched = false; }
       }
       // 双打回合末DOT (灼伤/中毒) — 每个在场精灵结算一次
       const allDoubleActives = [
@@ -16355,6 +16361,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const playerHpSnapshot = battleState?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
     try {
     if (attacker.currentHp <= 0) return false;
+    if (defender.currentHp <= 0) return false;
     if (!attacker.stages) attacker.stages = { ...DEFAULT_BATTLE_STAGES };
     if (!defender.stages) defender.stages = { ...DEFAULT_BATTLE_STAGES };
     if (!battleState?.isDouble) setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
@@ -20268,7 +20275,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const releasedUid = pet.uid;
       setBox(prev => prev.filter((_, i) => i !== selectedBoxIdx));
       setGold(g => g + releaseGold);
-      if (releasedUid) setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => uid !== releasedUid) }));
+      if (releasedUid) {
+        setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => uid !== releasedUid) }));
+        setTrainingState(prev => ({ ...prev, slots: (prev.slots || []).filter(s => s.petUid !== releasedUid) }));
+        setFusionState(prev => { const at = { ...(prev.awakeningTiers || {}) }; delete at[releasedUid]; return { ...prev, awakeningTiers: at }; });
+      }
       showMapToast('🕊️', '放生成功', `${pet.name} 回归自然，获得 ${releaseGold.toLocaleString()} 金币`, 2500);
       setSelectedBoxIdx(null);
     };
@@ -25338,7 +25349,7 @@ const renderMenu = () => {
                     {viewStatPet.ivs && (
                       <div style={{marginTop:'8px', padding:'8px', background:'#f5f0ff', borderRadius:'8px', border:'1px solid #d0c0f0'}}>
                         <div style={{fontSize:'10px', color:'#7B1FA2', fontWeight:'bold', marginBottom:'6px'}}>
-                          个体值 (IV) — 总计 {Object.values(viewStatPet.ivs).reduce((s,v)=>s+(v||0),0)}/186
+                          个体值 (IV) — 总计 {(() => { const vs = viewStatPet.ivs; const mainKeys = ['maxHp','hp','p_atk','p_def','s_atk','s_def','spd']; return mainKeys.reduce((s,k) => s + (vs[k] || 0), 0); })()}/186
                         </div>
                         <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', marginTop:'2px', marginBottom:'6px'}}>
                           成长潜力: {'★'.repeat(Math.min(5, Math.ceil((viewStatPet.ivs?.maxHp ?? viewStatPet.ivs?.hp ?? 15) / 6)))}
@@ -27046,6 +27057,7 @@ const renderMenu = () => {
               { id: 'team', icon: '🛡️', label: '伙伴', action: () => setTeamMode(true) },
               { id: 'shop', icon: '🛍️', label: '商店', action: () => setShopMode(true) },
               { id: 'fusion', icon: '🧬', label: '融合', action: () => setFusionMode(true) },
+              { id: 'fusion_hub', icon: '🔗', label: '融合中心', action: () => { if (badges.length < 6) { showMapToast('🔒','未解锁',`需要6枚徽章解锁融合中心（当前${badges.length}枚）`,2500); return; } setFusionHubOpen(true); } },
               { id: 'bag', icon: '🎒', label: '背包' },
               { id: 'pvp', icon: '⚔️', label: '对战', action: () => setPvpMode(true) },
               { id: 'league', icon: '🏆', label: '联盟' },
@@ -27072,7 +27084,7 @@ const renderMenu = () => {
               { id: 'keyhelp', icon: '⌨️', label: '快捷键', action: () => setShowKeyHelp(true) },
               { id: 'settings', icon: '⚙️', label: '设置', action: () => setView('settings') },
             ].map(btn => {
-              const growthIds = ['team','shop','fusion','bag','pc','fruit_dex','naruto','jutsu_codex','skill_dex','activity','gang','housing'];
+              const growthIds = ['team','shop','fusion','fusion_hub','bag','pc','fruit_dex','naruto','jutsu_codex','skill_dex','activity','gang','housing'];
               const infoIds = ['card','achievements','pokedex','general_dex','guide'];
               const systemIds = ['keyhelp','settings'];
               const dockGroup = growthIds.includes(btn.id) ? 'growth' : infoIds.includes(btn.id) ? 'info' : systemIds.includes(btn.id) ? 'system' : 'explore';
@@ -27397,7 +27409,7 @@ const renderMenu = () => {
           <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', marginTop:'8px', lineHeight:1.55}}>{def.summary}</div>
           <div style={{display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'9px'}}>
             {(def.mechanics || []).slice(0, 4).map(m => (
-              <span key={m} style={{fontSize:'9px', padding:'3px 7px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>{m.replaceAll('_', ' ')}</span>
+              <span key={m} style={{fontSize:'9px', padding:'3px 7px', borderRadius:'999px', background:'rgba(255,255,255,0.07)', color:'#cbd5e1'}}>{({'seal_pillars':'封印柱','element_sequence':'属性序列','momentum_battle':'气势战','escort_vip':'护送','multi_path':'多路线','darkness':'黑暗','timed_waves':'限时波','puzzle':'解谜','stealth':'潜行','boss_rush':'连战','survival':'生存','trap_maze':'陷阱迷宫','formation':'阵法','wind_pressure':'风压','qi_flow':'气脉','balance':'均衡','meditation':'冥想','speed_run':'竞速','defense':'防御','endurance':'耐力'}[m] || m.replaceAll('_', ' '))}</span>
             ))}
           </div>
           {steps.length > 0 && (
@@ -30758,7 +30770,11 @@ const renderMenu = () => {
                     const releasedUids = [...selectedSet].map(idx => box[idx]?.uid).filter(Boolean);
                     setBox(prev => prev.filter((_, i) => !selectedSet.has(i)));
                     setGold(g => g + batchGold);
-                    if (releasedUids.length) setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => !releasedUids.includes(uid)) }));
+                    if (releasedUids.length) {
+                      setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => !releasedUids.includes(uid)) }));
+                      setTrainingState(prev => ({ ...prev, slots: (prev.slots || []).filter(s => !releasedUids.includes(s.petUid)) }));
+                      setFusionState(prev => { const at = { ...(prev.awakeningTiers || {}) }; releasedUids.forEach(uid => delete at[uid]); return { ...prev, awakeningTiers: at }; });
+                    }
                     showMapToast('👋', '批量放生', `${selectedSet.size}只精灵回归自然，获得 ${batchGold.toLocaleString()} 金币`, 2500);
                     setPcBatchSelected(new Set());
                     setPcBatchRelease(false);
@@ -30898,7 +30914,8 @@ const renderMenu = () => {
                       {pcBatchRelease && pcBatchSelected.has(origIdx) && <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(229,57,53,0.3)',borderRadius:'8px',zIndex:1}}/>}
                       {(() => {
                         const ivs = p.ivs || {};
-                        const ivSum = Object.values(ivs).reduce((s, v) => s + (v || 0), 0);
+                        const mainKeys = ['maxHp','hp','p_atk','p_def','s_atk','s_def','spd'];
+                        const ivSum = mainKeys.reduce((s, k) => s + (ivs[k] || 0), 0);
                         const ivPct = (ivSum / 186) * 100;
                         const letter = ivPct >= 80 ? 'S' : ivPct >= 50 ? 'A' : ivPct >= 30 ? 'B' : 'C';
                         const lColor = ivPct >= 80 ? '#FFD700' : ivPct >= 50 ? '#FF4081' : ivPct >= 30 ? '#2196F3' : '#9E9E9E';
@@ -31045,17 +31062,18 @@ const renderMenu = () => {
                   <div style={{background:'rgba(0,0,0,0.2)', padding:'10px 12px', borderRadius:'8px', marginBottom:'15px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 16px', fontSize:'11px'}}>
                     {(() => {
                       const ivs = selectedPet.ivs || {};
-                      const ivSum = Object.values(ivs).reduce((s, v) => s + (v || 0), 0);
+                      const mainKeys = ['maxHp','hp','p_atk','p_def','s_atk','s_def','spd'];
+                      const ivSum = mainKeys.reduce((s, k) => s + (ivs[k] || 0), 0);
                       const ivPct = (ivSum / 186) * 100;
                       const ivLetter = ivPct >= 80 ? 'S' : ivPct >= 50 ? 'A' : ivPct >= 30 ? 'B' : 'C';
                       const ivColor = ivPct >= 80 ? '#FFD700' : ivPct >= 50 ? '#FF4081' : ivPct >= 30 ? '#2196F3' : '#9E9E9E';
                       return <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>资质</span><span style={{color: ivColor, fontWeight:'bold'}}>{ivLetter} ({Math.round(ivPct)}%)</span></div>;
                     })()}
                     <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>亲密度</span><span style={{color:'#fff'}}>{selectedPet.intimacy ?? selectedPet.friendship ?? 0}</span></div>
-                    <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>特性</span><span style={{color:'#CE93D8'}}>{selectedPet.trait || selectedPet.ability || '无'}</span></div>
+                    <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>特性</span><span style={{color:'#CE93D8'}}>{TRAIT_DB[selectedPet.trait]?.name || selectedPet.trait || '无'}</span></div>
                     <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>魅力</span><span style={{color:'#fff'}}>{selectedPet.charm ?? 0}</span></div>
-                    {selectedPet.devilFruit && <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>果实</span><span style={{color:'#FF8A65'}}>{selectedPet.devilFruit}</span></div>}
-                    {selectedPet.heldItem && <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>装备</span><span style={{color:'#81C784'}}>{selectedPet.heldItem}</span></div>}
+                    {selectedPet.devilFruit && <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>果实</span><span style={{color:'#FF8A65'}}>{getFruitById(selectedPet.devilFruit)?.name || selectedPet.devilFruit}</span></div>}
+                    {selectedPet.equips?.length > 0 && <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>装备</span><span style={{color:'#81C784'}}>{selectedPet.equips.length}件</span></div>}
                     {selectedPet.sectName && <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>门派</span><span style={{color:'#90CAF9'}}>{selectedPet.sectName} Lv{selectedPet.sectLevel||1}</span></div>}
                     {selectedPet.fatigue > 0 && <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>疲劳</span><span style={{color: selectedPet.fatigue > 60 ? '#FF5252' : '#FFC107'}}>{selectedPet.fatigue}%</span></div>}
                   </div>
@@ -31240,10 +31258,10 @@ const renderMenu = () => {
             {/* 属性详情 */}
             <div style={{background:'rgba(0,0,0,0.3)', borderRadius:'12px', padding:'15px', marginBottom:'20px'}}>
                 <div style={{display:'flex', justifyContent:'space-between', fontSize:'12px', marginBottom:'10px', color:'#ccc'}}>
-                    <span>性格: {NATURE_DB[original.nature].name}</span>
+                    <span>性格: {NATURE_DB[original.nature]?.name || original.nature}</span>
                     <span>➞</span>
                     <span style={{color: preview ? '#fff' : '#666', fontWeight:'bold'}}>
-                        {preview ? NATURE_DB[preview.nature].name : '???'}
+                        {preview ? (NATURE_DB[preview.nature]?.name || preview.nature) : '???'}
                     </span>
                 </div>
                 
@@ -31738,7 +31756,7 @@ const renderMenu = () => {
                             <div style={{textAlign:'center',marginTop:'8px',fontSize:'11px',color:'rgba(255,255,255,0.6)'}}>
                                 种族值 {oldTotal} → <span style={{color:'#FFD700',fontWeight:'bold'}}>{newTotal}</span> {newTotal > oldTotal ? `(+${newTotal-oldTotal})` : ''}
                             </div>
-                            {newPet.trait && <div style={{textAlign:'center',marginTop:'4px',fontSize:'11px',color:'#a78bfa'}}>特性: {newPet.trait}</div>}
+                            {newPet.trait && <div style={{textAlign:'center',marginTop:'4px',fontSize:'11px',color:'#a78bfa'}}>特性: {TRAIT_DB[newPet.trait]?.name || newPet.trait}</div>}
                         </div>
                     );
                 })()}

@@ -35,7 +35,7 @@ export const ARENA_WEEKLY_RULES = [
   { id: 'handicap',  name: '逆境突破', icon: '💪', desc: '初始全队扣50% HP', effect: 'halfHp' },
   { id: 'speed',     name: '极速对决', icon: '⚡', desc: '速度提升1.5倍，先手优势巨大', effect: 'speedBoost' },
   { id: 'double',    name: '双打狂欢', icon: '👥', desc: '所有对战为2v2双打', effect: 'forcedDouble' },
-  { id: 'jutsu',     name: '忍术之战', icon: '🍥', desc: '忍术技能伤害+5~15%（低段位15%、影级5%，递减追赶）', effect: 'jutsuBoost' },
+  { id: 'jutsu',     name: '忍术之战', icon: '🍥', desc: '忍术技能伤害+5~15%（按忍者段位：下忍+5%、中忍+8%、上忍+12%、影级+15%）', effect: 'jutsuBoost' },
 ];
 
 export const ARENA_TICKET_PRICE = 3000;

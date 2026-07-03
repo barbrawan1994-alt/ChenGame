@@ -1,4 +1,4 @@
-/** 武侠门派系统 v14.4 — 玩家身份、心法、武学、共鸣、国战、江湖事件 */
+/** 武侠门派系统 v15.0 — 玩家身份、心法、武学、共鸣、国战、江湖事件 */
 import { SECT_DB, SECT_COUNT } from './sects';
 import {
   SECT_MARTIAL_ARTS_EXTENDED,

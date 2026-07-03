@@ -115,7 +115,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   const ivs = {
     hp: randIV(), p_atk: randIV(), p_def: randIV(),
     s_atk: randIV(), s_def: randIV(), spd: randIV(),
-    crit: Math.floor(Math.random() * 6)
+    crit: Math.floor(Math.random() * 10)
   };
 
   const natureKeys = Object.keys(NATURE_DB);
@@ -224,7 +224,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
     }
   }
 
-  newPet.moves = moves;
+  newPet.moves = moves.slice(0, 4);
 
   if (getStatsForPet) {
     const stats = getStatsForPet(newPet);

@@ -513,27 +513,27 @@ export const STORY_SCRIPT = [
     ],
     tasks: [
       { step: 0, x: 5, y: 10, type: 'battle', enemyId: 253, name: '虚空守门人', text: "首领大人的伟业不可阻挡。在虚空之神面前，你们不过是蝼蚁！", emoji: '🛡️',
-        eliteParty: [{ id: 253, level: 78 }, { id: 248, level: 76 }, { id: 142, level: 75 }, { id: 150, level: 73 }, { id: 146, level: 72 }]
+        eliteParty: [{ id: 253, level: 90 }, { id: 248, level: 88 }, { id: 142, level: 87 }, { id: 150, level: 86 }, { id: 146, level: 85 }]
       },
       { step: 1, x: 15, y: 5, type: 'dialog', name: '竞争对手·苍', text: "（苍被日蚀队精英围攻，身负重伤）...走！别管我！阻止深渊比什么都重要！我...已经完成了我的复仇。活着见到这一天...就够了。", emoji: '💔' },
       { step: 2, x: 25, y: 10, type: 'battle', enemyId: 253, name: '虚空处刑者', text: "毁灭即是新生。旧世界已经腐朽——只有虚空能带来纯净的开始！", emoji: '⚔️',
-        eliteParty: [{ id: 253, level: 80 }, { id: 248, level: 78 }, { id: 185, level: 77 }, { id: 142, level: 76 }, { id: 68, level: 74 }]
+        eliteParty: [{ id: 253, level: 93 }, { id: 248, level: 91 }, { id: 185, level: 90 }, { id: 142, level: 89 }, { id: 68, level: 88 }]
       },
       { step: 3, x: 12, y: 5, type: 'battle', enemyId: 329, name: '仙剑大侠·李逍遥 [御剑全开]', text: '（空间站的长廊尽头，李逍遥拔出了一把散发着仙光的长剑。他的表情前所未有的严肃）...前面是深渊和厌晚。如果你连我都赢不了，就别去送死了。这一次——我用全力。当作我给你的...毕业考试！', emoji: '⚔️',
-        eliteParty: [{ id: 1, level: 82 }, { id: 329, level: 80 }, { id: 369, level: 79 }, { id: 252, level: 78 }, { id: 60, level: 77 }, { id: 61, level: 76 }]
+        eliteParty: [{ id: 1, level: 95 }, { id: 329, level: 93 }, { id: 369, level: 92 }, { id: 252, level: 91 }, { id: 60, level: 90 }, { id: 61, level: 89 }]
       },
       { step: 4, x: 20, y: 8, type: 'battle', enemyId: 607, name: '暗影执行者·厌晚 [全力]', text: "（通往首领的路被厌晚挡住。她缓缓拔出腰间的精灵球，眼中第一次露出认真的神色）...我等这一天很久了。不是为了首领的命令——是为了我自己。在古堡、在冻土...你让我感受到了久违的心跳。这一次，全力以赴。", emoji: '🌙',
         eliteParty: [
-          { id: 608, level: 80, devilFruit: 'df_yami' },
-          { id: 609, level: 78, devilFruit: 'df_supa' },
-          { id: 607, level: 82 },
-          { id: 610, level: 79, devilFruit: 'df_hie' },
-          { id: 603, level: 77 },
-          { id: 604, level: 80 }
+          { id: 608, level: 96, devilFruit: 'df_yami' },
+          { id: 609, level: 94, devilFruit: 'df_supa' },
+          { id: 607, level: 97 },
+          { id: 610, level: 95, devilFruit: 'df_hie' },
+          { id: 603, level: 93 },
+          { id: 604, level: 95 }
         ]
       },
       { step: 5, x: 15, y: 3, type: 'battle', enemyId: 255, name: '日蚀队 首领·深渊', text: "（一个穿着漆黑长袍的男人缓缓转身）...你终于来了。连厌晚都输给了你？有趣...三年前我毁掉了一个村庄，只为测试虚空能量。你的朋友苍——他以为自己在复仇，其实从一开始就是我计划的一部分。现在，见证新世界的诞生吧！", emoji: '⚫',
-        eliteParty: [{ id: 255, level: 85 }, { id: 253, level: 83 }, { id: 248, level: 82 }, { id: 146, level: 81 }, { id: 150, level: 80 }, { id: 142, level: 79 }]
+        eliteParty: [{ id: 255, level: 100 }, { id: 253, level: 98 }, { id: 248, level: 97 }, { id: 146, level: 96 }, { id: 150, level: 95 }, { id: 142, level: 94 }]
       }
     ],
     midEvent: { enemyId: 255, name: '日蚀队 首领·深渊' },

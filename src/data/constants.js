@@ -2,8 +2,8 @@
 export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
 export const GAME_NAME = '超级精灵';
 export const GAME_EN_NAME = 'Super Spirit';
-export const GAME_VERSION = '14.4';
-export const GAME_VERSION_LABEL = 'v14.4 四国争霸·三十门派·跨体系融合';
+export const GAME_VERSION = '15.0';
+export const GAME_VERSION_LABEL = 'v15.0 四国争霸·三十门派·跨体系融合';
 export const GAME_TAGLINE = '收集、进化、对战，打造你的冠军精灵队伍';
 export const GAME_DESCRIPTION = '超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。';
 export const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
