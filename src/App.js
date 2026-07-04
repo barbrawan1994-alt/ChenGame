@@ -29867,54 +29867,27 @@ const renderMenu = () => {
                     
                     {/* 敌方 HUD */}
                     <div className={`hud-card hud-enemy ${isDoubleBattle ? 'hud-card--double' : ''}`} style={{marginBottom: '8px'}}>
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
-                            <span style={{fontSize: isDoubleBattle ? '11px' : '13px', fontWeight:'bold', whiteSpace:'nowrap', display:'inline-block'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'4px', marginBottom:'2px'}}>
+                            <span style={{fontSize: isDoubleBattle ? '11px' : '12px', fontWeight:'bold', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'160px'}}>
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
-                            <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
-                            {isDarkMoon ? (
-                              <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background:'#333', color:'#aaa', fontWeight:'bold', marginLeft:'4px'}}>???</span>
-                            ) : (
+                            <span style={{fontSize:'11px', color:'#555', flexShrink:0}}>Lv.{e.level}</span>
+                            {!isDarkMoon && (
                               <>
-                            <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.type]?.color || '#888', color:'#fff', fontWeight:'bold', marginLeft:'4px'}}>{TYPES[e.type]?.name || e.type}</span>
-                            {e.secondaryType && e.secondaryType !== e.type && <span style={{fontSize:'9px', padding:'1px 5px', borderRadius:'6px', background: TYPES[e.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.secondaryType]?.name || e.secondaryType}</span>}
-                            {(() => { const weakTypes = Object.keys(TYPES || {}).filter(t => { let mod = getTypeMod(t, e.type); if (e.secondaryType && e.secondaryType !== e.type) mod *= getTypeMod(t, e.secondaryType); return mod >= 1.5; }); return weakTypes.length > 0 ? <span style={{fontSize:'9px',padding:'1px 5px',borderRadius:'6px',background:'rgba(244,67,54,0.15)',color:'#EF5350',fontWeight:'700',marginLeft:'2px'}}>弱:{weakTypes.slice(0,3).map(t => TYPES[t]?.name || t).join('/')}</span> : null; })()}
+                                <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e.type]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.type]?.name || e.type}</span>
+                                {e.secondaryType && e.secondaryType !== e.type && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.secondaryType]?.name}</span>}
                               </>
                             )}
+                            {isDarkMoon && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background:'#333', color:'#aaa', fontWeight:'bold'}}>???</span>}
                         </div>
-                        <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
-                            {e.isFusedShiny ? (
-                              <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
-                            ) : e.isShiny ? (
-                              <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
-                            ) : null}
-                            {renderSectBadge(e, 'enemy')}
-                            {battle.trainerGang && (
-                              <span onClick={(ev) => { ev.stopPropagation(); const eb = battle.trainerGangBonus || getGangSkillBonus(battle.trainerGang.skills || {}); setBattleGangDetail({name: battle.trainerGang.name, icon: battle.trainerGang.icon, bonus: eb, side:'enemy'}); }} style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'linear-gradient(90deg, rgba(255,143,0,0.8), rgba(255,111,0,0.6))', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'10px', fontWeight:'bold', whiteSpace:'nowrap', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer'}}>
-                                {battle.trainerGang.icon}{battle.trainerGang.name}
-                              </span>
-                            )}
-                            {renderBattleGeneralsBadge(battle.enemyGenerals, 'enemy')}
+                        <div style={{display:'flex', alignItems:'center', gap:'3px', flexWrap:'wrap', marginBottom:'3px'}}>
+                            {!isDarkMoon && (() => { const weakTypes = Object.keys(TYPES || {}).filter(t => { let mod = getTypeMod(t, e.type); if (e.secondaryType && e.secondaryType !== e.type) mod *= getTypeMod(t, e.secondaryType); return mod >= 1.5; }); return weakTypes.length > 0 ? <span style={{fontSize:'8px',padding:'1px 4px',borderRadius:'4px',background:'rgba(244,67,54,0.15)',color:'#EF5350',fontWeight:'700'}}>弱:{weakTypes.slice(0,2).map(t => TYPES[t]?.name || t).join('/')}</span> : null; })()}
+                            {(e.isFusedShiny || e.isShiny) && <span style={{fontSize:'7px', padding:'1px 4px', borderRadius:'4px', background: e.isFusedShiny ? '#7B1FA2' : '#FF8F00', color:'#fff', fontWeight:'bold'}}>{e.isFusedShiny ? '🧬异色' : '✨闪光'}</span>}
                             {renderStatusBadges(e)}
-                            {e.devilFruit && (() => { const df = getFruitById(e.devilFruit); return df ? (
-                              <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
-                                {df.name}{e.fruitTransformed ? ` (${e.fruitTurnsLeft})` : ''}
-                              </span>
-                            ) : null; })()}
                         </div>
-
-                        {/* 第三行：血条（使用增强组件） */}
-                        <EnhancedHPBar 
-                            current={e.currentHp} 
-                            max={eStats.maxHp} 
-                            label=""
-                        />
-                        <div style={{fontSize:'10px', color:'#666', textAlign:'right', marginTop:'2px'}}>
-                          {isDarkMoon && battle._darkMoonScouted !== true ? (
-                            <span style={{ color:'#888' }}>HP ???/???</span>
-                          ) : (
-                            <>HP {Math.max(0, Math.floor(e.currentHp)).toLocaleString()}/{eStats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)</>
-                          )}
+                        <EnhancedHPBar current={e.currentHp} max={eStats.maxHp} label="" />
+                        <div style={{fontSize:'9px', color:'#888', textAlign:'right', marginTop:'1px'}}>
+                          {isDarkMoon && battle._darkMoonScouted !== true ? 'HP ???' : `HP ${Math.max(0, Math.floor(e.currentHp))}/${eStats.maxHp} (${Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)`}
                         </div>
                         {e.maxCE > 0 && (
                             <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
