@@ -11,7 +11,7 @@ export const FRUIT_SEA_ZONES = [
     mechanics: ['water_restriction', 'fruit_trial', 'fruit_copy_boss'],
     steps: [
       { type: 'explore', title: '海底入口', text: '水系精灵可开路；土系筑起临时陆地；冰系冻结水面。', reqTypes: ['WATER'] },
-      { type: 'puzzle', title: '果实共鸣', text: '封印忍术可暂时稳定暴走果实能量。', reqJutsu: ['LIGHT'] },
+      { type: 'puzzle', title: '果实共鸣', text: '封印忍术可暂时稳定暴走果实能量。', reqJutsu: ['WATER'] },
       { type: 'battle', title: '果实守卫', enemyName: '果实守卫', pool: [22, 24, 26], lvl: [42, 52], count: 3, objective: 'capture_alive', objectiveTurns: 12 },
       { type: 'boss', title: '复制之树', enemyName: '复制之树', bossId: 3, lvl: 55, drop: 8000 },
     ],

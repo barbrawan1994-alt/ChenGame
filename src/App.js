@@ -2774,7 +2774,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if (r.gold) setGold(g => g + r.gold);
     if (r.title) unlockTitle(r.title);
     if (r.generalFragment) {
-      setKingdomWar(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
+      setFusionState(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
       showMapToast('🎖️', '名将碎片', `获得 ${r.generalFragment} 碎片 ×1`, 2500);
     }
     addSectResources({ contribution: r.sectContrib || 50, scrollPage: r.scrollPage || 0, reputation: 80 });
@@ -6778,7 +6778,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const bossLvl = Array.isArray(step.lvl) ? step.lvl : (step.lvl || lvl[1]);
       const boss = createPet(step.bossId || step.pool?.[0] || 1, bossLvl, true, true);
       boss.name = step.enemyName || linkedBoss?.name || boss.name;
-      boss.customStatMult = 1.2 * routeMods.bossMult * (chapterMods.bossMult || 1);
+      boss.customStatMult = 1.2 * routeMods.bossMult * (chapterMods.bossMult || 1) * Math.max(0.7, 1 - (fusionBonuses.bossMultReduce || 0));
       if (linkedBoss) {
         boss.type = linkedBoss.type;
         boss.secondaryType = linkedBoss.secondaryType;
@@ -6813,14 +6813,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       _skipMechanics: [...(branchMod?.skipMechanic || []), ...routeMods.skipMechanics, ...(chapterMods.skipMechanics || [])],
       _nightBattle: !!(step.nightBattle || timePhase === 'NIGHT'),
       _chapterVars: getChapterVars(crisisId) || undefined,
+      _fusionBonuses: fusionBonuses,
       ...(battleObjective ? {
         battleObjective,
-        objectiveTurns: step.objectiveTurns || 8,
+        objectiveTurns: Math.max(3, (step.objectiveTurns || 8) - (fusionBonuses.escapeTurnReduce || 0)),
         objectiveTarget: step.objectiveTarget || 0,
         _purifyProgress: battleObjective === 'purify' ? 100 : undefined,
         _protectHp: battleObjective === 'protect' ? protectHpBase : undefined,
         _protectMaxHp: battleObjective === 'protect' ? protectHpBase : undefined,
-        _fusionBonuses: fusionBonuses,
       } : {}),
     }, 'eco_crisis');
   };
@@ -6936,7 +6936,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (task.cost?.grain) setKingdomWar(prev => ({ ...prev, grainReserve: Math.max(0, (prev.grainReserve || 0) - task.cost.grain) }));
     setFusionState(prev => ({
       ...prev,
-      kingdomTasksDone: [...(prev.kingdomTasksDone || []), taskId],
+      kingdomTasksDone: [...new Set([...(prev.kingdomTasksDone || []), taskId])],
       kingdomTaskCooldowns: { ...(prev.kingdomTaskCooldowns || {}), [taskId]: kingdomWar?.currentTurn || 0 },
     }));
     const r = task.reward || {};
@@ -6945,7 +6945,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (r.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + r.kwContrib }));
     if (r.kwManpower) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.min(999, (prev.kwManpowerReserve || 0) + r.kwManpower) }));
     if (r.generalFragment) {
-      setKingdomWar(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
+      setFusionState(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
       showMapToast('🎖️', '名将碎片', `获得 ${r.generalFragment} 碎片 ×1`, 2500);
     }
     if (task.ecoDelta) applyMapEcologyDelta(currentMapId, task.ecoDelta);
@@ -6953,7 +6953,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const startFusionDungeon = (type, id) => {
-    let def, clearedKey, clearedArr;
+    let def, clearedKey;
     if (type === 'jutsu') { def = getJutsuRealmById(id); clearedKey = 'jutsuRealmsCleared'; }
     else if (type === 'fruit') { def = getFruitSeaZoneById(id); clearedKey = 'fruitTrialsCleared'; }
     else if (type === 'sect') { def = getSectRealmById(id); clearedKey = 'sectRealmsCleared'; }
@@ -6972,23 +6972,64 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     // 按顺序处理所有步骤（包括非战斗步骤），不再跳过
     const step = allSteps[dungeonProgress];
     if (!step) return;
-    if (step.type === 'explore' || step.type === 'puzzle' || step.type === 'soothe') {
-      const reqTypes = step.reqTypes || [];
-      if (reqTypes.length && !party.some(p => reqTypes.includes(p.type) || reqTypes.includes(p.type2))) {
-        showMapToast('❌', '条件不足', `需要${reqTypes.join('/')}系精灵`, 2500); return;
-      }
-      setFusionState(prev => ({ ...prev, [`${type}_progress_${id}`]: dungeonProgress + 1 }));
-      showMapToast('✅', step.title || def.name, step.text || '探索完成', 3500);
-      if (dungeonProgress + 1 >= allSteps.length) {
-        if (type === 'sect') completeSectRealm(id, def);
-      }
-      return;
-    }
-    const isFinalStep = !combatSteps[dungeonProgress + 1];
     const leadSect = party[0]?.sectId;
     const chakraAff2 = calcChakraAffinity(narutoState?.jutsuMastery);
     const jutsuSyn2 = chakraAff2 ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[chakraAff2]?.gameType) : null;
-    const fusionBonuses = calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionState.generalTacticId, jutsuSynergy: jutsuSyn2 });
+    const baseFusionBonuses = calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionState.generalTacticId, jutsuSynergy: jutsuSyn2 });
+    const crossBonuses = calcCrossSystemPveBonuses({
+      playerStyle: fusionState.playerStyle || {},
+      kwPosition: fusionState.kwPosition,
+      nightBattle: !!(step.nightBattle || timePhase === 'NIGHT'),
+    });
+    const fusionBonuses = mergePveBonuses(baseFusionBonuses, crossBonuses);
+    const advanceFusionStep = (message = '探索完成') => {
+      const nextProgress = dungeonProgress + 1;
+      if (nextProgress >= allSteps.length) {
+        if (type === 'sect') completeSectRealm(id, def);
+        else setFusionState(prev => ({ ...prev, [clearedKey]: [...new Set([...(prev[clearedKey] || []), id])], [`${type}_progress_${id}`]: undefined }));
+      } else {
+        setFusionState(prev => ({ ...prev, [`${type}_progress_${id}`]: nextProgress }));
+      }
+      showMapToast('✅', step.title || def.name, message, 3500);
+    };
+    if (step.type === 'explore' || step.type === 'puzzle' || step.type === 'soothe') {
+      if ((step.type === 'puzzle' && fusionBonuses.skipPuzzleStep) || (step.type === 'explore' && fusionBonuses.skipExploreStep)) {
+        advanceFusionStep('构筑优势触发：本步骤已自动完成');
+        return;
+      }
+      const reqTypes = step.reqTypes || [];
+      if (reqTypes.length && !party.some(p => reqTypes.includes(p.type) || reqTypes.includes(p.type2) || reqTypes.includes(p.secondaryType))) {
+        showMapToast('❌', '条件不足', `需要${reqTypes.join('/')}系精灵`, 2500); return;
+      }
+      const reqTags = step.reqTags || [];
+      if (reqTags.length && !party.some(p => inferPetTags(p).some(t => reqTags.includes(t)))) {
+        showMapToast('❌', '条件不足', `需要带有 ${reqTags.join('/')} 标签的精灵`, 2500); return;
+      }
+      const reqJutsu = step.reqJutsu || [];
+      if (reqJutsu.length) {
+        const mastery = narutoState?.jutsuMastery || {};
+        const hasJutsu = reqJutsu.includes(chakraAff2) || Object.entries(mastery).some(([jid, uses]) => {
+          if (!uses) return false;
+          const jutsu = JUTSU_DB.find(j => j.id === jid);
+          return jutsu?.nature && reqJutsu.includes(jutsu.nature);
+        });
+        if (!hasJutsu) { showMapToast('❌', '条件不足', `需要${reqJutsu.join('/')}性质忍术`, 2500); return; }
+      }
+      const reqSectEco = Array.isArray(step.reqSectEco) ? step.reqSectEco : (step.reqSectEco ? [step.reqSectEco] : []);
+      if (reqSectEco.length && !party.some(p => reqSectEco.includes(getSectEcoRole(p.sectId)?.ecoRole))) {
+        showMapToast('❌', '条件不足', `需要${reqSectEco.join('/')}定位的门派精灵`, 2500); return;
+      }
+      if (step.kwTask && !(fusionState.kingdomTasksDone || []).includes(step.kwTask)) {
+        showMapToast('❌', '条件不足', '需先完成对应国战任务', 2500); return;
+      }
+      if (step.generalTactic && fusionState.generalTacticId !== step.generalTactic) {
+        const gt = GENERAL_PVE_TACTICS[step.generalTactic];
+        showMapToast('❌', '条件不足', `需要装备${gt?.name || step.generalTactic}将魂战术`, 2500); return;
+      }
+      advanceFusionStep(step.text || '探索完成');
+      return;
+    }
+    const isFinalStep = dungeonProgress + 1 >= allSteps.length;
     const protectHpBase = Math.floor(getStats(party[0] || {}).maxHp * (0.6 + (fusionBonuses.protectBonus || 0)));
     const enemyParty = [];
     if (step.type === 'boss' || step.bossKey) {
@@ -6997,10 +7038,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const linked = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
       if (linked) { boss.type = linked.type; boss.secondaryType = linked.secondaryType; }
       if (type === 'battlefield') {
-        boss.customStatMult = (boss.customStatMult || 1) * BOSS_STAT_MULTIPLIER;
+        boss.customStatMult = (boss.customStatMult || 1) * BOSS_STAT_MULTIPLIER * (1 - (fusionBonuses.bossMultReduce || 0));
         boss.currentHp = Math.floor((boss.currentHp || boss.stats?.hp || 100) * BOSS_HP_MULTIPLIER);
         boss.stats = boss.stats ? { ...boss.stats, hp: Math.floor(boss.stats.hp * BOSS_HP_MULTIPLIER) } : boss.stats;
         boss.isBoss = true;
+      } else if (fusionBonuses.bossMultReduce) {
+        boss.customStatMult = (boss.customStatMult || 1) * (1 - fusionBonuses.bossMultReduce);
       }
       enemyParty.push(boss);
     } else {
@@ -7016,6 +7059,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       _fusionDungeon: { type, id, clearedKey, isFinalStep },
       ecoBossMechanics: !!step.bossKey,
       bossPhases: step.bossKey ? ECO_LINKED_BOSSES[step.bossKey]?.phases : undefined,
+      _fusionBonuses: fusionBonuses,
       ...(step.objective ? {
         battleObjective: step.objective,
         objectiveTurns: step.objectiveTurns || 8,
@@ -11928,6 +11972,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (context?.bossPhases) extraBattleData.bossPhases = context.bossPhases;
     if (context?._skipMechanics) extraBattleData._skipMechanics = context._skipMechanics;
     if (context?._nonCombatRescue) extraBattleData._nonCombatRescue = context._nonCombatRescue;
+    if (context?._fusionBonuses) extraBattleData._fusionBonuses = context._fusionBonuses;
     if (context?.battleObjective) {
       extraBattleData.battleObjective = context.battleObjective;
       extraBattleData.objectiveTurns = context.objectiveTurns;
@@ -11935,7 +11980,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
       extraBattleData._purifyProgress = context._purifyProgress;
       extraBattleData._protectHp = context._protectHp;
       extraBattleData._protectMaxHp = context._protectMaxHp;
-      if (context._fusionBonuses) extraBattleData._fusionBonuses = context._fusionBonuses;
     }
     if (context?._fusionDungeon) extraBattleData._fusionDungeon = context._fusionDungeon;
     const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || [], badges.length);
@@ -15367,7 +15411,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     addLog(`${unit.name} 吃下了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
-    if (side === 'player') updateAchStat({ fruitTransforms: 1 });
+    if (side === 'player') {
+      updateAchStat({ fruitTransforms: 1 });
+      const petUid = unit.uid;
+      if (petUid) {
+        setParty(prev => prev.map(p => p.uid === petUid ? { ...p, fruitUseCount: (p.fruitUseCount || 0) + 1 } : p));
+      }
+    }
     setAnimEffect({ type: 'TRANSFORM', target: side === 'player' ? 'player' : 'enemy' });
     await wait(1500);
     setAnimEffect(null);
@@ -22959,7 +23009,7 @@ const renderMenu = () => {
                       {ecoEvt && (
                         <span style={{ fontSize:'12px', padding:'5px 10px', borderRadius:'8px', background: (ecoEvt.color || '#2E7D32') + '33', color: ecoEvt.color || '#2E7D32', fontWeight:'700' }} title={ecoEvt.summary}>{ecoEvt.icon} {ecoEvt.name}</span>
                       )}
-                      {crisis && !crisisCleared && !isLocked && badges.length >= crisis.reqBadges && (
+                      {crisis && !isLocked && badges.length >= crisis.reqBadges && (
                         <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'10px', border:'none', cursor:'pointer', background: crisis.color || '#2E7D32', color:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.2)' }}>
                           {crisis.icon} 调查·{crisis.name}
                         </button>
@@ -27487,10 +27537,16 @@ const renderMenu = () => {
     const currentSubStyle = PLAYER_STYLES[fusionState.playerStyle?.sub] || null;
     const currentBreathing = BREATHING_PVE_STYLES[fusionState.playerStyle?.breathingStyle || 'water'];
     const currentKwPosition = KINGDOM_POSITIONS.find(p => p.id === fusionState.kwPosition);
-    const currentBonuses = calcCrossSystemPveBonuses({
+    const _crossBonuses = calcCrossSystemPveBonuses({
       playerStyle: fusionState.playerStyle || {},
       kwPosition: fusionState.kwPosition,
     });
+    const _chakraAffHub = calcChakraAffinity(narutoState?.jutsuMastery);
+    const _jutsuSynergyHub = _chakraAffHub ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[_chakraAffHub]?.gameType) : null;
+    const currentBonuses = mergePveBonuses(
+      calcFusionPveBonuses({ sectId: party[0]?.sectId, generalTacticId: fusionState.generalTacticId, jutsuSynergy: _jutsuSynergyHub }),
+      _crossBonuses
+    );
     const unlockedLabels = FUSION_UNLOCK_SCHEDULE.filter(s => badges.length >= s.badges).map(s => s.label);
     const nextUnlock = FUSION_UNLOCK_SCHEDULE.find(s => badges.length < s.badges);
     const readableBonuses = [
@@ -27499,7 +27555,7 @@ const renderMenu = () => {
       currentBonuses.captureBonus ? { label: '捕获辅助', value: `+${Math.round(currentBonuses.captureBonus * 100)}%`, tone: '#fbbf24' } : null,
       currentBonuses.bossMultReduce ? { label: 'Boss压制', value: `-${Math.round(currentBonuses.bossMultReduce * 100)}%`, tone: '#fca5a5' } : null,
       currentBonuses.escapeTurnReduce ? { label: '逃脱回合', value: `-${currentBonuses.escapeTurnReduce}`, tone: '#c4b5fd' } : null,
-      currentBonuses.exploreSpeedBonus ? { label: '探索速度', value: `+${currentBonuses.exploreSpeedBonus}`, tone: '#67e8f9' } : null,
+      currentBonuses.exploreSpeedBonus ? { label: '探索速度', value: `+${Math.round(currentBonuses.exploreSpeedBonus * 100)}%`, tone: '#67e8f9' } : null,
       currentBonuses.skipPuzzleStep ? { label: '解谜跳过', value: '1次', tone: '#ddd6fe' } : null,
       currentBonuses.skipExploreStep ? { label: '探索跳过', value: '1次', tone: '#bae6fd' } : null,
       currentBonuses.puzzleHintBonus ? { label: '机关提示', value: '开启', tone: '#fde68a' } : null,
@@ -31114,12 +31170,8 @@ const renderMenu = () => {
                     >
                       {pcBatchRelease && pcBatchSelected.has(origIdx) && <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(229,57,53,0.3)',borderRadius:'8px',zIndex:1}}/>}
                       {(() => {
-                        const ivs = p.ivs || {};
-                        const mainKeys = ['maxHp','hp','p_atk','p_def','s_atk','s_def','spd'];
-                        const ivSum = mainKeys.reduce((s, k) => s + (ivs[k] || 0), 0);
-                        const ivPct = (ivSum / 186) * 100;
-                        const letter = ivPct >= 80 ? 'S' : ivPct >= 50 ? 'A' : ivPct >= 30 ? 'B' : 'C';
-                        const lColor = ivPct >= 80 ? '#FFD700' : ivPct >= 50 ? '#FF4081' : ivPct >= 30 ? '#2196F3' : '#9E9E9E';
+                        const { grade: letter } = calculateGrade(p);
+                        const lColor = letter === 'S' ? '#FFD700' : letter === 'A' ? '#FF4081' : letter === 'B' ? '#2196F3' : '#9E9E9E';
                         return <div style={{position:'absolute', top:1, left:2, fontSize:'8px', fontWeight:'bold', color: lColor, textShadow:'0 0 3px rgba(0,0,0,0.8)'}}>{letter}</div>;
                       })()}
                       {renderAvatar(p)}

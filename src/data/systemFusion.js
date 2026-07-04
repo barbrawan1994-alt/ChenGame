@@ -113,7 +113,7 @@ export const GENERAL_PVE_TACTICS = {
     passive: { label: '军策·火风联携', desc: '火/风系净化 +10%，Boss弱化3%', purifyBonus: 10, bossMultReduce: 0.03 },
     order: { label: '战令·赤壁火攻', desc: '群怪战伤害+15%', swarmDamageBonus: 0.15 },
     bestFor: ['战斗', '群战'],
-    ecoPenalty: { vegetation: -5 },
+    ecoPenalty: { vegetation: -4 },
   },
   hua_tuo: {
     generalId: 'hua_tuo', name: '华佗', icon: '💊', role: 'healer',
@@ -130,7 +130,7 @@ export const GENERAL_PVE_TACTICS = {
   },
   zhang_liao: {
     generalId: 'zhang_liao', name: '张辽', icon: '🐺', role: 'vanguard',
-    passive: { label: '军策·威震', desc: '守护战目标防御+10%', protectBonus: 0.10 },
+    passive: { label: '军策·威震', desc: '守护战目标HP+10%', protectBonus: 0.10 },
     order: { label: '战令·逍遥津', desc: '以少敌多时伤害+10%', eliteBonus: 0.10 },
     bestFor: ['守护', '防御', '以少敌多'],
   },
@@ -184,8 +184,8 @@ export const GENERAL_PVE_TACTICS = {
   },
   pang_tong: {
     generalId: 'pang_tong', name: '庞统', icon: '🪶', role: 'scheme_master',
-    passive: { label: '军策·连环', desc: '解谜跳过一次，Boss弱化2%', bossMultReduce: 0.02, skipPuzzleStep: true },
-    order: { label: '战令·连环计', desc: '机关/封印战效率+10%', purifyBonus: 10 },
+    passive: { label: '军策·连环', desc: '解谜跳过一次，Boss弱化2%，净化+6', bossMultReduce: 0.02, skipPuzzleStep: true, purifyBonus: 6 },
+    order: { label: '战令·连环计', desc: '机关/封印战效率+10%', sealBonus: 0.10 },
     bestFor: ['解谜', '封印', '机关'],
   },
   huang_yueying: {
@@ -229,9 +229,9 @@ export const KINGDOM_PVE_TASKS = [
   { id: 'kw_field_hospital', name: '战场救护', icon: '💊', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwContrib: 30, gold: 2000, generalFragment: 'hua_tuo' }, ecoDelta: { stability: 4 } },
   { id: 'kw_build_sanctuary', name: '建设圣域', icon: '⛩️', reqBadges: 7, cooldownTurns: 6, cost: { gold: 5000, energy: 20 }, reward: { kwContrib: 50, gold: 2500, guardianScore: 10 }, requiresSanctuaryLv: 2, prereq: ['kw_purify_border'] },
   { id: 'kw_reclaim_mine', name: '夺回矿场', icon: '⛏️', reqBadges: 6, cooldownTurns: 4, cost: { energy: 20 }, reward: { kwContrib: 60, gold: 5000 }, requiresCrisis: 'crisis_canyon_mine', prereq: ['kw_repair_wall'] },
-  { id: 'kw_night_patrol', name: '边境夜巡', icon: '🌙', reqBadges: 8, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 50, guardianScore: 8, gold: 4000 }, requiresUnlock: 'breathing_pve', ecoDelta: { stability: 6 } },
-  { id: 'kw_seal_guardian', name: '封印守护', icon: '⛩️', reqBadges: 9, cooldownTurns: 8, cost: { energy: 30, gold: 5000 }, reward: { kwContrib: 80, guardianScore: 12, gold: 7000 }, requiresUnlock: 'seal_boss', ecoDelta: { spirit: 8, stability: 10 }, prereq: ['kw_night_patrol'] },
-  { id: 'kw_jin_unify', name: '一统之路', icon: '🐉', reqBadges: 10, cooldownTurns: 10, cost: { energy: 30, gold: 8000 }, reward: { kwContrib: 70, gold: 6000, generalFragment: 'sima_yi' }, ecoDelta: { stability: 10, spirit: 6 }, prereq: ['kw_seal_guardian', 'kw_reclaim_mine'] },
+  { id: 'kw_night_patrol', name: '边境夜巡', icon: '🌙', reqBadges: 8, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 50, guardianScore: 8, gold: 4000 }, requiresUnlock: 'kw_night_patrol', ecoDelta: { stability: 6 } },
+  { id: 'kw_seal_guardian', name: '封印守护', icon: '⛩️', reqBadges: 9, cooldownTurns: 8, cost: { energy: 30, gold: 5000 }, reward: { kwContrib: 80, guardianScore: 12, gold: 7000 }, requiresUnlock: 'kw_seal_guardian', ecoDelta: { spirit: 8, stability: 10 }, prereq: ['kw_night_patrol'] },
+  { id: 'kw_jin_unify', name: '一统之路', icon: '🐉', reqBadges: 10, cooldownTurns: 10, cost: { energy: 30, gold: 8000 }, reward: { kwContrib: 100, gold: 8000, generalFragment: 'sima_yi' }, ecoDelta: { stability: 10, spirit: 6 }, prereq: ['kw_seal_guardian', 'kw_reclaim_mine'] },
 ];
 
 /** 国家政策（占领区域后可选，PVE 行为影响，conflicts 互斥） */
@@ -251,7 +251,7 @@ export const FUSION_UNLOCK_SCHEDULE = [
   { chapter: 3, badges: 5, systems: ['devil_fruit', 'fruit_sea', 'kingdom_sim', 'gang_hq', 'dispatch'], label: '恶魔果实 & 国战模拟' },
   { chapter: 4, badges: 6, systems: ['sect_eco', 'sect_realm'], label: '门派生态心法' },
   { chapter: 5, badges: 7, systems: ['general_tactic', 'ancient_battlefield'], label: '名将战术' },
-  { chapter: 6, badges: 8, systems: ['kingdom_pve', 'national_calamity', 'fusion_resonance', 'kw_night_patrol'], label: '国战与国土灵灾' },
+  { chapter: 6, badges: 8, systems: ['kingdom_pve', 'national_calamity', 'fusion_resonance'], label: '国战与国土灵灾' },
   { chapter: 7, badges: 10, systems: ['strategic_awaken', 'fusion_hub'], label: '终局融合' },
 ];
 
@@ -271,10 +271,11 @@ export function checkJutsuPetSynergy(party, jutsuElement) {
   (party || []).forEach(p => {
     [p?.type, p?.secondaryType, p?.type2].filter(Boolean).forEach(t => partyTypes.add(t));
   });
+  const scoreSynergy = (s) => (s.purifyBonus || 0) + (s.captureBonus || 0) * 50 + (s.protectBonus || 0) * 50 + (s.escapeTurnReduce || 0) * 5 + (s.skipExploreStep ? 8 : 0);
   let best = null;
   for (const syn of synergies) {
     if (syn.petTypes.some(t => partyTypes.has(t))) {
-      if (!best || (syn.purifyBonus || 0) > (best.purifyBonus || 0)) best = syn;
+      if (!best || scoreSynergy(syn) > scoreSynergy(best)) best = syn;
     }
   }
   return best;
@@ -285,7 +286,7 @@ export function getGeneralTactic(generalId) {
 }
 
 export function calcFusionPveBonuses(ctx = {}) {
-  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, exploreSpeedBonus: 0, puzzleHintBonus: false };
+  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, exploreSpeedBonus: 0, puzzleHintBonus: false, intimacyBonus: 0, kwContribBonus: 0, ecoBranchBonus: 0, ecoPenalty: null };
   if (ctx.sectId) {
     const role = getSectEcoRole(ctx.sectId);
     if (role?.ecoRole === 'heal') bonuses.purifyBonus += 6;
@@ -310,7 +311,11 @@ export function calcFusionPveBonuses(ctx = {}) {
       bonuses.bossMultReduce += gt.passive.bossMultReduce || 0;
       if (gt.passive.skipPuzzleStep) bonuses.skipPuzzleStep = true;
       if (gt.passive.skipExploreStep) bonuses.skipExploreStep = true;
+      if (gt.passive.intimacyBonus) bonuses.intimacyBonus += gt.passive.intimacyBonus;
+      if (gt.passive.kwContribBonus) bonuses.kwContribBonus += gt.passive.kwContribBonus;
+      if (gt.passive.ecoBranchBonus) bonuses.ecoBranchBonus += gt.passive.ecoBranchBonus;
     }
+    if (gt?.ecoPenalty) bonuses.ecoPenalty = gt.ecoPenalty;
   }
   if (ctx.jutsuSynergy) {
     bonuses.purifyBonus += ctx.jutsuSynergy.purifyBonus || 0;

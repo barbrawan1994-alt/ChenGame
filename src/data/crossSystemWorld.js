@@ -26,11 +26,11 @@ export const BREATHING_PVE_STYLES = {
   water: { id: 'water', name: '水之呼吸', icon: '🌊', passive: { protectBonus: 0.08, purifyBonus: 4 }, bestFor: ['守护', '持久战'] },
   fire: { id: 'fire', name: '炎之呼吸', icon: '🔥', passive: { bossMultReduce: 0.04, purifyBonus: 5 }, ecoPenalty: { vegetation: -2 }, bestFor: ['首领', '爆发'] },
   thunder: { id: 'thunder', name: '雷之呼吸', icon: '⚡', passive: { bossMultReduce: 0.035, escapeTurnReduce: 1 }, bestFor: ['斩杀', '打断'] },
-  wind: { id: 'wind', name: '风之呼吸', icon: '🌀', passive: { captureBonus: 0.06, exploreSpeedBonus: 0.35 }, bestFor: ['群战', '机动'] },
+  wind: { id: 'wind', name: '风之呼吸', icon: '🌀', passive: { captureBonus: 0.06, exploreSpeedBonus: 0.25 }, bestFor: ['群战', '机动'] },
   stone: { id: 'stone', name: '岩之呼吸', icon: '🪨', passive: { protectBonus: 0.08, bossMultReduce: 0.025 }, bestFor: ['守护', '攻城'] },
   flower: { id: 'flower', name: '花之呼吸', icon: '🌸', passive: { purifyBonus: 3, captureBonus: 0.06 }, bestFor: ['安抚', '结契'] },
   beast: { id: 'beast', name: '兽之呼吸', icon: '🐗', passive: { bossMultReduce: 0.03, escapeTurnReduce: 1, exploreSpeedBonus: 0.25 }, bestFor: ['追猎', '突袭'] },
-  insect: { id: 'insect', name: '蟲之呼吸', icon: '🦋', passive: { captureBonus: 0.08, purifyBonus: 4 }, bestFor: ['弱点', '斩鬼'] },
+  insect: { id: 'insect', name: '虫之呼吸', icon: '🦋', passive: { captureBonus: 0.08, purifyBonus: 4 }, bestFor: ['弱点', '斩鬼'] },
   mist: { id: 'mist', name: '霞之呼吸', icon: '🌫️', passive: { puzzleHintBonus: true, captureBonus: 0.08 }, bestFor: ['潜行', '夜战'] },
   sun: { id: 'sun', name: '日之呼吸', icon: '☀️', passive: { bossMultReduce: 0.05, purifyBonus: 4 }, ecoPenalty: { heat: 1 }, bestFor: ['终局首领', '破局'] },
   moon: { id: 'moon', name: '月之呼吸', icon: '🌙', passive: { puzzleHintBonus: true, bossMultReduce: 0.03, captureBonus: 0.04 }, bestFor: ['夜战', '解谜'] },
@@ -61,7 +61,7 @@ export const KINGDOM_POSITIONS = [
   { id: 'kw_strategist', name: '军师', icon: '🧠', sectBias: [10, 11], styleBias: ['ninja', 'sect'] },
   { id: 'kw_logistics', name: '后勤', icon: '🌾', sectBias: [5, 7], styleBias: ['sect', 'breathing'] },
   { id: 'kw_scout', name: '斥候', icon: '👁️', sectBias: [3, 8], styleBias: ['ninja', 'breathing'] },
-  { id: 'kw_spirit', name: '御灵官', icon: '💫', sectBias: [5, 12], styleBias: ['sect'] },
+  { id: 'kw_spirit', name: '御灵官', icon: '💫', sectBias: [5, 12], styleBias: ['trainer', 'sect'] },
   { id: 'kw_sealer', name: '封印师', icon: '⛩️', sectBias: [10, 8], styleBias: ['ninja'] },
   { id: 'kw_night', name: '夜巡官', icon: '🌙', sectBias: [8, 3], styleBias: ['breathing'] },
   { id: 'kw_beastmaster', name: '御兽使', icon: '🐾', sectBias: [5, 7], styleBias: ['trainer', 'sect'] },
@@ -142,28 +142,29 @@ export function calcCrossSystemPveBonuses(ctx = {}) {
   const style = ctx.playerStyle || {};
   applyScaledBonuses(bonuses, STYLE_PVE_BONUSES[style.main], 1);
   if (style.sub && style.sub !== style.main) applyScaledBonuses(bonuses, STYLE_PVE_BONUSES[style.sub], 0.5);
-  if (style.main === 'breathing' || style.sub === 'breathing') {
-    const br = getBreathingStyle(style.breathingStyle || 'water');
+  if (style.breathingStyle) {
+    const br = getBreathingStyle(style.breathingStyle);
+    const brScale = (style.main === 'breathing') ? 1 : (style.sub === 'breathing') ? 0.7 : 0.5;
     if (br?.passive) {
-      bonuses.purifyBonus += br.passive.purifyBonus || 0;
-      bonuses.protectBonus += br.passive.protectBonus || 0;
-      bonuses.captureBonus += br.passive.captureBonus || 0;
-      bonuses.escapeTurnReduce += br.passive.escapeTurnReduce || 0;
-      bonuses.bossMultReduce += br.passive.bossMultReduce || 0;
-      if (br.passive.skipPuzzleStep) bonuses.skipPuzzleStep = true;
-      if (br.passive.skipExploreStep) bonuses.skipExploreStep = true;
-      if (br.passive.exploreSpeedBonus) bonuses.exploreSpeedBonus += br.passive.exploreSpeedBonus;
-      if (br.passive.puzzleHintBonus) bonuses.puzzleHintBonus = true;
+      bonuses.purifyBonus += Math.round((br.passive.purifyBonus || 0) * brScale);
+      bonuses.protectBonus += (br.passive.protectBonus || 0) * brScale;
+      bonuses.captureBonus += (br.passive.captureBonus || 0) * brScale;
+      bonuses.escapeTurnReduce += Math.floor((br.passive.escapeTurnReduce || 0) * brScale);
+      bonuses.bossMultReduce += (br.passive.bossMultReduce || 0) * brScale;
+      if (br.passive.skipPuzzleStep && brScale >= 0.7) bonuses.skipPuzzleStep = true;
+      if (br.passive.skipExploreStep && brScale >= 0.7) bonuses.skipExploreStep = true;
+      if (br.passive.exploreSpeedBonus) bonuses.exploreSpeedBonus += br.passive.exploreSpeedBonus * brScale;
+      if (br.passive.puzzleHintBonus && brScale >= 0.7) bonuses.puzzleHintBonus = true;
     }
     if (br?.ecoPenalty) bonuses.ecoPenalty = br.ecoPenalty;
   }
   if (ctx.nightBattle) {
     if (style.breathingStyle === 'mist' || style.breathingStyle === 'moon') {
-      bonuses.purifyBonus += style.breathingStyle === 'mist' ? 6 : 4;
-      bonuses.bossMultReduce += style.breathingStyle === 'mist' ? 0.03 : 0.02;
+      bonuses.purifyBonus += style.breathingStyle === 'mist' ? 4 : 3;
+      bonuses.bossMultReduce += style.breathingStyle === 'mist' ? 0.02 : 0.015;
       bonuses.nightBonus = true;
-    } else if (style.main === 'breathing') {
-      bonuses.purifyBonus += 3;
+    } else if (style.breathingStyle) {
+      bonuses.purifyBonus += 2;
       bonuses.bossMultReduce += 0.01;
       bonuses.nightBonus = true;
     }
@@ -210,7 +211,7 @@ export function calcCrossSystemPveBonuses(ctx = {}) {
   bonuses.protectBonus = Math.max(-0.1, Math.min(0.35, bonuses.protectBonus));
   bonuses.captureBonus = Math.min(0.3, bonuses.captureBonus);
   bonuses.escapeTurnReduce = Math.min(2, bonuses.escapeTurnReduce);
-  bonuses.exploreSpeedBonus = Math.min(1.0, bonuses.exploreSpeedBonus || 0);
+  bonuses.exploreSpeedBonus = Math.min(0.8, bonuses.exploreSpeedBonus || 0);
   return bonuses;
 }
 
@@ -223,9 +224,12 @@ export function mergePveBonuses(fusionBonuses = {}, crossBonuses = {}) {
     bossMultReduce: Math.min(0.15, (fusionBonuses.bossMultReduce || 0) + (crossBonuses.bossMultReduce || 0)),
     skipPuzzleStep: !!(fusionBonuses.skipPuzzleStep || crossBonuses.skipPuzzleStep),
     skipExploreStep: !!(fusionBonuses.skipExploreStep || crossBonuses.skipExploreStep),
-    nightBonus: !!crossBonuses.nightBonus,
-    ecoPenalty: crossBonuses.ecoPenalty || null,
+    nightBonus: !!(fusionBonuses.nightBonus || crossBonuses.nightBonus),
+    ecoPenalty: crossBonuses.ecoPenalty || fusionBonuses.ecoPenalty || null,
     exploreSpeedBonus: Math.min(0.8, (fusionBonuses.exploreSpeedBonus || 0) + (crossBonuses.exploreSpeedBonus || 0)),
     puzzleHintBonus: !!(fusionBonuses.puzzleHintBonus || crossBonuses.puzzleHintBonus),
+    intimacyBonus: (fusionBonuses.intimacyBonus || 0) + (crossBonuses.intimacyBonus || 0),
+    kwContribBonus: (fusionBonuses.kwContribBonus || 0) + (crossBonuses.kwContribBonus || 0),
+    ecoBranchBonus: (fusionBonuses.ecoBranchBonus || 0) + (crossBonuses.ecoBranchBonus || 0),
   };
 }
