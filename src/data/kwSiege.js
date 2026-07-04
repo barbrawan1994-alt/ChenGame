@@ -3,7 +3,8 @@
 // 纯数值推演，不依赖战斗引擎，避免与主战斗耦合导致崩溃
 // ==========================================
 
-import { CONTESTED_MAP_IDS } from './kingdom';
+import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult } from './kingdom';
+import { getGeneralById } from './generals';
 
 export const CONTESTED_SIEGE_MAP_IDS = CONTESTED_MAP_IDS;
 
@@ -381,4 +382,213 @@ export const runKwSiegeBattle = ({
     riskLabel: preview.riskLabel,
     counter: preview.counter,
   };
+};
+
+// ==========================================
+// 日战 / 夜战
+// ==========================================
+
+/** 夜战：18:00-6:00 */
+export const isNightBattle = () => {
+  const hour = new Date().getHours();
+  return hour < 6 || hour >= 18;
+};
+
+export const getBattleTimeModifiers = () => {
+  if (!isNightBattle()) {
+    return { label: '日战', attackMult: 1, defenseMult: 1, contribMult: 1, nightVision: false };
+  }
+  return {
+    label: '夜战',
+    attackMult: 0.92,
+    defenseMult: 1.15,
+    contribMult: 1.5,
+    nightVision: true,
+    desc: '守方防御+15%，夜战胜利战功x1.5',
+  };
+};
+
+// ==========================================
+// 武将单挑
+// ==========================================
+
+export const getGeneralDuelStats = (general) => {
+  if (!general) return { force: 50, intellect: 50, command: 50 };
+  const base = general.teamLevel || 50;
+  const rarityMult = (general.rarity === 'SSR' || general.rarity === 3) ? 1.3
+    : (general.rarity === 'SR' || general.rarity === 2) ? 1.15 : 1;
+  return {
+    force: Math.floor(base * rarityMult * 0.9),
+    intellect: Math.floor(base * rarityMult * 0.75),
+    command: Math.floor(base * rarityMult * 0.85),
+  };
+};
+
+export const resolveGeneralDuel = (playerGeneral, defenderGeneral) => {
+  const p = getGeneralDuelStats(playerGeneral);
+  const d = getGeneralDuelStats(defenderGeneral);
+  const forceDiff = p.force - d.force;
+  const intDiff = p.intellect - d.intellect;
+  const cmdDiff = p.command - d.command;
+  let winChance = 0.5;
+  winChance += (forceDiff / 10) * 0.15;
+  winChance += (intDiff / 10) * 0.08;
+  winChance += (cmdDiff / 10) * 0.06;
+  winChance += (Math.random() - 0.5) * 0.12;
+  winChance = clamp(winChance, 0.12, 0.88);
+  const victory = Math.random() < winChance;
+  const strategy = intDiff >= 15 && Math.random() < 0.35;
+  return {
+    victory,
+    winChance,
+    playerStats: p,
+    defenderStats: d,
+    strategyTriggered: strategy,
+    detail: victory
+      ? (strategy ? `${playerGeneral?.name || '我方'}以计策破敌，守将${defenderGeneral?.name || ''}败退！城防-15`
+        : `${playerGeneral?.name || '我方'}力克${defenderGeneral?.name || '守将'}！城防-15`)
+      : `${defenderGeneral?.name || '守将'}坚守不退，${playerGeneral?.name || '我方'}受挫`,
+    strengthChange: victory ? -15 : 0,
+    moraleChange: victory ? 10 : -20,
+  };
+};
+
+// ==========================================
+// 三阶段攻城
+// ==========================================
+
+/**
+ * 三阶段攻城：野战 -> 单挑(可选) -> 攻城战
+ * @returns 完整攻城结果
+ */
+export const runThreePhaseSiege = ({
+  mapId,
+  playerFaction,
+  allocation,
+  territories,
+  recruitedGenerals = [],
+  generalIds = [],
+  duelGeneralId = null,
+  skipDuel = false,
+  eliteTroops = 0,
+  morale = 100,
+  kw = null,
+  fieldEval = null,
+}) => {
+  const t = territories?.[mapId];
+  if (!t || t.owner === playerFaction) {
+    return { success: false, captured: false, phases: [], totalManpowerLost: 0, detail: '无法攻击己方领地' };
+  }
+
+  const timeMod = getBattleTimeModifiers();
+  const instabilityMult = kw ? getInstabilityMult(kw) : 1;
+  const moraleMult = clamp((morale || 100) / 100, 0.6, 1.2);
+  const phases = [];
+  let totalManpowerLost = 0;
+  let strength = t.strength || 50;
+  let currentMorale = morale || 100;
+  const terrCopy = JSON.parse(JSON.stringify(territories));
+  let guards = [...(t.guards || [])];
+
+  const alloc = normalizeAllocation(allocation);
+  const deploy = sumAlloc(alloc);
+  const counter = fieldEval?.counter || 1;
+  const leadership = fieldEval?.leadership || 1;
+  const supplyMult = fieldEval?.supply?.mult || 1;
+
+  // === 阶段1：野战 ===
+  const fieldCost = Math.max(20, Math.min(40, Math.floor((strength || 50) / 3)));
+  const fieldPressure = deploy * counter * leadership * supplyMult * timeMod.attackMult * instabilityMult * moraleMult;
+  const fieldDef = getGarrisonTotalLocal(t.garrison) * (strength / 100) * timeMod.defenseMult;
+  const fieldWinChance = deploy < 60 ? 0 : clamp(0.08 + (fieldPressure / (fieldPressure + fieldDef + 1)) * 0.84, 0.08, 0.9);
+  const fieldVictory = Math.random() < fieldWinChance;
+  const fieldLoss = fieldVictory
+    ? Math.floor(fieldCost * (0.7 - fieldWinChance * 0.15))
+    : Math.floor(fieldCost * (1.1 + (1 - fieldWinChance) * 0.3));
+  totalManpowerLost += fieldLoss;
+  if (fieldVictory) {
+    totalManpowerLost = Math.max(0, totalManpowerLost - Math.floor(fieldCost * 0.3));
+    strength = Math.max(0, strength - Math.floor(5 + fieldWinChance * 8));
+  } else {
+    currentMorale = Math.max(20, currentMorale - 15);
+    phases.push({ phase: 'field', victory: false, loss: fieldLoss, detail: `${timeMod.label}野战失利，损失 ${fieldLoss} 兵力` });
+    return {
+      success: false, captured: false, phases, totalManpowerLost, strengthChange: 0,
+      morale: currentMorale, detail: `${timeMod.label}野战失利，攻城中止`,
+      contribMult: timeMod.contribMult, nightVision: timeMod.nightVision,
+    };
+  }
+  phases.push({ phase: 'field', victory: true, loss: fieldLoss, detail: `${timeMod.label}野战告捷，城防削弱` });
+
+  // === 阶段2：守将单挑 ===
+  const activeGuards = guards.filter(g => !g.defeated);
+  let duelResult = null;
+  if (!skipDuel && activeGuards.length > 0 && duelGeneralId) {
+    const playerGen = recruitedGenerals.find(g => g.id === duelGeneralId) || getGeneralById(duelGeneralId);
+    const defGuard = activeGuards[0];
+    const defGen = getGeneralById(defGuard.generalId) || { name: defGuard.name, teamLevel: 60, rarity: defGuard.rarity || 'R' };
+    duelResult = resolveGeneralDuel(playerGen, defGen);
+    currentMorale = clamp(currentMorale + (duelResult.moraleChange || 0), 20, 120);
+    strength = Math.max(0, strength + (duelResult.strengthChange || 0));
+    if (duelResult.victory) {
+      guards = guards.map(g => g.generalId === defGuard.generalId ? { ...g, defeated: true, recoverActions: 0 } : g);
+    }
+    phases.push({ phase: 'duel', victory: duelResult.victory, detail: duelResult.detail });
+  } else if (!skipDuel && activeGuards.length > 0) {
+    phases.push({ phase: 'duel', victory: null, detail: `守将${activeGuards.map(g => g.name).join('、')}据守，跳过了单挑` });
+  }
+
+  // === 阶段3：攻城战 ===
+  const remainingGuards = guards.filter(g => !g.defeated).length;
+  const eliteRatio = deploy > 0 ? Math.min(1, (eliteTroops || 0) / deploy) : 0;
+  const eliteMult = 1 + eliteRatio * (RECRUIT_CONFIG.eliteCombatMult - 1);
+  const guardPenalty = 1 + remainingGuards * 0.12;
+  const assaultPower = deploy * counter * leadership * moraleMult * instabilityMult * eliteMult / guardPenalty;
+  const defPower = getGarrisonTotalLocal(t.garrison) * (strength / 100) * timeMod.defenseMult;
+  const damage = Math.floor(8 + (assaultPower / Math.max(1, defPower)) * 17);
+  strength = Math.max(0, strength - damage);
+  const lossRate = clamp(0.35 - (assaultPower / (assaultPower + defPower + 1)) * 0.15, 0.15, 0.5);
+  const assaultLoss = Math.min(deploy, Math.floor(deploy * lossRate));
+  totalManpowerLost += assaultLoss;
+  const eliteLost = Math.min(eliteTroops || 0, Math.floor(assaultLoss * eliteRatio));
+  phases.push({
+    phase: 'assault', victory: strength <= 0, loss: assaultLoss,
+    detail: strength <= 0 ? `城防崩塌！投入 ${deploy} 兵力攻破城池` : `城防剩余 ${strength}，需再次攻城`,
+  });
+
+  const captured = strength <= 0;
+  const contribMult = timeMod.contribMult * (duelResult?.victory ? 1.1 : 1);
+
+  terrCopy[mapId] = {
+    ...t,
+    strength: captured ? 0 : strength,
+    guards,
+  };
+
+  return {
+    success: true,
+    captured,
+    phases,
+    totalManpowerLost,
+    eliteLost,
+    strength,
+    strengthChange: captured ? -999 : -damage,
+    morale: currentMorale,
+    territories: terrCopy,
+    guards,
+    detail: captured
+      ? `三阶段攻城成功！${phases.map(p => p.detail).join(' → ')}`
+      : `攻城削弱城防至 ${strength}，可继续进攻`,
+    contribMult,
+    nightVision: timeMod.nightVision,
+    timeLabel: timeMod.label,
+    winChance: fieldWinChance,
+    atkTroops: alloc,
+    defTroops: t.garrison,
+  };
+};
+
+const getGarrisonTotalLocal = (garrison) => {
+  if (!garrison) return 0;
+  return Object.values(garrison).reduce((s, v) => s + (v || 0), 0);
 };

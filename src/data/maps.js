@@ -384,3 +384,6 @@ export const LEGEND_OBTAIN_RULES = [
   { petId: 869, name: '暗夜豹', method: 'time_event', requirement: '夜晚在幽灵古堡以极低概率遭遇(3%)', mapId: 7, timePhase: 'NIGHT', encounterRate: 0.03 },
   { petId: 870, name: '极昼鸾凤', method: 'time_event', requirement: '白天在天空王座以极低概率遭遇(3%)', mapId: 8, timePhase: 'DAY', encounterRate: 0.03 },
 ];
+
+/** 国战地图相邻关系（补给线） */
+export { MAP_ADJACENCY } from './kingdom';

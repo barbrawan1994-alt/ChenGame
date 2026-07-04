@@ -175,6 +175,9 @@ import {
   getCapitalSiegeTargets, getGarrisonTotal, getFactionTerritoryStats,
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
+  RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY,
+  recruitTroops, calcGrainCap, canDefect, applyDefection, getDefectionPenalties,
+  executeAllEnemyActions, migrateKingdomWarState, getActiveGuards, assignTerritoryGuards,
 } from './data/kingdom';
 import {
   DEFAULT_KINGDOM_SIM_STATE, initKingdomSimTerritories, executeTurn,
@@ -192,6 +195,10 @@ import {
   runKwSiegeBattle,
   evaluateKwSiegeBattle,
   tickContestOccupationAI,
+  runThreePhaseSiege,
+  isNightBattle,
+  getBattleTimeModifiers,
+  resolveGeneralDuel,
   syncContestedTerritoryOwners,
   getContestMapProgress,
 } from './data/kwSiege';
@@ -663,7 +670,7 @@ export default function RPG(props) {
 
   // 国战系统
   const [kingdomWar, setKingdomWar] = useState(() => {
-    const saved = savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR };
+    const saved = migrateKingdomWarState(savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR });
     if (!saved.territories || Object.keys(saved.territories).length === 0) {
       saved.territories = initTerritories();
     }
@@ -676,6 +683,9 @@ export default function RPG(props) {
       if (!t.garrison || typeof t.garrison !== 'object' || Object.keys(t.garrison).length === 0) {
         const fid = t.owner === 'neutral' ? 'qun' : (t.owner || 'qun');
         t.garrison = generateGarrison(fid, Math.max(40, Math.floor((t.strength || 50) * 1.2)));
+      }
+      if (!t.guards || t.guards.length === 0) {
+        t.guards = assignTerritoryGuards(t.owner === 'neutral' ? 'qun' : (t.owner || 'qun'), t.strength || 60);
       }
     }
     return saved;
@@ -1827,7 +1837,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const gangCatchBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar))).catchRate || 0;
       const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
       const relicCatchBonus = getEquippedRelicEffects(relics).catchRateBonus || 0;
-      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus, 40) / 100);
+      const warBallBonus = Math.min(15, (kingdomWar?.warBalls || 0) * 5);
+      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus + warBallBonus, 55) / 100);
 
       // 徽章加成：每枚徽章提升2%捕获率上限
       const badgeBonus = 1 + Math.min(badges.length, 10) * 0.015;
@@ -7170,7 +7181,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (task.cost) {
       if (task.cost.gold && gold < task.cost.gold) { showMapToast('💰', '金币不足', `需要 ${task.cost.gold} 金币`, 2500); return; }
       if (task.cost.energy && (kingdomWar?.kwManpowerReserve || 0) < task.cost.energy) { showMapToast('⚡', '兵力不足', `需要 ${task.cost.energy} 兵力`, 2500); return; }
-      if (task.cost.grain && (kingdomWar?.grainReserve || 0) < task.cost.grain) { showMapToast('🌾', '粮草不足', `需要 ${task.cost.grain} 粮草`, 2500); return; }
+      if (task.cost.grain && (kingdomWar?.grain || 0) < task.cost.grain) { showMapToast('🌾', '粮草不足', `需要 ${task.cost.grain} 粮草`, 2500); return; }
     }
     if (task.requiresCrisis && !(ecoCrisisState.cleared || []).includes(task.requiresCrisis)) {
       showMapToast('❌', '条件不足', '需先完成对应灵灾副本', 2500); return;
@@ -7184,7 +7195,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     if (task.cost?.gold) setGold(g => g - task.cost.gold);
     if (task.cost?.energy) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - task.cost.energy) }));
-    if (task.cost?.grain) setKingdomWar(prev => ({ ...prev, grainReserve: Math.max(0, (prev.grainReserve || 0) - task.cost.grain) }));
     setFusionState(prev => ({
       ...prev,
       kingdomTasksDone: [...new Set([...(prev.kingdomTasksDone || []), taskId])],
@@ -7193,8 +7203,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const r = task.reward || {};
     if (r.gold) setGold(g => g + r.gold);
     if (r.guardianScore) addGuardianScore(r.guardianScore);
-    if (r.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + r.kwContrib }));
-    if (r.kwManpower) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.min(999, (prev.kwManpowerReserve || 0) + r.kwManpower) }));
+    setKingdomWar(prev => {
+      let next = { ...prev, currentTurn: (prev.currentTurn || 0) + 1 };
+      if (task.cost?.grain) next.grain = Math.max(0, (next.grain || 0) - task.cost.grain);
+      if (r.kwContrib) {
+        next.warContribution = (next.warContribution || 0) + r.kwContrib;
+        next.seasonContribution = (next.seasonContribution || 0) + r.kwContrib;
+        next.lifetimeContribution = (next.lifetimeContribution || 0) + r.kwContrib;
+        next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+      }
+      if (r.kwManpower) next.kwManpowerReserve = Math.min(MANPOWER_RESERVE_CAP, (next.kwManpowerReserve || 0) + r.kwManpower);
+      if (task.territoryStrength && next.faction) {
+        const terr = { ...(next.territories || {}) };
+        const owned = WAR_MAP_IDS.filter(mid => terr[mid]?.owner === next.faction);
+        if (owned.length > 0) {
+          const mid = owned.reduce((best, id) => ((terr[id]?.strength || 100) < (terr[best]?.strength || 100) ? id : best), owned[0]);
+          terr[mid] = { ...terr[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid].strength || 50) + task.territoryStrength) };
+          next.territories = terr;
+        }
+      }
+      return next;
+    });
     if (r.generalFragment) {
       setFusionState(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
       showMapToast('🎖️', '名将碎片', `获得 ${r.generalFragment} 碎片 ×1`, 2500);
@@ -7357,7 +7386,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (!cal) return;
     setFusionState(prev => ({ ...prev, calamitiesParticipated: [...(prev.calamitiesParticipated || []).filter(k => k.includes(weekKey.split('_').pop())), weekKey] }));
     addGuardianScore(cal.reward?.guardianScore || 10);
-    if (cal.reward?.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + cal.reward.kwContrib }));
+    if (cal.reward?.kwContrib) setKingdomWar(prev => {
+      const next = {
+        ...prev,
+        warContribution: (prev.warContribution || 0) + cal.reward.kwContrib,
+        seasonContribution: (prev.seasonContribution || 0) + cal.reward.kwContrib,
+        lifetimeContribution: (prev.lifetimeContribution || 0) + cal.reward.kwContrib,
+      };
+      next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+      return next;
+    });
     if (cal.reward?.gold) setGold(g => g + cal.reward.gold);
     if (cal.reward?.title) unlockTitle(cal.reward.title);
     const rawEco = cal.nationEffects || {};
@@ -15095,6 +15133,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     return () => clearInterval(interval);
   }, [cafeTick]);
 
+  /** 玩家行动后触发所有敌方联动行动 */
+  const triggerEnemyKingdomActions = () => {
+    const _p = partyRef.current || [];
+    const avgLv = _p.length > 0 ? Math.floor(_p.reduce((s, p) => s + (p?.level || 1), 0) / _p.length) : 50;
+    setKingdomWar(prev => {
+      if (!prev.faction) return prev;
+      const { kw: updatedKw, logs } = executeAllEnemyActions(prev, GANG_PRESETS, avgLv);
+      if (!logs.length) return updatedKw;
+      return { ...updatedKw, warLog: [...(updatedKw.warLog || []), ...logs].slice(-20) };
+    });
+  };
+
+  // 每日粮草/计数重置（跨日时自动结算领地粮草产出）
+  useEffect(() => {
+    setKingdomWar(prev => {
+      if (!prev.faction) return prev;
+      return resetKingdomDailyCounts(prev);
+    });
+  }, [kingdomWar.faction]);
+
   // 国战 War Tick
   useEffect(() => {
     if (!kingdomWar.faction) return;
@@ -19463,6 +19521,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 recruitedGenerals: [...(prev.recruitedGenerals || []), {
                   id: gen.id, name: gen.name, title: gen.title, faction: gen.faction,
                   rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon, recruitTime: Date.now(),
+                  teamLevel: gen.teamLevel || gen.lvl || (party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50),
                 }],
                 collectedGeneralIds: [...ids],
               };
@@ -19635,6 +19694,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           seasonContribution: (prev.seasonContribution || 0) + siegeContrib,
           lifetimeContribution: (prev.lifetimeContribution || 0) + siegeContrib,
           factionTokens: (prev.factionTokens || 0) + siegeTokens,
+          kwKills: (prev.kwKills || 0) + 1,
           capitalSiegeWins: [...(Array.isArray(prev.capitalSiegeWins) ? prev.capitalSiegeWins : []), { target: siegeTarget, season: prev.season }],
           militaryRank: (() => { const n = { ...prev, warContribution: (prev.warContribution||0)+siegeContrib, capitalSiegeWins: [...(Array.isArray(prev.capitalSiegeWins)?prev.capitalSiegeWins:[]),{target:siegeTarget,season:prev.season}] }; return getMilitaryRank(n.warContribution, buildRankStats(n)).id; })(),
           lastSiegeTime: { ...(prev.lastSiegeTime || {}), [siegeTarget]: Date.now() },
@@ -19673,6 +19733,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               seasonContribution: (prev.seasonContribution || 0) + contribGain,
               lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain,
               factionTokens: (prev.factionTokens || 0) + tokenGain,
+              kwKills: (prev.kwKills || 0) + 1,
               completedCampaigns: [...new Set([...(prev.completedCampaigns || []), campaign.id])],
             };
             next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
@@ -20527,6 +20588,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemy = battle.enemyParty[catchTargetIdx];
     if (!enemy) return addLog("无效的目标！");
     const catchChance = calculateCatchRate(ballType, enemy);
+    if ((kingdomWar?.warBalls || 0) > 0) {
+      setKingdomWar(prev => ({ ...prev, warBalls: Math.max(0, (prev.warBalls || 0) - 1) }));
+    }
     setInventory(prev => ({ ...prev, balls: { ...(prev.balls || {}), [ballType]: Math.max(0, ((prev.balls || {})[ballType] || 0) - 1) } }));
     setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
@@ -22502,7 +22566,7 @@ const renderMenu = () => {
       label: '三国阵线',
       icon: playerFaction?.icon || '🛡️',
       meta: playerFaction ? `${playerFaction.name} · ${myTerrCountMenu} 领地 · ${recruitedCount}/${MAX_RECRUITED_GENERALS} 名将` : '加入阵营后开启国战',
-      progress: kingdomWar?.faction ? Math.min(100, Math.round((myTerrCountMenu / Math.max(1, WAR_MAP_IDS?.length || 16)) * 100)) : 0,
+      progress: kingdomWar?.faction ? Math.min(100, Math.round((myTerrCountMenu / Math.max(1, WAR_MAP_IDS?.length || 38)) * 100)) : 0,
       tone: 'kingdom',
       action: () => { setMapTab('kingdom'); setView('world_map'); },
     },
@@ -23446,7 +23510,7 @@ const renderMenu = () => {
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
                 jin: { generals: '司马懿、邓艾、钟会、羊祜', strategy: '谋定天下', capital: '邺城', stronghold: '深谋远虑，一统山河' },
               };
-              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
+              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下{WAR_MAP_IDS.length}城 · 择一阵营，建功立业</div></div><div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 加入后3天内不可叛国，叛国将承受重罚', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, factionJoinDate: new Date().toISOString(), territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -23650,7 +23714,7 @@ const renderMenu = () => {
                             战局难度 {strategicBrief.campaignDifficulty}/100 · {strategicBrief.difficulty.label}
                           </div>
                         </div>
-                        <button type="button" onClick={() => setKwTab(strategicBrief.reserve < 160 ? 'territory' : (strategicBrief.contestedAttempts < strategicBrief.contestedMax ? 'contested' : 'territory'))}
+                        <button type="button" onClick={() => setKwTab(strategicBrief.reserve < 160 ? 'overview' : 'territory')}
                           style={{border:'1px solid rgba(255,255,255,0.24)', background:'rgba(255,255,255,0.12)', color:'#fff', borderRadius:'12px', padding:'8px 12px', fontSize:'11px', fontWeight:'800', cursor:'pointer', flexShrink:0}}>
                           {strategicBrief.reserve < 160 ? '去征兵' : '去行动'}
                         </button>
@@ -23714,21 +23778,98 @@ const renderMenu = () => {
                       </div>
                     </div>
                     {(() => {
-                      const todayStr = getLocalDateStr();
+                      const grainCap = calcGrainCap(kw);
                       const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
-                      let siegeDone = 0;
-                      CONTESTED_SIEGE_MAP_IDS.forEach((mid) => {
-                        siegeDone += Number((kw.contestProgress || {})[`${mid}_attempts_${todayStr}`]) || 0;
-                      });
-                      const siegeMax = CONTESTED_SIEGE_MAP_IDS.length * 3;
+                      const timeMod = getBattleTimeModifiers();
+                      const defectCheck = canDefect(kw);
+                      const pen = getDefectionPenalties(kw);
                       return (
                         <div style={{ background: 'linear-gradient(135deg, #1e293b, #334155)', borderRadius: '14px', padding: '14px 16px', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '6px' }}>⚔️ 争夺与预备兵</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '11px', opacity: 0.92, lineHeight: 1.55, alignItems: 'center' }}>
-                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>预备兵 {res}/{MANPOWER_RESERVE_CAP}</span>
-                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>今日名城攻城 {siegeDone}/{siegeMax}</span>
-                            <span style={{ opacity: 0.88 }}>征兵在国战地图；推占领条请在「争夺」攻城</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: '800' }}>🪖 征兵与战备</div>
+                            <span style={{ fontSize: '11px', background: timeMod.nightVision ? 'rgba(99,102,241,0.35)' : 'rgba(251,191,36,0.25)', padding: '3px 10px', borderRadius: '999px', fontWeight: '700' }}>
+                              {timeMod.label}{timeMod.nightVision ? ' · 战功x1.5' : ''}
+                            </span>
                           </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px', marginBottom: '10px' }}>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>预备兵 {res}/{MANPOWER_RESERVE_CAP}</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>精锐 {kw.eliteTroops || 0}</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>粮草 {kw.grain || 0}/{grainCap}</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>士气 {kw.morale ?? 100}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                            <button type="button" onClick={() => {
+                              const result = recruitTroops(kw, 'normal');
+                              if (!result.ok) { showMapToast('❌', '征兵失败', result.reason, 2000); return; }
+                              if (gold < result.goldCost) { showMapToast('💰', '金币不足', `需要 ${result.goldCost} 金`, 2000); return; }
+                              setGold(g => Math.max(0, g - result.goldCost));
+                              setKingdomWar(prev => ({ ...prev, ...result.nextKw, currentTurn: (prev.currentTurn || 0) + 1 }));
+                              triggerEnemyKingdomActions();
+                              showMapToast('🪖', '征兵完成', `获得 ${result.gain} 兵力（消耗 ${result.goldCost}金 ${result.grainCost}粮）`, 2500);
+                            }} style={{ flex: '1 1 120px', padding: '10px', border: 'none', borderRadius: '10px', background: myFaction.color, color: '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
+                              普通征兵 ({RECRUIT_CONFIG.normalCost.gold}金+{RECRUIT_CONFIG.normalCost.grain}粮)
+                            </button>
+                            <button type="button" onClick={() => {
+                              const result = recruitTroops(kw, 'elite');
+                              if (!result.ok) { showMapToast('❌', '征兵失败', result.reason, 2000); return; }
+                              if (gold < result.goldCost) { showMapToast('💰', '金币不足', `需要 ${result.goldCost} 金`, 2000); return; }
+                              setGold(g => Math.max(0, g - result.goldCost));
+                              setKingdomWar(prev => ({ ...prev, ...result.nextKw, currentTurn: (prev.currentTurn || 0) + 1 }));
+                              triggerEnemyKingdomActions();
+                              showMapToast('⚔️', '精锐征兵', `获得 ${result.gain} 精锐（攻防+30%）`, 2500);
+                            }} style={{ flex: '1 1 120px', padding: '10px', border: 'none', borderRadius: '10px', background: 'linear-gradient(135deg,#B45309,#92400E)', color: '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
+                              精锐征兵 ({RECRUIT_CONFIG.eliteCost.gold}金+{RECRUIT_CONFIG.eliteCost.grain}粮)
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '10px', opacity: 0.75, lineHeight: 1.5 }}>
+                            每次征兵/攻城后，所有敌方各行动一次。攻城无每日次数限制，但需消耗兵力。
+                          </div>
+                          {defectCheck.ok && (
+                            <button type="button" onClick={() => {
+                              setConfirmModal({
+                                title: '⚠️ 叛国确认',
+                                msg: `叛国惩罚：\n· 扣除金币 ${Math.floor((pen.goldLossPct || 0.4) * 100)}%\n· 兵力与精锐清零\n· 赛季战功与令牌清零\n· 失去 ${pen.loseGenerals} 名武将\n· 军衔降低 ${pen.rankDrop} 级\n· 自动退出帮派\n· ${pen.instabilityHours}小时内攻城效率-30%\n\n确定叛国？`,
+                                onOk: () => {
+                                  const applied = applyDefection(kw, gold);
+                                  setGold(g => Math.max(0, g - (applied.goldLoss || 0)));
+                                  if (applied.gangLeave && (gang?.gangId || gang?.customGang)) {
+                                    setGang(prev => ({
+                                      ...prev,
+                                      gangId: null,
+                                      joinDate: null,
+                                      contribution: 0,
+                                      isOwner: false,
+                                      customGang: null,
+                                      skills: [],
+                                      tasks: [],
+                                    }));
+                                  }
+                                  setKingdomWar(prev => ({
+                                    ...prev,
+                                    faction: applied.faction,
+                                    factionJoinDate: applied.factionJoinDate,
+                                    kwManpowerReserve: applied.kwManpowerReserve,
+                                    eliteTroops: applied.eliteTroops,
+                                    grain: applied.grain,
+                                    seasonContribution: applied.seasonContribution,
+                                    factionTokens: applied.factionTokens,
+                                    morale: applied.morale,
+                                    recruitedGenerals: applied.recruitedGenerals,
+                                    militaryRank: applied.militaryRank,
+                                    defectionCount: applied.defectionCount,
+                                    instabilityDebuffUntil: applied.instabilityDebuffUntil,
+                                    warLog: [...(prev.warLog || []), { time: Date.now(), type: 'defection', msg: `叛离${myFaction.fullName}，承受重罚后流亡` }].slice(-20),
+                                  }));
+                                  showMapToast('🏴', '叛国完成', `失去 ${(applied.lostGenerals || []).map(g => g.name).join('、') || '无'} 等，请重新选择阵营`, 4000);
+                                },
+                              });
+                            }} style={{ marginTop: '10px', width: '100%', padding: '8px', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '8px', background: 'rgba(239,68,68,0.12)', color: '#fca5a5', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+                              叛国（高惩罚，自动退帮）
+                            </button>
+                          )}
+                          {!defectCheck.ok && defectCheck.reason && (
+                            <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8' }}>{defectCheck.reason}</div>
+                          )}
                         </div>
                       );
                     })()}
@@ -23782,11 +23923,14 @@ const renderMenu = () => {
                               const total = Math.floor(Math.min((Math.floor(base * rank.incomeMultiplier * taxMult) + (rank.salary || 0)) * allMult, 50000));
                               const tokens = myTerrCount * 2 + (rank.tokenBonus || 0);
                               setGold(g => g + total);
-                              setKingdomWar(prev => ({
-                                ...prev,
-                                factionTokens: (prev.factionTokens || 0) + tokens,
-                                dailyCounts: { ...(prev.dailyCounts || {}), income: true, resetDate: getLocalDateStr() },
-                              }));
+                              setKingdomWar(prev => {
+                                const afterDaily = resetKingdomDailyCounts(prev);
+                                return {
+                                  ...afterDaily,
+                                  factionTokens: (afterDaily.factionTokens || 0) + tokens,
+                                  dailyCounts: { ...(afterDaily.dailyCounts || {}), income: true, resetDate: getLocalDateStr() },
+                                };
+                              });
                               showMapToast('✅', '领取成功', `${total.toLocaleString()} 金币 · 令牌 ${tokens}`, 2500);
                             }}
                             style={{
@@ -24221,7 +24365,7 @@ const renderMenu = () => {
                               </div>
                             </div>
                             <div style={{padding:'14px 16px'}}>
-                              <div style={{fontSize:'12px', fontWeight:'600', color:'#1e293b', marginBottom:'8px'}}>占领态势（魏·蜀·吴·群雄）</div>
+                              <div style={{fontSize:'12px', fontWeight:'600', color:'#1e293b', marginBottom:'8px'}}>占领态势（魏·蜀·吴·晋·群雄）</div>
                               <div style={{display:'flex', borderRadius:'6px', overflow:'hidden', height:'20px', background:'#e2e8f0', marginBottom:'8px'}}>
                                 {CONTEST_BAR_IDS.map(fid => {
                                   const pts = progress[fid] || 0;
@@ -24418,6 +24562,7 @@ const renderMenu = () => {
                               });
                               if (equipDrop) setAccessories(prev => [...prev, { ...equipDrop, uid: Date.now() + Math.random() }]);
                               showMapToast(siegeResult.victory ? '🏯' : '🛡️', siegeResult.victory ? '攻城大捷' : '攻城受挫', `${siegeResult.detail} 占领+${siegeResult.occupationGain} · 战功+${contribGain} · 令牌+${tokenGain} · 战损-${siegeResult.manpowerLost}兵`, 4200);
+                              triggerEnemyKingdomActions();
                               setKwSiegeModal(null);
                               } catch (err) {
                                 console.error('kw siege:', err);
@@ -24584,15 +24729,13 @@ const renderMenu = () => {
                 {/* 领土 */}
                 {kwTab === 'territory' && (() => {
                   const fStats = getFactionTerritoryStats(kw.territories);
-                  const today = getLocalDateStr();
-                  const dailySieges = kw.dailySiegeDate === today ? (kw.dailySiegeCount || 0) : 0;
-                  const maxDailySieges = 5;
                   const rankIdx = Math.max(0, MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian')));
                   const reserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
+                  const timeMod = getBattleTimeModifiers();
                   return (
                   <div>
                   <div style={{background:'linear-gradient(135deg, #1e293b, #334155)', borderRadius:'14px', padding:'14px', marginBottom:'12px', color:'#fff'}}>
-                    <div style={{fontSize:'14px', fontWeight:'800', marginBottom:'8px'}}>🏰 天下大势 · 四方争霸</div>
+                    <div style={{fontSize:'14px', fontWeight:'800', marginBottom:'8px'}}>🏰 天下大势 · 全图争夺</div>
                     <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'8px'}}>
                       {ALL_FACTION_IDS.map(fid => {
                         const f = FACTIONS[fid];
@@ -24604,7 +24747,9 @@ const renderMenu = () => {
                         </div>;
                       })}
                     </div>
-                    <div style={{fontSize:'11px', opacity:0.7}}>预备兵 {reserve}/{MANPOWER_RESERVE_CAP} · 今日攻城 {dailySieges}/{maxDailySieges} · 群雄会主动攻城争夺领地</div>
+                    <div style={{fontSize:'11px', opacity:0.7}}>
+                      预备兵 {reserve}/{MANPOWER_RESERVE_CAP} · 精锐 {kw.eliteTroops || 0} · 粮草 {kw.grain || 0}/{calcGrainCap(kw)} · {timeMod.label} · 无每日攻城上限
+                    </div>
                   </div>
                   <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px'}}>
                     {WAR_MAP_IDS.filter(mid => !CONTESTED_MAP_IDS.includes(Number(mid))).map(mapId => {
@@ -24617,7 +24762,7 @@ const renderMenu = () => {
                       const borderColor = isNeutral ? '#94a3b8' : (ownerFaction?.color || '#94a3b8');
                       const garrison = t.garrison || {};
 	                      const totalG = getGarrisonTotal(garrison);
-	                      const canSiege = !isMine && kw.faction && dailySieges < maxDailySieges && reserve >= 60;
+	                      const canSiege = !isMine && kw.faction && reserve >= 60;
 	                      let assaultPreview = null;
 	                      if (!isMine && kw.faction && reserve >= 60) {
 	                        const cap0 = Math.min(reserve, 200 + rankIdx * 40);
@@ -24661,6 +24806,13 @@ const renderMenu = () => {
 	                            防御 {t.strength}/100 · 总兵 {totalG}
 	                            {assaultPreview && <> · 胜率 {Math.round((assaultPreview.winChance || 0) * 100)}% · {assaultPreview.riskLabel}</>}
 	                          </div>
+                          <div style={{display:'flex', gap:'2px', flexWrap:'wrap', marginBottom:'4px'}}>
+                            {(t.guards || getActiveGuards(t)).map((g, gi) => (
+                              <span key={gi} title={g.name} style={{fontSize:'9px', background: g.defeated ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.12)', color: g.defeated ? '#94a3b8' : '#b91c1c', borderRadius:'4px', padding:'1px 5px', fontWeight:'600'}}>
+                                {g.defeated ? '💀' : '🛡️'}{g.name}
+                              </span>
+                            ))}
+                          </div>
                           <div style={{display:'flex', gap:'2px', flexWrap:'wrap', marginBottom:'6px'}}>
                             {KW_TROOP_TYPES.map(tt => {
                               const v = garrison[tt.id] || 0;
@@ -24676,11 +24828,11 @@ const renderMenu = () => {
                               const r = cap - b * 6;
                               const alloc = {};
                               KW_TROOP_IDS.forEach((tid, i) => { alloc[tid] = b + (i < r ? 1 : 0); });
-                              setKwSiegeModal({ targetMapId: mapId, targetMapName: map.name, allocation: alloc, generalIds: [], deployCap: cap, isTerritorySiege: true });
+                              setKwSiegeModal({ targetMapId: mapId, targetMapName: map.name, allocation: alloc, generalIds: [], deployCap: cap, isTerritorySiege: true, duelGeneralId: (kw.recruitedGenerals || [])[0]?.id || null, skipDuel: false });
                             }} style={{
                               width:'100%', padding:'6px', border:'none', borderRadius:'8px', fontSize:'11px', fontWeight:'700',
                               background: myFaction.color, color:'#fff', cursor:'pointer', opacity:0.9,
-                            }}>⚔️ 攻城 ({dailySieges}/{maxDailySieges})</button>
+                            }}>⚔️ 三阶段攻城</button>
                           )}
                           {isMine && <div style={{fontSize:'10px', color:'#22c55e', textAlign:'center', fontWeight:'600'}}>✅ 我方领地</div>}
                         </div>
@@ -24805,8 +24957,8 @@ const renderMenu = () => {
 	                            </div>
 	                          );
 	                        })()}
-	                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'6px' }}>选择武将（最多3）</div>
-                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'12px' }}>
+	                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'6px' }}>选择参战武将（最多3）</div>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'8px' }}>
                           {(kw.recruitedGenerals || []).map(g => {
                             const on = (kwSiegeModal.generalIds || []).includes(g.id);
                             return (
@@ -24826,6 +24978,19 @@ const renderMenu = () => {
                             );
                           })}
                         </div>
+                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'6px' }}>单挑武将（可选，击败守将削弱城防）</div>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'8px' }}>
+                          <button type="button" onClick={() => setKwSiegeModal(prev => prev ? { ...prev, duelGeneralId: null, skipDuel: true } : prev)} style={{ padding:'5px 10px', borderRadius:'8px', fontSize:'11px', border:'1px solid #cbd5e1', background: kwSiegeModal.skipDuel ? '#fef3c7' : '#fff', cursor:'pointer' }}>跳过单挑</button>
+                          {(kw.recruitedGenerals || []).map(g => (
+                            <button type="button" key={`duel-${g.id}`} onClick={() => setKwSiegeModal(prev => prev ? { ...prev, duelGeneralId: g.id, skipDuel: false } : prev)} style={{
+                              padding:'5px 10px', borderRadius:'8px', fontSize:'11px', border:`1px solid ${kwSiegeModal.duelGeneralId === g.id ? '#ef4444' : '#cbd5e1'}`,
+                              background: kwSiegeModal.duelGeneralId === g.id ? 'rgba(239,68,68,0.12)' : '#fff', cursor:'pointer',
+                            }}>⚔️ {g.name}</button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize:'11px', color:'#64748b', marginBottom:'10px', padding:'8px', background:'#f8fafc', borderRadius:'8px' }}>
+                          {getBattleTimeModifiers().label}模式 · 三阶段：野战 → 单挑 → 攻城（消耗兵力，敌方联动行动）
+                        </div>
                         <button type="button" onClick={() => {
                           try {
                             if (!kingdomWar?.faction) { showMapToast('❌','提示','未加入阵营',1800); return; }
@@ -24833,7 +24998,7 @@ const renderMenu = () => {
                             const alloc = { ...kwSiegeModal.allocation };
                             const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
-                            const result = runTerritoryAssault({
+                            const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
                               playerFaction: kingdomWar.faction,
                               allocation: alloc,
@@ -24841,52 +25006,72 @@ const renderMenu = () => {
                               recruitedGenerals: kingdomWar.recruitedGenerals || [],
                               generalIds: kwSiegeModal.generalIds || [],
                             });
-                            const contribGain = result.victory ? 15 + Math.floor(Math.random() * 10) : 4 + Math.floor(Math.random() * 3);
-                            const tokenGain = result.victory ? 2 : 0;
+                            const result = runThreePhaseSiege({
+                              mapId: mid,
+                              playerFaction: kingdomWar.faction,
+                              allocation: alloc,
+                              territories: kingdomWar.territories,
+                              recruitedGenerals: kingdomWar.recruitedGenerals || [],
+                              generalIds: kwSiegeModal.generalIds || [],
+                              duelGeneralId: kwSiegeModal.skipDuel ? null : kwSiegeModal.duelGeneralId,
+                              skipDuel: !!kwSiegeModal.skipDuel,
+                              eliteTroops: kingdomWar.eliteTroops || 0,
+                              morale: kingdomWar.morale ?? 100,
+                              kw: kingdomWar,
+                              fieldEval,
+                            });
+                            const baseContrib = result.captured ? 18 : result.success ? 8 : 3;
+                            const contribGain = Math.floor(baseContrib * (result.contribMult || 1));
+                            const tokenGain = result.captured ? 3 : 0;
                             setKingdomWar(prev => {
                               if (!prev.faction) return prev;
-                              const terr = { ...prev.territories };
+                              const defenderFaction = prev.territories[mid]?.owner;
+                              const terr = { ...(result.territories || prev.territories) };
                               const t = { ...(terr[mid] || {}) };
-                              const originalOwner = t.owner || 'neutral';
-                              t.strength = Math.max(0, Math.min(100, (t.strength || 50) + result.strengthChange));
-                              if (result.victory && t.strength <= 0) {
+                              if (result.captured) {
                                 t.owner = prev.faction;
                                 t.strength = 35;
                                 t.garrison = generateGarrison(prev.faction, 50);
+                                t.guards = assignTerritoryGuards(prev.faction, 35);
                                 t.contested = false;
                                 t.attackerFaction = null;
-                              } else if (result.victory && t.garrison) {
-                                const rk = ['shield','spear','cavalry','archer','siege','raider'][Math.floor(Math.random()*6)];
-                                t.garrison = { ...t.garrison, [rk]: Math.max(0, (t.garrison[rk] || 5) - Math.floor(5 + Math.random()*8)) };
+                              } else if (result.success) {
+                                t.strength = Math.max(0, result.strength ?? t.strength);
+                                t.guards = result.guards || t.guards;
                               }
                               terr[mid] = t;
-                              const td = getLocalDateStr();
-                              return {
+                              const next = {
                                 ...prev,
                                 territories: terr,
-                                kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - (result.manpowerLost || 0)),
+                                kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - (result.totalManpowerLost || 0)),
+                                eliteTroops: Math.max(0, (prev.eliteTroops || 0) - (result.eliteLost || 0)),
+                                morale: result.morale ?? prev.morale,
+                                actionCounter: (prev.actionCounter || 0) + 1,
+                                currentTurn: (prev.currentTurn || 0) + 1,
                                 warContribution: (prev.warContribution || 0) + contribGain,
                                 seasonContribution: (prev.seasonContribution || 0) + contribGain,
                                 lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain,
                                 factionTokens: (prev.factionTokens || 0) + tokenGain,
-                                dailySiegeCount: (prev.dailySiegeDate === td ? (prev.dailySiegeCount || 0) : 0) + 1,
-                                dailySiegeDate: td,
                                 warLog: [...(prev.warLog || []).slice(-19), {
-                                  time: Date.now(), type: result.victory ? 'player_siege_win' : 'player_siege_fail',
-                                  attacker: prev.faction, defender: originalOwner, mapId: Number(mid),
+                                  time: Date.now(), type: result.captured ? 'player_siege_win' : 'player_siege_fail',
+                                  attacker: prev.faction, defender: defenderFaction, mapId: Number(mid),
                                   atkTroops: result.atkTroops, defTroops: result.defTroops,
-                                  msg: `你发动攻城 → ${result.detail} 战功+${contribGain}`,
+                                  msg: `${result.timeLabel || ''}三阶段攻城 → ${result.detail} 战损${result.totalManpowerLost} 战功+${contribGain}`,
                                 }],
                               };
+                              next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+                              return next;
                             });
-                            showMapToast(result.victory ? '⚔️' : '🛡️', result.victory ? '攻城得手！' : '攻城受阻',
-                              `${result.detail} 战损${result.manpowerLost}兵 · 战功+${contribGain}${tokenGain > 0 ? ` · 令牌+${tokenGain}` : ''}`, 4000);
+                            triggerEnemyKingdomActions();
+                            showMapToast(result.captured ? '⚔️' : (result.success ? '🏰' : '🛡️'),
+                              result.captured ? '攻占城池！' : (result.success ? '城防削弱' : '攻城失败'),
+                              `${result.detail} 战损${result.totalManpowerLost}兵 · 战功+${contribGain}${tokenGain > 0 ? ` · 令牌+${tokenGain}` : ''}`, 4500);
                             setKwSiegeModal(null);
                           } catch (err) {
                             console.error('territory siege:', err);
                             showMapToast('❌','攻城失败','数据异常，请重试。',2500);
                           }
-                        }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动攻城</button>
+                        }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动三阶段攻城</button>
                         <button type="button" onClick={() => setKwSiegeModal(null)} style={{ width:'100%', marginTop:'8px', padding:'8px', border:'1px solid #cbd5e1', borderRadius:'10px', background:'#fff', cursor:'pointer', fontSize:'12px' }}>取消</button>
                       </div>
                     </div>
@@ -24910,42 +25095,49 @@ const renderMenu = () => {
                           </div>
                           <button onClick={() => {
                             if (!canAfford) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
-                            setConfirmModal({ title:'🎖️ 令牌购买', msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`, onOk: () => {
+                            setConfirmModal({ title:'🎖️ 令牌购买', msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`,                             onOk: () => {
                             const currentTokens = kingdomWar?.factionTokens || 0;
                             if (currentTokens < item.cost) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
-                            setKingdomWar(prev => {
-                              const newTokens = (prev.factionTokens || 0) - item.cost;
-                              if (newTokens < 0) return prev;
-                              return { ...prev, factionTokens: newTokens };
-                            });
-                            if (item.id === 'heal_all') {
-                              setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
-                            } else if (item.id === 'exp_buff') {
-                              setKingdomWar(prev => ({ ...prev, expBuffBattles: (prev.expBuffBattles || 0) + 10 }));
-                            } else if (item.id === 'siege') {
-                              const enemyTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner && kw.territories[mid].owner !== kw.faction && kw.territories[mid].owner !== 'neutral');
+                            if (item.id === 'siege') {
+                              const enemyTerrs = WAR_MAP_IDS.filter(mid => !CONTESTED_MAP_IDS.includes(Number(mid)) && kw.territories[mid]?.owner && kw.territories[mid].owner !== kw.faction && kw.territories[mid].owner !== 'neutral');
                               if (enemyTerrs.length === 0) { showMapToast('⚠️', '无可攻击目标', '没有可攻击的敌方领地', 1500); return; }
                               const targetId = enemyTerrs[Math.floor(Math.random() * enemyTerrs.length)];
                               const targetMap = MAPS.find(m => m.id === targetId);
+                              const siegeMult = getRankPerkEffects(kingdomWar).siegeEffectMult || 1;
+                              const dmg = Math.floor(10 * siegeMult);
                               setKingdomWar(prev => {
+                                if ((prev.factionTokens || 0) < item.cost) return prev;
                                 const newT = { ...prev.territories };
-                                newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - 10) };
-                                return { ...prev, territories: newT };
+                                newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - dmg) };
+                                return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost, territories: newT };
                               });
-                              showMapToast('⚔️', '投石', `${targetMap?.name || '目标'} 防御 -10`, 2000);
-                            } else if (item.id === 'war_ball') {
-                              setKingdomWar(prev => ({ ...prev, warBalls: (prev.warBalls || 0) + 1 }));
-                            } else if (item.id === 'flag') {
+                              showMapToast('⚔️', '投石', `${targetMap?.name || '目标'} 防御 -${dmg}`, 2000);
+                              return;
+                            }
+                            if (item.id === 'flag') {
                               const myTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner === kw.faction);
                               if (myTerrs.length === 0) { showMapToast('⚠️', '无可操作', '没有己方领地', 1500); return; }
                               const weakest = myTerrs.sort((a, b) => (kw.territories[a]?.strength || 0) - (kw.territories[b]?.strength || 0))[0];
                               const wMap = MAPS.find(m => m.id === weakest);
                               setKingdomWar(prev => {
+                                if ((prev.factionTokens || 0) < item.cost) return prev;
                                 const newT = { ...prev.territories };
                                 newT[weakest] = { ...newT[weakest], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (newT[weakest]?.strength || 50) + 15) };
-                                return { ...prev, territories: newT };
+                                return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost, territories: newT };
                               });
                               showMapToast('🚩', '插旗', `${wMap?.name || '领地'} 防御 +15`, 2000);
+                              return;
+                            }
+                            setKingdomWar(prev => {
+                              if ((prev.factionTokens || 0) < item.cost) return prev;
+                              return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost };
+                            });
+                            if (item.id === 'heal_all') {
+                              setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
+                            } else if (item.id === 'exp_buff') {
+                              setKingdomWar(prev => ({ ...prev, expBuffBattles: (prev.expBuffBattles || 0) + 10 }));
+                            } else if (item.id === 'war_ball') {
+                              setKingdomWar(prev => ({ ...prev, warBalls: (prev.warBalls || 0) + 1 }));
                             } else if (item.id === 'tiger_seal') {
                               setKingdomWar(prev => ({ ...prev, attackBuff: true }));
                             } else if (item.id === 'war_armor') {
@@ -27189,73 +27381,7 @@ const renderMenu = () => {
               </div>
             );
           })()}
-          {/* 生态危机 / 世界首领异象横幅 */}
-          {(() => {
-            const activeCrisis = ecoCrisisState.active ? getEcoCrisisById(ecoCrisisState.active.crisisId) : null;
-            const mapCrisis = getEcoCrisisByMapId(currentMapId, ecoCrisisState.cleared || []);
-            const crisis = (activeCrisis?.mapId === currentMapId ? activeCrisis : null) || (!(ecoCrisisState.cleared || []).includes(mapCrisis?.id) ? mapCrisis : null);
-            const todayBoss = getTodayBoss(getLocalDateStr());
-            const bossHere = todayBoss?.spawnMapId === currentMapId && badges.length >= WORLD_BOSS_REQ_BADGES;
-            const ecoEvt = getTodayEcoEvent(currentMapId);
-            const adaptSummary = getPartyAdaptationSummary(party, currentMapId);
-            const rescues = getRescueEventsForMap(currentMapId).filter(r => badges.length >= (r.reqBadges || 0) && !observationLog.includes(r.id));
-            const puzzles = getPuzzlesForMap(currentMapId).filter(p => badges.length >= (p.reqBadges || 0) && !observationLog.includes(p.id));
-            const observations = getObservationsForMap(currentMapId).filter(o => !observationLog.includes(o.id));
-            if (!crisis && !bossHere && !ecoEvt && rescues.length === 0 && puzzles.length === 0 && observations.length === 0) return null;
-            return (
-              <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
-                {ecoEvt && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background:'rgba(30,30,50,0.85)', border:'2px solid #29B6F6', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
-                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#B3E5FC' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
-                    <div style={{ fontSize:'13px', color:'rgba(179,229,252,0.8)', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
-                  </div>
-                )}
-                {adaptSummary.maladapted > 0 && (
-                  <div style={{ padding:'10px 14px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'13px', color:'#BF360C', fontWeight:'600' }}>
-                    ⚠️ {adaptSummary.pressure.icon} {adaptSummary.pressure.name}压力 · {adaptSummary.maladapted}只不适应
-                  </div>
-                )}
-                {crisis && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background:'rgba(30,30,50,0.85)', border:'2px solid #FFB300', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
-                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#FFE082' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
-                    {!(ecoCrisisState.cleared || []).includes(crisis.id) && (
-                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(90deg,#FF8F00,#F57C00)', color:'#fff', cursor:'pointer' }}>调查</button>
-                    )}
-                  </div>
-                )}
-                {bossHere && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background:'rgba(183,28,28,0.12)', border:'1px solid rgba(183,28,28,0.35)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
-                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#B71C1C' }}>{todayBoss.emoji} 异象·{todayBoss.name}</span>
-                    <button type="button" onClick={startWorldBossFight} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff', cursor:'pointer' }}>挑战</button>
-                  </div>
-                )}
-                </div>
-                {(rescues.length > 0 || puzzles.length > 0 || observations.length > 0) && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-                    {rescues.map(r => (
-                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'2px solid #FFB300', background:'rgba(30,30,50,0.85)', color:'#FFE082', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
-                    ))}
-                    {puzzles.map(p => (
-                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.25)', color:'#BBDEFB', fontWeight:'600', cursor:'pointer' }}>{p.icon} {p.name}</button>
-                    ))}
-                    {observations.map(o => (
-                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.25)', color:'#E1BEE7', fontWeight:'600', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
           {/* 2D 视口地图 - 自适应铺满 */}
-          <div className="map-top-info-bar" style={{'--map-accent': mapPixelTheme.vars['--map-accent']}}>
-            <div className="map-stamp-external">
-              <span>{currentMapInfo?.icon || '🗺️'}</span>
-              <strong>{currentMapInfo?.name || '未知区域'}</strong>
-              <em style={{fontSize:'10px', opacity:0.7, fontStyle:'normal', marginLeft:'4px'}}>{mapPixelTheme.label}</em>
-            </div>
-            <div className="map-wasd-hint-external">WASD / 方向键移动 · 空格交互</div>
-          </div>
           <div className="grid-viewport-v2 map-viewport-frame" ref={el => {
             if (el && !el.dataset.sized) {
               el.dataset.sized = '1';
@@ -30135,7 +30261,6 @@ const renderMenu = () => {
                         </div>
                         {renderBattleStageRow(p, 0)}
 
-                        {/* 第三行：血条（使用增强组件） */}
                         <EnhancedHPBar 
                             current={p.currentHp} 
                             max={pStats.maxHp} 
@@ -32286,7 +32411,7 @@ const renderMenu = () => {
       </svg>
          {/* 🎵 [新增] 隐藏的音频元素 */}
       <audio ref={audioRef} loop />
-      <HudEventFeed events={hudEvents} />
+      {/* HudEventFeed removed per user request */}
 
      
       {view === 'menu' && renderMenu()}
