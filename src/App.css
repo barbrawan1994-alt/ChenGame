@@ -15245,17 +15245,89 @@ select:focus-visible,
   position: relative;
   font-family: "Fusion Pixel 12px Monospaced SC", "Zpix", "Courier New", "PingFang SC", sans-serif;
   image-rendering: pixelated;
-  background: #1a1c2c !important;
+  background: #0f0e1a !important;
 }
 .pixel-home-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  overflow: hidden;
   background:
-    repeating-linear-gradient(0deg, transparent 0 7px, rgba(91,110,225,0.05) 7px 8px),
-    repeating-linear-gradient(90deg, transparent 0 7px, rgba(91,110,225,0.04) 7px 8px),
-    linear-gradient(180deg, #1a1c2c 0%, #262b44 40%, #3a4466 70%, #1a1c2c 100%);
+    linear-gradient(180deg,
+      #0b0c1e 0%,
+      #121530 20%,
+      #1a1f42 40%,
+      #1e2a4a 55%,
+      #1c3a3a 70%,
+      #1a4a2e 82%,
+      #153d22 90%,
+      #0d2818 100%);
+}
+/* Stars layer */
+.pixel-home-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 8%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 25% 15%, rgba(255,255,255,0.8) 100%, transparent),
+    radial-gradient(2px 2px at 40% 5%, #ffe699 100%, transparent),
+    radial-gradient(1px 1px at 55% 12%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 70% 7%, rgba(255,255,255,0.6) 100%, transparent),
+    radial-gradient(2px 2px at 85% 3%, #b8d4ff 100%, transparent),
+    radial-gradient(1px 1px at 15% 22%, rgba(255,255,255,0.5) 100%, transparent),
+    radial-gradient(1px 1px at 32% 18%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 48% 25%, rgba(255,255,255,0.7) 100%, transparent),
+    radial-gradient(2px 2px at 62% 20%, #ffe699 100%, transparent),
+    radial-gradient(1px 1px at 78% 16%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 92% 10%, rgba(255,255,255,0.4) 100%, transparent),
+    radial-gradient(1px 1px at 5% 30%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 20% 28%, rgba(255,255,255,0.6) 100%, transparent),
+    radial-gradient(2px 2px at 50% 2%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 88% 24%, rgba(255,255,255,0.5) 100%, transparent),
+    radial-gradient(1px 1px at 36% 32%, #b8d4ff 100%, transparent),
+    radial-gradient(1px 1px at 68% 28%, rgba(255,255,255,0.3) 100%, transparent);
+  animation: pixel-twinkle 4s ease-in-out infinite alternate;
+}
+/* Mountain/terrain silhouette layer */
+.pixel-home-bg::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background:
+    /* Far mountains */
+    linear-gradient(170deg, transparent 42%, #162638 42.1%, #162638 44%, transparent 44.1%),
+    linear-gradient(190deg, transparent 38%, #152535 38.1%, #152535 41%, transparent 41.1%),
+    linear-gradient(175deg, transparent 35%, #1a2d40 35.1%, #1a2d40 38%, transparent 38.1%),
+    /* Near hills */
+    linear-gradient(168deg, transparent 52%, #163020 52.1%, #163020 58%, transparent 58.1%),
+    linear-gradient(185deg, transparent 48%, #1a3826 48.1%, #1a3826 55%, transparent 55.1%),
+    linear-gradient(172deg, transparent 55%, #12301c 55.1%, #12301c 65%, transparent 65.1%),
+    /* Ground */
+    linear-gradient(180deg, transparent 70%, #0e2416 70.1%, #0e2416 80%, #0a1c10 80.1%, #0a1c10 100%);
+}
+@keyframes pixel-twinkle {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+/* Moon glow */
+.pixel-home-container::before {
+  content: '';
+  position: fixed;
+  top: 8%;
+  right: 12%;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe8a0 30%, rgba(255,232,160,0.4) 60%, transparent 70%);
+  box-shadow: 0 0 40px 15px rgba(255,232,160,0.15), 0 0 80px 30px rgba(255,232,160,0.08);
+  z-index: 0;
+  pointer-events: none;
 }
 .pixel-home-container {
   position: relative;
@@ -15264,16 +15336,27 @@ select:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding-bottom: 24px;
 }
 .pixel-home-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
-  background: #262b44;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #2a3052, #1e2340);
   border: 3px solid #5b6ee1;
-  box-shadow: inset -3px -3px 0 #1a1c2c, inset 3px 3px 0 #3a4466, 6px 6px 0 rgba(0,0,0,0.3);
+  box-shadow: inset -3px -3px 0 #141728, inset 3px 3px 0 #3a4466, 6px 6px 0 rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+.pixel-home-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 3px, rgba(91,110,225,0.06) 3px 4px);
+  pointer-events: none;
 }
 .pixel-home-title-block {
   display: flex;
@@ -15304,7 +15387,11 @@ select:focus-visible,
   font-size: clamp(28px, 6vw, 42px);
   font-weight: 950;
   line-height: 1;
-  text-shadow: 3px 3px 0 #1a1c2c, 0 0 12px rgba(244,180,27,0.3);
+  text-shadow:
+    3px 3px 0 #1a1c2c,
+    -1px -1px 0 #8a6a10,
+    0 0 20px rgba(244,180,27,0.35),
+    0 0 40px rgba(244,180,27,0.15);
 }
 .pixel-home-gold {
   color: #f4b41b;
@@ -15440,9 +15527,9 @@ select:focus-visible,
 }
 .pixel-home-stat {
   padding: 10px;
-  background: #262b44;
+  background: linear-gradient(180deg, #282e4a, #1e2340);
   border: 2px solid #3a4466;
-  box-shadow: inset -2px -2px 0 #1a1c2c, 3px 3px 0 rgba(0,0,0,0.2);
+  box-shadow: inset -2px -2px 0 #141728, inset 2px 2px 0 #353c5a, 3px 3px 0 rgba(0,0,0,0.25);
   text-align: center;
 }
 .pixel-home-stat span { display: block; color: #8b9bb4; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -15490,15 +15577,16 @@ select:focus-visible,
   align-items: center;
   gap: 4px;
   padding: 10px 8px;
-  background: #262b44;
+  background: linear-gradient(180deg, #282e4a, #1e2340);
   border: 2px solid #3a4466;
-  box-shadow: inset -2px -2px 0 #1a1c2c, 3px 3px 0 rgba(0,0,0,0.2);
+  box-shadow: inset -2px -2px 0 #141728, inset 2px 2px 0 #353c5a, 3px 3px 0 rgba(0,0,0,0.25);
   cursor: pointer;
   text-align: center;
   color: #fff;
   font-family: inherit;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.1s;
 }
+.pixel-home-sys-btn:active { transform: translate(2px, 2px); box-shadow: inset -2px -2px 0 #141728; }
 .pixel-home-sys-btn:hover { border-color: #5b6ee1; }
 .pixel-sys-icon { font-size: 22px; }
 .pixel-sys-copy strong { display: block; font-size: 12px; font-weight: 900; }
@@ -15529,15 +15617,16 @@ select:focus-visible,
   align-items: center;
   gap: 2px;
   padding: 8px 4px;
-  background: #262b44;
+  background: linear-gradient(180deg, #282e4a, #1e2340);
   border: 2px solid #3a4466;
-  box-shadow: inset -2px -2px 0 #1a1c2c;
+  box-shadow: inset -2px -2px 0 #141728, inset 1px 1px 0 #353c5a;
   cursor: pointer;
   text-align: center;
   color: #fff;
   font-family: inherit;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.1s;
 }
+.pixel-home-entry:active { transform: translate(1px, 1px); box-shadow: inset -1px -1px 0 #141728; }
 .pixel-home-entry:hover { border-color: #f4b41b; }
 .pixel-home-entry.is-danger { border-color: #b13e53; }
 .pixel-home-entry.is-danger:hover { border-color: #ef7d57; }
