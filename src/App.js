@@ -1217,7 +1217,16 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
   // 界面状态
   const [currentMapId, setCurrentMapId] = useState(savedData.savedMapId || 1);
   const [playerPos, setPlayerPos] = useState(savedData.savedPlayerPos || { x: 0, y: 0 });
+  const [playerFacing, setPlayerFacing] = useState(savedData.savedPlayerFacing || 'down');
+  const mapMoveLockRef = useRef(false);
   const [mapGrid, setMapGrid] = useState([]); // 随机生成的网格数据
+  const mapGridCacheRef = useRef(savedData.mapGridCache || {}); // 每张地图只生成一次
+
+  useEffect(() => {
+    if (mapGrid.length > 0 && currentMapId != null) {
+      mapGridCacheRef.current[currentMapId] = mapGrid;
+    }
+  }, [mapGrid, currentMapId]);
 
   useEffect(() => {
     const wk = mapWeathers[currentMapId] || 'CLEAR';
@@ -1616,13 +1625,114 @@ const [infinityState, setInfinityState] = useState(() => {
   partyRef.current = party;
   const gangRef = useRef(gang);
   gangRef.current = gang;
+
+  const getMapPixelTheme = (mapInfo = {}) => {
+    const source = `${mapInfo.id || 0}-${mapInfo.name || ''}-${mapInfo.type || ''}`;
+    const hash = Array.from(source).reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const name = mapInfo.name || '';
+    const type = mapInfo.type || 'grass';
+    const has = (...keys) => keys.some(k => name.includes(k));
+    let biome = type;
+    if (has('草原', '森林', '木叶', '妙木')) biome = 'meadow';
+    else if (has('山谷', '山脉', '火之国边境', '终末之谷', '圣地')) biome = 'ridge';
+    else if (has('工厂', '机械', '赛博', 'DA', '要塞', '本部')) biome = 'metal';
+    else if (has('海域', '波之国', '雨隐', '大桥')) biome = 'water';
+    else if (has('火山', '熔岩', '龙脊', '宇智波')) biome = 'ember';
+    else if (has('幽灵', '咒术', '幻境', '深渊', '晓之')) biome = 'spirit';
+    else if (has('天空', '星落', '银河', '空间', '彩虹')) biome = 'sky';
+    else if (has('极寒', '冻土')) biome = 'frost';
+    else if (has('荒漠', '流沙')) biome = 'desert';
+    else if (has('糖果')) biome = 'candy';
+    else if (has('冠军', '创世', '神殿', '洛阳', '成都', '建业', '襄阳')) biome = 'royal';
+
+    const palettes = {
+      meadow:  { label:'风草地貌', pattern:'leaf',   bg:['#5f8f65','#356d5d','#203f46'], panel:'#f7f0c9', shadow:'#b6a057', ink:'#21352b', g1:'#c6e879', g2:'#8cc95e', g3:'#4e9a43', water:'#54aebc', road:'#d3b86e', rock:'#9a9c74', accent:'#e7d75b' },
+      ridge:   { label:'回声山道', pattern:'crag',   bg:['#8a7a5d','#615640','#353942'], panel:'#f0dfb3', shadow:'#9d814d', ink:'#2e2b24', g1:'#b8bd73', g2:'#8d9b5c', g3:'#647947', water:'#5f9db4', road:'#c19a57', rock:'#8f8171', accent:'#d89d52' },
+      metal:   { label:'机械街区', pattern:'circuit',bg:['#627079','#344851','#172835'], panel:'#d8e0d8', shadow:'#86958e', ink:'#1b2a2f', g1:'#a4b8a4', g2:'#768f80', g3:'#4f6b62', water:'#4f8ba4', road:'#a7a28f', rock:'#75828a', accent:'#76d5d8' },
+      water:   { label:'潮汐水域', pattern:'wave',   bg:['#5296a8','#2c667f','#163b58'], panel:'#d8f0e8', shadow:'#78a9a9', ink:'#173145', g1:'#a2d49a', g2:'#68b888', g3:'#3e9270', water:'#3f9dcb', road:'#d4c078', rock:'#7b9aa0', accent:'#9fe4ef' },
+      ember:   { label:'熔火荒地', pattern:'ember',  bg:['#9d5c3d','#6b2d2d','#321f2b'], panel:'#f1d2a8', shadow:'#a86a40', ink:'#33211f', g1:'#b99a51', g2:'#986d3f', g3:'#704c32', water:'#b54f39', road:'#d18a4c', rock:'#77615c', accent:'#ffb04f' },
+      spirit:  { label:'幽影秘境', pattern:'mist',   bg:['#665184','#3d315f','#1d1d35'], panel:'#e8d9f2', shadow:'#9580af', ink:'#241d34', g1:'#9c86bd', g2:'#73599b', g3:'#4f3b73', water:'#6c83b8', road:'#b49ac0', rock:'#706983', accent:'#d5a1ff' },
+      sky:     { label:'星空高原', pattern:'star',   bg:['#5b88b7','#345b9d','#1d2f65'], panel:'#f1e6be', shadow:'#aaa06f', ink:'#18284a', g1:'#a8c68d', g2:'#77a779', g3:'#557f70', water:'#61b6dd', road:'#d6c276', rock:'#7784a6', accent:'#f8df72' },
+      frost:   { label:'冰原冻土', pattern:'snow',   bg:['#7eb7c7','#4f8599','#294b64'], panel:'#e7f4ef', shadow:'#9ebcbe', ink:'#193244', g1:'#c5e1cd', g2:'#9ac8b5', g3:'#6aa390', water:'#75cfe0', road:'#d9d3a4', rock:'#8aa3aa', accent:'#d8ffff' },
+      desert:  { label:'流沙荒漠', pattern:'sand',   bg:['#b98f55','#8a623b','#4c3a2f'], panel:'#f0dcaa', shadow:'#b48b4d', ink:'#33251c', g1:'#d5c06f', g2:'#b59c55', g3:'#8c7a42', water:'#679cb2', road:'#d5a85f', rock:'#9d815f', accent:'#f2cf72' },
+      candy:   { label:'糖霜王国', pattern:'sweet',  bg:['#d988b7','#ad609f','#704d8b'], panel:'#ffe1ef', shadow:'#cb8dae', ink:'#40223d', g1:'#f4a9c6', g2:'#d880b8', g3:'#b861a0', water:'#86c8e8', road:'#f2d274', rock:'#b58ac2', accent:'#fff08a' },
+      royal:   { label:'王座神域', pattern:'crest',  bg:['#b98a2e','#70521d','#2d2b27'], panel:'#fff0b8', shadow:'#b98a2e', ink:'#342716', g1:'#c8c170', g2:'#aaa24f', g3:'#78783d', water:'#5aa0bc', road:'#d5aa48', rock:'#98835f', accent:'#ffe073' },
+      grass:   { label:'自然原野', pattern:'leaf',   bg:['#68996a','#3a705f','#203f46'], panel:'#f7f0c9', shadow:'#b6a057', ink:'#21352b', g1:'#c6e879', g2:'#8cc95e', g3:'#4e9a43', water:'#54aebc', road:'#d3b86e', rock:'#9a9c74', accent:'#e7d75b' },
+      mountain:{ label:'岩岭山地', pattern:'crag',   bg:['#8a7a5d','#615640','#353942'], panel:'#f0dfb3', shadow:'#9d814d', ink:'#2e2b24', g1:'#b8bd73', g2:'#8d9b5c', g3:'#647947', water:'#5f9db4', road:'#c19a57', rock:'#8f8171', accent:'#d89d52' },
+      factory: { label:'遗迹机房', pattern:'circuit',bg:['#627079','#344851','#172835'], panel:'#d8e0d8', shadow:'#86958e', ink:'#1b2a2f', g1:'#a4b8a4', g2:'#768f80', g3:'#4f6b62', water:'#4f8ba4', road:'#a7a28f', rock:'#75828a', accent:'#76d5d8' },
+      fire:    { label:'灼热地带', pattern:'ember',  bg:['#9d5c3d','#6b2d2d','#321f2b'], panel:'#f1d2a8', shadow:'#a86a40', ink:'#33211f', g1:'#b99a51', g2:'#986d3f', g3:'#704c32', water:'#b54f39', road:'#d18a4c', rock:'#77615c', accent:'#ffb04f' },
+      city:    { label:'城镇街区', pattern:'circuit',bg:['#65737e','#465761','#23343c'], panel:'#e4e1cd', shadow:'#9c9676', ink:'#233034', g1:'#a5b28b', g2:'#7e9a76', g3:'#5f7e61', water:'#6aa6bd', road:'#b8aa80', rock:'#849098', accent:'#d5d082' },
+      ghost:   { label:'幽影秘境', pattern:'mist',   bg:['#665184','#3d315f','#1d1d35'], panel:'#e8d9f2', shadow:'#9580af', ink:'#241d34', g1:'#9c86bd', g2:'#73599b', g3:'#4f3b73', water:'#6c83b8', road:'#b49ac0', rock:'#706983', accent:'#d5a1ff' },
+      ice:     { label:'冰原冻土', pattern:'snow',   bg:['#7eb7c7','#4f8599','#294b64'], panel:'#e7f4ef', shadow:'#9ebcbe', ink:'#193244', g1:'#c5e1cd', g2:'#9ac8b5', g3:'#6aa390', water:'#75cfe0', road:'#d9d3a4', rock:'#8aa3aa', accent:'#d8ffff' },
+      ground:  { label:'荒土路线', pattern:'sand',   bg:['#b98f55','#8a623b','#4c3a2f'], panel:'#f0dcaa', shadow:'#b48b4d', ink:'#33251c', g1:'#d5c06f', g2:'#b59c55', g3:'#8c7a42', water:'#679cb2', road:'#d5a85f', rock:'#9d815f', accent:'#f2cf72' },
+      fairy:   { label:'妖精领地', pattern:'sweet',  bg:['#d988b7','#ad609f','#704d8b'], panel:'#ffe1ef', shadow:'#cb8dae', ink:'#40223d', g1:'#f4a9c6', g2:'#d880b8', g3:'#b861a0', water:'#86c8e8', road:'#f2d274', rock:'#b58ac2', accent:'#fff08a' },
+      space:   { label:'星界空间', pattern:'star',   bg:['#3d4c9a','#242e73','#151936'], panel:'#ece3ff', shadow:'#8f82c2', ink:'#191d3c', g1:'#7f89b8', g2:'#5d6aa6', g3:'#414d80', water:'#5c9bd6', road:'#bca6d6', rock:'#6d6e94', accent:'#f8df72' },
+      gold:    { label:'荣耀圣道', pattern:'crest',  bg:['#b98a2e','#70521d','#2d2b27'], panel:'#fff0b8', shadow:'#b98a2e', ink:'#342716', g1:'#c8c170', g2:'#aaa24f', g3:'#78783d', water:'#5aa0bc', road:'#d5aa48', rock:'#98835f', accent:'#ffe073' },
+      forest:  { label:'密林深处', pattern:'leaf',   bg:['#4f8a50','#285c42','#1d3834'], panel:'#e6e0b6', shadow:'#9f9150', ink:'#1f3328', g1:'#a9cf68', g2:'#6fa64f', g3:'#3e7a38', water:'#4a9cb2', road:'#c5a664', rock:'#7d8b62', accent:'#d1ca58' },
+      rock:    { label:'岩窟路线', pattern:'crag',   bg:['#8a7a5d','#615640','#353942'], panel:'#f0dfb3', shadow:'#9d814d', ink:'#2e2b24', g1:'#b8bd73', g2:'#8d9b5c', g3:'#647947', water:'#5f9db4', road:'#c19a57', rock:'#8f8171', accent:'#d89d52' },
+      capital: { label:'王城领地', pattern:'crest',  bg:['#aa813c','#714b2e','#2e2e35'], panel:'#fff0b8', shadow:'#b98a2e', ink:'#342716', g1:'#bdbb70', g2:'#969452', g3:'#6b713d', water:'#5aa0bc', road:'#d0a356', rock:'#857966', accent:'#ffe073' },
+    };
+    const palette = palettes[biome] || palettes[type] || palettes.grass;
+    const hue = (hash % 25) - 12;
+    const scale = 8 + (hash % 4) * 2;
+    const accent = mapInfo.color || palette.accent;
+    const hexToRgb = (hex) => {
+      if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return null;
+      const n = parseInt(hex.slice(1), 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    };
+    const rgbToHex = ({ r, g, b }) => `#${[r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
+    const mixHex = (base, target, weight = 0.2) => {
+      const a = hexToRgb(base);
+      const b = hexToRgb(target);
+      if (!a || !b) return base;
+      return rgbToHex({
+        r: a.r * (1 - weight) + b.r * weight,
+        g: a.g * (1 - weight) + b.g * weight,
+        b: a.b * (1 - weight) + b.b * weight,
+      });
+    };
+    const colorWeight = 0.16 + (hash % 7) * 0.025;
+    const tune = (base, extra = 0) => mixHex(base, accent, Math.min(0.38, colorWeight + extra));
+    return {
+      biome,
+      pattern: palette.pattern,
+      label: palette.label,
+      vars: {
+        '--px-ink': palette.ink,
+        '--px-panel': palette.panel,
+        '--px-panel-shadow': palette.shadow,
+        '--px-green-1': tune(palette.g1, 0.03),
+        '--px-green-2': tune(palette.g2, 0.01),
+        '--px-green-3': tune(palette.g3, -0.02),
+        '--px-water-2': tune(palette.water, -0.05),
+        '--px-road-1': tune(palette.road, -0.04),
+        '--px-rock-1': tune(palette.rock, -0.03),
+        '--map-bg-start': tune(palette.bg[0], 0.04),
+        '--map-bg-mid': tune(palette.bg[1], 0.02),
+        '--map-bg-end': tune(palette.bg[2], 0),
+        '--map-accent': accent,
+        '--map-pattern-size': `${scale}px`,
+        '--map-tile-hue': `${hue}deg`,
+        '--map-tile-sat': `${1 + ((hash % 5) - 2) * 0.04}`,
+      }
+    };
+  };
+
   const handleMove = useCallback((dx, dy) => {
-  setPlayerPos(prevPos => {
-    const nx = prevPos.x + dx;
-    const ny = prevPos.y + dy;
-    return { x: nx, y: ny, dx, dy, intent: true }; 
-  });
-}, []);
+    const nextFacing = dy < 0 ? 'up' : dy > 0 ? 'down' : dx < 0 ? 'left' : 'right';
+    setPlayerFacing(nextFacing);
+    if (mapMoveLockRef.current) return;
+    mapMoveLockRef.current = true;
+    window.setTimeout(() => {
+      mapMoveLockRef.current = false;
+    }, 135);
+    setPlayerPos(prevPos => {
+      const nx = prevPos.x + dx;
+      const ny = prevPos.y + dy;
+      return { x: nx, y: ny, dx, dy, intent: true, facing: nextFacing, stepTick: Date.now() };
+    });
+  }, []);
 const [viewStatPet, setViewStatPet] = useState(null);
   const [rebirthData, setRebirthData] = useState(null);
   const [showNatureTip, setShowNatureTip] = useState(false); 
@@ -4046,6 +4156,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     battleRecords,
     relics, guardianScore, guardianMilestonesClaimed,
     sanctuaryState, bondingProgress, ecoCrisisRoutes, fusionState,
+    mapGridCache: mapGridCacheRef.current,
   };};
 
   const persistSave = (silent = false) => {
@@ -11039,8 +11150,20 @@ const useGrowthItem = (petIndex, itemId) => {
         }
     }
 
-    // 3. 生成地图网格
-    let newGrid; // <--- 在这里声明
+    // 3. 生成地图网格（每张地图只随机生成一次，后续复用缓存）
+    const cachedGrid = mapGridCacheRef.current[mapId];
+    if (cachedGrid) {
+      setMapGrid(cachedGrid);
+      if (mapId === 99) {
+        const midY = Math.floor(GRID_H / 2);
+        setPlayerPos({x: 1, y: midY});
+      } else {
+        setPlayerPos(prev => (prev.x && prev.y && currentMapId === mapId) ? prev : {x: 1, y: 2});
+      }
+      setView('grid_map');
+      return;
+    }
+    let newGrid;
 
     // ▼▼▼▼▼▼ 特殊地图生成：日蚀要塞 (ID 99) ▼▼▼▼▼▼
     if (mapId === 99) {
@@ -11180,6 +11303,7 @@ const useGrowthItem = (petIndex, itemId) => {
       if (mapTier >= 3) placeRandom(24, _.random(1, mapTier - 2));
     }
 
+    mapGridCacheRef.current[mapId] = newGrid;
     setMapGrid(newGrid);
     setView('grid_map');
   };
@@ -11866,14 +11990,24 @@ const useGrowthItem = (petIndex, itemId) => {
         return;
       }
       switch(e.key) {
-        case 'ArrowUp': case 'w': case 'W': handleMove(0, -1); break;
-        case 'ArrowDown': case 's': case 'S': handleMove(0, 1); break;
-        case 'ArrowLeft': case 'a': case 'A': handleMove(-1, 0); break;
-        case 'ArrowRight': case 'd': case 'D': handleMove(1, 0); break;
+        case 'ArrowUp': case 'w': case 'W': e.preventDefault(); handleMove(0, -1); break;
+        case 'ArrowDown': case 's': case 'S': e.preventDefault(); handleMove(0, 1); break;
+        case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); handleMove(-1, 0); break;
+        case 'ArrowRight': case 'd': case 'D': e.preventDefault(); handleMove(1, 0); break;
         case ' ': {
           e.preventDefault();
           const px = playerPos.x, py = playerPos.y;
-          const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+          const facingVectors = {
+            up: [0, -1],
+            down: [0, 1],
+            left: [-1, 0],
+            right: [1, 0],
+          };
+          const primary = facingVectors[playerFacing] || facingVectors.down;
+          const dirs = [
+            primary,
+            ...[[0,-1],[0,1],[-1,0],[1,0]].filter(([dx, dy]) => dx !== primary[0] || dy !== primary[1])
+          ];
           for (const [dx,dy] of dirs) {
             const nx = px+dx, ny = py+dy;
             if (ny >= 0 && ny < GRID_H && nx >= 0 && nx < GRID_W && mapGrid[ny]?.[nx]) {
@@ -11888,7 +12022,7 @@ const useGrowthItem = (petIndex, itemId) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view, handleMove, shopMode, pcMode, party, isDialogVisible, fusionMode, teamMode, activityModal, merchantItems, playerPos, mapGrid]);
+  }, [view, handleMove, shopMode, pcMode, party, isDialogVisible, fusionMode, teamMode, activityModal, merchantItems, playerPos, playerFacing, mapGrid]);
 
   const handleEventConfirm = () => {
     setEventData(null);
@@ -27075,6 +27209,7 @@ const renderMenu = () => {
     }
     const currentMapInfo = MAPS.find(m => m.id === currentMapId) || MAPS[0];
     const theme = THEME_CONFIG[currentMapInfo.type] || THEME_CONFIG.grass;
+    const mapPixelTheme = getMapPixelTheme(currentMapInfo);
     
     const timeInfo = TIME_PHASES[timePhase];
     
@@ -27091,7 +27226,12 @@ const renderMenu = () => {
     };
     
     return (
-      <div className={`screen grid-screen game-ui-wrapper grid-screen-redesign ${theme.cssClass}`} style={{
+      <div
+        className={`screen grid-screen game-ui-wrapper grid-screen-redesign ${theme.cssClass} map-biome-${mapPixelTheme.biome} map-pattern-${mapPixelTheme.pattern}`}
+        data-map-name={currentMapInfo?.name || '未知区域'}
+        data-map-biome={mapPixelTheme.label}
+        style={{
+          ...mapPixelTheme.vars,
           backgroundColor: theme.bg, 
           position: 'relative', 
           overflow: 'hidden',
@@ -27100,7 +27240,8 @@ const renderMenu = () => {
           alignItems: 'stretch',
           padding: '10px',
           gap: '15px'
-      }}>
+        }}
+      >
         {/* 环境特效层 (下雨/天黑等) */}
         {renderEnvironmentOverlay()}
 
@@ -27259,33 +27400,45 @@ const renderMenu = () => {
             }
           }} style={{
               '--map-bg': theme.bg,
+              '--map-accent': mapPixelTheme.vars['--map-accent'],
               flex: 1, position: 'relative', borderRadius: '12px',
               overflow: 'hidden', background: theme.bg || '#2d5a3d'
           }}>
+            <div className="map-identity-stamp">
+              <span>{currentMapInfo?.icon || '🗺️'}</span>
+              <div>
+                <strong>{currentMapInfo?.name || '未知区域'}</strong>
+                <em>{mapPixelTheme.label}</em>
+              </div>
+            </div>
             {mapGrid.length > 0 && (() => {
               const vpEl = document.querySelector('.grid-viewport-v2');
               const vpW = vpEl ? vpEl.clientWidth : 700;
               const vpH = vpEl ? vpEl.clientHeight : 500;
-              const VW = Math.max(11, Math.ceil(vpW / 52) | 1);
-              const VH = Math.max(9, Math.ceil(vpH / 52) | 1);
-              const TILE_SZ = Math.max(Math.floor(Math.min(vpW / VW, vpH / VH)), 40);
-              const totalW = VW * TILE_SZ;
-              const totalH = VH * TILE_SZ;
+              const VIEW_COLS = Math.max(13, Math.ceil(vpW / 46) | 1);
+              const VIEW_ROWS = Math.max(9, Math.ceil(vpH / 46) | 1);
+              const TILE_SZ = Math.max(36, Math.ceil(Math.max(vpW / VIEW_COLS, vpH / VIEW_ROWS)));
+              const totalW = VIEW_COLS * TILE_SZ;
+              const totalH = VIEW_ROWS * TILE_SZ;
 
-              const halfW = Math.floor(VW / 2), halfH = Math.floor(VH / 2);
-              const camX = Math.max(0, Math.min(GRID_W - VW, playerPos.x - halfW));
-              const camY = Math.max(0, Math.min(GRID_H - VH, playerPos.y - halfH));
-              const offsetX = -(playerPos.x - halfW - camX) * TILE_SZ;
-              const offsetY = -(playerPos.y - halfH - camY) * TILE_SZ;
+              const halfW = Math.floor(VIEW_COLS / 2), halfH = Math.floor(VIEW_ROWS / 2);
+              const camX = GRID_W <= VIEW_COLS
+                ? Math.floor((GRID_W - VIEW_COLS) / 2)
+                : Math.max(0, Math.min(GRID_W - VIEW_COLS, playerPos.x - halfW));
+              const camY = GRID_H <= VIEW_ROWS
+                ? Math.floor((GRID_H - VIEW_ROWS) / 2)
+                : Math.max(0, Math.min(GRID_H - VIEW_ROWS, playerPos.y - halfH));
+              const offsetX = Math.floor((vpW - totalW) / 2);
+              const offsetY = Math.floor((vpH - totalH) / 2);
 
               const leaderPet = party.find(p => p && p.currentHp > 0) || party[0];
               const leaderSprite = leaderPet ? getSpriteUrl(leaderPet) : null;
               const leaderIsDigimon = leaderSprite && leaderSprite.includes('digi-api.com');
 
               const rows = [];
-              for (let vy = 0; vy < VH; vy++) {
+              for (let vy = 0; vy < VIEW_ROWS; vy++) {
                 const cells = [];
-                for (let vx = 0; vx < VW; vx++) {
+                for (let vx = 0; vx < VIEW_COLS; vx++) {
                   const wx = camX + vx, wy = camY + vy;
                   if (wx < 0 || wx >= GRID_W || wy < 0 || wy >= GRID_H) {
                     cells.push(<div key={`${vx}-${vy}`} className="mt-void" style={{width:TILE_SZ,height:TILE_SZ}} />);
@@ -27391,7 +27544,11 @@ const renderMenu = () => {
                     >
                       {content}
                       {isPlayer && (
-                        <div className="player-marker">
+                        <div
+                          key={`${playerPos.x}-${playerPos.y}-${playerPos.stepTick || 0}`}
+                          className="player-marker player-walking"
+                          data-facing={playerFacing}
+                        >
                           {leaderSprite ? (
                             <img src={leaderSprite} alt="首发精灵" className={`player-pet-img ${leaderIsDigimon ? 'pet-avatar-digimon' : ''}`} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                           ) : null}
@@ -27409,14 +27566,12 @@ const renderMenu = () => {
                 rows.push(<div key={vy} style={{display:'flex'}}>{cells}</div>);
               }
               return (
-                <div className="map-camera" style={{
+                <div className="map-camera pokemon-camera" style={{
                   transform: `translate(${offsetX}px, ${offsetY}px)`,
-                  transition: 'transform 0.15s ease-out',
+                  transition: 'transform 0.13s steps(4, end)',
                   width: totalW, height: totalH,
                   position: 'absolute',
-                  top: '50%', left: '50%',
-                  marginTop: -totalH / 2,
-                  marginLeft: -totalW / 2,
+                  top: 0, left: 0,
                 }}>
                   {rows}
                 </div>
@@ -29852,12 +30007,12 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角 / 双打时偏右) */}
                 {/* ========================================== */}
-                <div className="enemy-zone-v2" style={{position: 'absolute', top: '2%', right: isDoubleBattle ? '2%' : '4%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', transform: isDoubleBattle ? 'scale(0.8)' : 'none', transformOrigin:'top right'}}>
+                <div className={`enemy-zone-v2 ${isDoubleBattle ? 'double-mode' : ''}`} style={{position: 'absolute', top: '2%', right: isDoubleBattle ? '1%' : '4%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
                     
                     {/* 敌方 HUD */}
-                    <div className="hud-card hud-enemy" style={{marginBottom: '8px'}}>
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                            <span style={{fontSize:'13px', fontWeight:'bold', wordBreak:'break-word',overflow:'hidden',textOverflow:'ellipsis', minWidth:0, maxWidth:'120px', whiteSpace:'nowrap', display:'inline-block'}}>
+                    <div className={`hud-card hud-enemy ${isDoubleBattle ? 'hud-card--double' : ''}`} style={{marginBottom: '8px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
+                            <span style={{fontSize: isDoubleBattle ? '11px' : '13px', fontWeight:'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block', maxWidth: isDoubleBattle ? '180px' : '140px'}}>
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
                             <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
@@ -29947,10 +30102,10 @@ const renderMenu = () => {
                         if (ix !== undefined) setBattle(prev => prev ? { ...prev, targetIdx: ix } : null);
                       } : undefined}
                     >
-                        {battle.isTrainer && (
+                        {(battle.isTrainer || battle.isGym || battle.isChallenge || battle.isBoss) && (
                             <div style={{
-                                position: 'absolute', bottom: '0px', right: '-60px', zIndex: 0, opacity: 0.15, width: 160, height: 160,
-                                filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2)) grayscale(0.3)', pointerEvents: 'none'
+                                position: 'absolute', bottom: '-10px', right: isDoubleBattle ? '-40px' : '-70px', zIndex: 0, opacity: 0.55, width: isDoubleBattle ? 140 : 200, height: isDoubleBattle ? 140 : 200,
+                                filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.4))', pointerEvents: 'none'
                             }}>
                                     {getTrainerAvatar(battle.trainerName)}
                             </div>
@@ -30004,11 +30159,11 @@ const renderMenu = () => {
                 {/* 1b. 敌方区域2 (左上角, 仅双打) */}
                 {/* ========================================== */}
                 {isDoubleBattle && e2 && (
-                  <div className="enemy-zone-v2" style={{position:'absolute', top:'2%', left:'2%', display:'flex', flexDirection:'column', alignItems:'flex-start', transform:'scale(0.8)', transformOrigin:'top left', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
-                    <div className="hud-card hud-enemy" style={{marginBottom:'8px'}}>
-                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                        <span style={{fontSize:'13px', fontWeight:'bold', wordBreak:'break-word',overflow:'hidden',textOverflow:'ellipsis'}}>{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
-                        <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
+                  <div className="enemy-zone-v2 double-mode" style={{position:'absolute', top:'2%', left:'1%', display:'flex', flexDirection:'column', alignItems:'flex-start', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
+                    <div className="hud-card hud-enemy hud-card--double" style={{marginBottom:'8px'}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
+                        <span style={{fontSize:'11px', fontWeight:'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'180px'}}>{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
+                        <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
                       </div>
                       <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
                         {e2.isFusedShiny ? (
@@ -30075,7 +30230,7 @@ const renderMenu = () => {
                 {/* ========================================== */}
                 {/* 2. 我方区域 (左下角) */}
                 {/* ========================================== */}
-                <div className="player-zone-v2" style={{position: 'absolute', bottom: '4%', left: isDoubleBattle ? '1%' : '3%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', transform: isDoubleBattle ? 'scale(0.8)' : 'none', transformOrigin:'bottom left'}}>
+                <div className={`player-zone-v2 ${isDoubleBattle ? 'double-mode' : ''}`} style={{position: 'absolute', bottom: '4%', left: isDoubleBattle ? '1%' : '3%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
                     
                     {/* 我方精灵 */}
                     <div className={`sprite-wrapper player-sprite-wrapper ${p.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position: 'relative', marginBottom: '6px', marginLeft: '5px'}}>
@@ -30200,7 +30355,7 @@ const renderMenu = () => {
                 {/* 2b. 我方区域2 (右下角, 仅双打) */}
                 {/* ========================================== */}
                 {isDoubleBattle && p2 && (
-                  <div className="player-zone-v2" style={{position:'absolute', bottom:'4%', right:'2%', display:'flex', flexDirection:'column', alignItems:'flex-end', transform:'scale(0.8)', transformOrigin:'bottom right', zIndex:5, opacity: p2.currentHp <= 0 ? 0.4 : 1}}>
+                  <div className="player-zone-v2 double-mode" style={{position:'absolute', bottom:'4%', right:'2%', display:'flex', flexDirection:'column', alignItems:'flex-end', zIndex:5, opacity: p2.currentHp <= 0 ? 0.4 : 1}}>
                     <div className={`sprite-wrapper player-sprite-wrapper ${p2.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position:'relative', marginBottom:'6px'}}>
                       <div className="battle-platform battle-platform-player" />
                       <div style={{transform:'scaleX(-1)'}}>
