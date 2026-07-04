@@ -32,7 +32,7 @@ export const BREATHING_PVE_STYLES = {
   beast: { id: 'beast', name: '兽之呼吸', icon: '🐗', passive: { bossMultReduce: 0.03, escapeTurnReduce: 1, exploreSpeedBonus: 0.25 }, bestFor: ['追猎', '突袭'] },
   insect: { id: 'insect', name: '虫之呼吸', icon: '🦋', passive: { captureBonus: 0.08, purifyBonus: 4 }, bestFor: ['弱点', '斩鬼'] },
   mist: { id: 'mist', name: '霞之呼吸', icon: '🌫️', passive: { puzzleHintBonus: true, captureBonus: 0.08 }, bestFor: ['潜行', '夜战'] },
-  sun: { id: 'sun', name: '日之呼吸', icon: '☀️', passive: { bossMultReduce: 0.05, purifyBonus: 4 }, ecoPenalty: { heat: 1 }, bestFor: ['终局首领', '破局'] },
+  sun: { id: 'sun', name: '日之呼吸', icon: '☀️', passive: { bossMultReduce: 0.05, purifyBonus: 4 }, ecoPenalty: { pollution: 1 }, bestFor: ['终局首领', '破局'] },
   moon: { id: 'moon', name: '月之呼吸', icon: '🌙', passive: { puzzleHintBonus: true, bossMultReduce: 0.03, captureBonus: 0.04 }, bestFor: ['夜战', '解谜'] },
 };
 
@@ -138,7 +138,7 @@ function applyScaledBonuses(target, source = {}, scale = 1) {
 
 /** 跨体系 PVE 加成（叠加 fusion 加成，有上限） */
 export function calcCrossSystemPveBonuses(ctx = {}) {
-  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, nightBonus: false, exploreSpeedBonus: 0, puzzleHintBonus: false };
+  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, nightBonus: false, exploreSpeedBonus: 0, puzzleHintBonus: false, ecoPenalty: null };
   const style = ctx.playerStyle || {};
   applyScaledBonuses(bonuses, STYLE_PVE_BONUSES[style.main], 1);
   if (style.sub && style.sub !== style.main) applyScaledBonuses(bonuses, STYLE_PVE_BONUSES[style.sub], 0.5);
@@ -216,6 +216,11 @@ export function calcCrossSystemPveBonuses(ctx = {}) {
 }
 
 export function mergePveBonuses(fusionBonuses = {}, crossBonuses = {}) {
+  let mergedEcoPenalty = null;
+  if (fusionBonuses.ecoPenalty || crossBonuses.ecoPenalty) {
+    mergedEcoPenalty = { ...(fusionBonuses.ecoPenalty || {}) };
+    if (crossBonuses.ecoPenalty) Object.entries(crossBonuses.ecoPenalty).forEach(([k, v]) => { mergedEcoPenalty[k] = (mergedEcoPenalty[k] || 0) + v; });
+  }
   return {
     purifyBonus: Math.min(40, (fusionBonuses.purifyBonus || 0) + (crossBonuses.purifyBonus || 0)),
     protectBonus: Math.max(-0.1, Math.min(0.35, (fusionBonuses.protectBonus || 0) + (crossBonuses.protectBonus || 0))),
@@ -225,11 +230,14 @@ export function mergePveBonuses(fusionBonuses = {}, crossBonuses = {}) {
     skipPuzzleStep: !!(fusionBonuses.skipPuzzleStep || crossBonuses.skipPuzzleStep),
     skipExploreStep: !!(fusionBonuses.skipExploreStep || crossBonuses.skipExploreStep),
     nightBonus: !!(fusionBonuses.nightBonus || crossBonuses.nightBonus),
-    ecoPenalty: crossBonuses.ecoPenalty || fusionBonuses.ecoPenalty || null,
+    ecoPenalty: mergedEcoPenalty,
     exploreSpeedBonus: Math.min(0.8, (fusionBonuses.exploreSpeedBonus || 0) + (crossBonuses.exploreSpeedBonus || 0)),
     puzzleHintBonus: !!(fusionBonuses.puzzleHintBonus || crossBonuses.puzzleHintBonus),
     intimacyBonus: (fusionBonuses.intimacyBonus || 0) + (crossBonuses.intimacyBonus || 0),
     kwContribBonus: (fusionBonuses.kwContribBonus || 0) + (crossBonuses.kwContribBonus || 0),
     ecoBranchBonus: (fusionBonuses.ecoBranchBonus || 0) + (crossBonuses.ecoBranchBonus || 0),
+    swarmDamageBonus: Math.min(0.4, (fusionBonuses.swarmDamageBonus || 0) + (crossBonuses.swarmDamageBonus || 0)),
+    firstStepBonus: Math.min(0.4, (fusionBonuses.firstStepBonus || 0) + (crossBonuses.firstStepBonus || 0)),
+    sealBonus: Math.min(0.3, (fusionBonuses.sealBonus || 0) + (crossBonuses.sealBonus || 0)),
   };
 }

@@ -64,7 +64,7 @@ export const ECO_CRISES = [
       { type: 'battle', title: '冰原遭遇', enemyName: '狂乱冰系群', pool: [86, 87, 91, 124, 144], lvl: [68, 78], count: 4 },
       { type: 'puzzle', title: '破冰仪式', text: '用火系技能融化冰柱，露出通往地下的裂隙。' },
       { type: 'branch', title: '选择对策' },
-      { type: 'boss', title: '极光之主', enemyName: '赤极光兽', bossId: 344, lvl: 86, drop: 8000 },
+      { type: 'boss', title: '极光之主', enemyName: '赤极光兽', bossKey: 'red_aurora_beast', bossId: 344, lvl: 86, drop: 8000 },
     ],
     reward: { gold: 9000, item: 'ice_stone', itemCount: 1 },
     ecologyReward: { spirit: 15, stability: 10 },
@@ -132,7 +132,7 @@ export const ECO_CRISES = [
     endings: [
       { id: 'repel', conditions: ['branch:fight'], narrative: '沉歌蚌后被击退，湖区暂时安全但灵气下降。', ecoDelta: { spirit: -10, stability: 10 }, rewards: { gold: 6000 } },
       { id: 'pacify', conditions: ['branch:heal'], narrative: '修复祭坛后沉歌蚌后成为友好守护精灵。', ecoDelta: { water: 25, spirit: 20, stability: 20 }, rewards: { gold: 8000, title: '湖心守护者' } },
-      { id: 'dark_tide', conditions: ['branch:fight'], narrative: '暗系吞噬过多，黑潮隐藏线开启。', ecoDelta: { pollution: 15, spirit: -5 }, rewards: { gold: 5000 }, unlocks: ['dark_tide_line'] },
+      { id: 'dark_tide', conditions: ['branch:fight', 'route:violent'], narrative: '暗系吞噬过多，黑潮隐藏线开启。', ecoDelta: { pollution: 15, spirit: -5 }, rewards: { gold: 5000 }, unlocks: ['dark_tide_line'] },
     ],
     steps: [
       { type: 'explore', title: '湖边调查', text: '岸边有拖拽痕迹、碎贝壳，水面倒影比真人慢半拍。夜晚能听到歌声。' },
@@ -267,9 +267,10 @@ export const ECO_CRISES = [
       { id: 'transformed', conditions: ['route:guide'], narrative: '极光被引导为有益能量，稀有精灵大量出现。', ecoDelta: { spirit: 30, diversity: 20 }, rewards: { gold: 20000, title: '极光引导者' } },
     ],
     steps: [
-      { type: 'explore', title: '极光观测', text: '极光频率与地下震动同步，冰系精灵集体朝向震源低鸣。' },
+      { type: 'explore', title: '灵脉异象', text: '星落平原空中出现裂隙，灵脉能量喷涌而出，超能系精灵在光柱下集体冥想。' },
       { type: 'battle', title: '狂乱精灵', enemyName: '极光狂化群', pool: [86, 87, 91, 144, 199], lvl: [88, 96], count: 4 },
       { type: 'puzzle', title: '灵脉追踪', text: '感知型精灵追踪灵脉至古代星核祭坛，需按星轨顺序激活石柱。' },
+      { type: 'route', title: '路线抉择', text: '选择封印源头、净化恢复或引导转化。' },
       { type: 'branch', title: '选择对策' },
       { type: 'battle', title: '陨星巨鲸', enemyName: '陨星巨鲸', bossKey: 'stellar_whale', bossId: 350, lvl: 98, drop: 15000, objective: 'escape', objectiveTurns: 12 },
     ],
@@ -286,7 +287,7 @@ export const ECO_CRISES = [
     summary: '古代工厂深层封印松动，尾兽级灾厄精灵苏醒。查克拉节点、分身解谜、封印大阵与国家协作。',
     fusionChapter: true,
     crossSystemChapter: true,
-    fusionSystems: ['jutsu', 'sect', 'general', 'kingdom'],
+    fusionSystems: ['jutsu', 'sect', 'general_tactic', 'kingdom'],
     routeStep: 5,
     branches: ['fight', 'soothe', 'heal'],
     branchPrompt: '灾厄核心即将冲破国土结界。你选择全力封印、削弱再封，还是协调国家资源？',
@@ -357,7 +358,11 @@ export function parseBossRouteModifiers(crisis, branchId, routeId, branchMult = 
       if (k === 'skipMechanic') skipMechanics.push(v.trim());
       if (k === 'objective') objectiveOverride = v.trim();
       if (k === 'spawnAdds') spawnAdds += parseInt(v, 10) || 0;
-      if (k === 'ecoPenalty') ecoPenalty = v;
+      if (k === 'ecoPenalty') {
+        const match = v.match(/^(\w+)([-+]\d+)$/);
+        if (match) ecoPenalty = { [match[1]]: parseInt(match[2], 10) };
+        else ecoPenalty = v;
+      }
     });
   });
   bossMult = Math.max(0.75, Math.min(1.3, bossMult));

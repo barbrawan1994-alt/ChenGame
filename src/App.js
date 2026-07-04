@@ -513,7 +513,9 @@ export default function RPG(props) {
           sd.saveVersion = 29;
         }
         if (sv < 30) {
-          if (!sd.fusionState) sd.fusionState = { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null };
+          const defaultFS = { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null, generalFragments: {}, kingdomTaskCooldowns: {} };
+          if (!sd.fusionState) sd.fusionState = defaultFS;
+          else { Object.keys(defaultFS).forEach(k => { if (sd.fusionState[k] === undefined) sd.fusionState[k] = defaultFS[k]; }); if (!sd.fusionState.playerStyle) sd.fusionState.playerStyle = defaultFS.playerStyle; }
           sd.saveVersion = 30;
         }
         if (sv < 31) {
@@ -621,6 +623,7 @@ export default function RPG(props) {
     sectChiefTrials: [...(savedData.sectPlayer?.sectChiefTrials || [])],
   }));
   const [sectHubTab, setSectHubTab] = useState('overview');
+  const [sectJoinFocus, setSectJoinFocus] = useState(savedData.sectPlayer?.playerSect || 1);
   const [leagueWins, setLeagueWins] = useState(savedData.leagueWins || 0);
   const [dexMilestoneClaimed, setDexMilestoneClaimed] = useState(() => ({ p10: false, p25: false, p50: false, p100: false, ...(savedData.dexMilestoneClaimed || {}) }));
   const [lastPetTradeDate, setLastPetTradeDate] = useState(savedData.lastPetTradeDate || savedData.lastTradeDate || '');
@@ -1425,6 +1428,7 @@ const [infinityState, setInfinityState] = useState(() => {
   useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
   const [postBattleQuickHeal, setPostBattleQuickHeal] = useState(false);
   useEffect(() => { if (view !== 'grid_map') setPostBattleQuickHeal(false); }, [view]);
+  useEffect(() => { if (view === 'battle' && !battle) setView('grid_map'); }, [view, battle]);
   const [catchInspectPet, setCatchInspectPet] = useState(null);
   const [bagItemSort, setBagItemSort] = useState('count');
   const [autoSaveIntervalMin, setAutoSaveIntervalMin] = useState(savedData.autoSaveIntervalMin ?? 1);
@@ -1516,12 +1520,12 @@ const [infinityState, setInfinityState] = useState(() => {
   const handleWinRef = useRef(null);
   const checkBattleObjectiveMet = (battleState) => {
     const obj = battleState?.battleObjective;
-    if (!obj) return false;
+    if (!obj) return true;
     if (obj === 'escape') return (battleState.turnCount || 0) >= (battleState.objectiveTurns || 10);
     if (obj === 'purify') return (battleState._purifyProgress ?? 100) <= 0;
     if (obj === 'protect') return (battleState._protectHp ?? 0) > 0 && (battleState.turnCount || 0) >= (battleState.objectiveTurns || 8);
     if (obj === 'capture_alive') return (battleState.enemyParty || []).length > 0 && battleState.enemyParty.every(e => !e || e._capturedAlive);
-    return false;
+    return true;
   };
   const canWinByObjective = (bs) => {
     if (!bs?.battleObjective) return true;
@@ -2287,7 +2291,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     setBox(prev => prev.map(applyAwaken));
     updateAchStat({ petsAwakened: 1 });
     showMapToast('✨', '精灵觉醒！', `${pet.name} 觉醒成功，获得觉醒技「${awakenMove.name}」`, 3500);
-    setFusionState(prev => ({ ...prev, awakeningTiers: { ...(prev.awakeningTiers || {}), [petUid]: 'normal' } }));
+    setFusionState(prev => ({ ...prev, awakeningTiers: { ...(prev.awakeningTiers || {}), [petUid]: prev.awakeningTiers?.[petUid] || 'normal' } }));
   };
 
   const upgradeAwakeningTier = (petUid, tierId) => {
@@ -2744,10 +2748,18 @@ const [viewStatPet, setViewStatPet] = useState(null);
       else showMapToast('✅', step.title, step.text, 3500);
       return;
     }
+    const leadSect = party[0]?.sectId;
+    const chakraAffSR = calcChakraAffinity(narutoState?.jutsuMastery);
+    const jutsuSynSR = chakraAffSR ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[chakraAffSR]?.gameType) : null;
+    const srFusionBonuses = mergePveBonuses(
+      calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionState.generalTacticId, jutsuSynergy: jutsuSynSR }),
+      calcCrossSystemPveBonuses({ playerStyle: fusionState.playerStyle || {}, kwPosition: fusionState.kwPosition, nightBattle: !!(step.nightBattle || timePhase === 'NIGHT') })
+    );
     const enemyParty = [];
     if (step.type === 'boss' || step.bossId) {
       const boss = createPet(step.bossId || 1, step.lvl || 55, true, true);
       boss.name = step.enemyName || boss.name;
+      boss.customStatMult = (boss.customStatMult || 1) * Math.max(0.7, 1 - (srFusionBonuses.bossMultReduce || 0));
       enemyParty.push(boss);
     } else {
       const pool = step.pool || [1];
@@ -2755,15 +2767,23 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const count = step.count || 2;
       for (let i = 0; i < count; i++) enemyParty.push(createPet(pool[Math.floor(Math.random() * pool.length)], _.random(lvl[0], lvl[1]), true));
     }
+    const srProtectBase = Math.floor(getStats(party[0] || {}).maxHp * (0.6 + (srFusionBonuses.protectBonus || 0)));
+    const objTurns = step.objectiveTurns ? Math.max(3, (step.objectiveTurns || 8) - (srFusionBonuses.escapeTurnReduce || 0)) : undefined;
     startBattle({
       id: def.mapId || currentMapId,
       name: def.name,
       customParty: enemyParty,
       trainerName: step.enemyName || def.name,
       drop: step.drop || 3000,
-      battleObjective: step.objective,
-      objectiveTurns: step.objectiveTurns,
+      _fusionBonuses: srFusionBonuses,
       _sectRealm: { realmId, stepIdx },
+      ...(step.objective ? {
+        battleObjective: step.objective,
+        objectiveTurns: objTurns,
+        _purifyProgress: step.objective === 'purify' ? 100 : undefined,
+        _protectHp: step.objective === 'protect' ? srProtectBase : undefined,
+        _protectMaxHp: step.objective === 'protect' ? srProtectBase : undefined,
+      } : {}),
     }, 'sect_realm');
   };
 
@@ -2814,10 +2834,21 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const comboKey = getComboSkillKey(ps.playerSect, ps.playerSubSect);
     const comboSkill = comboKey ? SECT_COMBO_SKILLS[comboKey] : null;
     const sectStrategy = evaluateSectStrategy({ sectPlayer: ps, kingdomWar, party, badges: badges.length, territories: kingdomWar?.territories || {} });
+    const sectJoinIds = Object.keys(SECT_DB).map(Number).sort((a, b) => a - b);
+    const focusedSectId = SECT_DB[sectJoinFocus] ? sectJoinFocus : (ps.playerSect || sectJoinIds[0] || 1);
+    const focusedSect = SECT_DB[focusedSectId] || SECT_DB[sectJoinIds[0]];
+    const focusedChief = SECT_CHIEFS_CONFIG[focusedSectId] || {};
+    const focusedArts = getSectMartialArts(focusedSectId).slice(0, 3);
+    const focusedTeam = (SECT_TEAMS[focusedSectId] || []).slice(0, 6).map(pid => POKEDEX.find(p => p.id === pid)).filter(Boolean);
+    const focusedEffect = typeof focusedSect?.effect === 'function' ? focusedSect.effect(3) : (focusedSect?.desc || '门派被动');
+    const joinProgress = Math.min(100, Math.round((badges.length / Math.max(1, SECT_JOIN_REQ_BADGES)) * 100));
+    const canJoinFocused = !ps.playerSect && badges.length >= SECT_JOIN_REQ_BADGES;
+    const canSubFocused = ps.playerSect && ps.playerSect !== focusedSectId && (ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK && ps.playerSubSect !== focusedSectId;
+    const canSwitchFocused = ps.playerSect && ps.playerSect !== focusedSectId;
 
     return (
-      <div className="screen" style={{background: '#121212', color: '#fff', display:'flex', flexDirection:'column'}}>
-        <div className="nav-header" style={{ borderBottom:'1px solid #333', background: '#1e1e1e', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
+      <div className="screen sect-hub-screen" style={{background: '#121212', color: '#fff', display:'flex', flexDirection:'column'}}>
+        <div className="nav-header sect-hub-header" style={{ borderBottom:'1px solid #333', background: '#1e1e1e', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
           <button className="btn-back" onClick={() => setView(safeBack())} style={{ color:'#fff', background: '#333', border: '1px solid #555', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>🔙 返回</button>
           <div className="nav-title" style={{fontSize:'17px', fontWeight:'bold', color:'#fff'}}>🏔️ 武侠门派</div>
           <div style={{ fontSize:'11px', color:'#FFD700', textAlign:'right' }}>{mainSect ? <span>{mainSect.emoji} {rankInfo.name}</span> : <span>未拜入</span>}</div>
@@ -2829,7 +2860,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             ))}
           </div>
         )}
-        <div style={{ display:'flex', gap:'4px', padding:'8px 12px', overflowX:'auto', flexShrink:0, borderBottom:'1px solid #333', background:'#161616' }}>
+        <div className="sect-hub-tabs" style={{ display:'flex', gap:'4px', padding:'8px 12px', overflowX:'auto', flexShrink:0, borderBottom:'1px solid #333', background:'#161616' }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => !t.lock && setSectHubTab(t.id)} disabled={t.lock}
               style={{ padding:'6px 12px', borderRadius:'8px', border:'none', cursor: t.lock ? 'not-allowed' : 'pointer', fontSize:'12px', fontWeight:'bold', whiteSpace:'nowrap',
@@ -2838,7 +2869,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             </button>
           ))}
         </div>
-        <div style={{flex:1, overflowY:'auto', padding:'16px'}}>
+        <div className="sect-hub-body" style={{flex:1, overflowY:'auto', padding:'16px'}}>
           {sectHubTab === 'overview' && (
             <div>
               {ps.playerSect ? (
@@ -2947,30 +2978,139 @@ const [viewStatPet, setViewStatPet] = useState(null);
             </div>
           )}
           {sectHubTab === 'join' && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'12px' }}>
-              {Object.keys(SECT_DB).map(key => {
-                const id = parseInt(key, 10);
-                const sect = SECT_DB[id];
-                const isMain = ps.playerSect === id;
-                const isSub = ps.playerSubSect === id;
-                return (
-                  <div key={id} style={{ background: isMain ? `linear-gradient(135deg, ${sect.color}55, #111)` : '#1e1e1e', border: isMain ? `2px solid ${sect.color}` : '1px solid #333', borderRadius:'10px', padding:'12px' }}>
-                    <div style={{ fontSize:'20px' }}>{sect.emoji} <span style={{ color: sect.color, fontWeight:'bold' }}>{sect.name}</span></div>
-                    <div style={{ fontSize:'11px', color:'#aaa', margin:'6px 0' }}>{sect.desc}</div>
-                    {!ps.playerSect && badges.length >= SECT_JOIN_REQ_BADGES && (
-                      <button onClick={() => joinPlayerSect(id)} style={{ width:'100%', padding:'8px', marginTop:'8px', background: sect.color, border:'none', borderRadius:'6px', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>拜入此派</button>
-                    )}
-                    {ps.playerSect && ps.playerSect !== id && (ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK && !isSub && (
-                      <button onClick={() => setPlayerSubSectFn(id)} style={{ width:'100%', padding:'6px', marginTop:'6px', background:'#2196F3', border:'none', borderRadius:'6px', color:'#fff', fontSize:'11px', cursor:'pointer' }}>设为副修</button>
-                    )}
-                    {ps.playerSect && ps.playerSect !== id && (
-                      <button onClick={() => switchPlayerSect(id)} style={{ width:'100%', padding:'6px', marginTop:'4px', background:'#555', border:'none', borderRadius:'6px', color:'#ccc', fontSize:'10px', cursor:'pointer' }}>改修（-{SECT_SWITCH_REP_COST}声望）</button>
-                    )}
-                    {isMain && <div style={{ marginTop:'8px', color:'#4CAF50', fontSize:'12px', fontWeight:'bold' }}>✓ 主修门派</div>}
-                    {isSub && <div style={{ marginTop:'8px', color:'#2196F3', fontSize:'12px' }}>副修中（50%效果）</div>}
+            <div className="sect-join-workspace" style={{ '--sect-color': focusedSect?.color || '#4CAF50' }}>
+              <section className="sect-join-hero">
+                <div>
+                  <span className="sect-join-kicker">SECT COMMAND</span>
+                  <h2>{ps.playerSect ? '门派身份与改修' : '选择主修门派'}</h2>
+                  <p>{ps.playerSect ? '比较各派路线，安排副修、改修或查看掌门挑战情报。' : '先看战斗风格、守关阵容和资源门槛，再决定第一门派。'}</p>
+                </div>
+                <div className="sect-join-stats">
+                  <div><span>徽章</span><strong>{badges.length}/{SECT_JOIN_REQ_BADGES}</strong></div>
+                  <div><span>身份</span><strong>{rankInfo.name}</strong></div>
+                  <div><span>声望</span><strong>{res.reputation || 0}</strong></div>
+                  <div><span>可选门派</span><strong>{sectJoinIds.length}</strong></div>
+                </div>
+              </section>
+
+              {!ps.playerSect && (
+                <div className="sect-join-unlock">
+                  <div>
+                    <strong>拜入进度</strong>
+                    <span>{badges.length >= SECT_JOIN_REQ_BADGES ? '已满足入门条件' : `还需要 ${Math.max(0, SECT_JOIN_REQ_BADGES - badges.length)} 枚徽章`}</span>
                   </div>
-                );
-              })}
+                  <div className="sect-join-progress"><span style={{ width: `${joinProgress}%` }} /></div>
+                </div>
+              )}
+
+              <div className="sect-join-layout">
+                <aside className="sect-join-list" aria-label="门派列表">
+                  <div className="sect-panel-title">
+                    <span>门派名录</span>
+                    <b>{sectJoinIds.length}</b>
+                  </div>
+                  <div className="sect-join-list-scroll">
+                    {sectJoinIds.map(id => {
+                      const sect = SECT_DB[id];
+                      const chief = SECT_CHIEFS_CONFIG[id] || {};
+                      const isMain = ps.playerSect === id;
+                      const isSub = ps.playerSubSect === id;
+                      const isFocused = focusedSectId === id;
+                      return (
+                        <button key={id} type="button" onClick={() => setSectJoinFocus(id)}
+                          className={`sect-list-row${isFocused ? ' is-active' : ''}${isMain ? ' is-main' : ''}${isSub ? ' is-sub' : ''}`}
+                          style={{ '--sect-color': sect.color }}>
+                          <span className="sect-list-icon">{sect.emoji}</span>
+                          <span className="sect-list-copy">
+                            <strong>{sect.name}</strong>
+                            <small>{chief.buffName || sect.desc}</small>
+                          </span>
+                          <em>{isMain ? '主修' : isSub ? '副修' : '查看'}</em>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                <section className="sect-detail-panel">
+                  <div className="sect-detail-head">
+                    <div className="sect-detail-mark">{focusedSect?.emoji}</div>
+                    <div>
+                      <span>{focusedChief?.title || '江湖门派'}</span>
+                      <h3>{focusedSect?.name}</h3>
+                      <p>{focusedSect?.desc}</p>
+                    </div>
+                  </div>
+
+                  <div className="sect-detail-grid">
+                    <div className="sect-info-block is-wide">
+                      <span>核心被动</span>
+                      <strong>{focusedEffect}</strong>
+                    </div>
+                    <div className="sect-info-block">
+                      <span>掌门/首席</span>
+                      <strong>{focusedChief?.name || '未知'}</strong>
+                    </div>
+                    <div className="sect-info-block">
+                      <span>首席增益</span>
+                      <strong>{focusedChief?.buffName || '门派加成'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="sect-detail-two-col">
+                    <div className="sect-mini-panel">
+                      <div className="sect-panel-title"><span>入门判断</span></div>
+                      <div className="sect-check-list">
+                        <div className={badges.length >= SECT_JOIN_REQ_BADGES ? 'is-ok' : 'is-warn'}>
+                          <span>徽章门槛</span><b>{badges.length}/{SECT_JOIN_REQ_BADGES}</b>
+                        </div>
+                        <div className={(ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK ? 'is-ok' : 'is-warn'}>
+                          <span>副修资格</span><b>{(ps.sectRank || 0) >= SECT_SUB_SECT_REQ_RANK ? '可用' : SECT_RANKS[4]?.name}</b>
+                        </div>
+                        <div className={(res.reputation || 0) >= SECT_SWITCH_REP_COST ? 'is-ok' : 'is-warn'}>
+                          <span>改修声望</span><b>{res.reputation || 0}/{SECT_SWITCH_REP_COST}</b>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="sect-mini-panel">
+                      <div className="sect-panel-title"><span>武学预览</span></div>
+                      <div className="sect-art-list">
+                        {focusedArts.length ? focusedArts.map(art => (
+                          <div key={art.id}>
+                            <strong>{art.name}</strong>
+                            <span>{art.type} · 威力{art.power || '--'}</span>
+                          </div>
+                        )) : <p>暂无可预览武学</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="sect-team-preview">
+                    <div className="sect-panel-title">
+                      <span>守关阵容</span>
+                      <button type="button" onClick={() => openSectTeamDetail(focusedSectId)}>查看详情</button>
+                    </div>
+                    <div className="sect-team-row">
+                      {focusedTeam.map(pet => (
+                        <span key={pet.id} title={pet.name}>{pet.emoji || '✦'}<small>{pet.name}</small></span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="sect-action-row">
+                    {!ps.playerSect && (
+                      <button type="button" disabled={!canJoinFocused} onClick={() => joinPlayerSect(focusedSectId)} className="sect-primary-action">
+                        {canJoinFocused ? '拜入此派' : `需要 ${SECT_JOIN_REQ_BADGES} 枚徽章`}
+                      </button>
+                    )}
+                    {canSubFocused && <button type="button" onClick={() => setPlayerSubSectFn(focusedSectId)}>设为副修</button>}
+                    {canSwitchFocused && <button type="button" onClick={() => switchPlayerSect(focusedSectId)}>改修此派</button>}
+                    {ps.playerSect === focusedSectId && <span className="sect-current-badge">当前主修门派</span>}
+                    {ps.playerSubSect === focusedSectId && <span className="sect-current-badge is-sub">当前副修门派</span>}
+                  </div>
+                </section>
+              </div>
             </div>
           )}
           {sectHubTab === 'xinfa' && ps.playerSect && (
@@ -7038,12 +7178,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const linked = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
       if (linked) { boss.type = linked.type; boss.secondaryType = linked.secondaryType; }
       if (type === 'battlefield') {
-        boss.customStatMult = (boss.customStatMult || 1) * BOSS_STAT_MULTIPLIER * (1 - (fusionBonuses.bossMultReduce || 0));
+        boss.customStatMult = (boss.customStatMult || 1) * BOSS_STAT_MULTIPLIER * Math.max(0.7, 1 - (fusionBonuses.bossMultReduce || 0));
         boss.currentHp = Math.floor((boss.currentHp || boss.stats?.hp || 100) * BOSS_HP_MULTIPLIER);
         boss.stats = boss.stats ? { ...boss.stats, hp: Math.floor(boss.stats.hp * BOSS_HP_MULTIPLIER) } : boss.stats;
         boss.isBoss = true;
       } else if (fusionBonuses.bossMultReduce) {
-        boss.customStatMult = (boss.customStatMult || 1) * (1 - fusionBonuses.bossMultReduce);
+        boss.customStatMult = (boss.customStatMult || 1) * Math.max(0.7, 1 - fusionBonuses.bossMultReduce);
       }
       enemyParty.push(boss);
     } else {
@@ -7062,7 +7202,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       _fusionBonuses: fusionBonuses,
       ...(step.objective ? {
         battleObjective: step.objective,
-        objectiveTurns: step.objectiveTurns || 8,
+        objectiveTurns: Math.max(3, (step.objectiveTurns || 8) - (step.objective === 'escape' ? (fusionBonuses.escapeTurnReduce || 0) : 0)),
         _purifyProgress: step.objective === 'purify' ? 100 : undefined,
         _protectHp: step.objective === 'protect' ? protectHpBase : undefined,
         _protectMaxHp: step.objective === 'protect' ? protectHpBase : undefined,
@@ -7084,12 +7224,21 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (gold < calCost) { showMapToast('⚠️', '金币不足', `需要 ${calCost} 金币`, 2500); return; }
     setGold(g => g - calCost);
     const calLevel = (cal.reqBadges || 5) * 8 + 5;
-    const calEnemy = { id: cal.bossKey || calamityId, name: cal.name + '·灾魂', level: calLevel, type: 'DARK', type2: 'CHAOS',
-      stats: { hp: calLevel * 12, p_atk: calLevel * 2.5, p_def: calLevel * 2, s_atk: calLevel * 2.5, s_def: calLevel * 2, spd: calLevel * 1.8 },
-      moves: [getMoveByLevel('DARK', calLevel), getMoveByLevel('CHAOS', calLevel), getMoveByLevel('FIRE', calLevel), getMoveByLevel('PSYCHIC', calLevel)],
-      isBoss: true };
-    calEnemy.currentHp = calEnemy.stats.hp;
-    setBattle({ active: true, enemy: calEnemy, type: 'calamity', calamityId, weekKey, phase: 'intro', turnCount: 0, activeIdx: party.findIndex(p => (p.currentHp || 0) > 0) || 0 });
+    const calEnemy = createPet(cal.bossId || 199, calLevel, true, true);
+    calEnemy.name = cal.name + '·灾魂';
+    calEnemy.isBoss = true;
+    calEnemy.customStatMult = (calEnemy.customStatMult || 1) * 1.5;
+    const calChakra = calcChakraAffinity(narutoState?.jutsuMastery);
+    const calJutsuSyn = calChakra ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[calChakra]?.gameType) : null;
+    const calFusionBonuses = mergePveBonuses(
+      calcFusionPveBonuses({ sectId: party[0]?.sectId, generalTacticId: fusionState.generalTacticId, jutsuSynergy: calJutsuSyn }),
+      calcCrossSystemPveBonuses({ playerStyle: fusionState.playerStyle || {}, kwPosition: fusionState.kwPosition })
+    );
+    if (calFusionBonuses.bossMultReduce) calEnemy.customStatMult *= Math.max(0.7, 1 - calFusionBonuses.bossMultReduce);
+    startBattle({
+      id: currentMapId, name: cal.name, customParty: [calEnemy], trainerName: cal.name, drop: calCost * 2,
+      _fusionBonuses: calFusionBonuses, _calamity: { calamityId, weekKey },
+    }, 'eco_crisis');
     setView('battle');
   };
   const completeCalamityReward = (calamityId, weekKey) => {
@@ -11543,7 +11692,7 @@ const useGrowthItem = (petIndex, itemId) => {
         } else if (rand < 0.99) {
              // 1% 随机装备
              const baseEquip = _.sample(RANDOM_EQUIP_DB);
-             const newEquip = createUniqueEquip(baseEquip.id);
+             const newEquip = baseEquip ? createUniqueEquip(baseEquip.id) : null;
              if (newEquip) {
                setAccessories(prev => [...prev, newEquip]);
                rewardTitle = "神秘宝藏"; rewardDesc = `获得 ${newEquip.icon} ${newEquip.displayName}`;
@@ -11939,7 +12088,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isSpiritDomain = actualType === 'spirit_domain';
     const isEcoCrisis = actualType === 'eco_crisis';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
-    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isSpiritDomain || isEcoCrisis || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType === 'naruto_survival' || actualType === 'tower' || actualType === 'elemental_trial' || actualType.startsWith('eclipse_');
+    const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isSpiritDomain || isEcoCrisis || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType === 'naruto_survival' || actualType === 'tower' || actualType === 'elemental_trial' || actualType === 'sect_realm' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
     let trainerName = null;
@@ -11982,6 +12131,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       extraBattleData._protectMaxHp = context._protectMaxHp;
     }
     if (context?._fusionDungeon) extraBattleData._fusionDungeon = context._fusionDungeon;
+    if (context?._calamity) extraBattleData._calamity = context._calamity;
     const ecoEvt = getActiveEcoEventForMap(mapIdForEco, getLocalDateStr(), ecoCrisisState.cleared || [], badges.length);
     if (ecoEvt && !extraBattleData.ecoCrisis) {
       extraBattleData._ecoEvent = ecoEvt;
@@ -12952,9 +13102,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const isPvPArena = actualType === 'pvp' || actualType === 'arena';
       battlePlayerParty.forEach(p => {
         if (p) {
-          let martial = getAvailableMartialMoves(sectPlayer).map(m => ({...m}));
+          let martial = getAvailableMartialMoves(sectPlayer).map(m => ({...m, _isMartial: true}));
           if (isPvPArena) martial = martial.filter(m => m.tier === 'basic' || m.tier === 'advanced');
-          p.combatMoves = [...(p.combatMoves || []), ...martial];
+          const baseMoves = (p.combatMoves || []).filter(m => !m._isMartial);
+          p.combatMoves = [...baseMoves, ...martial];
         }
       });
     }
@@ -14078,9 +14229,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
               const tgt = tIdx !== undefined ? tempBattle.enemyParty?.[tIdx] : null;
               const tgtState = tgt ? (tempBattle.enemyParty?.[tIdx]) : null;
               const tgtVol = tgtState?.volatiles;
-              if (tgt && tgt.currentHp > 0 && !(tgtVol?.protected) && !(tempBattle.battleGoal === 'capture_alive' && tgt.currentHp <= Math.floor(getStats(tgt).maxHp * 0.15))) {
+              if (tgt && tgt.currentHp > 0 && !(tgtVol?.protected) && !(tempBattle.battleObjective === 'capture_alive' && tgt.currentHp <= Math.floor(getStats(tgt).maxHp * 0.15))) {
                 const sync = Math.max(1, Math.floor(baseDmg * 0.15));
-                tgt.currentHp = Math.max(tempBattle.battleGoal === 'capture_alive' ? 1 : 0, tgt.currentHp - sync);
+                tgt.currentHp = Math.max(tempBattle.battleObjective === 'capture_alive' ? 1 : 0, tgt.currentHp - sync);
                 showMapToast('⚡', '协同攻击', '队友追加了一次攻击！', 1500);
                 addLog(`⚡ 协同追击对 ${tgt.name} 造成额外 ${sync} 伤害！`);
               }
@@ -15402,6 +15553,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     if (fruit.transformMove) {
+      unit.combatMoves = (unit.combatMoves || []).filter(m => !m.isFruitMove);
       unit.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
     }
 
@@ -15416,6 +15568,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const petUid = unit.uid;
       if (petUid) {
         setParty(prev => prev.map(p => p.uid === petUid ? { ...p, fruitUseCount: (p.fruitUseCount || 0) + 1 } : p));
+        setBox(prev => prev.map(p => p.uid === petUid ? { ...p, fruitUseCount: (p.fruitUseCount || 0) + 1 } : p));
       }
     }
     setAnimEffect({ type: 'TRANSFORM', target: side === 'player' ? 'player' : 'enemy' });
@@ -15602,6 +15755,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             enemy.currentHp = Math.min(enemy.currentHp + bonus, Math.floor(stats.maxHp * fruit.transform.hpMult));
           }
           if (fruit.transformMove) {
+            enemy.combatMoves = (enemy.combatMoves || []).filter(m => !m.isFruitMove);
             enemy.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
           }
           if (fruit.transform.firstStrike) { enemy.fruitFirstStrike = true; }
@@ -17381,9 +17535,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
           isDead = false;
           addLog(`🎯 ${defender.name} 被成功制服！`);
         } else if (battleState?.battleObjective === 'capture_alive' && source === 'player' && defender.currentHp <= 0 && !defender._capturedAlive) {
-          addLog(`💀 ${defender.name} 被击杀，活捕任务失败！`);
-          setTimeout(() => handleDefeat(), 600);
-          return 'capture_fail';
+          const capBonus = battleState._fusionBonuses?.captureBonus || 0;
+          if (capBonus > 0 && Math.random() < capBonus) {
+            defender.currentHp = 1;
+            defender._capturedAlive = true;
+            isDead = false;
+            addLog(`🎯 捕获加成发动！${defender.name} 被制服！`);
+          } else {
+            addLog(`💀 ${defender.name} 被击杀，活捕任务失败！`);
+            setTimeout(() => handleDefeat(), 600);
+            return 'capture_fail';
+          }
         }
         if (survivalMsg) addLog(survivalMsg);
         if (move.selfKO && attacker.currentHp > 0) {
@@ -18154,9 +18316,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemyEquips = [null, null];
 
     for (let i = 0; i < equipCount; i++) {
-        // 随机抽取一个带有技能的装备 (从随机装备库中)
         const baseEquip = _.sample(RANDOM_EQUIP_DB);
-        // 使用 createUniqueEquip 生成带随机技能的装备实例
+        if (!baseEquip) continue;
         const fullEquip = createUniqueEquip(baseEquip.id);
         enemyEquips[i] = fullEquip;
     }
@@ -18755,7 +18916,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const dropRate = (isTrainer ? 0.1 : 0.02) + lvBonus;
     if (Math.random() < dropRate) {
         const baseEquip = _.sample(RANDOM_EQUIP_DB);
-        const newEquip = createUniqueEquip(baseEquip.id);
+        const newEquip = baseEquip ? createUniqueEquip(baseEquip.id) : null;
         if (newEquip) {
           setAccessories(prev => [...prev, newEquip]);
           addLog(`🎁 意外收获！敌人掉落了 ${newEquip.icon} ${newEquip.displayName}！`);
@@ -18964,10 +19125,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (LEGEND_OBTAIN_RULES) {
           const floorRewards = LEGEND_OBTAIN_RULES.filter(r => r.method === 'infinity_floor' && r.floor && currentFloor >= r.floor);
           for (const rule of floorRewards) {
-            const alreadyOwned = (pc || []).some(p => p?.dexId === rule.petId) || (party || []).some(p => p?.dexId === rule.petId);
+            const alreadyOwned = [...(box || []), ...(party || [])].some(p => p?.dexId === rule.petId);
             if (!alreadyOwned) {
               const legendPet = createPet(rule.petId, Math.max(60, currentFloor));
-              setPc(prev => [...prev, legendPet]);
+              if (party.length < 6) setParty(prev => [...prev, legendPet]);
+              else setBox(prev => [...prev, legendPet]);
               if (!caughtDex.includes(rule.petId)) setCaughtDex(prev => [...prev, rule.petId]);
               showMapToast('🌟', '传说奖励', `到达第${currentFloor}层！获得 ${rule.name}！`, 3000);
             }
@@ -19064,7 +19226,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const chestRoll = Math.random();
         if (chestRoll < 0.4) {
             const eq = _.sample(RANDOM_EQUIP_DB);
-            const drop = createUniqueEquip(eq.id);
+            const drop = eq ? createUniqueEquip(eq.id) : null;
             if (drop) {
               setAccessories(prev => [...prev, drop]);
               chestRewards.push(`🎁 饰品: ${drop.displayName}`);
@@ -19230,12 +19392,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setKingdomWar(prev => ({ ...prev, hbDailyRepeats: { date: todayHb, count: (prev.hbDailyRepeats?.date === todayHb ? (prev.hbDailyRepeats?.count || 0) : 0) + 1 } }));
       }
       addLog(`🏆 ${hb.name} ${isFirstClear ? '首次通关' : '再次通关'}！+${goldReward}金 +${tokenReward}令牌 +${contribReward}战功/帮贡` + (isFirstClear ? '' : rewardMult > 0 ? ` (重复30%，今日${hbRepeatToday+1}/${HB_DAILY_REPEAT_CAP})` : ' (今日重复奖励已达上限)'));
+      showMapToast('🏆', hb.name, isFirstClear ? '首次通关！' : '历史名战再次完成！', 3000);
+      setParty(updatedParty);
+      setBattle(null);
+      setView('world_map');
+      return;
     }
 
     // 9b. 国战胜利
     if (battle.type === 'kingdom_war') {
-        const hpPct = party.reduce((s, p) => s + (p.currentHp || 0), 0) / Math.max(1, party.reduce((s, p) => s + (p.stats?.hp || p.hp || 100), 0));
-        const allSurvived = party.every(p => (p.currentHp || 0) > 0);
+        const hpPct = updatedParty.reduce((s, p) => s + (p.currentHp || 0), 0) / Math.max(1, updatedParty.reduce((s, p) => s + (p.stats?.hp || p.hp || 100), 0));
+        const allSurvived = updatedParty.every(p => (p.currentHp || 0) > 0);
         const rating = calcBattleRating({ hpPercent: hpPct, turnsUsed: battle.turnCount || 10, maxTurns: 20, allSurvived, bossKilled: true });
         const ratingData = BATTLE_RATINGS[rating] || BATTLE_RATINGS.C;
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
@@ -19615,12 +19782,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }));
       if (def && stepIdx + 1 >= (def.steps?.length || 0)) completeSectRealm(realmId, def);
       else showMapToast('✅', '秘境进展', `${def?.name || '秘境'} 第${stepIdx + 1}步完成`, 2500);
-      setParty(finalParty);
+      setParty(updatedParty);
       setBattle(null);
       setView('sect_summit');
       return;
     }
 
+    if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._calamity) {
+      const { calamityId, weekKey } = battleSnapshot._calamity;
+      completeCalamityReward(calamityId, weekKey);
+      setParty(updatedParty);
+      setBattle(null);
+      setView('world_map');
+      return;
+    }
     if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._fusionDungeon) {
       const { type, id, clearedKey, isFinalStep } = battleSnapshot._fusionDungeon;
       let def;
@@ -20033,6 +20208,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setView('sect_summit');
       showMapToast('💀', '门派挑战失败', '修炼不足，改日再战！', 3000);
     } else if (battle?.type === 'league') {
+      setLeagueRound(0);
+      setLeagueRunNoDamage(false);
       setView('league');
       showMapToast('💀', '联赛失败', '联赛之旅结束，继续修炼！', 3000);
     } else if (battle?.type === 'tower') {
@@ -26094,7 +26271,7 @@ const renderMenu = () => {
                 if ((mentor.legacyCount || 0) >= MAX_LEGACY) { showMapToast('❌', '传承上限', `${mentor.name} 已传承 ${MAX_LEGACY} 次`, 1500); return; }
                 if (apprentice.inheritedMove) { showMapToast('❌', '已传承', `${apprentice.name} 已接受过传承`, 1500); return; }
                 setInventory(prev => ({...prev, legacy_stone: Math.max(0, (prev.legacy_stone||0) - 1)}));
-                setParty(prev => prev.map(p => {
+                const applyLegacy = (p) => {
                   if (p.uid === mentor.uid) return { ...p, legacyCount: (p.legacyCount || 0) + 1 };
                   if (p.uid === apprentice.uid) {
                     const newMoves = [...(p.moves || [])];
@@ -26109,7 +26286,9 @@ const renderMenu = () => {
                     return { ...p, moves: newMoves, inheritedMove: selectedMove.name };
                   }
                   return p;
-                }));
+                };
+                setParty(prev => prev.map(applyLegacy));
+                setBox(prev => prev.map(applyLegacy));
                 showMapToast('✨', '传承成功！', `${mentor.name} → ${apprentice.name}：继承技·${selectedMove.name}`, 3500);
                 setSkillInheritModal(null);
                 updateAchStat({ legacyCount: 1 });
@@ -27531,7 +27710,7 @@ const renderMenu = () => {
       { id: 'kingdom', label: '国战任务', icon: '🏰', need: 'kingdom_pve' },
       { id: 'general', label: '将魂战术', icon: '🏇', need: 'general_tactic' },
     ];
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateStr();
     const activeCalamities = getActiveNationalCalamities(today, badges.length);
     const currentStyle = PLAYER_STYLES[fusionState.playerStyle?.main] || null;
     const currentSubStyle = PLAYER_STYLES[fusionState.playerStyle?.sub] || null;
@@ -27559,6 +27738,9 @@ const renderMenu = () => {
       currentBonuses.skipPuzzleStep ? { label: '解谜跳过', value: '1次', tone: '#ddd6fe' } : null,
       currentBonuses.skipExploreStep ? { label: '探索跳过', value: '1次', tone: '#bae6fd' } : null,
       currentBonuses.puzzleHintBonus ? { label: '机关提示', value: '开启', tone: '#fde68a' } : null,
+      currentBonuses.swarmDamageBonus ? { label: '群战伤害', value: `+${Math.round(currentBonuses.swarmDamageBonus * 100)}%`, tone: '#fb923c' } : null,
+      currentBonuses.firstStepBonus ? { label: '首步加成', value: `+${Math.round(currentBonuses.firstStepBonus * 100)}%`, tone: '#f472b6' } : null,
+      currentBonuses.intimacyBonus ? { label: '亲密度加成', value: `+${currentBonuses.intimacyBonus}`, tone: '#f9a8d4' } : null,
     ].filter(Boolean);
     const applyBuildPreset = (preset) => {
       const advancedLocked = ['insect', 'mist', 'sun', 'moon'].includes(preset.breathing) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock');
@@ -28739,7 +28921,7 @@ const renderMenu = () => {
   // [精致小巧版] 战斗界面 (含环境特效 + 完整UI + 修复布局)
   // ==========================================
   const renderBattle = () => {
-    if (!battle) { setTimeout(() => setView('grid_map'), 0); return null; }
+    if (!battle) { return null; }
     
     const isDoubleBattle = battle.isDouble;
     const p = isDoubleBattle

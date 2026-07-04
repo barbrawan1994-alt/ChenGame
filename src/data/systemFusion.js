@@ -224,7 +224,7 @@ export const GENERAL_PVE_TACTICS = {
 export const KINGDOM_PVE_TASKS = [
   { id: 'kw_escort_grain', name: '护送粮草', icon: '🌾', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwManpower: 15, gold: 1500 }, ecoCost: null },
   { id: 'kw_purify_border', name: '净化边境', icon: '💧', reqBadges: 5, cooldownTurns: 2, cost: { energy: 10 }, reward: { guardianScore: 4, kwContrib: 25 }, ecoDelta: { pollution: -8 } },
-  { id: 'kw_repair_wall', name: '修复城墙', icon: '🧱', reqBadges: 6, cooldownTurns: 4, cost: { gold: 2000, energy: 10 }, reward: { kwContrib: 40, gold: 2000 }, territoryStrength: 2 },
+  { id: 'kw_repair_wall', name: '修复城墙', icon: '🧱', reqBadges: 6, cooldownTurns: 4, cost: { gold: 2000, energy: 10 }, reward: { kwContrib: 40, gold: 3500 }, territoryStrength: 2 },
   { id: 'kw_repel_rampage', name: '击退暴走潮', icon: '⚔️', reqBadges: 5, cooldownTurns: 3, cost: { energy: 15 }, reward: { kwContrib: 35, guardianScore: 6 }, ecoDelta: { stability: 8 } },
   { id: 'kw_field_hospital', name: '战场救护', icon: '💊', reqBadges: 5, cooldownTurns: 3, cost: { energy: 10 }, reward: { kwContrib: 30, gold: 2000, generalFragment: 'hua_tuo' }, ecoDelta: { stability: 4 } },
   { id: 'kw_build_sanctuary', name: '建设圣域', icon: '⛩️', reqBadges: 7, cooldownTurns: 6, cost: { gold: 5000, energy: 20 }, reward: { kwContrib: 50, gold: 2500, guardianScore: 10 }, requiresSanctuaryLv: 2, prereq: ['kw_purify_border'] },
@@ -286,7 +286,7 @@ export function getGeneralTactic(generalId) {
 }
 
 export function calcFusionPveBonuses(ctx = {}) {
-  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, exploreSpeedBonus: 0, puzzleHintBonus: false, intimacyBonus: 0, kwContribBonus: 0, ecoBranchBonus: 0, ecoPenalty: null };
+  const bonuses = { purifyBonus: 0, protectBonus: 0, captureBonus: 0, escapeTurnReduce: 0, bossMultReduce: 0, skipPuzzleStep: false, skipExploreStep: false, exploreSpeedBonus: 0, puzzleHintBonus: false, intimacyBonus: 0, kwContribBonus: 0, ecoBranchBonus: 0, ecoPenalty: null, swarmDamageBonus: 0, firstStepBonus: 0, sealBonus: 0 };
   if (ctx.sectId) {
     const role = getSectEcoRole(ctx.sectId);
     if (role?.ecoRole === 'heal') bonuses.purifyBonus += 6;
@@ -315,7 +315,20 @@ export function calcFusionPveBonuses(ctx = {}) {
       if (gt.passive.kwContribBonus) bonuses.kwContribBonus += gt.passive.kwContribBonus;
       if (gt.passive.ecoBranchBonus) bonuses.ecoBranchBonus += gt.passive.ecoBranchBonus;
     }
-    if (gt?.ecoPenalty) bonuses.ecoPenalty = gt.ecoPenalty;
+    if (gt?.order) {
+      if (gt.order.swarmDamageBonus) bonuses.swarmDamageBonus += gt.order.swarmDamageBonus;
+      if (gt.order.firstStepBonus) bonuses.firstStepBonus += gt.order.firstStepBonus;
+      if (gt.order.sealBonus) bonuses.sealBonus += gt.order.sealBonus;
+      if (gt.order.skipPuzzleStep) bonuses.skipPuzzleStep = true;
+      if (gt.order.skipExploreStep) bonuses.skipExploreStep = true;
+    }
+    if (gt?.ecoPenalty) {
+      if (bonuses.ecoPenalty) {
+        const merged = { ...bonuses.ecoPenalty };
+        Object.entries(gt.ecoPenalty).forEach(([k, v]) => { merged[k] = (merged[k] || 0) + v; });
+        bonuses.ecoPenalty = merged;
+      } else bonuses.ecoPenalty = gt.ecoPenalty;
+    }
   }
   if (ctx.jutsuSynergy) {
     bonuses.purifyBonus += ctx.jutsuSynergy.purifyBonus || 0;
@@ -325,11 +338,13 @@ export function calcFusionPveBonuses(ctx = {}) {
     if (ctx.jutsuSynergy.skipExploreStep) bonuses.skipExploreStep = true;
   }
   bonuses.purifyBonus = Math.min(25, bonuses.purifyBonus);
-  bonuses.protectBonus = Math.max(-0.1, Math.min(0.20, bonuses.protectBonus));
+  bonuses.protectBonus = Math.max(-0.1, Math.min(0.35, bonuses.protectBonus));
   bonuses.captureBonus = Math.min(0.18, bonuses.captureBonus);
   bonuses.bossMultReduce = Math.min(0.08, bonuses.bossMultReduce);
   bonuses.escapeTurnReduce = Math.min(2, bonuses.escapeTurnReduce);
   bonuses.exploreSpeedBonus = Math.min(0.5, bonuses.exploreSpeedBonus);
+  bonuses.swarmDamageBonus = Math.min(0.25, bonuses.swarmDamageBonus);
+  bonuses.firstStepBonus = Math.min(0.25, bonuses.firstStepBonus);
   return bonuses;
 }
 
@@ -349,6 +364,16 @@ export function getPetAwakeningTier(petUid, fusionState = {}) {
   return fusionState.awakeningTiers?.[petUid] || null;
 }
 
+export function getAwakeningStatMult(petUid, fusionState = {}) {
+  const tierId = fusionState.awakeningTiers?.[petUid];
+  if (!tierId) return 1;
+  let mult = 1;
+  if (['normal', 'fruit', 'strategic'].includes(tierId)) mult *= AWAKENING_TIERS.normal.rewards.statMult;
+  if (['fruit', 'strategic'].includes(tierId)) mult *= AWAKENING_TIERS.fruit.rewards.statMult;
+  if (tierId === 'strategic') mult *= AWAKENING_TIERS.strategic.rewards.statMult;
+  return Math.min(1.25, mult);
+}
+
 export function checkAwakeningTier(pet, tierId, ctx = {}) {
   const { fusionState = {}, kingdomWar = {} } = ctx;
   const tier = AWAKENING_TIERS[tierId];
@@ -361,6 +386,7 @@ export function checkAwakeningTier(pet, tierId, ctx = {}) {
   if (tierId === 'fruit') {
     if (cur === 'fruit' || cur === 'strategic') return { ok: false, reason: '已完成果实觉醒' };
     if (!pet.awakened) return { ok: false, reason: '需先普通觉醒' };
+    if (cur !== 'normal' && cur !== undefined) return { ok: false, reason: '需先完成普通觉醒注册' };
     const reqs = [];
     if (!pet.devilFruit) reqs.push('绑定恶魔果实');
     const trialsCleared = fusionState.fruitTrialsCleared || [];
@@ -382,10 +408,11 @@ export function checkAwakeningTier(pet, tierId, ctx = {}) {
   return { ok: false, reason: '未知档位' };
 }
 
-export function getAvailableKwPveTasks(badgeCount, completedTaskLog = {}, currentTurn = 0, unlockedSystems = []) {
+export function getAvailableKwPveTasks(badgeCount, completedTaskLog = {}, currentTurn = 0, crisisUnlocks = []) {
   return KINGDOM_PVE_TASKS.filter(task => {
     if (badgeCount < (task.reqBadges || 0)) return false;
-    if (task.requiresUnlock && !unlockedSystems.includes(task.requiresUnlock)) return false;
+    if (task.requiresUnlock && !crisisUnlocks.includes(task.requiresUnlock)) return false;
+    if (task.requiresCrisis && !crisisUnlocks.includes(task.requiresCrisis)) return false;
     if (task.prereq?.length && !task.prereq.every(pid => completedTaskLog[pid])) return false;
     const lastDone = completedTaskLog[task.id];
     if (lastDone && task.cooldownTurns && (currentTurn - lastDone) < task.cooldownTurns) return false;

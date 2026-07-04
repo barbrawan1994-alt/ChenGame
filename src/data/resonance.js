@@ -126,9 +126,9 @@ export const RESONANCE_COMBOS = [
     id: 'sanctuary_guard',
     name: '圣域守护',
     icon: '⛩️',
-    desc: '圣域设施≥3级 + 守护战：目标HP+15%',
+    desc: '圣域设施总等级≥3：守护战目标HP+15%',
     effects: { protectBonus: 0.15 },
-    check: (ctx) => (ctx.sanctuaryLevel || 0) >= 3,
+    check: (ctx) => (ctx.sanctuaryLevel || 0) >= 3 && ctx.hasSect,
   },
   {
     id: 'sect_eco',
@@ -220,9 +220,9 @@ export const ECOLOGY_GUARDIANS = [
 
 export const GUARDIAN_MILESTONES = [
   { score: 10, reward: { title: '生态见习' } },
-  { score: 25, reward: { title: '生态卫士', gold: 5000 } },
-  { score: 50, reward: { title: '生态大师', item: 'master', itemCount: 1, itemCat: 'balls' } },
-  { score: 100, reward: { title: '生态守护神', petId: 785, petLevel: 70, shiny: true } },
+  { score: 25, reward: { title: '生态守护者', gold: 5000 } },
+  { score: 50, reward: { title: '生态贤者', item: 'master', itemCount: 1, itemCat: 'balls' } },
+  { score: 100, reward: { title: '生态大师', petId: 785, petLevel: 70, shiny: true } },
 ];
 
 export function getAwakeningMove(type) {
@@ -283,10 +283,7 @@ export function buildResonanceContext(pet, { narutoState, kingdomWar, gang, allP
   const hasFactionGeneral = recruited.some(g => g.faction === playerFaction && playerFaction && playerFaction !== 'neutral');
   const hasBondedPet = (allPets || []).some(p => p?.bonded);
   const eco = regionEcology?.[currentMapId];
-  const ecoHealth = eco ? ECO_METRIC_KEYS.reduce((s, k) => {
-    const v = eco[k] ?? 50;
-    return s + (k === 'pollution' ? Math.max(0, 100 - v) : v);
-  }, 0) / ECO_METRIC_KEYS.length : 50;
+  const ecoHealth = eco ? calcEcologyHealth(eco) : 50;
   const ecoBlessed = ecoHealth >= BLESSED_ECO_THRESHOLD;
   const sanctuaryLevel = Object.values(sanctuaryState?.facilities || {}).reduce((s, v) => s + (v || 0), 0);
   const fs = fusionState || {};
@@ -303,11 +300,11 @@ export function buildResonanceContext(pet, { narutoState, kingdomWar, gang, allP
     calamityParticipated: (fs.calamitiesParticipated || []).length > 0,
     activeResonanceCount: 0,
   };
-  const active = RESONANCE_COMBOS.filter(c => c.id !== 'ultimate' && c.id !== 'sanguo_all' && c.check(baseCtx));
-  baseCtx.activeResonanceCount = active.length;
+  const preActive = RESONANCE_COMBOS.filter(c => c.id !== 'ultimate' && c.id !== 'sanguo_all' && c.check(baseCtx));
+  baseCtx.activeResonanceCount = preActive.length;
   const finalActive = RESONANCE_COMBOS.filter(c => c.id !== 'ultimate' && c.check(baseCtx));
   baseCtx.activeResonanceCount = finalActive.length;
-  return { ...baseCtx, activeResonanceCount: finalActive.length };
+  return baseCtx;
 }
 
 export function calcResonanceBonuses(pet, context = {}) {

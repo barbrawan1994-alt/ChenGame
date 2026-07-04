@@ -15,7 +15,7 @@ export const FRUIT_SEA_ZONES = [
       { type: 'battle', title: '果实守卫', enemyName: '果实守卫', pool: [22, 24, 26], lvl: [42, 52], count: 3, objective: 'capture_alive', objectiveTurns: 12 },
       { type: 'boss', title: '复制之树', enemyName: '复制之树', bossId: 3, lvl: 55, drop: 8000 },
     ],
-    reward: { gold: 9000, item: 'fire_stone', itemCount: 1, fruitTrialClear: true },
+    reward: { gold: 9000, item: 'water_stone', itemCount: 1, fruitTrialClear: true },
     ecologyReward: { water: 15, spirit: 10 },
   },
   {
@@ -62,8 +62,9 @@ export const FRUIT_SEA_ZONES = [
     mechanics: ['gravity_field', 'heavy_advantage', 'fruit_gravity_contest'],
     steps: [
       { type: 'explore', title: '裂隙观测', text: '星机阁心法可提前关闭部分机关。', reqSectEco: 'puzzle' },
+      { type: 'puzzle', title: '重力校准', text: '按质量梯度调整三组重力锚点，重型精灵可稳定场域波动。', reqTypes: ['ROCK', 'STEEL', 'GROUND'] },
       { type: 'battle', title: '重力狂化', enemyName: '重力精灵', pool: [86, 87, 144], lvl: [75, 85], count: 4, objective: 'escape', objectiveTurns: 10 },
-      { type: 'boss', title: '重力核心', enemyName: '重力核心', bossKey: 'stellar_whale', bossId: 199, lvl: 88, drop: 12000 },
+      { type: 'boss', title: '重力核心', enemyName: '重力核心', bossKey: 'gravity_core', bossId: 199, lvl: 88, drop: 12000 },
     ],
     reward: { gold: 15000, fruitTrialClear: true, title: '重力行者' },
     ecologyReward: { spirit: 15, diversity: 8 },
