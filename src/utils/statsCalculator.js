@@ -17,9 +17,9 @@ export function getStageMult(stage) {
 
 export function calcNextExp(lv, expMod = 1.0) {
   let lateBonus = 0;
-  if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 1.5;
-  if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 2.5;
-  return Math.floor((lv * 100 + lateBonus) * expMod);
+  if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 0.8;
+  if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 1.4;
+  return Math.floor((lv * 80 + lateBonus) * expMod);
 }
 
 /**

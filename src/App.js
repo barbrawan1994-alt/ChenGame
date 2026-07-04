@@ -13833,16 +13833,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let playerDiedFromSelfDmg = false;
 
         const syncBattleState = (extra = {}) => {
-          setBattle(prev => ({
-            ...prev,
-            playerCombatStates: tempBattle.playerCombatStates.map(p => ({...p})),
-            enemyParty: tempBattle.enemyParty.map(e => ({...e})),
-            _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage,
-            _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
-            _playerSwitched: tempBattle._playerSwitched || prev._playerSwitched,
-            _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
-            ...extra,
-          }));
+          setBattle(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              playerCombatStates: tempBattle.playerCombatStates.map(p => ({...p})),
+              enemyParty: tempBattle.enemyParty.map(e => ({...e})),
+              _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage,
+              _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
+              _playerSwitched: tempBattle._playerSwitched || prev._playerSwitched,
+              _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
+              ...extra,
+            };
+          });
         };
 
         const domSkip = tempBattle.activeDomain;
@@ -18218,7 +18221,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const bState = finalBattleState || battle;
     const earlyBoost = (deadEnemy.level <= 20) ? 1.15 : (deadEnemy.level <= 35) ? 1.05 : 1.0;
     const bountyMult = bState.isBounty ? 1.3 : 1;
-    const baseExp = Math.floor(deadEnemy.level * 30 * (bState.isTrainer ? 1.5 : 1) * earlyBoost * bountyMult);
+    const baseExp = Math.floor(deadEnemy.level * 42 * (bState.isTrainer ? 1.5 : 1) * earlyBoost * bountyMult);
     
     let levelUpLog = '';
     let hasPendingSkill = false;
@@ -18252,8 +18255,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const aliveCount = syncedAliveCount;
       const benchCount = Math.max(1, aliveCount - activeCount);
       const shareRatio = isActive
-        ? (bState.isDouble ? 0.5 : 1.0)
-        : (0.3 / benchCount);
+        ? (bState.isDouble ? 0.6 : 1.0)
+        : (0.45 / benchCount);
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), getEquippedRelicEffects(relics).gangSkillMult || 1).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
@@ -18262,7 +18265,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const relicExpMult = getEquippedRelicEffects(relics).expMult || 1;
       const lvlDiff = pet.level - deadEnemy.level;
       const underLvlBonus = lvlDiff < -10 ? 1.5 : lvlDiff < -5 ? 1.2 : 1.0;
-      const lvlPenalty = lvlDiff > 20 ? 0.4 : lvlDiff > 10 ? 0.5 : lvlDiff > 5 ? 0.8 : 1.0;
+      const lvlPenalty = lvlDiff > 20 ? 0.5 : lvlDiff > 10 ? 0.65 : lvlDiff > 5 ? 0.85 : 1.0;
       const rkPerk = getRankPerkEffects(kingdomWar);
       const faintedMult = isFainted ? 0.5 : 1.0;
       let expGain = Math.floor(baseExp * shareRatio * lvlPenalty * underLvlBonus * faintedMult * (1 + spExpBoost) * (1 + (gangExpBonus + kwExpBonus + kwExpBuff + genExpBonus) / 100) * (rkPerk.battleExpMult || 1) * (rkPerk.allBonusMult || 1) * relicExpMult);
@@ -20046,15 +20049,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const newStreak = (achStats.currentWinStreak || 0) + 1;
     winAchUpdates.currentWinStreak = p => newStreak;
     winAchUpdates.maxWinStreak = newStreak;
-    const activePet = battle.playerCombatStates?.[battle.activeIdx];
+    const activePet = battleSnapshot?.playerCombatStates?.[battleSnapshot?.activeIdx];
     const playerLostHpInBattle = didPlayerTakeBattleDamage(battleSnapshot, finalParty);
     if (activePet) {
-      const maxHp = getStats(party[battle.activeIdx] || activePet).maxHp;
+      const maxHp = getStats(party[battleSnapshot?.activeIdx] || activePet).maxHp;
       if (activePet.currentHp <= maxHp * 0.1) winAchUpdates.clutchWins = 1;
       if (!playerLostHpInBattle) winAchUpdates.perfectWins = 1;
     }
-    if (isTrainer && battle.playerCombatStates) {
-      const combatTeam = battle.playerCombatStates.filter(p => p);
+    if (isTrainer && battleSnapshot?.playerCombatStates) {
+      const combatTeam = battleSnapshot.playerCombatStates.filter(p => p);
       if (combatTeam.length >= 6 && combatTeam.every(p => p.currentHp > 0)) {
         winAchUpdates.sweepWins = 1;
       }
@@ -20063,17 +20066,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const pActiveLv = activePet?.level ?? 999;
     if (eMaxLv - pActiveLv >= 20) winAchUpdates.underdogWins = 1;
     if (eMaxLv - pActiveLv >= 30) winAchUpdates.underdogLowLevelWins = 1;
-    if ((battle.turnCount ?? 0) <= 3) winAchUpdates.quickWins = 1;
+    if ((battleSnapshot?.turnCount ?? 0) <= 3) winAchUpdates.quickWins = 1;
     if (type === 'pvp') winAchUpdates.pvpWins = 1;
-    if (battle.isDouble) {
+    if (battleSnapshot?.isDouble) {
       winAchUpdates.doubleWins = 1;
-      const allDoubleAlive = battle.activeIdxs?.every(idx => battle.playerCombatStates?.[idx]?.currentHp > 0);
+      const allDoubleAlive = battleSnapshot.activeIdxs?.every(idx => battleSnapshot.playerCombatStates?.[idx]?.currentHp > 0);
       if (allDoubleAlive) winAchUpdates.doublePerfectWins = 1;
     }
-    // 隐藏成就追踪
-    if (battle.turnCount) winAchUpdates.maxLongestBattle = battle.turnCount;
-    if (isTrainer && battle.turnCount && battle.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
-    if (isTrainer && battle.turnCount && battle.turnCount <= 1 && enemyParty.length >= 6) winAchUpdates.fullTeamWipeOneRound = 1;
+    if (battleSnapshot?.turnCount) winAchUpdates.maxLongestBattle = battleSnapshot.turnCount;
+    if (isTrainer && battleSnapshot?.turnCount && battleSnapshot.turnCount <= 1) winAchUpdates.oneRoundTrainerWin = 1;
+    if (isTrainer && battleSnapshot?.turnCount && battleSnapshot.turnCount <= 1 && enemyParty.length >= 6) winAchUpdates.fullTeamWipeOneRound = 1;
     if (isGym && party?.length >= 6) {
       const speciesSet = new Set(party.map(p => p?.id));
       if (speciesSet.size === 1) winAchUpdates.sameSpeciesGymWin = 1;
@@ -20085,15 +20087,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return pType === 'ROCK' || p?.secondaryType === 'ROCK' || p?.type2 === 'ROCK';
     })) winAchUpdates.fullRockTeam = 1;
     if (activePet && activePet.activeVow && activePet.currentHp > 0 && activePet.currentHp <= Math.max(1, Math.floor(getStats(activePet).maxHp * 0.05))) winAchUpdates.clutchVowWin = 1;
-    const playerHadFruit = battle.playerCombatStates?.some(p => p?.fruitUsed);
-    const enemyHadFruit = battle.enemyParty?.some(e => e?.fruitUsed || e?.fruitTransformed);
+    const playerHadFruit = battleSnapshot?.playerCombatStates?.some(p => p?.fruitUsed);
+    const enemyHadFruit = battleSnapshot?.enemyParty?.some(e => e?.fruitUsed || e?.fruitTransformed);
     if (playerHadFruit && enemyHadFruit) winAchUpdates.dualFruitBattle = 1;
     if (isGym && party?.filter(p => p?.currentHp > 0).length === 1) {
-        const alivePets = (battle.playerCombatStates || []).filter(p => p && p.currentHp > 0);
+        const alivePets = (battleSnapshot?.playerCombatStates || []).filter(p => p && p.currentHp > 0);
         if (alivePets.length === 1 && party.length === 1) winAchUpdates.soloGymClear = 1;
     }
-    // 三系合一：同一场使用领域+缚誓+果实
-    const pStates = battle.playerCombatStates || [];
+    const pStates = battleSnapshot?.playerCombatStates || [];
     const usedDomain = pStates.some(p => p?.usedDomain);
     const usedVow = pStates.some(p => p?.vowUsed);
     const usedFruit = pStates.some(p => p?.fruitUsed);
@@ -20112,21 +20113,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     if (battle._battleCrits) winAchUpdates.maxCritsInBattle = battle._battleCrits;
     if (battle._maxConsecutiveCrits) winAchUpdates.maxConsecutiveCrits = battle._maxConsecutiveCrits;
-    if (battle._dodgesInBattle) winAchUpdates.maxDodgesInBattle = battle._dodgesInBattle;
+    if (battleSnapshot?._dodgesInBattle) winAchUpdates.maxDodgesInBattle = battleSnapshot._dodgesInBattle;
     const enemyStatusTypes = new Set();
-    (battle.enemyParty || []).forEach(e => { if (e?.status) enemyStatusTypes.add(e.status); });
+    (battleSnapshot?.enemyParty || []).forEach(e => { if (e?.status) enemyStatusTypes.add(e.status); });
     if (enemyStatusTypes.size >= 5) winAchUpdates.allStatusInflicted = 1;
     const pMaxInt = Math.max(0, ...(party || []).map(p => p?.intimacy || 0));
     if (pMaxInt > 0) winAchUpdates.maxIntimacy = pMaxInt;
     const pMaxSkill = Math.max(0, ...(party || []).map(p => p?.moves?.length || 0));
     if (pMaxSkill > 0) winAchUpdates.maxSkillCount = pMaxSkill;
-    if (isTrainer && !battle._playerSwitched) winAchUpdates.noSwitchTrainerWins = 1;
-    if (isTrainer && !battle._playerDirectAttack && (battle.turnCount || 0) > 0) winAchUpdates.pacifistWins = 1;
-    if (battle._resonanceComboCount > 0) winAchUpdates.maxResonanceCombos = battle._resonanceComboCount;
-    if (!playerLostHpInBattle && battle.dungeonId) winAchUpdates.dungeonPerfectClears = 1;
+    if (isTrainer && !battleSnapshot?._playerSwitched) winAchUpdates.noSwitchTrainerWins = 1;
+    if (isTrainer && !battleSnapshot?._playerDirectAttack && (battleSnapshot?.turnCount || 0) > 0) winAchUpdates.pacifistWins = 1;
+    if (battleSnapshot?._resonanceComboCount > 0) winAchUpdates.maxResonanceCombos = battleSnapshot._resonanceComboCount;
+    if (!playerLostHpInBattle && battleSnapshot?.dungeonId) winAchUpdates.dungeonPerfectClears = 1;
     if (!playerLostHpInBattle && isGym) winAchUpdates.perfectBossKills = 1;
     if (isTrainer && activePet) {
-      const combatTeam = battle.playerCombatStates?.filter(p => p) || [];
+      const combatTeam = battleSnapshot?.playerCombatStates?.filter(p => p) || [];
       const aliveCount = combatTeam.filter(p => p.currentHp > 0).length;
       if (aliveCount === 1 && activePet.currentHp > 0 && activePet.currentHp <= getStats(activePet).maxHp * 0.05) {
         winAchUpdates.epicComebacks = 1;
@@ -22528,252 +22529,107 @@ const renderMenu = () => {
   ];
 
   return (
-    <main className="screen home-screen home-gate-screen" id="main-content">
-      <a className="skip-link" href="#home-command">跳到系统入口</a>
-      <div className="home-gate-sky" aria-hidden="true" />
-      <div className="home-gate-terrain" aria-hidden="true" />
-      <div className="home-gate-lines" aria-hidden="true" />
-
-      <section className="home-gate-shell" aria-label={`${GAME_NAME}首页`}>
-        <section className="home-gate-hero" aria-label="主城入口">
-          <div className="home-gate-brand">
-            <SuperSpiritIcon className="home-gate-logo" size={62} />
+    <main className="screen home-screen pixel-home-screen" id="main-content">
+      <div className="pixel-home-bg" aria-hidden="true" />
+      <div className="pixel-home-container">
+        {/* Pixel-art header */}
+        <header className="pixel-home-header">
+          <div className="pixel-home-title-block">
+            <SuperSpiritIcon className="pixel-home-logo" size={48} />
             <div>
-              <div className="home-gate-version-row">
-                <span>{GAME_EN_NAME}</span>
-                <b>{GAME_VERSION_LABEL}</b>
-              </div>
-              <h1>{GAME_NAME}</h1>
-              <p>以精灵收集与队伍培养为核心，串联忍术、果实、国战、无限城与武侠门派的长期冒险。</p>
+              <div className="pixel-home-ver">{GAME_EN_NAME} <b>{GAME_VERSION_LABEL}</b></div>
+              <h1 className="pixel-home-title">{GAME_NAME}</h1>
             </div>
           </div>
+          <div className="pixel-home-gold">💰 {gold.toLocaleString()}</div>
+        </header>
 
-          <div className="home-gate-showcase">
-            <div className="home-gate-orbit" aria-hidden="true" />
-            <div className="home-gate-system-wheel" aria-hidden="true">
-              {fusionSystems.map((sys, idx) => (
-                <span className={`home-system-token is-${sys.tone}`} key={sys.label} style={{ '--token-index': idx }}>
-                  {sys.icon}
-                </span>
-              ))}
+        {/* Hero: lead pet card + start button */}
+        <section className="pixel-home-hero">
+          <div className="pixel-home-lead" style={{'--lead-color': leadTypeColor}}>
+            <div className="pixel-home-lead-sprite">
+              {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
+                <img src={leadPetDex.sprite} alt={leadPetDex?.name || ''} onError={() => setMenuLeadSpriteErr(true)} />
+              ) : (
+                <span>{leadPetDex?.emoji || leadPet?.emoji || '🔴'}</span>
+              )}
             </div>
-            <div className="home-gate-summon-pad" aria-hidden="true" />
-            <div className="home-gate-lead-card" style={{ '--lead-type': leadTypeColor }}>
-              <div className="home-gate-lead-art">
-                {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
-                  <img src={leadPetDex.sprite} alt={`${leadPet.nickname || leadPetDex?.name || '领队伙伴'} 像素形象`} onError={() => setMenuLeadSpriteErr(true)} />
-                ) : (
-                  <span title={leadPetDex?.name || '初始伙伴'}>{leadPetDex?.emoji || leadPet?.emoji || (hasSave ? '🐾' : '🔴')}</span>
-                )}
-              </div>
-              <div className="home-gate-lead-info">
-                <span>{hasSave ? '当前领队' : '初始伙伴'}</span>
-                <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待你的第一只伙伴'}</strong>
-                <small>{leadPet ? `Lv.${leadPet.level || 1}，${leadTypeName}属性` : '开始冒险后解锁队伍养成'}</small>
-              </div>
-            </div>
-            <div className="home-gate-starter-fan" aria-label="可选伙伴预览">
-              {starterGallery.map((src, idx) => (
-                <span key={`${src}-${idx}`}>
-                  <img src={src} alt="" onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />
-                </span>
-              ))}
+            <div className="pixel-home-lead-text">
+              <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '选择你的伙伴'}</strong>
+              <small>{leadPet ? `Lv.${leadPet.level} · ${leadTypeName}属性` : '开始冒险吧！'}</small>
             </div>
           </div>
-
-          <div className="home-gate-fusion-ribbon" aria-label="版本体系">
-            <span>精灵主轴</span>
-            <span>忍术卷轴</span>
-            <span>果实海域</span>
-            <span>三国阵线</span>
-            <span>无限城</span>
-            <span>武侠门派</span>
-          </div>
-
-          <button className="home-gate-primary" onClick={handleStartGame}>
-            <span className="home-gate-primary-icon">🔴</span>
+          <button className="pixel-home-start-btn" onClick={handleStartGame}>
+            <span className="pixel-home-start-icon">▶</span>
             <span>
               <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-              <small>{hasSave ? nextObjective : '选择伙伴，进入精灵世界'}</small>
+              <small>{hasSave ? nextObjective : '进入精灵世界'}</small>
             </span>
-            <b aria-hidden="true">›</b>
           </button>
+        </section>
 
-          <div className="home-gate-team" aria-label="当前队伍">
-            {teamPreview.length > 0 ? teamPreview.map((pet, idx) => {
+        {/* Team preview */}
+        {teamPreview.length > 0 && (
+          <section className="pixel-home-team">
+            {teamPreview.map((pet, idx) => {
               const dex = POKEDEX.find(p => p.id === pet.id);
               return (
-                <button type="button" className="home-gate-team-slot is-filled" key={pet.uid || `${pet.id}-${idx}`} onClick={() => setViewStatPet(pet)} title={pet.nickname || dex?.name || pet.name}>
+                <button type="button" className="pixel-home-team-slot" key={pet.uid || `${pet.id}-${idx}`} onClick={() => setViewStatPet(pet)} title={pet.nickname || dex?.name || pet.name}>
                   {renderAvatar(pet)}
                   <span>Lv.{pet.level || 1}</span>
                 </button>
               );
-            }) : [0, 1, 2, 3, 4, 5].map(i => (
-              <div className="home-gate-team-slot" key={i}>
-                {titleSprites[i % Math.max(1, titleSprites.length)] ? <img src={titleSprites[i % titleSprites.length]} alt="" onError={(ev) => { ev.currentTarget.style.display = 'none'; }} /> : <span>+</span>}
-              </div>
-            ))}
-          </div>
+            })}
+          </section>
+        )}
 
-          <div className="home-gate-mini-grid">
-            {ranchStats.map(stat => (
-              <div className={`home-gate-mini is-${stat.tone}`} key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.meta}</small>
-              </div>
-            ))}
+        {/* Stats row */}
+        <section className="pixel-home-stats">
+          {commandStats.map(stat => (
+            <div className={`pixel-home-stat is-${stat.tone}`} key={stat.label}>
+              <span>{stat.label}</span>
+              <strong>{stat.value}</strong>
+              <small>{stat.hint}</small>
+            </div>
+          ))}
+        </section>
+
+        {/* Progress bar */}
+        <section className="pixel-home-progress-section">
+          <div className="pixel-home-progress-head">
+            <span>培养路线</span>
+            <b>{homeProgress}%</b>
+          </div>
+          <div className="pixel-home-progress-bar">
+            <div style={{width: `${homeProgress}%`}} />
           </div>
         </section>
 
-        <section className="home-gate-command" id="home-command" aria-label="冒险控制台">
-          <div className="home-gate-command-top">
-            <div>
-              <span className="home-gate-eyebrow">训练家作战台</span>
-              <h2>{nextObjective}</h2>
-              <p>{hasSave ? trainingFocus : '建立队伍后，可以进入图鉴收集、道馆挑战、阵营推进与无限城探索。'}</p>
-            </div>
-            <div className="home-gate-wallet">
-              <span>金币</span>
-              <strong>{gold.toLocaleString()}</strong>
-            </div>
-          </div>
-
-          <div className="home-gate-stat-grid">
-            {commandStats.map(stat => (
-              <article className={`home-gate-stat is-${stat.tone}`} key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.hint}</small>
-              </article>
-            ))}
-          </div>
-
-          <div className="home-gate-mission-row">
-            {missionCards.map(card => (
-              <article className="home-gate-mission" key={card.label}>
-                <span>{card.label}</span>
-                <strong>{card.value}</strong>
-                <small>{card.meta}</small>
-              </article>
-            ))}
-          </div>
-
-          <article className="home-gate-fusion-board">
-            <div className="home-card-title">
-              <span>v15.0 融合体系</span>
-              <small>精灵养成为主线，其他体系提供战术、资源与挑战层</small>
-            </div>
-            <div className="home-fusion-grid">
-              {fusionSystems.map(sys => (
-                <button type="button" className={`home-fusion-card is-${sys.tone}`} key={sys.label} onClick={sys.action}>
-                  <span className="home-fusion-icon">{sys.icon}</span>
-                  <span className="home-fusion-copy">
-                    <strong>{sys.label}</strong>
-                    <small>{sys.meta}</small>
-                    <i className="home-fusion-meter" aria-hidden="true"><em style={{ width: `${sys.progress}%` }} /></i>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </article>
-
-          <article className="home-gate-route">
-            <div className="home-gate-route-head">
-              <div>
-                <span>培养路线</span>
-                <strong>伙伴成长与联盟资格</strong>
-              </div>
-              <b>{homeProgress}%</b>
-            </div>
-            <div className="home-gate-progress">
-              <span style={{ width: `${homeProgress}%` }} />
-            </div>
-            <div className="home-gate-steps">
-              {homeTrailSteps.map(step => (
-                <div className={step.done ? 'home-gate-step is-done' : 'home-gate-step'} key={step.label}>
-                  <i aria-hidden="true" />
-                  <span>{step.label}</span>
-                  <small>{step.meta}</small>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          {playerFaction && (
-            <article className="home-gate-war" style={{ '--faction-primary': playerFaction.color }}>
-              <div className="home-war-main">
-                <span className="home-war-icon">{playerFaction.icon}</span>
-                <div>
-                  <strong>{playerFaction.fullName}</strong>
-                  <small>{playerRank?.icon} {playerRank?.name}，已控领地 {myTerrCountMenu}</small>
-                </div>
-              </div>
-              {gangName && (
-                <div className="home-gate-gang">
-                  <span>{gangIcon}</span>
-                  <strong>{gangName}</strong>
-                  <small>帮贡 {gang.contribution || 0}</small>
-                </div>
-              )}
-              <div className="home-territory-bars">
-                {FACTION_IDS.map(fid => {
-                  const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
-                  return (
-                    <div className="home-territory-segment" key={fid} style={{ flex: Math.max(count, 0.5), background: FACTIONS[fid].color }} title={`${FACTIONS[fid].name} ${count} 块领地`} />
-                  );
-                })}
-              </div>
-              <div className="home-territory-labels">
-                {FACTION_IDS.map(fid => {
-                  const count = getFactionTerritoryCount(fid, kingdomWar.territories || {});
-                  return <span key={fid}>{FACTIONS[fid].name} {count}</span>;
-                })}
-              </div>
-            </article>
-          )}
-
-          {recruitedGens.length > 0 && (
-            <article className="home-gate-generals">
-              <div className="home-card-title">
-                <span>麾下名将 {recruitedCount}/{MAX_RECRUITED_GENERALS}</span>
-                <button onClick={() => setView('general_dex')}>图鉴 {collectedGenCount}/{SANGUO_GENERALS.length}</button>
-              </div>
-              <div className="home-generals-row">
-                {recruitedGens.slice(0, MAX_RECRUITED_GENERALS).map((g, i) => {
-                  const rc = GENERAL_RARITY_CONFIG[g.rarity] || {};
-                  const pt = getGeneralPortrait(g);
-                  return (
-                    <div className="home-general-token" key={g.id || i} style={{ '--general-color': rc.color || '#d6aa4f', '--general-bg': rc.bgColor || 'rgba(214,170,79,0.14)' }}>
-                      <span>{g.icon}</span>
-                      <strong style={{ overflow:'hidden' }}>{renderGeneralPortraitFace(g, pt, g.name?.[0] || '?')}</strong>
-                    </div>
-                  );
-                })}
-              </div>
-            </article>
-          )}
-
-          <div className="home-gate-entry-board" aria-label="系统入口">
-            {entryGroups.map(group => (
-              <section className="home-gate-entry-group" key={group.title}>
-                <h3>{group.title}</h3>
-                <nav className="home-gate-entry-grid" aria-label={group.title}>
-                  {group.items.map(btn => (
-                    <button className={btn.danger ? 'home-gate-entry is-danger' : 'home-gate-entry'} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
-                      <span className="home-gate-entry-icon">{btn.icon}</span>
-                      <span>
-                        <strong>{btn.label}</strong>
-                        <small>{btn.sub}</small>
-                      </span>
-                    </button>
-                  ))}
-                </nav>
-              </section>
-            ))}
-          </div>
+        {/* Fusion systems - compact */}
+        <section className="pixel-home-systems">
+          {fusionSystems.map(sys => (
+            <button type="button" className={`pixel-home-sys-btn is-${sys.tone}`} key={sys.label} onClick={sys.action}>
+              <span className="pixel-sys-icon">{sys.icon}</span>
+              <span className="pixel-sys-copy">
+                <strong>{sys.label}</strong>
+                <small>{sys.meta}</small>
+              </span>
+              <div className="pixel-sys-meter"><div style={{width: `${sys.progress}%`}} /></div>
+            </button>
+          ))}
         </section>
-      </section>
+
+        {/* Quick entries */}
+        <section className="pixel-home-entries">
+          {quickEntries.map(btn => (
+            <button className={`pixel-home-entry ${btn.danger ? 'is-danger' : ''}`} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
+              <span>{btn.icon}</span>
+              <strong>{btn.label}</strong>
+              <small>{btn.sub}</small>
+            </button>
+          ))}
+        </section>
+      </div>
     </main>
   );
 };
@@ -27350,9 +27206,9 @@ const renderMenu = () => {
               <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
                 {ecoEvt && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background: (ecoEvt.color || '#2E7D32') + '33', border:`1px solid ${(ecoEvt.color || '#2E7D32')}66` }}>
-                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#e8f3ff' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
-                    <div style={{ fontSize:'13px', color:'rgba(232,243,255,0.8)', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
+                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background:'rgba(30,30,50,0.85)', border:'2px solid #29B6F6', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
+                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#B3E5FC' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
+                    <div style={{ fontSize:'13px', color:'rgba(179,229,252,0.8)', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
                   </div>
                 )}
                 {adaptSummary.maladapted > 0 && (
@@ -27361,10 +27217,10 @@ const renderMenu = () => {
                   </div>
                 )}
                 {crisis && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background: (crisis.color || '#2E7D32') + '33', border:`1px solid ${crisis.color || '#2E7D32'}66`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
-                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#e8f3ff' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
+                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background:'rgba(30,30,50,0.85)', border:'2px solid #FFB300', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
+                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#FFE082' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
                     {!(ecoCrisisState.cleared || []).includes(crisis.id) && (
-                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background: crisis.color || '#2E7D32', color:'#fff', cursor:'pointer' }}>调查</button>
+                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(90deg,#FF8F00,#F57C00)', color:'#fff', cursor:'pointer' }}>调查</button>
                     )}
                   </div>
                 )}
@@ -27378,7 +27234,7 @@ const renderMenu = () => {
                 {(rescues.length > 0 || puzzles.length > 0 || observations.length > 0) && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
                     {rescues.map(r => (
-                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #81C784', background:'rgba(76,175,80,0.25)', color:'#C8E6C9', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
+                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'2px solid #FFB300', background:'rgba(30,30,50,0.85)', color:'#FFE082', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
                     ))}
                     {puzzles.map(p => (
                       <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.25)', color:'#BBDEFB', fontWeight:'600', cursor:'pointer' }}>{p.icon} {p.name}</button>
@@ -27392,6 +27248,14 @@ const renderMenu = () => {
             );
           })()}
           {/* 2D 视口地图 - 自适应铺满 */}
+          <div className="map-top-info-bar" style={{'--map-accent': mapPixelTheme.vars['--map-accent']}}>
+            <div className="map-stamp-external">
+              <span>{currentMapInfo?.icon || '🗺️'}</span>
+              <strong>{currentMapInfo?.name || '未知区域'}</strong>
+              <em style={{fontSize:'10px', opacity:0.7, fontStyle:'normal', marginLeft:'4px'}}>{mapPixelTheme.label}</em>
+            </div>
+            <div className="map-wasd-hint-external">WASD / 方向键移动 · 空格交互</div>
+          </div>
           <div className="grid-viewport-v2 map-viewport-frame" ref={el => {
             if (el && !el.dataset.sized) {
               el.dataset.sized = '1';
@@ -27404,13 +27268,6 @@ const renderMenu = () => {
               flex: 1, position: 'relative', borderRadius: '12px',
               overflow: 'hidden', background: theme.bg || '#2d5a3d'
           }}>
-            <div className="map-identity-stamp">
-              <span>{currentMapInfo?.icon || '🗺️'}</span>
-              <div>
-                <strong>{currentMapInfo?.name || '未知区域'}</strong>
-                <em>{mapPixelTheme.label}</em>
-              </div>
-            </div>
             {mapGrid.length > 0 && (() => {
               const vpEl = document.querySelector('.grid-viewport-v2');
               const vpW = vpEl ? vpEl.clientWidth : 700;
@@ -27580,13 +27437,12 @@ const renderMenu = () => {
             <div className="map-vignette" />
           </div>
           {/* 底部菜单栏 (保持不变) */}
-          <div className="map-dock-capsule">
+          <div className="map-dock-capsule" style={{display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'0', width:'100%'}}>
             <button className="dock-btn-capsule" onClick={manualSave} disabled={saving}
-                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor: saving ? 'not-allowed' : 'pointer', flexShrink:0, opacity: saving ? 0.6 : 1}}>
+                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, flex:'1 1 0', minWidth:'42px', maxWidth:'60px'}}>
                 <div style={{fontSize: '20px', lineHeight: '1'}}>{saving ? '⏳' : '💾'}</div>
                 <div style={{fontSize: '11px', fontWeight: 'bold', color:'#555', whiteSpace:'nowrap'}}>{saving ? '保存中...' : '存档'}</div>
             </button>
-            <div className="dock-divider-v" style={{width:'2px', height:'30px', background:'#eee', margin:'0 4px', flexShrink:0}}></div>
             {[
               { id: 'worldmap', icon: '🗺️', label: '地图', action: () => { handleExitAndSave(); setMapTab('maps'); } },
               { id: 'dungeons', icon: '⚔️', label: '副本', action: () => { handleExitAndSave(); setMapTab('dungeons'); } },
@@ -27627,7 +27483,7 @@ const renderMenu = () => {
               const startsGroup = ['team','card','keyhelp'].includes(btn.id);
               return (
               <button key={btn.id} className={`dock-btn-capsule ${startsGroup ? 'dock-group-start' : ''}`} data-dock-group={dockGroup} onClick={btn.action || (() => setView(btn.id))}
-                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor:'pointer', position:'relative'}}>
+                style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px', background:'transparent', border:'none', cursor:'pointer', position:'relative', flex:'1 1 0', minWidth:'42px', maxWidth:'60px'}}>
                   <div style={{fontSize: '20px', lineHeight: '1'}}>{btn.icon}</div>
                   <div style={{fontSize: '11px', fontWeight: 'bold', color:'#555', whiteSpace:'nowrap'}}>{btn.label}</div>
                   {btn.badge > 0 && <div style={{position:'absolute', top:'-2px', right:'-2px', width:'16px', height:'16px', borderRadius:'50%', background:'#E53935', color:'#fff', fontSize:'9px', fontWeight:'800', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #fff'}}>{btn.badge}</div>}
@@ -30012,7 +29868,7 @@ const renderMenu = () => {
                     {/* 敌方 HUD */}
                     <div className={`hud-card hud-enemy ${isDoubleBattle ? 'hud-card--double' : ''}`} style={{marginBottom: '8px'}}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
-                            <span style={{fontSize: isDoubleBattle ? '11px' : '13px', fontWeight:'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block', maxWidth: isDoubleBattle ? '180px' : '140px'}}>
+                            <span style={{fontSize: isDoubleBattle ? '11px' : '13px', fontWeight:'bold', whiteSpace:'nowrap', display:'inline-block'}}>
                                 {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
                             </span>
                             <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{e.level}</span>
@@ -30162,7 +30018,7 @@ const renderMenu = () => {
                   <div className="enemy-zone-v2 double-mode" style={{position:'absolute', top:'2%', left:'1%', display:'flex', flexDirection:'column', alignItems:'flex-start', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
                     <div className="hud-card hud-enemy hud-card--double" style={{marginBottom:'8px'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
-                        <span style={{fontSize:'11px', fontWeight:'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'180px'}}>{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
+                        <span style={{fontSize:'11px', fontWeight:'bold', whiteSpace:'nowrap'}}>{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
                         <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
                       </div>
                       <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
@@ -30275,7 +30131,7 @@ const renderMenu = () => {
                     {/* 我方 HUD */}
                     <div className="hud-card hud-player" style={isDoubleBattle ? {border: battle.doubleSlot === 0 && (battle.phase === 'input') ? '2px solid #FF9800' : undefined, boxShadow: battle.doubleSlot === 0 && battle.phase === 'input' ? '0 0 12px rgba(255,152,0,0.5)' : undefined} : undefined}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                            <span style={{fontSize:'14px', fontWeight:'bold', wordBreak:'break-word',overflow:'hidden',textOverflow:'ellipsis'}}>
+                            <span style={{fontSize:'14px', fontWeight:'bold', whiteSpace:'nowrap'}}>
                               {isDoubleBattle && battle.doubleSlot === 0 && battle.phase === 'input' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
                               {p.name}
                             </span>
@@ -30367,7 +30223,7 @@ const renderMenu = () => {
                     </div>
                     <div className="hud-card hud-player" style={{border: battle.doubleSlot === 1 && (battle.phase === 'input' || battle.phase === 'double_input_2') ? '2px solid #FF9800' : undefined, boxShadow: battle.doubleSlot === 1 && battle.phase === 'double_input_2' ? '0 0 12px rgba(255,152,0,0.5)' : undefined}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                        <span style={{fontSize:'14px', fontWeight:'bold', wordBreak:'break-word',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        <span style={{fontSize:'14px', fontWeight:'bold', whiteSpace:'nowrap'}}>
                           {battle.doubleSlot === 1 && battle.phase === 'double_input_2' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
                           {p2.name}
                         </span>
@@ -31651,13 +31507,9 @@ const renderMenu = () => {
                   {/* 3.5 资质/特性/亲密度/装备 */}
                   <div style={{background:'rgba(0,0,0,0.2)', padding:'10px 12px', borderRadius:'8px', marginBottom:'15px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 16px', fontSize:'11px'}}>
                     {(() => {
-                      const ivs = selectedPet.ivs || {};
-                      const mainKeys = ['maxHp','hp','p_atk','p_def','s_atk','s_def','spd'];
-                      const ivSum = mainKeys.reduce((s, k) => s + (ivs[k] || 0), 0);
-                      const ivPct = (ivSum / 186) * 100;
-                      const ivLetter = ivPct >= 80 ? 'S' : ivPct >= 50 ? 'A' : ivPct >= 30 ? 'B' : 'C';
-                      const ivColor = ivPct >= 80 ? '#FFD700' : ivPct >= 50 ? '#FF4081' : ivPct >= 30 ? '#2196F3' : '#9E9E9E';
-                      return <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>资质</span><span style={{color: ivColor, fontWeight:'bold'}}>{ivLetter} ({Math.round(ivPct)}%)</span></div>;
+                      const { grade, score } = calculateGrade(selectedPet);
+                      const gradeColor = grade === 'S' ? '#FFD700' : grade === 'A' ? '#FF4081' : grade === 'B' ? '#2196F3' : '#9E9E9E';
+                      return <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>资质</span><span style={{color: gradeColor, fontWeight:'bold'}}>{grade} ({Math.round(score)}%)</span></div>;
                     })()}
                     <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>亲密度</span><span style={{color:'#fff'}}>{selectedPet.intimacy ?? selectedPet.friendship ?? 0}</span></div>
                     <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'#aaa'}}>特性</span><span style={{color:'#CE93D8'}}>{TRAIT_DB[selectedPet.trait]?.name || selectedPet.trait || '无'}</span></div>
