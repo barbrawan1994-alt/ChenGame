@@ -16,10 +16,20 @@ export function getStageMult(stage) {
 }
 
 export function calcNextExp(lv, expMod = 1.0) {
-  let lateBonus = 0;
-  if (lv > 50) lateBonus += (Math.min(lv, 80) - 50) * (Math.min(lv, 80) - 50) * 0.8;
-  if (lv > 80) lateBonus += (lv - 80) * (lv - 80) * 1.4;
-  return Math.floor((lv * 80 + lateBonus) * expMod);
+  const level = Math.max(1, Math.min(100, Number(lv) || 1));
+  const early = level * 70;
+  const mid = level > 25 ? Math.pow(level - 25, 1.55) * 18 : 0;
+  const late = level > 55 ? Math.pow(level - 55, 1.85) * 10 : 0;
+  const endgame = level > 80 ? Math.pow(level - 80, 2.15) * 12 : 0;
+  return Math.max(50, Math.floor((early + mid + late + endgame) * expMod));
+}
+
+export function calcBattleBaseExp(enemyLevel, { isTrainer = false, isBounty = false } = {}) {
+  const level = Math.max(1, Math.min(100, Number(enemyLevel) || 1));
+  const earlyBoost = level <= 20 ? 1.15 : level <= 35 ? 1.05 : 1.0;
+  const trainerMult = isTrainer ? 1.5 : 1;
+  const bountyMult = isBounty ? 1.3 : 1;
+  return Math.floor(level * 42 * trainerMult * earlyBoost * bountyMult);
 }
 
 /**

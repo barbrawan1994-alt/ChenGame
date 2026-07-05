@@ -2,6 +2,8 @@
 // 国战系统 - 魏蜀吴晋四国争霸
 // ==========================================
 
+import { SANGUO_GENERALS } from './generals';
+
 export const FACTIONS = {
   wei: {
     id: 'wei', name: '魏', fullName: '魏国', icon: '⚔️',
@@ -55,11 +57,69 @@ export const INITIAL_TERRITORIES = {
   5:  'wei', 6:  'shu', 7:  'wu',  8:  'wei',
   9:  'qun', 10: 'wei', 11: 'shu', 12: 'jin',
   13: 'qun',
+  99: 'qun',
+  103: 'qun', 104: 'qun', 105: 'qun', 106: 'qun', 107: 'qun', 108: 'qun', 109: 'qun',
   204: 'neutral', 205: 'neutral', 206: 'neutral',
+  301: 'qun', 302: 'qun', 303: 'jin', 304: 'wei', 305: 'shu', 306: 'wu',
+  307: 'qun', 308: 'jin', 309: 'wei', 310: 'shu', 311: 'wu', 312: 'qun', 313: 'jin', 314: 'qun',
 };
 
-// 参战地图ID列表（含3张中立争夺城池）
-export const WAR_MAP_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 204, 205, 206];
+// 参战地图ID列表（全地图争夺，排除副本100-102与首都201-207）
+export const WAR_MAP_IDS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+  99,
+  103, 104, 105, 106, 107, 108, 109,
+  204, 205, 206,
+  301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314,
+];
+
+/** 地图相邻关系（影响补给线加成，双向对称） */
+const _adj_raw = {
+  1: [2, 4], 2: [1, 3, 5], 3: [2, 6], 4: [1, 7], 5: [2, 8, 10], 6: [3, 11], 7: [4, 8],
+  8: [5, 7, 9, 10], 9: [8, 13], 10: [5, 11, 12], 11: [6, 10, 13], 12: [10, 13], 13: [9, 11, 12],
+  99: [8, 12],
+  103: [13, 104], 104: [103, 105], 105: [104, 106], 106: [105, 107], 107: [106, 108], 108: [107, 109], 109: [108, 12, 314],
+  204: [5, 6, 205], 205: [204, 206, 10], 206: [205, 6, 11],
+  301: [1, 302], 302: [301, 303, 4], 303: [302, 304], 304: [303, 305, 5], 305: [304, 306, 6],
+  306: [305, 307, 7], 307: [306, 308], 308: [307, 309, 8], 309: [308, 310, 9], 310: [309, 311, 10],
+  311: [310, 312, 11], 312: [311, 313, 12], 313: [312, 314, 13], 314: [313, 109],
+};
+// ensure bidirectional
+const _buildBidirectional = (raw) => {
+  const out = {};
+  for (const [k, vs] of Object.entries(raw)) { out[k] = [...new Set(vs.map(Number))]; }
+  for (const [k, vs] of Object.entries(out)) {
+    const n = Number(k);
+    for (const v of vs) { if (!out[v]) out[v] = []; if (!out[v].includes(n)) out[v].push(n); }
+  }
+  return out;
+};
+export const MAP_ADJACENCY = _buildBidirectional(_adj_raw);
+
+/** 征兵与粮草配置 */
+export const RECRUIT_CONFIG = {
+  normalCost: { gold: 100, grain: 10 },
+  normalGain: [30, 50],
+  eliteCost: { gold: 500, grain: 30 },
+  eliteGain: [80, 120],
+  grainPerTerritory: 5,
+  grainCapBase: 200,
+  grainCapPerTerritory: 20,
+  eliteCombatMult: 1.3,
+};
+
+/** 叛国惩罚配置 */
+export const DEFECTION_CONFIG = {
+  cooldownDays: 3,
+  goldLossPct: 0.4,
+  grainKeepPct: 0.5,
+  instabilityHours: 24,
+  instabilityPenalty: 0.3,
+  secondDefectionMult: 2,
+};
+
+/** 远征/高难度地图（初始城防更高） */
+export const HIGH_TIER_MAP_IDS = [99, 103, 104, 105, 106, 107, 108, 109, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314];
 
 // 名城争夺城池ID（独立争夺条系统）
 export const CONTESTED_MAP_IDS = [204, 205, 206];
@@ -124,7 +184,7 @@ export const RANK_PROMOTION_CHALLENGES = {
   general_h: { type: 'generals', desc: '招募至少5名名将', target: 5, stat: 'recruitedGenerals' },
   grand_gen: { type: 'historical', desc: '通关至少10场历史名战', target: 10, stat: 'historicalBattles' },
   minister: { type: 'contribution', desc: '单赛季内获得3000战功', target: 3000, stat: 'seasonContribution' },
-  king: { type: 'siege', desc: '成功参与3次都城攻防', target: 3, stat: 'capitalSieges' },
+  king: { type: 'siege', desc: '成功参与1次都城攻防或控制15+领地', target: 1, stat: 'capitalSieges' },
   hegemon: { type: 'multi', desc: '通关本阵营全部8场战役 + 拥有8名名将 + 控制7+领地', targets: { campaignsCleared: 8, recruitedGenerals: 8, factionTerritories: 7 } },
   emperor: { type: 'ultimate', desc: '通关25场历史名战 + 战功35000 + 获得"霸主"赛季称号', targets: { historicalBattles: 25, totalContribution: 35000, hasHegemonTitle: true } },
 };
@@ -159,6 +219,8 @@ export const getMilitaryRank = (contribution, playerStats = null) => {
           return (playerStats[k] || 0) >= v;
         });
         if (!allMet) continue;
+      } else if (ch.stat === 'capitalSieges') {
+        if ((playerStats.capitalSieges || 0) < ch.target && (playerStats.factionTerritories || 0) < 15) continue;
       } else {
         if ((playerStats[ch.stat] || 0) < ch.target) continue;
       }
@@ -202,14 +264,14 @@ export const SEASON_CONFIG = {
 
 // War Tick 配置
 export const WAR_TICK_CONFIG = {
-  intervalMs: 180000,
+  intervalMs: 600000,
   maxCatchupTicks: 20,
   strengthDecayPerTick: 2,
   minStrength: 25,
   maxStrength: 100,
   newTerritoryStrength: 35,
   underdogBonus: 0.4,
-  overextendThreshold: 7,
+  overextendThreshold: 8,
   overextendDecayMultiplier: 3,
   playerKillStrengthBonus: 2,
   playerKillAttackBonus: 4,
@@ -241,19 +303,42 @@ export const DEFAULT_KINGDOM_WAR = {
   contestProgress: {},
   /** 可调配的预备兵力池（征兵增长，攻城消耗） */
   kwManpowerReserve: 140,
-  /** 玩家发动普通地图攻城的每日次数 */
+  /** 精锐兵力（独立计算，攻防 x1.3） */
+  eliteTroops: 0,
+  /** 粮草 */
+  grain: 50,
+  grainCap: 200,
+  /** 士气（影响攻城效率，默认100） */
+  morale: 100,
+  /** 玩家行动计数（每行动触发敌方联动） */
+  actionCounter: 0,
+  currentTurn: 0,
+  /** AI各方预备兵力 */
+  factionManpower: { wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 },
+  /** 加入阵营时间（叛国冷却） */
+  factionJoinDate: null,
+  /** 叛国次数 */
+  defectionCount: 0,
+  /** 军心不稳 debuff 截止时间戳 */
+  instabilityDebuffUntil: null,
+  /** @deprecated 已取消每日攻城上限，保留字段兼容旧存档 */
   dailySiegeCount: 0,
   dailySiegeDate: null,
 };
 
 export const initTerritories = () => {
   const territories = {};
-  for (const [mapId, owner] of Object.entries(INITIAL_TERRITORIES)) {
-    const baseTroops = owner === 'neutral' ? 120 : 80;
+  for (const mapId of WAR_MAP_IDS) {
+    const owner = INITIAL_TERRITORIES[mapId] || 'qun';
+    const isHighTier = HIGH_TIER_MAP_IDS.includes(Number(mapId));
+    const isContested = CONTESTED_MAP_IDS.includes(Number(mapId));
+    const baseStrength = owner === 'neutral' ? 80 : isHighTier ? 75 : 60;
+    const baseTroops = owner === 'neutral' ? 120 : isHighTier ? 100 : 80;
     territories[mapId] = {
       owner,
-      strength: owner === 'neutral' ? 80 : 60,
-      garrison: (owner !== 'neutral') ? generateGarrison(owner, baseTroops) : generateGarrison('qun', baseTroops),
+      strength: isContested ? 80 : baseStrength,
+      garrison: generateGarrison(owner === 'neutral' ? 'qun' : owner, baseTroops),
+      guards: assignTerritoryGuards(owner === 'neutral' ? 'qun' : owner, isContested ? 80 : baseStrength),
       contested: false,
       attackerFaction: null,
       attackProgress: 0,
@@ -321,10 +406,10 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
     .map(fid => ({ fid, ...(stats[fid] || { count: 0, totalTroops: 0 }) }))
     .sort((a, b) => b.count - a.count || b.totalTroops - a.totalTroops)[0];
   const reserve = Math.max(0, Math.floor(kw?.kwManpowerReserve || 0));
+  const grain = Math.max(0, Math.floor(kw?.grain || 0));
   let contestedAttempts = 0;
   CONTESTED_MAP_IDS.forEach(mid => { contestedAttempts += Number((kw?.contestProgress || {})[`${mid}_attempts_${today}`]) || 0; });
   const contestedMax = CONTESTED_MAP_IDS.length * 3;
-  const regularSieges = kw?.dailySiegeDate === today ? (kw?.dailySiegeCount || 0) : 0;
   const overextended = myStats.count >= WAR_TICK_CONFIG.overextendThreshold;
   const underdog = myStats.count <= 2;
   const reserveState = reserve >= 420 ? '充足' : reserve >= 180 ? '可用' : '不足';
@@ -349,8 +434,8 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
   const recommendations = [];
   if (reserve < 160) recommendations.push('先在国战地图击败敌国训练师补预备兵');
   if (overextended) recommendations.push('优先守住接壤城池，避免远征');
-  if (contestedAttempts < contestedMax && reserve >= 80) recommendations.push('今日名城攻城次数未用完，可去「争夺」推进占领条');
-  if (regularSieges < 5 && reserve >= 60 && !overextended) recommendations.push('普通领土攻城仍有次数，挑胜率高的低防城');
+  if (contestedAttempts < contestedMax && reserve >= 80) recommendations.push('名城争夺可推进占领条');
+  if (reserve >= 60 && grain >= 10 && !overextended) recommendations.push('粮草充足时可征兵后攻城');
   if (seasonDaysLeft <= 2) recommendations.push('赛季末优先保排名和领每日收入');
   if (recommendations.length === 0) recommendations.push('当前节奏稳定，继续刷战功和名将收集');
 
@@ -409,7 +494,7 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
     reserve,
     contestedAttempts,
     contestedMax,
-    regularSieges,
+    grain,
     overextended,
     underdog,
     deployCapHint: Math.min(reserve, 200 + Math.max(0, rankIdx) * 40),
@@ -419,14 +504,14 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
     metrics: [
       { label: '我方城池', value: `${myStats.count}/${WAR_MAP_IDS.length}` },
       { label: '预备兵', value: `${reserveState} ${reserve}` },
-      { label: '名城次数', value: `${contestedAttempts}/${contestedMax}` },
-      { label: '最大调兵', value: `${Math.min(reserve, 380 + Math.max(0, rankIdx) * 72)}` },
-      { label: '战局压力', value: `${campaignDifficulty}/100` },
+      { label: '粮草', value: `${grain}/${calcGrainCap(kw)}` },
+      { label: '精锐', value: `${kw?.eliteTroops || 0}` },
+      { label: '士气', value: `${kw?.morale ?? 100}` },
     ],
   };
 };
 
-/** 简易兵种克制计算（与kwSiege共享思路） */
+/** 兵种克制计算（与 kwSiege 统一为 1.27/0.79） */
 const TROOP_KEYS_K = ['shield', 'spear', 'cavalry', 'archer', 'siege', 'raider'];
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -437,8 +522,8 @@ const getTroopMatchMultLocal = (attackerType, defenderType) => {
   if (ia == null || ib == null) return 1;
   if (ia === ib) return 1;
   const d = (ib - ia + 6) % 6;
-  if (d === 1 || d === 2) return 1.25;
-  if (d === 4 || d === 5) return 0.8;
+  if (d === 1 || d === 2) return 1.27;
+  if (d === 4 || d === 5) return 0.79;
   return 1;
 };
 
@@ -476,13 +561,10 @@ const getLeadershipMultK = (recruitedGenerals = [], generalIds = []) => {
 
 const getSupplyProfile = (mapId, playerFaction, territories) => {
   const n = Number(mapId);
-  const ownMaps = WAR_MAP_IDS.filter(id => !CONTESTED_MAP_IDS.includes(Number(id)) && territories?.[id]?.owner === playerFaction);
-  const targetIndex = WAR_MAP_IDS.indexOf(n);
-  const adjacent = targetIndex >= 0 && ownMaps.some(id => {
-    const idx = WAR_MAP_IDS.indexOf(Number(id));
-    return idx >= 0 && Math.abs(idx - targetIndex) <= 1;
-  });
+  const adj = MAP_ADJACENCY[n] || [];
+  const adjacent = adj.some(id => territories?.[id]?.owner === playerFaction);
   if (adjacent) return { mult: 1.08, label: '接壤补给', desc: '邻近我方领地，攻城推进更稳定' };
+  const ownMaps = WAR_MAP_IDS.filter(id => !CONTESTED_MAP_IDS.includes(Number(id)) && territories?.[id]?.owner === playerFaction);
   if (ownMaps.length <= 1) return { mult: 0.94, label: '孤军突进', desc: '己方领地少，后勤薄弱但易触发背水加成' };
   return { mult: 0.86, label: '远征补给', desc: '不接壤我方领地，战损与失败风险上升' };
 };
@@ -516,7 +598,7 @@ const getSuggestedAllocation = (defGarrison, deploy) => {
   return out;
 };
 
-export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [] }) => {
+export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [], kw = null }) => {
   const t = territories?.[mapId];
   if (!t) return { canAttack: false, reason: '目标领地不存在', winChance: 0, riskLabel: '不可攻' };
   if (t.owner === playerFaction) return { canAttack: false, reason: '无法攻击己方领地', winChance: 0, riskLabel: '不可攻' };
@@ -534,8 +616,16 @@ export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, ter
   const overextendMult = ownCount >= WAR_TICK_CONFIG.overextendThreshold ? 0.93 : 1;
   const underdogMult = ownCount <= 2 ? 1.07 : 1;
   const defenderResolve = t.owner === 'neutral' ? 0.86 : clamp(0.92 + defenderCount * 0.018, 0.92, 1.16);
-  const attackPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult;
-  const defensePower = defTotal * ((t.strength || 50) / 100) * defenderResolve;
+  const instabilityMult = kw ? getInstabilityMult(kw) : 1;
+  const moraleMult = clamp(((kw?.morale ?? 100) || 100) / 100, 0.6, 1.2);
+  const eliteRatio = deploy > 0 ? Math.min(1, (kw?.eliteTroops || 0) / deploy) : 0;
+  const eliteMult = 1 + eliteRatio * (RECRUIT_CONFIG.eliteCombatMult - 1);
+  const hour = new Date().getHours();
+  const isNight = hour < 6 || hour >= 18;
+  const nightAtkMult = isNight ? 0.92 : 1;
+  const nightDefMult = isNight ? 1.15 : 1;
+  const attackPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult * instabilityMult * moraleMult * eliteMult * nightAtkMult;
+  const defensePower = defTotal * ((t.strength || 50) / 100) * defenderResolve * nightDefMult;
   const pressure = attackPower / Math.max(1, defensePower);
   const winChance = deploy < 60 ? 0 : clamp(0.08 + (pressure / (pressure + 1.15)) * 0.84, 0.08, 0.92);
   const lossRate = deploy < 60 ? 0 : clamp(0.30 - winChance * 0.14 + Math.max(0, 1 - counter) * 0.08 + (supply.mult < 1 ? 0.04 : 0), 0.09, 0.48);
@@ -674,6 +764,7 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
       target.owner = attackerFid;
       target.strength = cfg.newTerritoryStrength;
       target.garrison = generateGarrison(attackerFid, Math.floor(45 + Math.random() * 35));
+      target.guards = assignTerritoryGuards(attackerFid, target.strength);
       target.contested = false;
       target.attackerFaction = null;
       target.attackProgress = 0;
@@ -756,8 +847,10 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     territories: initTerritories(),
     contestProgress: {},
     season: kw.season + 1,
-    /** 赛季更替：预备兵保留 45% 并封顶，避免从零开始过难、也避免无限囤积 */
     kwManpowerReserve: Math.min(2800, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
+    grain: Math.floor((kw.grain || 0) * 0.3),
+    eliteTroops: Math.floor((kw.eliteTroops || 0) * 0.3),
+    morale: Math.max(60, Math.floor((kw.morale || 100) * 0.8)),
   };
   const stats = rankStatsFn ? rankStatsFn(newState) : null;
   newState.militaryRank = getMilitaryRank(newContribution, stats).id;
@@ -782,12 +875,12 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
  * 玩家对普通地图发动兵种化攻城
  * @returns {{ victory, strengthChange, manpowerLost, detail, atkTroops, defTroops }}
  */
-export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [] }) => {
+export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [], kw = null }) => {
   const t = territories[mapId];
   if (!t || t.owner === playerFaction) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '无法攻击己方领地' };
   if (CONTESTED_MAP_IDS.includes(Number(mapId))) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '名城请在争夺页攻城' };
 
-  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds });
+  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds, kw });
   const alloc = evalResult.allocation || normalizeTroopAllocationK(allocation);
   const deploy = evalResult.deploy || TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
   if (deploy < 60) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '兵力不足60，无法攻城' };
@@ -825,10 +918,9 @@ export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territor
 
 export const isFactionCapitalOnly = (faction, territories) => {
   const ownedMaps = WAR_MAP_IDS.filter(id => territories[id]?.owner === faction);
-  return ownedMaps.length === 0;
+  return ownedMaps.length <= 3;
 };
 
-// 获取可发起都城攻防战的敌方阵营
 export const getCapitalSiegeTargets = (playerFaction, territories) => {
   return FACTION_IDS.filter(fid => fid !== playerFaction && isFactionCapitalOnly(fid, territories));
 };
@@ -940,6 +1032,40 @@ export const KINGDOM_CAMPAIGNS = [
     icon: '🏰', lvl: 88, teamSize: 6, boss: 340, bossLvl: 94, bossName: '杜预·征南大将军',
     pool: [9, 65, 94, 130, 139, 149, 190, 206], reward: { gold: 22000, tokens: 26, contribution: 120 },
     bg: 'linear-gradient(135deg, #B71C1C, #880E4F)', lore: '晋军楼船下江东，这是保卫吴国都城的最终战役！' },
+
+  // === 晋国 ===
+  { id: 'jin_tongguan', faction: 'jin', name: '潼关定西', desc: '晋军西征，平定凉州叛乱。',
+    icon: '🏔️', lvl: 62, teamSize: 6, boss: 130, bossLvl: 68, bossName: '马超·西凉铁骑',
+    pool: [3, 18, 130, 143, 160, 182, 446, 449], reward: { gold: 8500, tokens: 10, contribution: 52 },
+    bg: 'linear-gradient(135deg, #F9A825, #F57F17)', lore: '晋军铁骑西出潼关，凉州诸部望风而降。' },
+  { id: 'jin_yiling', faction: 'jin', name: '夷陵收编', desc: '收编吴蜀遗势，整合江南防务。',
+    icon: '🔥', lvl: 68, teamSize: 6, boss: 168, bossLvl: 74, bossName: '陆逊·大都督',
+    pool: [9, 65, 94, 130, 143, 168, 199, 241], reward: { gold: 10000, tokens: 12, contribution: 60 },
+    bg: 'linear-gradient(135deg, #FBC02D, #F57F17)', lore: '夷陵战后，晋军整编败军，江南渐定。' },
+  { id: 'jin_xiangyang', faction: 'jin', name: '襄阳攻略', desc: '攻克荆州门户，打通南北粮道。',
+    icon: '🏯', lvl: 74, teamSize: 6, boss: 182, bossLvl: 80, bossName: '关羽·汉寿亭侯',
+    pool: [6, 9, 65, 94, 130, 143, 168, 199], reward: { gold: 12000, tokens: 14, contribution: 68 },
+    bg: 'linear-gradient(135deg, #FFA000, #E65100)', lore: '襄阳城下，晋军水陆并进，荆州门户洞开。' },
+  { id: 'jin_shouchun', faction: 'jin', name: '寿春围城', desc: '围困淮南重镇，断吴国北援。',
+    icon: '⚔️', lvl: 78, teamSize: 6, boss: 138, bossLvl: 84, bossName: '诸葛诞·淮南都督',
+    pool: [33, 65, 94, 138, 139, 182, 206, 437], reward: { gold: 14000, tokens: 16, contribution: 75 },
+    bg: 'linear-gradient(135deg, #FF8F00, #EF6C00)', lore: '寿春城坚粮足，晋军以围代攻，吴援断绝。' },
+  { id: 'jin_jianye', faction: 'jin', name: '建业水战', desc: '楼船下江东，吴国防线崩溃。',
+    icon: '🌊', lvl: 84, teamSize: 6, boss: 340, bossLvl: 90, bossName: '杜预·征南大将军',
+    pool: [9, 65, 94, 130, 139, 149, 190, 206], reward: { gold: 18000, tokens: 20, contribution: 95 },
+    bg: 'linear-gradient(135deg, #FFB300, #FF6F00)', lore: '晋军楼船蔽江，建业城破，东吴气数已尽。' },
+  { id: 'jin_luoyang', faction: 'jin', name: '洛阳受禅', desc: '曹奂禅让，晋室代魏，天下归一。',
+    icon: '👑', lvl: 88, teamSize: 6, boss: 149, bossLvl: 92, bossName: '曹奂·魏元帝',
+    pool: [9, 65, 94, 130, 149, 199, 241, 443], reward: { gold: 20000, tokens: 22, contribution: 105 },
+    bg: 'linear-gradient(135deg, #FFD54F, #FF8F00)', lore: '洛阳宫中，魏帝禅位，司马氏一统山河。' },
+  { id: 'jin_shu_nan', faction: 'jin', name: '南征蜀汉', desc: '邓艾偷渡阴平，蜀汉门户洞开。',
+    icon: '🗡️', lvl: 82, teamSize: 6, boss: 282, bossLvl: 88, bossName: '姜维·大将军',
+    pool: [6, 9, 65, 94, 130, 143, 168, 199], reward: { gold: 16000, tokens: 18, contribution: 85 },
+    bg: 'linear-gradient(135deg, #FFC107, #FF6F00)', lore: '阴平小道，邓艾奇兵天降，蜀汉震动。' },
+  { id: 'jin_unify', faction: 'jin', name: '天下归晋', desc: '吴蜀既平，四海一统，晋室登基。',
+    icon: '🐉', lvl: 94, teamSize: 6, boss: 340, bossLvl: 98, bossName: '孙皓·吴末帝',
+    pool: [9, 65, 94, 130, 149, 190, 206, 443], reward: { gold: 26000, tokens: 30, contribution: 150 },
+    bg: 'linear-gradient(135deg, #FFB300, #E65100)', lore: '金陵城下，吴主出降，三国终归一统！' },
 ];
 
 // 都城地图ID
@@ -949,12 +1075,319 @@ export const CAPITAL_MAP_IDS = { wei: 201, shu: 202, wu: 203, jin: 207 };
 export const resetKingdomDailyCounts = (kw) => {
   const today = new Date().toISOString().slice(0, 10);
   if (kw.dailyCounts.resetDate !== today) {
+    const territoryCount = kw.faction ? getFactionTerritoryCount(kw.faction, kw.territories || {}) : 0;
+    const grainGain = territoryCount * RECRUIT_CONFIG.grainPerTerritory;
+    const grainCap = calcGrainCap(kw);
     return {
       ...kw,
       dailyCounts: { income: false, kills: 0, capitalReward: false, resetDate: today },
       dailySiegeCount: 0,
       dailySiegeDate: today,
+      grain: Math.min(grainCap, (kw.grain || 0) + grainGain),
     };
   }
   return kw;
+};
+
+// ==========================================
+// 守将系统
+// ==========================================
+
+const RARITY_ORDER = { SSR: 3, SR: 2, R: 1, 3: 3, 2: 2, 1: 1 };
+
+/** 为城池分配守将 */
+export const assignTerritoryGuards = (factionId, strength = 60) => {
+  const fid = factionId === 'neutral' ? 'qun' : factionId;
+  const pool = SANGUO_GENERALS.filter(g => g.faction === fid || (fid === 'qun' && g.faction === 'neutral'));
+  const sorted = [...pool].sort((a, b) => (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0));
+  let count = 1;
+  if (strength >= 80) count = 3;
+  else if (strength >= 50) count = 2;
+  const guards = [];
+  const used = new Set();
+  for (let i = 0; i < count && i < sorted.length; i++) {
+    const g = sorted[Math.floor(Math.random() * Math.min(8, sorted.length))];
+    if (!g || used.has(g.id)) continue;
+    used.add(g.id);
+    guards.push({ generalId: g.id, name: g.name, rarity: g.rarity, defeated: false, recoverActions: 0 });
+  }
+  if (guards.length === 0 && sorted[0]) {
+    guards.push({ generalId: sorted[0].id, name: sorted[0].name, rarity: sorted[0].rarity, defeated: false, recoverActions: 0 });
+  }
+  return guards;
+};
+
+export const ensureTerritoryGuards = (territory, owner) => {
+  if (!territory) return [];
+  if (territory.guards && territory.guards.length > 0) return territory.guards;
+  return assignTerritoryGuards(owner || territory.owner || 'qun', territory.strength || 60);
+};
+
+export const getActiveGuards = (territory) => {
+  const guards = ensureTerritoryGuards(territory, territory?.owner);
+  return guards.filter(g => !g.defeated);
+};
+
+// ==========================================
+// 粮草 / 征兵
+// ==========================================
+
+export const calcGrainCap = (kw) => {
+  const territoryCount = kw?.faction ? getFactionTerritoryCount(kw.faction, kw.territories || {}) : 0;
+  return RECRUIT_CONFIG.grainCapBase + territoryCount * RECRUIT_CONFIG.grainCapPerTerritory;
+};
+
+export const recruitTroops = (kw, type = 'normal') => {
+  if (!kw?.faction) return { ok: false, reason: '未加入阵营' };
+  const cfg = RECRUIT_CONFIG;
+  const isElite = type === 'elite';
+  const baseCost = isElite ? cfg.eliteCost : cfg.normalCost;
+  const rankPerk = RANK_PERK_EFFECTS[getMilitaryRank(kw.warContribution || 0).perk] || {};
+  const costMult = rankPerk.recruitCostMult || 1;
+  const cost = { gold: Math.floor(baseCost.gold * costMult), grain: baseCost.grain };
+  const gainRange = isElite ? cfg.eliteGain : cfg.normalGain;
+  if ((kw.grain || 0) < cost.grain) return { ok: false, reason: `粮草不足，需要 ${cost.grain}` };
+  const gain = gainRange[0] + Math.floor(Math.random() * (gainRange[1] - gainRange[0] + 1));
+  return {
+    ok: true,
+    goldCost: cost.gold,
+    grainCost: cost.grain,
+    gain,
+    isElite,
+    nextKw: {
+      grain: (kw.grain || 0) - cost.grain,
+      kwManpowerReserve: isElite
+        ? kw.kwManpowerReserve
+        : Math.min(2800, (kw.kwManpowerReserve || 0) + gain),
+      eliteTroops: isElite
+        ? Math.min(1200, (kw.eliteTroops || 0) + gain)
+        : kw.eliteTroops,
+      actionCounter: (kw.actionCounter || 0) + 1,
+    },
+  };
+};
+
+export const getInstabilityMult = (kw) => {
+  if (!kw?.instabilityDebuffUntil) return 1;
+  if (Date.now() < kw.instabilityDebuffUntil) return 1 - DEFECTION_CONFIG.instabilityPenalty;
+  return 1;
+};
+
+// ==========================================
+// 叛国
+// ==========================================
+
+export const canDefect = (kw) => {
+  if (!kw?.faction) return { ok: false, reason: '尚未加入任何阵营' };
+  if (!kw.factionJoinDate) return { ok: true };
+  const daysSince = (Date.now() - new Date(kw.factionJoinDate).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSince < DEFECTION_CONFIG.cooldownDays) {
+    return { ok: false, reason: `加入阵营未满 ${DEFECTION_CONFIG.cooldownDays} 天，还需 ${Math.ceil(DEFECTION_CONFIG.cooldownDays - daysSince)} 天` };
+  }
+  return { ok: true };
+};
+
+export const getDefectionPenalties = (kw) => {
+  const mult = (kw?.defectionCount || 0) >= 1 ? DEFECTION_CONFIG.secondDefectionMult : 1;
+  const hours = DEFECTION_CONFIG.instabilityHours * mult;
+  return {
+    goldLossPct: DEFECTION_CONFIG.goldLossPct * mult,
+    loseManpower: true,
+    loseElite: true,
+    loseSeasonContrib: true,
+    loseTokens: true,
+    loseGenerals: mult > 1 ? 2 : 1,
+    rankDrop: 2 * mult,
+    grainKeepPct: DEFECTION_CONFIG.grainKeepPct,
+    instabilityHours: hours,
+    gangLeave: true,
+  };
+};
+
+export const applyDefection = (kw, currentGold = 0) => {
+  const pen = getDefectionPenalties(kw);
+  const gens = [...(kw.recruitedGenerals || [])];
+  const lostGens = [];
+  for (let i = 0; i < pen.loseGenerals && gens.length > 0; i++) {
+    const idx = Math.floor(Math.random() * gens.length);
+    lostGens.push(gens.splice(idx, 1)[0]);
+  }
+  const rankIdx = Math.max(0, MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian')));
+  const newRankIdx = Math.max(0, rankIdx - Math.floor(pen.rankDrop));
+  return {
+    faction: null,
+    factionJoinDate: null,
+    kwManpowerReserve: 0,
+    eliteTroops: 0,
+    grain: Math.floor((kw.grain || 0) * pen.grainKeepPct),
+    seasonContribution: 0,
+    factionTokens: 0,
+    morale: Math.max(40, (kw.morale || 100) - 30),
+    recruitedGenerals: gens,
+    militaryRank: MILITARY_RANKS[newRankIdx]?.id || 'civilian',
+    defectionCount: (kw.defectionCount || 0) + 1,
+    instabilityDebuffUntil: Date.now() + pen.instabilityHours * 60 * 60 * 1000,
+    goldLoss: Math.floor(currentGold * pen.goldLossPct),
+    lostGenerals: lostGens,
+    gangLeave: true,
+  };
+};
+
+// ==========================================
+// 敌方联动行动
+// ==========================================
+
+const initFactionManpower = () => ({ wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 });
+
+export const ensureFactionManpower = (kw) => {
+  const base = initFactionManpower();
+  const fm = { ...base, ...(kw?.factionManpower || {}) };
+  return fm;
+};
+
+const pickAiAction = (fid, territories, factionManpower, playerFaction) => {
+  const count = getFactionTerritoryCount(fid, territories);
+  const mp = factionManpower[fid] || 200;
+  const weakest = getWeakestFaction(territories);
+  const danger = count <= 2;
+  const advantage = count >= 8;
+  const roll = Math.random();
+  if (danger && roll < 0.8) return 'recruit';
+  if (danger) return 'fortify';
+  if (advantage && roll < 0.6) return 'attack';
+  if (roll < 0.4) return 'attack';
+  if (roll < 0.7) return 'recruit';
+  return 'fortify';
+};
+
+const aiRecruit = (fid, territories, factionManpower) => {
+  const count = getFactionTerritoryCount(fid, territories);
+  const cap = count * 300;
+  const gain = 20 + Math.floor(Math.random() * 21) + count * 2;
+  factionManpower[fid] = Math.min(cap, (factionManpower[fid] || 0) + gain);
+  return { type: 'recruit', faction: fid, gain, msg: `${FACTIONS[fid]?.fullName || fid}征兵 +${gain}` };
+};
+
+const aiFortify = (fid, territories) => {
+  const owned = WAR_MAP_IDS.filter(mid => territories[mid]?.owner === fid);
+  if (owned.length === 0) return null;
+  const mid = owned.reduce((best, id) => {
+    const s = territories[id]?.strength || 100;
+    return s < (territories[best]?.strength || 100) ? id : best;
+  }, owned[0]);
+  const t = { ...territories[mid] };
+  t.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (t.strength || 50) + 5 + Math.floor(Math.random() * 4));
+  if (t.garrison) {
+    const rk = TROOP_KEYS_K[Math.floor(Math.random() * 6)];
+    t.garrison = { ...t.garrison, [rk]: (t.garrison[rk] || 0) + 3 + Math.floor(Math.random() * 5) };
+  }
+  territories[mid] = t;
+  return { type: 'fortify', faction: fid, mapId: Number(mid), msg: `${FACTIONS[fid]?.fullName || fid}加固了领地城防` };
+};
+
+const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction, playerAvgLevel) => {
+  const targets = WAR_MAP_IDS.filter(mid => {
+    const t = territories[mid];
+    if (!t || t.owner === fid) return false;
+    if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
+    return (t.strength || 60) <= 55;
+  });
+  if (targets.length === 0) return aiFortify(fid, territories);
+  const scored = targets.map(mid => ({ mid, score: scoreAiWarTarget(fid, mid, territories, getWeakestFaction(territories)) }))
+    .sort((a, b) => b.score - a.score);
+  const targetMapId = scored[0]?.mid;
+  if (!targetMapId) return null;
+  const deploy = Math.min(factionManpower[fid] || 100, 80 + Math.floor(Math.random() * 60));
+  if (deploy < 40) return aiRecruit(fid, territories, factionManpower);
+  factionManpower[fid] = Math.max(0, (factionManpower[fid] || 0) - Math.floor(deploy * 0.35));
+  const target = { ...territories[targetMapId] };
+  const defGarrison = target.garrison || generateGarrison(target.owner || 'qun', 60);
+  const atkGarrison = generateGarrison(fid, deploy);
+  const counter = troopCounterScore(atkGarrison, defGarrison);
+  const supply = getSupplyProfile(targetMapId, fid, territories);
+  const atkPower = deploy * counter * supply.mult * (0.85 + Math.random() * 0.3);
+  const defPower = getGarrisonTotal(defGarrison) * ((target.strength || 50) / 100) * (0.9 + Math.random() * 0.2);
+  const guards = getActiveGuards(target);
+  const guardBonus = 1 + guards.length * 0.12;
+  if (atkPower > defPower * guardBonus) {
+    const oldOwner = target.owner;
+    target.owner = fid;
+    target.strength = WAR_TICK_CONFIG.newTerritoryStrength;
+    target.garrison = generateGarrison(fid, Math.floor(45 + Math.random() * 35));
+    target.guards = assignTerritoryGuards(fid, target.strength);
+    territories[targetMapId] = target;
+    return { type: 'capture', faction: fid, defender: oldOwner, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻占了${FACTIONS[oldOwner]?.fullName || '中立'}领地` };
+  }
+  target.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (target.strength || 50) + 3);
+  territories[targetMapId] = target;
+  return { type: 'attack_fail', faction: fid, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻城受挫` };
+};
+
+/** 玩家每行动一次，所有敌方各行动一次 */
+export const executeAllEnemyActions = (kw, gangPresets, playerAvgLevel = 50) => {
+  if (!kw?.faction) return { kw, logs: [] };
+  const territories = JSON.parse(JSON.stringify(kw.territories || {}));
+  const factionManpower = ensureFactionManpower(kw);
+  const logs = [];
+  for (const fid of ALL_FACTION_IDS) {
+    if (fid === kw.faction) continue;
+    const action = pickAiAction(fid, territories, factionManpower, kw.faction);
+    let result = null;
+    if (action === 'recruit') result = aiRecruit(fid, territories, factionManpower);
+    else if (action === 'fortify') result = aiFortify(fid, territories);
+    else result = aiAttack(fid, territories, factionManpower, gangPresets, kw.faction, playerAvgLevel);
+    if (result) logs.push({ time: Date.now(), ...result });
+  }
+  for (const mid of WAR_MAP_IDS) {
+    const t = territories[mid];
+    if (!t?.guards) continue;
+    t.guards = t.guards.map(g => {
+      if (!g.defeated) return g;
+      const ra = (g.recoverActions || 0) + 1;
+      if (ra >= 3) return { ...g, defeated: false, recoverActions: 0 };
+      return { ...g, recoverActions: ra };
+    });
+  }
+  return {
+    kw: { ...kw, territories, factionManpower },
+    logs,
+  };
+};
+
+export const migrateKingdomWarState = (kw) => {
+  if (!kw) return { ...DEFAULT_KINGDOM_WAR, territories: initTerritories() };
+  const next = { ...DEFAULT_KINGDOM_WAR, ...kw };
+  if (!next.factionManpower) next.factionManpower = initFactionManpower();
+  if (next.grain == null) next.grain = DEFAULT_KINGDOM_WAR.grain;
+  if (next.eliteTroops == null) next.eliteTroops = 0;
+  if (next.morale == null) next.morale = 100;
+  if (next.actionCounter == null) next.actionCounter = 0;
+  if (next.defectionCount == null) next.defectionCount = 0;
+  if (kw.grainReserve != null) next.grain = (next.grain || 0) + (Number(kw.grainReserve) || 0);
+  delete next.grainReserve;
+  if (next.faction && !next.factionJoinDate) next.factionJoinDate = new Date().toISOString();
+  if (next.instabilityDebuffUntil == null) next.instabilityDebuffUntil = null;
+  if (next.currentTurn == null) next.currentTurn = 0;
+  // 补全新地图领土
+  const terr = { ...(next.territories || {}) };
+  let changed = false;
+  for (const mapId of WAR_MAP_IDS) {
+    if (!terr[mapId]) {
+      const owner = INITIAL_TERRITORIES[mapId] || 'qun';
+      const isHighTier = HIGH_TIER_MAP_IDS.includes(Number(mapId));
+      terr[mapId] = {
+        owner,
+        strength: owner === 'neutral' ? 80 : isHighTier ? 75 : 60,
+        garrison: generateGarrison(owner === 'neutral' ? 'qun' : owner, isHighTier ? 100 : 80),
+        guards: assignTerritoryGuards(owner === 'neutral' ? 'qun' : owner, isHighTier ? 75 : 60),
+        contested: false, attackerFaction: null, attackProgress: 0, playerContribution: 0, lastBattleTime: null,
+      };
+      changed = true;
+    } else if (!terr[mapId].guards || terr[mapId].guards.length === 0) {
+      terr[mapId] = { ...terr[mapId], guards: assignTerritoryGuards(terr[mapId].owner || 'qun', terr[mapId].strength || 60) };
+      changed = true;
+    }
+  }
+  if (changed) next.territories = terr;
+  return next;
 };

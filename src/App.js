@@ -9,7 +9,7 @@ import {
   applyMirrorEchoRecoil, applyParasiteHealRedirect, checkMirrorCloneReflect,
 } from './utils/pveBattleRules';
 
-import { getStats as getStatsRaw, getStageMult, calcNextExp } from './utils/statsCalculator';
+import { getStats as getStatsRaw, getStageMult, calcNextExp, calcBattleBaseExp } from './utils/statsCalculator';
 import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
@@ -94,7 +94,7 @@ import {
   getRegionPressure, getPartyAdaptationSummary, getAdaptationMult,
   getBossMechanicDef, checkForestWillEcology, ECO_LINKED_BOSSES,
   inferPetTags, checkTagRestriction, PET_TAG_DEFS,
-  FATIGUE_CONFIG, getPetFatigue, addFatigue, reduceFatigue, getFatigueLabel, canPetBattle, getFatigueSpeedMult,
+  reduceFatigue,
   INFINITY_ROUTE_TYPES, pickRouteOptions, pickBlessingOptions, pickSkillMutation, applySkillMutation, SPIRIT_BLESSINGS,
   RESCUE_EVENTS, ENV_PUZZLES, OBSERVATION_TARGETS, getRescueEventsForMap, getPuzzlesForMap, getObservationsForMap,
   BONDING_QUESTS, getBondingQuestById, getBondingQuestsForMap, checkBondingStepRequirements, checkBondingEcology, BONDING_STEP_TYPES, WILD_PET_STATES,
@@ -175,6 +175,9 @@ import {
   getCapitalSiegeTargets, getGarrisonTotal, getFactionTerritoryStats,
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
+  RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY,
+  recruitTroops, calcGrainCap, canDefect, applyDefection, getDefectionPenalties,
+  executeAllEnemyActions, migrateKingdomWarState, getActiveGuards, assignTerritoryGuards,
 } from './data/kingdom';
 import {
   DEFAULT_KINGDOM_SIM_STATE, initKingdomSimTerritories, executeTurn,
@@ -192,6 +195,10 @@ import {
   runKwSiegeBattle,
   evaluateKwSiegeBattle,
   tickContestOccupationAI,
+  runThreePhaseSiege,
+  isNightBattle,
+  getBattleTimeModifiers,
+  resolveGeneralDuel,
   syncContestedTerritoryOwners,
   getContestMapProgress,
 } from './data/kwSiege';
@@ -534,6 +541,10 @@ export default function RPG(props) {
           }
           sd.saveVersion = 32;
         }
+        if (sv < 33) {
+          sd.playTimeMs = Math.max(0, Number(sd.playTimeMs) || 0);
+          sd.saveVersion = 33;
+        }
         if (process.env.NODE_ENV === 'development') console.log("✅ 成功读取存档:", savedDataRef.current.trainerName);
       } else {
         savedDataRef.current = {};
@@ -663,7 +674,7 @@ export default function RPG(props) {
 
   // 国战系统
   const [kingdomWar, setKingdomWar] = useState(() => {
-    const saved = savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR };
+    const saved = migrateKingdomWarState(savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR });
     if (!saved.territories || Object.keys(saved.territories).length === 0) {
       saved.territories = initTerritories();
     }
@@ -676,6 +687,9 @@ export default function RPG(props) {
       if (!t.garrison || typeof t.garrison !== 'object' || Object.keys(t.garrison).length === 0) {
         const fid = t.owner === 'neutral' ? 'qun' : (t.owner || 'qun');
         t.garrison = generateGarrison(fid, Math.max(40, Math.floor((t.strength || 50) * 1.2)));
+      }
+      if (!t.guards || t.guards.length === 0) {
+        t.guards = assignTerritoryGuards(t.owner === 'neutral' ? 'qun' : (t.owner || 'qun'), t.strength || 60);
       }
     }
     return saved;
@@ -1216,9 +1230,15 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
 
   // 界面状态
   const [currentMapId, setCurrentMapId] = useState(savedData.savedMapId || 1);
-  const [playerPos, setPlayerPos] = useState(savedData.savedPlayerPos || { x: 0, y: 0 });
+  const sanitizeSavedPlayerPos = (pos) => ({
+    x: Number.isFinite(Number(pos?.x)) ? Number(pos.x) : 0,
+    y: Number.isFinite(Number(pos?.y)) ? Number(pos.y) : 0,
+  });
+  const [playerPos, setPlayerPos] = useState(() => sanitizeSavedPlayerPos(savedData.savedPlayerPos));
   const [playerFacing, setPlayerFacing] = useState(savedData.savedPlayerFacing || 'down');
   const mapMoveLockRef = useRef(false);
+  const postBattleSafeStepsRef = useRef(0);
+  const wasInBattleRef = useRef(false);
   const [mapGrid, setMapGrid] = useState([]); // 随机生成的网格数据
   const mapGridCacheRef = useRef(savedData.mapGridCache || {}); // 每张地图只生成一次
 
@@ -1350,6 +1370,25 @@ const [infinityState, setInfinityState] = useState(() => {
   const [showKeyHelp, setShowKeyHelp] = useState(false);
   const [autoBattle, setAutoBattle] = useState(savedData.autoBattle || false);
   const [battle, _setBattleRaw] = useState(null);
+  const [playTimeMs, setPlayTimeMs] = useState(Math.max(0, Number(savedData.playTimeMs) || 0));
+  const playSessionStartRef = useRef(Date.now());
+  const getCurrentPlayTimeMs = useCallback(() => (
+    Math.max(0, Math.floor((playTimeMs || 0) + (Date.now() - playSessionStartRef.current)))
+  ), [playTimeMs]);
+  const formatPlayTime = useCallback((ms) => {
+    const totalMinutes = Math.max(0, Math.floor((Number(ms) || 0) / 60000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours > 0 ? `${hours}小时${minutes}分` : `${minutes}分钟`;
+  }, []);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      setPlayTimeMs(prev => Math.max(0, (prev || 0) + (now - playSessionStartRef.current)));
+      playSessionStartRef.current = now;
+    }, 60000);
+    return () => window.clearInterval(id);
+  }, []);
   const setBattle = useCallback((updater) => {
     _setBattleRaw(prev => {
       let next = typeof updater === 'function' ? updater(prev) : updater;
@@ -1427,6 +1466,17 @@ const [infinityState, setInfinityState] = useState(() => {
     });
   }, []);
   const [battleSpeed, setBattleSpeed] = useState(savedData.battleSpeed || 1);
+  useEffect(() => {
+    if (battle) {
+      wasInBattleRef.current = true;
+      return;
+    }
+    if (view === 'grid_map' && wasInBattleRef.current) {
+      wasInBattleRef.current = false;
+      postBattleSafeStepsRef.current = Math.max(postBattleSafeStepsRef.current, 2);
+      setPlayerPos(prev => prev?.intent ? ({ x: prev.x, y: prev.y }) : prev);
+    }
+  }, [battle, view]);
   const [showTypeChart, setShowTypeChart] = useState(false);
   const battleSpeedRef = useRef(1);
   useEffect(() => { battleSpeedRef.current = battleSpeed; }, [battleSpeed]);
@@ -1529,12 +1579,12 @@ const [infinityState, setInfinityState] = useState(() => {
   const handleWinRef = useRef(null);
   const checkBattleObjectiveMet = (battleState) => {
     const obj = battleState?.battleObjective;
-    if (!obj) return true;
+    if (!obj) return false;
     if (obj === 'escape') return (battleState.turnCount || 0) >= (battleState.objectiveTurns || 10);
     if (obj === 'purify') return (battleState._purifyProgress ?? 100) <= 0;
     if (obj === 'protect') return (battleState._protectHp ?? 0) > 0 && (battleState.turnCount || 0) >= (battleState.objectiveTurns || 8);
     if (obj === 'capture_alive') return (battleState.enemyParty || []).length > 0 && battleState.enemyParty.every(e => !e || e._capturedAlive);
-    return true;
+    return false;
   };
   const canWinByObjective = (bs) => {
     if (!bs?.battleObjective) return true;
@@ -1827,7 +1877,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const gangCatchBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar))).catchRate || 0;
       const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
       const relicCatchBonus = getEquippedRelicEffects(relics).catchRateBonus || 0;
-      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus, 40) / 100);
+      const warBallBonus = Math.min(15, (kingdomWar?.warBalls || 0) * 5);
+      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus + warBallBonus, 55) / 100);
 
       // 徽章加成：每枚徽章提升2%捕获率上限
       const badgeBonus = 1 + Math.min(badges.length, 10) * 0.015;
@@ -2353,7 +2404,103 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const hasMomentum = !(move.momentumCost > 0 && (battleState?._sectMomentum || 0) < move.momentumCost);
       return hasPP && hasMomentum;
     }
-    return (move.pp || 0) > 0;
+    return move.pp === undefined || move.pp > 0;
+  };
+
+  const getUnitTypeList = (unit) => [unit?.type, unit?.secondaryType, unit?.type2].filter(Boolean);
+
+  const getMoveTypeMultiplier = (move, target, battleState) => {
+    if (!move?.t || !target) return 1;
+    return getUnitTypeList(target).reduce((mult, type) => mult * getTypeMod(move.t, type, battleState), 1);
+  };
+
+  const isStatusImmuneToMove = (move, target) => {
+    const status = move?.effect?.status;
+    if (!status || !target) return false;
+    const targetTypes = getUnitTypeList(target);
+    return (status === 'BRN' && targetTypes.includes('FIRE'))
+      || (status === 'FRZ' && targetTypes.includes('ICE'))
+      || (status === 'PSN' && (targetTypes.includes('POISON') || targetTypes.includes('STEEL')))
+      || (status === 'PAR' && targetTypes.includes('ELECTRIC'));
+  };
+
+  const scoreCombatMoveForTarget = (battleState, attacker, target, move, source = 'enemy', opts = {}) => {
+    if (!attacker || !target || !move || !canUseCombatMove(battleState, attacker, move, source)) return -Infinity;
+    const isHardBattle = !!opts.isHardBattle;
+    const attackerStats = getStats(attacker, attacker.stages, attacker.status);
+    const targetStats = getStats(target, target.stages, target.status);
+    const hpRatio = attacker.currentHp / Math.max(1, attackerStats.maxHp || 1);
+    const targetHpRatio = target.currentHp / Math.max(1, targetStats.maxHp || 1);
+    const effect = move.effect || {};
+    let score = 0;
+
+    if ((move.p || 0) > 0) {
+      const typeMod = getMoveTypeMultiplier(move, target, battleState);
+      if (typeMod <= 0) return -Infinity;
+      const atkStat = (move.cat === 'special' ? attackerStats.s_atk : attackerStats.p_atk) || 1;
+      const defStat = Math.max(1, (move.cat === 'special' ? targetStats.s_def : targetStats.p_def) || 1);
+      const stab = move.t && getUnitTypeList(attacker).includes(move.t) ? 1.35 : 1;
+      const acc = move.alwaysHit || move.acc === 0 ? 1 : Math.max(0.5, Math.min(1, (Number(move.acc) || 100) / 100));
+      score = (move.p || 40) * typeMod * stab * Math.pow(atkStat / defStat, 0.35) * acc;
+      if (targetHpRatio < 0.35) score += 24;
+      if (targetHpRatio < 0.18) score += 34;
+      if (effect.drain || effect.hpDrain) score += hpRatio < 0.65 ? 18 : 6;
+      if (effect.flinch) score += 6;
+      if (effect.defDown || effect.sDefDown || effect.spdDown || effect.atkDown || effect.accDown) score += 8;
+      if (move.isCursed || move.isJutsu || move.isFruitMove || move.isExtra) score += isHardBattle ? 12 : 5;
+    } else if (effect.type === 'HEAL' || move.t === 'HEAL' || (move.val && move.val > 0)) {
+      if (hpRatio > 0.7) return -Infinity;
+      score = hpRatio < 0.3 ? 86 : hpRatio < 0.5 ? 58 : 24;
+    } else if (effect.type === 'BUFF') {
+      const statKeys = [effect.stat, effect.stat2, effect.stat3].filter(Boolean);
+      if (statKeys.length && statKeys.every(k => (attacker.stages?.[k] || 0) >= 6)) return -Infinity;
+      if (hpRatio < 0.35) return -Infinity;
+      score = 34 + Math.max(0, 3 - (battleState?.turnCount || 0)) * 7;
+    } else if (effect.type === 'DEBUFF') {
+      const statKeys = [effect.stat, effect.stat2, effect.stat3].filter(Boolean);
+      if (statKeys.length && statKeys.every(k => (target.stages?.[k] || 0) <= -6)) return -Infinity;
+      score = 36 + (targetHpRatio > 0.45 ? 10 : 0);
+    } else if (effect.type === 'STATUS') {
+      if (effect.status !== 'CON' && (target.status || isStatusImmuneToMove(move, target))) return -Infinity;
+      if (effect.status === 'CON' && target.volatiles?.confused) return -Infinity;
+      score = 40 + (targetHpRatio > 0.4 ? 8 : 0);
+    } else if (effect.type === 'PROTECT') {
+      const streak = attacker.volatiles?.protectStreak || 0;
+      score = hpRatio < 0.35 ? 30 : 12;
+      score -= streak * 18;
+    } else {
+      score = 8;
+    }
+
+    if (attacker.activeVow?.reward?.atkMult > 1 || attacker.activeVow?.reward?.nextMovePower > 1) {
+      score += (move.p || 0) > 0 ? 35 : -20;
+    }
+    if (move.priority) score += move.priority * 10;
+    return score + Math.random() * (isHardBattle ? 8 : 24);
+  };
+
+  const chooseEnemyCombatAction = (battleState, enemyUnit, targets, opts = {}) => {
+    const targetList = (Array.isArray(targets) ? targets : [{ unit: targets, idx: battleState?.activeIdx }])
+      .filter(t => t?.unit && t.unit.currentHp > 0);
+    const moves = (enemyUnit?.combatMoves || enemyUnit?.moves || []).filter(m => canUseCombatMove(battleState, enemyUnit, m, 'enemy'));
+    if (!enemyUnit || targetList.length === 0 || moves.length === 0) {
+      return { move: { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } }, targetIdx: targetList[0]?.idx };
+    }
+    const scored = [];
+    for (const move of moves) {
+      for (const target of targetList) {
+        const score = scoreCombatMoveForTarget(battleState, enemyUnit, target.unit, move, 'enemy', opts);
+        if (Number.isFinite(score)) scored.push({ move, targetIdx: target.idx, score });
+      }
+    }
+    if (scored.length === 0) {
+      return { move: { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } }, targetIdx: targetList[0]?.idx };
+    }
+    scored.sort((a, b) => b.score - a.score);
+    if (opts.isHardBattle) {
+      return Math.random() < 0.78 ? scored[0] : scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+    }
+    return Math.random() < 0.55 ? scored[0] : scored[Math.floor(Math.random() * Math.min(4, scored.length))];
   };
 
   // [核心] 属性计算函数 - 委托给 utils/statsCalculator.js
@@ -4136,7 +4283,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
     const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
     return {
-    saveVersion: 32,
+    saveVersion: 33,
+    playTimeMs: getCurrentPlayTimeMs(),
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles, sectPlayer,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
     dexMilestoneClaimed, lastPetTradeDate, lastTradeDate: lastPetTradeDate,
@@ -4150,7 +4298,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
     trainingState, worldBossState, raceState, narutoState,
     spiritDomainsCleared, ecoCrisisState, ecoCrisisChoices, regionEcology, observationLog,
-    savedMapId: currentMapId, savedPlayerPos: playerPos, battleSpeed,
+    savedMapId: currentMapId, savedPlayerPos: sanitizeSavedPlayerPos(playerPos), savedPlayerFacing: playerFacing, battleSpeed,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
     battleRecords,
@@ -6845,11 +6993,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       showMapToast('🔒', '未解锁', `需要 ${domain.reqBadges} 枚徽章`, 1500);
       return;
     }
-    const tired = party.filter(p => !canPetBattle(p));
-    if (tired.length === party.length) {
-      showMapToast('😴', '队伍疲惫', '精灵过于疲劳，请前往精灵中心休息', 2500);
-      return;
-    }
     const rule = getSpiritDomainRule(domain.rule);
     const aceLvl = domain.gymLvl;
     const enemyParty = [];
@@ -7170,7 +7313,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (task.cost) {
       if (task.cost.gold && gold < task.cost.gold) { showMapToast('💰', '金币不足', `需要 ${task.cost.gold} 金币`, 2500); return; }
       if (task.cost.energy && (kingdomWar?.kwManpowerReserve || 0) < task.cost.energy) { showMapToast('⚡', '兵力不足', `需要 ${task.cost.energy} 兵力`, 2500); return; }
-      if (task.cost.grain && (kingdomWar?.grainReserve || 0) < task.cost.grain) { showMapToast('🌾', '粮草不足', `需要 ${task.cost.grain} 粮草`, 2500); return; }
+      if (task.cost.grain && (kingdomWar?.grain || 0) < task.cost.grain) { showMapToast('🌾', '粮草不足', `需要 ${task.cost.grain} 粮草`, 2500); return; }
     }
     if (task.requiresCrisis && !(ecoCrisisState.cleared || []).includes(task.requiresCrisis)) {
       showMapToast('❌', '条件不足', '需先完成对应灵灾副本', 2500); return;
@@ -7184,7 +7327,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     if (task.cost?.gold) setGold(g => g - task.cost.gold);
     if (task.cost?.energy) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - task.cost.energy) }));
-    if (task.cost?.grain) setKingdomWar(prev => ({ ...prev, grainReserve: Math.max(0, (prev.grainReserve || 0) - task.cost.grain) }));
     setFusionState(prev => ({
       ...prev,
       kingdomTasksDone: [...new Set([...(prev.kingdomTasksDone || []), taskId])],
@@ -7193,8 +7335,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const r = task.reward || {};
     if (r.gold) setGold(g => g + r.gold);
     if (r.guardianScore) addGuardianScore(r.guardianScore);
-    if (r.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + r.kwContrib }));
-    if (r.kwManpower) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.min(999, (prev.kwManpowerReserve || 0) + r.kwManpower) }));
+    setKingdomWar(prev => {
+      let next = { ...prev, currentTurn: (prev.currentTurn || 0) + 1 };
+      if (task.cost?.grain) next.grain = Math.max(0, (next.grain || 0) - task.cost.grain);
+      if (r.kwContrib) {
+        next.warContribution = (next.warContribution || 0) + r.kwContrib;
+        next.seasonContribution = (next.seasonContribution || 0) + r.kwContrib;
+        next.lifetimeContribution = (next.lifetimeContribution || 0) + r.kwContrib;
+        next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+      }
+      if (r.kwManpower) next.kwManpowerReserve = Math.min(MANPOWER_RESERVE_CAP, (next.kwManpowerReserve || 0) + r.kwManpower);
+      if (task.territoryStrength && next.faction) {
+        const terr = { ...(next.territories || {}) };
+        const owned = WAR_MAP_IDS.filter(mid => terr[mid]?.owner === next.faction);
+        if (owned.length > 0) {
+          const mid = owned.reduce((best, id) => ((terr[id]?.strength || 100) < (terr[best]?.strength || 100) ? id : best), owned[0]);
+          terr[mid] = { ...terr[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid].strength || 50) + task.territoryStrength) };
+          next.territories = terr;
+        }
+      }
+      return next;
+    });
     if (r.generalFragment) {
       setFusionState(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
       showMapToast('🎖️', '名将碎片', `获得 ${r.generalFragment} 碎片 ×1`, 2500);
@@ -7357,7 +7518,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (!cal) return;
     setFusionState(prev => ({ ...prev, calamitiesParticipated: [...(prev.calamitiesParticipated || []).filter(k => k.includes(weekKey.split('_').pop())), weekKey] }));
     addGuardianScore(cal.reward?.guardianScore || 10);
-    if (cal.reward?.kwContrib) setKingdomWar(prev => ({ ...prev, warContribution: (prev.warContribution || 0) + cal.reward.kwContrib }));
+    if (cal.reward?.kwContrib) setKingdomWar(prev => {
+      const next = {
+        ...prev,
+        warContribution: (prev.warContribution || 0) + cal.reward.kwContrib,
+        seasonContribution: (prev.seasonContribution || 0) + cal.reward.kwContrib,
+        lifetimeContribution: (prev.lifetimeContribution || 0) + cal.reward.kwContrib,
+      };
+      next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+      return next;
+    });
     if (cal.reward?.gold) setGold(g => g + cal.reward.gold);
     if (cal.reward?.title) unlockTitle(cal.reward.title);
     const rawEco = cal.nationEffects || {};
@@ -11901,7 +12071,7 @@ const useGrowthItem = (petIndex, itemId) => {
             currentHp: getStats(p).maxHp, 
             moves: (p.moves || []).map(m=>({...m, pp: m.maxPP || m.maxPp || 15})),
             status: null,
-            fatigue: Math.max(0, (p.fatigue || 0) + FATIGUE_CONFIG.restAtCenter),
+            fatigue: 0,
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
             volatiles: {}
         })));
@@ -11918,11 +12088,14 @@ const useGrowthItem = (petIndex, itemId) => {
       const newProgress = Math.min(100, (mapProgress[currentMapId] || 0) + 1);
       setMapProgress(prev => ({ ...prev, [currentMapId]: Math.min(100, (prev[currentMapId]||0) + 1) }));
       updateAchStat({ totalSteps: 1 });
+      const skipRandomEncounterThisStep = postBattleSafeStepsRef.current > 0;
+      if (postBattleSafeStepsRef.current > 0) postBattleSafeStepsRef.current -= 1;
 
       const roll = Math.random();
       const mapInfo = MAPS.find(m => m.id === currentMapId);
       if (mapInfo?.noEncounter) return;
       if (!mapInfo) { setPlayerPos(prev => ({ x: prev.x - (playerPos.dx||0), y: prev.y - (playerPos.dy||0) })); return; }
+      if (skipRandomEncounterThisStep) return;
       const progress = newProgress;
       
       // 区域Boss (探索度满后触发: 首次必定, 之后5%概率)
@@ -12202,15 +12375,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
      if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return; }
-     // Fix#12: 疲劳系统扩展 — 所有队员精疲力竭时阻止训练家/Boss战斗
-     const isHardType = type !== 'wild' && type !== 'wild_double';
-     if (party.every(p => !canPetBattle(p))) {
-       if (isHardType) {
-         showMapToast('😴', '队伍疲惫', '精灵过于疲劳，请前往精灵中心休息', 2500);
-         return;
-       }
-       showMapToast('😴', '疲劳警告', '队伍疲劳严重，建议尽快休息', 1500);
-     }
      setIsDialogVisible(false);
      battleResultHandledRef.current = false;
      setComboUsedThisBattle(false);
@@ -12907,6 +13071,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
            const level2 = _.random(context.lvl[0], context.lvl[1]);
            enemyParty.push(spawnWildPet(enemyId2, level2));
          }
+    }
+
+    if (!trainerName && context?.trainerName) {
+      trainerName = context.trainerName;
+    } else if (!trainerName && isTrainer) {
+      trainerName = context?.name || context?.battleName || '对手训练家';
     }
 
     // --- 统一后续处理 ---
@@ -13673,52 +13843,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemy = state.enemyParty?.[state.enemyActiveIdx];
     if (!player || !enemy || enemy.currentHp <= 0 || player.currentHp <= 0) return null;
     const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
-    const rawMoves = enemy.combatMoves || enemy.moves || [];
-    const movesWithPP = rawMoves.filter(m => canUseCombatMove(state, enemy, m, 'enemy'));
-    const smartMoves = movesWithPP.filter(m => {
-      if (m.p > 0) return true;
-      if (m.effect) {
-        if (m.effect.type === 'STATUS' && player.status) return false;
-        if (m.effect.type === 'DEBUFF') { if ((player.stages?.[m.effect.stat] || 0) <= -6) return false; }
-        if (m.effect.type === 'BUFF') { if ((enemy.stages?.[m.effect.stat] || 0) >= 6) return false; }
-      }
-      return true;
-    });
-    let enemyMove;
-    if (isHardBattle && smartMoves.length > 1) {
-      const hpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
-      const playerHpRatio = player.currentHp / Math.max(1, getStats(player).maxHp);
-      const damageMoves = smartMoves.filter(m => m.p > 0);
-      const healMoves = smartMoves.filter(m => m.effect?.type === 'HEAL' || (m.val && m.val > 0 && !m.p));
-      if (hpRatio < 0.3 && healMoves.length > 0 && Math.random() < 0.6) {
-        enemyMove = _.sample(healMoves);
-      }
-      if (!enemyMove && (enemy.activeVow?.reward?.atkMult > 1 || enemy.activeVow?.reward?.nextMovePower > 1)) {
-        const strongest = damageMoves.sort((a, b) => (b.p || 0) - (a.p || 0))[0];
-        if (strongest) enemyMove = strongest;
-      }
-      if (!enemyMove && playerHpRatio < 0.25 && damageMoves.length > 0) {
-        enemyMove = damageMoves.sort((a, b) => (b.p || 0) - (a.p || 0))[0];
-      }
-      if (!enemyMove && damageMoves.length > 0) {
-        const scored = damageMoves.map(m => {
-          let typeMod = getTypeMod(m.t, player.type, state);
-          const pType2 = player.secondaryType || player.type2;
-          if (pType2) typeMod *= getTypeMod(m.t, pType2, state);
-          const eType2 = enemy.secondaryType || enemy.type2;
-          const isSTAB = m.t === enemy.type || m.t === eType2;
-          return { m, score: (m.p || 40) * typeMod * (isSTAB ? 1.5 : 1) };
-        }).sort((a, b) => b.score - a.score);
-        enemyMove = Math.random() < 0.7 ? scored[0].m : _.sample(damageMoves);
-      }
-      if (!enemyMove) enemyMove = _.sample(smartMoves);
-    } else if (smartMoves.length > 0) {
-      enemyMove = _.sample(smartMoves);
-    } else if (movesWithPP.length > 0) {
-      enemyMove = _.sample(movesWithPP);
-    }
-    if (!enemyMove) enemyMove = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } };
-    return enemyMove;
+    return chooseEnemyCombatAction(state, enemy, { unit: player, idx: state.activeIdx }, { isHardBattle }).move;
   };
 
   // ==========================================
@@ -13794,9 +13919,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         let playerSpd = getStats(player, player.stages, player.status).spd;
         let enemySpd = getStats(enemy, enemy.stages, enemy.status).spd;
-        // Fix#11: 疲劳速度惩罚
-        const activePet = party[battle.activeIdx];
-        if (activePet?.fatigue > 0) playerSpd = Math.floor(playerSpd * getFatigueSpeedMult(activePet));
         if (tempBattle._arenaSpeedBoost || battle?._arenaSpeedBoost) { playerSpd = Math.floor(playerSpd * 1.5); enemySpd = Math.floor(enemySpd * 1.5); }
         const domSpd = tempBattle.activeDomain || battle?.activeDomain;
         if (domSpd && domSpd.turnsLeft > 0 && domSpd.effect) {
@@ -13843,6 +13965,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
               _playerSwitched: tempBattle._playerSwitched || prev._playerSwitched,
               _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
+              _enemySpecialActionCooldown: tempBattle._enemySpecialActionCooldown ?? prev._enemySpecialActionCooldown,
               ...extra,
             };
           });
@@ -13916,9 +14039,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
             // 更新全局队伍
             setParty(newParty); 
              addLog(logMsg);
-            
-            setBattle(prev => {
-                const updatedCombatStates = prev.playerCombatStates.map((cs, i) => {
+	            
+	            setBattle(prev => {
+	                if (!prev?.playerCombatStates) return prev;
+	                const updatedCombatStates = prev.playerCombatStates.map((cs, i) => {
                     const updatedPet = newParty[i];
                     if (!updatedPet) return cs;
                     
@@ -13959,12 +14083,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 await wait(1200); setAnimEffect(null);
             }
 
-            const nextEnemyIdx = tempBattle.enemyParty.findIndex((p, i) => i !== tempBattle.enemyActiveIdx && p.currentHp > 0);
-            if (nextEnemyIdx !== -1) {
-                setBattle(prev => ({
-                    ...prev, enemyActiveIdx: nextEnemyIdx, phase: 'anim', 
-                    logs: [`对手派出了 ${prev.enemyParty[nextEnemyIdx].name}!`, ...prev.logs]
-                }));
+	            const nextEnemyIdx = tempBattle.enemyParty.findIndex((p, i) => i !== tempBattle.enemyActiveIdx && p.currentHp > 0);
+	            if (nextEnemyIdx !== -1) {
+	                setBattle(prev => prev ? ({
+	                    ...prev, enemyActiveIdx: nextEnemyIdx, phase: 'anim', 
+	                    logs: [`对手派出了 ${prev.enemyParty?.[nextEnemyIdx]?.name || tempBattle.enemyParty[nextEnemyIdx]?.name}!`, ...(prev.logs || [])]
+	                }) : prev);
                 await triggerShinyAnim('enemy', tempBattle.enemyParty[nextEnemyIdx]);
                 await wait(1000);
                 setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); 
@@ -14263,47 +14387,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
       (tempBattle.enemyActiveIdxs || []).forEach((eIdx, slotIdx) => {
         const enemy = tempBattle.enemyParty?.[eIdx];
         if (!enemy || enemy.currentHp <= 0) return;
-        let availMoves = (enemy.combatMoves || []).filter(m => canUseCombatMove(tempBattle, enemy, m, 'enemy'));
         const spd = applyDoubleDomainSpeed(getStats(enemy, enemy.stages, enemy.status).spd, false);
         const alivePlayerIdxs = (tempBattle.activeIdxs || []).filter(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
         if (alivePlayerIdxs.length === 0) return;
-        const smartMoves = availMoves.filter(m => {
-          if (m.p > 0) return true;
-          if (m.effect) {
-            if (m.effect.type === 'STATUS') {
-              const anyWithout = alivePlayerIdxs.some(i => !tempBattle.playerCombatStates[i]?.status);
-              if (!anyWithout) return false;
-            }
-            if (m.effect.type === 'BUFF') {
-              const currentStage = enemy.stages?.[m.effect.stat] || 0;
-              if (currentStage >= 6) return false;
-            }
-            if (m.effect.type === 'DEBUFF' && m.effect.stat) {
-              const allAtFloor = alivePlayerIdxs.every(i => (tempBattle.playerCombatStates[i]?.stages?.[m.effect.stat] || 0) <= -6);
-              if (allAtFloor) return false;
-            }
-          }
-          return true;
-        });
-        if (smartMoves.length > 0) availMoves = smartMoves;
-        let chosenMove, chosenTarget = alivePlayerIdxs[0];
-        if (availMoves.length === 0) {
-          chosenMove = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } };
-        } else {
-          let bestMove = availMoves[0], bestScore = -999;
-          for (const m of availMoves) {
-            for (const tIdx of alivePlayerIdxs) {
-              const target = tempBattle.playerCombatStates[tIdx];
-              let score = (m.p || 0) * getTypeMod(m.t, target.type);
-              if (target.type2 || target.secondaryType) score *= getTypeMod(m.t, target.type2 || target.secondaryType);
-              const hpRatio = target.currentHp / (getStats(target).maxHp || 1);
-              if (hpRatio < 0.3) score += 20;
-              score += (Math.random() * 8);
-              if (score > bestScore) { bestScore = score; bestMove = m; chosenTarget = tIdx; }
-            }
-          }
-          chosenMove = bestMove;
-        }
+        const choice = chooseEnemyCombatAction(
+          tempBattle,
+          enemy,
+          alivePlayerIdxs.map(i => ({ unit: tempBattle.playerCombatStates[i], idx: i })),
+          { isHardBattle: !!(tempBattle.isTrainer || tempBattle.isGym || tempBattle.isChallenge || tempBattle.isStory || tempBattle.isBoss) }
+        );
+        const chosenMove = choice.move;
+        const chosenTarget = choice.targetIdx ?? alivePlayerIdxs[0];
         actions.push({ side: 'enemy', petIdx: eIdx, move: chosenMove, speed: spd, targetIdx: chosenTarget, slotIdx, unit: enemy });
       });
 
@@ -15095,6 +15189,26 @@ const grantContestReward = (config, score, subjectPet = null) => {
     return () => clearInterval(interval);
   }, [cafeTick]);
 
+  /** 玩家行动后触发所有敌方联动行动 */
+  const triggerEnemyKingdomActions = () => {
+    const _p = partyRef.current || [];
+    const avgLv = _p.length > 0 ? Math.floor(_p.reduce((s, p) => s + (p?.level || 1), 0) / _p.length) : 50;
+    setKingdomWar(prev => {
+      if (!prev.faction) return prev;
+      const { kw: updatedKw, logs } = executeAllEnemyActions(prev, GANG_PRESETS, avgLv);
+      if (!logs.length) return updatedKw;
+      return { ...updatedKw, warLog: [...(updatedKw.warLog || []), ...logs].slice(-20) };
+    });
+  };
+
+  // 每日粮草/计数重置（跨日时自动结算领地粮草产出）
+  useEffect(() => {
+    setKingdomWar(prev => {
+      if (!prev.faction) return prev;
+      return resetKingdomDailyCounts(prev);
+    });
+  }, [kingdomWar.faction]);
+
   // 国战 War Tick
   useEffect(() => {
     if (!kingdomWar.faction) return;
@@ -15152,7 +15266,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, freshAvgLv, prev.attackBuff, calcSectKingdomPowerBonus(sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, prev.faction));
         const gangTerrBonus = getGangSkillBonus(getGangSkills(gangRef.current)).territory || 0;
         const genTerrBonus = calcGeneralsTotalBonus(prev.recruitedGenerals || []).territory || 0;
-        const totalTerrBonus = gangTerrBonus + genTerrBonus;
+        const perkFxTick = getRankPerkEffects(prev);
+        const shieldBonus = perkFxTick.territoryStrengthPerTick || 0;
+        const totalTerrBonus = gangTerrBonus + genTerrBonus + shieldBonus;
         const tickTerr = { ...result.territories };
         if (totalTerrBonus > 0) {
           for (const mid of WAR_MAP_IDS) {
@@ -15801,8 +15917,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
     }
 
+    const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
+    const canUseSpecialAiAction = (state._enemySpecialActionCooldown || 0) <= 0;
+    const markEnemySpecialAction = (turns = 1) => {
+      state._enemySpecialActionCooldown = Math.max(state._enemySpecialActionCooldown || 0, turns);
+    };
+
     // 训练家AI换精灵：血量低于30%且有存活后备时，30%概率换人
-    if ((state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss) && !state.isDouble && state.enemyParty.length > 1) {
+    if (canUseSpecialAiAction && isHardBattle && !state.isDouble && state.enemyParty.length > 1) {
       const enemyHpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
       if (enemyHpRatio < 0.3 && Math.random() < 0.3) {
         const betterIdx = state.enemyParty.findIndex((e, i) => {
@@ -15829,6 +15951,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             newEnemy.stages.p_atk = Math.max(-6, (newEnemy.stages.p_atk || 0) - 1);
             addLog(`${player.name} 的威吓使 ${newEnemy.name} 的攻击下降了！`);
           }
+          markEnemySpecialAction(1);
           state.turnCount = (state.turnCount || 0) + 1;
           setBattle(prev => ({
             ...prev,
@@ -15837,6 +15960,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
             phase: 'input',
             turnCount: state.turnCount,
+            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
           }));
           await wait(1000);
           return;
@@ -15845,14 +15969,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // AI: 尝试展开领域 (Boss有50%几率，其他20%几率)
-    if (enemy.hasDomain && !enemy.usedDomain && !state.activeDomain &&
+    if (canUseSpecialAiAction && enemy.hasDomain && !enemy.usedDomain && !state.activeDomain &&
         (enemy.cursedEnergy || 0) >= (DOMAINS[enemy.domainType]?.ceCost || 999) &&
         enemy.currentHp < getStats(enemy).maxHp * 0.5) {
-        const chance = (state.isBoss || state.isChallenge) ? 0.5 : 0.2;
+        const chance = (state.isBoss || state.isChallenge) ? 0.35 : 0.16;
         if (Math.random() < chance) {
             const domDef = DOMAINS[enemy.domainType];
             enemy.cursedEnergy -= domDef.ceCost;
             enemy.usedDomain = true;
+            markEnemySpecialAction(2);
             state.activeDomain = {
                 name: domDef.name, ownerSide: 'enemy',
                 turnsLeft: domDef.turns, effect: domDef.effect, type: enemy.domainType,
@@ -15869,21 +15994,23 @@ const grantContestReward = (config, score, subjectPet = null) => {
               playerCombatStates: state.playerCombatStates.map(p => ({...p})),
               enemyParty: state.enemyParty.map(e => ({...e})),
               activeDomain: state.activeDomain,
+              _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
             }));
             return;
         }
     }
 
     // AI: 尝试果实变身 (回合≥3 且 HP<60%，与玩家果实变身条件一致)
-    if (enemy.devilFruit && !enemy.fruitUsed && !enemy.fruitTransformed
+    if (canUseSpecialAiAction && enemy.devilFruit && !enemy.fruitUsed && !enemy.fruitTransformed
         && (state.turnCount || 0) >= 3
         && enemy.currentHp <= getStats(enemy).maxHp * 0.6) {
-      const transformChance = 0.6;
+      const transformChance = isHardBattle ? 0.45 : 0.25;
       if (Math.random() < transformChance) {
         const fruit = getFruitById(enemy.devilFruit);
         if (fruit) {
           enemy.fruitTransformed = true;
           enemy.fruitUsed = true;
+          markEnemySpecialAction(1);
           enemy.fruitTurnsLeft = Math.max(2, fruit.duration || 3);
           enemy.fruitEffects = { ...fruit.transform };
           if (fruit.transform.hpMult) {
@@ -15906,6 +16033,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             turnCount: (prev?.turnCount || 0) + 1,
             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
             enemyParty: state.enemyParty.map(e => ({...e})),
+            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
           }));
           return;
         }
@@ -15913,9 +16041,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // --- AI: 缚誓决策 ---
-    const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
-    if (!enemy.activeVow && enemy.maxCE > 0 && (enemy.cursedEnergy || 0) >= 15) {
-      const vowChance = isHardBattle ? 0.25 : 0.08;
+    if (canUseSpecialAiAction && !enemy.activeVow && enemy.maxCE > 0 && (enemy.cursedEnergy || 0) >= 15) {
+      const vowChance = isHardBattle ? 0.18 : 0.05;
       if (Math.random() < vowChance) {
         const hpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
         const affordableVows = BINDING_VOWS.filter(v => (enemy.cursedEnergy || 0) >= (v.ceCost || 0));
@@ -15945,6 +16072,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + spdBoost);
             }
             enemy.activeVow = JSON.parse(JSON.stringify({ ...chosenVow, turnsLeft: chosenVow.reward.turns, side: 'enemy' }));
+            markEnemySpecialAction(1);
             addLog(`📜 [敌方] ${enemy.name} 立下缚誓——${chosenVow.name}!`);
             addLog(`📖 ${chosenVow.desc}`);
             setAnimEffect({ type: 'BUFF', target: 'enemy' });
@@ -15956,6 +16084,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               turnCount: (prev?.turnCount || 0) + 1,
               playerCombatStates: state.playerCombatStates.map(p => ({...p})),
               enemyParty: state.enemyParty.map(e => ({...e})),
+              _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
             }));
             return;
           }
@@ -15966,8 +16095,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // --- AI: 蓄力决策 (CE或查克拉不足时) ---
     const needCECharge = enemy.maxCE > 0 && (enemy.cursedEnergy || 0) < enemy.maxCE * 0.3;
     const needChakraCharge = (enemy.maxChakra || 0) > 0 && (enemy.chakra || 0) < (enemy.maxChakra || 0) * 0.3;
-    if ((needCECharge || needChakraCharge) && !enemy.activeVow) {
-      const chargeChance = isHardBattle ? 0.35 : 0.15;
+    if (canUseSpecialAiAction && (needCECharge || needChakraCharge) && !enemy.activeVow) {
+      const hasUsableDamageMove = (enemy.combatMoves || enemy.moves || []).some(m => (m.p || 0) > 0 && canUseCombatMove(state, enemy, m, 'enemy'));
+      const chargeChance = hasUsableDamageMove ? (isHardBattle ? 0.12 : 0.05) : (isHardBattle ? 0.55 : 0.25);
       if (Math.random() < chargeChance) {
         const parts = [];
 	        if (enemy.maxCE > 0) {
@@ -15990,6 +16120,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 	          }
 	          parts.push(`+${ckGain}查克拉`);
 	        }
+        markEnemySpecialAction(1);
         addLog(`⚡ ${enemy.name} 集中精神蓄力! (${parts.join(', ')})`);
         setAnimEffect({ type: 'CHARGE_CE', target: 'enemy' });
         await wait(1000);
@@ -16001,13 +16132,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
 	          sharedEnemyChakra: state.sharedEnemyChakra ?? prev?.sharedEnemyChakra,
 	          enemyParty: state.enemyParty.map(e => ({...e})),
 	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
 	        }));
         return;
       }
     }
 
     // --- AI: 协作技决策 ---
-    if (!state.enemyComboUsed && (state.turnCount || 0) >= 3 && enemy.partnerId && isHardBattle) {
+    if (canUseSpecialAiAction && !state.enemyComboUsed && (state.turnCount || 0) >= 3 && enemy.partnerId && isHardBattle) {
       const enemyPartnerIdx = state.enemyParty.findIndex(ep => (ep.uid || ep.id) === enemy.partnerId && ep.currentHp > 0);
       if (enemyPartnerIdx >= 0) {
         const eBl = getBondLevel(enemy.bondPoints || 0);
@@ -16052,6 +16184,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
 
           state.enemyComboUsed = true;
+          markEnemySpecialAction(1);
           if (player.currentHp <= 0) {
             const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
             if (hasAlive) {
@@ -16060,6 +16193,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 turnCount: (prev?.turnCount || 0) + 1,
                 playerCombatStates: state.playerCombatStates.map(p => ({...p})),
                 enemyParty: state.enemyParty.map(e => ({...e})),
+                _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
                 logs: [`${player.name} 倒下了!`, ...(prev?.logs || [])],
               }));
             } else {
@@ -16072,35 +16206,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
             turnCount: (prev?.turnCount || 0) + 1,
             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
             enemyParty: state.enemyParty.map(e => ({...e})),
+            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
           }));
           await wait(800);
           return;
         }
       }
     }
-
-    // --- AI: 技能选择 ---
-    const enemyRawMoves = enemy.combatMoves || enemy.moves || [];
-    const movesWithPP = enemyRawMoves.filter(m => {
-      if (m.isCursed) return (enemy.cursedEnergy || 0) >= (m.ceCost || 0) && !((enemy.cursedCooldowns?.[m.id || m.name] || 0) > 0);
-      if (m.isJutsu) return (enemy.chakra || 0) >= (m.chakraCost || 0) && m.pp > 0 && !((enemy.jutsuCooldowns?.[m.jutsuId || m.name] || 0) > 0);
-      return m.pp > 0;
-    });
-    const smartMoves = movesWithPP.filter(m => {
-        if (m.p > 0) return true;
-        if (m.effect) {
-            if (m.effect.type === 'STATUS' && player.status) return false;
-            if (m.effect.type === 'DEBUFF') {
-                const currentStage = player.stages[m.effect.stat] || 0;
-                if (currentStage <= -6) return false;
-            }
-            if (m.effect.type === 'BUFF') {
-                const currentStage = enemy.stages[m.effect.stat] || 0;
-                if (currentStage >= 6) return false;
-            }
-        }
-        return true;
-    });
 
     let enemyMove = state._enemySelectedMove || null;
     state._enemySelectedMove = null;
@@ -16113,88 +16225,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     } else if (enemyMove) {
       // 使用executeTurn预选的技能以保持优先级判定一致
-    } else if (isHardBattle && smartMoves.length > 1) {
-      // 训练家AI: 根据局势智能选择技能
-      const hpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
-      const playerHpRatio = player.currentHp / Math.max(1, getStats(player).maxHp);
-      const damageMoves = smartMoves.filter(m => m.p > 0);
-      const buffMoves = smartMoves.filter(m => m.effect?.type === 'BUFF');
-      const debuffMoves = smartMoves.filter(m => m.effect?.type === 'DEBUFF' || m.effect?.type === 'STATUS');
-      const healMoves = smartMoves.filter(m => m.effect?.type === 'HEAL' || m.t === 'HEAL');
-      const cursedMoves = smartMoves.filter(m => m.isCursed && m.p > 0);
-      const fruitMoves = smartMoves.filter(m => m.isFruitMove || m.isExtra);
-
-      // 缚誓加成下优先高威力
-      if (enemy.activeVow?.reward?.atkMult > 1 || enemy.activeVow?.reward?.nextMovePower > 1) {
-        const strongest = damageMoves.sort((a, b) => (b.p || 0) - (a.p || 0))[0];
-        if (strongest) { enemyMove = strongest; }
+      if (!canUseCombatMove(state, enemy, enemyMove, 'enemy')) {
+        enemyMove = null;
       }
-      // 玩家残血 → 用最强招收割
-      if (!enemyMove && playerHpRatio < 0.25 && damageMoves.length > 0) {
-        enemyMove = damageMoves.sort((a, b) => (b.p || 0) - (a.p || 0))[0];
-      }
-      // 自身高血量开局 → 偶尔用buff/debuff
-      if (!enemyMove && hpRatio > 0.7 && Math.random() < 0.35) {
-        if (buffMoves.length > 0 && Math.random() < 0.5) {
-          enemyMove = _.sample(buffMoves);
-        } else if (debuffMoves.length > 0) {
-          enemyMove = _.sample(debuffMoves);
-        }
-      }
-      // 有咒术技能且CE充足 → 概率使用
-      if (!enemyMove && cursedMoves.length > 0 && Math.random() < 0.55) {
-        enemyMove = _.sample(cursedMoves);
-      }
-      // 有果实技能 → 概率使用
-      if (!enemyMove && fruitMoves.length > 0 && Math.random() < 0.3) {
-        enemyMove = _.sample(fruitMoves);
-      }
-      // 低血量时使用治疗技能
-      if (!enemyMove && hpRatio < 0.4 && healMoves.length > 0 && Math.random() < 0.6) {
-        enemyMove = _.sample(healMoves);
-      }
-      // 优先选择克制技能
-      if (!enemyMove && damageMoves.length > 1) {
-        const scored = damageMoves.map(m => {
-          let s = m.p || 0;
-          let mod = getTypeMod(m.t, player.type);
-          if (player.secondaryType) mod *= getTypeMod(m.t, player.secondaryType);
-          if (mod === 0) s = 0;
-          else s *= mod;
-          if (m.t === enemy.type || m.t === enemy.secondaryType) s *= 1.5;
-          return { m, s };
-        }).filter(x => x.s > 0);
-        if (scored.length > 0) {
-          scored.sort((a, b) => b.s - a.s);
-          enemyMove = Math.random() < 0.7 ? scored[0].m : scored[Math.floor(Math.random() * Math.min(2, scored.length))].m;
-        }
-      }
-      // 兜底: 从攻击技能中随机
-      if (!enemyMove) {
-        enemyMove = damageMoves.length > 0 ? _.sample(damageMoves) : _.sample(smartMoves);
-      }
-    } else if (smartMoves.length > 0) {
-        const wildDamageMoves = smartMoves.filter(m => m.p > 0);
-        if (wildDamageMoves.length > 1) {
-          const scored = wildDamageMoves.map(m => {
-            let score = m.p || 0;
-            if (m.t === enemy.type || m.t === (enemy.type2 || enemy.secondaryType)) score *= 1.5;
-            score *= getTypeMod(m.t, player.type);
-            if (player.type2 || player.secondaryType) score *= getTypeMod(m.t, player.type2 || player.secondaryType);
-            score += Math.random() * 20;
-            return { m, score };
-          });
-          scored.sort((a, b) => b.score - a.score);
-          enemyMove = scored[0].m;
-        } else {
-          enemyMove = _.sample(smartMoves);
-        }
-    } else if (movesWithPP.length > 0) {
-        enemyMove = _.sample(movesWithPP); 
+    }
+    if (!enemyMove) {
+      enemyMove = chooseEnemyCombatAction(state, enemy, { unit: player, idx: state.activeIdx }, { isHardBattle }).move;
     }
 
     if (!enemyMove) {
-        enemyMove = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } }; 
+        enemyMove = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } }; 
     }
     
     let playerDied = await performAction(enemy, player, enemyMove, 'enemy', state);
@@ -16211,6 +16251,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setParty(newParty);
       addLog(logMsg);
       setBattle(prev => {
+        if (!prev?.playerCombatStates) return prev;
         const updatedCombatStates = prev.playerCombatStates.map((cs, i) => {
           const updatedPet = newParty[i];
           if (!updatedPet) return cs;
@@ -16250,12 +16291,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i !== state.enemyActiveIdx && p.currentHp > 0);
       if (nextEnemyIdx !== -1) {
-        setBattle(prev => ({
+        setBattle(prev => prev ? ({
           ...prev,
           enemyActiveIdx: nextEnemyIdx,
           phase: 'anim',
-          logs: [`对手派出了 ${prev.enemyParty[nextEnemyIdx].name}!`, ...prev.logs],
-        }));
+          logs: [`对手派出了 ${prev.enemyParty?.[nextEnemyIdx]?.name || state.enemyParty[nextEnemyIdx]?.name}!`, ...(prev.logs || [])],
+        }) : prev);
         await triggerShinyAnim('enemy', state.enemyParty[nextEnemyIdx]);
         const newEnm = state.enemyParty[nextEnemyIdx];
         if (newEnm?.trait === 'intimidate') {
@@ -16527,7 +16568,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           await performAction(follow.faster, follow.slower, follow.followMove, follow.fasterSide, state);
         }
       }
-      setBattle(prev => ({
+      setBattle(prev => prev ? ({
           ...prev, 
 	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
 	          enemyParty: state.enemyParty.map(e => ({...e})),
@@ -16541,15 +16582,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
           isolateTurns: state.isolateTurns || 0,
           phase: 'input',
           turnCount: (state.turnCount || prev?.turnCount || 0) + 1,
-          _playerTookDamage: state._playerTookDamage || prev._playerTookDamage || playerTookDamageRef.current,
-          _playerDirectAttack: state._playerDirectAttack || prev._playerDirectAttack,
+          _enemySpecialActionCooldown: Math.max(0, (state._enemySpecialActionCooldown || 0) - 1),
+          _playerTookDamage: state._playerTookDamage || prev?._playerTookDamage || playerTookDamageRef.current,
+          _playerDirectAttack: state._playerDirectAttack || prev?._playerDirectAttack,
           _purifyProgress: state._purifyProgress ?? prev?._purifyProgress,
           _protectHp: state._protectHp ?? prev?._protectHp,
           _protectMaxHp: state._protectMaxHp ?? prev?._protectMaxHp,
           battleObjective: state.battleObjective || prev?.battleObjective,
           objectiveTurns: state.objectiveTurns || prev?.objectiveTurns,
-      }));
-      if (checkBattleObjectiveMet(state)) {
+      }) : prev);
+      if (state.battleObjective && checkBattleObjectiveMet(state)) {
         const winParty = state.playerCombatStates.map((p, i) => {
           const uid = p?.uid;
           const partyPet = uid ? party.find(pp => pp.uid === uid) : party[i];
@@ -16922,6 +16964,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     } else {
         if (move.pp === undefined && !move.isJutsu && !move.isCursed) {
             move.pp = move.maxPP || 15;
+        }
+        if ((move.pp || 0) <= 0) {
+            addLog(`${attacker.name} 的 ${move.name} PP耗尽！`);
+            return false;
         }
         if (move.pp > 0) {
             let ppCost = 1;
@@ -18219,9 +18265,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
   const processDefeatedEnemy = (deadEnemy, currentParty, finalBattleState) => { 
   
     const bState = finalBattleState || battle;
-    const earlyBoost = (deadEnemy.level <= 20) ? 1.15 : (deadEnemy.level <= 35) ? 1.05 : 1.0;
-    const bountyMult = bState.isBounty ? 1.3 : 1;
-    const baseExp = Math.floor(deadEnemy.level * 42 * (bState.isTrainer ? 1.5 : 1) * earlyBoost * bountyMult);
+    const baseExp = calcBattleBaseExp(deadEnemy.level, {
+      isTrainer: bState.isTrainer,
+      isBounty: bState.isBounty,
+    });
     
     let levelUpLog = '';
     let hasPendingSkill = false;
@@ -18254,9 +18301,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const activeCount = Math.max(1, bState.isDouble ? (bState.activeIdxs?.length || 2) : 1);
       const aliveCount = syncedAliveCount;
       const benchCount = Math.max(1, aliveCount - activeCount);
+      const benchSharePool = bState.isDouble ? 0.55 : 0.6;
       const shareRatio = isActive
-        ? (bState.isDouble ? 0.6 : 1.0)
-        : (0.45 / benchCount);
+        ? (bState.isDouble ? 0.65 : 1.0)
+        : (benchSharePool / benchCount);
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), getEquippedRelicEffects(relics).gangSkillMult || 1).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
@@ -18576,14 +18624,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battleSnapshot;
 
-    const fatigueAmt = type === 'infinity' ? FATIGUE_CONFIG.perInfinityFloor
-      : (isBoss || type === 'world_boss' || battleSnapshot.ecoBossMechanics) ? FATIGUE_CONFIG.perBossBattle
-      : FATIGUE_CONFIG.perBattle;
-    finalParty = (finalParty || party).map(p => {
-      let f = addFatigue(p, fatigueAmt);
-      if (p.fruitUsed && p.devilFruit) f = Math.min(100, f + 15);
-      return { ...p, fatigue: f };
-    });
+    finalParty = (finalParty || party).map(p => ({ ...p, fatigue: 0 }));
     setParty(finalParty);
     if (sectPlayer?.playerSect) {
       advanceSectDaily('sect_win', 1);
@@ -18634,21 +18675,29 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     // ★★★ 剧情推进逻辑结束 ★★★
     
+    const rankBattlePerk = getRankPerkEffects(kingdomWar);
+    const relicFxWin = getEquippedRelicEffects(relics);
+
     // 显示为近似值，实际经验分配见 processDefeatedEnemy
     let totalBattleExp = 0;
-    const bountyExpMult = isBounty ? 1.3 : 1;
-    const gangExpBonusEst = getGangSkillBonus(getGangSkills(gang)).exp;
+    const gangExpBonusEst = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), relicFxWin.gangSkillMult || 1).exp;
     const kwExpBonusEst = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.exp || 0) : 0;
+    const genExpBonusEst = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
+    const kwExpBuffEst = (kingdomWar?.expBuffBattles > 0) ? 25 : 0;
+    const rankExpMultEst = (rankBattlePerk.battleExpMult || 1) * (rankBattlePerk.allBonusMult || 1);
     enemyParty.forEach(e => {
-      const bExp = Math.floor(e.level * 30 * (isTrainer ? 1.5 : 1) * bountyExpMult * (1 + (gangExpBonusEst + kwExpBonusEst) / 100));
+      const bExp = Math.floor(
+        calcBattleBaseExp(e.level, { isTrainer, isBounty })
+        * (1 + (gangExpBonusEst + kwExpBonusEst + kwExpBuffEst + genExpBonusEst) / 100)
+        * rankExpMultEst
+        * (relicFxWin.expMult || 1)
+      );
       totalBattleExp += bExp;
     });
 
     const gangGoldBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar))).gold;
     const genGoldBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.gold||0), 0);
     const kwGoldBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.gold || 0) : 0;
-    const rankBattlePerk = getRankPerkEffects(kingdomWar);
-    const relicFxWin = getEquippedRelicEffects(relics);
     const activePetForRes = finalParty[battleSnapshot.activeIdx] || finalParty[0];
     const resonanceGoldMult = activePetForRes ? (getActiveResonanceForPet(activePetForRes).goldMult || 1) : 1;
     const bountyMult = isBounty ? 2 : 1;
@@ -18657,10 +18706,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const combinedBountyStreak = Math.min(bountyMult * streakMult, 2.5);
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
     const isNarutoExamOrSurvival = type === 'naruto_exam' || type === 'naruto_survival' || type === 'survival';
+    const fixedRewardGoldTypes = new Set(['tower', 'elemental_trial']);
+    const noStandardGoldTypes = new Set(['arena', 'world_boss', 'naruto_exam', 'naruto_survival']);
+    const suppressStandardLoot = fixedRewardGoldTypes.has(type) || noStandardGoldTypes.has(type);
     const goldMultCap = 3.5;
+    const fixedRewardGold = fixedRewardGoldTypes.has(type)
+      ? Math.max(0, Math.floor(battleSnapshot.meta?.rewards?.gold ?? drop ?? 0))
+      : 0;
     const baseDropGold = (drop + _.random(0, 20)) * (isTrainer ? 1.5 : 1) * combinedBountyStreak;
     const goldMult = (1 + totalGoldBonusPct / 100) * Math.min((rankBattlePerk.battleGoldMult || 1) * (rankBattlePerk.allBonusMult || 1), 3.0) * resonanceGoldMult * (relicFxWin.goldMult || 1);
-    const goldGain = isNarutoExamOrSurvival ? 0 : Math.floor(baseDropGold * Math.min(goldMult, goldMultCap));
+    const goldGain = noStandardGoldTypes.has(type) || isNarutoExamOrSurvival
+      ? 0
+      : fixedRewardGoldTypes.has(type)
+        ? fixedRewardGold
+        : Math.floor(baseDropGold * Math.min(goldMult, goldMultCap));
     if (goldGain > 0) setGold(g => g + goldGain);
     if (type === 'survival') {
       const survivalGold = (battleSnapshot.survivalWave || battleSnapshot.meta?.wave || 1) * 100;
@@ -18694,7 +18753,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 家具掉落 (战斗获得, 10%基础概率, Boss/Gym/Challenge 30%)
     const furnitureDropChance = (isBoss || isGym || isChallenge) ? 0.3 : 0.1;
-    if (Math.random() < furnitureDropChance) {
+    if (!suppressStandardLoot && Math.random() < furnitureDropChance) {
         const battleFurniture = FURNITURE_DB.filter(f => f.dropSource === 'battle');
         if (battleFurniture.length > 0) {
             const droppedDef = _.sample(battleFurniture);
@@ -18708,7 +18767,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 恶魔果实掉落: 击败携带果实的敌人，按稀有度概率掉落
-    enemyParty.forEach(ep => {
+    if (!suppressStandardLoot) enemyParty.forEach(ep => {
       if (ep.devilFruit) {
         const fruit = getFruitById(ep.devilFruit);
         if (fruit) {
@@ -18724,7 +18783,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     });
 
     // 咒具掉落: 训练家/Boss/道馆战斗有概率掉落咒术道具
-    if (isTrainer || isGym || isChallenge || type === 'boss') {
+    if (!suppressStandardLoot && (isTrainer || isGym || isChallenge || type === 'boss')) {
       const cursedDropChance = (type === 'boss' || isChallenge) ? 0.15 : (isGym ? 0.1 : 0.05);
       if (Math.random() < cursedDropChance) {
         const cursedKeys = Object.keys(CURSED_ITEMS).filter(k => k !== 'sukuna_finger');
@@ -19061,7 +19120,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     const accDropRate = (isGym || isChallenge || isBoss) ? 0.15 : isTrainer ? 0.05 : 0.01;
     if (Math.random() < accDropRate) {
-        const tier5Eligible = battle.dungeonId && ['infinity_castle','ragnarok','extreme_trial','safari_zone'].includes(battle.dungeonId);
+        const tier5Eligible = battleSnapshot.dungeonId && ['infinity_castle','ragnarok','extreme_trial','safari_zone'].includes(battleSnapshot.dungeonId);
         const droppedAcc = sampleWeightedAccessory(tier5Eligible);
         if (droppedAcc) {
           setAccessories(prev => {
@@ -19206,10 +19265,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         setParty(updatedParty);
     }
 
-    if (battle.name === '狩猎地带') unlockTitle('狩猎大师');
+    if (battleSnapshot.name === '狩猎地带') unlockTitle('狩猎大师');
 
     // 7. 无限城逻辑
-    if (battle.type === 'infinity') {
+    if (battleSnapshot.type === 'infinity') {
         const currentFloor = infinityState?.floor || 1;
         if (currentFloor === 100) {
             unlockTitle('日之呼吸'); 
@@ -19293,7 +19352,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 8. 战斗联盟逻辑
-    if (battle.type === 'league') {
+    if (battleSnapshot.type === 'league') {
         const leagueLostHp = didPlayerTakeBattleDamage(battleSnapshot, finalParty);
         if (leagueLostHp) setLeagueRunNoDamage(false);
         if (leagueRound < 4) {
@@ -19347,8 +19406,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9. 帮战胜利
-    if (battle.type === 'gang_war') {
-        const target = battle.gangWarTarget || {};
+    if (battleSnapshot.type === 'gang_war') {
+        const target = battleSnapshot.gangWarTarget || {};
         const reward = getGangWarReward(target);
         setGang(prev => {
             const next = { ...prev, contribution: (prev.contribution || 0) + reward.contribution,
@@ -19426,8 +19485,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9a-2. 名将招募
-    if (battle.generalEncounter) {
-      const gen = battle.generalEncounter;
+    if (battleSnapshot.generalEncounter) {
+      const gen = battleSnapshot.generalEncounter;
       const recruited = kingdomWar?.recruitedGenerals || [];
       const alreadyHave = recruited.some(g => g.id === gen.id);
       const recruitRank = getMilitaryRank(kingdomWar?.warContribution || 0, buildRankStats(kingdomWar));
@@ -19463,6 +19522,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 recruitedGenerals: [...(prev.recruitedGenerals || []), {
                   id: gen.id, name: gen.name, title: gen.title, faction: gen.faction,
                   rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon, recruitTime: Date.now(),
+                  teamLevel: gen.teamLevel || gen.lvl || (party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50),
                 }],
                 collectedGeneralIds: [...ids],
               };
@@ -19480,12 +19540,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9a-3. 历史名战波次/胜利处理
-    if (battle.type === 'historical_battle' && battle.historicalBattle) {
-      const hb = battle.historicalBattle;
-      const currentWave = battle.currentWave || 0;
-      const totalWaves = battle.totalWaves || hb.waves.length;
+    if (battleSnapshot.type === 'historical_battle' && battleSnapshot.historicalBattle) {
+      const hb = battleSnapshot.historicalBattle;
+      const currentWave = battleSnapshot.currentWave || 0;
+      const totalWaves = battleSnapshot.totalWaves || hb.waves.length;
       if (currentWave < totalWaves - 1) {
-        const hpSnapshot = (battle.playerCombatStates || []).map((p, idx) => p ? ({
+        const hpSnapshot = (battleSnapshot.playerCombatStates || []).map((p, idx) => p ? ({
           hpRatio: p.currentHp / (getStats(p).maxHp || 1),
           uid: p.uid || p.id || idx,
         }) : { hpRatio: 1, uid: idx });
@@ -19537,10 +19597,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9b. 国战胜利
-    if (battle.type === 'kingdom_war') {
+    if (battleSnapshot.type === 'kingdom_war') {
         const hpPct = updatedParty.reduce((s, p) => s + (p.currentHp || 0), 0) / Math.max(1, updatedParty.reduce((s, p) => s + (p.stats?.hp || p.hp || 100), 0));
         const allSurvived = updatedParty.every(p => (p.currentHp || 0) > 0);
-        const rating = calcBattleRating({ hpPercent: hpPct, turnsUsed: battle.turnCount || 10, maxTurns: 20, allSurvived, bossKilled: true });
+        const rating = calcBattleRating({ hpPercent: hpPct, turnsUsed: battleSnapshot.turnCount || 10, maxTurns: 20, allSurvived, bossKilled: true });
         const ratingData = BATTLE_RATINGS[rating] || BATTLE_RATINGS.C;
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
         const kwContribBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.contribution || 0) : 0;
@@ -19548,8 +19608,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const kwPerkFx = getRankPerkEffects(kingdomWar);
         const contribGain = Math.floor((15 + Math.floor(Math.random() * 11)) * (1 + (gangBonusContrib + kwContribBonus + genContribBonus) / 100) * (kwPerkFx.allBonusMult || 1) * (ratingData.lootMult || 1));
         const tokenGain = Math.floor((2 + Math.floor(Math.random() * 3)) * (kwPerkFx.tokenMult || 1));
-        const mapIdKw = battle.mapId || currentMapId;
-        const avgELv = (battle.enemyParty || []).reduce((s, e) => s + (e?.level || 0), 0) / Math.max(1, (battle.enemyParty || []).length);
+        const mapIdKw = battleSnapshot.mapId || currentMapId;
+        const avgELv = (battleSnapshot.enemyParty || []).reduce((s, e) => s + (e?.level || 0), 0) / Math.max(1, (battleSnapshot.enemyParty || []).length);
         const mpGain = 18 + Math.floor(Math.random() * 14) + Math.floor((avgELv || 48) / 9);
         setKingdomWar(prev => {
             const next = { ...prev, warContribution: (prev.warContribution || 0) + contribGain, seasonContribution: (prev.seasonContribution || 0) + contribGain, lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain, factionTokens: (prev.factionTokens || 0) + tokenGain };
@@ -19583,7 +19643,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateAchStat({ kwKills: 1, battlesWon: 1 });
         updateGangTaskProgress('kw_kill', 1);
         updateGangTaskProgress('battle_win', 1);
-        const factionData = FACTIONS[battle.kwEnemyFaction] || { fullName: '敌国' };
+        const factionData = FACTIONS[battleSnapshot.kwEnemyFaction] || { fullName: '敌国' };
         showMapToast('⚔️',`国战胜利 ${ratingData.icon}${rating}`,`战功+${contribGain} | 令牌+${tokenGain} | 征兵+${mpGain}`,3000);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         setParty(updatedParty);
@@ -19593,8 +19653,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9b-cal. 灵灾战斗胜利
-    if (battle.type === 'calamity') {
-        completeCalamityReward(battle.calamityId, battle.weekKey);
+    if (battleSnapshot.type === 'calamity') {
+        completeCalamityReward(battleSnapshot.calamityId, battleSnapshot.weekKey);
         setParty(updatedParty);
         setBattle(null);
         setView('grid_map');
@@ -19602,11 +19662,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9b1. 都城攻防战胜利 (多波次)
-    if (battle.type === 'capital_siege') {
-        const siegeTarget = battle.siegeTarget;
+    if (battleSnapshot.type === 'capital_siege') {
+        const siegeTarget = battleSnapshot.siegeTarget;
         const sf = FACTIONS[siegeTarget] || { fullName: '未知势力', icon: '❓', color: '#999' };
-        const currentWave = battle.wave || 1;
-        const totalWaves = battle.totalWaves || 3;
+        const currentWave = battleSnapshot.wave || 1;
+        const totalWaves = battleSnapshot.totalWaves || 3;
         updateAchStat({ kwKills: 1 });
         updateGangTaskProgress('kw_kill', 1);
         updateGangTaskProgress('battle_win', 1);
@@ -19617,7 +19677,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setBattle(null);
           setTimeout(() => {
             startBattle({
-              ...battle.siegeContext,
+              ...battleSnapshot.siegeContext,
               wave: currentWave + 1,
               totalWaves,
             }, 'capital_siege');
@@ -19635,6 +19695,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           seasonContribution: (prev.seasonContribution || 0) + siegeContrib,
           lifetimeContribution: (prev.lifetimeContribution || 0) + siegeContrib,
           factionTokens: (prev.factionTokens || 0) + siegeTokens,
+          kwKills: (prev.kwKills || 0) + 1,
           capitalSiegeWins: [...(Array.isArray(prev.capitalSiegeWins) ? prev.capitalSiegeWins : []), { target: siegeTarget, season: prev.season }],
           militaryRank: (() => { const n = { ...prev, warContribution: (prev.warContribution||0)+siegeContrib, capitalSiegeWins: [...(Array.isArray(prev.capitalSiegeWins)?prev.capitalSiegeWins:[]),{target:siegeTarget,season:prev.season}] }; return getMilitaryRank(n.warContribution, buildRankStats(n)).id; })(),
           lastSiegeTime: { ...(prev.lastSiegeTime || {}), [siegeTarget]: Date.now() },
@@ -19654,8 +19715,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 9c. 国战战役副本胜利
-    if (battle.type === 'kw_campaign') {
-        const campaign = battle.campaignData;
+    if (battleSnapshot.type === 'kw_campaign') {
+        const campaign = battleSnapshot.campaignData;
         const isFirstClear = !(kingdomWar.completedCampaigns || []).includes(campaign.id);
         const rewardMult = isFirstClear ? 1.0 : 0.3;
         const gangBonusContrib = getGangSkillBonus(getGangSkills(gang)).contrib || 0;
@@ -19673,6 +19734,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               seasonContribution: (prev.seasonContribution || 0) + contribGain,
               lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain,
               factionTokens: (prev.factionTokens || 0) + tokenGain,
+              kwKills: (prev.kwKills || 0) + 1,
               completedCampaigns: [...new Set([...(prev.completedCampaigns || []), campaign.id])],
             };
             next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
@@ -19807,7 +19869,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           }
           
-          if (['eclipse_grunt', 'eclipse_executive'].includes(battle.type)) {
+          if (['eclipse_grunt', 'eclipse_executive'].includes(battleSnapshot.type)) {
             setMapGrid(prev => {
                 const newGrid = prev.map(row => [...row]);
                 const { x, y } = playerPos; 
@@ -19828,7 +19890,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             });
             setTimeout(() => showMapToast('✅', '提示', '敌人撤退了！道路已打通。', 2000), 500);
           }
-          if (battle.type === 'eclipse_leader') {
+          if (battleSnapshot.type === 'eclipse_leader') {
             setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
             const rewardPet = createPet(341, 50); 
             rewardPet.name = "暗黑超梦";
@@ -19859,7 +19921,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 帮派任务 - 战斗胜利追踪
     updateGangTaskProgress('battle_win', 1);
 
-    if (battle.type === 'trainer' && !battle.isGym && !isChallenge && kingdomWar?.faction && WAR_MAP_IDS.includes(Number(battle.mapId || currentMapId))) {
+    if (battleSnapshot.type === 'trainer' && !battleSnapshot.isGym && !isChallenge && kingdomWar?.faction && WAR_MAP_IDS.includes(Number(battleSnapshot.mapId || currentMapId))) {
       const avgTr = (enemyParty || []).reduce((s, e) => s + (e?.level || 0), 0) / Math.max(1, (enemyParty || []).length);
       const mpT = 10 + Math.floor(Math.random() * 12) + Math.floor((avgTr || 35) / 10);
       setKingdomWar(prev => ({
@@ -19872,11 +19934,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setKingdomWar(prev => prev.expBuffBattles > 0 ? ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }) : prev);
 
     // 帮派招募 - 无帮派训练家可邀请入帮
-    if (battle.canInviteToGang && !battle.trainerGang && isTrainer && battle.type !== 'gang_war' && battle.type !== 'kingdom_war' && battle.type !== 'kw_campaign'
+    if (battleSnapshot.canInviteToGang && !battleSnapshot.trainerGang && isTrainer && battleSnapshot.type !== 'gang_war' && battleSnapshot.type !== 'kingdom_war' && battleSnapshot.type !== 'kw_campaign'
         && !isStory && !isGym && gang.isOwner && gang.customGang) {
       const maxM = GANG_MAX_MEMBERS(gang.customGang.level || 1);
       if ((gang.customGang.members || []).length < maxM) {
-        const tName = battle.trainerName || '训练家';
+        const tName = battleSnapshot.trainerName || '训练家';
         setConfirmModal({ title:'🏴 邀请入帮', msg:`${tName} 看起来很厉害！\n是否邀请TA加入你的帮派？`, onOk: () => {
           setGang(prev => ({
             ...prev,
@@ -19890,7 +19952,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 竞技场结算
-    if (battle.type === 'arena') {
+    if (battleSnapshot.type === 'arena') {
       handleArenaResult(true);
       setBattle(null);
       setView('arena');
@@ -19898,8 +19960,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return;
     }
 
-    if (battle.type === 'spirit_domain' && battle.spiritDomain) {
-      const sd = battle.spiritDomain;
+    if (battleSnapshot.type === 'spirit_domain' && battleSnapshot.spiritDomain) {
+      const sd = battleSnapshot.spiritDomain;
       if (!spiritDomainsCleared.includes(sd.id)) {
         setSpiritDomainsCleared(prev => [...new Set([...prev, sd.id])]);
         if (sd.reward?.gold) { setGold(g => g + sd.reward.gold); updateAchStat({ totalGoldEarned: sd.reward.gold }); }
@@ -19977,8 +20039,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setTimeout(() => runEcoCrisisStep(crisisId, stepIdx + 1), 500);
       return;
     }
-    if (battle.type === 'eco_crisis' && battle._nonCombatRescue) {
-      const rescueEvt = RESCUE_EVENTS.find(r => r.id === battle._nonCombatRescue);
+    if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._nonCombatRescue) {
+      const rescueEvt = RESCUE_EVENTS.find(r => r.id === battleSnapshot._nonCombatRescue);
       if (rescueEvt && !observationLog.includes(rescueEvt.id)) {
         grantNonCombatReward(rescueEvt);
         setObservationLog(prev => [...prev, rescueEvt.id]);
@@ -19991,7 +20053,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     // 忍者试炼生存试炼结算
-    if (battle.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
+    if (battleSnapshot.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
       const wave = (narutoExamUI.survivalWave || 0) + 1;
       if (wave >= (narutoExamUI.survivalWaves || 2)) {
         showMapToast('✅','生存试炼通过','不愧是有实力的忍者！进入死亡之森',2500);
@@ -20006,7 +20068,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return;
     }
     // 忍者试炼对战结算
-    if (battle.type === 'naruto_exam' && narutoExamUI?.phase === 'finals') {
+    if (battleSnapshot.type === 'naruto_exam' && narutoExamUI?.phase === 'finals') {
       const round = narutoExamUI.finalsRound || 0;
       const bracket = EXAM_FINALS_BRACKETS[round - 1];
       if (bracket?.reward) {
@@ -20024,8 +20086,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       return;
     }
     // 火影主线剧情结算
-    const storyMeta = battle.meta || (battle.type === 'naruto_story' ? battle.challengeId : null);
-    if (battle.type === 'naruto_story' && storyMeta) {
+    const storyMeta = battleSnapshot.meta || (battleSnapshot.type === 'naruto_story' ? battleSnapshot.challengeId : null);
+    if (battleSnapshot.type === 'naruto_story' && storyMeta) {
       handleStoryWin(storyMeta.chapterId, storyMeta.stageIdx);
       setBattle(null);
       setView('naruto_story');
@@ -20081,7 +20143,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (speciesSet.size === 1) winAchUpdates.sameSpeciesGymWin = 1;
     }
     if (activePet && activePet.level === 1) winAchUpdates.lv1MiracleWins = 1;
-    if (gold >= 100000 && !isTrainer) winAchUpdates.richDefeatCount = 1;
     if (isGym && party?.every(p => {
       const pType = p?.type;
       return pType === 'ROCK' || p?.secondaryType === 'ROCK' || p?.type2 === 'ROCK';
@@ -20111,8 +20172,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return n.size;
       };
     }
-    if (battle._battleCrits) winAchUpdates.maxCritsInBattle = battle._battleCrits;
-    if (battle._maxConsecutiveCrits) winAchUpdates.maxConsecutiveCrits = battle._maxConsecutiveCrits;
+    if (battleSnapshot._battleCrits) winAchUpdates.maxCritsInBattle = battleSnapshot._battleCrits;
+    if (battleSnapshot._maxConsecutiveCrits) winAchUpdates.maxConsecutiveCrits = battleSnapshot._maxConsecutiveCrits;
     if (battleSnapshot?._dodgesInBattle) winAchUpdates.maxDodgesInBattle = battleSnapshot._dodgesInBattle;
     const enemyStatusTypes = new Set();
     (battleSnapshot?.enemyParty || []).forEach(e => { if (e?.status) enemyStatusTypes.add(e.status); });
@@ -20135,8 +20196,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     updateAchStat(winAchUpdates);
 
-    if (battle.type === 'world_boss') {
-      const totalDmgDealt = battle._worldBossDmgDealt || 0;
+    if (battleSnapshot.type === 'world_boss') {
+      const totalDmgDealt = battleSnapshot._worldBossDmgDealt || 0;
       handleWorldBossResult(totalDmgDealt);
       setBattle(null);
       setView('world_boss');
@@ -20162,11 +20223,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // 搭档羁绊累积（胜利时额外+10）
     const bondUpdates = {};
-    (battle.playerCombatStates || []).forEach(p => {
+    (battleSnapshot.playerCombatStates || []).forEach(p => {
       if (p?.partnerId) {
-        const hasPartnerAlive = (battle.playerCombatStates || []).some(pp => (pp.uid || pp.id) === p.partnerId && pp.currentHp > 0);
+        const hasPartnerAlive = (battleSnapshot.playerCombatStates || []).some(pp => (pp.uid || pp.id) === p.partnerId && pp.currentHp > 0);
         if (hasPartnerAlive) {
-          bondUpdates[p.uid || p.id] = (bondUpdates[p.uid || p.id] || 0) + BOND_PER_KO + (battle.turnCount || 1) * BOND_PER_TURN;
+          bondUpdates[p.uid || p.id] = (bondUpdates[p.uid || p.id] || 0) + BOND_PER_KO + (battleSnapshot.turnCount || 1) * BOND_PER_TURN;
         }
       }
     });
@@ -20214,8 +20275,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }, 300);
     } else {
       const summaryParts = [`💰 ${goldGain.toLocaleString()} 金币`, `✨ 约${totalBattleExp} 经验`];
-      if (battle.type === 'elemental_trial' && battle.meta?.rewards) {
-        const tr = battle.meta.rewards;
+      if (battleSnapshot.type === 'elemental_trial' && battleSnapshot.meta?.rewards) {
+        const tr = battleSnapshot.meta.rewards;
         summaryParts.push(`🌈 试炼结算 · 基础${tr.gold ?? 0}金 · 经验池${tr.exp ?? 0}`);
       }
       if (levelUps.length > 0) summaryParts.push(`🆙 ${levelUps.join('、')}`);
@@ -20229,8 +20290,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const streakBonusPct = newStreak >= 20 ? 50 : newStreak >= 10 ? 30 : 15;
         summaryParts.push(`🔥 ${newStreak}连胜！金币+${streakBonusPct}%`);
       }
-      const winTitle = battle.dungeonId ? `副本通关！` : '战斗胜利！';
-      showMapToast('🏆', winTitle, summaryParts.join(' · '), extraDrops.length > 0 ? 4500 : 3500, { turnCount: battle?.turnCount });
+      const winTitle = battleSnapshot.dungeonId ? `副本通关！` : '战斗胜利！';
+      showMapToast('🏆', winTitle, summaryParts.join(' · '), extraDrops.length > 0 ? 4500 : 3500, { turnCount: battleSnapshot?.turnCount });
       const invSnap = inventoryRef.current || {};
       const med = invSnap.meds || {};
       const potCount = (med.potion || 0) + (med.super_potion || 0) + (med.hyper_potion || 0);
@@ -20273,10 +20334,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
     }
 
-    const isArenaFight = battle?.type === 'arena';
-    const isWorldBoss = battle?.type === 'world_boss';
-    const isStoryFight = battle?.type === 'naruto_story';
-    const isTowerOrTrial = battle?.type === 'tower' || battle?.type === 'elemental_trial';
+    const battleType = battleSnap?.type;
+    const isArenaFight = battleType === 'arena';
+    const isWorldBoss = battleType === 'world_boss';
+    const isStoryFight = battleType === 'naruto_story';
+    const isTowerOrTrial = battleType === 'tower' || battleType === 'elemental_trial';
     let penaltyAmount = 0;
     if (!isArenaFight && !isWorldBoss && !isStoryFight && !isTowerOrTrial) {
       setGold(g => {
@@ -20286,7 +20348,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       });
     }
     if (isWorldBoss) {
-      const totalDmgDealt = battle._worldBossDmgDealt || 0;
+      const totalDmgDealt = battleSnap?._worldBossDmgDealt || 0;
       handleWorldBossResult(totalDmgDealt);
     }
 
@@ -20301,7 +20363,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     })));
     setComboUsedThisBattle(false);
     if (isArenaFight) handleArenaResult(false);
-    updateAchStat({ timesDefeated: 1, currentWinStreak: p => 0 });
+    const defeatAchUpdates = { timesDefeated: 1, currentWinStreak: p => 0 };
+    if ((gold || 0) >= 100000) defeatAchUpdates.richDefeatCount = 1;
+    updateAchStat(defeatAchUpdates);
     if (marriage.pendingPropose) {
       setMarriage(prev => {
         const cp = prev.questProgress?.[prev.pendingPropose] || {};
@@ -20316,38 +20380,38 @@ const grantContestReward = (config, score, subjectPet = null) => {
       showMapToast('💀', '竞技场落败', '段位星数 -1，继续努力！', 3000);
     } else if (isWorldBoss) {
       setView('world_boss');
-      const dmg = battle?._worldBossDmgDealt || 0;
+      const dmg = battleSnap?._worldBossDmgDealt || 0;
       showMapToast('⚔️', '首领挑战结束', `本次造成 ${dmg.toLocaleString()} 伤害！`, 3000);
-    } else if (battle?.type === 'naruto_story') {
+    } else if (battleType === 'naruto_story') {
       setView('naruto_story');
       showMapToast('💀', '忍界挑战失败', '伙伴已恢复，提升实力后再来挑战！', 3000);
-    } else if (battle?.type === 'naruto_survival') {
+    } else if (battleType === 'naruto_survival') {
       setNarutoExamUI(null);
       setNarutoState(prev => ({ ...prev, lastExamDate: getLocalDateStr() }));
       setView('naruto_exam');
       showMapToast('💀', '生存试炼失败', '实力不足，明日再战！', 3000);
-    } else if (battle?.type === 'naruto_exam') {
+    } else if (battleType === 'naruto_exam') {
       setNarutoExamUI(null);
       setNarutoState(prev => ({ ...prev, lastExamDate: getLocalDateStr() }));
       setView('naruto_exam');
       showMapToast('💀', '试炼失败', '忍者试炼失败，明日再挑战！', 3000);
-    } else if (battle?.type === 'gang_war') {
+    } else if (battleType === 'gang_war') {
       setView('gang');
       setGang(prev => ({ ...prev, dailyCounts: { ...(prev.dailyCounts || {}), warCount: ((prev.dailyCounts?.warCount) || 0) + 1 } }));
       showMapToast('💀', '帮战失败', '帮战落败，消耗一次帮战次数', 3000);
-    } else if (battle?.type === 'kingdom_war' || battle?.type === 'kw_campaign' || battle?.type === 'capital_siege') {
+    } else if (battleType === 'kingdom_war' || battleType === 'kw_campaign' || battleType === 'capital_siege') {
       setView('world_map');
       setMapTab('kingdom');
-      showMapToast('💀', '战败', battle?.type === 'capital_siege' ? '都城攻防失败，敌军守住了！' : '国战失败，下次再战！', 3000);
-    } else if (battle?.type === 'sect_challenge') {
+      showMapToast('💀', '战败', battleType === 'capital_siege' ? '都城攻防失败，敌军守住了！' : '国战失败，下次再战！', 3000);
+    } else if (battleType === 'sect_challenge') {
       setView('sect_summit');
       showMapToast('💀', '门派挑战失败', '修炼不足，改日再战！', 3000);
-    } else if (battle?.type === 'league') {
+    } else if (battleType === 'league') {
       setLeagueRound(0);
       setLeagueRunNoDamage(false);
       setView('league');
       showMapToast('💀', '联赛失败', '联赛之旅结束，继续修炼！', 3000);
-    } else if (battle?.type === 'tower') {
+    } else if (battleType === 'tower') {
       const failedFloor = battleSnap?.meta?.floor ?? towerFloor;
       if (failedFloor > 0) setTowerFloor(Math.floor((failedFloor - 1) / 5) * 5);
       enterMap(currentMapId);
@@ -20527,6 +20591,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemy = battle.enemyParty[catchTargetIdx];
     if (!enemy) return addLog("无效的目标！");
     const catchChance = calculateCatchRate(ballType, enemy);
+    if ((kingdomWar?.warBalls || 0) > 0) {
+      setKingdomWar(prev => ({ ...prev, warBalls: Math.max(0, (prev.warBalls || 0) - 1) }));
+    }
     setInventory(prev => ({ ...prev, balls: { ...(prev.balls || {}), [ballType]: Math.max(0, ((prev.balls || {})[ballType] || 0) - 1) } }));
     setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
@@ -22502,7 +22569,7 @@ const renderMenu = () => {
       label: '三国阵线',
       icon: playerFaction?.icon || '🛡️',
       meta: playerFaction ? `${playerFaction.name} · ${myTerrCountMenu} 领地 · ${recruitedCount}/${MAX_RECRUITED_GENERALS} 名将` : '加入阵营后开启国战',
-      progress: kingdomWar?.faction ? Math.min(100, Math.round((myTerrCountMenu / Math.max(1, WAR_MAP_IDS?.length || 16)) * 100)) : 0,
+      progress: kingdomWar?.faction ? Math.min(100, Math.round((myTerrCountMenu / Math.max(1, WAR_MAP_IDS?.length || 38)) * 100)) : 0,
       tone: 'kingdom',
       action: () => { setMapTab('kingdom'); setView('world_map'); },
     },
@@ -23446,7 +23513,7 @@ const renderMenu = () => {
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
                 jin: { generals: '司马懿、邓艾、钟会、羊祜', strategy: '谋定天下', capital: '邺城', stronghold: '深谋远虑，一统山河' },
               };
-              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下十六城 · 择一阵营，建功立业</div></div><div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 阵营一旦选择无法更改！', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
+              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下{WAR_MAP_IDS.length}城 · 择一阵营，建功立业</div></div><div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 加入后3天内不可叛国，叛国将承受重罚', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, factionJoinDate: new Date().toISOString(), territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -23650,7 +23717,7 @@ const renderMenu = () => {
                             战局难度 {strategicBrief.campaignDifficulty}/100 · {strategicBrief.difficulty.label}
                           </div>
                         </div>
-                        <button type="button" onClick={() => setKwTab(strategicBrief.reserve < 160 ? 'territory' : (strategicBrief.contestedAttempts < strategicBrief.contestedMax ? 'contested' : 'territory'))}
+                        <button type="button" onClick={() => setKwTab(strategicBrief.reserve < 160 ? 'overview' : 'territory')}
                           style={{border:'1px solid rgba(255,255,255,0.24)', background:'rgba(255,255,255,0.12)', color:'#fff', borderRadius:'12px', padding:'8px 12px', fontSize:'11px', fontWeight:'800', cursor:'pointer', flexShrink:0}}>
                           {strategicBrief.reserve < 160 ? '去征兵' : '去行动'}
                         </button>
@@ -23714,20 +23781,148 @@ const renderMenu = () => {
                       </div>
                     </div>
                     {(() => {
-                      const todayStr = getLocalDateStr();
+                      const grainCap = calcGrainCap(kw);
                       const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
-                      let siegeDone = 0;
-                      CONTESTED_SIEGE_MAP_IDS.forEach((mid) => {
-                        siegeDone += Number((kw.contestProgress || {})[`${mid}_attempts_${todayStr}`]) || 0;
-                      });
-                      const siegeMax = CONTESTED_SIEGE_MAP_IDS.length * 3;
+                      const timeMod = getBattleTimeModifiers();
+                      const defectCheck = canDefect(kw);
+                      const pen = getDefectionPenalties(kw);
                       return (
                         <div style={{ background: 'linear-gradient(135deg, #1e293b, #334155)', borderRadius: '14px', padding: '14px 16px', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '6px' }}>⚔️ 争夺与预备兵</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '11px', opacity: 0.92, lineHeight: 1.55, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: '800' }}>🪖 征兵与战备</div>
+                            <span style={{ fontSize: '11px', background: timeMod.nightVision ? 'rgba(99,102,241,0.35)' : 'rgba(251,191,36,0.25)', padding: '3px 10px', borderRadius: '999px', fontWeight: '700' }}>
+                              {timeMod.label}{timeMod.nightVision ? ' · 战功x1.5' : ''}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px', marginBottom: '10px' }}>
                             <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>预备兵 {res}/{MANPOWER_RESERVE_CAP}</span>
-                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>今日名城攻城 {siegeDone}/{siegeMax}</span>
-                            <span style={{ opacity: 0.88 }}>征兵在国战地图；推占领条请在「争夺」攻城</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>精锐 {kw.eliteTroops || 0}</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>粮草 {kw.grain || 0}/{grainCap}</span>
+                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>士气 {kw.morale ?? 100}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                            <button type="button" onClick={() => {
+                              const result = recruitTroops(kw, 'normal');
+                              if (!result.ok) { showMapToast('❌', '征兵失败', result.reason, 2000); return; }
+                              if (gold < result.goldCost) { showMapToast('💰', '金币不足', `需要 ${result.goldCost} 金`, 2000); return; }
+                              setGold(g => Math.max(0, g - result.goldCost));
+                              setKingdomWar(prev => ({ ...prev, ...result.nextKw, currentTurn: (prev.currentTurn || 0) + 1 }));
+                              triggerEnemyKingdomActions();
+                              showMapToast('🪖', '征兵完成', `获得 ${result.gain} 兵力（消耗 ${result.goldCost}金 ${result.grainCost}粮）`, 2500);
+                            }} style={{ flex: '1 1 120px', padding: '10px', border: 'none', borderRadius: '10px', background: myFaction.color, color: '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
+                              普通征兵 ({RECRUIT_CONFIG.normalCost.gold}金+{RECRUIT_CONFIG.normalCost.grain}粮)
+                            </button>
+                            <button type="button" onClick={() => {
+                              const result = recruitTroops(kw, 'elite');
+                              if (!result.ok) { showMapToast('❌', '征兵失败', result.reason, 2000); return; }
+                              if (gold < result.goldCost) { showMapToast('💰', '金币不足', `需要 ${result.goldCost} 金`, 2000); return; }
+                              setGold(g => Math.max(0, g - result.goldCost));
+                              setKingdomWar(prev => ({ ...prev, ...result.nextKw, currentTurn: (prev.currentTurn || 0) + 1 }));
+                              triggerEnemyKingdomActions();
+                              showMapToast('⚔️', '精锐征兵', `获得 ${result.gain} 精锐（攻防+30%）`, 2500);
+                            }} style={{ flex: '1 1 120px', padding: '10px', border: 'none', borderRadius: '10px', background: 'linear-gradient(135deg,#B45309,#92400E)', color: '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
+                              精锐征兵 ({RECRUIT_CONFIG.eliteCost.gold}金+{RECRUIT_CONFIG.eliteCost.grain}粮)
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '10px', opacity: 0.75, lineHeight: 1.5 }}>
+                            每次征兵/攻城后，所有敌方各行动一次。攻城无每日次数限制，但需消耗兵力。
+                          </div>
+                          {defectCheck.ok && (
+                            <button type="button" onClick={() => {
+                              setConfirmModal({
+                                title: '⚠️ 叛国确认',
+                                msg: `叛国惩罚：\n· 扣除金币 ${Math.floor((pen.goldLossPct || 0.4) * 100)}%\n· 兵力与精锐清零\n· 赛季战功与令牌清零\n· 失去 ${pen.loseGenerals} 名武将\n· 军衔降低 ${pen.rankDrop} 级\n· 自动退出帮派\n· ${pen.instabilityHours}小时内攻城效率-30%\n\n确定叛国？`,
+                                onOk: () => {
+                                  const applied = applyDefection(kw, gold);
+                                  setGold(g => Math.max(0, g - (applied.goldLoss || 0)));
+                                  if (applied.gangLeave && (gang?.gangId || gang?.customGang)) {
+                                    setGang(prev => ({
+                                      ...prev,
+                                      gangId: null,
+                                      joinDate: null,
+                                      contribution: 0,
+                                      isOwner: false,
+                                      customGang: null,
+                                      skills: [],
+                                      tasks: [],
+                                    }));
+                                  }
+                                  setKingdomWar(prev => ({
+                                    ...prev,
+                                    faction: applied.faction,
+                                    factionJoinDate: applied.factionJoinDate,
+                                    kwManpowerReserve: applied.kwManpowerReserve,
+                                    eliteTroops: applied.eliteTroops,
+                                    grain: applied.grain,
+                                    seasonContribution: applied.seasonContribution,
+                                    factionTokens: applied.factionTokens,
+                                    morale: applied.morale,
+                                    recruitedGenerals: applied.recruitedGenerals,
+                                    militaryRank: applied.militaryRank,
+                                    defectionCount: applied.defectionCount,
+                                    instabilityDebuffUntil: applied.instabilityDebuffUntil,
+                                    warLog: [...(prev.warLog || []), { time: Date.now(), type: 'defection', msg: `叛离${myFaction.fullName}，承受重罚后流亡` }].slice(-20),
+                                  }));
+                                  showMapToast('🏴', '叛国完成', `失去 ${(applied.lostGenerals || []).map(g => g.name).join('、') || '无'} 等，请重新选择阵营`, 4000);
+                                },
+                              });
+                            }} style={{ marginTop: '10px', width: '100%', padding: '8px', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '8px', background: 'rgba(239,68,68,0.12)', color: '#fca5a5', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+                              叛国（高惩罚，自动退帮）
+                            </button>
+                          )}
+                          {!defectCheck.ok && defectCheck.reason && (
+                            <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8' }}>{defectCheck.reason}</div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {/* 军衔特权：集结令 / 王令 */}
+                    {(() => {
+                      const perkFx = getRankPerkEffects(kw);
+                      const today = getLocalDateStr();
+                      const rallyUsed = kw.dailyCounts?.[`rally_${today}`] || false;
+                      const decreeUsed = kw.dailyCounts?.[`decree_${today}`] || false;
+                      const hasRally = perkFx.rallyStrength > 0;
+                      const hasDecree = perkFx.decreeStrength > 0;
+                      if (!hasRally && !hasDecree) return null;
+                      return (
+                        <div style={{background:'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius:'14px', padding:'14px', color:'#fff'}}>
+                          <div style={{fontSize:'13px', fontWeight:'800', marginBottom:'8px'}}>🏛️ 军衔特权</div>
+                          <div style={{display:'flex', flexWrap:'wrap', gap:'8px'}}>
+                            {hasRally && (
+                              <button type="button" disabled={rallyUsed} onClick={() => {
+                                if (rallyUsed) return;
+                                setKingdomWar(prev => {
+                                  const terr = { ...prev.territories };
+                                  const owned = WAR_MAP_IDS.filter(mid => terr[mid]?.owner === prev.faction && !CONTESTED_MAP_IDS.includes(Number(mid)));
+                                  if (owned.length === 0) return prev;
+                                  const weakest = owned.reduce((best, id) => ((terr[id]?.strength || 100) < (terr[best]?.strength || 100) ? id : best), owned[0]);
+                                  terr[weakest] = { ...terr[weakest], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[weakest]?.strength || 50) + (perkFx.rallyStrength || 5)) };
+                                  return { ...prev, territories: terr, dailyCounts: { ...prev.dailyCounts, [`rally_${today}`]: true } };
+                                });
+                                showMapToast('⚔️', '集结令', `最弱领地城防 +${perkFx.rallyStrength}`, 2000);
+                              }} style={{flex:'1 1 120px', padding:'10px', border:'none', borderRadius:'10px', background: rallyUsed ? '#334155' : myFaction.color, color:'#fff', fontWeight:'700', fontSize:'12px', cursor: rallyUsed ? 'not-allowed' : 'pointer', opacity: rallyUsed ? 0.5 : 1}}>
+                                ⚔️ 集结令 (+{perkFx.rallyStrength}城防) {rallyUsed ? '(已用)' : ''}
+                              </button>
+                            )}
+                            {hasDecree && (
+                              <button type="button" disabled={decreeUsed} onClick={() => {
+                                if (decreeUsed) return;
+                                setKingdomWar(prev => {
+                                  const terr = { ...prev.territories };
+                                  for (const mid of WAR_MAP_IDS) {
+                                    if (CONTESTED_MAP_IDS.includes(Number(mid))) continue;
+                                    if (terr[mid]?.owner === prev.faction) {
+                                      terr[mid] = { ...terr[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid]?.strength || 50) + (perkFx.decreeStrength || 3)) };
+                                    }
+                                  }
+                                  return { ...prev, territories: terr, dailyCounts: { ...prev.dailyCounts, [`decree_${today}`]: true } };
+                                });
+                                showMapToast('👑', '王令', `全部己方领地城防 +${perkFx.decreeStrength}`, 2500);
+                              }} style={{flex:'1 1 120px', padding:'10px', border:'none', borderRadius:'10px', background: decreeUsed ? '#334155' : '#D4AF37', color:'#fff', fontWeight:'700', fontSize:'12px', cursor: decreeUsed ? 'not-allowed' : 'pointer', opacity: decreeUsed ? 0.5 : 1}}>
+                                👑 王令 (全领地+{perkFx.decreeStrength}城防) {decreeUsed ? '(已用)' : ''}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -23782,11 +23977,14 @@ const renderMenu = () => {
                               const total = Math.floor(Math.min((Math.floor(base * rank.incomeMultiplier * taxMult) + (rank.salary || 0)) * allMult, 50000));
                               const tokens = myTerrCount * 2 + (rank.tokenBonus || 0);
                               setGold(g => g + total);
-                              setKingdomWar(prev => ({
-                                ...prev,
-                                factionTokens: (prev.factionTokens || 0) + tokens,
-                                dailyCounts: { ...(prev.dailyCounts || {}), income: true, resetDate: getLocalDateStr() },
-                              }));
+                              setKingdomWar(prev => {
+                                const afterDaily = resetKingdomDailyCounts(prev);
+                                return {
+                                  ...afterDaily,
+                                  factionTokens: (afterDaily.factionTokens || 0) + tokens,
+                                  dailyCounts: { ...(afterDaily.dailyCounts || {}), income: true, resetDate: getLocalDateStr() },
+                                };
+                              });
                               showMapToast('✅', '领取成功', `${total.toLocaleString()} 金币 · 令牌 ${tokens}`, 2500);
                             }}
                             style={{
@@ -24221,7 +24419,7 @@ const renderMenu = () => {
                               </div>
                             </div>
                             <div style={{padding:'14px 16px'}}>
-                              <div style={{fontSize:'12px', fontWeight:'600', color:'#1e293b', marginBottom:'8px'}}>占领态势（魏·蜀·吴·群雄）</div>
+                              <div style={{fontSize:'12px', fontWeight:'600', color:'#1e293b', marginBottom:'8px'}}>占领态势（魏·蜀·吴·晋·群雄）</div>
                               <div style={{display:'flex', borderRadius:'6px', overflow:'hidden', height:'20px', background:'#e2e8f0', marginBottom:'8px'}}>
                                 {CONTEST_BAR_IDS.map(fid => {
                                   const pts = progress[fid] || 0;
@@ -24418,6 +24616,7 @@ const renderMenu = () => {
                               });
                               if (equipDrop) setAccessories(prev => [...prev, { ...equipDrop, uid: Date.now() + Math.random() }]);
                               showMapToast(siegeResult.victory ? '🏯' : '🛡️', siegeResult.victory ? '攻城大捷' : '攻城受挫', `${siegeResult.detail} 占领+${siegeResult.occupationGain} · 战功+${contribGain} · 令牌+${tokenGain} · 战损-${siegeResult.manpowerLost}兵`, 4200);
+                              triggerEnemyKingdomActions();
                               setKwSiegeModal(null);
                               } catch (err) {
                                 console.error('kw siege:', err);
@@ -24584,15 +24783,13 @@ const renderMenu = () => {
                 {/* 领土 */}
                 {kwTab === 'territory' && (() => {
                   const fStats = getFactionTerritoryStats(kw.territories);
-                  const today = getLocalDateStr();
-                  const dailySieges = kw.dailySiegeDate === today ? (kw.dailySiegeCount || 0) : 0;
-                  const maxDailySieges = 5;
                   const rankIdx = Math.max(0, MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian')));
                   const reserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
+                  const timeMod = getBattleTimeModifiers();
                   return (
                   <div>
                   <div style={{background:'linear-gradient(135deg, #1e293b, #334155)', borderRadius:'14px', padding:'14px', marginBottom:'12px', color:'#fff'}}>
-                    <div style={{fontSize:'14px', fontWeight:'800', marginBottom:'8px'}}>🏰 天下大势 · 四方争霸</div>
+                    <div style={{fontSize:'14px', fontWeight:'800', marginBottom:'8px'}}>🏰 天下大势 · 全图争夺</div>
                     <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'8px'}}>
                       {ALL_FACTION_IDS.map(fid => {
                         const f = FACTIONS[fid];
@@ -24604,7 +24801,9 @@ const renderMenu = () => {
                         </div>;
                       })}
                     </div>
-                    <div style={{fontSize:'11px', opacity:0.7}}>预备兵 {reserve}/{MANPOWER_RESERVE_CAP} · 今日攻城 {dailySieges}/{maxDailySieges} · 群雄会主动攻城争夺领地</div>
+                    <div style={{fontSize:'11px', opacity:0.7}}>
+                      预备兵 {reserve}/{MANPOWER_RESERVE_CAP} · 精锐 {kw.eliteTroops || 0} · 粮草 {kw.grain || 0}/{calcGrainCap(kw)} · {timeMod.label} · 无每日攻城上限
+                    </div>
                   </div>
                   <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px'}}>
                     {WAR_MAP_IDS.filter(mid => !CONTESTED_MAP_IDS.includes(Number(mid))).map(mapId => {
@@ -24617,7 +24816,7 @@ const renderMenu = () => {
                       const borderColor = isNeutral ? '#94a3b8' : (ownerFaction?.color || '#94a3b8');
                       const garrison = t.garrison || {};
 	                      const totalG = getGarrisonTotal(garrison);
-	                      const canSiege = !isMine && kw.faction && dailySieges < maxDailySieges && reserve >= 60;
+	                      const canSiege = !isMine && kw.faction && reserve >= 60;
 	                      let assaultPreview = null;
 	                      if (!isMine && kw.faction && reserve >= 60) {
 	                        const cap0 = Math.min(reserve, 200 + rankIdx * 40);
@@ -24632,6 +24831,7 @@ const renderMenu = () => {
 	                          territories: kw.territories,
 	                          recruitedGenerals: kw.recruitedGenerals || [],
 	                          generalIds: [],
+                            kw,
 	                        });
 	                      }
 	                      return (
@@ -24661,6 +24861,13 @@ const renderMenu = () => {
 	                            防御 {t.strength}/100 · 总兵 {totalG}
 	                            {assaultPreview && <> · 胜率 {Math.round((assaultPreview.winChance || 0) * 100)}% · {assaultPreview.riskLabel}</>}
 	                          </div>
+                          <div style={{display:'flex', gap:'2px', flexWrap:'wrap', marginBottom:'4px'}}>
+                            {(t.guards || getActiveGuards(t)).map((g, gi) => (
+                              <span key={gi} title={g.name} style={{fontSize:'9px', background: g.defeated ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.12)', color: g.defeated ? '#94a3b8' : '#b91c1c', borderRadius:'4px', padding:'1px 5px', fontWeight:'600'}}>
+                                {g.defeated ? '💀' : '🛡️'}{g.name}
+                              </span>
+                            ))}
+                          </div>
                           <div style={{display:'flex', gap:'2px', flexWrap:'wrap', marginBottom:'6px'}}>
                             {KW_TROOP_TYPES.map(tt => {
                               const v = garrison[tt.id] || 0;
@@ -24676,11 +24883,11 @@ const renderMenu = () => {
                               const r = cap - b * 6;
                               const alloc = {};
                               KW_TROOP_IDS.forEach((tid, i) => { alloc[tid] = b + (i < r ? 1 : 0); });
-                              setKwSiegeModal({ targetMapId: mapId, targetMapName: map.name, allocation: alloc, generalIds: [], deployCap: cap, isTerritorySiege: true });
+                              setKwSiegeModal({ targetMapId: mapId, targetMapName: map.name, allocation: alloc, generalIds: [], deployCap: cap, isTerritorySiege: true, duelGeneralId: (kw.recruitedGenerals || [])[0]?.id || null, skipDuel: false });
                             }} style={{
                               width:'100%', padding:'6px', border:'none', borderRadius:'8px', fontSize:'11px', fontWeight:'700',
                               background: myFaction.color, color:'#fff', cursor:'pointer', opacity:0.9,
-                            }}>⚔️ 攻城 ({dailySieges}/{maxDailySieges})</button>
+                            }}>⚔️ 三阶段攻城</button>
                           )}
                           {isMine && <div style={{fontSize:'10px', color:'#22c55e', textAlign:'center', fontWeight:'600'}}>✅ 我方领地</div>}
                         </div>
@@ -24779,6 +24986,7 @@ const renderMenu = () => {
 	                            territories: kingdomWar?.territories || {},
 	                            recruitedGenerals: kingdomWar?.recruitedGenerals || [],
 	                            generalIds: kwSiegeModal.generalIds || [],
+                              kw: kingdomWar,
 	                          });
 	                          return (
 	                            <div style={{background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'12px', padding:'10px', marginBottom:'12px'}}>
@@ -24805,8 +25013,8 @@ const renderMenu = () => {
 	                            </div>
 	                          );
 	                        })()}
-	                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'6px' }}>选择武将（最多3）</div>
-                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'12px' }}>
+	                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'6px' }}>选择参战武将（最多3）</div>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'8px' }}>
                           {(kw.recruitedGenerals || []).map(g => {
                             const on = (kwSiegeModal.generalIds || []).includes(g.id);
                             return (
@@ -24826,6 +25034,19 @@ const renderMenu = () => {
                             );
                           })}
                         </div>
+                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', marginBottom:'6px' }}>单挑武将（可选，击败守将削弱城防）</div>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'8px' }}>
+                          <button type="button" onClick={() => setKwSiegeModal(prev => prev ? { ...prev, duelGeneralId: null, skipDuel: true } : prev)} style={{ padding:'5px 10px', borderRadius:'8px', fontSize:'11px', border:'1px solid #cbd5e1', background: kwSiegeModal.skipDuel ? '#fef3c7' : '#fff', cursor:'pointer' }}>跳过单挑</button>
+                          {(kw.recruitedGenerals || []).map(g => (
+                            <button type="button" key={`duel-${g.id}`} onClick={() => setKwSiegeModal(prev => prev ? { ...prev, duelGeneralId: g.id, skipDuel: false } : prev)} style={{
+                              padding:'5px 10px', borderRadius:'8px', fontSize:'11px', border:`1px solid ${kwSiegeModal.duelGeneralId === g.id ? '#ef4444' : '#cbd5e1'}`,
+                              background: kwSiegeModal.duelGeneralId === g.id ? 'rgba(239,68,68,0.12)' : '#fff', cursor:'pointer',
+                            }}>⚔️ {g.name}</button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize:'11px', color:'#64748b', marginBottom:'10px', padding:'8px', background:'#f8fafc', borderRadius:'8px' }}>
+                          {getBattleTimeModifiers().label}模式 · 三阶段：野战 → 单挑 → 攻城（消耗兵力，敌方联动行动）
+                        </div>
                         <button type="button" onClick={() => {
                           try {
                             if (!kingdomWar?.faction) { showMapToast('❌','提示','未加入阵营',1800); return; }
@@ -24833,60 +25054,81 @@ const renderMenu = () => {
                             const alloc = { ...kwSiegeModal.allocation };
                             const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
-                            const result = runTerritoryAssault({
+                            const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
                               playerFaction: kingdomWar.faction,
                               allocation: alloc,
                               territories: kingdomWar.territories,
                               recruitedGenerals: kingdomWar.recruitedGenerals || [],
                               generalIds: kwSiegeModal.generalIds || [],
+                              kw: kingdomWar,
                             });
-                            const contribGain = result.victory ? 15 + Math.floor(Math.random() * 10) : 4 + Math.floor(Math.random() * 3);
-                            const tokenGain = result.victory ? 2 : 0;
+                            const result = runThreePhaseSiege({
+                              mapId: mid,
+                              playerFaction: kingdomWar.faction,
+                              allocation: alloc,
+                              territories: kingdomWar.territories,
+                              recruitedGenerals: kingdomWar.recruitedGenerals || [],
+                              generalIds: kwSiegeModal.generalIds || [],
+                              duelGeneralId: kwSiegeModal.skipDuel ? null : kwSiegeModal.duelGeneralId,
+                              skipDuel: !!kwSiegeModal.skipDuel,
+                              eliteTroops: kingdomWar.eliteTroops || 0,
+                              morale: kingdomWar.morale ?? 100,
+                              kw: kingdomWar,
+                              fieldEval,
+                            });
+                            const baseContrib = result.captured ? 18 : result.success ? 8 : 3;
+                            const contribGain = Math.floor(baseContrib * (result.contribMult || 1));
+                            const tokenGain = result.captured ? 3 : 0;
                             setKingdomWar(prev => {
                               if (!prev.faction) return prev;
-                              const terr = { ...prev.territories };
+                              const defenderFaction = prev.territories[mid]?.owner;
+                              const terr = { ...(result.territories || prev.territories) };
                               const t = { ...(terr[mid] || {}) };
-                              const originalOwner = t.owner || 'neutral';
-                              t.strength = Math.max(0, Math.min(100, (t.strength || 50) + result.strengthChange));
-                              if (result.victory && t.strength <= 0) {
+                              if (result.captured) {
                                 t.owner = prev.faction;
                                 t.strength = 35;
                                 t.garrison = generateGarrison(prev.faction, 50);
+                                t.guards = assignTerritoryGuards(prev.faction, 35);
                                 t.contested = false;
                                 t.attackerFaction = null;
-                              } else if (result.victory && t.garrison) {
-                                const rk = ['shield','spear','cavalry','archer','siege','raider'][Math.floor(Math.random()*6)];
-                                t.garrison = { ...t.garrison, [rk]: Math.max(0, (t.garrison[rk] || 5) - Math.floor(5 + Math.random()*8)) };
+                              } else if (result.success) {
+                                t.strength = Math.max(0, result.strength ?? t.strength);
+                                t.guards = result.guards || t.guards;
                               }
                               terr[mid] = t;
-                              const td = getLocalDateStr();
-                              return {
+                              const next = {
                                 ...prev,
                                 territories: terr,
-                                kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - (result.manpowerLost || 0)),
+                                kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - (result.totalManpowerLost || 0)),
+                                eliteTroops: Math.max(0, (prev.eliteTroops || 0) - (result.eliteLost || 0)),
+                                morale: result.morale ?? prev.morale,
+                                actionCounter: (prev.actionCounter || 0) + 1,
+                                currentTurn: (prev.currentTurn || 0) + 1,
                                 warContribution: (prev.warContribution || 0) + contribGain,
                                 seasonContribution: (prev.seasonContribution || 0) + contribGain,
                                 lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain,
                                 factionTokens: (prev.factionTokens || 0) + tokenGain,
-                                dailySiegeCount: (prev.dailySiegeDate === td ? (prev.dailySiegeCount || 0) : 0) + 1,
-                                dailySiegeDate: td,
                                 warLog: [...(prev.warLog || []).slice(-19), {
-                                  time: Date.now(), type: result.victory ? 'player_siege_win' : 'player_siege_fail',
-                                  attacker: prev.faction, defender: originalOwner, mapId: Number(mid),
+                                  time: Date.now(), type: result.captured ? 'player_siege_win' : 'player_siege_fail',
+                                  attacker: prev.faction, defender: defenderFaction, mapId: Number(mid),
                                   atkTroops: result.atkTroops, defTroops: result.defTroops,
-                                  msg: `你发动攻城 → ${result.detail} 战功+${contribGain}`,
+                                  msg: `${result.timeLabel || ''}三阶段攻城 → ${result.detail} 战损${result.totalManpowerLost} 战功+${contribGain}`,
                                 }],
                               };
+                              next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
+                              return next;
                             });
-                            showMapToast(result.victory ? '⚔️' : '🛡️', result.victory ? '攻城得手！' : '攻城受阻',
-                              `${result.detail} 战损${result.manpowerLost}兵 · 战功+${contribGain}${tokenGain > 0 ? ` · 令牌+${tokenGain}` : ''}`, 4000);
+                            triggerEnemyKingdomActions();
+                            showMapToast(result.captured ? '⚔️' : (result.success ? '🏰' : '🛡️'),
+                              result.captured ? '攻占城池！' : (result.success ? '城防削弱' : '攻城失败'),
+                              `${result.detail} 战损${result.totalManpowerLost}兵 · 战功+${contribGain}${tokenGain > 0 ? ` · 令牌+${tokenGain}` : ''}`, 4500);
                             setKwSiegeModal(null);
                           } catch (err) {
                             console.error('territory siege:', err);
                             showMapToast('❌','攻城失败','数据异常，请重试。',2500);
                           }
-                        }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动攻城</button>
+                        }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动三阶段攻城</button>
                         <button type="button" onClick={() => setKwSiegeModal(null)} style={{ width:'100%', marginTop:'8px', padding:'8px', border:'1px solid #cbd5e1', borderRadius:'10px', background:'#fff', cursor:'pointer', fontSize:'12px' }}>取消</button>
                       </div>
                     </div>
@@ -24910,42 +25152,49 @@ const renderMenu = () => {
                           </div>
                           <button onClick={() => {
                             if (!canAfford) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
-                            setConfirmModal({ title:'🎖️ 令牌购买', msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`, onOk: () => {
+                            setConfirmModal({ title:'🎖️ 令牌购买', msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`,                             onOk: () => {
                             const currentTokens = kingdomWar?.factionTokens || 0;
                             if (currentTokens < item.cost) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
-                            setKingdomWar(prev => {
-                              const newTokens = (prev.factionTokens || 0) - item.cost;
-                              if (newTokens < 0) return prev;
-                              return { ...prev, factionTokens: newTokens };
-                            });
-                            if (item.id === 'heal_all') {
-                              setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
-                            } else if (item.id === 'exp_buff') {
-                              setKingdomWar(prev => ({ ...prev, expBuffBattles: (prev.expBuffBattles || 0) + 10 }));
-                            } else if (item.id === 'siege') {
-                              const enemyTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner && kw.territories[mid].owner !== kw.faction && kw.territories[mid].owner !== 'neutral');
+                            if (item.id === 'siege') {
+                              const enemyTerrs = WAR_MAP_IDS.filter(mid => !CONTESTED_MAP_IDS.includes(Number(mid)) && kw.territories[mid]?.owner && kw.territories[mid].owner !== kw.faction && kw.territories[mid].owner !== 'neutral');
                               if (enemyTerrs.length === 0) { showMapToast('⚠️', '无可攻击目标', '没有可攻击的敌方领地', 1500); return; }
                               const targetId = enemyTerrs[Math.floor(Math.random() * enemyTerrs.length)];
                               const targetMap = MAPS.find(m => m.id === targetId);
+                              const siegeMult = getRankPerkEffects(kingdomWar).siegeEffectMult || 1;
+                              const dmg = Math.floor(10 * siegeMult);
                               setKingdomWar(prev => {
+                                if ((prev.factionTokens || 0) < item.cost) return prev;
                                 const newT = { ...prev.territories };
-                                newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - 10) };
-                                return { ...prev, territories: newT };
+                                newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - dmg) };
+                                return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost, territories: newT };
                               });
-                              showMapToast('⚔️', '投石', `${targetMap?.name || '目标'} 防御 -10`, 2000);
-                            } else if (item.id === 'war_ball') {
-                              setKingdomWar(prev => ({ ...prev, warBalls: (prev.warBalls || 0) + 1 }));
-                            } else if (item.id === 'flag') {
+                              showMapToast('⚔️', '投石', `${targetMap?.name || '目标'} 防御 -${dmg}`, 2000);
+                              return;
+                            }
+                            if (item.id === 'flag') {
                               const myTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner === kw.faction);
                               if (myTerrs.length === 0) { showMapToast('⚠️', '无可操作', '没有己方领地', 1500); return; }
                               const weakest = myTerrs.sort((a, b) => (kw.territories[a]?.strength || 0) - (kw.territories[b]?.strength || 0))[0];
                               const wMap = MAPS.find(m => m.id === weakest);
                               setKingdomWar(prev => {
+                                if ((prev.factionTokens || 0) < item.cost) return prev;
                                 const newT = { ...prev.territories };
                                 newT[weakest] = { ...newT[weakest], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (newT[weakest]?.strength || 50) + 15) };
-                                return { ...prev, territories: newT };
+                                return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost, territories: newT };
                               });
                               showMapToast('🚩', '插旗', `${wMap?.name || '领地'} 防御 +15`, 2000);
+                              return;
+                            }
+                            setKingdomWar(prev => {
+                              if ((prev.factionTokens || 0) < item.cost) return prev;
+                              return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost };
+                            });
+                            if (item.id === 'heal_all') {
+                              setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
+                            } else if (item.id === 'exp_buff') {
+                              setKingdomWar(prev => ({ ...prev, expBuffBattles: (prev.expBuffBattles || 0) + 10 }));
+                            } else if (item.id === 'war_ball') {
+                              setKingdomWar(prev => ({ ...prev, warBalls: (prev.warBalls || 0) + 1 }));
                             } else if (item.id === 'tiger_seal') {
                               setKingdomWar(prev => ({ ...prev, attackBuff: true }));
                             } else if (item.id === 'war_armor') {
@@ -27189,73 +27438,7 @@ const renderMenu = () => {
               </div>
             );
           })()}
-          {/* 生态危机 / 世界首领异象横幅 */}
-          {(() => {
-            const activeCrisis = ecoCrisisState.active ? getEcoCrisisById(ecoCrisisState.active.crisisId) : null;
-            const mapCrisis = getEcoCrisisByMapId(currentMapId, ecoCrisisState.cleared || []);
-            const crisis = (activeCrisis?.mapId === currentMapId ? activeCrisis : null) || (!(ecoCrisisState.cleared || []).includes(mapCrisis?.id) ? mapCrisis : null);
-            const todayBoss = getTodayBoss(getLocalDateStr());
-            const bossHere = todayBoss?.spawnMapId === currentMapId && badges.length >= WORLD_BOSS_REQ_BADGES;
-            const ecoEvt = getTodayEcoEvent(currentMapId);
-            const adaptSummary = getPartyAdaptationSummary(party, currentMapId);
-            const rescues = getRescueEventsForMap(currentMapId).filter(r => badges.length >= (r.reqBadges || 0) && !observationLog.includes(r.id));
-            const puzzles = getPuzzlesForMap(currentMapId).filter(p => badges.length >= (p.reqBadges || 0) && !observationLog.includes(p.id));
-            const observations = getObservationsForMap(currentMapId).filter(o => !observationLog.includes(o.id));
-            if (!crisis && !bossHere && !ecoEvt && rescues.length === 0 && puzzles.length === 0 && observations.length === 0) return null;
-            return (
-              <div style={{ marginBottom:'6px', display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }}>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
-                {ecoEvt && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'10px 16px', borderRadius:'10px', background:'rgba(30,30,50,0.85)', border:'2px solid #29B6F6', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
-                    <div style={{ fontSize:'14px', fontWeight:'700', color:'#B3E5FC' }}>{ecoEvt.icon} 生态事件：{ecoEvt.name}</div>
-                    <div style={{ fontSize:'13px', color:'rgba(179,229,252,0.8)', marginTop:'4px' }}>{ecoEvt.counterHint}</div>
-                  </div>
-                )}
-                {adaptSummary.maladapted > 0 && (
-                  <div style={{ padding:'10px 14px', borderRadius:'10px', background:'rgba(245,124,0,0.12)', border:'1px solid rgba(245,124,0,0.3)', fontSize:'13px', color:'#BF360C', fontWeight:'600' }}>
-                    ⚠️ {adaptSummary.pressure.icon} {adaptSummary.pressure.name}压力 · {adaptSummary.maladapted}只不适应
-                  </div>
-                )}
-                {crisis && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background:'rgba(30,30,50,0.85)', border:'2px solid #FFB300', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
-                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#FFE082' }}>{crisis.icon} {ecoCrisisState.active?.crisisId === crisis.id ? `调查中·${crisis.name}` : crisis.name}</span>
-                    {!(ecoCrisisState.cleared || []).includes(crisis.id) && (
-                      <button type="button" onClick={() => startEcoCrisis(crisis.id)} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(90deg,#FF8F00,#F57C00)', color:'#fff', cursor:'pointer' }}>调查</button>
-                    )}
-                  </div>
-                )}
-                {bossHere && (
-                  <div style={{ flex:1, minWidth:'180px', padding:'8px 14px', borderRadius:'10px', background:'rgba(183,28,28,0.12)', border:'1px solid rgba(183,28,28,0.35)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
-                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#B71C1C' }}>{todayBoss.emoji} 异象·{todayBoss.name}</span>
-                    <button type="button" onClick={startWorldBossFight} style={{ fontSize:'12px', fontWeight:'700', padding:'5px 12px', borderRadius:'8px', border:'none', background:'linear-gradient(90deg,#B71C1C,#880E4F)', color:'#fff', cursor:'pointer' }}>挑战</button>
-                  </div>
-                )}
-                </div>
-                {(rescues.length > 0 || puzzles.length > 0 || observations.length > 0) && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-                    {rescues.map(r => (
-                      <button key={r.id} type="button" onClick={() => setNonCombatModal({ type:'rescue', event: r })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'2px solid #FFB300', background:'rgba(30,30,50,0.85)', color:'#FFE082', fontWeight:'600', cursor:'pointer' }}>{r.icon} {r.name}</button>
-                    ))}
-                    {puzzles.map(p => (
-                      <button key={p.id} type="button" onClick={() => setNonCombatModal({ type:'puzzle', event: p })} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #64B5F6', background:'rgba(33,150,243,0.25)', color:'#BBDEFB', fontWeight:'600', cursor:'pointer' }}>{p.icon} {p.name}</button>
-                    ))}
-                    {observations.map(o => (
-                      <button key={o.id} type="button" onClick={() => completeObservation(o)} style={{ fontSize:'13px', padding:'6px 14px', borderRadius:'8px', border:'1px solid #CE93D8', background:'rgba(156,39,176,0.25)', color:'#E1BEE7', fontWeight:'600', cursor:'pointer' }}>{o.icon} 观察·{o.name}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
           {/* 2D 视口地图 - 自适应铺满 */}
-          <div className="map-top-info-bar" style={{'--map-accent': mapPixelTheme.vars['--map-accent']}}>
-            <div className="map-stamp-external">
-              <span>{currentMapInfo?.icon || '🗺️'}</span>
-              <strong>{currentMapInfo?.name || '未知区域'}</strong>
-              <em style={{fontSize:'10px', opacity:0.7, fontStyle:'normal', marginLeft:'4px'}}>{mapPixelTheme.label}</em>
-            </div>
-            <div className="map-wasd-hint-external">WASD / 方向键移动 · 空格交互</div>
-          </div>
           <div className="grid-viewport-v2 map-viewport-frame" ref={el => {
             if (el && !el.dataset.sized) {
               el.dataset.sized = '1';
@@ -28933,6 +29116,9 @@ const renderMenu = () => {
   // ==========================================
   const renderBattle = () => {
     if (!battle) { return null; }
+    if (!Array.isArray(battle.playerCombatStates) || !Array.isArray(battle.enemyParty)) {
+      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', width: '100%', color: '#fff', fontSize: '16px', fontWeight: '600' }}>⏳ 战斗状态恢复中...</div>;
+    }
     
     const isDoubleBattle = battle.isDouble;
     const p = isDoubleBattle
@@ -28952,6 +29138,7 @@ const renderMenu = () => {
     const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.phase === 'double_input_2' ? 1 : 0]] : null;
     const isDarkMoon = battle.domainRule === 'dark_moon';
     const domainRuleInfo = battle.domainRule ? getSpiritDomainRule(battle.domainRule) : null;
+    const enemyOwnerName = battle.trainerName || ((battle.isTrainer || battle.isGym || battle.isChallenge || battle.isBoss || battle.isStory) ? '对手训练家' : '');
 
     const renderBattleStageRow = (pet, slotInParty) => {
       if (!pet) return null;
@@ -29869,7 +30056,7 @@ const renderMenu = () => {
                     <div className={`hud-card hud-enemy ${isDoubleBattle ? 'hud-card--double' : ''}`} style={{marginBottom: '8px'}}>
                         <div style={{display:'flex', alignItems:'center', gap:'4px', marginBottom:'2px'}}>
                             <span style={{fontSize: isDoubleBattle ? '11px' : '12px', fontWeight:'bold', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'160px'}}>
-                                {battle.isTrainer ? `${battle.trainerName} 的 ${e.name}` : e.name}
+                                {enemyOwnerName ? `${enemyOwnerName} 的 ${e.name}` : e.name}
                             </span>
                             <span style={{fontSize:'11px', color:'#555', flexShrink:0}}>Lv.{e.level}</span>
                             {!isDarkMoon && (
@@ -29991,7 +30178,7 @@ const renderMenu = () => {
                   <div className="enemy-zone-v2 double-mode" style={{position:'absolute', top:'2%', left:'1%', display:'flex', flexDirection:'column', alignItems:'flex-start', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
                     <div className="hud-card hud-enemy hud-card--double" style={{marginBottom:'8px'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
-                        <span style={{fontSize:'11px', fontWeight:'bold', whiteSpace:'nowrap'}}>{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
+                        <span style={{fontSize:'11px', fontWeight:'bold', whiteSpace:'nowrap'}}>{enemyOwnerName ? `${enemyOwnerName} 的 ${e2.name}` : e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
                         <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
                       </div>
                       <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
@@ -30135,7 +30322,6 @@ const renderMenu = () => {
                         </div>
                         {renderBattleStageRow(p, 0)}
 
-                        {/* 第三行：血条（使用增强组件） */}
                         <EnhancedHPBar 
                             current={p.currentHp} 
                             max={pStats.maxHp} 
@@ -31932,6 +32118,7 @@ const renderMenu = () => {
                 { label:'成就', val: `${unlockedAchs.length}/${ACHIEVEMENTS.length}`, icon:'🎖️' },
                 { label:'最佳连胜', val: achStats.maxWinStreak || 0, icon:'🔥' },
                 { label:'无限城', val: `${infinityState?.bestFloor || 0}F`, icon:'🏯' },
+                { label:'游玩时长', val: formatPlayTime(getCurrentPlayTimeMs()), icon:'⏱️' },
               ].map(s => (
                 <div key={s.label} style={{textAlign:'center'}}>
                   <div style={{fontSize:'14px', marginBottom:'2px'}}>{s.icon}</div>
@@ -32286,7 +32473,7 @@ const renderMenu = () => {
       </svg>
          {/* 🎵 [新增] 隐藏的音频元素 */}
       <audio ref={audioRef} loop />
-      <HudEventFeed events={hudEvents} />
+      {/* HudEventFeed removed per user request */}
 
      
       {view === 'menu' && renderMenu()}
