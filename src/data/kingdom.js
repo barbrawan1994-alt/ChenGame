@@ -73,17 +73,28 @@ export const WAR_MAP_IDS = [
   301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314,
 ];
 
-/** 地图相邻关系（影响补给线加成） */
-export const MAP_ADJACENCY = {
+/** 地图相邻关系（影响补给线加成，双向对称） */
+const _adj_raw = {
   1: [2, 4], 2: [1, 3, 5], 3: [2, 6], 4: [1, 7], 5: [2, 8, 10], 6: [3, 11], 7: [4, 8],
   8: [5, 7, 9, 10], 9: [8, 13], 10: [5, 11, 12], 11: [6, 10, 13], 12: [10, 13], 13: [9, 11, 12],
   99: [8, 12],
-  103: [13, 104], 104: [103, 105], 105: [104, 106], 106: [105, 107], 107: [106, 108], 108: [107, 109], 109: [108, 12],
+  103: [13, 104], 104: [103, 105], 105: [104, 106], 106: [105, 107], 107: [106, 108], 108: [107, 109], 109: [108, 12, 314],
   204: [5, 6, 205], 205: [204, 206, 10], 206: [205, 6, 11],
   301: [1, 302], 302: [301, 303, 4], 303: [302, 304], 304: [303, 305, 5], 305: [304, 306, 6],
   306: [305, 307, 7], 307: [306, 308], 308: [307, 309, 8], 309: [308, 310, 9], 310: [309, 311, 10],
   311: [310, 312, 11], 312: [311, 313, 12], 313: [312, 314, 13], 314: [313, 109],
 };
+// ensure bidirectional
+const _buildBidirectional = (raw) => {
+  const out = {};
+  for (const [k, vs] of Object.entries(raw)) { out[k] = [...new Set(vs.map(Number))]; }
+  for (const [k, vs] of Object.entries(out)) {
+    const n = Number(k);
+    for (const v of vs) { if (!out[v]) out[v] = []; if (!out[v].includes(n)) out[v].push(n); }
+  }
+  return out;
+};
+export const MAP_ADJACENCY = _buildBidirectional(_adj_raw);
 
 /** 征兵与粮草配置 */
 export const RECRUIT_CONFIG = {
@@ -173,7 +184,7 @@ export const RANK_PROMOTION_CHALLENGES = {
   general_h: { type: 'generals', desc: '招募至少5名名将', target: 5, stat: 'recruitedGenerals' },
   grand_gen: { type: 'historical', desc: '通关至少10场历史名战', target: 10, stat: 'historicalBattles' },
   minister: { type: 'contribution', desc: '单赛季内获得3000战功', target: 3000, stat: 'seasonContribution' },
-  king: { type: 'siege', desc: '成功参与3次都城攻防', target: 3, stat: 'capitalSieges' },
+  king: { type: 'siege', desc: '成功参与1次都城攻防或控制15+领地', target: 1, stat: 'capitalSieges' },
   hegemon: { type: 'multi', desc: '通关本阵营全部8场战役 + 拥有8名名将 + 控制7+领地', targets: { campaignsCleared: 8, recruitedGenerals: 8, factionTerritories: 7 } },
   emperor: { type: 'ultimate', desc: '通关25场历史名战 + 战功35000 + 获得"霸主"赛季称号', targets: { historicalBattles: 25, totalContribution: 35000, hasHegemonTitle: true } },
 };
@@ -208,6 +219,8 @@ export const getMilitaryRank = (contribution, playerStats = null) => {
           return (playerStats[k] || 0) >= v;
         });
         if (!allMet) continue;
+      } else if (ch.stat === 'capitalSieges') {
+        if ((playerStats.capitalSieges || 0) < ch.target && (playerStats.factionTerritories || 0) < 15) continue;
       } else {
         if ((playerStats[ch.stat] || 0) < ch.target) continue;
       }
@@ -258,7 +271,7 @@ export const WAR_TICK_CONFIG = {
   maxStrength: 100,
   newTerritoryStrength: 35,
   underdogBonus: 0.4,
-  overextendThreshold: 7,
+  overextendThreshold: 8,
   overextendDecayMultiplier: 3,
   playerKillStrengthBonus: 2,
   playerKillAttackBonus: 4,
@@ -498,7 +511,7 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
   };
 };
 
-/** 简易兵种克制计算（与kwSiege共享思路） */
+/** 兵种克制计算（与 kwSiege 统一为 1.27/0.79） */
 const TROOP_KEYS_K = ['shield', 'spear', 'cavalry', 'archer', 'siege', 'raider'];
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -509,8 +522,8 @@ const getTroopMatchMultLocal = (attackerType, defenderType) => {
   if (ia == null || ib == null) return 1;
   if (ia === ib) return 1;
   const d = (ib - ia + 6) % 6;
-  if (d === 1 || d === 2) return 1.25;
-  if (d === 4 || d === 5) return 0.8;
+  if (d === 1 || d === 2) return 1.27;
+  if (d === 4 || d === 5) return 0.79;
   return 1;
 };
 
@@ -585,7 +598,7 @@ const getSuggestedAllocation = (defGarrison, deploy) => {
   return out;
 };
 
-export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [] }) => {
+export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [], kw = null }) => {
   const t = territories?.[mapId];
   if (!t) return { canAttack: false, reason: '目标领地不存在', winChance: 0, riskLabel: '不可攻' };
   if (t.owner === playerFaction) return { canAttack: false, reason: '无法攻击己方领地', winChance: 0, riskLabel: '不可攻' };
@@ -603,8 +616,16 @@ export const evaluateTerritoryAssault = ({ mapId, playerFaction, allocation, ter
   const overextendMult = ownCount >= WAR_TICK_CONFIG.overextendThreshold ? 0.93 : 1;
   const underdogMult = ownCount <= 2 ? 1.07 : 1;
   const defenderResolve = t.owner === 'neutral' ? 0.86 : clamp(0.92 + defenderCount * 0.018, 0.92, 1.16);
-  const attackPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult;
-  const defensePower = defTotal * ((t.strength || 50) / 100) * defenderResolve;
+  const instabilityMult = kw ? getInstabilityMult(kw) : 1;
+  const moraleMult = clamp(((kw?.morale ?? 100) || 100) / 100, 0.6, 1.2);
+  const eliteRatio = deploy > 0 ? Math.min(1, (kw?.eliteTroops || 0) / deploy) : 0;
+  const eliteMult = 1 + eliteRatio * (RECRUIT_CONFIG.eliteCombatMult - 1);
+  const hour = new Date().getHours();
+  const isNight = hour < 6 || hour >= 18;
+  const nightAtkMult = isNight ? 0.92 : 1;
+  const nightDefMult = isNight ? 1.15 : 1;
+  const attackPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult * instabilityMult * moraleMult * eliteMult * nightAtkMult;
+  const defensePower = defTotal * ((t.strength || 50) / 100) * defenderResolve * nightDefMult;
   const pressure = attackPower / Math.max(1, defensePower);
   const winChance = deploy < 60 ? 0 : clamp(0.08 + (pressure / (pressure + 1.15)) * 0.84, 0.08, 0.92);
   const lossRate = deploy < 60 ? 0 : clamp(0.30 - winChance * 0.14 + Math.max(0, 1 - counter) * 0.08 + (supply.mult < 1 ? 0.04 : 0), 0.09, 0.48);
@@ -826,8 +847,10 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     territories: initTerritories(),
     contestProgress: {},
     season: kw.season + 1,
-    /** 赛季更替：预备兵保留 45% 并封顶，避免从零开始过难、也避免无限囤积 */
     kwManpowerReserve: Math.min(2800, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
+    grain: Math.floor((kw.grain || 0) * 0.3),
+    eliteTroops: Math.floor((kw.eliteTroops || 0) * 0.3),
+    morale: Math.max(60, Math.floor((kw.morale || 100) * 0.8)),
   };
   const stats = rankStatsFn ? rankStatsFn(newState) : null;
   newState.militaryRank = getMilitaryRank(newContribution, stats).id;
@@ -852,12 +875,12 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
  * 玩家对普通地图发动兵种化攻城
  * @returns {{ victory, strengthChange, manpowerLost, detail, atkTroops, defTroops }}
  */
-export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [] }) => {
+export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [], kw = null }) => {
   const t = territories[mapId];
   if (!t || t.owner === playerFaction) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '无法攻击己方领地' };
   if (CONTESTED_MAP_IDS.includes(Number(mapId))) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '名城请在争夺页攻城' };
 
-  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds });
+  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds, kw });
   const alloc = evalResult.allocation || normalizeTroopAllocationK(allocation);
   const deploy = evalResult.deploy || TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
   if (deploy < 60) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '兵力不足60，无法攻城' };
@@ -895,10 +918,9 @@ export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territor
 
 export const isFactionCapitalOnly = (faction, territories) => {
   const ownedMaps = WAR_MAP_IDS.filter(id => territories[id]?.owner === faction);
-  return ownedMaps.length === 0;
+  return ownedMaps.length <= 3;
 };
 
-// 获取可发起都城攻防战的敌方阵营
 export const getCapitalSiegeTargets = (playerFaction, territories) => {
   return FACTION_IDS.filter(fid => fid !== playerFaction && isFactionCapitalOnly(fid, territories));
 };
@@ -1119,7 +1141,10 @@ export const recruitTroops = (kw, type = 'normal') => {
   if (!kw?.faction) return { ok: false, reason: '未加入阵营' };
   const cfg = RECRUIT_CONFIG;
   const isElite = type === 'elite';
-  const cost = isElite ? cfg.eliteCost : cfg.normalCost;
+  const baseCost = isElite ? cfg.eliteCost : cfg.normalCost;
+  const rankPerk = RANK_PERK_EFFECTS[getMilitaryRank(kw.warContribution || 0).perk] || {};
+  const costMult = rankPerk.recruitCostMult || 1;
+  const cost = { gold: Math.floor(baseCost.gold * costMult), grain: baseCost.grain };
   const gainRange = isElite ? cfg.eliteGain : cfg.normalGain;
   if ((kw.grain || 0) < cost.grain) return { ok: false, reason: `粮草不足，需要 ${cost.grain}` };
   const gain = gainRange[0] + Math.floor(Math.random() * (gainRange[1] - gainRange[0] + 1));
