@@ -3,7 +3,7 @@
 // 纯数值推演，不依赖战斗引擎，避免与主战斗耦合导致崩溃
 // ==========================================
 
-import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult } from './kingdom';
+import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult, buildSiegeCombatParams } from './kingdom';
 import { getGeneralById } from './generals';
 
 export const CONTESTED_SIEGE_MAP_IDS = CONTESTED_MAP_IDS;
@@ -474,6 +474,7 @@ export const runThreePhaseSiege = ({
   morale = 100,
   kw = null,
   fieldEval = null,
+  external = null,
 }) => {
   const t = territories?.[mapId];
   if (!t || t.owner === playerFaction) {
@@ -481,8 +482,6 @@ export const runThreePhaseSiege = ({
   }
 
   const timeMod = getBattleTimeModifiers();
-  const instabilityMult = kw ? getInstabilityMult(kw) : 1;
-  const moraleMult = clamp((morale || 100) / 100, 0.6, 1.2);
   const phases = [];
   let totalManpowerLost = 0;
   let strength = t.strength || 50;
@@ -492,32 +491,31 @@ export const runThreePhaseSiege = ({
 
   const alloc = normalizeAllocation(allocation);
   const deploy = sumAlloc(alloc);
-  const counter = fieldEval?.counter || 1;
-  const leadership = fieldEval?.leadership || 1;
-  const supplyMult = fieldEval?.supply?.mult || 1;
 
-  // === 阶段1：野战 ===
+  // === 阶段1：野战（与预览共用 buildSiegeCombatParams） ===
+  const fieldCombat = buildSiegeCombatParams({
+    mapId, playerFaction, allocation: alloc, territories, recruitedGenerals, generalIds, kw,
+    external, timeMod, remainingGuards: guards.filter(g => !g.defeated).length,
+  });
+  const fieldWinChance = fieldCombat.fieldWinChance;
   const fieldCost = Math.max(20, Math.min(40, Math.floor((strength || 50) / 3)));
-  const fieldPressure = deploy * counter * leadership * supplyMult * timeMod.attackMult * instabilityMult * moraleMult;
-  const fieldDef = getGarrisonTotalLocal(t.garrison) * (strength / 100) * timeMod.defenseMult;
-  const fieldWinChance = deploy < 60 ? 0 : clamp(0.08 + (fieldPressure / (fieldPressure + fieldDef + 1)) * 0.84, 0.08, 0.9);
-  const fieldVictory = Math.random() < fieldWinChance;
+  const fieldVictory = deploy >= 60 && Math.random() < fieldWinChance;
   const fieldLoss = fieldVictory
     ? Math.floor(fieldCost * (0.7 - fieldWinChance * 0.15))
     : Math.floor(fieldCost * (1.1 + (1 - fieldWinChance) * 0.3));
   totalManpowerLost += fieldLoss;
-  if (fieldVictory) {
-    totalManpowerLost = Math.max(0, totalManpowerLost - Math.floor(fieldCost * 0.3));
-    strength = Math.max(0, strength - Math.floor(5 + fieldWinChance * 8));
-  } else {
+  if (!fieldVictory) {
     currentMorale = Math.max(20, currentMorale - 15);
     phases.push({ phase: 'field', victory: false, loss: fieldLoss, detail: `${timeMod.label}野战失利，损失 ${fieldLoss} 兵力` });
     return {
       success: false, captured: false, phases, totalManpowerLost, strengthChange: 0,
       morale: currentMorale, detail: `${timeMod.label}野战失利，攻城中止`,
-      contribMult: timeMod.contribMult, nightVision: timeMod.nightVision,
+      contribMult: timeMod.contribMult * (fieldCombat.extBonus.contribMult || 1),
+      nightVision: timeMod.nightVision,
     };
   }
+  totalManpowerLost = Math.max(0, totalManpowerLost - Math.floor(fieldCost * 0.3));
+  strength = Math.max(0, strength - Math.floor(5 + fieldWinChance * 8));
   phases.push({ phase: 'field', victory: true, loss: fieldLoss, detail: `${timeMod.label}野战告捷，城防削弱` });
 
   // === 阶段2：守将单挑 ===
@@ -538,18 +536,19 @@ export const runThreePhaseSiege = ({
     phases.push({ phase: 'duel', victory: null, detail: `守将${activeGuards.map(g => g.name).join('、')}据守，跳过了单挑` });
   }
 
-  // === 阶段3：攻城战 ===
-  const remainingGuards = guards.filter(g => !g.defeated).length;
-  const eliteRatio = deploy > 0 ? Math.min(1, (eliteTroops || 0) / deploy) : 0;
-  const eliteMult = 1 + eliteRatio * (RECRUIT_CONFIG.eliteCombatMult - 1);
-  const guardPenalty = 1 + remainingGuards * 0.12;
-  const assaultPower = deploy * counter * leadership * moraleMult * instabilityMult * eliteMult / guardPenalty;
-  const defPower = getGarrisonTotalLocal(t.garrison) * (strength / 100) * timeMod.defenseMult;
-  const damage = Math.floor(8 + (assaultPower / Math.max(1, defPower)) * 17);
+  // === 阶段3：攻城战（单挑后重算守将惩罚与 siege_master 倍率） ===
+  const assaultCombat = buildSiegeCombatParams({
+    mapId, playerFaction, allocation: alloc, territories, recruitedGenerals, generalIds, kw,
+    external, timeMod, remainingGuards: guards.filter(g => !g.defeated).length,
+  });
+  const assaultPower = assaultCombat.assaultPower;
+  const defPower = assaultCombat.defPower;
+  const damage = Math.floor(8 + (assaultPower / Math.max(1, defPower)) * 17 * assaultCombat.extBonus.assaultDamageMult);
   strength = Math.max(0, strength - damage);
   const lossRate = clamp(0.35 - (assaultPower / (assaultPower + defPower + 1)) * 0.15, 0.15, 0.5);
   const assaultLoss = Math.min(deploy, Math.floor(deploy * lossRate));
   totalManpowerLost += assaultLoss;
+  const eliteRatio = assaultCombat.eliteRatio;
   const eliteLost = Math.min(eliteTroops || 0, Math.floor(assaultLoss * eliteRatio));
   phases.push({
     phase: 'assault', victory: strength <= 0, loss: assaultLoss,
@@ -557,7 +556,7 @@ export const runThreePhaseSiege = ({
   });
 
   const captured = strength <= 0;
-  const contribMult = timeMod.contribMult * (duelResult?.victory ? 1.1 : 1);
+  const contribMult = timeMod.contribMult * (duelResult?.victory ? 1.1 : 1) * (assaultCombat.extBonus.contribMult || 1);
 
   terrCopy[mapId] = {
     ...t,
@@ -582,9 +581,10 @@ export const runThreePhaseSiege = ({
     contribMult,
     nightVision: timeMod.nightVision,
     timeLabel: timeMod.label,
-    winChance: fieldWinChance,
+    winChance: fieldEval?.winChance ?? assaultCombat.winChance,
     atkTroops: alloc,
     defTroops: t.garrison,
+    extBonus: assaultCombat.extBonus,
   };
 };
 

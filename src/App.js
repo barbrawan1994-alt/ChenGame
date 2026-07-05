@@ -175,8 +175,10 @@ import {
   getCapitalSiegeTargets, getGarrisonTotal, getFactionTerritoryStats,
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
+  getUnlockedRankPerks, getScoutAdjacentIntel, useWarRally, useRoyalDecree,
   RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY,
   recruitTroops, calcGrainCap, canDefect, applyDefection, getDefectionPenalties,
+  getDefectionStatus, formatDefectionPenaltyLines, canRejoinFaction,
   executeAllEnemyActions, migrateKingdomWarState, getActiveGuards, assignTerritoryGuards,
 } from './data/kingdom';
 import {
@@ -15323,8 +15325,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const getRankPerkEffects = (kw) => {
     if (!kw?.faction) return {};
-    const r = getMilitaryRank(kw.warContribution || 0, buildRankStats(kw));
-    return r.perk ? (RANK_PERK_EFFECTS[r.perk] || {}) : {};
+    return getUnlockedRankPerks(kw, buildRankStats(kw));
+  };
+
+  const buildSiegeExternalBonuses = () => {
+    if (!kingdomWar?.faction) return {};
+    const gangSkills = getGangSkills(gang, getGangSkillCapBonus(kingdomWar));
+    const gangBonus = getGangSkillBonus(gangSkills);
+    let bestResMult = 1;
+    for (const p of party) {
+      if (!p) continue;
+      const fx = calcResonanceBonuses(p, getResonanceContext());
+      if ((fx.kwContribMult || 1) > bestResMult) bestResMult = fx.kwContribMult || 1;
+    }
+    return {
+      gangAlignMult: isGangKingdomAligned(gang, kingdomWar) ? 1.1 : 1,
+      gangContribBonus: gangBonus.contrib || 0,
+      sectPowerBonus: calcSectKingdomPowerBonus(
+        sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, kingdomWar.faction,
+      ),
+      resonanceContribMult: bestResMult,
+    };
   };
 
   const buildRankStats = (kw) => {
@@ -23513,7 +23534,7 @@ const renderMenu = () => {
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
                 jin: { generals: '司马懿、邓艾、钟会、羊祜', strategy: '谋定天下', capital: '邺城', stronghold: '深谋远虑，一统山河' },
               };
-              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下{WAR_MAP_IDS.length}城 · 择一阵营，建功立业</div></div><div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 加入后3天内不可叛国，叛国将承受重罚', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, factionJoinDate: new Date().toISOString(), territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
+              return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下{WAR_MAP_IDS.length}城 · 择一阵营，建功立业</div></div>{(() => { const ban = canRejoinFaction(kw); if (ban.ok) return null; return (<div style={{margin:'0 16px 12px', padding:'12px 14px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.35)', textAlign:'center'}}><div style={{fontSize:'13px', fontWeight:'800', color:'#b91c1c'}}>🏴 叛国流亡禁诏</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'4px', lineHeight:1.5}}>{ban.reason}</div></div>); })()}<div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const rejoinCheck = canRejoinFaction(kw); if (!rejoinCheck.ok) { showMapToast('❌','叛国禁诏',rejoinCheck.reason,3500); return; } const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 加入后5天内不可叛国，叛国将承受极重惩罚（金币/兵力/名将/战功大幅损失，7天禁诏）', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, factionJoinDate: new Date().toISOString(), territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
 
             // 已加入阵营 - 国战主界面
@@ -23536,6 +23557,106 @@ const renderMenu = () => {
             const strategicBrief = buildKingdomStrategicBrief(kw, { today, rankIdx, seasonDaysLeft });
 
             const promoChallenge = nextRank ? RANK_PROMOTION_CHALLENGES[nextRank.id] : null;
+            const defectStatus = getDefectionStatus(kw);
+            const defectPenaltyLines = formatDefectionPenaltyLines(kw, gold);
+            const handleDefectionConfirm = () => {
+              setConfirmModal({
+                title: '⚠️ 叛国确认 — 不可撤销',
+                msg: `你将以叛国罪名脱离 ${myFaction.fullName}，并承受以下全部惩罚：\n\n${defectPenaltyLines.map(l => `· ${l}`).join('\n')}\n\n确定叛国？`,
+                onOk: () => {
+                  const applied = applyDefection(kw, gold);
+                  setGold(g => Math.max(0, g - (applied.goldLoss || 0)));
+                  if (applied.gangLeave && (gang?.gangId || gang?.customGang)) {
+                    setGang(prev => ({
+                      ...prev,
+                      gangId: null,
+                      joinDate: null,
+                      contribution: 0,
+                      isOwner: false,
+                      customGang: null,
+                      skills: [],
+                      tasks: [],
+                    }));
+                  }
+                  setKingdomWar(prev => ({
+                    ...prev,
+                    faction: applied.faction,
+                    factionJoinDate: applied.factionJoinDate,
+                    kwManpowerReserve: applied.kwManpowerReserve,
+                    eliteTroops: applied.eliteTroops,
+                    grain: applied.grain,
+                    seasonContribution: applied.seasonContribution,
+                    factionTokens: applied.factionTokens,
+                    warContribution: applied.warContribution,
+                    lifetimeContribution: applied.lifetimeContribution,
+                    generalDraws: applied.generalDraws,
+                    morale: applied.morale,
+                    recruitedGenerals: applied.recruitedGenerals,
+                    militaryRank: applied.militaryRank,
+                    defectionCount: applied.defectionCount,
+                    defectionBanUntil: applied.defectionBanUntil,
+                    instabilityDebuffUntil: applied.instabilityDebuffUntil,
+                    warLog: [...(prev.warLog || []), { time: Date.now(), type: 'defection', msg: `叛离${myFaction.fullName}，流亡禁诏${defectStatus.penalties.rejoinBanDays}天` }].slice(-20),
+                  }));
+                  const lostNames = (applied.lostGenerals || []).map(g => g.name).join('、') || '无';
+                  showMapToast('🏴', '叛国完成', `名将充公：${lostNames}。${defectStatus.penalties.rejoinBanDays}天内不可择主`, 4500);
+                },
+              });
+            };
+            const renderDefectionPanel = (compact = false) => (
+              <div style={{
+                background: 'linear-gradient(135deg, #1a0f14, #2d1520)',
+                borderRadius: '14px',
+                padding: compact ? '12px' : '14px 16px',
+                border: '1px solid rgba(239,68,68,0.35)',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.12)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: compact ? '8px' : '10px' }}>
+                  <div>
+                    <div style={{ fontSize: compact ? '12px' : '13px', fontWeight: '800', color: '#fecaca' }}>🏴 阵营外交 · 叛国</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', lineHeight: 1.5 }}>
+                      效忠 {myFaction.fullName}
+                      {defectStatus.isRepeat ? ` · 曾叛 ${defectStatus.defectionCount} 次（惩罚加重）` : ''}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '10px', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', padding: '3px 8px', borderRadius: '6px', fontWeight: '700', flexShrink: 0 }}>极重惩罚</span>
+                </div>
+                {!compact && (
+                  <div style={{ display: 'grid', gap: '4px', marginBottom: '10px' }}>
+                    {defectPenaltyLines.map(line => (
+                      <div key={line} style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1.45 }}>· {line}</div>
+                    ))}
+                  </div>
+                )}
+                {compact && (
+                  <div style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '10px' }}>
+                    {defectPenaltyLines.slice(0, 3).join(' · ')} 等 {defectPenaltyLines.length} 项重罚
+                  </div>
+                )}
+                <button
+                  type="button"
+                  disabled={!defectStatus.canDefect}
+                  onClick={handleDefectionConfirm}
+                  style={{
+                    width: '100%',
+                    padding: compact ? '9px' : '11px',
+                    border: 'none',
+                    borderRadius: '10px',
+                    background: defectStatus.canDefect ? 'linear-gradient(135deg, #b91c1c, #7f1d1d)' : '#475569',
+                    color: '#fff',
+                    fontSize: compact ? '11px' : '12px',
+                    fontWeight: '800',
+                    cursor: defectStatus.canDefect ? 'pointer' : 'not-allowed',
+                    opacity: defectStatus.canDefect ? 1 : 0.75,
+                  }}
+                >
+                  {defectStatus.canDefect ? '🏴 叛国投诚（不可撤销）' : `🔒 冷却中 · 还需 ${defectStatus.daysUntilReady} 天`}
+                </button>
+                {!defectStatus.canDefect && defectStatus.reason && (
+                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '8px', textAlign: 'center' }}>{defectStatus.reason}</div>
+                )}
+              </div>
+            );
 
             const kwSubTabs = [
               { id: 'overview', label: '概览', icon: '📊' },
@@ -23780,12 +23901,11 @@ const renderMenu = () => {
                         </div>
                       </div>
                     </div>
+                    {renderDefectionPanel()}
                     {(() => {
                       const grainCap = calcGrainCap(kw);
                       const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
                       const timeMod = getBattleTimeModifiers();
-                      const defectCheck = canDefect(kw);
-                      const pen = getDefectionPenalties(kw);
                       return (
                         <div style={{ background: 'linear-gradient(135deg, #1e293b, #334155)', borderRadius: '14px', padding: '14px 16px', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -23824,55 +23944,40 @@ const renderMenu = () => {
                               精锐征兵 ({RECRUIT_CONFIG.eliteCost.gold}金+{RECRUIT_CONFIG.eliteCost.grain}粮)
                             </button>
                           </div>
+                          {(() => {
+                            const rankPerks = getUnlockedRankPerks(kw, buildRankStats(kw));
+                            const today = getLocalDateStr();
+                            const rallyReady = rankPerks.rallyStrength && kw.dailyCounts?.rallyUsed !== today;
+                            const decreeReady = rankPerks.decreeStrength && kw.dailyCounts?.decreeUsed !== today;
+                            if (!rankPerks.rallyStrength && !rankPerks.decreeStrength) return null;
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                                {rankPerks.rallyStrength ? (
+                                  <button type="button" disabled={!rallyReady} onClick={() => {
+                                    const r = useWarRally(kw, buildRankStats(kw));
+                                    if (!r.ok) { showMapToast('❌', '集结令', r.reason, 2000); return; }
+                                    setKingdomWar(prev => ({ ...prev, ...r.nextKw }));
+                                    showMapToast('📯', '集结令', `己方 ${r.count} 块领地防御 +${rankPerks.rallyStrength}`, 2500);
+                                  }} style={{ flex: '1 1 140px', padding: '9px', border: 'none', borderRadius: '10px', background: rallyReady ? '#2563eb' : '#64748b', color: '#fff', fontWeight: '700', fontSize: '11px', cursor: rallyReady ? 'pointer' : 'not-allowed' }}>
+                                    📯 集结令 (+{rankPerks.rallyStrength}){!rallyReady ? ' · 今日已用' : ''}
+                                  </button>
+                                ) : null}
+                                {rankPerks.decreeStrength ? (
+                                  <button type="button" disabled={!decreeReady} onClick={() => {
+                                    const r = useRoyalDecree(kw, buildRankStats(kw));
+                                    if (!r.ok) { showMapToast('❌', '王令', r.reason, 2000); return; }
+                                    setKingdomWar(prev => ({ ...prev, ...r.nextKw }));
+                                    showMapToast('👑', '王令', `全阵营 ${r.count} 块领地防御 +${rankPerks.decreeStrength}`, 2500);
+                                  }} style={{ flex: '1 1 140px', padding: '9px', border: 'none', borderRadius: '10px', background: decreeReady ? '#7c3aed' : '#64748b', color: '#fff', fontWeight: '700', fontSize: '11px', cursor: decreeReady ? 'pointer' : 'not-allowed' }}>
+                                    👑 颁布王令 (+{rankPerks.decreeStrength}){!decreeReady ? ' · 今日已用' : ''}
+                                  </button>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                           <div style={{ fontSize: '10px', opacity: 0.75, lineHeight: 1.5 }}>
                             每次征兵/攻城后，所有敌方各行动一次。攻城无每日次数限制，但需消耗兵力。
                           </div>
-                          {defectCheck.ok && (
-                            <button type="button" onClick={() => {
-                              setConfirmModal({
-                                title: '⚠️ 叛国确认',
-                                msg: `叛国惩罚：\n· 扣除金币 ${Math.floor((pen.goldLossPct || 0.4) * 100)}%\n· 兵力与精锐清零\n· 赛季战功与令牌清零\n· 失去 ${pen.loseGenerals} 名武将\n· 军衔降低 ${pen.rankDrop} 级\n· 自动退出帮派\n· ${pen.instabilityHours}小时内攻城效率-30%\n\n确定叛国？`,
-                                onOk: () => {
-                                  const applied = applyDefection(kw, gold);
-                                  setGold(g => Math.max(0, g - (applied.goldLoss || 0)));
-                                  if (applied.gangLeave && (gang?.gangId || gang?.customGang)) {
-                                    setGang(prev => ({
-                                      ...prev,
-                                      gangId: null,
-                                      joinDate: null,
-                                      contribution: 0,
-                                      isOwner: false,
-                                      customGang: null,
-                                      skills: [],
-                                      tasks: [],
-                                    }));
-                                  }
-                                  setKingdomWar(prev => ({
-                                    ...prev,
-                                    faction: applied.faction,
-                                    factionJoinDate: applied.factionJoinDate,
-                                    kwManpowerReserve: applied.kwManpowerReserve,
-                                    eliteTroops: applied.eliteTroops,
-                                    grain: applied.grain,
-                                    seasonContribution: applied.seasonContribution,
-                                    factionTokens: applied.factionTokens,
-                                    morale: applied.morale,
-                                    recruitedGenerals: applied.recruitedGenerals,
-                                    militaryRank: applied.militaryRank,
-                                    defectionCount: applied.defectionCount,
-                                    instabilityDebuffUntil: applied.instabilityDebuffUntil,
-                                    warLog: [...(prev.warLog || []), { time: Date.now(), type: 'defection', msg: `叛离${myFaction.fullName}，承受重罚后流亡` }].slice(-20),
-                                  }));
-                                  showMapToast('🏴', '叛国完成', `失去 ${(applied.lostGenerals || []).map(g => g.name).join('、') || '无'} 等，请重新选择阵营`, 4000);
-                                },
-                              });
-                            }} style={{ marginTop: '10px', width: '100%', padding: '8px', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '8px', background: 'rgba(239,68,68,0.12)', color: '#fca5a5', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-                              叛国（高惩罚，自动退帮）
-                            </button>
-                          )}
-                          {!defectCheck.ok && defectCheck.reason && (
-                            <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8' }}>{defectCheck.reason}</div>
-                          )}
                         </div>
                       );
                     })()}
@@ -24735,7 +24840,7 @@ const renderMenu = () => {
                         return (
                           <div style={{marginTop:'16px'}}>
                             <div style={{fontSize:'14px', fontWeight:'800', color:'#C62828', marginBottom:'10px'}}>🔥 都城攻防战</div>
-                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营已失去所有领地，仅剩都城！发起攻城战，攻破都城可获得丰厚赛季额外奖励！</div>
+                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营领地稀少（≤5城），可对其都城发起攻城战，胜利获丰厚赛季奖励！</div>
                             {siegeTargets.map(fid => {
                               const ef = FACTIONS[fid];
                               const eCapitalMap = MAPS.find(m => m.id === CAPITAL_MAP_IDS[fid]);
@@ -24832,6 +24937,7 @@ const renderMenu = () => {
 	                          recruitedGenerals: kw.recruitedGenerals || [],
 	                          generalIds: [],
                             kw,
+                            external: buildSiegeExternalBonuses(),
 	                        });
 	                      }
 	                      return (
@@ -24861,6 +24967,21 @@ const renderMenu = () => {
 	                            防御 {t.strength}/100 · 总兵 {totalG}
 	                            {assaultPreview && <> · 胜率 {Math.round((assaultPreview.winChance || 0) * 100)}% · {assaultPreview.riskLabel}</>}
 	                          </div>
+                          {(() => {
+                            const scoutPerks = getUnlockedRankPerks(kw, buildRankStats(kw));
+                            if (!scoutPerks.scoutRange) return null;
+                            const intel = getScoutAdjacentIntel(mapId, kw.faction, kw.territories, scoutPerks.scoutRange);
+                            if (!intel.length) return null;
+                            return (
+                              <div style={{ fontSize: '9px', color: '#475569', marginBottom: '4px', lineHeight: 1.4 }}>
+                                🔍 邻境：{intel.map(i => {
+                                  const ef = FACTIONS[i.owner];
+                                  const nm = MAPS.find(m => m.id === i.mapId)?.name || `#${i.mapId}`;
+                                  return `${nm} ${ef?.icon || ''}防${i.strength}`;
+                                }).join(' · ')}
+                              </div>
+                            );
+                          })()}
                           <div style={{display:'flex', gap:'2px', flexWrap:'wrap', marginBottom:'4px'}}>
                             {(t.guards || getActiveGuards(t)).map((g, gi) => (
                               <span key={gi} title={g.name} style={{fontSize:'9px', background: g.defeated ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.12)', color: g.defeated ? '#94a3b8' : '#b91c1c', borderRadius:'4px', padding:'1px 5px', fontWeight:'600'}}>
@@ -24987,6 +25108,7 @@ const renderMenu = () => {
 	                            recruitedGenerals: kingdomWar?.recruitedGenerals || [],
 	                            generalIds: kwSiegeModal.generalIds || [],
                               kw: kingdomWar,
+                              external: buildSiegeExternalBonuses(),
 	                          });
 	                          return (
 	                            <div style={{background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'12px', padding:'10px', marginBottom:'12px'}}>
@@ -25054,6 +25176,7 @@ const renderMenu = () => {
                             const alloc = { ...kwSiegeModal.allocation };
                             const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
+                            const siegeExternal = buildSiegeExternalBonuses();
                             const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
                               playerFaction: kingdomWar.faction,
@@ -25062,6 +25185,7 @@ const renderMenu = () => {
                               recruitedGenerals: kingdomWar.recruitedGenerals || [],
                               generalIds: kwSiegeModal.generalIds || [],
                               kw: kingdomWar,
+                              external: siegeExternal,
                             });
                             const result = runThreePhaseSiege({
                               mapId: mid,
@@ -25076,6 +25200,7 @@ const renderMenu = () => {
                               morale: kingdomWar.morale ?? 100,
                               kw: kingdomWar,
                               fieldEval,
+                              external: siegeExternal,
                             });
                             const baseContrib = result.captured ? 18 : result.success ? 8 : 3;
                             const contribGain = Math.floor(baseContrib * (result.contribMult || 1));
@@ -25311,6 +25436,7 @@ const renderMenu = () => {
                         </div>
                       </div>
                     )}
+                    {renderDefectionPanel(true)}
                   </div>
                 )}
               </div>
