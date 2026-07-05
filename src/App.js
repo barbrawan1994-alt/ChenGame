@@ -175,6 +175,7 @@ import {
   getCapitalSiegeTargets, getGarrisonTotal, getFactionTerritoryStats,
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
+  getUnlockedRankPerks, getScoutAdjacentIntel, useWarRally, useRoyalDecree,
   RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY,
   recruitTroops, calcGrainCap, canDefect, applyDefection, getDefectionPenalties,
   executeAllEnemyActions, migrateKingdomWarState, getActiveGuards, assignTerritoryGuards,
@@ -15323,8 +15324,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const getRankPerkEffects = (kw) => {
     if (!kw?.faction) return {};
-    const r = getMilitaryRank(kw.warContribution || 0, buildRankStats(kw));
-    return r.perk ? (RANK_PERK_EFFECTS[r.perk] || {}) : {};
+    return getUnlockedRankPerks(kw, buildRankStats(kw));
+  };
+
+  const buildSiegeExternalBonuses = () => {
+    if (!kingdomWar?.faction) return {};
+    const gangSkills = getGangSkills(gang, getGangSkillCapBonus(kingdomWar));
+    const gangBonus = getGangSkillBonus(gangSkills);
+    let bestResMult = 1;
+    for (const p of party) {
+      if (!p) continue;
+      const fx = calcResonanceBonuses(p, getResonanceContext());
+      if ((fx.kwContribMult || 1) > bestResMult) bestResMult = fx.kwContribMult || 1;
+    }
+    return {
+      gangAlignMult: isGangKingdomAligned(gang, kingdomWar) ? 1.1 : 1,
+      gangContribBonus: gangBonus.contrib || 0,
+      sectPowerBonus: calcSectKingdomPowerBonus(
+        sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, kingdomWar.faction,
+      ),
+      resonanceContribMult: bestResMult,
+    };
   };
 
   const buildRankStats = (kw) => {
@@ -23824,6 +23844,37 @@ const renderMenu = () => {
                               精锐征兵 ({RECRUIT_CONFIG.eliteCost.gold}金+{RECRUIT_CONFIG.eliteCost.grain}粮)
                             </button>
                           </div>
+                          {(() => {
+                            const rankPerks = getUnlockedRankPerks(kw, buildRankStats(kw));
+                            const today = getLocalDateStr();
+                            const rallyReady = rankPerks.rallyStrength && kw.dailyCounts?.rallyUsed !== today;
+                            const decreeReady = rankPerks.decreeStrength && kw.dailyCounts?.decreeUsed !== today;
+                            if (!rankPerks.rallyStrength && !rankPerks.decreeStrength) return null;
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                                {rankPerks.rallyStrength ? (
+                                  <button type="button" disabled={!rallyReady} onClick={() => {
+                                    const r = useWarRally(kw, buildRankStats(kw));
+                                    if (!r.ok) { showMapToast('❌', '集结令', r.reason, 2000); return; }
+                                    setKingdomWar(prev => ({ ...prev, ...r.nextKw }));
+                                    showMapToast('📯', '集结令', `己方 ${r.count} 块领地防御 +${rankPerks.rallyStrength}`, 2500);
+                                  }} style={{ flex: '1 1 140px', padding: '9px', border: 'none', borderRadius: '10px', background: rallyReady ? '#2563eb' : '#64748b', color: '#fff', fontWeight: '700', fontSize: '11px', cursor: rallyReady ? 'pointer' : 'not-allowed' }}>
+                                    📯 集结令 (+{rankPerks.rallyStrength}){!rallyReady ? ' · 今日已用' : ''}
+                                  </button>
+                                ) : null}
+                                {rankPerks.decreeStrength ? (
+                                  <button type="button" disabled={!decreeReady} onClick={() => {
+                                    const r = useRoyalDecree(kw, buildRankStats(kw));
+                                    if (!r.ok) { showMapToast('❌', '王令', r.reason, 2000); return; }
+                                    setKingdomWar(prev => ({ ...prev, ...r.nextKw }));
+                                    showMapToast('👑', '王令', `全阵营 ${r.count} 块领地防御 +${rankPerks.decreeStrength}`, 2500);
+                                  }} style={{ flex: '1 1 140px', padding: '9px', border: 'none', borderRadius: '10px', background: decreeReady ? '#7c3aed' : '#64748b', color: '#fff', fontWeight: '700', fontSize: '11px', cursor: decreeReady ? 'pointer' : 'not-allowed' }}>
+                                    👑 颁布王令 (+{rankPerks.decreeStrength}){!decreeReady ? ' · 今日已用' : ''}
+                                  </button>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                           <div style={{ fontSize: '10px', opacity: 0.75, lineHeight: 1.5 }}>
                             每次征兵/攻城后，所有敌方各行动一次。攻城无每日次数限制，但需消耗兵力。
                           </div>
@@ -24735,7 +24786,7 @@ const renderMenu = () => {
                         return (
                           <div style={{marginTop:'16px'}}>
                             <div style={{fontSize:'14px', fontWeight:'800', color:'#C62828', marginBottom:'10px'}}>🔥 都城攻防战</div>
-                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营已失去所有领地，仅剩都城！发起攻城战，攻破都城可获得丰厚赛季额外奖励！</div>
+                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营领地稀少（≤5城），可对其都城发起攻城战，胜利获丰厚赛季奖励！</div>
                             {siegeTargets.map(fid => {
                               const ef = FACTIONS[fid];
                               const eCapitalMap = MAPS.find(m => m.id === CAPITAL_MAP_IDS[fid]);
@@ -24832,6 +24883,7 @@ const renderMenu = () => {
 	                          recruitedGenerals: kw.recruitedGenerals || [],
 	                          generalIds: [],
                             kw,
+                            external: buildSiegeExternalBonuses(),
 	                        });
 	                      }
 	                      return (
@@ -24861,6 +24913,21 @@ const renderMenu = () => {
 	                            防御 {t.strength}/100 · 总兵 {totalG}
 	                            {assaultPreview && <> · 胜率 {Math.round((assaultPreview.winChance || 0) * 100)}% · {assaultPreview.riskLabel}</>}
 	                          </div>
+                          {(() => {
+                            const scoutPerks = getUnlockedRankPerks(kw, buildRankStats(kw));
+                            if (!scoutPerks.scoutRange) return null;
+                            const intel = getScoutAdjacentIntel(mapId, kw.faction, kw.territories, scoutPerks.scoutRange);
+                            if (!intel.length) return null;
+                            return (
+                              <div style={{ fontSize: '9px', color: '#475569', marginBottom: '4px', lineHeight: 1.4 }}>
+                                🔍 邻境：{intel.map(i => {
+                                  const ef = FACTIONS[i.owner];
+                                  const nm = MAPS.find(m => m.id === i.mapId)?.name || `#${i.mapId}`;
+                                  return `${nm} ${ef?.icon || ''}防${i.strength}`;
+                                }).join(' · ')}
+                              </div>
+                            );
+                          })()}
                           <div style={{display:'flex', gap:'2px', flexWrap:'wrap', marginBottom:'4px'}}>
                             {(t.guards || getActiveGuards(t)).map((g, gi) => (
                               <span key={gi} title={g.name} style={{fontSize:'9px', background: g.defeated ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.12)', color: g.defeated ? '#94a3b8' : '#b91c1c', borderRadius:'4px', padding:'1px 5px', fontWeight:'600'}}>
@@ -24987,6 +25054,7 @@ const renderMenu = () => {
 	                            recruitedGenerals: kingdomWar?.recruitedGenerals || [],
 	                            generalIds: kwSiegeModal.generalIds || [],
                               kw: kingdomWar,
+                              external: buildSiegeExternalBonuses(),
 	                          });
 	                          return (
 	                            <div style={{background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'12px', padding:'10px', marginBottom:'12px'}}>
@@ -25054,6 +25122,7 @@ const renderMenu = () => {
                             const alloc = { ...kwSiegeModal.allocation };
                             const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
+                            const siegeExternal = buildSiegeExternalBonuses();
                             const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
                               playerFaction: kingdomWar.faction,
@@ -25062,6 +25131,7 @@ const renderMenu = () => {
                               recruitedGenerals: kingdomWar.recruitedGenerals || [],
                               generalIds: kwSiegeModal.generalIds || [],
                               kw: kingdomWar,
+                              external: siegeExternal,
                             });
                             const result = runThreePhaseSiege({
                               mapId: mid,
@@ -25076,6 +25146,7 @@ const renderMenu = () => {
                               morale: kingdomWar.morale ?? 100,
                               kw: kingdomWar,
                               fieldEval,
+                              external: siegeExternal,
                             });
                             const baseContrib = result.captured ? 18 : result.success ? 8 : 3;
                             const contribGain = Math.floor(baseContrib * (result.contribMult || 1));
