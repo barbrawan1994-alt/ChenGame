@@ -108,14 +108,24 @@ export const RECRUIT_CONFIG = {
   eliteCombatMult: 1.3,
 };
 
-/** 叛国惩罚配置 */
+/** 叛国惩罚配置（严厉） */
 export const DEFECTION_CONFIG = {
-  cooldownDays: 3,
-  goldLossPct: 0.4,
-  grainKeepPct: 0.5,
-  instabilityHours: 24,
-  instabilityPenalty: 0.3,
-  secondDefectionMult: 2,
+  cooldownDays: 5,
+  goldLossPct: 0.65,
+  grainKeepPct: 0.2,
+  instabilityHours: 72,
+  instabilityPenalty: 0.45,
+  secondDefectionMult: 2.5,
+  rejoinBanDays: 7,
+  warContribLossPct: 0.75,
+  lifetimeContribLossPct: 0.5,
+  moraleLoss: 45,
+  moraleFloor: 25,
+  generalDrawsKeepPct: 0.3,
+  loseGeneralsFirst: 2,
+  loseGeneralsRepeat: 4,
+  rankDropFirst: 3,
+  rankDropRepeat: 6,
 };
 
 /** 远征/高难度地图（初始城防更高） */
@@ -322,6 +332,8 @@ export const DEFAULT_KINGDOM_WAR = {
   factionJoinDate: null,
   /** 叛国次数 */
   defectionCount: 0,
+  /** 叛国后禁入阵营截止时间 */
+  defectionBanUntil: null,
   /** 军心不稳 debuff 截止时间戳 */
   instabilityDebuffUntil: null,
   /** @deprecated 已取消每日攻城上限，保留字段兼容旧存档 */
@@ -1359,21 +1371,75 @@ export const canDefect = (kw) => {
   return { ok: true };
 };
 
+export const canRejoinFaction = (kw) => {
+  if (!kw?.defectionBanUntil) return { ok: true };
+  if (Date.now() < kw.defectionBanUntil) {
+    const hoursLeft = Math.ceil((kw.defectionBanUntil - Date.now()) / (1000 * 60 * 60));
+    const daysLeft = Math.max(1, Math.ceil(hoursLeft / 24));
+    return { ok: false, reason: `叛国流亡禁诏中，${daysLeft} 天后方可重新择主` };
+  }
+  return { ok: true };
+};
+
 export const getDefectionPenalties = (kw) => {
-  const mult = (kw?.defectionCount || 0) >= 1 ? DEFECTION_CONFIG.secondDefectionMult : 1;
-  const hours = DEFECTION_CONFIG.instabilityHours * mult;
+  const isRepeat = (kw?.defectionCount || 0) >= 1;
+  const mult = isRepeat ? DEFECTION_CONFIG.secondDefectionMult : 1;
   return {
-    goldLossPct: DEFECTION_CONFIG.goldLossPct * mult,
+    goldLossPct: Math.min(0.95, DEFECTION_CONFIG.goldLossPct * mult),
     loseManpower: true,
     loseElite: true,
     loseSeasonContrib: true,
     loseTokens: true,
-    loseGenerals: mult > 1 ? 2 : 1,
-    rankDrop: 2 * mult,
-    grainKeepPct: DEFECTION_CONFIG.grainKeepPct,
-    instabilityHours: hours,
+    loseGenerals: isRepeat ? DEFECTION_CONFIG.loseGeneralsRepeat : DEFECTION_CONFIG.loseGeneralsFirst,
+    rankDrop: isRepeat ? DEFECTION_CONFIG.rankDropRepeat : DEFECTION_CONFIG.rankDropFirst,
+    grainKeepPct: Math.max(0.05, DEFECTION_CONFIG.grainKeepPct * (isRepeat ? 0.5 : 1)),
+    instabilityHours: DEFECTION_CONFIG.instabilityHours * mult,
+    rejoinBanDays: Math.ceil(DEFECTION_CONFIG.rejoinBanDays * mult),
+    warContribLossPct: DEFECTION_CONFIG.warContribLossPct,
+    lifetimeContribLossPct: DEFECTION_CONFIG.lifetimeContribLossPct,
+    moraleLoss: DEFECTION_CONFIG.moraleLoss,
+    moraleFloor: DEFECTION_CONFIG.moraleFloor,
+    generalDrawsKeepPct: DEFECTION_CONFIG.generalDrawsKeepPct,
     gangLeave: true,
+    isRepeat,
   };
+};
+
+export const getDefectionStatus = (kw) => {
+  const check = canDefect(kw);
+  let daysUntilReady = 0;
+  if (!check.ok && kw?.factionJoinDate) {
+    const daysSince = (Date.now() - new Date(kw.factionJoinDate).getTime()) / (1000 * 60 * 60 * 24);
+    daysUntilReady = Math.max(0, Math.ceil(DEFECTION_CONFIG.cooldownDays - daysSince));
+  }
+  return {
+    canDefect: check.ok,
+    reason: check.reason,
+    daysUntilReady,
+    penalties: getDefectionPenalties(kw),
+    isRepeat: (kw?.defectionCount || 0) >= 1,
+    defectionCount: kw?.defectionCount || 0,
+  };
+};
+
+export const formatDefectionPenaltyLines = (kw, currentGold = 0) => {
+  const pen = getDefectionPenalties(kw);
+  const goldLoss = Math.floor((currentGold || 0) * pen.goldLossPct);
+  const lines = [
+    `扣除金币 ${Math.floor(pen.goldLossPct * 100)}%（约 ${goldLoss.toLocaleString()} 金）`,
+    '预备兵与精锐全部充公',
+    `粮草仅保留 ${Math.floor(pen.grainKeepPct * 100)}%`,
+    '赛季战功与阵营令牌清零',
+    `总战功削减 ${Math.floor(pen.warContribLossPct * 100)}%`,
+    `失去 ${pen.loseGenerals} 名名将（随机充公）`,
+    `军衔降低 ${pen.rankDrop} 级`,
+    '自动退出帮派，帮派贡献清零',
+    `名将抽卡次数保留 ${Math.floor(pen.generalDrawsKeepPct * 100)}%`,
+    `${pen.rejoinBanDays} 天内禁止加入任何阵营`,
+    `${pen.instabilityHours} 小时内攻城效率 -${Math.floor(DEFECTION_CONFIG.instabilityPenalty * 100)}%`,
+  ];
+  if (pen.isRepeat) lines.push('⚠️ 二度叛国：以上惩罚已加重！');
+  return lines;
 };
 
 export const applyDefection = (kw, currentGold = 0) => {
@@ -1386,6 +1452,8 @@ export const applyDefection = (kw, currentGold = 0) => {
   }
   const rankIdx = Math.max(0, MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian')));
   const newRankIdx = Math.max(0, rankIdx - Math.floor(pen.rankDrop));
+  const newWarContrib = Math.floor((kw.warContribution || 0) * (1 - pen.warContribLossPct));
+  const newLifetime = Math.floor((kw.lifetimeContribution ?? kw.warContribution ?? 0) * (1 - pen.lifetimeContribLossPct));
   return {
     faction: null,
     factionJoinDate: null,
@@ -1394,10 +1462,14 @@ export const applyDefection = (kw, currentGold = 0) => {
     grain: Math.floor((kw.grain || 0) * pen.grainKeepPct),
     seasonContribution: 0,
     factionTokens: 0,
-    morale: Math.max(40, (kw.morale || 100) - 30),
+    warContribution: newWarContrib,
+    lifetimeContribution: newLifetime,
+    generalDraws: Math.max(0, Math.floor((kw.generalDraws || 0) * pen.generalDrawsKeepPct)),
+    morale: Math.max(pen.moraleFloor, (kw.morale || 100) - pen.moraleLoss),
     recruitedGenerals: gens,
     militaryRank: MILITARY_RANKS[newRankIdx]?.id || 'civilian',
     defectionCount: (kw.defectionCount || 0) + 1,
+    defectionBanUntil: Date.now() + pen.rejoinBanDays * 24 * 60 * 60 * 1000,
     instabilityDebuffUntil: Date.now() + pen.instabilityHours * 60 * 60 * 1000,
     goldLoss: Math.floor(currentGold * pen.goldLossPct),
     lostGenerals: lostGens,
@@ -1535,6 +1607,7 @@ export const migrateKingdomWarState = (kw) => {
   if (next.morale == null) next.morale = 100;
   if (next.actionCounter == null) next.actionCounter = 0;
   if (next.defectionCount == null) next.defectionCount = 0;
+  if (next.defectionBanUntil == null) next.defectionBanUntil = null;
   if (kw.grainReserve != null) next.grain = (next.grain || 0) + (Number(kw.grainReserve) || 0);
   delete next.grainReserve;
   if (next.faction && !next.factionJoinDate) next.factionJoinDate = new Date().toISOString();
