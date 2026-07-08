@@ -18882,6 +18882,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return pet;
       });
     }
+    let partyToSave = updatedParty; // 🔥 使用更新了亲密度的队伍
+    const commitPartyToSave = (nextParty) => {
+      partyToSave = (nextParty || updatedParty).map(p => ({ ...p }));
+      setParty(partyToSave);
+      return partyToSave;
+    };
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     // --- 下面是原有的掉落和结算逻辑 (注意 setParty 使用 updatedParty) ---
@@ -18970,7 +18976,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setInventory(prev => ({ ...prev, [ladderItem.id]: (prev[ladderItem.id]||0) + 1 }));
           addLog(`🪜 天梯奖励: ${ladderItem.emoji} ${ladderItem.name}!`);
         }
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setTimeout(() => {
           startBattle({ id: 992, name: `${rushName} 第${wave+1}层`, lvl: [nextLvlBase, nextLvlBase + 5], pool: bossPool, drop: 2000 + wave * 1000, bossRushWave: wave + 1, rushName, dungeonId }, 'boss_rush');
@@ -19006,8 +19012,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const godPool = [...(FINAL_GOD_IDS || []), ...(NEW_GOD_IDS || [])];
           const rewardId = _.sample(godPool) || 150;
           const rewardPet = createPet(rewardId, 90, false, true);
-          if (updatedParty.length < 6) { setParty([...updatedParty, rewardPet]); }
-          else { setParty(updatedParty); setBox(prev => [...prev, rewardPet]); }
+          if (updatedParty.length < 6) { commitPartyToSave([...updatedParty, rewardPet]); }
+          else { commitPartyToSave(updatedParty); setBox(prev => [...prev, rewardPet]); }
           if (!caughtDex.includes(rewardPet.id)) setCaughtDex(prev => [...prev, rewardPet.id]);
           const maxCandy = { id: 'max_candy', name: '极限糖果', emoji: '🍬' };
           setInventory(prev => ({ ...prev, max_candy: (prev.max_candy || 0) + 3 }));
@@ -19092,7 +19098,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       setGold(g => g + bonusGold);
       addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
       const nextLvl = Math.min(100, (battleSnapshot.enemyParty?.[0]?.level || 70) + 3);
-      setParty(updatedParty);
+      commitPartyToSave(updatedParty);
       const _survivalBattleRef = { ...battle };
       setConfirmModal({ title:'🏟️ 竞技场', msg:`第${wave}波胜利！\n本波奖金 ${bonusGold} 金币\n继续挑战第${wave+1}波？(敌人等级+3)`, onOk: () => {
         setBattle(null);
@@ -19166,7 +19172,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const sectInfo = SECT_DB[sectId];
 
         if (!chiefInfo || !sectInfo) {
-            setParty(updatedParty); setBattle(null); setView('menu'); return;
+            commitPartyToSave(updatedParty); setBattle(null); setView('menu'); return;
         }
 
         if (isChiefTrial) {
@@ -19188,7 +19194,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             });
             advanceSectDaily('sect_challenge', 1);
             showMapToast('👑', '掌门试炼通关', `通过【${sectInfo.name}】掌门试炼！获得武学残页与心法真气`, 4000);
-            setParty(updatedParty);
+            commitPartyToSave(updatedParty);
             setBattle(null);
             setView('sect_summit');
             return;
@@ -19210,13 +19216,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         advanceSectDaily('sect_challenge', 1);
         
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setView('sect_summit'); 
         return; 
     }
-
-    let partyToSave = updatedParty; // 🔥 使用更新了亲密度的队伍
 
     // 6. 挑战塔逻辑（阶梯奖励）
     if (isChallenge) {
@@ -19235,8 +19239,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
            rewardAlertLines.push('1. 🟢 超级球 x3');
            const rewardLv = Math.min(cBossLv, 25);
            const rewardPet = createPet(cInfo?.rewardId || _.random(1,200), rewardLv, false, false);
-           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
-           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           if (updatedParty.length < 6) { commitPartyToSave([...updatedParty, rewardPet]); }
+           else { commitPartyToSave(updatedParty); setBox(b => [...b, rewardPet]); }
            rewardAlertLines.push(`2. 🐾 ${rewardPet.name} Lv.${rewardLv}`);
            addLog(`🎉 挑战完成！获得 超级球x3 + ${rewardPet.name}！`);
          } else if (cTier === 2) {
@@ -19244,8 +19248,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
            rewardAlertLines.push('1. 🔵 高级球 x2');
            const rewardLv = Math.min(cBossLv - 5, 40);
            const rewardPet = createPet(cInfo?.rewardId || _.random(1,300), rewardLv, false, false);
-           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
-           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           if (updatedParty.length < 6) { commitPartyToSave([...updatedParty, rewardPet]); }
+           else { commitPartyToSave(updatedParty); setBox(b => [...b, rewardPet]); }
            rewardAlertLines.push(`2. 🐾 ${rewardPet.name} Lv.${rewardLv}`);
            const equipBase = _.sample(['rng_heart', 'rng_scroll']);
            const equip = createUniqueEquip(equipBase);
@@ -19257,8 +19261,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
            const rewardLv = Math.min(cBossLv - 10, 55);
            const isShinyReward = Math.random() < 0.3;
            const rewardPet = createPet(cInfo?.rewardId || _.random(1,400), rewardLv, false, isShinyReward);
-           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
-           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           if (updatedParty.length < 6) { commitPartyToSave([...updatedParty, rewardPet]); }
+           else { commitPartyToSave(updatedParty); setBox(b => [...b, rewardPet]); }
            rewardAlertLines.push(`2. ${isShinyReward ? '✨ 闪光 ' : '🐾 '}${rewardPet.name} Lv.${rewardLv}`);
            const equipBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart', 'rng_scroll']);
            const equip = createUniqueEquip(equipBase);
@@ -19269,8 +19273,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
            rewardAlertLines.push('1. 🔮 大师球 x1');
            const rewardLv = Math.min(cBossLv - 5, 70);
            const rewardPet = createPet(cInfo?.rewardId || _.random(1,500), rewardLv, false, true);
-           if (updatedParty.length < 6) { partyToSave = [...updatedParty, rewardPet]; setParty(partyToSave); }
-           else { setParty(updatedParty); setBox(b => [...b, rewardPet]); }
+           if (updatedParty.length < 6) { commitPartyToSave([...updatedParty, rewardPet]); }
+           else { commitPartyToSave(updatedParty); setBox(b => [...b, rewardPet]); }
            rewardAlertLines.push(`2. ✨ 闪光 ${rewardPet.name} Lv.${rewardLv}`);
            const equipBase = _.sample(['rng_grimoire', 'rng_sword', 'rng_shield', 'rng_heart', 'rng_scroll']);
            const equip = createUniqueEquip(equipBase);
@@ -19280,10 +19284,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
          
          setTimeout(() => showMapToast('🏆', '挑战通关', `${rewardAlertLines.join(' · ')}${updatedParty.length >= 6 ? '（队伍已满，已送电脑）' : ''}`, 3000), 300);
        } else {
-           setParty(updatedParty);
+           commitPartyToSave(updatedParty);
        }
     } else {
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
     }
 
     if (battleSnapshot.name === '狩猎地带') unlockTitle('狩猎大师');
@@ -19302,9 +19306,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const sunBreathingMove = { name: '火之神神乐', p: 200, t: 'FIRE', pp: 5, maxPP: 5, acc: 100, desc: '日之呼吸第十三型', effect: { type: 'STATUS', status: 'BRN', chance: 1.0 } };
             godPet.moves[0] = sunBreathingMove;
 
-             if (updatedParty.length < 6) setParty([...updatedParty, godPet]);
+             if (updatedParty.length < 6) commitPartyToSave([...updatedParty, godPet]);
             else {
-                setParty(updatedParty);
+                commitPartyToSave(updatedParty);
                 setBox(prev => [...prev, godPet]);
             }
             if (!caughtDex.includes(183)) setCaughtDex(prev => [...prev, 183]);
@@ -19345,7 +19349,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const alreadyOwned = [...(box || []), ...(party || [])].some(p => p?.dexId === rule.petId);
             if (!alreadyOwned) {
               const legendPet = createPet(rule.petId, Math.max(60, currentFloor));
-              if (party.length < 6) setParty(prev => [...prev, legendPet]);
+              if (partyToSave.length < 6) commitPartyToSave([...partyToSave, legendPet]);
               else setBox(prev => [...prev, legendPet]);
               if (!caughtDex.includes(rule.petId)) setCaughtDex(prev => [...prev, rule.petId]);
               showMapToast('🌟', '传说奖励', `到达第${currentFloor}层！获得 ${rule.name}！`, 3000);
@@ -19406,9 +19410,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             else if (rand < 0.7) { rewardPet = createPet(rewardId, rewardLv, false, false); rewardPet.isFusedShiny = true; rewardPet.name = `异色·${rewardPet.name}`; }
             else { rewardPet = createPet(rewardId, rewardLv, false, false); }
 
-            if (updatedParty.length < 6) setParty([...updatedParty, rewardPet]);
+            if (updatedParty.length < 6) commitPartyToSave([...updatedParty, rewardPet]);
             else {
-                setParty(updatedParty);
+                commitPartyToSave(updatedParty);
                 setBox(prev => [...prev, rewardPet]);
             }
 
@@ -19499,7 +19503,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         updateAchStat({ battlesWon: 1 });
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setView('gang');
         return;
@@ -19570,7 +19574,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           hpRatio: p.currentHp / (getStats(p).maxHp || 1),
           uid: p.uid || p.id || idx,
         }) : { hpRatio: 1, uid: idx });
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         addLog(`📜 ${hb.name} — 第${currentWave + 1}/${totalWaves}波胜利！下一波即将开始...`);
         setTimeout(() => {
           startBattle(
@@ -19611,7 +19615,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       addLog(`🏆 ${hb.name} ${isFirstClear ? '首次通关' : '再次通关'}！+${goldReward}金 +${tokenReward}令牌 +${contribReward}战功/帮贡` + (isFirstClear ? '' : rewardMult > 0 ? ` (重复30%，今日${hbRepeatToday+1}/${HB_DAILY_REPEAT_CAP})` : ' (今日重复奖励已达上限)'));
       showMapToast('🏆', hb.name, isFirstClear ? '首次通关！' : '历史名战再次完成！', 3000);
-      setParty(updatedParty);
+      commitPartyToSave(updatedParty);
       setBattle(null);
       setView('world_map');
       return;
@@ -19667,7 +19671,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const factionData = FACTIONS[battleSnapshot.kwEnemyFaction] || { fullName: '敌国' };
         showMapToast('⚔️',`国战胜利 ${ratingData.icon}${rating}`,`战功+${contribGain} | 令牌+${tokenGain} | 征兵+${mpGain}`,3000);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setView('grid_map');
         return;
@@ -19676,7 +19680,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 9b-cal. 灵灾战斗胜利
     if (battleSnapshot.type === 'calamity') {
         completeCalamityReward(battleSnapshot.calamityId, battleSnapshot.weekKey);
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setView('grid_map');
         return;
@@ -19694,7 +19698,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
         if (currentWave < totalWaves) {
           showMapToast('⚔️', '攻城胜利', `第 ${currentWave} 波 · 还剩 ${totalWaves - currentWave} 波`, 2000);
-          setParty(updatedParty);
+          commitPartyToSave(updatedParty);
           setBattle(null);
           setTimeout(() => {
             startBattle({
@@ -19727,7 +19731,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         showMapToast('🏰', `攻城大捷！攻破${sf.fullName}都城！`, `💰${siegeGold.toLocaleString()} ⭐+${siegeContrib} 🎖️+${siegeTokens}${kwEquipDrop ? ` 🎁${kwEquipDrop.name}` : ''}`, 5000);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setMapTab('kingdom');
         setKwTab('capital');
@@ -19766,7 +19770,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateGangTaskProgress('battle_win', 1);
         showMapToast('⚔️', '战役通关', `${campaign.name} · ${campaignGold.toLocaleString()} 金 · 战功 +${contribGain}`, 3000);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
-        setParty(updatedParty);
+        commitPartyToSave(updatedParty);
         setBattle(null);
         setMapTab('kingdom');
         setView('world_map');
@@ -19916,9 +19920,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const rewardPet = createPet(341, 50); 
             rewardPet.name = "暗黑超梦";
       rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
-      if (updatedParty.length < 6) setParty([...updatedParty, rewardPet]);
+      if (updatedParty.length < 6) commitPartyToSave([...updatedParty, rewardPet]);
             else {
-          setParty(updatedParty);
+          commitPartyToSave(updatedParty);
                 setBox(prev => [...prev, rewardPet]);
             }
             setCaughtDex(prev => [...prev, 341]);
@@ -20002,7 +20006,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }));
       if (def && stepIdx + 1 >= (def.steps?.length || 0)) completeSectRealm(realmId, def);
       else showMapToast('✅', '秘境进展', `${def?.name || '秘境'} 第${stepIdx + 1}步完成`, 2500);
-      setParty(updatedParty);
+      commitPartyToSave(updatedParty);
       setBattle(null);
       setView('sect_summit');
       return;
@@ -20011,7 +20015,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._calamity) {
       const { calamityId, weekKey } = battleSnapshot._calamity;
       completeCalamityReward(calamityId, weekKey);
-      setParty(updatedParty);
+      commitPartyToSave(updatedParty);
       setBattle(null);
       setView('world_map');
       return;
