@@ -13547,42 +13547,34 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
 
   const getPvPAIAction = (state) => {
+      const isHardBattle = !!(state?.isTrainer || state?.isGym || state?.isChallenge || state?.isStory || state?.isBoss);
       const enemy = state.enemyParty?.[state.enemyActiveIdx];
-      if (!enemy || enemy.currentHp <= 0) return { type: 'move', index: 0 };
+      const aliveBackup = state.enemyParty?.findIndex((ep, i) => i !== state.enemyActiveIdx && ep?.currentHp > 0) ?? -1;
+      if (!enemy || enemy.currentHp <= 0) {
+          return aliveBackup >= 0 ? { type: 'switch', index: aliveBackup } : { type: 'move', index: -1, struggle: true };
+      }
       const player = state.playerCombatStates?.[state.activeIdx];
-      const moves = enemy.combatMoves || [];
-      if (moves.length === 0) return { type: 'move', index: 0 };
+      const usableMoves = (enemy.combatMoves || [])
+          .map((move, index) => ({ move, index }))
+          .filter(({ move }) => canUseCombatMove(state, enemy, move, 'enemy'));
+      if (usableMoves.length === 0) return { type: 'move', index: -1, struggle: true };
       const enemyHpRatio = enemy.currentHp / (getStats(enemy).maxHp || 1);
-      if (enemyHpRatio < 0.3) {
-          const aliveBackup = state.enemyParty.findIndex((ep, i) => i !== state.enemyActiveIdx && ep.currentHp > 0);
+      if (enemyHpRatio < 0.3 && aliveBackup >= 0) {
           if (aliveBackup >= 0 && Math.random() < 0.4) return { type: 'switch', index: aliveBackup };
       }
-      let bestIdx = 0;
+      let bestIdx = usableMoves[0].index;
       let bestScore = -Infinity;
-      moves.forEach((m, i) => {
-          if (m.pp <= 0) return;
-          let score = (m.p || 0);
-          if (m.flags?.heal || m.drain > 0) {
-              score += enemyHpRatio < 0.5 ? 80 : 20;
-          }
-          if (m.p === 0) {
-              if (enemyHpRatio > 0.7) score += 45;
-              else score += 15;
-          }
-          const eType2 = enemy.secondaryType || enemy.type2;
-          const isSTAB = m.t === enemy.type || m.t === eType2;
-          if (isSTAB && m.p > 0) score *= 1.5;
-          if (player) {
-              let typeMod = getTypeMod(m.t, player.type);
-              const pType2 = player.secondaryType || player.type2;
-              if (pType2 && pType2 !== player.type) typeMod *= getTypeMod(m.t, pType2);
-              if (typeMod === 0) { return; }
-              score *= Math.max(typeMod, 0.3);
-          }
+      usableMoves.forEach(({ move, index }) => {
+          let score = player
+              ? scoreCombatMoveForTarget(state, enemy, player, move, 'enemy', { isHardBattle })
+              : (move.p || 0);
+          if (!Number.isFinite(score)) return;
           score += Math.random() * 20;
-          if (score > bestScore) { bestScore = score; bestIdx = i; }
+          if (score > bestScore) { bestScore = score; bestIdx = index; }
       });
-      return { type: 'move', index: bestIdx };
+      return Number.isFinite(bestScore)
+          ? { type: 'move', index: bestIdx }
+          : { type: 'move', index: usableMoves[0].index };
   };
 
   // P1选完后AI自动决策P2
@@ -13622,9 +13614,20 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const act1 = actions.p1;
       const act2 = actions.p2;
 
-      // 辅助函数：执行单个动作
-      const runAction = async (attacker, defender, action, source) => {
-          if (attacker.currentHp <= 0) return false; 
+      const pvpStruggleMove = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } };
+      const getCurrentPvPCombatants = (source) => {
+          const attackerIdx = source === 'player' ? state.activeIdx : state.enemyActiveIdx;
+          const defenderIdx = source === 'player' ? state.enemyActiveIdx : state.activeIdx;
+          return {
+              attacker: source === 'player' ? state.playerCombatStates?.[attackerIdx] : state.enemyParty?.[attackerIdx],
+              defender: source === 'player' ? state.enemyParty?.[defenderIdx] : state.playerCombatStates?.[defenderIdx],
+          };
+      };
+
+      // 辅助函数：执行单个动作，行动时重新解析出战单位，避免换人后命中旧目标
+      const runAction = async (action, source) => {
+          const { attacker, defender } = getCurrentPvPCombatants(source);
+          if (!action || !attacker || attacker.currentHp <= 0) return { killed: false, target: defender || null };
 
           if (action.type === 'switch') {
               const newIdx = action.index;
@@ -13644,13 +13647,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
               addLog(`${source==='player'?'我方':'对手'} 交换了 ${newPet.name}!`);
               await triggerShinyAnim(source, newPet);
               await wait(1000);
-              return false;
+              return { killed: false, target: null };
           } 
           else if (action.type === 'move') {
-              const move = attacker.combatMoves?.[action.index];
-              if (!move) return false;
-              return await performAction(attacker, defender, move, source, state);
+              if (!defender || defender.currentHp <= 0) return { killed: false, target: defender || null };
+              let move = action.struggle ? { ...pvpStruggleMove } : attacker.combatMoves?.[action.index];
+              if (!move || (!action.struggle && !canUseCombatMove(state, attacker, move, source))) {
+                  move = (attacker.combatMoves || []).find(m => canUseCombatMove(state, attacker, m, source)) || { ...pvpStruggleMove };
+              }
+              const killed = await performAction(attacker, defender, move, source, state);
+              return { killed, target: defender };
           }
+          return { killed: false, target: defender || null };
       };
 
       // --- 判定先后手 ---
@@ -13670,31 +13678,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (p2.fruitFirstStrike) p2.fruitFirstStrike = false;
       }
 
-      const firstActor = first === 'p1' ? p1 : p2;
-      const firstTarget = first === 'p1' ? p2 : p1;
       const firstAct = first === 'p1' ? act1 : act2;
       const firstSource = first === 'p1' ? 'player' : 'enemy';
 
       // 1. 执行第一行动
       setBattle(prev => ({ ...prev, ...state })); // 刷新UI
-      const isFirstKill = await runAction(firstActor, firstTarget, firstAct, firstSource);
+      const firstResult = await runAction(firstAct, firstSource);
       
       // 2. 如果第一下打死了，直接进入死亡处理 (传入最新的 state!)
-      if (isFirstKill) {
-          await handlePvPDeath(firstTarget, firstSource === 'player' ? 'enemy' : 'player', state);
+      if (firstResult.killed) {
+          await handlePvPDeath(firstResult.target, firstSource === 'player' ? 'enemy' : 'player', state);
           return;
       }
 
       // 3. 执行第二行动
-      const secondActor = first === 'p1' ? p2 : p1;
-      const secondTarget = first === 'p1' ? p1 : p2;
       const secondAct = first === 'p1' ? act2 : act1;
       const secondSource = first === 'p1' ? 'enemy' : 'player';
 
-      const isSecondKill = await runAction(secondActor, secondTarget, secondAct, secondSource);
+      const secondResult = await runAction(secondAct, secondSource);
       
-      if (isSecondKill) {
-          await handlePvPDeath(secondTarget, secondSource === 'player' ? 'enemy' : 'player', state);
+      if (secondResult.killed) {
+          await handlePvPDeath(secondResult.target, secondSource === 'player' ? 'enemy' : 'player', state);
           return;
       }
 
@@ -14179,6 +14183,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     if (move?.isJutsu && !useStruggleD && move.pp !== undefined && move.pp <= 0) {
       showMapToast('❌', '提示', '忍术PP耗尽！', 1500); return;
+    }
+    if (move?.isMartialArt && !useStruggleD && !canUseCombatMove(battle, p, move, 'player')) {
+      const mcost = move.momentumCost || 0;
+      if (mcost > 0 && (battle._sectMomentum || 0) < mcost) {
+        showMapToast('❌', '气势不足', `需要 ${mcost} 点气势`, 1500); return;
+      }
+      if (move.pp !== undefined && move.pp <= 0) {
+        showMapToast('❌', '提示', '武学PP耗尽！', 1500); return;
+      }
+      showMapToast('❌', '提示', `${move.name} 暂时无法使用`, 1500); return;
     }
     if (useStruggleD || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
       move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } };
@@ -15933,7 +15947,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
             addLog(`🌀 ${enemy.name} 被领域压制，无法行动!`);
             await wait(800);
             state.turnCount = (state.turnCount || 0) + 1;
-            setBattle(prev => ({ ...prev, phase: 'input', turnCount: (state.turnCount) }));
+            state._enemySpecialActionCooldown = Math.max(0, (state._enemySpecialActionCooldown || 0) - 1);
+            setBattle(prev => ({ ...prev, phase: 'input', turnCount: (state.turnCount), _enemySpecialActionCooldown: state._enemySpecialActionCooldown }));
             return;
         }
     }
