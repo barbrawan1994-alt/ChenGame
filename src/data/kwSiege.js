@@ -363,7 +363,7 @@ export const runKwSiegeBattle = ({
   const manpowerLost = Math.min(deploy, Math.floor(deploy * Math.min(0.55, lossRate)));
   const occupationGain = victory
     ? Math.floor((preview.expectedOccupationGain || 14) * (0.82 + margin * 0.24))
-    : Math.floor(2 + Math.random() * 3);
+    : 0;
 
   const wallRemainPct = Math.max(0, Math.round((Math.max(0, wall) / wallHp) * 100));
   const qunName = QUN_LEADERS[Math.floor(Math.random() * QUN_LEADERS.length)];

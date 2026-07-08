@@ -1678,6 +1678,7 @@ const [infinityState, setInfinityState] = useState(() => {
   partyRef.current = party;
   const gangRef = useRef(gang);
   gangRef.current = gang;
+  const gangTaskClaimLocksRef = useRef(new Set());
 
   const getMapPixelTheme = (mapInfo = {}) => {
     const source = `${mapInfo.id || 0}-${mapInfo.name || ''}-${mapInfo.type || ''}`;
@@ -5249,6 +5250,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     return gang.dailyCounts;
   };
 
+  const getFreshGangDailyCounts = (dailyCounts = {}, today = getLocalDateStr()) => (
+    dailyCounts?.resetDate === today
+      ? { ...dailyCounts }
+      : { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: dailyCounts?.cafeRecruits || generateCafeRecruits(), resetDate: today }
+  );
+
   const getGangInfo = () => {
     if (!gang.gangId) return null;
     if (gang.isOwner && gang.customGang) return gang.customGang;
@@ -5260,7 +5267,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const updateGangTaskProgress = (type, amount = 1) => {
     if (!gang.gangId) return;
     setGang(prev => {
-      const dc = { ...(prev.dailyCounts || {}) };
+      const dc = getFreshGangDailyCounts(prev.dailyCounts);
       const tp = { ...(dc.taskProgress || {}) };
       const completed = [...(dc.taskCompleted || [])];
       GANG_TASKS.forEach(task => {
@@ -10535,19 +10542,20 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             ) : (
               <button onClick={() => {
                 const todayStr = getLocalDateStr();
-                const curDc = gang.dailyCounts || {};
-                const isDayReset = curDc.resetDate !== todayStr;
-                if (!isDayReset && curDc.salary) { showMapToast('✅', '提示', '今日已领取俸禄', 2000); return; }
+                const lockKey = `salary:${todayStr}`;
+                if (gangTaskClaimLocksRef.current.has(lockKey)) { showMapToast('✅', '提示', '今日已领取俸禄', 2000); return; }
+                const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts, todayStr);
+                if (freshDc.salary) { showMapToast('✅', '提示', '今日已领取俸禄', 2000); return; }
+                gangTaskClaimLocksRef.current.add(lockKey);
                 const rankPerk = getRankPerkEffects(kingdomWar);
                 const salaryMult = rankPerk.gangSalaryMult || 1;
                 const finalSalary = Math.floor(rank.salary * salaryMult);
                 setGold(g => g + finalSalary);
                 updateAchStat({ totalGoldEarned: finalSalary });
                 setGang(prev => {
-                  const freshDc = (!prev.dailyCounts || prev.dailyCounts.resetDate !== todayStr)
-                    ? { salary: false, warCount: 0, taskProgress: {}, taskCompleted: [], cafeRecruits: (prev.dailyCounts?.cafeRecruits || []), resetDate: todayStr }
-                    : { ...prev.dailyCounts };
-                  return { ...prev, dailyCounts: { ...freshDc, salary: true } };
+                  const nextDc = getFreshGangDailyCounts(prev.dailyCounts, todayStr);
+                  if (nextDc.salary) return prev;
+                  return { ...prev, dailyCounts: { ...nextDc, salary: true } };
                 });
                 showMapToast('💰', '领取俸禄', `${finalSalary.toLocaleString()} 金币${salaryMult > 1 ? `（军衔 ×${salaryMult}）` : ''}`, 2000);
               }} style={btnPrimary}>
@@ -10558,7 +10566,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
           {/* 职位晋升提示 */}
           {(() => {
-            const currentRankIdx = GANG_RANKS.findIndex(r => r.id === gang.rank);
+            const currentRankIdx = GANG_RANKS.findIndex(r => r.id === rank.id);
             const nextRank = currentRankIdx >= 0 && currentRankIdx < GANG_RANKS.length - 1 ? GANG_RANKS[currentRankIdx + 1] : null;
             if (!nextRank || gang.isOwner) return null;
             const canPromote = gang.contribution >= nextRank.minContribution;
@@ -10569,11 +10577,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 <div style={{width:'100%', height:'6px', background:'rgba(255,255,255,0.1)', borderRadius:'3px', marginTop:'6px', overflow:'hidden'}}>
                   <div style={{height:'100%', width:`${Math.min(100, (gang.contribution / (nextRank.minContribution || 1)) * 100)}%`, background:'linear-gradient(90deg,#FFD700,#FF8F00)', borderRadius:'3px'}} />
                 </div>
-                {canPromote && (
-                  <button onClick={() => setGang(prev => ({ ...prev, rank: nextRank.id }))} style={{...btnPrimary, marginTop:'8px', fontSize:'12px', padding:'8px 16px'}}>
-                    晋升为 {nextRank.name}
-                  </button>
-                )}
+                {canPromote && <div style={{fontSize:'11px', color:'#66BB6A', marginTop:'8px', fontWeight:'700'}}>职位已自动生效</div>}
               </div>
             );
           })()}
@@ -10621,12 +10625,26 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <span style={{fontSize:'11px', color:'#aaa', minWidth:'50px', textAlign:'right'}}>{Math.min(progress, task.target)}/{task.target}</span>
                   {isDone && !isClaimed && (
                     <button onClick={() => {
+                      const todayStr = getLocalDateStr();
+                      const claimId = `${task.id}_claimed`;
+                      const lockKey = `task:${todayStr}:${task.id}`;
+                      if (gangTaskClaimLocksRef.current.has(lockKey)) { showMapToast('✅', '提示', '该任务奖励已领取', 1600); return; }
+                      const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts, todayStr);
+                      const freshCompleted = freshDc.taskCompleted || [];
+                      if (!freshCompleted.includes(task.id) || freshCompleted.includes(claimId)) {
+                        showMapToast('✅', '提示', freshCompleted.includes(claimId) ? '该任务奖励已领取' : '任务尚未完成', 1600);
+                        return;
+                      }
+                      gangTaskClaimLocksRef.current.add(lockKey);
                       const taskFunds = task.type === 'donate_gold' ? task.target : Math.floor(task.reward * 30);
                       setGang(prev => {
+                        const nextDc = getFreshGangDailyCounts(prev.dailyCounts, todayStr);
+                        const nextCompleted = nextDc.taskCompleted || [];
+                        if (!nextCompleted.includes(task.id) || nextCompleted.includes(claimId)) return prev;
                         const next = {
                           ...prev,
                           contribution: (prev.contribution || 0) + task.reward,
-                          dailyCounts: { ...(prev.dailyCounts || {}), taskCompleted: [...((prev.dailyCounts || {}).taskCompleted || []), task.id + '_claimed'] },
+                          dailyCounts: { ...nextDc, taskCompleted: [...nextCompleted, claimId] },
                         };
                         if (prev.isOwner && prev.customGang) {
                           next.customGang = { ...prev.customGang, funds: (prev.customGang.funds || 0) + taskFunds };
@@ -10707,7 +10725,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   )}
                 </div>
                 <button disabled={warCount >= GANG_WAR_CONFIG.maxDaily} onClick={() => {
-                  if (warCount >= GANG_WAR_CONFIG.maxDaily) { showMapToast('❌', '提示', '今日帮战次数已用完', 1500); return; }
+                  const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts);
+                  if ((freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) { showMapToast('❌', '提示', '今日帮战次数已用完', 1500); return; }
                   startBattle({ gangWarTarget: target }, 'gang_war');
                 }} style={{...btnPrimary, fontSize:'11px', padding:'8px 14px', opacity: warCount >= GANG_WAR_CONFIG.maxDaily ? 0.5 : 1}}>
                   挑战
@@ -12399,6 +12418,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
      if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return; }
+     if (type === 'gang_war') {
+       const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts);
+       if ((freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) {
+         showMapToast('❌', '提示', '今日帮战次数已用完', 1500);
+         return;
+       }
+     }
      setIsDialogVisible(false);
      battleResultHandledRef.current = false;
      setComboUsedThisBattle(false);
@@ -12861,7 +12887,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const target = context.gangWarTarget || {};
         const enemyLv = getGangWarLevel(target);
         trainerName = `[${target.name || '未知帮派'}] 精锐`;
-        dropGold = 3000 + (target.level || 1) * 500;
+        dropGold = 0;
         const pool = target.teamPool && target.teamPool.length > 0 ? target.teamPool : HIGH_TIER_POOL;
         for (let i = 0; i < 6; i++) {
             const eid = pool[i % pool.length];
@@ -18777,7 +18803,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const totalGoldBonusPct = Math.min(gangGoldBonus + kwGoldBonus + genGoldBonus, 200);
     const isNarutoExamOrSurvival = type === 'naruto_exam' || type === 'naruto_survival' || type === 'survival';
     const fixedRewardGoldTypes = new Set(['tower', 'elemental_trial']);
-    const noStandardGoldTypes = new Set(['arena', 'world_boss', 'naruto_exam', 'naruto_survival']);
+    const noStandardGoldTypes = new Set(['arena', 'world_boss', 'naruto_exam', 'naruto_survival', 'gang_war', 'capital_siege']);
     const suppressStandardLoot = fixedRewardGoldTypes.has(type) || noStandardGoldTypes.has(type);
     const goldMultCap = 3.5;
     const fixedRewardGold = fixedRewardGoldTypes.has(type)
@@ -19483,15 +19509,27 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battleSnapshot.type === 'gang_war') {
         const target = battleSnapshot.gangWarTarget || {};
         const reward = getGangWarReward(target);
+        const todayStr = getLocalDateStr();
+        const freshGangDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts, todayStr);
+        const isOverGangWarLimit = (freshGangDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily;
         setGang(prev => {
+            const freshDc = getFreshGangDailyCounts(prev.dailyCounts, todayStr);
+            if ((freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) return prev;
             const next = { ...prev, contribution: (prev.contribution || 0) + reward.contribution,
-              dailyCounts: { ...(prev.dailyCounts || {}), warCount: ((prev.dailyCounts?.warCount) || 0) + 1 }
+              dailyCounts: { ...freshDc, warCount: (freshDc.warCount || 0) + 1 }
             };
             if (prev.isOwner && prev.customGang) {
                 next.customGang = { ...prev.customGang, funds: (prev.customGang.funds || 0) + reward.funds, wins: (prev.customGang.wins || 0) + 1 };
             }
             return next;
         });
+        if (isOverGangWarLimit) {
+          showMapToast('ℹ️', '帮战已结算', '今日次数已满，本场不再发放额外帮派奖励', 2500);
+          commitPartyToSave(updatedParty);
+          setBattle(null);
+          setView('gang');
+          return;
+        }
         const chestRewards = [];
         const chestRoll = Math.random();
         if (chestRoll < 0.4) {
@@ -20468,7 +20506,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
       showMapToast('💀', '试炼失败', '忍者试炼失败，明日再挑战！', 3000);
     } else if (battleType === 'gang_war') {
       setView('gang');
-      setGang(prev => ({ ...prev, dailyCounts: { ...(prev.dailyCounts || {}), warCount: ((prev.dailyCounts?.warCount) || 0) + 1 } }));
+      const todayStr = getLocalDateStr();
+      setGang(prev => {
+        const freshDc = getFreshGangDailyCounts(prev.dailyCounts, todayStr);
+        return { ...prev, dailyCounts: { ...freshDc, warCount: Math.min(GANG_WAR_CONFIG.maxDaily, (freshDc.warCount || 0) + 1) } };
+      });
       showMapToast('💀', '帮战失败', '帮战落败，消耗一次帮战次数', 3000);
     } else if (battleType === 'kingdom_war' || battleType === 'kw_campaign' || battleType === 'capital_siege') {
       setView('world_map');
@@ -23703,6 +23745,8 @@ const renderMenu = () => {
             const dailyReset = kw.dailyCounts.resetDate !== today;
             const canClaimIncome = dailyReset || !kw.dailyCounts.income;
             const strategicBrief = buildKingdomStrategicBrief(kw, { today, rankIdx, seasonDaysLeft });
+            const territorySiegeAttempts = kw.dailyCounts?.resetDate === today ? (kw.dailyCounts?.territorySieges || 0) : 0;
+            const maxTerritorySieges = 5;
 
             const promoChallenge = nextRank ? RANK_PROMOTION_CHALLENGES[nextRank.id] : null;
             const defectStatus = getDefectionStatus(kw);
@@ -24837,8 +24881,8 @@ const renderMenu = () => {
                                 showMapToast('❌', '攻城异常', '请稍后再试。', 2000);
                                 return;
                               }
-                              const contribGain = siegeResult.victory ? 24 + Math.floor(Math.random() * 14) : 6 + Math.floor(Math.random() * 5);
-                              const tokenGain = siegeResult.victory ? 3 : 1;
+                              const contribGain = siegeResult.victory ? 24 + Math.floor(Math.random() * 14) : 3;
+                              const tokenGain = siegeResult.victory ? 3 : 0;
                               let equipDrop = null;
                               if (siegeResult.victory && Array.isArray(KW_EQUIPMENT) && KW_EQUIPMENT.length > 0 && Math.random() < 0.14) {
                                 equipDrop = KW_EQUIPMENT[Math.floor(Math.random() * KW_EQUIPMENT.length)];
@@ -25009,12 +25053,15 @@ const renderMenu = () => {
                                   <button disabled={!canSiege} onClick={() => {
                                     if (!party.some(p => p && p.currentHp > 0)) { showMapToast('❌', '提示', '你的队伍已全灭！', 1500); return; }
                                     setConfirmModal({ title:'⚔️ 攻城确认', msg:`确定要对${ef.fullName}都城发起攻城战吗？\n\n这将是高难度的6v6战斗！`, onOk: () => {
-                                    startBattle({
-                                      id: CAPITAL_MAP_IDS[fid],
-                                      name: `${eCapitalMap?.name || '敌都'}`,
-                                      lvl: [80, 100], pool: eCapitalMap?.pool || [],
-                                      drop: 2000, siegeTarget: fid,
-                                    }, 'capital_siege');
+                                      const nowCooldown = kingdomWar?.lastSiegeTime?.[fid] ? Math.max(0, 6 * 60 * 60 * 1000 - (Date.now() - kingdomWar.lastSiegeTime[fid])) : 0;
+                                      if (nowCooldown > 0) { showMapToast('⏳', '攻城冷却中', `还需 ${Math.ceil(nowCooldown / 3600000)} 小时`, 2000); return; }
+                                      setKingdomWar(prev => ({ ...prev, lastSiegeTime: { ...(prev.lastSiegeTime || {}), [fid]: Date.now() } }));
+                                      startBattle({
+                                        id: CAPITAL_MAP_IDS[fid],
+                                        name: `${eCapitalMap?.name || '敌都'}`,
+                                        lvl: [80, 100], pool: eCapitalMap?.pool || [],
+                                        drop: 2000, siegeTarget: fid,
+                                      }, 'capital_siege');
                                     }});
                                   }} style={{
                                     color:'#fff', border:'none', borderRadius:'20px', cursor:'pointer', fontWeight:'bold',
@@ -25146,6 +25193,7 @@ const renderMenu = () => {
                           </div>
                           {canSiege && (
                             <button onClick={() => {
+                              if (territorySiegeAttempts >= maxTerritorySieges) { showMapToast('❌','攻城次数已用完',`普通领地每日最多 ${maxTerritorySieges} 次`,1800); return; }
                               const cap = Math.min(reserve, 200 + rankIdx * 40);
                               if (cap < 60) { showMapToast('❌','兵力不足','预备兵至少60才可攻城',1800); return; }
                               const b = Math.floor(cap / 6);
@@ -25155,8 +25203,9 @@ const renderMenu = () => {
                               setKwSiegeModal({ targetMapId: mapId, targetMapName: map.name, allocation: alloc, generalIds: [], deployCap: cap, isTerritorySiege: true, duelGeneralId: (kw.recruitedGenerals || [])[0]?.id || null, skipDuel: false });
                             }} style={{
                               width:'100%', padding:'6px', border:'none', borderRadius:'8px', fontSize:'11px', fontWeight:'700',
-                              background: myFaction.color, color:'#fff', cursor:'pointer', opacity:0.9,
-                            }}>⚔️ 三阶段攻城</button>
+                              background: territorySiegeAttempts >= maxTerritorySieges ? '#94a3b8' : myFaction.color,
+                              color:'#fff', cursor: territorySiegeAttempts >= maxTerritorySieges ? 'not-allowed' : 'pointer', opacity: territorySiegeAttempts >= maxTerritorySieges ? 0.65 : 0.9,
+                            }}>⚔️ 三阶段攻城 ({territorySiegeAttempts}/{maxTerritorySieges})</button>
                           )}
                           {isMine && <div style={{fontSize:'10px', color:'#22c55e', textAlign:'center', fontWeight:'600'}}>✅ 我方领地</div>}
                         </div>
@@ -25320,10 +25369,15 @@ const renderMenu = () => {
                         <button type="button" onClick={() => {
                           try {
                             if (!kingdomWar?.faction) { showMapToast('❌','提示','未加入阵营',1800); return; }
+                            const todayKey = getLocalDateStr();
+                            const usedSieges = kingdomWar.dailyCounts?.resetDate === todayKey ? (kingdomWar.dailyCounts?.territorySieges || 0) : 0;
+                            if (usedSieges >= maxTerritorySieges) { showMapToast('❌','攻城次数已用完',`普通领地每日最多 ${maxTerritorySieges} 次`,2000); return; }
                             const mid = kwSiegeModal.targetMapId;
                             const alloc = { ...kwSiegeModal.allocation };
                             const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
+                            const currentReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kingdomWar.kwManpowerReserve || 0));
+                            if (sumA > currentReserve) { showMapToast('❌','兵力不足',`当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`,2200); return; }
                             const siegeExternal = buildSiegeExternalBonuses();
                             const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
@@ -25378,6 +25432,10 @@ const renderMenu = () => {
                                 morale: result.morale ?? prev.morale,
                                 actionCounter: (prev.actionCounter || 0) + 1,
                                 currentTurn: (prev.currentTurn || 0) + 1,
+                                dailyCounts: {
+                                  ...((prev.dailyCounts?.resetDate === todayKey) ? (prev.dailyCounts || {}) : { resetDate: todayKey, kills: 0 }),
+                                  territorySieges: (((prev.dailyCounts?.resetDate === todayKey) ? (prev.dailyCounts?.territorySieges || 0) : 0) + 1),
+                                },
                                 warContribution: (prev.warContribution || 0) + contribGain,
                                 seasonContribution: (prev.seasonContribution || 0) + contribGain,
                                 lifetimeContribution: (prev.lifetimeContribution || 0) + contribGain,
