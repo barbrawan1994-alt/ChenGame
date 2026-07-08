@@ -24,25 +24,25 @@ export const ACH_RARITY = {
 
 // stat key → achievement条件检查
 // check: (stats, gameState) => boolean
-// reward: { title, item, gold } — 金币奖励根据稀有度分级（稀有2000/珍贵3000/史诗5000-8000/传说10000+/隐藏8000+）
+// reward: { title, item, items } — 成就奖励不发金币，改为球、糖果、培养材料与系统资源
 const ACHIEVEMENTS = [
   // ===== 收集类 — 按图鉴→捕获→闪光→神兽→果实→属性分组，组内由易到难 =====
   { id: 'dex_80',          cat: 'COLLECTION', rarity: 'UNCOMMON',  name: '精灵猎人',     desc: '图鉴中记录80种精灵',          check: s => s.dexCount >= 80 },
-  { id: 'catch_200',       cat: 'COLLECTION', rarity: 'RARE',      name: '精灵收割者',   desc: '累计捕捉200只精灵',           check: s => s.totalCaught >= 200,   reward: { gold: 3000 } },
-  { id: 'catch_150',       cat: 'COLLECTION', rarity: 'RARE',      name: '图鉴学者',     desc: '图鉴中记录150种精灵',         check: s => s.dexCount >= 150,      reward: { title: '图鉴学者', gold: 3000 } },
-  { id: 'catch_300',       cat: 'COLLECTION', rarity: 'EPIC',      name: '精灵博士',     desc: '图鉴中记录300种精灵',         check: s => s.dexCount >= 300,      reward: { title: '精灵博士', gold: 5000 } },
-  { id: 'catch_500',       cat: 'COLLECTION', rarity: 'EPIC',      name: '精灵研究家',   desc: '图鉴中记录500种精灵',         check: s => s.dexCount >= 500,      reward: { title: '精灵研究家', gold: 8000 } },
-  { id: 'catch_700',       cat: 'COLLECTION', rarity: 'EPIC',      name: '三国收藏家',   desc: '图鉴中记录700种精灵',         check: s => s.dexCount >= 700,      reward: { title: '三国收藏家', gold: 10000 } },
-  { id: 'dex_800',         cat: 'COLLECTION', rarity: 'LEGENDARY', name: '图鉴完成者',   desc: '图鉴中记录800种精灵',          check: s => s.dexCount >= 800,      reward: { title: '图鉴大师', gold: 20000 } },
-  { id: 'dex_900',         cat: 'COLLECTION', rarity: 'LEGENDARY', name: '终极图鉴大师', desc: '收集904种精灵（含结契精灵）！', check: s => s.dexCount >= 904,      reward: { title: '终极图鉴大师', gold: 50000 } },
-  { id: 'catch_shiny',     cat: 'COLLECTION', rarity: 'RARE',      name: '闪光猎人',     desc: '捕捉一只闪光精灵',            check: s => s.shinyCaught >= 1,     reward: { gold: 3000 } },
-  { id: 'catch_5_shiny',   cat: 'COLLECTION', rarity: 'EPIC',      name: '闪光收藏家',   desc: '捕捉5只闪光精灵',             check: s => s.shinyCaught >= 5,     reward: { title: '闪光大师', gold: 5000 } },
-  { id: 'catch_legend',    cat: 'COLLECTION', rarity: 'EPIC',      name: '神兽降临',     desc: '捕捉一只神兽',                check: s => s.legendCaught >= 1,    reward: { gold: 5000 } },
-  { id: 'catch_legend_5',  cat: 'COLLECTION', rarity: 'LEGENDARY', name: '神兽猎手',     desc: '捕捉5只不同的神兽',           check: s => s.legendCaught >= 5,    reward: { title: '神兽猎手', gold: 15000 } },
-  { id: 'catch_egg_5',     cat: 'COLLECTION', rarity: 'RARE',      name: '孵蛋达人',     desc: '成功孵化5枚精灵蛋',           check: s => s.eggsHatched >= 5,      reward: { gold: 2000 } },
+  { id: 'catch_200',       cat: 'COLLECTION', rarity: 'RARE',      name: '精灵收割者',   desc: '累计捕捉200只精灵',           check: s => s.totalCaught >= 200 },
+  { id: 'catch_150',       cat: 'COLLECTION', rarity: 'RARE',      name: '图鉴学者',     desc: '图鉴中记录150种精灵',         check: s => s.dexCount >= 150,      reward: { title: '图鉴学者' } },
+  { id: 'catch_300',       cat: 'COLLECTION', rarity: 'EPIC',      name: '精灵博士',     desc: '图鉴中记录300种精灵',         check: s => s.dexCount >= 300,      reward: { title: '精灵博士' } },
+  { id: 'catch_500',       cat: 'COLLECTION', rarity: 'EPIC',      name: '精灵研究家',   desc: '图鉴中记录500种精灵',         check: s => s.dexCount >= 500,      reward: { title: '精灵研究家' } },
+  { id: 'catch_700',       cat: 'COLLECTION', rarity: 'EPIC',      name: '三国收藏家',   desc: '图鉴中记录700种精灵',         check: s => s.dexCount >= 700,      reward: { title: '三国收藏家' } },
+  { id: 'dex_800',         cat: 'COLLECTION', rarity: 'LEGENDARY', name: '图鉴完成者',   desc: '图鉴中记录800种精灵',          check: s => s.dexCount >= 800,      reward: { title: '图鉴大师' } },
+  { id: 'dex_900',         cat: 'COLLECTION', rarity: 'LEGENDARY', name: '终极图鉴大师', desc: '收集904种精灵（含结契精灵）！', check: s => s.dexCount >= 904,      reward: { title: '终极图鉴大师' } },
+  { id: 'catch_shiny',     cat: 'COLLECTION', rarity: 'RARE',      name: '闪光猎人',     desc: '捕捉一只闪光精灵',            check: s => s.shinyCaught >= 1 },
+  { id: 'catch_5_shiny',   cat: 'COLLECTION', rarity: 'EPIC',      name: '闪光收藏家',   desc: '捕捉5只闪光精灵',             check: s => s.shinyCaught >= 5,     reward: { title: '闪光大师' } },
+  { id: 'catch_legend',    cat: 'COLLECTION', rarity: 'EPIC',      name: '神兽降临',     desc: '捕捉一只神兽',                check: s => s.legendCaught >= 1 },
+  { id: 'catch_legend_5',  cat: 'COLLECTION', rarity: 'LEGENDARY', name: '神兽猎手',     desc: '捕捉5只不同的神兽',           check: s => s.legendCaught >= 5,    reward: { title: '神兽猎手' } },
+  { id: 'catch_egg_5',     cat: 'COLLECTION', rarity: 'RARE',      name: '孵蛋达人',     desc: '成功孵化5枚精灵蛋',           check: s => s.eggsHatched >= 5 },
   { id: 'catch_egg_legend', cat: 'COLLECTION', rarity: 'LEGENDARY', name: '神兽诞生',     desc: '孵化出一只神兽',              check: s => s.legendEggsHatched >= 1, reward: { title: '生命缔造者' } },
-  { id: 'fruit_15',        cat: 'COLLECTION', rarity: 'RARE',      name: '果实鉴赏家',   desc: '收集15种不同的恶魔果实',      check: s => s.uniqueFruits >= 15,   reward: { gold: 3000 } },
-  { id: 'fruit_35',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实鉴定师',   desc: '收集35种不同的恶魔果实',      check: s => s.uniqueFruits >= 35,   reward: { gold: 5000 } },
+  { id: 'fruit_15',        cat: 'COLLECTION', rarity: 'RARE',      name: '果实鉴赏家',   desc: '收集15种不同的恶魔果实',      check: s => s.uniqueFruits >= 15 },
+  { id: 'fruit_35',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实鉴定师',   desc: '收集35种不同的恶魔果实',      check: s => s.uniqueFruits >= 35 },
   { id: 'fruit_60',        cat: 'COLLECTION', rarity: 'EPIC',      name: '果实猎人',     desc: '收集60种不同的恶魔果实',      check: s => s.uniqueFruits >= 60,   reward: { title: '果实猎人' } },
   { id: 'fruit_all',       cat: 'COLLECTION', rarity: 'LEGENDARY', name: '恶魔果实图鉴', desc: '收集150种不同的恶魔果实（共200种可收录）', check: s => s.uniqueFruits >= 150,   reward: { title: '果实之王' } },
   { id: 'catch_all_type',  cat: 'COLLECTION', rarity: 'EPIC',      name: '属性大师',     desc: '捕捉至少26种不同主属性的精灵', check: s => s.typesCollected >= 26, reward: { title: '属性大师' } },
@@ -54,71 +54,71 @@ const ACHIEVEMENTS = [
 
   // ===== 战斗类 — 按胜场→连胜→绝境→完美→越级→双打→技能系统分组 =====
   { id: 'win_100',         cat: 'BATTLE', rarity: 'UNCOMMON',  name: '百战老兵',     desc: '累计赢得100场战斗',           check: s => s.battlesWon >= 100 },
-  { id: 'win_300',         cat: 'BATTLE', rarity: 'RARE',      name: '战神降世',     desc: '累计赢得300场战斗',           check: s => s.battlesWon >= 300,    reward: { title: '战神', gold: 3000 } },
-  { id: 'win_800',         cat: 'BATTLE', rarity: 'EPIC',      name: '千场勇士',     desc: '累计赢得800场战斗',           check: s => s.battlesWon >= 800,    reward: { title: '不败战神', gold: 8000 } },
-  { id: 'win_1500',        cat: 'BATTLE', rarity: 'LEGENDARY', name: '千战不灭',     desc: '累计赢得1500场战斗',          check: s => s.battlesWon >= 1500,   reward: { title: '千战之王', gold: 20000 } },
+  { id: 'win_300',         cat: 'BATTLE', rarity: 'RARE',      name: '战神降世',     desc: '累计赢得300场战斗',           check: s => s.battlesWon >= 300,    reward: { title: '战神' } },
+  { id: 'win_800',         cat: 'BATTLE', rarity: 'EPIC',      name: '千场勇士',     desc: '累计赢得800场战斗',           check: s => s.battlesWon >= 800,    reward: { title: '不败战神' } },
+  { id: 'win_1500',        cat: 'BATTLE', rarity: 'LEGENDARY', name: '千战不灭',     desc: '累计赢得1500场战斗',          check: s => s.battlesWon >= 1500,   reward: { title: '千战之王' } },
   { id: 'win_streak_15',   cat: 'BATTLE', rarity: 'UNCOMMON',  name: '连胜达人',   desc: '达成15场连胜',                check: s => s.maxWinStreak >= 15 },
   { id: 'win_streak_20',   cat: 'BATTLE', rarity: 'RARE',      name: '二十连胜',     desc: '连续赢得20场战斗',            check: s => s.maxWinStreak >= 20,   reward: { title: '连胜之王' } },
-  { id: 'win_streak_50',   cat: 'BATTLE', rarity: 'EPIC',      name: '不败传说',     desc: '达成50场连胜',                check: s => s.maxWinStreak >= 50,   reward: { title: '不败传说', gold: 10000 } },
+  { id: 'win_streak_50',   cat: 'BATTLE', rarity: 'EPIC',      name: '不败传说',     desc: '达成50场连胜',                check: s => s.maxWinStreak >= 50,   reward: { title: '不败传说' } },
   { id: 'clutch_win',      cat: 'BATTLE', rarity: 'RARE',      name: '绝地反击',     desc: '在精灵HP低于10%时赢得战斗',   check: s => s.clutchWins >= 1,      reward: { title: '绝境逢生' } },
   { id: 'clutch_5',        cat: 'BATTLE', rarity: 'EPIC',      name: '绝境专家',     desc: '在HP低于10%时赢5场战斗',      check: s => s.clutchWins >= 5,      reward: { title: '绝境专家' } },
-  { id: 'perfect_win',     cat: 'BATTLE', rarity: 'RARE',      name: '完美胜利',     desc: '在不损失HP的情况下赢得战斗',  check: s => s.perfectWins >= 1,     reward: { gold: 3000 } },
-  { id: 'perfect_10',      cat: 'BATTLE', rarity: 'EPIC',      name: '不沾一尘',     desc: '在不损失HP的情况下赢得战斗10次',    check: s => s.perfectWins >= 10,    reward: { gold: 8000 } },
-  { id: 'sweep_win',       cat: 'BATTLE', rarity: 'RARE',      name: '全队存活',     desc: '携带6只精灵对战训练家，全员生还',  check: s => s.sweepWins >= 1,       reward: { gold: 2000 } },
+  { id: 'perfect_win',     cat: 'BATTLE', rarity: 'RARE',      name: '完美胜利',     desc: '在不损失HP的情况下赢得战斗',  check: s => s.perfectWins >= 1 },
+  { id: 'perfect_10',      cat: 'BATTLE', rarity: 'EPIC',      name: '不沾一尘',     desc: '在不损失HP的情况下赢得战斗10次',    check: s => s.perfectWins >= 10 },
+  { id: 'sweep_win',       cat: 'BATTLE', rarity: 'RARE',      name: '全队存活',     desc: '携带6只精灵对战训练家，全员生还',  check: s => s.sweepWins >= 1 },
   { id: 'underdog',        cat: 'BATTLE', rarity: 'RARE',      name: '以弱胜强',     desc: '击败等级高出20级以上的对手',   check: s => s.underdogWins >= 1,    reward: { title: '越级挑战者' } },
-  { id: 'underdog_win',    cat: 'BATTLE', rarity: 'RARE',      name: '后发制人',     desc: '用等级低30级以上的精灵赢得战斗', check: s => s.underdogLowLevelWins >= 1, reward: { gold: 3000 } },
+  { id: 'underdog_win',    cat: 'BATTLE', rarity: 'RARE',      name: '后发制人',     desc: '用等级低30级以上的精灵赢得战斗', check: s => s.underdogLowLevelWins >= 1 },
   { id: 'crit_king',       cat: 'BATTLE', rarity: 'UNCOMMON',  name: '暴击之王',     desc: '在单场战斗中触发8次暴击',     check: s => s.maxCritsInBattle >= 8 },
   { id: 'one_hit_ko',      cat: 'BATTLE', rarity: 'UNCOMMON',  name: '一击必杀',     desc: '一击秒杀100只精灵',            check: s => s.oneHitKOs >= 100 },
   { id: 'double_effective', cat: 'BATTLE', rarity: 'UNCOMMON',  name: '双重克制',     desc: '造成双重克制伤害100次',         check: s => s.doubleEffectiveHits >= 100 },
-  { id: 'double_no_faint', cat: 'BATTLE', rarity: 'RARE',      name: '双打完封',     desc: '双打战斗中4只精灵全部生还',    check: s => s.doublePerfectWins >= 1, reward: { gold: 3000 } },
+  { id: 'double_no_faint', cat: 'BATTLE', rarity: 'RARE',      name: '双打完封',     desc: '双打战斗中4只精灵全部生还',    check: s => s.doublePerfectWins >= 1 },
   { id: 'double_10',       cat: 'BATTLE', rarity: 'RARE',      name: '双打达人',     desc: '赢得10场双打战斗',             check: s => s.doubleWins >= 10,      reward: { title: '双打达人' } },
   { id: 'double_50',       cat: 'BATTLE', rarity: 'EPIC',      name: '双打大师',     desc: '赢得50场双打战斗',             check: s => s.doubleWins >= 50,      reward: { title: '双打大师' } },
-  { id: 'no_switch_win',   cat: 'BATTLE', rarity: 'RARE',      name: '坚守阵地',     desc: '整场战斗不换人击败训练家',     check: s => s.noSwitchTrainerWins >= 1, reward: { gold: 2000 } },
+  { id: 'no_switch_win',   cat: 'BATTLE', rarity: 'RARE',      name: '坚守阵地',     desc: '整场战斗不换人击败训练家',     check: s => s.noSwitchTrainerWins >= 1 },
   { id: 'type_disadvantage_win', cat: 'BATTLE', rarity: 'EPIC', name: '逆属性战士',   desc: '用被克制属性击败50个敌人',     check: s => s.typeDisadvantageWins >= 50, reward: { title: '逆天改命' } },
-  { id: 'vow_50',          cat: 'BATTLE', rarity: 'RARE',      name: '誓约之人',     desc: '累计使用缚誓50次',            check: s => s.vowsUsed >= 50,       reward: { gold: 3000 } },
-  { id: 'domain_first',    cat: 'BATTLE', rarity: 'RARE',      name: '领域展开',     desc: '累计展开领域10次',            check: s => s.domainsUsed >= 10,    reward: { gold: 3000 } },
+  { id: 'vow_50',          cat: 'BATTLE', rarity: 'RARE',      name: '誓约之人',     desc: '累计使用缚誓50次',            check: s => s.vowsUsed >= 50 },
+  { id: 'domain_first',    cat: 'BATTLE', rarity: 'RARE',      name: '领域展开',     desc: '累计展开领域10次',            check: s => s.domainsUsed >= 10 },
   { id: 'domain_30',       cat: 'BATTLE', rarity: 'EPIC',      name: '领域支配者',   desc: '累计展开领域30次',            check: s => s.domainsUsed >= 30,    reward: { title: '领域支配者' } },
   { id: 'fruit_transform', cat: 'BATTLE', rarity: 'UNCOMMON',  name: '恶魔觉醒',     desc: '累计在战斗中使用果实变身15次', check: s => s.fruitTransforms >= 15 },
   { id: 'fruit_50_trans',  cat: 'BATTLE', rarity: 'RARE',      name: '变身大师',     desc: '累计使用果实变身50次',        check: s => s.fruitTransforms >= 50, reward: { title: '变身大师' } },
 
   // ===== 探索类 — 按地图→步数→副本→无限城→宝箱→活动分组 =====
-  { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索20个不同地图区域',        check: s => s.mapsVisited >= 20,    reward: { title: '环游世界', gold: 3000 } },
+  { id: 'explore_all',     cat: 'EXPLORE', rarity: 'RARE',      name: '环游世界',     desc: '探索20个不同地图区域',        check: s => s.mapsVisited >= 20,    reward: { title: '环游世界' } },
   { id: 'all_maps',        cat: 'EXPLORE', rarity: 'RARE',      name: '世界全图',     desc: '解锁所有地图',                check: s => s.allMapsUnlocked,      reward: { title: '世界旅行者' } },
-  { id: 'steps_50k',       cat: 'EXPLORE', rarity: 'RARE',      name: '万里长征',     desc: '在地图上行走50000步',         check: s => s.totalSteps >= 50000,  reward: { title: '行者', gold: 3000 } },
-  { id: 'steps_100k',      cat: 'EXPLORE', rarity: 'EPIC',      name: '永不停歇',     desc: '在地图上行走100000步',        check: s => s.totalSteps >= 100000, reward: { title: '远行者', gold: 8000 } },
+  { id: 'steps_50k',       cat: 'EXPLORE', rarity: 'RARE',      name: '万里长征',     desc: '在地图上行走50000步',         check: s => s.totalSteps >= 50000,  reward: { title: '行者' } },
+  { id: 'steps_100k',      cat: 'EXPLORE', rarity: 'EPIC',      name: '永不停歇',     desc: '在地图上行走100000步',        check: s => s.totalSteps >= 100000, reward: { title: '远行者' } },
   { id: 'dungeon_all',     cat: 'EXPLORE', rarity: 'EPIC',      name: '副本征服者',   desc: '完成8个不同的特殊副本',       check: s => (s.uniqueDungeonsCleared || 0) >= 8, reward: { title: '副本之王' } },
   { id: 'dungeon_no_damage', cat: 'EXPLORE', rarity: 'EPIC',    name: '无伤通关',     desc: '在秘境中未受敌方伤害通关',    check: s => s.dungeonPerfectClears >= 1, reward: { title: '无瑕征服者' } },
   { id: 'all_tier4_dungeon', cat: 'EXPLORE', rarity: 'LEGENDARY', name: '终极秘境全通', desc: '通关所有5个终极秘境',        check: s => s.tier4DungeonsCleared >= 5, reward: { title: '秘境之王' } },
   { id: 'infinity_15',     cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '无尽攀登',     desc: '无限城堡到达第15层',          check: s => s.maxInfinityFloor >= 15 },
-  { id: 'infinity_30',     cat: 'EXPLORE', rarity: 'RARE',      name: '深渊行者',     desc: '无限城堡到达第30层',          check: s => s.maxInfinityFloor >= 30, reward: { gold: 5000 } },
-  { id: 'infinity_50',     cat: 'EXPLORE', rarity: 'EPIC',      name: '深渊探索者',   desc: '无限城堡到达第50层',          check: s => s.maxInfinityFloor >= 50, reward: { title: '深渊探索者', gold: 8000 } },
-  { id: 'infinity_80',     cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限征服者',   desc: '无限城堡到达第80层',          check: s => s.maxInfinityFloor >= 80, reward: { title: '无限征服者', gold: 15000 } },
-  { id: 'infinity_100',    cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限之巅',     desc: '通关无限城堡100层',           check: s => s.maxInfinityFloor >= 100, reward: { title: '无限之王', gold: 30000 } },
+  { id: 'infinity_30',     cat: 'EXPLORE', rarity: 'RARE',      name: '深渊行者',     desc: '无限城堡到达第30层',          check: s => s.maxInfinityFloor >= 30 },
+  { id: 'infinity_50',     cat: 'EXPLORE', rarity: 'EPIC',      name: '深渊探索者',   desc: '无限城堡到达第50层',          check: s => s.maxInfinityFloor >= 50, reward: { title: '深渊探索者' } },
+  { id: 'infinity_80',     cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限征服者',   desc: '无限城堡到达第80层',          check: s => s.maxInfinityFloor >= 80, reward: { title: '无限征服者' } },
+  { id: 'infinity_100',    cat: 'EXPLORE', rarity: 'LEGENDARY', name: '无限之巅',     desc: '通关无限城堡100层',           check: s => s.maxInfinityFloor >= 100, reward: { title: '无限之王' } },
   { id: 'chest_hunter',    cat: 'EXPLORE', rarity: 'UNCOMMON',  name: '宝箱猎人',     desc: '开启100个地图宝箱',            check: s => s.chestsOpened >= 100 },
-  { id: 'activity_master', cat: 'EXPLORE', rarity: 'RARE',      name: '活动达人',     desc: '参加活动总计50次',            check: s => (s.fishingWins || 0) + (s.beautyWins || 0) + (s.bugContestWins || 0) + (s.raceWins || 0) >= 50, reward: { gold: 3000 } },
+  { id: 'activity_master', cat: 'EXPLORE', rarity: 'RARE',      name: '活动达人',     desc: '参加活动总计50次',            check: s => (s.fishingWins || 0) + (s.beautyWins || 0) + (s.bugContestWins || 0) + (s.raceWins || 0) >= 50 },
 
   // ===== 成长类 — 按徽章→联赛→门派→等级→挑战→金币→技能分组 =====
-  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部13枚道馆徽章',        check: s => s.badgeCount >= 13,     reward: { title: '全徽章训练家', gold: 5000 } },
-  { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { title: '联赛冠军', gold: 5000 } },
-  { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { title: '联赛之王', gold: 10000 } },
+  { id: 'badge_all',       cat: 'GROWTH', rarity: 'RARE',      name: '徽章大满贯',   desc: '获得全部13枚道馆徽章',        check: s => s.badgeCount >= 13,     reward: { title: '全徽章训练家' } },
+  { id: 'league_first',    cat: 'GROWTH', rarity: 'RARE',      name: '联赛新星',     desc: '首次赢得联赛冠军',            check: s => s.leagueWins >= 1,      reward: { title: '联赛冠军' } },
+  { id: 'league_10',       cat: 'GROWTH', rarity: 'EPIC',      name: '联赛霸主',     desc: '赢得联赛冠军10次',            check: s => s.leagueWins >= 10,     reward: { title: '联赛之王' } },
   { id: 'sect_first',      cat: 'GROWTH', rarity: 'UNCOMMON',  name: '门派挑战者',     desc: '击败3位门派掌门',          check: s => s.sectChiefsDefeated >= 3 },
-  { id: 'sect_all',        cat: 'GROWTH', rarity: 'EPIC',      name: '武林盟主',     desc: '击败全部30位门派掌门',        check: s => s.sectChiefsDefeated >= 30, reward: { title: '武林盟主', gold: 8000 } },
+  { id: 'sect_all',        cat: 'GROWTH', rarity: 'EPIC',      name: '武林盟主',     desc: '击败全部30位门派掌门',        check: s => s.sectChiefsDefeated >= 30, reward: { title: '武林盟主' } },
   { id: 'sect_join',       cat: 'GROWTH', rarity: 'COMMON',    name: '初入江湖',     desc: '拜入任意门派成为弟子',        check: s => (s.sectJoined || 0) >= 1 },
-  { id: 'sect_rank_5',     cat: 'GROWTH', rarity: 'RARE',      name: '护法之资',     desc: '门派身份达到护法',            check: s => (s.sectPlayerRank || 0) >= 5, reward: { gold: 2000 } },
-  { id: 'sect_chief_trial',cat: 'GROWTH', rarity: 'EPIC',      name: '掌门试炼',     desc: '通过任意门派掌门试炼',        check: s => (s.sectChiefTrials || 0) >= 1, reward: { gold: 5000 } },
+  { id: 'sect_rank_5',     cat: 'GROWTH', rarity: 'RARE',      name: '护法之资',     desc: '门派身份达到护法',            check: s => (s.sectPlayerRank || 0) >= 5 },
+  { id: 'sect_chief_trial',cat: 'GROWTH', rarity: 'EPIC',      name: '掌门试炼',     desc: '通过任意门派掌门试炼',        check: s => (s.sectChiefTrials || 0) >= 1 },
   { id: 'sect_realm',      cat: 'GROWTH', rarity: 'RARE',      name: '秘境行者',     desc: '通关任意门派秘境',            check: s => (s.sectRealmsCleared || 0) >= 1 },
   { id: 'sect_jianghu',    cat: 'GROWTH', rarity: 'UNCOMMON',  name: '江湖过客',     desc: '参与1次江湖事件抉择',         check: s => (s.sectJianghuEvents || 0) >= 1 },
-  { id: 'lv80_pet',        cat: 'GROWTH', rarity: 'RARE',      name: '精英觉醒',     desc: '培养一只精灵到80级',          check: s => s.maxPetLevel >= 80,    reward: { gold: 3000 } },
-  { id: 'elite_team',      cat: 'GROWTH', rarity: 'RARE',      name: '精英队伍',     desc: '拥有满编6只50级以上精灵',     check: s => s.eliteTeamReady,       reward: { title: '精英训练家', gold: 3000 } },
-  { id: 'lv100',           cat: 'GROWTH', rarity: 'RARE',      name: '满级精灵',     desc: '培养一只精灵到100级',         check: s => s.maxPetLevel >= 100,   reward: { gold: 5000 } },
-  { id: 'full_lv100_team', cat: 'GROWTH', rarity: 'LEGENDARY', name: '满级天团',     desc: '6只精灵全部达到100级',        check: s => s.fullLv100Team,        reward: { title: '满级天团', gold: 25000 } },
-  { id: 'stone_evo_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '进化石大师',   desc: '使用过全部10种进化石',        check: s => s.uniqueStonesUsed >= 10, reward: { title: '进化大师', gold: 5000 } },
-  { id: 'challenge_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '通关达人',     desc: '通关25座试炼塔',              check: s => s.challengesCompleted >= 25, reward: { title: '全塔征服者', gold: 8000 } },
-  { id: 'challenge_48',    cat: 'GROWTH', rarity: 'LEGENDARY', name: '全塔制霸',     desc: '通关全部48座试炼塔',          check: s => s.challengesCompleted >= 48, reward: { title: '试炼之王', gold: 20000 } },
-  { id: 'evo_master',      cat: 'GROWTH', rarity: 'RARE',      name: '进化达人',     desc: '累计进化精灵20次',            check: s => s.totalEvolutions >= 20, reward: { gold: 3000 } },
-  { id: 'fusion_master',   cat: 'GROWTH', rarity: 'RARE',      name: '融合专家',     desc: '累计融合精灵15次',            check: s => s.totalFusions >= 15,   reward: { gold: 3000 } },
-  { id: 'billionaire',     cat: 'ECONOMY', rarity: 'EPIC',      name: '财富神话',     desc: '累计获得1亿金币',                 check: s => s.totalGoldEarned >= 100000000, reward: { title: '亿万富翁', gold: 500000 } },
-  { id: 'max_intimacy',    cat: 'GROWTH', rarity: 'RARE',      name: '亲密无间',     desc: '一只精灵亲密度达到255',       check: s => s.maxIntimacy >= 255,   reward: { title: '最佳拍档', gold: 3000 } },
+  { id: 'lv80_pet',        cat: 'GROWTH', rarity: 'RARE',      name: '精英觉醒',     desc: '培养一只精灵到80级',          check: s => s.maxPetLevel >= 80 },
+  { id: 'elite_team',      cat: 'GROWTH', rarity: 'RARE',      name: '精英队伍',     desc: '拥有满编6只50级以上精灵',     check: s => s.eliteTeamReady,       reward: { title: '精英训练家' } },
+  { id: 'lv100',           cat: 'GROWTH', rarity: 'RARE',      name: '满级精灵',     desc: '培养一只精灵到100级',         check: s => s.maxPetLevel >= 100 },
+  { id: 'full_lv100_team', cat: 'GROWTH', rarity: 'LEGENDARY', name: '满级天团',     desc: '6只精灵全部达到100级',        check: s => s.fullLv100Team,        reward: { title: '满级天团' } },
+  { id: 'stone_evo_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '进化石大师',   desc: '使用过全部10种进化石',        check: s => s.uniqueStonesUsed >= 10, reward: { title: '进化大师' } },
+  { id: 'challenge_all',   cat: 'GROWTH', rarity: 'EPIC',      name: '通关达人',     desc: '通关25座试炼塔',              check: s => s.challengesCompleted >= 25, reward: { title: '全塔征服者' } },
+  { id: 'challenge_48',    cat: 'GROWTH', rarity: 'LEGENDARY', name: '全塔制霸',     desc: '通关全部48座试炼塔',          check: s => s.challengesCompleted >= 48, reward: { title: '试炼之王' } },
+  { id: 'evo_master',      cat: 'GROWTH', rarity: 'RARE',      name: '进化达人',     desc: '累计进化精灵20次',            check: s => s.totalEvolutions >= 20 },
+  { id: 'fusion_master',   cat: 'GROWTH', rarity: 'RARE',      name: '融合专家',     desc: '累计融合精灵15次',            check: s => s.totalFusions >= 15 },
+  { id: 'billionaire',     cat: 'ECONOMY', rarity: 'EPIC',      name: '财富神话',     desc: '累计获得1亿金币',                 check: s => s.totalGoldEarned >= 100000000, reward: { title: '亿万富翁' } },
+  { id: 'max_intimacy',    cat: 'GROWTH', rarity: 'RARE',      name: '亲密无间',     desc: '一只精灵亲密度达到255',       check: s => s.maxIntimacy >= 255,   reward: { title: '最佳拍档' } },
 
   // ===== 社交/生活类 — 按家园→活动赛事→PvP→帮派→婚姻分组 =====
   { id: 'furniture_20',    cat: 'SOCIAL', rarity: 'UNCOMMON',  name: '家具大师',     desc: '摆放20件家具',                check: s => s.furnitureCount >= 20 },
@@ -135,62 +135,62 @@ const ACHIEVEMENTS = [
   { id: 'perfect_wedding', cat: 'SOCIAL', rarity: 'RARE',      name: '百年好合',     desc: '完成婚礼',                    check: s => s.marriageComplete,    reward: { title: '幸福美满' } },
 
   // ===== 精通类 — 按难度递增排列 =====
-  { id: 'speed_demon',     cat: 'MASTERY', rarity: 'RARE',      name: '速攻战术',     desc: '在3回合内结束战斗20次',       check: s => s.quickWins >= 20,      reward: { gold: 3000 } },
-  { id: 'type_master',     cat: 'MASTERY', rarity: 'EPIC',      name: '属性克制大师', desc: '利用属性克制造成超级有效500次', check: s => s.superEffectiveHits >= 500, reward: { gold: 8000 } },
+  { id: 'speed_demon',     cat: 'MASTERY', rarity: 'RARE',      name: '速攻战术',     desc: '在3回合内结束战斗20次',       check: s => s.quickWins >= 20 },
+  { id: 'type_master',     cat: 'MASTERY', rarity: 'EPIC',      name: '属性克制大师', desc: '利用属性克制造成超级有效500次', check: s => s.superEffectiveHits >= 500 },
   { id: 'gold_million',    cat: 'MASTERY', rarity: 'EPIC',      name: '百万富翁',     desc: '累计获得1,000,000金币',           check: s => s.totalGoldEarned >= 1000000, reward: { title: '百万富翁' } },
   { id: 'completionist',   cat: 'MASTERY', rarity: 'EPIC',      name: '完美主义者',   desc: '解锁50个成就',                check: s => s.achievementCount >= 50, reward: { title: '完美主义者' } },
   { id: 'all_ach_80',      cat: 'MASTERY', rarity: 'LEGENDARY', name: '成就控',       desc: '解锁80个成就',                check: s => s.achievementCount >= 80, reward: { title: '成就控' } },
   { id: 'all_badges_sects', cat: 'MASTERY', rarity: 'LEGENDARY', name: '至高训练家',   desc: '全徽章+全门派+联赛冠军',      check: s => s.badgeCount >= 13 && s.sectChiefsDefeated >= 30 && s.leagueWins >= 1, reward: { title: '至高训练家' } },
   { id: 'gold_5m',         cat: 'MASTERY', rarity: 'LEGENDARY', name: '黄金帝王',     desc: '累计获得5,000,000金币',           check: s => s.totalGoldEarned >= 5000000, reward: { title: '黄金帝王' } },
-  { id: 'gold_10m', cat: 'ECONOMY', rarity: 'EPIC', name: '千万富翁', desc: '累计获得1000万金币', check: s => s.totalGoldEarned >= 10000000, reward: { gold: 50000 } },
-  { id: 'gold_25m', cat: 'ECONOMY', rarity: 'EPIC', name: '金币帝王', desc: '累计获得2500万金币', check: s => s.totalGoldEarned >= 25000000, reward: { title: '金币帝王', gold: 100000 } },
-  { id: 'gold_50m', cat: 'ECONOMY', rarity: 'LEGENDARY', name: '半亿传说', desc: '累计获得5000万金币', check: s => s.totalGoldEarned >= 50000000, reward: { title: '半亿传说', gold: 200000 } },
+  { id: 'gold_10m', cat: 'ECONOMY', rarity: 'EPIC', name: '千万富翁', desc: '累计获得1000万金币', check: s => s.totalGoldEarned >= 10000000 },
+  { id: 'gold_25m', cat: 'ECONOMY', rarity: 'EPIC', name: '金币帝王', desc: '累计获得2500万金币', check: s => s.totalGoldEarned >= 25000000, reward: { title: '金币帝王' } },
+  { id: 'gold_50m', cat: 'ECONOMY', rarity: 'LEGENDARY', name: '半亿传说', desc: '累计获得5000万金币', check: s => s.totalGoldEarned >= 50000000, reward: { title: '半亿传说' } },
   { id: 'master_trainer',  cat: 'MASTERY', rarity: 'LEGENDARY', name: '精灵大师',     desc: '图鉴300+战斗800+联赛10+全门派', check: s => s.dexCount >= 300 && s.battlesWon >= 800 && s.leagueWins >= 10 && s.sectChiefsDefeated >= 30, reward: { title: '精灵大师' } },
   { id: 'true_master',     cat: 'MASTERY', rarity: 'LEGENDARY', name: '真·大师',      desc: '图鉴700+全门派+联赛10+全副本+25座塔', check: s => s.dexCount >= 700 && s.sectChiefsDefeated >= 30 && s.leagueWins >= 10 && (s.uniqueDungeonsCleared || 0) >= 8 && s.challengesCompleted >= 25, reward: { title: '真·大师' } },
   { id: 'all_achievements', cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极成就',     desc: '解锁约90%全部成就',               check: s => s.achievementCount >= Math.floor(ACHIEVEMENTS.length * 0.9), reward: { title: '传说训练家' } },
 
   // ===== 跨界共鸣系统 =====
-  { id: 'pet_awaken_1',    cat: 'GROWTH', rarity: 'EPIC',      name: '觉醒之始',     desc: '完成1只精灵觉醒',               check: s => (s.petsAwakened || 0) >= 1, reward: { title: '觉醒者', gold: 5000 } },
-  { id: 'pet_awaken_3',    cat: 'GROWTH', rarity: 'LEGENDARY', name: '觉醒大师',     desc: '完成3只精灵觉醒',               check: s => (s.petsAwakened || 0) >= 3, reward: { title: '觉醒大师', gold: 15000 } },
-  { id: 'relic_first',     cat: 'EXPLORE', rarity: 'RARE',     name: '遗物收集者',   desc: '获得第一件无限遗物',           check: s => (s.relicsCollected || 0) >= 1, reward: { gold: 3000 } },
-  { id: 'relic_5',         cat: 'EXPLORE', rarity: 'EPIC',     name: '遗物猎人',     desc: '收集5件无限遗物',               check: s => (s.relicsCollected || 0) >= 5, reward: { title: '遗物猎人', gold: 8000 } },
+  { id: 'pet_awaken_1',    cat: 'GROWTH', rarity: 'EPIC',      name: '觉醒之始',     desc: '完成1只精灵觉醒',               check: s => (s.petsAwakened || 0) >= 1, reward: { title: '觉醒者' } },
+  { id: 'pet_awaken_3',    cat: 'GROWTH', rarity: 'LEGENDARY', name: '觉醒大师',     desc: '完成3只精灵觉醒',               check: s => (s.petsAwakened || 0) >= 3, reward: { title: '觉醒大师' } },
+  { id: 'relic_first',     cat: 'EXPLORE', rarity: 'RARE',     name: '遗物收集者',   desc: '获得第一件无限遗物',           check: s => (s.relicsCollected || 0) >= 1 },
+  { id: 'relic_5',         cat: 'EXPLORE', rarity: 'EPIC',     name: '遗物猎人',     desc: '收集5件无限遗物',               check: s => (s.relicsCollected || 0) >= 5, reward: { title: '遗物猎人' } },
   { id: 'relic_10',        cat: 'EXPLORE', rarity: 'LEGENDARY', name: '遗物大师',     desc: '收集10件无限遗物',              check: s => (s.relicsCollected || 0) >= 10, reward: { title: '遗物大师' } },
-  { id: 'resonance_3',     cat: 'MASTERY', rarity: 'RARE',     name: '共鸣觉醒',     desc: '单场战斗激活3种跨界共鸣',       check: s => (s.maxResonanceCombos || 0) >= 3, reward: { gold: 5000 } },
+  { id: 'resonance_3',     cat: 'MASTERY', rarity: 'RARE',     name: '共鸣觉醒',     desc: '单场战斗激活3种跨界共鸣',       check: s => (s.maxResonanceCombos || 0) >= 3 },
   { id: 'ultimate_res',    cat: 'MASTERY', rarity: 'LEGENDARY', name: '终极共鸣',     desc: '触发终极共鸣超越爆发10次',      check: s => (s.ultimateResonance || 0) >= 10, reward: { title: '超越者' } },
-  { id: 'guardian_25',     cat: 'EXPLORE', rarity: 'RARE',     name: '生态卫士',     desc: '生态恩赐得分达到25',            check: s => (s.guardianScoreTotal || 0) >= 25, reward: { gold: 5000 } },
+  { id: 'guardian_25',     cat: 'EXPLORE', rarity: 'RARE',     name: '生态卫士',     desc: '生态恩赐得分达到25',            check: s => (s.guardianScoreTotal || 0) >= 25 },
   { id: 'guardian_100',    cat: 'EXPLORE', rarity: 'LEGENDARY', name: '生态守护神',   desc: '生态恩赐得分达到100',           check: s => (s.guardianScoreTotal || 0) >= 100, reward: { title: '生态守护神' } },
-  { id: 'eco_guardian_catch', cat: 'COLLECTION', rarity: 'EPIC', name: '守护者相遇', desc: '遭遇生态守护者精灵',            check: s => (s.ecoGuardianEncounters || 0) >= 1, reward: { gold: 5000 } },
-  { id: 'bonding_first',   cat: 'EXPLORE', rarity: 'RARE',     name: '初结契约',     desc: '完成1次精灵结契',               check: s => (s.bondingCompleted || 0) >= 1, reward: { gold: 3000 } },
-  { id: 'bonding_all',     cat: 'EXPLORE', rarity: 'LEGENDARY', name: '万灵之友',     desc: '完成全部6条结契任务',           check: s => (s.bondingCompleted || 0) >= 6, reward: { title: '万灵之友', gold: 15000 } },
-  { id: 'eco_crisis_all',  cat: 'EXPLORE', rarity: 'LEGENDARY', name: '灵灾终结者',   desc: '通关全部10座灵灾副本',          check: s => (s.ecoCrisesCleared || 0) >= 10, reward: { title: '灵灾终结者', gold: 20000 } },
-  { id: 'sanctuary_first', cat: 'SOCIAL',  rarity: 'COMMON',   name: '圣域初建',     desc: '升级任意圣域设施1次',           check: s => (s.sanctuaryUpgrades || 0) >= 1, reward: { gold: 2000 } },
-  { id: 'fusion_dungeon',  cat: 'EXPLORE', rarity: 'RARE',     name: '融合先锋',     desc: '通关任意六系统融合副本',        check: s => (s.fusionDungeonsCleared || 0) >= 1, reward: { gold: 5000 } },
-  { id: 'fusion_calamity', cat: 'EXPLORE', rarity: 'EPIC',     name: '国土守护者',   desc: '参与1次国土灵灾净化',           check: s => (s.fusionCalamities || 0) >= 1, reward: { gold: 8000, title: '国土守护者' } },
-  { id: 'fusion_strategic',cat: 'GROWTH',  rarity: 'LEGENDARY',name: '战略觉醒者',   desc: '完成1次精灵战略觉醒（战略类型）', check: s => (s.strategicAwakeningCount || 0) >= 1, reward: { title: '战略觉醒者', gold: 15000 } },
-  { id: 'canyon_chapter',  cat: 'EXPLORE', rarity: 'EPIC',     name: '赤砂调停者',   desc: '通关赤砂峡谷融合章节',          check: s => (s.canyonChapterCleared || 0) >= 1, reward: { gold: 8000, title: '生态调停者' } },
-  { id: 'ghost_chapter',   cat: 'EXPLORE', rarity: 'EPIC',     name: '斩鬼行者',     desc: '通关鬼雾山夜行章节',            check: s => (s.ghostChapterCleared || 0) >= 1, reward: { gold: 8000, title: '雾隐行者' } },
-  { id: 'seal_chapter',    cat: 'EXPLORE', rarity: 'LEGENDARY', name: '封印大师',     desc: '通关忍界封印战章节',            check: s => (s.sealChapterCleared || 0) >= 1, reward: { gold: 10000, title: '封印守护者' } },
-  { id: 'guardian_10',     cat: 'EXPLORE', rarity: 'COMMON',   name: '生态见习',     desc: '生态恩赐得分达到10',            check: s => (s.guardianScoreTotal || 0) >= 10, reward: { gold: 2000 } },
-  { id: 'guardian_50',     cat: 'EXPLORE', rarity: 'EPIC',     name: '生态大师',     desc: '生态恩赐得分达到50',            check: s => (s.guardianScoreTotal || 0) >= 50, reward: { gold: 8000, item: 'master', itemCount: 1, itemCat: 'balls' } },
-  { id: 'gang_kw_link',    cat: 'SOCIAL', rarity: 'RARE',      name: '帮派国战联动', desc: '帮派与国战同阵营并完成帮战',   check: s => (s.gangKwLinkWins || 0) >= 1, reward: { gold: 3000 } },
+  { id: 'eco_guardian_catch', cat: 'COLLECTION', rarity: 'EPIC', name: '守护者相遇', desc: '遭遇生态守护者精灵',            check: s => (s.ecoGuardianEncounters || 0) >= 1 },
+  { id: 'bonding_first',   cat: 'EXPLORE', rarity: 'RARE',     name: '初结契约',     desc: '完成1次精灵结契',               check: s => (s.bondingCompleted || 0) >= 1 },
+  { id: 'bonding_all',     cat: 'EXPLORE', rarity: 'LEGENDARY', name: '万灵之友',     desc: '完成全部6条结契任务',           check: s => (s.bondingCompleted || 0) >= 6, reward: { title: '万灵之友' } },
+  { id: 'eco_crisis_all',  cat: 'EXPLORE', rarity: 'LEGENDARY', name: '灵灾终结者',   desc: '通关全部10座灵灾副本',          check: s => (s.ecoCrisesCleared || 0) >= 10, reward: { title: '灵灾终结者' } },
+  { id: 'sanctuary_first', cat: 'SOCIAL',  rarity: 'COMMON',   name: '圣域初建',     desc: '升级任意圣域设施1次',           check: s => (s.sanctuaryUpgrades || 0) >= 1 },
+  { id: 'fusion_dungeon',  cat: 'EXPLORE', rarity: 'RARE',     name: '融合先锋',     desc: '通关任意六系统融合副本',        check: s => (s.fusionDungeonsCleared || 0) >= 1 },
+  { id: 'fusion_calamity', cat: 'EXPLORE', rarity: 'EPIC',     name: '国土守护者',   desc: '参与1次国土灵灾净化',           check: s => (s.fusionCalamities || 0) >= 1, reward: { title: '国土守护者' } },
+  { id: 'fusion_strategic',cat: 'GROWTH',  rarity: 'LEGENDARY',name: '战略觉醒者',   desc: '完成1次精灵战略觉醒（战略类型）', check: s => (s.strategicAwakeningCount || 0) >= 1, reward: { title: '战略觉醒者' } },
+  { id: 'canyon_chapter',  cat: 'EXPLORE', rarity: 'EPIC',     name: '赤砂调停者',   desc: '通关赤砂峡谷融合章节',          check: s => (s.canyonChapterCleared || 0) >= 1, reward: { title: '生态调停者' } },
+  { id: 'ghost_chapter',   cat: 'EXPLORE', rarity: 'EPIC',     name: '斩鬼行者',     desc: '通关鬼雾山夜行章节',            check: s => (s.ghostChapterCleared || 0) >= 1, reward: { title: '雾隐行者' } },
+  { id: 'seal_chapter',    cat: 'EXPLORE', rarity: 'LEGENDARY', name: '封印大师',     desc: '通关忍界封印战章节',            check: s => (s.sealChapterCleared || 0) >= 1, reward: { title: '封印守护者' } },
+  { id: 'guardian_10',     cat: 'EXPLORE', rarity: 'COMMON',   name: '生态见习',     desc: '生态恩赐得分达到10',            check: s => (s.guardianScoreTotal || 0) >= 10 },
+  { id: 'guardian_50',     cat: 'EXPLORE', rarity: 'EPIC',     name: '生态大师',     desc: '生态恩赐得分达到50',            check: s => (s.guardianScoreTotal || 0) >= 50, reward: { item: 'master', itemCount: 1, itemCat: 'balls' } },
+  { id: 'gang_kw_link',    cat: 'SOCIAL', rarity: 'RARE',      name: '帮派国战联动', desc: '帮派与国战同阵营并完成帮战',   check: s => (s.gangKwLinkWins || 0) >= 1 },
 
   // ===== 火影忍者系列成就 (19) =====
   { id: 'ninja_chunin',     cat: 'NARUTO', rarity: 'UNCOMMON',  name: '中忍晋级',     desc: '累计通过5次忍者试炼达到中忍段位',    check: s => (s.chuninExams || 0) >= 5 },
-  { id: 'ninja_jonin',      cat: 'NARUTO', rarity: 'RARE',      name: '上忍之路',     desc: '累计通过10次忍者试炼达到上忍段位',    check: s => (s.chuninExams || 0) >= 10,   reward: { title: '上忍', gold: 5000 } },
-  { id: 'ninja_kage',       cat: 'NARUTO', rarity: 'EPIC',      name: '影之资格',     desc: '通过15次考试达到影级段位',       check: s => (s.chuninExams || 0) >= 15,  reward: { title: '火影', gold: 10000 } },
+  { id: 'ninja_jonin',      cat: 'NARUTO', rarity: 'RARE',      name: '上忍之路',     desc: '累计通过10次忍者试炼达到上忍段位',    check: s => (s.chuninExams || 0) >= 10,   reward: { title: '上忍' } },
+  { id: 'ninja_kage',       cat: 'NARUTO', rarity: 'EPIC',      name: '影之资格',     desc: '通过15次考试达到影级段位',       check: s => (s.chuninExams || 0) >= 15,  reward: { title: '火影' } },
   { id: 'naruto_story_5', cat: 'NARUTO', rarity: 'UNCOMMON', name: '下忍成长记', desc: '通关火影主线前5章', check: s => s.narutoStoryCleared >= 5 },
-  { id: 'naruto_story_10', cat: 'NARUTO', rarity: 'RARE', name: '忍界历练', desc: '通关火影主线前10章', check: s => s.narutoStoryCleared >= 10, reward: { gold: 15000, title: '忍界旅人' } },
-  { id: 'naruto_story_15', cat: 'NARUTO', rarity: 'EPIC', name: '大战英雄', desc: '通关火影主线前15章', check: s => s.narutoStoryCleared >= 15, reward: { gold: 30000, title: '忍界英雄' } },
-  { id: 'naruto_story_20', cat: 'NARUTO', rarity: 'LEGENDARY', name: '火影传说', desc: '通关全部20章火影主线', check: s => s.narutoStoryCleared >= 20, reward: { gold: 100000, title: '七代目火影' } },
-  { id: 'bijuu_first',      cat: 'NARUTO', rarity: 'RARE',   name: '人柱力',       desc: '收集第一只尾兽',                check: s => (s.bijuuCount || 0) >= 1,    reward: { gold: 3000 } },
-  { id: 'bijuu_three',      cat: 'NARUTO', rarity: 'EPIC',   name: '尾兽猎手',     desc: '收集3只尾兽',                   check: s => (s.bijuuCount || 0) >= 3,    reward: { title: '尾兽猎手', gold: 8000 } },
-  { id: 'bijuu_all',        cat: 'NARUTO', rarity: 'LEGENDARY', name: '十尾之力',  desc: '收集全部9只尾兽',               check: s => (s.bijuuCount || 0) >= 9,    reward: { title: '六道仙人', gold: 20000 } },
-  { id: 'jutsu_master',     cat: 'NARUTO', rarity: 'RARE',       name: '忍术达人',     desc: '使用忍术技能击败50只精灵',       check: s => (s.jutsuKills || 0) >= 50,   reward: { gold: 3000 } },
-  { id: 'jutsu_legend',     cat: 'NARUTO', rarity: 'EPIC',       name: '忍术宗师',     desc: '使用忍术技能击败200只精灵',      check: s => (s.jutsuKills || 0) >= 200,  reward: { title: '忍术宗师', gold: 8000 } },
-  { id: 'exam_perfect',     cat: 'NARUTO', rarity: 'EPIC',      name: '生存之王',     desc: '累计通过20次忍者试炼(含生存模式)', check: s => (s.chuninExams || 0) >= 20,  reward: { title: '学霸忍者', gold: 5000 } },
-  { id: 'naruto_challenger', cat: 'NARUTO', rarity: 'LEGENDARY', name: '火影之路',     desc: '完成所有火影挑战试炼',           check: s => (s.narutoChalsCompleted || 0) >= 8, reward: { title: '忍界霸者', gold: 15000 } },
-  { id: 'jutsu_mastery_30', cat: 'NARUTO', rarity: 'RARE',      name: '百忍通达',     desc: '将30种忍术提升到精通(25次+)',       check: s => (s.jutsuSkilledCount || 0) >= 30, reward: { title: '忍术通', gold: 5000 } },
-  { id: 'jutsu_okugi_5',    cat: 'NARUTO', rarity: 'EPIC',      name: '奥义领悟者',   desc: '将5种忍术提升到奥义精通',       check: s => (s.jutsuOugiCount || 0) >= 5, reward: { title: '奥义之人', gold: 10000 } },
+  { id: 'naruto_story_10', cat: 'NARUTO', rarity: 'RARE', name: '忍界历练', desc: '通关火影主线前10章', check: s => s.narutoStoryCleared >= 10, reward: { title: '忍界旅人' } },
+  { id: 'naruto_story_15', cat: 'NARUTO', rarity: 'EPIC', name: '大战英雄', desc: '通关火影主线前15章', check: s => s.narutoStoryCleared >= 15, reward: { title: '忍界英雄' } },
+  { id: 'naruto_story_20', cat: 'NARUTO', rarity: 'LEGENDARY', name: '火影传说', desc: '通关全部20章火影主线', check: s => s.narutoStoryCleared >= 20, reward: { title: '七代目火影' } },
+  { id: 'bijuu_first',      cat: 'NARUTO', rarity: 'RARE',   name: '人柱力',       desc: '收集第一只尾兽',                check: s => (s.bijuuCount || 0) >= 1 },
+  { id: 'bijuu_three',      cat: 'NARUTO', rarity: 'EPIC',   name: '尾兽猎手',     desc: '收集3只尾兽',                   check: s => (s.bijuuCount || 0) >= 3,    reward: { title: '尾兽猎手' } },
+  { id: 'bijuu_all',        cat: 'NARUTO', rarity: 'LEGENDARY', name: '十尾之力',  desc: '收集全部9只尾兽',               check: s => (s.bijuuCount || 0) >= 9,    reward: { title: '六道仙人' } },
+  { id: 'jutsu_master',     cat: 'NARUTO', rarity: 'RARE',       name: '忍术达人',     desc: '使用忍术技能击败50只精灵',       check: s => (s.jutsuKills || 0) >= 50 },
+  { id: 'jutsu_legend',     cat: 'NARUTO', rarity: 'EPIC',       name: '忍术宗师',     desc: '使用忍术技能击败200只精灵',      check: s => (s.jutsuKills || 0) >= 200,  reward: { title: '忍术宗师' } },
+  { id: 'exam_perfect',     cat: 'NARUTO', rarity: 'EPIC',      name: '生存之王',     desc: '累计通过20次忍者试炼(含生存模式)', check: s => (s.chuninExams || 0) >= 20,  reward: { title: '学霸忍者' } },
+  { id: 'naruto_challenger', cat: 'NARUTO', rarity: 'LEGENDARY', name: '火影之路',     desc: '完成所有火影挑战试炼',           check: s => (s.narutoChalsCompleted || 0) >= 8, reward: { title: '忍界霸者' } },
+  { id: 'jutsu_mastery_30', cat: 'NARUTO', rarity: 'RARE',      name: '百忍通达',     desc: '将30种忍术提升到精通(25次+)',       check: s => (s.jutsuSkilledCount || 0) >= 30, reward: { title: '忍术通' } },
+  { id: 'jutsu_okugi_5',    cat: 'NARUTO', rarity: 'EPIC',      name: '奥义领悟者',   desc: '将5种忍术提升到奥义精通',       check: s => (s.jutsuOugiCount || 0) >= 5, reward: { title: '奥义之人' } },
 
   // ===== 隐藏成就 (25) =====
   { id: 'secret_solo_god',   cat: 'SECRET', rarity: 'LEGENDARY', name: '以一敌百',
@@ -205,11 +205,11 @@ const ACHIEVEMENTS = [
   { id: 'secret_master_ball', cat: 'SECRET', rarity: 'RARE',
     name: '大师球传说',  desc: '使用大师球成功捕捉5只精灵',
     hint: '提示：传说中的紫白之球——留给最值得的对手',
-    check: s => s.masterBallUsed >= 5,  reward: { gold: 5000 }, hidden: true },
+    check: s => s.masterBallUsed >= 5, hidden: true },
   { id: 'secret_rich',       cat: 'SECRET', rarity: 'RARE',
     name: '挥金如土',    desc: '商店累计消费500,000金币',
     hint: '提示：金币不过是数字——真正的训练家从不吝惜',
-    check: s => s.totalGoldSpent >= 500000, reward: { gold: 8000, title: '挥金如土' }, hidden: true },
+    check: s => s.totalGoldSpent >= 500000, reward: { title: '挥金如土' }, hidden: true },
   { id: 'secret_1hp',        cat: 'SECRET', rarity: 'EPIC',
     name: '死里逃生',    desc: '精灵仅剩1HP时使用以命搏命赢下战斗',
     hint: '提示：在生死边缘立下最疯狂的誓约…',
@@ -217,7 +217,7 @@ const ACHIEVEMENTS = [
   { id: 'secret_all_fruits',  cat: 'SECRET', rarity: 'EPIC',
     name: '果实之海',    desc: '在一场战斗中双方都使用果实变身',
     hint: '提示：当两颗恶魔果实的力量相撞…',
-    check: s => s.dualFruitBattle >= 1,   reward: { gold: 5000, title: '双果之战' }, hidden: true },
+    check: s => s.dualFruitBattle >= 1,   reward: { title: '双果之战' }, hidden: true },
   { id: 'secret_domain_clash', cat: 'SECRET', rarity: 'LEGENDARY',
     name: '领域碰撞',    desc: '在敌方展开领域的回合内展开自己的领域',
     hint: '提示：当两个领域在同一时空交织——谁更强？',
@@ -225,7 +225,7 @@ const ACHIEVEMENTS = [
   { id: 'secret_type_collect', cat: 'SECRET', rarity: 'RARE',
     name: '属性全书',    desc: '队伍中同时拥有6种不同属性的精灵',
     hint: '提示：多样性就是力量——让你的队伍覆盖彩虹',
-    check: s => s.partyTypeDiv >= 6,     reward: { gold: 3000 }, hidden: true },
+    check: s => s.partyTypeDiv >= 6, hidden: true },
   { id: 'secret_shiny_team',  cat: 'SECRET', rarity: 'LEGENDARY',
     name: '闪耀军团',    desc: '队伍中6只精灵全部是闪光',
     hint: '提示：当光芒汇聚…你见过满队闪耀的队伍吗？',
@@ -237,7 +237,7 @@ const ACHIEVEMENTS = [
   { id: 'secret_marathon',    cat: 'SECRET', rarity: 'RARE',
     name: '持久战王',    desc: '一场战斗持续超过50回合',
     hint: '提示：有时候，最强的策略是…不倒下',
-    check: s => s.maxLongestBattle >= 50,   reward: { gold: 5000, title: '持久战王' }, hidden: true },
+    check: s => s.maxLongestBattle >= 50,   reward: { title: '持久战王' }, hidden: true },
   { id: 'secret_infinity_30', cat: 'SECRET', rarity: 'EPIC',
     name: '深渊回响',    desc: '无限城连续通关30层不使用任何回复道具',
     hint: '提示：不依赖药品的勇气——深渊中只有战斗',
@@ -253,7 +253,7 @@ const ACHIEVEMENTS = [
   { id: 'secret_nomoney',     cat: 'SECRET', rarity: 'RARE',
     name: '身无分文',    desc: '金币恰好为0时赢下一场战斗',
     hint: '提示：口袋空空的勇气——穷途末路的胜利',
-    check: s => s.zeroGoldWin >= 1, reward: { gold: 5000, title: '身无分文' }, hidden: true },
+    check: s => s.zeroGoldWin >= 1, reward: { title: '身无分文' }, hidden: true },
   { id: 'cosmic_resonance', cat: 'SECRET', rarity: 'LEGENDARY', name: '星辰陨落',
     desc: '用宇宙属性精灵击败神兽',
     hint: '宇宙之力能否撼动神明?',
@@ -304,7 +304,7 @@ const ACHIEVEMENTS = [
   // ===== 国战成就 (6 基础) =====
   { id: 'kw_kill_100',      cat: 'BATTLE',   rarity: 'RARE',      name: '百战铁军',     desc: '在国战中击败100名敌国训练师',            check: s => s.kwKills >= 100,          reward: { title: '百战铁军' } },
   { id: 'kw_general',       cat: 'SOCIAL',   rarity: 'RARE',      name: '封将拜印',     desc: '国战军衔达到将军',                       check: s => s.kwRankIdx >= 5,          reward: { title: '沙场将军' } },
-  { id: 'kw_territory_5',   cat: 'EXPLORE',  rarity: 'EPIC',      name: '版图扩张',     desc: '己方阵营同时控制5块以上领地',           check: s => s.kwFactionTerritories >= 5, reward: { gold: 8000, title: '版图扩张' } },
+  { id: 'kw_territory_5',   cat: 'EXPLORE',  rarity: 'EPIC',      name: '版图扩张',     desc: '己方阵营同时控制5块以上领地',           check: s => s.kwFactionTerritories >= 5, reward: { title: '版图扩张' } },
   { id: 'kw_king',          cat: 'SOCIAL',   rarity: 'LEGENDARY', name: '一统天下',     desc: '国战军衔达到国主',                       check: s => s.kwRankIdx >= 9,          reward: { title: '乱世霸主' } },
 
   // ===== 国战进阶成就 (18) =====
@@ -312,7 +312,7 @@ const ACHIEVEMENTS = [
   { id: 'kw_gen_5',         cat: 'SOCIAL',   rarity: 'RARE',      name: '五虎上将',     desc: '同时拥有5位名将',                       check: s => s.kwGenerals >= 5,         reward: { title: '知人善任' } },
   { id: 'kw_gen_max',       cat: 'SOCIAL',   rarity: 'EPIC',      name: '满门英杰',     desc: '名将招募达到上限(12位)',                 check: s => s.kwGenerals >= 12,        reward: { title: '礼贤下士' } },
   { id: 'kw_gen_ssr3',      cat: 'MASTERY',  rarity: 'LEGENDARY', name: '三国鼎立',     desc: '同时拥有3位SSR传世名将',                check: s => s.kwSSRGenerals >= 3,      reward: { title: '天命所归' } },
-  { id: 'kw_gen_allfac',    cat: 'MASTERY',  rarity: 'EPIC',      name: '不分敌我',     desc: '同时拥有来自魏蜀吴晋四国的名将',          check: s => s.kwGenFactions >= 4,      reward: { gold: 5000, title: '不分敌我' } },
+  { id: 'kw_gen_allfac',    cat: 'MASTERY',  rarity: 'EPIC',      name: '不分敌我',     desc: '同时拥有来自魏蜀吴晋四国的名将',          check: s => s.kwGenFactions >= 4,      reward: { title: '不分敌我' } },
   { id: 'kw_gen_dex30',     cat: 'EXPLORE',  rarity: 'RARE',      name: '名将猎人',     desc: '图鉴中收集过30位不同名将',              check: s => s.kwGenDexTotal >= 30,     reward: { title: '求贤若渴' } },
   { id: 'kw_gen_dex60',     cat: 'EXPLORE',  rarity: 'EPIC',      name: '半壁江山',     desc: '图鉴中收集过60位不同名将',              check: s => s.kwGenDexTotal >= 60,     reward: { title: '伯乐再世' } },
   { id: 'kw_gen_dex100',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '群英荟萃',     desc: '图鉴中收集过100位不同名将',             check: s => s.kwGenDexTotal >= 100,    reward: { title: '群英荟萃' } },
@@ -332,7 +332,7 @@ const ACHIEVEMENTS = [
   { id: 'kw_grand_general', cat: 'SOCIAL',   rarity: 'EPIC',      name: '位极人臣',     desc: '国战军衔达到大将军',                     check: s => s.kwRankIdx >= 7,          reward: { title: '大将军' } },
   { id: 'kw_territory_10',  cat: 'EXPLORE',  rarity: 'LEGENDARY', name: '全境制霸',     desc: '己方阵营同时控制10块以上领地',           check: s => s.kwFactionTerritories >= 10, reward: { title: '天下无双' } },
   { id: 'kw_campaign_all',  cat: 'BATTLE',   rarity: 'EPIC',      name: '战役达人',     desc: '通关本阵营全部8个战役副本',              check: s => s.kwCampaignsCleared >= 8, reward: { title: '常胜将军' } },
-  { id: 'kw_contrib_5000',  cat: 'GROWTH',   rarity: 'EPIC',      name: '劳苦功高',     desc: '累计获得5000点战功',                     check: s => s.kwContribution >= 5000,  reward: { gold: 8000, title: '劳苦功高' } },
+  { id: 'kw_contrib_5000',  cat: 'GROWTH',   rarity: 'EPIC',      name: '劳苦功高',     desc: '累计获得5000点战功',                     check: s => s.kwContribution >= 5000,  reward: { title: '劳苦功高' } },
   { id: 'kw_contrib_20000', cat: 'MASTERY',  rarity: 'LEGENDARY', name: '功盖三国',     desc: '累计获得20000点战功',                    check: s => s.kwContribution >= 20000, reward: { title: '功盖三国' } },
 
   // ===== 活动中心 =====
@@ -340,14 +340,14 @@ const ACHIEVEMENTS = [
   { id: 'arena_gold',       cat: 'BATTLE',   rarity: 'RARE',      name: '黄金斗士',     desc: '竞技场晋升至黄金段位',        check: s => s.arenaMaxRank >= 2,          reward: { title: '黄金斗士' } },
   { id: 'arena_legend',     cat: 'MASTERY',  rarity: 'LEGENDARY', name: '传说角斗士',   desc: '竞技场晋升至大师段位',        check: s => s.arenaMaxRank >= 5,          reward: { title: '传说角斗士' } },
   { id: 'expedition_50',    cat: 'EXPLORE',  rarity: 'UNCOMMON',  name: '资深探险家',   desc: '完成50次远征探险',            check: s => s.expeditionsCompleted >= 50 },
-  { id: 'mine_200',         cat: 'EXPLORE',  rarity: 'RARE',      name: '矿洞大师',     desc: '累计挖掘200个矿石',          check: s => s.totalMined >= 200,          reward: { gold: 5000, title: '矿洞大师' } },
+  { id: 'mine_200',         cat: 'EXPLORE',  rarity: 'RARE',      name: '矿洞大师',     desc: '累计挖掘200个矿石',          check: s => s.totalMined >= 200,          reward: { title: '矿洞大师' } },
   { id: 'bounty_30',        cat: 'EXPLORE',  rarity: 'UNCOMMON',  name: '赏金猎人',     desc: '累计完成30条赏金任务',        check: s => s.bountiesCompleted >= 30 },
-  { id: 'bounty_100',       cat: 'MASTERY',  rarity: 'EPIC',      name: '悬赏达人',     desc: '累计完成100条赏金任务',       check: s => s.bountiesCompleted >= 100,   reward: { gold: 8000 } },
+  { id: 'bounty_100',       cat: 'MASTERY',  rarity: 'EPIC',      name: '悬赏达人',     desc: '累计完成100条赏金任务',       check: s => s.bountiesCompleted >= 100 },
 
   // ===== 特训营 & 世界Boss (5) =====
-  { id: 'training_50',      cat: 'MASTERY',  rarity: 'RARE',      name: '特训大师',     desc: '完成50次精灵特训',             check: s => s.trainingSessions >= 50,     reward: { gold: 5000, title: '特训大师' } },
-  { id: 'wb_first',         cat: 'BATTLE',   rarity: 'RARE',      name: '首战告捷',     desc: '首次击败世界Boss',             check: s => s.worldBossesDefeated >= 1,   reward: { gold: 5000, title: '降魔勇者' } },
-  { id: 'wb_10',            cat: 'MASTERY',  rarity: 'EPIC',      name: '世界猎人',     desc: '累计击败10次世界Boss',         check: s => s.worldBossesDefeated >= 10,  reward: { gold: 15000, title: '世界猎人' } },
+  { id: 'training_50',      cat: 'MASTERY',  rarity: 'RARE',      name: '特训大师',     desc: '完成50次精灵特训',             check: s => s.trainingSessions >= 50,     reward: { title: '特训大师' } },
+  { id: 'wb_first',         cat: 'BATTLE',   rarity: 'RARE',      name: '首战告捷',     desc: '首次击败世界Boss',             check: s => s.worldBossesDefeated >= 1,   reward: { title: '降魔勇者' } },
+  { id: 'wb_10',            cat: 'MASTERY',  rarity: 'EPIC',      name: '世界猎人',     desc: '累计击败10次世界Boss',         check: s => s.worldBossesDefeated >= 10,  reward: { title: '世界猎人' } },
   { id: 'wb_damage_king',   cat: 'SECRET',   rarity: 'LEGENDARY', name: '伤害之王',     desc: '单次世界Boss战斗造成30000+伤害', hint: '提示：对世界Boss释放全力一击…', check: s => s.worldBossBestDamage >= 30000, reward: { title: '伤害之王' }, hidden: true },
 
   // ===== 新增隐藏成就 (趣味挑战) =====
@@ -394,7 +394,7 @@ const ACHIEVEMENTS = [
   { id: 'secret_millionaire_loss', cat: 'SECRET', rarity: 'RARE', name: '富有的失败者',
     desc: '携带超过100万金币时战败',
     hint: '提示：钱多不代表强...有时富翁也会跌倒',
-    check: s => s.richDefeatCount >= 1, reward: { gold: 10000 }, hidden: true },
+    check: s => s.richDefeatCount >= 1, hidden: true },
   { id: 'secret_speedrun_gym', cat: 'SECRET', rarity: 'EPIC', name: '极速通关',
     desc: '从游戏开始2小时内获得第一个道馆徽章',
     hint: '提示：速度就是一切——你能多快击败第一个馆主？',
@@ -420,6 +420,74 @@ const ACHIEVEMENTS = [
     ACHIEVEMENTS[ix] = { ...ACHIEVEMENTS[ix], desc: `解锁约${need}个成就（总成就数的90%）` };
   }
 })();
+
+const REWARD_RARITY_VALUE = {
+  COMMON: 1,
+  UNCOMMON: 1,
+  RARE: 2,
+  EPIC: 3,
+  LEGENDARY: 5,
+};
+
+const makeAchievementRewardItems = (ach) => {
+  const value = REWARD_RARITY_VALUE[ach.rarity] || 1;
+  const hasTitle = Boolean(ach.reward?.title);
+  const items = [];
+  const add = (type, id, count, label) => {
+    if (!id || !count) return;
+    items.push({ type, id, count, label });
+  };
+
+  if (ach.cat === 'COLLECTION') {
+    add('ball', value >= 5 ? 'master' : value >= 3 ? 'ultra' : 'great', value >= 5 ? 1 : value * 2, value >= 5 ? '大师球' : value >= 3 ? '高级球' : '超级球');
+    if (value >= 3) add('candy', 'exp_candy', value - 1, '经验糖果');
+  } else if (ach.cat === 'BATTLE' || ach.cat === 'MASTERY') {
+    add('candy', value >= 5 ? 'max_candy' : 'exp_candy', value >= 5 ? 1 : value, value >= 5 ? '极限糖果' : '经验糖果');
+    if (value >= 3) add('item', 'vit_crit', value - 1, '暴击训练剂');
+  } else if (ach.cat === 'EXPLORE') {
+    add('ball', value >= 5 ? 'timer' : 'quick', value + 1, value >= 5 ? '计时球' : '先机球');
+    if (value >= 3) add('candy', 'exp_candy', value, '经验糖果');
+  } else if (ach.cat === 'GROWTH') {
+    add('candy', value >= 5 ? 'max_candy' : 'exp_candy', value >= 5 ? 1 : value + 1, value >= 5 ? '极限糖果' : '经验糖果');
+    if (value >= 2) add('item', 'vit_hp', value, '生命训练剂');
+  } else if (ach.cat === 'SOCIAL') {
+    add('system', 'sectContribution', value * 60, '门派贡献');
+    if (value >= 3) add('system', 'gangContribution', value * 20, '帮贡');
+  } else if (ach.cat === 'ECONOMY') {
+    add('ball', value >= 5 ? 'master' : 'ultra', value >= 5 ? 1 : value, value >= 5 ? '大师球' : '高级球');
+    add('candy', value >= 5 ? 'max_candy' : 'exp_candy', value >= 5 ? 1 : value, value >= 5 ? '极限糖果' : '经验糖果');
+  } else if (ach.cat === 'NARUTO') {
+    add('system', 'chakraOre', value, '查克拉矿石');
+    add('candy', 'exp_candy', value, '经验糖果');
+  } else if (ach.cat === 'SECRET') {
+    add('candy', value >= 5 ? 'max_candy' : 'exp_candy', value >= 5 ? 1 : value + 1, value >= 5 ? '极限糖果' : '经验糖果');
+    if (value >= 3) add('ball', value >= 5 ? 'master' : 'ultra', value >= 5 ? 1 : 2, value >= 5 ? '大师球' : '高级球');
+  }
+
+  if (ach.id.startsWith('kw_') || ach.id.startsWith('hb_')) {
+    add('system', 'factionTokens', value * 2, '阵营令牌');
+  }
+  if (ach.id.includes('guardian') || ach.id.includes('eco') || ach.id.includes('fusion')) {
+    add('system', 'sanctuaryEssence', value * 2, '圣域灵息');
+  }
+  if (!items.length && !hasTitle) add('candy', 'exp_candy', 1, '经验糖果');
+
+  return items;
+};
+
+const normalizeAchievementRewards = () => {
+  ACHIEVEMENTS.forEach((ach, idx) => {
+    const reward = ach.reward ? { ...ach.reward } : {};
+    if (reward.gold) delete reward.gold;
+    const existingItems = Array.isArray(reward.items) ? reward.items : [];
+    const generatedItems = makeAchievementRewardItems({ ...ach, reward });
+    const mergedItems = [...existingItems, ...generatedItems];
+    if (mergedItems.length > 0) reward.items = mergedItems;
+    ACHIEVEMENTS[idx] = Object.keys(reward).length > 0 ? { ...ach, reward } : { ...ach };
+  });
+};
+
+normalizeAchievementRewards();
 
 export const DEFAULT_ACH_STATS = {
   totalCaught: 0,
