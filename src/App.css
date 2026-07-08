@@ -12232,19 +12232,21 @@ select:focus-visible,
    Premium home gate redesign
    ===================================================================== */
 .home-gate-screen {
+  box-sizing: border-box;
+  width: 100%;
   min-height: 100dvh;
   height: 100dvh;
-  padding: 24px;
+  padding: clamp(16px, 2.2vw, 30px);
   overflow: hidden;
   align-items: center;
   justify-content: center;
   color: #f4fbff;
   isolation: isolate;
   background:
-    linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255,255,255,0.035) 1px, transparent 1px),
-    linear-gradient(128deg, #0a1428 0%, #0c2e3a 38%, #13233f 66%, #21172f 100%) !important;
-  background-size: 72px 72px, 72px 72px, auto;
+    linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(128deg, #081221 0%, #102433 42%, #13233a 72%, #171624 100%) !important;
+  background-size: 96px 96px, 96px 96px, auto;
 }
 
 .home-gate-screen::after {
@@ -12254,9 +12256,8 @@ select:focus-visible,
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(9,13,24,0.03), transparent 30%, rgba(9,13,24,0.56)),
-    linear-gradient(118deg, rgba(255,56,86,0.08), transparent 22% 58%, rgba(255,213,79,0.1)),
-    linear-gradient(244deg, transparent 0 52%, rgba(126,231,135,0.08) 53% 54%, transparent 55%);
+    linear-gradient(180deg, rgba(9,13,24,0.02), transparent 30%, rgba(9,13,24,0.58)),
+    linear-gradient(118deg, rgba(126,231,135,0.06), transparent 26% 64%, rgba(255,213,79,0.06));
 }
 
 .home-gate-sky,
@@ -12270,23 +12271,22 @@ select:focus-visible,
 
 .home-gate-sky {
   background:
-    linear-gradient(115deg, rgba(129,216,255,0.18), transparent 24% 74%, rgba(255,123,123,0.12)),
-    linear-gradient(208deg, transparent 0 48%, rgba(255,213,79,0.08) 49% 50%, transparent 51%),
-    linear-gradient(162deg, rgba(126,231,135,0.1), transparent 30% 68%, rgba(151,114,255,0.1));
+    radial-gradient(circle at 72% 14%, rgba(255,230,146,0.16), transparent 8%),
+    linear-gradient(115deg, rgba(129,216,255,0.1), transparent 28% 76%, rgba(126,231,135,0.08)),
+    linear-gradient(162deg, rgba(126,231,135,0.06), transparent 34% 70%, rgba(151,114,255,0.06));
 }
 
 .home-gate-terrain {
   top: auto;
   height: 42%;
   background:
-    linear-gradient(155deg, transparent 0 34%, rgba(104,211,145,0.16) 35% 36%, transparent 37%),
-    linear-gradient(22deg, rgba(27,132,102,0.48) 0 40%, transparent 41%),
-    linear-gradient(340deg, rgba(102,63,129,0.34) 0 44%, transparent 45%),
+    linear-gradient(22deg, rgba(27,98,76,0.42) 0 40%, transparent 41%),
+    linear-gradient(340deg, rgba(50,77,98,0.28) 0 44%, transparent 45%),
     linear-gradient(180deg, transparent, rgba(10,16,26,0.35));
 }
 
 .home-gate-lines {
-  opacity: 0.28;
+  opacity: 0.16;
   background:
     repeating-linear-gradient(90deg, transparent 0 118px, rgba(162,226,255,0.1) 119px 120px),
     repeating-linear-gradient(0deg, transparent 0 118px, rgba(162,226,255,0.06) 119px 120px);
@@ -12296,22 +12296,24 @@ select:focus-visible,
 .home-gate-shell {
   position: relative;
   z-index: 2;
-  width: min(1480px, 100%);
-  max-height: calc(100dvh - 48px);
+  min-width: 0;
+  width: min(1420px, 100%);
+  max-height: calc(100dvh - clamp(32px, 4.4vw, 60px));
   display: grid;
-  grid-template-columns: minmax(420px, 0.88fr) minmax(660px, 1.12fr);
-  gap: 20px;
+  grid-template-columns: minmax(390px, 0.84fr) minmax(640px, 1.16fr);
+  gap: clamp(14px, 1.6vw, 22px);
   align-items: stretch;
 }
 
 .home-gate-hero,
 .home-gate-command {
   min-width: 0;
-  border-radius: 12px;
-  border: 1px solid rgba(196,232,255,0.22);
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(196,232,255,0.16);
   box-shadow:
-    0 28px 90px rgba(0,0,0,0.42),
-    inset 0 1px 0 rgba(255,255,255,0.14);
+    0 24px 72px rgba(0,0,0,0.36),
+    inset 0 1px 0 rgba(255,255,255,0.11);
   backdrop-filter: blur(18px) saturate(1.15);
 }
 
@@ -12320,11 +12322,11 @@ select:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 28px;
+  padding: clamp(20px, 2vw, 28px);
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.11), transparent 18%),
-    linear-gradient(150deg, rgba(13,20,39,0.93), rgba(12,55,53,0.78));
+    linear-gradient(180deg, rgba(255,255,255,0.075), transparent 18%),
+    linear-gradient(150deg, rgba(13,20,35,0.94), rgba(15,45,42,0.78));
 }
 
 .home-gate-hero::before {
@@ -12333,8 +12335,7 @@ select:focus-visible,
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(126,231,135,0.12), transparent 28% 72%, rgba(255,209,102,0.13)),
-    linear-gradient(135deg, transparent 0 57%, rgba(255,56,86,0.08) 58% 59%, transparent 60%),
+    linear-gradient(90deg, rgba(126,231,135,0.08), transparent 32% 74%, rgba(255,209,102,0.08)),
     repeating-linear-gradient(90deg, transparent 0 36px, rgba(255,255,255,0.028) 37px 38px);
 }
 
@@ -12400,13 +12401,13 @@ select:focus-visible,
 .home-gate-brand h1 {
   margin: 4px 0 5px;
   color: #fff2bc;
-  font-size: 70px;
-  line-height: 0.9;
+  font-size: clamp(48px, 4.5vw, 64px);
+  line-height: 0.96;
   font-weight: 950;
   letter-spacing: 0;
   text-shadow:
-    0 14px 34px rgba(255,209,102,0.22),
-    0 0 38px rgba(126,231,135,0.14);
+    0 14px 30px rgba(255,209,102,0.16),
+    0 0 28px rgba(126,231,135,0.1);
 }
 
 .home-gate-brand p,
@@ -12419,7 +12420,7 @@ select:focus-visible,
 
 .home-gate-showcase {
   flex: 1;
-  min-height: 300px;
+  min-height: clamp(270px, 32vh, 360px);
   display: grid;
   place-items: center;
   isolation: isolate;
@@ -12427,7 +12428,7 @@ select:focus-visible,
 
 .home-gate-orbit {
   position: absolute;
-  width: 340px;
+  width: min(340px, 86%);
   aspect-ratio: 1;
   border-radius: 50%;
   border: 1px dashed rgba(164,226,255,0.26);
@@ -12438,7 +12439,7 @@ select:focus-visible,
 .home-gate-system-wheel {
   position: absolute;
   z-index: 1;
-  width: 376px;
+  width: min(376px, 90%);
   max-width: 88%;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -12470,7 +12471,7 @@ select:focus-visible,
     linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035)),
     rgba(5,12,24,0.78);
   box-shadow: 0 12px 24px rgba(0,0,0,0.22);
-  transform: rotate(calc(var(--token-index) * 60deg)) translateY(-176px) rotate(calc(var(--token-index) * -60deg));
+  transform: rotate(calc(var(--token-index) * 60deg)) translateY(clamp(-176px, -17vw, -138px)) rotate(calc(var(--token-index) * -60deg));
 }
 
 .home-system-token.is-spirit { border-color: rgba(255,56,86,0.38); }
@@ -12488,7 +12489,7 @@ select:focus-visible,
   height: 82px;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(126,231,135,0.34), rgba(255,209,102,0.16) 48%, transparent 74%);
+    radial-gradient(ellipse at 50% 50%, rgba(126,231,135,0.26), rgba(255,209,102,0.11) 48%, transparent 74%);
   filter: blur(1px);
   transform: perspective(430px) rotateX(58deg);
 }
@@ -12496,7 +12497,7 @@ select:focus-visible,
 .home-gate-lead-card {
   position: relative;
   z-index: 2;
-  width: 252px;
+  width: min(252px, 72%);
   max-width: 72%;
   padding: 16px;
   border-radius: 12px;
@@ -12505,8 +12506,8 @@ select:focus-visible,
     radial-gradient(circle at 50% 18%, rgba(255,255,255,0.2), transparent 34%),
     linear-gradient(150deg, color-mix(in srgb, var(--lead-type) 25%, rgba(255,255,255,0.05)), rgba(14,19,36,0.72));
   box-shadow:
-    0 28px 80px rgba(0,0,0,0.42),
-    0 0 54px color-mix(in srgb, var(--lead-type) 28%, transparent),
+    0 24px 68px rgba(0,0,0,0.36),
+    0 0 46px color-mix(in srgb, var(--lead-type) 22%, transparent),
     inset 0 1px 24px rgba(255,255,255,0.13);
   animation: home-gate-float 4.6s ease-in-out infinite;
 }
@@ -12612,6 +12613,8 @@ select:focus-visible,
 }
 
 .home-gate-primary {
+  width: 100%;
+  min-width: 0;
   min-height: 84px;
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr) 28px;
@@ -12619,11 +12622,11 @@ select:focus-visible,
   align-items: center;
   padding: 14px 18px;
   border: 1px solid rgba(255,236,146,0.62);
-  border-radius: 10px;
+  border-radius: 8px;
   color: #0c1722;
   cursor: pointer;
   text-align: left;
-  background: linear-gradient(135deg, #b8f7ff 0%, #3ee58b 42%, #ffe266 100%);
+  background: linear-gradient(135deg, #d8fff7 0%, #67e6a0 46%, #ffe48a 100%);
   box-shadow:
     0 18px 44px rgba(42,220,128,0.24),
     inset 0 1px 0 rgba(255,255,255,0.7);
@@ -12676,6 +12679,7 @@ select:focus-visible,
 }
 
 .home-gate-team-slot {
+  min-width: 0;
   position: relative;
   min-width: 0;
   aspect-ratio: 1;
@@ -12762,12 +12766,12 @@ select:focus-visible,
 .home-gate-mini.is-team { border-color: rgba(126,231,135,0.24); }
 
 .home-gate-command {
-  padding: 22px;
+  padding: clamp(18px, 1.7vw, 24px);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(164,226,255,0.28) transparent;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.1), transparent 14%),
+    linear-gradient(180deg, rgba(255,255,255,0.075), transparent 14%),
     linear-gradient(145deg, rgba(10,17,33,0.93), rgba(9,31,41,0.86));
 }
 
@@ -12791,7 +12795,7 @@ select:focus-visible,
 .home-gate-command-top h2 {
   margin: 6px 0 5px;
   color: #ffffff;
-  font-size: 36px;
+  font-size: clamp(28px, 2.6vw, 34px);
   line-height: 1.08;
   font-weight: 950;
   letter-spacing: 0;
@@ -12821,8 +12825,8 @@ select:focus-visible,
 }
 
 .home-gate-stat {
-  min-height: 116px;
-  padding: 16px;
+  min-height: 104px;
+  padding: 14px;
 }
 
 .home-gate-stat,
@@ -12835,9 +12839,9 @@ select:focus-visible,
 
 .home-gate-stat strong {
   display: block;
-  margin: 16px 0 8px;
+  margin: 13px 0 7px;
   color: #ffffff;
-  font-size: 27px;
+  font-size: clamp(21px, 2vw, 26px);
   line-height: 1;
   font-weight: 950;
 }
@@ -12855,7 +12859,7 @@ select:focus-visible,
 }
 
 .home-gate-mission {
-  min-height: 92px;
+  min-height: 86px;
   padding: 14px;
 }
 
@@ -12873,7 +12877,7 @@ select:focus-visible,
   padding: 14px;
   border-color: rgba(255,213,79,0.18);
   background:
-    linear-gradient(135deg, rgba(255,56,86,0.08), rgba(129,216,255,0.05) 44%, rgba(126,231,135,0.08)),
+    linear-gradient(135deg, rgba(129,216,255,0.05), rgba(126,231,135,0.065)),
     rgba(7,13,25,0.42);
 }
 
@@ -12901,7 +12905,7 @@ select:focus-visible,
 
 .home-fusion-card {
   min-width: 0;
-  min-height: 86px;
+  min-height: 82px;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 10px;
@@ -13069,7 +13073,7 @@ select:focus-visible,
 .home-gate-war {
   border-color: color-mix(in srgb, var(--faction-primary) 42%, rgba(255,255,255,0.16));
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--faction-primary) 15%, transparent), rgba(255,255,255,0.035)),
+    linear-gradient(135deg, color-mix(in srgb, var(--faction-primary) 10%, transparent), rgba(255,255,255,0.03)),
     rgba(7,13,25,0.42);
 }
 
@@ -13277,6 +13281,19 @@ select:focus-visible,
 @media (max-width: 760px) {
   .home-gate-screen {
     padding: 12px;
+    overflow-x: hidden;
+  }
+
+  .home-gate-shell,
+  .home-gate-hero,
+  .home-gate-command {
+    width: 100%;
+    max-width: calc(100vw - 24px);
+  }
+
+  .home-gate-shell {
+    display: flex;
+    flex-direction: column;
   }
 
   .home-gate-hero,
@@ -13296,7 +13313,40 @@ select:focus-visible,
   }
 
   .home-gate-brand h1 {
-    font-size: 50px;
+    font-size: 46px;
+  }
+
+  .home-gate-brand p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .home-gate-showcase {
+    min-height: 330px;
+    overflow: hidden;
+  }
+
+  .home-gate-system-wheel {
+    width: 310px;
+  }
+
+  .home-system-token {
+    transform: rotate(calc(var(--token-index) * 60deg)) translateY(-136px) rotate(calc(var(--token-index) * -60deg));
+  }
+
+  .home-gate-primary {
+    grid-template-columns: 46px minmax(0, 1fr) 18px;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .home-gate-primary-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .home-gate-primary strong {
+    font-size: 20px;
   }
 
   .home-gate-command-top,
@@ -13339,8 +13389,66 @@ select:focus-visible,
 }
 
 @media (max-width: 480px) {
+  .home-gate-screen {
+    padding: 10px;
+  }
+
+  .home-gate-shell,
+  .home-gate-hero,
+  .home-gate-command {
+    max-width: calc(100vw - 20px);
+  }
+
   .home-gate-brand h1 {
-    font-size: 42px;
+    font-size: 36px;
+  }
+
+  .home-gate-brand {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .home-gate-logo {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .home-gate-version-row b {
+    font-size: 9px;
+  }
+
+  .home-gate-brand p {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .home-gate-showcase {
+    min-height: 286px;
+  }
+
+  .home-gate-system-wheel {
+    width: 280px;
+  }
+
+  .home-system-token {
+    width: 34px;
+    height: 34px;
+    margin: -17px;
+    transform: rotate(calc(var(--token-index) * 60deg)) translateY(-122px) rotate(calc(var(--token-index) * -60deg));
+  }
+
+  .home-gate-primary {
+    min-height: 74px;
+  }
+
+  .home-gate-team {
+    gap: 7px;
+  }
+
+  .home-gate-team-slot {
+    aspect-ratio: 1.08;
   }
 
   .home-gate-command-top,
@@ -13357,7 +13465,8 @@ select:focus-visible,
   }
 
   .home-gate-lead-card {
-    max-width: 82%;
+    max-width: 78%;
+    padding: 12px;
   }
 
   .home-gate-starter-fan {

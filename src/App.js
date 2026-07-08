@@ -1810,7 +1810,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // 注意：此函数引用组件级 battle state，非纯函数
   const calculateCatchRate = (ballType, enemy) => {
       if (ballType === 'master') return 1.0;
-      const ball = BALLS[ballType];
+      const isWarBall = ballType === 'war';
+      const ball = isWarBall
+        ? { id: 'war', name: '国战精灵球', rate: 3.0, icon: '⚔️', desc: '捕获率3.0x（消耗国战精灵球）' }
+        : BALLS[ballType];
       if (!ball) return 0.1;
       let rate = ball.rate;
       
@@ -1879,8 +1882,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       const gangCatchBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar))).catchRate || 0;
       const kwCatchBonus = kingdomWar?.faction ? (FACTIONS[kingdomWar.faction]?.bonus?.catchRate || 0) : 0;
       const relicCatchBonus = getEquippedRelicEffects(relics).catchRateBonus || 0;
-      const warBallBonus = Math.min(15, (kingdomWar?.warBalls || 0) * 5);
-      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus + warBallBonus, 55) / 100);
+      baseRate *= (1 + Math.min(gangCatchBonus + kwCatchBonus + relicCatchBonus, 55) / 100);
 
       // 徽章加成：每枚徽章提升2%捕获率上限
       const badgeBonus = 1 + Math.min(badges.length, 10) * 0.015;
@@ -2209,8 +2211,24 @@ const [viewStatPet, setViewStatPet] = useState(null);
         const enemy = workingBattle.enemyParty?.[itemTargetEnemyIdx];
         if (enemy && !workingBattle.isBoss) {
           if (Math.random() < cItem.val) {
-            workingBattle.enemyParty[itemTargetEnemyIdx] = { ...enemy, currentHp: 0 };
-            logMsg = `使用了 ${cItem.name}，成功封印了 ${enemy.name}!`;
+            const enemyMaxHp = getStats(enemy, enemy.stages, enemy.status).maxHp || enemy.currentHp || 1;
+            const sealDamage = Math.max(1, Math.floor(enemyMaxHp * 0.35));
+            const sealedEnemy = {
+              ...enemy,
+              currentHp: Math.max(1, (enemy.currentHp || 1) - sealDamage),
+              stages: {
+                ...(enemy.stages || DEFAULT_BATTLE_STAGES),
+                p_atk: Math.max(-6, (enemy.stages?.p_atk || 0) - 2),
+                s_atk: Math.max(-6, (enemy.stages?.s_atk || 0) - 2),
+                spd: Math.max(-6, (enemy.stages?.spd || 0) - 1),
+              },
+              volatiles: {
+                ...(enemy.volatiles || {}),
+                flinched: true,
+              },
+            };
+            workingBattle.enemyParty[itemTargetEnemyIdx] = sealedEnemy;
+            logMsg = `使用了 ${cItem.name}，封印了 ${enemy.name}！造成${sealDamage}伤害并削弱攻势`;
             used = true;
           } else {
             logMsg = `使用了 ${cItem.name}，但封印失败了...`;
@@ -20619,7 +20637,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setShowBallMenu(false);
     if (!battle) return;
     if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.isBoss || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'calamity' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
-    if (((inventory.balls || {})[ballType] || 0) <= 0) return addLog("球不足！");
+    const isWarBall = ballType === 'war';
+    if (isWarBall) {
+      if ((kingdomWar?.warBalls || 0) <= 0) return addLog("国战精灵球不足！");
+    } else if (((inventory.balls || {})[ballType] || 0) <= 0) return addLog("球不足！");
     const boxCap = 500 + (badges?.length || 0) * 50;
     if (party.length >= 6 && box.length >= boxCap) return addLog(`⚠️ 存储箱已满(${box.length}/${boxCap})！请先释放精灵。`);
     try {
@@ -20631,13 +20652,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const enemy = battle.enemyParty[catchTargetIdx];
     if (!enemy) return addLog("无效的目标！");
     const catchChance = calculateCatchRate(ballType, enemy);
-    if ((kingdomWar?.warBalls || 0) > 0) {
+    if (isWarBall) {
       setKingdomWar(prev => ({ ...prev, warBalls: Math.max(0, (prev.warBalls || 0) - 1) }));
+    } else {
+      setInventory(prev => ({ ...prev, balls: { ...(prev.balls || {}), [ballType]: Math.max(0, ((prev.balls || {})[ballType] || 0) - 1) } }));
     }
-    setInventory(prev => ({ ...prev, balls: { ...(prev.balls || {}), [ballType]: Math.max(0, ((prev.balls || {})[ballType] || 0) - 1) } }));
     setBattle(prev => prev ? ({...prev, phase: 'anim'}) : prev);
     setAnimEffect({ type: 'THROW_BALL', target: 'enemy', ballType });
-    addLog(`去吧! ${(BALLS[ballType] || {}).name || '精灵球'}!`);
+    addLog(`去吧! ${isWarBall ? '国战精灵球' : ((BALLS[ballType] || {}).name || '精灵球')}!`);
     
     await wait(1000);
     const roll = Math.random();
@@ -20746,7 +20768,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       addLog("哎呀! 差点就捉到了!");
       const hpRate = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
       const failHint = hpRate > 0.5 ? '试试先削减HP' : LEGENDARY_POOL?.includes(enemy.id) ? '神兽更难捕获' : '换更强的球试试';
-      showMapToast('❌', '捕捉失败', `${(BALLS[ballType] || {}).name || '精灵球'}被挣脱了！${failHint}`, 2800);
+      showMapToast('❌', '捕捉失败', `${isWarBall ? '国战精灵球' : ((BALLS[ballType] || {}).name || '精灵球')}被挣脱了！${failHint}`, 2800);
       await wait(1000);
       setAnimEffect(null);
       if (battle?.isDouble) {
@@ -22636,105 +22658,199 @@ const renderMenu = () => {
   ];
 
   return (
-    <main className="screen home-screen pixel-home-screen" id="main-content">
-      <div className="pixel-home-bg" aria-hidden="true" />
-      <div className="pixel-home-container">
-        {/* Pixel-art header */}
-        <header className="pixel-home-header">
-          <div className="pixel-home-title-block">
-            <SuperSpiritIcon className="pixel-home-logo" size={48} />
-            <div>
-              <div className="pixel-home-ver">{GAME_EN_NAME} <b>{GAME_VERSION_LABEL}</b></div>
-              <h1 className="pixel-home-title">{GAME_NAME}</h1>
-            </div>
-          </div>
-          <div className="pixel-home-gold">💰 {gold.toLocaleString()}</div>
-        </header>
+    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark}}>
+      <div className="home-gate-sky" aria-hidden="true" />
+      <div className="home-gate-terrain" aria-hidden="true" />
+      <div className="home-gate-lines" aria-hidden="true" />
 
-        {/* Hero: lead pet card + start button */}
-        <section className="pixel-home-hero">
-          <div className="pixel-home-lead" style={{'--lead-color': leadTypeColor}}>
-            <div className="pixel-home-lead-sprite">
-              {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
-                <img src={leadPetDex.sprite} alt={leadPetDex?.name || ''} onError={() => setMenuLeadSpriteErr(true)} />
-              ) : (
-                <span>{leadPetDex?.emoji || leadPet?.emoji || '🔴'}</span>
-              )}
+      <div className="home-gate-shell">
+        <section className="home-gate-hero" aria-label="冒险概览">
+          <header className="home-gate-brand">
+            <SuperSpiritIcon className="home-gate-logo" size={62} />
+            <div>
+              <div className="home-gate-version-row">
+                <span>{GAME_EN_NAME}</span>
+                <b>{GAME_VERSION_LABEL}</b>
+              </div>
+              <h1>{GAME_NAME}</h1>
+              <p>精灵收集、徽章挑战与跨体系修行，都从这支队伍开始。</p>
             </div>
-            <div className="pixel-home-lead-text">
-              <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '选择你的伙伴'}</strong>
-              <small>{leadPet ? `Lv.${leadPet.level} · ${leadTypeName}属性` : '开始冒险吧！'}</small>
+          </header>
+
+          <div className="home-gate-showcase">
+            <div className="home-gate-orbit" aria-hidden="true" />
+            <div className="home-gate-system-wheel" aria-hidden="true">
+              {fusionSystems.map((sys, idx) => (
+                <span className={`home-system-token is-${sys.tone}`} style={{'--token-index': idx}} key={sys.label}>{sys.icon}</span>
+              ))}
             </div>
+            <div className="home-gate-summon-pad" aria-hidden="true" />
+            <div className="home-gate-lead-card">
+              <div className="home-gate-lead-art">
+                {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
+                  <img src={leadPetDex.sprite} alt={leadPetDex?.name || ''} onError={() => setMenuLeadSpriteErr(true)} />
+                ) : (
+                  <span>{leadPetDex?.emoji || leadPet?.emoji || '🔴'}</span>
+                )}
+              </div>
+              <div className="home-gate-lead-info">
+                <span>当前领队</span>
+                <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待初始伙伴'}</strong>
+                <small>{leadPet ? `Lv.${leadPet.level || 1} · ${leadTypeName}属性` : '创建存档后展开冒险路线'}</small>
+              </div>
+            </div>
+            {starterGallery.length > 0 && (
+              <div className="home-gate-starter-fan" aria-hidden="true">
+                {starterGallery.map((src, idx) => (
+                  <span key={`${src}-${idx}`}><img src={src} alt="" /></span>
+                ))}
+              </div>
+            )}
           </div>
-          <button className="pixel-home-start-btn" onClick={handleStartGame}>
-            <span className="pixel-home-start-icon">▶</span>
+
+          <button className="home-gate-primary" type="button" onClick={handleStartGame}>
+            <span className="home-gate-primary-icon">▶</span>
             <span>
               <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-              <small>{hasSave ? nextObjective : '进入精灵世界'}</small>
+              <small>{hasSave ? nextObjective : '选择伙伴，开启第一段旅程'}</small>
             </span>
+            <b>›</b>
           </button>
-        </section>
 
-        {/* Team preview */}
-        {teamPreview.length > 0 && (
-          <section className="pixel-home-team">
-            {teamPreview.map((pet, idx) => {
-              const dex = POKEDEX.find(p => p.id === pet.id);
-              return (
-                <button type="button" className="pixel-home-team-slot" key={pet.uid || `${pet.id}-${idx}`} onClick={() => setViewStatPet(pet)} title={pet.nickname || dex?.name || pet.name}>
+          <div className="home-gate-team" aria-label="当前队伍">
+            {Array.from({ length: 6 }).map((_, idx) => {
+              const pet = teamPreview[idx];
+              const dex = pet ? POKEDEX.find(p => p.id === pet.id) : null;
+              return pet ? (
+                <button
+                  type="button"
+                  className="home-gate-team-slot is-filled"
+                  key={pet.uid || `${pet.id}-${idx}`}
+                  onClick={() => setViewStatPet(pet)}
+                  title={pet.nickname || dex?.name || pet.name}
+                >
                   {renderAvatar(pet)}
                   <span>Lv.{pet.level || 1}</span>
                 </button>
+              ) : (
+                <div className="home-gate-team-slot" key={`empty-${idx}`}>+</div>
               );
             })}
-          </section>
-        )}
+          </div>
 
-        {/* Stats row */}
-        <section className="pixel-home-stats">
-          {commandStats.map(stat => (
-            <div className={`pixel-home-stat is-${stat.tone}`} key={stat.label}>
-              <span>{stat.label}</span>
-              <strong>{stat.value}</strong>
-              <small>{stat.hint}</small>
+          <div className="home-gate-mini-grid">
+            {ranchStats.map(stat => (
+              <div className={`home-gate-mini is-${stat.tone}`} key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.meta}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="home-gate-command" aria-label="指挥台">
+          <div className="home-gate-command-top">
+            <div>
+              <span className="home-gate-eyebrow">Command Center</span>
+              <h2>今日指挥台</h2>
+              <p>{hasSave ? '先看队伍状态，再选择最值得推进的路线。' : '首页只保留最重要的第一步，剩下的入口会随冒险展开。'}</p>
             </div>
-          ))}
-        </section>
-
-        {/* Progress bar */}
-        <section className="pixel-home-progress-section">
-          <div className="pixel-home-progress-head">
-            <span>培养路线</span>
-            <b>{homeProgress}%</b>
+            <div className="home-gate-wallet">
+              <span>金币</span>
+              <strong>{gold.toLocaleString()}</strong>
+            </div>
           </div>
-          <div className="pixel-home-progress-bar">
-            <div style={{width: `${homeProgress}%`}} />
+
+          <div className="home-gate-stat-grid">
+            {commandStats.map(stat => (
+              <div className={`home-gate-stat is-${stat.tone}`} key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.hint}</small>
+              </div>
+            ))}
           </div>
-        </section>
 
-        {/* Fusion systems - compact */}
-        <section className="pixel-home-systems">
-          {fusionSystems.map(sys => (
-            <button type="button" className={`pixel-home-sys-btn is-${sys.tone}`} key={sys.label} onClick={sys.action}>
-              <span className="pixel-sys-icon">{sys.icon}</span>
-              <span className="pixel-sys-copy">
-                <strong>{sys.label}</strong>
-                <small>{sys.meta}</small>
-              </span>
-              <div className="pixel-sys-meter"><div style={{width: `${sys.progress}%`}} /></div>
-            </button>
-          ))}
-        </section>
+          <div className="home-gate-mission-row">
+            {missionCards.map(card => (
+              <div className="home-gate-mission" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+                <small>{card.meta}</small>
+              </div>
+            ))}
+          </div>
 
-        {/* Quick entries */}
-        <section className="pixel-home-entries">
-          {quickEntries.map(btn => (
-            <button className={`pixel-home-entry ${btn.danger ? 'is-danger' : ''}`} key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
-              <span>{btn.icon}</span>
-              <strong>{btn.label}</strong>
-              <small>{btn.sub}</small>
-            </button>
-          ))}
+          <section className="home-gate-route">
+            <div className="home-gate-route-head">
+              <div>
+                <span>培养路线</span>
+                <strong>{nextObjective}</strong>
+              </div>
+              <b>{homeProgress}%</b>
+            </div>
+            <div className="home-gate-progress"><span style={{width: `${homeProgress}%`}} /></div>
+            <div className="home-gate-steps">
+              {homeTrailSteps.map(step => (
+                <div className={`home-gate-step ${step.done ? 'is-done' : ''}`} key={step.label}>
+                  <i aria-hidden="true" />
+                  <span>{step.label}</span>
+                  <small>{step.meta}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="home-gate-fusion-board">
+            <div className="home-card-title">
+              <span>体系入口</span>
+              <small>保留多玩法，但降低视觉噪音</small>
+            </div>
+            <div className="home-fusion-grid">
+              {fusionSystems.map(sys => (
+                <button type="button" className={`home-fusion-card is-${sys.tone}`} key={sys.label} onClick={sys.action}>
+                  <span className="home-fusion-icon">{sys.icon}</span>
+                  <span className="home-fusion-copy">
+                    <strong>{sys.label}</strong>
+                    <small>{sys.meta}</small>
+                    <span className="home-fusion-meter"><em style={{width: `${sys.progress}%`}} /></span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="home-gate-war">
+            <div className="home-war-main">
+              <span className="home-war-icon">{playerFaction?.icon || gangIcon || '旗'}</span>
+              <div>
+                <span>势力状态</span>
+                <strong>{playerFaction ? `${playerFaction.name} · ${playerRank?.name || '新兵'}` : (gangName || '尚未加入势力')}</strong>
+                <small>{playerFaction ? `${myTerrCountMenu} 个领地，已招募 ${recruitedCount}/${MAX_RECRUITED_GENERALS} 名将` : '加入阵营或门派后，这里会显示战线进度'}</small>
+              </div>
+            </div>
+            {gangName && <div className="home-gate-gang">{gangIcon} {gangName}</div>}
+          </section>
+
+          <div className="home-gate-entry-board">
+            {entryGroups.map(group => (
+              <section className="home-gate-entry-group" key={group.title}>
+                <h3>{group.title}</h3>
+                <div className="home-gate-entry-grid">
+                  {group.items.map(btn => (
+                    <button className={`home-gate-entry ${btn.danger ? 'is-danger' : ''}`} type="button" key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
+                      <span className="home-gate-entry-icon">{btn.icon}</span>
+                      <span>
+                        <strong>{btn.label}</strong>
+                        <small>{btn.sub}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         </section>
       </div>
     </main>
@@ -30877,8 +30993,9 @@ const renderMenu = () => {
               <div className="bag-list-area">
                 {battleBagTab === 'balls' && (
                   <>
-                    {Object.keys(inventory.balls || {}).filter(k => (inventory.balls||{})[k] > 0).length === 0 && <div className="empty-hint">没有可用的精灵球</div>}
+                    {Object.keys(inventory.balls || {}).filter(k => (inventory.balls||{})[k] > 0).length === 0 && (kingdomWar?.warBalls || 0) <= 0 && <div className="empty-hint">没有可用的精灵球</div>}
                     {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; const catchTargetIdx = battle?.isDouble ? (battle?.targetIdx ?? battle?.enemyActiveIdxs?.find(idx => battle?.enemyParty?.[idx]?.currentHp > 0) ?? battle?.enemyActiveIdx) : battle?.enemyActiveIdx; const enemy = battle?.enemyParty?.[catchTargetIdx]; const catchPct = enemy ? Math.min(100, Math.round(calculateCatchRate(type, enemy) * 100)) : 0; const catchColor = catchPct >= 60 ? '#4CAF50' : catchPct >= 30 ? '#FF9800' : '#F44336'; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}{enemy && <span style={{fontSize:'10px',marginLeft:'6px',color:catchColor,fontWeight:700}}>{type==='master'?'必捕':catchPct+'%'}</span>}</div><div className="item-desc">{ball.desc}{battle?.isDouble && enemy ? ` · 目标：${enemy.name}` : ''}</div></div><div className="item-count">x{count}</div></div> ); })}
+                    {(kingdomWar?.warBalls || 0) > 0 && (() => { const catchTargetIdx = battle?.isDouble ? (battle?.targetIdx ?? battle?.enemyActiveIdxs?.find(idx => battle?.enemyParty?.[idx]?.currentHp > 0) ?? battle?.enemyActiveIdx) : battle?.enemyActiveIdx; const enemy = battle?.enemyParty?.[catchTargetIdx]; const catchPct = enemy ? Math.min(100, Math.round(calculateCatchRate('war', enemy) * 100)) : 0; const catchColor = catchPct >= 60 ? '#4CAF50' : catchPct >= 30 ? '#FF9800' : '#F44336'; return ( <div key="war" className="bag-list-item" onClick={() => handleCatch('war')}><div className="item-icon-box"><span style={{fontSize:28}}>⚔️</span></div><div className="item-info-box"><div className="item-name">国战精灵球{enemy && <span style={{fontSize:'10px',marginLeft:'6px',color:catchColor,fontWeight:700}}>{catchPct}%</span>}</div><div className="item-desc">捕获率3.0x，消耗国战商店购买的专用球{battle?.isDouble && enemy ? ` · 目标：${enemy.name}` : ''}</div></div><div className="item-count">x{kingdomWar.warBalls}</div></div> ); })()}
                   </>
                 )}
                 {battleBagTab === 'meds' && (

@@ -279,7 +279,7 @@ export const CURSED_ITEMS = {
   inverted_spear: { id: 'inverted_spear', name: '天逆鉾', price: 50000, icon: '🔱',
     desc: '特级咒具，否定一切术式 (破除对方领域)', type: 'ANTI_DOMAIN', val: 1 },
   prison_realm: { id: 'prison_realm', name: '獄門疆', price: 100000, icon: '📦',
-    desc: '特级咒具，一定概率封印对手 (Boss无效)', type: 'SEAL', val: 0.3 },
+    desc: '特级咒具，30%概率封印对手：造成最大HP35%伤害并大幅削弱攻势（Boss无效）', type: 'SEAL', val: 0.3 },
   sukuna_finger: { id: 'sukuna_finger', name: '宿傩之指', price: 0, shopHide: true, icon: '🫵',
     desc: '诅咒之王的手指，使用后永久提升咒力上限+10', type: 'CE_MAX_UP', val: 10 },
   cursed_energy_pill: { id: 'cursed_energy_pill', name: '咒力丹', price: 3000, icon: '💊',
