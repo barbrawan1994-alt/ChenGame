@@ -26,6 +26,7 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
+            compact: true,
             presets: ['@babel/preset-env', '@babel/preset-react'],
           },
         },
@@ -48,5 +49,9 @@ module.exports = {
       { directory: path.join(__dirname, 'public') },
     ],
     port: 3000,
+  },
+  performance: {
+    maxAssetSize: 4 * 1024 * 1024,
+    maxEntrypointSize: 4 * 1024 * 1024,
   },
 };
