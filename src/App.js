@@ -4455,6 +4455,57 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     });
   }, []);
 
+  const formatAchievementReward = (reward) => {
+    if (!reward) return [];
+    const parts = [];
+    if (reward.title) parts.push(`称号 ${reward.title}`);
+    if (reward.item) parts.push(`${reward.itemLabel || reward.item} x${reward.itemCount || 1}`);
+    (reward.items || []).forEach(item => parts.push(`${item.label || item.id} x${item.count || 1}`));
+    return parts;
+  };
+
+  const grantAchievementRewardItem = (item) => {
+    if (!item?.id || !item?.count) return;
+    const count = Math.max(1, item.count || 1);
+    if (item.type === 'ball') {
+      setInventory(prev => ({ ...prev, balls: { ...(prev.balls || {}), [item.id]: ((prev.balls || {})[item.id] || 0) + count } }));
+      return;
+    }
+    if (item.type === 'candy' && (item.id === 'exp_candy' || item.id === 'max_candy')) {
+      setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + count }));
+      return;
+    }
+    if (item.type === 'system' && item.id === 'factionTokens') {
+      setKingdomWar(prev => ({ ...prev, factionTokens: (prev.factionTokens || 0) + count }));
+      return;
+    }
+    if (item.type === 'system' && item.id === 'sectContribution') {
+      setSectPlayer(prev => ({ ...prev, sectResources: { ...(prev.sectResources || {}), contribution: (prev.sectResources?.contribution || 0) + count } }));
+      return;
+    }
+    if (item.type === 'system' && item.id === 'gangContribution') {
+      setGang(prev => ({ ...prev, contribution: (prev.contribution || 0) + count }));
+      return;
+    }
+    if (item.type === 'system' && item.id === 'sanctuaryEssence') {
+      setSanctuaryState(prev => ({ ...prev, ecoEssence: (prev.ecoEssence || 0) + count }));
+      return;
+    }
+    if (item.type === 'system' && item.id === 'chakraOre') {
+      setInventory(prev => ({ ...prev, misc: { ...(prev.misc || {}), chakra_ore: ((prev.misc || {}).chakra_ore || 0) + count } }));
+      return;
+    }
+    if (item.type === 'item') {
+      setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + count }));
+      return;
+    }
+    const cat = item.itemCat || item.cat || 'misc';
+    setInventory(prev => {
+      const sub = prev[cat] || {};
+      return { ...prev, [cat]: { ...sub, [item.id]: (sub[item.id] || 0) + count } };
+    });
+  };
+
   const checkAchievements = useCallback((statsOverride) => {
     const stats = statsOverride || achStats;
     const newUnlocks = [];
@@ -4469,21 +4520,21 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (newUnlocks.length > 0) {
       const newIds = newUnlocks.map(a => a.id);
       setUnlockedAchs(prev => [...prev, ...newIds]);
-      let totalGoldReward = 0;
       newUnlocks.forEach(ach => {
         if (ach.reward) {
-          if (ach.reward.gold) totalGoldReward += ach.reward.gold;
           if (ach.reward.title) unlockTitle(ach.reward.title);
           if (ach.reward.item) {
-            setInventory(prev => {
-              const cat = ach.reward.itemCat || 'misc';
-              const sub = prev[cat] || {};
-              return { ...prev, [cat]: { ...sub, [ach.reward.item]: (sub[ach.reward.item] || 0) + (ach.reward.itemCount || 1) } };
+            grantAchievementRewardItem({
+              type: ach.reward.itemCat === 'balls' ? 'ball' : 'item',
+              id: ach.reward.item,
+              count: ach.reward.itemCount || 1,
+              cat: ach.reward.itemCat,
+              label: ach.reward.itemLabel,
             });
           }
+          (ach.reward.items || []).forEach(grantAchievementRewardItem);
         }
       });
-      if (totalGoldReward > 0) { setGold(g => g + totalGoldReward); updateAchStat({ totalGoldEarned: totalGoldReward }); }
       achTimersRef.current.forEach(t => clearTimeout(t));
       achTimersRef.current = [];
       setAchNotification(newUnlocks[0]);
@@ -10077,7 +10128,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const filtered = catFiltered.filter(rarityMatch);
     const rareUnlocked = ACHIEVEMENTS.filter(a => unlockedSet.has(a.id) && ['EPIC', 'LEGENDARY'].includes(a.rarity)).length;
     const hiddenUnlocked = ACHIEVEMENTS.filter(a => unlockedSet.has(a.id) && a.hidden).length;
-    const rewardGold = ACHIEVEMENTS.reduce((sum, ach) => unlockedSet.has(ach.id) ? sum + (ach.reward?.gold || 0) : sum, 0);
+    const rewardUnlocked = ACHIEVEMENTS.reduce((sum, ach) => unlockedSet.has(ach.id) ? sum + formatAchievementReward(ach.reward).length : sum, 0);
     const nextTarget = ACHIEVEMENTS.find(ach => !unlockedSet.has(ach.id) && !ach.hidden) || ACHIEVEMENTS.find(ach => !unlockedSet.has(ach.id));
     const rarityFilters = [
       { key: '全部', label: '全部', count: catFiltered.length },
@@ -10130,8 +10181,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <strong>{hiddenUnlocked}</strong>
                 </div>
                 <div>
-                  <span>奖励金币</span>
-                  <strong>{rewardGold.toLocaleString()}</strong>
+                  <span>奖励领取</span>
+                  <strong>{rewardUnlocked}</strong>
                 </div>
               </div>
             </div>
@@ -10207,8 +10258,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         {'★'.repeat(rar.stars || 1)}{'☆'.repeat(5 - (rar.stars || 1))}
                       </span>
                       <div className="achievement-reward-row">
-                        {ach.reward?.gold && <span>+{ach.reward.gold.toLocaleString()} 金币</span>}
-                        {ach.reward?.title && <span>称号 {ach.reward.title}</span>}
+                        {formatAchievementReward(ach.reward).slice(0, 3).map(part => <span key={part}>{part}</span>)}
                       </div>
                       <strong>{done ? '已完成' : '未解锁'}</strong>
                     </div>
@@ -33823,6 +33873,7 @@ const renderMenu = () => {
         const ach = achNotification;
         const rar = ACH_RARITY[ach.rarity] || { color: '#888', name: '未知' };
         const cat = ACH_CATEGORY[ach.cat] || { icon: '🏆', name: '成就' };
+        const rewardParts = formatAchievementReward(ach.reward);
         return (
           <div onClick={() => setAchNotification(null)} style={{
             position:'fixed', inset:0, zIndex:10000, cursor:'pointer',
@@ -33842,8 +33893,10 @@ const renderMenu = () => {
               <div style={{fontSize:'11px', color:rar.color, fontWeight:'800', letterSpacing:'4px', marginBottom:'8px'}}>成就解锁 {'★'.repeat(rar.stars)}</div>
               <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', marginBottom:'10px', textShadow:'0 2px 12px rgba(0,0,0,0.5)'}}>{ach.name}</div>
               <div style={{fontSize:'13px', color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:'12px'}}>{ach.desc}</div>
-              {ach.reward?.gold && (
-                <div style={{fontSize:'14px', color:'#FFD700', fontWeight:'800', marginBottom:'16px'}}>+{ach.reward.gold.toLocaleString()} 金币</div>
+              {rewardParts.length > 0 && (
+                <div style={{fontSize:'13px', color:'#FFD700', fontWeight:'800', marginBottom:'16px', lineHeight:1.6}}>
+                  {rewardParts.slice(0, 4).join(' · ')}
+                </div>
               )}
               <button type="button" onClick={() => { setAchNotification(null); setView('achievements'); }} style={{padding:'12px 28px', borderRadius:'14px', border:'none', background:`linear-gradient(135deg, ${rar.color}, ${rar.color}99)`, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer', boxShadow:`0 4px 20px ${rar.color}55`}}>查看成就</button>
               <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'12px'}}>点击背景关闭</div>
