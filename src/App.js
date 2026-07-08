@@ -1342,6 +1342,7 @@ const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [ecoBranchModal, setEcoBranchModal] = useState(null);
   const [ecoRouteModal, setEcoRouteModal] = useState(null);
   const [nonCombatModal, setNonCombatModal] = useState(null);
+  const [ecoPanelOpen, setEcoPanelOpen] = useState(false);
   const [statTooltip, setStatTooltip] = React.useState(null); 
   // 筛选和详情
   const [dexFilter, setDexFilter] = useState('all'); 
@@ -7780,8 +7781,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const completeObservation = (obs) => {
     if (!obs || observationLog.includes(obs.id)) return;
+    const ecoDelta = obs.ecology || { diversity: 3, stability: 2 };
     setObservationLog(prev => [...prev, obs.id]);
-    showMapToast(obs.icon || '👁️', '观察记录', `${obs.name}：${obs.behavior}`, 3000);
+    applyMapEcologyDelta(obs.mapId || currentMapId, ecoDelta);
+    addGuardianScore(1);
+    showMapToast(obs.icon || '👁️', '观察记录', `${obs.name}：${obs.behavior} · 生态+`, 3000);
   };
 
   const startEcoCrisis = (crisisId) => {
@@ -25749,6 +25753,16 @@ const renderMenu = () => {
     const progressPercent = totalCount > 0 ? (caughtCount / totalCount) * 100 : 0;
     const mapOwner = kingdomWar?.territories?.[currentMapId]?.owner;
     const ownerFaction = mapOwner && mapOwner !== 'neutral' ? FACTIONS[mapOwner] : null;
+    const ecoPatrolItems = [
+      ...getObservationsForMap(currentMapId),
+      ...getRescueEventsForMap(currentMapId),
+      ...getPuzzlesForMap(currentMapId),
+    ];
+    const ecoPatrolDone = ecoPatrolItems.filter(item => observationLog.includes(item.id)).length;
+    const currentEcoCrisis = getEcoCrisisByMapId(currentMapId, ecoCrisisState.cleared || [], badges.length);
+    const currentEcoRestored = isMapEcoRestored(currentMapId, ecoCrisisState.cleared || []);
+    const ecoPatrolTotal = ecoPatrolItems.length + (currentEcoCrisis || currentEcoRestored ? 1 : 0);
+    const ecoPatrolFinished = ecoPatrolDone + (currentEcoRestored ? 1 : 0);
 
     return (
       <div className="side-panel right-panel" style={{display:'flex', flexDirection:'column', gap:'10px', overflowY:'auto', maxHeight:'100%'}}>
@@ -25775,6 +25789,10 @@ const renderMenu = () => {
           <div style={{height:'4px', background:'rgba(143,216,255,0.08)', borderRadius:'2px', marginBottom:'10px', overflow:'hidden'}}>
             <div style={{width:progressPercent+'%', background:`linear-gradient(90deg, ${currentMap.color || '#4CAF50'}, ${currentMap.color || '#4CAF50'}80)`, height:'100%', transition:'width 0.5s', borderRadius:'2px'}} />
           </div>
+          <button type="button" onClick={() => setEcoPanelOpen(true)} style={{width:'100%', marginBottom:'10px', padding:'8px 10px', borderRadius:'10px', border:'1px solid rgba(134,239,172,0.25)', background:'linear-gradient(135deg, rgba(34,197,94,0.16), rgba(14,165,233,0.10))', color:'#dffbea', fontSize:'11px', fontWeight:'900', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
+            <span>🌿 生态巡护</span>
+            <span style={{color:'#86efac'}}>{ecoPatrolFinished}/{ecoPatrolTotal}</span>
+          </button>
           {encounters.length === 0 ? (
             <div style={{textAlign:'center', padding:'8px', color:'#6898b8', fontSize:'11px'}}>这里似乎很安静...</div>
           ) : (
@@ -27899,6 +27917,7 @@ const renderMenu = () => {
             {[
               { id: 'worldmap', icon: '🗺️', label: '地图', action: () => { handleExitAndSave(); setMapTab('maps'); } },
               { id: 'dungeons', icon: '⚔️', label: '副本', action: () => { handleExitAndSave(); setMapTab('dungeons'); } },
+              { id: 'ecology', icon: '🌿', label: '生态', action: () => setEcoPanelOpen(true) },
               { id: 'team', icon: '🛡️', label: '伙伴', action: () => setTeamMode(true) },
               { id: 'shop', icon: '🛍️', label: '商店', action: () => setShopMode(true) },
               { id: 'fusion', icon: '🧬', label: '融合', action: () => setFusionMode(true) },
@@ -27952,6 +27971,205 @@ const renderMenu = () => {
         {renderPC()}
         {renderTeamModal()}
         {renderFusion()}
+      </div>
+    );
+  };
+
+
+  const renderEcoPanel = () => {
+    if (!ecoPanelOpen) return null;
+    const currentMap = MAPS.find(m => m.id === currentMapId) || MAPS[0];
+    const ecology = getMapEcology(currentMapId);
+    const tier = getEcologyTier(ecology);
+    const regionStage = getRegionStage(currentMapId, ecology, ecoCrisisState.cleared || [], badges.length);
+    const activeEcoEvent = getTodayEcoEvent(currentMapId);
+    const crisis = getEcoCrisisByMapId(currentMapId, ecoCrisisState.cleared || [], badges.length);
+    const mapEcoRestored = isMapEcoRestored(currentMapId, ecoCrisisState.cleared || []);
+    const observations = getObservationsForMap(currentMapId);
+    const rescues = getRescueEventsForMap(currentMapId);
+    const puzzles = getPuzzlesForMap(currentMapId);
+    const totalTasks = observations.length + rescues.length + puzzles.length + (crisis || mapEcoRestored ? 1 : 0);
+    const finishedTasks = [
+      ...observations,
+      ...rescues,
+      ...puzzles,
+    ].filter(item => observationLog.includes(item.id)).length + (mapEcoRestored ? 1 : 0);
+    const chainAlerts = REGION_CHAINS.filter(chain => {
+      if (chain.toMap !== currentMapId && !chain.global) return false;
+      const fromEco = getMapEcology(chain.fromMap);
+      return Object.entries(chain.condition || {}).every(([k, cond]) => {
+        const val = fromEco[k] ?? 50;
+        if (cond.min != null) return val >= cond.min;
+        if (cond.max != null) return val <= cond.max;
+        return true;
+      });
+    });
+    const rewardLabel = (reward = {}) => {
+      const parts = [];
+      if (reward.gold) parts.push(`${reward.gold.toLocaleString()}金`);
+      if (reward.item) parts.push(`${reward.item} x${reward.itemCount || 1}`);
+      if (reward.intimacy) parts.push(`亲密+${reward.intimacy}`);
+      if (reward.title) parts.push(`称号`);
+      if (reward.ecology) parts.push('生态修复');
+      return parts.length ? parts.join(' · ') : '生态记录';
+    };
+    const reqLabel = (item = {}) => {
+      const reqs = [];
+      if (item.reqBadges) reqs.push(`${item.reqBadges}徽章`);
+      if (item.reqTypes) {
+        const flat = (Array.isArray(item.reqTypes[0]) ? item.reqTypes.flat() : item.reqTypes).slice(0, 4);
+        reqs.push(flat.join('/'));
+      }
+      if (item.reqTags) reqs.push(item.reqTags.join('/'));
+      return reqs.length ? reqs.join(' · ') : '无特殊条件';
+    };
+    const cardBase = {
+      textAlign:'left',
+      borderRadius:'14px',
+      padding:'12px',
+      border:'1px solid rgba(255,255,255,0.08)',
+      background:'rgba(255,255,255,0.045)',
+      color:'#fff',
+      display:'flex',
+      flexDirection:'column',
+      gap:'7px',
+      minHeight:'128px',
+    };
+    const renderTaskCard = (item, type) => {
+      const done = observationLog.includes(item.id);
+      const locked = badges.length < (item.reqBadges || 0);
+      const accent = type === 'observation' ? '#7dd3fc' : type === 'rescue' ? '#86efac' : '#c4b5fd';
+      const title = type === 'observation' ? '观察' : type === 'rescue' ? '救助' : '谜题';
+      const desc = item.behavior || item.desc || '记录区域生态变化。';
+      const action = () => {
+        if (done) {
+          showMapToast('✅', '已完成', item.name, 1400);
+          return;
+        }
+        if (locked) {
+          showMapToast('🔒', '未解锁', `需要 ${item.reqBadges} 枚徽章`, 1500);
+          return;
+        }
+        if (type === 'observation') completeObservation(item);
+        if (type === 'rescue') setNonCombatModal({ type: 'rescue', event: item });
+        if (type === 'puzzle') setNonCombatModal({ type: 'puzzle', event: item });
+      };
+      return (
+        <button key={item.id} type="button" onClick={action} style={{
+          ...cardBase,
+          cursor: done ? 'default' : 'pointer',
+          opacity: locked ? 0.56 : 1,
+          border: done ? '1px solid rgba(134,239,172,0.35)' : `1px solid ${accent}33`,
+          background: done ? 'rgba(34,197,94,0.09)' : `linear-gradient(150deg, ${accent}14, rgba(255,255,255,0.035))`,
+        }}>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'8px', alignItems:'flex-start'}}>
+            <div style={{fontSize:'13px', fontWeight:'900', color:'#fff'}}>{item.icon || '🌿'} {item.name}</div>
+            <span style={{fontSize:'9px', flexShrink:0, padding:'3px 7px', borderRadius:'999px', background: done ? 'rgba(34,197,94,0.18)' : `${accent}20`, color: done ? '#86efac' : accent, fontWeight:'900'}}>{done ? '已完成' : locked ? '锁定' : title}</span>
+          </div>
+          <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.45}}>{desc}</div>
+          <div style={{marginTop:'auto', display:'flex', justifyContent:'space-between', gap:'8px', alignItems:'center'}}>
+            <span style={{fontSize:'10px', color:'rgba(255,255,255,0.42)'}}>{reqLabel(item)}</span>
+            <span style={{fontSize:'10px', color:accent, fontWeight:'800'}}>{type === 'observation' ? (item.reward || '生态+守护') : rewardLabel(item.reward)}</span>
+          </div>
+        </button>
+      );
+    };
+
+    return (
+      <div className="modal-overlay" onClick={() => setEcoPanelOpen(false)} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.76)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100002}}>
+        <div onClick={e => e.stopPropagation()} style={{width:'min(900px, 96vw)', maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', borderRadius:'20px', background:'linear-gradient(180deg,#10241d,#0a141f 68%,#071018)', border:'1px solid rgba(134,239,172,0.28)', boxShadow:'0 24px 80px rgba(0,0,0,0.55)', color:'#fff'}}>
+          <div style={{padding:'18px 20px', borderBottom:'1px solid rgba(255,255,255,0.08)', background:'linear-gradient(135deg, rgba(34,197,94,0.18), rgba(14,165,233,0.10))'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:'11px', color:'#86efac', fontWeight:'900', letterSpacing:'1px'}}>生态巡护</div>
+                <div style={{fontSize:'20px', fontWeight:'900', marginTop:'4px'}}>{currentMap.icon} {currentMap.name}</div>
+                <div style={{fontSize:'12px', color:'rgba(255,255,255,0.62)', marginTop:'5px'}}>观察、救助和环境谜题会提升区域生态，并影响后续危机、守护者与隐藏结契。</div>
+              </div>
+              <button type="button" onClick={() => setEcoPanelOpen(false)} style={{width:'34px', height:'34px', borderRadius:'50%', border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.08)', color:'#fff', cursor:'pointer', fontSize:'18px', flexShrink:0}}>×</button>
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(145px, 1fr))', gap:'8px', marginTop:'14px'}}>
+              <div style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', fontWeight:'800'}}>生态状态</div>
+                <div style={{fontSize:'14px', color:tier.color, fontWeight:'900', marginTop:'3px'}}>{tier.label}</div>
+              </div>
+              <div style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', fontWeight:'800'}}>区域阶段</div>
+                <div style={{fontSize:'14px', color:'#c4b5fd', fontWeight:'900', marginTop:'3px'}}>{regionStage.icon} {regionStage.name}</div>
+              </div>
+              <div style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', fontWeight:'800'}}>巡护进度</div>
+                <div style={{fontSize:'14px', color:'#fff', fontWeight:'900', marginTop:'3px'}}>{finishedTasks}/{Math.max(1, totalTasks)}</div>
+              </div>
+              <div style={{background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px'}}>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)', fontWeight:'800'}}>守护分</div>
+                <div style={{fontSize:'14px', color:'#fbbf24', fontWeight:'900', marginTop:'3px'}}>{guardianScore}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{padding:'16px 18px', overflowY:'auto', flex:1}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(100px, 1fr))', gap:'8px', marginBottom:'14px'}}>
+              {Object.entries(ECO_METRIC_LABELS).map(([key, label]) => {
+                const val = ecology[key] ?? 50;
+                const isPollution = key === 'pollution';
+                const color = isPollution ? (val > 60 ? '#f87171' : '#86efac') : (val >= 70 ? '#86efac' : val >= 45 ? '#7dd3fc' : '#fbbf24');
+                return (
+                  <div key={key} style={{background:'rgba(255,255,255,0.045)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', padding:'9px'}}>
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'10px', color:'rgba(255,255,255,0.55)', fontWeight:'800'}}><span>{label}</span><b style={{color}}>{val}</b></div>
+                    <div style={{height:'5px', borderRadius:'6px', background:'rgba(255,255,255,0.08)', overflow:'hidden', marginTop:'7px'}}>
+                      <span style={{display:'block', width:`${Math.max(0, Math.min(100, val))}%`, height:'100%', borderRadius:'6px', background:color}} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {(activeEcoEvent || chainAlerts.length > 0 || crisis || mapEcoRestored) && (
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'10px', marginBottom:'14px'}}>
+                {activeEcoEvent && (
+                  <div style={{...cardBase, border:`1px solid ${(activeEcoEvent.color || '#86efac')}44`, background:`linear-gradient(150deg, ${(activeEcoEvent.color || '#86efac')}18, rgba(255,255,255,0.035))`}}>
+                    <div style={{fontSize:'13px', fontWeight:'900'}}>{activeEcoEvent.icon} 今日异常：{activeEcoEvent.name}</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.5}}>{activeEcoEvent.summary}</div>
+                    <div style={{fontSize:'10px', color:activeEcoEvent.color || '#86efac', fontWeight:'800'}}>建议：{activeEcoEvent.counterHint || '带克制属性处理'}</div>
+                  </div>
+                )}
+                {crisis && (
+                  <button type="button" onClick={() => { setEcoPanelOpen(false); startEcoCrisis(crisis.id); }} style={{...cardBase, cursor:'pointer', border:`1px solid ${(crisis.color || '#86efac')}55`, background:`linear-gradient(150deg, ${(crisis.color || '#86efac')}1f, rgba(255,255,255,0.04))`}}>
+                    <div style={{fontSize:'13px', fontWeight:'900'}}>{crisis.icon} 生态危机：{crisis.name}</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.5}}>{crisis.summary}</div>
+                    <div style={{fontSize:'10px', color:crisis.color || '#86efac', fontWeight:'900'}}>开始调查</div>
+                  </button>
+                )}
+                {mapEcoRestored && (
+                  <div style={{...cardBase, border:'1px solid rgba(134,239,172,0.38)', background:'rgba(34,197,94,0.10)'}}>
+                    <div style={{fontSize:'13px', fontWeight:'900', color:'#86efac'}}>✅ 生态已恢复</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.5}}>该区域危机已解决，后续巡护仍可继续补生态值和守护分。</div>
+                  </div>
+                )}
+                {chainAlerts.slice(0, 2).map(chain => (
+                  <div key={chain.id || chain.label} style={{...cardBase, border:'1px solid rgba(251,191,36,0.32)', background:'rgba(251,191,36,0.08)'}}>
+                    <div style={{fontSize:'13px', fontWeight:'900', color:'#fbbf24'}}>🔗 生态连锁</div>
+                    <div style={{fontSize:'11px', color:'rgba(255,255,255,0.62)', lineHeight:1.5}}>{chain.label || chain.desc || '其他区域的生态正在影响这里。'}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px', margin:'2px 0 10px'}}>
+              <div style={{fontSize:'13px', fontWeight:'900', color:'#fff'}}>当前地图可执行事项</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.42)'}}>一次性完成，避免重复刷奖励</div>
+            </div>
+            {totalTasks === 0 ? (
+              <div style={{textAlign:'center', padding:'22px', borderRadius:'14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.55)', fontSize:'12px'}}>这个区域暂时没有可巡护事件。</div>
+            ) : (
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'10px'}}>
+                {observations.map(item => renderTaskCard(item, 'observation'))}
+                {rescues.map(item => renderTaskCard(item, 'rescue'))}
+                {puzzles.map(item => renderTaskCard(item, 'puzzle'))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -32940,6 +33158,7 @@ const renderMenu = () => {
       )}
       {renderActivityModal()} 
       {renderFusionHub()}
+      {renderEcoPanel()}
       {renderEquipModal()} 
       {renderDialogOverlay()} 
       {renderPvPModal()} 
