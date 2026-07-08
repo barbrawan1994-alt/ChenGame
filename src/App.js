@@ -14891,47 +14891,53 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const chargeAction = { moveIdx: -2, activeIdx: currentIdx, isChargeCE: true };
       const newActions = [...(battle.doubleActions || [])];
       newActions[currentSlot] = chargeAction;
-      setBattle(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
-        const ps = next.playerCombatStates[currentIdx];
-        if (ps) {
-          const parts = [];
-          const useSharedCE = (next.sharedPlayerMaxCE || 0) > 0;
-          const useSharedChk = (next.sharedPlayerMaxChakra || 0) > 0;
-          if (useSharedCE) {
-            next.sharedPlayerCE = Math.min(next.sharedPlayerMaxCE, (next.sharedPlayerCE || 0) + ceAmt);
-            for (const i of (next.activeIdxs || [])) {
-              const p = next.playerCombatStates[i];
-              if (p) p.cursedEnergy = Math.min(p.maxCE || 0, next.sharedPlayerCE);
-            }
-            parts.push(`+${ceAmt}咒力`);
-          } else if (ps.maxCE > 0) { ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + ceAmt); parts.push(`+${ceAmt}咒力`); }
-          if (useSharedChk) {
-            next.sharedPlayerChakra = Math.min(next.sharedPlayerMaxChakra, (next.sharedPlayerChakra || 0) + ckAmt);
-            for (const i of (next.activeIdxs || [])) {
-              const p = next.playerCombatStates[i];
-              if (p) p.chakra = Math.min(p.maxChakra || 0, next.sharedPlayerChakra);
-            }
-            parts.push(`+${ckAmt}查克拉`);
-          } else if ((ps.maxChakra || 0) > 0) { ps.chakra = Math.min(ps.maxChakra, (ps.chakra || 0) + ckAmt); parts.push(`+${ckAmt}查克拉`); }
-          addLog(`⚡ ${ps.name} 集中精神蓄力! (${parts.join(', ')})`);
-        }
-        if (currentSlot === 0 && next.activeIdxs?.length > 1) {
-          const secondIdx = next.activeIdxs[1];
-          const secondPet = secondIdx >= 0 ? next.playerCombatStates[secondIdx] : null;
-          if (secondPet && secondPet.currentHp > 0) {
-            return { ...next, phase: 'double_input_2', doubleSlot: 1, doubleActions: newActions };
+      const nextBattle = _.cloneDeep(battle);
+      const ps = nextBattle.playerCombatStates?.[currentIdx];
+      if (ps) {
+        const parts = [];
+        const useSharedCE = (nextBattle.sharedPlayerMaxCE || 0) > 0;
+        const useSharedChk = (nextBattle.sharedPlayerMaxChakra || 0) > 0;
+        if (useSharedCE) {
+          nextBattle.sharedPlayerCE = Math.min(nextBattle.sharedPlayerMaxCE, (nextBattle.sharedPlayerCE || 0) + ceAmt);
+          for (const i of (nextBattle.activeIdxs || [])) {
+            const p = nextBattle.playerCombatStates?.[i];
+            if (p) p.cursedEnergy = Math.min(p.maxCE || 0, nextBattle.sharedPlayerCE);
           }
+          parts.push(`+${ceAmt}咒力`);
+        } else if (ps.maxCE > 0) {
+          ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + ceAmt);
+          parts.push(`+${ceAmt}咒力`);
         }
-        return { ...next, phase: 'busy', doubleActions: newActions };
-      });
+        if (useSharedChk) {
+          nextBattle.sharedPlayerChakra = Math.min(nextBattle.sharedPlayerMaxChakra, (nextBattle.sharedPlayerChakra || 0) + ckAmt);
+          for (const i of (nextBattle.activeIdxs || [])) {
+            const p = nextBattle.playerCombatStates?.[i];
+            if (p) p.chakra = Math.min(p.maxChakra || 0, nextBattle.sharedPlayerChakra);
+          }
+          parts.push(`+${ckAmt}查克拉`);
+        } else if ((ps.maxChakra || 0) > 0) {
+          ps.chakra = Math.min(ps.maxChakra, (ps.chakra || 0) + ckAmt);
+          parts.push(`+${ckAmt}查克拉`);
+        }
+        addLog(`⚡ ${ps.name} 集中精神蓄力! (${parts.join(', ')})`);
+      }
+      const secondIdx = nextBattle.activeIdxs?.[1];
+      const secondPet = secondIdx >= 0 ? nextBattle.playerCombatStates?.[secondIdx] : null;
+      const waitForSecondSlot = currentSlot === 0 && nextBattle.activeIdxs?.length > 1 && secondPet && secondPet.currentHp > 0;
+      const battleAfterCharge = {
+        ...nextBattle,
+        phase: waitForSecondSlot ? 'double_input_2' : 'busy',
+        doubleSlot: waitForSecondSlot ? 1 : nextBattle.doubleSlot,
+        doubleActions: newActions,
+      };
+      setBattle(battleAfterCharge);
       const _slotAnim = (battle.activeIdxs || []).indexOf(currentIdx);
       setTimeout(() => {
         setAnimEffect({ type: 'CHARGE_CE', target: 'player', slot: _slotAnim >= 0 ? _slotAnim : 0 });
         setTimeout(() => setAnimEffect(null), 450);
       }, 0);
-      if (currentSlot === 0 && battle.activeIdxs?.length > 1) return;
-      await executeDoubleRound(newActions);
+      if (waitForSecondSlot) return;
+      await executeDoubleRound(newActions, battleAfterCharge);
       return;
     }
     setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
@@ -18332,6 +18338,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const cs = bState?.playerCombatStates?.[i];
       return (cs?.currentHp ?? p.currentHp) > 0;
     }).length);
+    const activeAliveIdxs = new Set(
+      (bState.isDouble ? (bState.activeIdxs || []) : [bState.activeIdx])
+        .filter(i => {
+          const cs = bState?.playerCombatStates?.[i];
+          const partyPet = currentParty?.[i];
+          return (cs?.currentHp ?? partyPet?.currentHp ?? 0) > 0;
+        })
+    );
+    const benchAliveCount = Math.max(1, syncedAliveCount - activeAliveIdxs.size);
 
     const newParty = currentParty.map((p, index) => {
       let pet = { ...p };
@@ -18349,16 +18364,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         });
     }
 
-      const isActive = bState.isDouble ? (bState.activeIdxs?.includes(index)) : (index === bState.activeIdx);
+      const isActive = bState.isDouble ? activeAliveIdxs.has(index) : (index === bState.activeIdx);
       const isFainted = pet.currentHp <= 0;
       if (isFainted && !isActive) return pet;
-      const activeCount = Math.max(1, bState.isDouble ? (bState.activeIdxs?.length || 2) : 1);
-      const aliveCount = syncedAliveCount;
-      const benchCount = Math.max(1, aliveCount - activeCount);
       const benchSharePool = bState.isDouble ? 0.55 : 0.6;
       const shareRatio = isActive
         ? (bState.isDouble ? 0.65 : 1.0)
-        : (benchSharePool / benchCount);
+        : (benchSharePool / benchAliveCount);
       const spExpBoost = marriage.spouse ? (getSpouseBonus(MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse), (getMarriageLevel(marriage.affections[marriage.spouse] || 0)).level).expBoost || 0) : 0;
       const gangExpBonus = getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), getEquippedRelicEffects(relics).gangSkillMult || 1).exp;
       const genExpBonus = (kingdomWar?.recruitedGenerals || []).reduce((s,g) => s + (g.bonus?.exp||0), 0);
@@ -20397,13 +20409,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const isWorldBoss = battleType === 'world_boss';
     const isStoryFight = battleType === 'naruto_story';
     const isTowerOrTrial = battleType === 'tower' || battleType === 'elemental_trial';
-    let penaltyAmount = 0;
-    if (!isArenaFight && !isWorldBoss && !isStoryFight && !isTowerOrTrial) {
-      setGold(g => {
-        const penalty = Math.min(Math.floor(g * 0.05), 2000);
-        penaltyAmount = penalty;
-        return Math.max(0, g - penalty);
-      });
+    const shouldApplyGoldPenalty = !isArenaFight && !isWorldBoss && !isStoryFight && !isTowerOrTrial;
+    const penaltyAmount = shouldApplyGoldPenalty ? Math.min(Math.floor((gold || 0) * 0.05), 2000) : 0;
+    if (shouldApplyGoldPenalty && penaltyAmount > 0) {
+      setGold(g => Math.max(0, g - penaltyAmount));
     }
     if (isWorldBoss) {
       const totalDmgDealt = battleSnap?._worldBossDmgDealt || 0;
