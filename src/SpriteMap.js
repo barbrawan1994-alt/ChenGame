@@ -5,18 +5,8 @@ const SPRITE_CDNS = [
 const SPRITE_BASE = SPRITE_CDNS[0];
 const SPRITE_EXT = '.png';
 const DIGIMON_BASE = 'https://digi-api.com/images/digimon/w/';
-const LOCAL_PORTRAIT_BASE = '/assets/pets/portrait/';
-const LOCAL_PORTRAIT_EXT = '.svg';
-const LOCAL_PORTRAIT_MAX_ID = 904;
-const LOCAL_PORTRAIT_MISSING_IDS = new Set([]);
-
-function getLocalPortraitUrl(pet) {
-  if (!pet || !Number.isFinite(Number(pet.id))) return null;
-  const id = Number(pet.id);
-  if (id < 1 || id > LOCAL_PORTRAIT_MAX_ID) return null;
-  if (LOCAL_PORTRAIT_MISSING_IDS.has(id)) return null;
-  return `${LOCAL_PORTRAIT_BASE}${id}${LOCAL_PORTRAIT_EXT}`;
-}
+const MAX_GAME_PET_ID = 904;
+const MAX_POKEMON_ARTWORK_ID = 1025;
 
 const ID_TO_DIGIMON = {
   168: 'Elecmon',             // 伦琴猫(ELECTRIC) → 电气兽
@@ -380,6 +370,58 @@ const ID_TO_NATDEX = {
   896:1023, 897:1016, 898:993, 899:1018, 900:1025,
 };
 
+const pokemonSpriteUrl = (natdex, cdn = SPRITE_BASE) => `${cdn}${natdex}${SPRITE_EXT}`;
+const digimonSpriteUrl = (name) => `${DIGIMON_BASE}${name}.png`;
+
+function createPokemonPool(usedNatdex) {
+  const pool = [];
+  for (let id = 1; id <= MAX_POKEMON_ARTWORK_ID; id++) {
+    if (!usedNatdex.has(id)) pool.push(id);
+  }
+  return pool;
+}
+
+function buildUniqueSpriteSources() {
+  const sources = {};
+  const usedUrls = new Set();
+  const usedNatdex = new Set();
+  const ids = Array.from({ length: MAX_GAME_PET_ID }, (_, idx) => idx + 1);
+
+  ids.forEach(id => {
+    const natdex = ID_TO_NATDEX[id];
+    if (!natdex || usedNatdex.has(natdex)) return;
+    const url = pokemonSpriteUrl(natdex);
+    sources[id] = { kind: 'pokemon', natdex, url };
+    usedNatdex.add(natdex);
+    usedUrls.add(url);
+  });
+
+  ids.forEach(id => {
+    if (sources[id]) return;
+    const digiName = ID_TO_DIGIMON[id];
+    if (!digiName) return;
+    const url = digimonSpriteUrl(digiName);
+    if (usedUrls.has(url)) return;
+    sources[id] = { kind: 'digimon', digiName, url };
+    usedUrls.add(url);
+  });
+
+  const pokemonPool = createPokemonPool(usedNatdex);
+  ids.forEach(id => {
+    if (sources[id]) return;
+    const natdex = pokemonPool.shift();
+    if (!natdex) return;
+    const url = pokemonSpriteUrl(natdex);
+    sources[id] = { kind: 'pokemon', natdex, url };
+    usedNatdex.add(natdex);
+    usedUrls.add(url);
+  });
+
+  return sources;
+}
+
+const UNIQUE_SPRITE_SOURCES = buildUniqueSpriteSources();
+
 const TYPE_FALLBACK = {
   NORMAL: [133, 143, 242, 289, 474],
   FIRE: [4, 37, 77, 255, 257],
@@ -411,26 +453,34 @@ const TYPE_FALLBACK = {
 
 export function getSpriteUrl(pet) {
   if (!pet) return null;
-  const localPortrait = getLocalPortraitUrl(pet);
-  if (localPortrait) return localPortrait;
-  const digiName = ID_TO_DIGIMON[pet.id];
-  if (digiName) return `${DIGIMON_BASE}${digiName}.png`;
-  const natdex = ID_TO_NATDEX[pet.id];
-  if (natdex) return `${SPRITE_BASE}${natdex}${SPRITE_EXT}`;
+  const uniqueSource = UNIQUE_SPRITE_SOURCES[pet.id];
+  if (uniqueSource) return uniqueSource.url;
 
   const fallbacks = TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL;
   const idx = pet.id % fallbacks.length;
-  return `${SPRITE_BASE}${fallbacks[idx]}${SPRITE_EXT}`;
+  return pokemonSpriteUrl(fallbacks[idx]);
 }
 
 export function getSpriteFallbackUrls(pet) {
   if (!pet) return [];
+  const uniqueSource = UNIQUE_SPRITE_SOURCES[pet.id];
+  if (uniqueSource?.kind === 'pokemon') {
+    const urls = SPRITE_CDNS.map(cdn => pokemonSpriteUrl(uniqueSource.natdex, cdn));
+    const digiName = ID_TO_DIGIMON[pet.id];
+    if (digiName) urls.push(digimonSpriteUrl(digiName));
+    return urls;
+  }
+  if (uniqueSource?.kind === 'digimon') {
+    const urls = [uniqueSource.url];
+    const natdex = ID_TO_NATDEX[pet.id];
+    if (natdex) urls.push(...SPRITE_CDNS.map(cdn => pokemonSpriteUrl(natdex, cdn)));
+    return urls;
+  }
+
   const urls = [];
-  const localPortrait = getLocalPortraitUrl(pet);
-  if (localPortrait) urls.push(localPortrait);
   const digiName = ID_TO_DIGIMON[pet.id];
-  if (digiName) return [...urls, `${DIGIMON_BASE}${digiName}.png`];
+  if (digiName) urls.push(digimonSpriteUrl(digiName));
   const natdex = ID_TO_NATDEX[pet.id];
   const id = natdex || ((TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL)[pet.id % (TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL).length]);
-  return [...urls, ...SPRITE_CDNS.map(cdn => `${cdn}${id}${SPRITE_EXT}`)];
+  return [...urls, ...SPRITE_CDNS.map(cdn => pokemonSpriteUrl(id, cdn))];
 }
