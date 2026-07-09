@@ -266,6 +266,34 @@ const sampleWeighted = (pool, weightFn) => {
   return weighted[weighted.length - 1].item;
 };
 
+const TRAINER_TACTICS = [
+  { id: 'balanced', name: '均衡型', desc: '阵容稳定，没有明显短板。', minMapIdx: 0, weight: 6, teamMult: 1, aceMult: 1, levelOffset: 0, goldMult: 1 },
+  { id: 'aggressive', name: '强攻型', desc: '攻击节奏更快，主力略强。', minMapIdx: 1, weight: 3, teamMult: 1.03, aceMult: 1.05, levelOffset: 0, goldMult: 1.08 },
+  { id: 'sturdy', name: '坚韧型', desc: '携带恢复树果，容错更高。', minMapIdx: 2, weight: 3, teamMult: 1.02, aceMult: 1.04, levelOffset: 0, berry: 'sitrus', goldMult: 1.08 },
+  { id: 'deep_roster', name: '轮换型', desc: '多带一只精灵，但平均等级略低。', minMapIdx: 3, weight: 2, teamMult: 1, aceMult: 1.02, levelOffset: -1, countBonus: 1, goldMult: 1.12 },
+  { id: 'ace_focus', name: '王牌型', desc: '最后一只王牌更强，需要留好克制手段。', minMapIdx: 4, weight: 2, teamMult: 1, aceMult: 1.08, levelOffset: 0, goldMult: 1.12 },
+];
+
+const pickTrainerTactic = (mapIdx, isElite) => {
+  const safeMapIdx = Math.max(0, Number.isFinite(mapIdx) ? mapIdx : 0);
+  const candidates = TRAINER_TACTICS.filter(t => safeMapIdx >= t.minMapIdx);
+  return sampleWeighted(candidates, t => t.weight + (isElite && t.id !== 'balanced' ? 1 : 0)) || TRAINER_TACTICS[0];
+};
+
+const applyTrainerTacticToPet = (pet, tactic, slot, count, isElite) => {
+  if (!pet || !tactic) return pet;
+  const isAce = slot === count - 1;
+  const baseMult = isElite ? 1.1 : 1;
+  const tacticMult = isAce ? (tactic.aceMult || 1) : (tactic.teamMult || 1);
+  const cap = isElite ? 1.15 : 1.08;
+  const mult = Math.min(cap, Math.max(1, baseMult * tacticMult));
+  if (mult > 1) pet.customStatMult = Math.max(pet.customStatMult || 1, mult);
+  if (tactic.berry && isAce && pet.level >= 18) {
+    pet.equippedBerry = tactic.berry;
+  }
+  return pet;
+};
+
 const totalBerryCount = (b) => Object.values(normalizeBerriesInventory(b)).reduce((s, n) => s + (typeof n === 'number' ? n : 0), 0);
 const addBerries = (berries, id, amount) => {
   const o = normalizeBerriesInventory(berries);
@@ -12884,7 +12912,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const mapIdx = MAPS.findIndex(m => m.id === context.id);
       const isLateGame = mapIdx >= 9;
       const isElite = isLateGame && Math.random() < 0.25;
-      const count = isElite ? _.random(4, 5) : _.random(2, 3);
+      const trainerTactic = pickTrainerTactic(mapIdx, isElite);
+      const baseCount = isElite ? _.random(4, 5) : _.random(2, 3);
+      const countCap = isElite ? 6 : 4;
+      const count = Math.min(countCap, baseCount + (trainerTactic.countBonus || 0));
       const usedIds = new Set();
       const trainerPool = context.pool && context.pool.length > 0 ? context.pool : [1];
       for(let i=0; i<count; i++) {
@@ -12894,13 +12925,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
           while (usedIds.has(pick) && tries < 10) { pick = _.sample(trainerPool); tries++; }
         }
         usedIds.add(pick);
-        const lv = _.random(context.lvl?.[0] || 5, context.lvl?.[1] || 15) + (isElite ? _.random(2, 5) : 0);
-        const pet = createPet(pick, Math.min(lv, 100), isElite);
-        if (isElite) pet.customStatMult = 1.1;
+        const lv = _.random(context.lvl?.[0] || 5, context.lvl?.[1] || 15)
+          + (isElite ? _.random(2, 5) : 0)
+          + (trainerTactic.levelOffset || 0);
+        const pet = createPet(pick, Math.max(1, Math.min(lv, 100)), isElite);
+        applyTrainerTacticToPet(pet, trainerTactic, i, count, isElite);
         enemyParty.push(pet);
       }
-      trainerName = isElite ? '精英训练家 ' + _.sample(TRAINER_NAMES) : _.sample(TRAINER_NAMES);
-      if (isElite) dropGold = Math.floor(dropGold * 2);
+      const sampledTrainerName = _.sample(TRAINER_NAMES);
+      trainerName = isElite ? `精英训练家·${trainerTactic.name} ${sampledTrainerName}` : `${trainerTactic.name}训练家 ${sampledTrainerName}`;
+      dropGold = Math.floor(dropGold * (isElite ? 2 : 1) * (trainerTactic.goldMult || 1));
+      extraBattleData.trainerTactic = {
+        id: trainerTactic.id,
+        name: trainerTactic.name,
+        desc: trainerTactic.desc,
+      };
     }
     // -------------------------------------------------
     // 10. 狩猎地带
@@ -13571,6 +13610,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const kwAlignBonus = isGangKingdomAligned(gang, kingdomWar) && (actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege') ? 1.1 : 1;
     const battleOpenLogs = [];
     if (resonanceFxBattle.transcendence) battleOpenLogs.push(`✨ 终极共鸣发动！${activePetData?.name || '精灵'} 获得首回合超越爆发！`);
+    if (extraBattleData.trainerTactic) {
+      battleOpenLogs.push(`🎯 对手战术：${extraBattleData.trainerTactic.name} - ${extraBattleData.trainerTactic.desc}`);
+    }
     battleEnemyParty.forEach((ep, ei) => {
       if (!ep?.isEcoGuardian) return;
       if (!ep.stages) ep.stages = { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 };
