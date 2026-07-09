@@ -13,8 +13,8 @@ const BASE_POKEDEX = [
   { id: 9, name: '深海霸主', type: 'WATER', emoji: '🐋', hp: 90, atk: 95, def: 100 },
   { id: 10, name: '藤蔓怪', type: 'GRASS', emoji: '🧶', hp: 65, atk: 55, def: 100, evo: 301, evoLvl: 40 }, // 新增进化
   { id: 11, name: '炎绒狐', type: 'FIRE', emoji: '🦊', hp: 39, atk: 52, def: 43, evo: 12, evoLvl: 16 },
-  { id: 12, name: '炎尾狼', type: 'FIRE', emoji: '🐺', hp: 58, atk: 64, def: 58, evo: 13, evoLvl: 36 },
-  { id: 13, name: '炼狱魔狼', type: 'FIRE', emoji: '👹', hp: 78, atk: 104, def: 78 },
+  { id: 12, name: '烈焰巡狼', type: 'FIRE', emoji: '🐺', hp: 58, atk: 64, def: 58, evo: 13, evoLvl: 36 },
+  { id: 13, name: '灾焰魔狼', type: 'FIRE', emoji: '👹', hp: 78, atk: 104, def: 78 },
   { id: 14, name: '燃煤怪', type: 'FIRE', emoji: '⚫', hp: 40, atk: 40, def: 70, evo: 15, evoLvl: 25 },
   { id: 15, name: '熔岩巨像', type: 'ROCK', emoji: '🗿', hp: 90, atk: 90, def: 120 },
   { id: 16, name: '小火雀', type: 'FIRE', emoji: '🐤', hp: 45, atk: 60, def: 40, evo: 17, evoLvl: 18 },
@@ -22,9 +22,9 @@ const BASE_POKEDEX = [
   { id: 18, name: '烛光灵', type: 'GHOST', emoji: '🕯️', hp: 30, atk: 70, def: 30, evo: 19, evoLvl: 30 },
   { id: 19, name: '幽冥灯笼', type: 'GHOST', emoji: '🏮', hp: 60, atk: 125, def: 60 },
   { id: 20, name: '爆爆狮', type: 'FIRE', emoji: '🦁', hp: 80, atk: 110, def: 80, evo: 302, evoLvl: 55 }, // 新增进化
-  { id: 21, name: '泡泡鱼', type: 'WATER', emoji: '🐟', hp: 44, atk: 48, def: 65, evo: 22, evoLvl: 16 },
-  { id: 22, name: '激流鲨', type: 'WATER', emoji: '🦈', hp: 59, atk: 63, def: 80, evo: 23, evoLvl: 36 },
-  { id: 23, name: '深海霸主', type: 'WATER', emoji: '🐋', hp: 90, atk: 95, def: 100 },
+  { id: 21, name: '涟漪幼鱼', type: 'WATER', emoji: '🐟', hp: 44, atk: 48, def: 65, evo: 22, evoLvl: 16 },
+  { id: 22, name: '裂潮鲨', type: 'WATER', emoji: '🦈', hp: 59, atk: 63, def: 80, evo: 23, evoLvl: 36 },
+  { id: 23, name: '沧海霸主', type: 'WATER', emoji: '🐋', hp: 90, atk: 95, def: 100 },
   { id: 24, name: '珍珠贝', type: 'WATER', emoji: '🐚', hp: 50, atk: 40, def: 85, evo: 25, evoLvl: 20 },
   { id: 25, name: '铠甲蟹', type: 'WATER', emoji: '🦀', hp: 70, atk: 100, def: 115 },
   { id: 26, name: '水灵水母', type: 'WATER', emoji: '🎐', hp: 60, atk: 50, def: 100, evo: 27, evoLvl: 30 },
@@ -205,7 +205,7 @@ const BASE_POKEDEX = [
   
   // --- 新增 50 种随机生成的精灵 (ID 201-250) ---
   { id: 201, name: '熔岩蜗牛', type: 'FIRE', emoji: '🐌', hp: 50, atk: 50, def: 100, evo: 202, evoLvl: 30 },
-  { id: 202, name: '熔岩巨像', type: 'FIRE', emoji: '🌋', hp: 80, atk: 80, def: 150 },
+  { id: 202, name: '熔岩堡垒', type: 'FIRE', emoji: '🌋', hp: 80, atk: 80, def: 150 },
   { id: 203, name: '雪虫', type: 'ICE', emoji: '🐛', hp: 40, atk: 40, def: 40, evo: 204, evoLvl: 25 },
   { id: 204, name: '极光蛾', type: 'ICE', emoji: '🦋', hp: 70, atk: 100, def: 70 },
   { id: 205, name: '铁甲犀牛II', type: 'STEEL', emoji: '🦏', hp: 60, atk: 60, def: 100, evo: 206, evoLvl: 40 },
@@ -812,7 +812,7 @@ const NEW_PETS_500 = [
 
   // 15. 治愈草 (HEAL)
   { id: 468, name: '小药草', type: 'HEAL', emoji: '🌿', hp: 55, atk: 30, def: 45, evo: 469, evoLvl: 30, desc: '具有强大治愈力的小草，散发清新气息。' },
-  { id: 469, name: '生命之树', type: 'HEAL', emoji: '🌲', hp: 100, atk: 55, def: 90, desc: '千年古树化身的精灵，触碰它即可恢复元气。' },
+  { id: 469, name: '千年愈木', type: 'HEAL', emoji: '🌲', hp: 100, atk: 55, def: 90, desc: '千年古树化身的精灵，触碰它即可恢复元气。' },
 
   // 16. 蝙蝠 (DARK)
   { id: 470, name: '暗影蝠', type: 'DARK', emoji: '🦇', hp: 38, atk: 55, def: 30, evo: 471, evoLvl: 28, desc: '在洞穴深处栖息的蝙蝠，超声波能迷惑敌人。' },
@@ -855,7 +855,7 @@ const NEW_PETS_500 = [
   { id: 495, name: '极光鹿', type: 'ICE', emoji: '🦌', hp: 70, atk: 65, def: 70, desc: '鹿角上闪烁着极光的神鹿，是北国的守护兽。' },
   { id: 496, name: '熔岩蜥蜴', type: 'FIRE', emoji: '🦎', hp: 60, atk: 80, def: 65, desc: '在火山口生活的蜥蜴，皮肤下流淌着岩浆。' },
   { id: 497, name: '闪电貂', type: 'ELECTRIC', emoji: '⚡', hp: 55, atk: 75, def: 50, desc: '速度极快的小型电属性精灵，身体放出电火花。' },
-  { id: 498, name: '幽灵船长', type: 'GHOST', emoji: '🏴‍☠️', hp: 72, atk: 85, def: 65, desc: '传说中的幽灵海盗船长，漂泊在迷雾之海。' },
+  { id: 498, name: '雾海船魂', type: 'GHOST', emoji: '🏴‍☠️', hp: 72, atk: 85, def: 65, desc: '传说中的幽灵海盗船长，漂泊在迷雾之海。' },
   { id: 499, name: '岩石泰坦', type: 'ROCK', emoji: '🪨', hp: 90, atk: 85, def: 100, desc: '由巨岩构成的泰坦巨人，每一步都震动大地。' },
   { id: 500, name: '催眠师', type: 'PSYCHIC', emoji: '🔮', hp: 65, atk: 80, def: 60, desc: '拥有强大催眠能力的超能力者，能操控他人梦境。' },
 ];
@@ -954,7 +954,7 @@ const PETS_600 = [
   { id: 570, name: '格斗猩猩', type: 'FIGHT', emoji: '🦍', hp: 80, atk: 100, def: 70, desc: '拥有极强力量的格斗猩猩。' },
   { id: 571, name: '武道家', type: 'FIGHT', emoji: '🥋', hp: 60, atk: 80, def: 55, desc: '精通各种武术的格斗达人。' },
   { id: 572, name: '铁拳蟹', type: 'FIGHT', emoji: '🦀', hp: 55, atk: 85, def: 70, desc: '拥有钢铁般硬拳的巨蟹。' },
-  { id: 573, name: '相扑力士', type: 'FIGHT', emoji: '🤼', hp: 90, atk: 75, def: 80, desc: '体型巨大的相扑选手精灵。' },
+  { id: 573, name: '横纲力士', type: 'FIGHT', emoji: '🤼', hp: 90, atk: 75, def: 80, desc: '体型巨大的相扑选手精灵。' },
 
   // 毒系 (4种)
   { id: 574, name: '毒菇', type: 'POISON', emoji: '🍄', hp: 45, atk: 40, def: 45, evo: 575, evoLvl: 22, desc: '散发毒孢子的小蘑菇。' },
@@ -965,11 +965,11 @@ const PETS_600 = [
   // 地面系 (4种)
   { id: 578, name: '钻地鼹', type: 'GROUND', emoji: '🐹', hp: 45, atk: 50, def: 40, evo: 579, evoLvl: 24, desc: '善于挖掘隧道的小鼹鼠。' },
   { id: 579, name: '地震犰狳', type: 'GROUND', emoji: '🐾', hp: 75, atk: 80, def: 85, desc: '能引发地震的铠甲犰狳。' },
-  { id: 580, name: '沙丘虫', type: 'GROUND', emoji: '🪱', hp: 55, atk: 60, def: 50, desc: '在沙丘下潜伏的巨虫。' },
+  { id: 580, name: '沙隐地虫', type: 'GROUND', emoji: '🪱', hp: 55, atk: 60, def: 50, desc: '在沙丘下潜伏的巨虫。' },
   { id: 581, name: '大地鲶鱼', type: 'GROUND', emoji: '🐟', hp: 65, atk: 70, def: 60, desc: '传说中引发地震的巨型鲶鱼。' },
 
   // 飞行系 (3种)
-  { id: 582, name: '气球鸟', type: 'FLYING', emoji: '🎈', hp: 40, atk: 35, def: 30, evo: 583, evoLvl: 20, desc: '像气球一样漂浮的圆鸟。' },
+  { id: 582, name: '浮空气鸟', type: 'FLYING', emoji: '🎈', hp: 40, atk: 35, def: 30, evo: 583, evoLvl: 20, desc: '像气球一样漂浮的圆鸟。' },
   { id: 583, name: '风暴鹰', type: 'FLYING', emoji: '🦅', hp: 70, atk: 85, def: 60, desc: '翱翔在风暴中的猛禽。' },
   { id: 584, name: '天空鲸', type: 'FLYING', emoji: '🐋', hp: 80, atk: 70, def: 75, desc: '在天空游弋的巨大鲸鱼。' },
 
@@ -986,7 +986,7 @@ const PETS_600 = [
   // 岩石系 (3种)
   { id: 591, name: '小石头', type: 'ROCK', emoji: '🪨', hp: 45, atk: 50, def: 55, evo: 592, evoLvl: 25, desc: '有生命的小石头精灵。' },
   { id: 592, name: '巨岩兽', type: 'ROCK', emoji: '🪨', hp: 80, atk: 80, def: 100, desc: '由巨岩构成的威武巨兽。' },
-  { id: 593, name: '化石翼龙', type: 'ROCK', emoji: '🦖', hp: 65, atk: 85, def: 60, desc: '从化石中复活的远古翼龙。' },
+  { id: 593, name: '古翼岩龙', type: 'ROCK', emoji: '🦖', hp: 65, atk: 85, def: 60, desc: '从化石中复活的远古翼龙。' },
 
   // 幽灵系 (3种)
   { id: 594, name: '蜡烛幽灵', type: 'GHOST', emoji: '🕯️', hp: 40, atk: 40, def: 35, evo: 595, evoLvl: 22, desc: '烛光中漂浮的小幽灵。' },
@@ -995,7 +995,7 @@ const PETS_600 = [
 
   // 龙系 (3种)
   { id: 597, name: '小飞龙', type: 'DRAGON', emoji: '🐲', hp: 50, atk: 55, def: 45, evo: 598, evoLvl: 30, desc: '还不会喷火的幼龙。' },
-  { id: 598, name: '翡翠龙', type: 'DRAGON', emoji: '🐉', hp: 80, atk: 95, def: 75, desc: '鳞片如翡翠般翠绿的龙。' },
+  { id: 598, name: '翠晶飞龙', type: 'DRAGON', emoji: '🐉', hp: 80, atk: 95, def: 75, desc: '鳞片如翡翠般翠绿的龙。' },
   { id: 599, name: '星辰龙', type: 'DRAGON', emoji: '🐉', hp: 75, atk: 90, def: 70, desc: '身披星辰的神秘龙族。' },
 
   // 钢/妖精/普通 (1种)
@@ -1114,7 +1114,7 @@ const EXTRA_PETS_700 = [
   { id: 681, name: '深渊海龙', type: 'DARK',   emoji: '🐉', hp: 98, atk: 120, def: 82, spd: 95, desc: '栖息在海沟最深处的漆黑海龙。' },
   // === 进化链20: 晶石系 (ROCK→FAIRY) 2段 ===
   { id: 682, name: '棱晶石',   type: 'ROCK',   emoji: '💎', hp: 55, atk: 42, def: 68, spd: 35, evo: 683, evoLvl: 35, desc: '七彩光芒折射的活体水晶。' },
-  { id: 683, name: '虹光宝石', type: 'FAIRY',  emoji: '💎', hp: 88, atk: 75, def: 115, spd: 52, desc: '折射出七色极光的究极宝石精灵。' },
+  { id: 683, name: '极虹晶核', type: 'FAIRY',  emoji: '💎', hp: 88, atk: 75, def: 115, spd: 52, desc: '折射出七色极光的究极宝石精灵。' },
   // === 进化链21: 雷鸟系 (ELECTRIC→FLYING) 2段 ===
   { id: 684, name: '闪电雏鸟', type: 'ELECTRIC', emoji: '🐣', hp: 48, atk: 52, def: 40, spd: 65, evo: 685, evoLvl: 32, desc: '羽翼带电的雷属性雏鸟。' },
   { id: 685, name: '雷鸣神鹫', type: 'FLYING', emoji: '🦅', hp: 85, atk: 105, def: 72, spd: 110, desc: '展翅即引雷霆，传说中的雷鸟化身。' },

@@ -5,6 +5,18 @@ const SPRITE_CDNS = [
 const SPRITE_BASE = SPRITE_CDNS[0];
 const SPRITE_EXT = '.png';
 const DIGIMON_BASE = 'https://digi-api.com/images/digimon/w/';
+const LOCAL_PORTRAIT_BASE = '/assets/pets/portrait/';
+const LOCAL_PORTRAIT_EXT = '.svg';
+const LOCAL_PORTRAIT_MAX_ID = 904;
+const LOCAL_PORTRAIT_MISSING_IDS = new Set([]);
+
+function getLocalPortraitUrl(pet) {
+  if (!pet || !Number.isFinite(Number(pet.id))) return null;
+  const id = Number(pet.id);
+  if (id < 1 || id > LOCAL_PORTRAIT_MAX_ID) return null;
+  if (LOCAL_PORTRAIT_MISSING_IDS.has(id)) return null;
+  return `${LOCAL_PORTRAIT_BASE}${id}${LOCAL_PORTRAIT_EXT}`;
+}
 
 const ID_TO_DIGIMON = {
   168: 'Elecmon',             // 伦琴猫(ELECTRIC) → 电气兽
@@ -399,6 +411,8 @@ const TYPE_FALLBACK = {
 
 export function getSpriteUrl(pet) {
   if (!pet) return null;
+  const localPortrait = getLocalPortraitUrl(pet);
+  if (localPortrait) return localPortrait;
   const digiName = ID_TO_DIGIMON[pet.id];
   if (digiName) return `${DIGIMON_BASE}${digiName}.png`;
   const natdex = ID_TO_NATDEX[pet.id];
@@ -411,9 +425,12 @@ export function getSpriteUrl(pet) {
 
 export function getSpriteFallbackUrls(pet) {
   if (!pet) return [];
+  const urls = [];
+  const localPortrait = getLocalPortraitUrl(pet);
+  if (localPortrait) urls.push(localPortrait);
   const digiName = ID_TO_DIGIMON[pet.id];
-  if (digiName) return [`${DIGIMON_BASE}${digiName}.png`];
+  if (digiName) return [...urls, `${DIGIMON_BASE}${digiName}.png`];
   const natdex = ID_TO_NATDEX[pet.id];
   const id = natdex || ((TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL)[pet.id % (TYPE_FALLBACK[pet.type] || TYPE_FALLBACK.NORMAL).length]);
-  return SPRITE_CDNS.map(cdn => `${cdn}${id}${SPRITE_EXT}`);
+  return [...urls, ...SPRITE_CDNS.map(cdn => `${cdn}${id}${SPRITE_EXT}`)];
 }

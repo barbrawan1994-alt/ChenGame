@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 768" role="img" aria-label="裂焰铠士 unique portrait">
+  <defs>
+    <linearGradient id="bg855" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0abfc"/><stop offset=".55" stop-color="#7e22ce"/><stop offset="1" stop-color="#a92d1d"/></linearGradient>
+    <radialGradient id="body855" cx=".35" cy=".24" r=".78"><stop offset="0" stop-color="#fff" stop-opacity=".88"/><stop offset=".18" stop-color="#f0abfc"/><stop offset=".68" stop-color="#7e22ce"/><stop offset="1" stop-color="#a92d1d"/></radialGradient>
+    <filter id="shadow855" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#a92d1d" flood-opacity=".36"/></filter>
+  </defs>
+  <rect width="512" height="768" rx="48" fill="url(#bg855)"/>
+  <rect x="24" y="24" width="464" height="720" rx="40" fill="#fff" opacity=".08"/>
+  <g opacity=".46"><circle cx="262" cy="293" r="4.1" fill="#fff" opacity="0.49"/><circle cx="133" cy="78" r="1.3" fill="#fff" opacity="0.28"/><circle cx="140" cy="582" r="4.8" fill="#fff" opacity="0.47"/><circle cx="214" cy="372" r="2.4" fill="#fff" opacity="0.54"/><circle cx="81" cy="439" r="4.5" fill="#fff" opacity="0.25"/><circle cx="91" cy="457" r="1.8" fill="#fff" opacity="0.45"/><circle cx="436" cy="563" r="3.6" fill="#fff" opacity="0.34"/><circle cx="56" cy="300" r="4.7" fill="#fff" opacity="0.63"/><circle cx="124" cy="115" r="4.2" fill="#fff" opacity="0.50"/><circle cx="317" cy="584" r="2.8" fill="#fff" opacity="0.64"/><circle cx="107" cy="590" r="4.8" fill="#fff" opacity="0.29"/><circle cx="334" cy="214" r="3.1" fill="#fff" opacity="0.51"/><circle cx="337" cy="314" r="1.3" fill="#fff" opacity="0.47"/><circle cx="254" cy="402" r="2.7" fill="#fff" opacity="0.63"/><circle cx="241" cy="115" r="4.4" fill="#fff" opacity="0.35"/><circle cx="428" cy="114" r="3.5" fill="#fff" opacity="0.28"/></g>
+  <path d="M0 596 C80 558 128 616 202 584 C281 550 332 618 418 582 C464 563 492 570 512 586 V768 H0Z" fill="#a92d1d" opacity=".22"/>
+  <ellipse cx="256" cy="664" rx="154" ry="36" fill="#a92d1d" opacity=".3"/>
+  <g transform="translate(0 84)"><path d="M178 196 L133 114 L221 170 Z" fill="#ff6b35" opacity=".8"/><path d="M334 196 L379 114 L291 170 Z" fill="#ff6b35" opacity=".8"/><path d="M151 500 C116 338 160 190 256 170 C352 190 396 338 361 500 C320 466 291 532 256 490 C221 532 192 466 151 500Z" fill="url(#body855)" filter="url(#shadow855)"/>
+    <circle cx="215" cy="319" r="17" fill="#a92d1d"/><circle cx="297" cy="319" r="17" fill="#a92d1d"/>
+    <circle cx="209" cy="313" r="5" fill="#fff" opacity=".75"/><circle cx="291" cy="313" r="5" fill="#fff" opacity=".75"/>
+    <path d="M206 410 Q256 442 306 410" stroke="#a92d1d" stroke-width="12" fill="none" stroke-linecap="round" opacity=".72"/>
+    <path d="M188 560 C228 600 288 600 326 560" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity=".18" fill="none"/>
+  </g>
+  <path d="M72 128 C168 68 334 66 440 128" stroke="#fff" stroke-width="16" stroke-linecap="round" opacity=".16"/>
+  <path d="M60 678 C164 722 348 718 452 662" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".16"/>
+</svg>

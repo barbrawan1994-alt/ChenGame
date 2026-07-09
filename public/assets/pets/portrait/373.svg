@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 768" role="img" aria-label="赤红晶卫 unique portrait">
+  <defs>
+    <linearGradient id="bg373" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd166"/><stop offset=".55" stop-color="#ff6b35"/><stop offset="1" stop-color="#a92d1d"/></linearGradient>
+    <radialGradient id="body373" cx=".35" cy=".24" r=".78"><stop offset="0" stop-color="#fff" stop-opacity=".88"/><stop offset=".18" stop-color="#ffd166"/><stop offset=".68" stop-color="#ff6b35"/><stop offset="1" stop-color="#a92d1d"/></radialGradient>
+    <filter id="shadow373" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#a92d1d" flood-opacity=".36"/></filter>
+  </defs>
+  <rect width="512" height="768" rx="48" fill="url(#bg373)"/>
+  <rect x="24" y="24" width="464" height="720" rx="40" fill="#fff" opacity=".08"/>
+  <g opacity=".46"><circle cx="277" cy="386" r="1.7" fill="#fff" opacity="0.36"/><circle cx="400" cy="358" r="2.8" fill="#fff" opacity="0.23"/><circle cx="180" cy="118" r="3.1" fill="#fff" opacity="0.27"/><circle cx="377" cy="508" r="4.5" fill="#fff" opacity="0.60"/><circle cx="76" cy="526" r="4.5" fill="#fff" opacity="0.59"/><circle cx="453" cy="213" r="2.7" fill="#fff" opacity="0.60"/><circle cx="50" cy="62" r="1.5" fill="#fff" opacity="0.28"/><circle cx="124" cy="376" r="5.0" fill="#fff" opacity="0.35"/><circle cx="296" cy="561" r="2.4" fill="#fff" opacity="0.48"/><circle cx="337" cy="592" r="1.9" fill="#fff" opacity="0.54"/><circle cx="255" cy="481" r="3.9" fill="#fff" opacity="0.52"/><circle cx="63" cy="553" r="4.0" fill="#fff" opacity="0.61"/><circle cx="333" cy="201" r="3.6" fill="#fff" opacity="0.44"/><circle cx="234" cy="159" r="3.1" fill="#fff" opacity="0.60"/><circle cx="310" cy="504" r="5.2" fill="#fff" opacity="0.40"/><circle cx="467" cy="433" r="2.4" fill="#fff" opacity="0.27"/><circle cx="201" cy="544" r="1.8" fill="#fff" opacity="0.44"/></g>
+  <path d="M0 596 C80 558 128 616 202 584 C281 550 332 618 418 582 C464 563 492 570 512 586 V768 H0Z" fill="#a92d1d" opacity=".22"/>
+  <ellipse cx="256" cy="664" rx="154" ry="36" fill="#a92d1d" opacity=".3"/>
+  <g transform="translate(0 84)"><path d="M156 354 C66 314 56 218 150 238 C126 274 138 319 190 338 Z" fill="#ff6b35" opacity=".58"/><path d="M356 354 C446 314 456 218 362 238 C386 274 374 319 322 338 Z" fill="#ff6b35" opacity=".58"/><path d="M151 500 C116 338 160 190 256 170 C352 190 396 338 361 500 C320 466 291 532 256 490 C221 532 192 466 151 500Z" fill="url(#body373)" filter="url(#shadow373)"/>
+    <circle cx="217" cy="317" r="17" fill="#101827"/><circle cx="295" cy="317" r="17" fill="#101827"/>
+    <circle cx="211" cy="311" r="5" fill="#fff" opacity=".75"/><circle cx="289" cy="311" r="5" fill="#fff" opacity=".75"/>
+    <path d="M206 410 Q256 442 306 410" stroke="#a92d1d" stroke-width="12" fill="none" stroke-linecap="round" opacity=".72"/>
+    <path d="M188 560 C228 600 288 600 326 560" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity=".18" fill="none"/>
+  </g>
+  <path d="M72 128 C168 68 334 66 440 128" stroke="#fff" stroke-width="16" stroke-linecap="round" opacity=".16"/>
+  <path d="M60 678 C164 722 348 718 452 662" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".16"/>
+</svg>
