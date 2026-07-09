@@ -2565,9 +2565,34 @@ const [viewStatPet, setViewStatPet] = useState(null);
       || (status === 'PAR' && targetTypes.includes('ELECTRIC'));
   };
 
+  const getEnemyAiStyle = (battleState, enemyUnit, opts = {}) => {
+    const tacticId = opts.aiTactic || battleState?.trainerTactic?.id || 'balanced';
+    const enemyParty = battleState?.enemyParty || [];
+    const enemyIdx = enemyParty.findIndex(p => p === enemyUnit || (p?.uid && enemyUnit?.uid && p.uid === enemyUnit.uid));
+    const isAce = enemyIdx >= 0 && enemyIdx === enemyParty.length - 1;
+    const baseTopChance = opts.isHardBattle ? 0.78 : 0.55;
+    const topChanceBonus = tacticId === 'aggressive' ? 0.06
+      : tacticId === 'ace_focus' ? (isAce ? 0.10 : 0.04)
+      : tacticId === 'deep_roster' ? 0.04
+      : tacticId === 'sturdy' ? 0.03
+      : 0;
+    const scoreNoise = tacticId === 'ace_focus' && isAce ? 5
+      : tacticId === 'aggressive' ? 7
+      : opts.isHardBattle ? 8
+      : 24;
+    return {
+      tacticId,
+      isAce,
+      topMoveChance: Math.min(0.9, baseTopChance + topChanceBonus),
+      scoreNoise,
+    };
+  };
+
   const scoreCombatMoveForTarget = (battleState, attacker, target, move, source = 'enemy', opts = {}) => {
     if (!attacker || !target || !move || !canUseCombatMove(battleState, attacker, move, source)) return -Infinity;
     const isHardBattle = !!opts.isHardBattle;
+    const aiStyle = opts.aiStyle || getEnemyAiStyle(battleState, attacker, opts);
+    const aiTactic = aiStyle.tacticId;
     const attackerStats = getStats(attacker, attacker.stages, attacker.status);
     const targetStats = getStats(target, target.stages, target.status);
     const hpRatio = attacker.currentHp / Math.max(1, attackerStats.maxHp || 1);
@@ -2589,26 +2614,42 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (effect.flinch) score += 6;
       if (effect.defDown || effect.sDefDown || effect.spdDown || effect.atkDown || effect.accDown) score += 8;
       if (move.isCursed || move.isJutsu || move.isFruitMove || move.isExtra) score += isHardBattle ? 12 : 5;
+      if (aiTactic === 'aggressive') {
+        score += 10 + (typeMod > 1 ? 10 : 0);
+      }
+      if (aiTactic === 'ace_focus' && aiStyle.isAce) {
+        score += 8 + (targetHpRatio < 0.45 ? 12 : 0);
+      }
+      if (aiTactic === 'sturdy' && (effect.drain || effect.hpDrain) && hpRatio < 0.7) {
+        score += 12;
+      }
     } else if (effect.type === 'HEAL' || move.t === 'HEAL' || (move.val && move.val > 0)) {
       if (hpRatio > 0.7) return -Infinity;
       score = hpRatio < 0.3 ? 86 : hpRatio < 0.5 ? 58 : 24;
+      if (aiTactic === 'sturdy') score += hpRatio < 0.55 ? 18 : 6;
+      if (aiTactic === 'ace_focus' && aiStyle.isAce && hpRatio < 0.45) score += 10;
     } else if (effect.type === 'BUFF') {
       const statKeys = [effect.stat, effect.stat2, effect.stat3].filter(Boolean);
       if (statKeys.length && statKeys.every(k => (attacker.stages?.[k] || 0) >= 6)) return -Infinity;
       if (hpRatio < 0.35) return -Infinity;
       score = 34 + Math.max(0, 3 - (battleState?.turnCount || 0)) * 7;
+      if (aiTactic === 'ace_focus' && aiStyle.isAce) score += 10;
+      if (aiTactic === 'aggressive' && (battleState?.turnCount || 0) <= 2) score += 6;
     } else if (effect.type === 'DEBUFF') {
       const statKeys = [effect.stat, effect.stat2, effect.stat3].filter(Boolean);
       if (statKeys.length && statKeys.every(k => (target.stages?.[k] || 0) <= -6)) return -Infinity;
       score = 36 + (targetHpRatio > 0.45 ? 10 : 0);
+      if (aiTactic === 'deep_roster') score += 12;
     } else if (effect.type === 'STATUS') {
       if (effect.status !== 'CON' && (target.status || isStatusImmuneToMove(move, target))) return -Infinity;
       if (effect.status === 'CON' && target.volatiles?.confused) return -Infinity;
       score = 40 + (targetHpRatio > 0.4 ? 8 : 0);
+      if (aiTactic === 'deep_roster') score += 12;
     } else if (effect.type === 'PROTECT') {
       const streak = attacker.volatiles?.protectStreak || 0;
       score = hpRatio < 0.35 ? 30 : 12;
       score -= streak * 18;
+      if (aiTactic === 'sturdy' && hpRatio < 0.55) score += 12;
     } else {
       score = 8;
     }
@@ -2617,10 +2658,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
       score += (move.p || 0) > 0 ? 35 : -20;
     }
     if (move.priority) score += move.priority * 10;
-    return score + Math.random() * (isHardBattle ? 8 : 24);
+    return score + Math.random() * aiStyle.scoreNoise;
   };
 
   const chooseEnemyCombatAction = (battleState, enemyUnit, targets, opts = {}) => {
+    const aiStyle = getEnemyAiStyle(battleState, enemyUnit, opts);
+    const scoringOpts = { ...opts, aiStyle };
     const targetList = (Array.isArray(targets) ? targets : [{ unit: targets, idx: battleState?.activeIdx }])
       .filter(t => t?.unit && t.unit.currentHp > 0);
     const moves = (enemyUnit?.combatMoves || enemyUnit?.moves || []).filter(m => canUseCombatMove(battleState, enemyUnit, m, 'enemy'));
@@ -2630,7 +2673,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const scored = [];
     for (const move of moves) {
       for (const target of targetList) {
-        const score = scoreCombatMoveForTarget(battleState, enemyUnit, target.unit, move, 'enemy', opts);
+        const score = scoreCombatMoveForTarget(battleState, enemyUnit, target.unit, move, 'enemy', scoringOpts);
         if (Number.isFinite(score)) scored.push({ move, targetIdx: target.idx, score });
       }
     }
@@ -2639,9 +2682,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     }
     scored.sort((a, b) => b.score - a.score);
     if (opts.isHardBattle) {
-      return Math.random() < 0.78 ? scored[0] : scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+      return Math.random() < aiStyle.topMoveChance ? scored[0] : scored[Math.floor(Math.random() * Math.min(3, scored.length))];
     }
-    return Math.random() < 0.55 ? scored[0] : scored[Math.floor(Math.random() * Math.min(4, scored.length))];
+    return Math.random() < aiStyle.topMoveChance ? scored[0] : scored[Math.floor(Math.random() * Math.min(4, scored.length))];
   };
 
   // [核心] 属性计算函数 - 委托给 utils/statsCalculator.js
@@ -16195,10 +16238,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       state._enemySpecialActionCooldown = Math.max(state._enemySpecialActionCooldown || 0, turns);
     };
 
-    // 训练家AI换精灵：血量低于30%且有存活后备时，30%概率换人
+    // 训练家AI换精灵：血量低于30%且有存活后备时，按战术决定是否换人
     if (canUseSpecialAiAction && isHardBattle && !state.isDouble && state.enemyParty.length > 1) {
       const enemyHpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
-      if (enemyHpRatio < 0.3 && Math.random() < 0.3) {
+      const aiTacticId = state.trainerTactic?.id || 'balanced';
+      const switchChance = aiTacticId === 'deep_roster' ? 0.42
+        : aiTacticId === 'aggressive' ? 0.18
+        : aiTacticId === 'sturdy' ? 0.24
+        : 0.3;
+      if (enemyHpRatio < 0.3 && Math.random() < switchChance) {
         const betterIdx = state.enemyParty.findIndex((e, i) => {
           if (i === state.enemyActiveIdx || e.currentHp <= 0) return false;
           const eHpRatio = e.currentHp / Math.max(1, getStats(e).maxHp);
