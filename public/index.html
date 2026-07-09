@@ -14,12 +14,10 @@
         #splash-loader {
             position: fixed; inset: 0; display: flex; flex-direction: column;
             align-items: center; justify-content: center; gap: 22px; background:
-                radial-gradient(circle at 35% 20%, rgba(143,216,255,0.22), transparent 28%),
-                radial-gradient(circle at 70% 75%, rgba(34,197,94,0.18), transparent 32%),
-                linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
-                linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(142deg, #07152f, #0c244f 55%, #061429);
-            background-size: auto, auto, 76px 76px, 76px 76px, auto;
+                linear-gradient(180deg, rgba(3,10,24,0.04), rgba(3,10,24,0.22)),
+                radial-gradient(circle at 50% 42%, rgba(3,10,24,0), rgba(3,10,24,0.2) 58%, rgba(3,10,24,0.38)),
+                url("/assets/super-spirit-loading-bg.png?v=20260709-visual-fix") center / cover no-repeat,
+                #07152f;
             z-index: 99999; transition: opacity 0.5s;
         }
         #splash-loader::before {
@@ -28,16 +26,13 @@
         }
         #splash-loader::after {
             content: ""; position: absolute; inset: auto 0 0; height: 34%; pointer-events: none;
-            background:
-                linear-gradient(162deg, transparent 0 42%, rgba(157,247,199,0.12) 43% 44%, transparent 45%),
-                linear-gradient(18deg, rgba(7,76,82,0.5) 0 38%, transparent 39%),
-                linear-gradient(342deg, rgba(8,43,78,0.45) 0 45%, transparent 46%);
+            background: linear-gradient(180deg, transparent, rgba(4,14,32,0.28));
         }
         #splash-loader .splash-card {
             position: relative; z-index: 1; width: min(680px, calc(100vw - 40px)); box-sizing: border-box;
             display: grid; justify-items: center; padding: 30px 28px 28px; border-radius: 8px;
             border: 1px solid rgba(177,232,255,0.18);
-            background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035)), rgba(5,19,42,0.7);
+            background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045)), rgba(5,19,42,0.66);
             box-shadow: 0 24px 70px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.12);
             backdrop-filter: blur(18px) saturate(1.16);
         }

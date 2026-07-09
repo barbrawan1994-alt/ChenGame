@@ -478,6 +478,91 @@ const SuperSpiritIcon = ({ className = '', size = 56, label = GAME_NAME }) => (
 );
 
 const IS_ELECTRON = typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent);
+const CURRENT_SAVE_VERSION = 34;
+
+const STATIC_PET_SAVE_KEYS = [
+  'name', 'type', 'type2', 'emoji', 'hp', 'atk', 'def', 's_atk', 's_def',
+  'spd', 'evo', 'evoLvl', 'evoAlt', 'evoCondition', 'hidden', 'desc',
+];
+const MAP_GRID_TILE_CHARS = {
+  1: 'a', 2: 'b', 3: 'c', 4: 'd', 5: 'e', 6: 'f', 7: 'g', 8: 'h', 9: 'i',
+  11: 'j', 12: 'k', 13: 'l', 14: 'm', 15: 'n', 16: 'o', 17: 'p', 18: 'q',
+  19: 'r', 20: 's', 21: 't', 22: 'u', 23: 'v', 24: 'w', 30: 'x', 99: 'y',
+};
+const MAP_GRID_CHAR_TILES = Object.fromEntries(
+  Object.entries(MAP_GRID_TILE_CHARS).map(([tile, char]) => [char, Number(tile)])
+);
+
+const hydrateSavedPet = (pet) => {
+  if (!pet || typeof pet !== 'object') return pet;
+  const base = POKEDEX.find(p => p.id === pet.id) || {};
+  const hydrated = { ...base, ...pet };
+  if (hydrated.secondaryType === undefined) hydrated.secondaryType = hydrated.type2 || null;
+  if (hydrated.equip === undefined) hydrated.equip = null;
+  if (!Array.isArray(hydrated.equips)) hydrated.equips = [null, null];
+  if (!hydrated.evs || typeof hydrated.evs !== 'object') hydrated.evs = {};
+  if (hydrated.isBoss === undefined) hydrated.isBoss = false;
+  if (hydrated.isShiny === undefined) hydrated.isShiny = false;
+  if (hydrated.canEvolve === undefined) hydrated.canEvolve = false;
+  if (hydrated.pendingLearnMove === undefined) hydrated.pendingLearnMove = null;
+  return hydrated;
+};
+
+const hydrateSavedPets = (pets) => Array.isArray(pets) ? pets.map(hydrateSavedPet) : [];
+
+const compactMapGridCache = (cache) => {
+  if (!cache || typeof cache !== 'object') return {};
+  return Object.fromEntries(Object.entries(cache).map(([mapId, grid]) => {
+    if (!Array.isArray(grid)) return [mapId, grid];
+    const rows = grid.map(row => Array.isArray(row)
+      ? row.map(tile => MAP_GRID_TILE_CHARS[tile] || String(tile)).join('')
+      : row);
+    return [mapId, rows];
+  }));
+};
+
+const hydrateMapGridCache = (cache) => {
+  if (!cache || typeof cache !== 'object') return {};
+  return Object.fromEntries(Object.entries(cache).map(([mapId, grid]) => {
+    if (!Array.isArray(grid)) return [mapId, grid];
+    const rows = grid.map(row => {
+      if (typeof row !== 'string') return row;
+      return [...row].map(char => MAP_GRID_CHAR_TILES[char] ?? Number(char) ?? 2);
+    });
+    return [mapId, rows];
+  }));
+};
+
+const compactSavedPet = (pet) => {
+  if (!pet || typeof pet !== 'object') return pet;
+  const {
+    combatMoves,
+    stages,
+    isProtected,
+    lastMoveUsed,
+    flinched,
+    volatiles,
+    _stats,
+    ...clean
+  } = pet;
+  const base = POKEDEX.find(p => p.id === clean.id);
+  if (base) {
+    STATIC_PET_SAVE_KEYS.forEach(key => {
+      if (_.isEqual(clean[key], base[key])) delete clean[key];
+    });
+  }
+  if (_.isEqual(clean.evs, {})) delete clean.evs;
+  if (_.isEqual(clean.equips, [null, null])) delete clean.equips;
+  if (clean.equip === null) delete clean.equip;
+  if (clean.isBoss === false) delete clean.isBoss;
+  if (clean.isShiny === false) delete clean.isShiny;
+  if (clean.canEvolve === false) delete clean.canEvolve;
+  if (clean.pendingLearnMove === null) delete clean.pendingLearnMove;
+  if (clean._fallbackSpecies === false) delete clean._fallbackSpecies;
+  const defaultSecondaryType = base?.type2 || null;
+  if (_.isEqual(clean.secondaryType, defaultSecondaryType)) delete clean.secondaryType;
+  return clean;
+};
 
 export default function RPG(props) {
   // ==========================================
@@ -547,6 +632,12 @@ export default function RPG(props) {
           sd.playTimeMs = Math.max(0, Number(sd.playTimeMs) || 0);
           sd.saveVersion = 33;
         }
+        if (sv < 34) {
+          sd.saveVersion = 34;
+        }
+        sd.party = hydrateSavedPets(sd.party);
+        sd.box = hydrateSavedPets(sd.box);
+        sd.mapGridCache = hydrateMapGridCache(sd.mapGridCache);
         if (process.env.NODE_ENV === 'development') console.log("✅ 成功读取存档:", savedDataRef.current.trainerName);
       } else {
         savedDataRef.current = {};
@@ -4301,11 +4392,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 };
 
   const buildSavePayload = () => {
-    const trimPet = (p) => { const { combatMoves, stages, isProtected, lastMoveUsed, flinched, ...clean } = (p || {}); return clean; }; // clean 保留 equippedBerry（非解构字段）及饰品等持久字段
-    const cleanParty = (Array.isArray(party) ? party : []).map(trimPet);
-    const cleanBox = (Array.isArray(box) ? box : []).map(trimPet);
+    const cleanParty = (Array.isArray(party) ? party : []).map(compactSavedPet);
+    const cleanBox = (Array.isArray(box) ? box : []).map(compactSavedPet);
     return {
-    saveVersion: 33,
+    saveVersion: CURRENT_SAVE_VERSION,
     playTimeMs: getCurrentPlayTimeMs(),
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles, sectPlayer,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
@@ -4326,7 +4416,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     battleRecords,
     relics, guardianScore, guardianMilestonesClaimed,
     sanctuaryState, bondingProgress, ecoCrisisRoutes, fusionState,
-    mapGridCache: mapGridCacheRef.current,
+    mapGridCache: compactMapGridCache(mapGridCacheRef.current),
   };};
 
   const persistSave = (silent = false) => {
@@ -21427,7 +21517,8 @@ const renderNameInput = () => {
   const fastestStarter = starterSummary.reduce((best, item) => !best || item.stats.spd > best.stats.spd ? item : best, null);
 
   return (
-    <div className="screen starter-lab-screen">
+    <div className="screen starter-lab-screen" style={{'--starter-lab-bg-image': 'url("/assets/super-spirit-starter-lab-bg.png?v=20260709-visual-fix")'}}>
+      <img className="starter-lab-bg-art" src="/assets/super-spirit-starter-lab-bg.png?v=20260709-visual-fix" alt="" aria-hidden="true" />
       <div className="starter-lab-sky" aria-hidden="true" />
       <div className="starter-lab-grid" aria-hidden="true" />
       <div className="starter-lab-orbit starter-lab-orbit-a" aria-hidden="true" />
@@ -22763,7 +22854,8 @@ const renderMenu = () => {
   ];
 
   return (
-    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark}}>
+    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark, '--home-gate-bg-image': 'url("/assets/super-spirit-loading-bg.png?v=20260709-visual-fix")'}}>
+      <img className="home-gate-bg-art" src="/assets/super-spirit-loading-bg.png?v=20260709-visual-fix" alt="" aria-hidden="true" />
       <div className="home-gate-sky" aria-hidden="true" />
       <div className="home-gate-terrain" aria-hidden="true" />
       <div className="home-gate-lines" aria-hidden="true" />
@@ -22782,45 +22874,65 @@ const renderMenu = () => {
             </div>
           </header>
 
-          <div className="home-gate-showcase">
-            <div className="home-gate-orbit" aria-hidden="true" />
-            <div className="home-gate-system-wheel" aria-hidden="true">
-              {fusionSystems.map((sys, idx) => (
-                <span className={`home-system-token is-${sys.tone}`} style={{'--token-index': idx}} key={sys.label}>{sys.icon}</span>
-              ))}
-            </div>
-            <div className="home-gate-summon-pad" aria-hidden="true" />
-            <div className="home-gate-lead-card">
-              <div className="home-gate-lead-art">
+          <figure className="home-cover-poster" aria-label="超级精灵封面海报">
+            <img src="/assets/super-spirit-home-cover-bg.png?v=20260709-visual-fix" alt="超级精灵封面：训练师站在竞技场中央，周围环绕多属性精灵" />
+            <figcaption className="home-cover-overlay">
+              <div className="home-cover-badges">
+                <span>收集</span>
+                <span>进化</span>
+                <span>对战</span>
+                <span>称霸四国</span>
+              </div>
+              <div className="home-cover-start-panel">
+                <div>
+                  <span>下一段冒险</span>
+                  <strong>{nextObjective}</strong>
+                  <small>{hasSave ? trainingFocus : '选择初始伙伴后开启训练、图鉴与联盟路线'}</small>
+                </div>
+                <button className="home-gate-primary" type="button" onClick={handleStartGame}>
+                  <span className="home-gate-primary-icon">▶</span>
+                  <span>
+                    <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
+                    <small>{hasSave ? '读取当前存档' : '建立第一支队伍'}</small>
+                  </span>
+                  <b>›</b>
+                </button>
+              </div>
+            </figcaption>
+          </figure>
+
+          <button className="home-cover-main-start" type="button" onClick={handleStartGame}>
+            <span className="home-cover-main-start-icon">▶</span>
+            <span>
+              <strong>{hasSave ? '继续冒险' : '开始游戏'}</strong>
+              <small>{hasSave ? nextObjective : '登记训练师，选择第一只伙伴'}</small>
+            </span>
+          </button>
+
+          <div className="home-gate-lead-strip">
+            <div className="home-gate-lead-mini">
+              <div className="home-gate-lead-mini-art">
                 {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
                   <img src={leadPetDex.sprite} alt={leadPetDex?.name || ''} onError={() => setMenuLeadSpriteErr(true)} />
                 ) : (
                   <span>{leadPetDex?.emoji || leadPet?.emoji || '🔴'}</span>
                 )}
               </div>
-              <div className="home-gate-lead-info">
+              <div>
                 <span>当前领队</span>
                 <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待初始伙伴'}</strong>
                 <small>{leadPet ? `Lv.${leadPet.level || 1} · ${leadTypeName}属性` : '创建存档后展开冒险路线'}</small>
               </div>
             </div>
-            {starterGallery.length > 0 && (
-              <div className="home-gate-starter-fan" aria-hidden="true">
-                {starterGallery.map((src, idx) => (
-                  <span key={`${src}-${idx}`}><img src={src} alt="" /></span>
-                ))}
-              </div>
-            )}
+            <div className="home-cover-system-row" aria-label="玩法体系">
+              {fusionSystems.slice(0, 4).map(sys => (
+                <button type="button" className={`home-cover-system is-${sys.tone}`} key={sys.label} onClick={sys.action}>
+                  <span>{sys.icon}</span>
+                  <strong>{sys.label}</strong>
+                </button>
+              ))}
+            </div>
           </div>
-
-          <button className="home-gate-primary" type="button" onClick={handleStartGame}>
-            <span className="home-gate-primary-icon">▶</span>
-            <span>
-              <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-              <small>{hasSave ? nextObjective : '选择伙伴，开启第一段旅程'}</small>
-            </span>
-            <b>›</b>
-          </button>
 
           <div className="home-gate-team" aria-label="当前队伍">
             {Array.from({ length: 6 }).map((_, idx) => {
