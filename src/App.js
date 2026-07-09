@@ -155,7 +155,7 @@ import {
   GANG_PRESETS, GANG_RANKS, GANG_SKILLS, GANG_SKILL_COST_MULT, GANG_TASKS, GANG_WAR_CONFIG,
   GANG_ICONS, GANG_LEVEL_UP_COST, GANG_MAX_MEMBERS,
   getGangRank, getGangSkillBonus, getGangSkills, getGangMaxSkills, getGangWarLevel, getGangWarReward, stripGangCombatBonus,
-  evaluateGangWarTarget, buildGangCommandPlan,
+  evaluateGangWarTarget, buildGangCommandPlan, applyGangGoldDonation,
   generateCafeRecruits, DEFAULT_GANG_STATE, PERSONAL_SKILL_COST_MULT, PERSONAL_SKILL_BASE_COST,
 } from './data/gang';
 import {
@@ -11275,14 +11275,29 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               const lockKey = `donate_gold:${todayStr}`;
               if (gangActionLocksRef.current.has(lockKey)) return;
               const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts, todayStr);
-              if ((freshDc.taskCompleted || []).includes('donate_gold')) return;
-              if (goldRef.current < 5000) { showMapToast('💰', '金币不足', '需要至少 5000 金币', 1500); return; }
+              const donation = applyGangGoldDonation({
+                gang: gangRef.current,
+                dailyCounts: freshDc,
+                currentGold: goldRef.current,
+              });
+              if (!donation.ok) {
+                if (donation.reason === 'not_in_gang') showMapToast('⚠️', '捐献已取消', '当前已不在帮派中', 1800);
+                else if (donation.reason === 'already_completed') showMapToast('✅', '提示', '今日已完成金币捐献', 1600);
+                else if (donation.reason === 'insufficient_gold') showMapToast('💰', '金币不足', `需要至少 ${donation.cost || 5000} 金币`, 1500);
+                else showMapToast('⚠️', '捐献失败', '帮派任务状态异常，请刷新后重试', 1800);
+                return;
+              }
               gangActionLocksRef.current.add(lockKey);
-              goldRef.current = Math.max(0, goldRef.current - 5000);
-              setGold(goldRef.current);
-              updateAchStat({ totalGoldSpent: 5000 });
-              updateGangTaskProgress('donate_gold', 5000);
-              setTimeout(() => gangActionLocksRef.current.delete(lockKey), 800);
+              try {
+                gangRef.current = donation.nextGang;
+                goldRef.current = donation.nextGold;
+                setGang(donation.nextGang);
+                setGold(donation.nextGold);
+                updateAchStat({ totalGoldSpent: donation.cost });
+                showMapToast('💰', '捐献成功', `已捐献 ${donation.cost.toLocaleString()} 金币，任务可领取`, 1800);
+              } finally {
+                gangActionLocksRef.current.delete(lockKey);
+              }
             }} style={{...btnSecondary, width:'100%', marginTop:'6px'}}>
               💰 捐献 5,000 金币
             </button>
@@ -11375,7 +11390,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   if (gangActionLocksRef.current.has('gang_war')) return;
                   gangActionLocksRef.current.add('gang_war');
                   try {
-                    startBattle({ gangWarTarget: target }, 'gang_war');
+                    const started = startBattle({ gangWarTarget: target }, 'gang_war');
+                    if (!started) gangActionLocksRef.current.delete('gang_war');
                   } catch (err) {
                     gangActionLocksRef.current.delete('gang_war');
                     console.error('gang war start:', err);
@@ -13090,12 +13106,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
   // [核心修复] 启动战斗 (含特性触发与完整逻辑)
   // ==========================================
   const startBattle = (context, type, challengeId = null) => {
-     if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return; }
+     if (battle && !battleResultHandledRef.current) { console.warn('startBattle blocked: already in battle'); return false; }
      if (type === 'gang_war') {
        const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts);
        if ((freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) {
          showMapToast('❌', '提示', '今日帮战次数已用完', 1500);
-         return;
+         return false;
        }
      }
      setIsDialogVisible(false);
@@ -13238,9 +13254,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     else if (actualType === 'challenge') {
       const challenge = [...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
-      if (!challenge) { showMapToast('❌', '提示', '挑战数据未找到', 1500); return; }
+      if (!challenge) { showMapToast('❌', '提示', '挑战数据未找到', 1500); return false; }
       if (challenge.isDouble) {
-        if (party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打试炼需要至少2只存活精灵！', 1500); return; }
+        if (party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打试炼需要至少2只存活精灵！', 1500); return false; }
         isDouble = true;
       }
       const bossIsShiny = challenge.bossLvl >= 80;
@@ -13267,7 +13283,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     else if (type === 'story_mid') {
        const currentChapter = STORY_SCRIPT[storyProgress];
-       if (!currentChapter?.midEvent) { showMapToast('❌', '提示', '当前没有可用的剧情事件', 2000); return; }
+       if (!currentChapter?.midEvent) { showMapToast('❌', '提示', '当前没有可用的剧情事件', 2000); return false; }
        const enemyId = currentChapter.midEvent.enemyId;
        const mapInfo = MAPS.find(m => m.id === currentMapId);
        const lvl = (mapInfo?.lvl[0] || 5) + 5;
@@ -13685,7 +13701,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // -------------------------------------------------
     else if (type === 'kw_campaign') {
         const campaign = context.campaignData;
-        if (!campaign) { console.warn('kw_campaign: missing campaignData'); return; }
+        if (!campaign) { console.warn('kw_campaign: missing campaignData'); return false; }
         trainerName = campaign.bossName || '未知敌将';
         dropGold = 0;
         const bossId = campaign.boss || 1;
@@ -13739,7 +13755,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
          if (!context || !context.lvl) {
              console.error("StartBattle Error: Invalid context for wild battle", context);
              showMapToast('❌', '提示', '遭遇错误：无法生成野生精灵', 1500);
-             return;
+             return false;
          }
          let enemyId;
          let level = _.random(context.lvl[0], context.lvl[1]);
@@ -13914,8 +13930,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
       ? context._arenaPlayerParty
       : party;
     const activeIdx = playerPartyForBattle.findIndex(p => p.currentHp > 0);
-    if (playerPartyForBattle.length === 0) { showMapToast('⚠️', '队伍为空', '请先捕捉或领取精灵加入队伍', 2500); setView(safeBack()); return; }
-    if (activeIdx === -1) { showMapToast('⚠️', '全员战斗不能', '请先前往精灵中心治疗', 2500); setView(safeBack()); return; }
+    if (playerPartyForBattle.length === 0) { showMapToast('⚠️', '队伍为空', '请先捕捉或领取精灵加入队伍', 2500); setView(safeBack()); return false; }
+    if (activeIdx === -1) { showMapToast('⚠️', '全员战斗不能', '请先前往精灵中心治疗', 2500); setView(safeBack()); return false; }
 
        // 初始化战斗状态的辅助函数
     const getEnemyNinjaRank = (level) => {
@@ -14070,7 +14086,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     if (enemyParty.length === 0) {
       showMapToast('❌', '错误', '未找到对手，无法开始战斗', 2000);
-      return;
+      return false;
     }
 
     // ▼▼▼ [新增] 预先计算威吓 (Intimidate) 效果 ▼▼▼
@@ -14299,6 +14315,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             console.error('startBattle post-enter animation', e);
         }
     }, 500);
+    return true;
   };
 
   const startTowerChallenge = () => {
@@ -20540,7 +20557,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         }
         updateBattleWinStats(chestGoldEarned);
-        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+        if ((kingdomWar?.expBuffBattles || 0) > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, (prev?.expBuffBattles || 0) - 1) }));
         commitPartyToSave(updatedParty);
         setBattle(null);
         setView('gang');
@@ -20710,7 +20727,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateGangTaskProgress('battle_win', 1);
         const factionData = FACTIONS[battleSnapshot.kwEnemyFaction] || { fullName: '敌国' };
         showMapToast('⚔️',`国战胜利 ${ratingData.icon}${rating}`,`战功+${contribGain} | 令牌+${tokenGain} | 征兵+${mpGain}`,3000);
-        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+        if ((kingdomWar?.expBuffBattles || 0) > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, (prev?.expBuffBattles || 0) - 1) }));
         commitPartyToSave(updatedParty);
         setBattle(null);
         setView('grid_map');
@@ -20781,7 +20798,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setAccessories(prev => [...prev, { ...kwEquipDrop, uid: Date.now() + Math.random() }]);
         }
         showMapToast('🏰', `攻城大捷！攻破${sf.fullName}都城！`, `💰${siegeGold.toLocaleString()} ⭐+${siegeContrib} 🎖️+${siegeTokens}${kwEquipDrop ? ` 🎁${kwEquipDrop.name}` : ''}`, 5000);
-        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+        if ((kingdomWar?.expBuffBattles || 0) > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, (prev?.expBuffBattles || 0) - 1) }));
         commitPartyToSave(updatedParty);
         setBattle(null);
         setMapTab('kingdom');
@@ -20820,7 +20837,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         updateGangTaskProgress('kw_campaign', 1);
         updateGangTaskProgress('battle_win', 1);
         showMapToast('⚔️', '战役通关', `${campaign.name} · ${campaignGold.toLocaleString()} 金 · 战功 +${contribGain}`, 3000);
-        if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
+        if ((kingdomWar?.expBuffBattles || 0) > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, (prev?.expBuffBattles || 0) - 1) }));
         commitPartyToSave(updatedParty);
         setBattle(null);
         setMapTab('kingdom');

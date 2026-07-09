@@ -495,8 +495,8 @@ export const runThreePhaseSiege = ({
   const timeMod = getBattleTimeModifiers();
   const phases = [];
   let totalManpowerLost = 0;
-  let strength = t.strength || 50;
-  let currentMorale = morale || 100;
+  let strength = t.strength ?? 50;
+  let currentMorale = morale ?? 100;
   const terrCopy = JSON.parse(JSON.stringify(territories));
   let guards = [...(t.guards || [])];
 
@@ -509,7 +509,7 @@ export const runThreePhaseSiege = ({
     external, timeMod, remainingGuards: guards.filter(g => !g.defeated).length,
   });
   const fieldWinChance = fieldCombat.fieldWinChance;
-  const fieldCost = Math.max(20, Math.min(40, Math.floor((strength || 50) / 3)));
+  const fieldCost = Math.max(20, Math.min(40, Math.floor(strength / 3)));
   const fieldVictory = deploy >= 60 && Math.random() < fieldWinChance;
   const fieldLoss = fieldVictory
     ? Math.floor(fieldCost * (0.7 - fieldWinChance * 0.15))

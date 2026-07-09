@@ -15,6 +15,7 @@ const loadSourceModule = async (relativePath, transform = source => source) => {
 const constants = await loadSourceModule('src/data/kingdomConstants.js');
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.meta.url), 'utf8');
+const kwSiegeSource = await readFile(new URL('../src/data/kwSiege.js', import.meta.url), 'utf8');
 const kingdom = await loadSourceModule('src/data/kingdom.js', source => source
   .replace("import { SANGUO_GENERALS } from './generals';", 'const SANGUO_GENERALS = [];')
   .replace(
@@ -49,6 +50,8 @@ const {
   TOKEN_SHOP,
   CONTESTED_MAP_IDS,
   evaluateTerritoryAssault,
+  buildSiegeCombatParams,
+  applyDefection,
 } = kingdom;
 const { evaluateKwSiegeBattle, runKwSiegeBattle } = kwSiege;
 const { MANPOWER_RESERVE_CAP } = constants;
@@ -402,7 +405,64 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '都城攻防三波视为一场完整战役，最终胜利时只累计一次成就与帮派任务');
 }
 
-// 13. 其他关键设计阈值。
+// 13. 显式 0 是合法的城防与士气状态，旧档/中间态不能被 || 恢复成默认满值。
+{
+  const mapId = WAR_MAP_IDS.find(id => !CONTESTED_MAP_IDS.includes(Number(id)));
+  const zeroState = buildSiegeCombatParams({
+    mapId,
+    playerFaction: 'wei',
+    allocation: { shield: 10, spear: 10, cavalry: 10, archer: 10, siege: 10, raider: 10 },
+    territories: {
+      [mapId]: {
+        owner: 'shu',
+        strength: 0,
+        garrison: { shield: 10, spear: 10, cavalry: 10, archer: 10, siege: 10, raider: 10 },
+        guards: [],
+      },
+    },
+    kw: { faction: 'wei', morale: 0, eliteTroops: 0 },
+  });
+  assert.equal(zeroState.strength, 0);
+  assert.equal(zeroState.moraleMult, 0.6);
+
+  const defected = applyDefection({
+    faction: 'wei',
+    morale: 0,
+    defectionCount: 0,
+    militaryRank: 'civilian',
+    warContribution: 0,
+    lifetimeContribution: 0,
+    recruitedGenerals: [],
+  }, 0);
+  assert.equal(defected.morale, DEFECTION_CONFIG.moraleFloor);
+
+  const seasonFromZero = applySeasonRewards({
+    faction: 'wei',
+    warContribution: 0,
+    seasonContribution: 0,
+    season: 1,
+    seasonTitles: [],
+    kwManpowerReserve: 0,
+    grain: 0,
+    eliteTroops: 0,
+    morale: 0,
+  }, {
+    rankings: ['wei', 'shu', 'wu', 'jin', 'qun'],
+    season: 1,
+  });
+  assert.equal(seasonFromZero.morale, 60);
+
+  const threePhaseStart = kwSiegeSource.indexOf('export const runThreePhaseSiege =');
+  const threePhaseEnd = kwSiegeSource.indexOf('/** 获取攻城时间修正', threePhaseStart);
+  const threePhaseSource = kwSiegeSource.slice(threePhaseStart, threePhaseEnd > threePhaseStart ? threePhaseEnd : undefined);
+  assert.match(threePhaseSource, /let strength = t\.strength \?\? 50;/);
+  assert.match(threePhaseSource, /let currentMorale = morale \?\? 100;/);
+  assert.doesNotMatch(threePhaseSource, /strength \|\| 50|morale \|\| 100/);
+  assert.doesNotMatch(kingdomSource, /kw(?:\?|)\.morale \|\| 100|strength \|\| (?:50|60|100)/);
+  check(true, '城防 0、士气 0 会保留其真实语义，叛国与赛季重置也不会异常回升');
+}
+
+// 14. 其他关键设计阈值。
 check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进入过度扩张风险区`);
 {
   const eliteRatio = 0.5;

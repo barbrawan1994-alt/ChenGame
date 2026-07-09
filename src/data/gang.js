@@ -263,6 +263,50 @@ export const GANG_TASKS = [
   { id: 'evolve_1',    name: '进化训练', desc: '进化1只精灵',       type: 'evolve',      target: 1,    reward: 35, gold: 1200, icon: '✨' },
 ];
 
+/**
+ * 原子计算一次金币捐献。
+ *
+ * 调用方只有在 ok=true 时才应同时提交 nextGang 与 nextGold，避免离帮、
+ * 跨日刷新或重复点击期间出现“金币已扣但任务未推进”的半完成状态。
+ */
+export const applyGangGoldDonation = ({ gang, dailyCounts, currentGold }) => {
+  const task = GANG_TASKS.find(item => item.id === 'donate_gold');
+  if (!task) return { ok: false, reason: 'task_unavailable' };
+  if (!gang?.gangId) return { ok: false, reason: 'not_in_gang' };
+
+  const completed = Array.isArray(dailyCounts?.taskCompleted)
+    ? dailyCounts.taskCompleted
+    : [];
+  if (completed.includes(task.id)) return { ok: false, reason: 'already_completed' };
+
+  const parsedGold = Number(currentGold);
+  const safeGold = Number.isFinite(parsedGold) ? Math.max(0, Math.floor(parsedGold)) : 0;
+  const cost = task.target;
+  if (safeGold < cost) return { ok: false, reason: 'insufficient_gold', cost };
+
+  const parsedProgress = Number(dailyCounts?.taskProgress?.[task.id]);
+  const currentProgress = Number.isFinite(parsedProgress) ? Math.max(0, parsedProgress) : 0;
+  const nextProgress = Math.min(task.target, currentProgress + cost);
+  const nextCompleted = nextProgress >= task.target
+    ? [...completed, task.id]
+    : completed;
+  const nextDailyCounts = {
+    ...(dailyCounts || {}),
+    taskProgress: {
+      ...(dailyCounts?.taskProgress || {}),
+      [task.id]: nextProgress,
+    },
+    taskCompleted: nextCompleted,
+  };
+
+  return {
+    ok: true,
+    cost,
+    nextGold: safeGold - cost,
+    nextGang: { ...gang, dailyCounts: nextDailyCounts },
+  };
+};
+
 export const GANG_WAR_CONFIG = {
   maxDaily: 2,
   baseFunds: 3000,

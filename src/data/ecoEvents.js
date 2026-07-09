@@ -237,10 +237,19 @@ export function getDefaultEcologyForMap(mapId) {
   return { ...DEFAULT_ECOLOGY, ...(MAP_DEFAULT_ECOLOGY[mapId] || {}) };
 }
 
+const getSafeEcologyMetric = (value, fallback) => {
+  const parsed = Number(value);
+  if (value === null || value === undefined || value === '' || !Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(0, Math.min(100, parsed));
+};
+
 export function clampEcology(eco) {
   const out = { ...eco };
   ECO_METRIC_KEYS.forEach(k => {
-    out[k] = Math.max(0, Math.min(100, Math.round(out[k] ?? 50)));
+    const fallback = DEFAULT_ECOLOGY[k] ?? 50;
+    out[k] = Math.round(getSafeEcologyMetric(out[k], fallback));
   });
   return out;
 }
@@ -249,7 +258,12 @@ export function applyEcologyDelta(eco, delta) {
   if (!delta) return clampEcology(eco);
   const next = { ...eco };
   Object.entries(delta).forEach(([k, v]) => {
-    if (ECO_METRIC_KEYS.includes(k)) next[k] = (next[k] ?? 50) + v;
+    if (ECO_METRIC_KEYS.includes(k)) {
+      const fallback = DEFAULT_ECOLOGY[k] ?? 50;
+      const base = getSafeEcologyMetric(next[k], fallback);
+      const parsedDelta = Number(v);
+      next[k] = base + (Number.isFinite(parsedDelta) ? parsedDelta : 0);
+    }
   });
   return clampEcology(next);
 }
@@ -258,14 +272,14 @@ export function applyEcologyDelta(eco, delta) {
 export function getEcologyHealth(eco) {
   return ECO_METRIC_KEYS.reduce((sum, key) => {
     const fallback = DEFAULT_ECOLOGY[key] ?? 50;
-    const value = eco?.[key] ?? fallback;
+    const value = getSafeEcologyMetric(eco?.[key], fallback);
     return sum + (key === 'pollution' ? 100 - value : value);
   }, 0) / ECO_METRIC_KEYS.length;
 }
 
 export function getEcologyTier(eco) {
   const health = getEcologyHealth(eco);
-  const pollution = eco?.pollution ?? DEFAULT_ECOLOGY.pollution;
+  const pollution = getSafeEcologyMetric(eco?.pollution, DEFAULT_ECOLOGY.pollution);
   if (pollution > 60) return { tier: 'polluted', label: '污染严重', color: '#C62828' };
   if (health >= 70 && pollution < 30) return { tier: 'thriving', label: '生态繁荣', color: '#2E7D32' };
   if (health >= 50) return { tier: 'stable', label: '生态稳定', color: '#1976D2' };

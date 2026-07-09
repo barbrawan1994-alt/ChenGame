@@ -468,14 +468,14 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
       const t = territories[mid];
       const supply = getSupplyProfile(mid, faction, territories);
       const garrison = getGarrisonTotal(t.garrison);
-      const score = Math.round((115 - (t.strength || 60)) + (140 - Math.min(140, garrison)) * 0.35 + (supply.mult - 0.8) * 60 + (t.owner === rival?.fid ? 12 : 0));
+      const score = Math.round((115 - (t.strength ?? 60)) + (140 - Math.min(140, garrison)) * 0.35 + (supply.mult - 0.8) * 60 + (t.owner === rival?.fid ? 12 : 0));
       const risk = t.strength >= 70 || garrison >= 120 || supply.mult < 0.9
         ? '高'
         : t.strength >= 48 || garrison >= 82 ? '中' : '低';
       return {
         mapId: Number(mid),
         owner: t.owner || 'neutral',
-        strength: t.strength || 0,
+        strength: t.strength ?? 0,
         garrison,
         supplyLabel: supply.label,
         risk,
@@ -675,7 +675,7 @@ export const buildSiegeCombatParams = ({
   const t = territories?.[mapId] || {};
   const alloc = normalizeTroopAllocationK(allocation);
   const deploy = TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
-  const defGarrison = t.garrison || generateGarrison(t.owner || 'qun', Math.max(40, Math.floor((t.strength || 50) * 1.2)));
+  const defGarrison = t.garrison || generateGarrison(t.owner || 'qun', Math.max(40, Math.floor((t.strength ?? 50) * 1.2)));
   const defTotal = Math.max(1, TROOP_KEYS_K.reduce((s, k) => s + (defGarrison[k] || 0), 0));
   const counter = troopCounterScore(alloc, defGarrison);
   const { lead, gens } = getLeadershipMultK(recruitedGenerals, generalIds);
@@ -686,7 +686,7 @@ export const buildSiegeCombatParams = ({
   const underdogMult = ownCount <= 2 ? 1.07 : 1;
   const defenderResolve = t.owner === 'neutral' ? 0.86 : clamp(0.92 + defenderCount * 0.018, 0.92, 1.16);
   const instabilityMult = kw ? getInstabilityMult(kw) : 1;
-  const moraleMult = clamp(((kw?.morale ?? 100) || 100) / 100, 0.6, 1.2);
+  const moraleMult = clamp((kw?.morale ?? 100) / 100, 0.6, 1.2);
   const eliteRatio = deploy > 0 ? Math.min(1, (kw?.eliteTroops || 0) / deploy) : 0;
   const eliteMult = 1 + eliteRatio * (RECRUIT_CONFIG.eliteCombatMult - 1);
   const tm = timeMod || { attackMult: 1, defenseMult: 1, contribMult: 1 };
@@ -696,7 +696,7 @@ export const buildSiegeCombatParams = ({
     ? remainingGuards
     : (t.guards || []).filter(g => !g.defeated).length;
   const guardPenalty = 1 + guards * 0.12;
-  const strength = t.strength || 50;
+  const strength = t.strength ?? 50;
 
   const fieldPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult
     * instabilityMult * moraleMult * eliteMult * tm.attackMult * extBonus.attackMult;
@@ -789,7 +789,8 @@ const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
   const t = territories?.[mapId];
   if (!t || t.owner === attackerFid || CONTESTED_MAP_IDS.includes(Number(mapId))) return -Infinity;
   const defender = t.owner || 'neutral';
-  const strength = Math.max(1, Number(t.strength) || 50);
+  const parsedStrength = Number(t.strength);
+  const strength = Math.max(1, Number.isFinite(parsedStrength) ? parsedStrength : 50);
   const garrisonTotal = Math.max(1, getGarrisonTotal(t.garrison));
   const supply = getSupplyProfile(mapId, attackerFid, territories || {});
   const attackerCount = getFactionTerritoryCount(attackerFid, territories || {});
@@ -972,7 +973,7 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     kwManpowerReserve: Math.min(MANPOWER_RESERVE_CAP, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
     grain: Math.floor((kw.grain || 0) * 0.3),
     eliteTroops: Math.floor((kw.eliteTroops || 0) * 0.3),
-    morale: Math.max(60, Math.floor((kw.morale || 100) * 0.8)),
+    morale: Math.max(60, Math.floor((kw.morale ?? 100) * 0.8)),
   };
   const stats = rankStatsFn ? rankStatsFn(newState) : null;
   newState.militaryRank = getMilitaryRank(newContribution, stats).id;
@@ -1052,7 +1053,7 @@ export const getScoutAdjacentIntel = (mapId, playerFaction, territories, scoutRa
     return {
       mapId: adjId,
       owner: nt.owner,
-      strength: nt.strength || 50,
+      strength: nt.strength ?? 50,
       garrison: getGarrisonTotal(nt.garrison),
     };
   }).filter(Boolean);
@@ -1075,7 +1076,7 @@ export const useWarRally = (kw, rankStats = null) => {
     if (terr[mid]?.owner === kw.faction) {
       terr[mid] = {
         ...terr[mid],
-        strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid].strength || 50) + perks.rallyStrength),
+        strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid].strength ?? 50) + perks.rallyStrength),
       };
       count++;
     }
@@ -1099,7 +1100,7 @@ export const useRoyalDecree = (kw, rankStats = null) => {
     if (terr[mid]?.owner === kw.faction) {
       terr[mid] = {
         ...terr[mid],
-        strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid].strength || 50) + perks.decreeStrength),
+        strength: Math.min(WAR_TICK_CONFIG.maxStrength, (terr[mid].strength ?? 50) + perks.decreeStrength),
       };
       count++;
     }
@@ -1308,7 +1309,7 @@ export const assignTerritoryGuards = (factionId, strength = 60) => {
 export const ensureTerritoryGuards = (territory, owner) => {
   if (!territory) return [];
   if (territory.guards && territory.guards.length > 0) return territory.guards;
-  return assignTerritoryGuards(owner || territory.owner || 'qun', territory.strength || 60);
+  return assignTerritoryGuards(owner || territory.owner || 'qun', territory.strength ?? 60);
 };
 
 export const getActiveGuards = (territory) => {
@@ -1469,7 +1470,7 @@ export const applyDefection = (kw, currentGold = 0) => {
     warContribution: newWarContrib,
     lifetimeContribution: newLifetime,
     generalDraws: Math.max(0, Math.floor((kw.generalDraws || 0) * pen.generalDrawsKeepPct)),
-    morale: Math.max(pen.moraleFloor, (kw.morale || 100) - pen.moraleLoss),
+    morale: Math.max(pen.moraleFloor, (kw.morale ?? 100) - pen.moraleLoss),
     recruitedGenerals: gens,
     militaryRank: MILITARY_RANKS[newRankIdx]?.id || 'civilian',
     defectionCount: (kw.defectionCount || 0) + 1,
@@ -1520,11 +1521,11 @@ const aiFortify = (fid, territories) => {
   const owned = WAR_MAP_IDS.filter(mid => territories[mid]?.owner === fid);
   if (owned.length === 0) return null;
   const mid = owned.reduce((best, id) => {
-    const s = territories[id]?.strength || 100;
-    return s < (territories[best]?.strength || 100) ? id : best;
+    const s = territories[id]?.strength ?? 100;
+    return s < (territories[best]?.strength ?? 100) ? id : best;
   }, owned[0]);
   const t = { ...territories[mid] };
-  t.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (t.strength || 50) + 5 + Math.floor(Math.random() * 4));
+  t.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (t.strength ?? 50) + 5 + Math.floor(Math.random() * 4));
   if (t.garrison) {
     const rk = TROOP_KEYS_K[Math.floor(Math.random() * 6)];
     t.garrison = { ...t.garrison, [rk]: (t.garrison[rk] || 0) + 3 + Math.floor(Math.random() * 5) };
@@ -1538,7 +1539,7 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
     const t = territories[mid];
     if (!t || t.owner === fid) return false;
     if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
-    return (t.strength || 60) <= 55;
+    return (t.strength ?? 60) <= 55;
   });
   if (targets.length === 0) return aiFortify(fid, territories);
   const scored = targets.map(mid => ({ mid, score: scoreAiWarTarget(fid, mid, territories, getWeakestFaction(territories)) }))
@@ -1554,7 +1555,7 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
   const counter = troopCounterScore(atkGarrison, defGarrison);
   const supply = getSupplyProfile(targetMapId, fid, territories);
   const atkPower = deploy * counter * supply.mult * (0.85 + Math.random() * 0.3);
-  const defPower = getGarrisonTotal(defGarrison) * ((target.strength || 50) / 100) * (0.9 + Math.random() * 0.2);
+  const defPower = getGarrisonTotal(defGarrison) * ((target.strength ?? 50) / 100) * (0.9 + Math.random() * 0.2);
   const guards = getActiveGuards(target);
   const guardBonus = 1 + guards.length * 0.12;
   if (atkPower > defPower * guardBonus) {
@@ -1566,7 +1567,7 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
     territories[targetMapId] = target;
     return { type: 'capture', faction: fid, defender: oldOwner, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻占了${FACTIONS[oldOwner]?.fullName || '中立'}领地` };
   }
-  target.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (target.strength || 50) + 3);
+  target.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (target.strength ?? 50) + 3);
   territories[targetMapId] = target;
   return { type: 'attack_fail', faction: fid, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻城受挫` };
 };
@@ -1637,7 +1638,7 @@ export const migrateKingdomWarState = (kw) => {
       };
       changed = true;
     } else if (!terr[mapId].guards || terr[mapId].guards.length === 0) {
-      terr[mapId] = { ...terr[mapId], guards: assignTerritoryGuards(terr[mapId].owner || 'qun', terr[mapId].strength || 60) };
+      terr[mapId] = { ...terr[mapId], guards: assignTerritoryGuards(terr[mapId].owner || 'qun', terr[mapId].strength ?? 60) };
       changed = true;
     }
   }

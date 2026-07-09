@@ -66,7 +66,44 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   );
 }
 
-// 2. 污染必须是负向指标，并同时影响生态评级和区域阶段。
+// 2. 旧档越界值、字符串与非有限数必须归一化，不能让健康度变成 NaN 或突破 0~100。
+{
+  const normalized = eco.clampEcology({
+    water: 150,
+    vegetation: -20,
+    spirit: Number.NaN,
+    pollution: Number.POSITIVE_INFINITY,
+    stability: '75',
+    diversity: 'invalid',
+  });
+  assert.deepEqual(normalized, {
+    water: 100,
+    vegetation: 0,
+    spirit: eco.DEFAULT_ECOLOGY.spirit,
+    pollution: eco.DEFAULT_ECOLOGY.pollution,
+    stability: 75,
+    diversity: eco.DEFAULT_ECOLOGY.diversity,
+  });
+
+  const malformedHealth = eco.getEcologyHealth({
+    water: 999,
+    vegetation: -999,
+    spirit: Number.NaN,
+    pollution: 150,
+    stability: '80',
+    diversity: Number.NEGATIVE_INFINITY,
+  });
+  assert.ok(Number.isFinite(malformedHealth));
+  assert.ok(malformedHealth >= 0 && malformedHealth <= 100);
+
+  const stringDelta = eco.applyEcologyDelta({ ...eco.DEFAULT_ECOLOGY, water: '20' }, { water: '5' });
+  assert.equal(stringDelta.water, 25);
+  const invalidDelta = eco.applyEcologyDelta(eco.DEFAULT_ECOLOGY, { water: Number.NaN });
+  assert.equal(invalidDelta.water, eco.DEFAULT_ECOLOGY.water);
+  check(true, '异常旧档生态值会回退或截断到合法区间，数值字符串不会发生拼接污染');
+}
+
+// 3. 污染必须是负向指标，并同时影响生态评级和区域阶段。
 {
   const base = {
     water: 70,
@@ -94,7 +131,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   );
 }
 
-// 3. 区域连锁只能由本次发生变化的来源地图触发，避免跨图误结算。
+// 4. 区域连锁只能由本次发生变化的来源地图触发，避免跨图误结算。
 {
   const chains = [{
     fromMap: 1,
@@ -118,7 +155,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '修改正确来源地图 1 时，只结算对应的下游生态影响');
 }
 
-// 4. 旧存档缺失字段时必须使用统一默认值；全国连锁也应覆盖尚未初始化的地图。
+// 5. 旧存档缺失字段时必须使用统一默认值；全国连锁也应覆盖尚未初始化的地图。
 {
   const legacyEcology = {
     water: 50,
@@ -151,7 +188,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '全国生态连锁覆盖全部地图，包括尚未写入旧存档的惰性地图');
 }
 
-// 5. 全国灵灾使用 ISO 周键，周一切换且跨月仍保持同周一致。
+// 6. 全国灵灾使用 ISO 周键，周一切换且跨月仍保持同周一致。
 {
   const monday = calamities.getCalamityWeekKey('2026-06-29');
   const sunday = calamities.getCalamityWeekKey('2026-07-05');
@@ -168,7 +205,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '同一 ISO 周内跨月日期生成完全一致的全国灵灾列表');
 }
 
-// 6. 每种全国灵灾都必须绑定专属多阶段 Boss，净化后不能反向破坏生态。
+// 7. 每种全国灵灾都必须绑定专属多阶段 Boss，净化后不能反向破坏生态。
 {
   calamities.NATIONAL_CALAMITIES.forEach(calamity => {
     const boss = bossMechanics.getEcoLinkedBoss(calamity.bossKey);
@@ -204,7 +241,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '灵灾入口在扣费前验证 Boss 与战斗占用，启动异常会退费解锁，结算将净化效果施加到对应灾区');
 }
 
-// 7. 战斗救助只发放一次结构化事件奖励，且战斗入口必须允许显式 0 掉落。
+// 8. 战斗救助只发放一次结构化事件奖励，且战斗入口必须允许显式 0 掉落。
 {
   assert.match(appSource, /let dropGold = context\?\.drop \?\? baseGold;/);
   assert.match(appSource, /else if \(type === 'eco_crisis'\) \{[\s\S]{0,240}dropGold = context\.drop \?\? 2000;/);

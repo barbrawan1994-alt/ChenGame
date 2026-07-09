@@ -96,8 +96,79 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   const battleCheck = handler.indexOf('if (battle && !battleResultHandledRef.current)');
   const lockAcquire = handler.indexOf("gangActionLocksRef.current.add('gang_war')");
   assert.ok(targetCheck >= 0 && aliveCheck > targetCheck && battleCheck > aliveCheck && lockAcquire > battleCheck);
+  assert.match(handler, /const started = startBattle\(\{ gangWarTarget: target \}, 'gang_war'\);/);
+  assert.match(handler, /if \(!started\) gangActionLocksRef\.current\.delete\('gang_war'\);/);
   assert.match(handler, /catch \(err\) \{[\s\S]{0,160}gangActionLocksRef\.current\.delete\('gang_war'\)/);
-  check(true, '帮战启动前依次校验目标、存活队伍和战斗占用，初始化异常也会释放并发锁');
+
+  const startBattleStart = appSource.indexOf('const startBattle = (context, type, challengeId = null) => {');
+  const startBattleEnd = appSource.indexOf('const startTowerChallenge = () => {', startBattleStart);
+  const startBattleSource = appSource.slice(startBattleStart, startBattleEnd);
+  assert.ok(startBattleStart >= 0 && startBattleEnd > startBattleStart);
+  assert.match(startBattleSource, /startBattle blocked: already in battle'\); return false;/);
+  assert.match(startBattleSource, /setView\('battle'\);[\s\S]*return true;\s*};\s*$/);
+  check(true, '帮战启动前依次校验目标、存活队伍和战斗占用，拒绝启动或初始化异常都会释放并发锁');
+}
+
+// 金币捐献必须将“帮派状态 + 金币余额”作为一个事务计算，失败时不得产生半完成扣费。
+{
+  const baseGang = {
+    gangId: 'test_gang',
+    contribution: 0,
+    dailyCounts: { resetDate: '2026-07-10', taskProgress: {}, taskCompleted: [] },
+  };
+
+  const leftGang = gang.applyGangGoldDonation({
+    gang: { ...baseGang, gangId: null },
+    dailyCounts: baseGang.dailyCounts,
+    currentGold: 10000,
+  });
+  assert.deepEqual(leftGang, { ok: false, reason: 'not_in_gang' });
+
+  const completed = gang.applyGangGoldDonation({
+    gang: baseGang,
+    dailyCounts: { ...baseGang.dailyCounts, taskCompleted: ['donate_gold'] },
+    currentGold: 10000,
+  });
+  assert.deepEqual(completed, { ok: false, reason: 'already_completed' });
+
+  const insufficient = gang.applyGangGoldDonation({
+    gang: baseGang,
+    dailyCounts: baseGang.dailyCounts,
+    currentGold: 4999,
+  });
+  assert.equal(insufficient.ok, false);
+  assert.equal(insufficient.reason, 'insufficient_gold');
+  assert.equal(insufficient.cost, 5000);
+
+  const success = gang.applyGangGoldDonation({
+    gang: baseGang,
+    dailyCounts: baseGang.dailyCounts,
+    currentGold: 10000,
+  });
+  assert.equal(success.ok, true);
+  assert.equal(success.cost, 5000);
+  assert.equal(success.nextGold, 5000);
+  assert.equal(success.nextGang.dailyCounts.taskProgress.donate_gold, 5000);
+  assert.deepEqual(success.nextGang.dailyCounts.taskCompleted, ['donate_gold']);
+  assert.deepEqual(baseGang.dailyCounts, { resetDate: '2026-07-10', taskProgress: {}, taskCompleted: [] });
+
+  const donationStart = appSource.indexOf('{/* 捐献金币 */}');
+  const donationEnd = appSource.indexOf('{/* 上交精灵 */}', donationStart);
+  const donationSource = appSource.slice(donationStart, donationEnd);
+  const transaction = donationSource.indexOf('const donation = applyGangGoldDonation');
+  const lockAcquire = donationSource.indexOf('gangActionLocksRef.current.add(lockKey)');
+  const gangRefCommit = donationSource.indexOf('gangRef.current = donation.nextGang');
+  const goldCommit = donationSource.indexOf('goldRef.current = donation.nextGold');
+  const lockRelease = donationSource.indexOf('gangActionLocksRef.current.delete(lockKey)');
+  assert.ok(
+    donationStart >= 0 && donationEnd > donationStart && transaction >= 0 &&
+    lockAcquire > transaction && gangRefCommit > lockAcquire && goldCommit > gangRefCommit &&
+    lockRelease > goldCommit
+  );
+  assert.match(donationSource, /try \{[\s\S]*setGang\(donation\.nextGang\);[\s\S]*setGold\(donation\.nextGold\);[\s\S]*} finally \{/);
+  assert.doesNotMatch(donationSource, /updateGangTaskProgress\('donate_gold'/);
+  assert.doesNotMatch(donationSource, /setTimeout\(\(\) => gangActionLocksRef\.current\.delete/);
+  check(true, '离帮、重复完成、金币不足均不会扣费；成功捐献恰好扣一次并同步完成任务');
 }
 
 // 胜败结算各消耗一次次数，且帮派资金严格归属帮主。
@@ -111,6 +182,7 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   assert.equal((defeatSource.match(/warCount:/g) || []).length, 1);
   assert.match(winSource, /if \(prev\.isOwner && prev\.customGang\) \{[\s\S]{0,180}funds: \(prev\.customGang\.funds \|\| 0\) \+ reward\.funds/);
   assert.doesNotMatch(defeatSource, /funds\s*:/);
+  assert.doesNotMatch(winSource, /kingdomWar\.expBuffBattles/);
   check(true, '帮战胜败均只消耗一次每日次数，且只有帮主胜利时增加帮派资金');
 }
 
