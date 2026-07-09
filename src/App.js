@@ -12986,12 +12986,43 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const count = Math.min(countCap, baseCount + (trainerTactic.countBonus || 0));
       const usedIds = new Set();
       const trainerPool = context.pool && context.pool.length > 0 ? context.pool : [1];
-      for(let i=0; i<count; i++) {
+      const playerLead = party.find(p => p?.currentHp > 0) || party[0];
+      const playerLeadTypes = [playerLead?.type, playerLead?.secondaryType, playerLead?.type2].filter(Boolean);
+      const shouldSeekCoverage = playerLeadTypes.length > 0
+        && (trainerPressure.level > 0 || ['aggressive', 'ace_focus', 'deep_roster'].includes(trainerTactic.id));
+      let coveragePicked = false;
+      const scoreTrainerPickCoverage = (petId) => {
+        const dex = POKEDEX.find(p => p.id === petId);
+        if (!dex) return 1;
+        const atkTypes = [dex.type, dex.secondaryType, dex.type2].filter(Boolean);
+        if (atkTypes.length === 0) return 1;
+        return atkTypes.reduce((best, atkType) => {
+          const mult = playerLeadTypes.reduce((m, defType) => m * getTypeMod(atkType, defType), 1);
+          return Math.max(best, mult);
+        }, 1);
+      };
+      const pickTrainerPetId = (slot) => {
+        if (shouldSeekCoverage && !coveragePicked && slot === 0) {
+          const coverageCandidates = trainerPool
+            .filter(id => trainerPool.length < count || !usedIds.has(id))
+            .map(id => ({ id, score: scoreTrainerPickCoverage(id), tie: Math.random() }))
+            .filter(c => c.score > 1)
+            .sort((a, b) => (b.score - a.score) || (b.tie - a.tie));
+          if (coverageCandidates.length > 0) {
+            coveragePicked = true;
+            const top = coverageCandidates.slice(0, Math.min(3, coverageCandidates.length));
+            return _.sample(top).id;
+          }
+        }
         let pick = _.sample(trainerPool);
         if (trainerPool.length >= count) {
           let tries = 0;
           while (usedIds.has(pick) && tries < 10) { pick = _.sample(trainerPool); tries++; }
         }
+        return pick;
+      };
+      for(let i=0; i<count; i++) {
+        let pick = pickTrainerPetId(i);
         usedIds.add(pick);
         const lv = _.random(context.lvl?.[0] || 5, context.lvl?.[1] || 15)
           + (isElite ? _.random(2, 5) : 0)
@@ -13014,6 +13045,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
           level: trainerPressure.level,
           name: trainerPressure.name,
           desc: trainerPressure.desc,
+        };
+      }
+      if (coveragePicked && playerLeadTypes.length > 0) {
+        extraBattleData.trainerCoverage = {
+          target: playerLead?.name || '首发精灵',
+          types: playerLeadTypes,
         };
       }
     }
@@ -13691,6 +13728,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     if (extraBattleData.trainerPressure) {
       battleOpenLogs.push(`⚔️ 对手进入${extraBattleData.trainerPressure.name}状态：${extraBattleData.trainerPressure.desc}`);
+    }
+    if (extraBattleData.trainerCoverage) {
+      battleOpenLogs.push(`🔎 对手研究了你的首发 ${extraBattleData.trainerCoverage.target}，阵容里准备了覆盖位。`);
     }
     battleEnemyParty.forEach((ep, ei) => {
       if (!ep?.isEcoGuardian) return;
