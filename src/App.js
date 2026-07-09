@@ -276,11 +276,34 @@ const TRAINER_TACTICS = [
 
 const TRAINER_PRESSURE = [
   { level: 0, name: '正常', desc: '', levelBonus: 0, goldMult: 1 },
-  { level: 1, name: '备战', desc: '你的队伍略强，对手会更认真布阵。', levelBonus: 1, goldMult: 1.05 },
-  { level: 2, name: '反制', desc: '你的队伍明显领先，对手会准备更针对的打法。', levelBonus: 2, goldMult: 1.1 },
+  { level: 1, name: '备战', desc: '你的队伍或连胜表现占优，对手会更认真布阵。', levelBonus: 1, goldMult: 1.05 },
+  { level: 2, name: '反制', desc: '你的优势已经很明显，对手会准备更针对的打法。', levelBonus: 2, goldMult: 1.1 },
 ];
 
-const getTrainerPressure = (context, partyList) => {
+const BATTLE_DIRECTIVES = [
+  { id: 'clean_team', name: '完整阵型', desc: '获胜时没有任何出战伙伴倒下。', minMapIdx: 1, weight: 4, rewardGoldPct: 0.08, berry: 'oran', berryCount: 2 },
+  { id: 'swift_win', name: '速攻演练', desc: '在 7 回合内击败对手。', minMapIdx: 2, weight: 3, maxTurns: 7, rewardGoldPct: 0.07, berry: 'leppa', berryCount: 1 },
+  { id: 'type_mastery', name: '克制教学', desc: '本场至少打出 2 次效果拔群。', minMapIdx: 3, weight: 3, hits: 2, rewardGoldPct: 0.09, berry: 'sitrus', berryCount: 1 },
+  { id: 'no_switch', name: '首发信任', desc: '不主动换人并取得胜利。', minMapIdx: 4, weight: 2, rewardGoldPct: 0.1, berry: 'leppa', berryCount: 1 },
+];
+
+const pickBattleDirective = (mapIdx, kind = 'trainer', pressureLevel = 0, tacticId = 'balanced') => {
+  const safeMapIdx = Math.max(0, Number.isFinite(mapIdx) ? mapIdx : 0);
+  if (kind === 'trainer' && safeMapIdx < 1) return null;
+  const pressure = Math.max(0, Math.min(2, Number.isFinite(pressureLevel) ? pressureLevel : 0));
+  const baseChance = kind === 'gym' ? 0.7 : kind === 'challenge' ? 0.55 : 0.36;
+  const chance = Math.min(0.85, baseChance + pressure * 0.12 + (tacticId !== 'balanced' ? 0.08 : 0));
+  if (Math.random() > chance) return null;
+  const candidates = BATTLE_DIRECTIVES.filter(d => safeMapIdx + pressure >= d.minMapIdx);
+  return sampleWeighted(candidates, d => {
+    if (d.id === 'swift_win' && tacticId === 'sturdy') return Math.max(1, d.weight - 1);
+    if (d.id === 'type_mastery' && pressure > 0) return d.weight + pressure;
+    if (d.id === 'no_switch' && tacticId === 'ace_focus') return d.weight + 1;
+    return d.weight;
+  });
+};
+
+const getTrainerPressure = (context, partyList, winStreak = 0) => {
   const maxMapLv = Number(context?.lvl?.[1] ?? context?.lvl?.[0] ?? 0);
   if (!Number.isFinite(maxMapLv) || maxMapLv <= 0 || !Array.isArray(partyList) || partyList.length === 0) return TRAINER_PRESSURE[0];
   const topLevels = partyList
@@ -291,7 +314,12 @@ const getTrainerPressure = (context, partyList) => {
   if (topLevels.length === 0) return TRAINER_PRESSURE[0];
   const topAvg = topLevels.reduce((sum, lv) => sum + lv, 0) / topLevels.length;
   const lead = topAvg - maxMapLv;
-  return lead >= 10 ? TRAINER_PRESSURE[2] : lead >= 5 ? TRAINER_PRESSURE[1] : TRAINER_PRESSURE[0];
+  const levelPressure = lead >= 10 ? 2 : lead >= 5 ? 1 : 0;
+  const streak = Math.max(0, Number.isFinite(winStreak) ? winStreak : 0);
+  const streakPressure = maxMapLv >= 40 && streak >= 18 ? 2
+    : maxMapLv >= 20 && streak >= 10 ? 1
+    : 0;
+  return TRAINER_PRESSURE[Math.max(levelPressure, streakPressure)];
 };
 
 const pickTrainerTactic = (mapIdx, isElite, pressureLevel = 0) => {
@@ -1172,6 +1200,7 @@ useEffect(() => {
       const puzzle = _.sample(ENV_PUZZLES.filter(p => (infinityState?.floor || 0) >= 5)) || ENV_PUZZLES[0];
       showMapToast('🧩', '生态解谜', puzzle?.name || '解开机关', 2500);
       setGold(g => g + 800);
+      updateAchStat({ totalGoldEarned: 800 });
       nextInfinityFloor();
       return;
     }
@@ -1687,6 +1716,8 @@ const [infinityState, setInfinityState] = useState(() => {
 
   const battleResultHandledRef = useRef(false);
   const pendingJutsuWinForBountyRef = useRef(false);
+  const bountyClaimLocksRef = useRef(new Set());
+  const dexMilestoneClaimLocksRef = useRef(new Set());
   const playerTookDamageRef = useRef(false);
   const markPlayerTookDamage = (battleState) => {
     playerTookDamageRef.current = true;
@@ -1753,6 +1784,35 @@ const [infinityState, setInfinityState] = useState(() => {
     capture_alive: '活捕战：制服敌人但不可击杀',
     escape: '逃脱战：撑过指定回合即胜',
   }[obj] || '');
+
+  const getBattleDirectiveStatus = (battleState, finalParty = []) => {
+    const directive = battleState?.battleDirective;
+    if (!directive) return { directive: null, completed: false, progress: '' };
+    const combat = battleState?.playerCombatStates || [];
+    const starts = battleState?._partyStartHp || [];
+    if (directive.id === 'clean_team') {
+      const mins = battleState?._partyMinHp || [];
+      const failed = combat.some((p, i) => {
+        const startHp = starts[i] ?? p?.currentHp ?? 0;
+        if (startHp <= 0) return false;
+        const minHp = mins[i] ?? p?.currentHp ?? startHp;
+        return minHp <= 0 || !p || p.currentHp <= 0;
+      });
+      return { directive, completed: !failed, progress: failed ? '有伙伴曾倒下' : '全员保持战斗力' };
+    }
+    if (directive.id === 'swift_win') {
+      const turns = battleState?.turnCount ?? 0;
+      return { directive, completed: turns <= (directive.maxTurns || 7), progress: `${turns}/${directive.maxTurns || 7}回合` };
+    }
+    if (directive.id === 'type_mastery') {
+      const hits = battleState?._bonusSuperEffectiveHits || 0;
+      return { directive, completed: hits >= (directive.hits || 2), progress: `${hits}/${directive.hits || 2}次效果拔群` };
+    }
+    if (directive.id === 'no_switch') {
+      return { directive, completed: !battleState?._playerSwitched, progress: battleState?._playerSwitched ? '已主动换人' : '未主动换人' };
+    }
+    return { directive, completed: false, progress: finalParty.length ? '已结算' : '' };
+  };
    // 🎵 [新增] 音频控制 Ref 和 State
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(savedData.isMuted ?? false); // 静音状态
@@ -1822,6 +1882,8 @@ const [infinityState, setInfinityState] = useState(() => {
   const gangRef = useRef(gang);
   gangRef.current = gang;
   const gangTaskClaimLocksRef = useRef(new Set());
+  const raceRunningRef = useRef(false);
+  const expeditionClaimLocksRef = useRef(new Set());
 
   const getMapPixelTheme = (mapInfo = {}) => {
     const source = `${mapInfo.id || 0}-${mapInfo.name || ''}-${mapInfo.type || ''}`;
@@ -1944,6 +2006,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
    const [evoAnim, setEvoAnim] = useState(null); // { oldPet, newPet, targetIdx, step: 0-3 }
   const [beautyState, setBeautyState] = useState({ round: 1, appeal: 0, history: [], log: [] });
   const [activityModal, setActivityModal] = useState(null);
+  const activityStartLockRef = useRef(false);
+  useEffect(() => {
+    if (activityModal) activityStartLockRef.current = false;
+  }, [activityModal]);
   const [battleTooltip, setBattleTooltip] = useState(null);
   const [petPicker, setPetPicker] = useState(null);
     // ==========================================
@@ -2419,7 +2485,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             }) : null);
           } else {
             pendingJutsuWinForBountyRef.current = false;
-            handleWin(newParty);
+            handleWin(newParty, workingBattle);
           }
         } else {
           if (workingBattle.isDouble) {
@@ -2572,7 +2638,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
     return move.pp === undefined || move.pp > 0;
   };
 
-  const getUnitTypeList = (unit) => [unit?.type, unit?.secondaryType, unit?.type2].filter(Boolean);
+  const getUnitTypeList = (unit) => [...new Set([unit?.type, unit?.secondaryType, unit?.type2].filter(Boolean))];
+
+  const getUnitOffensiveTypeList = (unit) => {
+    const moveTypes = (unit?.combatMoves || unit?.moves || [])
+      .filter(move => move?.t && (move.p || 0) > 0)
+      .map(move => move.t);
+    return [...new Set([...moveTypes, ...getUnitTypeList(unit)])];
+  };
 
   const getMoveTypeMultiplier = (move, target, battleState) => {
     if (!move?.t || !target) return 1;
@@ -2591,6 +2664,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
   const getEnemyAiStyle = (battleState, enemyUnit, opts = {}) => {
     const tacticId = opts.aiTactic || battleState?.trainerTactic?.id || 'balanced';
+    const pressureLevel = Math.max(0, Math.min(2, battleState?.trainerPressure?.level || 0));
     const enemyParty = battleState?.enemyParty || [];
     const enemyIdx = enemyParty.findIndex(p => p === enemyUnit || (p?.uid && enemyUnit?.uid && p.uid === enemyUnit.uid));
     const isAce = enemyIdx >= 0 && enemyIdx === enemyParty.length - 1;
@@ -2607,8 +2681,8 @@ const [viewStatPet, setViewStatPet] = useState(null);
     return {
       tacticId,
       isAce,
-      topMoveChance: Math.min(0.9, baseTopChance + topChanceBonus),
-      scoreNoise,
+      topMoveChance: Math.min(0.9, baseTopChance + topChanceBonus + pressureLevel * 0.03),
+      scoreNoise: Math.max(4, scoreNoise - pressureLevel * 2),
     };
   };
 
@@ -2837,9 +2911,15 @@ const [viewStatPet, setViewStatPet] = useState(null);
       if (m.reward?.petId) {
         const gp = createPet(m.reward.petId, m.reward.petLevel || 70, true, !!m.reward.shiny);
         gp.name = `🌿${gp.name}`;
-        if (party.length < 6) setParty(prev => [...prev, gp]);
-        else setBox(prev => [...prev, gp]);
-        if (!caughtDex.includes(m.reward.petId)) setCaughtDex(prev => [...prev, m.reward.petId]);
+        const currentGuardianParty = partyRef.current || [];
+        if (currentGuardianParty.length < 6) {
+          const nextGuardianParty = [...currentGuardianParty, gp];
+          partyRef.current = nextGuardianParty;
+          setParty(nextGuardianParty);
+        } else {
+          setBox(prev => [...prev, gp]);
+        }
+        if (!caughtDex.includes(m.reward.petId)) setCaughtDex(prev => prev.includes(m.reward.petId) ? prev : [...prev, m.reward.petId]);
       }
       setGuardianMilestonesClaimed(c => [...new Set([...(c || []), m.score])]);
     });
@@ -3256,7 +3336,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if ((fusionState.sectRealmsCleared || []).includes(realmId)) return;
     setFusionState(prev => ({ ...prev, sectRealmsCleared: [...(prev.sectRealmsCleared || []), realmId] }));
     const r = def.reward || {};
-    if (r.gold) setGold(g => g + r.gold);
+    if (r.gold) { setGold(g => g + r.gold); updateAchStat({ totalGoldEarned: r.gold }); }
     if (r.title) unlockTitle(r.title);
     if (r.generalFragment) {
       setFusionState(prev => ({ ...prev, generalFragments: { ...(prev.generalFragments || {}), [r.generalFragment]: ((prev.generalFragments || {})[r.generalFragment] || 0) + 1 } }));
@@ -4627,18 +4707,31 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 成就系统 - 核心函数
   // ==========================================
+  const ACH_STAT_REPLACE_KEYS = useMemo(() => new Set([
+    'clearedDungeonList',
+    'clearedT4List',
+    'uniqueDungeonsCleared',
+    'tier4DungeonsCleared',
+    'usedStonesList',
+    'uniqueStonesUsed',
+  ]), []);
+
   const updateAchStat = useCallback((updates) => {
     setAchStats(prev => {
       const next = { ...prev };
       for (const [k, v] of Object.entries(updates)) {
         if (typeof v === 'function') next[k] = v(prev[k]);
         else if (typeof v === 'boolean') next[k] = v;
-        else if (k.startsWith('max')) next[k] = Math.max(prev[k] || 0, v);
-        else next[k] = (prev[k] || 0) + v;
+        else if (ACH_STAT_REPLACE_KEYS.has(k)) next[k] = Array.isArray(v) ? [...v] : v;
+        else if (Array.isArray(v)) next[k] = [...v];
+        else if (v && typeof v === 'object') next[k] = { ...v };
+        else if (k.startsWith('max')) next[k] = Math.max(Number(prev[k]) || 0, Number(v) || 0);
+        else if (typeof v === 'number') next[k] = (Number(prev[k]) || 0) + v;
+        else next[k] = v;
       }
       return next;
     });
-  }, []);
+  }, [ACH_STAT_REPLACE_KEYS]);
 
   const formatAchievementReward = (reward) => {
     if (!reward) return [];
@@ -5789,6 +5882,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setMarriage(prev => ({ ...prev, lastSpouseGiftDate: today }));
     if (gift.type === 'gold') {
       setGold(g => g + gift.amount);
+      updateAchStat({ totalGoldEarned: gift.amount });
     } else if (gift.type === 'berries') {
       setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, 'oran', gift.amount) }));
     } else if (gift.type === 'meds') {
@@ -6976,6 +7070,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const refreshBounties = () => {
     const today = getLocalDateStr();
     if (bountyBoard.date !== today) {
+      const refreshKey = `refresh:${bountyBoard.date || 'new'}:${today}`;
+      if (bountyClaimLocksRef.current.has(refreshKey)) return;
+      bountyClaimLocksRef.current.add(refreshKey);
       const pendingRewards = (bountyBoard.quests || []).filter(q => q.completed && !q.claimed).map(q => q.reward || {});
       pendingRewards.forEach(grantBountyReward);
       if (pendingRewards.length > 0) {
@@ -6987,43 +7084,76 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const claimBountyReward = (questIdx) => {
-    setBountyBoard(prev => {
+    const lockKey = `quest:${bountyBoard.date || getLocalDateStr()}:${questIdx}`;
+    if (bountyClaimLocksRef.current.has(lockKey)) {
+      showMapToast('✅', '提示', '该赏金奖励正在领取', 1600);
+      return;
+    }
+    bountyClaimLocksRef.current.add(lockKey);
+    let didClaim = false;
+    let rewardToGrant = null;
+    let bonusGold = 0;
+    let bonusTicket = 0;
+    let bonusToast = null;
+    flushSync(() => setBountyBoard(prev => {
       const q = prev.quests?.[questIdx];
       if (!q || !q.completed || q.claimed) return prev;
-      const reward = q.reward;
-      grantBountyReward(reward);
+      rewardToGrant = q.reward || {};
       const quests = prev.quests.map((qq,i) => i === questIdx ? {...qq, claimed: true} : qq);
       const allDone = quests.every(qq => qq.claimed);
       const claimedCount = quests.filter(qq => qq.claimed).length;
       if (claimedCount === 3) {
-        const bonus3 = Math.floor(500 + badges.length * 100);
-        setGold(g => g + bonus3);
-        updateAchStat({ totalGoldEarned: bonus3 });
-        setTimeout(() => showMapToast('🔥', '3连赏金!', `额外奖励 💰${bonus3} 金币！`, 2500), 600);
+        bonusGold = Math.floor(500 + badges.length * 100);
+        bonusToast = ['🔥', '3连赏金!', `额外奖励 💰${bonusGold} 金币！`, 2500];
       }
       if (claimedCount === 5) {
-        const bonus5 = Math.floor(1500 + badges.length * 200);
-        setGold(g => g + bonus5);
-        updateAchStat({ totalGoldEarned: bonus5 });
-        setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + 1)}));
-        setTimeout(() => showMapToast('🌟', '5连赏金!', `额外奖励 💰${bonus5} + 🎫1竞技票！`, 3000), 600);
+        bonusGold = Math.floor(1500 + badges.length * 200);
+        bonusTicket = 1;
+        bonusToast = ['🌟', '5连赏金!', `额外奖励 💰${bonusGold} + 🎫1竞技票！`, 3000];
       }
-      showMapToast('🎁', '赏金领取', `获得 ${reward.gold || 0} 金币${reward.tickets ? ` + ${reward.tickets} 竞技票` : ''}`, 2000);
+      didClaim = true;
       return {...prev, quests, allCompleted: allDone};
-    });
+    }));
+    if (!didClaim) {
+      bountyClaimLocksRef.current.delete(lockKey);
+      return;
+    }
+    grantBountyReward(rewardToGrant);
+    if (bonusGold > 0) {
+      setGold(g => g + bonusGold);
+      updateAchStat({ totalGoldEarned: bonusGold });
+    }
+    if (bonusTicket > 0) {
+      setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + bonusTicket)}));
+    }
+    if (bonusToast) setTimeout(() => showMapToast(...bonusToast), 600);
+    showMapToast('🎁', '赏金领取', `获得 ${rewardToGrant.gold || 0} 金币${rewardToGrant.tickets ? ` + ${rewardToGrant.tickets} 竞技票` : ''}`, 2000);
   };
 
   const claimMasterChest = () => {
-    setBountyBoard(prev => {
+    const lockKey = `master:${bountyBoard.date || getLocalDateStr()}`;
+    if (bountyClaimLocksRef.current.has(lockKey)) {
+      showMapToast('✅', '提示', '大师宝箱正在领取', 1600);
+      return;
+    }
+    bountyClaimLocksRef.current.add(lockKey);
+    let didClaim = false;
+    let chest = null;
+    flushSync(() => setBountyBoard(prev => {
       if (!prev.allCompleted || prev.masterChestClaimed) return prev;
-      const chest = getMasterChestReward(badges.length);
-      if (chest.gold) setGold(g => g + chest.gold);
-      if (chest.tickets) setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + chest.tickets)}));
-      if (chest.berries) setInventory(inv => ({...inv, berries: addBerries(inv.berries, 'oran', chest.berries)}));
-      showMapToast('🏆', '大师宝箱', `全部完成！${chest.desc}`, 3500);
-      updateAchStat({ totalGoldEarned: chest.gold || 0 });
+      chest = getMasterChestReward(badges.length);
+      didClaim = true;
       return {...prev, masterChestClaimed: true};
-    });
+    }));
+    if (!didClaim || !chest) {
+      bountyClaimLocksRef.current.delete(lockKey);
+      return;
+    }
+    if (chest.gold) setGold(g => g + chest.gold);
+    if (chest.tickets) setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + chest.tickets)}));
+    if (chest.berries) setInventory(inv => ({...inv, berries: addBerries(inv.berries, 'oran', chest.berries)}));
+    showMapToast('🏆', '大师宝箱', `全部完成！${chest.desc}`, 3500);
+    updateAchStat({ totalGoldEarned: chest.gold || 0 });
   };
 
   const advanceBounty = (type, targetType, amount = 1) => {
@@ -7144,55 +7274,67 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const doMineExchange = (exIdx) => {
     const ex = MINE_EXCHANGE[exIdx];
     if (!ex) return;
-    setMineState(prev => {
+    const missingOre = Object.entries(ex.cost).find(([ore, need]) => (mineState.minerals?.[ore] || 0) < need);
+    if (missingOre) {
+      const [ore] = missingOre;
+      showMapToast('❌','矿石不足',`${MINE_ORES[ore]?.name || ore} 不够`,1500);
+      return;
+    }
+    let exchanged = false;
+    flushSync(() => setMineState(prev => {
       const minerals = {...prev.minerals};
       let nextEnergy = prev.energy;
       for (const [ore, need] of Object.entries(ex.cost)) {
-        if ((minerals[ore] || 0) < need) { showMapToast('❌','矿石不足',`${MINE_ORES[ore]?.name || ore} 不够`,1500); return prev; }
+        if ((minerals[ore] || 0) < need) return prev;
       }
       for (const [ore, need] of Object.entries(ex.cost)) minerals[ore] -= need;
-      if (ex.reward.type === 'gold') { setGold(g => g + ex.reward.amount); updateAchStat({ totalGoldEarned: ex.reward.amount }); }
-      else if (ex.reward.type === 'item') {
-        const rid = ex.reward.id;
-        if (rid === 'potion' || rid === 'super_potion' || rid === 'hyper_potion' || rid === 'max_potion' || rid === 'full_restore') {
-          setInventory(prev2 => ({...prev2, meds:{...(prev2.meds||{}), [rid]:((prev2.meds||{})[rid]||0)+(ex.reward.amount||1)}}));
-        } else if (rid === 'rebirth_pill') {
-          setInventory(prev2 => ({...prev2, misc:{...(prev2.misc||{}), rebirth_pill:((prev2.misc||{}).rebirth_pill||0)+(ex.reward.amount||1)}}));
-        } else if (rid === 'exp_candy') {
-          setInventory(prev2 => ({...prev2, exp_candy: (prev2.exp_candy||0) + (ex.reward.amount||1)}));
-        } else {
-          setInventory(prev2 => ({...prev2, [rid]: (prev2[rid]||0) + (ex.reward.amount||1)}));
-        }
-      }
-      else if (ex.reward.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) setAccessories(p => [...p, acc]); }
-      else if (ex.reward.type === 'evo_stone') {
-        const stoneKeys = Object.keys(EVO_STONES);
-        const stoneId = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
-        setInventory(prev2 => ({...prev2, stones:{...(prev2.stones||{}), [stoneId]:((prev2.stones||{})[stoneId]||0)+(ex.reward.amount||1)}}));
-      }
-      else if (ex.reward.type === 'legacy_stone') {
-        setInventory(prev2 => ({...prev2, legacy_stone: (prev2.legacy_stone||0) + (ex.reward.amount || 1)}));
-      }
-      else if (ex.reward.type === 'tm') {
-        const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
-        const tmReward = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
-        if (tmReward) setInventory(prev2 => ({...prev2, tms:{...(prev2.tms||{}), [tmReward.id]:((prev2.tms||{})[tmReward.id]||0)+1}}));
-      }
-      else if (ex.reward.type === 'energy') {
+      if (ex.reward.type === 'energy') {
         nextEnergy = Math.min((prev.energy || 0) + (ex.reward.amount || 10), MINE_MAX_ENERGY);
       }
-      else if (ex.reward.type === 'arena_ticket') {
-        setArenaState(prev2 => ({...prev2, tickets: (prev2.tickets||0) + (ex.reward.amount||1)}));
-      }
-      else if (ex.reward.type === 'jutsu_scroll') {
-        const n = ex.reward.amount || 1;
-        const newIds = Array.from({length: n}, () => JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)].id);
-        setNarutoState(prev2 => ({ ...prev2, jutsuScrolls: [...(prev2.jutsuScrolls || []), ...newIds], jutsuCollection: [...new Set([...(prev2.jutsuCollection || []), ...newIds])] }));
-      }
-      showMapToast('✅', '兑换成功', ex.desc, 2000);
-      updateAchStat({ mineExchanges: 1 });
+      exchanged = true;
       return {...prev, minerals, energy: nextEnergy};
-    });
+    }));
+    if (!exchanged) {
+      showMapToast('❌','矿石不足','矿石数量已变化，请重新确认',1500);
+      return;
+    }
+    if (ex.reward.type === 'gold') { setGold(g => g + ex.reward.amount); updateAchStat({ totalGoldEarned: ex.reward.amount }); }
+    else if (ex.reward.type === 'item') {
+      const rid = ex.reward.id;
+      if (rid === 'potion' || rid === 'super_potion' || rid === 'hyper_potion' || rid === 'max_potion' || rid === 'full_restore') {
+        setInventory(prev2 => ({...prev2, meds:{...(prev2.meds||{}), [rid]:((prev2.meds||{})[rid]||0)+(ex.reward.amount||1)}}));
+      } else if (rid === 'rebirth_pill') {
+        setInventory(prev2 => ({...prev2, misc:{...(prev2.misc||{}), rebirth_pill:((prev2.misc||{}).rebirth_pill||0)+(ex.reward.amount||1)}}));
+      } else if (rid === 'exp_candy') {
+        setInventory(prev2 => ({...prev2, exp_candy: (prev2.exp_candy||0) + (ex.reward.amount||1)}));
+      } else {
+        setInventory(prev2 => ({...prev2, [rid]: (prev2[rid]||0) + (ex.reward.amount||1)}));
+      }
+    }
+    else if (ex.reward.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) setAccessories(p => [...p, acc]); }
+    else if (ex.reward.type === 'evo_stone') {
+      const stoneKeys = Object.keys(EVO_STONES);
+      const stoneId = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
+      setInventory(prev2 => ({...prev2, stones:{...(prev2.stones||{}), [stoneId]:((prev2.stones||{})[stoneId]||0)+(ex.reward.amount||1)}}));
+    }
+    else if (ex.reward.type === 'legacy_stone') {
+      setInventory(prev2 => ({...prev2, legacy_stone: (prev2.legacy_stone||0) + (ex.reward.amount || 1)}));
+    }
+    else if (ex.reward.type === 'tm') {
+      const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
+      const tmReward = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
+      if (tmReward) setInventory(prev2 => ({...prev2, tms:{...(prev2.tms||{}), [tmReward.id]:((prev2.tms||{})[tmReward.id]||0)+1}}));
+    }
+    else if (ex.reward.type === 'arena_ticket') {
+      setArenaState(prev2 => ({...prev2, tickets: (prev2.tickets||0) + (ex.reward.amount||1)}));
+    }
+    else if (ex.reward.type === 'jutsu_scroll') {
+      const n = ex.reward.amount || 1;
+      const newIds = Array.from({length: n}, () => JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)].id);
+      setNarutoState(prev2 => ({ ...prev2, jutsuScrolls: [...(prev2.jutsuScrolls || []), ...newIds], jutsuCollection: [...new Set([...(prev2.jutsuCollection || []), ...newIds])] }));
+    }
+    showMapToast('✅', '兑换成功', ex.desc, 2000);
+    updateAchStat({ mineExchanges: 1 });
   };
 
   const sendExpedition = (zoneId, petIds) => {
@@ -7510,9 +7652,16 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
       newPet.intimacy = Math.min(255, Math.max((step.rewardIntimacy || 80) + 30, (party[0]?.intimacy || 0) + 20));
       newPet.bonded = true;
-      if (party.length < 6) setParty(prev => [...prev, newPet]);
-      else setBox(prev => [...prev, newPet]);
-      if (!caughtDex.includes(quest.petId)) setCaughtDex(prev => [...prev, quest.petId]);
+      let bondedPetToParty = false;
+      flushSync(() => setParty(prev => {
+        if (prev.length < 6) {
+          bondedPetToParty = true;
+          return [...prev, newPet];
+        }
+        return prev;
+      }));
+      if (!bondedPetToParty) setBox(prev => [...prev, newPet]);
+      if (!caughtDex.includes(quest.petId)) setCaughtDex(prev => prev.includes(quest.petId) ? prev : [...prev, quest.petId]);
       if (quest.reward?.title) unlockTitle(quest.reward.title);
       if (quest.reward?.gold) setGold(g => g + quest.reward.gold);
       if (quest.reward?.item) {
@@ -7521,7 +7670,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
       if (quest.ecology) applyMapEcologyDelta(quest.mapId, quest.ecology);
       addGuardianScore(10);
-      updateAchStat({ bondingCompleted: (achStats.bondingCompleted || 0) + 1 });
+      updateAchStat({ bondingCompleted: 1, totalGoldEarned: quest.reward?.gold || 0 });
       setBondingProgress(prev => ({ ...prev, [questId]: { step: quest.steps.length, completed: true } }));
       showMapToast(quest.icon || '💫', '结契成功', `${quest.petName} 与你建立了羁绊！`, 3500);
       setBondingModal(null);
@@ -7589,7 +7738,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (task.requiresUnlock && !(fusionState.crisisUnlocks || []).includes(task.requiresUnlock)) {
       showMapToast('❌', '条件不足', '需先完成对应灵灾章节结局', 2500); return;
     }
-    if (task.cost?.gold) setGold(g => g - task.cost.gold);
+    if (task.cost?.gold) {
+      setGold(g => g - task.cost.gold);
+      updateAchStat({ totalGoldSpent: task.cost.gold });
+    }
     if (task.cost?.energy) setKingdomWar(prev => ({ ...prev, kwManpowerReserve: Math.max(0, (prev.kwManpowerReserve || 0) - task.cost.energy) }));
     setFusionState(prev => ({
       ...prev,
@@ -7597,7 +7749,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       kingdomTaskCooldowns: { ...(prev.kingdomTaskCooldowns || {}), [taskId]: kingdomWar?.currentTurn || 0 },
     }));
     const r = task.reward || {};
-    if (r.gold) setGold(g => g + r.gold);
+    if (r.gold) { setGold(g => g + r.gold); updateAchStat({ totalGoldEarned: r.gold }); }
     if (r.guardianScore) addGuardianScore(r.guardianScore);
     setKingdomWar(prev => {
       let next = { ...prev, currentTurn: (prev.currentTurn || 0) + 1 };
@@ -7759,6 +7911,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const calCost = Math.floor((cal.reqBadges || 5) * 500);
     if (gold < calCost) { showMapToast('⚠️', '金币不足', `需要 ${calCost} 金币`, 2500); return; }
     setGold(g => g - calCost);
+    updateAchStat({ totalGoldSpent: calCost });
     const calLevel = (cal.reqBadges || 5) * 8 + 5;
     const calEnemy = createPet(cal.bossId || 199, calLevel, true, true);
     calEnemy.name = cal.name + '·灾魂';
@@ -7792,7 +7945,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
       return next;
     });
-    if (cal.reward?.gold) setGold(g => g + cal.reward.gold);
+    if (cal.reward?.gold) { setGold(g => g + cal.reward.gold); updateAchStat({ totalGoldEarned: cal.reward.gold }); }
     if (cal.reward?.title) unlockTitle(cal.reward.title);
     const rawEco = cal.nationEffects || {};
     const calEco = {};
@@ -7904,7 +8057,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const grantNonCombatReward = (event) => {
     const r = event?.reward || {};
-    if (r.gold) setGold(g => g + r.gold);
+    if (r.gold) { setGold(g => g + r.gold); updateAchStat({ totalGoldEarned: r.gold }); }
     if (r.item) {
       const cat = BALLS[r.item] ? 'balls' : r.item.includes('stone') ? 'stones' : 'meds';
       setInventory(p => ({ ...p, [cat]: { ...p[cat], [r.item]: (p[cat]?.[r.item] || 0) + (r.itemCount || 1) } }));
@@ -8073,85 +8226,102 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const collectExpedition = (teamIdx) => {
-    if (collectingExp) return;
+    const selectedTeam = expeditions.teams?.[teamIdx];
+    if (!selectedTeam) return;
+    if (Date.now() - selectedTeam.startTime < selectedTeam.duration) { showMapToast('⏳','进行中','探险队还没回来',1500); return; }
+    if (selectedTeam.branchEventId && !selectedTeam.branchResolved) { showMapToast('📡','需要决策','请先处理探险分支事件',1500); return; }
+    const zoneForReward = EXPEDITION_ZONES.find(z => z.id === selectedTeam.zoneId);
+    if (!zoneForReward) { showMapToast('⚠️','探险异常','找不到探险区域，奖励未结算',1500); return; }
+    const lockKey = `${selectedTeam.zoneId}:${selectedTeam.startTime}:${(selectedTeam.petUids || []).join(',')}`;
+    if (collectingExp || expeditionClaimLocksRef.current.has(lockKey)) return;
+    expeditionClaimLocksRef.current.add(lockKey);
     setCollectingExp(true);
     setTimeout(() => setCollectingExp(false), 500);
-    setExpeditions(prev => {
-      const team = prev.teams[teamIdx];
-      if (!team) return prev;
-      if (Date.now() - team.startTime < team.duration) { showMapToast('⏳','进行中','探险队还没回来',1500); return prev; }
-      const zone = EXPEDITION_ZONES.find(z => z.id === team.zoneId);
-      if (!zone) return prev;
 
-      const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
-      let bonusMult = calcExpeditionBonus(teamPets, zone);
-      if (team.branchChoice) {
-        if (team.branchFailed) {
-          bonusMult *= 0.5;
-        } else {
-          bonusMult *= (team.branchChoice.rewardMult || 1);
-        }
-      }
+    let team = null;
+    flushSync(() => setExpeditions(prev => {
+      const idx = (prev.teams || []).findIndex(t => t && t.zoneId === selectedTeam.zoneId && t.startTime === selectedTeam.startTime);
+      if (idx < 0) return prev;
+      const candidate = prev.teams[idx];
+      if (Date.now() - candidate.startTime < candidate.duration) return prev;
+      if (candidate.branchEventId && !candidate.branchResolved) return prev;
+      team = candidate;
+      return { ...prev, teams: prev.teams.filter((_, i) => i !== idx) };
+    }));
+    if (!team) {
+      expeditionClaimLocksRef.current.delete(lockKey);
+      return;
+    }
 
-      const rewardCount = 1 + Math.floor(Math.random() * 2);
-      let msg = [];
-      const eventText = EXPEDITION_EVENTS[Math.floor(Math.random() * EXPEDITION_EVENTS.length)];
-      msg.push(eventText);
-      if (team.branchChoice) {
-        const event = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
-        msg.push(`${event?.title || '探险'}: ${team.branchChoice.label}${bonusMult < calcExpeditionBonus(teamPets, zone) ? ' (受阻)' : ''}`);
-      }
+    const zone = zoneForReward;
 
-      for (let i = 0; i < rewardCount; i++) {
-        const totalW = zone.rewards.reduce((s,r) => s + (r.weight || 0), 0);
-        let picked;
-        if (totalW <= 0) {
-          picked = zone.rewards[0] || { type: 'gold', min: 10, max: 50, weight: 1 };
-        } else {
-          let roll = Math.random() * totalW;
-          picked = zone.rewards[0];
-          for (const r of zone.rewards) { roll -= (r.weight || 0); if (roll <= 0) { picked = r; break; } }
-        }
-        if (picked.type === 'gold') { const lo = Math.min(picked.min || 0, picked.max || 0); const hi = Math.max(picked.min || 0, picked.max || 0); const amt = Math.floor(_.random(lo, hi) * bonusMult); setGold(g => g + amt); updateAchStat({ totalGoldEarned: amt }); msg.push(`💰 ${amt}金币`); }
-        else if (picked.type === 'med') { setInventory(p => ({...p, meds:{...p.meds, [picked.id]:(p.meds[picked.id]||0)+picked.count}})); msg.push(`🧪 ${MEDICINES[picked.id]?.name || picked.id} x${picked.count}`); }
-        else if (picked.type === 'stone') { setInventory(p => ({...p, stones:{...p.stones, [picked.id]:(p.stones[picked.id]||0)+picked.count}})); msg.push(`💎 进化石 x${picked.count}`); }
-        else if (picked.type === 'mineral') { const mCount = Math.floor(picked.count * bonusMult); setMineState(ms => ({...ms, minerals:{...ms.minerals, [picked.id]:(ms.minerals[picked.id]||0)+mCount}})); msg.push(`${MINE_ORES[picked.id]?.icon||'⛏️'} ${MINE_ORES[picked.id]?.name||picked.id} x${mCount}`); }
-        else if (picked.type === 'tm') {
-          const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
-          const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
-          if (tm) { setInventory(p => ({...p, tms:{...p.tms, [tm.id]:(p.tms[tm.id]||0)+1}})); msg.push(`📖 ${tm.name} (${TYPES[tm.type]?.name || ''}·威力${tm.p ?? '—'})`); }
-        }
-        else if (picked.type === 'berry') { const berryId = BERRIES[picked.id] ? picked.id : 'oran'; const bCount = Math.floor((picked.count || 5) * bonusMult); setInventory(p => ({...p, berries: addBerries(p.berries, berryId, bCount)})); msg.push(`🍒 ${BERRIES[berryId]?.name || '树果'} x${bCount}`); }
-        else if (picked.type === 'accessory_shard' || picked.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品 ${acc.name || '饰品'}`); } }
-        else if (picked.type === 'egg' || picked.type === 'shiny_egg') {
-          const eggLvCap = picked.level || (20 + badges.length * 8);
-          const legendIds = (LEGEND_OBTAIN_RULES || []).map(r => r.petId);
-          const eligiblePool = POKEDEX.filter(p => (p.lvl || p.level || 1) <= eggLvCap && p.id <= 900 && !p.hidden && !legendIds.includes(p.id));
-          const eggSpecies = eligiblePool.length > 0 ? eligiblePool[Math.floor(Math.random() * eligiblePool.length)] : POKEDEX[Math.floor(Math.random() * Math.min(100, POKEDEX.length))];
-          if (eggSpecies) {
-            const baseSteps = picked.type === 'shiny_egg' ? 150 : 300;
-            const newEgg = { speciesId: eggSpecies.id, name: eggSpecies.name, stepsLeft: baseSteps, isShiny: picked.type === 'shiny_egg', hatchLevel: Math.min(100, Math.max(1, Math.floor((picked.level || 20) * 0.8))) };
-            setInventory(p => ({...p, eggs: [...(p.eggs||[]), newEgg]}));
-          }
-          msg.push(`🥚 ${picked.type === 'shiny_egg' ? '闪光蛋' : '精灵蛋'}`);
-        }
-        else if (picked.type === 'jutsu_scroll') {
-          const n = picked.count || 1;
-          const newJIds = Array.from({length: n}, () => JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)].id);
-          setNarutoState(ns => ({ ...ns, jutsuScrolls: [...(ns.jutsuScrolls || []), ...newJIds], jutsuCollection: [...new Set([...(ns.jutsuCollection || []), ...newJIds])] }));
-          msg.push(`🍥 忍术卷轴 x${n}`);
-        }
-        else msg.push('稀有物品');
+    const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
+    const baseBonusMult = calcExpeditionBonus(teamPets, zone);
+    let bonusMult = baseBonusMult;
+    if (team.branchChoice) {
+      if (team.branchFailed) {
+        bonusMult *= 0.5;
+      } else {
+        bonusMult *= (team.branchChoice.rewardMult || 1);
       }
-      if (bonusMult > 1.0) msg.push(`⭐ 属性加成 x${bonusMult.toFixed(1)}`);
-      showMapToast('🎁', '探险归来', msg.join(' | '), 4000);
-      addGlobalLog(`🗺️ 探险队从${zone.name}归来: ${msg.slice(1).join(', ')}`);
-      advanceBounty('expedition');
-      updateAchStat({ expeditionsCompleted: 1 });
-      const next = {...prev, teams: prev.teams.filter((_,i) => i !== teamIdx)};
-      setTimeout(() => persistSave(true), 100);
-      return next;
-    });
+    }
+
+    const rewardCount = 1 + Math.floor(Math.random() * 2);
+    let msg = [];
+    const eventText = EXPEDITION_EVENTS[Math.floor(Math.random() * EXPEDITION_EVENTS.length)];
+    msg.push(eventText);
+    if (team.branchChoice) {
+      const event = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
+      msg.push(`${event?.title || '探险'}: ${team.branchChoice.label}${bonusMult < baseBonusMult ? ' (受阻)' : ''}`);
+    }
+
+    for (let i = 0; i < rewardCount; i++) {
+      const totalW = zone.rewards.reduce((s,r) => s + (r.weight || 0), 0);
+      let picked;
+      if (totalW <= 0) {
+        picked = zone.rewards[0] || { type: 'gold', min: 10, max: 50, weight: 1 };
+      } else {
+        let roll = Math.random() * totalW;
+        picked = zone.rewards[0];
+        for (const r of zone.rewards) { roll -= (r.weight || 0); if (roll <= 0) { picked = r; break; } }
+      }
+      if (picked.type === 'gold') { const lo = Math.min(picked.min || 0, picked.max || 0); const hi = Math.max(picked.min || 0, picked.max || 0); const amt = Math.floor(_.random(lo, hi) * bonusMult); setGold(g => g + amt); updateAchStat({ totalGoldEarned: amt }); msg.push(`💰 ${amt}金币`); }
+      else if (picked.type === 'med') { setInventory(p => ({...p, meds:{...p.meds, [picked.id]:(p.meds[picked.id]||0)+picked.count}})); msg.push(`🧪 ${MEDICINES[picked.id]?.name || picked.id} x${picked.count}`); }
+      else if (picked.type === 'stone') { setInventory(p => ({...p, stones:{...p.stones, [picked.id]:(p.stones[picked.id]||0)+picked.count}})); msg.push(`💎 进化石 x${picked.count}`); }
+      else if (picked.type === 'mineral') { const mCount = Math.floor(picked.count * bonusMult); setMineState(ms => ({...ms, minerals:{...ms.minerals, [picked.id]:(ms.minerals[picked.id]||0)+mCount}})); msg.push(`${MINE_ORES[picked.id]?.icon||'⛏️'} ${MINE_ORES[picked.id]?.name||picked.id} x${mCount}`); }
+      else if (picked.type === 'tm') {
+        const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
+        const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
+        if (tm) { setInventory(p => ({...p, tms:{...p.tms, [tm.id]:(p.tms[tm.id]||0)+1}})); msg.push(`📖 ${tm.name} (${TYPES[tm.type]?.name || ''}·威力${tm.p ?? '—'})`); }
+      }
+      else if (picked.type === 'berry') { const berryId = BERRIES[picked.id] ? picked.id : 'oran'; const bCount = Math.floor((picked.count || 5) * bonusMult); setInventory(p => ({...p, berries: addBerries(p.berries, berryId, bCount)})); msg.push(`🍒 ${BERRIES[berryId]?.name || '树果'} x${bCount}`); }
+      else if (picked.type === 'accessory_shard' || picked.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品 ${acc.name || '饰品'}`); } }
+      else if (picked.type === 'egg' || picked.type === 'shiny_egg') {
+        const eggLvCap = picked.level || (20 + badges.length * 8);
+        const legendIds = (LEGEND_OBTAIN_RULES || []).map(r => r.petId);
+        const eligiblePool = POKEDEX.filter(p => (p.lvl || p.level || 1) <= eggLvCap && p.id <= 900 && !p.hidden && !legendIds.includes(p.id));
+        const eggSpecies = eligiblePool.length > 0 ? eligiblePool[Math.floor(Math.random() * eligiblePool.length)] : POKEDEX[Math.floor(Math.random() * Math.min(100, POKEDEX.length))];
+        if (eggSpecies) {
+          const baseSteps = picked.type === 'shiny_egg' ? 150 : 300;
+          const newEgg = { speciesId: eggSpecies.id, name: eggSpecies.name, stepsLeft: baseSteps, isShiny: picked.type === 'shiny_egg', hatchLevel: Math.min(100, Math.max(1, Math.floor((picked.level || 20) * 0.8))) };
+          setInventory(p => ({...p, eggs: [...(p.eggs||[]), newEgg]}));
+        }
+        msg.push(`🥚 ${picked.type === 'shiny_egg' ? '闪光蛋' : '精灵蛋'}`);
+      }
+      else if (picked.type === 'jutsu_scroll') {
+        const n = picked.count || 1;
+        const newJIds = Array.from({length: n}, () => JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)].id);
+        setNarutoState(ns => ({ ...ns, jutsuScrolls: [...(ns.jutsuScrolls || []), ...newJIds], jutsuCollection: [...new Set([...(ns.jutsuCollection || []), ...newJIds])] }));
+        msg.push(`🍥 忍术卷轴 x${n}`);
+      }
+      else msg.push('稀有物品');
+    }
+    if (bonusMult > 1.0) msg.push(`⭐ 属性加成 x${bonusMult.toFixed(1)}`);
+    showMapToast('🎁', '探险归来', msg.join(' | '), 4000);
+    addGlobalLog(`🗺️ 探险队从${zone.name}归来: ${msg.slice(1).join(', ')}`);
+    advanceBounty('expedition');
+    updateAchStat({ expeditionsCompleted: 1 });
+    setTimeout(() => persistSave(true), 100);
   };
 
   // ==========================================
@@ -8203,6 +8373,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const collectTraining = (slotIdx) => {
     let completedTraining = false;
+    let refundCost = 0;
+    let invalidTrainingMsg = null;
     flushSync(() => {
       setTrainingState(prev => {
         const slot = prev.slots[slotIdx];
@@ -8222,8 +8394,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const evtText = TRAINING_EVENTS[Math.floor(Math.random() * TRAINING_EVENTS.length)];
 
         if (actualGain <= 0) {
-          showMapToast('⚠️', '训练无效', `${pet.name} 的 ${camp.stat.toUpperCase()} 努力值已达上限，本次训练未获收益。`, 3000);
-          setGold(g => g + (tier.cost || 0));
+          invalidTrainingMsg = `${pet.name} 的 ${camp.stat.toUpperCase()} 努力值已达上限，本次训练未获收益。`;
+          refundCost = tier.cost || 0;
           const dailyCount = { ...(prev.dailyCount || {}) };
           dailyCount[slot.petUid] = Math.max(0, (dailyCount[slot.petUid] || 1) - 1);
           return { ...prev, dailyCount, slots: prev.slots.filter((_, i) => i !== slotIdx) };
@@ -8249,6 +8421,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       updateAchStat({ trainingSessions: 1 });
       advanceBounty('training');
     }
+    if (refundCost > 0) setGold(g => g + refundCost);
+    if (invalidTrainingMsg) showMapToast('⚠️', '训练无效', invalidTrainingMsg, 3000);
   };
 
   // ==========================================
@@ -8345,33 +8519,37 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return next;
     });
     setTimeout(() => {
-      setWorldBossState(prev => {
-        const pending = prev._pendingMilestones;
-        if (pending && pending.length > 0) {
-          for (const ms of pending) {
-            if (ms.reward.gold) { setGold(g => g + ms.reward.gold); updateAchStat({ totalGoldEarned: ms.reward.gold }); }
-            if (ms.reward.tickets) setArenaState(a => ({ ...a, tickets: a.tickets + ms.reward.tickets }));
-            if (ms.reward.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + ms.reward.exp_candy }));
-            if (ms.reward.berries) setInventory(inv => ({ ...inv, berries: addBerries(inv.berries, 'oran', ms.reward.berries) }));
-            if (ms.reward.title) setUnlockedTitles(t => [...new Set([...t, ms.reward.title])]);
-          }
-          const lastMs = pending[pending.length - 1];
-          showMapToast('🏆', '里程碑达成', lastMs.desc, 3500);
-        }
-        const totalDmg = prev._totalDmgDealt || 0;
-        if (totalDmg > 0) updateAchStat({ worldBossBestDamage: totalDmg });
-        if (prev._defeated) {
-          const bossR = boss?.rewards || {};
-          const bossGoldAmt = bossR.gold || 2000;
-          setGold(g => g + bossGoldAmt);
-          if (bossR.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + bossR.exp_candy }));
-          if (bossR.tickets) setArenaState(a => ({ ...a, tickets: (a.tickets || 0) + bossR.tickets }));
-          updateAchStat({ worldBossesDefeated: 1, totalGoldEarned: bossGoldAmt });
-          showMapToast('🎊', '首领击破！', `${boss.name} 已被击败！获得 ${(bossR.gold||2000).toLocaleString()}金${bossR.exp_candy ? ` + ${bossR.exp_candy}经验糖` : ''}${bossR.tickets ? ` + ${bossR.tickets}竞技票` : ''}`, 4000);
-        }
+      let pending = [];
+      let totalDmg = 0;
+      let defeatedNow = false;
+      flushSync(() => setWorldBossState(prev => {
+        pending = prev._pendingMilestones || [];
+        totalDmg = prev._totalDmgDealt || 0;
+        defeatedNow = !!prev._defeated;
         const { _pendingMilestones, _defeated, _totalDmgDealt, ...clean } = prev;
         return clean;
-      });
+      }));
+      if (pending.length > 0) {
+        for (const ms of pending) {
+          if (ms.reward.gold) { setGold(g => g + ms.reward.gold); updateAchStat({ totalGoldEarned: ms.reward.gold }); }
+          if (ms.reward.tickets) setArenaState(a => ({ ...a, tickets: (a.tickets || 0) + ms.reward.tickets }));
+          if (ms.reward.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + ms.reward.exp_candy }));
+          if (ms.reward.berries) setInventory(inv => ({ ...inv, berries: addBerries(inv.berries, 'oran', ms.reward.berries) }));
+          if (ms.reward.title) setUnlockedTitles(t => [...new Set([...t, ms.reward.title])]);
+        }
+        const lastMs = pending[pending.length - 1];
+        showMapToast('🏆', '里程碑达成', lastMs.desc, 3500);
+      }
+      if (totalDmg > 0) updateAchStat({ worldBossBestDamage: totalDmg });
+      if (defeatedNow) {
+        const bossR = boss?.rewards || {};
+        const bossGoldAmt = bossR.gold || 2000;
+        setGold(g => g + bossGoldAmt);
+        if (bossR.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + bossR.exp_candy }));
+        if (bossR.tickets) setArenaState(a => ({ ...a, tickets: (a.tickets || 0) + bossR.tickets }));
+        updateAchStat({ worldBossesDefeated: 1, totalGoldEarned: bossGoldAmt });
+        showMapToast('🎊', '首领击破！', `${boss.name} 已被击败！获得 ${(bossR.gold||2000).toLocaleString()}金${bossR.exp_candy ? ` + ${bossR.exp_candy}经验糖` : ''}${bossR.tickets ? ` + ${bossR.tickets}竞技票` : ''}`, 4000);
+      }
     }, 0);
   };
 
@@ -8516,7 +8694,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         if (daysSince >= SEASON_DAYS) {
           const bestRank = prev.seasonBestRank || prev.rank || 'bronze';
           const srData = ARENA_SEASON_REWARDS.find(sr => sr.rank === bestRank);
-          if (srData?.gold) setGold(g => g + srData.gold);
+          if (srData?.gold) {
+            setGold(g => g + srData.gold);
+            updateAchStat({ totalGoldEarned: srData.gold });
+          }
           if (srData?.accessory) setInventory(inv => ({ ...inv, accessories: [...(inv.accessories || []), srData.accessory] }));
           if (srData?.title) setUnlockedTitles(t => [...new Set([...t, srData.title])]);
           if (srData) {
@@ -9269,6 +9450,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       setNarutoExamUI(prev => prev ? ({ ...prev, forestProgress: prev.forestProgress + 1 }) : prev);
     } else if (evt.type === 'item') {
       setGold(g => g + 500);
+      updateAchStat({ totalGoldEarned: 500 });
       showMapToast('🎁','补给',evt.desc + ' (+500金币)',1500);
       setNarutoExamUI(prev => prev ? ({ ...prev, forestProgress: prev.forestProgress + 1 }) : prev);
     } else if (evt.type === 'choice') {
@@ -9326,7 +9508,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       } else {
         showMapToast('🎉','试炼通过',`获得 ${goldReward.toLocaleString()} 金币！`,3000);
       }
-      updateAchStat({ chuninExams: (prev) => examsCompleted });
+      updateAchStat({ chuninExams: () => examsCompleted, totalGoldEarned: goldReward });
       setNarutoExamUI(null);
       return;
     }
@@ -9376,7 +9558,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     startBattle({ customParty: enemies, trainerName: stage.bossName, isStory: true }, 'naruto_story', { chapterId: chapter.id, stageIdx });
   };
 
-  const handleStoryWin = (chapterId, stageIdx) => {
+  const handleStoryWin = (chapterId, stageIdx, battleGold = 0) => {
     const chapter = NARUTO_STORY_CHAPTERS.find(c => c.id === chapterId);
     if (!chapter) return;
     const stage = chapter.stages[stageIdx];
@@ -9406,7 +9588,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (stage.reward.title) rewardParts.push(`🏅 ${stage.reward.title}`);
     if (stage.reward.jutsu) { const j = JUTSU_DB.find(jj => jj.id === stage.reward.jutsu); rewardParts.push(`📜 ${j?.name || stage.reward.jutsu}`); }
     showMapToast('⚔️', allDone ? `第${chapterId}章完成！` : '关卡胜利！', rewardParts.join(' · '), 3500);
-    updateAchStat({ battlesWon: 1 });
+    const storyWinStreak = (achStats.currentWinStreak || 0) + 1;
+    updateAchStat({
+      battlesWon: 1,
+      totalGoldEarned: Math.max(0, Math.floor(battleGold || 0)),
+      currentWinStreak: () => storyWinStreak,
+      maxWinStreak: storyWinStreak,
+    });
     advanceBounty('win_battle');
   };
 
@@ -9984,15 +10172,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const raceCost = 500;
     const canRace = racesUsed < maxRaces && party.length > 0;
 
-    const raceRunningRef_local = { current: false };
     const startRace = (petIdx) => {
       const pet = party[petIdx];
       if (!pet) return;
-      if (raceRunningRef_local.current) return;
-      raceRunningRef_local.current = true;
-      setTimeout(() => { raceRunningRef_local.current = false; }, 500);
+      if (raceRunningRef.current) return;
       if (racesUsed >= maxRaces) { showMapToast('⏰', '次数用完', '明日再来竞速吧！', 1500); return; }
       if (gold < raceCost && racesUsed >= 3) { showMapToast('💰', '金币不足', `竞速需要 ${raceCost} 金币`, 1500); return; }
+      raceRunningRef.current = true;
+      setTimeout(() => { raceRunningRef.current = false; }, 500);
       if (racesUsed >= 3) { setGold(g => Math.max(0, g - raceCost)); updateAchStat({ totalGoldSpent: raceCost }); advanceBounty('spend_gold', null, raceCost); }
 
       const stats = getStats(pet);
@@ -11800,16 +11987,22 @@ const useGrowthItem = (petIndex, itemId) => {
             setInventory(prev => ({ ...prev, eggs: workingEggs }));
           }
           for (const { pet: hp, isShiny, isLegend } of hatchedPets) {
-            const canAdd = party.length < 6;
-            if (canAdd) setParty(p => [...p, hp]);
-            else setBox(b => [...b, hp]);
+            let hatchedToParty = false;
+            flushSync(() => setParty(p => {
+              if (p.length < 6) {
+                hatchedToParty = true;
+                return [...p, hp];
+              }
+              return p;
+            }));
+            if (!hatchedToParty) setBox(b => [...b, hp]);
             setCaughtDex(d => d.includes(hp.id) ? d : [...d, hp.id]);
             const achUpdate = { eggsHatched: 1 };
             if (isLegend) achUpdate.legendEggsHatched = 1;
             if (isShiny) achUpdate.shinyEggsHatched = 1;
             updateAchStat(achUpdate);
             advanceBounty('hatch');
-            showMapToast('🥚', `${isShiny ? '✨闪光！' : ''}${hp.name} 诞生！`, canAdd ? '已加入队伍' : '已发送到电脑', 3000);
+            showMapToast('🥚', `${isShiny ? '✨闪光！' : ''}${hp.name} 诞生！`, hatchedToParty ? '已加入队伍' : '已发送到电脑', 3000);
           }
         }
       }
@@ -11965,7 +12158,10 @@ const useGrowthItem = (petIndex, itemId) => {
                 { title:'🍶 漂流瓶 · 古老配方', gold: _.random(300, 1000), desc:'瓶中的古老配方价值不菲' },
               ];
               const bottle = _.sample(bottleMsgs);
-              if (bottle.gold > 0) setGold(g => g + bottle.gold);
+              if (bottle.gold > 0) {
+                setGold(g => g + bottle.gold);
+                updateAchStat({ totalGoldEarned: bottle.gold });
+              }
               if (bottle.heal) {
                 const newP = [...party];
                 newP.forEach(p => { p.currentHp = getStats(p).maxHp; if(p.status) p.status = null; });
@@ -11976,6 +12172,7 @@ const useGrowthItem = (petIndex, itemId) => {
            } else if (surfRoll < 0.15) {
               const pearlGold = _.random(300, 1000);
               setGold(g => g + pearlGold);
+              updateAchStat({ totalGoldEarned: pearlGold });
               showMapToast('🫧', '水底宝箱', `发现古老宝箱！+${pearlGold.toLocaleString()} 金币`, 2500);
               return;
            } else if (surfRoll < 0.30) {
@@ -11984,6 +12181,7 @@ const useGrowthItem = (petIndex, itemId) => {
            } else if (surfRoll < 0.45) {
               const smallGold = _.random(100, 500);
               setGold(g => g + smallGold);
+              updateAchStat({ totalGoldEarned: smallGold });
               showMapToast('🌊', '浪花翻涌', `海浪卷来了一些碎片 +${smallGold} 金币`, 1500);
               return;
            } else {
@@ -12007,22 +12205,26 @@ const useGrowthItem = (petIndex, itemId) => {
            if (mineRoll < 0.10) {
               const gemGold = _.random(80, 200);
               setGold(g => g + gemGold);
+              updateAchStat({ totalGoldEarned: gemGold });
               showMapToast('💎', '稀有宝石', `闪耀宝石！+${gemGold} 金币`, 2500);
            } else if (mineRoll < 0.30) {
               const stoneNames = ['火之石','水之石','雷之石','月之石','太阳石','暗之石','光之石','冰之石'];
               const stone = _.sample(stoneNames);
               const stoneGold = _.random(30, 80);
               setGold(g => g + stoneGold);
+              updateAchStat({ totalGoldEarned: stoneGold });
               showMapToast('🪨', `发现${stone}`, `+${stoneGold} 金币`, 2500);
            } else if (mineRoll < 0.50) {
               const fossilNames = ['远古化石','覆盖化石','盖子化石','羽毛化石','颚化石','鳍化石'];
               const fossil = _.sample(fossilNames);
               const fossilGold = _.random(50, 150);
               setGold(g => g + fossilGold);
+              updateAchStat({ totalGoldEarned: fossilGold });
               showMapToast('🦴', `发掘${fossil}`, `+${fossilGold} 金币`, 2500);
            } else if (mineRoll < 0.70) {
               const mineralGold = _.random(20, 60);
               setGold(g => g + mineralGold);
+              updateAchStat({ totalGoldEarned: mineralGold });
               showMapToast('⛏️', '采集矿物', `矿物碎片 +${mineralGold} 金币`, 2500);
            } else if (mineRoll < 0.85) {
               setTimeout(() => startBattle(null, 'rock_special'), 200);
@@ -12051,6 +12253,7 @@ const useGrowthItem = (petIndex, itemId) => {
         } else if (altarRoll < 0.45) {
           const blessingGold = _.random(1000 + badges.length * 300, 2500 + badges.length * 500);
           setGold(g => g + blessingGold);
+          updateAchStat({ totalGoldEarned: blessingGold });
           showMapToast('✨', '祭坛祝福·黄金雨', `获得 ${blessingGold.toLocaleString()} 金币！`, 2500);
         } else if (altarRoll < 0.60) {
           const ballReward = Math.random() < 0.3 ? { master: 1 } : { ultra: _.random(3, 5) };
@@ -12120,6 +12323,7 @@ const useGrowthItem = (petIndex, itemId) => {
         } else {
           const bonusGold = _.random(1000, 5000);
           setGold(g => g + bonusGold);
+          updateAchStat({ totalGoldEarned: bonusGold });
           showMapToast('🎉', '假陷阱！', `是个宝箱！获得 ${bonusGold.toLocaleString()} 金币！`, 3000);
         }
         return;
@@ -12213,6 +12417,7 @@ const useGrowthItem = (petIndex, itemId) => {
             // 30% 金币
             const amt = _.random(200, 800);
             setGold(g => g + amt);
+            updateAchStat({ totalGoldEarned: amt });
             rewardTitle = "获得金币"; rewardDesc = `获得 ${amt.toLocaleString()} 金币`;
         } else if (rand < 0.55) {
             // 25% 树果或普通球
@@ -12260,7 +12465,7 @@ const useGrowthItem = (petIndex, itemId) => {
             const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
             const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
             if (tm) { setInventory(prev => ({...prev, tms: {...prev.tms, [tm.id]: (prev.tms[tm.id]||0) + 1}})); rewardTitle = "古老的秘籍"; rewardDesc = `获得 📜 ${tm.name}（${TYPES[tm.type]?.name || ''}·威力${tm.p ?? '—'}）`; }
-            else { setGold(g => g + 2000); rewardTitle = "残破的卷轴"; rewardDesc = "获得 💰 2000 金币"; }
+            else { setGold(g => g + 2000); updateAchStat({ totalGoldEarned: 2000 }); rewardTitle = "残破的卷轴"; rewardDesc = "获得 💰 2000 金币"; }
         } else if (rand < 0.99) {
              // 1% 随机装备
              const baseEquip = _.sample(RANDOM_EQUIP_DB);
@@ -12268,7 +12473,7 @@ const useGrowthItem = (petIndex, itemId) => {
              if (newEquip) {
                setAccessories(prev => [...prev, newEquip]);
                rewardTitle = "神秘宝藏"; rewardDesc = `获得 ${newEquip.icon} ${newEquip.displayName}`;
-             } else { rewardTitle = "神秘宝藏"; rewardDesc = "获得 💰 3000金币"; setGold(g => g + 3000); }
+             } else { rewardTitle = "神秘宝藏"; rewardDesc = "获得 💰 3000金币"; setGold(g => g + 3000); updateAchStat({ totalGoldEarned: 3000 }); }
         } else {
             // 1% 洗练药
             setInventory(prev => ({...prev, misc: {...prev.misc, rebirth_pill: (prev.misc.rebirth_pill||0) + 1}}));
@@ -12555,20 +12760,22 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const stats = getStats(rewardPet);
         rewardPet.currentHp = stats.maxHp;
 
-        let addedToBox = false;
-        setParty(prev => {
-            if (prev.length < 6) return [...prev, rewardPet];
-            addedToBox = true;
+        let addedToParty = false;
+        flushSync(() => setParty(prev => {
+            if (prev.length < 6) {
+                addedToParty = true;
+                return [...prev, rewardPet];
+            }
             return prev;
-        });
-        if (addedToBox) {
+        }));
+        if (!addedToParty) {
             setBox(b => [...b, rewardPet]);
             showMapToast('📦', '队伍已满', `奖励 [${rewardPet.name}] 已发送到电脑盒子！`, 2500);
         }
         
         // 5. 开图鉴
         if (!caughtDex.includes(rewardPet.id)) {
-            setCaughtDex(prev => [...prev, rewardPet.id]);
+            setCaughtDex(prev => prev.includes(rewardPet.id) ? prev : [...prev, rewardPet.id]);
         }
 
         // 6. 设置弹窗显示信息
@@ -12614,7 +12821,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const tierIdx2 = config.tiers.indexOf(rewardTier);
     if (tierIdx2 >= 2) {
         const consolation = Math.floor(config.entryFee * (tierIdx2 === 2 ? 0.5 : 0.3));
-        if (consolation > 0) { setGold(g => g + consolation); }
+        if (consolation > 0) { setGold(g => g + consolation); updateAchStat({ totalGoldEarned: consolation }); }
     }
 
     if (rewardTier === config.tiers[0]) {
@@ -12979,7 +13186,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const mapIdx = MAPS.findIndex(m => m.id === context.id);
       const isLateGame = mapIdx >= 9;
       const isElite = isLateGame && Math.random() < 0.25;
-      const trainerPressure = getTrainerPressure(context, party);
+      const trainerPressure = getTrainerPressure(context, party, achStats.currentWinStreak || 0);
       const trainerTactic = pickTrainerTactic(mapIdx, isElite, trainerPressure.level);
       const baseCount = isElite ? _.random(4, 5) : _.random(2, 3);
       const countCap = isElite ? 6 : 4;
@@ -12987,14 +13194,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const usedIds = new Set();
       const trainerPool = context.pool && context.pool.length > 0 ? context.pool : [1];
       const playerLead = party.find(p => p?.currentHp > 0) || party[0];
-      const playerLeadTypes = [playerLead?.type, playerLead?.secondaryType, playerLead?.type2].filter(Boolean);
+      const playerLeadTypes = getUnitTypeList(playerLead);
       const shouldSeekCoverage = playerLeadTypes.length > 0
         && (trainerPressure.level > 0 || ['aggressive', 'ace_focus', 'deep_roster'].includes(trainerTactic.id));
       let coveragePicked = false;
       const scoreTrainerPickCoverage = (petId) => {
         const dex = POKEDEX.find(p => p.id === petId);
         if (!dex) return 1;
-        const atkTypes = [dex.type, dex.secondaryType, dex.type2].filter(Boolean);
+        const atkTypes = [...new Set([dex.type, dex.secondaryType, dex.type2].filter(Boolean))];
         if (atkTypes.length === 0) return 1;
         return atkTypes.reduce((best, atkType) => {
           const mult = playerLeadTypes.reduce((m, defType) => m * getTypeMod(atkType, defType), 1);
@@ -13721,6 +13928,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
     }
     const kwAlignBonus = isGangKingdomAligned(gang, kingdomWar) && (actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege') ? 1.1 : 1;
+    if (!extraBattleData.battleDirective && !isDouble && (actualType === 'trainer' || isGym)) {
+      const directive = pickBattleDirective(
+        mapIdx,
+        isGym ? 'gym' : 'trainer',
+        extraBattleData.trainerPressure?.level || 0,
+        extraBattleData.trainerTactic?.id || 'balanced'
+      );
+      if (directive) extraBattleData.battleDirective = directive;
+    }
     const battleOpenLogs = [];
     if (resonanceFxBattle.transcendence) battleOpenLogs.push(`✨ 终极共鸣发动！${activePetData?.name || '精灵'} 获得首回合超越爆发！`);
     if (extraBattleData.trainerTactic) {
@@ -13731,6 +13947,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
     if (extraBattleData.trainerCoverage) {
       battleOpenLogs.push(`🔎 对手研究了你的首发 ${extraBattleData.trainerCoverage.target}，阵容里准备了覆盖位。`);
+    }
+    if (extraBattleData.battleDirective) {
+      battleOpenLogs.push(`🎖️ 追加目标：${extraBattleData.battleDirective.name} - ${extraBattleData.battleDirective.desc}`);
     }
     battleEnemyParty.forEach((ep, ei) => {
       if (!ep?.isEcoGuardian) return;
@@ -13792,6 +14011,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       isChallenge: actualType === 'challenge',
       isPvP: actualType === 'pvp',
       challengeId,
+      meta: challengeId && typeof challengeId === 'object' ? challengeId : undefined,
       showSwitch: false,
       trainerName,
       pvpActions: { p1: null, p2: null },
@@ -13909,7 +14129,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (usableMoves.length === 0) return { type: 'move', index: -1, struggle: true };
       const enemyHpRatio = enemy.currentHp / (getStats(enemy).maxHp || 1);
       if (enemyHpRatio < 0.3 && aliveBackup >= 0) {
-          if (aliveBackup >= 0 && Math.random() < 0.4) return { type: 'switch', index: aliveBackup };
+          if (Math.random() < 0.4) {
+              const playerAttackTypes = getUnitOffensiveTypeList(player);
+              const switchCandidates = state.enemyParty.map((ep, i) => {
+                  if (i === state.enemyActiveIdx || !ep || ep.currentHp <= 0) return null;
+                  const hpRatio = ep.currentHp / Math.max(1, getStats(ep).maxHp);
+                  const threat = playerAttackTypes.reduce((best, atkType) => {
+                      return Math.max(best, getMoveTypeMultiplier({ t: atkType }, ep, state));
+                  }, 1);
+                  return { idx: i, hpRatio, threat };
+              }).filter(Boolean).sort((a, b) => (a.threat - b.threat) || (b.hpRatio - a.hpRatio));
+              return { type: 'switch', index: switchCandidates[0]?.idx ?? aliveBackup };
+          }
       }
       let bestIdx = usableMoves[0].index;
       let bestScore = -Infinity;
@@ -14081,8 +14312,16 @@ const grantContestReward = (config, score, subjectPet = null) => {
           showMapToast('🏆', '战斗结束', `获胜者：${winner}`, 2000);
           if (deadSide === 'enemy') {
               const pvpGold = (achStats.pvpWins || 0) < 1 ? 5000 : 500;
+              const pvpStreak = (achStats.currentWinStreak || 0) + 1;
               setGold(g => g + pvpGold);
-              updateAchStat({ pvpWins: 1, trainerWins: 1 });
+              updateAchStat({
+                battlesWon: 1,
+                pvpWins: 1,
+                trainerWins: 1,
+                totalGoldEarned: pvpGold,
+                currentWinStreak: () => pvpStreak,
+                maxWinStreak: pvpStreak,
+              });
               showMapToast('✅', '提示', `获得获胜奖励：${pvpGold} 金币${pvpGold < 5000 ? '（非首胜递减）' : ''}`, 2000);
           }
           setView('grid_map');
@@ -14160,7 +14399,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         activeIdx: newIdx,
         showSwitch: false,
         phase: 'anim',
-        _playerSwitched: true,
+        _playerSwitched: battle._playerSwitched || !isForcedSwitch,
         _resonanceFx: getActiveResonanceForPet(newPet),
         logs: [`去吧 ${newPet.name}!`, ...battle.logs]
     };
@@ -14450,7 +14689,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           } else {
             await wait(1000);
                 pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
-                handleWin(newParty);
+                handleWin(newParty, tempBattle);
             }
         } else if (!enemyDied && playerDiedFromSelfDmg) {
           const aliveIdx = tempBattle.playerCombatStates.findIndex((p, i) => i !== tempBattle.activeIdx && p.currentHp > 0);
@@ -15125,7 +15364,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         await wait(800);
         auditPlayerHpLoss(tempBattle);
         pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
-        handleWin(currentParty);
+        handleWin(currentParty, tempBattle);
         return;
       }
 
@@ -15487,7 +15726,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }) : null);
         } else {
           pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
-          handleWin(newParty);
+          handleWin(newParty, tempBattle);
         }
         return;
       }
@@ -15534,14 +15773,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const workerMult = 1 + Math.max(0, workers.length - 1) * 0.15;
     const goldEarned = Math.floor(CAFE_BUILDING.goldPerTick * ticks * lvData.goldMult * cafeGoldMult * workerMult);
     const today = getLocalDateStr();
-    let actualCafeGold = 0;
+    const cafeGoldSoFar = cafe.cafeDailyGoldDate === today ? (cafe.cafeDailyGoldEarned || 0) : 0;
+    const actualCafeGold = Math.min(goldEarned, Math.max(0, 25000 - cafeGoldSoFar));
     setCafe(prev => {
       const { _pendingSideEffects, ...rest } = prev;
-      const soFar = rest.cafeDailyGoldDate === today ? (rest.cafeDailyGoldEarned || 0) : 0;
-      actualCafeGold = Math.min(goldEarned, Math.max(0, 25000 - soFar));
-      return { ...rest, cafeDailyGoldDate: today, cafeDailyGoldEarned: soFar + actualCafeGold };
+      return { ...rest, cafeDailyGoldDate: today, cafeDailyGoldEarned: cafeGoldSoFar + actualCafeGold };
     });
     setGold(g => g + actualCafeGold);
+    if (actualCafeGold > 0) updateAchStat({ totalGoldEarned: actualCafeGold });
     const intimacyIncrease = ticks * 2;
     const update = (list) => list.map(p => {
       if (workers.some(w => String(w) === String(p.uid || p.id))) {
@@ -15622,7 +15861,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           return next;
         });
-        if (seasonGoldReward > 0) setGold(g => g + seasonGoldReward);
+        if (seasonGoldReward > 0) {
+          setGold(g => g + seasonGoldReward);
+          updateAchStat({ totalGoldEarned: seasonGoldReward });
+        }
         if (seasonWon) updateAchStat({ kwSeasonWins: 1 });
       }
     }
@@ -15664,7 +15906,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
         return next;
       });
-      if (tickSeasonGold > 0) setGold(g => g + tickSeasonGold);
+      if (tickSeasonGold > 0) {
+        setGold(g => g + tickSeasonGold);
+        updateAchStat({ totalGoldEarned: tickSeasonGold });
+      }
       if (tickSeasonWon) updateAchStat({ kwSeasonWins: 1 });
     }, WAR_TICK_CONFIG.intervalMs);
     return () => clearInterval(warInterval);
@@ -16323,18 +16568,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
         : aiTacticId === 'sturdy' ? 0.24
         : 0.3;
       if (enemyHpRatio < 0.3 && Math.random() < switchChance) {
-        const betterIdx = state.enemyParty.findIndex((e, i) => {
+        const playerAttackTypes = getUnitOffensiveTypeList(player);
+        const switchCandidates = state.enemyParty.map((e, i) => {
           if (i === state.enemyActiveIdx || e.currentHp <= 0) return false;
           const eHpRatio = e.currentHp / Math.max(1, getStats(e).maxHp);
-          let tmod = getTypeMod(player.type, e.type);
-          if (e.secondaryType && e.secondaryType !== e.type) tmod *= getTypeMod(player.type, e.secondaryType);
-          if (player.secondaryType && player.secondaryType !== player.type) {
-            let tmod2 = getTypeMod(player.secondaryType, e.type);
-            if (e.secondaryType && e.secondaryType !== e.type) tmod2 *= getTypeMod(player.secondaryType, e.secondaryType);
-            tmod = Math.max(tmod, tmod2);
-          }
-          return eHpRatio > 0.5 && tmod <= 1.0;
-        });
+          const threat = playerAttackTypes.reduce((best, atkType) => {
+            return Math.max(best, getMoveTypeMultiplier({ t: atkType }, e, state));
+          }, 1);
+          return { idx: i, hpRatio: eHpRatio, threat };
+        }).filter(c => c && c.hpRatio > 0.5 && c.threat <= 1.0)
+          .sort((a, b) => (a.threat - b.threat) || (b.hpRatio - a.hpRatio));
+        const betterIdx = switchCandidates[0]?.idx ?? -1;
         if (betterIdx >= 0) {
           addLog(`对手收回了 ${enemy.name}，换上了 ${state.enemyParty[betterIdx].name}!`);
           state.enemyActiveIdx = betterIdx;
@@ -16361,6 +16605,53 @@ const grantContestReward = (config, score, subjectPet = null) => {
           await wait(1000);
           return;
         }
+      }
+    }
+
+    // AI: 一次性战术反扑。让中后期训练家有临场变化，但消耗敌方回合避免数值失控。
+    if (canUseSpecialAiAction && !state.isDouble && !state._enemyTacticalCounterUsed && (state.type === 'trainer' || state.isGym || state.isChallenge)) {
+      const enemyMaxHp = Math.max(1, getStats(enemy).maxHp);
+      const enemyHpRatio = enemy.currentHp / enemyMaxHp;
+      const pressureLevel = Math.max(0, Math.min(2, state.trainerPressure?.level || 0));
+      const aiTacticId = state.trainerTactic?.id || 'balanced';
+      const counterChance = Math.min(0.42, 0.16 + pressureLevel * 0.07 + (state.isGym || state.isChallenge ? 0.08 : 0));
+      if ((state.turnCount || 0) >= 2 && enemyHpRatio > 0 && enemyHpRatio <= 0.5 && Math.random() < counterChance) {
+        if (!enemy.stages) enemy.stages = { ...DEFAULT_BATTLE_STAGES };
+        state._enemyTacticalCounterUsed = true;
+        markEnemySpecialAction(1);
+        let logText = '重新调整了战术';
+        if (aiTacticId === 'aggressive' || aiTacticId === 'ace_focus') {
+          const eStats = getStats(enemy, enemy.stages, enemy.status);
+          const atkKey = (eStats.s_atk || 0) > (eStats.p_atk || 0) ? 's_atk' : 'p_atk';
+          enemy.stages[atkKey] = Math.min(6, (enemy.stages[atkKey] || 0) + 1);
+          if (pressureLevel >= 2) enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + 1);
+          logText = pressureLevel >= 2 ? '压上王牌节奏，攻击与速度提升' : '集中火力，攻击提升';
+        } else if (aiTacticId === 'sturdy') {
+          const heal = Math.max(1, Math.floor(enemyMaxHp * 0.12));
+          enemy.currentHp = Math.min(enemyMaxHp, enemy.currentHp + heal);
+          enemy.stages.p_def = Math.min(6, (enemy.stages.p_def || 0) + 1);
+          enemy.stages.s_def = Math.min(6, (enemy.stages.s_def || 0) + 1);
+          logText = `稳住阵脚，回复 ${heal} HP 并提升防御`;
+        } else {
+          enemy.stages.p_def = Math.min(6, (enemy.stages.p_def || 0) + 1);
+          enemy.stages.s_def = Math.min(6, (enemy.stages.s_def || 0) + 1);
+          logText = '改为防守反击，双防提升';
+        }
+        addLog(`📣 ${enemy.name} ${logText}！`);
+        setAnimEffect({ type: 'BUFF', target: 'enemy' });
+        await wait(1000);
+        setAnimEffect(null);
+        state.turnCount = (state.turnCount || 0) + 1;
+        setBattle(prev => ({
+          ...prev,
+          phase: 'input',
+          turnCount: state.turnCount,
+          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
+          enemyParty: state.enemyParty.map(e => ({...e})),
+          _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
+          _enemyTacticalCounterUsed: true,
+        }));
+        return;
       }
     }
 
@@ -16708,7 +16999,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       } else {
         await wait(1000);
         pendingJutsuWinForBountyRef.current = !!state._lastBattleWinWithJutsu;
-        handleWin(newParty);
+        handleWin(newParty, state);
       }
       return;
     }
@@ -16920,7 +17211,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 	        }) : null);
 	      } else {
 	        pendingJutsuWinForBountyRef.current = !!state._lastBattleWinWithJutsu;
-	        handleWin(newParty);
+	        handleWin(newParty, state);
 	      }
 	      return;
 	    }
@@ -16993,7 +17284,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const partyPet = uid ? party.find(pp => pp.uid === uid) : party[i];
           return { ...(partyPet || party[i] || {}), ...p };
         });
-        if (handleWinRef.current) await handleWinRef.current(winParty);
+        if (handleWinRef.current) await handleWinRef.current(winParty, state);
         return;
       }
     }
@@ -18041,22 +18332,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
         addLog(msg);
         }
 
-        if (source === 'player' && !isImmune && !isDodged) {
-          updateAchStat({ maxDamageDealt: dmg, maxSingleDamage: dmg });
-          if (typeMod > 1.2) updateAchStat({ superEffectiveHits: 1 });
-          if (typeMod >= 2.0) updateAchStat({ doubleEffectiveHits: 1 });
-          if (isCrit) {
-            if (battleState) battleState._battleCrits = (battleState._battleCrits || 0) + 1;
-            if (battleState && source === 'player') {
-              battleState._consecutiveCrits = (battleState._consecutiveCrits || 0) + 1;
-              battleState._maxConsecutiveCrits = Math.max(battleState._maxConsecutiveCrits || 0, battleState._consecutiveCrits);
-            }
-            if (battleState && blessings.some(b => b.effect === 'critChain')) battleState._critChainActive = true;
-            if (battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_CRIT);
-          } else if (source === 'player' && battleState) {
-            battleState._consecutiveCrits = 0;
-          }
-        }
         if (isDodged && source === 'enemy' && battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_DODGE);
 
         let survivalMsg = null;
@@ -18149,14 +18424,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
           if (checkBattleObjectiveMet(battleState) && handleWinRef.current) {
             battleState._objectiveWinPending = true;
             const winParty = battleState.playerCombatStates.map((p, i) => ({ ...(party[i] || {}), ...p }));
-            await handleWinRef.current(winParty);
+            await handleWinRef.current(winParty, battleState);
             return 'objective_win';
           }
         }
         if (source === 'player' && battleState?.battleObjective === 'capture_alive' && checkBattleObjectiveMet(battleState) && handleWinRef.current) {
           battleState._objectiveWinPending = true;
           const winParty = battleState.playerCombatStates.map((p, i) => ({ ...(party[i] || {}), ...p }));
-          await handleWinRef.current(winParty);
+          await handleWinRef.current(winParty, battleState);
           return 'objective_win';
         }
         if (source === 'enemy' && battleState?.battleObjective === 'protect' && dmg > 0) {
@@ -18195,6 +18470,28 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const reflectDmg = Math.max(1, Math.floor(getStats(attacker).maxHp * reflectPct));
             attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
             addLog(`${attacker.name} 受到 ${reflectDmg} 点镜像反伤！`);
+          }
+        }
+
+        const actualPrimaryDamage = Math.max(0, (defender._preHitHp ?? defender.currentHp) - defender.currentHp);
+        const landedDamagingHit = !isImmune && !isDodged && !equipDodged && actualPrimaryDamage > 0;
+        if (source === 'player' && landedDamagingHit) {
+          updateAchStat({ maxDamageDealt: actualPrimaryDamage, maxSingleDamage: actualPrimaryDamage });
+          if (typeMod > 1.2) {
+            updateAchStat({ superEffectiveHits: 1 });
+            if (battleState?.battleDirective?.id === 'type_mastery') {
+              battleState._bonusSuperEffectiveHits = (battleState._bonusSuperEffectiveHits || 0) + 1;
+            }
+          }
+          if (typeMod >= 2.0) updateAchStat({ doubleEffectiveHits: 1 });
+          if (isCrit && battleState) {
+            battleState._battleCrits = (battleState._battleCrits || 0) + 1;
+            battleState._consecutiveCrits = (battleState._consecutiveCrits || 0) + 1;
+            battleState._maxConsecutiveCrits = Math.max(battleState._maxConsecutiveCrits || 0, battleState._consecutiveCrits);
+            if (blessings.some(b => b.effect === 'critChain')) battleState._critChainActive = true;
+            gainSectMomentum(battleState, SECT_MOMENTUM_PER_CRIT);
+          } else if (battleState) {
+            battleState._consecutiveCrits = 0;
           }
         }
 
@@ -18962,10 +19259,10 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
 
-      const handleWin = (finalParty) => {
+      const handleWin = (finalParty, battleOverride = null) => {
        handleWinRef.current = handleWin;
        try {
-         const battleSnapshot = battle;
+         const battleSnapshot = battleOverride || battle;
          if (!battleSnapshot || battleResultHandledRef.current) return;
          auditPlayerHpLoss(battleSnapshot);
          battleResultHandledRef.current = true;
@@ -19064,11 +19361,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
               const godPet = createPet(254, 100, true, true);
               godPet.name = "起源之光(冠军)";
               godPet.customBaseStats = { hp: 200, p_atk: 200, p_def: 200, s_atk: 200, s_def: 200, spd: 200, crit: 50 };
-              setParty(prev => {
-                if (prev.length < 6) return [...prev, godPet];
-                setTimeout(() => setBox(b => [...b, godPet]), 0);
+              let addedChampionPetToParty = false;
+              flushSync(() => setParty(prev => {
+                if (prev.length < 6) {
+                  addedChampionPetToParty = true;
+                  return [...prev, godPet];
+                }
                 return prev;
-              });
+              }));
+              if (!addedChampionPetToParty) setBox(b => [...b, godPet]);
               showMapToast('✅', '提示', '🏆 恭喜通关二周目！ 已获得： 1. 饰品【冠军奖杯】 2. 神宠【起源之光】', 2000);
             }
           }
@@ -19122,11 +19423,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       : fixedRewardGoldTypes.has(type)
         ? fixedRewardGold
         : Math.floor(baseDropGold * Math.min(goldMult, goldMultCap));
+    const makeBattleWinStatUpdates = (earnedGold = 0, extra = {}) => ({
+      battlesWon: 1,
+      totalGoldEarned: Math.max(0, Math.floor(earnedGold || 0)),
+      currentWinStreak: () => streakCount,
+      maxWinStreak: streakCount,
+      ...extra,
+    });
+    const updateBattleWinStats = (earnedGold = 0, extra = {}) => updateAchStat(makeBattleWinStatUpdates(earnedGold, extra));
     if (goldGain > 0) setGold(g => g + goldGain);
-    if (type === 'survival') {
-      const survivalGold = (battleSnapshot.survivalWave || battleSnapshot.meta?.wave || 1) * 100;
-      setGold(g => g + survivalGold);
-    }
     if (type === 'tower' && battleSnapshot.meta?.type === 'tower' && battleSnapshot.meta?.rewards) {
       const wonFloor = battleSnapshot.meta.floor;
       if (typeof wonFloor === 'number' && wonFloor > 0) setTowerFloor(wonFloor);
@@ -19140,6 +19445,61 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     const extraDrops = [];
+    const directiveStatus = getBattleDirectiveStatus(battleSnapshot, finalParty);
+    if (directiveStatus.directive) {
+      if (directiveStatus.completed) {
+        const d = directiveStatus.directive;
+        const directiveGold = Math.min(3000, Math.max(120, Math.floor((goldGain || drop || 0) * (d.rewardGoldPct || 0.08))));
+        if (directiveGold > 0) {
+          setGold(g => g + directiveGold);
+          updateAchStat({ totalGoldEarned: directiveGold });
+        }
+        if (d.berry) {
+          setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, d.berry, d.berryCount || 1) }));
+        }
+        updateAchStat({ tacticalObjectivesCleared: 1 });
+        const berryName = d.berry ? `${BERRIES[d.berry]?.icon || '🍇'}${BERRIES[d.berry]?.name || d.berry}×${d.berryCount || 1}` : '';
+        const rewardText = [`+${directiveGold.toLocaleString()}金`, berryName].filter(Boolean).join(' ');
+        addLog(`🎖️ 追加目标完成：${d.name}，获得 ${rewardText}`);
+        extraDrops.push(`🎖️${d.name}${rewardText ? ` ${rewardText}` : ''}`);
+      } else {
+        addLog(`🎖️ 追加目标未完成：${directiveStatus.directive.name}（${directiveStatus.progress}）`);
+      }
+    }
+    if (!suppressStandardLoot && type === 'trainer' && !isGym && !isBoss && !isChallenge) {
+      const tacticId = battleSnapshot.trainerTactic?.id || 'balanced';
+      const pressureLevel = battleSnapshot.trainerPressure?.level || 0;
+      const hasCoveragePick = Boolean(battleSnapshot.trainerCoverage);
+      const tacticRewardDrops = [];
+
+      if (pressureLevel >= 1) {
+        tacticRewardDrops.push(['sitrus', 1]);
+      } else if (hasCoveragePick) {
+        tacticRewardDrops.push(['leppa', 1]);
+      } else if (tacticId !== 'balanced') {
+        tacticRewardDrops.push(['oran', 1]);
+      }
+      if (pressureLevel >= 2 && hasCoveragePick) {
+        tacticRewardDrops.push(['leppa', 1]);
+      }
+
+      if (tacticRewardDrops.length > 0) {
+        setInventory(prev => {
+          let berries = prev.berries;
+          tacticRewardDrops.forEach(([id, amount]) => {
+            berries = addBerries(berries, id, amount);
+          });
+          return { ...prev, berries };
+        });
+        const rewardNames = tacticRewardDrops.map(([id, amount]) => {
+          const berry = BERRIES[id];
+          return `${berry?.icon || '🍇'}${berry?.name || id}×${amount}`;
+        });
+        addLog(`🎒 战术缴获：${rewardNames.join('、')}`);
+        extraDrops.push(`🎒${rewardNames.join(' ')}`);
+      }
+    }
+
     if (type === 'elemental_trial' && battleSnapshot.meta?.elementType && Math.random() < 0.35) {
       const et = battleSnapshot.meta.elementType;
       const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
@@ -19357,6 +19717,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setInventory(prev => ({ ...prev, [ladderItem.id]: (prev[ladderItem.id]||0) + 1 }));
           addLog(`🪜 天梯奖励: ${ladderItem.emoji} ${ladderItem.name}!`);
         }
+        updateBattleWinStats(goldGain);
         commitPartyToSave(updatedParty);
         setBattle(null);
         setTimeout(() => {
@@ -19369,6 +19730,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const rushTier = rushDungeon?.tier || 2;
         const bonusGold = rushTier <= 1 ? 2500 : rushTier <= 2 ? 5000 : rushTier <= 3 ? 8000 : 12000;
         setGold(g => g + bonusGold);
+        updateAchStat({ totalGoldEarned: bonusGold });
         addLog(`🏆 ${rushName}全部通关！额外奖励 ${bonusGold} 金币！`);
         const rewardItem = _.sample(GROWTH_ITEMS.filter(i => i.id !== 'max_candy'));
         setInventory(prev => ({ ...prev, [rewardItem.id]: (prev[rewardItem.id]||0) + 1 }));
@@ -19395,7 +19757,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           const rewardPet = createPet(rewardId, 90, false, true);
           if (updatedParty.length < 6) { commitPartyToSave([...updatedParty, rewardPet]); }
           else { commitPartyToSave(updatedParty); setBox(prev => [...prev, rewardPet]); }
-          if (!caughtDex.includes(rewardPet.id)) setCaughtDex(prev => [...prev, rewardPet.id]);
+          if (!caughtDex.includes(rewardPet.id)) setCaughtDex(prev => prev.includes(rewardPet.id) ? prev : [...prev, rewardPet.id]);
           const maxCandy = { id: 'max_candy', name: '极限糖果', emoji: '🍬' };
           setInventory(prev => ({ ...prev, max_candy: (prev.max_candy || 0) + 3 }));
           addLog(`🌟 诸神黄昏通关！获得 ✨闪光${rewardPet.name} + ${maxCandy.emoji}极限糖果 ×3！`);
@@ -19477,6 +19839,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const wave = battleSnapshot.survivalWave || 1;
       const bonusGold = Math.floor(Math.min(wave, 10) * 500 + Math.max(0, wave - 10) * 200 + (wave >= 5 ? 500 : 0));
       setGold(g => g + bonusGold);
+      updateBattleWinStats(bonusGold);
       addLog(`🏟️ 第${wave}波通过！+${bonusGold}金币`);
       const nextLvl = Math.min(100, (battleSnapshot.enemyParty?.[0]?.level || 70) + 3);
       commitPartyToSave(updatedParty);
@@ -19531,17 +19894,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const tier5Eligible = battleSnapshot.dungeonId && ['infinity_castle','ragnarok','extreme_trial','safari_zone'].includes(battleSnapshot.dungeonId);
         const droppedAcc = sampleWeightedAccessory(tier5Eligible);
         if (droppedAcc) {
-          setAccessories(prev => {
-            const dupeCount = prev.filter(a => a === droppedAcc.id).length;
-            if (dupeCount >= 2) {
-              const sellGold = [0, 200, 500, 1200, 3000][droppedAcc.tier || 1] || 200;
-              setGold(g => g + sellGold);
-              addLog(`💍 已拥有 ${droppedAcc.icon} ${droppedAcc.name}，自动转化为 💰${sellGold}！`);
-              return prev;
-            }
+          const dupeCount = accessories.filter(a => a === droppedAcc.id).length;
+          if (dupeCount >= 2) {
+            const sellGold = [0, 200, 500, 1200, 3000][droppedAcc.tier || 1] || 200;
+            setGold(g => g + sellGold);
+            addLog(`💍 已拥有 ${droppedAcc.icon} ${droppedAcc.name}，自动转化为 💰${sellGold}！`);
+          } else {
             addLog(`💍 获得饰品：${droppedAcc.icon} ${droppedAcc.name}！`);
-            return [...prev, droppedAcc.id];
-          });
+            setAccessories(prev => [...prev, droppedAcc.id]);
+          }
         }
     }
 
@@ -19551,6 +19912,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const sectId = isChiefTrial ? (battleSnapshot._chiefTrialSectId || battleSnapshot.id - 8100) : battleSnapshot.id - 8000;
         const chiefInfo = SECT_CHIEFS_CONFIG[sectId];
         const sectInfo = SECT_DB[sectId];
+        let sectExtraGold = 0;
 
         if (!chiefInfo || !sectInfo) {
             commitPartyToSave(updatedParty); setBattle(null); setView('menu'); return;
@@ -19575,6 +19937,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             });
             advanceSectDaily('sect_challenge', 1);
             showMapToast('👑', '掌门试炼通关', `通过【${sectInfo.name}】掌门试炼！获得武学残页与心法真气`, 4000);
+            updateBattleWinStats(goldGain);
             commitPartyToSave(updatedParty);
             setBattle(null);
             setView('sect_summit');
@@ -19592,11 +19955,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
         } else {
             const repeatGold = Math.min(8000, 2000 + (sectTitles.length * 500));
             setGold(g => g + repeatGold);
+            sectExtraGold = repeatGold;
             addSectResources({ reputation: 30, contribution: 20 });
             showMapToast('🥋', '切磋结束', `你仍是【${chiefInfo.title}】· 获得 💰${repeatGold}金币`, 2000);
         }
         advanceSectDaily('sect_challenge', 1);
-        
+        updateBattleWinStats(goldGain + sectExtraGold);
+
         commitPartyToSave(updatedParty);
         setBattle(null);
         setView('sect_summit'); 
@@ -19692,8 +20057,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 commitPartyToSave(updatedParty);
                 setBox(prev => [...prev, godPet]);
             }
-            if (!caughtDex.includes(183)) setCaughtDex(prev => [...prev, 183]);
+            if (!caughtDex.includes(183)) setCaughtDex(prev => prev.includes(183) ? prev : [...prev, 183]);
 
+            updateBattleWinStats(goldGain);
             showMapToast('🌅', '无限城 100 层', '获得传说称号、饰品及神宠', 3500);
             setInfinityState(null);
             setBattle(null);
@@ -19726,16 +20092,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
         // LEGEND_OBTAIN_RULES - infinity_floor rewards
         if (LEGEND_OBTAIN_RULES) {
           const floorRewards = LEGEND_OBTAIN_RULES.filter(r => r.method === 'infinity_floor' && r.floor && currentFloor >= r.floor);
+          const ownedLegendIds = new Set([...(box || []), ...(partyToSave || [])].map(p => p?.dexId || p?.id).filter(Boolean));
+          let partyWithLegendRewards = partyToSave;
+          const legendBoxRewards = [];
           for (const rule of floorRewards) {
-            const alreadyOwned = [...(box || []), ...(party || [])].some(p => p?.dexId === rule.petId);
-            if (!alreadyOwned) {
+            if (!ownedLegendIds.has(rule.petId)) {
               const legendPet = createPet(rule.petId, Math.max(60, currentFloor));
-              if (partyToSave.length < 6) commitPartyToSave([...partyToSave, legendPet]);
-              else setBox(prev => [...prev, legendPet]);
-              if (!caughtDex.includes(rule.petId)) setCaughtDex(prev => [...prev, rule.petId]);
+              if (partyWithLegendRewards.length < 6) partyWithLegendRewards = [...partyWithLegendRewards, legendPet];
+              else legendBoxRewards.push(legendPet);
+              ownedLegendIds.add(rule.petId);
+              if (!caughtDex.includes(rule.petId)) setCaughtDex(prev => prev.includes(rule.petId) ? prev : [...prev, rule.petId]);
               showMapToast('🌟', '传说奖励', `到达第${currentFloor}层！获得 ${rule.name}！`, 3000);
             }
           }
+          if (partyWithLegendRewards !== partyToSave) commitPartyToSave(partyWithLegendRewards);
+          if (legendBoxRewards.length > 0) setBox(prev => [...prev, ...legendBoxRewards]);
         }
         if (currentFloor % 5 === 0) {
             const breathOpts = _.sampleSize(BREATHING_BUFFS, 2);
@@ -19752,6 +20123,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
           return prev;
         });
+        updateBattleWinStats(goldGain);
         setBattle(null);
         setView('infinity_castle'); 
         return; 
@@ -19766,8 +20138,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
            setLeagueRound(nextRound);
            const roundNames = ['16强', '8强', '半决赛', '决赛'];
            showMapToast('🎉', '联盟晋级', `恭喜晋级${roundNames[nextRound - 1] || '下一轮'}！`, 3000);
+           updateBattleWinStats(goldGain);
            setBattle(null);
-           setView('league'); 
+           setView('league');
            return; 
         } else {
             unlockTitle('联盟冠军');
@@ -19781,6 +20154,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             const goldReward = Math.min(15000 + (leagueWins + 1) * 5000, 40000);
             setInventory(prev => ({...prev, max_candy: (prev.max_candy || 0) + candyCount}));
             setGold(g => g + goldReward);
+            updateBattleWinStats(goldGain + goldReward);
             const rand = Math.random();
             let rewardPet;
             const godIds = [...(typeof FINAL_GOD_IDS !== 'undefined' ? FINAL_GOD_IDS : []), ...(typeof NEW_GOD_IDS !== 'undefined' ? NEW_GOD_IDS : [])];
@@ -19831,12 +20205,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
         });
         if (isOverGangWarLimit) {
           showMapToast('ℹ️', '帮战已结算', '今日次数已满，本场不再发放额外帮派奖励', 2500);
+          updateBattleWinStats(0);
           commitPartyToSave(updatedParty);
           setBattle(null);
           setView('gang');
           return;
         }
         const chestRewards = [];
+        let chestGoldEarned = 0;
         const chestRoll = Math.random();
         if (chestRoll < 0.4) {
             const eq = _.sample(RANDOM_EQUIP_DB);
@@ -19862,6 +20238,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (Math.random() < 0.15) {
             const bonusGold = 2000 + Math.floor(Math.random() * 5000);
             setGold(g => g + bonusGold);
+            chestGoldEarned = bonusGold;
             chestRewards.push(`💰 额外金币 ${bonusGold.toLocaleString()}`);
         }
         if (Math.random() < 0.1) {
@@ -19894,7 +20271,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             updateAchStat({ gangKwLinkWins: 1 });
           }
         }
-        updateAchStat({ battlesWon: 1 });
+        updateBattleWinStats(chestGoldEarned);
         if (kingdomWar.expBuffBattles > 0) setKingdomWar(prev => ({ ...prev, expBuffBattles: Math.max(0, prev.expBuffBattles - 1) }));
         commitPartyToSave(updatedParty);
         setBattle(null);
@@ -19969,6 +20346,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }) : { hpRatio: 1, uid: idx });
         commitPartyToSave(updatedParty);
         addLog(`📜 ${hb.name} — 第${currentWave + 1}/${totalWaves}波胜利！下一波即将开始...`);
+        updateBattleWinStats(goldGain);
         setTimeout(() => {
           startBattle(
             MAPS.find(m => m.id === currentMapId) || MAPS[0],
@@ -19990,6 +20368,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       const tokenReward = Math.floor((hb.reward.tokens || 5) * rewardMult);
       const contribReward = Math.floor((hb.reward.contribution || 20) * rewardMult);
       setGold(g => g + goldReward);
+      updateBattleWinStats(goldGain + goldReward);
       setKingdomWar(prev => {
         const next = { ...prev };
         next.factionTokens = (next.factionTokens || 0) + tokenReward;
@@ -20058,7 +20437,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
             return next;
         });
-        updateAchStat({ kwKills: 1, battlesWon: 1 });
+        updateBattleWinStats(goldGain, { kwKills: 1 });
         updateGangTaskProgress('kw_kill', 1);
         updateGangTaskProgress('battle_win', 1);
         const factionData = FACTIONS[battleSnapshot.kwEnemyFaction] || { fullName: '敌国' };
@@ -20073,6 +20452,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 9b-cal. 灵灾战斗胜利
     if (battleSnapshot.type === 'calamity') {
         completeCalamityReward(battleSnapshot.calamityId, battleSnapshot.weekKey);
+        updateBattleWinStats(goldGain);
         commitPartyToSave(updatedParty);
         setBattle(null);
         setView('grid_map');
@@ -20085,7 +20465,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const sf = FACTIONS[siegeTarget] || { fullName: '未知势力', icon: '❓', color: '#999' };
         const currentWave = battleSnapshot.wave || 1;
         const totalWaves = battleSnapshot.totalWaves || 3;
-        updateAchStat({ kwKills: 1 });
+        updateBattleWinStats(0, { kwKills: 1 });
         updateGangTaskProgress('kw_kill', 1);
         updateGangTaskProgress('battle_win', 1);
 
@@ -20107,6 +20487,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const siegeContrib = 100;
         const siegeTokens = 20;
         setGold(g => g + siegeGold);
+        updateAchStat({ totalGoldEarned: siegeGold });
         setKingdomWar(prev => ({
           ...prev,
           warContribution: (prev.warContribution || 0) + siegeContrib,
@@ -20158,7 +20539,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             next.militaryRank = getMilitaryRank(next.warContribution, buildRankStats(next)).id;
             return next;
         });
-        updateAchStat({ kwKills: 1 });
+        updateBattleWinStats(campaignGold, { kwKills: 1 });
         updateGangTaskProgress('kw_campaign', 1);
         updateGangTaskProgress('battle_win', 1);
         showMapToast('⚔️', '战役通关', `${campaign.name} · ${campaignGold.toLocaleString()} 金 · 战功 +${contribGain}`, 3000);
@@ -20175,43 +20556,40 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const gymMapBadge = isGym && mapId ? MAPS.find(m => m.id === mapId)?.badge : null;
     const gymIsNewBadge = !!(gymMapBadge && !badges.includes(gymMapBadge));
     if (isGym && mapId && gymIsNewBadge) {
-      setBadges(prev => {
-        if (!gymMapBadge || prev.includes(gymMapBadge)) return prev;
-        const newBadges = [...prev, gymMapBadge];
-        const bc = newBadges.length;
-        const milestoneGold = Math.min(bc * 500, 5000);
-        setGold(g => g + milestoneGold);
-        addLog(`🏅 获得第${bc}枚徽章！奖励 ${milestoneGold} 金币！`);
-        if (bc === 1) {
-          setTimeout(() => showMapToast('💡', '进阶提示', '尝试在商店购买高级精灵球提升捕获率！', 3000), 400);
-          updateAchStat({ speedrunFirstBadge: p => Math.min(p || 9999, Math.floor((Date.now() - (savedDataRef.current?._startTime || Date.now())) / 60000)) });
+      const bc = badges.length + 1;
+      const milestoneGold = Math.min(bc * 500, 5000);
+      setBadges(prev => (!gymMapBadge || prev.includes(gymMapBadge)) ? prev : [...prev, gymMapBadge]);
+      setGold(g => g + milestoneGold);
+      updateAchStat({ totalGoldEarned: milestoneGold });
+      addLog(`🏅 获得第${bc}枚徽章！奖励 ${milestoneGold} 金币！`);
+      if (bc === 1) {
+        setTimeout(() => showMapToast('💡', '进阶提示', '尝试在商店购买高级精灵球提升捕获率！', 3000), 400);
+        updateAchStat({ speedrunFirstBadge: p => Math.min(p || 9999, Math.floor((Date.now() - (savedDataRef.current?._startTime || Date.now())) / 60000)) });
+      }
+      if (bc === 3) {
+        setInventory(inv => ({ ...inv, balls: { ...inv.balls, great: (inv.balls.great || 0) + 10 } }));
+        addLog(`🎁 3徽章里程碑：获得 10 个高级球！`);
+      } else if (bc === 5) {
+        setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } }));
+        addLog(`🎁 5徽章里程碑：获得 5 个超级球！`);
+      } else if (bc === 8) {
+        setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + 3 }));
+        addLog(`🎁 8徽章里程碑：获得 3 个经验糖果！`);
+      } else if (bc === 13) {
+        setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } }));
+        addLog(`🎁 全徽章里程碑：获得 大师球！`);
+      }
+      const mapRow = MAPS.find(m => m.id === mapId);
+      const themeMap = { grass:'GRASS', mountain:'ROCK', factory:'ELECTRIC', water:'WATER', fire:'FIRE', city:'PSYCHIC', ghost:'GHOST', sky:'FLYING', ice:'ICE', ground:'GROUND', fairy:'FAIRY', space:'COSMIC', gold:'DRAGON' };
+      const gTheme = mapRow && themeMap[mapRow.type];
+      if (gTheme) {
+        const hiPool = ALL_SKILL_TMS.filter(t => t.type === gTheme && (t.p || 0) > 70);
+        const tmPick = sampleWeightedTM(hiPool.length ? hiPool : ALL_SKILL_TMS.filter(t => (t.p || 0) > 70), 4);
+        if (tmPick) {
+          setInventory(inv => ({ ...inv, tms: { ...inv.tms, [tmPick.id]: (inv.tms[tmPick.id] || 0) + 1 } }));
+          setTimeout(() => showMapToast('📖', '道馆首胜', `${tmPick.name} · ${TYPES[tmPick.type]?.name || ''} 威力${tmPick.p || 0}`, 3500), 120);
         }
-        if (bc === 3) {
-          setInventory(inv => ({ ...inv, balls: { ...inv.balls, great: (inv.balls.great || 0) + 10 } }));
-          addLog(`🎁 3徽章里程碑：获得 10 个高级球！`);
-        } else if (bc === 5) {
-          setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } }));
-          addLog(`🎁 5徽章里程碑：获得 5 个超级球！`);
-        } else if (bc === 8) {
-          setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + 3 }));
-          addLog(`🎁 8徽章里程碑：获得 3 个经验糖果！`);
-        } else if (bc === 13) {
-          setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } }));
-          addLog(`🎁 全徽章里程碑：获得 大师球！`);
-        }
-        const mapRow = MAPS.find(m => m.id === mapId);
-        const themeMap = { grass:'GRASS', mountain:'ROCK', factory:'ELECTRIC', water:'WATER', fire:'FIRE', city:'PSYCHIC', ghost:'GHOST', sky:'FLYING', ice:'ICE', ground:'GROUND', fairy:'FAIRY', space:'COSMIC', gold:'DRAGON' };
-        const gTheme = mapRow && themeMap[mapRow.type];
-        if (gTheme) {
-          const hiPool = ALL_SKILL_TMS.filter(t => t.type === gTheme && (t.p || 0) > 70);
-          const tmPick = sampleWeightedTM(hiPool.length ? hiPool : ALL_SKILL_TMS.filter(t => (t.p || 0) > 70), 4);
-          if (tmPick) {
-            setInventory(inv => ({ ...inv, tms: { ...inv.tms, [tmPick.id]: (inv.tms[tmPick.id] || 0) + 1 } }));
-            setTimeout(() => showMapToast('📖', '道馆首胜', `${tmPick.name} · ${TYPES[tmPick.type]?.name || ''} 威力${tmPick.p || 0}`, 3500), 120);
-          }
-        }
-        return newBadges;
-      });
+      }
     }
     if (isGym && mapId && storyChapter && storyChapter.mapId === mapId && gymIsNewBadge) {
           try { checkTreasureUnlock('gym', { mapId }); } catch(e) { console.warn('treasure:', e); }
@@ -20259,10 +20637,13 @@ const grantContestReward = (config, score, subjectPet = null) => {
              const rewardPet = createPet(rewardPetInfo.id, rewardPetInfo.level);
              setCaughtDex(d => d.includes(rewardPet.id) ? d : [...d, rewardPet.id]);
              let rewardToParty = false;
-             setParty(prev => {
-               if (prev.length < 6) { rewardToParty = true; return [...prev, rewardPet]; }
+             flushSync(() => setParty(prev => {
+               if (prev.length < 6) {
+                 rewardToParty = true;
+                 return [...prev, rewardPet];
+               }
                return prev;
-             });
+             }));
              if (!rewardToParty) setBox(prev => [...prev, rewardPet]);
              showMapToast('🎁', '新伙伴', `${rewardPet.name} · ${rewardToParty ? '已加入队伍' : '已送电脑'}`, 2500);
           }
@@ -20312,16 +20693,17 @@ const grantContestReward = (config, score, subjectPet = null) => {
             setCompletedChallenges(prev => [...prev, 'ECLIPSE_HQ_CLEARED']);
             const rewardPet = createPet(341, 50); 
             rewardPet.name = "暗黑超梦";
-      rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 }; 
-      if (updatedParty.length < 6) commitPartyToSave([...updatedParty, rewardPet]);
+            rewardPet.customBaseStats = { hp: 106, p_atk: 150, p_def: 90, s_atk: 154, s_def: 90, spd: 130, crit: 10 };
+            if (updatedParty.length < 6) commitPartyToSave([...updatedParty, rewardPet]);
             else {
-          commitPartyToSave(updatedParty);
-                setBox(prev => [...prev, rewardPet]);
+              commitPartyToSave(updatedParty);
+              setBox(prev => [...prev, rewardPet]);
             }
-            setCaughtDex(prev => [...prev, 341]);
+            setCaughtDex(prev => prev.includes(341) ? prev : [...prev, 341]);
             showMapToast('🏆', '传说降临', '战胜了日蚀队首领！获得了传说中的精灵【暗黑超梦】！', 4000);
-      setBattle(null);
-      setView('grid_map');
+            updateBattleWinStats(goldGain);
+            setBattle(null);
+            setView('grid_map');
             return; 
           }
 
@@ -20372,6 +20754,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 竞技场结算
     if (battleSnapshot.type === 'arena') {
       handleArenaResult(true);
+      updateBattleWinStats(0);
       setBattle(null);
       setView('arena');
       showMapToast('🏆', '竞技场胜利', '段位星数 +1，继续加油！', 2500);
@@ -20399,6 +20782,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }));
       if (def && stepIdx + 1 >= (def.steps?.length || 0)) completeSectRealm(realmId, def);
       else showMapToast('✅', '秘境进展', `${def?.name || '秘境'} 第${stepIdx + 1}步完成`, 2500);
+      updateBattleWinStats(goldGain);
       commitPartyToSave(updatedParty);
       setBattle(null);
       setView('sect_summit');
@@ -20408,6 +20792,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._calamity) {
       const { calamityId, weekKey } = battleSnapshot._calamity;
       completeCalamityReward(calamityId, weekKey);
+      updateBattleWinStats(goldGain);
       commitPartyToSave(updatedParty);
       setBattle(null);
       setView('world_map');
@@ -20423,12 +20808,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (!isFinalStep) {
         setFusionState(prev => ({ ...prev, [`${type}_progress_${id}`]: (prev[`${type}_progress_${id}`] || 0) + 1 }));
         showMapToast('⚔️', '阶段通过', `${def?.name || id} — 进入下一阶段`, 2500);
+        updateBattleWinStats(goldGain);
         setBattle(null);
         setView('world_map');
         return;
       }
       setFusionState(prev => ({ ...prev, [clearedKey]: [...new Set([...(prev[clearedKey] || []), id])], [`${type}_progress_${id}`]: undefined }));
-      if (def?.reward?.gold) setGold(g => g + def.reward.gold);
+      const fusionRewardGold = def?.reward?.gold || 0;
+      if (fusionRewardGold) setGold(g => g + fusionRewardGold);
       if (def?.reward?.title) unlockTitle(def.reward.title);
       if (def?.reward?.item) {
         const cat = BALLS[def.reward.item] ? 'balls' : def.reward.item.includes('stone') ? 'stones' : 'meds';
@@ -20438,6 +20825,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       if (type === 'fruit' && def?.reward?.fruitTrialClear) setFusionState(prev => ({ ...prev, fruitTrialsCleared: [...new Set([...(prev.fruitTrialsCleared || []), id])] }));
       if (def?.ecologyReward) applyMapEcologyDelta(def.mapId || currentMapId, def.ecologyReward);
       updateAchStat({ fusionDungeonsCleared: 1 });
+      updateBattleWinStats(goldGain + fusionRewardGold);
       showMapToast('✨', '秘境副本通关', def?.name || id, 3500);
       setBattle(null);
       setView('world_map');
@@ -20452,6 +20840,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       }
       const { crisisId, stepIdx } = battleSnapshot.ecoCrisis;
       setEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx + 1 } }));
+      updateBattleWinStats(goldGain);
       setBattle(null);
       setView('world_map');
       setTimeout(() => runEcoCrisisStep(crisisId, stepIdx + 1), 500);
@@ -20465,6 +20854,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (rescueEvt.ecology) applyMapEcologyDelta(rescueEvt.mapId, rescueEvt.ecology);
         showMapToast(rescueEvt.icon || '🦏', '救助成功', `${rescueEvt.name} 重获自由`, 2500);
       }
+      updateBattleWinStats(goldGain);
       setBattle(null);
       setView('grid_map');
       return;
@@ -20473,6 +20863,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 忍者试炼生存试炼结算
     if (battleSnapshot.type === 'naruto_survival' && narutoExamUI?.phase === 'survival') {
       const wave = (narutoExamUI.survivalWave || 0) + 1;
+      updateBattleWinStats(0);
       if (wave >= (narutoExamUI.survivalWaves || 2)) {
         showMapToast('✅','生存试炼通过','不愧是有实力的忍者！进入死亡之森',2500);
         setBattle(null);
@@ -20489,10 +20880,12 @@ const grantContestReward = (config, score, subjectPet = null) => {
     if (battleSnapshot.type === 'naruto_exam' && narutoExamUI?.phase === 'finals') {
       const round = narutoExamUI.finalsRound || 0;
       const bracket = EXAM_FINALS_BRACKETS[round - 1];
+      const examRoundGold = bracket?.reward?.gold || 0;
       if (bracket?.reward) {
-        if (bracket.reward.gold) setGold(g => g + bracket.reward.gold);
+        if (examRoundGold) setGold(g => g + examRoundGold);
         if (bracket.reward.title) setUnlockedTitles(prev => [...new Set([...prev, bracket.reward.title])]);
       }
+      updateBattleWinStats(examRoundGold);
       if (round >= EXAM_FINALS_BRACKETS.length) {
         setBattle(null);
         startFinalsRound();
@@ -20506,7 +20899,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     // 火影主线剧情结算
     const storyMeta = battleSnapshot.meta || (battleSnapshot.type === 'naruto_story' ? battleSnapshot.challengeId : null);
     if (battleSnapshot.type === 'naruto_story' && storyMeta) {
-      handleStoryWin(storyMeta.chapterId, storyMeta.stageIdx);
+      handleStoryWin(storyMeta.chapterId, storyMeta.stageIdx, goldGain);
       setBattle(null);
       setView('naruto_story');
       return;
@@ -20655,22 +21048,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (bondUpdates[uid]) return { ...p, bondPoints: (p.bondPoints || 0) + bondUpdates[uid] };
         return p;
       });
-      setParty(pp => {
-        const updated = applyBond(pp);
-        let maxLv = 0;
-        let lv3Pairs = 0;
-        const counted = new Set();
-        [...updated, ...box].forEach(p => {
-          if (p.partnerId && p.bondPoints) {
-            const bl = getBondLevel(p.bondPoints);
-            if (bl) maxLv = Math.max(maxLv, bl.tier);
-            if (bl && bl.tier >= 3 && !counted.has(p.partnerId)) { lv3Pairs++; counted.add(p.uid || p.id); }
-          }
-        });
-        if (maxLv > 0) updateAchStat({ maxBondLevel: maxLv, maxBondLv3Pairs: lv3Pairs });
-        return updated;
-      });
+      const bondedPartyPreview = applyBond(party);
+      const bondedBoxPreview = applyBond(box);
+      setParty(pp => applyBond(pp));
       setBox(bb => applyBond(bb));
+      let maxLv = 0;
+      let lv3Pairs = 0;
+      const counted = new Set();
+      [...bondedPartyPreview, ...bondedBoxPreview].forEach(p => {
+        if (p.partnerId && p.bondPoints) {
+          const bl = getBondLevel(p.bondPoints);
+          if (bl) maxLv = Math.max(maxLv, bl.tier);
+          if (bl && bl.tier >= 3 && !counted.has(p.partnerId)) { lv3Pairs++; counted.add(p.uid || p.id); }
+        }
+      });
+      if (maxLv > 0) updateAchStat({ maxBondLevel: maxLv, maxBondLv3Pairs: lv3Pairs });
     }
 
     const lowHpCount = updatedParty.filter(p => p.currentHp > 0 && p.currentHp < getStats(p).maxHp * 0.3).length;
@@ -20725,6 +21117,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
          setView('grid_map');
     }
   };
+
+  handleWinRef.current = handleWin;
 
     const handleDefeat = async () => {
     if (battleResultHandledRef.current) return;
@@ -21038,7 +21432,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       setBattle(prev => prev ? ({...prev, phase: 'caught'}) : prev);
       addLog(`✨ 成功捕捉 ${enemy.name}!`);
-      if (!caughtDex.includes(enemy.id)) setCaughtDex(prev => [...prev, enemy.id]);
+      if (!caughtDex.includes(enemy.id)) setCaughtDex(prev => prev.includes(enemy.id) ? prev : [...prev, enemy.id]);
 
       // 成就追踪
       const catchAchUpdates = { totalCaught: 1 };
@@ -21095,17 +21489,18 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
       // 3. 普通捕捉：入队或存入电脑 (use functional state to avoid stale closure)
       let caughtToParty = false;
-      setParty(prev => {
+      flushSync(() => setParty(prev => {
         const synced = syncCurrentParty(prev);
         if (synced.length < 6) {
           caughtToParty = true;
           return [...synced, newPet];
-        } else {
-          setBox(bPrev => [...bPrev, newPet]);
-          addLog("队伍已满，已发送到电脑。");
-          return synced;
         }
-      });
+        return synced;
+      }));
+      if (!caughtToParty) {
+        setBox(bPrev => [...bPrev, newPet]);
+        addLog("队伍已满，已发送到电脑。");
+      }
       
       await wait(1000);
       const newDex = !caughtDex.includes(newPet.id);
@@ -21256,7 +21651,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
                 {status === 'idle' && "点击按钮抛竿"}
                 {status === 'waiting' && "耐心等待..."}
                 {status === 'bite' && <span style={{color:'#FF5252', fontSize:'24px'}}>有鱼上钩！快收杆！</span>}
-                {status === 'fail' && <div>{msg}<br/><button onClick={(e)=>{e.stopPropagation(); setFishingState(prev => { if ((prev.retries || 0) >= 2) { showMapToast('🎣', '次数用尽', '本轮钓鱼机会已用完', 1500); return prev; } startFishing(); return {...prev, retries: (prev.retries||0)+1}; }); }} style={{marginTop:'10px', padding:'8px 20px', borderRadius:'20px', border:'none', cursor:'pointer', background:'linear-gradient(90deg,#0288D1,#0277BD)', color:'#fff'}}>{(fishingState.retries||0) >= 2 ? '已无重试机会' : `再试一次 (${2-(fishingState.retries||0)}次)`}</button></div>}
+                {status === 'fail' && <div>{msg}<br/><button onClick={(e)=>{e.stopPropagation(); const retries = fishingState.retries || 0; if (retries >= 2) { showMapToast('🎣', '次数用尽', '本轮钓鱼机会已用完', 1500); return; } setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '', retries: retries + 1 }); }} style={{marginTop:'10px', padding:'8px 20px', borderRadius:'20px', border:'none', cursor:'pointer', background:'linear-gradient(90deg,#0288D1,#0277BD)', color:'#fff'}}>{(fishingState.retries||0) >= 2 ? '已无重试机会' : `再试一次 (${2-(fishingState.retries||0)}次)`}</button></div>}
                 
                 {status === 'success' && (
                     <div style={{animation:'popIn 0.5s'}}>
@@ -21708,7 +22103,7 @@ const renderNameInput = () => {
             <div className="starter-lab-dialogue">
               <span>大木博士</span>
               <strong>{showStarters ? '伙伴候选已准备完成' : '欢迎来到精灵研究所'}</strong>
-              <p>{showStarters ? `${tempName}，这批伙伴都有独特的属性倾向，请根据培养路线做出选择。` : '告诉我你的名字，我会为你筛选四只适合初次冒险的精灵。'}</p>
+              <p>{showStarters ? `${tempName}，这批伙伴都有独特的属性倾向，请根据培养路线做出选择。` : '告诉我你的名字，我会为你筛选五只适合初次冒险的精灵。'}</p>
             </div>
           </div>
 
@@ -21858,7 +22253,7 @@ const renderNameInput = () => {
             <div className="starter-waiting-copy">
               <span>Partner Lab</span>
               <h2>第一只伙伴正在等待登记</h2>
-              <p>输入名字后，博士会从图鉴中抽取四只适合培养的初始精灵。</p>
+              <p>输入名字后，博士会从图鉴中抽取五只适合培养的初始精灵。</p>
             </div>
             <div className="starter-step-row">
               <span className={nameReady ? 'is-done' : ''}>登记名字</span>
@@ -22017,25 +22412,37 @@ const renderNameInput = () => {
     const claimDexMilestone = (m) => {
       if (dexMilestoneClaimed[m.key]) { showMapToast('ℹ️', '已领取', '该档奖励已领取过', 1500); return; }
       if (caughtDex.length < m.need) { showMapToast('❌', '未达成', `需要收集至少 ${m.need} 种`, 1500); return; }
-      setDexMilestoneClaimed(prev => {
+      if (dexMilestoneClaimLocksRef.current.has(m.key)) {
+        showMapToast('ℹ️', '领取中', '该档奖励正在领取', 1500);
+        return;
+      }
+      dexMilestoneClaimLocksRef.current.add(m.key);
+      let didClaim = false;
+      flushSync(() => setDexMilestoneClaimed(prev => {
         if (prev[m.key]) return prev;
-        if (m.key === 'p10') { setGold(g => g + 1000); showMapToast('🎁', '图鉴奖励', '获得 1000 金币！', 2500); }
-        else if (m.key === 'p25') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } })); showMapToast('🎁', '图鉴奖励', '获得 超级球×5！', 2500); }
-        else if (m.key === 'p50') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } })); showMapToast('🎁', '图鉴奖励', '获得 大师球×1！', 2500); }
-        else if (m.key === 'p100') {
-          unlockTitle('终极图鉴大师');
-          const pet900 = POKEDEX.find(p => p.id === 900);
-          if (pet900) {
-            const rewardPet = createPet(900, 80, false, true);
-            setPC(prev => [...prev, rewardPet]);
-            if (!caughtDex.includes(900)) setCaughtDex(prev => [...prev, 900]);
-            showMapToast('🎁', '图鉴终极奖励', '解锁称号+获得始源混沌神！已送入电脑', 3500);
-          } else {
-            showMapToast('🎁', '图鉴奖励', '解锁称号：终极图鉴大师！', 2500);
-          }
-        }
+        didClaim = true;
         return { ...prev, [m.key]: true };
-      });
+      }));
+      if (!didClaim) {
+        dexMilestoneClaimLocksRef.current.delete(m.key);
+        showMapToast('ℹ️', '已领取', '该档奖励已领取过', 1500);
+        return;
+      }
+      if (m.key === 'p10') { setGold(g => g + 1000); updateAchStat({ totalGoldEarned: 1000 }); showMapToast('🎁', '图鉴奖励', '获得 1000 金币！', 2500); }
+      else if (m.key === 'p25') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, ultra: (inv.balls.ultra || 0) + 5 } })); showMapToast('🎁', '图鉴奖励', '获得 超级球×5！', 2500); }
+      else if (m.key === 'p50') { setInventory(inv => ({ ...inv, balls: { ...inv.balls, master: (inv.balls.master || 0) + 1 } })); showMapToast('🎁', '图鉴奖励', '获得 大师球×1！', 2500); }
+      else if (m.key === 'p100') {
+        unlockTitle('终极图鉴大师');
+        const pet900 = POKEDEX.find(p => p.id === 900);
+        if (pet900) {
+          const rewardPet = createPet(900, 80, false, true);
+          setBox(prev => [...prev, rewardPet]);
+          if (!caughtDex.includes(900)) setCaughtDex(prev => prev.includes(900) ? prev : [...prev, 900]);
+          showMapToast('🎁', '图鉴终极奖励', '解锁称号+获得始源混沌神！已送入电脑', 3500);
+        } else {
+          showMapToast('🎁', '图鉴奖励', '解锁称号：终极图鉴大师！', 2500);
+        }
+      }
       persistSave(true);
     };
 
@@ -24446,6 +24853,7 @@ const renderMenu = () => {
                               if (!result.ok) { showMapToast('❌', '征兵失败', result.reason, 2000); return; }
                               if (gold < result.goldCost) { showMapToast('💰', '金币不足', `需要 ${result.goldCost} 金`, 2000); return; }
                               setGold(g => Math.max(0, g - result.goldCost));
+                              if (result.goldCost > 0) updateAchStat({ totalGoldSpent: result.goldCost });
                               setKingdomWar(prev => ({ ...prev, ...result.nextKw, currentTurn: (prev.currentTurn || 0) + 1 }));
                               triggerEnemyKingdomActions();
                               showMapToast('🪖', '征兵完成', `获得 ${result.gain} 兵力（消耗 ${result.goldCost}金 ${result.grainCost}粮）`, 2500);
@@ -24457,6 +24865,7 @@ const renderMenu = () => {
                               if (!result.ok) { showMapToast('❌', '征兵失败', result.reason, 2000); return; }
                               if (gold < result.goldCost) { showMapToast('💰', '金币不足', `需要 ${result.goldCost} 金`, 2000); return; }
                               setGold(g => Math.max(0, g - result.goldCost));
+                              if (result.goldCost > 0) updateAchStat({ totalGoldSpent: result.goldCost });
                               setKingdomWar(prev => ({ ...prev, ...result.nextKw, currentTurn: (prev.currentTurn || 0) + 1 }));
                               triggerEnemyKingdomActions();
                               showMapToast('⚔️', '精锐征兵', `获得 ${result.gain} 精锐（攻防+30%）`, 2500);
@@ -24602,6 +25011,7 @@ const renderMenu = () => {
                               const total = Math.floor(Math.min((Math.floor(base * rank.incomeMultiplier * taxMult) + (rank.salary || 0)) * allMult, 50000));
                               const tokens = myTerrCount * 2 + (rank.tokenBonus || 0);
                               setGold(g => g + total);
+                              if (total > 0) updateAchStat({ totalGoldEarned: total });
                               setKingdomWar(prev => {
                                 const afterDaily = resetKingdomDailyCounts(prev);
                                 return {
@@ -25311,6 +25721,7 @@ const renderMenu = () => {
                               onClick={() => {
                                 if (feat.action === 'treasury') {
                                   setGold(prev => prev + capitalDailyGold);
+                                  if (capitalDailyGold > 0) updateAchStat({ totalGoldEarned: capitalDailyGold });
                                   setKingdomWar(prev => ({
                                     ...prev,
                                     dailyCounts: { ...(prev.dailyCounts || {}), capitalReward: true, resetDate: getLocalDateStr() },
@@ -28641,7 +29052,7 @@ const renderMenu = () => {
   // 2. 钓鱼大赛 - 开始
   const startFishing = () => {
     setActiveContest({ id: 'fishing' });
-    setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' });
+    setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '', retries: 0 });
     setView('fishing_game');
   };
 
@@ -29297,16 +29708,31 @@ const renderMenu = () => {
     if (!config) return null;
 
     const typeKey = config.id?.split('_')[1] || config.id;
+    const contestCooldownKey = `contest_${activityModal}`;
     const myRecord = activityRecords[typeKey] || 0;
-    const isFirstTime = !activityRecords[typeKey];
+    const hasParticipated = myRecord > 0 || Object.prototype.hasOwnProperty.call(dungeonCooldowns || {}, contestCooldownKey);
+    const isFirstTime = !hasParticipated;
     const actualFee = isFirstTime ? 0 : config.entryFee;
+    const getStartBlockReason = () => {
+      if (battle && !battleResultHandledRef.current) return '当前正在战斗，结束后再报名';
+      if (!party || party.length === 0) return '队伍中没有精灵';
+      if (activityModal === 'bug' && !party.some(p => (p?.currentHp || 0) > 0)) return '队伍已全员战斗不能，请先治疗';
+      if (activityModal === 'beauty' && !party[0]) return '华丽大赛需要队首精灵参赛';
+      return '';
+    };
+    const startBlockReason = getStartBlockReason();
+    const startDisabled = gold < actualFee || !!startBlockReason;
 
-          const handleStart = () => {
-        const isFirstTime = !(activityRecords[config.id?.split('_')[1] || config.id]);
+    const handleStart = () => {
+        if (activityStartLockRef.current) return;
+        const hasParticipatedNow = (activityRecords[typeKey] || 0) > 0 || Object.prototype.hasOwnProperty.call(dungeonCooldowns || {}, contestCooldownKey);
+        const isFirstTime = !hasParticipatedNow;
         const actualFee = isFirstTime ? 0 : config.entryFee;
+        const blockReason = getStartBlockReason();
+        if (blockReason) { showMapToast('⚠️','无法报名',blockReason,2000); return; }
         if (gold < actualFee) { showMapToast('❌','金币不足','报名费不够',1500); return; }
         // 活动冷却检查 (3次后等3分钟)
-        const cdKey = `contest_${activityModal}`;
+        const cdKey = contestCooldownKey;
         const cd = dungeonCooldowns[cdKey];
         if (cd && cd.count >= 3) {
           const elapsed = Date.now() - cd.lastTime;
@@ -29317,15 +29743,17 @@ const renderMenu = () => {
           }
           setDungeonCooldowns(prev => ({ ...prev, [cdKey]: { count: 0, lastTime: Date.now() } }));
         }
+        activityStartLockRef.current = true;
         setDungeonCooldowns(prev => {
           const c = prev[cdKey] || { count: 0, lastTime: Date.now() };
           return { ...prev, [cdKey]: { count: c.count + 1, lastTime: Date.now() } };
         });
         if (actualFee > 0) { setGold(g => Math.max(0, g - actualFee)); updateAchStat({ totalGoldSpent: actualFee }); }
+        const startType = activityModal;
         setActivityModal(null);
-        if (activityModal === 'bug') startBugContest();
-        else if (activityModal === 'fishing') startFishing();
-        else if (activityModal === 'beauty') startBeautyContest();
+        if (startType === 'bug') startBugContest();
+        else if (startType === 'fishing') startFishing();
+        else if (startType === 'beauty') startBeautyContest();
     };
 
 
@@ -29375,7 +29803,7 @@ const renderMenu = () => {
                     ) : (
                       <span style={{color: gold < actualFee ? '#F44336' : '#4CAF50', fontWeight: 'bold', fontSize: '16px'}}>💰 {config.entryFee}</span>
                     )}</div>
-                    <button onClick={handleStart} style={{padding: '12px 30px', borderRadius: '25px', border: 'none', background: gold < actualFee ? '#ccc' : 'linear-gradient(90deg, #2196F3, #21CBF3)', color: '#fff', fontWeight: 'bold', fontSize: '14px', cursor: gold < actualFee ? 'not-allowed' : 'pointer', boxShadow: gold < actualFee ? 'none' : '0 4px 15px rgba(33, 150, 243, 0.3)'}}>立即报名</button>
+                    <button onClick={handleStart} aria-disabled={startDisabled} title={startBlockReason || undefined} style={{padding: '12px 30px', borderRadius: '25px', border: 'none', background: startDisabled ? '#ccc' : 'linear-gradient(90deg, #2196F3, #21CBF3)', color: '#fff', fontWeight: 'bold', fontSize: '14px', cursor: startDisabled ? 'not-allowed' : 'pointer', boxShadow: startDisabled ? 'none' : '0 4px 15px rgba(33, 150, 243, 0.3)'}}>{startBlockReason ? '暂不可报名' : '立即报名'}</button>
                 </div>
             </div>
         </div>
@@ -33450,7 +33878,7 @@ const renderMenu = () => {
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#3b82f6',marginBottom:'12px'}}>🎮 游戏设置</div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-                <span style={{fontSize:'13px'}}>自动战斗<br/><small style={{color:'rgba(255,255,255,0.45)',fontWeight:500}}>只在弱敌战中自动出招，避免误操作高难战</small></span>
+                <span style={{fontSize:'13px'}}>自动战斗<br/><small style={{color:'rgba(255,255,255,0.45)',fontWeight:500}}>在所有非 PvP 战斗中自动选择技能；高难战建议手动操作</small></span>
                 <button onClick={() => setAutoBattle(a => !a)} style={{padding:'6px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.2)',background:autoBattle?'rgba(76,175,80,0.2)':'rgba(255,255,255,0.06)',color:autoBattle?'#4CAF50':'#999',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {autoBattle ? '✅ 开启' : '关闭'}
                 </button>
