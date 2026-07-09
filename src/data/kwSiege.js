@@ -242,6 +242,7 @@ export const evaluateKwSiegeBattle = ({
   mapLvlMin = 50,
   mapLvlMax = 80,
   avgPartyLevel = 55,
+  attackPowerMult = 1,
 }) => {
   const alloc = normalizeAllocation(allocation);
   const deploy = sumAlloc(alloc);
@@ -271,10 +272,11 @@ export const evaluateKwSiegeBattle = ({
     .filter(fid => fid !== playerFaction)
     .reduce((s, fid) => s + (prog[fid] || 0), 0);
   const av = Math.min(100, Math.max(15, Number(avgPartyLevel) || 55));
+  const effectiveAttackPowerMult = clamp(Number(attackPowerMult) || 1, 1, 2);
   const wallHp = Math.max(52, wallBase * (1 + others * 0.0065) * (0.92 + av * 0.0018));
   const atkW = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0) * (TROOP_WEIGHT[tid] || 1), 0);
   const qunBoost = ((prog.qun || 0) / (1 + others * 0.5)) * 0.012;
-  const expectedRoundDamage = atkW * lead * counter * (1.05 - qunBoost * 0.35);
+  const expectedRoundDamage = atkW * lead * counter * (1.05 - qunBoost * 0.35) * effectiveAttackPowerMult;
   const expectedDamage = expectedRoundDamage * 7;
   const pressure = expectedDamage / Math.max(1, wallHp);
   const winChance = clamp(0.06 + (pressure / (pressure + 1.05)) * 0.88, 0.06, 0.94);
@@ -301,6 +303,7 @@ export const evaluateKwSiegeBattle = ({
     suggestedAllocation: getSuggestedAllocation(defWeights, deploy),
     counter,
     leadership: lead,
+    attackPowerMult: effectiveAttackPowerMult,
     wallHp,
     expectedDamage,
     pressure,
@@ -328,6 +331,7 @@ export const runKwSiegeBattle = ({
   mapLvlMin = 50,
   mapLvlMax = 80,
   avgPartyLevel = 55,
+  attackPowerMult = 1,
 }) => {
   const preview = evaluateKwSiegeBattle({
     mapId,
@@ -339,6 +343,7 @@ export const runKwSiegeBattle = ({
     mapLvlMin,
     mapLvlMax,
     avgPartyLevel,
+    attackPowerMult,
   });
   const alloc = preview.allocation || normalizeAllocation(allocation);
   const deploy = preview.deploy || sumAlloc(alloc);
@@ -351,11 +356,16 @@ export const runKwSiegeBattle = ({
 
   const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
   const gens = uniqIds.map(id => recruitedGenerals.find(g => String(g?.id) === id)).filter(Boolean);
-  const wallHp = preview.wallHp || 100;
-  const wall = wallHp - (preview.expectedDamage || 0) * (0.82 + Math.random() * 0.36);
-
-  const victory = wall <= 0;
-  const margin = victory ? Math.min(2.2, Math.abs(wall) / wallHp + 0.4) : Math.max(0, 1 - wall / wallHp);
+  // 结算必须服从预览胜率；旧逻辑用总预期伤害直接扣城墙，常使最低兵力也必胜，
+  // 导致 UI 显示 50%~80% 风险但实战接近 100% 胜率。
+  const winChance = clamp(Number(preview.winChance) || 0, 0, 1);
+  const battleRoll = Math.random();
+  const victory = battleRoll < winChance;
+  const rollQuality = victory
+    ? clamp((winChance - battleRoll) / Math.max(0.01, winChance), 0, 1)
+    : clamp((battleRoll - winChance) / Math.max(0.01, 1 - winChance), 0, 1);
+  const margin = victory ? 0.4 + rollQuality * 1.1 : 0;
+  const wallRemainPct = victory ? 0 : Math.round(clamp(18 + rollQuality * 68, 12, 92));
 
   const lossRate = victory
     ? (preview.expectedLossRate || 0.18) * (0.78 + Math.random() * 0.28)
@@ -366,7 +376,6 @@ export const runKwSiegeBattle = ({
     ? Math.floor((preview.expectedOccupationGain || 14) * (0.82 + margin * 0.24))
     : 0;
 
-  const wallRemainPct = Math.max(0, Math.round((Math.max(0, wall) / wallHp) * 100));
   const qunName = QUN_LEADERS[Math.floor(Math.random() * QUN_LEADERS.length)];
   const genNames = gens.map(g => (g && g.name) ? g.name : '将领').join('、');
   const detail = victory
@@ -380,6 +389,7 @@ export const runKwSiegeBattle = ({
     wallRemainPct,
     detail,
     winChance: preview.winChance,
+    attackPowerMult: preview.attackPowerMult,
     riskLabel: preview.riskLabel,
     counter: preview.counter,
   };

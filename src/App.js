@@ -11,6 +11,7 @@ import {
 
 import { getStats as getStatsRaw, getStageMult, calcNextExp, calcBattleBaseExp } from './utils/statsCalculator';
 import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
+import { ensureUniquePetUids, removeSinglePetByUid } from './utils/petIdentity';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
@@ -176,7 +177,7 @@ import {
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
   getUnlockedRankPerks, getScoutAdjacentIntel, useWarRally, useRoyalDecree,
-  RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY,
+  RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY, TIGER_SEAL_ATTACK_MULT,
   recruitTroops, calcGrainCap, canDefect, applyDefection, getDefectionPenalties,
   getDefectionStatus, formatDefectionPenaltyLines, canRejoinFaction,
   executeAllEnemyActions, migrateKingdomWarState, getActiveGuards, assignTerritoryGuards,
@@ -588,7 +589,15 @@ const hydrateSavedPet = (pet) => {
   return hydrated;
 };
 
-const hydrateSavedPets = (pets) => Array.isArray(pets) ? pets.map(hydrateSavedPet) : [];
+const hydrateSavedPetCollections = (party, box) => {
+  const hydratedParty = Array.isArray(party) ? party.map(hydrateSavedPet) : [];
+  const hydratedBox = Array.isArray(box) ? box.map(hydrateSavedPet) : [];
+  const allPets = ensureUniquePetUids([...hydratedParty, ...hydratedBox]);
+  return {
+    party: allPets.slice(0, hydratedParty.length),
+    box: allPets.slice(hydratedParty.length),
+  };
+};
 
 const compactMapGridCache = (cache) => {
   if (!cache || typeof cache !== 'object') return {};
@@ -715,8 +724,9 @@ export default function RPG(props) {
         if (sv < 34) {
           sd.saveVersion = 34;
         }
-        sd.party = hydrateSavedPets(sd.party);
-        sd.box = hydrateSavedPets(sd.box);
+        const hydratedPetCollections = hydrateSavedPetCollections(sd.party, sd.box);
+        sd.party = hydratedPetCollections.party;
+        sd.box = hydratedPetCollections.box;
         sd.mapGridCache = hydrateMapGridCache(sd.mapGridCache);
         if (process.env.NODE_ENV === 'development') console.log("✅ 成功读取存档:", savedDataRef.current.trainerName);
       } else {
@@ -11280,11 +11290,36 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           {/* 上交精灵 */}
           {!completed.includes('donate_pet') && party.length > 1 && (
             <button onClick={() => {
-              const petToGive = [...party].reverse().find(p => p.level >= 20);
-              if (!petToGive) { showMapToast('⚠️', '无法上交', '没有 Lv.20 以上的精灵可上交', 1500); return; }
+              const assignedUids = new Set([
+                ...(trainingState?.slots || []).map(slot => slot.petUid),
+                ...(expeditions?.teams || []).flatMap(team => team.petUids || []),
+              ]);
+              const latestParty = partyRef.current || [];
+              const petToGive = [...latestParty].reverse().find(p => p && (p.level || 1) >= 20 && p.uid && !assignedUids.has(p.uid));
+              if (!petToGive) { showMapToast('⚠️', '无法上交', '没有 Lv.20 以上且未在训练/远征中的精灵可上交', 1800); return; }
               setConfirmModal({ title:'🐾 上交确认', msg:`确定上交 ${petToGive.name} (Lv.${petToGive.level}) 吗？此操作不可恢复！`, onOk: () => {
-                setParty(prev => prev.filter(p => p.uid !== petToGive.uid));
+                const todayStr = getLocalDateStr();
+                const lockKey = `donate_pet:${todayStr}`;
+                if (gangActionLocksRef.current.has(lockKey)) return;
+                const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts, todayStr);
+                if (!gangRef.current?.gangId || (freshDc.taskCompleted || []).includes('donate_pet')) return;
+                const currentParty = partyRef.current || [];
+                if (currentParty.length <= 1) { showMapToast('⚠️', '无法上交', '队伍至少需要保留 1 只精灵', 1800); return; }
+                const currentlyAssigned = (trainingState?.slots || []).some(slot => slot.petUid === petToGive.uid)
+                  || (expeditions?.teams || []).some(team => (team.petUids || []).includes(petToGive.uid));
+                if (currentlyAssigned) { showMapToast('⚠️', '无法上交', '该精灵正在训练或远征，请先召回', 1800); return; }
+                const removal = removeSinglePetByUid(currentParty, petToGive.uid);
+                if (!removal.removed || (removal.removed.level || 1) < 20) {
+                  showMapToast('ℹ️', '上交已取消', '目标精灵状态已变化，请重新选择', 1800);
+                  return;
+                }
+                gangActionLocksRef.current.add(lockKey);
+                partyRef.current = removal.pets;
+                setParty(removal.pets);
+                setHousing(prev => ({ ...prev, residents: (prev.residents || []).filter(uid => uid !== petToGive.uid) }));
+                setFusionState(prev => { const tiers = { ...(prev.awakeningTiers || {}) }; delete tiers[petToGive.uid]; return { ...prev, awakeningTiers: tiers }; });
                 updateGangTaskProgress('donate_pet', 1);
+                showMapToast('🐾', '上交成功', `${removal.removed.name || '精灵'} 已上交，任务进度已更新`, 2200);
               }}); return;
             }} style={{...btnSecondary, width:'100%', marginTop:'6px'}}>
               🐾 上交队尾精灵
@@ -16057,7 +16092,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         let terr = { ...kingdomWar.territories };
         let allLogs = [];
         for (let i = 0; i < missedTicks; i++) {
-          const result = executeWarTick(terr, GANG_PRESETS, kingdomWar.faction, avgLv, false, sectKwBonus);
+          const result = executeWarTick(terr, GANG_PRESETS, kingdomWar.faction, avgLv, sectKwBonus);
           terr = result.territories;
           allLogs = [...allLogs, ...result.log];
         }
@@ -16099,7 +16134,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         if (!prev.faction) return prev;
         const _p = partyRef.current;
         const freshAvgLv = _p.length > 0 ? Math.floor(_p.reduce((s, p) => s + (p?.level || 1), 0) / _p.length) : 50;
-        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, freshAvgLv, prev.attackBuff, calcSectKingdomPowerBonus(sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, prev.faction));
+        const result = executeWarTick(prev.territories, GANG_PRESETS, prev.faction, freshAvgLv, calcSectKingdomPowerBonus(sectPlayer?.playerSect, sectPlayer?.sectRank || 0, sectPlayer?.sectStances, prev.faction));
         const gangTerrBonus = getGangSkillBonus(getGangSkills(gangRef.current)).territory || 0;
         const genTerrBonus = calcGeneralsTotalBonus(prev.recruitedGenerals || []).territory || 0;
         const perkFxTick = getRankPerkEffects(prev);
@@ -16115,7 +16150,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           }
         }
         const trimmedLog = [...(prev.warLog || []), ...result.log].slice(-20);
-        let next = { ...prev, territories: tickTerr, warLog: trimmedLog, lastTick: Date.now(), attackBuff: false };
+        let next = { ...prev, territories: tickTerr, warLog: trimmedLog, lastTick: Date.now() };
         const cpT = tickContestOccupationAI(next.contestProgress, next.faction, freshAvgLv);
         next.contestProgress = cpT;
         next.territories = syncContestedTerritoryOwners(cpT, next.territories);
@@ -25796,6 +25831,7 @@ const renderMenu = () => {
 	                                mapLvlMin: kwSiegeModal.contestMap.lvl[0],
 	                                mapLvlMax: kwSiegeModal.contestMap.lvl[1],
 	                                avgPartyLevel: avgLv,
+	                                attackPowerMult: kingdomWar?.attackBuff ? TIGER_SEAL_ATTACK_MULT : 1,
 	                              });
 	                              const domF = FACTIONS[preview.dominantFaction] || { name: '守军', icon: '🏴' };
 	                              return (
@@ -25816,6 +25852,7 @@ const renderMenu = () => {
 	                                  <div style={{fontSize:'11px', color:'#475569', lineHeight:1.55}}>
 	                                    主守势力：{domF.icon} {domF.name} · 克制倍率 {(preview.counter || 1).toFixed(2)} · 统率倍率 {(preview.leadership || 1).toFixed(2)}
 	                                  </div>
+	                                  {(preview.attackPowerMult || 1) > 1 && <div style={{fontSize:'11px', color:'#b45309', fontWeight:'800', marginTop:'6px'}}>🐯 虎符生效：本次攻击力 +{Math.round(((preview.attackPowerMult || 1) - 1) * 100)}%，发动后消耗</div>}
 	                                  <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'8px'}}>
 	                                    {(preview.advice || []).slice(0, 2).map((tip, i) => <span key={i} style={{fontSize:'10px', color:'#92400e', background:'#fef3c7', borderRadius:'999px', padding:'3px 8px'}}>{tip}</span>)}
 	                                  </div>
@@ -25878,10 +25915,11 @@ const renderMenu = () => {
                                 generalIds: genIds,
                                 recruitedGenerals: currentKw.recruitedGenerals || [],
                                 mapProgress: mapProgIn,
-                                mapLvlMin: m.lvl[0],
-                                mapLvlMax: m.lvl[1],
-                                avgPartyLevel: avgLv,
-                              });
+	                                mapLvlMin: m.lvl[0],
+	                                mapLvlMax: m.lvl[1],
+	                                avgPartyLevel: avgLv,
+	                                attackPowerMult: currentKw.attackBuff ? TIGER_SEAL_ATTACK_MULT : 1,
+	                              });
                               if (!latestPreview.canAttack) {
                                 showMapToast('❌', '无法攻城', latestPreview.reason || '当前配置无法发起攻城', 2200);
                                 return;
@@ -25895,10 +25933,11 @@ const renderMenu = () => {
                                 generalIds: genIds,
                                 recruitedGenerals: currentKw.recruitedGenerals || [],
                                 mapProgress: mapProgIn,
-                                mapLvlMin: m.lvl[0],
-                                mapLvlMax: m.lvl[1],
-                                avgPartyLevel: avgLv,
-                              });
+	                                mapLvlMin: m.lvl[0],
+	                                mapLvlMax: m.lvl[1],
+	                                avgPartyLevel: avgLv,
+	                                attackPowerMult: currentKw.attackBuff ? TIGER_SEAL_ATTACK_MULT : 1,
+	                              });
                               if (!siegeResult || typeof siegeResult.victory !== 'boolean') {
                                 showMapToast('❌', '攻城异常', '请稍后再试。', 2000);
                                 return;
@@ -25927,6 +25966,7 @@ const renderMenu = () => {
                                 seasonContribution: (currentKw.seasonContribution || 0) + contribGain,
                                 lifetimeContribution: (currentKw.lifetimeContribution || 0) + contribGain,
                                 factionTokens: (currentKw.factionTokens || 0) + tokenGain,
+                                attackBuff: false,
                                 actionCounter: (currentKw.actionCounter || 0) + 1,
                                 currentTurn: (currentKw.currentTurn || 0) + 1,
                               };
@@ -26353,8 +26393,11 @@ const renderMenu = () => {
 	                            territories: kingdomWar?.territories || {},
 	                            recruitedGenerals: kingdomWar?.recruitedGenerals || [],
 	                            generalIds: kwSiegeModal.generalIds || [],
-                              kw: kingdomWar,
-                              external: buildSiegeExternalBonuses(),
+	                            kw: kingdomWar,
+	                            external: {
+	                              ...buildSiegeExternalBonuses(),
+	                              attackItemMult: kingdomWar?.attackBuff ? TIGER_SEAL_ATTACK_MULT : 1,
+	                            },
 	                          });
 	                          return (
 	                            <div style={{background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'12px', padding:'10px', marginBottom:'12px'}}>
@@ -26374,6 +26417,7 @@ const renderMenu = () => {
 	                              <div style={{fontSize:'11px', color:'#475569', lineHeight:1.55}}>
 	                                {preview.supply?.label || '补给'}：{preview.supply?.desc || '根据领地接壤情况影响攻城'} · 克制倍率 {(preview.counter || 1).toFixed(2)}
 	                              </div>
+	                              {(preview.extBonus?.itemAttackMult || 1) > 1 && <div style={{fontSize:'11px', color:'#b45309', fontWeight:'800', marginTop:'6px'}}>🐯 虎符生效：本次攻击力 +{Math.round(((preview.extBonus?.itemAttackMult || 1) - 1) * 100)}%，发动后消耗</div>}
 	                              <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'8px'}}>
 	                                {(preview.advice || []).slice(0, 2).map((tip, i) => <span key={i} style={{fontSize:'10px', color:'#92400e', background:'#fef3c7', borderRadius:'999px', padding:'3px 8px'}}>{tip}</span>)}
 	                              </div>
@@ -26437,7 +26481,10 @@ const renderMenu = () => {
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
                             const currentReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, currentKw.kwManpowerReserve || 0));
                             if (sumA > currentReserve) { showMapToast('❌','兵力不足',`当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`,2200); return; }
-                            const siegeExternal = buildSiegeExternalBonuses();
+                            const siegeExternal = {
+                              ...buildSiegeExternalBonuses(),
+                              attackItemMult: currentKw.attackBuff ? TIGER_SEAL_ATTACK_MULT : 1,
+                            };
                             const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
                               playerFaction: currentKw.faction,
@@ -26503,6 +26550,7 @@ const renderMenu = () => {
                               seasonContribution: (currentKw.seasonContribution || 0) + contribGain,
                               lifetimeContribution: (currentKw.lifetimeContribution || 0) + contribGain,
                               factionTokens: (currentKw.factionTokens || 0) + tokenGain,
+                              attackBuff: false,
                               warLog: [...(currentKw.warLog || []).slice(-19), {
                                 time: Date.now(), type: result.captured ? 'player_siege_win' : 'player_siege_fail',
                                 attacker: currentKw.faction, defender: defenderFaction, mapId: Number(mid),
@@ -26535,7 +26583,8 @@ const renderMenu = () => {
                   <div style={{display:'grid', gap:'10px'}}>
                     <div style={{fontSize:'12px', color:'#64748b', textAlign:'center', marginBottom:'4px'}}>当前令牌: <b style={{color: myFaction.color}}>{kw.factionTokens || 0}</b></div>
                     {TOKEN_SHOP.map(item => {
-                      const canAfford = (kw.factionTokens || 0) >= item.cost;
+                      const tigerSealActive = item.id === 'tiger_seal' && !!kw.attackBuff;
+                      const canPurchase = (kw.factionTokens || 0) >= item.cost && !tigerSealActive;
                       return (
                         <div key={item.id} style={{
                           background:'#fff', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 6px rgba(0,0,0,0.04)',
@@ -26547,72 +26596,102 @@ const renderMenu = () => {
                             <div style={{fontSize:'11px', color:'#64748b'}}>{item.desc}</div>
                           </div>
                           <button onClick={() => {
-                            if (!canAfford) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
-                            setConfirmModal({ title:'🎖️ 令牌购买', msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`,                             onOk: () => {
-                            const currentTokens = kingdomWar?.factionTokens || 0;
-                            if (currentTokens < item.cost) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
-                            if (item.id === 'siege') {
-                              const enemyTerrs = WAR_MAP_IDS.filter(mid => !CONTESTED_MAP_IDS.includes(Number(mid)) && kw.territories[mid]?.owner && kw.territories[mid].owner !== kw.faction && kw.territories[mid].owner !== 'neutral');
-                              if (enemyTerrs.length === 0) { showMapToast('⚠️', '无可攻击目标', '没有可攻击的敌方领地', 1500); return; }
-                              const targetId = enemyTerrs[Math.floor(Math.random() * enemyTerrs.length)];
-                              const targetMap = MAPS.find(m => m.id === targetId);
-                              const siegeMult = getRankPerkEffects(kingdomWar).siegeEffectMult || 1;
-                              const dmg = Math.floor(10 * siegeMult);
-                              setKingdomWar(prev => {
-                                if ((prev.factionTokens || 0) < item.cost) return prev;
-                                const newT = { ...prev.territories };
-                                newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - dmg) };
-                                return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost, territories: newT };
-                              });
-                              showMapToast('⚔️', '投石', `${targetMap?.name || '目标'} 防御 -${dmg}`, 2000);
-                              return;
-                            }
-                            if (item.id === 'flag') {
-                              const myTerrs = WAR_MAP_IDS.filter(mid => kw.territories[mid]?.owner === kw.faction);
-                              if (myTerrs.length === 0) { showMapToast('⚠️', '无可操作', '没有己方领地', 1500); return; }
-                              const weakest = myTerrs.sort((a, b) => (kw.territories[a]?.strength || 0) - (kw.territories[b]?.strength || 0))[0];
-                              const wMap = MAPS.find(m => m.id === weakest);
-                              setKingdomWar(prev => {
-                                if ((prev.factionTokens || 0) < item.cost) return prev;
-                                const newT = { ...prev.territories };
-                                newT[weakest] = { ...newT[weakest], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (newT[weakest]?.strength || 50) + 15) };
-                                return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost, territories: newT };
-                              });
-                              showMapToast('🚩', '插旗', `${wMap?.name || '领地'} 防御 +15`, 2000);
-                              return;
-                            }
-                            setKingdomWar(prev => {
-                              if ((prev.factionTokens || 0) < item.cost) return prev;
-                              return { ...prev, factionTokens: (prev.factionTokens || 0) - item.cost };
+                            if (tigerSealActive) { showMapToast('🐯', '虎符已生效', '发动下一次普通领地或名城攻城后才会消耗', 2000); return; }
+                            if ((kw.factionTokens || 0) < item.cost) { showMapToast('🎖️', '令牌不足', '令牌不足！', 1500); return; }
+                            setConfirmModal({
+                              title:'🎖️ 令牌购买',
+                              msg:`确定花费 ${item.cost} 令牌购买「${item.name}」？`,
+                              onOk: () => {
+                                const shopLockKey = `token-shop:${item.id}`;
+                                if (kingdomActionLocksRef.current.has(shopLockKey)) return;
+                                kingdomActionLocksRef.current.add(shopLockKey);
+                                try {
+                                  const currentKw = kingdomWarRef.current;
+                                  if (!currentKw?.faction || (currentKw.factionTokens || 0) < item.cost) {
+                                    showMapToast('🎖️', '令牌不足', '令牌不足或阵营状态已变化', 1500);
+                                    return;
+                                  }
+                                  if (item.id === 'tiger_seal' && currentKw.attackBuff) {
+                                    showMapToast('🐯', '虎符已生效', '无法重复购买，发动攻城后可再次购买', 2000);
+                                    return;
+                                  }
+
+                                  if (item.id === 'siege') {
+                                    const enemyTerrs = WAR_MAP_IDS.filter(mid => !CONTESTED_MAP_IDS.includes(Number(mid))
+                                      && currentKw.territories[mid]?.owner
+                                      && currentKw.territories[mid].owner !== currentKw.faction
+                                      && currentKw.territories[mid].owner !== 'neutral');
+                                    if (enemyTerrs.length === 0) { showMapToast('⚠️', '无可攻击目标', '没有可攻击的敌方领地', 1500); return; }
+                                    const targetId = enemyTerrs[Math.floor(Math.random() * enemyTerrs.length)];
+                                    const targetMap = MAPS.find(m => m.id === targetId);
+                                    const siegeMult = getRankPerkEffects(currentKw).siegeEffectMult || 1;
+                                    const dmg = Math.floor(10 * siegeMult);
+                                    const newT = { ...currentKw.territories };
+                                    newT[targetId] = { ...newT[targetId], strength: Math.max(WAR_TICK_CONFIG.minStrength, (newT[targetId]?.strength || 50) - dmg) };
+                                    const nextKw = { ...currentKw, factionTokens: (currentKw.factionTokens || 0) - item.cost, territories: newT };
+                                    kingdomWarRef.current = nextKw;
+                                    setKingdomWar(nextKw);
+                                    showMapToast('⚔️', '投石', `${targetMap?.name || '目标'} 防御 -${dmg}`, 2000);
+                                    return;
+                                  }
+
+                                  if (item.id === 'flag') {
+                                    const myTerrs = WAR_MAP_IDS.filter(mid => currentKw.territories[mid]?.owner === currentKw.faction);
+                                    if (myTerrs.length === 0) { showMapToast('⚠️', '无可操作', '没有己方领地', 1500); return; }
+                                    const weakest = [...myTerrs].sort((a, b) => (currentKw.territories[a]?.strength || 0) - (currentKw.territories[b]?.strength || 0))[0];
+                                    const wMap = MAPS.find(m => m.id === weakest);
+                                    const newT = { ...currentKw.territories };
+                                    newT[weakest] = { ...newT[weakest], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (newT[weakest]?.strength || 50) + 15) };
+                                    const nextKw = { ...currentKw, factionTokens: (currentKw.factionTokens || 0) - item.cost, territories: newT };
+                                    kingdomWarRef.current = nextKw;
+                                    setKingdomWar(nextKw);
+                                    showMapToast('🚩', '插旗', `${wMap?.name || '领地'} 防御 +15`, 2000);
+                                    return;
+                                  }
+
+                                  const nextKw = {
+                                    ...currentKw,
+                                    factionTokens: (currentKw.factionTokens || 0) - item.cost,
+                                    ...(item.id === 'exp_buff' ? { expBuffBattles: (currentKw.expBuffBattles || 0) + 10 } : {}),
+                                    ...(item.id === 'war_ball' ? { warBalls: (currentKw.warBalls || 0) + 1 } : {}),
+                                    ...(item.id === 'tiger_seal' ? { attackBuff: true } : {}),
+                                  };
+                                  kingdomWarRef.current = nextKw;
+                                  setKingdomWar(nextKw);
+
+                                  if (item.id === 'heal_all') {
+                                    setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
+                                    showMapToast('🍖', '军粮补给', '全队生命已恢复', 1800);
+                                  } else if (item.id === 'exp_buff') {
+                                    showMapToast('📜', '军功令', '接下来 10 场战斗经验 +50%', 1800);
+                                  } else if (item.id === 'war_ball') {
+                                    showMapToast('⚔️', '国战精灵球', '已加入背包', 1800);
+                                  } else if (item.id === 'tiger_seal') {
+                                    showMapToast('🐯', '虎符生效', '下一次普通领地或名城攻城攻击力 +50%', 2200);
+                                  } else if (item.id === 'war_armor') {
+                                    const armor = { id: `kw_armor_${Date.now()}`, baseId: 'kw_armor', name: `${myFaction.fullName}战甲`, displayName: `${myFaction.fullName}战甲`, stat: 'p_atk', value: 8, rarity: 3, desc: `${myFaction.fullName}国战专属战甲 (物攻/物防 +8%)` };
+                                    setAccessories(prev => [...prev, armor]);
+                                    showMapToast('🛡️', '获得战甲', `${myFaction.fullName}战甲`, 2000);
+                                  } else if (item.id === 'jade_seal') {
+                                    const seal = { id: `kw_jade_${Date.now()}`, baseId: 'kw_jade', name: '传国玉玺', displayName: '传国玉玺', stat: 'all', value: 5, rarity: 5, desc: '传说中的传国玉玺 (全属性+5%)' };
+                                    setAccessories(prev => [...prev, seal]);
+                                    unlockTitle('乱世霸主');
+                                    showMapToast('👑', '传国玉玺', '解锁称号「乱世霸主」', 3000);
+                                  }
+                                } finally {
+                                  kingdomActionLocksRef.current.delete(shopLockKey);
+                                }
+                              },
                             });
-                            if (item.id === 'heal_all') {
-                              setParty(prev => prev.map(p => ({ ...p, currentHp: getStats(p).maxHp })));
-                            } else if (item.id === 'exp_buff') {
-                              setKingdomWar(prev => ({ ...prev, expBuffBattles: (prev.expBuffBattles || 0) + 10 }));
-                            } else if (item.id === 'war_ball') {
-                              setKingdomWar(prev => ({ ...prev, warBalls: (prev.warBalls || 0) + 1 }));
-                            } else if (item.id === 'tiger_seal') {
-                              setKingdomWar(prev => ({ ...prev, attackBuff: true }));
-                            } else if (item.id === 'war_armor') {
-                              const armor = { id: `kw_armor_${Date.now()}`, baseId: 'kw_armor', name: `${myFaction.fullName}战甲`, displayName: `${myFaction.fullName}战甲`, stat: 'p_atk', value: 8, rarity: 3, desc: `${myFaction.fullName}国战专属战甲 (物攻/物防 +8%)` };
-                              setAccessories(prev => [...prev, armor]);
-                              showMapToast('🛡️', '获得战甲', `${myFaction.fullName}战甲`, 2000);
-                            } else if (item.id === 'jade_seal') {
-                              const seal = { id: `kw_jade_${Date.now()}`, baseId: 'kw_jade', name: '传国玉玺', displayName: '传国玉玺', stat: 'all', value: 5, rarity: 5, desc: '传说中的传国玉玺 (全属性+5%)' };
-                              setAccessories(prev => [...prev, seal]);
-                              unlockTitle('乱世霸主');
-                              showMapToast('👑', '传国玉玺', '解锁称号「乱世霸主」', 3000);
-                            }
-                            }});
                           }}
                           style={{
                             padding:'8px 14px', borderRadius:'10px', border:'none', fontSize:'12px', fontWeight:'700',
-                            background: canAfford ? myFaction.color : '#e2e8f0',
-                            color: canAfford ? '#fff' : '#94a3b8',
-                            cursor: canAfford ? 'pointer' : 'not-allowed',
+                            background: canPurchase ? myFaction.color : '#e2e8f0',
+                            color: canPurchase ? '#fff' : '#94a3b8',
+                            cursor: canPurchase ? 'pointer' : 'not-allowed',
                             whiteSpace:'nowrap',
                           }}>
-                            {item.cost} 🎖️
+                            {tigerSealActive ? '已生效' : `${item.cost} 🎖️`}
                           </button>
                         </div>
                       );

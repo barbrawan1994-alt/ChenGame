@@ -14,8 +14,22 @@ const loadSourceModule = async (relativePath, transform = source => source) => {
 
 const constants = await loadSourceModule('src/data/kingdomConstants.js');
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
+const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.meta.url), 'utf8');
 const kingdom = await loadSourceModule('src/data/kingdom.js', source => source
   .replace("import { SANGUO_GENERALS } from './generals';", 'const SANGUO_GENERALS = [];')
+  .replace(
+    "import { MANPOWER_RESERVE_CAP } from './kingdomConstants';",
+    `const MANPOWER_RESERVE_CAP = ${constants.MANPOWER_RESERVE_CAP};`
+  ));
+const kwSiege = await loadSourceModule('src/data/kwSiege.js', source => source
+  .replace(
+    "import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult, buildSiegeCombatParams } from './kingdom';",
+    `const CONTESTED_MAP_IDS = ${JSON.stringify(kingdom.CONTESTED_MAP_IDS)};
+const RECRUIT_CONFIG = ${JSON.stringify(kingdom.RECRUIT_CONFIG)};
+const getInstabilityMult = () => 1;
+const buildSiegeCombatParams = () => ({});`
+  )
+  .replace("import { getGeneralById } from './generals';", 'const getGeneralById = () => null;')
   .replace(
     "import { MANPOWER_RESERVE_CAP } from './kingdomConstants';",
     `const MANPOWER_RESERVE_CAP = ${constants.MANPOWER_RESERVE_CAP};`
@@ -31,7 +45,12 @@ const {
   applySeasonRewards,
   getKingdomDateKey,
   resetKingdomDailyCounts,
+  TIGER_SEAL_ATTACK_MULT,
+  TOKEN_SHOP,
+  CONTESTED_MAP_IDS,
+  evaluateTerritoryAssault,
 } = kingdom;
+const { evaluateKwSiegeBattle, runKwSiegeBattle } = kwSiege;
 const { MANPOWER_RESERVE_CAP } = constants;
 
 const OVEREXTEND_THRESHOLD = 8;
@@ -175,16 +194,118 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
     grain: 1000,
     eliteTroops: 1000,
     morale: 100,
+    attackBuff: true,
   }, {
     rankings: ['wei', 'shu', 'wu', 'jin', 'qun'],
     season: 1,
   });
   assert.equal(seasonState.kwManpowerReserve, MANPOWER_RESERVE_CAP);
-  check(true, `赛季继承后的预备兵同样不超过 ${MANPOWER_RESERVE_CAP}`);
+  assert.equal(seasonState.attackBuff, true);
+  check(true, `赛季继承后的预备兵同样不超过 ${MANPOWER_RESERVE_CAP}，已购买虎符不会被赛季切换吞掉`);
 }
 
+// 6. 虎符在普通领地与名城攻城中必须产生一致、可预览的 +50% 攻击收益。
+{
+  assert.equal(TIGER_SEAL_ATTACK_MULT, 1.5);
+  const tigerSeal = TOKEN_SHOP.find(item => item.id === 'tiger_seal');
+  assert.ok(tigerSeal);
+  assert.match(tigerSeal.desc, /普通领地或名城攻城攻击力 \+50%/);
+  assert.doesNotMatch(tigerSeal.desc, /war tick/i);
 
-// 6. 每日结算使用本地日期键，避免 UTC 导致中国时区在早上 8 点才刷新。
+  const mapId = WAR_MAP_IDS.find(id => !CONTESTED_MAP_IDS.includes(Number(id)));
+  const allocation = { shield: 12, spear: 12, cavalry: 12, archer: 12, siege: 12, raider: 12 };
+  const territories = {
+    [mapId]: {
+      owner: 'shu',
+      strength: 82,
+      garrison: { shield: 30, spear: 30, cavalry: 30, archer: 30, siege: 30, raider: 30 },
+      guards: [],
+    },
+  };
+  const baseTerritory = evaluateTerritoryAssault({
+    mapId, playerFaction: 'wei', allocation, territories,
+    kw: { faction: 'wei', morale: 100, eliteTroops: 0 },
+  });
+  const buffedTerritory = evaluateTerritoryAssault({
+    mapId, playerFaction: 'wei', allocation, territories,
+    kw: { faction: 'wei', morale: 100, eliteTroops: 0 },
+    external: { attackItemMult: TIGER_SEAL_ATTACK_MULT },
+  });
+  assert.ok(buffedTerritory.expectedDamage > baseTerritory.expectedDamage);
+  assert.ok(buffedTerritory.fieldWinChance > baseTerritory.fieldWinChance);
+  assert.ok(buffedTerritory.winChance > baseTerritory.winChance);
+  assert.equal(buffedTerritory.extBonus.itemAttackMult, TIGER_SEAL_ATTACK_MULT);
+
+  const cityArgs = {
+    mapId: 204,
+    playerFaction: 'wei',
+    allocation: { shield: 14, spear: 14, cavalry: 14, archer: 14, siege: 14, raider: 14 },
+    generalIds: [],
+    recruitedGenerals: [],
+    mapProgress: { wei: 8, shu: 30, wu: 12, jin: 10, qun: 18 },
+    mapLvlMin: 50,
+    mapLvlMax: 80,
+    avgPartyLevel: 55,
+  };
+  const baseCity = evaluateKwSiegeBattle(cityArgs);
+  const buffedCity = evaluateKwSiegeBattle({ ...cityArgs, attackPowerMult: TIGER_SEAL_ATTACK_MULT });
+  assert.ok(buffedCity.expectedDamage > baseCity.expectedDamage);
+  assert.ok(buffedCity.winChance > baseCity.winChance);
+  assert.ok(Math.abs(buffedCity.expectedDamage / baseCity.expectedDamage - TIGER_SEAL_ATTACK_MULT) < 1e-9);
+  assert.equal(buffedCity.attackPowerMult, TIGER_SEAL_ATTACK_MULT);
+
+  // 名城实战胜败应使用同一预览胜率，而不是因 7 回合总伤害远超城墙就变成必胜。
+  assert.ok(baseCity.expectedDamage * 0.82 > baseCity.wallHp, '该配置可复现旧版总伤害导致的伪必胜');
+  const originalRandom = Math.random;
+  try {
+    Math.random = () => Math.max(0, baseCity.winChance - 0.01);
+    const expectedWin = runKwSiegeBattle(cityArgs);
+    Math.random = () => Math.min(0.999999, baseCity.winChance + 0.01);
+    const expectedLoss = runKwSiegeBattle(cityArgs);
+    assert.equal(expectedWin.victory, true);
+    assert.equal(expectedWin.wallRemainPct, 0);
+    assert.equal(expectedLoss.victory, false);
+    assert.ok(expectedLoss.wallRemainPct > 0);
+  } finally {
+    Math.random = originalRandom;
+  }
+  check(true, '虎符在普通领地和名城中稳定提供 +50% 攻击力，名城实战胜率也与预览一致');
+}
+
+// 7. 虎符只在合法攻城真正结算后消耗，War Tick 与非法配置不会吞掉效果。
+{
+  const warTickStart = appSource.indexOf('// 国战 War Tick');
+  const warTickEnd = appSource.indexOf('// 单人国战模拟', warTickStart);
+  const warTickSource = appSource.slice(warTickStart, warTickEnd);
+  assert.ok(warTickStart >= 0 && warTickEnd > warTickStart);
+  assert.doesNotMatch(warTickSource, /attackBuff\s*:\s*false/);
+  assert.doesNotMatch(warTickSource, /executeWarTick\([^)]*attackBuff/);
+  assert.doesNotMatch(kingdomSource, /executeWarTick\s*=\s*\([^)]*attackBuff/);
+
+  const ordinaryStart = appSource.indexOf('const siegeExternal = {');
+  const ordinaryEnd = appSource.indexOf("console.error('territory siege:'", ordinaryStart);
+  const ordinarySource = appSource.slice(ordinaryStart, ordinaryEnd);
+  const ordinaryValidate = ordinarySource.indexOf('if (!fieldEval.canAttack)');
+  const ordinaryRun = ordinarySource.indexOf('const result = runThreePhaseSiege');
+  const ordinaryConsume = ordinarySource.indexOf('attackBuff: false');
+  assert.match(ordinarySource, /attackItemMult: currentKw\.attackBuff \? TIGER_SEAL_ATTACK_MULT : 1/);
+  assert.ok(ordinaryValidate >= 0 && ordinaryRun > ordinaryValidate && ordinaryConsume > ordinaryRun);
+
+  const cityStart = appSource.indexOf('const latestPreview = evaluateKwSiegeBattle');
+  const cityEnd = appSource.indexOf("console.error('kw siege:'", cityStart);
+  const citySource = appSource.slice(cityStart, cityEnd);
+  const cityValidate = citySource.indexOf('if (!latestPreview.canAttack)');
+  const cityRun = citySource.indexOf('const siegeResult = runKwSiegeBattle');
+  const cityConsume = citySource.indexOf('attackBuff: false');
+  assert.match(citySource, /attackPowerMult: currentKw\.attackBuff \? TIGER_SEAL_ATTACK_MULT : 1/);
+  assert.ok(cityValidate >= 0 && cityRun > cityValidate && cityConsume > cityRun);
+
+  const tigerShopStart = appSource.indexOf("item.id === 'tiger_seal' && currentKw.attackBuff");
+  assert.ok(tigerShopStart >= 0);
+  check(true, 'War Tick 不再清除虎符，普通/名城攻城均先验证并执行，再消费虎符，重复购买也会被阻止');
+}
+
+// 8. 每日结算使用本地日期键，避免 UTC 导致中国时区在早上 8 点才刷新。
 {
   const fakeLocalDate = {
     getFullYear: () => 2026,
@@ -203,7 +324,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '国战每日刷新统一使用本地日期，并兼容旧存档缺少 dailyCounts');
 }
 
-// 7. 都城确认框打开后仍需用最新战局、队伍与战斗状态复核，再获取攻城锁和写入冷却。
+// 9. 都城确认框打开后仍需用最新战局、队伍与战斗状态复核，再获取攻城锁和写入冷却。
 {
   const confirmStart = appSource.indexOf("setConfirmModal({ title:'⚔️ 攻城确认'");
   const confirmHandler = appSource.slice(confirmStart, confirmStart + 3200);
@@ -224,7 +345,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '都城攻防在取得锁和写入冷却前复核最新资格、地图、存活队伍与战斗占用');
 }
 
-// 8. 普通领地攻城必须在消耗次数、兵力和行动轮次前重新校验目标与攻击资格。
+// 10. 普通领地攻城必须在消耗次数、兵力和行动轮次前重新校验目标与攻击资格。
 {
   const marker = appSource.indexOf('{getBattleTimeModifiers().label}模式 · 三阶段');
   const handlerStart = appSource.indexOf('<button type="button" onClick={() => {', marker);
@@ -248,7 +369,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '过期或非法普通攻城目标不会消耗次数、兵力、战功，也不会触发敌方行动；锁始终由 finally 释放');
 }
 
-// 9. 名城争夺同样重新验证目标与配置，且同步结算锁不依赖定时器。
+// 11. 名城争夺同样重新验证目标与配置，且同步结算锁不依赖定时器。
 {
   const buttonEnd = appSource.indexOf('}}>发动攻城</button>');
   const handlerStart = appSource.lastIndexOf('<button type="button" onClick={() => {', buttonEnd);
@@ -265,7 +386,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '名城争夺在执行前验证最新目标与 canAttack，并在所有返回路径释放并发锁');
 }
 
-// 10. 三波都城攻防按整场记一次国战击杀和帮派任务，而非每波重复累计。
+// 12. 三波都城攻防按整场记一次国战击杀和帮派任务，而非每波重复累计。
 {
   const capitalWinStart = appSource.indexOf("if (battleSnapshot.type === 'capital_siege')");
   const capitalWinEnd = appSource.indexOf('// 9c. 国战战役副本胜利', capitalWinStart);
@@ -281,7 +402,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '都城攻防三波视为一场完整战役，最终胜利时只累计一次成就与帮派任务');
 }
 
-// 11. 其他关键设计阈值。
+// 13. 其他关键设计阈值。
 check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进入过度扩张风险区`);
 {
   const eliteRatio = 0.5;

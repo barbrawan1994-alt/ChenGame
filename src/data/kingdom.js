@@ -252,6 +252,9 @@ export const FACTION_TRAINER_NAMES = {
   jin: ['玄武卫', '龙骧将', '北府兵', '天罗使', '铁甲骑', '洛阳校尉', '征南将', '护国师'],
 };
 
+/** 虎符仅强化下一次玩家主动发起的普通领地或名城攻城。 */
+export const TIGER_SEAL_ATTACK_MULT = 1.5;
+
 // 令牌商店
 export const TOKEN_SHOP = [
   { id: 'heal_all',    name: '军粮补给',  cost: 5,   icon: '🍖', desc: '全队HP回满', type: 'consumable' },
@@ -259,7 +262,7 @@ export const TOKEN_SHOP = [
   { id: 'siege',       name: '攻城投石',  cost: 15,  icon: '🪨', desc: '指定敌方领地 strength -10', type: 'war' },
   { id: 'war_ball',    name: '国战精灵球', cost: 12,  icon: '⚔️', desc: '捕获率3.0x (限交战地图)', type: 'consumable' },
   { id: 'flag',        name: '阵营旗帜',  cost: 30,  icon: '🚩', desc: '己方领地 strength +15', type: 'war' },
-  { id: 'tiger_seal',  name: '虎符',     cost: 50,  icon: '🐯', desc: '下次war tick己方攻击力 +50%', type: 'buff' },
+  { id: 'tiger_seal',  name: '虎符',     cost: 50,  icon: '🐯', desc: '下一次普通领地或名城攻城攻击力 +50%，发动后消耗', type: 'buff' },
   { id: 'war_armor',   name: '国战战甲',  cost: 80,  icon: '🛡️', desc: '阵营专属饰品(ATK/DEF+8%)', type: 'equipment' },
   { id: 'jade_seal',   name: '传国玉玺',  cost: 200, icon: '🏆', desc: '传说饰品(全属性+5%, 特殊头衔)', type: 'equipment' },
 ];
@@ -648,15 +651,16 @@ export const computeSiegeExternalBonuses = (external = {}, rankPerks = {}) => {
   const gangContribBonus = external.gangContribBonus ?? 0;
   const sectPowerBonus = external.sectPowerBonus ?? 0;
   const resonanceContribMult = external.resonanceContribMult ?? 1;
+  const itemAttackMult = clamp(Number(external.attackItemMult) || 1, 1, 2);
   const sectMult = 1 + Math.min(0.25, (sectPowerBonus || 0) / 400);
   const gangMult = gangAlignMult * (1 + Math.min(0.12, (gangContribBonus || 0) / 80));
   const generalMult = rankPerks.generalBonusMult || 1;
   const siegeMult = rankPerks.siegeEffectMult || 1;
   return {
-    attackMult: gangMult * sectMult * generalMult,
+    attackMult: gangMult * sectMult * generalMult * itemAttackMult,
     assaultDamageMult: siegeMult,
     contribMult: (resonanceContribMult || 1) * (rankPerks.allBonusMult || 1),
-    gangMult, sectMult, generalMult, siegeMult, resonanceContribMult,
+    gangMult, sectMult, generalMult, siegeMult, resonanceContribMult, itemAttackMult,
   };
 };
 
@@ -800,7 +804,7 @@ const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
 };
 
 // 执行一次 War Tick — 五方势力（魏蜀吴晋+群雄NPC）都参与攻城
-export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, attackBuff, sectBonus = 0) => {
+export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, sectBonus = 0) => {
   const newTerritories = JSON.parse(JSON.stringify(territories));
   const log = [];
   const weakest = getWeakestFaction(newTerritories);
@@ -981,7 +985,6 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
       msg: `第${result.season}赛季结束! ${FACTIONS[result.rankings[0]].fullName}获得霸主! 你的阵营排名第${playerRank}` + (isMvp ? ' 🏆你获得了战神称号!' : ''),
     }],
     lastTick: Date.now(),
-    attackBuff: false,
     goldReward: reward.gold,
     tokenReward: reward.tokens + mvpTokens,
     generalDraws: drawCount,
@@ -993,12 +996,12 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
  * 玩家对普通地图发动兵种化攻城
  * @returns {{ victory, strengthChange, manpowerLost, detail, atkTroops, defTroops }}
  */
-export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [], kw = null }) => {
+export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territories, recruitedGenerals = [], generalIds = [], kw = null, external = null }) => {
   const t = territories[mapId];
   if (!t || t.owner === playerFaction) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '无法攻击己方领地' };
   if (CONTESTED_MAP_IDS.includes(Number(mapId))) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '名城请在争夺页攻城' };
 
-  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds, kw });
+  const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds, kw, external });
   const alloc = evalResult.allocation || normalizeTroopAllocationK(allocation);
   const deploy = evalResult.deploy || TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
   if (deploy < 60) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '兵力不足60，无法攻城' };

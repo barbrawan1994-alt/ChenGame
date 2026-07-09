@@ -9,6 +9,8 @@ import { readFile } from 'node:fs/promises';
 const sourceUrl = new URL('../src/data/gang.js', import.meta.url);
 const source = await readFile(sourceUrl, 'utf8');
 const gang = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const petIdentitySource = await readFile(new URL('../src/utils/petIdentity.js', import.meta.url), 'utf8');
+const petIdentity = await import(`data:text/javascript;base64,${Buffer.from(petIdentitySource).toString('base64')}`);
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 
 const check = (condition, message) => {
@@ -110,6 +112,72 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   assert.match(winSource, /if \(prev\.isOwner && prev\.customGang\) \{[\s\S]{0,180}funds: \(prev\.customGang\.funds \|\| 0\) \+ reward\.funds/);
   assert.doesNotMatch(defeatSource, /funds\s*:/);
   check(true, '帮战胜败均只消耗一次每日次数，且只有帮主胜利时增加帮派资金');
+}
+
+// 旧存档中的缺失/重复 uid 必须被修复，且删除操作只能移除一只精灵。
+{
+  const original = [
+    { id: 1, uid: 'keep_uid', name: '保留' },
+    { id: 2, name: '缺失' },
+    { id: 3, uid: 'duplicate_uid', name: '重复一' },
+    { id: 4, uid: 'duplicate_uid', name: '重复二' },
+  ];
+  const normalized = petIdentity.ensureUniquePetUids(
+    original,
+    (_pet, index, attempt) => `generated_${index}_${attempt}`,
+  );
+  assert.equal(normalized[0], original[0]);
+  assert.equal(normalized[0].uid, 'keep_uid');
+  assert.equal(normalized[2].uid, 'duplicate_uid');
+  assert.notEqual(normalized[3].uid, 'duplicate_uid');
+  assert.equal(new Set(normalized.map(pet => pet.uid)).size, normalized.length);
+
+  const duplicated = [
+    { uid: 'same', name: '第一只' },
+    { uid: 'same', name: '第二只' },
+    { uid: 'other', name: '第三只' },
+  ];
+  const removal = petIdentity.removeSinglePetByUid(duplicated, 'same');
+  assert.equal(removal.removed?.name, '第一只');
+  assert.deepEqual(removal.pets.map(pet => pet.name), ['第二只', '第三只']);
+  const missing = petIdentity.removeSinglePetByUid(duplicated, 'missing');
+  assert.equal(missing.removed, null);
+  assert.equal(missing.pets, duplicated);
+  check(true, '旧存档精灵身份会补齐并全局去重，上交按 uid 只删除一只');
+}
+
+// 上交任务必须保护训练/远征精灵、保留最后一只队员，并在真实删除后才推进任务。
+{
+  const hydrationStart = appSource.indexOf('const hydrateSavedPetCollections =');
+  const hydrationEnd = appSource.indexOf('const compactMapGridCache', hydrationStart);
+  const hydrationSource = appSource.slice(hydrationStart, hydrationEnd);
+  assert.ok(hydrationStart >= 0 && hydrationEnd > hydrationStart);
+  assert.match(hydrationSource, /ensureUniquePetUids\(\[\.\.\.hydratedParty, \.\.\.hydratedBox\]\)/);
+
+  const donationStart = appSource.indexOf('{/* 上交精灵 */}');
+  const donationEnd = appSource.indexOf('const renderGangWar', donationStart);
+  const donationSource = appSource.slice(donationStart, donationEnd);
+  assert.ok(donationStart >= 0 && donationEnd > donationStart);
+  const dailyLockCheck = donationSource.indexOf('gangActionLocksRef.current.has(lockKey)');
+  const taskRefresh = donationSource.indexOf('getFreshGangDailyCounts');
+  const lastPetCheck = donationSource.indexOf('currentParty.length <= 1');
+  const assignedCheck = donationSource.indexOf('const currentlyAssigned');
+  const removePet = donationSource.indexOf('removeSinglePetByUid');
+  const removalGuard = donationSource.indexOf('if (!removal.removed');
+  const lockAcquire = donationSource.indexOf('gangActionLocksRef.current.add(lockKey)');
+  const partyCommit = donationSource.indexOf('partyRef.current = removal.pets');
+  const taskProgress = donationSource.indexOf("updateGangTaskProgress('donate_pet', 1)");
+  assert.ok(
+    dailyLockCheck >= 0 && taskRefresh > dailyLockCheck && lastPetCheck > taskRefresh &&
+    assignedCheck > lastPetCheck && removePet > assignedCheck && removalGuard > removePet &&
+    lockAcquire > removalGuard && partyCommit > lockAcquire && taskProgress > partyCommit
+  );
+  assert.match(donationSource, /trainingState\?\.slots/);
+  assert.match(donationSource, /expeditions\?\.teams/);
+  assert.match(donationSource, /setHousing\([\s\S]{0,180}residents/);
+  assert.match(donationSource, /delete tiers\[petToGive\.uid\]/);
+  assert.doesNotMatch(donationSource, /prev\.filter\(p => p\.uid !== petToGive\.uid\)/);
+  check(true, '精灵上交会复核最新任务和队伍状态，保护占用中的精灵，并在删除成功后原子推进任务');
 }
 
 console.log('\n=== 帮战检查全部通过 ===');
