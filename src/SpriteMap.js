@@ -373,6 +373,24 @@ const ID_TO_NATDEX = {
 const pokemonSpriteUrl = (natdex, cdn = SPRITE_BASE) => `${cdn}${natdex}${SPRITE_EXT}`;
 const digimonSpriteUrl = (name) => `${DIGIMON_BASE}${name}.png`;
 
+const OFFICIAL_POKEMON_NAME_MAP = {
+  91: 144, 92: 145, 93: 146, 94: 150, 96: 249, 97: 250, 98: 384, 99: 383, 100: 382,
+  110: 10, 111: 11, 112: 12, 113: 41, 114: 42, 115: 43, 116: 44, 117: 45,
+  118: 52, 119: 53, 120: 54, 121: 128, 122: 241, 123: 131, 124: 132,
+  125: 133, 126: 134, 127: 135, 128: 136, 129: 196, 130: 197,
+  131: 137, 132: 474, 133: 138, 134: 139, 135: 140, 136: 141,
+  137: 143, 138: 149, 139: 248, 140: 376, 141: 380, 142: 483, 143: 484,
+  144: 487, 145: 488, 146: 491, 147: 251, 148: 385, 149: 386, 150: 493, 151: 151,
+  152: 387, 153: 388, 154: 389, 155: 390, 156: 391, 157: 392,
+  158: 393, 159: 394, 160: 395, 161: 396, 162: 397, 163: 398,
+  164: 399, 165: 400, 166: 403, 167: 404, 168: 405,
+  169: 409, 170: 411, 171: 416, 172: 417, 173: 418, 174: 419, 175: 421,
+  176: 423, 177: 424, 178: 429, 179: 430, 180: 431, 181: 435,
+  182: 445, 183: 448, 184: 450, 185: 452, 186: 454, 187: 460, 188: 461,
+  189: 462, 190: 464, 191: 465, 192: 466, 193: 467, 194: 468,
+  195: 469, 196: 470, 197: 471, 198: 472, 199: 473, 200: 606,
+};
+
 function createPokemonPool(usedNatdex) {
   const pool = [];
   for (let id = 1; id <= MAX_POKEMON_ARTWORK_ID; id++) {
@@ -388,6 +406,16 @@ function buildUniqueSpriteSources() {
   const ids = Array.from({ length: MAX_GAME_PET_ID }, (_, idx) => idx + 1);
 
   ids.forEach(id => {
+    const natdex = OFFICIAL_POKEMON_NAME_MAP[id];
+    if (!natdex || usedNatdex.has(natdex)) return;
+    const url = pokemonSpriteUrl(natdex);
+    sources[id] = { kind: 'pokemon', natdex, url };
+    usedNatdex.add(natdex);
+    usedUrls.add(url);
+  });
+
+  ids.forEach(id => {
+    if (sources[id]) return;
     const natdex = ID_TO_NATDEX[id];
     if (!natdex || usedNatdex.has(natdex)) return;
     const url = pokemonSpriteUrl(natdex);
