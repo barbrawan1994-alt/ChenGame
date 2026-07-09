@@ -391,6 +391,15 @@ const OFFICIAL_POKEMON_NAME_MAP = {
   195: 469, 196: 470, 197: 471, 198: 472, 199: 473, 200: 606,
 };
 
+const ALTERNATE_POKEMON_NAME_MAP = {
+  33: 836,  // 雷霆狮王: Luxray is already used by 伦琴猫, use Boltund instead of a random filler.
+  71: 639,  // 波导勇者: Lucario is already used by 路卡利欧, keep a heroic fighting silhouette.
+  84: 612,  // 陆地狂鲨: Garchomp is already used by 烈咬陆鲨, use Haxorus as a distinct dragon.
+  104: 554, // 火花猴: Chimchar is already used by 小火焰猴, keep a small fire creature.
+  105: 555, // 烈焰猿: Monferno is already used by 猛火猴, keep the fire evolution line distinct.
+  106: 500, // 斗战胜佛: Infernape is already used by 烈焰猴, use Emboar as a fire/fight proxy.
+};
+
 function createPokemonPool(usedNatdex) {
   const pool = [];
   for (let id = 1; id <= MAX_POKEMON_ARTWORK_ID; id++) {
@@ -417,6 +426,16 @@ function buildUniqueSpriteSources() {
   ids.forEach(id => {
     if (sources[id]) return;
     const natdex = ID_TO_NATDEX[id];
+    if (!natdex || usedNatdex.has(natdex)) return;
+    const url = pokemonSpriteUrl(natdex);
+    sources[id] = { kind: 'pokemon', natdex, url };
+    usedNatdex.add(natdex);
+    usedUrls.add(url);
+  });
+
+  ids.forEach(id => {
+    if (sources[id]) return;
+    const natdex = ALTERNATE_POKEMON_NAME_MAP[id];
     if (!natdex || usedNatdex.has(natdex)) return;
     const url = pokemonSpriteUrl(natdex);
     sources[id] = { kind: 'pokemon', natdex, url };
