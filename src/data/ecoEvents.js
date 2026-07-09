@@ -257,7 +257,7 @@ export function applyEcologyDelta(eco, delta) {
 /** 将污染反向计入健康度；其余指标越高越健康。 */
 export function getEcologyHealth(eco) {
   return ECO_METRIC_KEYS.reduce((sum, key) => {
-    const fallback = key === 'pollution' ? DEFAULT_ECOLOGY.pollution : 50;
+    const fallback = DEFAULT_ECOLOGY[key] ?? 50;
     const value = eco?.[key] ?? fallback;
     return sum + (key === 'pollution' ? 100 - value : value);
   }, 0) / ECO_METRIC_KEYS.length;
@@ -330,7 +330,11 @@ export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMa
     });
     if (!met) return;
     if (chain.global) {
-      Object.keys(result).forEach(k => {
+      const globalMapKeys = new Set([
+        ...Object.keys(MAP_DEFAULT_ECOLOGY),
+        ...Object.keys(result),
+      ]);
+      globalMapKeys.forEach(k => {
         const mapKey = Number(k);
         if (Number.isNaN(mapKey)) return;
         const eco = { ...(result[mapKey] || getDefaultEcologyForMap(mapKey)) };

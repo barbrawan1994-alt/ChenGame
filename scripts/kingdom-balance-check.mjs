@@ -203,19 +203,85 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, '国战每日刷新统一使用本地日期，并兼容旧存档缺少 dailyCounts');
 }
 
-// 7. 都城确认框打开后仍需用最新阵营和队伍状态复核，再获取攻城锁。
+// 7. 都城确认框打开后仍需用最新战局、队伍与战斗状态复核，再获取攻城锁和写入冷却。
 {
   const confirmStart = appSource.indexOf("setConfirmModal({ title:'⚔️ 攻城确认'");
-  const confirmHandler = appSource.slice(confirmStart, confirmStart + 1800);
+  const confirmHandler = appSource.slice(confirmStart, confirmStart + 3200);
   assert.ok(confirmStart >= 0);
   const factionCheck = confirmHandler.indexOf("if (!currentKw?.faction)");
   const aliveCheck = confirmHandler.indexOf("(partyRef.current || []).some");
+  const battleCheck = confirmHandler.indexOf('if (battle && !battleResultHandledRef.current)');
+  const eligibilityCheck = confirmHandler.indexOf('getCapitalSiegeTargets(currentKw.faction, currentKw.territories)');
+  const targetMapCheck = confirmHandler.indexOf('const latestCapitalMap = MAPS.find');
   const lockAcquire = confirmHandler.indexOf('kingdomActionLocksRef.current.add(lockKey)');
-  assert.ok(factionCheck >= 0 && aliveCheck > factionCheck && lockAcquire > aliveCheck);
-  check(true, '都城攻防在取得锁和写入冷却前复核最新阵营与存活队伍');
+  const cooldownWrite = confirmHandler.indexOf('lastSiegeTime:');
+  assert.ok(
+    factionCheck >= 0 && aliveCheck > factionCheck && battleCheck > aliveCheck &&
+    eligibilityCheck > battleCheck && targetMapCheck > eligibilityCheck &&
+    lockAcquire > targetMapCheck && cooldownWrite > lockAcquire
+  );
+  assert.match(confirmHandler, /无论胜负均进入 6 小时冷却/);
+  check(true, '都城攻防在取得锁和写入冷却前复核最新资格、地图、存活队伍与战斗占用');
 }
 
-// 8. 其他关键设计阈值。
+// 8. 普通领地攻城必须在消耗次数、兵力和行动轮次前重新校验目标与攻击资格。
+{
+  const marker = appSource.indexOf('{getBattleTimeModifiers().label}模式 · 三阶段');
+  const handlerStart = appSource.indexOf('<button type="button" onClick={() => {', marker);
+  const handler = appSource.slice(handlerStart, handlerStart + 10000);
+  assert.ok(marker >= 0 && handlerStart >= 0);
+  const targetCheck = handler.indexOf('const currentTarget = currentKw.territories?.[mid]');
+  const ownerCheck = handler.indexOf('currentTarget.owner === currentKw.faction');
+  const evaluate = handler.indexOf('const fieldEval = evaluateTerritoryAssault');
+  const canAttackCheck = handler.indexOf('if (!fieldEval.canAttack)');
+  const lockAcquire = handler.indexOf('kingdomActionLocksRef.current.add(lockKey)');
+  const runSiege = handler.indexOf('const result = runThreePhaseSiege');
+  const consumeAttempt = handler.indexOf('territorySieges:');
+  const triggerEnemy = handler.indexOf('triggerEnemyKingdomActions(nextKw)');
+  assert.ok(
+    targetCheck >= 0 && ownerCheck > targetCheck && evaluate > ownerCheck &&
+    canAttackCheck > evaluate && lockAcquire > canAttackCheck && runSiege > lockAcquire &&
+    consumeAttempt > runSiege && triggerEnemy > consumeAttempt
+  );
+  assert.match(handler, /finally \{[\s\S]{0,120}kingdomActionLocksRef\.current\.delete\(acquiredLockKey\)/);
+  assert.doesNotMatch(handler, /setTimeout\(\(\) => kingdomActionLocksRef\.current\.delete/);
+  check(true, '过期或非法普通攻城目标不会消耗次数、兵力、战功，也不会触发敌方行动；锁始终由 finally 释放');
+}
+
+// 9. 名城争夺同样重新验证目标与配置，且同步结算锁不依赖定时器。
+{
+  const buttonEnd = appSource.indexOf('}}>发动攻城</button>');
+  const handlerStart = appSource.lastIndexOf('<button type="button" onClick={() => {', buttonEnd);
+  const handler = appSource.slice(handlerStart, buttonEnd);
+  assert.ok(buttonEnd >= 0 && handlerStart >= 0);
+  const targetCheck = handler.indexOf('CONTESTED_SIEGE_MAP_IDS.includes(Number(m.id))');
+  const latestPreview = handler.indexOf('const latestPreview = evaluateKwSiegeBattle');
+  const canAttackCheck = handler.indexOf('if (!latestPreview.canAttack)');
+  const lockAcquire = handler.indexOf('kingdomActionLocksRef.current.add(lockKey)');
+  const runSiege = handler.indexOf('const siegeResult = runKwSiegeBattle');
+  assert.ok(targetCheck >= 0 && latestPreview > targetCheck && canAttackCheck > latestPreview && lockAcquire > canAttackCheck && runSiege > lockAcquire);
+  assert.match(handler, /finally \{[\s\S]{0,120}kingdomActionLocksRef\.current\.delete\(acquiredLockKey\)/);
+  assert.doesNotMatch(handler, /setTimeout\(\(\) => kingdomActionLocksRef\.current\.delete/);
+  check(true, '名城争夺在执行前验证最新目标与 canAttack，并在所有返回路径释放并发锁');
+}
+
+// 10. 三波都城攻防按整场记一次国战击杀和帮派任务，而非每波重复累计。
+{
+  const capitalWinStart = appSource.indexOf("if (battleSnapshot.type === 'capital_siege')");
+  const capitalWinEnd = appSource.indexOf('// 9c. 国战战役副本胜利', capitalWinStart);
+  const capitalWin = appSource.slice(capitalWinStart, capitalWinEnd);
+  assert.ok(capitalWinStart >= 0 && capitalWinEnd > capitalWinStart);
+  const waveBranch = capitalWin.indexOf('if (currentWave < totalWaves)');
+  const finalLockRelease = capitalWin.indexOf('kingdomActionLocksRef.current.delete(`capital-siege:${siegeTarget}`)');
+  const statsUpdate = capitalWin.indexOf('updateBattleWinStats(0, { kwKills: 1 })');
+  assert.ok(waveBranch >= 0 && finalLockRelease > waveBranch && statsUpdate > finalLockRelease);
+  assert.equal((capitalWin.match(/updateBattleWinStats\(0, \{ kwKills: 1 \}\)/g) || []).length, 1);
+  assert.equal((capitalWin.match(/updateGangTaskProgress\('kw_kill', 1\)/g) || []).length, 1);
+  assert.equal((capitalWin.match(/updateGangTaskProgress\('battle_win', 1\)/g) || []).length, 1);
+  check(true, '都城攻防三波视为一场完整战役，最终胜利时只累计一次成就与帮派任务');
+}
+
+// 11. 其他关键设计阈值。
 check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进入过度扩张风险区`);
 {
   const eliteRatio = 0.5;

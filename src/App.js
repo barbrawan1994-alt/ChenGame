@@ -92,7 +92,7 @@ import {
   ECO_EVENTS, getActiveEcoEventForMap, getEcoEventByMapId, getDefaultEcologyForMap, applyEcologyDelta, getEcologyTier, ECO_METRIC_LABELS,
   getRegionStage, REGION_STAGE_DEFS, REGION_CHAINS, applyRegionChains,
   getRegionPressure, getPartyAdaptationSummary, getAdaptationMult,
-  getBossMechanicDef, checkForestWillEcology, ECO_LINKED_BOSSES,
+  getBossMechanicDef, getEcoLinkedBoss, checkForestWillEcology, ECO_LINKED_BOSSES,
   inferPetTags, checkTagRestriction, PET_TAG_DEFS,
   reduceFatigue,
   INFINITY_ROUTE_TYPES, pickRouteOptions, pickBlessingOptions, pickSkillMutation, applySkillMutation, SPIRIT_BLESSINGS,
@@ -7975,21 +7975,31 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const participateCalamity = (calamityId) => {
     const cal = getCalamityById(calamityId);
     if (!cal) return;
+    const bossDef = getEcoLinkedBoss(cal.bossKey);
+    if (!bossDef?.bossId || !bossDef?.phases?.length) {
+      showMapToast('⚠️', '灵灾配置异常', '灾魂尚未准备完成，本次不会扣除金币', 2600);
+      return;
+    }
     const thisWeek = getCalamityWeekKey(getLocalDateStr());
     const weekKey = `${calamityId}_${thisWeek}`;
     const lockKey = `calamity:${weekKey}`;
     if ((fusionStateRef.current.calamitiesParticipated || []).includes(weekKey) || ecoActionLocksRef.current.has(lockKey)) return;
     if (badges.length < cal.reqBadges) return;
     if (party.every(p => (p.currentHp || 0) <= 0)) { showMapToast('⚠️', '无法参与', '队伍中无存活精灵', 2500); return; }
+    if (battle && !battleResultHandledRef.current) {
+      showMapToast('⚠️', '无法参与', '请先完成当前战斗', 2500);
+      return;
+    }
     const calCost = Math.floor((cal.reqBadges || 5) * 500);
     if (goldRef.current < calCost) { showMapToast('⚠️', '金币不足', `需要 ${calCost} 金币`, 2500); return; }
     ecoActionLocksRef.current.add(lockKey);
     goldRef.current -= calCost;
     setGold(goldRef.current);
-    updateAchStat({ totalGoldSpent: calCost });
     const calLevel = (cal.reqBadges || 5) * 8 + 5;
-    const calEnemy = createPet(cal.bossId || 199, calLevel, true, true);
-    calEnemy.name = cal.name + '·灾魂';
+    const calEnemy = createPet(bossDef.bossId, calLevel, true, true);
+    calEnemy.name = `${bossDef.name}·灾魂`;
+    calEnemy.type = bossDef.type || calEnemy.type;
+    calEnemy.secondaryType = bossDef.secondaryType || calEnemy.secondaryType;
     calEnemy.isBoss = true;
     calEnemy.customStatMult = (calEnemy.customStatMult || 1) * 1.5;
     const calChakra = calcChakraAffinity(narutoState?.jutsuMastery);
@@ -8000,13 +8010,23 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       calcCrossSystemPveBonuses({ playerStyle: currentFusionState.playerStyle || {}, kwPosition: currentFusionState.kwPosition })
     );
     if (calFusionBonuses.bossMultReduce) calEnemy.customStatMult *= Math.max(0.7, 1 - calFusionBonuses.bossMultReduce);
-    startBattle({
-      id: currentMapId, name: cal.name, customParty: [calEnemy], trainerName: cal.name, drop: calCost * 2,
-      _fusionBonuses: calFusionBonuses, _calamity: { calamityId, weekKey },
-    }, 'eco_crisis');
-    setView('battle');
+    try {
+      startBattle({
+        id: bossDef.mapId ?? currentMapId, name: cal.name, customParty: [calEnemy], trainerName: cal.name, drop: calCost * 2,
+        ecoBossMechanics: true, bossPhases: bossDef.phases,
+        _fusionBonuses: calFusionBonuses, _calamity: { calamityId, weekKey, mapId: bossDef.mapId ?? currentMapId },
+      }, 'eco_crisis');
+      updateAchStat({ totalGoldSpent: calCost });
+      setView('battle');
+    } catch (err) {
+      ecoActionLocksRef.current.delete(lockKey);
+      goldRef.current += calCost;
+      setGold(goldRef.current);
+      console.error('calamity battle start:', err);
+      showMapToast('⚠️', '灵灾未能启动', '报名费已退还，请稍后重试', 2600);
+    }
   };
-  const completeCalamityReward = (calamityId, weekKey) => {
+  const completeCalamityReward = (calamityId, weekKey, rewardMapId = null) => {
     const cal = getCalamityById(calamityId);
     if (!cal) return;
     const rewardLockKey = `calamity-reward:${weekKey}`;
@@ -8038,11 +8058,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       updateAchStat({ totalGoldEarned: cal.reward.gold });
     }
     if (cal.reward?.title) unlockTitle(cal.reward.title);
-    const rawEco = cal.nationEffects || {};
-    const calEco = {};
-    Object.entries(rawEco).forEach(([k, v]) => { calEco[k] = -v; });
-    if (!Object.keys(calEco).length) Object.assign(calEco, { pollution: -8, stability: 10 });
-    applyMapEcologyDelta(currentMapId, calEco);
+    const calEco = cal.resolutionEffects || { pollution: -8, stability: 10 };
+    const calamityBoss = getEcoLinkedBoss(cal.bossKey);
+    applyMapEcologyDelta(rewardMapId ?? calamityBoss?.mapId ?? currentMapId, calEco);
     updateAchStat({ fusionCalamities: 1 });
     showMapToast(cal.icon, '灵灾净化完成', `${cal.name} 获得奖励！`, 3500);
   };
@@ -10985,7 +11003,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const bonus = getGangSkillBonus(skills);
     const gangReadyTasks = GANG_TASKS.filter(task => (dc.taskCompleted || []).includes(task.id) && !(dc.taskCompleted || []).includes(task.id + '_claimed')).length;
     const gangDailyDone = (dc.taskCompleted || []).filter(id => String(id).endsWith('_claimed')).length;
-    const partyAvgLevelForGang = party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 1;
+    const livingPartyForGang = party.filter(p => p && (p.currentHp || 0) > 0);
+    const partyAvgLevelForGang = livingPartyForGang.length
+      ? Math.floor(livingPartyForGang.reduce((s, p) => s + (p.level || 1), 0) / livingPartyForGang.length)
+      : 1;
 
     const headerStyle = {background:'rgba(0,0,0,0.4)', borderBottom:'1px solid rgba(255,215,0,0.1)', zIndex:5};
     const cardStyle = {background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'12px', padding:'14px', marginBottom:'10px'};
@@ -11313,10 +11334,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 <button disabled={warCount >= GANG_WAR_CONFIG.maxDaily} onClick={() => {
                   const freshDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts);
                   if ((freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) { showMapToast('❌', '提示', '今日帮战次数已用完', 1500); return; }
+                  if (!target?.id) { showMapToast('⚠️', '无法参战', '帮战目标已失效，请刷新后重试', 1800); return; }
                   if (!(partyRef.current || []).some(p => p && (p.currentHp || 0) > 0)) { showMapToast('⚠️', '无法参战', '队伍中无可战斗精灵，请先治疗', 1800); return; }
+                  if (battle && !battleResultHandledRef.current) { showMapToast('⚠️', '无法参战', '请先完成当前战斗', 1800); return; }
                   if (gangActionLocksRef.current.has('gang_war')) return;
                   gangActionLocksRef.current.add('gang_war');
-                  startBattle({ gangWarTarget: target }, 'gang_war');
+                  try {
+                    startBattle({ gangWarTarget: target }, 'gang_war');
+                  } catch (err) {
+                    gangActionLocksRef.current.delete('gang_war');
+                    console.error('gang war start:', err);
+                    showMapToast('⚠️', '帮战未能启动', '未消耗挑战次数，请稍后重试', 2200);
+                  }
                 }} style={{...btnPrimary, fontSize:'11px', padding:'8px 14px', opacity: warCount >= GANG_WAR_CONFIG.maxDaily ? 0.5 : 1}}>
                   挑战
                 </button>
@@ -13603,7 +13632,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const waveNames = ['前锋军', '精锐卫队', '禁卫军统领'];
         trainerName = `[${sf.fullName}] ${waveNames[wave - 1] || '守军'} (第${wave}/${totalWaves}波)`;
         dropGold = Math.floor((context.drop || 2000) / Math.max(1, totalWaves));
-        const pool = context.pool || HIGH_TIER_POOL;
+        const pool = context.pool?.length ? context.pool : HIGH_TIER_POOL;
         const teamSize = wave === totalWaves ? 6 : 4;
         const baseLv = 75 + wave * 5;
         for (let i = 0; i < teamSize; i++) {
@@ -20670,9 +20699,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const sf = FACTIONS[siegeTarget] || { fullName: '未知势力', icon: '❓', color: '#999' };
         const currentWave = battleSnapshot.wave || 1;
         const totalWaves = battleSnapshot.totalWaves || 3;
-        updateBattleWinStats(0, { kwKills: 1 });
-        updateGangTaskProgress('kw_kill', 1);
-        updateGangTaskProgress('battle_win', 1);
 
         if (currentWave < totalWaves) {
           showMapToast('⚔️', '攻城胜利', `第 ${currentWave} 波 · 还剩 ${totalWaves - currentWave} 波`, 2000);
@@ -20689,6 +20715,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         }
 
         kingdomActionLocksRef.current.delete(`capital-siege:${siegeTarget}`);
+        updateBattleWinStats(0, { kwKills: 1 });
+        updateGangTaskProgress('kw_kill', 1);
+        updateGangTaskProgress('battle_win', 1);
 
         const siegeGold = 5000;
         const siegeContrib = 100;
@@ -21003,8 +21032,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
     }
 
     if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._calamity) {
-      const { calamityId, weekKey } = battleSnapshot._calamity;
-      completeCalamityReward(calamityId, weekKey);
+      const { calamityId, weekKey, mapId: calamityMapId } = battleSnapshot._calamity;
+      completeCalamityReward(calamityId, weekKey, calamityMapId);
       ecoActionLocksRef.current.delete(`calamity:${weekKey}`);
       updateBattleWinStats(goldGain);
       commitPartyToSave(updatedParty);
@@ -25816,10 +25845,16 @@ const renderMenu = () => {
                               })}
                             </div>
                             <button type="button" onClick={() => {
+                              let acquiredLockKey = null;
                               try {
                               const currentKw = kingdomWarRef.current;
                               if (!currentKw?.faction) { showMapToast('❌', '提示', '未加入阵营，无法攻城。', 1800); return; }
                               const m = kwSiegeModal.contestMap;
+                              if (!m || !CONTESTED_SIEGE_MAP_IDS.includes(Number(m.id)) || !Array.isArray(m.lvl)) {
+                                showMapToast('ℹ️', '目标已失效', '名城状态已变化，请重新选择攻城目标', 2200);
+                                setKwSiegeModal(null);
+                                return;
+                              }
                               const lockKey = `siege:${m.id}`;
                               if (kingdomActionLocksRef.current.has(lockKey)) return;
                               const alloc = { ...kwSiegeModal.allocation };
@@ -25830,11 +25865,29 @@ const renderMenu = () => {
                               if (sumA > currentReserve) { showMapToast('❌', '兵力不足', `当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`, 2200); return; }
                               const attemptKey = `${m.id}_attempts_${getLocalDateStr()}`;
                               if ((currentKw.contestProgress?.[attemptKey] || 0) >= maxDailyAttempts) { showMapToast('❌', '提示', `今日攻城次数已用完 (每日${maxDailyAttempts}次)`, 1800); return; }
-                              kingdomActionLocksRef.current.add(lockKey);
-                              setTimeout(() => kingdomActionLocksRef.current.delete(lockKey), 1000);
-                              const avgLv = party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50;
+                              const livingSiegeParty = (partyRef.current || []).filter(p => p && (p.currentHp || 0) > 0);
+                              const avgLv = livingSiegeParty.length
+                                ? Math.floor(livingSiegeParty.reduce((s, p) => s + (p.level || 1), 0) / livingSiegeParty.length)
+                                : 50;
                               const genIds = [...new Set(kwSiegeModal.generalIds || [])].slice(0, 3);
                               const mapProgIn = getContestMapProgress(currentKw.contestProgress, m.id);
+                              const latestPreview = evaluateKwSiegeBattle({
+                                mapId: m.id,
+                                playerFaction: currentKw.faction,
+                                allocation: alloc,
+                                generalIds: genIds,
+                                recruitedGenerals: currentKw.recruitedGenerals || [],
+                                mapProgress: mapProgIn,
+                                mapLvlMin: m.lvl[0],
+                                mapLvlMax: m.lvl[1],
+                                avgPartyLevel: avgLv,
+                              });
+                              if (!latestPreview.canAttack) {
+                                showMapToast('❌', '无法攻城', latestPreview.reason || '当前配置无法发起攻城', 2200);
+                                return;
+                              }
+                              kingdomActionLocksRef.current.add(lockKey);
+                              acquiredLockKey = lockKey;
                               const siegeResult = runKwSiegeBattle({
                                 mapId: m.id,
                                 playerFaction: currentKw.faction,
@@ -25887,6 +25940,8 @@ const renderMenu = () => {
                               } catch (err) {
                                 console.error('kw siege:', err);
                                 showMapToast('❌', '攻城失败', '数据异常已记录，请重试或反馈。', 3000);
+                              } finally {
+                                if (acquiredLockKey) kingdomActionLocksRef.current.delete(acquiredLockKey);
                               }
                             }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动攻城</button>
                             <button type="button" onClick={() => setKwSiegeModal(null)} style={{ width:'100%', marginTop:'8px', padding:'8px', border:'1px solid #cbd5e1', borderRadius:'10px', background:'#fff', cursor:'pointer', fontSize:'12px' }}>取消</button>
@@ -26002,7 +26057,7 @@ const renderMenu = () => {
                         return (
                           <div style={{marginTop:'16px'}}>
                             <div style={{fontSize:'14px', fontWeight:'800', color:'#C62828', marginBottom:'10px'}}>🔥 都城攻防战</div>
-                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营领地稀少（≤5城），可对其都城发起攻城战，胜利获丰厚赛季奖励！</div>
+                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营领地稀少（≤5城）时可发起高难度攻城；战役启动后无论胜负，该目标都进入 6 小时冷却。</div>
                             {siegeTargets.map(fid => {
                               const ef = FACTIONS[fid];
                               const eCapitalMap = MAPS.find(m => m.id === CAPITAL_MAP_IDS[fid]);
@@ -26022,10 +26077,18 @@ const renderMenu = () => {
                                   </div>
                                   <button disabled={!canSiege} onClick={() => {
                                     if (!party.some(p => p && p.currentHp > 0)) { showMapToast('❌', '提示', '你的队伍已全灭！', 1500); return; }
-                                    setConfirmModal({ title:'⚔️ 攻城确认', msg:`确定要对${ef.fullName}都城发起攻城战吗？\n\n这将是高难度的6v6战斗！`, onOk: () => {
+                                    setConfirmModal({ title:'⚔️ 攻城确认', msg:`确定要对${ef.fullName}都城发起攻城战吗？\n\n这将是三波制高难度战役，发起后无论胜负均进入 6 小时冷却。`, onOk: () => {
                                       const currentKw = kingdomWarRef.current;
                                       if (!currentKw?.faction) { showMapToast('❌', '提示', '当前未加入阵营，无法攻城', 1800); return; }
                                       if (!(partyRef.current || []).some(p => p && (p.currentHp || 0) > 0)) { showMapToast('⚠️', '无法攻城', '队伍中无可战斗精灵，请先治疗', 1800); return; }
+                                      if (battle && !battleResultHandledRef.current) { showMapToast('⚠️', '无法攻城', '请先完成当前战斗', 1800); return; }
+                                      const eligibleTargets = getCapitalSiegeTargets(currentKw.faction, currentKw.territories);
+                                      if (!eligibleTargets.includes(fid)) {
+                                        showMapToast('ℹ️', '战局已变化', '该都城已不满足攻城条件，请刷新战况', 2200);
+                                        return;
+                                      }
+                                      const latestCapitalMap = MAPS.find(m => m.id === CAPITAL_MAP_IDS[fid]);
+                                      if (!latestCapitalMap) { showMapToast('⚠️', '无法攻城', '都城地图配置异常，本次不会进入冷却', 2200); return; }
                                       const lockKey = `capital-siege:${fid}`;
                                       if (kingdomActionLocksRef.current.has(lockKey)) return;
                                       const nowCooldown = currentKw?.lastSiegeTime?.[fid] ? Math.max(0, 6 * 60 * 60 * 1000 - (Date.now() - currentKw.lastSiegeTime[fid])) : 0;
@@ -26034,12 +26097,20 @@ const renderMenu = () => {
                                       const nextKw = { ...currentKw, lastSiegeTime: { ...(currentKw.lastSiegeTime || {}), [fid]: Date.now() } };
                                       kingdomWarRef.current = nextKw;
                                       setKingdomWar(nextKw);
-                                      startBattle({
-                                        id: CAPITAL_MAP_IDS[fid],
-                                        name: `${eCapitalMap?.name || '敌都'}`,
-                                        lvl: [80, 100], pool: eCapitalMap?.pool || [],
-                                        drop: 2000, siegeTarget: fid,
-                                      }, 'capital_siege');
+                                      try {
+                                        startBattle({
+                                          id: CAPITAL_MAP_IDS[fid],
+                                          name: latestCapitalMap.name || '敌都',
+                                          lvl: [80, 100], pool: latestCapitalMap.pool?.length ? latestCapitalMap.pool : HIGH_TIER_POOL,
+                                          drop: 2000, siegeTarget: fid,
+                                        }, 'capital_siege');
+                                      } catch (err) {
+                                        kingdomActionLocksRef.current.delete(lockKey);
+                                        kingdomWarRef.current = currentKw;
+                                        setKingdomWar(currentKw);
+                                        console.error('capital siege start:', err);
+                                        showMapToast('⚠️', '攻城未能启动', '本次未进入冷却，请稍后重试', 2400);
+                                      }
                                     }});
                                   }} style={{
                                     color:'#fff', border:'none', borderRadius:'20px', cursor:'pointer', fontWeight:'bold',
@@ -26345,6 +26416,7 @@ const renderMenu = () => {
                           {getBattleTimeModifiers().label}模式 · 三阶段：野战 → 单挑 → 攻城（消耗兵力，敌方联动行动）
                         </div>
                         <button type="button" onClick={() => {
+                          let acquiredLockKey = null;
                           try {
                             const currentKw = kingdomWarRef.current;
                             if (!currentKw?.faction) { showMapToast('❌','提示','未加入阵营',1800); return; }
@@ -26352,6 +26424,12 @@ const renderMenu = () => {
                             const usedSieges = currentKw.dailyCounts?.resetDate === todayKey ? (currentKw.dailyCounts?.territorySieges || 0) : 0;
                             if (usedSieges >= maxTerritorySieges) { showMapToast('❌','攻城次数已用完',`普通领地每日最多 ${maxTerritorySieges} 次`,2000); return; }
                             const mid = kwSiegeModal.targetMapId;
+                            const currentTarget = currentKw.territories?.[mid];
+                            if (!currentTarget || currentTarget.owner === currentKw.faction) {
+                              showMapToast('ℹ️', '目标状态已变化', '该领地已无法攻击，请重新选择目标', 2200);
+                              setKwSiegeModal(null);
+                              return;
+                            }
                             const lockKey = `territory-siege:${mid}`;
                             if (kingdomActionLocksRef.current.has(lockKey)) return;
                             const alloc = { ...kwSiegeModal.allocation };
@@ -26359,8 +26437,6 @@ const renderMenu = () => {
                             if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
                             const currentReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, currentKw.kwManpowerReserve || 0));
                             if (sumA > currentReserve) { showMapToast('❌','兵力不足',`当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`,2200); return; }
-                            kingdomActionLocksRef.current.add(lockKey);
-                            setTimeout(() => kingdomActionLocksRef.current.delete(lockKey), 1000);
                             const siegeExternal = buildSiegeExternalBonuses();
                             const fieldEval = evaluateTerritoryAssault({
                               mapId: mid,
@@ -26372,6 +26448,12 @@ const renderMenu = () => {
                               kw: currentKw,
                               external: siegeExternal,
                             });
+                            if (!fieldEval.canAttack) {
+                              showMapToast('❌', '无法攻城', fieldEval.reason || '当前目标不可攻击', 2200);
+                              return;
+                            }
+                            kingdomActionLocksRef.current.add(lockKey);
+                            acquiredLockKey = lockKey;
                             const result = runThreePhaseSiege({
                               mapId: mid,
                               playerFaction: currentKw.faction,
@@ -26390,7 +26472,7 @@ const renderMenu = () => {
                             const baseContrib = result.captured ? 18 : result.success ? 8 : 3;
                             const contribGain = Math.floor(baseContrib * (result.contribMult || 1));
                             const tokenGain = result.captured ? 3 : 0;
-                            const defenderFaction = currentKw.territories[mid]?.owner;
+                            const defenderFaction = currentTarget.owner;
                             const terr = { ...(result.territories || currentKw.territories) };
                             const t = { ...(terr[mid] || {}) };
                             if (result.captured) {
@@ -26439,6 +26521,8 @@ const renderMenu = () => {
                           } catch (err) {
                             console.error('territory siege:', err);
                             showMapToast('❌','攻城失败','数据异常，请重试。',2500);
+                          } finally {
+                            if (acquiredLockKey) kingdomActionLocksRef.current.delete(acquiredLockKey);
                           }
                         }} style={{ width:'100%', padding:'12px', border:'none', borderRadius:'12px', background: myFaction.color, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer' }}>发动三阶段攻城</button>
                         <button type="button" onClick={() => setKwSiegeModal(null)} style={{ width:'100%', marginTop:'8px', padding:'8px', border:'1px solid #cbd5e1', borderRadius:'10px', background:'#fff', cursor:'pointer', fontSize:'12px' }}>取消</button>

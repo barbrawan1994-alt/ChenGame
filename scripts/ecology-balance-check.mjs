@@ -20,6 +20,7 @@ const eco = await loadSourceModule('src/data/ecoEvents.js', source =>
   )
 );
 const calamities = await loadSourceModule('src/data/nationalCalamities.js');
+const bossMechanics = await loadSourceModule('src/data/bossMechanics.js');
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 
 const check = (condition, message) => {
@@ -117,7 +118,40 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '修改正确来源地图 1 时，只结算对应的下游生态影响');
 }
 
-// 4. 全国灵灾使用 ISO 周键，周一切换且跨月仍保持同周一致。
+// 4. 旧存档缺失字段时必须使用统一默认值；全国连锁也应覆盖尚未初始化的地图。
+{
+  const legacyEcology = {
+    water: 50,
+    vegetation: 50,
+    spirit: 50,
+    pollution: 30,
+    stability: 50,
+  };
+  const explicitDefault = { ...legacyEcology, diversity: eco.DEFAULT_ECOLOGY.diversity };
+  assert.equal(eco.getEcologyHealth(legacyEcology), eco.getEcologyHealth(explicitDefault));
+  check(true, `旧存档缺少多样性时按默认值 ${eco.DEFAULT_ECOLOGY.diversity} 计算，而非错误回退到 50`);
+
+  const globalChain = [{
+    fromMap: 9,
+    toMap: 0,
+    condition: { spirit: { min: 75 } },
+    effect: { stability: 3 },
+    global: true,
+  }];
+  const globalResult = eco.applyRegionChains({
+    9: { ...eco.getDefaultEcologyForMap(9), spirit: 80 },
+  }, globalChain, 9);
+  Object.keys(eco.MAP_DEFAULT_ECOLOGY).forEach(mapId => {
+    assert.ok(globalResult[mapId], `地图 ${mapId} 应获得全国生态连锁效果`);
+    assert.equal(
+      globalResult[mapId].stability,
+      Math.min(100, eco.getDefaultEcologyForMap(mapId).stability + 3)
+    );
+  });
+  check(true, '全国生态连锁覆盖全部地图，包括尚未写入旧存档的惰性地图');
+}
+
+// 5. 全国灵灾使用 ISO 周键，周一切换且跨月仍保持同周一致。
 {
   const monday = calamities.getCalamityWeekKey('2026-06-29');
   const sunday = calamities.getCalamityWeekKey('2026-07-05');
@@ -134,7 +168,43 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '同一 ISO 周内跨月日期生成完全一致的全国灵灾列表');
 }
 
-// 5. 战斗救助只发放一次结构化事件奖励，且战斗入口必须允许显式 0 掉落。
+// 6. 每种全国灵灾都必须绑定专属多阶段 Boss，净化后不能反向破坏生态。
+{
+  calamities.NATIONAL_CALAMITIES.forEach(calamity => {
+    const boss = bossMechanics.getEcoLinkedBoss(calamity.bossKey);
+    assert.ok(boss, `${calamity.id} 缺少专属 Boss`);
+    assert.ok(Number.isFinite(boss.bossId) && boss.bossId > 0, `${calamity.id} 的 Boss ID 非法`);
+    assert.ok(Array.isArray(boss.phases) && boss.phases.length > 0, `${calamity.id} 缺少阶段机制`);
+    assert.ok(calamity.resolutionEffects && Object.keys(calamity.resolutionEffects).length > 0, `${calamity.id} 缺少净化效果`);
+
+    const before = eco.getEcologyHealth(eco.DEFAULT_ECOLOGY);
+    const after = eco.getEcologyHealth(eco.applyEcologyDelta(eco.DEFAULT_ECOLOGY, calamity.resolutionEffects));
+    assert.ok(after >= before, `${calamity.id} 净化后健康度由 ${before} 降至 ${after}`);
+  });
+  check(true, `${calamities.NATIONAL_CALAMITIES.length} 种灵灾均接入专属 Boss，且净化效果不会降低生态健康度`);
+
+  const participateStart = appSource.indexOf('const participateCalamity = (calamityId) => {');
+  const participateSource = appSource.slice(participateStart, participateStart + 3200);
+  assert.ok(participateStart >= 0);
+  assert.match(participateSource, /const bossDef = getEcoLinkedBoss\(cal\.bossKey\);/);
+  assert.match(participateSource, /createPet\(bossDef\.bossId, calLevel, true, true\)/);
+  assert.match(participateSource, /ecoBossMechanics: true, bossPhases: bossDef\.phases/);
+  assert.match(participateSource, /id: bossDef\.mapId \?\? currentMapId/);
+  assert.ok(participateSource.indexOf('const bossDef = getEcoLinkedBoss') < participateSource.indexOf('goldRef.current -= calCost'));
+  assert.ok(participateSource.indexOf('if (battle && !battleResultHandledRef.current)') < participateSource.indexOf('ecoActionLocksRef.current.add(lockKey)'));
+  assert.match(participateSource, /catch \(err\) \{[\s\S]{0,180}ecoActionLocksRef\.current\.delete\(lockKey\);[\s\S]{0,180}goldRef\.current \+= calCost;/);
+  assert.ok(participateSource.indexOf("startBattle({") < participateSource.indexOf('updateAchStat({ totalGoldSpent: calCost })'));
+
+  const rewardStart = appSource.indexOf('const completeCalamityReward = (calamityId, weekKey, rewardMapId = null) => {');
+  const rewardSource = appSource.slice(rewardStart, rewardStart + 2600);
+  assert.ok(rewardStart >= 0);
+  assert.match(rewardSource, /const calEco = cal\.resolutionEffects \|\| \{ pollution: -8, stability: 10 \};/);
+  assert.match(rewardSource, /rewardMapId \?\? calamityBoss\?\.mapId \?\? currentMapId/);
+  assert.doesNotMatch(rewardSource, /cal\.nationEffects|calEco\[k\] = -v/);
+  check(true, '灵灾入口在扣费前验证 Boss 与战斗占用，启动异常会退费解锁，结算将净化效果施加到对应灾区');
+}
+
+// 7. 战斗救助只发放一次结构化事件奖励，且战斗入口必须允许显式 0 掉落。
 {
   assert.match(appSource, /let dropGold = context\?\.drop \?\? baseGold;/);
   assert.match(appSource, /else if \(type === 'eco_crisis'\) \{[\s\S]{0,240}dropGold = context\.drop \?\? 2000;/);

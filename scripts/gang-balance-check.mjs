@@ -73,15 +73,43 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   );
 }
 
-// 全灭状态应在取得帮战锁之前被拦截，避免一次失败启动让按钮永久失效。
+// 帮战预估只计算存活精灵，避免高等级阵亡成员虚高胜率。
+{
+  const renderGangStart = appSource.indexOf('const renderGang = () => {');
+  const renderGangSource = appSource.slice(renderGangStart, renderGangStart + 2200);
+  assert.ok(renderGangStart >= 0);
+  assert.match(renderGangSource, /const livingPartyForGang = party\.filter\(p => p && \(p\.currentHp \|\| 0\) > 0\);/);
+  assert.match(renderGangSource, /livingPartyForGang\.reduce/);
+  assert.doesNotMatch(renderGangSource, /party\.reduce\(\(s, p\) => s \+ \(p\?\.level/);
+  check(true, '帮战胜率与指挥建议均按存活队伍均级计算，不再计入已阵亡精灵');
+}
+
+// 全灭、目标失效或已有战斗应在取得帮战锁之前被拦截，避免按钮永久失效。
 {
   const handlerStart = appSource.indexOf('<button disabled={warCount >= GANG_WAR_CONFIG.maxDaily}');
-  const handler = appSource.slice(handlerStart, handlerStart + 1400);
+  const handler = appSource.slice(handlerStart, handlerStart + 1800);
   assert.ok(handlerStart >= 0);
+  const targetCheck = handler.indexOf('if (!target?.id)');
   const aliveCheck = handler.indexOf("(partyRef.current || []).some");
+  const battleCheck = handler.indexOf('if (battle && !battleResultHandledRef.current)');
   const lockAcquire = handler.indexOf("gangActionLocksRef.current.add('gang_war')");
-  assert.ok(aliveCheck >= 0 && lockAcquire > aliveCheck);
-  check(true, '帮战启动前校验存活队伍，不会因失败启动遗留并发锁');
+  assert.ok(targetCheck >= 0 && aliveCheck > targetCheck && battleCheck > aliveCheck && lockAcquire > battleCheck);
+  assert.match(handler, /catch \(err\) \{[\s\S]{0,160}gangActionLocksRef\.current\.delete\('gang_war'\)/);
+  check(true, '帮战启动前依次校验目标、存活队伍和战斗占用，初始化异常也会释放并发锁');
+}
+
+// 胜败结算各消耗一次次数，且帮派资金严格归属帮主。
+{
+  const winStart = appSource.indexOf("if (battleSnapshot.type === 'gang_war')");
+  const winSource = appSource.slice(winStart, winStart + 5200);
+  const defeatStart = appSource.indexOf("} else if (battleType === 'gang_war') {");
+  const defeatSource = appSource.slice(defeatStart, defeatStart + 900);
+  assert.ok(winStart >= 0 && defeatStart >= 0);
+  assert.equal((winSource.match(/warCount:/g) || []).length, 1);
+  assert.equal((defeatSource.match(/warCount:/g) || []).length, 1);
+  assert.match(winSource, /if \(prev\.isOwner && prev\.customGang\) \{[\s\S]{0,180}funds: \(prev\.customGang\.funds \|\| 0\) \+ reward\.funds/);
+  assert.doesNotMatch(defeatSource, /funds\s*:/);
+  check(true, '帮战胜败均只消耗一次每日次数，且只有帮主胜利时增加帮派资金');
 }
 
 console.log('\n=== 帮战检查全部通过 ===');

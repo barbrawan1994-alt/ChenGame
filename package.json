@@ -7,6 +7,7 @@
     "start": "concurrently \"cross-env BROWSER=none npm run web\" \"wait-on http://localhost:3000 && electron .\"",
     "web": "webpack serve --mode development --hot",
     "build": "webpack --mode production",
+    "check:balance": "node scripts/kingdom-balance-check.mjs && node scripts/gang-balance-check.mjs && node scripts/ecology-balance-check.mjs",
     "dist": "npm run build && electron-builder",
     "generate-icon": "node scripts/generate-icon.js",
     "generate-general-portraits": "node scripts/generate-general-portraits.mjs"
