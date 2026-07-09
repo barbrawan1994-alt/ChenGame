@@ -249,17 +249,26 @@ export function applyEcologyDelta(eco, delta) {
   if (!delta) return clampEcology(eco);
   const next = { ...eco };
   Object.entries(delta).forEach(([k, v]) => {
-    if (ECO_METRIC_KEYS.includes(k)) next[k] = (next[k] || 50) + v;
+    if (ECO_METRIC_KEYS.includes(k)) next[k] = (next[k] ?? 50) + v;
   });
   return clampEcology(next);
 }
 
+/** 将污染反向计入健康度；其余指标越高越健康。 */
+export function getEcologyHealth(eco) {
+  return ECO_METRIC_KEYS.reduce((sum, key) => {
+    const fallback = key === 'pollution' ? DEFAULT_ECOLOGY.pollution : 50;
+    const value = eco?.[key] ?? fallback;
+    return sum + (key === 'pollution' ? 100 - value : value);
+  }, 0) / ECO_METRIC_KEYS.length;
+}
+
 export function getEcologyTier(eco) {
-  const avg = ECO_METRIC_KEYS.reduce((s, k) => s + (eco[k] || 50), 0) / ECO_METRIC_KEYS.length;
-  const pollution = eco.pollution || 30;
+  const health = getEcologyHealth(eco);
+  const pollution = eco?.pollution ?? DEFAULT_ECOLOGY.pollution;
   if (pollution > 60) return { tier: 'polluted', label: '污染严重', color: '#C62828' };
-  if (avg >= 70 && pollution < 30) return { tier: 'thriving', label: '生态繁荣', color: '#2E7D32' };
-  if (avg >= 50) return { tier: 'stable', label: '生态稳定', color: '#1976D2' };
+  if (health >= 70 && pollution < 30) return { tier: 'thriving', label: '生态繁荣', color: '#2E7D32' };
+  if (health >= 50) return { tier: 'stable', label: '生态稳定', color: '#1976D2' };
   return { tier: 'fragile', label: '生态脆弱', color: '#F57C00' };
 }
 
@@ -298,7 +307,7 @@ export function getRegionStage(mapId, ecology, clearedCrises = [], badges = 99) 
   if (activeCrisis) return { stage: 1, ...REGION_STAGE_DEFS[0] };
   const cfg = MAP_REGION_STAGES[mapId];
   if (!cfg) return { stage: 3, ...REGION_STAGE_DEFS[2] };
-  const avg = ECO_METRIC_KEYS.reduce((s, k) => s + (ecology?.[k] ?? 50), 0) / ECO_METRIC_KEYS.length;
+  const avg = getEcologyHealth(ecology);
   const thresholds = cfg.thresholds || [0, 45, 60, 75, 85];
   let stage = 2;
   for (let i = thresholds.length - 1; i >= 1; i--) {
@@ -308,9 +317,10 @@ export function getRegionStage(mapId, ecology, clearedCrises = [], badges = 99) 
   return { stage, ...def };
 }
 
-export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS) {
+export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMapId = null) {
   const result = { ...ecologyByMap };
   chains.forEach(chain => {
+    if (sourceMapId != null && Number(chain.fromMap) !== Number(sourceMapId)) return;
     const fromEco = result[chain.fromMap] || getDefaultEcologyForMap(chain.fromMap);
     const met = Object.entries(chain.condition || {}).every(([k, cond]) => {
       const val = fromEco[k] ?? 50;
@@ -325,7 +335,7 @@ export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS) {
         if (Number.isNaN(mapKey)) return;
         const eco = { ...(result[mapKey] || getDefaultEcologyForMap(mapKey)) };
         Object.entries(chain.effect || {}).forEach(([ek, ev]) => {
-          if (ECO_METRIC_KEYS.includes(ek)) eco[ek] = (eco[ek] || 50) + ev;
+          if (ECO_METRIC_KEYS.includes(ek)) eco[ek] = (eco[ek] ?? 50) + ev;
         });
         result[mapKey] = clampEcology(eco);
       });
@@ -333,7 +343,7 @@ export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS) {
     }
     const toEco = { ...(result[chain.toMap] || getDefaultEcologyForMap(chain.toMap)) };
     Object.entries(chain.effect || {}).forEach(([k, v]) => {
-      if (ECO_METRIC_KEYS.includes(k)) toEco[k] = (toEco[k] || 50) + v;
+      if (ECO_METRIC_KEYS.includes(k)) toEco[k] = (toEco[k] ?? 50) + v;
     });
     result[chain.toMap] = clampEcology(toEco);
   });

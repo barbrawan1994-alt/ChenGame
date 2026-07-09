@@ -75,18 +75,25 @@ export const NATIONAL_CALAMITIES = [
   },
 ];
 
-/** 每周轮换灾厄组合（按年月日计算周数，确保每周不同且不重复） */
+/** 根据本地日期字符串生成稳定的 ISO 周键，避免跨月或时区导致周次错乱。 */
+export function getCalamityWeekKey(dateStr) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  const year = match ? Number(match[1]) : 2026;
+  const month = match ? Number(match[2]) : 1;
+  const day = match ? Number(match[3]) : 1;
+  const date = new Date(Date.UTC(year, Math.max(0, month - 1), Math.max(1, day)));
+  const isoDay = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - isoDay);
+  const weekYear = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(weekYear, 0, 1));
+  const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${weekYear}-W${String(week).padStart(2, '0')}`;
+}
+
 export function getActiveNationalCalamities(dateStr, badgeCount) {
-  const parts = (dateStr || '').split('-').map(n => parseInt(n, 10) || 0);
-  const year = parts[0] || 2026;
-  const month = parts[1] || 1;
-  const day = parts[2] || 1;
-  const daysInMonth = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
-  let dayOfYear = day;
-  for (let m = 1; m < month; m++) dayOfYear += daysInMonth[m] || 30;
-  if (month > 2 && isLeap) dayOfYear += 1;
-  const weekNumber = Math.floor(dayOfYear / 7) + year * 52;
+  const weekKey = getCalamityWeekKey(dateStr);
+  const [weekYear, week] = weekKey.split('-W').map(Number);
+  const weekNumber = weekYear * 53 + week;
   const available = NATIONAL_CALAMITIES.filter(c => badgeCount >= c.reqBadges);
   if (!available.length) return [];
   if (available.length === 1) return [available[0]];

@@ -349,32 +349,35 @@ const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 const getRankIndex = (rankId) => Math.max(0, GANG_RANKS.findIndex(r => r.id === rankId));
 
-export const evaluateGangWarTarget = ({ targetGang, ownGang, rank, kingdomWar, partyAvgLevel = 50 }) => {
+export const evaluateGangWarTarget = ({ targetGang, ownGang, kingdomWar, partyAvgLevel = 50, isOwner = false }) => {
   if (!targetGang) return null;
   const reward = getGangWarReward(targetGang);
   const enemyLv = getGangWarLevel(targetGang);
-  const ownRankIdx = getRankIndex(rank?.id || 'member');
-  const ownPower = (ownGang?.power || 1200) + partyAvgLevel * 38 + ownRankIdx * 220 + ((kingdomWar?.faction && ownGang?.faction === kingdomWar.faction) ? 260 : 0);
-  const enemyPower = (targetGang.power || 1200) + enemyLv * 34 + (targetGang.wins || 0) * 18;
-  const pressure = ownPower / Math.max(1, enemyPower);
-  const winChance = clamp(0.12 + (pressure / (pressure + 0.95)) * 0.8, 0.12, 0.9);
-  const rewardScore = Math.round(reward.contribution * 1.4 + reward.funds / 180 + enemyLv * 0.35);
+  // 实战会生成 enemyLv 到 enemyLv-5 的六只精灵，期望均级约为 enemyLv-2.5。
+  // 帮派职位、历史胜场和阵营关系不会改变实战属性，因此不再虚增预估胜率。
+  const enemyAvgLevel = Math.max(50, enemyLv - 2.5);
+  const levelDelta = partyAvgLevel - enemyAvgLevel;
+  const winChance = clamp(0.5 + levelDelta * 0.035, 0.08, 0.92);
+  const pressure = partyAvgLevel / Math.max(1, enemyAvgLevel);
+  const ownerFundsValue = isOwner ? reward.funds / 180 : 0;
+  const rewardScore = Math.round(reward.contribution * 1.4 + ownerFundsValue + enemyLv * 0.35);
   const riskLabel = winChance >= 0.72 ? '稳胜' : winChance >= 0.56 ? '可战' : winChance >= 0.42 ? '胶着' : '高危';
-  const difficultyScore = Math.round(clamp((1 - winChance) * 72 + enemyLv * 0.22 + Math.max(0, (targetGang.wins || 0) - (ownGang?.wins || 0)) * 1.8, 8, 96));
+  const difficultyScore = Math.round(clamp((1 - winChance) * 82 + enemyLv * 0.16, 8, 96));
   const preparation = [];
   if (partyAvgLevel < enemyLv - 8) preparation.push(`首发均级建议提升到 Lv.${Math.max(1, enemyLv - 6)} 左右`);
-  if (winChance < 0.62) preparation.push('先做帮派任务换帮贡，补战力/贡献类技能');
-  if (kingdomWar?.faction && targetGang.faction === kingdomWar.faction) preparation.push('同阵营目标会牵制盟友，除非急缺资金不建议打');
-  if ((ownGang?.funds || 0) < 5000 && reward.funds >= 5000) preparation.push('资金短缺时可冒险打高资金目标');
+  if (winChance < 0.62) preparation.push('先提升首发等级并调整属性克制，再消耗帮战次数');
+  if (kingdomWar?.faction && targetGang.faction === kingdomWar.faction) preparation.push('同阵营目标会牵制盟友，除非任务需要不建议打');
+  if (isOwner && (ownGang?.funds || 0) < 5000 && reward.funds >= 5000) preparation.push('帮派资金短缺时可冒险打高资金目标');
   const advice = [];
-  if (winChance < 0.5) advice.push('先提升首发等级或帮派技能');
+  if (winChance < 0.5) advice.push('先提升首发等级或调整属性克制');
   if (targetGang.faction && kingdomWar?.faction && targetGang.faction !== kingdomWar.faction) advice.push('敌国帮派，胜利会顺带推进国战任务');
-  if ((targetGang.skills?.gs_trade || 0) >= 2) advice.push('商队型目标，资金收益更高');
+  if (isOwner && (targetGang.skills?.gs_trade || 0) >= 2) advice.push('商队型目标，帮派资金收益更高');
   if ((targetGang.skills?.gs_contrib || 0) >= 2) advice.push('军功型目标，帮贡回报更好');
 
   return {
     targetId: targetGang.id,
     enemyLv,
+    enemyAvgLevel,
     reward,
     pressure,
     winChance,

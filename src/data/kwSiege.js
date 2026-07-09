@@ -5,13 +5,14 @@
 
 import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult, buildSiegeCombatParams } from './kingdom';
 import { getGeneralById } from './generals';
+import { MANPOWER_RESERVE_CAP } from './kingdomConstants';
 
 export const CONTESTED_SIEGE_MAP_IDS = CONTESTED_MAP_IDS;
 
 /** 争夺条参与方：魏蜀吴晋 + 群雄 AI */
 export const CONTEST_BAR_IDS = ['wei', 'shu', 'wu', 'jin', 'qun'];
 
-export const MANPOWER_RESERVE_CAP = 2800;
+export { MANPOWER_RESERVE_CAP };
 
 /** 控制城池所需的占领积分阈值（四势力拉锯） */
 export const CONTEST_CAPTURE_THRESHOLD = 28;

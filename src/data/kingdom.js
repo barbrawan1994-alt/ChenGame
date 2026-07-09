@@ -3,6 +3,7 @@
 // ==========================================
 
 import { SANGUO_GENERALS } from './generals';
+import { MANPOWER_RESERVE_CAP } from './kingdomConstants';
 
 export const FACTIONS = {
   wei: {
@@ -872,7 +873,6 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
 
     if (attackerFid === weakest) atkRoll *= (1 + cfg.underdogBonus);
     if (attackerFid === 'qun') atkRoll *= (0.85 + Math.random() * 0.3);
-    if (attackBuff && attackerFid === playerFaction) atkRoll *= 1.5;
 
     target.contested = true;
     target.attackerFaction = attackerFid;
@@ -965,7 +965,7 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     territories: initTerritories(),
     contestProgress: {},
     season: kw.season + 1,
-    kwManpowerReserve: Math.min(2800, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
+    kwManpowerReserve: Math.min(MANPOWER_RESERVE_CAP, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
     grain: Math.floor((kw.grain || 0) * 0.3),
     eliteTroops: Math.floor((kw.eliteTroops || 0) * 0.3),
     morale: Math.max(60, Math.floor((kw.morale || 100) * 0.8)),
@@ -1055,7 +1055,9 @@ export const getScoutAdjacentIntel = (mapId, playerFaction, territories, scoutRa
   }).filter(Boolean);
 };
 
-const _todayStr = () => new Date().toISOString().slice(0, 10);
+export const getKingdomDateKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const _todayStr = () => getKingdomDateKey();
 
 /** 中郎将特权：每日集结令（己方领地+强度） */
 export const useWarRally = (kw, rankStats = null) => {
@@ -1256,15 +1258,14 @@ export const KINGDOM_CAMPAIGNS = [
 export const CAPITAL_MAP_IDS = { wei: 201, shu: 202, wu: 203, jin: 207 };
 
 // 重置每日计数
-export const resetKingdomDailyCounts = (kw) => {
-  const today = new Date().toISOString().slice(0, 10);
-  if (kw.dailyCounts.resetDate !== today) {
+export const resetKingdomDailyCounts = (kw, today = getKingdomDateKey()) => {
+  if (kw.dailyCounts?.resetDate !== today) {
     const territoryCount = kw.faction ? getFactionTerritoryCount(kw.faction, kw.territories || {}) : 0;
     const grainGain = territoryCount * RECRUIT_CONFIG.grainPerTerritory;
     const grainCap = calcGrainCap(kw);
     return {
       ...kw,
-      dailyCounts: { income: false, kills: 0, capitalReward: false, resetDate: today },
+      dailyCounts: { income: false, kills: 0, capitalReward: false, territorySieges: 0, resetDate: today },
       dailySiegeCount: 0,
       dailySiegeDate: today,
       grain: Math.min(grainCap, (kw.grain || 0) + grainGain),
@@ -1342,7 +1343,7 @@ export const recruitTroops = (kw, type = 'normal') => {
       grain: (kw.grain || 0) - cost.grain,
       kwManpowerReserve: isElite
         ? kw.kwManpowerReserve
-        : Math.min(2800, (kw.kwManpowerReserve || 0) + gain),
+        : Math.min(MANPOWER_RESERVE_CAP, (kw.kwManpowerReserve || 0) + gain),
       eliteTroops: isElite
         ? Math.min(1200, (kw.eliteTroops || 0) + gain)
         : kw.eliteTroops,
@@ -1567,14 +1568,18 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
   return { type: 'attack_fail', faction: fid, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻城受挫` };
 };
 
-/** 玩家每行动一次，所有敌方各行动一次 */
+/** 玩家每行动一次，仅轮转触发一个敌方行动，避免四打一的行动经济。 */
 export const executeAllEnemyActions = (kw, gangPresets, playerAvgLevel = 50) => {
   if (!kw?.faction) return { kw, logs: [] };
   const territories = JSON.parse(JSON.stringify(kw.territories || {}));
   const factionManpower = ensureFactionManpower(kw);
   const logs = [];
-  for (const fid of ALL_FACTION_IDS) {
-    if (fid === kw.faction) continue;
+  const enemies = ALL_FACTION_IDS.filter(fid => fid !== kw.faction);
+  const actionCounter = Math.max(0, Number(kw.actionCounter) || 0);
+  // 玩家动作通常会先将 actionCounter +1，因此减一后让首回合从第一个敌方开始。
+  const enemyIndex = Math.max(0, actionCounter - 1) % Math.max(1, enemies.length);
+  const fid = enemies[enemyIndex];
+  if (fid) {
     const action = pickAiAction(fid, territories, factionManpower, kw.faction);
     let result = null;
     if (action === 'recruit') result = aiRecruit(fid, territories, factionManpower);
