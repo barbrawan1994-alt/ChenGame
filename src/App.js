@@ -27381,8 +27381,26 @@ const renderMenu = () => {
         '凶萌':   '#9E9E9E'  // D级 - 灰色
     };
 
+    // 属性、门派与评级颜色来自多套配置；浅色底统一改用深色字，避免白字失去对比度。
+    const getReadableTextColor = (backgroundColor, dark = '#173042', light = '#fffaf0') => {
+        const getLuminance = (color) => {
+            if (typeof color !== 'string') return null;
+            const hex = color.trim().replace('#', '');
+            if (!/^[0-9a-f]{6}$/i.test(hex)) return null;
+            const channels = [0, 2, 4].map(offset => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+            const [r, g, b] = channels.map(channel => channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4));
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        const backgroundLuminance = getLuminance(backgroundColor);
+        const darkLuminance = getLuminance(dark);
+        const lightLuminance = getLuminance(light);
+        if (backgroundLuminance == null || darkLuminance == null || lightLuminance == null) return light;
+        const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        return contrast(backgroundLuminance, darkLuminance) >= contrast(backgroundLuminance, lightLuminance) ? dark : light;
+    };
+
     return (
-        <div className="modal-overlay" onClick={() => setViewStatPet(null)} style={{
+        <div className="modal-overlay spirit-pet-detail-overlay" onClick={() => setViewStatPet(null)} style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
@@ -27399,17 +27417,17 @@ const renderMenu = () => {
             {(() => {
                 const { grade, leftAvg, rightAvg } = calculateGrade(viewStatPet);
                 const getGradeColor = (g) => {
-                    if (g === 'S') return '#FFD700';
-                    if (g === 'A') return '#FF4081';
-                    if (g === 'B') return '#2196F3';
-                    return '#9E9E9E';
+                    if (g === 'S') return '#8A5A00';
+                    if (g === 'A') return '#B42360';
+                    if (g === 'B') return '#0B65A8';
+                    return '#5D6870';
                 };
                 const gradeColor = getGradeColor(grade);
                 const getScoreColor = (sc) => {
-                    if (sc >= 80) return '#FFD700';
-                    if (sc >= 50) return '#FF4081';
-                    if (sc >= 30) return '#2196F3';
-                    return '#9E9E9E';
+                    if (sc >= 80) return '#8A5A00';
+                    if (sc >= 50) return '#B42360';
+                    if (sc >= 30) return '#0B65A8';
+                    return '#5D6870';
                 };
                 const getScoreLetter = (sc) => {
                     if (sc >= 80) return 'S';
@@ -27432,19 +27450,19 @@ const renderMenu = () => {
                         {grade}
                     </div>
 
-                    <div style={{fontSize:'45px', borderRadius:'50%', width:'70px', height:'70px', display:'flex', alignItems:'center', justifyContent:'center', marginRight:'15px', overflow:'hidden', padding:'5px', position:'relative',
+                    <div className="pet-detail-avatar" style={{fontSize:'45px', borderRadius:'50%', width:'70px', height:'70px', display:'flex', alignItems:'center', justifyContent:'center', marginRight:'15px', overflow:'hidden', padding:'5px', position:'relative',
                       background: viewStatPet.isFusedShiny ? 'linear-gradient(135deg, #F3E5F5, #CE93D8)' : viewStatPet.isShiny ? 'linear-gradient(135deg, #FFF8E1, #FFD54F)' : '#f5f5f5',
                       boxShadow: viewStatPet.isFusedShiny ? '0 0 12px rgba(213,0,249,0.4)' : viewStatPet.isShiny ? '0 0 12px rgba(255,215,0,0.4)' : 'none'
                     }}>
                         {renderAvatar(viewStatPet)}
                     </div>
-                    <div>
-                        <div style={{fontSize:'20px', fontWeight:'bold'}}>
+                    <div className="pet-detail-identity">
+                        <div className="pet-detail-name" style={{fontSize:'20px', fontWeight:'bold'}}>
                           {viewStatPet.name}
                           {viewStatPet.isFusedShiny ? (
                             <span style={{marginLeft:'6px', background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'10px', padding:'2px 8px', borderRadius:'8px', fontWeight:'bold', verticalAlign:'middle'}}>🧬 异色</span>
                           ) : viewStatPet.isShiny ? (
-                            <span style={{marginLeft:'6px', background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'10px', padding:'2px 8px', borderRadius:'8px', fontWeight:'bold', verticalAlign:'middle'}}>✨ 闪光</span>
+                            <span style={{marginLeft:'6px', background:'linear-gradient(135deg,#FFD700,#FF8F00)', color:'#3A2400', fontSize:'10px', padding:'2px 8px', borderRadius:'8px', fontWeight:'bold', verticalAlign:'middle'}}>✨ 闪光</span>
                           ) : null}
                           {viewStatPet.legacyCount > 0 && (
                             <span style={{marginLeft:'4px', background:'linear-gradient(135deg,#7c3aed,#a78bfa)', color:'#fff', fontSize:'9px', padding:'2px 6px', borderRadius:'6px', fontWeight:'bold', verticalAlign:'middle'}}>🎓 传承×{viewStatPet.legacyCount}</span>
@@ -27453,11 +27471,11 @@ const renderMenu = () => {
                             <span style={{marginLeft:'4px', background:'linear-gradient(135deg,#6d28d9,#8b5cf6)', color:'#fff', fontSize:'9px', padding:'2px 6px', borderRadius:'6px', fontWeight:'bold', verticalAlign:'middle'}}>📖 继承技·{viewStatPet.inheritedMove}</span>
                           )}
                         </div>
-                        <div style={{display:'flex', gap:'6px', marginTop:'5px', flexWrap:'wrap'}}>
-                        <span style={{background: TYPES[viewStatPet.type]?.color, color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
+                        <div className="pet-detail-meta" style={{display:'flex', gap:'6px', marginTop:'5px', flexWrap:'wrap'}}>
+                        <span style={{background: TYPES[viewStatPet.type]?.color, color:getReadableTextColor(TYPES[viewStatPet.type]?.color), padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
                             {TYPES[viewStatPet.type]?.name}
                         </span>
-                        {viewStatPet.secondaryType && <span style={{background: TYPES[viewStatPet.secondaryType]?.color, color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
+                        {viewStatPet.secondaryType && <span style={{background: TYPES[viewStatPet.secondaryType]?.color, color:getReadableTextColor(TYPES[viewStatPet.secondaryType]?.color), padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
                             {TYPES[viewStatPet.secondaryType]?.name}
                         </span>}
                         <span style={{background:'#333', color:'#fff', padding:'2px 8px', borderRadius:'4px', fontSize:'10px'}}>
@@ -27479,7 +27497,7 @@ const renderMenu = () => {
                         })()}
                         </div>
                     </div>
-                    <button className="pet-detail-close" aria-label="关闭精灵详情" title="关闭" onClick={() => setViewStatPet(null)} style={{marginLeft:'auto', border:'none', background:'transparent', fontSize:'24px', color:'#999'}}>×</button>
+                    <button className="pet-detail-close" aria-label="关闭精灵详情" title="关闭" onClick={() => setViewStatPet(null)} style={{marginLeft:'auto', border:'none', background:'transparent', fontSize:'24px', color:'#fffaf0'}}>×</button>
                 </div>
                 {(() => {
                   const dexE = POKEDEX.find(p => p.id === viewStatPet.id);
@@ -27488,7 +27506,7 @@ const renderMenu = () => {
                   if (!nextDex || viewStatPet.isEvolved) return null;
                   const needLv = dexE?.evoLvl || 36;
                   return (
-                    <div style={{ margin: '0 20px 12px', padding: '10px 12px', background: '#E3F2FD', borderRadius: '10px', fontSize: '11px', color: '#1565C0', border: '1px solid #BBDEFB' }}>
+                    <div className="pet-detail-section pet-detail-evolution-note" style={{ margin: '0 20px 12px', padding: '10px 12px', background: '#E3F2FD', borderRadius: '10px', fontSize: '11px', color: '#1565C0', border: '1px solid #BBDEFB' }}>
                       <span style={{ fontWeight: '800' }}>⬆ 下一进化：</span> {nextDex.icon || '🐾'} {nextDex.name} · 需 Lv.{needLv}+
                       {(viewStatPet.level || 0) < needLv ? `（还差 ${needLv - (viewStatPet.level || 0)} 级）` : '（已满足等级，可进化）'}
                     </div>
@@ -27496,7 +27514,7 @@ const renderMenu = () => {
                 })()}
 
                 {/* 1.5 属性克制信息 */}
-                <div style={{margin:'0 20px 10px', background:'#f9f9f9', borderRadius:'10px', padding:'10px 12px', border:'1px solid #eee'}}>
+                <div className="pet-detail-section pet-detail-matchups" style={{margin:'0 20px 10px', background:'#f9f9f9', borderRadius:'10px', padding:'10px 12px', border:'1px solid #eee'}}>
                   {(() => {
                     const chart = {
                       NORMAL:  { weak: ['ROCK', 'STEEL'], strong: [] },
@@ -27574,7 +27592,7 @@ const renderMenu = () => {
 
                     const renderTypePills = (types, style) => [...types].filter(tt => TYPES[tt]).map(tt => (
                       <span key={tt} style={{
-                        background: TYPES[tt]?.color, color:'#fff', padding:'1px 6px',
+                        background: TYPES[tt]?.color, color:getReadableTextColor(TYPES[tt]?.color), padding:'1px 6px',
                         borderRadius:'4px', fontSize:'9px', fontWeight:'bold', ...style
                       }}>{TYPES[tt]?.name}</span>
                     ));
@@ -27582,25 +27600,25 @@ const renderMenu = () => {
                     return (
                       <div>
                         <div style={{fontSize:'11px', fontWeight:'bold', color:'#555', marginBottom:'6px', display:'flex', alignItems:'center', gap:'4px'}}>
-                          ⚔️ 属性克制 {t2 && <span style={{fontSize:'9px', color:'#999', fontWeight:'normal'}}>({TYPES[t1]?.name}+{TYPES[t2]?.name} 双属性综合)</span>}
+                          ⚔️ 属性克制 {t2 && <span style={{fontSize:'9px', color:'#596875', fontWeight:'normal'}}>({TYPES[t1]?.name}+{TYPES[t2]?.name} 双属性综合)</span>}
                         </div>
                         <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
                           <div style={{display:'flex', alignItems:'flex-start', gap:'6px'}}>
                             <span style={{fontSize:'10px', color:'#E53935', minWidth:'50px', fontWeight:'bold', flexShrink:0}}>⬆️ 克制</span>
                             <div style={{display:'flex', gap:'3px', flexWrap:'wrap'}}>
-                              {strongAgainst.size > 0 ? renderTypePills(strongAgainst) : <span style={{fontSize:'9px', color:'#999'}}>无特殊克制</span>}
+                              {strongAgainst.size > 0 ? renderTypePills(strongAgainst) : <span style={{fontSize:'9px', color:'#596875'}}>无特殊克制</span>}
                             </div>
                           </div>
                           <div style={{display:'flex', alignItems:'flex-start', gap:'6px'}}>
                             <span style={{fontSize:'10px', color:'#1E88E5', minWidth:'50px', fontWeight:'bold', flexShrink:0}}>⬇️ 弱点</span>
                             <div style={{display:'flex', gap:'3px', flexWrap:'wrap'}}>
-                              {weakTo.size > 0 ? renderTypePills(weakTo) : <span style={{fontSize:'9px', color:'#999'}}>无明显弱点</span>}
+                              {weakTo.size > 0 ? renderTypePills(weakTo) : <span style={{fontSize:'9px', color:'#596875'}}>无明显弱点</span>}
                             </div>
                           </div>
                           <div style={{display:'flex', alignItems:'flex-start', gap:'6px'}}>
                             <span style={{fontSize:'10px', color:'#43A047', minWidth:'50px', fontWeight:'bold', flexShrink:0}}>🛡️ 抵抗</span>
                             <div style={{display:'flex', gap:'3px', flexWrap:'wrap'}}>
-                              {resistTo.size > 0 ? renderTypePills(resistTo) : <span style={{fontSize:'9px', color:'#999'}}>无特殊抵抗</span>}
+                              {resistTo.size > 0 ? renderTypePills(resistTo) : <span style={{fontSize:'9px', color:'#596875'}}>无特殊抵抗</span>}
                             </div>
                           </div>
                         </div>
@@ -27610,11 +27628,11 @@ const renderMenu = () => {
                 </div>
 
                 {/* 2. 属性对比区域 */}
-                <div style={{padding:'20px'}}>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px', fontSize:'12px', fontWeight:'bold', color:'#555'}}>
+                <div className="pet-detail-stats" style={{padding:'20px'}}>
+                    <div className="pet-detail-stats-head" style={{display:'flex', justifyContent:'space-between', marginBottom:'15px', fontSize:'12px', fontWeight:'bold', color:'#555'}}>
                         
                         {/* --- 左侧：当前能力 --- */}
-                        <div 
+                        <div className="pet-detail-score-card"
                             style={{width:'48%', display:'flex', justifyContent:'space-between', cursor:'help', position: 'relative'}}
                             onMouseEnter={() => setStatTooltip('current_stats')}
                             onMouseLeave={() => setStatTooltip(null)}
@@ -27630,14 +27648,14 @@ const renderMenu = () => {
                                     fontSize: '11px', fontWeight: 'normal', zIndex: 100, pointerEvents: 'none',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.3)', border: '1px solid #444'
                                 }}>
-                                    <div style={{color:'#FFD700', marginBottom:'2px'}}>当前属性 / 理论极限</div>
-                                    <div style={{color:'#ccc', lineHeight:'1.4'}}>反映该精灵在当前等级下的战斗力水平。</div>
+                                    <div style={{color:'#FFD76A', marginBottom:'2px'}}>当前属性 / 理论极限</div>
+                                    <div style={{color:'#E4EAF0', lineHeight:'1.4'}}>反映该精灵在当前等级下的战斗力水平。</div>
                                 </div>
                             )}
                         </div>
 
                         {/* --- 右侧：成长潜力 --- */}
-                        <div 
+                        <div className="pet-detail-score-card"
                             style={{width:'48%', display:'flex', justifyContent:'space-between', cursor:'help', position: 'relative'}}
                             onMouseEnter={() => setStatTooltip('potential_stats')}
                             onMouseLeave={() => setStatTooltip(null)}
@@ -27654,7 +27672,7 @@ const renderMenu = () => {
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.3)', border: '1px solid #444'
                                 }}>
                                     <div style={{color:'#00E676', marginBottom:'2px'}}>每级成长值</div>
-                                    <div style={{color:'#ccc', lineHeight:'1.4'}}>每升1级各项属性加成；数值越高成长越好。</div>
+                                    <div style={{color:'#E4EAF0', lineHeight:'1.4'}}>每升1级各项属性加成；数值越高成长越好。</div>
                                 </div>
                             )}
                         </div>
@@ -27709,7 +27727,7 @@ const renderMenu = () => {
                             };
 
                             return (
-                            <div key={cfg.k} style={{display:'flex', alignItems:'center', height:'28px', background:'#f9f9f9', borderRadius:'6px', padding:'0 8px'}}>
+                            <div className="pet-detail-stat-row" key={cfg.k} style={{display:'flex', alignItems:'center', height:'28px', background:'#f9f9f9', borderRadius:'6px', padding:'0 8px'}}>
                                 <div style={{flex:1, display:'flex', alignItems:'center', borderRight:'1px solid #eee', paddingRight:'8px'}}>
                                     <div style={{fontSize:'10px', color:'#666', width:'24px'}}>{cfg.n}</div>
                                     <div style={{flex:1, height:'6px', background:'#e0e0e0', borderRadius:'3px', overflow:'hidden', margin:'0 6px'}}>
@@ -27732,18 +27750,18 @@ const renderMenu = () => {
                     </div>
                     {/* 个体值 (IV) 网格 */}
                     {viewStatPet.ivs && (
-                      <div style={{marginTop:'8px', padding:'8px', background:'#f5f0ff', borderRadius:'8px', border:'1px solid #d0c0f0'}}>
+                      <div className="pet-detail-iv-card" style={{marginTop:'8px', padding:'8px', background:'#f5f0ff', borderRadius:'8px', border:'1px solid #d0c0f0'}}>
                         <div style={{fontSize:'10px', color:'#7B1FA2', fontWeight:'bold', marginBottom:'6px'}}>
                           个体值 (IV) — 总计 {(() => { const vs = viewStatPet.ivs; const mainKeys = ['maxHp','hp','p_atk','p_def','s_atk','s_def','spd']; return mainKeys.reduce((s,k) => s + (vs[k] || 0), 0); })()}/186
                         </div>
-                        <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', marginTop:'2px', marginBottom:'6px'}}>
+                        <div style={{fontSize:'9px', color:'#725d86', marginTop:'2px', marginBottom:'6px'}}>
                           成长潜力: {'★'.repeat(Math.min(5, Math.ceil((viewStatPet.ivs?.maxHp ?? viewStatPet.ivs?.hp ?? 15) / 6)))}
                         </div>
                         <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'4px'}}>
                           {[{k:'maxHp',n:'HP'},{k:'p_atk',n:'物攻'},{k:'p_def',n:'物防'},{k:'s_atk',n:'特攻'},{k:'s_def',n:'特防'},{k:'spd',n:'速度'}].map(e => {
                             const v = viewStatPet.ivs[e.k] ?? viewStatPet.ivs[e.k === 'maxHp' ? 'hp' : e.k] ?? 0;
                             const pct = Math.round(v / 31 * 100);
-                            const color = pct >= 90 ? '#FFD700' : pct >= 70 ? '#7B1FA2' : pct >= 40 ? '#2196F3' : '#999';
+                            const color = pct >= 90 ? '#8A5A00' : pct >= 70 ? '#7B1FA2' : pct >= 40 ? '#0B65A8' : '#5D6870';
                             return (
                               <div key={e.k} style={{display:'flex',alignItems:'center',gap:'4px'}}>
                                 <span style={{fontSize:'9px',color:'#666',width:'24px'}}>{e.n}</span>
@@ -27758,7 +27776,7 @@ const renderMenu = () => {
                       </div>
                     )}
                     {viewStatPet.evs && Object.values(viewStatPet.evs).some(v => v > 0) && (
-                      <div style={{marginTop:'8px', padding:'8px', background:'#f0f9ff', borderRadius:'8px', border:'1px solid #b3e0ff'}}>
+                      <div className="pet-detail-ev-card" style={{marginTop:'8px', padding:'8px', background:'#f0f9ff', borderRadius:'8px', border:'1px solid #b3e0ff'}}>
                         <div style={{fontSize:'10px', color:'#1565C0', fontWeight:'bold', marginBottom:'6px'}}>
                           努力值 (EV) — 总计 {Object.values(viewStatPet.evs).reduce((s,v)=>s+(v||0),0)}/{TRAINING_TOTAL_MAX_EV || 510}
                         </div>
@@ -27787,7 +27805,7 @@ const renderMenu = () => {
 
             {/* 结契标记 */}
             {viewStatPet.bonded && (
-              <div style={{margin:'0 20px 10px', padding:'8px 14px', borderRadius:'10px', background:'linear-gradient(90deg,#311B92,#512DA8)', color:'#fff', fontSize:'12px', fontWeight:'700', textAlign:'center'}}>
+              <div className="pet-detail-section pet-detail-bond-note" style={{margin:'0 20px 10px', padding:'8px 14px', borderRadius:'10px', background:'linear-gradient(90deg,#311B92,#512DA8)', color:'#fff', fontSize:'12px', fontWeight:'700', textAlign:'center'}}>
                 💫 结契精灵 · 初始亲密度更高
               </div>
             )}
@@ -27797,7 +27815,7 @@ const renderMenu = () => {
               const tagIds = inferPetTags(viewStatPet);
               if (!tagIds.length) return null;
               return (
-                <div style={{margin:'0 20px 12px', background:'linear-gradient(135deg,#f3e5f5,#e8eaf6)', borderRadius:'12px', padding:'12px 14px', border:'1px solid #ce93d8'}}>
+                <div className="pet-detail-section pet-detail-tags" style={{margin:'0 20px 12px', background:'linear-gradient(135deg,#f3e5f5,#e8eaf6)', borderRadius:'12px', padding:'12px 14px', border:'1px solid #ce93d8'}}>
                   <div style={{fontSize:'10px', color:'#7B1FA2', fontWeight:'bold', marginBottom:'8px'}}>精灵标签 · 探索与副本适性</div>
                   <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
                     {tagIds.map(tid => {
@@ -27818,11 +27836,11 @@ const renderMenu = () => {
             })()}
 
             {/* 🔥 [修复] 特性/魅力/亲密度 展示卡片 🔥 */}
-            <div style={{margin:'0 20px 15px', background:'#fff', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', justifyContent:'space-between', border:'1px solid #eee'}}>
+            <div className="pet-detail-section pet-detail-traits" style={{margin:'0 20px 15px', background:'#fff', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', justifyContent:'space-between', border:'1px solid #eee'}}>
                 
                 {/* 特性 */}
                 <div style={{flex:1.2, borderRight:'1px solid #eee', paddingRight:'10px'}}>
-                    <div style={{fontSize:'10px', color:'#999', marginBottom:'4px', fontWeight:'bold'}}>特性 (Trait)</div>
+                    <div style={{fontSize:'10px', color:'#596875', marginBottom:'4px', fontWeight:'bold'}}>特性 (Trait)</div>
                     <div style={{fontSize:'13px', fontWeight:'bold', color:'#673AB7', display:'flex', alignItems:'center', gap:'5px'}}>
                         {TRAIT_DB[viewStatPet.trait]?.name || '无'}
                     </div>
@@ -27838,12 +27856,12 @@ const renderMenu = () => {
                 {/* 魅力 & 亲密度 (修复：添加评级显示) */}
                 <div style={{flex:0.8, paddingLeft:'15px', display:'flex', flexDirection:'column', justifyContent:'center', gap:'8px'}}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <span style={{fontSize:'10px', color:'#999'}}>魅力</span>
+                        <span style={{fontSize:'10px', color:'#596875'}}>魅力</span>
                         <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
                             {/* 🔥 新增：魅力评级标签 */}
                             <span style={{
-                                fontSize:'9px', color:'#fff', 
-                                background: CHARM_RANK_COLORS[viewStatPet.charmRank || '凶萌'] || '#999', 
+                                fontSize:'9px', color:getReadableTextColor(CHARM_RANK_COLORS[viewStatPet.charmRank || '凶萌'] || '#5D6870'),
+                                background: CHARM_RANK_COLORS[viewStatPet.charmRank || '凶萌'] || '#5D6870',
                                 padding:'1px 4px', borderRadius:'4px', fontWeight:'bold'
                             }}>
                                 {viewStatPet.charmRank || '凶萌'}
@@ -27855,7 +27873,7 @@ const renderMenu = () => {
                     </div>
                     <div style={{display:'flex', flexDirection:'column', gap:'6px', width:'100%'}}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <span style={{fontSize:'10px', color:'#999'}}>亲密</span>
+                          <span style={{fontSize:'10px', color:'#596875'}}>亲密</span>
                           <span style={{fontSize:'10px', fontWeight:'bold', color:'#F44336'}}>{viewStatPet.intimacy || 0}/255</span>
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'8px', width:'100%'}} title="亲密度">
@@ -27876,10 +27894,10 @@ const renderMenu = () => {
                         const g = getCurseGrade(bs, viewStatPet.curseTalent || 0);
                         return (
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                <span style={{fontSize:'10px', color:'#999'}}>咒级</span>
+                                <span style={{fontSize:'10px', color:'#596875'}}>咒级</span>
                                 <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                                    <span style={{fontSize:'9px', color:'#fff', background: g.color || '#999', padding:'1px 4px', borderRadius:'4px', fontWeight:'bold'}}>{g.name}</span>
-                                    <span style={{fontSize:'10px', color:'#aaa'}}>天赋{viewStatPet.curseTalent || 0}</span>
+                                    <span style={{fontSize:'9px', color:getReadableTextColor(g.color || '#5D6870'), background: g.color || '#5D6870', padding:'1px 4px', borderRadius:'4px', fontWeight:'bold'}}>{g.name}</span>
+                                    <span style={{fontSize:'10px', color:'#596875'}}>天赋{viewStatPet.curseTalent || 0}</span>
                                 </div>
                             </div>
                         );
@@ -27888,9 +27906,9 @@ const renderMenu = () => {
             </div>
 
             {viewStatPet.intimacy >= 80 && (
-              <div style={{margin:'0 20px 12px', padding:'8px', borderRadius:'8px', background:'rgba(255,215,0,0.03)', border:'1px solid rgba(255,215,0,0.08)'}}>
+              <div className="pet-detail-section pet-detail-talents" style={{margin:'0 20px 12px', padding:'8px', borderRadius:'8px', background:'rgba(255,215,0,0.03)', border:'1px solid rgba(255,215,0,0.08)'}}>
                 <div style={{fontSize:'10px', fontWeight:'700', color:'#FFD54F', marginBottom:'4px'}}>🌟 天赋能力</div>
-                <div style={{ fontSize: '9px', color: 'rgba(0,0,0,0.45)', marginBottom: '6px', lineHeight: 1.45 }}>以下能力随亲密度解锁，仅在战斗中生效；与咒术天赋、门派加成独立计算。</div>
+                <div style={{ fontSize: '9px', color: '#5D6870', marginBottom: '6px', lineHeight: 1.45 }}>以下能力随亲密度解锁，仅在战斗中生效；与咒术天赋、门派加成独立计算。</div>
                 {[{ need: 100, label: '全力一击 (暴击率+5%)' }, { need: 150, label: '坚韧意志 (HP低于20%时防御+30%)' }, { need: 200, label: '灵魂共鸣 (属性加成+5%)' }].map(row => {
                   const int = viewStatPet.intimacy || 0;
                   const prev = row.need === 100 ? 80 : row.need === 150 ? 100 : 150;
@@ -27899,13 +27917,13 @@ const renderMenu = () => {
                   return (
                     <div key={row.need} style={{marginTop:'6px', display:'flex', alignItems:'stretch', gap:'8px'}}>
                       <div style={{width:'44px', flexShrink:0, display:'flex', flexDirection:'column', justifyContent:'center'}} title={`亲密度 ${int}/${row.need}`}>
-                        <div style={{fontSize:'9px', color:'rgba(0,0,0,0.35)', marginBottom:'2px'}}>{prev}→{row.need}</div>
+                        <div style={{fontSize:'9px', color:'#637383', marginBottom:'2px'}}>{prev}→{row.need}</div>
                         <div style={{height:'22px', borderRadius:'4px', background:'rgba(0,0,0,0.06)', overflow:'hidden', position:'relative'}}>
                           <div style={{position:'absolute', bottom:0, left:0, right:0, height:`${unlocked ? 100 : pct}%`, background: unlocked ? 'linear-gradient(180deg,#81C784,#4CAF50)' : 'linear-gradient(180deg,#FFD54F,#FF9800)', transition:'height 0.3s'}} />
                         </div>
                       </div>
                       <div style={{flex:1, minWidth:0}}>
-                        <div style={{fontSize:'9px', color:'rgba(0,0,0,0.45)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
+                        <div style={{fontSize:'9px', color:'#536473', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
                           <span>{unlocked ? '✅' : '🔒'} {row.label}{!unlocked ? ` · 亲密度${row.need}解锁` : ''}</span>
                         </div>
                         {!unlocked && (
@@ -27924,7 +27942,7 @@ const renderMenu = () => {
             {(() => {
                 const sect = viewStatPet.sectId ? SECT_DB[viewStatPet.sectId] : null;
                 if (!sect) return (
-                  <div style={{margin:'0 20px 15px', background:'#f5f5f5', border:'1px solid #ddd', borderRadius:'12px', padding:'12px', textAlign:'center', color:'#999', fontSize:'13px'}}>
+                  <div className="pet-detail-section pet-detail-sect" style={{margin:'0 20px 15px', background:'#f5f5f5', border:'1px solid #ddd', borderRadius:'12px', padding:'12px', textAlign:'center', color:'#596875', fontSize:'13px'}}>
                     该精灵尚未加入门派
                   </div>
                 );
@@ -27952,7 +27970,7 @@ const renderMenu = () => {
                 };
 
                 return (
-                    <div style={{margin:'0 20px 15px', background:`linear-gradient(135deg, ${sect.color}22, #fff)`, border:`1px solid ${sect.color}`, borderRadius:'12px', padding:'12px'}}>
+                    <div className="pet-detail-section pet-detail-sect" style={{margin:'0 20px 15px', background:`linear-gradient(135deg, ${sect.color}22, #fff)`, border:`1px solid ${sect.color}`, borderRadius:'12px', padding:'12px'}}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
                             <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
                                 <div style={{fontSize:'24px', background:'#fff', borderRadius:'50%', width:'36px', height:'36px', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 5px rgba(0,0,0,0.1)'}}>
@@ -27965,13 +27983,13 @@ const renderMenu = () => {
                             </div>
                             {!isMax ? (
                                 <button onClick={upgradeSect} style={{
-                                    background: sect.color, color:'#fff', border:'none', padding:'6px 12px', borderRadius:'20px', 
+                                    background: sect.color, color:getReadableTextColor(sect.color), border:'none', padding:'6px 12px', borderRadius:'20px',
                                     fontSize:'11px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 2px 5px rgba(0,0,0,0.2)'
                                 }}>
                                     修炼 (💰{cost})
                                 </button>
                             ) : (
-                                <span style={{fontSize:'12px', fontWeight:'bold', color:'#999', background:'#eee', padding:'4px 8px', borderRadius:'10px'}}>已圆满</span>
+                                <span style={{fontSize:'12px', fontWeight:'bold', color:'#596875', background:'#e5e8eb', padding:'4px 8px', borderRadius:'10px'}}>已圆满</span>
                             )}
                         </div>
                         <div style={{fontSize:'11px', color:'#555', background:'rgba(255,255,255,0.8)', padding:'8px', borderRadius:'6px', lineHeight:'1.4'}}>
@@ -27988,28 +28006,28 @@ const renderMenu = () => {
               const resonance = getActiveResonanceForPet(viewStatPet);
               const awakenCheck = canAwakenPet(viewStatPet, getAllOwnedPets());
               return (
-                <div style={{margin:'0 20px 15px', background:'linear-gradient(135deg,#1a1035,#2d1b69)', border:'1px solid rgba(167,139,250,0.35)', borderRadius:'12px', padding:'12px', color:'#fff'}}>
+                <div className="pet-detail-section pet-detail-resonance" style={{margin:'0 20px 15px', background:'linear-gradient(135deg,#1a1035,#2d1b69)', border:'1px solid rgba(167,139,250,0.35)', borderRadius:'12px', padding:'12px', color:'#fff'}}>
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
                     <div style={{fontWeight:'800', fontSize:'14px', color:'#c4b5fd'}}>✨ 跨界共鸣</div>
                     {viewStatPet.awakened && <span style={{fontSize:'11px', background:'rgba(255,213,79,0.2)', color:'#FFD54F', padding:'3px 8px', borderRadius:'8px', fontWeight:'700'}}>已觉醒</span>}
                   </div>
                   <div style={{display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'10px'}}>
                     {(resonance.activeCombos || []).length === 0 ? (
-                      <span style={{fontSize:'11px', color:'rgba(255,255,255,0.45)'}}>装备咒术/果实/门派并提升忍术精通以激活共鸣</span>
+                      <span style={{fontSize:'11px', color:'rgba(255,255,255,0.78)'}}>装备咒术/果实/门派并提升忍术精通以激活共鸣</span>
                     ) : (resonance.activeCombos || []).map(c => (
                       <span key={c.id} title={c.desc} style={{fontSize:'10px', padding:'4px 8px', borderRadius:'8px', background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#e9d5ff'}}>{c.icon} {c.name}</span>
                     ))}
                   </div>
                   {!viewStatPet.awakened && (
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'10px', paddingTop:'8px', borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.5)', lineHeight:1.5}}>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.82)', lineHeight:1.5}}>
                         觉醒条件：Lv.100 · 亲密度200 · EV400+ · 果实 · 传承
                         {!awakenCheck.ok && <div style={{color:'#fca5a5', marginTop:'2px'}}>{awakenCheck.reason}</div>}
                       </div>
                       <button type="button" disabled={!awakenCheck.ok} onClick={() => awakenPet(viewStatPet.uid)} style={{
                         padding:'8px 14px', borderRadius:'10px', border:'none', cursor: awakenCheck.ok ? 'pointer' : 'not-allowed',
                         background: awakenCheck.ok ? 'linear-gradient(135deg,#FFD54F,#FF8F00)' : 'rgba(255,255,255,0.08)',
-                        color: awakenCheck.ok ? '#1a1035' : '#888', fontSize:'12px', fontWeight:'800', flexShrink:0
+                        color: awakenCheck.ok ? '#1a1035' : '#D7DEE7', fontSize:'12px', fontWeight:'800', flexShrink:0
                       }}>🌟 觉醒</button>
                     </div>
                   )}
@@ -28019,17 +28037,17 @@ const renderMenu = () => {
                     const stratCheck = checkAwakeningTier(viewStatPet, 'strategic', { fusionState, kingdomWar });
                     return (
                       <div style={{paddingTop:'8px', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', flexDirection:'column', gap:'8px'}}>
-                        <div style={{fontSize:'11px', color:'rgba(255,255,255,0.55)'}}>觉醒三档：普通 ✓ · 果实 {curTier === 'fruit' || curTier === 'strategic' ? '✓' : '—'} · 战略 {curTier === 'strategic' ? '✓' : '—'}</div>
+                        <div style={{fontSize:'11px', color:'rgba(255,255,255,0.82)'}}>觉醒三档：普通 ✓ · 果实 {curTier === 'fruit' || curTier === 'strategic' ? '✓' : '—'} · 战略 {curTier === 'strategic' ? '✓' : '—'}</div>
                         {curTier === 'normal' && (
                           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
-                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)'}}>🍎 果实觉醒：绑定果实 + 完成果实海域试炼{!fruitCheck.ok && <div style={{color:'#fca5a5'}}>{fruitCheck.reason}</div>}</div>
-                            <button type="button" disabled={!fruitCheck.ok} onClick={() => upgradeAwakeningTier(viewStatPet.uid, 'fruit')} style={{padding:'6px 12px', borderRadius:'8px', border:'none', cursor: fruitCheck.ok ? 'pointer' : 'not-allowed', background: fruitCheck.ok ? 'linear-gradient(135deg,#ef5350,#ff9800)' : 'rgba(255,255,255,0.08)', color: fruitCheck.ok ? '#fff' : '#888', fontSize:'11px', fontWeight:'700'}}>果实觉醒</button>
+                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.8)'}}>🍎 果实觉醒：绑定果实 + 完成果实海域试炼{!fruitCheck.ok && <div style={{color:'#fca5a5'}}>{fruitCheck.reason}</div>}</div>
+                            <button type="button" disabled={!fruitCheck.ok} onClick={() => upgradeAwakeningTier(viewStatPet.uid, 'fruit')} style={{padding:'6px 12px', borderRadius:'8px', border:'none', cursor: fruitCheck.ok ? 'pointer' : 'not-allowed', background: fruitCheck.ok ? 'linear-gradient(135deg,#ef5350,#ff9800)' : 'rgba(255,255,255,0.08)', color: fruitCheck.ok ? '#fff' : '#D7DEE7', fontSize:'11px', fontWeight:'700'}}>果实觉醒</button>
                           </div>
                         )}
                         {curTier === 'fruit' && (
                           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px'}}>
-                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.45)'}}>⚔️ 战略觉醒：门派 + 将魂战术 + 国战贡献500 + 古战场{!stratCheck.ok && <div style={{color:'#fca5a5'}}>{stratCheck.reason}</div>}</div>
-                            <button type="button" disabled={!stratCheck.ok} onClick={() => upgradeAwakeningTier(viewStatPet.uid, 'strategic')} style={{padding:'6px 12px', borderRadius:'8px', border:'none', cursor: stratCheck.ok ? 'pointer' : 'not-allowed', background: stratCheck.ok ? 'linear-gradient(135deg,#7e57c2,#4527a0)' : 'rgba(255,255,255,0.08)', color: stratCheck.ok ? '#fff' : '#888', fontSize:'11px', fontWeight:'700'}}>战略觉醒</button>
+                            <div style={{fontSize:'10px', color:'rgba(255,255,255,0.8)'}}>⚔️ 战略觉醒：门派 + 将魂战术 + 国战贡献500 + 古战场{!stratCheck.ok && <div style={{color:'#fca5a5'}}>{stratCheck.reason}</div>}</div>
+                            <button type="button" disabled={!stratCheck.ok} onClick={() => upgradeAwakeningTier(viewStatPet.uid, 'strategic')} style={{padding:'6px 12px', borderRadius:'8px', border:'none', cursor: stratCheck.ok ? 'pointer' : 'not-allowed', background: stratCheck.ok ? 'linear-gradient(135deg,#7e57c2,#4527a0)' : 'rgba(255,255,255,0.08)', color: stratCheck.ok ? '#fff' : '#D7DEE7', fontSize:'11px', fontWeight:'700'}}>战略觉醒</button>
                           </div>
                         )}
                         {curTier === 'strategic' && <div style={{fontSize:'10px', color:'#FFD54F'}}>⚔️ 已完成战略觉醒，解锁国战特技与圣域加成</div>}
@@ -28046,7 +28064,7 @@ const renderMenu = () => {
                 const equippedFruit = viewStatPet.devilFruit ? getFruitById(viewStatPet.devilFruit) : null;
                 const rarityConf = equippedFruit ? FRUIT_RARITY_CONFIG[equippedFruit.rarity] : null;
                 return (
-                  <div style={{
+                  <div className="pet-detail-surface pet-detail-fruit" style={{
                     background: equippedFruit
                       ? `linear-gradient(135deg, ${rarityConf?.color || '#666'}15, #fff)`
                       : '#f9f9f9',
@@ -28059,10 +28077,10 @@ const renderMenu = () => {
                       <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
                         {equippedFruit
                           ? renderFruitCSSIcon(viewStatPet.devilFruit, 36)
-                          : <div style={{width:'36px', height:'36px', borderRadius:'50%', background:'#f0f0f0', border:'2px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', color:'#bbb'}}>+</div>
+                          : <div style={{width:'36px', height:'36px', borderRadius:'50%', background:'#e8edf0', border:'2px dashed #9aa6af', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', color:'#596875'}}>+</div>
                         }
                         <div>
-                          <div style={{fontWeight:'bold', fontSize:'13px', color: equippedFruit ? rarityConf?.color : '#999'}}>
+                          <div style={{fontWeight:'bold', fontSize:'13px', color: equippedFruit ? rarityConf?.color : '#596875'}}>
                             {equippedFruit ? equippedFruit.name : '未装备果实'}
                           </div>
                           {equippedFruit && (
@@ -28081,7 +28099,7 @@ const renderMenu = () => {
                               const np = [...party]; np[idx] = {...np[idx], devilFruit: null}; setParty(np); setViewStatPet(np[idx]);
                             }
                           }} style={{
-                            background:'rgba(0,0,0,0.05)', color:'#999', border:'1px solid #ddd',
+                            background:'rgba(23,48,66,0.08)', color:'#596875', border:'1px solid #b9c1c8',
                             padding:'5px 10px', borderRadius:'16px', fontSize:'11px', cursor:'pointer'
                           }}>卸下</button>
                         )}
@@ -28114,7 +28132,7 @@ const renderMenu = () => {
               {(() => {
                 const equips = viewStatPet.equips || [null, null];
                 return (
-                  <div style={{background:'#f9f9f9', border:'1.5px solid #e0e0e0', borderRadius:'12px', padding:'12px'}}>
+                  <div className="pet-detail-surface pet-detail-equipment" style={{background:'#f9f9f9', border:'1.5px solid #e0e0e0', borderRadius:'12px', padding:'12px'}}>
                     <div style={{fontSize:'12px', fontWeight:'bold', color:'#555', marginBottom:'8px'}}>🛡️ 饰品 ({equips.filter(e => e).length}/2)</div>
                     <div style={{display:'flex', gap:'8px'}}>
                       {[0, 1].map(slotIdx => {
@@ -28132,7 +28150,7 @@ const renderMenu = () => {
                           }} onClick={() => { if (petIdx >= 0) openEquipModal(petIdx, slotIdx); }}>
                             <span style={{fontSize:'22px'}}>{acc ? (acc.icon || '🛡️') : '➕'}</span>
                             <div style={{flex:1, minWidth:0}}>
-                              <div style={{fontSize:'11px', fontWeight:'bold', color: acc ? '#333' : '#aaa', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                              <div style={{fontSize:'11px', fontWeight:'bold', color: acc ? '#333' : '#596875', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
                                 {acc ? acc.name : '空槽位'}
                               </div>
                               {acc && <div style={{fontSize:'9px', color:'#888'}}>{acc.desc || ''}</div>}
@@ -28147,7 +28165,7 @@ const renderMenu = () => {
                                   setParty(np); setViewStatPet({...pet2});
                                 }
                               }} style={{
-                                background:'rgba(0,0,0,0.05)', color:'#999', border:'1px solid #ddd',
+                                background:'rgba(23,48,66,0.08)', color:'#596875', border:'1px solid #b9c1c8',
                                 padding:'2px 8px', borderRadius:'12px', fontSize:'10px', cursor:'pointer', flexShrink:0
                               }}>卸</button>
                             )}
@@ -28167,18 +28185,18 @@ const renderMenu = () => {
                 const bl = partnerPet ? getBondLevel(viewStatPet.bondPoints || 0) : null;
                 const nextBl = BOND_LEVELS.find(b => (viewStatPet.bondPoints || 0) < b.threshold);
                 return (
-                  <div style={{
+                  <div className="pet-detail-surface pet-detail-partner" style={{
                     background: partnerPet ? 'linear-gradient(135deg, #FCE4EC, #fff)' : '#f9f9f9',
                     border: partnerPet ? '1.5px solid #E91E63' : '1.5px dashed #ddd',
                     borderRadius:'12px', padding:'12px'
                   }}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                       <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                        <div style={{width:'36px', height:'36px', borderRadius:'50%', background: partnerPet ? 'linear-gradient(135deg,#E91E63,#FF6090)' : '#f0f0f0', border: partnerPet ? 'none' : '2px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color: partnerPet ? '#fff' : '#bbb'}}>
+                        <div style={{width:'36px', height:'36px', borderRadius:'50%', background: partnerPet ? 'linear-gradient(135deg,#E91E63,#FF6090)' : '#e8edf0', border: partnerPet ? 'none' : '2px dashed #9aa6af', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', color: partnerPet ? '#fff' : '#596875'}}>
                           {partnerPet ? '🤝' : '+'}
                         </div>
                         <div>
-                          <div style={{fontWeight:'bold', fontSize:'13px', color: partnerPet ? '#C2185B' : '#999'}}>
+                          <div style={{fontWeight:'bold', fontSize:'13px', color: partnerPet ? '#C2185B' : '#596875'}}>
                             {partnerPet ? `搭档: ${partnerPet.name}` : '未设置搭档'}
                           </div>
                           {partnerPet && bl && (
@@ -28197,13 +28215,13 @@ const renderMenu = () => {
                       <div style={{display:'flex', gap:'6px'}}>
                         {partnerPet && (
                           <button onClick={() => { removePartner(viewStatPet); setViewStatPet(prev => ({...prev, partnerId: null, bondPoints: 0})); }} style={{
-                            background:'rgba(0,0,0,0.05)', color:'#999', border:'1px solid #ddd',
+                            background:'rgba(23,48,66,0.08)', color:'#596875', border:'1px solid #b9c1c8',
                             padding:'5px 10px', borderRadius:'16px', fontSize:'11px', cursor:'pointer'
                           }}>解除</button>
                         )}
                         <button onClick={() => { if (!isPartnerSystemUnlocked()) { showMapToast('ℹ️', '提示', '🔒 搭档羁绊系统尚未解锁！ 集齐 3 枚徽章后解锁。', 2000); return; } setPartnerModal(true); }} style={{
-                          background: !isPartnerSystemUnlocked() ? '#ccc' : (partnerPet ? '#fff' : 'linear-gradient(135deg, #E91E63, #FF6090)'),
-                          color: !isPartnerSystemUnlocked() ? '#999' : (partnerPet ? '#E91E63' : '#fff'),
+                          background: !isPartnerSystemUnlocked() ? '#DCE2E7' : (partnerPet ? '#fff' : 'linear-gradient(135deg, #E91E63, #FF6090)'),
+                          color: !isPartnerSystemUnlocked() ? '#52616D' : (partnerPet ? '#E91E63' : '#fff'),
                           border: partnerPet ? '1px solid #E91E63' : 'none',
                           padding:'5px 14px', borderRadius:'16px', fontSize:'11px', fontWeight:'bold', cursor:'pointer',
                           boxShadow: partnerPet ? 'none' : '0 2px 8px rgba(233,30,99,0.3)'
@@ -28248,7 +28266,7 @@ const renderMenu = () => {
                           <div style={{fontWeight:'bold', fontSize:'13px', flex:1}}>{p.name} <span style={{fontSize:'10px', color:'#888'}}>Lv.{p.level}</span></div>
                           <div style={{fontSize:'10px', color: TYPES[p.type]?.color, fontWeight:'bold'}}>{TYPES[p.type]?.name}</div>
                           {isCurrentPartner && <span style={{fontSize:'10px', color:'#E91E63', fontWeight:'bold'}}>当前搭档</span>}
-                          {hasOtherPartner && <span style={{fontSize:'10px', color:'#999'}}>已有搭档</span>}
+                          {hasOtherPartner && <span style={{fontSize:'10px', color:'#596875'}}>已有搭档</span>}
                         </div>
                       );
                     })}
@@ -28305,7 +28323,7 @@ const renderMenu = () => {
                   <div style={{background:'linear-gradient(145deg, #1a1040, #2d1b69, #1a1040)', borderRadius:'20px', padding:'24px', maxWidth:'440px', width:'92%', maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(147,51,234,0.3)', boxShadow:'0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(147,51,234,0.15)'}} onClick={e => e.stopPropagation()}>
                     <div style={{textAlign:'center', marginBottom:'16px'}}>
                       <div style={{fontSize:'18px', fontWeight:'900', background:'linear-gradient(90deg, #a78bfa, #c084fc, #e9d5ff)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>✨ 精灵传承</div>
-                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'4px'}}>传承石: 💎 {legacyStones} · 导师 Lv.80+ · 最多传承 {MAX_LEGACY} 次 · 学徒限 1 次</div>
+                      <div style={{fontSize:'10px', color:'rgba(255,255,255,0.76)', marginTop:'4px'}}>传承石: 💎 {legacyStones} · 导师 Lv.80+ · 最多传承 {MAX_LEGACY} 次 · 学徒限 1 次</div>
                     </div>
 
                     {/* Step 1: 选择导师 */}
@@ -28313,12 +28331,12 @@ const renderMenu = () => {
                       <div style={{fontSize:'12px', fontWeight:'700', color:'#a78bfa', marginBottom:'6px'}}>① 选择导师 (Lv.80+)</div>
                       <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
                         {eligibleMentors.length === 0 ? (
-                          <div style={{fontSize:'11px', color:'rgba(255,255,255,0.3)', padding:'12px', textAlign:'center', width:'100%'}}>队伍中无 Lv.80+ 精灵</div>
+                          <div style={{fontSize:'11px', color:'rgba(255,255,255,0.72)', padding:'12px', textAlign:'center', width:'100%'}}>队伍中无 Lv.80+ 精灵</div>
                         ) : eligibleMentors.map(p => (
                           <div key={p.uid} onClick={() => setSkillInheritModal(prev => ({...prev, mentor: p.uid, apprentice: null, selectedMove: null, replaceIdx: undefined}))}
                             style={{padding:'8px 12px', borderRadius:'10px', cursor:'pointer', border: mentor?.uid === p.uid ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)', background: mentor?.uid === p.uid ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.03)', transition:'all 0.2s'}}>
                             <div style={{fontSize:'12px', fontWeight:'700', color: mentor?.uid === p.uid ? '#c084fc' : 'rgba(255,255,255,0.7)'}}>{p.name} Lv.{p.level}</div>
-                            <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>传承{p.legacyCount || 0}/{MAX_LEGACY}</div>
+                            <div style={{fontSize:'9px', color:'rgba(255,255,255,0.68)'}}>传承{p.legacyCount || 0}/{MAX_LEGACY}</div>
                           </div>
                         ))}
                       </div>
@@ -28334,9 +28352,9 @@ const renderMenu = () => {
                             return (
                               <div key={i} onClick={() => setSkillInheritModal(prev => ({...prev, selectedMove: m, replaceIdx: undefined}))}
                                 style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'8px', cursor:'pointer', border: selectedMove?.name === m.name ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.06)', background: selectedMove?.name === m.name ? 'rgba(167,139,250,0.12)' : 'rgba(255,255,255,0.02)', transition:'all 0.2s'}}>
-                                <span style={{fontSize:'11px', padding:'2px 6px', borderRadius:'4px', background:tc.color, color:'#fff', fontWeight:'700'}}>{tc.name?.[0]}</span>
+                                <span style={{fontSize:'11px', padding:'2px 6px', borderRadius:'4px', background:tc.color, color:getReadableTextColor(tc.color), fontWeight:'700'}}>{tc.name?.[0]}</span>
                                 <span style={{fontSize:'12px', fontWeight:'600', color:'rgba(255,255,255,0.85)'}}>{m.name}</span>
-                                <span style={{fontSize:'10px', color:'rgba(255,255,255,0.3)', marginLeft:'auto'}}>威力{m.p||0} PP{m.maxPP||m.maxPp||m.pp}</span>
+                                <span style={{fontSize:'10px', color:'rgba(255,255,255,0.7)', marginLeft:'auto'}}>威力{m.p||0} PP{m.maxPP||m.maxPp||m.pp}</span>
                               </div>
                             );
                           })}
@@ -28350,12 +28368,12 @@ const renderMenu = () => {
                         <div style={{fontSize:'12px', fontWeight:'700', color:'#a78bfa', marginBottom:'6px'}}>③ 选择学徒</div>
                         <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
                           {eligibleApprentices.length === 0 ? (
-                            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.3)', padding:'12px', textAlign:'center', width:'100%'}}>无可用学徒（已传承或融合体不可）</div>
+                            <div style={{fontSize:'11px', color:'rgba(255,255,255,0.72)', padding:'12px', textAlign:'center', width:'100%'}}>无可用学徒（已传承或融合体不可）</div>
                           ) : eligibleApprentices.map(p => (
                             <div key={p.uid} onClick={() => setSkillInheritModal(prev => ({...prev, apprentice: p.uid, replaceIdx: undefined}))}
                               style={{padding:'8px 12px', borderRadius:'10px', cursor:'pointer', border: apprentice?.uid === p.uid ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)', background: apprentice?.uid === p.uid ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.03)', transition:'all 0.2s'}}>
                               <div style={{fontSize:'12px', fontWeight:'700', color: apprentice?.uid === p.uid ? '#c084fc' : 'rgba(255,255,255,0.7)'}}>{p.name} Lv.{p.level}</div>
-                              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.3)'}}>技能{(p.moves||[]).length}/4</div>
+                              <div style={{fontSize:'9px', color:'rgba(255,255,255,0.68)'}}>技能{(p.moves||[]).length}/4</div>
                             </div>
                           ))}
                         </div>
@@ -28371,7 +28389,7 @@ const renderMenu = () => {
                             <div key={i} onClick={() => setSkillInheritModal(prev => ({...prev, replaceIdx: i}))}
                               style={{display:'flex', alignItems:'center', gap:'8px', padding:'6px 10px', borderRadius:'8px', cursor:'pointer', border: replaceIdx === i ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.06)', background: replaceIdx === i ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.02)'}}>
                               <span style={{fontSize:'11px', color:'rgba(255,255,255,0.6)'}}>{m.name}</span>
-                              <span style={{fontSize:'9px', color:'rgba(255,255,255,0.3)', marginLeft:'auto'}}>威力{m.p||0}</span>
+                              <span style={{fontSize:'9px', color:'rgba(255,255,255,0.68)', marginLeft:'auto'}}>威力{m.p||0}</span>
                               {replaceIdx === i && <span style={{fontSize:'9px', color:'#ef4444', fontWeight:'700'}}>替换</span>}
                             </div>
                           ))}
@@ -28392,7 +28410,7 @@ const renderMenu = () => {
                     )}
 
                     <div style={{display:'flex', gap:'8px'}}>
-                      <button onClick={() => setSkillInheritModal(null)} style={{flex:1, padding:'10px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', fontSize:'12px', cursor:'pointer', color:'rgba(255,255,255,0.5)', fontWeight:'600'}}>取消</button>
+                    <button onClick={() => setSkillInheritModal(null)} style={{flex:1, padding:'10px', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.24)', borderRadius:'10px', fontSize:'12px', cursor:'pointer', color:'rgba(255,255,255,0.84)', fontWeight:'600'}}>取消</button>
                       <button onClick={doLegacy} disabled={!mentor || !selectedMove || !apprentice || (apprentice?.moves?.length >= 4 && replaceIdx === undefined) || legacyStones < 1}
                         style={{flex:2, padding:'10px', background: (!mentor||!selectedMove||!apprentice||legacyStones<1) ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #7c3aed, #a78bfa)', border:'none', borderRadius:'10px', fontSize:'13px', cursor: (!mentor||!selectedMove||!apprentice||legacyStones<1) ? 'not-allowed' : 'pointer', color:'#fff', fontWeight:'700', boxShadow: (mentor&&selectedMove&&apprentice&&legacyStones>=1) ? '0 4px 15px rgba(124,58,237,0.4)' : 'none', opacity: (!mentor||!selectedMove||!apprentice||legacyStones<1) ? 0.4 : 1}}>
                         ✨ 确认传承
@@ -28479,7 +28497,7 @@ const renderMenu = () => {
                              {method && (
                                  <div style={{
                                      fontSize:'9px', color:'#fff', marginBottom:'2px', 
-                                     background:'#aaa', padding:'1px 6px', borderRadius:'10px', 
+                                     background:'#596875', padding:'1px 6px', borderRadius:'10px',
                                      zIndex:2, transform:'scale(0.9)'
                                  }}>
                                      {method}
@@ -28529,7 +28547,7 @@ const renderMenu = () => {
                         <EvoNode pet={family.root} />
                         {family.stage1.length > 0 && (
                             <>
-                                <div style={{color:'#ccc', fontSize:'14px'}}>➔</div>
+                                <div style={{color:'#6B7884', fontSize:'14px'}}>➔</div>
                                 <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                                     {family.stage1.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
                                 </div>
@@ -28537,7 +28555,7 @@ const renderMenu = () => {
                         )}
                         {family.stage2.length > 0 && (
                             <>
-                                <div style={{color:'#ccc', fontSize:'14px'}}>➔</div>
+                                <div style={{color:'#6B7884', fontSize:'14px'}}>➔</div>
                                 <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                                     {family.stage2.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
                                 </div>
@@ -28545,7 +28563,7 @@ const renderMenu = () => {
                         )}
                         {family.stage3 && family.stage3.length > 0 && (
                             <>
-                                <div style={{color:'#ccc', fontSize:'14px'}}>➔</div>
+                                <div style={{color:'#6B7884', fontSize:'14px'}}>➔</div>
                                 <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                                     {family.stage3.map(pet => <EvoNode key={pet.id} pet={pet} method={pet.method} />)}
                                 </div>
@@ -28558,7 +28576,7 @@ const renderMenu = () => {
             </div>
 
             {/* 5. 技能栏 */}
-            <div style={{padding:'0 20px 20px', borderTop:'1px solid #f0f0f0', marginTop:'auto'}}>
+            <div className="pet-detail-moves" style={{padding:'0 20px 20px', borderTop:'1px solid #f0f0f0', marginTop:'auto'}}>
                <div style={{fontSize:'12px', fontWeight:'bold', margin:'15px 0 8px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                  <span>已学会技能</span>
                  <button 
@@ -28589,7 +28607,7 @@ const renderMenu = () => {
                     style={{
                       fontSize:'11px', padding:'4px 10px', borderRadius:'12px', border:'none',
                       background: (inventory.meds?.ether || 0) > 0 ? '#E0F7FA' : '#f5f5f5',
-                      color: (inventory.meds?.ether || 0) > 0 ? '#006064' : '#ccc',
+                      color: (inventory.meds?.ether || 0) > 0 ? '#006064' : '#596875',
                       cursor: (inventory.meds?.ether || 0) > 0 ? 'pointer' : 'not-allowed',
                       fontWeight: '600', display:'flex', alignItems:'center', gap:'4px'
                     }}
@@ -28603,7 +28621,7 @@ const renderMenu = () => {
                     <div key={i} style={{background:'#f5f7fa', padding:'8px', borderRadius:'6px', borderLeft:`3px solid ${TYPES[m.t]?.color}`}}>
                        <div style={{display:'flex', justifyContent:'space-between'}}>
                          <div style={{fontSize:'12px', fontWeight:'bold'}}>{m.name}</div>
-                         <div style={{fontSize:'10px', color: m.pp===0?'red':'#999', fontWeight:'bold'}}>PP: {m.pp||20}</div>
+                         <div style={{fontSize:'10px', color: m.pp===0?'#B42318':'#596875', fontWeight:'bold'}}>PP: {m.pp||20}</div>
                        </div>
                        <div style={{fontSize:'10px', color:'#666', marginTop:'2px'}}>威力: {m.p ?? '—'}</div>
                     </div>
