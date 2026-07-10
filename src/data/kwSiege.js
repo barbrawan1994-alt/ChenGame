@@ -62,17 +62,48 @@ const rarityLeadership = (r) => {
   return 0.038;
 };
 
-const normalizeAllocation = (allocation) => {
-  const out = {};
-  for (const id of KW_TROOP_IDS) out[id] = Math.max(0, Math.floor(Number(allocation?.[id]) || 0));
-  return out;
+const toFiniteNonNegative = (value, max = Number.MAX_SAFE_INTEGER) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(0, parsed)) : 0;
 };
+
+const normalizeAllocation = (allocation) => {
+  const entries = KW_TROOP_IDS.map((id, index) => ({
+    id,
+    index,
+    value: Math.floor(toFiniteNonNegative(allocation?.[id], MANPOWER_RESERVE_CAP)),
+  }));
+  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+  if (total <= MANPOWER_RESERVE_CAP) {
+    return Object.fromEntries(entries.map(entry => [entry.id, entry.value]));
+  }
+  let assigned = 0;
+  entries.forEach((entry) => {
+    const exact = entry.value * MANPOWER_RESERVE_CAP / total;
+    entry.scaled = Math.floor(exact);
+    entry.remainder = exact - entry.scaled;
+    assigned += entry.scaled;
+  });
+  const remainderOrder = [...entries].sort((a, b) => (
+    b.remainder - a.remainder || a.index - b.index
+  ));
+  for (let i = 0; assigned < MANPOWER_RESERVE_CAP; i += 1, assigned += 1) {
+    remainderOrder[i % remainderOrder.length].scaled += 1;
+  }
+  return Object.fromEntries(entries.map(entry => [entry.id, entry.scaled]));
+};
+
+const normalizeWeights = (weights) => Object.fromEntries(KW_TROOP_IDS.map(id => [
+  id,
+  toFiniteNonNegative(weights?.[id], 1_000_000),
+]));
 
 const sumAlloc = (a) => KW_TROOP_IDS.reduce((s, id) => s + (a[id] || 0), 0);
 
 /** 根据敌方混合兵种计算我方「期望克制倍率」 */
 const expectedCounterMult = (playerAlloc, defWeights) => {
-  const tot = KW_TROOP_IDS.reduce((s, id) => s + (defWeights[id] || 0), 0) || 1;
+  const safeDefWeights = normalizeWeights(defWeights);
+  const tot = sumAlloc(safeDefWeights) || 1;
   let acc = 0;
   let pTot = sumAlloc(playerAlloc);
   if (pTot <= 0) return 0.65;
@@ -81,7 +112,7 @@ const expectedCounterMult = (playerAlloc, defWeights) => {
     if (pc <= 0) continue;
     let sub = 0;
     for (const did of KW_TROOP_IDS) {
-      const w = (defWeights[did] || 0) / tot;
+      const w = safeDefWeights[did] / tot;
       sub += w * getTroopMatchMult(pid, did);
     }
     acc += (pc / pTot) * sub;
@@ -95,11 +126,11 @@ export const getContestMapProgress = (contestProgress, mapId) => {
   const n = Number(mapId);
   const raw = cp[n] ?? cp[String(n)] ?? {};
   return {
-    wei: Math.max(0, Math.floor(Number(raw.wei) || 0)),
-    shu: Math.max(0, Math.floor(Number(raw.shu) || 0)),
-    wu: Math.max(0, Math.floor(Number(raw.wu) || 0)),
-    jin: Math.max(0, Math.floor(Number(raw.jin) || 0)),
-    qun: Math.max(0, Math.floor(Number(raw.qun) || 0)),
+    wei: Math.floor(toFiniteNonNegative(raw.wei, 480)),
+    shu: Math.floor(toFiniteNonNegative(raw.shu, 480)),
+    wu: Math.floor(toFiniteNonNegative(raw.wu, 480)),
+    jin: Math.floor(toFiniteNonNegative(raw.jin, 480)),
+    qun: Math.floor(toFiniteNonNegative(raw.qun, 480)),
   };
 };
 
@@ -107,7 +138,7 @@ export const getContestMapProgress = (contestProgress, mapId) => {
 export const inferDefenseWeights = (mapProgress) => {
   const raw = mapProgress || {};
   const p = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
-  for (const k of CONTEST_BAR_IDS) p[k] = Math.max(0, Number(raw[k]) || 0);
+  for (const k of CONTEST_BAR_IDS) p[k] = toFiniteNonNegative(raw[k], 480);
   const total = CONTEST_BAR_IDS.reduce((s, k) => s + (p[k] || 0), 0) || 1;
   const base = {
     shield: 0.14,
@@ -144,7 +175,7 @@ export const inferDefenseWeights = (mapProgress) => {
 export const resolveContestedMapOwner = (mapProgress, incumbent = null, mapId = 0) => {
   const raw = mapProgress || {};
   const p = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
-  for (const k of CONTEST_BAR_IDS) p[k] = Math.max(0, Number(raw[k]) || 0);
+  for (const k of CONTEST_BAR_IDS) p[k] = Math.floor(toFiniteNonNegative(raw[k], 480));
   const PRIORITY = { wei: 0, shu: 1, wu: 2, jin: 3, qun: 4 };
   let maxV = -1;
   for (const fid of CONTEST_BAR_IDS) maxV = Math.max(maxV, p[fid] || 0);
@@ -242,6 +273,7 @@ export const evaluateKwSiegeBattle = ({
   mapLvlMin = 50,
   mapLvlMax = 80,
   avgPartyLevel = 55,
+  attackPowerMult = 1,
 }) => {
   const alloc = normalizeAllocation(allocation);
   const deploy = sumAlloc(alloc);
@@ -266,15 +298,16 @@ export const evaluateKwSiegeBattle = ({
   const wallBase = 138 + (midLv - 50) * 2.05;
   const rawP = mapProgress || {};
   const prog = { wei: 0, shu: 0, wu: 0, jin: 0, qun: 0 };
-  for (const k of CONTEST_BAR_IDS) prog[k] = Math.max(0, Number(rawP[k]) || 0);
+  for (const k of CONTEST_BAR_IDS) prog[k] = toFiniteNonNegative(rawP[k], 480);
   const others = CONTEST_BAR_IDS
     .filter(fid => fid !== playerFaction)
     .reduce((s, fid) => s + (prog[fid] || 0), 0);
   const av = Math.min(100, Math.max(15, Number(avgPartyLevel) || 55));
+  const effectiveAttackPowerMult = clamp(Number(attackPowerMult) || 1, 1, 2);
   const wallHp = Math.max(52, wallBase * (1 + others * 0.0065) * (0.92 + av * 0.0018));
   const atkW = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0) * (TROOP_WEIGHT[tid] || 1), 0);
   const qunBoost = ((prog.qun || 0) / (1 + others * 0.5)) * 0.012;
-  const expectedRoundDamage = atkW * lead * counter * (1.05 - qunBoost * 0.35);
+  const expectedRoundDamage = atkW * lead * counter * (1.05 - qunBoost * 0.35) * effectiveAttackPowerMult;
   const expectedDamage = expectedRoundDamage * 7;
   const pressure = expectedDamage / Math.max(1, wallHp);
   const winChance = clamp(0.06 + (pressure / (pressure + 1.05)) * 0.88, 0.06, 0.94);
@@ -301,6 +334,7 @@ export const evaluateKwSiegeBattle = ({
     suggestedAllocation: getSuggestedAllocation(defWeights, deploy),
     counter,
     leadership: lead,
+    attackPowerMult: effectiveAttackPowerMult,
     wallHp,
     expectedDamage,
     pressure,
@@ -328,6 +362,7 @@ export const runKwSiegeBattle = ({
   mapLvlMin = 50,
   mapLvlMax = 80,
   avgPartyLevel = 55,
+  attackPowerMult = 1,
 }) => {
   const preview = evaluateKwSiegeBattle({
     mapId,
@@ -339,6 +374,7 @@ export const runKwSiegeBattle = ({
     mapLvlMin,
     mapLvlMax,
     avgPartyLevel,
+    attackPowerMult,
   });
   const alloc = preview.allocation || normalizeAllocation(allocation);
   const deploy = preview.deploy || sumAlloc(alloc);
@@ -351,11 +387,16 @@ export const runKwSiegeBattle = ({
 
   const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
   const gens = uniqIds.map(id => recruitedGenerals.find(g => String(g?.id) === id)).filter(Boolean);
-  const wallHp = preview.wallHp || 100;
-  const wall = wallHp - (preview.expectedDamage || 0) * (0.82 + Math.random() * 0.36);
-
-  const victory = wall <= 0;
-  const margin = victory ? Math.min(2.2, Math.abs(wall) / wallHp + 0.4) : Math.max(0, 1 - wall / wallHp);
+  // 结算必须服从预览胜率；旧逻辑用总预期伤害直接扣城墙，常使最低兵力也必胜，
+  // 导致 UI 显示 50%~80% 风险但实战接近 100% 胜率。
+  const winChance = clamp(Number(preview.winChance) || 0, 0, 1);
+  const battleRoll = Math.random();
+  const victory = battleRoll < winChance;
+  const rollQuality = victory
+    ? clamp((winChance - battleRoll) / Math.max(0.01, winChance), 0, 1)
+    : clamp((battleRoll - winChance) / Math.max(0.01, 1 - winChance), 0, 1);
+  const margin = victory ? 0.4 + rollQuality * 1.1 : 0;
+  const wallRemainPct = victory ? 0 : Math.round(clamp(18 + rollQuality * 68, 12, 92));
 
   const lossRate = victory
     ? (preview.expectedLossRate || 0.18) * (0.78 + Math.random() * 0.28)
@@ -366,7 +407,6 @@ export const runKwSiegeBattle = ({
     ? Math.floor((preview.expectedOccupationGain || 14) * (0.82 + margin * 0.24))
     : 0;
 
-  const wallRemainPct = Math.max(0, Math.round((Math.max(0, wall) / wallHp) * 100));
   const qunName = QUN_LEADERS[Math.floor(Math.random() * QUN_LEADERS.length)];
   const genNames = gens.map(g => (g && g.name) ? g.name : '将领').join('、');
   const detail = victory
@@ -380,6 +420,7 @@ export const runKwSiegeBattle = ({
     wallRemainPct,
     detail,
     winChance: preview.winChance,
+    attackPowerMult: preview.attackPowerMult,
     riskLabel: preview.riskLabel,
     counter: preview.counter,
   };
@@ -485,8 +526,8 @@ export const runThreePhaseSiege = ({
   const timeMod = getBattleTimeModifiers();
   const phases = [];
   let totalManpowerLost = 0;
-  let strength = t.strength || 50;
-  let currentMorale = morale || 100;
+  let strength = t.strength ?? 50;
+  let currentMorale = morale ?? 100;
   const terrCopy = JSON.parse(JSON.stringify(territories));
   let guards = [...(t.guards || [])];
 
@@ -499,7 +540,7 @@ export const runThreePhaseSiege = ({
     external, timeMod, remainingGuards: guards.filter(g => !g.defeated).length,
   });
   const fieldWinChance = fieldCombat.fieldWinChance;
-  const fieldCost = Math.max(20, Math.min(40, Math.floor((strength || 50) / 3)));
+  const fieldCost = Math.max(20, Math.min(40, Math.floor(strength / 3)));
   const fieldVictory = deploy >= 60 && Math.random() < fieldWinChance;
   const fieldLoss = fieldVictory
     ? Math.floor(fieldCost * (0.7 - fieldWinChance * 0.15))
@@ -587,9 +628,4 @@ export const runThreePhaseSiege = ({
     defTroops: t.garrison,
     extBonus: assaultCombat.extBonus,
   };
-};
-
-const getGarrisonTotalLocal = (garrison) => {
-  if (!garrison) return 0;
-  return Object.values(garrison).reduce((s, v) => s + (v || 0), 0);
 };

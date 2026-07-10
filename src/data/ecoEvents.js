@@ -237,10 +237,19 @@ export function getDefaultEcologyForMap(mapId) {
   return { ...DEFAULT_ECOLOGY, ...(MAP_DEFAULT_ECOLOGY[mapId] || {}) };
 }
 
+const getSafeEcologyMetric = (value, fallback) => {
+  const parsed = Number(value);
+  if (value === null || value === undefined || value === '' || !Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(0, Math.min(100, parsed));
+};
+
 export function clampEcology(eco) {
   const out = { ...eco };
   ECO_METRIC_KEYS.forEach(k => {
-    out[k] = Math.max(0, Math.min(100, Math.round(out[k] ?? 50)));
+    const fallback = DEFAULT_ECOLOGY[k] ?? 50;
+    out[k] = Math.round(getSafeEcologyMetric(out[k], fallback));
   });
   return out;
 }
@@ -249,7 +258,12 @@ export function applyEcologyDelta(eco, delta) {
   if (!delta) return clampEcology(eco);
   const next = { ...eco };
   Object.entries(delta).forEach(([k, v]) => {
-    if (ECO_METRIC_KEYS.includes(k)) next[k] = (next[k] ?? 50) + v;
+    if (ECO_METRIC_KEYS.includes(k)) {
+      const fallback = DEFAULT_ECOLOGY[k] ?? 50;
+      const base = getSafeEcologyMetric(next[k], fallback);
+      const parsedDelta = Number(v);
+      next[k] = base + (Number.isFinite(parsedDelta) ? parsedDelta : 0);
+    }
   });
   return clampEcology(next);
 }
@@ -257,15 +271,15 @@ export function applyEcologyDelta(eco, delta) {
 /** 将污染反向计入健康度；其余指标越高越健康。 */
 export function getEcologyHealth(eco) {
   return ECO_METRIC_KEYS.reduce((sum, key) => {
-    const fallback = key === 'pollution' ? DEFAULT_ECOLOGY.pollution : 50;
-    const value = eco?.[key] ?? fallback;
+    const fallback = DEFAULT_ECOLOGY[key] ?? 50;
+    const value = getSafeEcologyMetric(eco?.[key], fallback);
     return sum + (key === 'pollution' ? 100 - value : value);
   }, 0) / ECO_METRIC_KEYS.length;
 }
 
 export function getEcologyTier(eco) {
   const health = getEcologyHealth(eco);
-  const pollution = eco?.pollution ?? DEFAULT_ECOLOGY.pollution;
+  const pollution = getSafeEcologyMetric(eco?.pollution, DEFAULT_ECOLOGY.pollution);
   if (pollution > 60) return { tier: 'polluted', label: '污染严重', color: '#C62828' };
   if (health >= 70 && pollution < 30) return { tier: 'thriving', label: '生态繁荣', color: '#2E7D32' };
   if (health >= 50) return { tier: 'stable', label: '生态稳定', color: '#1976D2' };
@@ -317,33 +331,48 @@ export function getRegionStage(mapId, ecology, clearedCrises = [], badges = 99) 
   return { stage, ...def };
 }
 
-export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMapId = null) {
+export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMapId = null, previousEcologyByMap = null) {
   const result = { ...ecologyByMap };
-  chains.forEach(chain => {
-    if (sourceMapId != null && Number(chain.fromMap) !== Number(sourceMapId)) return;
-    const fromEco = result[chain.fromMap] || getDefaultEcologyForMap(chain.fromMap);
-    const met = Object.entries(chain.condition || {}).every(([k, cond]) => {
-      const val = fromEco[k] ?? 50;
-      if (cond.min != null) return val >= cond.min;
-      if (cond.max != null) return val <= cond.max;
+  const conditionMet = (chain, ecologyState) => {
+    const fromDefaults = getDefaultEcologyForMap(chain.fromMap);
+    const fromEco = { ...fromDefaults, ...(ecologyState?.[chain.fromMap] || {}) };
+    return Object.entries(chain.condition || {}).every(([k, cond]) => {
+      const val = getSafeEcologyMetric(fromEco[k], fromDefaults[k] ?? DEFAULT_ECOLOGY[k] ?? 50);
+      if (cond.min != null && val < cond.min) return false;
+      if (cond.max != null && val > cond.max) return false;
       return true;
     });
-    if (!met) return;
+  };
+  chains.forEach(chain => {
+    if (sourceMapId != null && Number(chain.fromMap) !== Number(sourceMapId)) return;
+    if (!conditionMet(chain, result)) return;
+    // 生产调用提供变化前状态：连锁只在阈值由未满足变为满足时触发，避免同一条件反复叠加。
+    if (previousEcologyByMap && conditionMet(chain, previousEcologyByMap)) return;
     if (chain.global) {
-      Object.keys(result).forEach(k => {
+      const globalMapKeys = new Set([
+        ...Object.keys(MAP_DEFAULT_ECOLOGY),
+        ...Object.keys(result),
+      ]);
+      globalMapKeys.forEach(k => {
         const mapKey = Number(k);
         if (Number.isNaN(mapKey)) return;
-        const eco = { ...(result[mapKey] || getDefaultEcologyForMap(mapKey)) };
+        const defaults = getDefaultEcologyForMap(mapKey);
+        const eco = { ...defaults, ...(result[mapKey] || {}) };
         Object.entries(chain.effect || {}).forEach(([ek, ev]) => {
-          if (ECO_METRIC_KEYS.includes(ek)) eco[ek] = (eco[ek] ?? 50) + ev;
+          if (ECO_METRIC_KEYS.includes(ek)) {
+            eco[ek] = getSafeEcologyMetric(eco[ek], defaults[ek] ?? DEFAULT_ECOLOGY[ek] ?? 50) + ev;
+          }
         });
         result[mapKey] = clampEcology(eco);
       });
       return;
     }
-    const toEco = { ...(result[chain.toMap] || getDefaultEcologyForMap(chain.toMap)) };
+    const toDefaults = getDefaultEcologyForMap(chain.toMap);
+    const toEco = { ...toDefaults, ...(result[chain.toMap] || {}) };
     Object.entries(chain.effect || {}).forEach(([k, v]) => {
-      if (ECO_METRIC_KEYS.includes(k)) toEco[k] = (toEco[k] ?? 50) + v;
+      if (ECO_METRIC_KEYS.includes(k)) {
+        toEco[k] = getSafeEcologyMetric(toEco[k], toDefaults[k] ?? DEFAULT_ECOLOGY[k] ?? 50) + v;
+      }
     });
     result[chain.toMap] = clampEcology(toEco);
   });

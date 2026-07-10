@@ -34,8 +34,8 @@ export const INFINITY_ROUTE_TYPES = [
     tempPartner: true, bondingEvent: true,
   },
   {
-    id: 'sanctuary_rest', name: '圣域休息', icon: '🏡', desc: '恢复体力并清除污染',
-    healPct: 0.4, purifyPollution: 5,
+    id: 'sanctuary_rest', name: '圣域休息', icon: '🏡', desc: '恢复生命并大幅缓解疲劳',
+    healPct: 0.4,
   },
   {
     id: 'training', name: '技能训练', icon: '📜', desc: '强化一个技能',

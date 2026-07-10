@@ -382,6 +382,27 @@ export function getEcoCrisisById(id) {
   return ECO_CRISES.find(c => c.id === id);
 }
 
+/** 清洗生态危机存档，避免失效 ID、重复完成记录或越界步骤卡死调查流程。 */
+export function normalizeEcoCrisisState(state) {
+  const raw = state && typeof state === 'object' && !Array.isArray(state) ? state : {};
+  const validIds = new Set(ECO_CRISES.map(crisis => crisis.id));
+  const cleared = Array.isArray(raw.cleared)
+    ? [...new Set(raw.cleared.filter(id => validIds.has(id)))]
+    : [];
+  let active = null;
+  if (raw.active && typeof raw.active === 'object') {
+    const crisis = getEcoCrisisById(raw.active.crisisId);
+    if (crisis && !cleared.includes(crisis.id)) {
+      const rawStep = Number(raw.active.step);
+      const step = Number.isFinite(rawStep)
+        ? Math.min(crisis.steps.length, Math.max(0, Math.floor(rawStep)))
+        : 0;
+      active = { crisisId: crisis.id, step };
+    }
+  }
+  return { cleared, active };
+}
+
 export function getMoralBranch(branchId) {
   return MORAL_BRANCHES[branchId] || null;
 }

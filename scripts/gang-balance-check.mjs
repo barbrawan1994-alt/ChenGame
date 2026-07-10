@@ -9,6 +9,8 @@ import { readFile } from 'node:fs/promises';
 const sourceUrl = new URL('../src/data/gang.js', import.meta.url);
 const source = await readFile(sourceUrl, 'utf8');
 const gang = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const petIdentitySource = await readFile(new URL('../src/utils/petIdentity.js', import.meta.url), 'utf8');
+const petIdentity = await import(`data:text/javascript;base64,${Buffer.from(petIdentitySource).toString('base64')}`);
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 
 const check = (condition, message) => {
@@ -73,15 +75,209 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   );
 }
 
-// 全灭状态应在取得帮战锁之前被拦截，避免一次失败启动让按钮永久失效。
+// 帮战预估只计算存活精灵，避免高等级阵亡成员虚高胜率。
+{
+  const renderGangStart = appSource.indexOf('const renderGang = () => {');
+  const renderGangSource = appSource.slice(renderGangStart, renderGangStart + 2200);
+  assert.ok(renderGangStart >= 0);
+  assert.match(renderGangSource, /const livingPartyForGang = party\.filter\(p => p && \(p\.currentHp \|\| 0\) > 0\);/);
+  assert.match(renderGangSource, /livingPartyForGang\.reduce/);
+  assert.doesNotMatch(renderGangSource, /party\.reduce\(\(s, p\) => s \+ \(p\?\.level/);
+  check(true, '帮战胜率与指挥建议均按存活队伍均级计算，不再计入已阵亡精灵');
+}
+
+// 全灭、目标失效或已有战斗应在取得帮战锁之前被拦截，避免按钮永久失效。
 {
   const handlerStart = appSource.indexOf('<button disabled={warCount >= GANG_WAR_CONFIG.maxDaily}');
-  const handler = appSource.slice(handlerStart, handlerStart + 1400);
+  const handler = appSource.slice(handlerStart, handlerStart + 1800);
   assert.ok(handlerStart >= 0);
+  const targetCheck = handler.indexOf('if (!target?.id)');
   const aliveCheck = handler.indexOf("(partyRef.current || []).some");
+  const battleCheck = handler.indexOf('if (battle && !battleResultHandledRef.current)');
   const lockAcquire = handler.indexOf("gangActionLocksRef.current.add('gang_war')");
-  assert.ok(aliveCheck >= 0 && lockAcquire > aliveCheck);
-  check(true, '帮战启动前校验存活队伍，不会因失败启动遗留并发锁');
+  assert.ok(targetCheck >= 0 && aliveCheck > targetCheck && battleCheck > aliveCheck && lockAcquire > battleCheck);
+  assert.match(handler, /const started = startBattle\(\{ gangWarTarget: target \}, 'gang_war'\);/);
+  assert.match(handler, /if \(!started\) gangActionLocksRef\.current\.delete\('gang_war'\);/);
+  assert.match(handler, /catch \(err\) \{[\s\S]{0,160}gangActionLocksRef\.current\.delete\('gang_war'\)/);
+
+  const startBattleStart = appSource.indexOf('const startBattle = (context, type, challengeId = null) => {');
+  const startBattleEnd = appSource.indexOf('const startTowerChallenge = () => {', startBattleStart);
+  const startBattleSource = appSource.slice(startBattleStart, startBattleEnd);
+  assert.ok(startBattleStart >= 0 && startBattleEnd > startBattleStart);
+  assert.match(startBattleSource, /startBattle blocked: already in battle'\); return false;/);
+  assert.match(startBattleSource, /setView\('battle'\);[\s\S]*return true;\s*};\s*$/);
+  check(true, '帮战启动前依次校验目标、存活队伍和战斗占用，拒绝启动或初始化异常都会释放并发锁');
+}
+
+// 金币捐献必须将“帮派状态 + 金币余额”作为一个事务计算，失败时不得产生半完成扣费。
+{
+  const baseGang = {
+    gangId: 'test_gang',
+    contribution: 0,
+    dailyCounts: { resetDate: '2026-07-10', taskProgress: {}, taskCompleted: [] },
+  };
+
+  const leftGang = gang.applyGangGoldDonation({
+    gang: { ...baseGang, gangId: null },
+    dailyCounts: baseGang.dailyCounts,
+    currentGold: 10000,
+  });
+  assert.deepEqual(leftGang, { ok: false, reason: 'not_in_gang' });
+
+  const completed = gang.applyGangGoldDonation({
+    gang: baseGang,
+    dailyCounts: { ...baseGang.dailyCounts, taskCompleted: ['donate_gold'] },
+    currentGold: 10000,
+  });
+  assert.deepEqual(completed, { ok: false, reason: 'already_completed' });
+
+  const insufficient = gang.applyGangGoldDonation({
+    gang: baseGang,
+    dailyCounts: baseGang.dailyCounts,
+    currentGold: 4999,
+  });
+  assert.equal(insufficient.ok, false);
+  assert.equal(insufficient.reason, 'insufficient_gold');
+  assert.equal(insufficient.cost, 5000);
+
+  const success = gang.applyGangGoldDonation({
+    gang: baseGang,
+    dailyCounts: baseGang.dailyCounts,
+    currentGold: 10000,
+  });
+  assert.equal(success.ok, true);
+  assert.equal(success.cost, 5000);
+  assert.equal(success.nextGold, 5000);
+  assert.equal(success.nextGang.dailyCounts.taskProgress.donate_gold, 5000);
+  assert.deepEqual(success.nextGang.dailyCounts.taskCompleted, ['donate_gold']);
+  assert.deepEqual(baseGang.dailyCounts, { resetDate: '2026-07-10', taskProgress: {}, taskCompleted: [] });
+
+  const donationStart = appSource.indexOf('{/* 捐献金币 */}');
+  const donationEnd = appSource.indexOf('{/* 上交精灵 */}', donationStart);
+  const donationSource = appSource.slice(donationStart, donationEnd);
+  const transaction = donationSource.indexOf('const donation = applyGangGoldDonation');
+  const lockAcquire = donationSource.indexOf('gangActionLocksRef.current.add(lockKey)');
+  const gangRefCommit = donationSource.indexOf('gangRef.current = donation.nextGang');
+  const goldCommit = donationSource.indexOf('goldRef.current = donation.nextGold');
+  const lockRelease = donationSource.indexOf('gangActionLocksRef.current.delete(lockKey)');
+  assert.ok(
+    donationStart >= 0 && donationEnd > donationStart && transaction >= 0 &&
+    lockAcquire > transaction && gangRefCommit > lockAcquire && goldCommit > gangRefCommit &&
+    lockRelease > goldCommit
+  );
+  assert.match(donationSource, /try \{[\s\S]*setGang\(donation\.nextGang\);[\s\S]*setGold\(donation\.nextGold\);[\s\S]*} finally \{/);
+  assert.doesNotMatch(donationSource, /updateGangTaskProgress\('donate_gold'/);
+  assert.doesNotMatch(donationSource, /setTimeout\(\(\) => gangActionLocksRef\.current\.delete/);
+  check(true, '离帮、重复完成、金币不足均不会扣费；成功捐献恰好扣一次并同步完成任务');
+}
+
+// 帮战预览必须明确是等级估算；胜败结算各消耗一次次数，奖励只基于最新权威状态发放。
+{
+  const uiStart = appSource.indexOf('const renderGangWar = () => {');
+  const uiEnd = appSource.indexOf('const renderGangSkills = () => {', uiStart);
+  const uiSource = appSource.slice(uiStart, uiEnd);
+  assert.ok(uiStart >= 0 && uiEnd > uiStart);
+  assert.match(uiSource, /等级估算 \{Math\.round\(preview\.winChance \* 100\)\}%/);
+  assert.match(uiSource, /非实际胜率/);
+  assert.match(uiSource, /仅按存活队伍等级估算，属性克制、装备与特性会影响实战/);
+  assert.doesNotMatch(uiSource, />胜率 \{Math\.round\(preview\.winChance/);
+
+  const winStart = appSource.indexOf("if (battleSnapshot.type === 'gang_war')");
+  const winSource = appSource.slice(winStart, winStart + 5200);
+  const defeatStart = appSource.indexOf("} else if (battleType === 'gang_war') {");
+  const defeatSource = appSource.slice(defeatStart, defeatStart + 1200);
+  assert.ok(winStart >= 0 && defeatStart >= 0);
+  assert.equal((winSource.match(/warCount:/g) || []).length, 1);
+  assert.equal((defeatSource.match(/warCount:/g) || []).length, 1);
+  assert.match(winSource, /const currentGang = gangRef\.current \|\| \{\};/);
+  assert.match(winSource, /const freshGangDc = getFreshGangDailyCounts\(currentGang\.dailyCounts, todayStr\);/);
+  assert.doesNotMatch(winSource, /setGang\(prev =>/);
+
+  const dailyCapGuard = winSource.indexOf('if ((freshGangDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily)');
+  const capReturn = winSource.indexOf('return;', dailyCapGuard);
+  const nextGangCommit = winSource.indexOf('const nextGang =');
+  const refCommit = winSource.indexOf('gangRef.current = nextGang');
+  const stateCommit = winSource.indexOf('setGang(nextGang)');
+  const chestRewards = winSource.indexOf('const chestRewards =');
+  assert.ok(
+    dailyCapGuard >= 0 && capReturn > dailyCapGuard && nextGangCommit > capReturn &&
+    refCommit > nextGangCommit && stateCommit > refCommit && chestRewards > stateCommit
+  );
+  assert.match(winSource, /if \(currentGang\.isOwner && currentGang\.customGang\) \{[\s\S]{0,220}funds: \(currentGang\.customGang\.funds \|\| 0\) \+ reward\.funds/);
+  assert.match(winSource, /const mainRewardText = nextGang\.isOwner/);
+  assert.match(winSource, /isGangKingdomAligned\(nextGang, kingdomWar\)/);
+
+  const defeatRefCommit = defeatSource.indexOf('gangRef.current = nextGang');
+  const defeatStateCommit = defeatSource.indexOf('setGang(nextGang)');
+  assert.ok(defeatRefCommit >= 0 && defeatStateCommit > defeatRefCommit);
+  assert.doesNotMatch(defeatSource, /funds\s*:/);
+  check(true, '帮战明确区分等级估算与实际胜率；日上限前置，胜败均只结算一次且帮主资金归属正确');
+}
+
+// 旧存档中的缺失/重复 uid 必须被修复，且删除操作只能移除一只精灵。
+{
+  const original = [
+    { id: 1, uid: 'keep_uid', name: '保留' },
+    { id: 2, name: '缺失' },
+    { id: 3, uid: 'duplicate_uid', name: '重复一' },
+    { id: 4, uid: 'duplicate_uid', name: '重复二' },
+  ];
+  const normalized = petIdentity.ensureUniquePetUids(
+    original,
+    (_pet, index, attempt) => `generated_${index}_${attempt}`,
+  );
+  assert.equal(normalized[0], original[0]);
+  assert.equal(normalized[0].uid, 'keep_uid');
+  assert.equal(normalized[2].uid, 'duplicate_uid');
+  assert.notEqual(normalized[3].uid, 'duplicate_uid');
+  assert.equal(new Set(normalized.map(pet => pet.uid)).size, normalized.length);
+
+  const duplicated = [
+    { uid: 'same', name: '第一只' },
+    { uid: 'same', name: '第二只' },
+    { uid: 'other', name: '第三只' },
+  ];
+  const removal = petIdentity.removeSinglePetByUid(duplicated, 'same');
+  assert.equal(removal.removed?.name, '第一只');
+  assert.deepEqual(removal.pets.map(pet => pet.name), ['第二只', '第三只']);
+  const missing = petIdentity.removeSinglePetByUid(duplicated, 'missing');
+  assert.equal(missing.removed, null);
+  assert.equal(missing.pets, duplicated);
+  check(true, '旧存档精灵身份会补齐并全局去重，上交按 uid 只删除一只');
+}
+
+// 上交任务必须保护训练/远征精灵、保留最后一只队员，并在真实删除后才推进任务。
+{
+  const hydrationStart = appSource.indexOf('const hydrateSavedPetCollections =');
+  const hydrationEnd = appSource.indexOf('const compactMapGridCache', hydrationStart);
+  const hydrationSource = appSource.slice(hydrationStart, hydrationEnd);
+  assert.ok(hydrationStart >= 0 && hydrationEnd > hydrationStart);
+  assert.match(hydrationSource, /ensureUniquePetUids\(\[\.\.\.hydratedParty, \.\.\.hydratedBox\]\)/);
+
+  const donationStart = appSource.indexOf('{/* 上交精灵 */}');
+  const donationEnd = appSource.indexOf('const renderGangWar', donationStart);
+  const donationSource = appSource.slice(donationStart, donationEnd);
+  assert.ok(donationStart >= 0 && donationEnd > donationStart);
+  const dailyLockCheck = donationSource.indexOf('gangActionLocksRef.current.has(lockKey)');
+  const taskRefresh = donationSource.indexOf('getFreshGangDailyCounts');
+  const lastPetCheck = donationSource.indexOf('currentParty.length <= 1');
+  const assignedCheck = donationSource.indexOf('const currentlyAssigned');
+  const removePet = donationSource.indexOf('removeSinglePetByUid');
+  const removalGuard = donationSource.indexOf('if (!removal.removed');
+  const lockAcquire = donationSource.indexOf('gangActionLocksRef.current.add(lockKey)');
+  const partyCommit = donationSource.indexOf('partyRef.current = removal.pets');
+  const taskProgress = donationSource.indexOf("updateGangTaskProgress('donate_pet', 1)");
+  assert.ok(
+    dailyLockCheck >= 0 && taskRefresh > dailyLockCheck && lastPetCheck > taskRefresh &&
+    assignedCheck > lastPetCheck && removePet > assignedCheck && removalGuard > removePet &&
+    lockAcquire > removalGuard && partyCommit > lockAcquire && taskProgress > partyCommit
+  );
+  assert.match(donationSource, /trainingState\?\.slots/);
+  assert.match(donationSource, /expeditions\?\.teams/);
+  assert.match(donationSource, /setHousing\([\s\S]{0,180}residents/);
+  assert.match(donationSource, /delete tiers\[petToGive\.uid\]/);
+  assert.doesNotMatch(donationSource, /prev\.filter\(p => p\.uid !== petToGive\.uid\)/);
+  check(true, '精灵上交会复核最新任务和队伍状态，保护占用中的精灵，并在删除成功后原子推进任务');
 }
 
 console.log('\n=== 帮战检查全部通过 ===');
