@@ -331,19 +331,23 @@ export function getRegionStage(mapId, ecology, clearedCrises = [], badges = 99) 
   return { stage, ...def };
 }
 
-export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMapId = null) {
+export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMapId = null, previousEcologyByMap = null) {
   const result = { ...ecologyByMap };
-  chains.forEach(chain => {
-    if (sourceMapId != null && Number(chain.fromMap) !== Number(sourceMapId)) return;
+  const conditionMet = (chain, ecologyState) => {
     const fromDefaults = getDefaultEcologyForMap(chain.fromMap);
-    const fromEco = { ...fromDefaults, ...(result[chain.fromMap] || {}) };
-    const met = Object.entries(chain.condition || {}).every(([k, cond]) => {
+    const fromEco = { ...fromDefaults, ...(ecologyState?.[chain.fromMap] || {}) };
+    return Object.entries(chain.condition || {}).every(([k, cond]) => {
       const val = getSafeEcologyMetric(fromEco[k], fromDefaults[k] ?? DEFAULT_ECOLOGY[k] ?? 50);
-      if (cond.min != null) return val >= cond.min;
-      if (cond.max != null) return val <= cond.max;
+      if (cond.min != null && val < cond.min) return false;
+      if (cond.max != null && val > cond.max) return false;
       return true;
     });
-    if (!met) return;
+  };
+  chains.forEach(chain => {
+    if (sourceMapId != null && Number(chain.fromMap) !== Number(sourceMapId)) return;
+    if (!conditionMet(chain, result)) return;
+    // 生产调用提供变化前状态：连锁只在阈值由未满足变为满足时触发，避免同一条件反复叠加。
+    if (previousEcologyByMap && conditionMet(chain, previousEcologyByMap)) return;
     if (chain.global) {
       const globalMapKeys = new Set([
         ...Object.keys(MAP_DEFAULT_ECOLOGY),

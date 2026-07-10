@@ -310,4 +310,43 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, '无限城圣域休息只恢复本次探索队伍，不再绕过生态事件无限净化永久地图');
 }
 
+
+// 10. 区域连锁只在阈值首次跨越时结算，不能靠重复修改同一来源地图无限叠加。
+{
+  assert.match(appSource, /applyRegionChains\(updated, REGION_CHAINS, mapId, prev\)/);
+  const chain = [{
+    fromMap: 1,
+    toMap: 4,
+    condition: { pollution: { min: 55 } },
+    effect: { water: -10, pollution: 8 },
+  }];
+  const before = {
+    1: { ...eco.getDefaultEcologyForMap(1), pollution: 50 },
+    4: eco.getDefaultEcologyForMap(4),
+  };
+  const crossed = {
+    ...before,
+    1: { ...before[1], pollution: 60 },
+  };
+  const first = eco.applyRegionChains(crossed, chain, 1, before);
+  assert.equal(first[4].water, before[4].water - 10);
+  assert.equal(first[4].pollution, before[4].pollution + 8);
+
+  const stillAbove = {
+    ...first,
+    1: { ...first[1], pollution: 61 },
+  };
+  const repeated = eco.applyRegionChains(stillAbove, chain, 1, first);
+  assert.deepEqual(repeated[4], first[4]);
+
+  const healthyLakeBefore = { 4: eco.getDefaultEcologyForMap(4), 1: eco.getDefaultEcologyForMap(1) };
+  const healthyLakeAfter = {
+    ...healthyLakeBefore,
+    4: { ...healthyLakeBefore[4], pollution: healthyLakeBefore[4].pollution - 1 },
+  };
+  const noBaselineExploit = eco.applyRegionChains(healthyLakeAfter, eco.REGION_CHAINS, 4, healthyLakeBefore);
+  assert.deepEqual(noBaselineExploit[1], healthyLakeBefore[1]);
+  check(true, '区域连锁仅在生态条件跨越阈值时触发，持续满足条件时不会被重复行动无限叠加');
+}
+
 console.log('\n=== 生态玩法检查全部通过 ===');

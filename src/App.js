@@ -7450,7 +7450,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         ...prev,
         [mapId]: applyEcologyDelta(prev[mapId] || getDefaultEcologyForMap(mapId), delta),
       };
-      return applyRegionChains(updated, REGION_CHAINS, mapId);
+      return applyRegionChains(updated, REGION_CHAINS, mapId, prev);
     });
   };
 
@@ -16100,7 +16100,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     setKingdomWar(nextKw);
     triggerEnemyKingdomActions(nextKw);
     showMapToast(type === 'elite' ? '⚔️' : '🪖', type === 'elite' ? '精锐征兵' : '征兵完成', type === 'elite'
-      ? `获得 ${result.gain} 精锐（攻防+30%）`
+      ? `获得 ${result.gain} 精锐（攻防+30%；消耗 ${result.goldCost}金 ${result.grainCost}粮）`
       : `获得 ${result.gain} 兵力（消耗 ${result.goldCost}金 ${result.grainCost}粮）`, 2500);
     setTimeout(() => kingdomActionLocksRef.current.delete(lockKey), 900);
   };

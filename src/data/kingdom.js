@@ -294,6 +294,10 @@ export const WAR_TICK_CONFIG = {
   playerKillAttackBonus: 4,
   /** 名城(洛阳/荆州/汉中)不在自动 War Tick 中被 AI 易主，仅由「争夺条 + 攻城」结算同步 */
   aiAggressionBonus: 1.12,
+  /** 每个后台 Tick 仅推进部分非玩家势力，避免与玩家行动联动叠加成高频围攻。 */
+  aiActionsPerTick: 1,
+  /** 同一 Tick 内每个有主阵营最多承受一次进攻，防止离线结算被连续集火。 */
+  maxAttacksPerDefenderPerTick: 1,
 };
 
 // 默认国战状态
@@ -392,13 +396,12 @@ export const getFactionTerritoryCount = (factionId, territories) => {
 
 // 找出领土最少的阵营（含群雄）
 export const getWeakestFaction = (territories) => {
-  const counts = {};
-  for (const fid of ALL_FACTION_IDS) {
-    counts[fid] = getFactionTerritoryCount(fid, territories);
-  }
   let min = Infinity, weakest = null;
-  for (const [fid, c] of Object.entries(counts)) {
-    if (c < min) { min = c; weakest = fid; }
+  for (const fid of ALL_FACTION_IDS) {
+    const count = getFactionTerritoryCount(fid, territories);
+    // 已失去全部领地的势力视为本赛季退场，不占用仍在交战势力的追赶加成。
+    if (count <= 0) continue;
+    if (count < min) { min = count; weakest = fid; }
   }
   return weakest;
 };
@@ -840,14 +843,25 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     }
   }
 
-  // 四方势力攻城（魏蜀吴 + 群雄都会进攻）
-  const attackFactions = [...ALL_FACTION_IDS];
+  // 后台世界演化每次只推进部分仍有领地的非玩家势力；玩家行动另有 1:1 敌方轮转。
+  const activeAttackers = ALL_FACTION_IDS.filter(fid => (
+    fid !== playerFaction && getFactionTerritoryCount(fid, newTerritories) > 0
+  ));
+  // Fisher-Yates 洗牌后截取本 Tick 行动势力，保证长期参与且避免固定阵营偏置。
+  for (let i = activeAttackers.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [activeAttackers[i], activeAttackers[j]] = [activeAttackers[j], activeAttackers[i]];
+  }
+  const actionLimit = Math.max(1, Math.floor(Number(cfg.aiActionsPerTick) || 1));
+  const attackFactions = activeAttackers.slice(0, actionLimit);
+  const attacksByDefender = new Map();
+  const defenderAttackLimit = Math.max(1, Math.floor(Number(cfg.maxAttacksPerDefenderPerTick) || 1));
   for (const attackerFid of attackFactions) {
-    if (attackerFid === playerFaction) continue;
     const targets = WAR_MAP_IDS.filter(mid => {
       const t = newTerritories[mid];
       if (!t || t.owner === attackerFid) return false;
       if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
+      if (t.owner !== 'neutral' && (attacksByDefender.get(t.owner) || 0) >= defenderAttackLimit) return false;
       return true;
     });
     if (targets.length === 0) continue;
@@ -859,6 +873,9 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     const targetMapId = topN[Math.floor(Math.random() * topN.length)]?.mid || scoredTargets[0]?.mid;
     const target = newTerritories[targetMapId];
     const defenderFid = target.owner === 'neutral' ? null : target.owner;
+    if (defenderFid) {
+      attacksByDefender.set(defenderFid, (attacksByDefender.get(defenderFid) || 0) + 1);
+    }
 
     const atkPower = attackerFid === 'qun'
       ? 2500 + Math.floor(Math.random() * 1500)
@@ -988,7 +1005,7 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     lastTick: Date.now(),
     goldReward: reward.gold,
     tokenReward: reward.tokens + mvpTokens,
-    generalDraws: drawCount,
+    generalDraws: Math.max(0, Number(kw.generalDraws) || 0) + drawCount,
     seasonTitles: titles,
   };
 };
@@ -1330,13 +1347,29 @@ export const recruitTroops = (kw, type = 'normal') => {
   if (!kw?.faction) return { ok: false, reason: '未加入阵营' };
   const cfg = RECRUIT_CONFIG;
   const isElite = type === 'elite';
+  const cap = isElite ? 1200 : MANPOWER_RESERVE_CAP;
+  const savedCurrent = Number(isElite ? kw.eliteTroops : kw.kwManpowerReserve);
+  const current = Math.min(cap, Math.max(0, Number.isFinite(savedCurrent) ? Math.floor(savedCurrent) : 0));
+  const capacity = Math.max(0, cap - current);
+  if (capacity <= 0) return { ok: false, reason: isElite ? '精锐兵已达上限' : '预备兵已达上限' };
+
   const baseCost = isElite ? cfg.eliteCost : cfg.normalCost;
   const rankPerk = getUnlockedRankPerks(kw);
   const costMult = rankPerk.recruitCostMult || 1;
-  const cost = { gold: Math.floor(baseCost.gold * costMult), grain: baseCost.grain };
+  const fullCost = { gold: Math.floor(baseCost.gold * costMult), grain: baseCost.grain };
   const gainRange = isElite ? cfg.eliteGain : cfg.normalGain;
-  if ((kw.grain || 0) < cost.grain) return { ok: false, reason: `粮草不足，需要 ${cost.grain}` };
-  const gain = gainRange[0] + Math.floor(Math.random() * (gainRange[1] - gainRange[0] + 1));
+  const rolledGain = gainRange[0] + Math.floor(Math.random() * (gainRange[1] - gainRange[0] + 1));
+  const gain = Math.min(capacity, rolledGain);
+  // 临近容量上限时只按真实入账兵力收费，避免花费整批资源却只获得少量甚至零收益。
+  const fillRatio = gain / rolledGain;
+  const cost = {
+    gold: fullCost.gold > 0 ? Math.max(1, Math.ceil(fullCost.gold * fillRatio)) : 0,
+    grain: fullCost.grain > 0 ? Math.max(1, Math.ceil(fullCost.grain * fillRatio)) : 0,
+  };
+  const savedGrain = Number(kw.grain);
+  const grain = Math.max(0, Number.isFinite(savedGrain) ? savedGrain : 0);
+  if (grain < cost.grain) return { ok: false, reason: `粮草不足，需要 ${cost.grain}` };
+
   return {
     ok: true,
     goldCost: cost.gold,
@@ -1344,14 +1377,10 @@ export const recruitTroops = (kw, type = 'normal') => {
     gain,
     isElite,
     nextKw: {
-      grain: (kw.grain || 0) - cost.grain,
-      kwManpowerReserve: isElite
-        ? kw.kwManpowerReserve
-        : Math.min(MANPOWER_RESERVE_CAP, (kw.kwManpowerReserve || 0) + gain),
-      eliteTroops: isElite
-        ? Math.min(1200, (kw.eliteTroops || 0) + gain)
-        : kw.eliteTroops,
-      actionCounter: (kw.actionCounter || 0) + 1,
+      grain: grain - cost.grain,
+      kwManpowerReserve: isElite ? Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Number(kw.kwManpowerReserve) || 0)) : current + gain,
+      eliteTroops: isElite ? current + gain : Math.min(1200, Math.max(0, Number(kw.eliteTroops) || 0)),
+      actionCounter: Math.max(0, Number(kw.actionCounter) || 0) + 1,
     },
   };
 };
@@ -1508,7 +1537,7 @@ const pickAiAction = (fid, territories, factionManpower, playerFaction) => {
   const danger = count <= 2;
   const advantage = count >= 8;
   const roll = Math.random();
-  if (count <= 0) return 'fortify';
+  if (count <= 0) return null;
   // 40 是最小出征兵力。兵力不足时必须先征兵，不能用默认值生成“幽灵兵力”。
   if (mp < 40) return 'recruit';
   if (danger && roll < 0.8) return 'recruit';
@@ -1603,7 +1632,7 @@ export const executeAllEnemyActions = (kw, gangPresets, playerAvgLevel = 50) => 
     let result = null;
     if (action === 'recruit') result = aiRecruit(fid, territories, factionManpower);
     else if (action === 'fortify') result = aiFortify(fid, territories);
-    else result = aiAttack(fid, territories, factionManpower, gangPresets, kw.faction, playerAvgLevel);
+    else if (action === 'attack') result = aiAttack(fid, territories, factionManpower, gangPresets, kw.faction, playerAvgLevel);
     if (result) logs.push({ time: Date.now(), ...result });
   }
   for (const mid of WAR_MAP_IDS) {
