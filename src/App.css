@@ -16070,3 +16070,62 @@ select:focus-visible,
   .pixel-home-entries { grid-template-columns: repeat(3, 1fr); }
   .pixel-home-systems { grid-template-columns: 1fr 1fr; }
 }
+
+/* 当前章节任务完成后，将右下角道馆明确标记为下一主线目标。 */
+.grid-screen-redesign .bld-gym.is-story-target {
+  position: relative;
+  isolation: isolate;
+  filter:
+    drop-shadow(3px 3px 0 rgba(31,45,42,0.35))
+    drop-shadow(0 0 7px rgba(255, 224, 73, 0.95)) !important;
+}
+
+.grid-screen-redesign .bld-gym.is-story-target::before {
+  content: '';
+  position: absolute;
+  inset: -8px -7px -6px;
+  z-index: -1;
+  border: 3px solid #ffe049;
+  background: rgba(255, 224, 73, 0.2);
+  box-shadow: 0 0 0 2px rgba(65, 45, 28, 0.9), 0 0 12px rgba(255, 224, 73, 0.85);
+  animation: story-gym-target-pulse 1s steps(2, end) infinite !important;
+  pointer-events: none;
+}
+
+.grid-screen-redesign .gym-quest-bubble {
+  top: -20px;
+  right: -10px;
+  width: 20px;
+  height: 22px;
+  z-index: 6;
+  border: 2px solid var(--px-ink);
+  background: #ffe049 !important;
+  color: #5c321d !important;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.6);
+  box-shadow: 3px 3px 0 rgba(31,45,42,0.45), 0 0 8px rgba(255,224,73,0.9) !important;
+  animation: story-gym-bubble-hop 0.8s steps(2, end) infinite !important;
+  pointer-events: none;
+}
+
+.grid-screen-redesign .grid-quest-banner.is-gym-target {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 2px 0 rgba(92,50,29,0.18);
+}
+
+@keyframes story-gym-target-pulse {
+  0%, 100% { transform: scale(0.96); opacity: 0.7; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+@keyframes story-gym-bubble-hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-screen-redesign .bld-gym.is-story-target::before,
+  .grid-screen-redesign .gym-quest-bubble {
+    animation: none !important;
+  }
+}

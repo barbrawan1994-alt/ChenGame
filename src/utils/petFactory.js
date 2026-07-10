@@ -54,35 +54,37 @@ export function getMoveByLevel(type, level) {
  *   getStatsForPet: (pet) => stats object (bound version of getStats with context)
  */
 export function createPet(dexId, level, isBoss = false, forceShiny = false, context = {}) {
-  const { spouseBonuses = {}, getStatsForPet } = context;
+  const { spouseBonuses = {}, getStatsForPet, preserveSpecies = false } = context;
   level = Math.min(100, Math.max(1, level));
   let finalId = dexId;
 
-  const visited = new Set();
-  const requestedEntry = POKEDEX.find(p => p.id === finalId);
-  const hasEvoConditionTarget = requestedEntry && POKEDEX.some(p => p.evo === finalId && p.evoCondition);
-  if (!hasEvoConditionTarget) {
-    while (true) {
-      if (visited.has(finalId)) break;
-      visited.add(finalId);
-      const preForm = POKEDEX.find(p => p.evo === finalId);
-      if (!preForm) break;
-      if (level < preForm.evoLvl) {
-        finalId = preForm.id;
+  if (!preserveSpecies) {
+    const visited = new Set();
+    const requestedEntry = POKEDEX.find(p => p.id === finalId);
+    const hasEvoConditionTarget = requestedEntry && POKEDEX.some(p => p.evo === finalId && p.evoCondition);
+    if (!hasEvoConditionTarget) {
+      while (true) {
+        if (visited.has(finalId)) break;
+        visited.add(finalId);
+        const preForm = POKEDEX.find(p => p.evo === finalId);
+        if (!preForm) break;
+        if (level < preForm.evoLvl) {
+          finalId = preForm.id;
+        } else {
+          break;
+        }
+      }
+    }
+
+    for (let k = 0; k < 5; k++) {
+      const info = POKEDEX.find(p => p.id === finalId);
+      if (!info) break;
+      if (info.evo && level >= info.evoLvl) {
+        if (info.evoCondition) break;
+        finalId = info.evo;
       } else {
         break;
       }
-    }
-  }
-
-  for (let k = 0; k < 5; k++) {
-    const info = POKEDEX.find(p => p.id === finalId);
-    if (!info) break;
-    if (info.evo && level >= info.evoLvl) {
-      if (info.evoCondition) break;
-      finalId = info.evo;
-    } else {
-      break;
     }
   }
 

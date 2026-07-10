@@ -1,0 +1,6 @@
+# Unity-generated YAML commonly preserves blank scalar values as `key: `.
+# Keep whitespace checks enabled for source code while exempting serialized assets.
+UnityClient/**/*.meta -whitespace
+UnityClient/**/*.unity -whitespace
+UnityClient/**/*.asset -whitespace
+UnityClient/**/*.scenetemplate -whitespace

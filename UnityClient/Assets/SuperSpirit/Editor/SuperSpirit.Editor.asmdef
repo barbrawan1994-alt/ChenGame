@@ -1,0 +1,19 @@
+{
+  "name": "SuperSpirit.Editor",
+  "rootNamespace": "SuperSpirit.Editor",
+  "references": [
+    "SuperSpirit.Runtime",
+    "Unity.RenderPipelines.Universal.2D.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

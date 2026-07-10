@@ -12,6 +12,9 @@ import {
 import { getStats as getStatsRaw, getStageMult, calcNextExp, calcBattleBaseExp } from './utils/statsCalculator';
 import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { ensureUniquePetUids, removeSinglePetByUid } from './utils/petIdentity';
+import { prepareCaughtPet, selectContestSpecies, syncPartyBattleResources } from './utils/contestUtils';
+import { getPostMoveResolution, getStoryObjective } from './utils/progressionFlow';
+import { calculatePetGrade } from './utils/petGrade';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
@@ -2014,10 +2017,20 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const [pvpCodeInput, setPvpCodeInput] = useState('');
   const [activeContest, setActiveContest] = useState(null);
   const [fishingState, setFishingState] = useState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' });
-   const [evoAnim, setEvoAnim] = useState(null); // { oldPet, newPet, targetIdx, step: 0-3 }
+  const lastFishingSpeciesRef = useRef(null);
+  const lastBugContestSpeciesRef = useRef(null);
+  const [evoAnim, setEvoAnim] = useState(null); // { oldPet, newPet, targetIdx, step: 0-3 }
+  const evolutionCommitRef = useRef(false);
+  const evolutionFinishRef = useRef(null);
+  const beginEvolution = (payload) => {
+    evolutionCommitRef.current = false;
+    evolutionFinishRef.current = null;
+    setEvoAnim(payload);
+  };
   const [beautyState, setBeautyState] = useState({ round: 1, appeal: 0, history: [], log: [] });
   const [activityModal, setActivityModal] = useState(null);
   const activityStartLockRef = useRef(false);
+  const contestRewardLockRef = useRef(false);
   useEffect(() => {
     if (activityModal) activityStartLockRef.current = false;
   }, [activityModal]);
@@ -4040,7 +4053,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                   return { ...prev, usedStonesList: newList, uniqueStonesUsed: newList.length };
                 });
                 
-                setEvoAnim({
+                beginEvolution({
                     targetIdx: petIdx,
                     oldPet: pet,
                     newPet: targetPetInfo,
@@ -4436,8 +4449,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // ==========================================
   // [核心修复] 创建精灵 - 委托给 utils/petFactory.js
   // ==========================================
-  function createPet(dexId, level, isBoss = false, forceShiny = false) {
+  function createPet(dexId, level, isBoss = false, forceShiny = false, options = {}) {
     return createPetRaw(dexId, level, isBoss, forceShiny, {
+      ...options,
       spouseBonuses: getSpouseBonuses(),
       getStatsForPet: (pet) => getStats(pet),
     });
@@ -4604,6 +4618,26 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     sanctuaryState, bondingProgress, ecoCrisisRoutes, fusionState,
     mapGridCache: compactMapGridCache(mapGridCacheRef.current),
   };};
+
+  // Unity migration bridge: exports the authoritative browser save without deleting or mutating it.
+  const exportUnitySave = () => {
+    try {
+      const payload = buildSavePayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'super-spirit-legacy-save.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showMapToast('🎮', 'Unity 迁移存档已导出', '文件已保留全部旧版字段。启动 Unity 客户端后会从“下载”目录自动导入，旧存档不会被覆盖。', 6000);
+    } catch (error) {
+      console.error('Unity 存档导出失败', error);
+      showMapToast('⚠️', '导出失败', '无法生成 Unity 迁移文件，请先手动保存后重试。', 5000);
+    }
+  };
 
   const persistSave = (silent = false) => {
     const doSave = () => {
@@ -13120,12 +13154,16 @@ const useGrowthItem = (petIndex, itemId) => {
 // ==========================================
 // [修复版] 通用结算函数 (自动识别精灵/物品)
 // ==========================================
-const grantContestReward = (config, score, subjectPet = null) => {
+const grantContestReward = (config, score, subjectPet = null, options = {}) => {
+    if (contestRewardLockRef.current) return;
+    contestRewardLockRef.current = true;
+    const rewardSubjectPet = options.rewardSubjectPet === true && subjectPet;
     // 1. 找到符合条件的最高一档奖励
     const sortedTiers = [...config.tiers].sort((a, b) => b.min - a.min);
     const rewardTier = sortedTiers.find(t => score >= t.min);
     
     if (!rewardTier) {
+        contestRewardLockRef.current = false;
         showMapToast('❌', '提示', '系统错误：无法计算奖励', 1500);
         setView('grid_map');
         setActiveContest(null);
@@ -13156,11 +13194,14 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
     // --- 分支 A: 奖励是精灵 ---
     if (isPetReward) {
-        // 奖励等级跟随当前地图等级（不超过地图上限，保证主线地图是核心成长路径）
+        // 捕虫大会奖励真实捕获对象；其他活动按奖励配置创建精灵。
         const mapInfo = MAPS.find(m => m.id === currentMapId);
         const rewardLvl = mapInfo ? Math.max(rewardTier.level, Math.floor((mapInfo.lvl[0] + mapInfo.lvl[1]) / 2)) : rewardTier.level;
-        const rewardPet = createPet(rewardTier.id, rewardLvl, true, rewardTier.shiny);
-        rewardPet.name = rewardTier.name; 
+        const rewardPet = rewardSubjectPet
+          ? subjectPet
+          : createPet(rewardTier.id, rewardLvl, true, rewardTier.shiny, { preserveSpecies: true });
+        rewardPet.isBoss = false;
+        if (!rewardSubjectPet) rewardPet.name = rewardTier.name;
         
         // 2. 应用保底个体值
         const guaranteedV = rewardTier.ivs || 0;
@@ -13257,7 +13298,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         title: config.name,
         type: config.id,
         score: score,
-        subjectPet: subjectPet,
+        subjectPet: rewardSubjectPet || subjectPet,
         tierName: rewardTier.name,
         tierMsg: rewardTier.msg,
         reward: rewardInfo,
@@ -13916,7 +13957,22 @@ const grantContestReward = (config, score, subjectPet = null) => {
         extraBattleData.meta = challengeId;
     }
     // -------------------------------------------------
-    // 17. 普通野怪 (兜底逻辑)
+    // 17. 捕虫大会：严格从活动池生成原始物种，不触发野外替换逻辑
+    // -------------------------------------------------
+    else if (actualType === 'contest_bug') {
+         if (!context?.lvl || !context?.pool?.length) {
+             showMapToast('❌', '提示', '捕虫大会目标生成失败', 1500);
+             return false;
+         }
+         const enemyId = selectContestSpecies(context.pool, lastBugContestSpeciesRef.current);
+         lastBugContestSpeciesRef.current = enemyId;
+         const level = _.random(context.lvl[0], context.lvl[1]);
+         enemyParty.push(createPet(enemyId, level, false, false, { preserveSpecies: true }));
+         trainerName = context.name || '大赛目标';
+         dropGold = 0;
+    }
+    // -------------------------------------------------
+    // 18. 普通野怪 (兜底逻辑)
     // -------------------------------------------------
     else {
          if (!context || !context.lvl) {
@@ -14048,7 +14104,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
       enemyParty.forEach(p => {
         if (!p.devilFruit) p.devilFruit = getRandomFruit(p.level, 'trainer');
       });
-    } else {
+    } else if (actualType !== 'contest_bug') {
       enemyParty.forEach(p => {
         if (!p.devilFruit && Math.random() < 0.3) {
           p.devilFruit = getRandomFruit(p.level, 'wild');
@@ -19555,7 +19611,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             if (pet.moves.length < 4) {
               pet.moves.push(newMove);
               if (isActive) levelUpLog += ` 学会[${newMove.name}]`;
-            } else {
+            } else if (!pet.pendingLearnMove) {
               pet.pendingLearnMove = newMove;
               hasPendingSkill = true;
               if (isActive) levelUpLog += ` 领悟新技能!`;
@@ -19735,6 +19791,25 @@ const grantContestReward = (config, score, subjectPet = null) => {
            setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
            return;
          }
+         if (battleSnapshot.type === 'contest_bug') {
+           const turnCount = battleSnapshot.turnCount || 0;
+           const firstPet = finalParty?.[0];
+           const leadPet = firstPet ? (POKEDEX.find(p => p.id === firstPet.id)?.name || firstPet.name || '未知') : '—';
+           const opponent = battleSnapshot.trainerName
+             || (battleSnapshot.enemyParty?.[0] && (POKEDEX.find(p => p.id === battleSnapshot.enemyParty[0].id)?.name || battleSnapshot.enemyParty[0].name))
+             || '大赛目标';
+           setBattleRecords(prev => [{ time: Date.now(), opponent, result: '捕虫失败', turns: turnCount, leadPet }, ...prev].slice(0, 20));
+           setParty(prev => syncPartyBattleResources(prev, battleSnapshot.playerCombatStates));
+           pendingJutsuWinForBountyRef.current = false;
+           setBattle(null);
+           setActiveContest(null);
+           setView('grid_map');
+           showMapToast('🪲', '捕虫失败', '目标被击倒，本次捕虫失败。捕虫大会必须使用精灵球完成捕捉。', 4200);
+           setTimeout(() => {
+             try { persistSaveRef.current(true); } catch (e) { /* ignore */ }
+           }, 0);
+           return;
+         }
          {
            const b = battleSnapshot;
            const turnCount = b.turnCount || 0;
@@ -19755,32 +19830,6 @@ const grantContestReward = (config, score, subjectPet = null) => {
         audioRef.current.loop = false; 
     }
     
-        if (battleSnapshot.type === 'contest_bug') {
-          const syncPartyFromBattle = (currentParty) => {
-            return currentParty.map((p, idx) => {
-              const cs = battleSnapshot.playerCombatStates?.[idx];
-              if (cs) { p.currentHp = cs.currentHp; p.moves = cs.combatMoves?.slice(0, p.moves?.length) || p.moves; }
-              return {...p};
-            });
-          };
-          setParty(prev => syncPartyFromBattle(prev));
-
-          const contestPet = finalParty?.[0];
-          if (!contestPet) { pendingJutsuWinForBountyRef.current = false; setBattle(null); return; }
-          const baseInfo = POKEDEX.find(p => p.id === contestPet.id) || {};
-          const baseTotal = (baseInfo.hp||0) + (baseInfo.atk||0) + (baseInfo.def||0) + (baseInfo.spd||0);
-          const ivSum = contestPet.ivs ? Object.values(contestPet.ivs).reduce((a, b) => a + b, 0) : 0;
-          let score = Math.floor((ivSum * 1.0) + (baseTotal * 0.6));
-          if (contestPet.isShiny) score += 100;
-          
-          grantContestReward(CONTEST_CONFIG.bug, score, contestPet);
-          pendingJutsuWinForBountyRef.current = false;
-          setBattle(null);
-          setView('grid_map');
-          return; 
-      }
-      // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
     const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battleSnapshot;
 
     finalParty = (finalParty || party).map(p => ({ ...p, fatigue: 0 }));
@@ -19813,7 +19862,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
               });
               showMapToast('📍', `下一目标: ${nextTask.name}`, `坐标 (${nextTask.x}, ${nextTask.y}) ${nextTask.type === 'battle' ? '⚔️ 前方有敌人！' : '💬 前方有人等待...'}`, 3500);
             } else {
-              showMapToast('🎉', '剧情完成', '本章任务全部完成！道路已打通，可以挑战道馆了！', 3500);
+              showMapToast('❗', '下一目标：挑战本地区道馆馆主', `前往右下角道馆，坐标 (${GRID_W - 2}, ${GRID_H - 2})`, 4200);
             }
             if (storyProgress === 12 && resolvedStep === 4) {
               unlockTitle('巅峰王者');
@@ -21038,6 +21087,11 @@ const grantContestReward = (config, score, subjectPet = null) => {
     const storyChapter = STORY_SCRIPT[storyProgress];
     const gymMapBadge = isGym && mapId ? MAPS.find(m => m.id === mapId)?.badge : null;
     const gymIsNewBadge = !!(gymMapBadge && !badges.includes(gymMapBadge));
+    const storyGymReady = !!(
+      isGym
+      && mapId
+      && getStoryObjective(storyChapter, mapId, storyStep, { x: GRID_W - 2, y: GRID_H - 2 })?.kind === 'gym'
+    );
     if (isGym && mapId && gymIsNewBadge) {
       const bc = badges.length + 1;
       const milestoneGold = Math.min(bc * 500, 5000);
@@ -21073,9 +21127,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setTimeout(() => showMapToast('📖', '道馆首胜', `${tmPick.name} · ${TYPES[tmPick.type]?.name || ''} 威力${tmPick.p || 0}`, 3500), 120);
         }
       }
+      try { checkTreasureUnlock('gym', { mapId }); } catch(e) { console.warn('treasure:', e); }
     }
-    if (isGym && mapId && storyChapter && storyChapter.mapId === mapId && gymIsNewBadge) {
-          try { checkTreasureUnlock('gym', { mapId }); } catch(e) { console.warn('treasure:', e); }
+    if (storyGymReady) {
           setDialogQueue(storyChapter.outro);
           setCurrentDialogIndex(0);
           setIsDialogVisible(true);
@@ -21786,6 +21840,8 @@ const grantContestReward = (config, score, subjectPet = null) => {
      // 4. 执行判定
     if (Math.random() < escapeChance) {
       if (battle.type === 'contest_bug') {
+    const contestEscapeSnap = battle;
+    setParty(prev => syncPartyBattleResources(prev, contestEscapeSnap.playerCombatStates));
     setConfirmModal({ title:'🏃 逃跑成功', msg:'你逃离了战斗。\n\n要继续搜寻下一只吗？', onOk: () => {
         setBattle(null);
         setTimeout(() => encounterNextBug(), 100);
@@ -21972,28 +22028,15 @@ const grantContestReward = (config, score, subjectPet = null) => {
       advanceBounty('catch', enemy.type);
       if (enemy.type2 || enemy.secondaryType) advanceBounty('catch', enemy.type2 || enemy.secondaryType);
 
-      // 生成新精灵对象 (野外捕获的精灵不保留恶魔果实)
-      const newPet = { ...enemy, uid: Date.now() };
-      delete newPet.devilFruit;
-      delete newPet.fruitUsed;
-      delete newPet.fruitTransformed;
-      delete newPet.fruitTurnsLeft;
-      delete newPet.fruitEffects;
+      // 生成干净且唯一的捕获对象，不保留战斗态或恶魔果实临时字段。
+      const newPet = prepareCaughtPet(enemy);
       if (ballType === 'heal') newPet.currentHp = getStats(newPet).maxHp;
 
-      // 🔥 [核心修复] 同步当前战斗状态 (防止战斗中扣血/PP未保存)
-      const syncCurrentParty = (currentParty) => {
-          return currentParty.map((p, i) => {
-              const combatState = battle.playerCombatStates[i];
-              if (!combatState) return p;
-              let updatedPet = { ...p, currentHp: combatState.currentHp };
-              updatedPet.moves = updatedPet.moves.map(m => {
-                  const cm = (combatState.combatMoves || []).find(c => c.name === m.name && !c.isExtra);
-                  return cm ? { ...m, pp: cm.pp } : m;
-              });
-              return updatedPet;
-          });
-      };
+      // 同步当前战斗资源，只回写玩家 HP、状态和永久技能 PP。
+      const syncCurrentParty = currentParty => syncPartyBattleResources(
+        currentParty,
+        battle.playerCombatStates
+      );
 
       // ▼▼▼ 捕虫大赛：只通过grantContestReward发放奖励精灵，不重复入队 ▼▼▼
       if (battle.type === 'contest_bug') {
@@ -22002,7 +22045,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
           let score = Math.floor(baseStats.maxHp * 0.6 + baseStats.p_atk * 0.8 + baseStats.spd * 0.6);
           if (newPet.isShiny) score += 100;
           
-          grantContestReward(CONTEST_CONFIG.bug, score, newPet);
+          grantContestReward(CONTEST_CONFIG.bug, score, newPet, { rewardSubjectPet: true });
           setBattle(null);
           return;
       }
@@ -22144,7 +22187,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         <div style={{position:'absolute', inset:0, opacity:0.1, backgroundImage:'radial-gradient(circle, #fff 2px, transparent 2.5px)', backgroundSize:'30px 30px'}}></div>
         
         <div style={{display:'flex', alignItems:'center', padding:'12px 16px', background:'rgba(0,0,0,0.3)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.1)', position:'relative', zIndex:10}}>
-            <button onClick={() => { setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' }); setView(safeBack()); }} style={{background:'none', border:'none', color:'#fff', fontSize:'15px', cursor:'pointer', padding:'4px 8px'}}>← 退出</button>
+            <button onClick={() => { contestRewardLockRef.current = false; setActiveContest(null); setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' }); setView(safeBack()); }} style={{background:'none', border:'none', color:'#fff', fontSize:'15px', cursor:'pointer', padding:'4px 8px'}}>← 退出</button>
             <div style={{flex:1, textAlign:'center', fontSize:'18px', fontWeight:800, color:'#fff'}}>🎣 钓鱼大赛</div>
         </div>
 
@@ -22222,7 +22265,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         <div style={{position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'300px', height:'600px', background:'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 80%)', clipPath:'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)', pointerEvents:'none'}}></div>
 
         <div style={{zIndex:10, background:'rgba(0,0,0,0.4)', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px', borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
-            <button onClick={() => setView(safeBack())} style={{color:'#e2e8f0', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'6px 14px', borderRadius:'20px', fontWeight:'600', fontSize:'13px', cursor:'pointer'}}>⬅ 退出</button>
+            <button onClick={() => { contestRewardLockRef.current = false; setActiveContest(null); setView(safeBack()); }} style={{color:'#e2e8f0', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'6px 14px', borderRadius:'20px', fontWeight:'600', fontSize:'13px', cursor:'pointer'}}>⬅ 退出</button>
             <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>🎀 华丽大赛</div>
             <div style={{width:60}}/>
         </div>
@@ -22286,6 +22329,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
     else if (type === 'contest_beauty') { themeColor = '#E91E63'; unit = '分'; }
 
     const handleClose = () => {
+        contestRewardLockRef.current = false;
         setResultData(null);
         setActiveContest(null);
         setView('grid_map');
@@ -22497,37 +22541,40 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const forgetMove = (moveIndex) => {
     if (learningPetIdx === null || !pendingMove) return;
-    const pmove = pendingMove;
-    setParty(prev => {
-      const newParty = prev.map((p, i) => {
-        if (i !== learningPetIdx) return p;
-        const np = { ...p, moves: [...p.moves], pendingLearnMove: null };
+    const targetIdx = learningPetIdx;
+    const moveToLearn = pendingMove;
+    let updatedParty = null;
+    let toastMessage = '';
+
+    flushSync(() => setParty(prev => {
+      updatedParty = prev.map((pet, index) => {
+        if (index !== targetIdx) return pet;
+        const nextPet = { ...pet, moves: [...(pet.moves || [])], pendingLearnMove: null };
         if (moveIndex === -1) {
-          showMapToast('📖', '放弃学习', `${np.name} 放弃 [${pmove.name}]`, 2000);
+          toastMessage = `${nextPet.name} 放弃 [${moveToLearn.name}]`;
         } else {
-          const oldMoveName = np.moves[moveIndex]?.name;
-          np.moves[moveIndex] = pmove;
-          showMapToast('📖', '技能替换', `${np.name}：${oldMoveName} → ${pmove.name}`, 2000);
+          const oldMoveName = nextPet.moves[moveIndex]?.name || '未知技能';
+          nextPet.moves[moveIndex] = moveToLearn;
+          toastMessage = `${nextPet.name}：${oldMoveName} → ${moveToLearn.name}`;
         }
-        return np;
+        return nextPet;
       });
-      return newParty;
-    });
-    if (moveIndex >= 0 && pmove._tmId) {
-      setInventory(prev => ({...prev, tms: {...prev.tms, [pmove._tmId]: Math.max(0, (prev.tms[pmove._tmId] || 0) - 1)}}));
+      return updatedParty;
+    }));
+
+    if (moveIndex >= 0 && moveToLearn._tmId) {
+      setInventory(prev => ({...prev, tms: {...prev.tms, [moveToLearn._tmId]: Math.max(0, (prev.tms[moveToLearn._tmId] || 0) - 1)}}));
       advanceBounty('learn_tm');
     }
-    setPendingMove(null);
-    setLearningPetIdx(null);
-    setParty(latestParty => {
-      const stillHasPending = latestParty.some((pet, i) => i !== learningPetIdx && pet.pendingLearnMove);
-      if (stillHasPending) {
-        setTimeout(() => setView('team'), 0);
-      } else {
-        setTimeout(() => setView('grid_map'), 0);
-      }
-      return latestParty;
-    });
+
+    showMapToast('📖', moveIndex === -1 ? '放弃学习' : '技能替换', toastMessage, 2000);
+    const resolution = getPostMoveResolution(updatedParty || party);
+    setLearningPetIdx(resolution.pendingIndex);
+    setPendingMove(resolution.pendingMove);
+    setView(resolution.view);
+    if (resolution.view === 'team') {
+      setTimeout(() => showMapToast('✨', '可以进化', '技能处理完成，伙伴的进化入口仍然保留。', 2600), 50);
+    }
   };
 
   const renderMoveForget = () => {
@@ -29127,6 +29174,12 @@ const renderMenu = () => {
       </div>;
     }
     const currentMapInfo = MAPS.find(m => m.id === currentMapId) || MAPS[0];
+    const storyObjective = getStoryObjective(
+      STORY_SCRIPT[storyProgress],
+      currentMapId,
+      storyStep,
+      { x: GRID_W - 2, y: GRID_H - 2 }
+    );
     const theme = THEME_CONFIG[currentMapInfo.type] || THEME_CONFIG.grass;
     const mapPixelTheme = getMapPixelTheme(currentMapInfo);
     
@@ -29232,23 +29285,15 @@ const renderMenu = () => {
             </div>
           </div>
           {/* 当前剧情任务提示条 */}
-          {(() => {
-            if (!STORY_SCRIPT[storyProgress]) return null;
-            const ch = STORY_SCRIPT[storyProgress];
-            if (!ch || ch.mapId !== currentMapId) return null;
-            const task = ch.tasks?.find(t => t.step === storyStep);
-            if (!task) return (
-              <div className="grid-quest-banner is-complete" style={{padding:'6px 14px', background:'rgba(76,175,80,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'13px', color:'#2E7D32', fontWeight:'bold', textAlign:'center'}}>
-                ✅ 剧情任务已完成 · 前往道馆挑战馆主
-              </div>
-            );
-            return (
-              <div className="grid-quest-banner" style={{padding:'6px 14px', background:'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'13px', color:'#BF360C', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center', border:'1px solid rgba(255,152,0,0.35)'}}>
-                <span>{task.type === 'battle' ? '⚔️' : '💬'} {task.name}</span>
-                <span style={{color:'#E65100', fontWeight:'800'}}>📍({task.x},{task.y})</span>
-              </div>
-            );
-          })()}
+          {storyObjective && (
+            <div
+              className={`grid-quest-banner ${storyObjective.kind === 'gym' ? 'is-gym-target' : ''}`}
+              style={{padding:'6px 14px', background: storyObjective.kind === 'gym' ? 'rgba(239,83,80,0.16)' : 'rgba(255,152,0,0.15)', borderRadius:'8px', marginBottom:'4px', fontSize:'13px', color: storyObjective.kind === 'gym' ? '#B71C1C' : '#BF360C', fontWeight:'bold', display:'flex', justifyContent:'space-between', alignItems:'center', border: storyObjective.kind === 'gym' ? '1px solid rgba(239,83,80,0.45)' : '1px solid rgba(255,152,0,0.35)'}}
+            >
+              <span>{storyObjective.kind === 'gym' ? '❗ 当前主线：' : (storyObjective.type === 'battle' ? '⚔️ ' : '💬 ')}{storyObjective.name}</span>
+              <span style={{color: storyObjective.kind === 'gym' ? '#C62828' : '#E65100', fontWeight:'800'}}>📍({storyObjective.x},{storyObjective.y})</span>
+            </div>
+          )}
           {/* 2D 视口地图 - 自适应铺满 */}
           <div className="grid-viewport-v2 map-viewport-frame" ref={el => {
             if (el && !el.dataset.sized) {
@@ -29326,7 +29371,16 @@ const renderMenu = () => {
                     content = (<div className="bld-center"><div className="center-cross" /></div>);
                   } else if (type === 9) {
                     tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
-                    content = (<div className="bld-gym"><div className="gym-roof" /><div className="gym-body" /></div>);
+                    const isStoryGymTarget = storyObjective?.kind === 'gym'
+                      && storyObjective.x === wx
+                      && storyObjective.y === wy;
+                    content = (
+                      <div className={`bld-gym ${isStoryGymTarget ? 'is-story-target' : ''}`}>
+                        <div className="gym-roof" />
+                        <div className="gym-body" />
+                        {isStoryGymTarget && <div className="npc-bubble gym-quest-bubble">!</div>}
+                      </div>
+                    );
                   } else if (type === 10) {
                     tileClass = isEven ? 'mt-ground' : 'mt-ground-alt';
                   } else if (type >= 11 && type <= 13) {
@@ -29386,7 +29440,7 @@ const renderMenu = () => {
                     content = (<div className="npc-icon npc-enemy npc-lv3"><div className="npc-head" /><div className="npc-body" /><div className="npc-bubble" style={{background:'#FF9800'}}>💰</div></div>);
                   }
 
-                  const tileTitle = type === 7 ? '高草丛 (遇敌率高)' : type === 5 ? '沙地 (遇敌率中)' : type === 2 ? '平地 (遇敌率低)' : type === 8 ? '精灵中心 (免费回复)' : type === 9 ? '道馆' : type === 4 ? '宝箱' : undefined;
+                  const tileTitle = type === 7 ? '高草丛 (遇敌率高)' : type === 5 ? '沙地 (遇敌率中)' : type === 2 ? '平地 (遇敌率低)' : type === 8 ? '精灵中心 (免费回复)' : type === 9 ? (storyObjective?.kind === 'gym' && storyObjective.x === wx && storyObjective.y === wy ? '道馆（当前主线目标）' : '道馆') : type === 4 ? '宝箱' : undefined;
                   cells.push(
                     <div key={`${vx}-${vy}`}
                       className={`mt-cell ${tileClass}`}
@@ -29758,20 +29812,20 @@ const renderMenu = () => {
 
   // 1. 捕虫大赛 - 开始
   const startBugContest = () => {
+    contestRewardLockRef.current = false;
+    lastBugContestSpeciesRef.current = null;
     setActiveContest({ id: 'bug' });
     encounterNextBug(); // 直接调用遇敌逻辑
   };
 
   // 1.1 捕虫大赛 - 遭遇下一只 (等级跟随当前地图)
   const encounterNextBug = () => {
-    const pool = CONTEST_CONFIG.bug.pool;
-    const enemyId = _.sample(pool);
     const mapInfo = MAPS.find(m => m.id === currentMapId);
     const mapLvl = mapInfo ? mapInfo.lvl : [2, 10];
     startBattle({
         id: 9001,
         name: '大赛目标',
-        pool: [enemyId],
+        pool: CONTEST_CONFIG.bug.pool,
         lvl: mapLvl,
         drop: 0
     }, 'contest_bug'); 
@@ -29779,6 +29833,8 @@ const renderMenu = () => {
 
   // 2. 钓鱼大赛 - 开始
   const startFishing = () => {
+    contestRewardLockRef.current = false;
+    lastFishingSpeciesRef.current = null;
     setActiveContest({ id: 'fishing' });
     setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '', retries: 0 });
     setView('fishing_game');
@@ -29822,7 +29878,8 @@ const renderMenu = () => {
     } 
     else if (status === 'bite') {
         const pool = CONTEST_CONFIG.fishing.pool;
-        const fishId = _.sample(pool);
+        const fishId = selectContestSpecies(pool, lastFishingSpeciesRef.current);
+        lastFishingSpeciesRef.current = fishId;
         const progressMult = 1 + badges.length * 0.15;
         const weightTable = { 7: 15, 24: 35, 26: 55, 173: 90 };
         let baseWeight = weightTable[fishId] || 20;
@@ -29831,7 +29888,7 @@ const renderMenu = () => {
         
         const mapInfo = MAPS.find(m => m.id === currentMapId);
         const fishLvl = mapInfo ? mapInfo.lvl : [5, 15];
-        const fish = createPet(fishId, _.random(fishLvl[0], fishLvl[1]));
+        const fish = createPet(fishId, _.random(fishLvl[0], fishLvl[1]), false, false, { preserveSpecies: true });
         
         setFishingState(prev => ({ 
             ...prev, 
@@ -29846,6 +29903,7 @@ const renderMenu = () => {
   // 3. 华丽大赛 - 开始
   const startBeautyContest = () => {
     if (party.length === 0) return;
+    contestRewardLockRef.current = false;
     const pet = { ...party[0] };
     if (!pet.moves || pet.moves.length === 0) {
       const fallbackMoves = [
@@ -30576,7 +30634,7 @@ const renderMenu = () => {
       setInventory(prev => ({ ...prev, stones: { ...prev.stones, [stoneKey]: Math.max(0, (prev.stones?.[stoneKey] || 0) - 1) } }));
     }
 
-    setEvoAnim({
+    beginEvolution({
         targetIdx: petIdx,
         oldPet: pet,
         newPet: nextForm,
@@ -30956,68 +31014,11 @@ const renderMenu = () => {
   // ==========================================
   // [新增] 核心评级算法
   // ==========================================
-  const calculateGrade = (pet) => {
-    if (!pet) return { grade: 'B', score: 0, leftAvg: 0, rightAvg: 0 };
-
-    // 1. 获取基础种族值
-    const baseInfo = POKEDEX.find(p => p.id === pet.id) || POKEDEX[0];
-    const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
-    const diversity = (baseInfo.id % 5) * 2 - 4;
-    
-    // 辅助：计算某项属性的种族值
-    const getBase = (k) => {
-        if (k === 'hp') return baseInfo.hp || 60;
-        if (k === 'spd') return baseInfo.spd || (40 + (baseInfo.id * 7 % 70));
-        const bAtk = baseInfo.atk || 50;
-        const bDef = baseInfo.def || 50;
-        if (k === 'p_atk') return Math.floor(bAtk * bias.p) + diversity;
-        if (k === 'p_def') return Math.floor(bDef * bias.p);
-        if (k === 's_atk') return Math.floor(bAtk * bias.s) - diversity;
-        if (k === 's_def') return Math.floor(bDef * bias.s);
-        return 50;
-    };
-
-    const keys = ['hp', 'p_atk', 'p_def', 's_atk', 's_def', 'spd'];
-    const currentStats = getStats(pet);
-    const growth = 1 + pet.level * 0.05;
-
-    let totalLeftPct = 0;
-    let totalRightPct = 0;
-
-    keys.forEach(key => {
-        // --- 左侧：当前能力对比 ---
-        // 分母：同等级、满IV(31)、性格修正1.0(不考虑性格) 的理论数值
-        // 公式：(种族值 + 31) * 成长系数
-        let maxStat = (getBase(key) + 31) * growth;
-        if (key === 'hp') maxStat = maxStat * 2.5;
-        
-        // 实际数值
-        const currStat = key === 'hp' ? currentStats.maxHp : currentStats[key];
-        
-        // 计算百分比 (上限100%，超过算100%)
-        totalLeftPct += Math.min(1, currStat / maxStat);
-
-        // --- 右侧：潜力(IV)对比 ---
-        // 分母：31
-        const iv = pet.ivs?.[key === 'hp' ? 'hp' : key] || 0;
-        totalRightPct += iv / 31;
-    });
-
-    const leftAvg = (totalLeftPct / 6) * 100;
-    const rightAvg = (totalRightPct / 6) * 100;
-    
-    // 综合评分：左右两边取平均
-    const finalScore = (leftAvg + rightAvg) / 2;
-
-    // ▼▼▼ 修改评级判定逻辑 ▼▼▼
-    let grade = 'C'; // 默认为 C
-    if (finalScore >= 80) grade = 'S';
-    else if (finalScore >= 50) grade = 'A';
-    else if (finalScore >= 30) grade = 'B';
-    // 低于 30 保持 C
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-    return { grade, score: finalScore, leftAvg, rightAvg };
-  };
+  const calculateGrade = (pet) => calculatePetGrade(pet, {
+    pokedex: POKEDEX,
+    typeBias: TYPE_BIAS,
+    getStats,
+  });
 
  
   // ==========================================
@@ -34201,6 +34202,9 @@ const renderMenu = () => {
       } else if (step === 2) {
           // 阶段2: 白屏闪光 -> 0.5秒后展示新形态
           timer = setTimeout(() => setEvoAnim(prev => ({ ...prev, step: 3 })), 500);
+      } else if (step === 3) {
+          // 完成页停留后自动结算；使用 ref 避免 render 中重复注册计时器。
+          timer = setTimeout(() => evolutionFinishRef.current?.(), 8000);
       }
       return () => clearTimeout(timer);
   }, [evoAnim]); // 依赖项为 evoAnim
@@ -34214,7 +34218,8 @@ const renderMenu = () => {
 
    
     const finishEvo = () => {
-        if (step < 3) return;
+        if (step < 3 || evolutionCommitRef.current) return;
+        evolutionCommitRef.current = true;
         const newDex = POKEDEX.find(p => p.id === newPet.id);
         const safeNewPet = { id: newPet.id, name: newPet.name, type: newPet.type, type2: newPet.type2, emoji: newPet.emoji, hp: newPet.hp, atk: newPet.atk, def: newPet.def, spd: newPet.spd, trait: newPet.trait };
         if (safeNewPet.type !== oldPet.type) {
@@ -34298,7 +34303,7 @@ const renderMenu = () => {
         setEvoAnim(null);
     };
 
-    if (step === 3) { setTimeout(() => { if (evoAnim) finishEvo(); }, 8000); }
+    evolutionFinishRef.current = finishEvo;
 
     return (
         <div className="modal-overlay" style={{
@@ -34650,6 +34655,16 @@ const renderMenu = () => {
                   );
                 })}
               </div>
+            </div>
+            <div style={{background:'linear-gradient(135deg,rgba(50,215,196,0.14),rgba(124,77,255,0.14))',border:'1px solid rgba(50,215,196,0.3)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
+              <div style={{fontSize:'13px',fontWeight:'800',color:'#5eead4',marginBottom:'8px'}}>🎮 Unity 6 原生客户端迁移</div>
+              <div style={{fontSize:'11px',lineHeight:'1.65',color:'rgba(255,255,255,0.62)',marginBottom:'12px'}}>
+                导出当前完整存档到 Unity 兼容 JSON。Unity 客户端会保留原始文件，并将地图位置、训练师和晶币写入独立原生存档；不会覆盖这里的浏览器存档。
+              </div>
+              <button type="button" onClick={exportUnitySave} style={{width:'100%',padding:'11px',borderRadius:'10px',border:'1px solid rgba(94,234,212,0.5)',background:'rgba(20,184,166,0.2)',color:'#ccfbf1',fontSize:'13px',fontWeight:'800',cursor:'pointer'}}>
+                ⬇ 导出 Unity 迁移存档
+              </button>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)',marginTop:'8px'}}>文件名：super-spirit-legacy-save.json · 默认保存到“下载”目录</div>
             </div>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#ef4444',marginBottom:'12px'}}>⚠️ 危险操作</div>

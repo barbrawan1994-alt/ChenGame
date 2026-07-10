@@ -138,10 +138,10 @@ export const CONTEST_CONFIG = {
     entryFee: 2000,
     pool: [110, 38, 293, 252],
     tiers: [
-      { min: 500, id: 327, name: '虫群主宰', level: 5, shiny: false, ivs: 3, msg: '🏆 传说级捕获！虫族之王认可了你！' },
-      { min: 350, id: 252, name: '圣甲虫', level: 5, shiny: false, ivs: 2, msg: '🥇 冠军！这只甲虫实力非凡！' },
-      { min: 200, id: 112, name: '巴大蝶', level: 5, shiny: false, ivs: 1, msg: '🥈 优胜！这只蝴蝶翅膀很漂亮！' },
-      { min: 0,   id: 110, name: '绿毛虫', level: 5, shiny: false, ivs: 0, msg: '🥉 参与奖。继续加油！' }
+      { min: 500, id: 327, name: '虫群冠军', level: 5, shiny: false, ivs: 3, msg: '🏆 传说级捕获！虫族之王认可了你！' },
+      { min: 350, id: 252, name: '金奖', level: 5, shiny: false, ivs: 2, msg: '🥇 冠军！这只甲虫实力非凡！' },
+      { min: 200, id: 112, name: '银奖', level: 5, shiny: false, ivs: 1, msg: '🥈 优胜！捕获目标表现不错！' },
+      { min: 0,   id: 110, name: '参与奖', level: 5, shiny: false, ivs: 0, msg: '🥉 参与奖。继续加油！' }
     ]
   },
 
