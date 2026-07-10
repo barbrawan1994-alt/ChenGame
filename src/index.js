@@ -4,6 +4,7 @@ import RPG from './App';
 import './App.css';
 import './styles/common.css';
 import './styles/enhancements.css';
+import './styles/spirit-theme.css';
 
 window.onerror = function(msg, src, line, col, err) {
   document.getElementById('root').innerHTML =

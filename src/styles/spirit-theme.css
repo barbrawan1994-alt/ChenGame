@@ -1,0 +1,2200 @@
+/*
+ * Super Spirit — unified creature-collecting JRPG theme
+ * Original visual language: expedition field guide + guild command deck + light pixel texture.
+ * Loaded last on purpose so legacy inline-heavy screens share one system without changing game logic.
+ */
+
+:root {
+  --sp-ink-950: #04111e;
+  --sp-ink-900: #071a2e;
+  --sp-ink-850: #0a2538;
+  --sp-ink-800: #0d3045;
+  --sp-ink-700: #16465a;
+  --sp-teal-700: #236a69;
+  --sp-teal-600: #2b7a78;
+  --sp-teal-400: #57c7a5;
+  --sp-teal-300: #8ce1c6;
+  --sp-coral-700: #bd3f42;
+  --sp-coral-600: #e85b55;
+  --sp-coral-400: #ff8277;
+  --sp-gold-600: #eaa92f;
+  --sp-gold-400: #ffc857;
+  --sp-paper: #fff6d8;
+  --sp-paper-muted: #eadfbf;
+  --sp-white: #fffdf5;
+  --sp-muted: #a9c1c7;
+  --sp-danger: #ff6b70;
+  --sp-success: #57c78e;
+  --sp-border: rgba(255, 246, 216, 0.28);
+  --sp-border-strong: rgba(255, 200, 87, 0.68);
+  --sp-panel: rgba(7, 26, 46, 0.94);
+  --sp-panel-raised: rgba(13, 48, 69, 0.96);
+  --sp-panel-soft: rgba(16, 57, 76, 0.78);
+  --sp-shadow: 4px 4px 0 rgba(2, 12, 22, 0.82);
+  --sp-shadow-lg: 7px 7px 0 rgba(2, 12, 22, 0.86);
+  --sp-ring: 0 0 0 3px rgba(87, 199, 165, 0.28);
+  --sp-radius-xs: 5px;
+  --sp-radius-sm: 8px;
+  --sp-radius-md: 12px;
+  --sp-radius-lg: 16px;
+  --sp-font-body: "Avenir Next", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --sp-font-display: "Arial Rounded MT Bold", "Avenir Next", "PingFang SC", sans-serif;
+  --sp-font-pixel: "SFMono-Regular", "Cascadia Mono", "Roboto Mono", monospace;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: var(--sp-ink-950);
+}
+
+body {
+  color: var(--sp-white);
+  font-family: var(--sp-font-body);
+  overscroll-behavior: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.spirit-app {
+  --sp-view-art: url('../../public/assets/spirit-ui-sky-bg.webp');
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  color: var(--sp-white);
+  background: var(--sp-ink-950);
+  font-family: var(--sp-font-body);
+}
+
+.spirit-app.spirit-view-world_map,
+.spirit-app.spirit-view-grid_map,
+.spirit-app.spirit-view-merchant {
+  --sp-view-art: url('../../public/assets/spirit-world-atlas-bg.webp');
+}
+
+.spirit-app.spirit-view-gang,
+.spirit-app.spirit-view-sect_summit,
+.spirit-app.spirit-view-housing,
+.spirit-app.spirit-view-trainer_card {
+  --sp-view-art: url('../../public/assets/spirit-alliance-hall-bg.webp');
+}
+
+.spirit-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.2), rgba(4, 17, 30, 0.82) 78%, #04111e),
+    var(--sp-view-art);
+  background-position: center;
+  background-size: cover;
+  filter: saturate(0.92) contrast(1.04);
+}
+
+.spirit-app::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  pointer-events: none;
+  opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    radial-gradient(circle at 25% 25%, rgba(255, 200, 87, 0.22) 0 1px, transparent 1px);
+  background-size: 4px 4px, 4px 4px, 12px 12px;
+  mix-blend-mode: soft-light;
+}
+
+.spirit-app > .screen:not(.battle-screen):not(.grid-screen),
+.spirit-app > .gd-root {
+  position: relative;
+  min-height: 100dvh;
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.36), rgba(4, 17, 30, 0.78)) !important;
+}
+
+.spirit-app ::selection {
+  color: var(--sp-ink-950);
+  background: var(--sp-gold-400);
+}
+
+.spirit-app * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sp-teal-600) rgba(4, 17, 30, 0.52);
+}
+
+.spirit-app *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.spirit-app *::-webkit-scrollbar-track {
+  background: rgba(4, 17, 30, 0.52);
+  border-left: 1px solid rgba(255, 246, 216, 0.08);
+}
+
+.spirit-app *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--sp-teal-400), var(--sp-teal-700));
+  border: 2px solid var(--sp-ink-900);
+  border-radius: 3px;
+}
+
+.spirit-app :where(button, [role="button"], input, select, textarea):focus-visible {
+  outline: 2px solid var(--sp-gold-400) !important;
+  outline-offset: 3px;
+  box-shadow: var(--sp-ring) !important;
+}
+
+.spirit-app :where(button, [role="button"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.spirit-app :where(button, [role="button"]):not(:disabled) {
+  transition: transform 120ms ease, filter 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+
+.spirit-app :where(button, [role="button"]):not(:disabled):hover {
+  filter: brightness(1.08) saturate(1.04);
+}
+
+.spirit-app :where(button, [role="button"]):not(:disabled):active {
+  transform: translate(2px, 2px) !important;
+}
+
+.spirit-app :where(button, input, select, textarea) {
+  border-radius: var(--sp-radius-sm) !important;
+}
+
+.spirit-app :where(input, select, textarea) {
+  color: var(--sp-white) !important;
+  background: rgba(4, 17, 30, 0.84) !important;
+  border: 2px solid rgba(140, 225, 198, 0.34) !important;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.18) !important;
+}
+
+.spirit-app :where(input, textarea)::placeholder {
+  color: rgba(169, 193, 199, 0.7) !important;
+}
+
+/* ---- Shared navigation and title chrome ---- */
+.spirit-app :where(
+  .nav-header,
+  .world-map-topbar,
+  .housing-topbar,
+  .grid-header-redesign,
+  .gang-command-header,
+  .gd-topbar
+) {
+  color: var(--sp-paper) !important;
+  background:
+    linear-gradient(90deg, rgba(7, 26, 46, 0.98), rgba(13, 48, 69, 0.98)) !important;
+  border: 0 !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+  box-shadow: 0 4px 0 rgba(2, 12, 22, 0.66) !important;
+  backdrop-filter: blur(14px);
+}
+
+.spirit-app :where(
+  .btn-back,
+  .codex-back,
+  .world-map-back-btn,
+  .housing-back-btn,
+  .achievement-back-btn,
+  .gd-back
+) {
+  min-height: 38px;
+  padding: 8px 14px !important;
+  color: var(--sp-paper) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.8) !important;
+  font-family: var(--sp-font-pixel) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+}
+
+.spirit-app :where(.nav-title, .gd-title, .world-map-title-lockup strong, .housing-title-lockup strong) {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display);
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  text-shadow: 2px 2px 0 rgba(2, 12, 22, 0.8) !important;
+}
+
+.spirit-app :where(.nav-coin, .world-map-coin, .housing-gold-pill, .home-gate-wallet, .grid-env-pill, .grid-coord-pill) {
+  color: var(--sp-paper) !important;
+  background: rgba(4, 17, 30, 0.78) !important;
+  border: 2px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.72) !important;
+}
+
+/* ---- Shared panels, tabs, badges ---- */
+.spirit-app :where(
+  .panel-card,
+  .glass-panel,
+  .side-panel,
+  .codex-panel,
+  .sect-mini-panel,
+  .sect-info-block,
+  .activity-hub-card,
+  .home-gate-mini,
+  .home-gate-stat,
+  .home-gate-mission,
+  .home-gate-route,
+  .home-fusion-card,
+  .world-map-info-bar,
+  .kingdom-war-summary,
+  .stat-modal-card,
+  .team-modal-container,
+  .dialog-box,
+  .dex-modal-card
+) {
+  color: var(--sp-white) !important;
+  background: var(--sp-panel-raised) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+  backdrop-filter: blur(12px);
+}
+
+.spirit-app :where(
+  .sect-hub-tabs,
+  .housing-tab-bar,
+  .gang-command-tabs,
+  .kingdom-subtabs,
+  .achievement-category-tabs,
+  .gd-tabs,
+  .bag-tabs,
+  .pc-tabs
+) {
+  background: rgba(4, 17, 30, 0.74) !important;
+  border: 2px solid rgba(140, 225, 198, 0.26) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(
+  .sect-hub-tabs,
+  .housing-tab-bar,
+  .gang-command-tabs,
+  .kingdom-subtabs,
+  .achievement-category-tabs,
+  .gd-tabs,
+  .bag-tabs,
+  .pc-tabs
+) button {
+  color: var(--sp-muted) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--sp-radius-xs) !important;
+  box-shadow: none !important;
+  font-weight: 800 !important;
+}
+
+.spirit-app :where(
+  .sect-hub-tabs,
+  .housing-tab-bar,
+  .gang-command-tabs,
+  .kingdom-subtabs,
+  .achievement-category-tabs,
+  .gd-tabs,
+  .bag-tabs,
+  .pc-tabs
+) button:is(.active, [aria-selected="true"]),
+.spirit-app .bag-tab.active {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  box-shadow: 2px 2px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app :where(.codex-chip, .jutsu-chip, .rank-chip, .analysis-tag, .starter-type-chip, .starter-nature-chip) {
+  color: var(--sp-paper) !important;
+  background: rgba(35, 106, 105, 0.72) !important;
+  border: 1px solid rgba(140, 225, 198, 0.5) !important;
+  border-radius: 5px !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.55) !important;
+  font-family: var(--sp-font-pixel) !important;
+  font-weight: 800 !important;
+}
+
+.spirit-app :where(.codex-chip, .jutsu-chip, .rank-chip).active {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+}
+
+/* ---- Home command center ---- */
+.spirit-app .home-gate-screen {
+  color: var(--sp-white) !important;
+  background: transparent !important;
+}
+
+.spirit-app .home-gate-bg-art {
+  background-image:
+    linear-gradient(180deg, rgba(7, 26, 46, 0.08), rgba(7, 26, 46, 0.7)),
+    url('../../public/assets/spirit-ui-sky-bg.webp') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  filter: saturate(0.94) contrast(1.03);
+}
+
+.spirit-app :where(.home-gate-hero, .home-gate-command) {
+  border: 2px solid rgba(255, 246, 216, 0.34) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  background: linear-gradient(155deg, rgba(7, 26, 46, 0.94), rgba(13, 48, 69, 0.9)) !important;
+  box-shadow: var(--sp-shadow-lg) !important;
+  backdrop-filter: blur(14px);
+}
+
+.spirit-app .home-gate-logo,
+.spirit-app .home-gate-command h2,
+.spirit-app .home-card-title,
+.spirit-app .home-gate-step strong {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+  text-shadow: 3px 3px 0 rgba(2, 12, 22, 0.78) !important;
+}
+
+.spirit-app .home-gate-version-row,
+.spirit-app .home-gate-eyebrow,
+.spirit-app .home-gate-entry-group > strong {
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel) !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase;
+}
+
+.spirit-app :where(.home-gate-primary, .home-cover-main-start) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(180deg, var(--sp-coral-400), var(--sp-coral-700)) !important;
+  border: 3px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: 5px 5px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app :where(.home-cover-system, .home-gate-entry, .home-fusion-card) {
+  background: rgba(10, 37, 56, 0.92) !important;
+  border: 2px solid rgba(140, 225, 198, 0.26) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.64) !important;
+}
+
+.spirit-app :where(.home-cover-system, .home-gate-entry, .home-fusion-card):hover {
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .home-gate-progress,
+.spirit-app .home-fusion-meter {
+  background: rgba(4, 17, 30, 0.9) !important;
+  border: 1px solid rgba(255, 246, 216, 0.2) !important;
+  border-radius: 3px !important;
+}
+
+.spirit-app :where(.home-gate-team-slot, .home-gate-lead-mini-art) img,
+.spirit-app .pet-avatar-img {
+  image-rendering: pixelated;
+}
+
+/* ---- Starter laboratory ---- */
+.spirit-app .starter-lab-screen {
+  color: var(--sp-white) !important;
+  background: transparent !important;
+}
+
+.spirit-app .starter-lab-bg-art {
+  background-image:
+    linear-gradient(180deg, rgba(7, 26, 46, 0.06), rgba(7, 26, 46, 0.72)),
+    url('../../public/assets/spirit-ui-sky-bg.webp') !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.spirit-app :where(.starter-lab-hero, .starter-selection-panel, .starter-waiting-panel) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(7, 26, 46, 0.94), rgba(13, 48, 69, 0.92)) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  box-shadow: var(--sp-shadow-lg) !important;
+}
+
+.spirit-app .starter-lab-logo,
+.spirit-app .starter-selection-head h2,
+.spirit-app .starter-waiting-copy h2 {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+}
+
+.spirit-app .starter-choice-card {
+  color: var(--sp-white) !important;
+  background: var(--sp-panel-raised) !important;
+  border: 2px solid rgba(140, 225, 198, 0.28) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app .starter-choice-card:hover,
+.spirit-app .starter-choice-card.is-selected {
+  border-color: var(--sp-gold-400) !important;
+  box-shadow: 5px 5px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app :where(.starter-name-confirm, .starter-choose-btn, .starter-reroll-btn) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(180deg, var(--sp-coral-400), var(--sp-coral-700)) !important;
+  border: 2px solid var(--sp-paper) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+@media (max-width: 720px) {
+  .spirit-app .starter-card-grid {
+    gap: 12px !important;
+  }
+
+  .spirit-app .starter-choice-card {
+    min-height: 292px;
+    flex-direction: row !important;
+  }
+
+  .spirit-app .starter-choice-portrait {
+    flex: 0 0 min(36%, 220px);
+    width: auto !important;
+    min-height: 292px;
+    aspect-ratio: auto !important;
+    border-right: 2px solid rgba(255, 246, 216, 0.18);
+  }
+
+  .spirit-app .starter-choice-body {
+    gap: 7px;
+    padding: 12px !important;
+  }
+
+  .spirit-app .starter-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px 10px !important;
+  }
+
+  .spirit-app .starter-dex-number {
+    font-size: 42px;
+  }
+
+  .spirit-app .starter-choose-btn {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 520px) {
+  .spirit-app .starter-choice-card {
+    min-height: 0;
+    flex-direction: column !important;
+  }
+
+  .spirit-app .starter-choice-portrait {
+    flex-basis: 190px;
+    width: 100% !important;
+    min-height: 190px;
+    border-right: 0;
+    border-bottom: 2px solid rgba(255, 246, 216, 0.18);
+  }
+}
+
+/* ---- Codex family: creatures, skills, fruits, generals ---- */
+.spirit-app .codex-screen {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.42), rgba(4, 17, 30, 0.88)),
+    url('../../public/assets/spirit-ui-sky-bg.webp') center / cover fixed !important;
+}
+
+.spirit-app .codex-shell {
+  width: min(1500px, 100%);
+  margin: 0 auto;
+}
+
+.spirit-app .codex-hero {
+  color: var(--sp-white) !important;
+  background: linear-gradient(145deg, rgba(7, 26, 46, 0.98), rgba(22, 70, 90, 0.94)) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-bottom: 4px solid var(--sp-gold-400) !important;
+  border-radius: 0 0 var(--sp-radius-lg) var(--sp-radius-lg) !important;
+  box-shadow: 0 6px 0 rgba(2, 12, 22, 0.72) !important;
+}
+
+.spirit-app .codex-title-block > span,
+.spirit-app .codex-panel-copy > span,
+.spirit-app .codex-panel-head > span,
+.spirit-app .codex-insight-panel > span {
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel) !important;
+  letter-spacing: 0.12em !important;
+}
+
+.spirit-app .codex-title-block h1,
+.spirit-app .codex-panel-copy strong,
+.spirit-app .codex-insight-panel strong,
+.spirit-app .codex-hero-count b {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+  text-shadow: 2px 2px 0 rgba(2, 12, 22, 0.72) !important;
+}
+
+.spirit-app .codex-toolbar {
+  background: rgba(7, 26, 46, 0.9) !important;
+  border: 2px solid rgba(140, 225, 198, 0.25) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(
+  .codex-pet-card,
+  .codex-general-card,
+  .codex-fruit-card,
+  .codex-skill-card,
+  .jutsu-card
+) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(13, 48, 69, 0.98), rgba(7, 26, 46, 0.98)) !important;
+  border: 2px solid color-mix(in srgb, var(--card-color, var(--sp-teal-400)) 52%, var(--sp-border)) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(
+  .codex-pet-card,
+  .codex-general-card,
+  .codex-fruit-card,
+  .codex-skill-card,
+  .jutsu-card
+):hover {
+  border-color: var(--sp-gold-400) !important;
+  box-shadow: 5px 5px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app :where(.codex-pet-avatar, .codex-general-portrait, .codex-fruit-icon) {
+  background: rgba(255, 246, 216, 0.08) !important;
+  border: 2px solid rgba(255, 246, 216, 0.18) !important;
+  border-radius: var(--sp-radius-sm) !important;
+}
+
+.spirit-app :where(.codex-pet-avatar, .codex-general-portrait) img {
+  image-rendering: pixelated;
+}
+
+.spirit-app .codex-pagination button,
+.spirit-app .codex-tool-btn {
+  color: var(--sp-white) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+/* ---- Guide and jutsu archive ---- */
+.spirit-app .gd-root,
+.spirit-app .jutsu-codex-screen {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.45), rgba(4, 17, 30, 0.9)),
+    url('../../public/assets/spirit-ui-sky-bg.webp') center / cover fixed !important;
+}
+
+.spirit-app .gd-filterbar,
+.spirit-app .jutsu-codex-filter,
+.spirit-app .jutsu-stat-panel {
+  background: rgba(7, 26, 46, 0.92) !important;
+  border: 2px solid rgba(140, 225, 198, 0.28) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(.gd-category, .gd-section, .combo-card) {
+  color: var(--sp-white) !important;
+  background: var(--sp-panel-raised) !important;
+  border: 2px solid rgba(255, 246, 216, 0.2) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(.gd-category-head, .gd-section-head) {
+  color: var(--sp-paper) !important;
+  background: rgba(35, 106, 105, 0.34) !important;
+}
+
+.spirit-app :where(.gd-heading, .jutsu-filter-title, .sect-panel-title) {
+  color: var(--sp-gold-400) !important;
+  font-family: var(--sp-font-display) !important;
+}
+
+/* ---- World atlas and kingdoms ---- */
+.spirit-app .world-map-screen-redesign {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.42), rgba(4, 17, 30, 0.84)),
+    url('../../public/assets/spirit-world-atlas-bg.webp') center / cover fixed !important;
+}
+
+.spirit-app .world-map-hero {
+  background: linear-gradient(145deg, rgba(7, 26, 46, 0.96), rgba(22, 70, 90, 0.92)) !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+  box-shadow: 0 5px 0 rgba(2, 12, 22, 0.66) !important;
+}
+
+.spirit-app .world-map-eyebrow,
+.spirit-app .housing-eyebrow {
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel) !important;
+  letter-spacing: 0.14em !important;
+}
+
+.spirit-app :where(.world-map-hero h1, .housing-hero h1) {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+  text-shadow: 3px 3px 0 rgba(2, 12, 22, 0.7) !important;
+}
+
+.spirit-app .world-map-nav {
+  background: rgba(7, 26, 46, 0.9) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app .world-map-tab-shell {
+  color: var(--sp-muted) !important;
+  background: transparent !important;
+  border: 2px solid transparent !important;
+  border-radius: var(--sp-radius-sm) !important;
+}
+
+.spirit-app .world-map-tab-shell.active,
+.spirit-app .world-map-tab-shell[aria-pressed="true"] {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+  box-shadow: 3px 3px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app :where(.world-region-card, .map-card-pro) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(13, 48, 69, 0.97), rgba(7, 26, 46, 0.97)) !important;
+  border: 2px solid rgba(140, 225, 198, 0.26) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(.world-region-card, .map-card-pro):hover {
+  border-color: var(--sp-gold-400) !important;
+  box-shadow: 5px 5px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app .kingdom-command-panel {
+  color: var(--sp-white) !important;
+  background: rgba(4, 17, 30, 0.66) !important;
+  border: 2px solid rgba(255, 246, 216, 0.16) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  box-shadow: var(--sp-shadow-lg) !important;
+}
+
+.spirit-app .kingdom-faction-hero {
+  background:
+    linear-gradient(145deg, rgba(7, 26, 46, 0.95), rgba(35, 106, 105, 0.82)),
+    url('../../public/assets/spirit-alliance-hall-bg.webp') center 38% / cover !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+}
+
+.spirit-app .kingdom-faction-card {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(13, 48, 69, 0.98), rgba(7, 26, 46, 0.98)) !important;
+  border: 2px solid rgba(255, 246, 216, 0.22) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app .kingdom-faction-card:hover {
+  border-color: var(--sp-gold-400) !important;
+  box-shadow: 5px 5px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app :where(.kingdom-banner, .kingdom-dashboard) {
+  color: var(--sp-white) !important;
+  background: var(--sp-panel) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+/* ---- Sect, gang and home systems ---- */
+.spirit-app :where(.sect-hub-screen, .gang-command-screen, .housing-screen-redesign) {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.36), rgba(4, 17, 30, 0.9)),
+    url('../../public/assets/spirit-alliance-hall-bg.webp') center / cover fixed !important;
+}
+
+.spirit-app :where(.sect-hub-body, .gang-command-body, .housing-content) {
+  position: relative;
+}
+
+.spirit-app :where(.sect-join-hero, .gang-join-hero, .housing-hero) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(145deg, rgba(7, 26, 46, 0.95), rgba(35, 106, 105, 0.82)) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-bottom: 4px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  box-shadow: var(--sp-shadow-lg) !important;
+}
+
+.spirit-app :where(.sect-list-row, .sect-detail-panel, .gang-faction-banner, .gang-preset-card) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(13, 48, 69, 0.97), rgba(7, 26, 46, 0.97)) !important;
+  border: 2px solid rgba(140, 225, 198, 0.24) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(.sect-list-row, .gang-preset-card):hover,
+.spirit-app .sect-list-row.is-selected {
+  border-color: var(--sp-gold-400) !important;
+  box-shadow: 5px 5px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app :where(.sect-primary-action, .gang-command-screen button[style*="linear-gradient"]) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(180deg, var(--sp-coral-400), var(--sp-coral-700)) !important;
+  border: 2px solid var(--sp-paper) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .housing-house-orb {
+  background: var(--sp-teal-700) !important;
+  border: 3px solid var(--sp-gold-400) !important;
+  box-shadow: 4px 4px 0 var(--sp-ink-950) !important;
+}
+
+/* ---- Activity center and achievements ---- */
+.spirit-app .activity-hub-overlay,
+.spirit-app .modal-overlay,
+.spirit-app .dialog-overlay,
+.spirit-app .dex-modal-overlay {
+  background: rgba(2, 12, 22, 0.78) !important;
+  backdrop-filter: blur(8px) saturate(0.8) !important;
+}
+
+.spirit-app .activity-hub-panel,
+.spirit-app .achievement-shell {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(7, 26, 46, 0.98), rgba(13, 48, 69, 0.98)) !important;
+  border: 3px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  box-shadow: 8px 8px 0 rgba(2, 12, 22, 0.88) !important;
+}
+
+.spirit-app .activity-hub-hero,
+.spirit-app .achievement-hero {
+  color: var(--sp-white) !important;
+  background: linear-gradient(135deg, rgba(35, 106, 105, 0.65), rgba(7, 26, 46, 0.1)) !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+}
+
+.spirit-app :where(.activity-hub-card, .achievement-card) {
+  color: var(--sp-white) !important;
+  background: var(--sp-panel-raised) !important;
+  border: 2px solid rgba(140, 225, 198, 0.24) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(.activity-hub-card, .achievement-card):hover {
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app :where(.activity-hub-action, .achievement-filter-row button) {
+  color: var(--sp-white) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+/* ---- Team, inventory, storage, trainer card ---- */
+.spirit-app :where(.team-screen, .bag-screen, .pc-screen) {
+  color: var(--sp-white) !important;
+  background: transparent !important;
+}
+
+.spirit-app :where(.team-content, .bag-content, .pc-content, .trainer-card-container) {
+  background: rgba(7, 26, 46, 0.72) !important;
+}
+
+.spirit-app :where(.team-member-card, .hero-card, .empty-slot-card, .bag-list-item, .pc-pokemon-card) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, rgba(13, 48, 69, 0.98), rgba(7, 26, 46, 0.98)) !important;
+  border: 2px solid rgba(140, 225, 198, 0.24) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app :where(.team-member-card, .hero-card, .bag-list-item, .pc-pokemon-card):hover {
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app :where(.item-icon-box, .card-avatar-box, .hero-emoji, .equip-slot-box) {
+  background: rgba(255, 246, 216, 0.08) !important;
+  border: 2px solid rgba(255, 246, 216, 0.18) !important;
+  border-radius: var(--sp-radius-sm) !important;
+}
+
+.spirit-app :where(.bar-track, .bar-track-sm) {
+  background: rgba(2, 12, 22, 0.8) !important;
+  border: 1px solid rgba(255, 246, 216, 0.16) !important;
+  border-radius: 3px !important;
+}
+
+.spirit-app :where(.hero-actions, .card-actions) button,
+.spirit-app .bag-list-item button {
+  color: var(--sp-white) !important;
+  background: var(--sp-teal-700) !important;
+  border: 1px solid var(--sp-teal-300) !important;
+  box-shadow: 2px 2px 0 var(--sp-ink-950) !important;
+}
+
+/* ---- Exploration grid: preserve tiles/sprites, restyle only chrome ---- */
+.spirit-app .grid-screen-redesign {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.34), rgba(4, 17, 30, 0.76)),
+    url('../../public/assets/spirit-world-atlas-bg.webp') center / cover fixed !important;
+}
+
+.spirit-app .grid-main-stage {
+  background: rgba(4, 17, 30, 0.48) !important;
+}
+
+.spirit-app .grid-viewport-v2,
+.spirit-app .map-viewport-frame {
+  border: 3px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 7px 7px 0 rgba(2, 12, 22, 0.85) !important;
+}
+
+.spirit-app :where(.grid-quest-banner, .grid-env-item, .dock-btn-capsule, .grid-settings-btn) {
+  color: var(--sp-white) !important;
+  background: var(--sp-panel-raised) !important;
+  border: 2px solid rgba(140, 225, 198, 0.3) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app :where(.player-pet-img, .sprite-v2, .catch-ball-sprite) {
+  image-rendering: pixelated;
+}
+
+/* ---- Battle: preserve battlefield, sprites and VFX ---- */
+.spirit-app .battle-screen {
+  color: var(--sp-white) !important;
+  background: var(--sp-ink-950) !important;
+}
+
+.spirit-app .battle-stage-v2 {
+  border: 3px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: inset 0 0 0 2px rgba(4, 17, 30, 0.66), 7px 7px 0 rgba(2, 12, 22, 0.9) !important;
+}
+
+.spirit-app :where(.hud-card, .actions-bar-h, .battle-control-pill) {
+  color: var(--sp-white) !important;
+  background: rgba(7, 26, 46, 0.94) !important;
+  border: 2px solid var(--sp-border) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: var(--sp-shadow) !important;
+  backdrop-filter: blur(10px);
+}
+
+.spirit-app .actions-bar-h :where(button, .action-btn-h, .action-btn-sm) {
+  border: 2px solid rgba(255, 246, 216, 0.32) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.82) !important;
+}
+
+.spirit-app :where(.sprite-wrapper, .pokemon-camera, .vfx-core, .vfx-rays, .vfx-sparks, .battle-platform) {
+  /* Explicitly leave gameplay art layers untouched. */
+}
+
+/* ---- Legacy challenge/system pages: one command-deck skin ---- */
+.spirit-app:is(
+  .spirit-view-arena,
+  .spirit-view-expedition,
+  .spirit-view-training,
+  .spirit-view-world_boss,
+  .spirit-view-infinity_castle,
+  .spirit-view-fishing_game,
+  .spirit-view-beauty_contest,
+  .spirit-view-league,
+  .spirit-view-naruto_exam,
+  .spirit-view-naruto_story,
+  .spirit-view-bounty,
+  .spirit-view-lucky_wheel,
+  .spirit-view-mining,
+  .spirit-view-race,
+  .spirit-view-trainer_card,
+  .spirit-view-move_forget,
+  .spirit-view-settings,
+  .spirit-view-name_input,
+  .spirit-view-merchant,
+  .spirit-view-locked
+) > .screen {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.44), rgba(4, 17, 30, 0.86)) !important;
+}
+
+.spirit-app:is(
+  .spirit-view-arena,
+  .spirit-view-expedition,
+  .spirit-view-training,
+  .spirit-view-world_boss,
+  .spirit-view-infinity_castle,
+  .spirit-view-fishing_game,
+  .spirit-view-beauty_contest,
+  .spirit-view-league,
+  .spirit-view-naruto_exam,
+  .spirit-view-naruto_story,
+  .spirit-view-bounty,
+  .spirit-view-lucky_wheel,
+  .spirit-view-mining,
+  .spirit-view-race,
+  .spirit-view-trainer_card,
+  .spirit-view-move_forget,
+  .spirit-view-settings,
+  .spirit-view-name_input,
+  .spirit-view-merchant,
+  .spirit-view-locked
+) .screen div[style*="border-radius"][style*="padding"][style*="background"] {
+  background: var(--sp-panel-raised) !important;
+  border-color: rgba(255, 246, 216, 0.22) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.62) !important;
+}
+
+.spirit-app:is(
+  .spirit-view-arena,
+  .spirit-view-expedition,
+  .spirit-view-training,
+  .spirit-view-world_boss,
+  .spirit-view-infinity_castle,
+  .spirit-view-fishing_game,
+  .spirit-view-beauty_contest,
+  .spirit-view-league,
+  .spirit-view-naruto_exam,
+  .spirit-view-naruto_story,
+  .spirit-view-bounty,
+  .spirit-view-lucky_wheel,
+  .spirit-view-mining,
+  .spirit-view-race,
+  .spirit-view-trainer_card,
+  .spirit-view-move_forget,
+  .spirit-view-settings,
+  .spirit-view-name_input,
+  .spirit-view-merchant,
+  .spirit-view-locked
+) .screen button:not(:disabled) {
+  color: var(--sp-white) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app:is(
+  .spirit-view-arena,
+  .spirit-view-expedition,
+  .spirit-view-training,
+  .spirit-view-world_boss,
+  .spirit-view-infinity_castle,
+  .spirit-view-fishing_game,
+  .spirit-view-beauty_contest,
+  .spirit-view-league,
+  .spirit-view-naruto_exam,
+  .spirit-view-naruto_story,
+  .spirit-view-bounty,
+  .spirit-view-lucky_wheel,
+  .spirit-view-mining,
+  .spirit-view-race,
+  .spirit-view-trainer_card,
+  .spirit-view-move_forget,
+  .spirit-view-settings,
+  .spirit-view-name_input,
+  .spirit-view-merchant,
+  .spirit-view-locked
+) .screen button:disabled {
+  color: rgba(169, 193, 199, 0.55) !important;
+  background: rgba(13, 48, 69, 0.48) !important;
+  border: 2px solid rgba(169, 193, 199, 0.18) !important;
+  box-shadow: none !important;
+}
+
+/* ---- Bag overlay while map remains mounted ---- */
+.spirit-app.spirit-view-bag .grid-screen-redesign {
+  filter: saturate(0.72) brightness(0.72);
+}
+
+.spirit-app.spirit-view-bag .bag-screen,
+.spirit-app.spirit-view-bag .modal-overlay > div {
+  filter: none;
+}
+
+/* ---- Global modal rescue for legacy inline dialogs ---- */
+.spirit-app > div[style*="position: fixed"][style*="inset: 0"] > div[style*="max-width"],
+.spirit-app > div[style*="position: fixed"][style*="top: 0px"][style*="bottom: 0px"] > div[style*="max-width"] {
+  color: var(--sp-white) !important;
+  background: linear-gradient(155deg, var(--sp-ink-800), var(--sp-ink-900)) !important;
+  border: 3px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: 7px 7px 0 rgba(2, 12, 22, 0.88) !important;
+}
+
+.spirit-app > div[style*="position: fixed"][style*="inset: 0"] > div[style*="max-width"] button:not(:disabled),
+.spirit-app > div[style*="position: fixed"][style*="top: 0px"][style*="bottom: 0px"] > div[style*="max-width"] button:not(:disabled) {
+  color: var(--sp-white) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app :where(.dialog-name, .dialog-header, .pet-detail-header, .team-modal-header) {
+  color: var(--sp-paper) !important;
+  border-bottom-color: var(--sp-gold-400) !important;
+}
+
+
+/* ---- Fusion laboratory and PC storage terminal ---- */
+.spirit-app .fusion-screen {
+  position: fixed !important;
+  inset: 0;
+  z-index: 1000;
+  min-height: 0 !important;
+  background: transparent !important;
+  pointer-events: none;
+}
+
+.spirit-app .fusion-screen > .modal-overlay {
+  padding: 18px !important;
+  pointer-events: auto;
+}
+
+.spirit-app .fusion-card-centered {
+  width: min(94vw, 470px) !important;
+  max-height: min(90dvh, 760px);
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(155deg, rgba(13, 48, 69, 0.98), rgba(7, 26, 46, 0.99)) !important;
+  border: 3px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  box-shadow: 8px 8px 0 rgba(2, 12, 22, 0.9) !important;
+}
+
+.spirit-app .fusion-card-centered::before {
+  content: "GENE-LAB  /  LINK READY";
+  position: absolute;
+  right: 14px;
+  bottom: 9px;
+  z-index: 0;
+  color: rgba(140, 225, 198, 0.16);
+  font-family: var(--sp-font-pixel);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  pointer-events: none;
+}
+
+.spirit-app .fusion-card-centered > * {
+  position: relative;
+  z-index: 1;
+}
+
+.spirit-app .fusion-header {
+  min-height: 58px;
+  color: var(--sp-paper) !important;
+  background:
+    linear-gradient(90deg, var(--sp-teal-700), var(--sp-ink-800)) !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+  box-shadow: 0 3px 0 rgba(2, 12, 22, 0.68);
+  font-family: var(--sp-font-display);
+  letter-spacing: 0.04em;
+}
+
+.spirit-app .fusion-header > button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  color: var(--sp-paper) !important;
+  background: var(--sp-coral-700) !important;
+  border: 2px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-xs) !important;
+  box-shadow: 2px 2px 0 var(--sp-ink-950) !important;
+  line-height: 1;
+}
+
+.spirit-app .fusion-slots {
+  padding-block: 24px !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    rgba(4, 17, 30, 0.28) !important;
+  background-size: 8px 8px !important;
+}
+
+.spirit-app .fusion-slot {
+  width: 108px !important;
+  height: 108px !important;
+  color: var(--sp-muted) !important;
+  background: rgba(4, 17, 30, 0.76) !important;
+  border: 2px dashed rgba(140, 225, 198, 0.58) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 4px 4px 0 rgba(2, 12, 22, 0.82) !important;
+}
+
+.spirit-app .fusion-slot.is-filled {
+  color: var(--sp-white) !important;
+  background: rgba(35, 106, 105, 0.5) !important;
+  border-style: solid !important;
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .fusion-slot:not(:disabled):hover {
+  border-color: var(--sp-paper) !important;
+  transform: translate(-1px, -1px);
+}
+
+.spirit-app .fusion-plus {
+  color: var(--sp-gold-400) !important;
+  font-family: var(--sp-font-pixel);
+  text-shadow: 2px 2px 0 var(--sp-coral-700);
+}
+
+.spirit-app .fusion-info {
+  color: var(--sp-paper-muted) !important;
+}
+
+.spirit-app .fusion-info > div:first-child {
+  color: var(--sp-gold-400) !important;
+  font-family: var(--sp-font-pixel);
+  font-weight: 900;
+}
+
+.spirit-app .fusion-warning {
+  color: var(--sp-paper-muted) !important;
+  background: rgba(232, 91, 85, 0.12) !important;
+  border: 2px solid rgba(255, 130, 119, 0.45) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.55);
+}
+
+.spirit-app .fusion-warning > div:first-child {
+  color: var(--sp-coral-400) !important;
+}
+
+.spirit-app .fusion-preview {
+  color: var(--sp-paper-muted) !important;
+  background: rgba(35, 106, 105, 0.34) !important;
+  border: 2px solid rgba(140, 225, 198, 0.42) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.55);
+}
+
+.spirit-app .fusion-preview > div:first-child {
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel);
+}
+
+.spirit-app .fusion-footer {
+  border-top: 2px solid rgba(255, 246, 216, 0.12);
+}
+
+.spirit-app .fusion-footer > div:first-child {
+  color: var(--sp-coral-400) !important;
+}
+
+.spirit-app .fusion-confirm:not(:disabled) {
+  color: var(--sp-white) !important;
+  background: linear-gradient(180deg, var(--sp-coral-400), var(--sp-coral-700)) !important;
+  border: 2px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 4px 4px 0 var(--sp-ink-950) !important;
+  font-family: var(--sp-font-display);
+  letter-spacing: 0.04em;
+}
+
+.spirit-app .fusion-confirm:disabled {
+  color: rgba(169, 193, 199, 0.48) !important;
+  background: rgba(13, 48, 69, 0.62) !important;
+  border: 2px solid rgba(169, 193, 199, 0.18) !important;
+  box-shadow: none !important;
+}
+
+.spirit-app .fusion-drawer {
+  top: 61px !important;
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(155deg, rgba(13, 48, 69, 0.995), rgba(7, 26, 46, 0.995)) !important;
+  border-top: 3px solid var(--sp-gold-400) !important;
+}
+
+.spirit-app .fusion-drawer button {
+  color: var(--sp-paper) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  box-shadow: 2px 2px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .fusion-party-option {
+  color: var(--sp-white) !important;
+  background: rgba(13, 48, 69, 0.92) !important;
+  border: 2px solid rgba(140, 225, 198, 0.26) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.72);
+}
+
+.spirit-app .fusion-party-option:not(.is-selected):hover {
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .fusion-party-option.is-selected {
+  opacity: 0.42 !important;
+  border-style: dashed !important;
+}
+
+.spirit-app .pc-modal-tech {
+  width: min(96vw, 1180px) !important;
+  height: min(88dvh, 820px) !important;
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(155deg, rgba(13, 48, 69, 0.99), rgba(7, 26, 46, 0.995)) !important;
+  border: 3px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-lg) !important;
+  box-shadow: 9px 9px 0 rgba(2, 12, 22, 0.9) !important;
+}
+
+.spirit-app .pc-header-tech {
+  min-height: 62px;
+  color: var(--sp-paper) !important;
+  background:
+    linear-gradient(90deg, var(--sp-teal-700), var(--sp-ink-800)) !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+  box-shadow: 0 3px 0 rgba(2, 12, 22, 0.68);
+}
+
+.spirit-app .pc-title-tech {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display);
+  letter-spacing: 0.05em;
+  text-shadow: 2px 2px 0 rgba(2, 12, 22, 0.72);
+}
+
+.spirit-app .pc-title-tech > span {
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel);
+  letter-spacing: 0.06em;
+}
+
+.spirit-app .pc-header-tech button:not(.btn-close) {
+  min-height: 34px;
+  color: var(--sp-paper) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  border-radius: var(--sp-radius-xs) !important;
+  box-shadow: 2px 2px 0 var(--sp-ink-950) !important;
+  font-family: var(--sp-font-pixel);
+  font-weight: 800;
+}
+
+.spirit-app .pc-header-tech .btn-close {
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  color: var(--sp-paper) !important;
+  background: var(--sp-coral-700) !important;
+  border: 2px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-xs) !important;
+  box-shadow: 2px 2px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .pc-layout-tech {
+  gap: 16px !important;
+  padding: 16px !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    rgba(4, 17, 30, 0.2) !important;
+  background-size: 8px 8px !important;
+}
+
+.spirit-app :where(.pc-col-left, .pc-col-mid, .pc-col-right) {
+  background: rgba(7, 26, 46, 0.86) !important;
+  border: 2px solid rgba(140, 225, 198, 0.24) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: var(--sp-shadow) !important;
+}
+
+.spirit-app .pc-col-left {
+  width: 250px !important;
+}
+
+.spirit-app .pc-col-right {
+  width: 330px !important;
+}
+
+.spirit-app .pc-section-header {
+  color: var(--sp-gold-400) !important;
+  border-bottom: 1px solid rgba(255, 200, 87, 0.32);
+  padding-bottom: 8px;
+  font-family: var(--sp-font-pixel);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.spirit-app .pc-party-card,
+.spirit-app .pc-storage-card {
+  color: var(--sp-white) !important;
+  background: rgba(13, 48, 69, 0.86) !important;
+  border: 2px solid rgba(140, 225, 198, 0.22) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.64);
+}
+
+.spirit-app .pc-party-card:hover,
+.spirit-app .pc-storage-card:not(.is-empty):hover {
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .pc-party-card.is-selected,
+.spirit-app .pc-storage-card.is-selected {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+  box-shadow: 3px 3px 0 var(--sp-coral-700) !important;
+}
+
+.spirit-app .pc-storage-card.is-shiny:not(.is-selected) {
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .pc-storage-card.is-batch-selected {
+  background: var(--sp-coral-700) !important;
+  border-color: var(--sp-coral-400) !important;
+}
+
+.spirit-app .pc-storage-card.is-empty {
+  min-height: 62px;
+  opacity: 0.34;
+  border-style: dashed !important;
+  box-shadow: none;
+}
+
+.spirit-app .pc-col-mid > div:first-child button {
+  color: var(--sp-muted) !important;
+  background: rgba(4, 17, 30, 0.72) !important;
+  border: 1px solid rgba(140, 225, 198, 0.22) !important;
+  box-shadow: none !important;
+}
+
+.spirit-app .pc-col-mid > div:first-child button:hover {
+  color: var(--sp-paper) !important;
+  border-color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .analysis-header {
+  border-bottom: 2px solid rgba(255, 200, 87, 0.28) !important;
+}
+
+.spirit-app .analysis-sprite {
+  background: rgba(35, 106, 105, 0.42) !important;
+  border: 2px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950);
+  image-rendering: pixelated;
+}
+
+.spirit-app .analysis-name {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display);
+}
+
+.spirit-app .stats-grid-tech > div {
+  background: rgba(13, 48, 69, 0.8) !important;
+  border: 1px solid rgba(140, 225, 198, 0.18);
+  border-radius: var(--sp-radius-xs) !important;
+}
+
+.spirit-app .pc-actions-tech {
+  border-top: 2px solid rgba(255, 200, 87, 0.28) !important;
+}
+
+.spirit-app .pc-actions-tech .btn-tech {
+  color: var(--sp-white) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .pc-actions-tech .btn-tech.danger {
+  background: var(--sp-coral-700) !important;
+  border-color: var(--sp-coral-400) !important;
+}
+
+@media (max-width: 1000px) {
+  .spirit-app .pc-layout-tech {
+    display: grid !important;
+    grid-template-columns: minmax(190px, 0.85fr) minmax(0, 1.5fr) !important;
+    overflow-y: auto !important;
+  }
+
+  .spirit-app .pc-col-left,
+  .spirit-app .pc-col-right {
+    width: auto !important;
+  }
+
+  .spirit-app .pc-col-right {
+    grid-column: 1 / -1;
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 680px) {
+  .spirit-app .fusion-screen > .modal-overlay {
+    align-items: flex-end !important;
+    padding: 8px !important;
+  }
+
+  .spirit-app .fusion-card-centered {
+    width: 100% !important;
+    max-height: calc(100dvh - 16px);
+    border-radius: var(--sp-radius-md) !important;
+  }
+
+  .spirit-app .fusion-slots {
+    padding: 18px 12px !important;
+    gap: 10px !important;
+  }
+
+  .spirit-app .fusion-slot {
+    width: 94px !important;
+    height: 94px !important;
+  }
+
+  .spirit-app .pc-modal-tech {
+    width: 100% !important;
+    height: 94dvh !important;
+    border-radius: var(--sp-radius-md) !important;
+  }
+
+  .spirit-app .pc-header-tech {
+    padding: 10px !important;
+  }
+
+  .spirit-app .pc-title-tech {
+    font-size: 14px !important;
+  }
+
+  .spirit-app .pc-title-tech > span {
+    display: none;
+  }
+
+  .spirit-app .pc-layout-tech {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
+  }
+
+  .spirit-app :where(.pc-col-left, .pc-col-mid, .pc-col-right) {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    min-height: 260px;
+  }
+
+  .spirit-app .pc-party-list-tech {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .spirit-app .pc-col-right {
+    min-height: 440px;
+  }
+}
+
+
+/* ---- Inventory field case ---- */
+.spirit-app .inventory-overlay {
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 30, 0.48), rgba(4, 17, 30, 0.88)),
+    var(--sp-view-art) center / cover !important;
+  backdrop-filter: blur(7px) saturate(0.84) !important;
+}
+
+.spirit-app .inventory-console {
+  position: relative;
+  width: min(1120px, calc(100vw - 36px)) !important;
+  height: min(720px, calc(100dvh - 36px)) !important;
+  grid-template-columns: 224px minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  color: var(--sp-white) !important;
+  background: var(--sp-ink-900) !important;
+  border: 3px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: 8px 8px 0 var(--sp-ink-950), 0 26px 70px rgba(0, 0, 0, 0.5) !important;
+}
+
+.spirit-app .inventory-console::before {
+  content: "FIELD CASE // 08";
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: 18px;
+  padding: 4px 9px 5px;
+  color: var(--sp-ink-950);
+  background: var(--sp-gold-400);
+  border: 2px solid var(--sp-ink-950);
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.72);
+  font: 800 9px/1 var(--sp-font-pixel);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.spirit-app .inventory-drawer {
+  padding: 16px 13px !important;
+  background:
+    linear-gradient(rgba(140, 225, 198, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 225, 198, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, var(--sp-ink-850), var(--sp-ink-950)) !important;
+  background-size: 8px 8px, 8px 8px, auto !important;
+  border-right: 3px solid var(--sp-gold-400) !important;
+}
+
+.spirit-app .inventory-brand {
+  gap: 11px !important;
+  padding: 0 2px 14px !important;
+  border-bottom: 2px solid rgba(255, 246, 216, 0.24) !important;
+}
+
+.spirit-app .inventory-brand-icon,
+.spirit-app .inventory-title-icon {
+  border: 2px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-brand-icon {
+  width: 44px !important;
+  height: 44px !important;
+  color: var(--sp-paper) !important;
+  background: var(--sp-coral-700) !important;
+}
+
+.spirit-app .inventory-brand strong,
+.spirit-app .inventory-title-group h2,
+.spirit-app .inventory-detail-card h3 {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+  text-shadow: 2px 2px 0 var(--sp-ink-950);
+}
+
+.spirit-app .inventory-brand strong {
+  font-size: 18px !important;
+  letter-spacing: 0.04em !important;
+}
+
+.spirit-app .inventory-brand small,
+.spirit-app .inventory-title-group p,
+.spirit-app .inventory-detail-count {
+  color: var(--sp-muted) !important;
+}
+
+.spirit-app .inventory-sort-panel {
+  padding: 13px 2px 9px !important;
+}
+
+.spirit-app .inventory-sort-panel > span {
+  margin-bottom: 8px !important;
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel) !important;
+  letter-spacing: 0.1em !important;
+}
+
+.spirit-app :where(.inventory-sort-chip, .inventory-filter-chip) {
+  color: var(--sp-paper-muted) !important;
+  background: rgba(7, 26, 46, 0.84) !important;
+  border: 2px solid rgba(140, 225, 198, 0.26) !important;
+  border-radius: var(--sp-radius-xs) !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.62) !important;
+}
+
+.spirit-app :where(.inventory-sort-chip, .inventory-filter-chip).active {
+  color: var(--sp-ink-950) !important;
+  background: color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 72%, var(--sp-paper)) !important;
+  border-color: var(--sp-paper) !important;
+}
+
+.spirit-app .inventory-tab-list {
+  padding: 3px 1px 10px !important;
+}
+
+.spirit-app .inventory-tab-button {
+  position: relative;
+  min-height: 40px !important;
+  margin: 3px 0 !important;
+  padding: 8px 10px !important;
+  color: var(--sp-muted) !important;
+  background: rgba(4, 17, 30, 0.54) !important;
+  border: 2px solid transparent !important;
+  border-radius: var(--sp-radius-sm) !important;
+}
+
+.spirit-app .inventory-tab-button::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  right: 7px;
+  width: 4px;
+  background: var(--tab-accent, var(--sp-teal-400));
+  border-radius: 1px;
+  opacity: 0.34;
+}
+
+.spirit-app .inventory-tab-button:hover {
+  color: var(--sp-white) !important;
+  background: var(--sp-ink-800) !important;
+}
+
+.spirit-app .inventory-tab-button.active {
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--tab-accent, var(--sp-teal-400)) 32%, var(--sp-ink-850)), var(--sp-ink-800)) !important;
+  border-color: color-mix(in srgb, var(--tab-accent, var(--sp-teal-400)) 65%, var(--sp-paper)) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-tab-button.active::after {
+  opacity: 1;
+  box-shadow: 1px 1px 0 var(--sp-ink-950);
+}
+
+.spirit-app .inventory-tab-button span {
+  width: 25px !important;
+  font-size: 17px !important;
+  filter: none !important;
+}
+
+.spirit-app .inventory-tab-button strong {
+  font-family: var(--sp-font-display) !important;
+  font-size: 12px !important;
+}
+
+.spirit-app .inventory-close-button {
+  min-height: 42px !important;
+  color: var(--sp-white) !important;
+  background: var(--sp-coral-700) !important;
+  border: 2px solid var(--sp-coral-400) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-stage {
+  background:
+    radial-gradient(circle at 92% 4%, color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 16%, transparent), transparent 28%),
+    linear-gradient(rgba(255, 246, 216, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 246, 216, 0.025) 1px, transparent 1px),
+    linear-gradient(145deg, var(--sp-ink-900), var(--sp-ink-850)) !important;
+  background-size: auto, 12px 12px, 12px 12px, auto !important;
+}
+
+.spirit-app .inventory-header {
+  min-height: 88px !important;
+  padding: 17px 20px 14px !important;
+  background: linear-gradient(90deg, rgba(7, 26, 46, 0.98), rgba(13, 48, 69, 0.9)) !important;
+  border-bottom: 3px solid var(--sp-gold-400) !important;
+  box-shadow: 0 3px 0 rgba(2, 12, 22, 0.58) !important;
+}
+
+.spirit-app .inventory-title-icon {
+  width: 48px !important;
+  height: 48px !important;
+  background: color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 58%, var(--sp-ink-800)) !important;
+}
+
+.spirit-app .inventory-title-group h2 {
+  font-size: clamp(18px, 2vw, 22px) !important;
+}
+
+.spirit-app .inventory-title-group p {
+  font-family: var(--sp-font-pixel) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.03em !important;
+}
+
+.spirit-app .inventory-search {
+  height: 40px !important;
+  padding: 0 11px !important;
+  background: rgba(4, 17, 30, 0.86) !important;
+  border: 2px solid var(--sp-teal-600) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.2), 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-search input {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.spirit-app .inventory-filter-bar {
+  gap: 8px !important;
+  padding: 12px 20px !important;
+  background: rgba(4, 17, 30, 0.32) !important;
+  border-bottom: 2px solid rgba(255, 246, 216, 0.13) !important;
+}
+
+.spirit-app .inventory-filter-chip {
+  min-height: 30px !important;
+  padding: 5px 11px !important;
+}
+
+.spirit-app .inventory-grid-wrap {
+  padding: 18px 20px 22px !important;
+}
+
+.spirit-app .inventory-item-grid {
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)) !important;
+  gap: 13px !important;
+}
+
+.spirit-app .inventory-item-card {
+  min-height: 142px !important;
+  padding: 19px 10px 13px !important;
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--item-accent, var(--sp-teal-400)) 15%, transparent), transparent 54%),
+    var(--sp-panel-raised) !important;
+  border: 2px solid rgba(255, 246, 216, 0.26) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 4px 4px 0 rgba(2, 12, 22, 0.76), inset 0 2px 0 rgba(255, 255, 255, 0.05) !important;
+  overflow: hidden;
+}
+
+.spirit-app .inventory-item-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: var(--item-accent, var(--sp-teal-400));
+  box-shadow: 0 2px 0 rgba(2, 12, 22, 0.38);
+}
+
+.spirit-app .inventory-item-card:hover {
+  transform: translate(-1px, -2px) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--item-accent, var(--sp-teal-400)) 24%, transparent), transparent 58%),
+    var(--sp-ink-800) !important;
+  border-color: color-mix(in srgb, var(--item-accent, var(--sp-teal-400)) 62%, var(--sp-paper)) !important;
+  box-shadow: 6px 7px 0 rgba(2, 12, 22, 0.82) !important;
+}
+
+.spirit-app :where(.inventory-count, .inventory-equipped) {
+  top: 10px !important;
+  min-height: 19px !important;
+  padding: 2px 7px !important;
+  border: 2px solid rgba(255, 246, 216, 0.46) !important;
+  border-radius: 4px !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.68) !important;
+  font-family: var(--sp-font-pixel) !important;
+  font-size: 9px !important;
+}
+
+.spirit-app .inventory-count {
+  right: 8px !important;
+  color: var(--sp-white) !important;
+  background: color-mix(in srgb, var(--item-accent, var(--sp-teal-400)) 72%, var(--sp-ink-850)) !important;
+}
+
+.spirit-app .inventory-equipped {
+  left: 8px !important;
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-teal-300) !important;
+}
+
+.spirit-app .inventory-item-icon {
+  width: 60px !important;
+  height: 60px !important;
+  margin: 13px 0 9px !important;
+  background: color-mix(in srgb, var(--item-accent, var(--sp-teal-400)) 22%, rgba(4, 17, 30, 0.78)) !important;
+  border: 2px solid color-mix(in srgb, var(--item-accent, var(--sp-teal-400)) 46%, var(--sp-paper)) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.05), 2px 2px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-item-card strong {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+  font-size: 12px !important;
+  text-shadow: 1px 1px 0 var(--sp-ink-950);
+}
+
+.spirit-app .inventory-item-card small {
+  font-family: var(--sp-font-pixel) !important;
+  font-size: 9px !important;
+}
+
+.spirit-app .inventory-empty {
+  color: var(--sp-muted) !important;
+}
+
+.spirit-app .inventory-empty div {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px !important;
+  opacity: 0.82 !important;
+  background: var(--sp-panel-raised);
+  border: 2px solid var(--sp-paper-muted);
+  border-radius: var(--sp-radius-sm);
+  box-shadow: 4px 4px 0 var(--sp-ink-950);
+  font-size: 42px !important;
+}
+
+.spirit-app .inventory-empty strong {
+  color: var(--sp-paper) !important;
+  font-family: var(--sp-font-display) !important;
+}
+
+.spirit-app .inventory-detail-overlay {
+  background: rgba(4, 17, 30, 0.78) !important;
+  backdrop-filter: blur(9px) !important;
+}
+
+.spirit-app .inventory-detail-card {
+  width: min(390px, calc(100vw - 28px)) !important;
+  padding: 23px !important;
+  color: var(--sp-white) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 18%, transparent), transparent 42%),
+    var(--sp-ink-850) !important;
+  border: 3px solid var(--sp-paper) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: 7px 7px 0 var(--sp-ink-950), 0 22px 54px rgba(0, 0, 0, 0.46) !important;
+}
+
+.spirit-app .inventory-detail-icon {
+  width: 82px !important;
+  height: 82px !important;
+  margin-bottom: 15px !important;
+  background: color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 30%, var(--sp-ink-900)) !important;
+  border: 3px solid color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 56%, var(--sp-paper)) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 4px 4px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-detail-card h3 {
+  font-size: 20px !important;
+}
+
+.spirit-app .inventory-detail-count {
+  margin-top: 4px;
+  font-family: var(--sp-font-pixel) !important;
+}
+
+.spirit-app .inventory-detail-desc {
+  color: var(--sp-paper-muted) !important;
+  background: rgba(4, 17, 30, 0.7) !important;
+  border: 2px solid rgba(255, 246, 216, 0.22) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.18) !important;
+}
+
+.spirit-app .inventory-fruit-equip > div:first-child {
+  color: var(--sp-teal-300) !important;
+  font-family: var(--sp-font-pixel) !important;
+}
+
+.spirit-app .inventory-fruit-list button {
+  color: var(--sp-paper-muted) !important;
+  background: var(--sp-ink-900) !important;
+  border: 2px solid rgba(140, 225, 198, 0.3) !important;
+  border-radius: var(--sp-radius-xs) !important;
+}
+
+.spirit-app .inventory-fruit-list button.active {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-teal-300) !important;
+  border-color: var(--sp-paper) !important;
+}
+
+.spirit-app .inventory-detail-actions button {
+  min-height: 43px !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+.spirit-app .inventory-detail-actions .secondary {
+  color: var(--sp-paper) !important;
+  background: var(--sp-ink-700) !important;
+  border: 2px solid var(--sp-muted) !important;
+}
+
+.spirit-app .inventory-detail-actions .primary {
+  color: var(--sp-ink-950) !important;
+  background: color-mix(in srgb, var(--bag-accent, var(--sp-teal-400)) 74%, var(--sp-paper)) !important;
+  border: 2px solid var(--sp-paper) !important;
+}
+
+.spirit-app .inventory-detail-actions .warm {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+}
+
+@media (max-width: 900px) {
+  .spirit-app .inventory-console {
+    grid-template-columns: 188px minmax(0, 1fr) !important;
+  }
+
+  .spirit-app .inventory-item-grid {
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .spirit-app .inventory-overlay {
+    align-items: stretch !important;
+    padding: 7px !important;
+  }
+
+  .spirit-app .inventory-console {
+    width: 100% !important;
+    height: calc(100dvh - 14px) !important;
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+    border-width: 2px !important;
+    border-radius: var(--sp-radius-sm) !important;
+    box-shadow: 4px 4px 0 var(--sp-ink-950) !important;
+  }
+
+  .spirit-app .inventory-console::before {
+    display: none;
+  }
+
+  .spirit-app .inventory-drawer {
+    padding: 9px 7px !important;
+    border-right-width: 2px !important;
+  }
+
+  .spirit-app .inventory-brand {
+    justify-content: center !important;
+    padding-bottom: 9px !important;
+  }
+
+  .spirit-app .inventory-brand div,
+  .spirit-app .inventory-sort-panel,
+  .spirit-app .inventory-tab-button strong {
+    display: none !important;
+  }
+
+  .spirit-app .inventory-brand-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .spirit-app .inventory-tab-button {
+    justify-content: center !important;
+    min-height: 40px !important;
+    padding: 6px 3px !important;
+  }
+
+  .spirit-app .inventory-tab-button::after {
+    top: auto;
+    right: 10px;
+    bottom: 3px;
+    left: 10px;
+    width: auto;
+    height: 3px;
+  }
+
+  .spirit-app .inventory-close-button {
+    min-height: 40px !important;
+    padding: 4px !important;
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  .spirit-app .inventory-header {
+    min-height: 0 !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 11px 12px !important;
+  }
+
+  .spirit-app .inventory-title-icon {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .spirit-app .inventory-title-group h2 {
+    font-size: 17px !important;
+  }
+
+  .spirit-app .inventory-title-group p {
+    font-size: 8px !important;
+  }
+
+  .spirit-app .inventory-search {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .spirit-app .inventory-filter-bar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding: 9px 11px 11px !important;
+  }
+
+  .spirit-app .inventory-filter-chip {
+    flex: 0 0 auto !important;
+  }
+
+  .spirit-app .inventory-grid-wrap {
+    padding: 12px 11px 16px !important;
+  }
+
+  .spirit-app .inventory-item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+  }
+
+  .spirit-app .inventory-item-card {
+    min-height: 126px !important;
+    padding: 17px 7px 10px !important;
+    box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.76) !important;
+  }
+
+  .spirit-app .inventory-item-icon {
+    width: 52px !important;
+    height: 52px !important;
+    margin-top: 12px !important;
+  }
+}
+
+/* ---- Small pixel cues ---- */
+.spirit-app :where(
+  .home-gate-eyebrow,
+  .codex-card-id,
+  .codex-rarity-badge,
+  .world-region-badge,
+  .activity-hub-badge,
+  .achievement-kicker,
+  .grid-map-title,
+  .gang-command-breadcrumb,
+  .sect-join-kicker,
+  .housing-eyebrow
+) {
+  font-family: var(--sp-font-pixel) !important;
+  letter-spacing: 0.08em !important;
+}
+
+.spirit-app :where(.codex-caught-dot, .shiny-dot, .equip-dot) {
+  border-radius: 2px !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.65) !important;
+}
+
+.spirit-app :where(h1, h2, h3, .nav-title, .card-name, .item-name) {
+  text-wrap: balance;
+}
+
+@media (max-width: 1200px) {
+  .spirit-app :where(.home-gate-shell, .starter-lab-shell, .codex-shell) {
+    width: min(100%, 1080px) !important;
+  }
+
+  .spirit-app :where(.kingdom-faction-grid, .gang-preset-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .spirit-app :where(.home-gate-shell, .home-gate-command-top, .sect-join-layout) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .spirit-app :where(.codex-overview, .world-map-hero-stats, .housing-hero-stats) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .spirit-app :where(.codex-grid, .achievement-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .spirit-app::after {
+    opacity: 0.08;
+  }
+
+  .spirit-app :where(.nav-header, .world-map-topbar, .housing-topbar, .gang-command-header, .gd-topbar) {
+    min-height: 54px !important;
+    padding: 8px 10px !important;
+  }
+
+  .spirit-app :where(.codex-hero, .world-map-hero, .housing-hero, .sect-join-hero, .gang-join-hero) {
+    border-radius: 0 0 var(--sp-radius-md) var(--sp-radius-md) !important;
+  }
+
+  .spirit-app :where(.codex-overview, .codex-grid, .achievement-grid, .kingdom-faction-grid, .gang-preset-grid) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .spirit-app :where(.world-map-nav, .sect-hub-tabs, .housing-tab-bar, .gang-command-tabs, .gd-tabs) {
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity;
+  }
+
+  .spirit-app :where(.world-map-nav, .sect-hub-tabs, .housing-tab-bar, .gang-command-tabs, .gd-tabs) button {
+    flex: 0 0 auto !important;
+    scroll-snap-align: start;
+  }
+
+  .spirit-app :where(.codex-shell, .home-gate-shell, .starter-lab-shell) {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .spirit-app .home-gate-primary,
+  .spirit-app .home-cover-main-start {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spirit-app *,
+  .spirit-app *::before,
+  .spirit-app *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}

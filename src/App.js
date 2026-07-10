@@ -5273,7 +5273,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           }}>
             
             {/* 标题栏 */}
-            <div style={{
+            <div className="fusion-header" style={{
                 padding: '15px 20px', background: 'linear-gradient(90deg, #303f9f, #1a1a2e)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 borderBottom: '1px solid rgba(255,255,255,0.1)'
@@ -5287,9 +5287,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
 
             {/* 融合槽位区 */}
-            <div style={{padding: '30px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px'}}>
+            <div className="fusion-slots" style={{padding: '30px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px'}}>
                 {/* 父本 */}
-                <button type="button" onClick={() => setFusionSlot('parent')} style={{
+                <button className={`fusion-slot${fusionParent ? ' is-filled' : ''}`} type="button" onClick={() => setFusionSlot('parent')} style={{
                     width: '100px', height: '100px', borderRadius: '16px',
                     border: fusionParent ? '2px solid #4CAF50' : '2px dashed #555',
                     background: fusionParent ? '#222' : 'rgba(255,255,255,0.05)',
@@ -5306,10 +5306,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     )}
                 </button>
 
-                <div style={{fontSize: '24px', color: '#555', fontWeight: 'bold'}}>+</div>
+                <div className="fusion-plus" style={{fontSize: '24px', color: '#555', fontWeight: 'bold'}}>+</div>
 
                 {/* 母本 */}
-                <button type="button" onClick={() => setFusionSlot('child')} style={{
+                <button className={`fusion-slot${fusionChild ? ' is-filled' : ''}`} type="button" onClick={() => setFusionSlot('child')} style={{
                     width: '100px', height: '100px', borderRadius: '16px',
                     border: fusionChild ? '2px solid #E91E63' : '2px dashed #555',
                     background: fusionChild ? '#222' : 'rgba(255,255,255,0.05)',
@@ -5328,9 +5328,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
 
             {/* 信息提示区 */}
-            <div style={{padding: '0 20px', fontSize: '12px', color: '#ccc', lineHeight: '1.6'}}>
+            <div className="fusion-info" style={{padding: '0 20px', fontSize: '12px', color: '#ccc', lineHeight: '1.6'}}>
                 <div style={{marginBottom: '8px', color: '#FFD700'}}>💰 费用: {getFusionCost()} 金币</div>
-                <div style={{background: 'rgba(255,167,38,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,167,38,0.2)'}}>
+                <div className="fusion-warning" style={{background: 'rgba(255,167,38,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,167,38,0.2)'}}>
                     <div style={{color: '#FFA726', fontWeight: 'bold', marginBottom: '4px'}}>⚠️ 警告</div>
                     融合后父母将消失，生成一只全新的子代。
                 </div>
@@ -5342,7 +5342,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
             {/* 融合预览面板 */}
             {fusionParent && fusionChild && (
-              <div style={{margin:'0 20px 10px', padding:'12px', background:'rgba(123,31,162,0.15)', borderRadius:'12px', border:'1px solid rgba(123,31,162,0.3)'}}>
+              <div className="fusion-preview" style={{margin:'0 20px 10px', padding:'12px', background:'rgba(123,31,162,0.15)', borderRadius:'12px', border:'1px solid rgba(123,31,162,0.3)'}}>
                 <div style={{fontSize:'12px', color:'#bb86fc', fontWeight:'bold', marginBottom:'8px'}}>📊 融合预览</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', fontSize:'11px', color:'#ccc'}}>
                   <div>类型: {TYPES[fusionParent.type]?.name || fusionParent.type}{fusionParent.secondaryType ? '/' + (TYPES[fusionParent.secondaryType]?.name || fusionParent.secondaryType) : ''}</div>
@@ -5368,11 +5368,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             )}
 
             {/* 底部按钮 */}
-            <div style={{padding: '20px'}}>
+            <div className="fusion-footer" style={{padding: '20px'}}>
                 <div style={{ fontSize: '11px', color: '#e53935', marginBottom: '10px', textAlign: 'center', lineHeight: 1.4 }}>
                   ⚠️ 融合将清空精灵的努力值(EV)
                 </div>
-                <button 
+                <button className="fusion-confirm"
                     disabled={!fusionParent || !fusionChild || gold < getFusionCost()}
                     onClick={() => {
                         const fc = getFusionCost();
@@ -5392,7 +5392,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
             {/* 队伍选择抽屉 (嵌入在卡片底部或作为覆盖层) */}
             {fusionSlot && (
-                <div style={{
+                <div className="fusion-drawer" style={{
                     position: 'absolute', top: '60px', left: 0, right: 0, bottom: 0,
                     background: '#1a1a2e', zIndex: 10, padding: '15px',
                     display: 'flex', flexDirection: 'column', borderTop: '1px solid #333',
@@ -5402,11 +5402,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         <span>从队伍中选择 {fusionSlot==='parent'?'父本':'母本'}:</span>
                         <button type="button" onClick={() => setFusionSlot(null)} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'6px', cursor:'pointer', color:'#fff', fontSize:'12px', padding:'8px 14px', minHeight:'36px'}}>取消</button>
                     </div>
-                    <div style={{flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', alignContent: 'start'}}>
+                    <div className="fusion-party-grid" style={{flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', alignContent: 'start'}}>
                         {party.map((p, i) => {
                             const isSelected = (fusionParent && fusionParent.uid === p.uid) || (fusionChild && fusionChild.uid === p.uid);
                             return (
-                                <div key={i} onClick={() => {
+                                <div className={`fusion-party-option${isSelected ? ' is-selected' : ''}`} key={i} onClick={() => {
                                     if (isSelected) return;
                                     if (fusionSlot === 'parent') setFusionParent(p);
                                     else setFusionChild(p);
@@ -22447,8 +22447,8 @@ const renderNameInput = () => {
   const fastestStarter = starterSummary.reduce((best, item) => !best || item.stats.spd > best.stats.spd ? item : best, null);
 
   return (
-    <div className="screen starter-lab-screen" style={{'--starter-lab-bg-image': 'url("/assets/super-spirit-starter-lab-bg.png?v=20260709-visual-fix")'}}>
-      <img className="starter-lab-bg-art" src="/assets/super-spirit-starter-lab-bg.png?v=20260709-visual-fix" alt="" aria-hidden="true" />
+    <div className="screen starter-lab-screen" style={{'--starter-lab-bg-image': 'url("/assets/spirit-ui-sky-bg.webp")'}}>
+      <img className="starter-lab-bg-art" src="/assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
       <div className="starter-lab-sky" aria-hidden="true" />
       <div className="starter-lab-grid" aria-hidden="true" />
       <div className="starter-lab-orbit starter-lab-orbit-a" aria-hidden="true" />
@@ -23796,8 +23796,8 @@ const renderMenu = () => {
   ];
 
   return (
-    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark, '--home-gate-bg-image': 'url("/assets/super-spirit-loading-bg.png?v=20260709-visual-fix")'}}>
-      <img className="home-gate-bg-art" src="/assets/super-spirit-loading-bg.png?v=20260709-visual-fix" alt="" aria-hidden="true" />
+    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark, '--home-gate-bg-image': 'url("/assets/spirit-ui-sky-bg.webp")'}}>
+      <img className="home-gate-bg-art" src="/assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
       <div className="home-gate-sky" aria-hidden="true" />
       <div className="home-gate-terrain" aria-hidden="true" />
       <div className="home-gate-lines" aria-hidden="true" />
@@ -28462,7 +28462,7 @@ const renderMenu = () => {
                     const hasEquip = p.equips && p.equips.some(e => e);
 
                     return (
-                        <div key={i} 
+                        <div key={i}
                              className={`team-member-card ${isFainted ? 'fainted' : ''}`}
                              style={{borderLeft: `4px solid ${typeConfig.color}`}}
                              onClick={() => {
@@ -28603,7 +28603,7 @@ const renderMenu = () => {
 
             return (
               <div 
-                key={i} 
+                key={i}
                 className={`hero-card bg-${p.type} ${isFainted ? 'fainted-card' : ''}`} 
                 style={{
                     ...(hasPending ? {border: '3px solid #FFD700'} : {}),
@@ -33201,7 +33201,7 @@ const renderMenu = () => {
               </div>
               <div className="pc-party-list-tech" style={{overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:'8px'}}>
                 {party.map((p, i) => (
-                  <div key={i} 
+                  <div className={`pc-party-card${selectedPartyIdx===i ? ' is-selected' : ''}`} key={i}
                        onClick={() => { setSelectedPartyIdx(i); setSelectedBoxIdx(null); }}
                        onDoubleClick={() => setViewStatPet(p)}
                        style={{
@@ -33273,7 +33273,7 @@ const renderMenu = () => {
                   else if (pcSort === 'shiny') filtered.sort((a,b) => (b.p.isShiny?1:0) - (a.p.isShiny?1:0));
                   else if (pcSort === 'starred') filtered.sort((a,b) => (b.p.starred?1:0) - (a.p.starred?1:0));
                   return filtered.map(({p, origIdx}) => (
-                    <div key={origIdx} 
+                    <div className={`pc-storage-card${selectedBoxIdx===origIdx ? ' is-selected' : ''}${p.isShiny ? ' is-shiny' : ''}${pcBatchRelease && pcBatchSelected.has(origIdx) ? ' is-batch-selected' : ''}`} key={origIdx}
                          onClick={() => { 
                            if (pcBatchRelease) {
                              setPcBatchSelected(prev => { const n = new Set(prev); n.has(origIdx) ? n.delete(origIdx) : n.add(origIdx); return n; });
@@ -33306,7 +33306,7 @@ const renderMenu = () => {
                   ));
                 })()}
                 {box.length > 0 && [...Array(Math.max(0, 8 - box.length))].map((_, i) => (
-                    <div key={`empty-${i}`} style={{background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}></div>
+                    <div className="pc-storage-card is-empty" key={`empty-${i}`} style={{background:'rgba(255,255,255,0.03)', borderRadius:'8px'}}></div>
                 ))}
                 {box.length === 0 && <div style={{gridColumn:'1/-1', textAlign:'center', padding:'30px 10px', color:'#64748b'}}>
                   <div style={{fontSize:'32px', marginBottom:'8px'}}>📦</div>
@@ -34211,7 +34211,7 @@ const renderMenu = () => {
   };
 
  return (
-    <div className="cute-theme">
+    <div className={`cute-theme spirit-app spirit-view-${view}`} data-view={view}>
       {showCorruptWarning && (
         <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.8)',zIndex:99999,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'#1a1a2e',borderRadius:16,padding:30,maxWidth:400,textAlign:'center',color:'#fff',border:'2px solid #f44'}}>
