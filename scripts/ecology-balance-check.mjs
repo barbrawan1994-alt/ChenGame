@@ -22,6 +22,7 @@ const eco = await loadSourceModule('src/data/ecoEvents.js', source =>
 const calamities = await loadSourceModule('src/data/nationalCalamities.js');
 const bossMechanics = await loadSourceModule('src/data/bossMechanics.js');
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
+const infinitySource = await readFile(new URL('../src/data/infinityExpedition.js', import.meta.url), 'utf8');
 
 const check = (condition, message) => {
   assert.ok(condition, message);
@@ -168,6 +169,35 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   assert.equal(eco.getEcologyHealth(legacyEcology), eco.getEcologyHealth(explicitDefault));
   check(true, `旧存档缺少多样性时按默认值 ${eco.DEFAULT_ECOLOGY.diversity} 计算，而非错误回退到 50`);
 
+  const legacyMine = {
+    5: { water: 30, vegetation: 25, spirit: 55, stability: 45, diversity: 40 },
+    9: eco.getDefaultEcologyForMap(9),
+  };
+  const mineResult = eco.applyRegionChains(legacyMine, eco.REGION_CHAINS, 5);
+  assert.deepEqual(mineResult[9], legacyMine[9]);
+  check(true, '旧档矿场缺少污染字段时按地图默认污染 35 计算，不会误触 5 → 9 连锁');
+
+  const partialTargetResult = eco.applyRegionChains({
+    5: { water: 30 },
+    9: { water: 60 },
+  }, [{
+    fromMap: 5,
+    toMap: 9,
+    condition: { water: { min: 0 } },
+    effect: { pollution: 8 },
+  }], 5);
+  assert.equal(partialTargetResult[9].pollution, eco.getDefaultEcologyForMap(9).pollution + 8);
+  assert.equal(partialTargetResult[9].spirit, eco.getDefaultEcologyForMap(9).spirit);
+
+  const genericTargetResult = eco.applyRegionChains({ 5: { water: 30 } }, [{
+    fromMap: 5,
+    toMap: 999,
+    condition: { water: { min: 0 } },
+    effect: { pollution: 8 },
+  }], 5);
+  assert.equal(genericTargetResult[999].pollution, eco.DEFAULT_ECOLOGY.pollution + 8);
+  check(true, '区域连锁向部分旧档施加效果时，会从目标地图默认值计算并保留其余默认指标');
+
   const globalChain = [{
     fromMap: 9,
     toMap: 0,
@@ -221,7 +251,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   check(true, `${calamities.NATIONAL_CALAMITIES.length} 种灵灾均接入专属 Boss，且净化效果不会降低生态健康度`);
 
   const participateStart = appSource.indexOf('const participateCalamity = (calamityId) => {');
-  const participateSource = appSource.slice(participateStart, participateStart + 3200);
+  const participateSource = appSource.slice(participateStart, participateStart + 4400);
   assert.ok(participateStart >= 0);
   assert.match(participateSource, /const bossDef = getEcoLinkedBoss\(cal\.bossKey\);/);
   assert.match(participateSource, /createPet\(bossDef\.bossId, calLevel, true, true\)/);
@@ -229,8 +259,13 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   assert.match(participateSource, /id: bossDef\.mapId \?\? currentMapId/);
   assert.ok(participateSource.indexOf('const bossDef = getEcoLinkedBoss') < participateSource.indexOf('goldRef.current -= calCost'));
   assert.ok(participateSource.indexOf('if (battle && !battleResultHandledRef.current)') < participateSource.indexOf('ecoActionLocksRef.current.add(lockKey)'));
-  assert.match(participateSource, /catch \(err\) \{[\s\S]{0,180}ecoActionLocksRef\.current\.delete\(lockKey\);[\s\S]{0,180}goldRef\.current \+= calCost;/);
-  assert.ok(participateSource.indexOf("startBattle({") < participateSource.indexOf('updateAchStat({ totalGoldSpent: calCost })'));
+  assert.match(participateSource, /const rollbackCalamityEntry = \(\) => \{[\s\S]{0,220}ecoActionLocksRef\.current\.delete\(lockKey\);[\s\S]{0,180}goldRef\.current \+= calCost;/);
+  assert.match(participateSource, /const started = startBattle\(\{/);
+  const failedStartCheck = participateSource.indexOf('if (!started)');
+  const spentStatUpdate = participateSource.indexOf('updateAchStat({ totalGoldSpent: calCost })');
+  assert.ok(failedStartCheck >= 0 && spentStatUpdate > failedStartCheck);
+  assert.ok((participateSource.match(/rollbackCalamityEntry\(\);/g) || []).length >= 2);
+  assert.match(participateSource, /if \(!started\) \{[\s\S]{0,220}本次未消耗参与机会/);
 
   const rewardStart = appSource.indexOf('const completeCalamityReward = (calamityId, weekKey, rewardMapId = null) => {');
   const rewardSource = appSource.slice(rewardStart, rewardStart + 2600);
@@ -238,7 +273,7 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   assert.match(rewardSource, /const calEco = cal\.resolutionEffects \|\| \{ pollution: -8, stability: 10 \};/);
   assert.match(rewardSource, /rewardMapId \?\? calamityBoss\?\.mapId \?\? currentMapId/);
   assert.doesNotMatch(rewardSource, /cal\.nationEffects|calEco\[k\] = -v/);
-  check(true, '灵灾入口在扣费前验证 Boss 与战斗占用，启动异常会退费解锁，结算将净化效果施加到对应灾区');
+  check(true, '灵灾入口在扣费前验证 Boss 与战斗占用，启动返回失败或抛异常都会退费解锁，结算将净化效果施加到对应灾区');
 }
 
 // 8. 战斗救助只发放一次结构化事件奖励，且战斗入口必须允许显式 0 掉落。
@@ -250,11 +285,29 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   assert.doesNotMatch(appSource, /const baseDropGold = \(drop \+ _\.random\(0, 20\)\)/);
   assert.match(appSource, /grantNonCombatReward\(rescueEvt\);/);
   const fightBranchStart = appSource.indexOf("if (event.branches && branchId === 'fight')");
-  const fightBranch = appSource.slice(fightBranchStart, fightBranchStart + 1400);
+  const fightBranch = appSource.slice(fightBranchStart, fightBranchStart + 2400);
   assert.ok(fightBranchStart >= 0);
   assert.ok(fightBranch.indexOf('livingLead') >= 0);
   assert.ok(fightBranch.indexOf('livingLead') < fightBranch.indexOf('ecoActionLocksRef.current.add(lockKey)'));
-  check(true, '战斗救助显式 0 掉落贯穿战斗入口与结算，且全灭队伍不会占用救助锁');
+  assert.match(fightBranch, /try \{[\s\S]{0,180}const started = startBattle\(\{/);
+  const rescueFailedStart = fightBranch.indexOf('if (!started)');
+  const rescueModalClose = fightBranch.indexOf('setNonCombatModal(null)');
+  assert.ok(rescueFailedStart >= 0 && rescueModalClose > rescueFailedStart);
+  assert.ok((fightBranch.match(/ecoActionLocksRef\.current\.delete\(lockKey\)/g) || []).length >= 2);
+  assert.match(fightBranch, /catch \(err\) \{[\s\S]{0,220}本次未消耗救助机会/);
+  check(true, '战斗救助显式 0 掉落贯穿战斗入口与结算；全灭或启动失败均不会占用救助锁');
+}
+
+// 9. 可无限重复的副本休息路线不能直接刷永久区域生态。
+{
+  assert.match(infinitySource, /id: 'sanctuary_rest'[\s\S]{0,120}desc: '恢复生命并大幅缓解疲劳'/);
+  assert.doesNotMatch(infinitySource, /purifyPollution/);
+  const sanctuaryStart = appSource.indexOf("if (route.id === 'sanctuary_rest')");
+  const sanctuaryBranch = appSource.slice(sanctuaryStart, sanctuaryStart + 850);
+  assert.ok(sanctuaryStart >= 0);
+  assert.doesNotMatch(sanctuaryBranch, /applyMapEcologyDelta/);
+  assert.match(sanctuaryBranch, /fatigue: reduceFatigue\(p, 40\)/);
+  check(true, '无限城圣域休息只恢复本次探索队伍，不再绕过生态事件无限净化永久地图');
 }
 
 console.log('\n=== 生态玩法检查全部通过 ===');

@@ -1488,19 +1488,29 @@ export const applyDefection = (kw, currentGold = 0) => {
 
 const initFactionManpower = () => ({ wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 });
 
+const getSafeFactionManpower = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
+};
+
 export const ensureFactionManpower = (kw) => {
   const base = initFactionManpower();
-  const fm = { ...base, ...(kw?.factionManpower || {}) };
-  return fm;
+  const saved = kw?.factionManpower || {};
+  return ALL_FACTION_IDS.reduce((result, fid) => {
+    result[fid] = getSafeFactionManpower(saved[fid], base[fid]);
+    return result;
+  }, {});
 };
 
 const pickAiAction = (fid, territories, factionManpower, playerFaction) => {
   const count = getFactionTerritoryCount(fid, territories);
-  const mp = factionManpower[fid] || 200;
-  const weakest = getWeakestFaction(territories);
+  const mp = getSafeFactionManpower(factionManpower[fid]);
   const danger = count <= 2;
   const advantage = count >= 8;
   const roll = Math.random();
+  if (count <= 0) return 'fortify';
+  // 40 是最小出征兵力。兵力不足时必须先征兵，不能用默认值生成“幽灵兵力”。
+  if (mp < 40) return 'recruit';
   if (danger && roll < 0.8) return 'recruit';
   if (danger) return 'fortify';
   if (advantage && roll < 0.6) return 'attack';
@@ -1512,8 +1522,12 @@ const pickAiAction = (fid, territories, factionManpower, playerFaction) => {
 const aiRecruit = (fid, territories, factionManpower) => {
   const count = getFactionTerritoryCount(fid, territories);
   const cap = count * 300;
-  const gain = 20 + Math.floor(Math.random() * 21) + count * 2;
-  factionManpower[fid] = Math.min(cap, (factionManpower[fid] || 0) + gain);
+  const current = getSafeFactionManpower(factionManpower[fid]);
+  const rolledGain = 20 + Math.floor(Math.random() * 21) + count * 2;
+  const next = Math.min(cap, current + rolledGain);
+  const gain = Math.max(0, next - current);
+  factionManpower[fid] = next;
+  if (gain <= 0) return aiFortify(fid, territories);
   return { type: 'recruit', faction: fid, gain, msg: `${FACTIONS[fid]?.fullName || fid}征兵 +${gain}` };
 };
 
@@ -1546,9 +1560,10 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
     .sort((a, b) => b.score - a.score);
   const targetMapId = scored[0]?.mid;
   if (!targetMapId) return null;
-  const deploy = Math.min(factionManpower[fid] || 100, 80 + Math.floor(Math.random() * 60));
+  const availableManpower = getSafeFactionManpower(factionManpower[fid]);
+  const deploy = Math.min(availableManpower, 80 + Math.floor(Math.random() * 60));
   if (deploy < 40) return aiRecruit(fid, territories, factionManpower);
-  factionManpower[fid] = Math.max(0, (factionManpower[fid] || 0) - Math.floor(deploy * 0.35));
+  factionManpower[fid] = Math.max(0, availableManpower - Math.floor(deploy * 0.35));
   const target = { ...territories[targetMapId] };
   const defGarrison = target.garrison || generateGarrison(target.owner || 'qun', 60);
   const atkGarrison = generateGarrison(fid, deploy);

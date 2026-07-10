@@ -42,6 +42,7 @@ const {
   RECRUIT_CONFIG,
   WAR_MAP_IDS,
   recruitTroops,
+  ensureFactionManpower,
   executeAllEnemyActions,
   applySeasonRewards,
   getKingdomDateKey,
@@ -120,11 +121,14 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   Math.random = () => 0;
   try {
     const enemies = ALL_FACTION_IDS.filter(id => id !== 'wei');
+    const rotationTerritories = Object.fromEntries(ALL_FACTION_IDS.map((fid, index) => [WAR_MAP_IDS[index], {
+      owner: fid, strength: 100, garrison: {}, guards: [],
+    }]));
     const actedFactions = [];
     for (let actionCounter = 1; actionCounter <= 5; actionCounter += 1) {
       const result = executeAllEnemyActions({
         faction: 'wei',
-        territories: {},
+        territories: rotationTerritories,
         factionManpower: { wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 },
         actionCounter,
       }, [], 50);
@@ -139,7 +143,42 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   }
 }
 
-// 4. 一次玩家行动只推进一次守将恢复计数。
+// 4. AI 必须严格使用真实兵力；0 兵力不能被默认值替换后免费攻城。
+{
+  const [targetMapId, ...ownedMapIds] = WAR_MAP_IDS
+    .filter(id => !CONTESTED_MAP_IDS.includes(Number(id)))
+    .slice(0, 4);
+  const territories = {
+    [targetMapId]: { owner: 'wei', strength: 0, garrison: {}, guards: [] },
+    ...Object.fromEntries(ownedMapIds.map(id => [id, {
+      owner: 'shu', strength: 100, garrison: {}, guards: [],
+    }])),
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const result = executeAllEnemyActions({
+      faction: 'wei',
+      territories,
+      factionManpower: { wei: 400, shu: 0, wu: 400, jin: 400, qun: 300 },
+      actionCounter: 1,
+    }, [], 50);
+    assert.equal(result.kw.territories[targetMapId].owner, 'wei');
+    assert.equal(result.logs[0]?.type, 'recruit');
+    assert.equal(result.kw.factionManpower.shu, 26);
+    check(true, 'AI 兵力为 0 时会先征兵，不会生成幽灵兵力攻占弱城');
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const normalized = ensureFactionManpower({
+    factionManpower: { wei: 0, shu: '125', wu: -50, jin: Number.NaN },
+  });
+  assert.deepEqual(normalized, { wei: 0, shu: 125, wu: 0, jin: 400, qun: 300 });
+  check(true, '旧档中的 0、字符串、负数与非有限兵力会被安全归一化');
+}
+
+// 5. 一次玩家行动只推进一次守将恢复计数。
 {
   const mapId = WAR_MAP_IDS[0];
   const originalRandom = Math.random;
@@ -165,7 +204,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   }
 }
 
-// 5. 征兵不透支粮草，普通预备兵与赛季继承都受共享上限约束。
+// 6. 征兵不透支粮草，普通预备兵与赛季继承都受共享上限约束。
 {
   const originalRandom = Math.random;
   Math.random = () => 0.999999;
@@ -207,7 +246,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   check(true, `赛季继承后的预备兵同样不超过 ${MANPOWER_RESERVE_CAP}，已购买虎符不会被赛季切换吞掉`);
 }
 
-// 6. 虎符在普通领地与名城攻城中必须产生一致、可预览的 +50% 攻击收益。
+// 7. 虎符在普通领地与名城攻城中必须产生一致、可预览的 +50% 攻击收益。
 {
   assert.equal(TIGER_SEAL_ATTACK_MULT, 1.5);
   const tigerSeal = TOKEN_SHOP.find(item => item.id === 'tiger_seal');

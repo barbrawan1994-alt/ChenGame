@@ -335,9 +335,10 @@ export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMa
   const result = { ...ecologyByMap };
   chains.forEach(chain => {
     if (sourceMapId != null && Number(chain.fromMap) !== Number(sourceMapId)) return;
-    const fromEco = result[chain.fromMap] || getDefaultEcologyForMap(chain.fromMap);
+    const fromDefaults = getDefaultEcologyForMap(chain.fromMap);
+    const fromEco = { ...fromDefaults, ...(result[chain.fromMap] || {}) };
     const met = Object.entries(chain.condition || {}).every(([k, cond]) => {
-      const val = fromEco[k] ?? 50;
+      const val = getSafeEcologyMetric(fromEco[k], fromDefaults[k] ?? DEFAULT_ECOLOGY[k] ?? 50);
       if (cond.min != null) return val >= cond.min;
       if (cond.max != null) return val <= cond.max;
       return true;
@@ -351,17 +352,23 @@ export function applyRegionChains(ecologyByMap, chains = REGION_CHAINS, sourceMa
       globalMapKeys.forEach(k => {
         const mapKey = Number(k);
         if (Number.isNaN(mapKey)) return;
-        const eco = { ...(result[mapKey] || getDefaultEcologyForMap(mapKey)) };
+        const defaults = getDefaultEcologyForMap(mapKey);
+        const eco = { ...defaults, ...(result[mapKey] || {}) };
         Object.entries(chain.effect || {}).forEach(([ek, ev]) => {
-          if (ECO_METRIC_KEYS.includes(ek)) eco[ek] = (eco[ek] ?? 50) + ev;
+          if (ECO_METRIC_KEYS.includes(ek)) {
+            eco[ek] = getSafeEcologyMetric(eco[ek], defaults[ek] ?? DEFAULT_ECOLOGY[ek] ?? 50) + ev;
+          }
         });
         result[mapKey] = clampEcology(eco);
       });
       return;
     }
-    const toEco = { ...(result[chain.toMap] || getDefaultEcologyForMap(chain.toMap)) };
+    const toDefaults = getDefaultEcologyForMap(chain.toMap);
+    const toEco = { ...toDefaults, ...(result[chain.toMap] || {}) };
     Object.entries(chain.effect || {}).forEach(([k, v]) => {
-      if (ECO_METRIC_KEYS.includes(k)) toEco[k] = (toEco[k] ?? 50) + v;
+      if (ECO_METRIC_KEYS.includes(k)) {
+        toEco[k] = getSafeEcologyMetric(toEco[k], toDefaults[k] ?? DEFAULT_ECOLOGY[k] ?? 50) + v;
+      }
     });
     result[chain.toMap] = clampEcology(toEco);
   });

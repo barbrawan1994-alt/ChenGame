@@ -1225,8 +1225,8 @@ useEffect(() => {
         const s = getStats(p);
         return { ...p, currentHp: Math.min(s.maxHp, p.currentHp + Math.floor(s.maxHp * 0.4)), fatigue: reduceFatigue(p, 40) };
       }));
-      applyMapEcologyDelta(currentMapId || 1, { pollution: -5, stability: 5 });
-      showMapToast('🏡', '圣域休息', '体力恢复，区域污染减轻', 2500);
+      // 无限城路线可反复选择，不能直接改写永久区域生态，否则会绕过生态事件的投入与限制。
+      showMapToast('🏡', '圣域休息', '生命恢复，队伍疲劳大幅缓解', 2500);
       nextInfinityFloor();
       return;
     }
@@ -8020,18 +8020,26 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       calcCrossSystemPveBonuses({ playerStyle: currentFusionState.playerStyle || {}, kwPosition: currentFusionState.kwPosition })
     );
     if (calFusionBonuses.bossMultReduce) calEnemy.customStatMult *= Math.max(0.7, 1 - calFusionBonuses.bossMultReduce);
+    const rollbackCalamityEntry = () => {
+      ecoActionLocksRef.current.delete(lockKey);
+      goldRef.current += calCost;
+      setGold(goldRef.current);
+    };
     try {
-      startBattle({
+      const started = startBattle({
         id: bossDef.mapId ?? currentMapId, name: cal.name, customParty: [calEnemy], trainerName: cal.name, drop: calCost * 2,
         ecoBossMechanics: true, bossPhases: bossDef.phases,
         _fusionBonuses: calFusionBonuses, _calamity: { calamityId, weekKey, mapId: bossDef.mapId ?? currentMapId },
       }, 'eco_crisis');
+      if (!started) {
+        rollbackCalamityEntry();
+        showMapToast('⚠️', '灵灾未能启动', '报名费已退还，本次未消耗参与机会', 2600);
+        return;
+      }
       updateAchStat({ totalGoldSpent: calCost });
       setView('battle');
     } catch (err) {
-      ecoActionLocksRef.current.delete(lockKey);
-      goldRef.current += calCost;
-      setGold(goldRef.current);
+      rollbackCalamityEntry();
       console.error('calamity battle start:', err);
       showMapToast('⚠️', '灵灾未能启动', '报名费已退还，请稍后重试', 2600);
     }
@@ -8222,17 +8230,28 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         return;
       }
       ecoActionLocksRef.current.add(lockKey);
-      setNonCombatModal(null);
       const lvl = Math.max(12, (livingLead.level || 15) - 3);
-      startBattle({
-        id: event.mapId,
-        name: event.name,
-        customParty: [createPet(65, lvl, true)],
-        trainerName: '受困岩甲犀',
-        // 救助奖励由 grantNonCombatReward 统一发放，战斗本身不再重复掉落金币。
-        drop: 0,
-        _nonCombatRescue: event.id,
-      }, 'eco_crisis');
+      try {
+        const started = startBattle({
+          id: event.mapId,
+          name: event.name,
+          customParty: [createPet(65, lvl, true)],
+          trainerName: '受困岩甲犀',
+          // 救助奖励由 grantNonCombatReward 统一发放，战斗本身不再重复掉落金币。
+          drop: 0,
+          _nonCombatRescue: event.id,
+        }, 'eco_crisis');
+        if (!started) {
+          ecoActionLocksRef.current.delete(lockKey);
+          showMapToast('⚠️', '救助未能启动', '本次未消耗救助机会，可以重试', 2400);
+          return;
+        }
+        setNonCombatModal(null);
+      } catch (err) {
+        ecoActionLocksRef.current.delete(lockKey);
+        console.error('non-combat rescue battle start:', err);
+        showMapToast('⚠️', '救助未能启动', '本次未消耗救助机会，可以重试', 2400);
+      }
       return;
     }
     if (event.branches && branchId) {
