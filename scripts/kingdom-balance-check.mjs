@@ -29,6 +29,7 @@ MOCK_GENERALS.push(
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.meta.url), 'utf8');
 const kwSiegeSource = await readFile(new URL('../src/data/kwSiege.js', import.meta.url), 'utf8');
+const achievements = await loadSourceModule('src/data/achievements.js');
 const kingdom = await loadSourceModule('src/data/kingdom.js', source => source
   .replace("import { SANGUO_GENERALS } from './generals';", `const SANGUO_GENERALS = ${JSON.stringify(MOCK_GENERALS)};`)
   .replace(
@@ -88,6 +89,12 @@ const {
   inferDefenseWeights,
   resolveContestedMapOwner,
 } = kwSiege;
+const {
+  default: ACHIEVEMENTS,
+  normalizeUnlockedAchievementIds,
+  normalizeAchievementTitles,
+  normalizeCurrentAchievementTitle,
+} = achievements;
 const { GANG_PRESETS } = gang;
 const { MANPOWER_RESERVE_CAP } = constants;
 
@@ -122,6 +129,22 @@ const simulateSiegeManpower = (strength = 60, deploy = 120) => {
 };
 
 console.log('=== 国战平衡与行动经济检查 ===\n');
+
+// 0. 已下线的“版图扩张”不能继续自动解锁，旧存档完成记录与专属称号也必须清理
+{
+  assert.equal(ACHIEVEMENTS.some(achievement => achievement.id === 'kw_territory_5'), false);
+  assert.equal(ACHIEVEMENTS.some(achievement => achievement.name === '版图扩张'), false);
+  assert.deepEqual(
+    normalizeUnlockedAchievementIds(['kw_territory_5', 'kw_kill_100', 'kw_kill_100']),
+    ['kw_kill_100'],
+  );
+  assert.deepEqual(
+    normalizeAchievementTitles(['版图扩张', '百战铁军', '百战铁军']),
+    ['见习训练家', '百战铁军'],
+  );
+  assert.equal(normalizeCurrentAchievementTitle('版图扩张'), '见习训练家');
+  check(true, '已移除“版图扩张”成就，并清理旧存档中的完成记录和专属称号');
+}
 
 // 1. 地图规模与基础资源循环。
 check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_MAP_IDS.length} 张（目标约 40）`);

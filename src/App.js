@@ -46,7 +46,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
-import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS } from './data/achievements';
+import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS, normalizeUnlockedAchievementIds, normalizeAchievementTitles, normalizeCurrentAchievementTitle } from './data/achievements';
 import GAME_GUIDE from './data/gameGuide';
 import { generateSprite } from './SpriteGenerator';
 import { getSpriteUrl, getSpriteFallbackUrls, TRAINER_SPRITES, NPC_SPRITES, getNpcSprite } from './SpriteMap';
@@ -756,8 +756,8 @@ export default function RPG(props) {
   // 玩家身份 (优先用存档里的名字，没有才用默认)
   const [trainerName, setTrainerName] = useState((savedData.trainerName || '小智').slice(0, 8));
   const [trainerAvatar, setTrainerAvatar] = useState(savedData.trainerAvatar && savedData.trainerAvatar.startsWith('http') ? savedData.trainerAvatar : TRAINER_SPRITES[0].url);
-  const [unlockedTitles, setUnlockedTitles] = useState(savedData.unlockedTitles || ['见习训练家']);
-  const [currentTitle, setCurrentTitle] = useState(savedData.currentTitle || '见习训练家');
+  const [unlockedTitles, setUnlockedTitles] = useState(() => normalizeAchievementTitles(savedData.unlockedTitles));
+  const [currentTitle, setCurrentTitle] = useState(() => normalizeCurrentAchievementTitle(savedData.currentTitle));
 
   // 核心资产 (金币/背包/队伍)
   const [gold, setGold] = useState(typeof savedData.gold === 'number' && !isNaN(savedData.gold) ? savedData.gold : 2000);
@@ -893,7 +893,7 @@ export default function RPG(props) {
   );
   const weatherTypesSetRef = useRef(weatherTypesSet);
   weatherTypesSetRef.current = weatherTypesSet;
-  const [unlockedAchs, setUnlockedAchs] = useState(savedData.unlockedAchs || []);
+  const [unlockedAchs, setUnlockedAchs] = useState(() => normalizeUnlockedAchievementIds(savedData.unlockedAchs));
   const [achNotification, setAchNotification] = useState(null);
   const achTimersRef = useRef([]);
   const [achCatFilter, setAchCatFilter] = useState('ALL');

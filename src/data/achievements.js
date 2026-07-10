@@ -301,10 +301,9 @@ const ACHIEVEMENTS = [
     hint: '提示：当五对精灵都达到完美默契…你就是真正的搭档大师',
     check: s => s.maxBondLv3Pairs >= 5, reward: { title: '完美默契' }, hidden: true },
 
-  // ===== 国战成就 (6 基础) =====
+  // ===== 国战成就 (3 基础) =====
   { id: 'kw_kill_100',      cat: 'BATTLE',   rarity: 'RARE',      name: '百战铁军',     desc: '在国战中击败100名敌国训练师',            check: s => s.kwKills >= 100,          reward: { title: '百战铁军' } },
   { id: 'kw_general',       cat: 'SOCIAL',   rarity: 'RARE',      name: '封将拜印',     desc: '国战军衔达到将军',                       check: s => s.kwRankIdx >= 5,          reward: { title: '沙场将军' } },
-  { id: 'kw_territory_5',   cat: 'EXPLORE',  rarity: 'EPIC',      name: '版图扩张',     desc: '己方阵营同时控制5块以上领地',           check: s => s.kwFactionTerritories >= 5, reward: { title: '版图扩张' } },
   { id: 'kw_king',          cat: 'SOCIAL',   rarity: 'LEGENDARY', name: '一统天下',     desc: '国战军衔达到国主',                       check: s => s.kwRankIdx >= 9,          reward: { title: '乱世霸主' } },
 
   // ===== 国战进阶成就 (18) =====
@@ -488,6 +487,30 @@ const normalizeAchievementRewards = () => {
 };
 
 normalizeAchievementRewards();
+
+const ACTIVE_ACHIEVEMENT_IDS = new Set(ACHIEVEMENTS.map(achievement => achievement.id));
+const RETIRED_ACHIEVEMENT_TITLES = new Set(['版图扩张']);
+
+/** 清理已下线或重复的成就 ID，避免旧存档导致完成数超过当前成就总数。 */
+export const normalizeUnlockedAchievementIds = (ids) => (
+  [...new Set((Array.isArray(ids) ? ids : []).filter(id => ACTIVE_ACHIEVEMENT_IDS.has(id)))]
+);
+
+/** 清理已下线成就的专属称号，并确保基础称号始终可用。 */
+export const normalizeAchievementTitles = (titles, fallback = '见习训练家') => (
+  [...new Set([
+    fallback,
+    ...(Array.isArray(titles) ? titles : []).filter(title => (
+      typeof title === 'string' && title && !RETIRED_ACHIEVEMENT_TITLES.has(title)
+    )),
+  ])]
+);
+
+export const normalizeCurrentAchievementTitle = (title, fallback = '见习训练家') => (
+  typeof title === 'string' && title && !RETIRED_ACHIEVEMENT_TITLES.has(title)
+    ? title
+    : fallback
+);
 
 export const DEFAULT_ACH_STATS = {
   totalCaught: 0,
