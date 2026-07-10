@@ -15,11 +15,11 @@ export const ACH_CATEGORY = {
 };
 
 export const ACH_RARITY = {
-  COMMON:    { name: '普通', color: '#78909C', stars: 1 },
-  UNCOMMON:  { name: '稀有', color: '#43A047', stars: 2 },
-  RARE:      { name: '珍贵', color: '#1E88E5', stars: 3 },
-  EPIC:      { name: '史诗', color: '#8E24AA', stars: 4 },
-  LEGENDARY: { name: '传说', color: '#FF8F00', stars: 5 },
+  COMMON:    { name: '普通', color: '#B0BEC5', stars: 1 },
+  UNCOMMON:  { name: '稀有', color: '#81C784', stars: 2 },
+  RARE:      { name: '珍贵', color: '#90CAF9', stars: 3 },
+  EPIC:      { name: '史诗', color: '#CE93D8', stars: 4 },
+  LEGENDARY: { name: '传说', color: '#FFB74D', stars: 5 },
 };
 
 // stat key → achievement条件检查

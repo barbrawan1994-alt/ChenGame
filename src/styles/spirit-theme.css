@@ -1037,10 +1037,12 @@ textarea {
   .spirit-view-merchant,
   .spirit-view-locked
 ) .screen button:disabled {
-  color: rgba(169, 193, 199, 0.55) !important;
-  background: rgba(13, 48, 69, 0.48) !important;
-  border: 2px solid rgba(169, 193, 199, 0.18) !important;
+  color: var(--sp-text-secondary) !important;
+  background: rgba(13, 48, 69, 0.9) !important;
+  border: 2px solid rgba(191, 210, 209, 0.55) !important;
   box-shadow: none !important;
+  opacity: 1 !important;
+  filter: none !important;
 }
 
 /* ---- Bag overlay while map remains mounted ---- */
@@ -2188,6 +2190,302 @@ textarea {
   }
 }
 
+
+/* ---- Readability guarantee: every dark themed surface keeps a clear text hierarchy ---- */
+:root {
+  --sp-text-primary: #fffdf5;
+  --sp-text-secondary: #d9e8e5;
+  --sp-text-muted: #bfd2d1;
+  --sp-text-disabled: #afc2c4;
+  --sp-info: #93c5fd;
+  --sp-violet: #c4b5fd;
+  --sp-warning: #fdba74;
+}
+
+.spirit-app :where(input, textarea)::placeholder {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* Disabled and locked controls stay visibly disabled through shape/background, never illegible opacity. */
+.spirit-app :where(button:disabled, [aria-disabled="true"]) {
+  opacity: 1 !important;
+}
+
+.spirit-app :where(button:disabled, [aria-disabled="true"]) :where(span, strong, small, b) {
+  opacity: 1 !important;
+}
+
+.spirit-app :where(.home-gate-primary, .home-cover-main-start) :where(strong, small, span),
+.spirit-app :where(.home-gate-entry, .home-cover-system) :where(strong, small, span) {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .home-cover-main-start-icon {
+  color: var(--sp-ink-950) !important;
+  background: rgba(255, 253, 245, 0.9) !important;
+}
+
+.spirit-app :where(.home-gate-team-slot, .home-team-slot):not(.is-filled) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* World atlas */
+.spirit-app .world-map-hero p,
+.spirit-app .world-map-hero-stats span,
+.spirit-app .world-region-card p,
+.spirit-app .world-region-card__footer em {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .world-map-tab-btn:not(.is-active) {
+  color: var(--sp-text-primary) !important;
+}
+
+.spirit-app .world-map-tab-btn:not(.is-active) small {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .world-map-tab-btn.is-active small {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .kingdom-faction-hero > div:first-child {
+  color: var(--sp-gold-400) !important;
+}
+
+.spirit-app .kingdom-faction-hero > div:nth-child(3) {
+  color: var(--sp-text-secondary) !important;
+}
+
+/* Codex family: metadata is muted, not translucent; locked art is dimmed without dimming its text. */
+.spirit-app :where(
+  .codex-title-block p,
+  .codex-hero-count span,
+  .codex-ring span,
+  .codex-panel-copy p,
+  .codex-panel > p,
+  .codex-reward,
+  .codex-reward span,
+  .codex-mini-bar span,
+  .codex-mini-bar b,
+  .codex-search span,
+  .codex-empty,
+  .codex-card-id,
+  .codex-general-status,
+  .codex-general-card p,
+  .codex-card-meta span,
+  .codex-fruit-owned,
+  .codex-skill-stats span,
+  .codex-skill-card p,
+  .codex-skill-tags span,
+  .codex-pagination span
+) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .codex-search input::placeholder {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app :where(
+  .jutsu-filter-label,
+  .jutsu-stat-panel,
+  .jutsu-card-desc,
+  .jutsu-mini-stats,
+  .jutsu-empty-state
+) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app :where(
+  .codex-panel-copy > span,
+  .codex-panel > span,
+  .codex-panel-head > span,
+  .codex-bonus-strip > span
+) {
+  color: var(--sp-teal-300) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .codex-general-card.is-locked {
+  opacity: 1 !important;
+}
+
+.spirit-app .codex-general-card.is-locked .codex-general-portrait {
+  filter: grayscale(0.9) brightness(0.62);
+}
+
+/* Exploration chrome: keep the map art colorful, but guarantee all HUD and dock labels are readable. */
+.spirit-app.spirit-view-grid_map .grid-screen-redesign :where(
+  .grid-map-title,
+  .grid-map-title strong,
+  .grid-env-pill,
+  .grid-env-item,
+  .grid-env-item span:last-child,
+  .grid-coord-pill,
+  .grid-settings-btn,
+  .grid-quest-banner,
+  .grid-quest-banner span,
+  .dock-btn-capsule,
+  .dock-btn-capsule > div
+) {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app.spirit-view-grid_map .grid-screen-redesign .grid-quest-banner:not(.is-complete) span:last-child {
+  color: var(--sp-gold-400) !important;
+}
+
+.spirit-app.spirit-view-grid_map .grid-screen-redesign .grid-env-divider {
+  background: rgba(255, 246, 216, 0.42) !important;
+}
+
+
+.spirit-app.spirit-view-grid_map .grid-header-redesign,
+.spirit-app.spirit-view-grid_map .map-dock-capsule {
+  color: var(--sp-text-primary) !important;
+  background: rgba(7, 26, 46, 0.96) !important;
+  border: 2px solid rgba(140, 225, 198, 0.38) !important;
+  box-shadow: 4px 4px 0 rgba(2, 12, 22, 0.86) !important;
+}
+
+.spirit-app.spirit-view-grid_map .grid-env-pill,
+.spirit-app.spirit-view-grid_map .grid-coord-pill,
+.spirit-app.spirit-view-grid_map .grid-settings-btn {
+  color: var(--sp-text-primary) !important;
+  background: rgba(13, 48, 69, 0.98) !important;
+  border-color: rgba(140, 225, 198, 0.42) !important;
+}
+
+.spirit-app.spirit-view-grid_map .map-dock-capsule .dock-btn-capsule,
+.spirit-app.spirit-view-grid_map .map-dock-capsule .dock-btn-capsule > div:not([style*="position: absolute"]) {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: 1px 1px 0 rgba(2, 12, 22, 0.92) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.spirit-app.spirit-view-grid_map .map-dock-capsule .dock-btn-capsule {
+  background: rgba(13, 48, 69, 0.74) !important;
+  border: 1px solid rgba(140, 225, 198, 0.22) !important;
+  min-height: 48px;
+}
+
+.spirit-app.spirit-view-grid_map .map-dock-capsule .dock-btn-capsule:not(:disabled):hover {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+}
+
+.spirit-app.spirit-view-grid_map .map-dock-capsule .dock-btn-capsule:not(:disabled):hover > div:not([style*="position: absolute"]) {
+  color: var(--sp-ink-950) !important;
+  text-shadow: none !important;
+}
+
+.spirit-app.spirit-view-grid_map .map-dock-capsule .dock-btn-capsule:disabled {
+  color: var(--sp-text-disabled) !important;
+  opacity: 1 !important;
+  background: rgba(7, 26, 46, 0.88) !important;
+}
+
+/* Player and compact map-side labels must stay legible above the colorful tile art. */
+.spirit-app.spirit-view-grid_map .map-viewport-frame :where(
+  .player-marker,
+  .player-marker *,
+  .npc-bubble,
+  .npc-bubble *,
+  .story-beacon,
+  .story-beacon *
+) {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: 1px 1px 0 #04111e, -1px -1px 0 #04111e, 1px -1px 0 #04111e, -1px 1px 0 #04111e !important;
+}
+
+.spirit-app .map-viewport-frame :where(.environment-time-overlay, .environment-weather-overlay) {
+  border-radius: inherit;
+  contain: paint;
+}
+
+.spirit-app .map-viewport-frame:has(.environment-time-overlay.is-night) .player-marker,
+.spirit-app .map-viewport-frame:has(.environment-time-overlay.is-night) .story-beacon,
+.spirit-app .map-viewport-frame:has(.environment-time-overlay.is-night) .npc-bubble {
+  filter: brightness(1.3) saturate(1.12) drop-shadow(0 0 5px rgba(255, 238, 170, 0.4)) !important;
+}
+
+/* Low-alpha inline copy was common in legacy pages. Promote it to an opaque muted token. */
+.spirit-app :where(
+  [style*="color: rgba(255, 255, 255, 0.3"],
+  [style*="color: rgba(255, 255, 255, 0.4"],
+  [style*="color: rgba(255, 255, 255, 0.5"],
+  [style*="color: rgba(230, 244, 255, 0.3"],
+  [style*="color: rgba(230, 244, 255, 0.4"],
+  [style*="color: rgba(230, 244, 255, 0.5"],
+  [style*="color: rgba(232, 243, 255, 0.4"],
+  [style*="color: rgba(232, 243, 255, 0.5"]
+) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* Legacy system cards are restyled dark above; neutral inline colors must follow that new surface. */
+.spirit-app:is(
+  .spirit-view-arena,
+  .spirit-view-expedition,
+  .spirit-view-training,
+  .spirit-view-world_boss,
+  .spirit-view-infinity_castle,
+  .spirit-view-fishing_game,
+  .spirit-view-beauty_contest,
+  .spirit-view-league,
+  .spirit-view-naruto_exam,
+  .spirit-view-naruto_story,
+  .spirit-view-bounty,
+  .spirit-view-lucky_wheel,
+  .spirit-view-mining,
+  .spirit-view-race,
+  .spirit-view-trainer_card,
+  .spirit-view-move_forget,
+  .spirit-view-settings,
+  .spirit-view-name_input,
+  .spirit-view-merchant,
+  .spirit-view-locked
+) .screen :where(
+  [style*="color: rgb(15, 23, 42)"],
+  [style*="color: rgb(30, 41, 59)"],
+  [style*="color: rgb(51, 51, 51)"],
+  [style*="color: rgb(51, 65, 85)"],
+  [style*="color: rgb(68, 68, 68)"],
+  [style*="color: rgb(71, 85, 105)"],
+  [style*="color: rgb(85, 85, 85)"],
+  [style*="color: rgb(100, 116, 139)"],
+  [style*="color: rgb(102, 102, 102)"],
+  [style*="color: rgb(119, 119, 119)"],
+  [style*="color: rgb(136, 136, 136)"],
+  [style*="color: rgb(153, 153, 153)"],
+  [style*="color: rgb(170, 170, 170)"]
+) {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+/* Brighter semantic colors for small headings on dark legacy panels. */
+.spirit-app :where([style*="color: rgb(139, 92, 246)"]) { color: var(--sp-violet) !important; }
+.spirit-app :where([style*="color: rgb(59, 130, 246)"]) { color: var(--sp-info) !important; }
+.spirit-app :where([style*="color: rgb(239, 68, 68)"]) { color: #fda4af !important; }
+.spirit-app :where([style*="color: rgb(249, 115, 22)"]) { color: var(--sp-warning) !important; }
+.spirit-app :where([style*="color: rgb(34, 197, 94)"]) { color: #86efac !important; }
+
 @media (prefers-reduced-motion: reduce) {
   .spirit-app *,
   .spirit-app *::before,
@@ -2197,4 +2495,258 @@ textarea {
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+
+/* Final accessibility pass for interactive controls discovered in full-page regression. */
+.spirit-app :where(.inventory-sort-chip, .inventory-filter-chip).active {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+}
+
+.spirit-app .team-screen .hero-name {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .team-screen :where(.bar-label, .bar-text) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .team-screen :where(.team-heal-all-btn, .team-sort-btn) {
+  color: var(--sp-ink-950) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.spirit-app .team-screen .team-heal-all-btn {
+  background: #86efac !important;
+  border-color: #dcfce7 !important;
+}
+
+.spirit-app .team-screen .team-sort-btn {
+  background: #93c5fd !important;
+  border-color: #dbeafe !important;
+}
+
+.spirit-app .readable-return-btn {
+  color: var(--sp-ink-950) !important;
+  background: #7dd3fc !important;
+  font-weight: 800 !important;
+}
+
+.spirit-app .sect-primary-action {
+  color: var(--sp-text-primary) !important;
+  background: #166534 !important;
+  border: 2px solid #86efac !important;
+}
+
+.spirit-app .housing-title-lockup > span,
+.spirit-app .housing-eyebrow {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .housing-tab-bar button.is-active {
+  color: var(--sp-ink-950) !important;
+  background: var(--sp-gold-400) !important;
+  border-color: var(--sp-paper) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .achievement-filter-row button.is-active,
+.spirit-app .achievement-filter-row button.is-active :where(span, small) {
+  color: var(--sp-ink-950) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app :where(.gd-cat-count, .guide-chapter-count, .guide-section-count) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* Regression fixes for remaining information and locked-state copy. */
+.spirit-app .team-screen .team-star-btn {
+  opacity: 1 !important;
+  color: var(--sp-text-primary) !important;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.spirit-app .team-screen .equip-placeholder-icon {
+  opacity: 0.78 !important;
+}
+
+.spirit-app.spirit-view-trainer_card :where(
+  [style*="color:rgba(255,255,255,0.2)"],
+  [style*="color: rgba(255, 255, 255, 0.2)"],
+  [style*="color:#475569"],
+  [style*="color: #475569"],
+  [style*="color:#64748b"],
+  [style*="color: #64748b"]
+) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app.spirit-view-trainer_card [style*="opacity:0.1"],
+.spirit-app.spirit-view-trainer_card [style*="opacity: 0.1"] {
+  opacity: 0.62 !important;
+}
+
+.spirit-app :where(.gd-sec-count, .gd-arrow, .gd-meta) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .achievement-category-tabs button.is-active :where(strong, small),
+.spirit-app .achievement-filter-row button.is-active :where(span, small) {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(2, 12, 22, 0.7) !important;
+}
+
+.spirit-app :where(button:disabled, [aria-disabled="true"]) {
+  color: var(--sp-text-disabled) !important;
+}
+
+.spirit-app.spirit-view-race [style*="color:#F08030"],
+.spirit-app.spirit-view-race [style*="color: #F08030"] {
+  color: #FFE082 !important;
+}
+
+.spirit-app.spirit-view-naruto_exam :where(
+  [style*="color:rgba(255,255,255,0.2)"],
+  [style*="color: rgba(255, 255, 255, 0.2)"]
+) {
+  color: var(--sp-text-muted) !important;
+}
+
+.spirit-app.spirit-view-naruto_exam [style*="opacity:0.3"],
+.spirit-app.spirit-view-naruto_exam [style*="opacity: 0.3"] {
+  opacity: 0.82 !important;
+}
+
+/* Dynamic inline colors are serialized as rgb() in the browser. */
+.spirit-app.spirit-view-trainer_card :where(
+  [style*="rgb(71, 85, 105)"],
+  [style*="rgb(100, 116, 139)"]
+) {
+  color: var(--sp-text-muted) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .achievement-category-tabs button small {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(2, 12, 22, 0.7) !important;
+}
+
+.spirit-app.spirit-view-world_boss button:disabled,
+.spirit-app.spirit-view-infinity_castle button:disabled {
+  color: var(--sp-text-secondary) !important;
+  background: rgba(13, 47, 67, 0.92) !important;
+  border: 1px solid rgba(191, 210, 209, 0.55) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app.spirit-view-race [style*="rgb(240, 128, 48)"] {
+  color: #FFE082 !important;
+}
+
+.spirit-app .achievement-filter-row button small {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(2, 12, 22, 0.7) !important;
+}
+
+.spirit-app.spirit-view-world_boss button:disabled,
+.spirit-app.spirit-view-infinity_castle button:disabled {
+  color: #fff !important;
+  background: #0d2f43 !important;
+}
+
+/* Team modal readability: legacy light header/grid surfaces conflicted with the
+   shared light text palette, and type-colored level pills could fall below 3:1. */
+.spirit-app .team-modal-container .team-modal-header {
+  color: var(--sp-paper) !important;
+  background: linear-gradient(180deg, #123f55, #0a2a40) !important;
+  border-bottom: 2px solid var(--sp-gold-400) !important;
+}
+
+.spirit-app .team-modal-container .team-modal-header :where(div, span, strong) {
+  color: var(--sp-paper) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(2, 12, 22, 0.76) !important;
+}
+
+.spirit-app .team-modal-container .team-modal-header [style*="font-size: 11px"],
+.spirit-app .team-modal-container .team-modal-header [style*="font-size:11px"] {
+  color: var(--sp-text-secondary) !important;
+}
+
+.spirit-app .team-modal-container .team-modal-grid {
+  color: var(--sp-text-primary) !important;
+  background: #061a2e !important;
+}
+
+.spirit-app .team-modal-container .team-member-card.empty :where(div, span) {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .team-modal-container .card-lvl-badge {
+  color: #ffffff !important;
+  background: #082c3f !important;
+  border: 1px solid rgba(255, 246, 216, 0.82) !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.72) !important;
+}
+
+.spirit-app .team-modal-container .card-name {
+  color: var(--sp-text-primary) !important;
+  text-shadow: 0 1px 1px rgba(2, 12, 22, 0.72) !important;
+}
+
+.spirit-app .team-modal-container .card-bar-group :where(span, div[style*="color"]) {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+/* Kingdom selection cards use the dark spirit panel skin; override the legacy
+   dark-on-light inline copy so every detail remains readable after recoloring. */
+.spirit-app .kingdom-faction-card > div:nth-child(2) {
+  color: var(--sp-text-primary) !important;
+}
+
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:first-child {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(2) > div,
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(3),
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(4) {
+  background: rgba(255, 246, 216, 0.08) !important;
+}
+
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(2) span:first-child,
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(3) > div:first-child,
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(4) > div:first-child {
+  color: var(--sp-text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(2) span:last-child,
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(3) > div:last-child,
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(4) > div:last-child,
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:nth-child(5) :where(span, div) {
+  color: var(--sp-text-primary) !important;
+  opacity: 1 !important;
+}
+
+.spirit-app .kingdom-faction-card > div:nth-child(2) > div:last-child {
+  color: var(--sp-gold-400) !important;
+  opacity: 1 !important;
 }
