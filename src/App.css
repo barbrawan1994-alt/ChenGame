@@ -15425,6 +15425,15 @@ select:focus-visible,
   color: var(--px-ink) !important;
 }
 
+/* Dark compact badges need a light foreground, while the rest of the redesigned
+   side panel intentionally uses dark ink on its warm paper-like surfaces. */
+.grid-screen-redesign .side-panel [style*="background:#333"],
+.grid-screen-redesign .side-panel [style*="background: #333"],
+.grid-screen-redesign .side-panel [style*="background: rgb(51, 51, 51)"] {
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55) !important;
+}
+
 .grid-screen-redesign .side-panel .panel-card > div[style*="position:absolute"] {
   opacity: 0.12 !important;
 }

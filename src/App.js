@@ -1717,7 +1717,17 @@ const [infinityState, setInfinityState] = useState(() => {
   const pendingJutsuWinForBountyRef = useRef(false);
   const bountyClaimLocksRef = useRef(new Set());
   const dexMilestoneClaimLocksRef = useRef(new Set());
+  const marriageActionLocksRef = useRef(new Set());
+  const cafeClaimLockRef = useRef(false);
+  const arenaStartLockRef = useRef(false);
+  const dungeonEntryLockRef = useRef(false);
   const playerTookDamageRef = useRef(false);
+  useEffect(() => {
+    if (!battle) {
+      arenaStartLockRef.current = false;
+      dungeonEntryLockRef.current = false;
+    }
+  }, [battle]);
   const markPlayerTookDamage = (battleState) => {
     playerTookDamageRef.current = true;
     if (!battleState) return;
@@ -1874,6 +1884,8 @@ const [infinityState, setInfinityState] = useState(() => {
   // 引用，用于地图滚动
   const mapContainerRef = useRef(null);
   const dialogNextRef = useRef(null);
+  const cafeRef = useRef(cafe);
+  cafeRef.current = cafe;
   const marriageRef = useRef(marriage);
   marriageRef.current = marriage;
   const partyRef = useRef(party);
@@ -3506,7 +3518,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                 <div style={{ textAlign:'center', padding:'30px', color:'#aaa' }}>
                   <div style={{ fontSize:'48px' }}>🏔️</div>
                   <div style={{ marginTop:'12px' }}>获得 {SECT_JOIN_REQ_BADGES} 枚徽章后可拜入门派</div>
-                  <button onClick={() => setSectHubTab('join')} style={{ marginTop:'16px', padding:'10px 24px', background:'#4CAF50', border:'none', borderRadius:'8px', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>选择门派</button>
+                  <button className="sect-primary-action" onClick={() => setSectHubTab('join')} style={{ marginTop:'16px', padding:'10px 24px', background:'#4CAF50', border:'none', borderRadius:'8px', color:'#fff', fontWeight:'bold', cursor:'pointer' }}>选择门派</button>
                 </div>
               )}
               <div style={{ fontSize:'13px', fontWeight:'bold', marginBottom:'8px' }}>门派联盟</div>
@@ -5457,12 +5469,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <button onClick={() => { if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } enterInfinityCastle('shallow'); }} disabled={!canShallow} style={{
                 padding:'14px', borderRadius:'12px', fontSize:'14px', fontWeight:'bold', cursor: canShallow ? 'pointer' : 'not-allowed',
                 background: canShallow ? 'linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%)' : 'rgba(255,255,255,0.08)',
-                color: canShallow ? '#fff' : 'rgba(255,255,255,0.3)', border: canShallow ? '1px solid #9C27B0' : '1px solid rgba(255,255,255,0.1)',
+                color: canShallow ? '#fff' : '#FFFFFF', border: canShallow ? '1px solid #9C27B0' : '1px solid rgba(191,210,209,0.55)',
               }}>🌙 浅层探索（首发 Lv.40+）{!canShallow && leaderLv > 0 ? ` — 当前 Lv.${leaderLv}` : ''}</button>
               <button onClick={() => { if (!party?.length) { showMapToast('❌','队伍为空','先组建队伍',1500); return; } enterInfinityCastle('normal'); }} disabled={!canNormal} style={{
                 padding:'14px', borderRadius:'12px', fontSize:'14px', fontWeight:'bold', cursor: canNormal ? 'pointer' : 'not-allowed',
                 background: canNormal ? 'linear-gradient(135deg, #B71C1C 0%, #D32F2F 100%)' : 'rgba(255,255,255,0.08)',
-                color: canNormal ? '#fff' : 'rgba(255,255,255,0.3)', border: canNormal ? '1px solid #EF5350' : '1px solid rgba(255,255,255,0.1)',
+                color: canNormal ? '#fff' : '#FFFFFF', border: canNormal ? '1px solid #EF5350' : '1px solid rgba(191,210,209,0.55)',
               }}>🔥 深层挑战（首发 Lv.80+）{!canNormal && leaderLv > 0 ? ` — 当前 Lv.${leaderLv}` : ''}</button>
             </div>
             <div style={{marginTop:'24px', fontSize:'11px', color:'rgba(255,255,255,0.35)', lineHeight:1.6}}>
@@ -5661,15 +5673,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 婚姻伴侣系统 - 核心函数
   // ==========================================
-  const resetMarriageDailyCounts = () => {
-    const today = getLocalDateStr();
-    if (!marriage.dailyCounts || marriage.dailyCounts.resetDate !== today) {
-      setMarriage(prev => ({ ...prev, dailyCounts: { dates: 0, gifts: 0, chats: {}, resetDate: today } }));
-      return { dates: 0, gifts: 0, chats: {}, resetDate: today };
-    }
-    return marriage.dailyCounts;
-  };
-
   const getAvailableCandidates = () => {
     return MARRIAGE_CANDIDATES.filter(c => {
       if (!c.unlockCondition) return true;
@@ -5684,120 +5687,220 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const handleChat = (candidateId) => {
-    const dc = resetMarriageDailyCounts();
-    if (dc.chats?.[candidateId]) { showMapToast('ℹ️', '提示', '今天已经和TA聊过了~', 2000); return; }
-    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
-    if (!candidate) { showMapToast('❌', '提示', '无效的对象！', 1500); return; }
-    const aff = marriage.affections[candidateId] || 0;
-    const stage = getAffectionStage(aff);
-    const pool = candidate.dialogues[stage.id] || candidate.dialogues.stranger;
-    const text = pool[Math.floor(Math.random() * pool.length)];
-    setMarriage(prev => ({
-      ...prev,
-      affections: { ...prev.affections, [candidateId]: (prev.affections[candidateId] || 0) + 5 },
-      dailyCounts: { ...(prev.dailyCounts || {}), chats: { ...((prev.dailyCounts || {}).chats || {}), [candidateId]: true } },
-    }));
-    showMapToast(candidate.icon || '💬', candidate.name, `${text} · 好感度 +5`, 2000);
+    const lockKey = `chat:${candidateId}`;
+    if (marriageActionLocksRef.current.has(lockKey)) return;
+    marriageActionLocksRef.current.add(lockKey);
+    try {
+      const currentMarriage = marriageRef.current || marriage;
+      const today = getLocalDateStr();
+      const dc = currentMarriage.dailyCounts?.resetDate === today
+        ? { ...currentMarriage.dailyCounts, chats: { ...(currentMarriage.dailyCounts.chats || {}) } }
+        : { dates: 0, gifts: 0, chats: {}, resetDate: today };
+      if (dc.chats?.[candidateId]) {
+        showMapToast('ℹ️', '提示', '今天已经和TA聊过了~', 2000);
+        return;
+      }
+      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+      if (!candidate) { showMapToast('❌', '提示', '无效的对象！', 1500); return; }
+      const aff = (currentMarriage.affections || {})[candidateId] || 0;
+      const stage = getAffectionStage(aff);
+      const pool = candidate.dialogues[stage.id] || candidate.dialogues.stranger;
+      const text = pool[Math.floor(Math.random() * pool.length)];
+      const nextMarriage = {
+        ...currentMarriage,
+        affections: { ...(currentMarriage.affections || {}), [candidateId]: aff + 5 },
+        dailyCounts: { ...dc, chats: { ...(dc.chats || {}), [candidateId]: true } },
+      };
+      marriageRef.current = nextMarriage;
+      flushSync(() => setMarriage(nextMarriage));
+      showMapToast(candidate.icon || '💬', candidate.name, `${text} · 好感度 +5`, 2000);
+    } finally {
+      marriageActionLocksRef.current.delete(lockKey);
+    }
   };
 
   const handleDate = (candidateId) => {
-    const dateCandidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
-    if (!dateCandidate) { showMapToast('❌', '提示', '无效的对象！', 1500); return; }
-    if (marriage.spouse && marriage.spouse !== candidateId) { showMapToast('ℹ️', '提示', '已结婚状态下只能与伴侣约会哦~', 2000); return; }
-    const dc = resetMarriageDailyCounts();
-    if (dc.dates >= DAILY_DATE_LIMIT) { showMapToast('⚠️', '今日次数已用完', `今天已约会 ${DAILY_DATE_LIMIT} 次，明天再来`, 1500); return; }
-    if (gold < DATE_COST) { showMapToast('💰', '金币不足', `约会需要 ${DATE_COST} 金币`, 1500); return; }
-    if (!cafe.owned) { showMapToast('ℹ️', '提示', '需要先拥有咖啡厅才能约会~', 2000); return; }
-    setGold(g => Math.max(0, g - DATE_COST));
-    updateAchStat({ totalGoldSpent: DATE_COST });
-    setMarriage(prev => ({
-      ...prev,
-      dailyCounts: { ...(prev.dailyCounts || {}), dates: ((prev.dailyCounts || {}).dates || 0) + 1 },
-    }));
-    const aff = marriage.affections[candidateId] || 0;
-    const stage = getAffectionStage(aff);
-    const eligible = DATE_EVENTS.filter(e => {
-      const eStageIdx = AFFECTION_STAGES.findIndex(s => s.id === e.stage);
-      const curStageIdx = AFFECTION_STAGES.findIndex(s => s.id === stage.id);
-      return curStageIdx >= eStageIdx;
-    });
-    if (eligible.length > 0 && Math.random() < 0.5) {
-      const evt = eligible[Math.floor(Math.random() * eligible.length)];
-      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
-      setDateEvent({ ...evt, candidateId, candidateName: candidate.name, candidateIcon: candidate.icon });
-    } else {
-      const baseGain = 15 + Math.floor(Math.random() * 16);
-      setMarriage(prev => ({
-        ...prev,
-        affections: { ...prev.affections, [candidateId]: (prev.affections[candidateId] || 0) + baseGain },
-      }));
-      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
-      showMapToast(candidate.icon || '💗', '约会结束', `与${candidate.name}度过美好时光 · 好感度 +${baseGain}`, 2000);
+    const lockKey = 'date';
+    if (marriageActionLocksRef.current.has(lockKey)) return;
+    marriageActionLocksRef.current.add(lockKey);
+    try {
+      const currentMarriage = marriageRef.current || marriage;
+      const dateCandidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+      if (!dateCandidate) { showMapToast('❌', '提示', '无效的对象！', 1500); return; }
+      if (currentMarriage.spouse && currentMarriage.spouse !== candidateId) {
+        showMapToast('ℹ️', '提示', '已结婚状态下只能与伴侣约会哦~', 2000);
+        return;
+      }
+      const today = getLocalDateStr();
+      const dc = currentMarriage.dailyCounts?.resetDate === today
+        ? { ...currentMarriage.dailyCounts, chats: { ...(currentMarriage.dailyCounts.chats || {}) } }
+        : { dates: 0, gifts: 0, chats: {}, resetDate: today };
+      if ((dc.dates || 0) >= DAILY_DATE_LIMIT) {
+        showMapToast('⚠️', '今日次数已用完', `今天已约会 ${DAILY_DATE_LIMIT} 次，明天再来`, 1500);
+        return;
+      }
+      if (goldRef.current < DATE_COST) {
+        showMapToast('💰', '金币不足', `约会需要 ${DATE_COST} 金币`, 1500);
+        return;
+      }
+      if (!cafeRef.current?.owned) {
+        showMapToast('ℹ️', '提示', '需要先拥有咖啡厅才能约会~', 2000);
+        return;
+      }
+
+      const aff = (currentMarriage.affections || {})[candidateId] || 0;
+      const stage = getAffectionStage(aff);
+      const eligible = DATE_EVENTS.filter(e => {
+        const eStageIdx = AFFECTION_STAGES.findIndex(s => s.id === e.stage);
+        const curStageIdx = AFFECTION_STAGES.findIndex(s => s.id === stage.id);
+        return curStageIdx >= eStageIdx;
+      });
+      const event = eligible.length > 0 && Math.random() < 0.5
+        ? eligible[Math.floor(Math.random() * eligible.length)]
+        : null;
+      const baseGain = event ? 0 : 15 + Math.floor(Math.random() * 16);
+      const nextMarriage = {
+        ...currentMarriage,
+        affections: {
+          ...(currentMarriage.affections || {}),
+          [candidateId]: aff + baseGain,
+        },
+        dailyCounts: { ...dc, dates: (dc.dates || 0) + 1 },
+      };
+      const nextGold = Math.max(0, goldRef.current - DATE_COST);
+      marriageRef.current = nextMarriage;
+      goldRef.current = nextGold;
+      flushSync(() => {
+        setMarriage(nextMarriage);
+        setGold(nextGold);
+      });
+      updateAchStat({ totalGoldSpent: DATE_COST });
+      if (event) {
+        setDateEvent({ ...event, candidateId, candidateName: dateCandidate.name, candidateIcon: dateCandidate.icon });
+      } else {
+        showMapToast(dateCandidate.icon || '💗', '约会结束', `与${dateCandidate.name}度过美好时光 · 好感度 +${baseGain}`, 2000);
+      }
+    } finally {
+      marriageActionLocksRef.current.delete(lockKey);
     }
   };
 
   const handleDateChoice = (optionIdx) => {
-    if (!dateEvent || !dateEvent.options) return;
-    const option = dateEvent.options[optionIdx];
-    if (!option) return;
-    const totalGain = 15 + option.affection;
-    setMarriage(prev => ({
-      ...prev,
-      affections: { ...prev.affections, [dateEvent.candidateId]: (prev.affections[dateEvent.candidateId] || 0) + totalGain },
-    }));
-    showMapToast(dateEvent.candidateIcon || '💬', dateEvent.candidateName, `${option.reply} · 好感度 +${totalGain}`, 2000);
-    setDateEvent(null);
+    const lockKey = 'date-choice';
+    if (marriageActionLocksRef.current.has(lockKey)) return;
+    marriageActionLocksRef.current.add(lockKey);
+    try {
+      if (!dateEvent || !dateEvent.options) return;
+      const option = dateEvent.options[optionIdx];
+      if (!option) return;
+      const currentMarriage = marriageRef.current || marriage;
+      const totalGain = 15 + option.affection;
+      const candidateId = dateEvent.candidateId;
+      const nextMarriage = {
+        ...currentMarriage,
+        affections: {
+          ...(currentMarriage.affections || {}),
+          [candidateId]: ((currentMarriage.affections || {})[candidateId] || 0) + totalGain,
+        },
+      };
+      marriageRef.current = nextMarriage;
+      flushSync(() => {
+        setMarriage(nextMarriage);
+        setDateEvent(null);
+      });
+      showMapToast(dateEvent.candidateIcon || '💬', dateEvent.candidateName, `${option.reply} · 好感度 +${totalGain}`, 2000);
+    } finally {
+      marriageActionLocksRef.current.delete(lockKey);
+    }
   };
 
-  const getGiftableItems = () => {
+  const getGiftableItems = (sourceInventory = inventory) => {
     const items = [];
-    Object.entries(normalizeBerriesInventory(inventory.berries)).forEach(([k, v]) => {
+    Object.entries(normalizeBerriesInventory(sourceInventory.berries)).forEach(([k, v]) => {
       if (v > 0 && BERRIES[k]) items.push({ key: `berries.${k}`, name: BERRIES[k].name, icon: BERRIES[k].icon, count: v, category: 'food' });
     });
-    Object.entries(inventory.meds || {}).forEach(([k, v]) => {
+    Object.entries(sourceInventory.meds || {}).forEach(([k, v]) => {
       if (v > 0) { const m = MEDICINES[k]; if (m) items.push({ key:'meds.'+k, name:m.name, icon:m.icon, count:v, category:'medicine' }); }
     });
-    Object.entries(inventory.misc || {}).forEach(([k, v]) => {
+    Object.entries(sourceInventory.misc || {}).forEach(([k, v]) => {
       if (v > 0) { const m = MISC_ITEMS[k]; if (m) items.push({ key:'misc.'+k, name:m.name, icon:m.icon, count:v, category:'misc' }); }
     });
-    Object.entries(inventory.stones || {}).forEach(([k, v]) => {
+    Object.entries(sourceInventory.stones || {}).forEach(([k, v]) => {
       if (v > 0) items.push({ key:'stones.'+k, name:k+'之石', icon:'💎', count:v, category:'stone' });
     });
     return items;
   };
   const handleGift = (candidateId, giftKey) => {
-    const dc = resetMarriageDailyCounts();
-    if (dc.gifts >= DAILY_GIFT_LIMIT) { showMapToast('⚠️', '今日次数已用完', `今天已送礼 ${DAILY_GIFT_LIMIT} 次，明天再来`, 1500); return; }
-    const giftItems = getGiftableItems();
-    const item = giftItems.find(g => g.key === giftKey);
-    if (!item || item.count <= 0) return;
-    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
-    let gain = 5;
-    let reaction = '还可以吧...';
-    const itemName = (item.name || '').toLowerCase();
-    const giftAliases = { seed:'种子', berry:'树果', stone:'之石', crystal:'水晶', protein:'增强', vitamin:'营养', ball:'精灵球', rare:'稀有', gem:'宝石', accessory:'饰品', tm:'技能', equipment:'装备', food:'食物', medicine:'药', candy:'糖果', sugar:'甜', herb:'草药', potion:'药' };
-    if ((candidate.favoriteGifts || []).some(g => itemName.includes(g) || (item.category||'').includes(g) || (giftAliases[g] && itemName.includes(giftAliases[g])))) {
-      gain = 20; reaction = '哇！我最喜欢的！谢谢你！';
-      if (marriage.pendingPropose === candidateId) updateQuestProgress(candidateId, 'gift_favorite', 1);
-    } else if ((candidate.hatedGifts || []).some(g => itemName.includes(g) || (item.category||'').includes(g))) {
-      gain = -10; reaction = '这个...我不太喜欢...';
-    }
-    setInventory(prev => {
-      const next = { ...prev };
+    const lockKey = 'gift';
+    if (marriageActionLocksRef.current.has(lockKey)) return;
+    marriageActionLocksRef.current.add(lockKey);
+    try {
+      const currentMarriage = marriageRef.current || marriage;
+      const today = getLocalDateStr();
+      const dc = currentMarriage.dailyCounts?.resetDate === today
+        ? { ...currentMarriage.dailyCounts }
+        : { dates: 0, gifts: 0, chats: {}, resetDate: today };
+      if ((dc.gifts || 0) >= DAILY_GIFT_LIMIT) {
+        showMapToast('⚠️', '今日次数已用完', `今天已送礼 ${DAILY_GIFT_LIMIT} 次，明天再来`, 1500);
+        return;
+      }
+      const currentInventory = inventoryRef.current || inventory;
+      const item = getGiftableItems(currentInventory).find(g => g.key === giftKey);
+      if (!item || item.count <= 0) {
+        showMapToast('⚠️', '道具不足', '这份礼物已经没有了', 1500);
+        return;
+      }
+      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === candidateId);
+      if (!candidate) {
+        showMapToast('❌', '提示', '无效的对象！', 1500);
+        return;
+      }
+      let gain = 5;
+      let reaction = '还可以吧...';
+      let isFavoriteGift = false;
+      const itemName = (item.name || '').toLowerCase();
+      const giftAliases = { seed:'种子', berry:'树果', stone:'之石', crystal:'水晶', protein:'增强', vitamin:'营养', ball:'精灵球', rare:'稀有', gem:'宝石', accessory:'饰品', tm:'技能', equipment:'装备', food:'食物', medicine:'药', candy:'糖果', sugar:'甜', herb:'草药', potion:'药' };
+      if ((candidate.favoriteGifts || []).some(g => itemName.includes(g) || (item.category||'').includes(g) || (giftAliases[g] && itemName.includes(giftAliases[g])))) {
+        gain = 20;
+        reaction = '哇！我最喜欢的！谢谢你！';
+        isFavoriteGift = true;
+      } else if ((candidate.hatedGifts || []).some(g => itemName.includes(g) || (item.category||'').includes(g))) {
+        gain = -10;
+        reaction = '这个...我不太喜欢...';
+      }
+
+      const nextInventory = { ...currentInventory };
       const [cat, subKey] = giftKey.split('.');
       if (cat === 'berries') {
         const bid = subKey || 'oran';
-        next.berries = addBerries(next.berries, bid, -1);
+        nextInventory.berries = addBerries(nextInventory.berries, bid, -1);
+      } else if (subKey) {
+        nextInventory[cat] = {
+          ...(nextInventory[cat] || {}),
+          [subKey]: Math.max(0, (nextInventory[cat]?.[subKey] || 0) - 1),
+        };
       }
-      else if (subKey) { next[cat] = { ...next[cat], [subKey]: Math.max(0, (next[cat]?.[subKey]||0) - 1) }; }
-      return next;
-    });
-    setMarriage(prev => ({
-      ...prev,
-      affections: { ...prev.affections, [candidateId]: Math.max(0, (prev.affections[candidateId] || 0) + gain) },
-      dailyCounts: { ...(prev.dailyCounts || {}), gifts: ((prev.dailyCounts || {}).gifts || 0) + 1 },
-    }));
-    showMapToast(candidate.icon || '💬', candidate.name, `${reaction} · 好感度 ${gain >= 0 ? '+' : ''}${gain}`, 2000);
+      const nextMarriage = {
+        ...currentMarriage,
+        affections: {
+          ...(currentMarriage.affections || {}),
+          [candidateId]: Math.max(0, ((currentMarriage.affections || {})[candidateId] || 0) + gain),
+        },
+        dailyCounts: { ...dc, gifts: (dc.gifts || 0) + 1 },
+      };
+      inventoryRef.current = nextInventory;
+      marriageRef.current = nextMarriage;
+      flushSync(() => {
+        setInventory(nextInventory);
+        setMarriage(nextMarriage);
+      });
+      if (isFavoriteGift && currentMarriage.pendingPropose === candidateId) {
+        updateQuestProgress(candidateId, 'gift_favorite', 1);
+      }
+      showMapToast(candidate.icon || '💬', candidate.name, `${reaction} · 好感度 ${gain >= 0 ? '+' : ''}${gain}`, 2000);
+    } finally {
+      marriageActionLocksRef.current.delete(lockKey);
+    }
   };
 
   const getQuestProgress = (candidateId) => {
@@ -5914,33 +6017,46 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const claimSpouseGift = () => {
-    if (!marriage.spouse) return;
-    const today = getLocalDateStr();
-    if (marriage.lastSpouseGiftDate === today) { showMapToast('ℹ️', '提示', '今天已经领过配偶礼物了，明天再来吧~', 2000); return; }
-    const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
-    if (!candidate) return;
-    const aff = marriage.affections[marriage.spouse] || 0;
-    const ml = getMarriageLevel(aff);
-    const gift = getDailyGift(candidate, ml.level);
-    if (!gift) return;
-    setMarriage(prev => ({ ...prev, lastSpouseGiftDate: today }));
-    if (gift.type === 'gold') {
-      setGold(g => g + gift.amount);
-      updateAchStat({ totalGoldEarned: gift.amount });
-    } else if (gift.type === 'berries') {
-      setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, 'oran', gift.amount) }));
-    } else if (gift.type === 'meds') {
-      setInventory(prev => ({
-        ...prev,
-        meds: { ...(prev.meds || {}), [gift.item]: ((prev.meds || {})[gift.item] || 0) + gift.amount }
-      }));
-    } else if (gift.type === 'growth') {
-      setInventory(prev => ({
-        ...prev,
-        [gift.item]: (prev[gift.item] || 0) + gift.amount
-      }));
+    const lockKey = 'spouse-gift';
+    if (marriageActionLocksRef.current.has(lockKey)) return;
+    marriageActionLocksRef.current.add(lockKey);
+    try {
+      const currentMarriage = marriageRef.current || marriage;
+      if (!currentMarriage.spouse) return;
+      const today = getLocalDateStr();
+      if (currentMarriage.lastSpouseGiftDate === today) {
+        showMapToast('ℹ️', '提示', '今天已经领过配偶礼物了，明天再来吧~', 2000);
+        return;
+      }
+      const candidate = MARRIAGE_CANDIDATES.find(c => c.id === currentMarriage.spouse);
+      if (!candidate) return;
+      const aff = (currentMarriage.affections || {})[currentMarriage.spouse] || 0;
+      const ml = getMarriageLevel(aff);
+      const gift = getDailyGift(candidate, ml.level);
+      if (!gift) return;
+      const nextMarriage = { ...currentMarriage, lastSpouseGiftDate: today };
+      marriageRef.current = nextMarriage;
+      flushSync(() => setMarriage(nextMarriage));
+      if (gift.type === 'gold') {
+        setGold(g => g + gift.amount);
+        updateAchStat({ totalGoldEarned: gift.amount });
+      } else if (gift.type === 'berries') {
+        setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, 'oran', gift.amount) }));
+      } else if (gift.type === 'meds') {
+        setInventory(prev => ({
+          ...prev,
+          meds: { ...(prev.meds || {}), [gift.item]: ((prev.meds || {})[gift.item] || 0) + gift.amount }
+        }));
+      } else if (gift.type === 'growth') {
+        setInventory(prev => ({
+          ...prev,
+          [gift.item]: (prev[gift.item] || 0) + gift.amount
+        }));
+      }
+      showMapToast('🎁', '礼物', gift.text, 2500);
+    } finally {
+      marriageActionLocksRef.current.delete(lockKey);
     }
-    showMapToast('🎁', '礼物', gift.text, 2500);
   };
 
   // getSpouseBonuses 已前置到 createPet 之前
@@ -8764,6 +8880,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const startArenaFight = () => {
+    if (arenaStartLockRef.current) {
+      showMapToast('⏳', '正在进入', '竞技场对战正在准备中', 1200);
+      return;
+    }
     let rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
     if (arenaState.tickets <= 0) { showMapToast('🎫','门票不足',`可花 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买门票`,1500); return; }
     if (badges.length < rank.reqBadges) {
@@ -8819,8 +8939,22 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (ruleEffect === 'speedBoost') battleOpts._arenaSpeedBoost = true;
     if (ruleEffect === 'forcedDouble') battleOpts._arenaForceDouble = true;
     if (ruleEffect === 'jutsuBoost') battleOpts._arenaJutsuBoost = true;
-    setArenaState(prev => ({...prev, tickets: prev.tickets - 1}));
-    startBattle(battleOpts, 'arena');
+    arenaStartLockRef.current = true;
+    let started = false;
+    try {
+      started = startBattle(battleOpts, 'arena');
+    } catch (error) {
+      arenaStartLockRef.current = false;
+      console.error('startArenaFight failed', error);
+      showMapToast('❌', '进入失败', '竞技场对战初始化失败，请稍后重试', 1800);
+      return;
+    }
+    if (!started) {
+      arenaStartLockRef.current = false;
+      showMapToast('ℹ️', '未消耗门票', '对战未能启动，请确认队伍状态后重试', 1800);
+      return;
+    }
+    setArenaState(prev => ({ ...prev, tickets: Math.max(0, (prev.tickets || 0) - 1) }));
   };
 
   // 竞技场战斗结算钩子（在胜负判定后调用）
@@ -9489,11 +9623,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </div>
 
           <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'16px'}}>
-            <div style={{fontSize:'9px', color:'rgba(255,100,0,0.5)', textAlign:'center'}}>推荐等级: Lv.{recommendedLevel}+</div>
+            <div className="world-boss-recommended-level" style={{fontSize:'9px', color:'#FED7AA', textAlign:'center'}}>推荐等级: Lv.{recommendedLevel}+</div>
             <div style={{fontSize:'11px',fontWeight:'700',color:st.defeated?'#4CAF50':st.attempts>=WORLD_BOSS_MAX_ATTEMPTS?'#FF8A80':'#FFD54F',textAlign:'center',marginBottom:'4px'}}>
               {badges.length < WORLD_BOSS_REQ_BADGES ? `🔒 需${WORLD_BOSS_REQ_BADGES}枚徽章解锁` : st.defeated ? '● 今日已击破首领' : st.attempts >= WORLD_BOSS_MAX_ATTEMPTS ? '● 今日挑战次数已用尽' : '● 可挑战 · 伤害累计直至击败'}
             </div>
-            <button onClick={startWorldBossFight} disabled={st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || party.length === 0 || badges.length < WORLD_BOSS_REQ_BADGES} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || badges.length < WORLD_BOSS_REQ_BADGES)?'rgba(255,255,255,0.05)':'linear-gradient(135deg,#B71C1C,#880E4F)',color:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || badges.length < WORLD_BOSS_REQ_BADGES)?'rgba(255,255,255,0.3)':'#fff',fontSize:'16px',fontWeight:'800',cursor:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || badges.length < WORLD_BOSS_REQ_BADGES)?'not-allowed':'pointer',boxShadow:st.defeated?'none':'0 4px 15px rgba(183,28,28,0.3)'}}>
+            <button onClick={startWorldBossFight} disabled={st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || party.length === 0 || badges.length < WORLD_BOSS_REQ_BADGES} style={{flex:1,padding:'14px',borderRadius:'14px',border:'none',background:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || badges.length < WORLD_BOSS_REQ_BADGES)?'rgba(255,255,255,0.05)':'linear-gradient(135deg,#B71C1C,#880E4F)',color:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || badges.length < WORLD_BOSS_REQ_BADGES)?'#FFFFFF':'#fff',fontSize:'16px',fontWeight:'800',cursor:(st.defeated || st.attempts >= WORLD_BOSS_MAX_ATTEMPTS || badges.length < WORLD_BOSS_REQ_BADGES)?'not-allowed':'pointer',boxShadow:st.defeated?'none':'0 4px 15px rgba(183,28,28,0.3)'}}>
               {st.defeated ? '🎊 今日已击破' : st.attempts >= WORLD_BOSS_MAX_ATTEMPTS ? '❌ 次数用尽' : badges.length < WORLD_BOSS_REQ_BADGES ? `🔒 需${WORLD_BOSS_REQ_BADGES}徽章` : '⚔️ 开始挑战'}
             </button>
           </div>
@@ -10246,7 +10380,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (fSearch && !j.name.includes(fSearch) && !(j.desc || '').includes(fSearch)) return false;
       return true;
     });
-    const rankColors = { D: '#78909C', C: '#43A047', B: '#1E88E5', A: '#8E24AA', S: '#FF8F00' };
+    const rankColors = { D: '#B0BEC5', C: '#81C784', B: '#90CAF9', A: '#CE93D8', S: '#FFB74D' };
     const catLabels = { physical: '体', special: '忍', status: '辅' };
     const mastery = narutoState?.jutsuMastery || {};
     const affinity = calcChakraAffinity(mastery);
@@ -16440,79 +16574,97 @@ const grantContestReward = (config, score, subjectPet = null) => {
   };
 
   const claimBrewedDrink = () => {
-    const ready = cafe.readyDrink;
-    if (!ready) return;
-    const drink = CAFE_DRINKS.find(d => d.id === ready.drinkId);
-    if (!drink) { setCafe(prev => ({ ...prev, readyDrink: null })); return; }
-
-    if (gold < drink.price) {
-      showMapToast('💰', '金币不足', `领取「${drink.name}」需要 ${drink.price} 金币`, 1500);
-      return;
-    }
-    setGold(g => Math.max(0, g - drink.price));
-    updateAchStat({ totalGoldSpent: drink.price });
-
-    const today = getTodayStr();
-    const counts = (cafe.dailyResetDate === today) ? { ...(cafe.dailyDrinkCounts || {}) } : {};
-    counts[drink.id] = (counts[drink.id] || 0) + 1;
-    setCafe(prev => ({ ...prev, readyDrink: null, dailyDrinkCounts: counts, dailyResetDate: today }));
-
-    const lootTable = DRINK_LOOT_TABLES[drink.tier] || DRINK_LOOT_TABLES[1];
-    const totalWeight = lootTable.reduce((s, e) => s + e.weight, 0);
-    let roll = Math.random() * totalWeight;
-    let picked = lootTable[0];
-    for (const entry of lootTable) {
-      roll -= entry.weight;
-      if (roll <= 0) { picked = entry; break; }
-    }
-
-    let rewardMsg = '';
-    if (picked.type === 'ball') {
-      setInventory(prev => ({ ...prev, balls: { ...prev.balls, [picked.id]: (prev.balls[picked.id] || 0) + picked.count } }));
-      rewardMsg = picked.name;
-    } else if (picked.type === 'med') {
-      setInventory(prev => ({ ...prev, meds: { ...prev.meds, [picked.id]: (prev.meds[picked.id] || 0) + picked.count } }));
-      rewardMsg = picked.name;
-    } else if (picked.type === 'berry') {
-      setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, 'oran', picked.count) }));
-      rewardMsg = picked.name;
-    } else if (picked.type === 'stone') {
-      const stoneKeys = Object.keys(EVO_STONES);
-      const stoneId = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
-      setInventory(prev => ({ ...prev, stones: { ...prev.stones, [stoneId]: (prev.stones[stoneId] || 0) + picked.count } }));
-      rewardMsg = `${EVO_STONES[stoneId].name} x${picked.count}`;
-    } else if (picked.type === 'growth') {
-      const growthPool = GROWTH_ITEMS.filter(i => i.id !== 'max_candy');
-      const item = growthPool[Math.floor(Math.random() * growthPool.length)];
-      setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + picked.count }));
-      rewardMsg = `${item.emoji} ${item.name} x${picked.count}`;
-    } else if (picked.type === 'tm') {
-      const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
-      const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
-      if (tm) { setInventory(prev => ({ ...prev, tms: { ...prev.tms, [tm.id]: (prev.tms[tm.id] || 0) + picked.count } })); rewardMsg = `📜 ${tm.name} (${TYPES[tm.type]?.name || ''}·威力${tm.p ?? '—'})`; }
-      else { rewardMsg = '📦 奖励'; }
-    } else if (picked.type === 'misc') {
-      setInventory(prev => ({ ...prev, misc: { ...prev.misc, [picked.id]: (prev.misc[picked.id] || 0) + picked.count } }));
-      rewardMsg = picked.name;
-    } else if (picked.type === 'candy') {
-      setInventory(prev => ({ ...prev, [picked.id]: (prev[picked.id] || 0) + picked.count }));
-      rewardMsg = picked.name;
-    } else if (picked.type === 'fruit') {
-      const allowedRarities = picked.rarity || ['COMMON'];
-      const allFruits = getAllFruits().filter(f => allowedRarities.includes(f.rarity));
-      if (allFruits.length > 0) {
-        const fruit = allFruits[Math.floor(Math.random() * allFruits.length)];
-        setFruitInventory(prev => [...prev, fruit.id]);
-        rewardMsg = `🍎 ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]`;
-      } else {
-        setInventory(prev => ({ ...prev, misc: { ...prev.misc, rebirth_pill: (prev.misc.rebirth_pill || 0) + 1 } }));
-        rewardMsg = '洗练药 x1 (保底)';
+    if (cafeClaimLockRef.current) return;
+    cafeClaimLockRef.current = true;
+    try {
+      const currentCafe = cafeRef.current || cafe;
+      const ready = currentCafe.readyDrink;
+      if (!ready) return;
+      const drink = CAFE_DRINKS.find(d => d.id === ready.drinkId);
+      if (!drink) {
+        const nextCafe = { ...currentCafe, readyDrink: null };
+        cafeRef.current = nextCafe;
+        flushSync(() => setCafe(nextCafe));
+        return;
       }
-    }
 
-    if (marriage.pendingPropose) updateQuestProgress(marriage.pendingPropose, 'brew', 1);
-    const remaining = drink.dailyLimit - counts[drink.id];
-    showMapToast('☕', '领取饮品', `${drink.name} · ${rewardMsg} · 今日 ${remaining}/${drink.dailyLimit}`, 2500);
+      if (goldRef.current < drink.price) {
+        showMapToast('💰', '金币不足', `领取「${drink.name}」需要 ${drink.price} 金币`, 1500);
+        return;
+      }
+
+      const today = getTodayStr();
+      const counts = (currentCafe.dailyResetDate === today) ? { ...(currentCafe.dailyDrinkCounts || {}) } : {};
+      counts[drink.id] = (counts[drink.id] || 0) + 1;
+      const nextCafe = { ...currentCafe, readyDrink: null, dailyDrinkCounts: counts, dailyResetDate: today };
+      const nextGold = Math.max(0, goldRef.current - drink.price);
+      cafeRef.current = nextCafe;
+      goldRef.current = nextGold;
+      flushSync(() => {
+        setCafe(nextCafe);
+        setGold(nextGold);
+      });
+      updateAchStat({ totalGoldSpent: drink.price });
+
+      const lootTable = DRINK_LOOT_TABLES[drink.tier] || DRINK_LOOT_TABLES[1];
+      const totalWeight = lootTable.reduce((s, e) => s + e.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let picked = lootTable[0];
+      for (const entry of lootTable) {
+        roll -= entry.weight;
+        if (roll <= 0) { picked = entry; break; }
+      }
+
+      let rewardMsg = '';
+      if (picked.type === 'ball') {
+        setInventory(prev => ({ ...prev, balls: { ...prev.balls, [picked.id]: (prev.balls[picked.id] || 0) + picked.count } }));
+        rewardMsg = picked.name;
+      } else if (picked.type === 'med') {
+        setInventory(prev => ({ ...prev, meds: { ...prev.meds, [picked.id]: (prev.meds[picked.id] || 0) + picked.count } }));
+        rewardMsg = picked.name;
+      } else if (picked.type === 'berry') {
+        setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, 'oran', picked.count) }));
+        rewardMsg = picked.name;
+      } else if (picked.type === 'stone') {
+        const stoneKeys = Object.keys(EVO_STONES);
+        const stoneId = stoneKeys[Math.floor(Math.random() * stoneKeys.length)];
+        setInventory(prev => ({ ...prev, stones: { ...prev.stones, [stoneId]: (prev.stones[stoneId] || 0) + picked.count } }));
+        rewardMsg = `${EVO_STONES[stoneId].name} x${picked.count}`;
+      } else if (picked.type === 'growth') {
+        const growthPool = GROWTH_ITEMS.filter(i => i.id !== 'max_candy');
+        const item = growthPool[Math.floor(Math.random() * growthPool.length)];
+        setInventory(prev => ({ ...prev, [item.id]: (prev[item.id] || 0) + picked.count }));
+        rewardMsg = `${item.emoji} ${item.name} x${picked.count}`;
+      } else if (picked.type === 'tm') {
+        const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
+        const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
+        if (tm) { setInventory(prev => ({ ...prev, tms: { ...prev.tms, [tm.id]: (prev.tms[tm.id] || 0) + picked.count } })); rewardMsg = `📜 ${tm.name} (${TYPES[tm.type]?.name || ''}·威力${tm.p ?? '—'})`; }
+        else { rewardMsg = '📦 奖励'; }
+      } else if (picked.type === 'misc') {
+        setInventory(prev => ({ ...prev, misc: { ...prev.misc, [picked.id]: (prev.misc[picked.id] || 0) + picked.count } }));
+        rewardMsg = picked.name;
+      } else if (picked.type === 'candy') {
+        setInventory(prev => ({ ...prev, [picked.id]: (prev[picked.id] || 0) + picked.count }));
+        rewardMsg = picked.name;
+      } else if (picked.type === 'fruit') {
+        const allowedRarities = picked.rarity || ['COMMON'];
+        const allFruits = getAllFruits().filter(f => allowedRarities.includes(f.rarity));
+        if (allFruits.length > 0) {
+          const fruit = allFruits[Math.floor(Math.random() * allFruits.length)];
+          setFruitInventory(prev => [...prev, fruit.id]);
+          rewardMsg = `🍎 ${fruit.name} [${FRUIT_RARITY_CONFIG[fruit.rarity]?.label}]`;
+        } else {
+          setInventory(prev => ({ ...prev, misc: { ...prev.misc, rebirth_pill: (prev.misc.rebirth_pill || 0) + 1 } }));
+          rewardMsg = '洗练药 x1 (保底)';
+        }
+      }
+
+      if (marriageRef.current?.pendingPropose) updateQuestProgress(marriageRef.current.pendingPropose, 'brew', 1);
+      const remaining = Math.max(0, drink.dailyLimit - counts[drink.id]);
+      showMapToast('☕', '领取饮品', `${drink.name} · ${rewardMsg} · 今日 ${remaining}/${drink.dailyLimit}`, 2500);
+    } finally {
+      cafeClaimLockRef.current = false;
+    }
   };
 
   const cancelBrewing = () => {
@@ -22380,7 +22532,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
 
   const renderMoveForget = () => {
     const p = party[learningPetIdx];
-    if (!p) return <div className="screen" style={{background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><div>数据加载中...<button onClick={() => setView(safeBack())} style={{marginLeft:12,padding:'6px 16px',borderRadius:8,border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}}>返回</button></div></div>;
+    if (!p) return <div className="screen" style={{background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><div>数据加载中...<button className="readable-return-btn" onClick={() => setView(safeBack())} style={{marginLeft:12,padding:'6px 16px',borderRadius:8,border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}}>返回</button></div></div>;
     const getMoveCategory = (m) => m.p > 0 ? (m.category === 'special' ? '特殊' : '物理') : '变化';
     return (
       <div className="screen" style={{background: 'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 3000}}>
@@ -24061,9 +24213,27 @@ const renderMenu = () => {
         if (party[0].level < 85) { showMapToast('❌', '提示', '⛔ 首发精灵等级需达到 Lv.85', 1500); return; }
         if (badges.length < 10) { showMapToast('⛔', '权限不足', `徽章 ${badges.length}/10`, 1500); return; }
         if (!checkDungeonCooldown('safari_zone')) return;
-        recordDungeonEntry('safari_zone');
-        showMapToast('🎉', '狩猎地带', '传说中的神兽和稀有精灵等你来捕获！', 3000);
-        startBattle({ id: 997, name: '狩猎地带', lvl: [90, 100], pool: [], drop: 5000, dungeonId: 'safari_zone' }, 'safari');
+        if (dungeonEntryLockRef.current) {
+          showMapToast('⏳', '正在进入', '副本正在准备中', 1200);
+          return;
+        }
+        dungeonEntryLockRef.current = true;
+        let started = false;
+        try {
+          started = startBattle({ id: 997, name: '狩猎地带', lvl: [90, 100], pool: [], drop: 5000, dungeonId: 'safari_zone' }, 'safari');
+        } catch (error) {
+          dungeonEntryLockRef.current = false;
+          console.error('safari dungeon start failed', error);
+          showMapToast('❌', '进入失败', '狩猎地带初始化失败，请稍后重试', 1800);
+          return;
+        }
+        if (started) {
+          recordDungeonEntry('safari_zone');
+          showMapToast('🎉', '狩猎地带', '传说中的神兽和稀有精灵等你来捕获！', 3000);
+        } else {
+          dungeonEntryLockRef.current = false;
+          showMapToast('ℹ️', '未计入次数', '副本未能启动，请确认队伍状态后重试', 1800);
+        }
         return;
       }
 
@@ -24088,41 +24258,83 @@ const renderMenu = () => {
         const fee = 5000 + badges.length * 500;
         if (gold < fee) { showMapToast('💰', '金币不足', `需要 ${fee} 金币`, 1500); return; }
         setConfirmModal({ title:'🎫 入场确认', msg:`支付 ${fee} 金币入场？`, onOk: () => {
-          setGold(g => Math.max(0, g - fee));
+          if (dungeonEntryLockRef.current) return;
+          if (goldRef.current < fee) {
+            showMapToast('💰', '金币不足', `需要 ${fee} 金币`, 1500);
+            return;
+          }
+          dungeonEntryLockRef.current = true;
+          let started = false;
+          try {
+            started = _startDungeonAfterFee(dungeon);
+          } catch (error) {
+            dungeonEntryLockRef.current = false;
+            console.error('paid dungeon start failed', error);
+            showMapToast('❌', '进入失败', '副本初始化失败，未扣除入场费用', 1800);
+            return;
+          }
+          if (!started) {
+            dungeonEntryLockRef.current = false;
+            showMapToast('ℹ️', '未扣除费用', '副本未能启动，请确认队伍状态后重试', 1800);
+            return;
+          }
+          goldRef.current = Math.max(0, goldRef.current - fee);
+          setGold(goldRef.current);
           updateAchStat({ totalGoldSpent: fee });
-          _startDungeonAfterFee(dungeon);
         }}); return;
       }
 
-      _startDungeonAfterFee(dungeon);
+      if (dungeonEntryLockRef.current) {
+        showMapToast('⏳', '正在进入', '副本正在准备中', 1200);
+        return;
+      }
+      dungeonEntryLockRef.current = true;
+      let started = false;
+      try {
+        started = _startDungeonAfterFee(dungeon);
+      } catch (error) {
+        dungeonEntryLockRef.current = false;
+        console.error('dungeon start failed', error);
+        showMapToast('❌', '进入失败', '副本初始化失败，请稍后重试', 1800);
+        return;
+      }
+      if (!started || dungeon.type === 'infinity') {
+        dungeonEntryLockRef.current = false;
+      }
+      if (!started) showMapToast('ℹ️', '未计入次数', '副本未能启动，请确认队伍状态后重试', 1800);
     };
     const _startDungeonAfterFee = (dungeon) => {
-      if (dungeon.type !== 'hyakki' && dungeon.type !== 'infinity') recordDungeonEntry(dungeon.id);
+      let started = false;
+      const startDungeonBattle = (context, type) => {
+        const didStart = startBattle(context, type);
+        if (didStart) recordDungeonEntry(dungeon.id);
+        return didStart;
+      };
 
       // --- 迷雾森林 (闪光遭遇) ---
       if (dungeon.type === 'mist_forest') {
         const mfLv = Math.max(15, Math.min(40, party[0].level));
         showMapToast('ℹ️', '提示', '🌫️ 迷雾森林！ 浓雾中隐约能看到闪闪发光的身影... （命中率略有下降，但闪光率大幅提升！）', 2000);
-        startBattle({ id: 998, name: '迷雾森林', lvl: [mfLv - 5, mfLv + 5], pool: [25, 37, 43, 92, 127, 133, 147], drop: 300, dungeonId: 'mist_forest' }, 'dungeon_shiny');
+        started = startDungeonBattle({ id: 998, name: '迷雾森林', lvl: [mfLv - 5, mfLv + 5], pool: [25, 37, 43, 92, 127, 133, 147], drop: 300, dungeonId: 'mist_forest' }, 'dungeon_shiny');
       }
       // --- 竞速挑战 ---
       else if (dungeon.type === 'speed_run') {
         const srLv = Math.max(20, Math.min(50, party[0].level));
         showMapToast('✅', '提示', '⚡ 竞速挑战！ 3回合内击败敌人可获得额外速度增强剂奖励！', 2000);
-        startBattle({ id: 997, name: '竞速挑战', lvl: [srLv - 3, srLv + 3], pool: [26, 58, 78, 85, 135, 162], drop: 500, dungeonId: 'speed_run' }, 'dungeon_stat');
+        started = startDungeonBattle({ id: 997, name: '竞速挑战', lvl: [srLv - 3, srLv + 3], pool: [26, 58, 78, 85, 135, 162], drop: 500, dungeonId: 'speed_run' }, 'dungeon_stat');
       }
       // --- 野外求生 (3波连战) ---
       else if (dungeon.type === 'wild_survival') {
         const wsLv = Math.max(25, Math.min(55, party[0].level));
         showMapToast('✅', '提示', '🏕️ 野外求生！ 连续3波战斗，HP在波次间不回复！ 挺过去就能获得大量补给品！', 2000);
-        startBattle({ id: 992, name: '野外求生 第1波', lvl: [wsLv - 5, wsLv], pool: [1,4,7,10,25,43,66,92], drop: 800, bossRushWave: 1, rushName: '野外求生', dungeonId: 'wild_survival' }, 'boss_rush');
+        started = startDungeonBattle({ id: 992, name: '野外求生 第1波', lvl: [wsLv - 5, wsLv], pool: [1,4,7,10,25,43,66,92], drop: 800, bossRushWave: 1, rushName: '野外求生', dungeonId: 'wild_survival' }, 'boss_rush');
       }
       // --- 回忆试炼 (镜像挑战) ---
       else if (dungeon.type === 'memory_trial') {
         const mtLv = Math.max(30, Math.min(60, party[0].level));
         const mirrorPool = party.slice(0, 3).map(p => p.id);
         showMapToast('👥', '队伍', '🪞 回忆试炼！ 你将面对自己队伍的镜像！ 了解自己的弱点才能变得更强！', 1500);
-        startBattle({ id: 991, name: '回忆试炼', lvl: [mtLv - 2, mtLv + 2], pool: mirrorPool.length > 0 ? mirrorPool : [1,4,7], drop: 800, dungeonId: 'memory_trial' }, 'type_challenge');
+        started = startDungeonBattle({ id: 991, name: '回忆试炼', lvl: [mtLv - 2, mtLv + 2], pool: mirrorPool.length > 0 ? mirrorPool : [1,4,7], drop: 800, dungeonId: 'memory_trial' }, 'type_challenge');
       }
       // --- 属性轮盘 ---
       else if (dungeon.type === 'type_roulette') {
@@ -24133,48 +24345,47 @@ const renderMenu = () => {
         const allPool = chosenTypes.flatMap(t => typePools[t] || [1,2,3]);
         const trLv = Math.max(55, Math.min(85, party[0].level));
         showMapToast('🎰', '属性轮盘', `今日：${chosenTypes.map(t => typeNames[t]).join('+')}`, 2500);
-        startBattle({ id: 989, name: '属性轮盘', lvl: [trLv - 5, trLv + 5], pool: allPool, drop: 2000, dungeonId: 'type_roulette', challengeType: _.sample(chosenTypes) }, 'type_challenge');
+        started = startDungeonBattle({ id: 989, name: '属性轮盘', lvl: [trLv - 5, trLv + 5], pool: allPool, drop: 2000, dungeonId: 'type_roulette', challengeType: _.sample(chosenTypes) }, 'type_challenge');
       }
       // --- 诸神黄昏 (三波神兽军团) ---
       else if (dungeon.type === 'ragnarok') {
         showMapToast('ℹ️', '提示', '⚔️ 诸神黄昏！ 三波神兽军团即将降临！ 第一波：传说精灵 第二波：新世代神兽 第三波：创世之神 准备好迎接终极考验了吗？', 2000);
-        startBattle({ id: 985, name: '诸神黄昏 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL.slice(0, 30)], drop: 5000, bossRushWave: 1, rushName: '诸神黄昏', dungeonId: 'ragnarok' }, 'boss_rush');
+        started = startDungeonBattle({ id: 985, name: '诸神黄昏 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL.slice(0, 30)], drop: 5000, bossRushWave: 1, rushName: '诸神黄昏', dungeonId: 'ragnarok' }, 'boss_rush');
       }
       // --- 元素之塔 (中门槛, 进化石) ---
       else if (dungeon.type === 'stone') {
         const stLv = Math.max(55, Math.min(90, party[0].level - 5));
-        startBattle({ id: 996, name: '元素之塔', lvl: [stLv, stLv + 10], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 + stLv * 5, dungeonId: 'stone_tower' }, 'dungeon_stone');
+        started = startDungeonBattle({ id: 996, name: '元素之塔', lvl: [stLv, stLv + 10], pool: [126, 127, 128, 129, 130, 196, 197], drop: 500 + stLv * 5, dungeonId: 'stone_tower' }, 'dungeon_stone');
       }
       // --- 英雄试炼 (单挑, 增强剂) ---
       else if (dungeon.type === 'stat') {
         const htLv = Math.max(60, Math.min(95, party[0].level));
-        startBattle({ id: 995, name: '英雄试炼', lvl: [htLv - 5, htLv + 5], pool: [63, 106, 138, 183, 214, 270], drop: 500 + htLv * 5, dungeonId: 'hero_trial' }, 'dungeon_stat');
+        started = startDungeonBattle({ id: 995, name: '英雄试炼', lvl: [htLv - 5, htLv + 5], pool: [63, 106, 138, 183, 214, 270], drop: 500 + htLv * 5, dungeonId: 'hero_trial' }, 'dungeon_stat');
       }
       // --- 闪光山谷 (高门槛, 高闪光率) ---
       else if (dungeon.type === 'shiny_hunt') {
         const shLv = Math.max(80, Math.min(98, party[0].level));
-        startBattle({ id: 993, name: '闪光山谷', lvl: [shLv - 5, shLv + 5], pool: [147, 148, 151, 244, 299], drop: 1000 + (shLv - 80) * 50, dungeonId: 'shiny_valley' }, 'dungeon_shiny');
+        started = startDungeonBattle({ id: 993, name: '闪光山谷', lvl: [shLv - 5, shLv + 5], pool: [147, 148, 151, 244, 299], drop: 1000 + (shLv - 80) * 50, dungeonId: 'shiny_valley' }, 'dungeon_shiny');
       }
       // --- 无限城 (终局内容) ---
       else if (dungeon.type === 'infinity') {
-        if (party[0].level >= 80) { enterInfinityCastle('normal'); }
-        else if (party[0].level >= 40) { enterInfinityCastle('shallow'); }
+        if (party[0].level >= 80) { enterInfinityCastle('normal'); started = true; }
+        else if (party[0].level >= 40) { enterInfinityCastle('shallow'); started = true; }
         else { showMapToast('⚠️','等级不足','浅层模式需首发Lv.40+',2000); }
       }
       // --- 百鬼夜行 (多波连战) ---
       else if (dungeon.type === 'hyakki') {
         if (party[0].level < 80) { showMapToast('❌', '提示', '⛔ 等级不足！ 百鬼夜行要求首发精灵 Lv.80 以上。', 1500); return; }
-        recordDungeonEntry(dungeon.id);
         showMapToast('ℹ️', '提示', '👹 百鬼夜行开始！ 强大的咒灵将向你袭来！', 2000);
         const hyLv = Math.max(75, Math.min(98, party[0].level - 2));
-        startBattle({ id: 998, name: '百鬼夜行', lvl: [hyLv - 5, hyLv + 5], pool: [92, 93, 94, 130, 144, 146], drop: 3000 + (hyLv - 75) * 100, dungeonId: 'hyakki_yako' }, 'boss');
+        started = startDungeonBattle({ id: 998, name: '百鬼夜行', lvl: [hyLv - 5, hyLv + 5], pool: [92, 93, 94, 130, 144, 146], drop: 3000 + (hyLv - 75) * 100, dungeonId: 'hyakki_yako' }, 'boss');
       }
       // --- 连战Boss塔 ---
       else if (dungeon.type === 'boss_rush') {
         const bossPool = [65, 94, 130, 138, 140, 150, 182, 199, 206];
         const bossLvl = Math.max(40, Math.min(party[0].level + 5, 95));
         showMapToast('🗼', dungeon.name, '连续 3 首领', 2500);
-        startBattle({ id: 992, name: `${dungeon.name} 第1层`, lvl: [bossLvl - 5, bossLvl], pool: bossPool, drop: 1500, bossRushWave: 1, rushName: dungeon.name, dungeonId: dungeon.id }, 'boss_rush');
+        started = startDungeonBattle({ id: 992, name: `${dungeon.name} 第1层`, lvl: [bossLvl - 5, bossLvl], pool: bossPool, drop: 1500, bossRushWave: 1, rushName: dungeon.name, dungeonId: dungeon.id }, 'boss_rush');
       }
       // --- 属性试炼场 ---
       else if (dungeon.type === 'type_challenge') {
@@ -24184,19 +24395,19 @@ const renderMenu = () => {
         const typePools = { FIRE:[11,12,13,14,15], WATER:[22,24,26,28,30], GRASS:[1,2,3,4,41], ELECTRIC:[34,85,87,88,89], PSYCHIC:[63,64,65,100,101], DARK:[54,55,56,59,90], FIGHT:[62,66,68,106,214], DRAGON:[182,183,196,208,447], ICE:[86,87,124,144,215], GHOST:[92,93,94,200,292], COSMIC:[832,838,888,789,790], SOUND:[837,866,867,868,818], TIME:[801,804,806,807,809], CHAOS:[811,814,816,819,840] };
         showMapToast('🎯', '属性试炼', `今日：${typeNames[chosenType]} 系`, 2500);
         const tcLvl = Math.max(30, Math.min(party[0].level, 90));
-        startBattle({ id: 991, name: `${typeNames[chosenType]}系试炼`, lvl: [tcLvl - 5, tcLvl + 5], pool: typePools[chosenType] || [1,2,3], drop: 1500, challengeType: chosenType, dungeonId: dungeon.id }, 'type_challenge');
+        started = startDungeonBattle({ id: 991, name: `${typeNames[chosenType]}系试炼`, lvl: [tcLvl - 5, tcLvl + 5], pool: typePools[chosenType] || [1,2,3], drop: 1500, challengeType: chosenType, dungeonId: dungeon.id }, 'type_challenge');
       }
       // --- 生存竞技场 ---
       else if (dungeon.type === 'survival') {
         const survLvl = Math.min(party[0].level + 10, 100);
         showMapToast('ℹ️', '提示', '🏟️ 生存竞技场！ 敌人将不断变强，坚持越久奖励越好！ 每击败一只，下一只等级+3！', 2000);
-        startBattle({ id: 990, name: '生存竞技场', lvl: [survLvl - 10, survLvl], pool: [...HIGH_TIER_POOL], drop: 500, survivalWave: 1, dungeonId: dungeon.id }, 'survival');
+        started = startDungeonBattle({ id: 990, name: '生存竞技场', lvl: [survLvl - 10, survLvl], pool: [...HIGH_TIER_POOL], drop: 500, survivalWave: 1, dungeonId: dungeon.id }, 'survival');
       }
       // --- 逆位空间 ---
       else if (dungeon.type === 'reverse') {
         const revLvl = Math.min(party[0].level + 5, 100);
         showMapToast('ℹ️', '提示', '🔄 逆位空间！ 这里的属性克制完全反转！ 原本克制的属性变为被克制，请重新思考你的策略！', 2000);
-        startBattle({ id: 989, name: '逆位空间', lvl: [revLvl - 8, revLvl], pool: [...HIGH_TIER_POOL, ...LEGENDARY_POOL.slice(0, 20)], drop: 5000, isReversed: true, dungeonId: 'reverse_world' }, 'wild');
+        started = startDungeonBattle({ id: 989, name: '逆位空间', lvl: [revLvl - 8, revLvl], pool: [...HIGH_TIER_POOL, ...LEGENDARY_POOL.slice(0, 20)], drop: 5000, isReversed: true, dungeonId: 'reverse_world' }, 'wild');
       }
       // --- 双打擂台 ---
       else if (dungeon.type === 'elite_rotation') {
@@ -24211,24 +24422,25 @@ const renderMenu = () => {
         const theme = rotationThemes[dayIdx];
         const elLvl = Math.min(party[0].level + 3, 95);
         showMapToast('🔥', theme.name, `今日轮换: ${theme.bonus}`, 2000);
-        startBattle({ id: 985, name: theme.name, lvl: [elLvl - 5, elLvl], pool: theme.pool, drop: 6000, bossRushWave: 1, rushName: theme.name, dungeonId: 'elite_rotation' }, 'boss_rush');
+        started = startDungeonBattle({ id: 985, name: theme.name, lvl: [elLvl - 5, elLvl], pool: theme.pool, drop: 6000, bossRushWave: 1, rushName: theme.name, dungeonId: 'elite_rotation' }, 'boss_rush');
       }
       else if (dungeon.type === 'double') {
         const dbLvl = Math.min(party[0].level + 5, 95);
         showMapToast('👥', '队伍', '⚔️ 双打擂台！ 2v2 双打模式！ 你将派出2只精灵同时战斗！', 1500);
-        startBattle({ id: 988, name: '双打擂台', lvl: [dbLvl - 5, dbLvl], pool: [...HIGH_TIER_POOL], drop: 3000, isDouble: true, dungeonId: 'double_arena' }, 'wild_double');
+        started = startDungeonBattle({ id: 988, name: '双打擂台', lvl: [dbLvl - 5, dbLvl], pool: [...HIGH_TIER_POOL], drop: 3000, isDouble: true, dungeonId: 'double_arena' }, 'wild_double');
       }
       // --- 极限试炼 ---
       else if (dungeon.type === 'extreme') {
         showMapToast('ℹ️', '提示', '☠️ 极限试炼！ 连续击败强敌，每波都更强！ 坚持越久奖励越丰厚！', 2000);
-        startBattle({ id: 987, name: '极限试炼 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL, ...FINAL_GOD_IDS], drop: 5000, survivalWave: 1, isExtreme: true, dungeonId: 'extreme_trial' }, 'survival');
+        started = startDungeonBattle({ id: 987, name: '极限试炼 第1波', lvl: [95, 100], pool: [...LEGENDARY_POOL, ...FINAL_GOD_IDS], drop: 5000, survivalWave: 1, isExtreme: true, dungeonId: 'extreme_trial' }, 'survival');
       }
       // --- 宝藏迷宫 ---
       else if (dungeon.type === 'treasure') {
         const mazeLvl = Math.min(party[0].level + 5, 100);
-        showMapToast('❌', '提示', '🗝️ 宝藏迷宫！ 每层随机宝箱+守卫！ 越深层越有好东西，但也越危险！', 1500);
-        startBattle({ id: 986, name: '宝藏迷宫 第1层', lvl: [mazeLvl - 10, mazeLvl], pool: [...HIGH_TIER_POOL], drop: 4000, bossRushWave: 1, rushName: '宝藏迷宫', dungeonId: 'treasure_maze' }, 'boss_rush');
+        showMapToast('🗝️', '提示', '🗝️ 宝藏迷宫！ 每层随机宝箱+守卫！ 越深层越有好东西，但也越危险！', 1500);
+        started = startDungeonBattle({ id: 986, name: '宝藏迷宫 第1层', lvl: [mazeLvl - 10, mazeLvl], pool: [...HIGH_TIER_POOL], drop: 4000, bossRushWave: 1, rushName: '宝藏迷宫', dungeonId: 'treasure_maze' }, 'boss_rush');
       }
+      return started;
     };
 
     const timeInfo = TIME_PHASES[timePhase];
@@ -24587,10 +24799,10 @@ const renderMenu = () => {
                   <div>
                     <span className="world-region-card__boss-icon">{m.isCapital ? '🐲' : m.isContested ? '⚔️' : '👑'}</span>
                     <strong>
-                      {m.isCapital ? `君主 · ${m.lordName || '???'}` : m.isContested ? `守将 · ${(() => { const t = kingdomWar.territories?.[m.id]; return t && t.owner !== 'neutral' ? FACTIONS[t.owner]?.name + '军' : '无'; })()}` : `馆主 · ${m.gymName || '???'}`}
+                      {m.isCapital ? `君主 · ${m.lordName || '待揭晓'}` : m.isContested ? `守将 · ${(() => { const t = kingdomWar.territories?.[m.id]; return t && t.owner !== 'neutral' ? FACTIONS[t.owner]?.name + '军' : '无'; })()}` : `馆主 · ${m.gymName || '待揭晓'}`}
                     </strong>
                   </div>
-                  <em>{m.isCapital ? `${m.lordTitle}` : m.isContested ? `Lv.${m.lvl?.[0] || '?'}-${m.lvl?.[1] || '?'}` : `Lv.${m.gymLvl || m.lvl?.[1] || '?'}`}</em>
+                  <em>{m.isCapital ? (m.lordTitle || '称号待揭晓') : m.isContested ? `Lv.${m.lvl?.[0] || '?'}-${m.lvl?.[1] || '?'}` : `Lv.${m.gymLvl || m.lvl?.[1] || '?'}`}</em>
                 </div>
 
                 {/* 装饰性背景图标 */}
@@ -26174,7 +26386,7 @@ const renderMenu = () => {
                                     <span style={{fontSize:'24px'}}>{eCapitalMap?.icon || '🏯'}</span>
                                     <div style={{flex:1}}>
                                       <div style={{fontSize:'14px', fontWeight:'700', color:ef.color}}>攻打 {eCapitalMap?.name || ef.fullName + '都城'}</div>
-                                      <div style={{fontSize:'11px', color:'#64748b'}}>君主: {eCapitalMap?.lordName} · {eCapitalMap?.lordTitle}</div>
+                                      <div style={{fontSize:'11px', color:'#64748b'}}>君主: {eCapitalMap?.lordName || '待揭晓'} · {eCapitalMap?.lordTitle || '称号待揭晓'}</div>
                                     </div>
                                   </div>
                                   <div style={{fontSize:'11px', color:'#475569', marginBottom:'8px'}}>
@@ -28549,7 +28761,7 @@ const renderMenu = () => {
             else setView(safeBack());
         }}>🔙 返回</button>
         <div className="nav-title">我的伙伴 ({party.length}/6)</div>
-        <button onClick={() => {
+        <button className="team-heal-all-btn" onClick={() => {
           const meds = {...(inventory.meds || {})};
           let healed = 0;
           const newParty = party.map(p => {
@@ -28565,7 +28777,7 @@ const renderMenu = () => {
           if (healed > 0) { setParty(newParty); setInventory(prev => ({...prev, meds: {...(prev.meds||{}), ...meds}})); showMapToast('💊','全队回复',`使用了 ${healed} 瓶药水`,1500); }
           else showMapToast('ℹ️','无需治疗','全队HP已满或无药品',1500);
         }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(76,175,80,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>💊全队</button>
-        <button onClick={() => { const sortModes = ['level', 'power', 'hp']; const nextI = (sortModes.indexOf(teamSortMode || 'level') + 1) % sortModes.length; setTeamSortMode(sortModes[nextI]); setParty(prev => { const sorted = [...prev]; if (sortModes[nextI] === 'power') sorted.sort((a,b) => { const sA = getStats(a); const sB = getStats(b); return (sB.p_atk + sB.s_atk + sB.spd) - (sA.p_atk + sA.s_atk + sA.spd); }); else if (sortModes[nextI] === 'hp') sorted.sort((a,b) => b.currentHp - a.currentHp); else sorted.sort((a,b) => b.level - a.level); return sorted; }); showMapToast('📊','排序',sortModes[nextI]==='power'?'按战力':'按'+(sortModes[nextI]==='hp'?'血量':'等级'),1000); }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(33,150,243,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>{teamSortMode==='power'?'⚔️战力':teamSortMode==='hp'?'❤️血量':'📊等级'}</button>
+        <button className="team-sort-btn" onClick={() => { const sortModes = ['level', 'power', 'hp']; const nextI = (sortModes.indexOf(teamSortMode || 'level') + 1) % sortModes.length; setTeamSortMode(sortModes[nextI]); setParty(prev => { const sorted = [...prev]; if (sortModes[nextI] === 'power') sorted.sort((a,b) => { const sA = getStats(a); const sB = getStats(b); return (sB.p_atk + sB.s_atk + sB.spd) - (sA.p_atk + sA.s_atk + sA.spd); }); else if (sortModes[nextI] === 'hp') sorted.sort((a,b) => b.currentHp - a.currentHp); else sorted.sort((a,b) => b.level - a.level); return sorted; }); showMapToast('📊','排序',sortModes[nextI]==='power'?'按战力':'按'+(sortModes[nextI]==='hp'?'血量':'等级'),1000); }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(33,150,243,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>{teamSortMode==='power'?'⚔️战力':teamSortMode==='hp'?'❤️血量':'📊等级'}</button>
         <button onClick={() => {
           if (badges.length < 5) { showMapToast('🔒', '未解锁', '获得5枚徽章后解锁精灵传承', 1500); return; }
           setSkillInheritModal({ mentor: null, apprentice: null, selectedMove: null });
@@ -28620,8 +28832,8 @@ const renderMenu = () => {
                 {isFainted && <div className="fainted-badge">😵 晕厥</div>}
                 
                 {/* 收藏星标 */}
-                <button onClick={e => { e.stopPropagation(); setParty(prev => prev.map((pp,ii) => ii===i ? {...pp, starred: !pp.starred} : pp)); }}
-                  style={{position:'absolute', top:2, right:4, background:'none', border:'none', fontSize:'14px', cursor:'pointer', zIndex:6, opacity: p.starred ? 1 : 0.3, filter:'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'}}>
+                <button className="team-star-btn" aria-label={p.starred ? `取消收藏 ${p.name}` : `收藏 ${p.name}`} onClick={e => { e.stopPropagation(); setParty(prev => prev.map((pp,ii) => ii===i ? {...pp, starred: !pp.starred} : pp)); }}
+                  style={{position:'absolute', top:2, right:4, background:'none', border:'none', color:p.starred?'#FFD54F':'#F8FAFC', fontSize:'14px', cursor:'pointer', zIndex:6, opacity: p.starred ? 1 : 0.82, filter:'drop-shadow(0 1px 2px rgba(0,0,0,0.65))'}}>
                   {p.starred ? '⭐' : '☆'}
                 </button>
 
@@ -28673,7 +28885,7 @@ const renderMenu = () => {
                                     className={`equip-slot-box ${acc ? 'filled' : 'empty'}`}
                                     onClick={() => openEquipModal(i, slotIdx)}
                                 >
-                                    {acc ? <span title={acc.name}>{acc.icon}</span> : <span style={{opacity:0.3}}>🛡️</span>}
+                                    {acc ? <span title={acc.name}>{acc.icon}</span> : <span className="equip-placeholder-icon" style={{opacity:0.78}}>🛡️</span>}
                                 </div>
                             );
                         })}
@@ -28732,7 +28944,10 @@ const renderMenu = () => {
     // ==========================================
   // [终极修复版] 环境特效图层 (自带样式 + 高对比度)
   // ==========================================
-  const renderEnvironmentOverlay = () => {
+  const renderEnvironmentOverlay = (scope = 'battle') => {
+    const isMapScope = scope === 'map';
+    const timeLayerZ = isMapScope ? 6 : 8;
+    const weatherLayerZ = isMapScope ? 7 : 9;
     // 1. 动态注入 CSS 动画 (确保动画一定生效，无需外部CSS)
     const cssStyles = `
       @keyframes rain-drop {
@@ -28760,14 +28975,40 @@ const renderMenu = () => {
       }
     `;
 
-    // 2. 昼夜滤镜 (加深颜色)
+    // 2. 昼夜滤镜。探索地图只覆盖地图视口，且保留足够地形辨识度；
+    // 战斗场景仍保留氛围，但不再用 0.6 multiply 把 HUD 和精灵压成一片黑。
     let timeOverlay = null;
     if (timePhase === 'DUSK') {
-        // 黄昏：明显的橙红色滤镜
-        timeOverlay = <div style={{position:'absolute', inset:0, background:'rgba(255, 80, 0, 0.2)', pointerEvents:'none', zIndex:8, mixBlendMode:'multiply'}}></div>;
+        timeOverlay = (
+          <div
+            className={`environment-time-overlay environment-time-overlay--${scope} is-dusk`}
+            data-environment-scope={scope}
+            data-time-phase="DUSK"
+            style={{
+              position:'absolute', inset:0,
+              background: isMapScope
+                ? 'linear-gradient(180deg, rgba(255, 144, 58, 0.10), rgba(119, 52, 45, 0.18))'
+                : 'linear-gradient(180deg, rgba(255, 128, 35, 0.08), rgba(105, 38, 45, 0.16))',
+              pointerEvents:'none', zIndex:timeLayerZ,
+            }}
+          />
+        );
     } else if (timePhase === 'NIGHT') {
-        // 夜晚：深蓝色遮罩
-        timeOverlay = <div style={{position:'absolute', inset:0, background:'rgba(0, 0, 50, 0.6)', pointerEvents:'none', zIndex:8, mixBlendMode:'multiply'}}></div>;
+        timeOverlay = (
+          <div
+            className={`environment-time-overlay environment-time-overlay--${scope} is-night`}
+            data-environment-scope={scope}
+            data-time-phase="NIGHT"
+            style={{
+              position:'absolute', inset:0,
+              background: isMapScope
+                ? 'linear-gradient(180deg, rgba(8, 25, 58, 0.24), rgba(5, 18, 44, 0.34))'
+                : 'linear-gradient(180deg, rgba(8, 22, 55, 0.18), rgba(5, 16, 42, 0.28))',
+              boxShadow: isMapScope ? 'inset 0 0 76px rgba(2, 10, 30, 0.22)' : 'none',
+              pointerEvents:'none', zIndex:timeLayerZ,
+            }}
+          />
+        );
     }
 
     // 3. 天气特效 (高对比度)
@@ -28775,7 +29016,7 @@ const renderMenu = () => {
     
     if (weather === 'RAIN') {
         weatherNode = (
-            <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
+            <div className={`environment-weather-overlay environment-weather-overlay--${scope} is-rain`} data-weather="RAIN" style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:weatherLayerZ, overflow:'hidden'}}>
                 <div style={{position:'absolute', inset:0, background:'rgba(0,0,30,0.15)'}}></div> {/* 整体变暗 */}
                 {weatherParticles.rain.map((p,i) => (
                     <div key={i} style={{
@@ -28796,7 +29037,7 @@ const renderMenu = () => {
         );
     } else if (weather === 'SNOW') {
         weatherNode = (
-            <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
+            <div className={`environment-weather-overlay environment-weather-overlay--${scope} is-snow`} data-weather="SNOW" style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:weatherLayerZ, overflow:'hidden'}}>
                 <div style={{position:'absolute', inset:0, background:'rgba(255,255,255,0.1)'}}></div>
                 {weatherParticles.snow.map((p,i) => (
                     <div key={i} style={{
@@ -28814,8 +29055,8 @@ const renderMenu = () => {
         );
     } else if (weather === 'SAND') {
         weatherNode = (
-            <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
-                <div style={{position:'absolute', inset:0, background:'rgba(194, 178, 128, 0.4)', mixBlendMode:'multiply'}}></div>
+            <div className={`environment-weather-overlay environment-weather-overlay--${scope} is-sand`} data-weather="SAND" style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:weatherLayerZ, overflow:'hidden'}}>
+                <div style={{position:'absolute', inset:0, background: isMapScope ? 'rgba(194, 178, 128, 0.22)' : 'rgba(194, 178, 128, 0.3)', mixBlendMode:'multiply'}}></div>
                 {weatherParticles.sand.map((p,i) => (
                     <div key={i} style={{
                         position:'absolute', 
@@ -28833,7 +29074,7 @@ const renderMenu = () => {
         );
     } else if (weather === 'SUN') {
         weatherNode = (
-            <div style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:9, overflow:'hidden'}}>
+            <div className={`environment-weather-overlay environment-weather-overlay--${scope} is-sun`} data-weather="SUN" style={{position:'absolute', inset:0, pointerEvents:'none', zIndex:weatherLayerZ, overflow:'hidden'}}>
                 {/* 右上角旋转的大太阳 */}
                 <div style={{
                     position:'absolute', top:'-40px', right:'-40px', 
@@ -28864,7 +29105,7 @@ const renderMenu = () => {
   const renderGridMap = () => {
     if (mapGrid.length === 0) {
       return <div className="screen" style={{display:'flex',alignItems:'center',justifyContent:'center',background:'#1a1a2e',color:'#fff',fontSize:'16px'}}>
-        <div>加载中...<button style={{marginLeft:'12px',padding:'4px 12px',borderRadius:'6px',border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}} onClick={() => setView('world_map')}>返回</button></div>
+        <div>加载中...<button className="readable-return-btn" style={{marginLeft:'12px',padding:'4px 12px',borderRadius:'6px',border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}} onClick={() => setView('world_map')}>返回</button></div>
       </div>;
     }
     const currentMapInfo = MAPS.find(m => m.id === currentMapId) || MAPS[0];
@@ -28902,9 +29143,6 @@ const renderMenu = () => {
           gap: '15px'
         }}
       >
-        {/* 环境特效层 (下雨/天黑等) */}
-        {renderEnvironmentOverlay()}
-
         <div className="deco-cloud" style={{top: '10%', animationDuration: '60s', width: 80, height: 30, background: 'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.4), transparent)', borderRadius: '50%', filter: 'blur(3px)'}} />
         
         {/* 左侧面板 */}
@@ -29172,6 +29410,8 @@ const renderMenu = () => {
                 </div>
               );
             })()}
+            {/* 环境层只覆盖地图画面，不再压暗标题、任务、侧栏与底部菜单。 */}
+            {renderEnvironmentOverlay('map')}
             <div className="map-vignette" />
           </div>
           {/* 底部菜单栏 (保持不变) */}
