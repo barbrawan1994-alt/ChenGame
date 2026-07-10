@@ -19,6 +19,7 @@ const eco = await loadSourceModule('src/data/ecoEvents.js', source =>
     'const getEcoCrisisByMapId = () => null;'
   )
 );
+const crises = await loadSourceModule('src/data/ecoCrises.js');
 const calamities = await loadSourceModule('src/data/nationalCalamities.js');
 const bossMechanics = await loadSourceModule('src/data/bossMechanics.js');
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
@@ -347,6 +348,104 @@ console.log('=== 生态玩法平衡与边界检查 ===\n');
   const noBaselineExploit = eco.applyRegionChains(healthyLakeAfter, eco.REGION_CHAINS, 4, healthyLakeBefore);
   assert.deepEqual(noBaselineExploit[1], healthyLakeBefore[1]);
   check(true, '区域连锁仅在生态条件跨越阈值时触发，持续满足条件时不会被重复行动无限叠加');
+}
+
+
+// 11. 生态危机旧档必须去重、移除失效 ID，并将活动步骤限制在可恢复范围内。
+{
+  const firstCrisis = crises.ECO_CRISES[0];
+  const secondCrisis = crises.ECO_CRISES[1];
+  assert.ok(firstCrisis && secondCrisis);
+
+  const normalized = crises.normalizeEcoCrisisState({
+    cleared: [firstCrisis.id, 'removed_crisis', firstCrisis.id],
+    active: { crisisId: secondCrisis.id, step: '2.9' },
+  });
+  assert.deepEqual(normalized.cleared, [firstCrisis.id]);
+  assert.deepEqual(normalized.active, { crisisId: secondCrisis.id, step: 2 });
+
+  assert.deepEqual(
+    crises.normalizeEcoCrisisState({ cleared: [], active: { crisisId: 'removed_crisis', step: 1 } }),
+    { cleared: [], active: null },
+  );
+  assert.deepEqual(
+    crises.normalizeEcoCrisisState({ cleared: [firstCrisis.id], active: { crisisId: firstCrisis.id, step: 1 } }),
+    { cleared: [firstCrisis.id], active: null },
+  );
+  assert.equal(
+    crises.normalizeEcoCrisisState({ active: { crisisId: firstCrisis.id, step: -9 } }).active.step,
+    0,
+  );
+  assert.equal(
+    crises.normalizeEcoCrisisState({ active: { crisisId: firstCrisis.id, step: 99999 } }).active.step,
+    firstCrisis.steps.length,
+  );
+  assert.equal(
+    crises.normalizeEcoCrisisState({ active: { crisisId: firstCrisis.id, step: Number.NaN } }).active.step,
+    0,
+  );
+  assert.equal(
+    crises.normalizeEcoCrisisState({ active: { crisisId: firstCrisis.id, step: Number.POSITIVE_INFINITY } }).active.step,
+    0,
+  );
+  assert.deepEqual(crises.normalizeEcoCrisisState(null), { cleared: [], active: null });
+  assert.deepEqual(crises.normalizeEcoCrisisState([]), { cleared: [], active: null });
+  check(true, '生态危机旧档会清除失效/重复进度，并将活动步骤安全截断到当前内容长度');
+}
+
+// 12. 危机战斗步骤必须防重复启动，并在失败、异常和最终结算时正确释放步骤锁。
+{
+  const runStart = appSource.indexOf('const runEcoCrisisStep = (crisisId, stepIdx) => {');
+  const runEnd = appSource.indexOf('const advanceBondingStep =', runStart);
+  const runSource = appSource.slice(runStart, runEnd);
+  assert.ok(runStart >= 0 && runEnd > runStart);
+
+  const livingPartyCheck = runSource.indexOf('if (!crisisParty.some');
+  const activeBattleCheck = runSource.indexOf('if (battle && !battleResultHandledRef.current)');
+  const stepLockDeclaration = runSource.indexOf('const stepLock = `crisis-step:${crisisId}:${stepIdx}`;');
+  const stepLockAcquire = runSource.indexOf('ecoActionLocksRef.current.add(stepLock)', stepLockDeclaration);
+  const startBattleCall = runSource.indexOf('const started = startBattle({');
+  const failedStart = runSource.indexOf('if (!started)', startBattleCall);
+  const failedStartUnlock = runSource.indexOf('ecoActionLocksRef.current.delete(stepLock)', failedStart);
+  const catchStart = runSource.indexOf('catch (err)', failedStart);
+  const catchUnlock = runSource.indexOf('ecoActionLocksRef.current.delete(stepLock)', catchStart);
+  assert.ok(
+    livingPartyCheck >= 0 && activeBattleCheck > livingPartyCheck &&
+    stepLockDeclaration > activeBattleCheck && stepLockAcquire > stepLockDeclaration &&
+    startBattleCall > stepLockAcquire && failedStart > startBattleCall &&
+    failedStartUnlock > failedStart && catchStart > failedStartUnlock && catchUnlock > catchStart
+  );
+  assert.match(runSource, /drop: step\.drop \?\? 2000,/);
+  assert.match(runSource, /const enemyPool = Array\.isArray\(step\.pool\) && step\.pool\.length > 0 \? step\.pool : \[step\.bossId \|\| 1\];/);
+  assert.match(runSource, /const bossLvl = Array\.isArray\(step\.lvl\) \? step\.lvl\[1\] : \(step\.lvl \|\| lvl\[1\]\);/);
+
+  const victoryStart = appSource.indexOf("if (battleSnapshot.type === 'eco_crisis' && battleSnapshot.ecoCrisis)");
+  const victoryEnd = appSource.indexOf("if (battleSnapshot.type === 'eco_crisis' && battleSnapshot._nonCombatRescue)", victoryStart);
+  const victorySource = appSource.slice(victoryStart, victoryEnd);
+  const objectiveGuard = victorySource.indexOf('if (battleSnapshot.battleObjective && !checkBattleObjectiveMet(battleSnapshot))');
+  const objectiveReturn = victorySource.indexOf('return;', objectiveGuard);
+  const victoryUnlock = victorySource.indexOf('ecoActionLocksRef.current.delete(`crisis-step:${crisisId}:${stepIdx}`)');
+  assert.ok(victoryStart >= 0 && victoryEnd > victoryStart);
+  assert.ok(objectiveGuard >= 0 && objectiveReturn > objectiveGuard && victoryUnlock > objectiveReturn);
+
+  const defeatStart = appSource.indexOf("} else if (battleType === 'eco_crisis' || battleType === 'calamity') {");
+  const defeatEnd = appSource.indexOf("} else if (battleType === 'sect_challenge') {", defeatStart);
+  const defeatSource = appSource.slice(defeatStart, defeatEnd);
+  assert.ok(defeatStart >= 0 && defeatEnd > defeatStart);
+  assert.match(defeatSource, /ecoActionLocksRef\.current\.delete\(`crisis-step:\$\{crisisId\}:\$\{stepIdx\}`\)/);
+
+  const startStart = appSource.indexOf('const startEcoCrisis = (crisisId) => {');
+  const startEnd = appSource.indexOf('const advanceEcoCrisis =', startStart);
+  const startSource = appSource.slice(startStart, startEnd);
+  const existingActiveGuard = startSource.indexOf('if (currentCrisisState.active?.crisisId) {');
+  const newCrisisLock = startSource.indexOf('const lockKey = `start:${crisisId}`;');
+  assert.ok(startStart >= 0 && startEnd > startStart);
+  assert.ok(existingActiveGuard >= 0 && newCrisisLock > existingActiveGuard);
+  assert.match(startSource, /请先完成 \$\{activeCrisis\?\.name \|\| '当前生态危机'\}/);
+
+  assert.match(appSource, /useState\(\(\) => normalizeEcoCrisisState\(savedData\.ecoCrisisState\)\)/);
+  assert.match(appSource, /const rawNext = typeof updater === 'function' \? updater\(current\) : updater;[\s\S]{0,100}const next = normalizeEcoCrisisState\(rawNext\);/);
+  check(true, '生态危机初始化、切换与战斗步骤均使用权威状态和并发锁，启动失败或胜败结算不会卡死进度');
 }
 
 console.log('\n=== 生态玩法检查全部通过 ===');

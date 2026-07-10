@@ -171,19 +171,47 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   check(true, '离帮、重复完成、金币不足均不会扣费；成功捐献恰好扣一次并同步完成任务');
 }
 
-// 胜败结算各消耗一次次数，且帮派资金严格归属帮主。
+// 帮战预览必须明确是等级估算；胜败结算各消耗一次次数，奖励只基于最新权威状态发放。
 {
+  const uiStart = appSource.indexOf('const renderGangWar = () => {');
+  const uiEnd = appSource.indexOf('const renderGangSkills = () => {', uiStart);
+  const uiSource = appSource.slice(uiStart, uiEnd);
+  assert.ok(uiStart >= 0 && uiEnd > uiStart);
+  assert.match(uiSource, /等级估算 \{Math\.round\(preview\.winChance \* 100\)\}%/);
+  assert.match(uiSource, /非实际胜率/);
+  assert.match(uiSource, /仅按存活队伍等级估算，属性克制、装备与特性会影响实战/);
+  assert.doesNotMatch(uiSource, />胜率 \{Math\.round\(preview\.winChance/);
+
   const winStart = appSource.indexOf("if (battleSnapshot.type === 'gang_war')");
   const winSource = appSource.slice(winStart, winStart + 5200);
   const defeatStart = appSource.indexOf("} else if (battleType === 'gang_war') {");
-  const defeatSource = appSource.slice(defeatStart, defeatStart + 900);
+  const defeatSource = appSource.slice(defeatStart, defeatStart + 1200);
   assert.ok(winStart >= 0 && defeatStart >= 0);
   assert.equal((winSource.match(/warCount:/g) || []).length, 1);
   assert.equal((defeatSource.match(/warCount:/g) || []).length, 1);
-  assert.match(winSource, /if \(prev\.isOwner && prev\.customGang\) \{[\s\S]{0,180}funds: \(prev\.customGang\.funds \|\| 0\) \+ reward\.funds/);
+  assert.match(winSource, /const currentGang = gangRef\.current \|\| \{\};/);
+  assert.match(winSource, /const freshGangDc = getFreshGangDailyCounts\(currentGang\.dailyCounts, todayStr\);/);
+  assert.doesNotMatch(winSource, /setGang\(prev =>/);
+
+  const dailyCapGuard = winSource.indexOf('if ((freshGangDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily)');
+  const capReturn = winSource.indexOf('return;', dailyCapGuard);
+  const nextGangCommit = winSource.indexOf('const nextGang =');
+  const refCommit = winSource.indexOf('gangRef.current = nextGang');
+  const stateCommit = winSource.indexOf('setGang(nextGang)');
+  const chestRewards = winSource.indexOf('const chestRewards =');
+  assert.ok(
+    dailyCapGuard >= 0 && capReturn > dailyCapGuard && nextGangCommit > capReturn &&
+    refCommit > nextGangCommit && stateCommit > refCommit && chestRewards > stateCommit
+  );
+  assert.match(winSource, /if \(currentGang\.isOwner && currentGang\.customGang\) \{[\s\S]{0,220}funds: \(currentGang\.customGang\.funds \|\| 0\) \+ reward\.funds/);
+  assert.match(winSource, /const mainRewardText = nextGang\.isOwner/);
+  assert.match(winSource, /isGangKingdomAligned\(nextGang, kingdomWar\)/);
+
+  const defeatRefCommit = defeatSource.indexOf('gangRef.current = nextGang');
+  const defeatStateCommit = defeatSource.indexOf('setGang(nextGang)');
+  assert.ok(defeatRefCommit >= 0 && defeatStateCommit > defeatRefCommit);
   assert.doesNotMatch(defeatSource, /funds\s*:/);
-  assert.doesNotMatch(winSource, /kingdomWar\.expBuffBattles/);
-  check(true, '帮战胜败均只消耗一次每日次数，且只有帮主胜利时增加帮派资金');
+  check(true, '帮战明确区分等级估算与实际胜率；日上限前置，胜败均只结算一次且帮主资金归属正确');
 }
 
 // 旧存档中的缺失/重复 uid 必须被修复，且删除操作只能移除一只精灵。

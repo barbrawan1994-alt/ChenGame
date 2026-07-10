@@ -89,7 +89,7 @@ import {
   WORLD_BOSSES, WORLD_BOSS_MAX_ATTEMPTS, WORLD_BOSS_REQ_BADGES, DEFAULT_WORLD_BOSS_STATE, getTodayBoss, scaleBossHp, scaleBossLevel,
   getInfinityFloorModifier, isInfinityMilestoneFloor, getInfinityMilestoneReward, INFINITY_MILESTONE_FLOORS,
   SPIRIT_DOMAINS, getSpiritDomainByMapId, getSpiritDomainRule,
-  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById, isMapEcoRestored, parseBossRouteModifiers, MORAL_BRANCHES, getMoralBranch, checkBranchRequirements, checkRouteRequirements,
+  ECO_CRISES, getEcoCrisisByMapId, getEcoCrisisById, normalizeEcoCrisisState, isMapEcoRestored, parseBossRouteModifiers, MORAL_BRANCHES, getMoralBranch, checkBranchRequirements, checkRouteRequirements,
   ECO_EVENTS, getActiveEcoEventForMap, getEcoEventByMapId, getDefaultEcologyForMap, applyEcologyDelta, getEcologyTier, ECO_METRIC_LABELS,
   getRegionStage, REGION_STAGE_DEFS, REGION_CHAINS, applyRegionChains,
   getRegionPressure, getPartyAdaptationSummary, getAdaptationMult,
@@ -856,27 +856,9 @@ export default function RPG(props) {
   const [viewGangMember, setViewGangMember] = useState(null);
 
   // 国战系统
-  const [kingdomWar, setKingdomWar] = useState(() => {
-    const saved = migrateKingdomWarState(savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR });
-    if (!saved.territories || Object.keys(saved.territories).length === 0) {
-      saved.territories = initTerritories();
-    }
-    if (!saved.dailyCounts) saved.dailyCounts = {};
-    if (saved.kwManpowerReserve == null || Number.isNaN(saved.kwManpowerReserve)) {
-      saved.kwManpowerReserve = DEFAULT_KINGDOM_WAR.kwManpowerReserve;
-    }
-    saved.kwManpowerReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Number(saved.kwManpowerReserve) || 0));
-    for (const [mid, t] of Object.entries(saved.territories || {})) {
-      if (!t.garrison || typeof t.garrison !== 'object' || Object.keys(t.garrison).length === 0) {
-        const fid = t.owner === 'neutral' ? 'qun' : (t.owner || 'qun');
-        t.garrison = generateGarrison(fid, Math.max(40, Math.floor((t.strength || 50) * 1.2)));
-      }
-      if (!t.guards || t.guards.length === 0) {
-        t.guards = assignTerritoryGuards(t.owner === 'neutral' ? 'qun' : (t.owner || 'qun'), t.strength || 60);
-      }
-    }
-    return saved;
-  });
+  const [kingdomWar, setKingdomWar] = useState(() => (
+    migrateKingdomWarState(savedData.kingdomWar || { ...DEFAULT_KINGDOM_WAR })
+  ));
   const [kwTab, setKwTab] = useState('overview');
   /** 名城攻城配置弹层 { contestMap, allocation, generalIds, deployCap } */
   const [kwSiegeModal, setKwSiegeModal] = useState(null);
@@ -4691,7 +4673,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const [worldBossState, setWorldBossState] = useState(() => ({ ...DEFAULT_WORLD_BOSS_STATE, ...(savedData.worldBossState || {}) }));
   const [raceState, setRaceState] = useState(() => savedData.raceState || { lastDate: '', dailyRaces: 0, totalWins: 0 });
   const [spiritDomainsCleared, setSpiritDomainsCleared] = useState(() => savedData.spiritDomainsCleared || []);
-  const [ecoCrisisState, setEcoCrisisState] = useState(() => savedData.ecoCrisisState || { cleared: [], active: null });
+  const [ecoCrisisState, setEcoCrisisState] = useState(() => normalizeEcoCrisisState(savedData.ecoCrisisState));
   const [ecoCrisisChoices, setEcoCrisisChoices] = useState(() => savedData.ecoCrisisChoices || {});
   const [regionEcology, setRegionEcology] = useState(() => savedData.regionEcology || {});
   const [observationLog, setObservationLog] = useState(() => savedData.observationLog || []);
@@ -4725,7 +4707,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const commitEcoCrisisState = (updater) => {
     const current = ecoCrisisStateRef.current;
-    const next = typeof updater === 'function' ? updater(current) : updater;
+    const rawNext = typeof updater === 'function' ? updater(current) : updater;
+    const next = normalizeEcoCrisisState(rawNext);
     ecoCrisisStateRef.current = next;
     setEcoCrisisState(next);
     return next;
@@ -7629,82 +7612,107 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       setEcoCrisisModal({ crisisId, stepIdx, step, crisis });
       return;
     }
-    commitEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx } }));
-    setCurrentMapId(crisis.mapId);
-    setView('grid_map');
-    const lvl = step.lvl || [20, 30];
-    const count = step.count || 3;
-    const enemyParty = [];
-    const branchId = ecoCrisisChoicesRef.current[crisisId];
-    const routeId = ecoCrisisRoutesRef.current[crisisId];
-    const branch = branchId ? getMoralBranch(branchId) : null;
-    const linkedBoss = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
-    const routeMods = parseBossRouteModifiers(crisis, branchId, routeId, branch?.bossMult || 1);
-    const leadSect = party[0]?.sectId;
-    const chapterMods = crisisId === CANYON_CHAPTER_ID
-      ? getCanyonBossModifiers(getChapterVars(crisisId), routeId, branchId)
-      : crisisId === GHOST_CHAPTER_ID
-        ? getGhostBossModifiers(getChapterVars(crisisId), routeId, branchId)
-        : crisisId === SEAL_CHAPTER_ID
-          ? getSealBossModifiers(getChapterVars(crisisId), routeId, branchId)
-          : { bossMult: 1, skipMechanics: [], spawnAdds: 0 };
-    const battleObjective = routeMods.objectiveOverride || step.objective;
-    const crossBonuses = calcCrossSystemPveBonuses({ playerStyle: fusionStateRef.current.playerStyle, nightBattle: step.nightBattle || timePhase === 'NIGHT', kwPosition: fusionStateRef.current.kwPosition });
-    const chakraAff = calcChakraAffinity(narutoState?.jutsuMastery);
-    const jutsuSynergy = chakraAff ? checkJutsuPetSynergy(party, CHAKRA_NATURE_MAP[chakraAff]?.gameType) : null;
-    const fusionBonuses = mergePveBonuses(
-      calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionStateRef.current.generalTacticId, jutsuSynergy }),
-      crossBonuses
-    );
-    if (step.type === 'boss') {
-      const bossLvl = Array.isArray(step.lvl) ? step.lvl : (step.lvl || lvl[1]);
-      const boss = createPet(step.bossId || step.pool?.[0] || 1, bossLvl, true, true);
-      boss.name = step.enemyName || linkedBoss?.name || boss.name;
-      boss.customStatMult = 1.2 * routeMods.bossMult * (chapterMods.bossMult || 1) * Math.max(0.7, 1 - (fusionBonuses.bossMultReduce || 0));
-      if (linkedBoss) {
-        boss.type = linkedBoss.type;
-        boss.secondaryType = linkedBoss.secondaryType;
-      }
-      enemyParty.push(boss);
-      for (let a = 0; a < routeMods.spawnAdds + (chapterMods.spawnAdds || 0); a++) {
-        const pid = step.pool?.[Math.floor(Math.random() * (step.pool?.length || 1))] || step.bossId || 1;
-        enemyParty.push(createPet(pid, bossLvl - 5, true));
-      }
-    } else {
-      for (let i = 0; i < count; i++) {
-        const pid = step.pool[Math.floor(Math.random() * step.pool.length)];
-        enemyParty.push(createPet(pid, _.random(lvl[0], lvl[1]), true));
-      }
+    const crisisParty = partyRef.current || [];
+    if (!crisisParty.some(p => p && (p.currentHp == null || Number(p.currentHp) > 0))) {
+      showMapToast('💊', '队伍无法出战', '至少需要一只未倒下的精灵才能继续调查', 2500);
+      return;
     }
-    const ecology = getMapEcology(crisis.mapId);
-    const branchMod = (linkedBoss?.branchModifiers || linkedBoss?.branchMods)?.[branchId];
-    const protectHpBase = Math.floor(getStats(party[0] || {}).maxHp * (0.6 + (fusionBonuses.protectBonus || 0)));
-    const nightMult = (step.nightBattle || timePhase === 'NIGHT') ? 1.08 : 1;
-    if (nightMult > 1) enemyParty.forEach(e => { e.customStatMult = (e.customStatMult || 1) * nightMult; });
-    startBattle({
-      id: crisis.mapId,
-      name: step.title,
-      customParty: enemyParty,
-      trainerName: step.enemyName || crisis.name,
-      drop: step.drop || 2000,
-      ecoCrisis: { crisisId, stepIdx },
-      _crisisBranch: branchId,
-      _regionEcology: ecology,
-      ecoBossMechanics: !!step.bossKey,
-      bossPhases: linkedBoss?.phases,
-      _skipMechanics: [...(branchMod?.skipMechanic || []), ...routeMods.skipMechanics, ...(chapterMods.skipMechanics || [])],
-      _nightBattle: !!(step.nightBattle || timePhase === 'NIGHT'),
-      _chapterVars: getChapterVars(crisisId) || undefined,
-      _fusionBonuses: fusionBonuses,
-      ...(battleObjective ? {
-        battleObjective,
-        objectiveTurns: Math.max(3, (step.objectiveTurns || 8) - (fusionBonuses.escapeTurnReduce || 0)),
-        objectiveTarget: step.objectiveTarget || 0,
-        _purifyProgress: battleObjective === 'purify' ? 100 : undefined,
-        _protectHp: battleObjective === 'protect' ? protectHpBase : undefined,
-        _protectMaxHp: battleObjective === 'protect' ? protectHpBase : undefined,
-      } : {}),
-    }, 'eco_crisis');
+    if (battle && !battleResultHandledRef.current) {
+      showMapToast('⚔️', '战斗进行中', '请先完成当前战斗，再继续生态调查', 2200);
+      return;
+    }
+    const stepLock = `crisis-step:${crisisId}:${stepIdx}`;
+    if (ecoActionLocksRef.current.has(stepLock)) return;
+    ecoActionLocksRef.current.add(stepLock);
+    try {
+      commitEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx } }));
+      setCurrentMapId(crisis.mapId);
+      setView('grid_map');
+      const lvl = step.lvl || [20, 30];
+      const count = step.count || 3;
+      const enemyParty = [];
+      const enemyPool = Array.isArray(step.pool) && step.pool.length > 0 ? step.pool : [step.bossId || 1];
+      const branchId = ecoCrisisChoicesRef.current[crisisId];
+      const routeId = ecoCrisisRoutesRef.current[crisisId];
+      const branch = branchId ? getMoralBranch(branchId) : null;
+      const linkedBoss = step.bossKey ? ECO_LINKED_BOSSES[step.bossKey] : null;
+      const routeMods = parseBossRouteModifiers(crisis, branchId, routeId, branch?.bossMult || 1);
+      const leadSect = crisisParty[0]?.sectId;
+      const chapterMods = crisisId === CANYON_CHAPTER_ID
+        ? getCanyonBossModifiers(getChapterVars(crisisId), routeId, branchId)
+        : crisisId === GHOST_CHAPTER_ID
+          ? getGhostBossModifiers(getChapterVars(crisisId), routeId, branchId)
+          : crisisId === SEAL_CHAPTER_ID
+            ? getSealBossModifiers(getChapterVars(crisisId), routeId, branchId)
+            : { bossMult: 1, skipMechanics: [], spawnAdds: 0 };
+      const battleObjective = routeMods.objectiveOverride || step.objective;
+      const crossBonuses = calcCrossSystemPveBonuses({ playerStyle: fusionStateRef.current.playerStyle, nightBattle: step.nightBattle || timePhase === 'NIGHT', kwPosition: fusionStateRef.current.kwPosition });
+      const chakraAff = calcChakraAffinity(narutoState?.jutsuMastery);
+      const jutsuSynergy = chakraAff ? checkJutsuPetSynergy(crisisParty, CHAKRA_NATURE_MAP[chakraAff]?.gameType) : null;
+      const fusionBonuses = mergePveBonuses(
+        calcFusionPveBonuses({ sectId: leadSect, generalTacticId: fusionStateRef.current.generalTacticId, jutsuSynergy }),
+        crossBonuses
+      );
+      if (step.type === 'boss') {
+        const bossLvl = Array.isArray(step.lvl) ? step.lvl[1] : (step.lvl || lvl[1]);
+        const boss = createPet(step.bossId || enemyPool[0], bossLvl, true, true);
+        boss.name = step.enemyName || linkedBoss?.name || boss.name;
+        boss.customStatMult = 1.2 * routeMods.bossMult * (chapterMods.bossMult || 1) * Math.max(0.7, 1 - (fusionBonuses.bossMultReduce || 0));
+        if (linkedBoss) {
+          boss.type = linkedBoss.type;
+          boss.secondaryType = linkedBoss.secondaryType;
+        }
+        enemyParty.push(boss);
+        for (let a = 0; a < routeMods.spawnAdds + (chapterMods.spawnAdds || 0); a++) {
+          const pid = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+          enemyParty.push(createPet(pid, Math.max(1, bossLvl - 5), true));
+        }
+      } else {
+        for (let i = 0; i < count; i++) {
+          const pid = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+          enemyParty.push(createPet(pid, _.random(lvl[0], lvl[1]), true));
+        }
+      }
+      const ecology = getMapEcology(crisis.mapId);
+      const branchMod = (linkedBoss?.branchModifiers || linkedBoss?.branchMods)?.[branchId];
+      const protectHpBase = Math.floor(getStats(crisisParty[0] || {}).maxHp * (0.6 + (fusionBonuses.protectBonus || 0)));
+      const nightMult = (step.nightBattle || timePhase === 'NIGHT') ? 1.08 : 1;
+      if (nightMult > 1) enemyParty.forEach(e => { e.customStatMult = (e.customStatMult || 1) * nightMult; });
+      const started = startBattle({
+        id: crisis.mapId,
+        name: step.title,
+        customParty: enemyParty,
+        trainerName: step.enemyName || crisis.name,
+        drop: step.drop ?? 2000,
+        ecoCrisis: { crisisId, stepIdx },
+        _crisisBranch: branchId,
+        _regionEcology: ecology,
+        ecoBossMechanics: !!step.bossKey,
+        bossPhases: linkedBoss?.phases,
+        _skipMechanics: [...(branchMod?.skipMechanic || []), ...routeMods.skipMechanics, ...(chapterMods.skipMechanics || [])],
+        _nightBattle: !!(step.nightBattle || timePhase === 'NIGHT'),
+        _chapterVars: getChapterVars(crisisId) || undefined,
+        _fusionBonuses: fusionBonuses,
+        ...(battleObjective ? {
+          battleObjective,
+          objectiveTurns: Math.max(3, (step.objectiveTurns || 8) - (fusionBonuses.escapeTurnReduce || 0)),
+          objectiveTarget: step.objectiveTarget || 0,
+          _purifyProgress: battleObjective === 'purify' ? 100 : undefined,
+          _protectHp: battleObjective === 'protect' ? protectHpBase : undefined,
+          _protectMaxHp: battleObjective === 'protect' ? protectHpBase : undefined,
+        } : {}),
+      }, 'eco_crisis');
+      if (!started) {
+        ecoActionLocksRef.current.delete(stepLock);
+        setView('world_map');
+        showMapToast('⚠️', '调查未开始', '战斗启动失败，本阶段进度未消耗，可重新尝试', 2600);
+      }
+    } catch (err) {
+      ecoActionLocksRef.current.delete(stepLock);
+      setView('world_map');
+      console.error('runEcoCrisisStep battle start failed', err);
+      showMapToast('⚠️', '调查未开始', '敌方生成异常，本阶段进度未消耗，可重新尝试', 2800);
+    }
   };
 
   const advanceBondingStep = (questId) => {
@@ -8378,6 +8386,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     if (currentCrisisState.active?.crisisId === crisisId) {
       runEcoCrisisStep(crisisId, currentCrisisState.active.step || 0);
+      return;
+    }
+    if (currentCrisisState.active?.crisisId) {
+      const activeCrisis = getEcoCrisisById(currentCrisisState.active.crisisId);
+      showMapToast('⚠️', '调查正在进行', `请先完成 ${activeCrisis?.name || '当前生态危机'}`, 2500);
       return;
     }
     if (badges.length < crisis.reqBadges) {
@@ -11391,7 +11404,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <div style={{fontSize:'11px', color:'#aaa'}}>对手等级 ~Lv.{enemyLv} · 奖励 {rewardText}</div>
                   {preview && (
                     <div style={{display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'6px'}}>
-                      <span style={{fontSize:'10px', color:'#86efac', background:'rgba(34,197,94,0.12)', padding:'2px 7px', borderRadius:'999px'}}>胜率 {Math.round(preview.winChance * 100)}%</span>
+                      <span style={{fontSize:'10px', color:'#86efac', background:'rgba(34,197,94,0.12)', padding:'2px 7px', borderRadius:'999px'}}>等级估算 {Math.round(preview.winChance * 100)}%</span>
+                      <span title="仅按存活队伍等级估算，属性克制、装备与特性会影响实战" style={{fontSize:'10px', color:'#94a3b8', background:'rgba(148,163,184,0.1)', padding:'2px 7px', borderRadius:'999px'}}>非实际胜率</span>
                       <span style={{fontSize:'10px', color:'#fbbf24', background:'rgba(251,191,36,0.12)', padding:'2px 7px', borderRadius:'999px'}}>{preview.riskLabel}</span>
                       <span style={{fontSize:'10px', color:'#fca5a5', background:'rgba(239,68,68,0.12)', padding:'2px 7px', borderRadius:'999px'}}>难度 {preview.difficultyScore}</span>
                       {(preview.advice || []).slice(0, 1).map(tip => <span key={tip} style={{fontSize:'10px', color:'#cbd5e1', background:'rgba(255,255,255,0.07)', padding:'2px 7px', borderRadius:'999px'}}>{tip}</span>)}
@@ -20491,20 +20505,9 @@ const grantContestReward = (config, score, subjectPet = null) => {
         const target = battleSnapshot.gangWarTarget || {};
         const reward = getGangWarReward(target);
         const todayStr = getLocalDateStr();
-        const freshGangDc = getFreshGangDailyCounts(gangRef.current?.dailyCounts, todayStr);
-        const isOverGangWarLimit = (freshGangDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily;
-        setGang(prev => {
-            const freshDc = getFreshGangDailyCounts(prev.dailyCounts, todayStr);
-            if ((freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) return prev;
-            const next = { ...prev, contribution: (prev.contribution || 0) + reward.contribution,
-              dailyCounts: { ...freshDc, warCount: (freshDc.warCount || 0) + 1 }
-            };
-            if (prev.isOwner && prev.customGang) {
-                next.customGang = { ...prev.customGang, funds: (prev.customGang.funds || 0) + reward.funds, wins: (prev.customGang.wins || 0) + 1 };
-            }
-            return next;
-        });
-        if (isOverGangWarLimit) {
+        const currentGang = gangRef.current || {};
+        const freshGangDc = getFreshGangDailyCounts(currentGang.dailyCounts, todayStr);
+        if ((freshGangDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily) {
           showMapToast('ℹ️', '帮战已结算', '今日次数已满，本场不再发放额外帮派奖励', 2500);
           updateBattleWinStats(0);
           commitPartyToSave(updatedParty);
@@ -20512,6 +20515,21 @@ const grantContestReward = (config, score, subjectPet = null) => {
           setView('gang');
           return;
         }
+        const nextGang = {
+          ...currentGang,
+          contribution: (currentGang.contribution || 0) + reward.contribution,
+          dailyCounts: { ...freshGangDc, warCount: (freshGangDc.warCount || 0) + 1 },
+        };
+        if (currentGang.isOwner && currentGang.customGang) {
+          nextGang.customGang = {
+            ...currentGang.customGang,
+            funds: (currentGang.customGang.funds || 0) + reward.funds,
+            wins: (currentGang.customGang.wins || 0) + 1,
+          };
+        }
+        // ref 与 React state 同步提交成功后，才允许发宝箱、任务和国战联动奖励。
+        gangRef.current = nextGang;
+        setGang(nextGang);
         const chestRewards = [];
         let chestGoldEarned = 0;
         const chestRoll = Math.random();
@@ -20552,7 +20570,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             }
         }
         const chestText = chestRewards.length > 0 ? `\n\n🎰 帮战宝箱:\n${chestRewards.join('\n')}` : '';
-        const mainRewardText = gangRef.current?.isOwner
+        const mainRewardText = nextGang.isOwner
           ? `帮派资金 +${reward.funds} · 帮贡 +${reward.contribution}`
           : `帮贡 +${reward.contribution}`;
         showMapToast('⚔️', '帮战胜利', `${mainRewardText}${chestText || ''}`, 2500);
@@ -20570,7 +20588,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
             return next;
           });
           updateGangTaskProgress('kw_contrib', kwBonus);
-          if (isGangKingdomAligned(gang, kingdomWar)) {
+          if (isGangKingdomAligned(nextGang, kingdomWar)) {
             showMapToast('🏴', '帮派国战联动', `同阵营加成：额外获得 ${kwBonus} 战功`, 2000);
             updateAchStat({ gangKwLinkWins: 1 });
           }
@@ -21153,6 +21171,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         return;
       }
       const { crisisId, stepIdx } = battleSnapshot.ecoCrisis;
+      ecoActionLocksRef.current.delete(`crisis-step:${crisisId}:${stepIdx}`);
       commitEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx + 1 } }));
       updateBattleWinStats(goldGain);
       setBattle(null);
@@ -21525,10 +21544,19 @@ const grantContestReward = (config, score, subjectPet = null) => {
       gangActionLocksRef.current.delete('gang_war');
       setView('gang');
       const todayStr = getLocalDateStr();
-      setGang(prev => {
-        const freshDc = getFreshGangDailyCounts(prev.dailyCounts, todayStr);
-        return { ...prev, dailyCounts: { ...freshDc, warCount: Math.min(GANG_WAR_CONFIG.maxDaily, (freshDc.warCount || 0) + 1) } };
-      });
+      const currentGang = gangRef.current || {};
+      const freshDc = getFreshGangDailyCounts(currentGang.dailyCounts, todayStr);
+      const nextGang = (freshDc.warCount || 0) >= GANG_WAR_CONFIG.maxDaily
+        ? currentGang
+        : {
+            ...currentGang,
+            dailyCounts: {
+              ...freshDc,
+              warCount: Math.min(GANG_WAR_CONFIG.maxDaily, (freshDc.warCount || 0) + 1),
+            },
+          };
+      gangRef.current = nextGang;
+      setGang(nextGang);
       showMapToast('💀', '帮战失败', '帮战落败，消耗一次帮战次数', 3000);
     } else if (battleType === 'kingdom_war' || battleType === 'kw_campaign' || battleType === 'capital_siege') {
       if (battleType === 'capital_siege' && battleSnap?.siegeTarget) {
@@ -21549,6 +21577,7 @@ const grantContestReward = (config, score, subjectPet = null) => {
         showMapToast('🆘', '救助未成功', '未产生额外惩罚，可重新尝试救助', 3000);
       } else if (battleSnap?.ecoCrisis) {
         const { crisisId, stepIdx } = battleSnap.ecoCrisis;
+        ecoActionLocksRef.current.delete(`crisis-step:${crisisId}:${stepIdx}`);
         commitEcoCrisisState(prev => ({ ...prev, active: { crisisId, step: stepIdx } }));
         setView('world_map');
         showMapToast('🌿', '调查受阻', '当前阶段进度已保留，无额外惩罚，可重新挑战', 3200);

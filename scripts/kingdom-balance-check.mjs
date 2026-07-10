@@ -13,11 +13,24 @@ const loadSourceModule = async (relativePath, transform = source => source) => {
 };
 
 const constants = await loadSourceModule('src/data/kingdomConstants.js');
+
+const MOCK_GENERALS = ['wei', 'shu', 'wu', 'jin', 'qun'].flatMap(faction => (
+  Array.from({ length: 8 }, (_, index) => ({
+    id: `${faction}_${index + 1}`,
+    name: `${faction.toUpperCase()}将${index + 1}`,
+    faction,
+    rarity: index < 3 ? 'SSR' : index < 6 ? 'SR' : 'R',
+  }))
+));
+MOCK_GENERALS.push(
+  { id: 'neutral_1', name: '中立将1', faction: 'neutral', rarity: 'SSR' },
+  { id: 'neutral_2', name: '中立将2', faction: 'neutral', rarity: 'SR' },
+);
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.meta.url), 'utf8');
 const kwSiegeSource = await readFile(new URL('../src/data/kwSiege.js', import.meta.url), 'utf8');
 const kingdom = await loadSourceModule('src/data/kingdom.js', source => source
-  .replace("import { SANGUO_GENERALS } from './generals';", 'const SANGUO_GENERALS = [];')
+  .replace("import { SANGUO_GENERALS } from './generals';", `const SANGUO_GENERALS = ${JSON.stringify(MOCK_GENERALS)};`)
   .replace(
     "import { MANPOWER_RESERVE_CAP } from './kingdomConstants';",
     `const MANPOWER_RESERVE_CAP = ${constants.MANPOWER_RESERVE_CAP};`
@@ -59,8 +72,22 @@ const {
   evaluateTerritoryAssault,
   buildSiegeCombatParams,
   applyDefection,
+  generateGarrison,
+  normalizeGarrison,
+  getGarrisonTotal,
+  assignTerritoryGuards,
+  normalizeKingdomTerritory,
+  migrateKingdomWarState,
+  KINGDOM_TROOP_KEYS,
+  INITIAL_TERRITORIES,
 } = kingdom;
-const { evaluateKwSiegeBattle, runKwSiegeBattle } = kwSiege;
+const {
+  evaluateKwSiegeBattle,
+  runKwSiegeBattle,
+  getContestMapProgress,
+  inferDefenseWeights,
+  resolveContestedMapOwner,
+} = kwSiege;
 const { GANG_PRESETS } = gang;
 const { MANPOWER_RESERVE_CAP } = constants;
 
@@ -624,6 +651,162 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
     Math.random = originalRandom;
   }
   check(true, `最大 ${catchupTicks} Tick 离线追赶后平均领地 ${summaries.join('、')}，世界持续演化但不会高频清空玩家战果`);
+}
+
+
+// 17. 驻军生成、守将分配与旧档迁移必须保持精确总量和有限状态。
+{
+  const originalRandom = Math.random;
+  try {
+    const requestedTotals = [6, 7, 31, 80, 999, 1_000_000, '120', -50, Number.NaN, Number.POSITIVE_INFINITY];
+    for (let seed = 1; seed <= 16; seed += 1) {
+      for (const requested of requestedTotals) {
+        Math.random = makeSeededRandom(seed * 1009 + String(requested).length);
+        const generated = generateGarrison(seed % 2 ? 'wei' : 'shu', requested);
+        const numericRequested = Number(requested);
+        const expectedTotal = Math.min(
+          1_000_000,
+          Math.max(6, Number.isFinite(numericRequested) ? Math.floor(numericRequested) : 6),
+        );
+        assert.deepEqual(Object.keys(generated), KINGDOM_TROOP_KEYS);
+        assert.ok(Object.values(generated).every(value => Number.isInteger(value) && value >= 1));
+        assert.equal(getGarrisonTotal(generated), expectedTotal);
+      }
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const normalized = normalizeGarrison({
+    shield: '12.9', spear: -4, cavalry: Number.POSITIVE_INFINITY,
+    archer: Number.NaN, siege: '4', raider: 5, unknown: 999999,
+  });
+  assert.deepEqual(normalized, { shield: 12, spear: 0, cavalry: 0, archer: 0, siege: 4, raider: 5 });
+  assert.equal(getGarrisonTotal({ shield: '12', siege: '4', raider: 5, unknown: 999999 }), 21);
+  const capped = normalizeGarrison(Object.fromEntries(KINGDOM_TROOP_KEYS.map(key => [key, 999999])));
+  assert.equal(getGarrisonTotal(capped), 1_000_000);
+  assert.ok(Object.values(capped).every(value => Number.isInteger(value) && value >= 0));
+
+  Math.random = makeSeededRandom(20260710);
+  try {
+    const guards = assignTerritoryGuards('wei', 80);
+    assert.equal(guards.length, 3);
+    assert.equal(new Set(guards.map(guard => guard.generalId)).size, 3);
+    assert.ok(guards.every(guard => String(guard.generalId).startsWith('wei_')));
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const zeroGarrison = Object.fromEntries(KINGDOM_TROOP_KEYS.map(key => [key, 0]));
+  const migrated = migrateKingdomWarState({
+    faction: 'invalid_faction',
+    kwManpowerReserve: 999999,
+    eliteTroops: Number.POSITIVE_INFINITY,
+    grain: '100',
+    grainReserve: '50',
+    morale: 999,
+    warContribution: -10,
+    attackBuff: 'false',
+    dailyCounts: { income: 'false', capitalReward: '0', kills: '-3', territorySieges: '2' },
+    territories: {
+      5: {
+        owner: 'hacker', strength: 0, garrison: zeroGarrison,
+        guards: [
+          { generalId: 'wei_1', name: '篡改名', rarity: 'R', defeated: 'false', recoverActions: 2 },
+          { generalId: 'wei_1', defeated: true },
+          { generalId: 'shu_1', defeated: false },
+        ],
+        contested: 'true', attackerFaction: 'shu', attackProgress: 999,
+      },
+    },
+  });
+  assert.equal(migrated.faction, null);
+  assert.equal(migrated.kwManpowerReserve, MANPOWER_RESERVE_CAP);
+  assert.equal(migrated.eliteTroops, 0);
+  assert.equal(migrated.grain, 150);
+  assert.equal(migrated.morale, 120);
+  assert.equal(migrated.warContribution, 0);
+  assert.equal(migrated.attackBuff, false);
+  assert.equal(migrated.dailyCounts.income, false);
+  assert.equal(migrated.dailyCounts.capitalReward, false);
+  assert.equal(migrated.territories[5].owner, INITIAL_TERRITORIES[5]);
+  assert.equal(migrated.territories[5].strength, 0);
+  assert.equal(getGarrisonTotal(migrated.territories[5].garrison), 0);
+  assert.equal(migrated.territories[5].guards.length, 1);
+  assert.equal(migrated.territories[5].guards[0].name, 'WEI将1');
+  assert.equal(migrated.territories[5].guards[0].rarity, 'SSR');
+  assert.equal(migrated.territories[5].guards[0].defeated, false);
+  assert.equal(migrated.territories[5].guards[0].recoverActions, 0);
+  assert.equal(migrated.territories[5].attackProgress, 100);
+
+  const missingGarrison = normalizeKingdomTerritory({ owner: 'wei', strength: 60, guards: [] }, 5);
+  const explicitEmptyGarrison = normalizeKingdomTerritory({ owner: 'wei', strength: 60, garrison: {}, guards: [] }, 5);
+  assert.ok(getGarrisonTotal(missingGarrison.garrison) > 0);
+  assert.equal(getGarrisonTotal(explicitEmptyGarrison.garrison), 0);
+
+  const emptyDefense = buildSiegeCombatParams({
+    mapId: 5,
+    playerFaction: 'shu',
+    allocation: Object.fromEntries(KINGDOM_TROOP_KEYS.map(key => [key, 10])),
+    territories: { 5: { owner: 'wei', strength: 0, garrison: zeroGarrison, guards: [] } },
+    kw: { faction: 'shu', morale: 100, eliteTroops: 0 },
+  });
+  assert.equal(emptyDefense.counter, 1);
+  assert.ok(emptyDefense.fieldPower > 0);
+  assert.ok(Number.isFinite(emptyDefense.winChance));
+
+  const malformedAllocation = buildSiegeCombatParams({
+    mapId: 5,
+    playerFaction: 'shu',
+    allocation: { shield: Number.POSITIVE_INFINITY, spear: '60', cavalry: -4 },
+    territories: { 5: { owner: 'wei', strength: 60, garrison: generateGarrison('wei', 80), guards: [] } },
+    kw: { faction: 'shu', morale: 100, eliteTroops: 0 },
+  });
+  assert.equal(malformedAllocation.deploy, 60);
+  assert.ok(Number.isFinite(malformedAllocation.fieldPower));
+  assert.ok(Number.isFinite(malformedAllocation.winChance));
+
+  Math.random = makeSeededRandom(90210);
+  try {
+    const malformedTerritories = initTerritories();
+    malformedTerritories[5] = {
+      ...malformedTerritories[5],
+      strength: 'invalid',
+      garrison: { shield: '9', spear: -5, cavalry: Number.NaN, archer: Number.POSITIVE_INFINITY, siege: 2, raider: 1 },
+    };
+    const tick = executeWarTick(malformedTerritories, GANG_PRESETS, 'wei', 50);
+    for (const territory of Object.values(tick.territories)) {
+      assert.ok(Number.isFinite(territory.strength) && territory.strength >= 0 && territory.strength <= WAR_TICK_CONFIG.maxStrength);
+      assert.equal(Object.keys(territory.garrison).length, KINGDOM_TROOP_KEYS.length);
+      assert.ok(Object.values(territory.garrison).every(value => Number.isInteger(value) && value >= 0));
+      assert.ok(getGarrisonTotal(territory.garrison) <= 1_000_000);
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const safeProgress = getContestMapProgress({ 1: {
+    wei: Number.POSITIVE_INFINITY, shu: '30', wu: -1, jin: 9999, qun: Number.NaN,
+  } }, 1);
+  assert.deepEqual(safeProgress, { wei: 0, shu: 30, wu: 0, jin: 480, qun: 0 });
+  assert.equal(
+    resolveContestedMapOwner({ wei: Number.POSITIVE_INFINITY, shu: 20, wu: -1, jin: Number.NaN, qun: 0 }, 'wei', 1),
+    'neutral',
+  );
+  const weights = inferDefenseWeights({ wei: Number.POSITIVE_INFINITY, shu: '240', wu: Number.NaN, jin: -2, qun: 480 });
+  assert.ok(Object.values(weights).every(value => Number.isFinite(value) && value > 0));
+  assert.ok(Math.abs(Object.values(weights).reduce((sum, value) => sum + value, 0) - 1) < 1e-9);
+  const malformedSiege = evaluateKwSiegeBattle({
+    mapId: CONTESTED_MAP_IDS[0],
+    playerFaction: 'wei',
+    allocation: { shield: '80', spear: Number.POSITIVE_INFINITY, cavalry: -10 },
+    generalIds: [],
+    mapProgress: { wei: Number.POSITIVE_INFINITY, shu: '240', wu: Number.NaN, jin: -2, qun: 480 },
+  });
+  assert.equal(malformedSiege.deploy, 80);
+  assert.ok(malformedSiege.counter > 0.55 && Number.isFinite(malformedSiege.counter));
+  assert.ok(Number.isFinite(malformedSiege.winChance));
+  check(true, '驻军/配兵总量、空城克制、守将去重、旧档迁移与名城权重均保持有限且可结算');
 }
 
 console.log('\n=== 国战检查全部通过 ===');
