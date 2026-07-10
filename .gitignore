@@ -4,15 +4,3 @@ build
 .DS_Store
 **/.DS_Store
 .codebase-memory/
-
-# Unity generated state and local build/validation output
-UnityClient/[Ll]ibrary/
-UnityClient/[Tt]emp/
-UnityClient/[Oo]bj/
-UnityClient/[Ll]ogs/
-UnityClient/[Uu]ser[Ss]ettings/
-UnityClient/[Bb]uilds/
-UnityClient/[Aa]rtifacts/
-UnityClient/[Mm]emoryCaptures/
-UnityClient/Assets/_Recovery/
-UnityClient/Assets/_Recovery.meta

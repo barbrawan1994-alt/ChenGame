@@ -11,8 +11,7 @@
     "check:balance": "node scripts/kingdom-balance-check.mjs && node scripts/gang-balance-check.mjs && node scripts/ecology-balance-check.mjs",
     "dist": "npm run build && electron-builder",
     "generate-icon": "node scripts/generate-icon.js",
-    "generate-general-portraits": "node scripts/generate-general-portraits.mjs",
-    "export:unity-data": "node scripts/export-unity-data.cjs"
+    "generate-general-portraits": "node scripts/generate-general-portraits.mjs"
   },
   "build": {
     "appId": "com.super.spirit",

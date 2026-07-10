@@ -13,7 +13,14 @@ import { getStats as getStatsRaw, getStageMult, calcNextExp, calcBattleBaseExp }
 import { createPet as createPetRaw, getMoveByLevel } from './utils/petFactory';
 import { ensureUniquePetUids, removeSinglePetByUid } from './utils/petIdentity';
 import { prepareCaughtPet, selectContestSpecies, syncPartyBattleResources } from './utils/contestUtils';
-import { getPostMoveResolution, getStoryObjective } from './utils/progressionFlow';
+import {
+  evolutionConditionMatches,
+  getEvolutionReadiness,
+  getPostMoveResolution,
+  getStoryObjective,
+  refreshEvolutionRoster,
+  refreshPetEvolution,
+} from './utils/progressionFlow';
 import { calculatePetGrade } from './utils/petGrade';
 import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowthCSS, renderTMCSS, renderMiscCSS, renderItemIcon, renderFruitCSSIcon } from './components/ItemIcons';
 import SkillDexScreen from './components/screens/SkillDexScreen';
@@ -1422,6 +1429,17 @@ const [fusionParent, setFusionParent] = useState(null); // 融合父本
     if (weather !== wk) setWeather(wk);
   }, [currentMapId, mapWeathers]);
 
+
+  // 时间、天气、等级或亲密度变化后统一重算进化资格。
+  // refreshEvolutionRoster 在无变化时保留原数组引用，因此不会形成状态循环。
+  useEffect(() => {
+    const context = { timePhase, weather };
+    const refreshedParty = refreshEvolutionRoster(party, POKEDEX, context);
+    const refreshedBox = refreshEvolutionRoster(box, POKEDEX, context);
+    if (refreshedParty !== party) setParty(refreshedParty);
+    if (refreshedBox !== box) setBox(refreshedBox);
+  }, [party, box, timePhase, weather]);
+
   const [leagueRound, setLeagueRound] = useState(savedData.leagueRound || 0);
   const [leagueRunNoDamage, setLeagueRunNoDamage] = useState(savedData.leagueRunNoDamage || false);
   // 在 RPG 组件内部
@@ -2569,18 +2587,11 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
     // ==========================================
 
-  const checkEvoCondition = (pet, evoDex) => {
-    // 进化条件定义在进化前形态上，优先读取当前形态，回退到目标形态
-    const srcDex = POKEDEX.find(p => p.id === pet.id);
+  const checkEvoCondition = (pet, evoDex, options = {}) => {
+    // 统一走纯函数判定，避免升级、糖果、树果和进化石各自使用不同规则。
+    const srcDex = POKEDEX.find(entry => entry.id === pet.id);
     const condition = srcDex?.evoCondition || evoDex?.evoCondition;
-    if (!condition) return true;
-    const tp = (condition.time || '').toUpperCase();
-    if (tp && tp !== timePhase) return false;
-    if (condition.weather && condition.weather !== weather) return false;
-    if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) return false;
-    // 道具进化条件不能通过升级/糖果触发，需使用对应进化石
-    if (condition.item) return false;
-    return true;
+    return evolutionConditionMatches(condition, pet, { timePhase, weather, ...options });
   };
 
   const applySingleBattleDot = (battleState, addLogFn = addLog) => {
@@ -4014,8 +4025,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const handleItemUseOnPet = (petIdx) => {
     if (!usingItem) return;
     
-    const newParty = [...party];
+    const newParty = party.map(member => ({
+      ...member,
+      moves: (member.moves || []).map(move => ({ ...move })),
+      ivs: member.ivs ? { ...member.ivs } : member.ivs,
+      evs: member.evs ? { ...member.evs } : member.evs,
+    }));
     const pet = newParty[petIdx];
+    const evolutionReadyBeforeUse = Boolean(pet?.canEvolve);
     if (!pet) { showMapToast('❌', '提示', '无效的精灵序号！', 1500); return; }
     const stats = getStats(pet);
     let consumed = false;
@@ -4027,7 +4044,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
     if (usingItem.category === 'stone') {
         const stoneId = usingItem.id;
         if (pet.isFusion) { showMapToast('❌', '提示', '融合精灵无法使用进化石！', 1500); return; }
-        if (pet.isEvolved) { showMapToast('ℹ️', '提示', '该精灵已经进化过了', 1500); return; }
         const rules = STONE_EVO_RULES[pet.id];
         
         if (rules && rules[stoneId]) {
@@ -4037,7 +4053,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
             if (targetPetInfo) {
                 const srcPetInfo = POKEDEX.find(p => p.id === pet.id);
                 const stoneEvoCond = srcPetInfo?.evoCondition || targetPetInfo.evoCondition;
-                if (stoneEvoCond && !checkEvoCondition(pet, targetPetInfo)) {
+                if (stoneEvoCond && !checkEvoCondition(pet, targetPetInfo, { allowItem: true, itemId: stoneId })) {
                     const cond = stoneEvoCond;
                     const hint = cond.time ? `需要在${cond.time.toUpperCase() === 'NIGHT' ? '夜晚' : '白天'}` : cond.intimacy ? `亲密度需≥${cond.intimacy}` : '条件不满足';
                     showMapToast('❌', '进化条件不足', hint, 2000);
@@ -4237,15 +4253,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
             const newStats = getStats(pet);
             pet.currentHp = newStats.maxHp; 
 
-            if (dex?.evo && !pet.isEvolved && pet.level >= (dex.evoLvl || 30)) {
-              const maxEvoDex = POKEDEX.find(p => p.id === dex.evo);
-              if (checkEvoCondition(pet, maxEvoDex)) {
-                pet.canEvolve = true;
-              }
-            }
-            
+            Object.assign(pet, refreshPetEvolution(pet, POKEDEX, { timePhase, weather }));
             consumed = true;
-            msg = `不可思议！${pet.name} 提升了 ${pet.level - oldLv} 级，现在是 Lv.${pet.level}！`;
+            msg = `不可思议！${pet.name} 提升了 ${pet.level - oldLv} 级，现在是 Lv.${pet.level}！${pet.canEvolve ? '（✨可以进化了）' : ''}`;
             setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}));
         } else if (item.id === 'exp_candy') {
             if (pet.level >= 100) { showMapToast('ℹ️', '提示', '它已经达到等级上限了！', 2000); return; }
@@ -4261,7 +4271,13 @@ const [viewStatPet, setViewStatPet] = useState(null);
                 setConfirmModal({ title: '🍬 批量使用经验糖果', msg: `将 ${pet.name} (Lv.${pet.level}) 一次性升到 Lv.${targetLv}？\n消耗经验糖果 x${targetLv - pet.level}`, onOk: () => {
                     const usedCount = targetLv - pet.level;
                     const np = [...party];
-                    const p = np[petIdx];
+                    const p = {
+                      ...np[petIdx],
+                      moves: (np[petIdx].moves || []).map(move => ({ ...move })),
+                      ivs: np[petIdx].ivs ? { ...np[petIdx].ivs } : np[petIdx].ivs,
+                      evs: np[petIdx].evs ? { ...np[petIdx].evs } : np[petIdx].evs,
+                    };
+                    np[petIdx] = p;
                     const oldLv = p.level;
                     p.level = targetLv;
                     p.exp = 0;
@@ -4270,42 +4286,6 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     const ns = getStats(p);
                     const hpDiff = Math.max(0, ns.maxHp - oldMaxHp);
                     p.currentHp = Math.min(ns.maxHp, p.currentHp + hpDiff);
-                    let evoMsg = '';
-                    const pdx = POKEDEX.find(px => px.id === p.id);
-                    let candyEvoTarget = pdx?.evo;
-                    if (pdx?.evoAlt) {
-                      for (const alt of pdx.evoAlt) {
-                        let altOk = true;
-                        if (alt.condition.time && alt.condition.time !== timePhase) altOk = false;
-                        if (alt.condition.weather && alt.condition.weather !== weather) altOk = false;
-                        if (alt.condition.intimacy && (p.intimacy || 0) < alt.condition.intimacy) altOk = false;
-                        if (altOk) { candyEvoTarget = alt.target; break; }
-                      }
-                    }
-                    if (candyEvoTarget && p.level >= (pdx?.evoLvl || 30) && !p.isEvolved && checkEvoCondition(p, POKEDEX.find(px => px.id === candyEvoTarget))) {
-                        const evoDex = POKEDEX.find(px => px.id === candyEvoTarget);
-                        if (evoDex) {
-                            const oldType = p.type;
-                            p.id = evoDex.id;
-                            p.name = p.isFusedShiny ? `异色·${evoDex.name}` : p.isShiny ? `✨${evoDex.name}` : evoDex.name;
-                            p.type = evoDex.type;
-                            if (evoDex.type2) { p.secondaryType = evoDex.type2; p.type2 = evoDex.type2; }
-                            else if (evoDex.secondaryType) { p.secondaryType = evoDex.secondaryType; p.type2 = evoDex.secondaryType; }
-                            else { p.secondaryType = null; p.type2 = null; }
-                            p.isEvolved = !evoDex.evo;
-                            p.evo = evoDex.evo || null;
-                            p.evoLvl = evoDex.evoLvl || null;
-                            p.canEvolve = false;
-                            if (evoDex.hp) { p.hp = evoDex.hp; p.atk = evoDex.atk; p.def = evoDex.def; p.s_atk = evoDex.s_atk; p.s_def = evoDex.s_def; p.spd = evoDex.spd; }
-                            if (p.type !== oldType) {
-                              const newMoves = [];
-                              (p.moves || []).forEach(m => { if (m.t === p.type || m.t === p.type2 || m.t === 'NORMAL') newMoves.push(m); });
-                              for (let mi = newMoves.length; mi < 4; mi++) { const nm = getMoveByLevel(p.type, p.level - (4 - mi) * 5); if (nm && !newMoves.some(x => x.name === nm.name)) newMoves.push(nm); }
-                              if (newMoves.length > 0) p.moves = newMoves.slice(0, 4);
-                            }
-                            evoMsg = ` 并进化为 ${p.name}！`;
-                        }
-                    }
                     const pokedex2 = POKEDEX.find(px => px.id === p.id);
                     if (pokedex2?.learnset) {
                         for (let lv = oldLv + 1; lv <= p.level; lv++) {
@@ -4320,9 +4300,12 @@ const [viewStatPet, setViewStatPet] = useState(null);
                         }
                     }
                     p.intimacy = Math.min(255, (p.intimacy || 0) + usedCount);
+                    const refreshedPet = refreshPetEvolution(p, POKEDEX, { timePhase, weather });
+                    np[petIdx] = refreshedPet;
                     setParty(np);
                     setInventory(prev => ({...prev, exp_candy: Math.max(0, (prev.exp_candy || 0) - usedCount)}));
-                    showMapToast('🍬', '批量升级', `${p.name} Lv.${oldLv} → Lv.${p.level}${evoMsg} (糖果x${usedCount}, 亲密度+${usedCount})`, 3000);
+                    const evolutionHint = refreshedPet.canEvolve ? '，并出现了进化征兆' : '';
+                    showMapToast('🍬', '批量升级', `${refreshedPet.name} Lv.${oldLv} → Lv.${refreshedPet.level}${evolutionHint}（糖果x${usedCount}，亲密度+${usedCount}）`, 3000);
                     setUsingItem(null); setView('bag');
                 }});
                 return;
@@ -4348,18 +4331,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
               });
             }
 
-            const pokedex = lsData;
-            if (pokedex?.evo && pet.level >= (pokedex.evoLvl || 30) && !pet.isEvolved) {
-                const evoDex = POKEDEX.find(p => p.id === pokedex.evo);
-                if (checkEvoCondition(pet, evoDex) && evoDex) {
-                    pet.canEvolve = true;
-                    msg = `🍬 ${pet.name} 升到了 Lv.${pet.level}！(✨进化征兆!)`;
-                } else {
-                    msg = `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
-                }
-            } else {
-                msg = `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
-            }
+            Object.assign(pet, refreshPetEvolution(pet, POKEDEX, { timePhase, weather }));
+            msg = pet.canEvolve
+              ? `🍬 ${pet.name} 升到了 Lv.${pet.level}！（✨可以进化了）`
+              : `🍬 ${pet.name} 升级了！Lv.${oldLv} → Lv.${pet.level}！`;
 
             consumed = true;
             setInventory(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}));
@@ -4381,12 +4356,22 @@ const [viewStatPet, setViewStatPet] = useState(null);
         // ▼▼▼ [新增] 增强剂也增加亲密度 ▼▼▼
         if(consumed) {
             pet.intimacy = Math.min(255, (pet.intimacy || 0) + 3); // 贵重物品加更多
+            const refreshedPet = refreshPetEvolution(pet, POKEDEX, { timePhase, weather });
+            newParty[petIdx] = refreshedPet;
             msg += ` (亲密度 +3)`;
+            if (!evolutionReadyBeforeUse && refreshedPet.canEvolve && !msg.includes('可以进化')) {
+              msg += '（✨可以进化了）';
+            }
         }
         // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     }
 
     if (consumed) {
+        const refreshedPet = refreshPetEvolution(newParty[petIdx], POKEDEX, { timePhase, weather });
+        newParty[petIdx] = refreshedPet;
+        if (!evolutionReadyBeforeUse && refreshedPet?.canEvolve && !msg.includes('可以进化')) {
+          msg += '（✨可以进化了）';
+        }
         setParty(newParty);
         showMapToast('✅', '使用成功', msg, 2000);
         
@@ -4619,25 +4604,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     mapGridCache: compactMapGridCache(mapGridCacheRef.current),
   };};
 
-  // Unity migration bridge: exports the authoritative browser save without deleting or mutating it.
-  const exportUnitySave = () => {
-    try {
-      const payload = buildSavePayload();
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = 'super-spirit-legacy-save.json';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      showMapToast('🎮', 'Unity 迁移存档已导出', '文件已保留全部旧版字段。启动 Unity 客户端后会从“下载”目录自动导入，旧存档不会被覆盖。', 6000);
-    } catch (error) {
-      console.error('Unity 存档导出失败', error);
-      showMapToast('⚠️', '导出失败', '无法生成 Unity 迁移文件，请先手动保存后重试。', 5000);
-    }
-  };
 
   const persistSave = (silent = false) => {
     const doSave = () => {
@@ -11975,43 +11941,56 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const berryId = prefOrder.find(id => (bMap[id] || 0) > 0);
     if (!berryId) return;
     const berry = BERRIES[berryId];
-    if (petIdx < 0 || petIdx >= party.length) return;
-    const t = [...party];
-    const p = t[petIdx];
-    const stats = getStats(p);
+    if (!berry || petIdx < 0 || petIdx >= party.length) return;
 
-    const applyBerryHeal = () => {
-      if (!berry) return;
-      if (berry.type === 'HP') {
-        p.currentHp = Math.min(stats.maxHp, p.currentHp + (berry.val || 30));
-      } else if (berry.type === 'HP_PCT') {
-        if (p.currentHp < stats.maxHp * 0.5) {
-          p.currentHp = Math.min(stats.maxHp, p.currentHp + Math.floor(stats.maxHp * (berry.val || 0.25)));
-        } else {
-          showMapToast('ℹ️', '提示', 'HP 高于50%时该树果效果较弱，仍少量恢复体力', 2000);
-          p.currentHp = Math.min(stats.maxHp, p.currentHp + 10);
-        }
-      } else if (berry.type === 'STATUS') {
-        if (berry.val === 'ALL' || p.status === berry.val) p.status = null;
-        p.currentHp = Math.min(stats.maxHp, p.currentHp + 15);
-      } else if (berry.type === 'PP') {
-        const mvs = p.moves || [];
-        const lowestPP = mvs.reduce((best, m, i) => (!best || (m.pp || 0) < (best.pp || 0)) ? { ...m, idx: i } : best, null);
-        if (lowestPP && mvs[lowestPP.idx]) mvs[lowestPP.idx].pp = Math.min(mvs[lowestPP.idx].maxPP || 15, (mvs[lowestPP.idx].pp || 0) + (berry.val || 10));
-      } else {
-        p.currentHp = Math.min(stats.maxHp, p.currentHp + 25);
-      }
+    const t = [...party];
+    let p = {
+      ...t[petIdx],
+      moves: (t[petIdx].moves || []).map(move => ({ ...move })),
     };
-    
-    // 即使满血也可以喂食来增加亲密度，除非亲密度也满了
-    if (p.currentHp >= stats.maxHp && (p.intimacy || 0) >= 255) { 
-        showMapToast('ℹ️', '提示', '它已经吃饱了，而且非常喜欢你！', 2000); 
-        return; 
+    const stats = getStats(p);
+    const hpBefore = p.currentHp;
+    const statusBefore = p.status || null;
+    const levelBefore = p.level;
+    const ppBefore = (p.moves || []).reduce((sum, move) => sum + (move.pp || 0), 0);
+    const canRestorePp = berry.type === 'PP' && (p.moves || []).some(move => (move.pp || 0) < (move.maxPP || 15));
+    const canCureStatus = berry.type === 'STATUS' && Boolean(statusBefore) && (berry.val === 'ALL' || statusBefore === berry.val);
+    const canHeal = p.currentHp < stats.maxHp;
+    const canBond = (p.intimacy || 0) < 255;
+
+    if (!canHeal && !canRestorePp && !canCureStatus && !canBond) {
+      showMapToast('ℹ️', '提示', '它不需要这个树果，而且与你的亲密度已经满了！', 2000);
+      return;
     }
-    
-    applyBerryHeal();
-    const actuallyHealed = p.currentHp < stats.maxHp;
-    if (actuallyHealed) p.exp += 20; else p.exp += 5;
+
+    if (berry.type === 'HP') {
+      p.currentHp = Math.min(stats.maxHp, p.currentHp + (berry.val || 30));
+    } else if (berry.type === 'HP_PCT') {
+      const ratio = p.currentHp < stats.maxHp * 0.5 ? (berry.val || 0.25) : 0.1;
+      p.currentHp = Math.min(stats.maxHp, p.currentHp + Math.max(10, Math.floor(stats.maxHp * ratio)));
+    } else if (berry.type === 'STATUS') {
+      if (berry.val === 'ALL' || p.status === berry.val) p.status = null;
+      p.currentHp = Math.min(stats.maxHp, p.currentHp + 15);
+    } else if (berry.type === 'PP') {
+      const candidates = (p.moves || [])
+        .map((move, idx) => ({ idx, pp: move.pp || 0, maxPP: move.maxPP || 15 }))
+        .filter(move => move.pp < move.maxPP)
+        .sort((a, b) => a.pp - b.pp);
+      const targetMove = candidates[0];
+      if (targetMove) {
+        p.moves[targetMove.idx].pp = Math.min(
+          targetMove.maxPP,
+          p.moves[targetMove.idx].pp + (berry.val || 10),
+        );
+      }
+    } else {
+      p.currentHp = Math.min(stats.maxHp, p.currentHp + 25);
+    }
+
+    const actuallyHealed = p.currentHp > hpBefore;
+    const curedStatus = statusBefore && !p.status;
+    const restoredPp = (p.moves || []).reduce((sum, move) => sum + (move.pp || 0), 0) > ppBefore;
+    p.exp = (p.exp || 0) + (actuallyHealed ? 20 : 5);
     while (p.level < 100 && p.nextExp > 0 && p.exp >= p.nextExp) {
       p.exp -= p.nextExp;
       const oldMaxHp = getStats(p).maxHp;
@@ -12020,32 +11999,36 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (p.nextExp <= 0) p.nextExp = 999999;
       const newMaxHp = getStats(p).maxHp;
       if (p.currentHp > 0) p.currentHp = Math.min(newMaxHp, p.currentHp + (newMaxHp - oldMaxHp));
-      const pdx = POKEDEX.find(px => px.id === p.id);
+      const pdx = POKEDEX.find(entry => entry.id === p.id);
       if (pdx?.learnset) {
         pdx.learnset.filter(ls => ls.level === p.level).forEach(ls => {
-          const nm = getMoveByLevel(p.type, ls.level);
-          if (nm && !p.moves?.some(m => m.name === nm.name)) {
-            if ((p.moves?.length || 0) < 4) p.moves = [...(p.moves || []), nm];
+          const newMove = allSkills.find(skill => skill.id === ls.move) || getMoveByLevel(p.type, ls.level);
+          if (newMove && !p.moves?.some(move => move.id === newMove.id || move.name === newMove.name)) {
+            const learnedMove = { ...newMove, pp: newMove.maxPP || newMove.pp || 15 };
+            if ((p.moves?.length || 0) < 4) p.moves = [...(p.moves || []), learnedMove];
+            else if (!p.pendingLearnMove) p.pendingLearnMove = learnedMove;
           }
         });
       }
-      if (pdx?.evo && p.level >= (pdx.evoLvl || 30) && !p.isEvolved && checkEvoCondition(p, POKEDEX.find(px => px.id === pdx.evo))) {
-        p.canEvolve = true;
-        showMapToast('✨', '进化征兆', `${p.name} 可以进化了！`, 2500);
-      }
     }
-    
-    const oldInt = p.intimacy || 0;
-    p.intimacy = Math.min(255, oldInt + 3);
+
+    const oldIntimacy = p.intimacy || 0;
+    p.intimacy = Math.min(255, oldIntimacy + 3);
+    const wasEvolutionReady = Boolean(p.canEvolve);
+    p = refreshPetEvolution(p, POKEDEX, { timePhase, weather });
+    t[petIdx] = p;
 
     setParty(t);
-    setInventory(prev => ({...prev, berries: addBerries(prev.berries, berryId, -1)}));
-    
-    const msgs = [`${p.name} 吃了树果`];
-    if (actuallyHealed) msgs.push('HP恢复了');
-    if (p.intimacy > oldInt) msgs.push('亲密度+3');
-    if (p.level > (stats.level || p.level)) msgs.push(`升到了Lv.${p.level}!`);
-    showMapToast('🍇', '喂食成功', msgs.join('，'), 2000);
+    setInventory(prev => ({ ...prev, berries: addBerries(prev.berries, berryId, -1) }));
+
+    const messages = [`${p.name} 吃了树果`];
+    if (actuallyHealed) messages.push('HP恢复了');
+    if (curedStatus) messages.push('异常状态解除了');
+    if (restoredPp) messages.push('技能PP恢复了');
+    if (p.intimacy > oldIntimacy) messages.push('亲密度+3');
+    if (p.level > levelBefore) messages.push(`升到了Lv.${p.level}`);
+    if (!wasEvolutionReady && p.canEvolve) messages.push('出现了进化征兆');
+    showMapToast('🍇', '喂食成功', messages.join('，'), 2200);
   };
 
 
@@ -19557,47 +19540,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           activeDidLevelUp = true; 
         }
 
-        // ▼▼▼ 进化条件检查 (支持 时间/天气/亲密度/分支进化) ▼▼▼
-        let meetsCondition = false;
-        
-        if (pet.evo && pet.level >= pet.evoLvl) {
-            const evoData = POKEDEX.find(p => p.id === pet.id);
-            
-            // 先检查分支进化 (evoAlt) 是否匹配当前条件
-            let altTarget = null;
-            if (evoData?.evoAlt) {
-              for (const alt of evoData.evoAlt) {
-                let altMatch = true;
-                if (alt.condition.time && alt.condition.time !== timePhase) altMatch = false;
-                if (alt.condition.weather && alt.condition.weather !== weather) altMatch = false;
-                if (alt.condition.intimacy && (pet.intimacy || 0) < alt.condition.intimacy) altMatch = false;
-                if (altMatch) { altTarget = alt.target; break; }
-              }
-            }
-            
-            if (altTarget) {
-              // 分支进化条件满足，切换进化目标
-              pet.evo = altTarget;
-              meetsCondition = true;
-            } else {
-              // 进化条件定义在当前形态上，不在目标形态
-              meetsCondition = true;
-              const condition = evoData?.evoCondition;
-              if (condition) {
-                const cTime = (condition.time || '').toUpperCase();
-                if (cTime && cTime !== timePhase) meetsCondition = false;
-                if (condition.weather && condition.weather !== weather) meetsCondition = false;
-                if (condition.intimacy && (pet.intimacy || 0) < condition.intimacy) meetsCondition = false;
-                if (condition.item) meetsCondition = false;
-              }
-            }
+        // 统一重算进化资格：分支、昼夜、天气、亲密度与道具条件使用同一规则。
+        const wasEvolutionReady = Boolean(pet.canEvolve);
+        const readiness = getEvolutionReadiness(pet, POKEDEX, { timePhase, weather });
+        pet = refreshPetEvolution(pet, POKEDEX, { timePhase, weather });
+        if (!wasEvolutionReady && readiness.ready && isActive) {
+          levelUpLog += ` (✨进化征兆!)`;
         }
-
-        if (meetsCondition) {
-           pet.canEvolve = true;
-           if (isActive) levelUpLog += ` (✨进化征兆!)`;
-        }
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         if (pet.level % 5 === 0) {
           const secType = pet.secondaryType || pet.type2;
@@ -20138,6 +20087,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         return pet;
       });
     }
+    updatedParty = refreshEvolutionRoster(updatedParty, POKEDEX, { timePhase, weather });
     let partyToSave = updatedParty; // 🔥 使用更新了亲密度的队伍
     const commitPartyToSave = (nextParty) => {
       partyToSave = (nextParty || updatedParty).map(p => ({ ...p }));
@@ -24559,7 +24509,8 @@ const renderMenu = () => {
           const availableLines = SIDE_STORY_LINES.filter(l => badges.length >= l.unlockBadges);
           if (availableLines.length === 0) return null;
 
-          const allDone = SIDE_STORY_LINES.every(l => completedSideStories.has(l.id));
+          const implementedLines = SIDE_STORY_LINES.filter(line => !line.isNarutoArc && !line.isSanguoArc);
+          const allDone = implementedLines.every(line => completedSideStories.has(line.id));
           const hasActive = activeSideStory !== null;
           const activeLine = hasActive ? SIDE_STORY_LINES.find(l => l.id === activeSideStory) : null;
           const activeChIdx = hasActive && activeLine ? storyProgress - activeLine.startIdx + 1 : 0;
@@ -27550,7 +27501,7 @@ const renderMenu = () => {
                   const dexE = POKEDEX.find(p => p.id === viewStatPet.id);
                   const nextId = dexE?.evo;
                   const nextDex = nextId ? POKEDEX.find(p => p.id === nextId) : null;
-                  if (!nextDex || viewStatPet.isEvolved) return null;
+                  if (!nextDex) return null;
                   const needLv = dexE?.evoLvl || 36;
                   return (
                     <div className="pet-detail-section pet-detail-evolution-note" style={{ margin: '0 20px 12px', padding: '10px 12px', background: '#E3F2FD', borderRadius: '10px', fontSize: '11px', color: '#1565C0', border: '1px solid #BBDEFB' }}>
@@ -34273,6 +34224,7 @@ const renderMenu = () => {
               customBaseStats: oldPet.isFusedShiny ? oldPet.customBaseStats : null, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
               isEvolved: !newDex?.evo, evo: newDex?.evo || null, evoLvl: newDex?.evoLvl || null
             });
+            newParty[realIdx] = refreshPetEvolution(newParty[realIdx], POKEDEX, { timePhase, weather });
             newParty[realIdx].currentHp = getStats(newParty[realIdx]).maxHp;
             return newParty;
           }
@@ -34292,6 +34244,7 @@ const renderMenu = () => {
             customBaseStats: oldPet.isFusedShiny ? oldPet.customBaseStats : null, canEvolve: false, pendingLearnMove: oldPet.pendingLearnMove,
             isEvolved: !newDex?.evo, evo: newDex?.evo || null, evoLvl: newDex?.evoLvl || null
           });
+          newParty[idx] = refreshPetEvolution(newParty[idx], POKEDEX, { timePhase, weather });
           newParty[idx].currentHp = getStats(newParty[idx]).maxHp;
           return newParty;
         });
@@ -34655,16 +34608,6 @@ const renderMenu = () => {
                   );
                 })}
               </div>
-            </div>
-            <div style={{background:'linear-gradient(135deg,rgba(50,215,196,0.14),rgba(124,77,255,0.14))',border:'1px solid rgba(50,215,196,0.3)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
-              <div style={{fontSize:'13px',fontWeight:'800',color:'#5eead4',marginBottom:'8px'}}>🎮 Unity 6 原生客户端迁移</div>
-              <div style={{fontSize:'11px',lineHeight:'1.65',color:'rgba(255,255,255,0.62)',marginBottom:'12px'}}>
-                导出当前完整存档到 Unity 兼容 JSON。Unity 客户端会保留原始文件，并将地图位置、训练师和晶币写入独立原生存档；不会覆盖这里的浏览器存档。
-              </div>
-              <button type="button" onClick={exportUnitySave} style={{width:'100%',padding:'11px',borderRadius:'10px',border:'1px solid rgba(94,234,212,0.5)',background:'rgba(20,184,166,0.2)',color:'#ccfbf1',fontSize:'13px',fontWeight:'800',cursor:'pointer'}}>
-                ⬇ 导出 Unity 迁移存档
-              </button>
-              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.4)',marginTop:'8px'}}>文件名：super-spirit-legacy-save.json · 默认保存到“下载”目录</div>
             </div>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#ef4444',marginBottom:'12px'}}>⚠️ 危险操作</div>

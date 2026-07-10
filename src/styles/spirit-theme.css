@@ -606,35 +606,47 @@ textarea {
 .spirit-app .jutsu-codex-screen {
   color: var(--sp-white) !important;
   background:
-    linear-gradient(180deg, rgba(4, 17, 30, 0.45), rgba(4, 17, 30, 0.9)),
+    linear-gradient(180deg, rgba(4, 17, 30, 0.72), rgba(4, 17, 30, 0.94)),
     url('../../public/assets/spirit-ui-sky-bg.webp') center / cover fixed !important;
 }
 
-.spirit-app .gd-filterbar,
+.spirit-app .gd-topbar,
+.spirit-app .gd-sidebar,
 .spirit-app .jutsu-codex-filter,
 .spirit-app .jutsu-stat-panel {
-  background: rgba(7, 26, 46, 0.92) !important;
-  border: 2px solid rgba(140, 225, 198, 0.28) !important;
-  border-radius: var(--sp-radius-md) !important;
-  box-shadow: var(--sp-shadow) !important;
+  background-color: rgba(7, 26, 46, 0.94) !important;
+  border-color: rgba(140, 225, 198, 0.28) !important;
 }
 
-.spirit-app :where(.gd-category, .gd-section, .combo-card) {
+.spirit-app :where(
+  .gd-hero,
+  .gd-article-header,
+  .gd-article-section,
+  .gd-unlock-table,
+  .gd-starter-grid li,
+  .gd-fix-grid button,
+  .combo-card
+) {
   color: var(--sp-white) !important;
-  background: var(--sp-panel-raised) !important;
-  border: 2px solid rgba(255, 246, 216, 0.2) !important;
-  border-radius: var(--sp-radius-md) !important;
+  border-color: rgba(255, 246, 216, 0.2) !important;
   box-shadow: var(--sp-shadow) !important;
 }
 
-.spirit-app :where(.gd-category-head, .gd-section-head) {
+.spirit-app :where(
+  .gd-brand h1,
+  .gd-hero-copy h2,
+  .gd-block-heading h2,
+  .gd-article-header h2,
+  .jutsu-filter-title,
+  .sect-panel-title
+) {
   color: var(--sp-paper) !important;
-  background: rgba(35, 106, 105, 0.34) !important;
+  font-family: var(--sp-font-display) !important;
 }
 
-.spirit-app :where(.gd-heading, .jutsu-filter-title, .sect-panel-title) {
+.spirit-app :where(.gd-brand-kicker, .gd-eyebrow, .gd-block-heading > div > span) {
   color: var(--sp-gold-400) !important;
-  font-family: var(--sp-font-display) !important;
+  font-family: var(--sp-font-pixel) !important;
 }
 
 /* ---- World atlas and kingdoms ---- */
