@@ -14748,8 +14748,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         for (let i = 0; i < gen.teamSize; i++) {
           enemyParty.push(createPet(_.sample(context.pool || [6,9,65,94,130,143,149,168,199,241]), genLv + _.random(-3, 3), true));
         }
-        const fData = gen.faction !== 'neutral' ? FACTIONS[gen.faction] : null;
-        const fTag = fData ? '['+fData.fullName+']' : '[群雄]';
+        const fTag = `[${gen.historicalFaction || (gen.faction !== 'neutral' ? FACTIONS[gen.faction]?.fullName : '汉末群雄')}]`;
         trainerName = fTag + gen.name + ' · ' + gen.title;
         dropGold = Math.floor(gen.recruitCost * 0.05);
         extraBattleData.generalEncounter = gen;
@@ -22218,7 +22217,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const finalCost = Math.floor(gen.recruitCost * costMult * Math.max(0.5, 1 - genRecruitDiscount / 100) * recruitPerkMult);
         const rarityLabel = GENERAL_RARITY_CONFIG[gen.rarity]?.label || '将';
         const _recruitMsg = '⚔️ 名将降临！\n\n' +
-          (gen.faction !== 'neutral' ? FACTIONS[gen.faction]?.fullName + ' · ' : '群雄 · ') +
+          (gen.historicalFaction || (gen.faction !== 'neutral' ? FACTIONS[gen.faction]?.fullName : '汉末群雄')) + ' · ' +
           gen.name + ' [' + gen.title + '] (' + rarityLabel + ')\n' +
           '📊 史实评分: ' + gen.historicalScore + ' · ' + gen.roleLabel + '定位 · Lv.' + gen.teamLevel + ' · ' + gen.teamSize + '只精灵\n' +
           '📖 ' + gen.desc + '\n\n' +
@@ -25301,7 +25300,7 @@ const renderGeneralDex = () => {
                 <strong>{gen.name}</strong>
                 <p>{gen.title}</p>
                 <div className="codex-card-meta">
-                  <span style={{color: factionLightColors[gen.faction] || '#9E9E9E', fontWeight: 700}}>{factionNames[gen.faction]||'群雄'}</span>
+                  <span style={{color: factionLightColors[gen.faction] || '#9E9E9E', fontWeight: 700}}>{gen.historicalFaction || factionNames[gen.faction] || '汉末群雄'}</span>
                   <span>史评 {gen.historicalScore}</span>
                   {bioData && <span>{bioData.isHistorical ? '正史' : '虚构'}</span>}
                 </div>
@@ -27579,7 +27578,7 @@ const renderMenu = () => {
                                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
                                       <span style={{fontWeight:'800', fontSize:'14px', color:'#1e293b'}}>{gen.name}</span>
                                       <span style={{fontSize:'9px', fontWeight:'700', color:rc.color, background:rc.bgColor, padding:'1px 6px', borderRadius:'4px'}}>{rc.label}</span>
-                                      {fData && <span style={{fontSize:'9px', color:fData.color, fontWeight:'600'}}>{fData.icon}{fData.name}</span>}
+                                      <span style={{fontSize:'9px', color:fData?.color || '#64748b', fontWeight:'600'}}>{fData?.icon || '📜'}{gen.historicalFaction || fData?.name || '汉末群雄'}</span>
                                     </div>
                                     <div style={{fontSize:'11px', color:'#64748b', marginTop:'2px'}}>{gen.title}</div>
                                   </div>
@@ -36879,7 +36878,7 @@ const renderMenu = () => {
                 <div style={{fontSize:'12px', color:'rgba(255,255,255,0.7)', marginTop:'4px'}}>{gen.title}</div>
                 <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
                   <span style={{fontSize:'10px', fontWeight:'700', color:rc.color, background:rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
-                  {fData && <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fData.icon}{fData.fullName}</span>}
+                  <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fData?.icon || '📜'}{gen.historicalFaction || fData?.fullName || '汉末群雄'}</span>
                 </div>
                 <div style={{fontSize:'11px', color:'rgba(255,255,255,0.85)', marginTop:'8px', fontWeight:'700'}}>史评 {gen.historicalScore} · {gen.roleLabel} · Lv.{gen.teamLevel} · {gen.teamSize}只精灵</div>
               </div>
@@ -36913,8 +36912,7 @@ const renderMenu = () => {
         const gen = genDexDetail;
         const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
         const pt = getGeneralPortrait(gen);
-        const fData = gen.faction !== 'neutral' ? FACTIONS[gen.faction] : null;
-        const fLabel = fData ? fData.fullName : '群雄';
+        const fLabel = gen.historicalFaction || (gen.faction !== 'neutral' ? FACTIONS[gen.faction]?.fullName : '汉末群雄');
         const bonusLabelsD = {gold:'金币奖励',exp:'经验奖励',contrib:'国战贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
         const bioData = GENERAL_BIOS[gen.id];
         const isR = (kingdomWar?.recruitedGenerals || []).some(g => g.id === gen.id);

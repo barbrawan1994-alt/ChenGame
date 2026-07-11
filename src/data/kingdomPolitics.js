@@ -14,13 +14,27 @@ export const QUN_LORDS = Object.freeze([
 ]);
 
 const QUN_LORD_MEMBERS = Object.freeze({
-  yuan_shao: ['neu_yuan_shao', 'neu_yuan_shu', 'neu_yan_liang', 'neu_wen_chou', 'neu_tian_feng', 'neu_ju_shou', 'neu_han_fu', 'neu_chen_lin', 'neu_tao_qian2', 'neu_lei_bo'],
+  yuan_shao: [
+    'neu_yuan_shao', 'neu_yuan_shu', 'neu_yan_liang', 'neu_wen_chou', 'neu_tian_feng', 'neu_ju_shou',
+    'neu_han_fu', 'neu_chen_lin', 'neu_tao_qian2', 'neu_lei_bo', 'neu_yuan_tan', 'neu_yuan_xi',
+    'neu_yuan_shang', 'neu_gao_gan', 'neu_shen_pei', 'neu_feng_ji', 'neu_guo_tu', 'neu_xin_ping',
+    'neu_qu_yi', 'neu_chunyu_qiong', 'neu_jiang_yiqu',
+  ],
   dong_zhuo: ['neu_dong_zhuo', 'neu_hua_xiong', 'neu_li_jue', 'neu_guo_si', 'neu_fan_chou', 'neu_zhang_ji', 'neu_li_ru', 'neu_niu_fu', 'neu_cai_yong', 'neu_wang_yun'],
-  lv_bu: ['neu_lv_bu', 'neu_diao_chan', 'neu_chen_gong', 'neu_gao_shun', 'neu_ding_yuan', 'neu_zhang_yang', 'neu_zhang_miao'],
+  lv_bu: [
+    'neu_lv_bu', 'neu_diao_chan', 'neu_chen_gong', 'neu_gao_shun', 'neu_ding_yuan', 'neu_zhang_yang',
+    'neu_zhang_miao', 'neu_yufuluo', 'neu_huchuquan', 'neu_liu_bao',
+  ],
   yellow_turban: ['neu_zhang_jiao', 'neu_zhang_bao_hj', 'neu_zhang_liang_hj', 'neu_zhang_yan', 'neu_yang_feng', 'neu_li_que'],
-  jingzhou: ['neu_liu_biao', 'neu_liu_cong', 'neu_liu_qi', 'neu_han_xuan', 'neu_liu_du', 'neu_jin_xuan', 'neu_zhao_fan', 'neu_sha_moke'],
+  jingzhou: [
+    'neu_liu_biao', 'neu_liu_cong', 'neu_liu_qi', 'neu_han_xuan', 'neu_liu_du', 'neu_jin_xuan',
+    'neu_zhao_fan', 'neu_sha_moke', 'neu_kuai_yue', 'neu_kuai_liang', 'neu_cai_mao', 'neu_huang_zu', 'neu_han_song',
+  ],
   xiliang: ['neu_ma_teng', 'neu_han_sui', 'neu_zhang_xiu', 'neu_ma_wan', 'neu_hou_xuan'],
-  youzhou: ['neu_gongsun_zan', 'neu_gongsun_du', 'neu_gongsun_yuan', 'neu_liu_yu', 'neu_ta_dun', 'neu_kong_rong'],
+  youzhou: [
+    'neu_gongsun_zan', 'neu_gongsun_du', 'neu_gongsun_yuan', 'neu_liu_yu', 'neu_ta_dun', 'neu_kong_rong',
+    'neu_gongsun_kang', 'neu_gongsun_gong',
+  ],
   yizhou: ['neu_liu_zhang', 'neu_liu_yan', 'neu_zhang_lu', 'neu_zhang_ren', 'neu_tao_qian'],
   nanman: ['neu_meng_huo', 'neu_zhu_rong', 'neu_wu_tugu', 'neu_shi_xie', 'neu_liu_yao'],
 });

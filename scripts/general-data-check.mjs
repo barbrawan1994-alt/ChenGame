@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { GENERAL_BIOS } from '../src/data/generalBios.js';
+import { GENERAL_EXPANSION } from '../src/data/generalExpansion.js';
 import { HISTORICAL_BATTLES } from '../src/data/historicalBattles.js';
 import {
   GENERAL_DRAW_RATES,
@@ -20,10 +21,10 @@ const check = (condition, message) => {
 
 console.log('=== 名将数据完整性与评级检查 ===\n');
 
-check(SANGUO_GENERALS.length === 400, '现有 400 人名册保持完整，优先保证质量而非机械扩到 500 人');
+check(SANGUO_GENERALS.length === 550, '名将录已扩充为 550 位独立人物');
 check(new Set(SANGUO_GENERALS.map(general => general.id)).size === SANGUO_GENERALS.length, '名将 ID 全部唯一');
 check(new Set(SANGUO_GENERALS.map(general => general.name)).size === SANGUO_GENERALS.length, '名将姓名全部唯一');
-check(Object.keys(GENERAL_BIOS).length === SANGUO_GENERALS.length, '400 位名将全部具有传记或史料简表');
+check(Object.keys(GENERAL_BIOS).length === SANGUO_GENERALS.length, '550 位名将全部具有独立传记或史料简表');
 
 const historicalNameAliases = {
   shu_huang_yueying: '黄氏',
@@ -43,7 +44,7 @@ const profileCounts = Object.values(GENERAL_BIOS).reduce((counts, bio) => {
   return counts;
 }, {});
 check(profileCounts.full === 269, '269 份既有完整传记正确标记为历史生平');
-check(profileCounts.sourced === 14, '14 位替换人物正确标记为有出处的完整资料');
+check(profileCounts.sourced === 164, '14 位替换人物与 150 位新增人物均具有史料出处');
 check(profileCounts.brief === 117, '117 份简要资料保持史料简表标记，不冒充完整传记');
 
 const portraitHalo = { SSR: '#f7d35a', SR: '#b9c7e7', R: '#aab2bd' };
@@ -52,7 +53,7 @@ for (const general of SANGUO_GENERALS) {
   assert.ok(portrait.includes(`aria-label="${general.name} portrait"`), `${general.name} 头像仍带有旧人物标签`);
   assert.ok(portrait.includes(`stroke="${portraitHalo[general.rarity]}"`), `${general.name} 头像光环未同步 ${general.rarity} 评级`);
 }
-check(true, '400 张名将头像齐全，人物标签与评级光环均和当前名单一致');
+check(true, '550 张名将头像齐全，人物标签与评级光环均和当前名单一致');
 
 const scoreRanges = { SSR: [84, 92], SR: [72, 83], R: [55, 71] };
 const costRanges = { SSR: [105000, 155000], SR: [48000, 92000], R: [15000, 45000] };
@@ -66,6 +67,7 @@ for (const general of SANGUO_GENERALS) {
   assert.ok(general.recruitCost >= costMin && general.recruitCost <= costMax, `${general.name} 招募费用与档位不符`);
   assert.ok(general.teamSize >= 2 && general.teamSize <= 6, `${general.name} 携带精灵数量越界`);
   assert.ok(general.role && general.roleLabel, `${general.name} 缺少玩法定位`);
+  assert.ok(general.historicalFaction, `${general.name} 缺少历史归属`);
 }
 check(true, '所有评级、遭遇等级、队伍规模、招募费和定位均来自同一评分源');
 
@@ -77,7 +79,35 @@ const factionCounts = Object.fromEntries(['wei', 'shu', 'wu', 'jin', 'neutral'].
   ])),
 ]));
 check(new Set(Object.values(factionCounts).map(counts => counts.SSR)).size > 1, '各阵营 SSR 数量不再强制相等');
+check(factionCounts.wei.SSR >= 17 && factionCounts.shu.SSR >= 16 && factionCounts.wu.SSR >= 16, '魏蜀吴 SSR 已按军政实绩重评，不再只有 6/6/8 人');
 console.log('  评级分布:', factionCounts);
+
+check(GENERAL_EXPANSION.length === 150, '新增名单恰为 150 人，总量达到 550');
+for (const raw of GENERAL_EXPANSION) {
+  const profile = GENERAL_BIOS[raw.id];
+  assert.equal(profile?.profileLevel, 'sourced', `${raw.name} 未标记为有出处资料`);
+  assert.ok(profile?.source, `${raw.name} 缺少史料来源`);
+  assert.ok(profile?.bio?.includes(raw.name), `${raw.name} 传记与姓名不匹配`);
+  assert.ok(profile?.years, `${raw.name} 缺少生卒年状态`);
+  assert.equal(SANGUO_GENERALS.find(general => general.id === raw.id)?.historicalFaction, raw.historicalFaction, `${raw.name} 历史归属未进入战斗名将快照`);
+}
+check(true, '150 位新增人物均有独立简传、事迹、年代状态、历史归属和史料来源');
+
+const historicalAccuracyExpectations = {
+  wei_xing_yong: ['邢颙', '子昂', '《三国志·魏书·邢颙传》'],
+  wu_sun_jiao: ['孙皎', '叔朗', '《三国志·吴书·孙皎传》'],
+};
+for (const [id, [name, courtesy, source]] of Object.entries(historicalAccuracyExpectations)) {
+  const general = SANGUO_GENERALS.find(entry => entry.id === id);
+  const bio = GENERAL_BIOS[id];
+  assert.equal(general?.name, name, `${id} 史籍姓名错误`);
+  assert.equal(bio?.courtesy, courtesy, `${name} 表字错误`);
+  assert.equal(bio?.source, source, `${name} 史料卷传错误`);
+}
+assert.ok(GENERAL_BIOS.shu_chen_zhi.bio.includes('费祎死后'), '陈祗生平仍含费祎姓名误字');
+assert.ok(GENERAL_BIOS.wu_lu_yan.bio.includes('王濬军'), '陆晏生平未使用王濬的史籍姓名');
+assert.ok(GENERAL_BIOS.neu_liu_xie.bio.includes('李傕、郭汜'), '汉献帝生平仍含李傕姓名误字');
+check(true, '易混姓名与关键史实用字均锁定为正史写法');
 
 const replacementExpectations = {
   wei_sima_yi: ['贾逵', '梁道', 'SR', 'defender'],
