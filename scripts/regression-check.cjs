@@ -964,6 +964,21 @@ check('移动主页从顶部开始且浏览器音频等待首次用户手势', (
   assert.ok(responsiveHome.includes('height: 100dvh'));
 });
 
+check('游戏首页只保留一个无遮挡的开始游戏入口', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'src/App.css'), 'utf8');
+  const menuStart = app.indexOf('const renderMenu = () => {');
+  const menu = app.slice(menuStart, app.indexOf('const renderWorldMap = () => {', menuStart));
+  const startActions = menu.match(/onClick=\{handleStartGame\}/g) || [];
+  assert.equal(startActions.length, 1);
+  assert.ok(menu.includes('className="home-cover-main-start"'));
+  assert.ok(menu.includes('<strong>开始游戏</strong>'));
+  assert.equal(menu.includes('home-cover-start-panel'), false);
+  assert.equal(menu.includes('继续冒险'), false);
+  assert.equal(css.includes('.home-cover-start-panel'), false);
+  assert.equal(css.includes('.home-gate-primary'), false);
+});
+
 check('竞技场胜负、徽章拦截与首次晋级奖励为纯且幂等的状态结算', () => {
   const base = { ...arenaData.DEFAULT_ARENA_STATE, stars: 2, tickets: 5 };
   const blocked = arenaData.resolveArenaResult(base, true, 0);
