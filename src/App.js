@@ -47,7 +47,7 @@ import {
   SkillCastEffect,
   EnhancedBattleMessage 
 } from './engines/BattleEnhancements';
-import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, STARTER_POOL_IDS, BGM_SOURCES, THEME_CONFIG, GAME_NAME, GAME_EN_NAME, GAME_VERSION_LABEL, GAME_TAGLINE, DEFAULT_BATTLE_STAGES, MS_PER_DAY, MS_PER_MINUTE, STAT_BUFF_MAP, LEAGUE_ROUNDS, WHEEL_FREE_SPINS_PER_DAY, WHEEL_PAID_SPIN_COST, WHEEL_PITY_INTERVAL, SEASON_NPC_NAMES, NINJA_ID_ORDER, SIDE_STORY_LINES, BREATHING_BUFFS, COMBO_JUTSU_LIST } from './data/constants';
+import { SAVE_KEY, COVER_IMG, GRID_W, GRID_H, BGM_SOURCES, THEME_CONFIG, GAME_NAME, GAME_EN_NAME, GAME_VERSION_LABEL, GAME_TAGLINE, DEFAULT_BATTLE_STAGES, MS_PER_DAY, MS_PER_MINUTE, STAT_BUFF_MAP, LEAGUE_ROUNDS, WHEEL_FREE_SPINS_PER_DAY, WHEEL_PAID_SPIN_COST, WHEEL_PITY_INTERVAL, SEASON_NPC_NAMES, NINJA_ID_ORDER, SIDE_STORY_LINES, BREATHING_BUFFS, COMBO_JUTSU_LIST } from './data/constants';
 import { TYPES, TYPE_CHARM_BASE, TYPE_BIAS } from './data/types';
 import {
   BALLS,
@@ -65,6 +65,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
+import { buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters } from './utils/starterSelection';
 import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS, normalizeUnlockedAchievementIds, normalizeAchievementTitles, normalizeCurrentAchievementTitle } from './data/achievements';
 import GAME_GUIDE from './data/gameGuide';
 import { generateSprite } from './SpriteGenerator';
@@ -1496,6 +1497,12 @@ const [pendingTask, setPendingTask] = useState(null);
             src={visual.url} 
             alt={pet.name} 
             className={visual.type === 'pixel' ? 'pet-avatar-pixel' : (isDigimon ? 'pet-avatar-img pet-avatar-digimon' : 'pet-avatar-img')}
+            style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0 }}
+            onLoad={e => {
+              e.target.style.opacity = '1';
+              const fb = e.target.parentElement?.querySelector('.avatar-fallback');
+              if (fb) fb.style.display = 'none';
+            }}
             onError={e => {
               const img = e.target;
               const tried = parseInt(img.dataset.retryIdx || '0', 10);
@@ -1511,12 +1518,13 @@ const [pendingTask, setPendingTask] = useState(null);
             }}
           />
           <div className="avatar-fallback" style={{
-            display:'none', width:'100%', height:'100%', alignItems:'center', justifyContent:'center',
+            display:'flex', position:'absolute', inset:0, zIndex:0, width:'100%', height:'100%', alignItems:'center', justifyContent:'center',
             background: `linear-gradient(135deg, ${tc}40, ${tc}15)`,
-            borderRadius:'50%', fontSize:'clamp(14px, 38%, 42px)', fontWeight:'900',
+            borderRadius: variant === 'portrait' ? '8px' : variant === 'compact' ? '6px' : '50%',
+            fontSize: variant === 'portrait' ? '64px' : variant === 'compact' ? '28px' : 'clamp(14px, 2.5vw, 42px)', fontWeight:'900',
             color: tc, textShadow: `0 1px 4px ${tc}60`
           }}>
-            {(pet.name || '?')[0]}
+            {pet.emoji || (pet.name || '?')[0]}
           </div>
           {pet.isFusedShiny ? (
             <div style={{
@@ -1585,6 +1593,13 @@ const [pendingTask, setPendingTask] = useState(null);
   const [targetEquipSlot, setTargetEquipSlot] = useState({ petIdx: 0, slotIdx: 0 });
 
   const [starterOptions, setStarterOptions] = useState([]);
+  const [starterView, setStarterView] = useState('recommended');
+  const [starterSearch, setStarterSearch] = useState('');
+  const [starterType, setStarterType] = useState('ALL');
+  const [starterPage, setStarterPage] = useState(1);
+  const [starterCatalogPet, setStarterCatalogPet] = useState(null);
+  const starterPetCacheRef = useRef(new Map());
+  const previousStarterIdsRef = useRef([]);
 const [fusionParent, setFusionParent] = useState(null); // 融合父本
   const [fusionChild, setFusionChild] = useState(null);   // 融合母本
   const [fusionSlot, setFusionSlot] = useState(null);     // 当前正在选择哪个槽位 ('parent' 或 'child')
@@ -12952,39 +12967,27 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
     // ==========================================
-  // [修改] 初始精灵生成 (预先生成完整个体，保证所见即所得)
+  // 初始精灵生成：推荐池覆盖不同属性，完整图鉴中的个体按物种缓存。
   // ==========================================
+  const starterCatalog = useMemo(() => buildStarterCatalog({
+    pokedex: POKEDEX,
+    stoneEvolutionRules: STONE_EVO_RULES,
+    excludedIds: [...LEGENDARY_POOL, ...HIGH_TIER_POOL, ...NEW_GOD_IDS, ...FINAL_GOD_IDS],
+    typeBias: TYPE_BIAS,
+  }), []);
+
+  const getOrCreateStarterPet = (base) => {
+    if (!base?.id) return null;
+    if (!starterPetCacheRef.current.has(base.id)) {
+      starterPetCacheRef.current.set(base.id, createPet(base.id, 5, false, false, { preserveSpecies: true }));
+    }
+    return starterPetCacheRef.current.get(base.id);
+  };
+
   const generateStarterOptions = () => {
-    const evolvedIds = new Set();
-    POKEDEX.forEach(p => { if (p.evo) evolvedIds.add(p.evo); });
-    const calcFullBst = (p) => {
-      const b = TYPE_BIAS[p.type] || { p: 1.0, s: 1.0 };
-      const d = (p.id % 5) * 2 - 4;
-      return (p.hp||60) + Math.floor((p.atk||50)*b.p)+d + Math.floor((p.def||50)*b.p)
-        + Math.floor((p.atk||50)*b.s)-d + Math.floor((p.def||50)*b.s) + (p.spd||(40+(p.id*7%70)));
-    };
-    const validStarters = POKEDEX.filter(p => {
-      if (!p || !p.id) return false;
-      if (evolvedIds.has(p.id)) return false;
-      if (LEGENDARY_POOL.includes(p.id)) return false;
-      if (HIGH_TIER_POOL.includes(p.id)) return false;
-      if (NEW_GOD_IDS.includes(p.id)) return false;
-      if (FINAL_GOD_IDS.includes(p.id)) return false;
-      if (p.id > 600) return false;
-      if (['GOD','COSMIC'].includes(p.type)) return false;
-      if (calcFullBst(p) > 500) return false;
-      if (p.evo) {
-        const et = POKEDEX.find(e => e.id === p.evo);
-        if (et && ['GOD','COSMIC'].includes(et.type)) return false;
-      }
-      return true;
-    });
-    const shuffled = _.shuffle(validStarters).slice(0, 8);
-    const created = shuffled.map(base => createPet(base.id, 5)).filter(pet => {
-      const bi = POKEDEX.find(d => d.id === pet.id) || {};
-      return calcFullBst(bi) <= 500 && !['GOD','COSMIC'].includes(bi.type);
-    });
-    setStarterOptions(created.slice(0, 5));
+    const recommendations = sampleDiverseStarters(starterCatalog, 5, previousStarterIdsRef.current);
+    previousStarterIdsRef.current = recommendations.map((base) => base.id);
+    setStarterOptions(recommendations.map(getOrCreateStarterPet).filter(Boolean));
   };
 
    // getMoveByLevel 已前置到 createPet 之前
@@ -24106,24 +24109,22 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 const renderNameInput = () => {
   const nameReady = tempName.trim().length > 0;
   const showStarters = nameReady && starterOptions.length > 0;
-  const starterSummary = starterOptions.length > 0
-    ? starterOptions.map((p) => {
-        const stats = getStats(p);
-        const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
-        const bias = TYPE_BIAS[baseInfo.type] || { p: 1.0, s: 1.0 };
-        const diversity = (baseInfo.id % 5) * 2 - 4;
-        const bstHp = baseInfo.hp || 60;
-        const bstPAtk = Math.floor((baseInfo.atk || 50) * bias.p) + diversity;
-        const bstPDef = Math.floor((baseInfo.def || 50) * bias.p);
-        const bstSAtk = Math.floor((baseInfo.atk || 50) * bias.s) - diversity;
-        const bstSDef = Math.floor((baseInfo.def || 50) * bias.s);
-        const bstSpd = baseInfo.spd || (40 + (baseInfo.id * 7 % 70));
-        const bst = bstHp + bstPAtk + bstPDef + bstSAtk + bstSDef + bstSpd;
-        return { pet: p, stats, bst };
-      })
-    : [];
+  const summarizeStarter = (p) => {
+    const stats = getStats(p);
+    const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
+    return { pet: p, stats, bst: getStarterBaseStatTotal(baseInfo, TYPE_BIAS) };
+  };
+  const starterSummary = starterOptions.map(summarizeStarter);
   const strongestStarter = starterSummary.reduce((best, item) => !best || item.bst > best.bst ? item : best, null);
   const fastestStarter = starterSummary.reduce((best, item) => !best || item.stats.spd > best.stats.spd ? item : best, null);
+  const starterTypeOptions = [...new Set(starterCatalog.flatMap((pet) => [pet.type, pet.type2]).filter(Boolean))]
+    .sort((a, b) => (TYPES[a]?.name || a).localeCompare(TYPES[b]?.name || b, 'zh-CN'));
+  const filteredStarterCatalog = filterStarterCatalog(starterCatalog, starterSearch, starterType);
+  const starterPageSize = 30;
+  const starterPageCount = Math.max(1, Math.ceil(filteredStarterCatalog.length / starterPageSize));
+  const visibleStarterPage = Math.min(starterPage, starterPageCount);
+  const starterPageItems = filteredStarterCatalog.slice((visibleStarterPage - 1) * starterPageSize, visibleStarterPage * starterPageSize);
+  const catalogPreview = starterCatalogPet ? summarizeStarter(starterCatalogPet) : null;
 
   return (
     <div className="screen starter-lab-screen" style={{'--starter-lab-bg-image': 'url("/assets/spirit-ui-sky-bg.webp")'}}>
@@ -24204,94 +24205,226 @@ const renderNameInput = () => {
                 <h2>选择你的初始伙伴</h2>
               </div>
               <div className="starter-selection-tools">
-                <div className="starter-compare-strip" aria-label="候选精灵概览">
-                  {strongestStarter && <span>最高总和 <b>{strongestStarter.pet.name}</b></span>}
-                  {fastestStarter && <span>最快速度 <b>{fastestStarter.pet.name}</b></span>}
-                </div>
-                <button type="button" className="starter-reroll-btn" onClick={() => generateStarterOptions()}>
-                  <span aria-hidden="true">↻</span>
-                  重新随机
-                </button>
+                {starterView === 'recommended' && (
+                  <>
+                    <div className="starter-compare-strip" aria-label="候选精灵概览">
+                      {strongestStarter && <span>最高总和 <b>{strongestStarter.pet.name}</b></span>}
+                      {fastestStarter && <span>最快速度 <b>{fastestStarter.pet.name}</b></span>}
+                    </div>
+                    <button type="button" className="starter-reroll-btn" onClick={() => generateStarterOptions()}>
+                      <span aria-hidden="true">↻</span>
+                      换一批
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {starterOptions.length === 0 ? (
-              <div className="starter-empty-state">
-                <strong>正在生成初始伙伴...</strong>
-                <button type="button" onClick={() => generateStarterOptions()}>点击重新生成</button>
-              </div>
+            <div className="starter-mode-switch" role="tablist" aria-label="初始精灵选择方式">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={starterView === 'recommended'}
+                className={starterView === 'recommended' ? 'is-active' : ''}
+                onClick={() => setStarterView('recommended')}
+              >
+                博士推荐 <b>5</b>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={starterView === 'catalog'}
+                className={starterView === 'catalog' ? 'is-active' : ''}
+                onClick={() => {
+                  setStarterView('catalog');
+                  if (!starterCatalogPet && starterCatalog[0]) setStarterCatalogPet(getOrCreateStarterPet(starterCatalog[0]));
+                }}
+              >
+                全部基础精灵 <b>{starterCatalog.length}</b>
+              </button>
+            </div>
+
+            {starterView === 'recommended' ? (
+              starterOptions.length === 0 ? (
+                <div className="starter-empty-state">
+                  <strong>正在生成初始伙伴...</strong>
+                  <button type="button" onClick={() => generateStarterOptions()}>重新生成</button>
+                </div>
+              ) : (
+                <div className="starter-card-grid">
+                  {starterSummary.map(({ pet: p, stats, bst }, i) => {
+                    const typeConfig = TYPES[p.type] || TYPES.NORMAL;
+                    const typeConfig2 = p.secondaryType ? (TYPES[p.secondaryType] || TYPES.NORMAL) : null;
+                    const natureName = NATURE_DB[p.nature]?.name || '未知';
+                    const statRows = [
+                      { l:'HP',  v:stats.maxHp,  c:'#66BB6A', max:400 },
+                      { l:'速度', v:stats.spd,    c:'#FFA726', max:250 },
+                      { l:'物攻', v:stats.p_atk,  c:'#EF5350', max:250 },
+                      { l:'物防', v:stats.p_def,  c:'#42A5F5', max:250 },
+                      { l:'特攻', v:stats.s_atk,  c:'#AB47BC', max:250 },
+                      { l:'特防', v:stats.s_def,  c:'#5C6BC0', max:250 },
+                    ];
+
+                    return (
+                      <button
+                        type="button"
+                        className="starter-choice-card"
+                        key={`${p.id}-${p.nature}-${i}`}
+                        style={{
+                          '--starter-color': typeConfig.color,
+                          '--starter-color-2': typeConfig2?.color || typeConfig.color,
+                          animationDelay: `${0.08 + i * 0.08}s`,
+                        }}
+                        onClick={() => confirmStarter(p)}
+                        aria-label={`选择${p.name}作为初始伙伴`}
+                      >
+                        <span className="starter-choice-portrait">
+                          <span className="starter-dex-number">#{String(p.id).padStart(3,'0')}</span>
+                          <span className="starter-avatar-wrap">{renderAvatar(p, false, 'portrait')}</span>
+                        </span>
+
+                        <span className="starter-choice-body">
+                          <span className="starter-choice-title">
+                            <span>
+                              <small>初始候选 {i + 1}</small>
+                              <strong>{p.name}</strong>
+                            </span>
+                            <b>Lv.5</b>
+                          </span>
+
+                          <span className="starter-chip-row">
+                            <span className="starter-type-chip" style={{ '--chip-color': typeConfig.color }}>{typeConfig.name}</span>
+                            {typeConfig2 && <span className="starter-type-chip" style={{ '--chip-color': typeConfig2.color }}>{typeConfig2.name}</span>}
+                            <span className="starter-nature-chip">{natureName}</span>
+                          </span>
+
+                          <span className="starter-stat-grid">
+                            {statRows.map((s) => (
+                              <span className="starter-stat-row" key={s.l}>
+                                <span>{s.l}</span>
+                                <i aria-hidden="true"><em style={{ width: `${Math.min(100, s.v / s.max * 100)}%`, '--stat-color': s.c }} /></i>
+                                <b style={{ color: s.c }}>{s.v}</b>
+                              </span>
+                            ))}
+                          </span>
+
+                          <span className="starter-total-row">
+                            <span>种族值总和</span>
+                            <b>{bst}</b>
+                          </span>
+
+                          <span className="starter-choose-btn">就决定是你了！</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )
             ) : (
-              <div className="starter-card-grid">
-                {starterSummary.map(({ pet: p, stats, bst }, i) => {
+              <div className="starter-catalog-layout">
+                <div className="starter-catalog-browser">
+                  <div className="starter-catalog-toolbar">
+                    <label className="starter-catalog-search">
+                      <span aria-hidden="true">⌕</span>
+                      <input
+                        type="search"
+                        value={starterSearch}
+                        placeholder="搜索名字或图鉴编号"
+                        aria-label="搜索基础精灵"
+                        onChange={(event) => { setStarterSearch(event.target.value); setStarterPage(1); }}
+                      />
+                    </label>
+                    <select
+                      value={starterType}
+                      aria-label="按属性筛选基础精灵"
+                      onChange={(event) => { setStarterType(event.target.value); setStarterPage(1); }}
+                    >
+                      <option value="ALL">全部属性</option>
+                      {starterTypeOptions.map((type) => <option key={type} value={type}>{TYPES[type]?.name || type}</option>)}
+                    </select>
+                    <span className="starter-catalog-count">{filteredStarterCatalog.length} 只</span>
+                  </div>
+
+                  {starterPageItems.length > 0 ? (
+                    <div className="starter-catalog-grid">
+                      {starterPageItems.map((base) => {
+                        const isSelected = starterCatalogPet?.id === base.id;
+                        const typeConfig = TYPES[base.type] || TYPES.NORMAL;
+                        return (
+                          <button
+                            type="button"
+                            key={base.id}
+                            className={isSelected ? 'starter-catalog-item is-selected' : 'starter-catalog-item'}
+                            style={{ '--starter-color': typeConfig.color }}
+                            aria-pressed={isSelected}
+                            onClick={() => setStarterCatalogPet(getOrCreateStarterPet(base))}
+                          >
+                            <span className="starter-catalog-sprite">{renderAvatar(base, false, 'compact')}</span>
+                            <span className="starter-catalog-item-copy">
+                              <small>#{String(base.id).padStart(3, '0')}</small>
+                              <strong>{base.name}</strong>
+                              <em>{typeConfig.name}{base.type2 ? ` · ${TYPES[base.type2]?.name || base.type2}` : ''}</em>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="starter-catalog-no-results">没有符合条件的基础精灵</div>
+                  )}
+
+                  <div className="starter-catalog-pagination" aria-label="基础精灵分页">
+                    <button type="button" disabled={visibleStarterPage <= 1} onClick={() => setStarterPage((page) => Math.max(1, page - 1))}>上一页</button>
+                    <span>{visibleStarterPage} / {starterPageCount}</span>
+                    <button type="button" disabled={visibleStarterPage >= starterPageCount} onClick={() => setStarterPage((page) => Math.min(starterPageCount, page + 1))}>下一页</button>
+                  </div>
+                </div>
+
+                {catalogPreview && (() => {
+                  const { pet: p, stats, bst } = catalogPreview;
                   const typeConfig = TYPES[p.type] || TYPES.NORMAL;
                   const typeConfig2 = p.secondaryType ? (TYPES[p.secondaryType] || TYPES.NORMAL) : null;
                   const natureName = NATURE_DB[p.nature]?.name || '未知';
                   const statRows = [
-                    { l:'HP',  v:stats.maxHp,  c:'#66BB6A', max:400 },
-                    { l:'速度', v:stats.spd,    c:'#FFA726', max:250 },
-                    { l:'物攻', v:stats.p_atk,  c:'#EF5350', max:250 },
-                    { l:'物防', v:stats.p_def,  c:'#42A5F5', max:250 },
-                    { l:'特攻', v:stats.s_atk,  c:'#AB47BC', max:250 },
-                    { l:'特防', v:stats.s_def,  c:'#5C6BC0', max:250 },
+                    { l:'HP', v:stats.maxHp, c:'#66BB6A', max:400 },
+                    { l:'速度', v:stats.spd, c:'#FFA726', max:250 },
+                    { l:'物攻', v:stats.p_atk, c:'#EF5350', max:250 },
+                    { l:'物防', v:stats.p_def, c:'#42A5F5', max:250 },
+                    { l:'特攻', v:stats.s_atk, c:'#AB47BC', max:250 },
+                    { l:'特防', v:stats.s_def, c:'#5C6BC0', max:250 },
                   ];
-
                   return (
-                    <button
-                      type="button"
-                      className="starter-choice-card"
-                      key={`${p.id}-${p.nature}-${i}`}
-                      style={{
-                        '--starter-color': typeConfig.color,
-                        '--starter-color-2': typeConfig2?.color || typeConfig.color,
-                        animationDelay: `${0.08 + i * 0.08}s`,
-                      }}
-                      onClick={() => confirmStarter(p)}
-                      aria-label={`选择${p.name}作为初始伙伴`}
-                    >
-                      <span className="starter-choice-portrait">
-                        <span className="starter-dex-number">#{String(p.id).padStart(3,'0')}</span>
-                        <span className="starter-avatar-wrap">{renderAvatar(p)}</span>
-                      </span>
-
-                      <span className="starter-choice-body">
-                        <span className="starter-choice-title">
-                          <span>
-                            <small>初始候选 {i + 1}</small>
-                            <strong>{p.name}</strong>
+                    <aside className="starter-catalog-preview" style={{ '--starter-color': typeConfig.color, '--starter-color-2': typeConfig2?.color || typeConfig.color }}>
+                      <div className="starter-catalog-preview-portrait">
+                        <span>#{String(p.id).padStart(3, '0')}</span>
+                        {renderAvatar(p, false, 'portrait')}
+                      </div>
+                      <div className="starter-catalog-preview-head">
+                        <div><small>Lv.5 初始个体</small><h3>{p.name}</h3></div>
+                        <b>BST {bst}</b>
+                      </div>
+                      <div className="starter-chip-row">
+                        <span className="starter-type-chip" style={{ '--chip-color': typeConfig.color }}>{typeConfig.name}</span>
+                        {typeConfig2 && <span className="starter-type-chip" style={{ '--chip-color': typeConfig2.color }}>{typeConfig2.name}</span>}
+                        <span className="starter-nature-chip">{natureName}</span>
+                      </div>
+                      <div className="starter-stat-grid">
+                        {statRows.map((stat) => (
+                          <span className="starter-stat-row" key={stat.l}>
+                            <span>{stat.l}</span>
+                            <i aria-hidden="true"><em style={{ width: `${Math.min(100, stat.v / stat.max * 100)}%`, '--stat-color': stat.c }} /></i>
+                            <b style={{ color: stat.c }}>{stat.v}</b>
                           </span>
-                          <b>Lv.5</b>
-                        </span>
-
-                        <span className="starter-chip-row">
-                          <span className="starter-type-chip" style={{ '--chip-color': typeConfig.color }}>{typeConfig.name}</span>
-                          {typeConfig2 && <span className="starter-type-chip" style={{ '--chip-color': typeConfig2.color }}>{typeConfig2.name}</span>}
-                          <span className="starter-nature-chip">{natureName}</span>
-                        </span>
-
-                        <span className="starter-stat-grid">
-                          {statRows.map((s) => (
-                            <span className="starter-stat-row" key={s.l}>
-                              <span>{s.l}</span>
-                              <i aria-hidden="true"><em style={{ width: `${Math.min(100, s.v / s.max * 100)}%`, '--stat-color': s.c }} /></i>
-                              <b style={{ color: s.c }}>{s.v}</b>
-                            </span>
-                          ))}
-                        </span>
-
-                        <span className="starter-total-row">
-                          <span>种族值总和</span>
-                          <b>{bst}</b>
-                        </span>
-
-                        <span className="starter-choose-btn">就决定是你了！</span>
-                      </span>
-                    </button>
+                        ))}
+                      </div>
+                      <button type="button" className="starter-catalog-confirm" onClick={() => confirmStarter(p)}>选择 {p.name}</button>
+                    </aside>
                   );
-                })}
+                })()}
               </div>
             )}
 
-            <p className="starter-lab-note">数值受性格与个体值影响，所见即所得。可重新随机，但确认伙伴后将进入正式冒险。</p>
+            <p className="starter-lab-note">所有候选均为未进化、非传说且适合开局的基础形态；个体数值所见即所得。</p>
           </section>
         ) : (
           <section className="starter-waiting-panel" aria-label="开始流程">

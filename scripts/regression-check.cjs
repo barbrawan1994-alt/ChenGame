@@ -82,6 +82,7 @@ const progression = loadUtility('src/utils/progressionFlow.js');
 const grade = loadUtility('src/utils/petGrade.js');
 const fusionRules = loadUtility('src/utils/fusionRules.js');
 const petIdentity = loadUtility('src/utils/petIdentity.js');
+const starterSelection = loadUtility('src/utils/starterSelection.js');
 
 const fakePokedex = [
   { id: 1, name: '幼体', type: 'GRASS', hp: 45, atk: 49, def: 49, evo: 2, evoLvl: 16 },
@@ -174,6 +175,50 @@ check('高等级敌方精灵拥有可用的真实技能和完整PP', () => {
     assert.ok(move.pp > 0);
     assert.ok(move.maxPP > 0);
   });
+});
+
+check('初始精灵图鉴覆盖全部合规基础形态且不再限制600号以前', () => {
+  const excludedIds = [
+    ...battlesData.LEGENDARY_POOL,
+    ...battlesData.HIGH_TIER_POOL,
+    ...battlesData.NEW_GOD_IDS,
+    ...battlesData.FINAL_GOD_IDS,
+  ];
+  const catalog = starterSelection.buildStarterCatalog({
+    pokedex: petsData.POKEDEX,
+    stoneEvolutionRules: petsData.STONE_EVO_RULES,
+    excludedIds,
+    typeBias: typesData.TYPE_BIAS,
+  });
+  const catalogIds = new Set(catalog.map(pet => pet.id));
+  const evolvedIds = new Set(petsData.POKEDEX.map(pet => pet.evo).filter(Boolean));
+  Object.values(petsData.STONE_EVO_RULES).forEach(rules => Object.values(rules).forEach(id => evolvedIds.add(id)));
+
+  assert.ok(catalog.length > 250);
+  assert.ok(catalog.some(pet => pet.id > 600));
+  assert.ok(catalogIds.has(611));
+  assert.equal(catalog.some(pet => evolvedIds.has(pet.id)), false);
+  assert.equal(catalog.some(pet => pet.hidden || pet.starterExcluded), false);
+  assert.equal(catalog.some(pet => ['GOD', 'COSMIC'].includes(pet.type) || ['GOD', 'COSMIC'].includes(pet.type2)), false);
+  assert.equal(catalog.some(pet => starterSelection.getStarterBaseStatTotal(pet, typesData.TYPE_BIAS) > 500), false);
+  excludedIds.forEach(id => assert.equal(catalogIds.has(id), false));
+  assert.equal(starterSelection.filterStarterCatalog(catalog, '', 'ALL').length, catalog.length);
+  assert.ok(starterSelection.filterStarterCatalog(catalog, '#611', 'ALL').some(pet => pet.id === 611));
+});
+
+check('初始精灵随机推荐不重复上一批并优先覆盖不同属性', () => {
+  const catalog = [
+    { id: 1, type: 'GRASS' }, { id: 2, type: 'FIRE' }, { id: 3, type: 'WATER' },
+    { id: 4, type: 'ELECTRIC' }, { id: 5, type: 'GROUND' }, { id: 6, type: 'ICE' },
+    { id: 7, type: 'BUG' }, { id: 8, type: 'STEEL' }, { id: 9, type: 'FAIRY' },
+    { id: 10, type: 'GHOST' }, { id: 11, type: 'DRAGON' }, { id: 12, type: 'NORMAL' },
+  ];
+  const previousIds = [1, 2, 3, 4, 5];
+  const recommendations = starterSelection.sampleDiverseStarters(catalog, 5, previousIds, () => 0.25);
+  assert.equal(recommendations.length, 5);
+  assert.equal(new Set(recommendations.map(pet => pet.id)).size, 5);
+  assert.equal(recommendations.some(pet => previousIds.includes(pet.id)), false);
+  assert.equal(new Set(recommendations.map(pet => pet.type)).size, 5);
 });
 
 check('敌方战斗HUD完整显示军团名，不再使用省略号截断', () => {
