@@ -3,7 +3,7 @@ export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED';
 export const GAME_NAME = '超级精灵';
 export const GAME_EN_NAME = 'Super Spirit';
 export const GAME_VERSION = '15.0';
-export const GAME_VERSION_LABEL = 'v15.0 四国争霸·三十门派·跨体系融合';
+export const GAME_VERSION_LABEL = 'v15.0 多势力国战·三十门派·跨体系融合';
 export const GAME_TAGLINE = '收集、进化、对战，打造你的冠军精灵队伍';
 export const GAME_DESCRIPTION = '超级精灵：以精灵收集、属性克制、回合对战和队伍养成为核心的超大型像素 RPG。';
 export const COVER_IMG = 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/171335642/8ThZtYs6LuFfKPT5.png?Expires=1765643832&Signature=nYen2ZAHB0FN036pzpJDQpFyDHbzrmVIWNL4H5K6gKh4R46tWLw-67EyT64rL3IlpRhhoI6ZYYgJbyCcP6PVS~KmhS9WfVnCgJFnaSLRiZw0PU4nw8XBc9Z2LUw7bQjJe~-Dk1pw~vceXBW0x-3wQRVhODCC8j1yMR3TG7NmXingA9XzEiiwHbyPjpzdwdsBLmuGXDVchwAflfIHrbK9ztGF5SXMEKPhOy9AznZi4p1NFk-BunegV2Kj24ObI2IRN-4R3bPglupHpZHYFdTfmUYk9GXq295CEMkQtdSDZS5kLkDyPrXd~JiZk3tuFn~s7O5QKj3B67jZo~tYfTSYzg__&Key-Pair-Id=K3USGZIKWMDCSX';
@@ -77,7 +77,7 @@ export const SIDE_STORY_LINES = [
   { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 26, endIdx: 34, chapters: 9, unlockBadges: 8, desc: '三十门派与厌晚的史诗篇章' },
   { id: 'crossworld', name: '异界征途篇', icon: '🌍', startIdx: 35, endIdx: 52, chapters: 18, unlockBadges: 13, desc: '次元裂隙降临，跨越七界的史诗冒险' },
   { id: 'naruto', name: '火影忍者篇', icon: '🍥', startIdx: 0, endIdx: 19, chapters: 20, unlockBadges: 5, desc: '踏上忍者之路，从学院到影级的忍道传说', isNarutoArc: true },
-  { id: 'sanguo', name: '三国志篇', icon: '⚔️', startIdx: 0, endIdx: 11, chapters: 12, unlockBadges: 13, desc: '四国争霸时代，体验三国英雄的史诗征途', isSanguoArc: true },
+  { id: 'sanguo', name: '三国志篇', icon: '⚔️', startIdx: 0, endIdx: 11, chapters: 12, unlockBadges: 13, desc: '群雄与历代诸朝交锋，体验英雄史诗征途', isSanguoArc: true },
 ];
 
 export const BREATHING_BUFFS = [

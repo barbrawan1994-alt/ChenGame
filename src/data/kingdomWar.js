@@ -138,7 +138,7 @@ export const MEMBER_ROLES = {
   tamer:      { name: '御灵成员', icon: '🐾', desc: '精灵培养、安抚、圣域建设' },
   ninja:      { name: '忍术成员', icon: '🌀', desc: '封印、查克拉节点、潜入' },
   researcher: { name: '果实研究员', icon: '🧪', desc: '恶魔果实研究、残片解析' },
-  scholar:    { name: '将魂学者', icon: '📜', desc: '四国名将碎片、古战场研究' },
+  scholar:    { name: '将魂学者', icon: '📜', desc: '多势力名将碎片、古战场研究' },
   builder:    { name: '建设成员', icon: '🔨', desc: '修复城池、建设帮派建筑' },
 };
 
@@ -190,7 +190,7 @@ export const HQ_BUILDINGS = [
   { id: 'hq_dojo',       name: '练武场',      icon: '🥋', cost: 4000,  maxLv: 5,  effect: { memberPower: 3 }, desc: '提升成员战斗力' },
   { id: 'hq_jutsu',      name: '忍术堂',      icon: '🌀', cost: 5000,  maxLv: 3,  effect: { spirit: 5 }, desc: '研究忍术、封印术' },
   { id: 'hq_fruit_lab',  name: '恶魔果实研究所', icon: '🧪', cost: 6000, maxLv: 3, effect: { tech: 5 }, desc: '研究果实残片和觉醒' },
-  { id: 'hq_shrine',     name: '将魂祠',      icon: '📜', cost: 5000,  maxLv: 3,  effect: { fortune: 3 }, desc: '培养四国名将将魂' },
+  { id: 'hq_shrine',     name: '将魂祠',      icon: '📜', cost: 5000,  maxLv: 3,  effect: { fortune: 3 }, desc: '培养多势力名将将魂' },
   { id: 'hq_clinic',     name: '药庐',        icon: '💊', cost: 3000,  maxLv: 5,  effect: { fatigueReduce: 5 }, desc: '治疗成员和精灵' },
   { id: 'hq_intel',      name: '情报楼',      icon: '🔭', cost: 4000,  maxLv: 4,  effect: { intel: 5 }, desc: '侦查敌国和资源点' },
   { id: 'hq_arsenal',    name: '军械坊',      icon: '⚒️', cost: 5000,  maxLv: 4,  effect: { military: 5 }, desc: '生产攻城、防守器械' },
