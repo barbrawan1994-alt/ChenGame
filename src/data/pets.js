@@ -1472,10 +1472,10 @@ const NEW_PETS_800 = [
   { id: 899, name: '永劫时龙', type: 'TIME', type2: 'DRAGON', emoji: '⌛', hp: 115, atk: 138, def: 108, spd: 95, desc: '控制万物时间流逝的太古龙。' },
   { id: 900, name: '始源混沌神', type: 'CHAOS', type2: 'GOD', emoji: '♾️', hp: 115, atk: 138, def: 105, spd: 82, desc: '万物诞生之前的终极混沌。' },
   // --- 结契专属精灵 (bonding quests) ---
-  { id: 901, name: '雾鹿灵', type: 'WATER', type2: 'PSYCHIC', emoji: '🦌', hp: 68, atk: 55, def: 72, spd: 88, desc: '终年栖息于雾月湖畔，蹄印散发幽蓝灵光的温顺鹿灵。' },
-  { id: 902, name: '雾隐幼灵', type: 'GHOST', type2: 'FAIRY', emoji: '🌫️', hp: 52, atk: 48, def: 55, spd: 72, desc: '鬼雾山事件后幸存的幼体，具有净化鬼血的先天体质。' },
-  { id: 903, name: '灾厄幼灵', type: 'FIRE', type2: 'PSYCHIC', emoji: '🔥', hp: 65, atk: 78, def: 58, spd: 80, desc: '被封印削弱的灾厄核心残片化生的幼体，体内蕴含古老查克拉。' },
-  { id: 904, name: '岩甲犀', type: 'GROUND', type2: 'ROCK', emoji: '🦏', hp: 95, atk: 92, def: 115, spd: 35, desc: '矿山深处的巨型犀兽，岩石外甲刀枪不入。' },
+  { id: 901, name: '雾鹿灵', type: 'WATER', type2: 'PSYCHIC', emoji: '🦌', hp: 68, atk: 55, def: 72, spd: 88, starterExcluded: true, desc: '终年栖息于雾月湖畔，蹄印散发幽蓝灵光的温顺鹿灵。' },
+  { id: 902, name: '雾隐幼灵', type: 'GHOST', type2: 'FAIRY', emoji: '🌫️', hp: 52, atk: 48, def: 55, spd: 72, starterExcluded: true, desc: '鬼雾山事件后幸存的幼体，具有净化鬼血的先天体质。' },
+  { id: 903, name: '灾厄幼灵', type: 'FIRE', type2: 'PSYCHIC', emoji: '🔥', hp: 65, atk: 78, def: 58, spd: 80, starterExcluded: true, desc: '被封印削弱的灾厄核心残片化生的幼体，体内蕴含古老查克拉。' },
+  { id: 904, name: '岩甲犀', type: 'GROUND', type2: 'ROCK', emoji: '🦏', hp: 95, atk: 92, def: 115, spd: 35, starterExcluded: true, desc: '矿山深处的巨型犀兽，岩石外甲刀枪不入。' },
 ];
 const ALL_SOURCE_DATA = [
     ...BASE_POKEDEX, ...GOD_PETS, ...NEW_EVO_CHAINS, ...EXTRA_EVOS,
