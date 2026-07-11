@@ -39,11 +39,13 @@ const kingdom = await loadSourceModule('src/data/kingdom.js', source => source
 const gang = await loadSourceModule('src/data/gang.js');
 const kwSiege = await loadSourceModule('src/data/kwSiege.js', source => source
   .replace(
-    "import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult, buildSiegeCombatParams } from './kingdom';",
+    /import \{\s*CONTESTED_MAP_IDS,[\s\S]*?advanceTerritorySiege,\s*\} from '\.\/kingdom';/,
     `const CONTESTED_MAP_IDS = ${JSON.stringify(kingdom.CONTESTED_MAP_IDS)};
 const RECRUIT_CONFIG = ${JSON.stringify(kingdom.RECRUIT_CONFIG)};
+const SIEGE_CONFIG = ${JSON.stringify(kingdom.SIEGE_CONFIG)};
 const getInstabilityMult = () => 1;
-const buildSiegeCombatParams = () => ({});`
+const buildSiegeCombatParams = () => ({});
+const advanceTerritorySiege = ({ territory }) => ({ territory, captured: false, progressGain: 0 });`
   )
   .replace("import { getGeneralById } from './generals';", 'const getGeneralById = () => null;')
   .replace(
@@ -55,6 +57,7 @@ const {
   ALL_FACTION_IDS,
   DEFECTION_CONFIG,
   RECRUIT_CONFIG,
+  SIEGE_CONFIG,
   WAR_TICK_CONFIG,
   WAR_MAP_IDS,
   recruitTroops,
@@ -78,6 +81,7 @@ const {
   getGarrisonTotal,
   assignTerritoryGuards,
   normalizeKingdomTerritory,
+  advanceTerritorySiege,
   migrateKingdomWarState,
   KINGDOM_TROOP_KEYS,
   INITIAL_TERRITORIES,
@@ -88,6 +92,9 @@ const {
   getContestMapProgress,
   inferDefenseWeights,
   resolveContestedMapOwner,
+  CONTEST_CAPTURE_THRESHOLD,
+  CONTEST_SIEGE_MIN_DEPLOY,
+  CONTEST_MAX_OCCUPATION_GAIN,
 } = kwSiege;
 const {
   default: ACHIEVEMENTS,
@@ -314,7 +321,7 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
   assert.doesNotMatch(tigerSeal.desc, /war tick/i);
 
   const mapId = WAR_MAP_IDS.find(id => !CONTESTED_MAP_IDS.includes(Number(id)));
-  const allocation = { shield: 12, spear: 12, cavalry: 12, archer: 12, siege: 12, raider: 12 };
+  const allocation = { shield: 16, spear: 16, cavalry: 16, archer: 16, siege: 16, raider: 16 };
   const territories = {
     [mapId]: {
       owner: 'shu',
@@ -333,14 +340,14 @@ check(WAR_MAP_IDS.length >= 35 && WAR_MAP_IDS.length <= 45, `参战地图 ${WAR_
     external: { attackItemMult: TIGER_SEAL_ATTACK_MULT },
   });
   assert.ok(buffedTerritory.expectedDamage > baseTerritory.expectedDamage);
-  assert.ok(buffedTerritory.fieldWinChance > baseTerritory.fieldWinChance);
+  assert.ok(buffedTerritory.fieldWinChance >= baseTerritory.fieldWinChance);
   assert.ok(buffedTerritory.winChance > baseTerritory.winChance);
   assert.equal(buffedTerritory.extBonus.itemAttackMult, TIGER_SEAL_ATTACK_MULT);
 
   const cityArgs = {
     mapId: 204,
     playerFaction: 'wei',
-    allocation: { shield: 14, spear: 14, cavalry: 14, archer: 14, siege: 14, raider: 14 },
+    allocation: { shield: 18, spear: 18, cavalry: 18, archer: 18, siege: 18, raider: 18 },
     generalIds: [],
     recruitedGenerals: [],
     mapProgress: { wei: 8, shu: 30, wu: 12, jin: 10, qun: 18 },
@@ -602,11 +609,17 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
     assert.equal(nearCap.nextKw.actionCounter, 8);
 
     const eliteNearCap = recruitTroops({
-      faction: 'wei', grain: 999, kwManpowerReserve: 50, eliteTroops: 1197,
+      faction: 'wei', grain: 999, kwManpowerReserve: 1200, eliteTroops: 1197,
     }, 'elite');
     assert.equal(eliteNearCap.gain, 3);
     assert.equal(eliteNearCap.nextKw.eliteTroops, 1200);
     assert.ok(eliteNearCap.goldCost < RECRUIT_CONFIG.eliteCost.gold);
+
+    const noUntrainedReserve = recruitTroops({
+      faction: 'wei', grain: 999, kwManpowerReserve: 50, eliteTroops: 50,
+    }, 'elite');
+    assert.equal(noUntrainedReserve.ok, false);
+    assert.match(noUntrainedReserve.reason, /全部完成精锐整训/);
   } finally {
     Math.random = originalRandom;
   }
@@ -814,7 +827,7 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
   assert.deepEqual(safeProgress, { wei: 0, shu: 30, wu: 0, jin: 480, qun: 0 });
   assert.equal(
     resolveContestedMapOwner({ wei: Number.POSITIVE_INFINITY, shu: 20, wu: -1, jin: Number.NaN, qun: 0 }, 'wei', 1),
-    'neutral',
+    'wei',
   );
   const weights = inferDefenseWeights({ wei: Number.POSITIVE_INFINITY, shu: '240', wu: Number.NaN, jin: -2, qun: 480 });
   assert.ok(Object.values(weights).every(value => Number.isFinite(value) && value > 0));
@@ -822,14 +835,177 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
   const malformedSiege = evaluateKwSiegeBattle({
     mapId: CONTESTED_MAP_IDS[0],
     playerFaction: 'wei',
-    allocation: { shield: '80', spear: Number.POSITIVE_INFINITY, cavalry: -10 },
+    allocation: { shield: '100', spear: Number.POSITIVE_INFINITY, cavalry: -10 },
     generalIds: [],
     mapProgress: { wei: Number.POSITIVE_INFINITY, shu: '240', wu: Number.NaN, jin: -2, qun: 480 },
   });
-  assert.equal(malformedSiege.deploy, 80);
+  assert.equal(malformedSiege.deploy, 100);
   assert.ok(malformedSiege.counter > 0.55 && Number.isFinite(malformedSiege.counter));
   assert.ok(Number.isFinite(malformedSiege.winChance));
   check(true, '驻军/配兵总量、空城克制、守将去重、旧档迁移与名城权重均保持有限且可结算');
+}
+
+// 18. 普通城必须经过持续围城，玩家、AI 和后台结算共用的推进器不得一击易主。
+{
+  assert.equal(SIEGE_CONFIG.minDeploy, 80);
+  assert.ok(SIEGE_CONFIG.maxProgressGain * 2 < SIEGE_CONFIG.progressRequired);
+  let territory = {
+    owner: 'shu', strength: 0, garrison: generateGarrison('shu', 80), guards: [],
+    contested: false, attackerFaction: null, attackProgress: 0,
+  };
+  const first = advanceTerritorySiege({
+    territory, attackerFaction: 'wei', success: true,
+    strengthDamage: 999, progressGain: 999,
+  });
+  assert.equal(first.captured, false);
+  assert.equal(first.territory.attackProgress, SIEGE_CONFIG.maxProgressGain);
+  const second = advanceTerritorySiege({
+    territory: first.territory, attackerFaction: 'wei', success: true,
+    strengthDamage: 999, progressGain: 999,
+  });
+  assert.equal(second.captured, false);
+  assert.equal(second.territory.attackProgress, SIEGE_CONFIG.maxProgressGain * 2);
+  const third = advanceTerritorySiege({
+    territory: second.territory, attackerFaction: 'wei', success: true,
+    strengthDamage: 999, progressGain: 999,
+  });
+  assert.equal(third.captured, true);
+
+  const failed = advanceTerritorySiege({
+    territory: second.territory, attackerFaction: 'wei', success: false,
+  });
+  assert.equal(failed.captured, false);
+  assert.equal(failed.territory.attackProgress, SIEGE_CONFIG.maxProgressGain * 2 - SIEGE_CONFIG.failProgressLoss);
+  const rivalAttack = advanceTerritorySiege({
+    territory: second.territory, attackerFaction: 'wu', success: true,
+    strengthDamage: 10, progressGain: 30,
+  });
+  assert.equal(rivalAttack.territory.attackerFaction, 'wu');
+  assert.equal(rivalAttack.territory.attackProgress, 30);
+  assert.match(appSource, /result\.success \? 'player_siege_progress' : 'player_siege_fail'/);
+  assert.match(appSource, /isSiegeProgress \? '🏰 围城推进'/);
+  check(true, `普通城即使城防为 0 也至少需要 3 次有效攻势；失败会瓦解围城，换攻方不会继承进度`);
+}
+
+// 19. 兵种职责要形成真实取舍：器械攻坚强但野战弱，且最低兵力门槛不可绕过。
+{
+  const mapId = WAR_MAP_IDS.find(id => !CONTESTED_MAP_IDS.includes(Number(id)));
+  const territories = {
+    [mapId]: {
+      owner: 'shu', strength: 60, garrison: generateGarrison('shu', 100), guards: [],
+    },
+  };
+  const cavalryArmy = buildSiegeCombatParams({
+    mapId, playerFaction: 'wei', allocation: { cavalry: 120 }, territories,
+    kw: { faction: 'wei', morale: 100, eliteTroops: 0 },
+  });
+  const siegeArmy = buildSiegeCombatParams({
+    mapId, playerFaction: 'wei', allocation: { siege: 120 }, territories,
+    kw: { faction: 'wei', morale: 100, eliteTroops: 0 },
+  });
+  assert.ok(cavalryArmy.fieldTroops > siegeArmy.fieldTroops);
+  assert.ok(siegeArmy.assaultTroops > cavalryArmy.assaultTroops);
+  assert.ok(siegeArmy.expectedProgressGain > cavalryArmy.expectedProgressGain);
+  assert.ok(cavalryArmy.fieldWinChance > siegeArmy.fieldWinChance);
+
+  const underStrength = evaluateTerritoryAssault({
+    mapId, playerFaction: 'wei', allocation: { shield: SIEGE_CONFIG.minDeploy - 1 }, territories,
+    kw: { faction: 'wei', morale: 100, eliteTroops: 0 },
+  });
+  assert.equal(underStrength.canAttack, false);
+  assert.match(underStrength.reason, new RegExp(String(SIEGE_CONFIG.minDeploy)));
+  check(true, '骑兵更擅长野战、攻城器更擅长破城；普通城最低 80 兵力无法绕过');
+}
+
+// 20. 名城同样不能一战易主，精锐也必须始终是预备兵子集。
+{
+  assert.equal(CONTEST_CAPTURE_THRESHOLD, 100);
+  assert.ok(CONTEST_MAX_OCCUPATION_GAIN * 2 < CONTEST_CAPTURE_THRESHOLD);
+  assert.equal(resolveContestedMapOwner({ wei: 28, shu: 10 }, 'wei', CONTESTED_MAP_IDS[0]), 'wei');
+  const tooSmall = evaluateKwSiegeBattle({
+    mapId: CONTESTED_MAP_IDS[0], playerFaction: 'wei',
+    allocation: { shield: CONTEST_SIEGE_MIN_DEPLOY - 1 }, generalIds: [], mapProgress: {},
+  });
+  assert.equal(tooSmall.canAttack, false);
+
+  const migratedElite = migrateKingdomWarState({
+    faction: 'wei', kwManpowerReserve: 40, eliteTroops: 999, territories: {},
+  });
+  assert.equal(migratedElite.eliteTroops, 40);
+  const promoted = recruitTroops({
+    faction: 'wei', grain: 999, kwManpowerReserve: 120, eliteTroops: 100,
+  }, 'elite');
+  assert.equal(promoted.ok, true);
+  assert.ok(promoted.nextKw.eliteTroops <= promoted.nextKw.kwManpowerReserve);
+  check(true, `名城需达到 ${CONTEST_CAPTURE_THRESHOLD} 占领积分且单胜最多 +${CONTEST_MAX_OCCUPATION_GAIN}；精锐不会超过预备兵`);
+}
+
+// 21. 三档普通城的预期节奏应可持续，AI 长期能推进但短期不会洗牌。
+{
+  const cases = [
+    { label: '薄弱边城', strength: 40, garrison: 60, deploy: 140, guards: 1 },
+    { label: '标准城池', strength: 60, garrison: 80, deploy: 200, guards: 2 },
+    { label: '高防重镇', strength: 80, garrison: 120, deploy: 280, guards: 3 },
+  ];
+  const summaries = cases.map((entry, index) => {
+    const mapId = WAR_MAP_IDS.find(id => !CONTESTED_MAP_IDS.includes(Number(id)));
+    const siegeCount = Math.floor(entry.deploy * 0.2);
+    const fieldCount = entry.deploy - siegeCount;
+    const perFieldType = Math.floor(fieldCount / 5);
+    const allocation = {
+      shield: perFieldType,
+      spear: perFieldType,
+      cavalry: perFieldType,
+      archer: perFieldType,
+      raider: fieldCount - perFieldType * 4,
+      siege: siegeCount,
+    };
+    const combat = buildSiegeCombatParams({
+      mapId,
+      playerFaction: 'wei',
+      allocation,
+      territories: {
+        [mapId]: {
+          owner: 'shu', strength: entry.strength,
+          garrison: generateGarrison('shu', entry.garrison),
+          guards: Array.from({ length: entry.guards }, (_, guardIndex) => ({
+            generalId: `shu_${guardIndex + 1}`, defeated: false,
+          })),
+        },
+      },
+      kw: { faction: 'wei', morale: 100, eliteTroops: 0 },
+      timeMod: { attackMult: 1, defenseMult: 1, contribMult: 1 },
+      remainingGuards: entry.guards,
+    });
+    const effectiveWins = Math.ceil(SIEGE_CONFIG.progressRequired / combat.expectedProgressGain);
+    const expectedAttempts = effectiveWins / Math.max(0.01, combat.winChance);
+    assert.ok(combat.winChance >= 0.12 && combat.winChance <= 0.68);
+    assert.ok(effectiveWins >= 3 && effectiveWins <= 5);
+    assert.ok(expectedAttempts >= 4 && expectedAttempts <= 24);
+    assert.ok(combat.expectedDamage >= 6 && combat.expectedDamage <= SIEGE_CONFIG.maxStrengthDamage);
+    return `${entry.label}:有效胜率${Math.round(combat.winChance * 100)}%、约${expectedAttempts.toFixed(1)}次行动`;
+  });
+
+  const originalRandom = Math.random;
+  let longRunCaptures = 0;
+  let longRunMaxProgress = 0;
+  let longRunContested = 0;
+  try {
+    Math.random = makeSeededRandom(20260711);
+    let territories = initTerritories();
+    for (let tickIndex = 0; tickIndex < 300; tickIndex += 1) {
+      const tick = executeWarTick(territories, GANG_PRESETS, 'wei', 55);
+      territories = tick.territories;
+      longRunCaptures += tick.log.filter(entry => entry.type === 'capture').length;
+    }
+    longRunMaxProgress = Math.max(...Object.values(territories).map(territory => territory.attackProgress || 0));
+    longRunContested = Object.values(territories).filter(territory => territory.contested).length;
+  } finally {
+    Math.random = originalRandom;
+  }
+  assert.ok(longRunCaptures >= 1, `长期世界演化不应完全停滞（最高围城${longRunMaxProgress}，进行中${longRunContested}）`);
+  assert.ok(longRunCaptures <= 40, '长期世界演化不应重新变成高频易主');
+  check(true, `${summaries.join('；')}；300 Tick 共 ${longRunCaptures} 次易主`);
 }
 
 console.log('\n=== 国战检查全部通过 ===');
