@@ -170,7 +170,12 @@ function portraitSvg(general) {
 
 for (const general of generals) {
   const file = path.join(outDir, `${general.id}.svg`);
-  fs.writeFileSync(file, portraitSvg(general).replace(/[ \t]+$/gm, ''));
+  const next = portraitSvg(general).replace(/[ \t]+$/gm, '');
+  const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  const normalize = value => String(value || '').replace(/[ \t]+$/gm, '').trimEnd();
+  if (current == null || normalize(current) !== normalize(next)) {
+    fs.writeFileSync(file, next);
+  }
 }
 
 console.log(`Generated ${generals.length} general portraits in ${path.relative(root, outDir)}`);

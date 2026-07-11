@@ -428,7 +428,7 @@ export const DEFAULT_KINGDOM_WAR = {
   currentTurn: 0,
   /** AI各方预备兵力 */
   factionManpower: { wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 },
-  /** 全 400 名将领、外交关系、盟约和计谋状态。 */
+  /** 全 550 名将领、外交关系、盟约和计谋状态。 */
   politics: createDefaultKingdomPolitics(SANGUO_GENERALS),
   /** 加入阵营时间（叛国冷却） */
   factionJoinDate: null,

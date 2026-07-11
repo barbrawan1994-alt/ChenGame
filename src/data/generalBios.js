@@ -1,4 +1,5 @@
 import { SANGUO_GENERALS } from './generals.js';
+import { GENERAL_EXPANSION_BIOS } from './generalExpansion.js';
 
 /** Biographical data for Sanguo generals (三国志 / 三国演义). Keys match generals.js ids. */
 const RAW_GENERAL_BIOS = {
@@ -2027,13 +2028,15 @@ const buildBriefProfile = (general) => ({
 export const GENERAL_BIOS = Object.fromEntries(SANGUO_GENERALS.map(general => {
   const fullProfile = RAW_GENERAL_BIOS[general.id];
   const sourcedReplacement = REPLACED_GENERAL_BIOS[general.id];
+  const sourcedExpansion = GENERAL_EXPANSION_BIOS[general.id];
   return [
     general.id,
     {
       ...buildBriefProfile(general),
       ...(fullProfile || {}),
       ...(sourcedReplacement || {}),
-      profileLevel: sourcedReplacement ? 'sourced' : fullProfile ? 'full' : 'brief',
+      ...(sourcedExpansion || {}),
+      profileLevel: sourcedReplacement || sourcedExpansion ? 'sourced' : fullProfile ? 'full' : 'brief',
     },
   ];
 }));

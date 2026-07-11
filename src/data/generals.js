@@ -1,3 +1,5 @@
+import { GENERAL_EXPANSION } from './generalExpansion.js';
+
 /**
  * Four Kingdoms (四国) generals — recruitment & encounter data for faction-themed RPG.
  * Factions: wei (魏), shu (蜀), wu (吴), jin (晋), neutral (独立/群雄).
@@ -41,12 +43,17 @@ const FACTIONS = ['wei', 'shu', 'wu', 'jin', 'neutral'];
  * 未列入 SSR / SR 的人物统一进入 R 档，避免新增人物沿用被替换旧人的评级。
  */
 const HISTORICAL_SSR_NAMES = new Set([
+  // SSR is reserved for state-shaping rulers and ministers, major-theater commanders,
+  // or figures whose documented decisions produced a decisive strategic result.
   // 魏
-  '曹操', '曹丕', '荀彧', '贾诩', '张辽', '曹真',
+  '曹操', '曹丕', '荀彧', '贾诩', '张辽', '曹真', '夏侯惇', '夏侯渊',
+  '郭嘉', '曹仁', '张郃', '徐晃', '荀攸', '程昱', '满宠', '曹叡', '陈群',
   // 蜀
-  '刘备', '诸葛亮', '关羽', '张飞', '赵云', '姜维',
+  '刘备', '诸葛亮', '关羽', '张飞', '赵云', '姜维', '马超', '黄忠', '庞统',
+  '法正', '魏延', '蒋琬', '费祎', '董允', '黄权', '王平',
   // 吴
-  '孙坚', '孙策', '孙权', '周瑜', '鲁肃', '吕蒙', '陆逊', '陆抗',
+  '孙坚', '孙策', '孙权', '周瑜', '鲁肃', '吕蒙', '陆逊', '陆抗', '甘宁', '太史慈',
+  '顾雍', '张昭', '吕范', '朱然', '程普',
   // 晋及两晋南北朝（该阵营覆盖的年代更长，因此人数自然更多）
   '司马懿', '司马师', '司马昭', '司马炎', '羊祜', '杜预', '王濬', '邓艾',
   '谢安', '谢玄', '祖逖', '桓温', '陶侃', '王导', '刘裕', '苻坚', '慕容垂', '檀道济',
@@ -78,7 +85,14 @@ const HISTORICAL_SR_NAMES = new Set([
 ]);
 
 const HISTORICAL_SCORE_OVERRIDES = {
-  曹操: 92, 诸葛亮: 92, 刘备: 89, 孙权: 89, 司马懿: 90, 刘裕: 89,
+  曹操: 92, 荀彧: 89, 曹丕: 86, 张辽: 86, 贾诩: 85, 曹真: 85,
+  夏侯惇: 84, 夏侯渊: 84, 郭嘉: 84, 曹仁: 85, 张郃: 85, 徐晃: 84, 荀攸: 86,
+  程昱: 84, 满宠: 84, 曹叡: 86, 陈群: 87,
+  诸葛亮: 92, 刘备: 89, 关羽: 88, 张飞: 85, 赵云: 84, 姜维: 84, 马超: 84, 黄忠: 84,
+  庞统: 84, 法正: 85, 魏延: 84, 蒋琬: 86, 费祎: 85, 董允: 85, 黄权: 84, 王平: 84,
+  孙权: 89, 周瑜: 88, 陆逊: 87, 孙策: 85, 吕蒙: 85, 孙坚: 84, 鲁肃: 87, 陆抗: 84,
+  甘宁: 84, 太史慈: 84, 顾雍: 85, 张昭: 86, 吕范: 84, 朱然: 84, 程普: 84,
+  司马懿: 90, 刘裕: 89,
   贾逵: 78, 刘馥: 75, 傅嘏: 74, 高柔: 74, 赵俨: 75, 杜畿: 76,
   陈矫: 69, 梁习: 75, 王观: 69, 吕昭: 68, 黄崇: 66, 张裔: 73,
   陆景: 65, 诸葛融: 64,
@@ -87,14 +101,26 @@ const HISTORICAL_SCORE_OVERRIDES = {
 const GENERAL_ROLE_OVERRIDES = {
   贾逵: 'defender', 刘馥: 'governor', 傅嘏: 'strategist', 高柔: 'governor', 赵俨: 'strategist',
   杜畿: 'governor', 陈矫: 'governor', 梁习: 'governor', 王观: 'governor', 吕昭: 'defender',
-  黄崇: 'vanguard', 张裔: 'governor', 陆景: 'defender', 诸葛融: 'defender',
+  黄崇: 'vanguard', 张裔: 'governor', 董允: 'governor', 陆景: 'defender', 诸葛融: 'defender',
 };
 
 const ROLE_LABELS = {
   ruler: '统御', strategist: '谋略', governor: '治政', defender: '守备', vanguard: '征战', cultural: '文教',
 };
 
+const HISTORICAL_FACTION_OVERRIDES = {
+  苻坚: '前秦', 苻融: '前秦', 慕容垂: '后燕', 段钦: '后燕',
+  刘裕: '东晋/刘宋', 何无忌: '东晋', 檀道济: '刘宋',
+};
+
+const defaultHistoricalFaction = raw => (
+  HISTORICAL_FACTION_OVERRIDES[raw.name]
+  || ({ wei: '曹魏', shu: '蜀汉', wu: '孙吴', jin: '晋及南北朝', neutral: '汉末群雄' }[raw.faction])
+  || '历史势力'
+);
+
 const inferGeneralRole = (raw) => {
+  if (raw.role) return raw.role;
   if (GENERAL_ROLE_OVERRIDES[raw.name]) return GENERAL_ROLE_OVERRIDES[raw.name];
   const text = `${raw.title || ''}${raw.desc || ''}`;
   if (/(帝|君主|国主|建国|立国|统一|诸侯|太子|王$)/.test(text)) return 'ruler';
@@ -105,14 +131,15 @@ const inferGeneralRole = (raw) => {
   return 'vanguard';
 };
 
-const resolveHistoricalRarity = (name) => (
-  HISTORICAL_SSR_NAMES.has(name) ? 'SSR' : HISTORICAL_SR_NAMES.has(name) ? 'SR' : 'R'
+const resolveHistoricalRarity = (raw) => (
+  raw.historicalRarity
+  || (HISTORICAL_SSR_NAMES.has(raw.name) ? 'SSR' : HISTORICAL_SR_NAMES.has(raw.name) ? 'SR' : 'R')
 );
 
 const scoreFor = (raw, rarity) => {
   const ranges = { SSR: [84, 92], SR: [72, 83], R: [55, 71] };
   const [min, max] = ranges[rarity];
-  const proposed = HISTORICAL_SCORE_OVERRIDES[raw.name] ?? Number(raw.teamLevel) ?? min;
+  const proposed = raw.historicalScore ?? HISTORICAL_SCORE_OVERRIDES[raw.name] ?? Number(raw.teamLevel) ?? min;
   return Math.max(min, Math.min(max, Math.round(proposed)));
 };
 
@@ -160,18 +187,20 @@ function bonusFor(rarity, role, score) {
  * @returns {General}
  */
 function G(raw) {
-  const rarity = resolveHistoricalRarity(raw.name);
+  const { profile: _profile, historicalRarity: _historicalRarity, ...generalData } = raw;
+  const rarity = resolveHistoricalRarity(raw);
   const historicalScore = scoreFor(raw, rarity);
   const role = inferGeneralRole(raw);
   const teamLevel = historicalScore;
   const teamSize = teamSizeFor(historicalScore);
   const recruitCost = costFor(rarity, historicalScore);
   return {
-    ...raw,
+    ...generalData,
     rarity,
     historicalScore,
     role,
     roleLabel: ROLE_LABELS[role],
+    historicalFaction: raw.historicalFaction || defaultHistoricalFaction(raw),
     teamLevel,
     teamSize,
     recruitCost,
@@ -179,7 +208,7 @@ function G(raw) {
   };
 }
 
-/** 400 generals: 80 per faction; rarity distribution follows historical contribution rather than equal quotas. */
+/** 550 generals across five gameplay factions; roster and rarity counts follow historical coverage rather than equal quotas. */
 const RAW_GENERALS = [
   // Wei (50) — 6 SSR / 12 SR / 32 R
   G({ id: 'wei_cao_cao', name: '曹操', title: '魏武帝', faction: 'wei', rarity: 'SSR', teamLevel: 88, teamSize: 6, desc: '乱世奸雄，挟天子以令诸侯。', icon: '🦁' }),
@@ -603,6 +632,7 @@ const RAW_GENERALS = [
   G({ id: 'neu_ma_wan', name: '马玩', title: '关中将领', faction: 'neutral', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '关中联军八部将之一，曾拒曹操。', icon: '🏇' }),
   G({ id: 'neu_hou_xuan', name: '侯选', title: '关中将领', faction: 'neutral', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '割据河东，与马超韩遂合兵潼关。', icon: '🛡️' }),
   G({ id: 'neu_lei_bo', name: '雷薄', title: '仲家将领', faction: 'neutral', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '袁术部将，后据山自立。', icon: '⚡' }),
+  ...GENERAL_EXPANSION.map(G),
 ];
 
 export const SANGUO_GENERALS = RAW_GENERALS;
@@ -683,6 +713,7 @@ export function hydrateGeneralSnapshot(savedGeneral) {
     name: canonical.name,
     title: canonical.title,
     faction: canonical.faction,
+    historicalFaction: canonical.historicalFaction,
     rarity: canonical.rarity,
     historicalScore: canonical.historicalScore,
     role: canonical.role,
