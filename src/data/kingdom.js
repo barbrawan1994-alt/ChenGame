@@ -402,6 +402,7 @@ export const DEFAULT_KINGDOM_WAR = {
   warLog: [],
   collectedGeneralIds: [],
   generalDraws: 0,
+  generalDrawPity: 0,
   lastTick: null,
   season: 1,
   seasonStartDate: null,
@@ -427,7 +428,7 @@ export const DEFAULT_KINGDOM_WAR = {
   currentTurn: 0,
   /** AI各方预备兵力 */
   factionManpower: { wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 },
-  /** 全 375 名将领、外交关系、盟约和计谋状态。 */
+  /** 全 400 名将领、外交关系、盟约和计谋状态。 */
   politics: createDefaultKingdomPolitics(SANGUO_GENERALS),
   /** 加入阵营时间（叛国冷却） */
   factionJoinDate: null,
@@ -525,6 +526,26 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
   const territories = kw?.territories || {};
   const faction = kw?.faction;
   const stats = getFactionTerritoryStats(territories);
+  const qunForces = Object.values(territories).reduce((forces, territory) => {
+    if (territory?.owner !== 'qun') return forces;
+    const lordId = territory.qunLordId || 'han_court';
+    const force = forces[lordId] || { count: 0, totalTroops: 0 };
+    force.count += 1;
+    force.totalTroops += getGarrisonTotal(territory.garrison);
+    forces[lordId] = force;
+    return forces;
+  }, {});
+  const rankedQunForces = Object.values(qunForces).sort((a, b) => b.count - a.count || b.totalTroops - a.totalTroops);
+  if (rankedQunForces.length > 0) {
+    const primary = rankedQunForces[0];
+    const secondary = rankedQunForces[1] || { count: 0, totalTroops: 0 };
+    stats.qun = {
+      count: primary.count + Math.floor(secondary.count * 0.35),
+      totalTroops: primary.totalTroops + Math.floor(secondary.totalTroops * 0.35),
+      actualCount: Object.values(territories).filter(territory => territory?.owner === 'qun').length,
+      lordCount: rankedQunForces.length,
+    };
+  }
   const myStats = faction ? (stats[faction] || { count: 0, totalTroops: 0 }) : { count: 0, totalTroops: 0 };
   const rival = ALL_FACTION_IDS
     .filter(fid => fid !== faction)
@@ -1326,8 +1347,10 @@ export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territor
 
 export const isFactionCapitalOnly = (faction, territories) => {
   const ownedMaps = WAR_MAP_IDS.filter(id => territories[id]?.owner === faction);
-  return ownedMaps.length <= Math.max(5, Math.floor(WAR_MAP_IDS.length * 0.12));
+  return ownedMaps.length <= CAPITAL_SIEGE_MAX_TERRITORIES;
 };
+
+export const CAPITAL_SIEGE_MAX_TERRITORIES = 3;
 
 /** 侦察：相邻敌方领地情报（basic_scout） */
 export const getScoutAdjacentIntel = (mapId, playerFaction, territories, scoutRange = 1) => {
@@ -2089,7 +2112,7 @@ export const migrateKingdomWarState = (kw) => {
   next.grainCap = normalizeNonNegativeIntK(next.grainCap, DEFAULT_KINGDOM_WAR.grainCap);
   next.morale = normalizeNonNegativeIntK(next.morale, DEFAULT_KINGDOM_WAR.morale, 120);
   [
-    'warContribution', 'factionTokens', 'generalDraws', 'expBuffBattles', 'warBalls',
+    'warContribution', 'factionTokens', 'generalDraws', 'generalDrawPity', 'expBuffBattles', 'warBalls',
     'actionCounter', 'currentTurn', 'defectionCount', 'dailySiegeCount',
     'seasonContribution', 'lifetimeContribution',
   ].forEach((field) => { next[field] = normalizeNonNegativeIntK(next[field]); });

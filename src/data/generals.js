@@ -91,7 +91,7 @@ function G(raw) {
 const RAW_GENERALS = [
   // Wei (50) — 6 SSR / 12 SR / 32 R
   G({ id: 'wei_cao_cao', name: '曹操', title: '魏武帝', faction: 'wei', rarity: 'SSR', teamLevel: 88, teamSize: 6, desc: '乱世奸雄，挟天子以令诸侯。', icon: '🦁' }),
-  G({ id: 'wei_sima_yi', name: '司马懿', title: '仲达', faction: 'wei', rarity: 'SSR', teamLevel: 86, teamSize: 6, desc: '深谋远虑，晋朝奠基人。', icon: '🦊' }),
+  G({ id: 'wei_sima_yi', name: '贾逵', title: '建威将军', faction: 'wei', rarity: 'SSR', teamLevel: 86, teamSize: 6, desc: '文武兼备，治郡有方，多次挫败东吴攻势。', icon: '🦊' }),
   G({ id: 'wei_xun_yu', name: '荀彧', title: '王佐之才', faction: 'wei', rarity: 'SSR', teamLevel: 84, teamSize: 5, desc: '运筹帷幄，曹魏首席战略家。', icon: '📜' }),
   G({ id: 'wei_cao_pi', name: '曹丕', title: '魏文帝', faction: 'wei', rarity: 'SSR', teamLevel: 82, teamSize: 5, desc: '篡汉建魏，文武双全。', icon: '👑' }),
   G({ id: 'wei_zhang_liao', name: '张辽', title: '征东将军', faction: 'wei', rarity: 'SR', teamLevel: 78, teamSize: 5, desc: '威震逍遥津，五子良将之首。', icon: '⚔️' }),
@@ -113,10 +113,10 @@ const RAW_GENERALS = [
   G({ id: 'wei_li_dian', name: '李典', title: '儒将', faction: 'wei', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '好学不倦，逍遥津协战。', icon: '📖' }),
   G({ id: 'wei_cao_zhang', name: '曹彰', title: '黄须儿', faction: 'wei', rarity: 'R', teamLevel: 72, teamSize: 4, desc: '诸子中最善战者。', icon: '🐻' }),
   G({ id: 'wei_cao_zhi', name: '曹植', title: '才高八斗', faction: 'wei', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '七步成诗，文才冠世。', icon: '✒️' }),
-  G({ id: 'wei_deng_ai', name: '邓艾', title: '偷渡阴平', faction: 'wei', rarity: 'R', teamLevel: 78, teamSize: 5, desc: '偷渡阴平灭蜀。', icon: '⛰️' }),
-  G({ id: 'wei_zhong_hui', name: '钟会', title: '计绝', faction: 'wei', rarity: 'R', teamLevel: 76, teamSize: 5, desc: '伐蜀主帅，阴怀异志。', icon: '🗝️' }),
-  G({ id: 'wei_sima_zhao', name: '司马昭', title: '晋王', faction: 'wei', rarity: 'R', teamLevel: 75, teamSize: 4, desc: '路人皆知其心。', icon: '🦅' }),
-  G({ id: 'wei_sima_shi', name: '司马师', title: '大将军', faction: 'wei', rarity: 'R', teamLevel: 73, teamSize: 4, desc: '司马氏掌权之始。', icon: '🔗' }),
+  G({ id: 'wei_deng_ai', name: '刘馥', title: '扬州刺史', faction: 'wei', rarity: 'R', teamLevel: 78, teamSize: 5, desc: '单骑赴任，兴修水利并筑合肥城。', icon: '⛰️' }),
+  G({ id: 'wei_zhong_hui', name: '傅嘏', title: '尚书', faction: 'wei', rarity: 'R', teamLevel: 76, teamSize: 5, desc: '识见深远，屡论边事与用兵得失。', icon: '🗝️' }),
+  G({ id: 'wei_sima_zhao', name: '高柔', title: '太尉', faction: 'wei', rarity: 'R', teamLevel: 75, teamSize: 4, desc: '执法持正，历仕曹魏数朝。', icon: '🦅' }),
+  G({ id: 'wei_sima_shi', name: '赵俨', title: '骠骑将军', faction: 'wei', rarity: 'R', teamLevel: 73, teamSize: 4, desc: '统协调度诸军，镇守关中有功。', icon: '🔗' }),
   G({ id: 'wei_wen_pin', name: '文聘', title: '后将军', faction: 'wei', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '镇守江夏数十年。', icon: '🏞️' }),
   G({ id: 'wei_zang_ba', name: '臧霸', title: '镇东将军', faction: 'wei', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '青徐豪霸，镇守东方。', icon: '🗻' }),
   G({ id: 'wei_cao_xiu', name: '曹休', title: '大司马', faction: 'wei', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '宗族大将，石亭之败。', icon: '🪖' }),
@@ -137,7 +137,7 @@ const RAW_GENERALS = [
   G({ id: 'wei_zhuge_dan', name: '诸葛诞', title: '镇东将军', faction: 'wei', rarity: 'R', teamLevel: 71, teamSize: 4, desc: '诸葛氏之虎，淮南起兵。', icon: '🐯' }),
   G({ id: 'wei_cao_shuang', name: '曹爽', title: '大将军', faction: 'wei', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '曹魏权臣，高平陵之变败亡。', icon: '💧' }),
   G({ id: 'wei_huan_fan', name: '桓范', title: '大司农', faction: 'wei', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '智囊谋士，人称智囊。', icon: '💼' }),
-  G({ id: 'wei_du_yu', name: '杜预', title: '征南大将军', faction: 'wei', rarity: 'R', teamLevel: 74, teamSize: 4, desc: '灭吴功臣，文武双全。', icon: '🏆' }),
+  G({ id: 'wei_du_yu', name: '杜畿', title: '河东太守', faction: 'wei', rarity: 'R', teamLevel: 74, teamSize: 4, desc: '治河东十六年，安民兴业而足军资。', icon: '🏆' }),
   G({ id: 'wei_wang_ji', name: '王基', title: '征南将军', faction: 'wei', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '稳重持重，善守善攻。', icon: '🛡️' }),
   G({ id: 'wei_guanqiu_jian', name: '毌丘俭', title: '镇东将军', faction: 'wei', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '征高句丽，淮南举兵。', icon: '🏹' }),
   G({ id: 'wei_wen_qin', name: '文钦', title: '前将军', faction: 'wei', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '骁勇善战，父子名将。', icon: '⚡' }),
@@ -149,12 +149,12 @@ const RAW_GENERALS = [
   G({ id: 'wei_wang_shuang', name: '王双', title: '将军', faction: 'wei', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '勇猛过人，被魏延所斩。', icon: '⚔️' }),
   G({ id: 'wei_chen_tai', name: '陈泰', title: '征西将军', faction: 'wei', rarity: 'SR', teamLevel: 74, teamSize: 4, desc: '陈群之子，抗姜维有功。', icon: '🏔️' }),
   G({ id: 'wei_zhong_yao', name: '钟繇', title: '太傅', faction: 'wei', rarity: 'SR', teamLevel: 73, teamSize: 4, desc: '书法大家，曹魏重臣。', icon: '🖊️' }),
-  G({ id: 'wei_jia_chong', name: '贾充', title: '车骑将军', faction: 'wei', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '指使弑杀曹髦，晋朝开国功臣。', icon: '🗡️' }),
-  G({ id: 'wei_wang_hun', name: '王浑', title: '征东大将军', faction: 'wei', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '伐吴功臣，与杜预争功。', icon: '⚓' }),
-  G({ id: 'wei_yang_hu', name: '羊祜', title: '征南大将军', faction: 'wei', rarity: 'SR', teamLevel: 76, teamSize: 5, desc: '仁德将军，伐吴总策划者。', icon: '🕊️' }),
+  G({ id: 'wei_jia_chong', name: '陈矫', title: '司徒', faction: 'wei', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '刚直果断，曹魏开国重臣。', icon: '🗡️' }),
+  G({ id: 'wei_wang_hun', name: '梁习', title: '并州刺史', faction: 'wei', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '整顿并州，迁豪强而安边民。', icon: '⚓' }),
+  G({ id: 'wei_yang_hu', name: '王观', title: '司空', faction: 'wei', rarity: 'SR', teamLevel: 76, teamSize: 5, desc: '清俭持正，治郡理军皆有政绩。', icon: '🕊️' }),
   G({ id: 'wei_deng_zhong', name: '邓忠', title: '将军', faction: 'wei', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '邓艾之子，随父灭蜀。', icon: '⛰️' }),
   G({ id: 'wei_shi_bao', name: '师纂', title: '将军', faction: 'wei', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '邓艾麾下先锋。', icon: '🏹' }),
-  G({ id: 'wei_wen_yang', name: '文鸯', title: '将军', faction: 'wei', rarity: 'SR', teamLevel: 75, teamSize: 4, desc: '单骑退雄兵，勇比赵云。', icon: '🐎' }),
+  G({ id: 'wei_wen_yang', name: '吕昭', title: '镇北将军', faction: 'wei', rarity: 'SR', teamLevel: 75, teamSize: 4, desc: '久镇北疆，统军谨严。', icon: '🐎' }),
   G({ id: 'wei_cao_hong', name: '曹洪', title: '骠骑将军', faction: 'wei', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '宗室大将，数救曹操于危难。', icon: '🛡️' }),
   G({ id: 'wei_cao_chun', name: '曹纯', title: '虎豹骑督', faction: 'wei', rarity: 'R', teamLevel: 71, teamSize: 4, desc: '统领虎豹骑精锐。', icon: '🐆' }),
   G({ id: 'wei_li_tong', name: '李通', title: '汝南太守', faction: 'wei', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '忠义守土，为曹操安定后方。', icon: '🏰' }),
@@ -234,7 +234,7 @@ const RAW_GENERALS = [
   G({ id: 'shu_li_hui', name: '李恢', title: '庲降都督', faction: 'shu', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '平定南中功臣。', icon: '🏔️' }),
   G({ id: 'shu_yang_yi', name: '杨仪', title: '中军师', faction: 'shu', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '撤军有功，后因怨言废为庶人。', icon: '📝' }),
   G({ id: 'shu_chen_dao', name: '陈到', title: '征西将军', faction: 'shu', rarity: 'SR', teamLevel: 73, teamSize: 4, desc: '白毦兵统帅，与赵云齐名。', icon: '🛡️' }),
-  G({ id: 'shu_huang_xu', name: '黄权', title: '车骑将军', faction: 'shu', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '蜀汉忠臣，夷陵后无奈降魏。', icon: '⚖️' }),
+  G({ id: 'shu_huang_xu', name: '黄崇', title: '尚书郎', faction: 'shu', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '黄权之子，绵竹力劝诸葛瞻速占险要，后奋战殉国。', icon: '⚖️' }),
   G({ id: 'shu_wu_lan', name: '吴兰', title: '将军', faction: 'shu', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '入蜀先锋，下辩战死。', icon: '💀' }),
   G({ id: 'shu_lei_tong', name: '雷铜', title: '将军', faction: 'shu', rarity: 'R', teamLevel: 59, teamSize: 3, desc: '随军入蜀，战死沙场。', icon: '⚡' }),
   G({ id: 'shu_zhuo_ying', name: '卓膺', title: '将军', faction: 'shu', rarity: 'R', teamLevel: 58, teamSize: 3, desc: '蜀汉早期将领。', icon: '🏹' }),
@@ -243,7 +243,7 @@ const RAW_GENERALS = [
   G({ id: 'shu_liu_ba', name: '刘巴', title: '尚书令', faction: 'shu', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '才干过人，助理蜀汉财政。', icon: '💰' }),
   G({ id: 'shu_yi_ji', name: '伊籍', title: '昭文将军', faction: 'shu', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '外交使臣，参与制定蜀科。', icon: '📜' }),
   G({ id: 'shu_qin_mi', name: '秦宓', title: '大司农', faction: 'shu', rarity: 'R', teamLevel: 59, teamSize: 3, desc: '辩才无双，舌战张温。', icon: '🗣️' }),
-  G({ id: 'shu_zhang_ni', name: '张嶷', title: '荡寇将军', faction: 'shu', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '平南中有功，力战殉国。', icon: '🛡️' }),
+  G({ id: 'shu_zhang_ni', name: '张裔', title: '辅汉将军', faction: 'shu', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '才干敏捷，出使与治政皆有声名。', icon: '🛡️' }),
   G({ id: 'shu_fu_qian', name: '傅佥', title: '关中都督', faction: 'shu', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '蜀亡时死守阳安关。', icon: '🏰' }),
   G({ id: 'shu_liu_min', name: '刘敏', title: '左护军', faction: 'shu', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '兴势之战有功。', icon: '⚔️' }),
   G({ id: 'shu_ma_miao', name: '马邈', title: '将军', faction: 'shu', rarity: 'R', teamLevel: 57, teamSize: 3, desc: '江油关守将，降邓艾。', icon: '🏳️' }),
@@ -312,14 +312,14 @@ const RAW_GENERALS = [
   G({ id: 'wu_jia_hua', name: '贾华', title: '将军', faction: 'wu', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '孙权侍卫长。', icon: '⚔️' }),
   G({ id: 'wu_sun_hao', name: '孙皓', title: '归命侯', faction: 'wu', rarity: 'R', teamLevel: 55, teamSize: 3, desc: '吴末帝，暴虐亡国。', icon: '💔' }),
   // Wu expansion-2 (+25)
-  G({ id: 'wu_lu_ji', name: '陆机', title: '文学家', faction: 'wu', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '陆逊之孙，文章冠世。', icon: '✒️' }),
+  G({ id: 'wu_lu_ji', name: '陆景', title: '偏将军', faction: 'wu', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '陆抗之子，吴亡之际坚守乐乡。', icon: '✒️' }),
   G({ id: 'wu_sun_lin', name: '孙綝', title: '大将军', faction: 'wu', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '吴末权臣，废立天子。', icon: '👹' }),
   G({ id: 'wu_sun_jun', name: '孙峻', title: '丞相', faction: 'wu', rarity: 'R', teamLevel: 67, teamSize: 4, desc: '诛杀诸葛恪夺权。', icon: '🗡️' }),
   G({ id: 'wu_sun_lu_ban', name: '孙鲁班', title: '全公主', faction: 'wu', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '孙权长女，权斗高手。', icon: '🌸' }),
   G({ id: 'wu_he_qi2', name: '濮阳兴', title: '丞相', faction: 'wu', rarity: 'R', teamLevel: 62, teamSize: 3, desc: '吴末丞相，被孙皓诛杀。', icon: '📜' }),
   G({ id: 'wu_zhang_ti', name: '张悌', title: '丞相', faction: 'wu', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '吴末丞相，晋军渡江时殉国。', icon: '💀' }),
   G({ id: 'wu_shen_ying', name: '沈莹', title: '将军', faction: 'wu', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '丹杨刀盾兵精锐统帅。', icon: '🛡️' }),
-  G({ id: 'wu_zhuge_xu', name: '诸葛绪', title: '将军', faction: 'wu', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '诸葛诞之族，吴将。', icon: '⚔️' }),
+  G({ id: 'wu_zhuge_xu', name: '诸葛融', title: '奋威将军', faction: 'wu', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '诸葛瑾之子，统兵驻公安。', icon: '⚔️' }),
   G({ id: 'wu_sun_deng', name: '孙登', title: '太子', faction: 'wu', rarity: 'SR', teamLevel: 72, teamSize: 4, desc: '孙权嫡长子，仁德英才早逝。', icon: '🌅' }),
   G({ id: 'wu_sun_he', name: '孙和', title: '文帝', faction: 'wu', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '二宫之争失势被废。', icon: '👑' }),
   G({ id: 'wu_sun_liang', name: '孙亮', title: '会稽王', faction: 'wu', rarity: 'R', teamLevel: 58, teamSize: 3, desc: '少帝聪慧却被权臣废黜。', icon: '📖' }),
@@ -534,6 +534,39 @@ export const GENERAL_RARITY_CONFIG = {
 };
 
 export const MAX_RECRUITED_GENERALS = 12;
+
+export const GENERAL_DRAW_RATES = { SSR: 0.06, SR: 0.26, R: 0.68 };
+export const GENERAL_DRAW_PITY = 10;
+
+export function drawGeneralFromPool(availableGenerals, pity = 0, random = Math.random) {
+  const pool = Array.isArray(availableGenerals) ? availableGenerals.filter(Boolean) : [];
+  if (pool.length === 0) return { general: null, nextPity: Math.max(0, Math.floor(Number(pity) || 0)), guaranteed: false };
+
+  const safePity = Math.max(0, Math.floor(Number(pity) || 0));
+  const byRarity = {
+    SSR: pool.filter(general => general.rarity === 'SSR'),
+    SR: pool.filter(general => general.rarity === 'SR'),
+    R: pool.filter(general => general.rarity === 'R'),
+  };
+  const guaranteed = safePity >= GENERAL_DRAW_PITY - 1 && byRarity.SSR.length > 0;
+  let rarity = 'R';
+  if (guaranteed) {
+    rarity = 'SSR';
+  } else {
+    const roll = random();
+    if (roll < GENERAL_DRAW_RATES.SSR) rarity = 'SSR';
+    else if (roll < GENERAL_DRAW_RATES.SSR + GENERAL_DRAW_RATES.SR) rarity = 'SR';
+  }
+
+  const fallbackOrder = rarity === 'SSR' ? ['SSR', 'SR', 'R'] : rarity === 'SR' ? ['SR', 'R', 'SSR'] : ['R', 'SR', 'SSR'];
+  const rarityPool = fallbackOrder.map(key => byRarity[key]).find(group => group.length > 0) || pool;
+  const general = rarityPool[Math.min(rarityPool.length - 1, Math.floor(random() * rarityPool.length))];
+  return {
+    general,
+    nextPity: general.rarity === 'SSR' ? 0 : Math.min(GENERAL_DRAW_PITY - 1, safePity + 1),
+    guaranteed,
+  };
+}
 
 const RARITY_WEIGHT = { R: 48, SR: 18, SSR: 4 };
 const FACTION_WEIGHT_SAME = 6;
