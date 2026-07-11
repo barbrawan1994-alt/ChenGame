@@ -196,7 +196,7 @@ import {
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
   getUnlockedRankPerks, getScoutAdjacentIntel, useWarRally, useRoyalDecree,
-  RECRUIT_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY, TIGER_SEAL_ATTACK_MULT,
+  RECRUIT_CONFIG, SIEGE_CONFIG, DEFECTION_CONFIG, MAP_ADJACENCY, TIGER_SEAL_ATTACK_MULT,
   recruitTroops, calcGrainCap, canDefect, applyDefection, getDefectionPenalties,
   getDefectionStatus, formatDefectionPenaltyLines, canRejoinFaction,
   executeAllEnemyActions, migrateKingdomWarState, getActiveGuards, assignTerritoryGuards,
@@ -214,6 +214,8 @@ import {
   KW_TROOP_IDS,
   CONTEST_BAR_IDS,
   CONTESTED_SIEGE_MAP_IDS,
+  CONTEST_CAPTURE_THRESHOLD,
+  CONTEST_SIEGE_MIN_DEPLOY,
   runKwSiegeBattle,
   evaluateKwSiegeBattle,
   tickContestOccupationAI,
@@ -17439,8 +17441,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     kingdomWarRef.current = nextKw;
     setKingdomWar(nextKw);
     triggerEnemyKingdomActions(nextKw);
-    showMapToast(type === 'elite' ? '⚔️' : '🪖', type === 'elite' ? '精锐征兵' : '征兵完成', type === 'elite'
-      ? `获得 ${result.gain} 精锐（攻防+30%；消耗 ${result.goldCost}金 ${result.grainCost}粮）`
+    showMapToast(type === 'elite' ? '⚔️' : '🪖', type === 'elite' ? '精锐整训' : '征兵完成', type === 'elite'
+      ? `将 ${result.gain} 名预备兵整训为精锐（攻防+30%；消耗 ${result.goldCost}金 ${result.grainCost}粮）`
       : `获得 ${result.gain} 兵力（消耗 ${result.goldCost}金 ${result.grainCost}粮）`, 2500);
     setTimeout(() => kingdomActionLocksRef.current.delete(lockKey), 900);
   };
@@ -26854,9 +26856,18 @@ const renderMenu = () => {
                             战局难度 {strategicBrief.campaignDifficulty}/100 · {strategicBrief.difficulty.label}
                           </div>
                         </div>
-                        <button type="button" onClick={() => setKwTab(strategicBrief.reserve < 160 ? 'overview' : 'territory')}
+                        <button type="button" onClick={() => {
+                          if (strategicBrief.reserve < SIEGE_CONFIG.readyReserve) {
+                            setKwTab('overview');
+                            window.setTimeout(() => {
+                              document.getElementById('kingdom-recruit-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 0);
+                          } else {
+                            setKwTab('territory');
+                          }
+                        }}
                           style={{border:'1px solid rgba(255,255,255,0.24)', background:'rgba(255,255,255,0.12)', color:'#fff', borderRadius:'12px', padding:'8px 12px', fontSize:'11px', fontWeight:'800', cursor:'pointer', flexShrink:0}}>
-                          {strategicBrief.reserve < 160 ? '去征兵' : '去行动'}
+                          {strategicBrief.reserve < SIEGE_CONFIG.readyReserve ? '去征兵' : '去行动'}
                         </button>
                       </div>
                       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(96px, 1fr))', gap:'8px', marginBottom:'12px'}}>
@@ -26923,7 +26934,7 @@ const renderMenu = () => {
                       const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
                       const timeMod = getBattleTimeModifiers();
                       return (
-                        <div style={{ background: 'linear-gradient(135deg, #1e293b, #334155)', borderRadius: '14px', padding: '14px 16px', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
+                        <div id="kingdom-recruit-panel" tabIndex={-1} style={{ background: 'linear-gradient(135deg, #1e293b, #334155)', borderRadius: '14px', padding: '14px 16px', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.12)', scrollMarginTop:'18px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                             <div style={{ fontSize: '13px', fontWeight: '800' }}>🪖 征兵与战备</div>
                             <span style={{ fontSize: '11px', background: timeMod.nightVision ? 'rgba(99,102,241,0.35)' : 'rgba(251,191,36,0.25)', padding: '3px 10px', borderRadius: '999px', fontWeight: '700' }}>
@@ -26941,7 +26952,7 @@ const renderMenu = () => {
                               普通征兵 ({RECRUIT_CONFIG.normalCost.gold}金+{RECRUIT_CONFIG.normalCost.grain}粮)
                             </button>
                             <button type="button" onClick={() => handleKingdomRecruit('elite')} style={{ flex: '1 1 120px', padding: '10px', border: 'none', borderRadius: '10px', background: 'linear-gradient(135deg,#B45309,#92400E)', color: '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
-                              精锐征兵 ({RECRUIT_CONFIG.eliteCost.gold}金+{RECRUIT_CONFIG.eliteCost.grain}粮)
+                              精锐整训 ({RECRUIT_CONFIG.eliteCost.gold}金+{RECRUIT_CONFIG.eliteCost.grain}粮)
                             </button>
                           </div>
                           {(() => {
@@ -27499,8 +27510,8 @@ const renderMenu = () => {
                       <div style={{background:'linear-gradient(135deg, #FFD700, #FF8F00)', borderRadius:'14px', padding:'16px', color:'#fff'}}>
                         <div style={{fontSize:'16px', fontWeight:'800', marginBottom:'6px'}}>🏰 天下争夺战</div>
                         <div style={{fontSize:'12px', opacity:0.9, lineHeight:1.55}}>
-                          在国战地图上击败训练家或敌国训练师只会获得预备兵；要推高占领条、夺取城池，必须在此发动「武将带兵攻城」推演（六兵种环形克制，诸侯群雄作为第四势力争夺积分）。<br/>
-                          当前预备兵：{reserve} / {MANPOWER_RESERVE_CAP} · 单次可调上限随军衔提升。
+                          在国战地图上击败训练家或敌国训练师只会获得预备兵；名城需通过多轮攻城把本阵营占领积分推进到 {CONTEST_CAPTURE_THRESHOLD}，单场胜利不会直接易主。<br/>
+                          当前预备兵：{reserve} / {MANPOWER_RESERVE_CAP} · 最低出征 {CONTEST_SIEGE_MIN_DEPLOY} · 单次可调上限随军衔提升。
                         </div>
                       </div>
                       {contestedMaps.map(cm => {
@@ -27560,7 +27571,7 @@ const renderMenu = () => {
                               <button onClick={() => {
                                 if (!kw.faction) { showMapToast('❌', '提示', '请先加入国战阵营。', 1800); return; }
                                 if (!canChallenge) { showMapToast('❌', '提示', '今日攻城次数已用完 (每日3次)', 1500); return; }
-                                if (deployCap < 80) { showMapToast('❌', '兵力不足', '预备兵至少 80 才可攻城，请先在国战地图击败训练家或敌国训练师征兵。', 2500); return; }
+                                if (deployCap < CONTEST_SIEGE_MIN_DEPLOY) { showMapToast('❌', '兵力不足', `预备兵至少 ${CONTEST_SIEGE_MIN_DEPLOY} 才可攻城，请先征兵整备。`, 2500); return; }
                                 const base = Math.floor(deployCap / 6);
                                 const rem = deployCap - base * 6;
                                 const allocation = {};
@@ -27569,7 +27580,7 @@ const renderMenu = () => {
                               }} style={{
                                 color:'#fff', border:'none', borderRadius:'20px', cursor:'pointer', fontWeight:'bold',
                                 width:'100%', fontSize:'13px', padding:'10px 0',
-                                background: canChallenge && deployCap >= 80 ? myFaction.color : '#94a3b8', opacity: canChallenge ? 1 : 0.6,
+                                background: canChallenge && deployCap >= CONTEST_SIEGE_MIN_DEPLOY ? myFaction.color : '#94a3b8', opacity: canChallenge ? 1 : 0.6,
                               }}>
                                 🏯 武将带兵攻城 ({dailyAttempts}/{maxDailyAttempts}) · 可调 {deployCap} 兵
                               </button>
@@ -27692,7 +27703,7 @@ const renderMenu = () => {
                               const alloc = { ...kwSiegeModal.allocation };
                               const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
                               if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌', '分配有误', `兵力合计须等于 ${kwSiegeModal.deployCap}`, 2000); return; }
-                              if (sumA < 80) { showMapToast('❌', '兵力过少', '至少 80 兵力才可攻城', 2000); return; }
+                              if (sumA < CONTEST_SIEGE_MIN_DEPLOY) { showMapToast('❌', '兵力过少', `至少 ${CONTEST_SIEGE_MIN_DEPLOY} 兵力才可攻城`, 2000); return; }
                               const currentReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, currentKw.kwManpowerReserve || 0));
                               if (sumA > currentReserve) { showMapToast('❌', '兵力不足', `当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`, 2200); return; }
                               const attemptKey = `${m.id}_attempts_${getLocalDateStr()}`;
@@ -27752,11 +27763,13 @@ const renderMenu = () => {
                               cp[m.id] = mapProg;
                               const terr = syncContestedTerritoryOwners(cp, currentKw.territories);
                               const lost = Math.min(currentKw.kwManpowerReserve || 0, siegeResult.manpowerLost || 0);
+                              const nextReserve = Math.max(0, (currentKw.kwManpowerReserve || 0) - lost);
                               const nextKw = {
                                 ...currentKw,
                                 contestProgress: cp,
                                 territories: terr,
-                                kwManpowerReserve: Math.max(0, (currentKw.kwManpowerReserve || 0) - lost),
+                                kwManpowerReserve: nextReserve,
+                                eliteTroops: Math.min(nextReserve, currentKw.eliteTroops || 0),
                                 warContribution: (currentKw.warContribution || 0) + contribGain,
                                 seasonContribution: (currentKw.seasonContribution || 0) + contribGain,
                                 lifetimeContribution: (currentKw.lifetimeContribution || 0) + contribGain,
@@ -28016,9 +28029,9 @@ const renderMenu = () => {
                       const borderColor = isNeutral ? '#94a3b8' : (ownerFaction?.color || '#94a3b8');
                       const garrison = t.garrison || {};
 	                      const totalG = getGarrisonTotal(garrison);
-	                      const canSiege = !isMine && kw.faction && reserve >= 60;
-	                      let assaultPreview = null;
-	                      if (!isMine && kw.faction && reserve >= 60) {
+                      const canSiege = !isMine && kw.faction && reserve >= SIEGE_CONFIG.minDeploy;
+                      let assaultPreview = null;
+                      if (!isMine && kw.faction && reserve >= SIEGE_CONFIG.minDeploy) {
 	                        const cap0 = Math.min(reserve, 200 + rankIdx * 40);
 	                        const b0 = Math.floor(cap0 / 6);
 	                        const r0 = cap0 - b0 * 6;
@@ -28058,10 +28071,21 @@ const renderMenu = () => {
                           <div style={{height:'4px', background:'#f1f5f9', borderRadius:'2px', overflow:'hidden', marginBottom:'4px'}}>
                             <div style={{width:`${Math.min(100, t.strength)}%`, height:'100%', background: borderColor, borderRadius:'2px'}} />
                           </div>
-	                          <div style={{fontSize:'9px', color:'#64748b', marginBottom:'6px'}}>
-	                            防御 {t.strength}/100 · 总兵 {totalG}
-	                            {assaultPreview && <> · 胜率 {Math.round((assaultPreview.winChance || 0) * 100)}% · {assaultPreview.riskLabel}</>}
-	                          </div>
+                          <div style={{fontSize:'9px', color:'#64748b', marginBottom:'6px'}}>
+                            防御 {t.strength}/100 · 总兵 {totalG}
+                            {assaultPreview && <> · 胜率 {Math.round((assaultPreview.winChance || 0) * 100)}% · {assaultPreview.riskLabel}</>}
+                          </div>
+                          {t.contested && (
+                            <div style={{marginBottom:'6px'}}>
+                              <div style={{display:'flex', justifyContent:'space-between', fontSize:'9px', color:'#b45309', marginBottom:'2px'}}>
+                                <span>{FACTIONS[t.attackerFaction]?.icon || '⚔️'} 围城推进</span>
+                                <span>{t.attackProgress || 0}/{SIEGE_CONFIG.progressRequired}</span>
+                              </div>
+                              <div style={{height:'4px', background:'#ffedd5', borderRadius:'2px', overflow:'hidden'}}>
+                                <div style={{height:'100%', width:`${Math.min(100, t.attackProgress || 0)}%`, background:'#f97316'}} />
+                              </div>
+                            </div>
+                          )}
                           {(() => {
                             const scoutPerks = getUnlockedRankPerks(kw, buildRankStats(kw));
                             if (!scoutPerks.scoutRange) return null;
@@ -28095,7 +28119,7 @@ const renderMenu = () => {
                             <button onClick={() => {
                               if (territorySiegeAttempts >= maxTerritorySieges) { showMapToast('❌','攻城次数已用完',`普通领地每日最多 ${maxTerritorySieges} 次`,1800); return; }
                               const cap = Math.min(reserve, 200 + rankIdx * 40);
-                              if (cap < 60) { showMapToast('❌','兵力不足','预备兵至少60才可攻城',1800); return; }
+                              if (cap < SIEGE_CONFIG.minDeploy) { showMapToast('❌','兵力不足',`预备兵至少${SIEGE_CONFIG.minDeploy}才可攻城`,1800); return; }
                               const b = Math.floor(cap / 6);
                               const r = cap - b * 6;
                               const alloc = {};
@@ -28126,17 +28150,19 @@ const renderMenu = () => {
                       <div style={{display:'flex', flexDirection:'column', gap:'8px', maxHeight:'400px', overflowY:'auto'}}>
                         {[...(kw.warLog || [])].reverse().map((logItem, i) => {
                           const mapInfo = MAPS.find(m => m.id === logItem.mapId);
-                          const isCapture = logItem.type === 'capture';
+                          const isCapture = logItem.type === 'capture' || logItem.type === 'player_siege_win';
+                          const isSiegeProgress = logItem.type === 'siege_progress' || logItem.type === 'player_siege_progress';
+                          const reportColor = isCapture ? '#dc2626' : isSiegeProgress ? '#d97706' : '#16a34a';
                           const atkF = FACTIONS[logItem.attacker];
                           const defF = FACTIONS[logItem.defender];
                           return (
                             <div key={i} style={{
                               padding:'10px', borderRadius:'10px', fontSize:'12px',
-                              background: isCapture ? 'rgba(239,68,68,0.05)' : '#f8fafc',
-                              borderLeft: `3px solid ${isCapture ? '#ef4444' : '#22c55e'}`,
+                              background: isCapture ? 'rgba(239,68,68,0.05)' : isSiegeProgress ? 'rgba(245,158,11,0.07)' : '#f8fafc',
+                              borderLeft: `3px solid ${isCapture ? '#ef4444' : isSiegeProgress ? '#f59e0b' : '#22c55e'}`,
                             }}>
-                              <div style={{fontWeight:'600', color: isCapture ? '#dc2626' : '#16a34a', marginBottom:'2px'}}>
-                                {isCapture ? '⚔️ 领土易主' : '🛡️ 防守成功'}{mapInfo ? ` · ${mapInfo.name}` : ''}
+                              <div style={{fontWeight:'600', color: reportColor, marginBottom:'2px'}}>
+                                {isCapture ? '⚔️ 领土易主' : isSiegeProgress ? '🏰 围城推进' : '🛡️ 攻防受挫'}{mapInfo ? ` · ${mapInfo.name}` : ''}
                               </div>
                               <div style={{color:'#64748b', fontSize:'11px'}}>{logItem.msg}</div>
                               {logItem.atkTroops && (
@@ -28212,12 +28238,14 @@ const renderMenu = () => {
 	                          });
 	                          return (
 	                            <div style={{background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'12px', padding:'10px', marginBottom:'12px'}}>
-	                              <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'6px', marginBottom:'8px'}}>
-	                                {[
-	                                  ['胜率', `${Math.round((preview.winChance || 0) * 100)}%`],
-	                                  ['风险', preview.riskLabel || '未知'],
-	                                  ['战损', `约${preview.expectedLoss || 0}`],
-	                                  ['城防', `${preview.expectedStrengthChange > 0 ? '+' : ''}${preview.expectedStrengthChange || 0}`],
+                              <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'6px', marginBottom:'8px'}}>
+                                {[
+                                  ['胜率', `${Math.round((preview.winChance || 0) * 100)}%`],
+                                  ['风险', preview.riskLabel || '未知'],
+                                  ['战损', `约${preview.expectedLoss || 0}`],
+                                  ['破城', `${preview.expectedStrengthChange || 0}`],
+                                  ['围城', `${preview.currentSiegeProgress || 0}+${preview.expectedProgressGain || 0}`],
+                                  ['有效攻势', `约${preview.expectedEffectiveAssaults || 1}轮`],
 	                                ].map(([k, v]) => (
 	                                  <div key={k} style={{background:'#fff', borderRadius:'8px', padding:'7px 6px', textAlign:'center'}}>
 	                                    <div style={{fontSize:'10px', color:'#64748b'}}>{k}</div>
@@ -28226,7 +28254,8 @@ const renderMenu = () => {
 	                                ))}
 	                              </div>
 	                              <div style={{fontSize:'11px', color:'#475569', lineHeight:1.55}}>
-	                                {preview.supply?.label || '补给'}：{preview.supply?.desc || '根据领地接壤情况影响攻城'} · 克制倍率 {(preview.counter || 1).toFixed(2)}
+                                {preview.supply?.label || '补给'}：{preview.supply?.desc || '根据领地接壤情况影响攻城'} · 克制倍率 {(preview.counter || 1).toFixed(2)}<br/>
+                                易主条件：城防 ≤ {SIEGE_CONFIG.captureStrength} 且围城进度达到 {SIEGE_CONFIG.progressRequired}；单次最多推进 {SIEGE_CONFIG.maxProgressGain}。
 	                              </div>
 	                              {(preview.extBonus?.itemAttackMult || 1) > 1 && <div style={{fontSize:'11px', color:'#b45309', fontWeight:'800', marginTop:'6px'}}>🐯 虎符生效：本次攻击力 +{Math.round(((preview.extBonus?.itemAttackMult || 1) - 1) * 100)}%，发动后消耗</div>}
 	                              <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'8px'}}>
@@ -28345,11 +28374,12 @@ const renderMenu = () => {
                               t.guards = result.guards || t.guards;
                             }
                             terr[mid] = t;
+                            const nextReserve = Math.max(0, (currentKw.kwManpowerReserve || 0) - (result.totalManpowerLost || 0));
                             const nextKw = {
                               ...currentKw,
                               territories: terr,
-                              kwManpowerReserve: Math.max(0, (currentKw.kwManpowerReserve || 0) - (result.totalManpowerLost || 0)),
-                              eliteTroops: Math.max(0, (currentKw.eliteTroops || 0) - (result.eliteLost || 0)),
+                              kwManpowerReserve: nextReserve,
+                              eliteTroops: Math.min(nextReserve, Math.max(0, (currentKw.eliteTroops || 0) - (result.eliteLost || 0))),
                               morale: result.morale ?? currentKw.morale,
                               actionCounter: (currentKw.actionCounter || 0) + 1,
                               currentTurn: (currentKw.currentTurn || 0) + 1,
@@ -28363,7 +28393,7 @@ const renderMenu = () => {
                               factionTokens: (currentKw.factionTokens || 0) + tokenGain,
                               attackBuff: false,
                               warLog: [...(currentKw.warLog || []).slice(-19), {
-                                time: Date.now(), type: result.captured ? 'player_siege_win' : 'player_siege_fail',
+                                time: Date.now(), type: result.captured ? 'player_siege_win' : result.success ? 'player_siege_progress' : 'player_siege_fail',
                                 attacker: currentKw.faction, defender: defenderFaction, mapId: Number(mid),
                                 atkTroops: result.atkTroops, defTroops: result.defTroops,
                                 msg: `${result.timeLabel || ''}三阶段攻城 → ${result.detail} 战损${result.totalManpowerLost} 战功+${contribGain}`,

@@ -3,7 +3,14 @@
 // 纯数值推演，不依赖战斗引擎，避免与主战斗耦合导致崩溃
 // ==========================================
 
-import { CONTESTED_MAP_IDS, RECRUIT_CONFIG, getInstabilityMult, buildSiegeCombatParams } from './kingdom';
+import {
+  CONTESTED_MAP_IDS,
+  RECRUIT_CONFIG,
+  SIEGE_CONFIG,
+  getInstabilityMult,
+  buildSiegeCombatParams,
+  advanceTerritorySiege,
+} from './kingdom';
 import { getGeneralById } from './generals';
 import { MANPOWER_RESERVE_CAP } from './kingdomConstants';
 
@@ -15,7 +22,9 @@ export const CONTEST_BAR_IDS = ['wei', 'shu', 'wu', 'jin', 'qun'];
 export { MANPOWER_RESERVE_CAP };
 
 /** 控制城池所需的占领积分阈值（四势力拉锯） */
-export const CONTEST_CAPTURE_THRESHOLD = 28;
+export const CONTEST_CAPTURE_THRESHOLD = 100;
+export const CONTEST_SIEGE_MIN_DEPLOY = 100;
+export const CONTEST_MAX_OCCUPATION_GAIN = 35;
 
 /** 六兵种：环形克制 — 每个兵种克制顺时针下两种 */
 export const KW_TROOP_TYPES = [
@@ -179,7 +188,9 @@ export const resolveContestedMapOwner = (mapProgress, incumbent = null, mapId = 
   const PRIORITY = { wei: 0, shu: 1, wu: 2, jin: 3, qun: 4 };
   let maxV = -1;
   for (const fid of CONTEST_BAR_IDS) maxV = Math.max(maxV, p[fid] || 0);
-  if (maxV < CONTEST_CAPTURE_THRESHOLD) return 'neutral';
+  if (maxV < CONTEST_CAPTURE_THRESHOLD) {
+    return CONTEST_BAR_IDS.includes(incumbent) ? incumbent : 'neutral';
+  }
   const tied = CONTEST_BAR_IDS.filter(fid => (p[fid] || 0) === maxV);
   if (tied.length === 1) return tied[0];
   if (incumbent && incumbent !== 'neutral' && tied.includes(incumbent)) return incumbent;
@@ -246,17 +257,22 @@ const getDominantContestFaction = (prog, playerFaction) => {
 const getSuggestedAllocation = (defWeights, deploy) => {
   const safeDeploy = Math.max(0, Math.floor(Number(deploy) || 0));
   if (safeDeploy <= 0) return {};
+  const siegeQuota = safeDeploy >= CONTEST_SIEGE_MIN_DEPLOY
+    ? Math.max(16, Math.floor(safeDeploy * 0.2))
+    : Math.floor(safeDeploy * 0.14);
+  const fieldDeploy = Math.max(0, safeDeploy - siegeQuota);
+  const fieldIds = KW_TROOP_IDS.filter(troopId => troopId !== 'siege');
   const weights = {};
-  for (const aid of KW_TROOP_IDS) {
+  for (const aid of fieldIds) {
     let score = 0.08;
     for (const did of KW_TROOP_IDS) score += (defWeights?.[did] || 0) * getTroopMatchMult(aid, did);
     weights[aid] = Math.max(0.08, score);
   }
-  const total = KW_TROOP_IDS.reduce((s, k) => s + weights[k], 0) || 1;
-  const out = {};
+  const total = fieldIds.reduce((s, k) => s + weights[k], 0) || 1;
+  const out = { siege: siegeQuota };
   let assigned = 0;
-  KW_TROOP_IDS.forEach((k, i) => {
-    const v = i === KW_TROOP_IDS.length - 1 ? safeDeploy - assigned : Math.floor(safeDeploy * weights[k] / total);
+  fieldIds.forEach((k, i) => {
+    const v = i === fieldIds.length - 1 ? fieldDeploy - assigned : Math.floor(fieldDeploy * weights[k] / total);
     out[k] = Math.max(0, v);
     assigned += out[k];
   });
@@ -280,8 +296,8 @@ export const evaluateKwSiegeBattle = ({
   if (!playerFaction || !['wei', 'shu', 'wu', 'jin'].includes(playerFaction)) {
     return { canAttack: false, reason: '未加入可参战势力', winChance: 0, riskLabel: '不可攻', allocation: alloc, deploy };
   }
-  if (deploy < 80) {
-    return { canAttack: false, reason: '兵力不足 80，无法形成攻城阵势', winChance: 0, riskLabel: '不可攻', allocation: alloc, deploy };
+  if (deploy < CONTEST_SIEGE_MIN_DEPLOY) {
+    return { canAttack: false, reason: `兵力不足 ${CONTEST_SIEGE_MIN_DEPLOY}，无法形成攻城阵势`, winChance: 0, riskLabel: '不可攻', allocation: alloc, deploy };
   }
 
   const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
@@ -310,12 +326,12 @@ export const evaluateKwSiegeBattle = ({
   const expectedRoundDamage = atkW * lead * counter * (1.05 - qunBoost * 0.35) * effectiveAttackPowerMult;
   const expectedDamage = expectedRoundDamage * 7;
   const pressure = expectedDamage / Math.max(1, wallHp);
-  const winChance = clamp(0.06 + (pressure / (pressure + 1.05)) * 0.88, 0.06, 0.94);
+  const winChance = clamp(0.05 + (pressure / (pressure + 1.2)) * 0.78, 0.05, 0.82);
   const expectedLossRate = clamp(0.24 - winChance * 0.1 + Math.max(0, 1 - counter) * 0.08 + (others > 120 ? 0.035 : 0), 0.1, 0.52);
   const expectedLoss = Math.min(deploy, Math.floor(deploy * expectedLossRate));
-  const expectedOccupationGain = winChance >= 0.5
-    ? Math.floor(10 + pressure * 8 + counter * 5 + Math.min(6, gens.length * 2))
-    : Math.floor(2 + winChance * 5);
+  const expectedOccupationGain = clamp(Math.floor(
+    14 + (pressure / (pressure + 1)) * 15 + counter * 3 + Math.min(4, gens.length),
+  ), 16, CONTEST_MAX_OCCUPATION_GAIN);
   const dominantFaction = getDominantContestFaction(prog, playerFaction);
   const advice = [];
   if (counter < 0.96) advice.push('兵种克制不足，建议按推荐配兵调整');
@@ -381,8 +397,8 @@ export const runKwSiegeBattle = ({
   if (!playerFaction || !['wei', 'shu', 'wu', 'jin'].includes(playerFaction)) {
     return { victory: false, occupationGain: 0, manpowerLost: 0, wallRemainPct: 100, detail: '未加入势力，无法攻城。' };
   }
-  if (deploy < 80) {
-    return { victory: false, occupationGain: 0, manpowerLost: 0, wallRemainPct: 100, detail: '兵力不足 80，无法形成有效攻城阵势。' };
+  if (deploy < CONTEST_SIEGE_MIN_DEPLOY) {
+    return { victory: false, occupationGain: 0, manpowerLost: 0, wallRemainPct: 100, detail: `兵力不足 ${CONTEST_SIEGE_MIN_DEPLOY}，无法形成有效攻城阵势。` };
   }
 
   const uniqIds = [...new Set((generalIds || []).map(x => String(x)))].slice(0, 3);
@@ -404,7 +420,7 @@ export const runKwSiegeBattle = ({
 
   const manpowerLost = Math.min(deploy, Math.floor(deploy * Math.min(0.55, lossRate)));
   const occupationGain = victory
-    ? Math.floor((preview.expectedOccupationGain || 14) * (0.82 + margin * 0.24))
+    ? Math.min(CONTEST_MAX_OCCUPATION_GAIN, Math.floor((preview.expectedOccupationGain || 16) * (0.82 + margin * 0.18)))
     : 0;
 
   const qunName = QUN_LEADERS[Math.floor(Math.random() * QUN_LEADERS.length)];
@@ -533,6 +549,15 @@ export const runThreePhaseSiege = ({
 
   const alloc = normalizeAllocation(allocation);
   const deploy = sumAlloc(alloc);
+  if (deploy < SIEGE_CONFIG.minDeploy) {
+    return {
+      success: false,
+      captured: false,
+      phases: [],
+      totalManpowerLost: 0,
+      detail: `至少投入 ${SIEGE_CONFIG.minDeploy} 兵力才能发动普通城攻势`,
+    };
+  }
 
   // === 阶段1：野战（与预览共用 buildSiegeCombatParams） ===
   const fieldCombat = buildSiegeCombatParams({
@@ -541,7 +566,7 @@ export const runThreePhaseSiege = ({
   });
   const fieldWinChance = fieldCombat.fieldWinChance;
   const fieldCost = Math.max(20, Math.min(40, Math.floor(strength / 3)));
-  const fieldVictory = deploy >= 60 && Math.random() < fieldWinChance;
+  const fieldVictory = Math.random() < fieldWinChance;
   const fieldLoss = fieldVictory
     ? Math.floor(fieldCost * (0.7 - fieldWinChance * 0.15))
     : Math.floor(fieldCost * (1.1 + (1 - fieldWinChance) * 0.3));
@@ -549,16 +574,29 @@ export const runThreePhaseSiege = ({
   if (!fieldVictory) {
     currentMorale = Math.max(20, currentMorale - 15);
     phases.push({ phase: 'field', victory: false, loss: fieldLoss, detail: `${timeMod.label}野战失利，损失 ${fieldLoss} 兵力` });
+    const siegeState = advanceTerritorySiege({
+      territory: t,
+      attackerFaction: playerFaction,
+      success: false,
+    });
+    terrCopy[mapId] = siegeState.territory;
     return {
       success: false, captured: false, phases, totalManpowerLost, strengthChange: 0,
+      eliteLost: Math.min(eliteTroops || 0, Math.floor(totalManpowerLost * fieldCombat.eliteRatio)),
       morale: currentMorale, detail: `${timeMod.label}野战失利，攻城中止`,
       contribMult: timeMod.contribMult * (fieldCombat.extBonus.contribMult || 1),
       nightVision: timeMod.nightVision,
+      territories: terrCopy,
+      strength: siegeState.territory.strength,
+      siegeProgress: siegeState.territory.attackProgress || 0,
+      guards,
+      atkTroops: alloc,
+      defTroops: t.garrison,
     };
   }
   totalManpowerLost = Math.max(0, totalManpowerLost - Math.floor(fieldCost * 0.3));
-  strength = Math.max(0, strength - Math.floor(5 + fieldWinChance * 8));
-  phases.push({ phase: 'field', victory: true, loss: fieldLoss, detail: `${timeMod.label}野战告捷，城防削弱` });
+  const fieldBreachDamage = Math.floor(3 + fieldWinChance * 5);
+  phases.push({ phase: 'field', victory: true, loss: fieldLoss, detail: `${timeMod.label}野战告捷，攻城部队抵达城下` });
 
   // === 阶段2：守将单挑 ===
   const activeGuards = guards.filter(g => !g.defeated);
@@ -585,41 +623,52 @@ export const runThreePhaseSiege = ({
   });
   const assaultPower = assaultCombat.assaultPower;
   const defPower = assaultCombat.defPower;
-  const damage = Math.floor(8 + (assaultPower / Math.max(1, defPower)) * 17 * assaultCombat.extBonus.assaultDamageMult);
-  strength = Math.max(0, strength - damage);
+  const assaultVictory = Math.random() < assaultCombat.assaultCaptureChance;
+  const damage = assaultVictory
+    ? Math.min(SIEGE_CONFIG.maxStrengthDamage, fieldBreachDamage + assaultCombat.expectedDamage)
+    : 0;
   const lossRate = clamp(0.35 - (assaultPower / (assaultPower + defPower + 1)) * 0.15, 0.15, 0.5);
-  const assaultLoss = Math.min(deploy, Math.floor(deploy * lossRate));
+  const assaultLoss = Math.min(deploy, Math.floor(deploy * lossRate * (assaultVictory ? 1 : 1.28)));
   totalManpowerLost += assaultLoss;
   const eliteRatio = assaultCombat.eliteRatio;
-  const eliteLost = Math.min(eliteTroops || 0, Math.floor(assaultLoss * eliteRatio));
+  const eliteLost = Math.min(eliteTroops || 0, Math.floor(totalManpowerLost * eliteRatio));
+  const siegeState = advanceTerritorySiege({
+    territory: { ...t, strength, guards },
+    attackerFaction: playerFaction,
+    success: assaultVictory,
+    strengthDamage: damage,
+    progressGain: assaultCombat.expectedProgressGain,
+    failureStrengthRecovery: 0,
+  });
+  strength = siegeState.territory.strength;
   phases.push({
-    phase: 'assault', victory: strength <= 0, loss: assaultLoss,
-    detail: strength <= 0 ? `城防崩塌！投入 ${deploy} 兵力攻破城池` : `城防剩余 ${strength}，需再次攻城`,
+    phase: 'assault', victory: assaultVictory, loss: assaultLoss,
+    detail: assaultVictory
+      ? `攻坚奏效：城防 ${strength}，围城 ${siegeState.territory.attackProgress}/${SIEGE_CONFIG.progressRequired}`
+      : `攻城器未能展开，城防未破且围城进度受损`,
   });
 
-  const captured = strength <= 0;
+  const captured = siegeState.captured;
   const contribMult = timeMod.contribMult * (duelResult?.victory ? 1.1 : 1) * (assaultCombat.extBonus.contribMult || 1);
 
-  terrCopy[mapId] = {
-    ...t,
-    strength: captured ? 0 : strength,
-    guards,
-  };
+  terrCopy[mapId] = siegeState.territory;
 
   return {
-    success: true,
+    success: assaultVictory,
     captured,
     phases,
     totalManpowerLost,
     eliteLost,
     strength,
-    strengthChange: captured ? -999 : -damage,
+    strengthChange: -damage,
     morale: currentMorale,
     territories: terrCopy,
     guards,
     detail: captured
-      ? `三阶段攻城成功！${phases.map(p => p.detail).join(' → ')}`
-      : `攻城削弱城防至 ${strength}，可继续进攻`,
+      ? `围城完成！${phases.map(p => p.detail).join(' → ')}`
+      : assaultVictory
+        ? `本轮攻势有效，仍需压低城防并将围城推进至 ${SIEGE_CONFIG.progressRequired}`
+        : `野战虽胜但攻坚失败，需调整攻城器与兵种配置`,
     contribMult,
     nightVision: timeMod.nightVision,
     timeLabel: timeMod.label,
@@ -627,5 +676,7 @@ export const runThreePhaseSiege = ({
     atkTroops: alloc,
     defTroops: t.garrison,
     extBonus: assaultCombat.extBonus,
+    siegeProgress: siegeState.territory.attackProgress || 0,
+    siegeProgressGain: siegeState.progressGain,
   };
 };

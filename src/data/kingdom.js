@@ -101,12 +101,26 @@ export const MAP_ADJACENCY = _buildBidirectional(_adj_raw);
 export const RECRUIT_CONFIG = {
   normalCost: { gold: 100, grain: 10 },
   normalGain: [30, 50],
-  eliteCost: { gold: 500, grain: 30 },
-  eliteGain: [80, 120],
+  eliteCost: { gold: 400, grain: 25 },
+  eliteGain: [45, 70],
   grainPerTerritory: 5,
   grainCapBase: 200,
   grainCapPerTerritory: 20,
   eliteCombatMult: 1.3,
+};
+
+/** 普通城攻防采用“城防 + 围城进度”双门槛，任何城都不能被一次有效攻势拿下。 */
+export const SIEGE_CONFIG = {
+  minDeploy: 80,
+  readyReserve: 200,
+  captureStrength: 15,
+  maxStrengthDamage: 30,
+  minProgressGain: 22,
+  maxProgressGain: 45,
+  progressRequired: 100,
+  failProgressLoss: 18,
+  fortifyProgressLoss: 30,
+  passiveProgressDecay: 2,
 };
 
 /** 叛国惩罚配置（严厉） */
@@ -146,6 +160,16 @@ export const FACTION_TROOP_BIAS = {
 
 export const KINGDOM_TROOP_KEYS = ['shield', 'spear', 'cavalry', 'archer', 'siege', 'raider'];
 const MAX_GARRISON_TOTAL = 1_000_000;
+
+/** 兵种职责：克制决定对位，职责权重决定野战、攻坚和守城表现。 */
+export const TROOP_COMBAT_ROLES = {
+  shield:  { field: 1.00, assault: 0.78, defense: 1.28 },
+  spear:   { field: 1.08, assault: 0.84, defense: 1.16 },
+  cavalry: { field: 1.18, assault: 0.64, defense: 0.90 },
+  archer:  { field: 1.12, assault: 0.96, defense: 1.18 },
+  siege:   { field: 0.58, assault: 2.05, defense: 0.66 },
+  raider:  { field: 1.06, assault: 1.12, defense: 0.78 },
+};
 
 /** 清洗旧档驻军：只接受六个合法兵种，并保留“全 0 驻军”的真实语义。 */
 export const normalizeGarrison = (garrison) => {
@@ -478,10 +502,10 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
   const contestedMax = CONTESTED_MAP_IDS.length * 3;
   const overextended = myStats.count >= WAR_TICK_CONFIG.overextendThreshold;
   const underdog = myStats.count <= 2;
-  const reserveState = reserve >= 420 ? '充足' : reserve >= 180 ? '可用' : '不足';
+  const reserveState = reserve >= 420 ? '充足' : reserve >= SIEGE_CONFIG.readyReserve ? '可用' : '不足';
   const enemyPressure = rival ? Math.max(0, (rival.count - myStats.count) * 12 + Math.floor((rival.totalTroops - myStats.totalTroops) / 35)) : 0;
   const overextendPressure = overextended ? 26 : myStats.count >= WAR_TICK_CONFIG.overextendThreshold - 1 ? 14 : 0;
-  const reservePressure = reserve < 160 ? 28 : reserve < 320 ? 14 : 4;
+  const reservePressure = reserve < SIEGE_CONFIG.minDeploy ? 32 : reserve < SIEGE_CONFIG.readyReserve ? 22 : reserve < 320 ? 12 : 4;
   const seasonPressure = seasonDaysLeft <= 2 ? 18 : seasonDaysLeft <= 4 ? 9 : 0;
   const campaignDifficulty = clamp(enemyPressure + overextendPressure + reservePressure + seasonPressure, 8, 100);
   const difficulty = campaignDifficulty >= 70
@@ -493,15 +517,15 @@ export const buildKingdomStrategicBrief = (kw, { today = '', rankIdx = 0, season
     ? { label: '巩固防线', tone: '守', desc: '领地过多触发扩张惩罚，先补守军和清理争夺城。' }
     : underdog
       ? { label: '背水扩张', tone: '攻', desc: '领地较少，背水加成生效，适合集中兵力夺一城。' }
-      : reserve < 160
-        ? { label: '征兵整备', tone: '养', desc: '预备兵偏低，先打国战训练师补兵再攻城。' }
+      : reserve < SIEGE_CONFIG.readyReserve
+        ? { label: '征兵整备', tone: '养', desc: '预备兵偏低，先通过征兵与国战训练师补兵再攻城。' }
         : { label: '稳步推进', tone: '衡', desc: '兵力与领土处于健康区间，可挑低防目标推进。' };
 
   const recommendations = [];
-  if (reserve < 160) recommendations.push('先在国战地图击败敌国训练师补预备兵');
+  if (reserve < SIEGE_CONFIG.readyReserve) recommendations.push(`先征兵至 ${SIEGE_CONFIG.readyReserve} 左右，再准备连续围城`);
   if (overextended) recommendations.push('优先守住接壤城池，避免远征');
   if (contestedAttempts < contestedMax && reserve >= 80) recommendations.push('名城争夺可推进占领条');
-  if (reserve >= 60 && grain >= 10 && !overextended) recommendations.push('粮草充足时可征兵后攻城');
+  if (reserve >= SIEGE_CONFIG.minDeploy && grain >= 10 && !overextended) recommendations.push('攻城需同时压低城防并堆满围城进度，预留多轮战损');
   if (seasonDaysLeft <= 2) recommendations.push('赛季末优先保排名和领每日收入');
   if (recommendations.length === 0) recommendations.push('当前节奏稳定，继续刷战功和名将收集');
 
@@ -612,6 +636,64 @@ const troopCounterScore = (atkGarrison, defGarrison) => {
   return score / (atkSum * defSum);
 };
 
+const getRoleWeightedTroops = (garrison, role) => {
+  const safe = normalizeGarrison(garrison);
+  return TROOP_KEYS_K.reduce((sum, troopId) => (
+    sum + safe[troopId] * (TROOP_COMBAT_ROLES[troopId]?.[role] || 1)
+  ), 0);
+};
+
+/** 推进或瓦解普通城的围城状态。易主仍由调用方设置新驻军与守将。 */
+export const advanceTerritorySiege = ({
+  territory,
+  attackerFaction,
+  success,
+  strengthDamage = 0,
+  progressGain = 0,
+  failureStrengthRecovery = 2,
+}) => {
+  const current = territory && typeof territory === 'object' ? territory : {};
+  const currentStrength = clamp(Number(current.strength) || 0, 0, WAR_TICK_CONFIG.maxStrength);
+  const sameAttacker = current.contested && current.attackerFaction === attackerFaction;
+  const existingProgress = sameAttacker ? clamp(Number(current.attackProgress) || 0, 0, SIEGE_CONFIG.progressRequired) : 0;
+
+  if (!success) {
+    const attackProgress = Math.max(0, existingProgress - SIEGE_CONFIG.failProgressLoss);
+    return {
+      territory: {
+        ...current,
+        strength: Math.min(WAR_TICK_CONFIG.maxStrength, currentStrength + Math.max(0, failureStrengthRecovery)),
+        contested: attackProgress > 0,
+        attackerFaction: attackProgress > 0 ? attackerFaction : null,
+        attackProgress,
+      },
+      captured: false,
+      progressGain: -Math.min(existingProgress, SIEGE_CONFIG.failProgressLoss),
+    };
+  }
+
+  const appliedDamage = clamp(Math.floor(Number(strengthDamage) || 0), 0, SIEGE_CONFIG.maxStrengthDamage);
+  const appliedProgress = clamp(
+    Math.floor(Number(progressGain) || 0),
+    SIEGE_CONFIG.minProgressGain,
+    SIEGE_CONFIG.maxProgressGain,
+  );
+  const strength = Math.max(0, currentStrength - appliedDamage);
+  const attackProgress = Math.min(SIEGE_CONFIG.progressRequired, existingProgress + appliedProgress);
+  const captured = strength <= SIEGE_CONFIG.captureStrength && attackProgress >= SIEGE_CONFIG.progressRequired;
+  return {
+    territory: {
+      ...current,
+      strength,
+      contested: !captured,
+      attackerFaction: captured ? null : attackerFaction,
+      attackProgress: captured ? 0 : attackProgress,
+    },
+    captured,
+    progressGain: appliedProgress,
+  };
+};
+
 const normalizeTroopAllocationK = (allocation) => normalizeGarrison(allocation);
 
 const getLeadershipMultK = (recruitedGenerals = [], generalIds = []) => {
@@ -645,19 +727,24 @@ const getRiskLabel = (chance) => {
 const getSuggestedAllocation = (defGarrison, deploy) => {
   const safeDeploy = Math.max(0, Math.floor(Number(deploy) || 0));
   if (safeDeploy <= 0) return {};
+  const siegeQuota = safeDeploy >= SIEGE_CONFIG.minDeploy
+    ? Math.max(12, Math.floor(safeDeploy * 0.2))
+    : Math.floor(safeDeploy * 0.14);
+  const fieldDeploy = Math.max(0, safeDeploy - siegeQuota);
+  const fieldKeys = TROOP_KEYS_K.filter(troopId => troopId !== 'siege');
   const weights = {};
-  for (const aid of TROOP_KEYS_K) {
+  for (const aid of fieldKeys) {
     let score = 0.08;
     for (const did of TROOP_KEYS_K) {
       score += (defGarrison?.[did] || 0) * getTroopMatchMultLocal(aid, did);
     }
     weights[aid] = Math.max(0.08, score);
   }
-  const total = TROOP_KEYS_K.reduce((s, k) => s + weights[k], 0) || 1;
-  const out = {};
+  const total = fieldKeys.reduce((s, k) => s + weights[k], 0) || 1;
+  const out = { siege: siegeQuota };
   let assigned = 0;
-  TROOP_KEYS_K.forEach((k, i) => {
-    const v = i === TROOP_KEYS_K.length - 1 ? safeDeploy - assigned : Math.floor(safeDeploy * weights[k] / total);
+  fieldKeys.forEach((k, i) => {
+    const v = i === fieldKeys.length - 1 ? fieldDeploy - assigned : Math.floor(fieldDeploy * weights[k] / total);
     out[k] = Math.max(0, v);
     assigned += out[k];
   });
@@ -729,6 +816,10 @@ export const buildSiegeCombatParams = ({
     ? normalizeGarrison(t.garrison)
     : generateGarrison(t.owner || 'qun', Math.max(40, Math.floor(strength * 1.2)));
   const defTotal = Math.max(1, getGarrisonTotal(defGarrison));
+  const fieldTroops = getRoleWeightedTroops(alloc, 'field');
+  const assaultTroops = getRoleWeightedTroops(alloc, 'assault');
+  const defenseTroops = Math.max(1, getRoleWeightedTroops(defGarrison, 'defense'));
+  const siegeRatio = deploy > 0 ? (alloc.siege || 0) / deploy : 0;
   const counter = troopCounterScore(alloc, defGarrison);
   const { lead, gens } = getLeadershipMultK(recruitedGenerals, generalIds);
   const supply = getSupplyProfile(mapId, playerFaction, territories || {});
@@ -747,30 +838,44 @@ export const buildSiegeCombatParams = ({
   const guards = remainingGuards !== null
     ? Math.max(0, Math.floor(Number(remainingGuards) || 0))
     : (Array.isArray(t.guards) ? t.guards : []).filter(g => !g.defeated).length;
-  const guardPenalty = 1 + guards * 0.12;
+  const guardPenalty = 1 + guards * 0.14;
+  // 城防降低代表城墙破损，但驻军不会在城防接近 0 时失去全部防御力。
+  const fortificationMult = 0.68 + (strength / 100) * 0.52;
 
-  const fieldPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult
+  const fieldPower = fieldTroops * counter * lead * supply.mult * overextendMult * underdogMult
     * instabilityMult * moraleMult * eliteMult * tm.attackMult * extBonus.attackMult;
-  const fieldDef = defTotal * (strength / 100) * defenderResolve * tm.defenseMult;
-  const fieldWinChance = deploy < 60 ? 0 : clamp(0.08 + (fieldPower / (fieldPower + fieldDef + 1)) * 0.84, 0.08, 0.9);
-
-  const assaultPower = deploy * counter * lead * supply.mult * overextendMult * underdogMult
-    * moraleMult * instabilityMult * eliteMult * tm.attackMult * extBonus.attackMult / guardPenalty;
-  const defPower = defTotal * (strength / 100) * defenderResolve * tm.defenseMult;
-  const expectedDamage = Math.floor(8 + (assaultPower / Math.max(1, defPower)) * 17 * extBonus.assaultDamageMult);
-  const assaultCaptureChance = deploy < 60 ? 0 : clamp(
-    0.12 + (expectedDamage / Math.max(1, strength + 8)) * 0.7
-      + (assaultPower / (assaultPower + defPower + 1)) * 0.15,
-    0.08, 0.88,
+  const fieldDef = defenseTroops * fortificationMult * defenderResolve * tm.defenseMult;
+  const fieldWinChance = deploy < SIEGE_CONFIG.minDeploy ? 0 : clamp(
+    0.06 + (fieldPower / (fieldPower + fieldDef + 1)) * 0.78,
+    0.06,
+    0.82,
   );
-  const winChance = deploy < 60 ? 0 : clamp(fieldWinChance * assaultCaptureChance, 0.08, 0.92);
+
+  const assaultPower = assaultTroops * counter * lead * supply.mult * overextendMult * underdogMult
+    * moraleMult * instabilityMult * eliteMult * tm.attackMult * extBonus.attackMult / guardPenalty;
+  const defPower = defenseTroops * fortificationMult * defenderResolve * tm.defenseMult;
+  const assaultShare = assaultPower / (assaultPower + defPower + 1);
+  const expectedDamage = clamp(Math.floor(
+    (7 + assaultShare * 18 + siegeRatio * 18) * extBonus.assaultDamageMult,
+  ), 6, SIEGE_CONFIG.maxStrengthDamage);
+  const expectedProgressGain = clamp(Math.floor(
+    17 + assaultShare * 18 + siegeRatio * 30 + Math.min(5, gens.length * 2),
+  ), SIEGE_CONFIG.minProgressGain, SIEGE_CONFIG.maxProgressGain);
+  const assaultCaptureChance = deploy < SIEGE_CONFIG.minDeploy ? 0 : clamp(
+    0.2 + assaultShare * 0.5 + siegeRatio * 0.28 - guards * 0.025,
+    0.2,
+    0.82,
+  );
+  const winChance = deploy < SIEGE_CONFIG.minDeploy ? 0 : clamp(fieldWinChance * assaultCaptureChance, 0.04, 0.68);
   const pressure = fieldPower / Math.max(1, fieldDef);
 
   return {
     alloc, deploy, defGarrison, defTotal, counter, lead, gens, supply,
     overextendMult, underdogMult, defenderResolve, instabilityMult, moraleMult, eliteMult, eliteRatio,
     extBonus, rankPerks, guards, guardPenalty, strength, fieldPower, fieldDef, fieldWinChance,
-    assaultPower, defPower, expectedDamage, assaultCaptureChance, winChance, pressure, timeMod: tm,
+    fieldTroops, assaultTroops, defenseTroops, siegeRatio, fortificationMult,
+    assaultPower, defPower, assaultShare, expectedDamage, expectedProgressGain,
+    assaultCaptureChance, winChance, pressure, timeMod: tm,
   };
 };
 
@@ -791,16 +896,19 @@ export const evaluateTerritoryAssault = ({
   const { alloc, deploy, defGarrison, defTotal, counter, lead, gens, supply, winChance, pressure, extBonus } = combat;
   const ownCount = getFactionTerritoryCount(playerFaction, territories || {});
 
-  const lossRate = deploy < 60 ? 0 : clamp(
+  const lossRate = deploy < SIEGE_CONFIG.minDeploy ? 0 : clamp(
     0.30 - winChance * 0.14 + Math.max(0, 1 - counter) * 0.08 + (supply.mult < 1 ? 0.04 : 0),
     0.09, 0.48,
   );
   const expectedLoss = Math.min(deploy, Math.floor(deploy * lossRate));
-  const expectedStrengthChange = winChance >= 0.5
-    ? -Math.floor(11 + pressure * 6 + counter * 6 + Math.min(8, gens.length * 3) + combat.expectedDamage * 0.3)
-    : Math.floor(3 + (1 - winChance) * 7);
+  const expectedStrengthChange = -combat.expectedDamage;
+  const currentSiegeProgress = t.contested && t.attackerFaction === playerFaction
+    ? clamp(Number(t.attackProgress) || 0, 0, SIEGE_CONFIG.progressRequired)
+    : 0;
+  const remainingProgress = Math.max(0, SIEGE_CONFIG.progressRequired - currentSiegeProgress);
+  const expectedEffectiveAssaults = Math.max(1, Math.ceil(remainingProgress / Math.max(1, combat.expectedProgressGain)));
   const advice = [];
-  if (deploy < 60) advice.push('至少投入 60 兵力');
+  if (deploy < SIEGE_CONFIG.minDeploy) advice.push(`至少投入 ${SIEGE_CONFIG.minDeploy} 兵力`);
   if (counter < 0.95) advice.push('兵种被守军克制，建议按推荐配兵调整');
   if (supply.mult < 1) advice.push('远征目标补给较差，建议先夺取相邻领地');
   if (gens.length < 2) advice.push('携带 2 到 3 名武将可显著降低波动');
@@ -808,10 +916,11 @@ export const evaluateTerritoryAssault = ({
   if (extBonus.gangMult > 1.05) advice.push('帮派阵营加成已计入胜率');
   if (extBonus.sectMult > 1.05) advice.push('门派国战加成已计入胜率');
   if (combat.guards > 0) advice.push(`守将 ${combat.guards} 人，城防+${Math.round((combat.guardPenalty - 1) * 100)}%`);
+  if (combat.siegeRatio < 0.14) advice.push('攻城器偏少，破城与围城推进会较慢');
 
   return {
-    canAttack: deploy >= 60,
-    reason: deploy < 60 ? '兵力不足 60，无法攻城' : '',
+    canAttack: deploy >= SIEGE_CONFIG.minDeploy,
+    reason: deploy < SIEGE_CONFIG.minDeploy ? `兵力不足 ${SIEGE_CONFIG.minDeploy}，无法攻城` : '',
     allocation: alloc,
     deploy,
     defGarrison,
@@ -825,6 +934,10 @@ export const evaluateTerritoryAssault = ({
     fieldWinChance: combat.fieldWinChance,
     assaultCaptureChance: combat.assaultCaptureChance,
     expectedDamage: combat.expectedDamage,
+    expectedProgressGain: combat.expectedProgressGain,
+    currentSiegeProgress,
+    expectedEffectiveAssaults,
+    captureStrength: SIEGE_CONFIG.captureStrength,
     extBonus,
     riskLabel: getRiskLabel(winChance),
     expectedLoss,
@@ -851,8 +964,11 @@ const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
   const supplyScore = supply.mult >= 1 ? 20 : supply.mult >= 0.9 ? 4 : -16;
   const underdogIntent = attackerFid === weakestFaction ? 18 : 0;
   const overextendPenalty = attackerCount >= WAR_TICK_CONFIG.overextendThreshold ? -14 : 0;
+  const ongoingSiege = t.contested
+    ? (t.attackerFaction === attackerFid ? 280 + (Number(t.attackProgress) || 0) * 2 : -140)
+    : 0;
   const noise = Math.random() * 14;
-  return vulnerability + strategicValue + supplyScore + underdogIntent + overextendPenalty + noise;
+  return vulnerability + strategicValue + supplyScore + underdogIntent + overextendPenalty + ongoingSiege + noise;
 };
 
 // 执行一次 War Tick — 五方势力（魏蜀吴晋+群雄NPC）都参与攻城
@@ -887,6 +1003,13 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
           MAX_GARRISON_TOTAL,
           t.garrison[rKey] + Math.floor(2 + Math.random() * 4),
         );
+      }
+    }
+    if (t.contested) {
+      t.attackProgress = Math.max(0, (Number(t.attackProgress) || 0) - SIEGE_CONFIG.passiveProgressDecay);
+      if (t.attackProgress <= 0) {
+        t.contested = false;
+        t.attackerFaction = null;
       }
     }
   }
@@ -944,37 +1067,50 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     if (attackerFid === weakest) atkRoll *= (1 + cfg.underdogBonus);
     if (attackerFid === 'qun') atkRoll *= (0.85 + Math.random() * 0.3);
 
-    target.contested = true;
-    target.attackerFaction = attackerFid;
-
     if (atkRoll > defRoll) {
-      const oldOwner = target.owner;
-      target.owner = attackerFid;
-      target.strength = cfg.newTerritoryStrength;
-      target.garrison = generateGarrison(attackerFid, Math.floor(45 + Math.random() * 35));
-      target.guards = assignTerritoryGuards(attackerFid, target.strength);
-      target.contested = false;
-      target.attackerFaction = null;
-      target.attackProgress = 0;
-      target.lastBattleTime = Date.now();
-      log.push({
-        time: Date.now(),
-        type: 'capture',
-        attacker: attackerFid,
-        defender: oldOwner,
-        mapId: Number(targetMapId),
-        atkTroops: atkGarrison,
-        defTroops: defGarrison,
-        msg: `${FACTIONS[attackerFid]?.fullName || '群雄'}攻占了${oldOwner === 'neutral' ? '中立领地' : (FACTIONS[oldOwner]?.fullName || '未知') + '的领地'}`,
+      const rollRatio = atkRoll / Math.max(1, atkRoll + defRoll);
+      const siegeRatio = getGarrisonTotal(atkGarrison) > 0
+        ? (atkGarrison.siege || 0) / getGarrisonTotal(atkGarrison)
+        : 0;
+      const siegeState = advanceTerritorySiege({
+        territory: target,
+        attackerFaction: attackerFid,
+        success: true,
+        strengthDamage: Math.floor(8 + rollRatio * 16 + siegeRatio * 16),
+        progressGain: Math.floor(18 + rollRatio * 18 + siegeRatio * 28),
       });
+      Object.assign(target, siegeState.territory);
+      if (siegeState.captured) {
+        const oldOwner = target.owner;
+        target.owner = attackerFid;
+        target.strength = cfg.newTerritoryStrength;
+        target.garrison = generateGarrison(attackerFid, Math.floor(55 + Math.random() * 36));
+        target.guards = assignTerritoryGuards(attackerFid, target.strength);
+        target.lastBattleTime = Date.now();
+        log.push({
+          time: Date.now(), type: 'capture', attacker: attackerFid, defender: oldOwner,
+          mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison,
+          msg: `${FACTIONS[attackerFid]?.fullName || '群雄'}历经围城后攻占了${oldOwner === 'neutral' ? '中立领地' : (FACTIONS[oldOwner]?.fullName || '未知') + '的领地'}`,
+        });
+      } else {
+        log.push({
+          time: Date.now(), type: 'siege_progress', attacker: attackerFid, defender: defenderFid || 'neutral',
+          mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison,
+          msg: `${FACTIONS[attackerFid]?.fullName || '群雄'}推进围城：城防${target.strength}、进度${target.attackProgress}/${SIEGE_CONFIG.progressRequired}`,
+        });
+      }
     } else {
-      target.strength = Math.min(cfg.maxStrength, target.strength + 5);
+      const siegeState = advanceTerritorySiege({
+        territory: target,
+        attackerFaction: attackerFid,
+        success: false,
+        failureStrengthRecovery: 4,
+      });
+      Object.assign(target, siegeState.territory);
       if (target.garrison) {
         const lossKey = TROOP_KEYS_K[Math.floor(Math.random() * TROOP_KEYS_K.length)];
         target.garrison[lossKey] = Math.max(0, target.garrison[lossKey] - Math.floor(3 + Math.random() * 5));
       }
-      target.contested = Math.random() < 0.4;
-      if (!target.contested) target.attackerFaction = null;
       log.push({
         time: Date.now(),
         type: 'defend',
@@ -1037,9 +1173,14 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     season: kw.season + 1,
     kwManpowerReserve: Math.min(MANPOWER_RESERVE_CAP, Math.floor((kw.kwManpowerReserve || 0) * 0.45)),
     grain: Math.floor((kw.grain || 0) * 0.3),
-    eliteTroops: Math.floor((kw.eliteTroops || 0) * 0.3),
+    eliteTroops: 0,
     morale: Math.max(60, Math.floor((kw.morale ?? 100) * 0.8)),
   };
+  newState.eliteTroops = Math.min(
+    newState.kwManpowerReserve,
+    1200,
+    Math.floor((kw.eliteTroops || 0) * 0.3),
+  );
   const stats = rankStatsFn ? rankStatsFn(newState) : null;
   newState.militaryRank = getMilitaryRank(newContribution, stats).id;
 
@@ -1070,7 +1211,7 @@ export const runTerritoryAssault = ({ mapId, playerFaction, allocation, territor
   const evalResult = evaluateTerritoryAssault({ mapId, playerFaction, allocation, territories, recruitedGenerals, generalIds, kw, external });
   const alloc = evalResult.allocation || normalizeTroopAllocationK(allocation);
   const deploy = evalResult.deploy || TROOP_KEYS_K.reduce((s, k) => s + alloc[k], 0);
-  if (deploy < 60) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: '兵力不足60，无法攻城' };
+  if (deploy < SIEGE_CONFIG.minDeploy) return { victory: false, strengthChange: 0, manpowerLost: 0, detail: `兵力不足${SIEGE_CONFIG.minDeploy}，无法攻城` };
 
   const victory = Math.random() < evalResult.winChance;
   const lossNoise = victory ? (0.82 + Math.random() * 0.3) : (1.05 + Math.random() * 0.32);
@@ -1489,11 +1630,22 @@ export const recruitTroops = (kw, type = 'normal') => {
   if (!kw?.faction) return { ok: false, reason: '未加入阵营' };
   const cfg = RECRUIT_CONFIG;
   const isElite = type === 'elite';
-  const cap = isElite ? 1200 : MANPOWER_RESERVE_CAP;
-  const savedCurrent = Number(isElite ? kw.eliteTroops : kw.kwManpowerReserve);
-  const current = Math.min(cap, Math.max(0, Number.isFinite(savedCurrent) ? Math.floor(savedCurrent) : 0));
+  const savedReserve = Number(kw.kwManpowerReserve);
+  const reserve = Math.min(
+    MANPOWER_RESERVE_CAP,
+    Math.max(0, Number.isFinite(savedReserve) ? Math.floor(savedReserve) : 0),
+  );
+  const savedElite = Number(kw.eliteTroops);
+  const elite = Math.min(
+    reserve,
+    1200,
+    Math.max(0, Number.isFinite(savedElite) ? Math.floor(savedElite) : 0),
+  );
+  // 精锐是预备兵中的受训子集，不是可以脱离总兵力凭空作战的第二支军队。
+  const cap = isElite ? Math.min(1200, reserve) : MANPOWER_RESERVE_CAP;
+  const current = isElite ? elite : reserve;
   const capacity = Math.max(0, cap - current);
-  if (capacity <= 0) return { ok: false, reason: isElite ? '精锐兵已达上限' : '预备兵已达上限' };
+  if (capacity <= 0) return { ok: false, reason: isElite ? '现有预备兵已全部完成精锐整训' : '预备兵已达上限' };
 
   const baseCost = isElite ? cfg.eliteCost : cfg.normalCost;
   const rankPerk = getUnlockedRankPerks(kw);
@@ -1520,8 +1672,8 @@ export const recruitTroops = (kw, type = 'normal') => {
     isElite,
     nextKw: {
       grain: grain - cost.grain,
-      kwManpowerReserve: isElite ? Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Number(kw.kwManpowerReserve) || 0)) : current + gain,
-      eliteTroops: isElite ? current + gain : Math.min(1200, Math.max(0, Number(kw.eliteTroops) || 0)),
+      kwManpowerReserve: isElite ? reserve : current + gain,
+      eliteTroops: isElite ? current + gain : Math.min(elite, current + gain),
       actionCounter: Math.max(0, Number(kw.actionCounter) || 0) + 1,
     },
   };
@@ -1680,8 +1832,8 @@ const pickAiAction = (fid, territories, factionManpower, playerFaction) => {
   const advantage = count >= 8;
   const roll = Math.random();
   if (count <= 0) return null;
-  // 40 是最小出征兵力。兵力不足时必须先征兵，不能用默认值生成“幽灵兵力”。
-  if (mp < 40) return 'recruit';
+  // 兵力不足最低攻城门槛时必须先征兵，不能用默认值生成“幽灵兵力”。
+  if (mp < SIEGE_CONFIG.minDeploy) return 'recruit';
   if (danger && roll < 0.8) return 'recruit';
   if (danger) return 'fortify';
   if (advantage && roll < 0.6) return 'attack';
@@ -1715,6 +1867,13 @@ const aiFortify = (fid, territories) => {
     const rk = TROOP_KEYS_K[Math.floor(Math.random() * 6)];
     t.garrison = { ...t.garrison, [rk]: (t.garrison[rk] || 0) + 3 + Math.floor(Math.random() * 5) };
   }
+  if (t.contested) {
+    t.attackProgress = Math.max(0, (Number(t.attackProgress) || 0) - SIEGE_CONFIG.fortifyProgressLoss);
+    if (t.attackProgress <= 0) {
+      t.contested = false;
+      t.attackerFaction = null;
+    }
+  }
   territories[mid] = t;
   return { type: 'fortify', faction: fid, mapId: Number(mid), msg: `${FACTIONS[fid]?.fullName || fid}加固了领地城防` };
 };
@@ -1724,7 +1883,7 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
     const t = territories[mid];
     if (!t || t.owner === fid) return false;
     if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
-    return (t.strength ?? 60) <= 55;
+    return (t.strength ?? 60) <= 70 || (t.contested && t.attackerFaction === fid);
   });
   if (targets.length === 0) return aiFortify(fid, territories);
   const scored = targets.map(mid => ({ mid, score: scoreAiWarTarget(fid, mid, territories, getWeakestFaction(territories)) }))
@@ -1732,30 +1891,54 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
   const targetMapId = scored[0]?.mid;
   if (!targetMapId) return null;
   const availableManpower = getSafeFactionManpower(factionManpower[fid]);
-  const deploy = Math.min(availableManpower, 80 + Math.floor(Math.random() * 60));
-  if (deploy < 40) return aiRecruit(fid, territories, factionManpower);
-  factionManpower[fid] = Math.max(0, availableManpower - Math.floor(deploy * 0.35));
+  const deploy = Math.min(availableManpower, SIEGE_CONFIG.minDeploy + Math.floor(Math.random() * 81));
+  if (deploy < SIEGE_CONFIG.minDeploy) return aiRecruit(fid, territories, factionManpower);
   const target = { ...territories[targetMapId] };
   const defGarrison = target.garrison || generateGarrison(target.owner || 'qun', 60);
   const atkGarrison = generateGarrison(fid, deploy);
-  const counter = troopCounterScore(atkGarrison, defGarrison);
-  const supply = getSupplyProfile(targetMapId, fid, territories);
-  const atkPower = deploy * counter * supply.mult * (0.85 + Math.random() * 0.3);
-  const defPower = getGarrisonTotal(defGarrison) * ((target.strength ?? 50) / 100) * (0.9 + Math.random() * 0.2);
-  const guards = getActiveGuards(target);
-  const guardBonus = 1 + guards.length * 0.12;
-  if (atkPower > defPower * guardBonus) {
+  const combat = buildSiegeCombatParams({
+    mapId: targetMapId,
+    playerFaction: fid,
+    allocation: atkGarrison,
+    territories,
+    kw: { faction: fid, morale: 100, eliteTroops: 0 },
+  });
+  const fieldVictory = Math.random() < combat.fieldWinChance;
+  const assaultVictory = fieldVictory && Math.random() < combat.assaultCaptureChance;
+  const lossRate = assaultVictory
+    ? clamp(0.2 - combat.winChance * 0.08, 0.11, 0.24)
+    : clamp(0.3 + (1 - combat.winChance) * 0.16, 0.3, 0.52);
+  const manpowerLost = Math.min(deploy, Math.max(12, Math.floor(deploy * lossRate)));
+  factionManpower[fid] = Math.max(0, availableManpower - manpowerLost);
+  const siegeState = advanceTerritorySiege({
+    territory: target,
+    attackerFaction: fid,
+    success: assaultVictory,
+    strengthDamage: combat.expectedDamage,
+    progressGain: combat.expectedProgressGain,
+  });
+  Object.assign(target, siegeState.territory);
+  if (siegeState.captured) {
     const oldOwner = target.owner;
     target.owner = fid;
     target.strength = WAR_TICK_CONFIG.newTerritoryStrength;
     target.garrison = generateGarrison(fid, Math.floor(45 + Math.random() * 35));
     target.guards = assignTerritoryGuards(fid, target.strength);
     territories[targetMapId] = target;
-    return { type: 'capture', faction: fid, defender: oldOwner, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻占了${FACTIONS[oldOwner]?.fullName || '中立'}领地` };
+    return { type: 'capture', faction: fid, defender: oldOwner, mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison, manpowerLost, msg: `${FACTIONS[fid]?.fullName || fid}历经围城后攻占了${FACTIONS[oldOwner]?.fullName || '中立'}领地` };
   }
-  target.strength = Math.min(WAR_TICK_CONFIG.maxStrength, (target.strength ?? 50) + 3);
   territories[targetMapId] = target;
-  return { type: 'attack_fail', faction: fid, mapId: Number(targetMapId), msg: `${FACTIONS[fid]?.fullName || fid}攻城受挫` };
+  return {
+    type: assaultVictory ? 'siege_progress' : 'attack_fail',
+    faction: fid,
+    mapId: Number(targetMapId),
+    atkTroops: atkGarrison,
+    defTroops: defGarrison,
+    manpowerLost,
+    msg: assaultVictory
+      ? `${FACTIONS[fid]?.fullName || fid}推进围城：城防${target.strength}、进度${target.attackProgress}/${SIEGE_CONFIG.progressRequired}`
+      : `${FACTIONS[fid]?.fullName || fid}攻城受挫，损失${manpowerLost}兵`,
+  };
 };
 
 /** 玩家每行动一次，仅轮转触发一个敌方行动，避免四打一的行动经济。 */
@@ -1799,7 +1982,10 @@ export const migrateKingdomWarState = (kw) => {
   next.faction = FACTION_IDS.includes(next.faction) ? next.faction : null;
   next.factionManpower = ensureFactionManpower(next);
   next.kwManpowerReserve = normalizeNonNegativeIntK(next.kwManpowerReserve, 0, MANPOWER_RESERVE_CAP);
-  next.eliteTroops = normalizeNonNegativeIntK(next.eliteTroops, 0, 1200);
+  next.eliteTroops = Math.min(
+    next.kwManpowerReserve,
+    normalizeNonNegativeIntK(next.eliteTroops, 0, 1200),
+  );
   const savedGrain = normalizeNonNegativeIntK(next.grain, DEFAULT_KINGDOM_WAR.grain);
   const legacyGrain = normalizeNonNegativeIntK(saved.grainReserve, 0);
   next.grain = Math.min(Number.MAX_SAFE_INTEGER, savedGrain + legacyGrain);
