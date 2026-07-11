@@ -1,5 +1,7 @@
+import { SANGUO_GENERALS } from './generals.js';
+
 /** Biographical data for Sanguo generals (三国志 / 三国演义). Keys match generals.js ids. */
-export const GENERAL_BIOS = {
+const RAW_GENERAL_BIOS = {
   wei_cao_cao: {
     bio: '曹操（155—220），字孟德，沛国谯县人。东汉末年统一北方的核心人物，官渡之战摧毁袁绍主力，又迎献帝都许，奠定曹魏基业。政治上唯才是举、整饬屯田；文学上为建安风骨代表，《短歌行》《观沧海》等传诵千古。',
     isHistorical: true,
@@ -1916,3 +1918,117 @@ export const GENERAL_BIOS = {
     famous: '增灶退敌，善用奇谋',
   },
 };
+
+/**
+ * 这些 ID 为旧存档兼容键，人物曾在去重时被替换。这里必须覆盖旧人物传记，
+ * 不能让 wei_sima_yi 之类的历史 ID 泄漏成司马懿资料。
+ */
+const REPLACED_GENERAL_BIOS = {
+  wei_sima_yi: {
+    bio: '贾逵（174—228），字梁道，河东襄陵人。东汉末至曹魏官员，历任豫州刺史、建威将军等职。他兼有治政与统军之能，整饬郡县、修筑军备，并长期参与东南防务；石亭之战前曾反对曹休轻进，败后又率军接应。',
+    isHistorical: true, courtesy: '梁道', years: '174-228',
+    famous: '预判石亭进军风险并在曹休败后率军接应',
+    source: '《三国志·魏书·贾逵传》',
+  },
+  wei_deng_ai: {
+    bio: '刘馥（？—208），字元颖，沛国相县人。建安年间单骑赴任扬州刺史，在战乱后的合肥招抚流民、兴办学校、修筑城垒并储备守城物资。他去世后孙权围攻合肥，守军仍借其预先建设的防御设施坚持。',
+    isHistorical: true, courtesy: '元颖', years: '?-208',
+    famous: '经营合肥、预修城防，使其成为曹魏东南重镇',
+    source: '《三国志·魏书·刘馥传》',
+  },
+  wei_zhong_hui: {
+    bio: '傅嘏（209—255），字兰石，一说字昭先，北地泥阳人。曹魏官员，少有才名，长于政论与军事判断，曾反对缺乏胜算的伐吴计划。毌丘俭、文钦起兵时，他参与司马师幕府谋划，主张迅速进军控制局势。',
+    isHistorical: true, courtesy: '兰石', years: '209-255',
+    famous: '毌丘俭、文钦起兵时辅佐司马师定策进军',
+    source: '《三国志·魏书·傅嘏传》及裴松之注',
+  },
+  wei_sima_zhao: {
+    bio: '高柔（174—263），字文惠，陈留圉县人。历仕曹操及曹魏数朝，长期掌管刑狱监察，官至太尉。他屡次坚持依法断案并直言进谏，在曹氏与司马氏权力更替之间仍以审慎持正著称。',
+    isHistorical: true, courtesy: '文惠', years: '174-263',
+    famous: '长期执掌刑狱，坚持依法断案并多次直谏',
+    source: '《三国志·魏书·高柔传》',
+  },
+  wei_sima_shi: {
+    bio: '赵俨（171—245），字伯然，颍川阳翟人。东汉末及曹魏官员，官至司空。他善于统筹多支军队，曾协调关中诸将、督护七军，又参与荆州与东南防务，以持重和组织能力见长。',
+    isHistorical: true, courtesy: '伯然', years: '171-245',
+    famous: '督护七军、协调诸将，使不同部队听从统一节度',
+    source: '《三国志·魏书·赵俨传》',
+  },
+  wei_du_yu: {
+    bio: '杜畿（163—224），字伯侯，京兆杜陵人。东汉末及曹魏官员，长期任河东太守，平定地方骚乱、约束豪强、发展农桑并稳定军需，政绩为曹操所倚重。黄初年间在试航御楼船时遇风沉没。',
+    isHistorical: true, courtesy: '伯侯', years: '163-224',
+    famous: '治理河东十余年，使乱后郡县恢复并持续供给军资',
+    source: '《三国志·魏书·杜畿传》',
+  },
+  wei_jia_chong: {
+    bio: '陈矫（？—237），字季弼，临淮东阳人，本姓刘。东汉末先辅佐广陵太守陈登，后入曹魏，历任尚书令、司徒等职。他处事刚断，参与中枢政务，并在魏明帝朝位列三公。',
+    isHistorical: true, courtesy: '季弼', years: '?-237',
+    famous: '在广陵与曹魏中枢历任要职，以刚断持正著称',
+    source: '《三国志·魏书·陈矫传》',
+  },
+  wei_wang_hun: {
+    bio: '梁习（？—230），字子虞，陈郡柘县人。曹操平定高干后任其为并州刺史。梁习迁徙豪强、安置流民、整顿军政，并处理匈奴诸部问题，使长期动荡的并州恢复秩序，后入朝任大司农。',
+    isHistorical: true, courtesy: '子虞', years: '?-230',
+    famous: '整顿战乱后的并州，抑制豪强并安定边民',
+    source: '《三国志·魏书·梁习传》',
+  },
+  wei_yang_hu: {
+    bio: '王观（？—260），字伟台，东郡廪丘人。出身孤贫，历任县令、太守、尚书及司空等职，治政清廉严谨。曹爽当政时他拒绝逢迎，后又整顿官署、节省公费，以公正俭约见称。',
+    isHistorical: true, courtesy: '伟台', years: '?-260',
+    famous: '不附曹爽，任职内外皆以清廉公正著称',
+    source: '《三国志·魏书·王观传》',
+  },
+  wei_wen_yang: {
+    bio: '吕昭（生卒年、表字不详），曹魏官员，史料记载较少，曾任镇北将军并参与北方军务。现存材料不足以支持演义式夸大战绩，因此仅按可确认官职与经历收录。',
+    isHistorical: true, years: '生卒年不详',
+    famous: '官至镇北将军，参与曹魏北方军务',
+    source: '《三国志》相关纪传及裴松之注所见零散记载',
+  },
+  shu_huang_xu: {
+    bio: '黄崇（？—263），字德光，黄权之子，蜀汉尚书郎。魏军攻蜀时，他屡劝诸葛瞻抢占险要以阻邓艾，意见未被及时采纳。绵竹决战中，黄崇激励部众死战，最终与诸葛瞻等一同阵亡。',
+    isHistorical: true, courtesy: '德光', years: '?-263',
+    famous: '绵竹战前力劝据险，决战时奋战殉国',
+    source: '《三国志·蜀书·黄权传》',
+  },
+  shu_zhang_ni: {
+    bio: '张裔（166—230），字君嗣，蜀郡成都人。先后仕于刘璋、刘备与蜀汉，曾任巴郡太守、益州太守，出使东吴后又参与丞相府政务。他以办事敏捷、善于处理行政和外交事务著称。',
+    isHistorical: true, courtesy: '君嗣', years: '166-230',
+    famous: '出使东吴后归蜀，长期协助诸葛亮处理丞相府事务',
+    source: '《三国志·蜀书·张裔传》',
+  },
+  wu_lu_ji: {
+    bio: '陆景（250—280），字士仁，吴郡吴县人，陆抗之子、陆逊之孙。孙吴末年任偏将军、都督，镇守乐乡。晋军伐吴时，他与水军都督陆晏等抵抗王濬军，兵败阵亡；另有著述《典语》。',
+    isHistorical: true, courtesy: '士仁', years: '250-280',
+    famous: '吴亡之战坚守乐乡，抵抗晋军时阵亡',
+    source: '《三国志·吴书·陆抗传》及《晋书》相关记载',
+  },
+  wu_zhuge_xu: {
+    bio: '诸葛融（？—253），字叔长，琅邪阳都人，诸葛瑾第三子、诸葛恪之弟。承父职统兵驻守公安，后任奋威将军。孙峻诛杀诸葛恪后进兵公安，诸葛融兵败自尽。',
+    isHistorical: true, courtesy: '叔长', years: '?-253',
+    famous: '承诸葛瑾兵权驻守公安，诸葛恪败亡后兵败自尽',
+    source: '《三国志·吴书·诸葛瑾传》',
+  },
+};
+
+const FICTIONAL_GENERAL_IDS = new Set([
+  'shu_zhou_cang', 'shu_guan_yinping', 'shu_guan_suo',
+  'neu_diao_chan', 'neu_zhu_rong', 'neu_wu_tugu', 'neu_li_ru',
+]);
+
+const buildBriefProfile = (general) => ({
+  bio: `${general.name}，${general.title}。${general.desc}`,
+  isHistorical: !FICTIONAL_GENERAL_IDS.has(general.id),
+  years: '生卒年不详',
+  famous: general.desc.replace(/[。！？]$/, ''),
+  profileLevel: 'brief',
+});
+
+/** Every roster entry has a profile; replacement patches win over legacy ID data. */
+export const GENERAL_BIOS = Object.fromEntries(SANGUO_GENERALS.map(general => [
+  general.id,
+  {
+    ...buildBriefProfile(general),
+    ...(RAW_GENERAL_BIOS[general.id] || {}),
+    ...(REPLACED_GENERAL_BIOS[general.id] || {}),
+  },
+]));

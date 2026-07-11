@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -8,18 +8,8 @@ const root = path.resolve(__dirname, '..');
 const dataPath = path.join(root, 'src', 'data', 'generals.js');
 const outDir = path.join(root, 'public', 'assets', 'generals');
 
-const source = fs.readFileSync(dataPath, 'utf8');
-const generals = [];
-const itemRegex = /G\(\s*(\{[\s\S]*?\})\s*\)/g;
-let match;
-
-while ((match = itemRegex.exec(source))) {
-  try {
-    generals.push(Function(`"use strict"; return (${match[1]});`)());
-  } catch (err) {
-    console.warn('Skipped a general entry:', err.message);
-  }
-}
+const { SANGUO_GENERALS } = await import(pathToFileURL(dataPath).href);
+const generals = SANGUO_GENERALS;
 
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -180,7 +170,7 @@ function portraitSvg(general) {
 
 for (const general of generals) {
   const file = path.join(outDir, `${general.id}.svg`);
-  fs.writeFileSync(file, portraitSvg(general));
+  fs.writeFileSync(file, portraitSvg(general).replace(/[ \t]+$/gm, ''));
 }
 
 console.log(`Generated ${generals.length} general portraits in ${path.relative(root, outDir)}`);

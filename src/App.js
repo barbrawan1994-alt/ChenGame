@@ -17765,7 +17765,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         ...currentKw,
         generalDraws: Math.max(0, currentKw.generalDraws - 1),
         generalDrawPity: draw.nextPity,
-        recruitedGenerals: [...recruited, { id: gen.id, name: gen.name, title: gen.title, faction: gen.faction, rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon }],
+        recruitedGenerals: [...recruited, { ...gen, bonus: { ...gen.bonus } }],
         collectedGeneralIds: [...ids],
       };
       kingdomWarRef.current = nextKw;
@@ -22220,6 +22220,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const _recruitMsg = '⚔️ 名将降临！\n\n' +
           (gen.faction !== 'neutral' ? FACTIONS[gen.faction]?.fullName + ' · ' : '群雄 · ') +
           gen.name + ' [' + gen.title + '] (' + rarityLabel + ')\n' +
+          '📊 史实评分: ' + gen.historicalScore + ' · ' + gen.roleLabel + '定位 · Lv.' + gen.teamLevel + ' · ' + gen.teamSize + '只精灵\n' +
           '📖 ' + gen.desc + '\n\n' +
           '💰 招募费用: ' + finalCost.toLocaleString() + ' 金币' +
           (sameFaction ? ' (同阵营优惠40%!)' : gen.faction === 'neutral' ? ' (中立势力优惠20%)' : ' (敌方阵营加价20%)') +
@@ -22259,6 +22260,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
                 recruitedGenerals: [...currentRecruited, {
                   id: gen.id, name: gen.name, title: gen.title, faction: gen.faction,
                   rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon, recruitTime: Date.now(),
+                  historicalScore: gen.historicalScore, role: gen.role, roleLabel: gen.roleLabel,
+                  teamSize: gen.teamSize, recruitCost: gen.recruitCost,
                   teamLevel: gen.teamLevel || gen.lvl || (currentParty.length ? Math.floor(currentParty.reduce((s, p) => s + (p?.level || 1), 0) / currentParty.length) : 50),
                 }],
                 collectedGeneralIds: [...ids],
@@ -25190,7 +25193,7 @@ const renderGeneralDex = () => {
   const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', jin:'晋', neutral:'群雄' };
   const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', jin:'#4A148C', neutral:'#616161' };
   const factionLightColors = { wei:'#42A5F5', shu:'#66BB6A', wu:'#FF7043', jin:'#CE93D8', neutral:'#9E9E9E' };
-  const rarityNames = { all:'全部', SSR:'SSR', SR:'SR', R:'R' };
+  const rarityNames = { all:'全部', SSR:'SSR 传世', SR:'SR 名将', R:'R 勇将' };
   const bonusLabels = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
   const filteredGens = SANGUO_GENERALS.filter(g => {
     if (genDexFilter.faction !== 'all' && g.faction !== genDexFilter.faction) return false;
@@ -25218,7 +25221,7 @@ const renderGeneralDex = () => {
           <div className="codex-title-block">
             <span>Chronicle Hall</span>
             <h1>五阵营名将图鉴</h1>
-            <p>按阵营、稀有度和传记线索整理名将，查看收集进度、招募状态与全局加成。</p>
+            <p>评级按历史影响、军政实绩与持续贡献评定，各阵营不强求相同配额。</p>
           </div>
           <div className="codex-hero-count"><b>{filteredR}</b><span>/{filteredGens.length} 当前筛选</span></div>
         </header>
@@ -25299,6 +25302,7 @@ const renderGeneralDex = () => {
                 <p>{gen.title}</p>
                 <div className="codex-card-meta">
                   <span style={{color: factionLightColors[gen.faction] || '#9E9E9E', fontWeight: 700}}>{factionNames[gen.faction]||'群雄'}</span>
+                  <span>史评 {gen.historicalScore}</span>
                   {bioData && <span>{bioData.isHistorical ? '正史' : '虚构'}</span>}
                 </div>
               </button>
@@ -36877,6 +36881,7 @@ const renderMenu = () => {
                   <span style={{fontSize:'10px', fontWeight:'700', color:rc.color, background:rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
                   {fData && <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fData.icon}{fData.fullName}</span>}
                 </div>
+                <div style={{fontSize:'11px', color:'rgba(255,255,255,0.85)', marginTop:'8px', fontWeight:'700'}}>史评 {gen.historicalScore} · {gen.roleLabel} · Lv.{gen.teamLevel} · {gen.teamSize}只精灵</div>
               </div>
               <div style={{padding:'16px 20px', textAlign:'center'}}>
                 {dr.gotNew ? (
@@ -36933,6 +36938,7 @@ const renderMenu = () => {
                 <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
                   <span style={{fontSize:'10px', fontWeight:'700', color: rc.color, background: rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
                   <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fLabel}</span>
+                  <span style={{fontSize:'10px', fontWeight:'700', color:'#fff', background:'rgba(0,0,0,0.25)', padding:'2px 8px', borderRadius:'5px'}}>史评 {gen.historicalScore} · {gen.roleLabel}</span>
                 </div>
               </div>
               <div className="general-dex-detail-body" style={{padding:'16px 20px'}}>
@@ -36940,8 +36946,8 @@ const renderMenu = () => {
                 {bioData && (
                   <div style={{marginBottom:'14px'}}>
                     <div className="general-dex-detail-heading" style={{fontSize:'12px', fontWeight:'800', color:'#1e293b', marginBottom:'6px', display:'flex', alignItems:'center', gap:'6px'}}>
-                      <span>📜 历史生平</span>
-                      <span style={{fontSize:'9px', fontWeight:'600', color: bioData.isHistorical ? '#2E7D32' : '#E65100', background: bioData.isHistorical ? '#E8F5E9' : '#FFF3E0', padding:'1px 6px', borderRadius:'4px'}}>{bioData.isHistorical ? '正史记载' : '演义虚构'}</span>
+                      <span>📜 {bioData.profileLevel === 'brief' ? '史料简表' : '历史生平'}</span>
+                      <span style={{fontSize:'9px', fontWeight:'600', color: bioData.isHistorical ? '#2E7D32' : '#E65100', background: bioData.isHistorical ? '#E8F5E9' : '#FFF3E0', padding:'1px 6px', borderRadius:'4px'}}>{bioData.isHistorical ? '正史人物' : '演义虚构'}</span>
                     </div>
                     <div className="general-dex-detail-bio" style={{fontSize:'12px', color:'#475569', lineHeight:'1.8', padding:'10px 12px', background:'#f8f6f1', borderRadius:'10px', border:'1px solid #e8e3d8', fontFamily:'serif'}}>{bioData.bio}</div>
                     {bioData.famous && (
@@ -36950,10 +36956,11 @@ const renderMenu = () => {
                         <span style={{fontSize:'11px', color:'#BF360C', fontWeight:'600'}}>{bioData.famous}</span>
                       </div>
                     )}
+                    {bioData.source && <div style={{fontSize:'10px', lineHeight:1.5, color:'#94a3b8', marginTop:'6px', textAlign:'right'}}>资料依据：{bioData.source}</div>}
                   </div>
                 )}
-                <div className="general-dex-detail-quote" style={{fontSize:'12px', color:'#64748b', lineHeight:'1.6', marginBottom:'14px', fontStyle:'italic', padding:'8px', background:'#f1f5f9', borderRadius:'8px'}}>「{gen.desc}」</div>
-                <div className="general-dex-detail-heading" style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>将领加成（奖励型）</div>
+                <div className="general-dex-detail-quote" style={{fontSize:'12px', color:'#64748b', lineHeight:'1.6', marginBottom:'14px', padding:'8px', background:'#f1f5f9', borderRadius:'8px'}}><b>人物摘要：</b>{gen.desc}</div>
+                <div className="general-dex-detail-heading" style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>将领加成（{gen.roleLabel}定位）</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', marginBottom:'14px'}}>
                   {Object.entries(gen.bonus||{}).filter(([,v])=>v>0).map(([k,v]) => (
                     <div className="general-dex-detail-bonus-card" key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0'}}>
@@ -36963,7 +36970,11 @@ const renderMenu = () => {
                   ))}
                 </div>
                 <div className="general-dex-detail-heading" style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'6px'}}>战斗信息</div>
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'6px', marginBottom:'4px'}}>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:'6px', marginBottom:'4px'}}>
+                  <div className="general-dex-detail-battle-card" style={{padding:'6px 8px', background:'#f0f4ff', borderRadius:'8px', textAlign:'center'}}>
+                    <div className="general-dex-detail-battle-label" style={{fontSize:'9px', color:'#64748b'}}>史实贡献评分</div>
+                    <div className="general-dex-detail-battle-value" style={{fontSize:'12px', fontWeight:'800', color:'#5E35B1'}}>{gen.historicalScore} · {gen.roleLabel}</div>
+                  </div>
                   <div className="general-dex-detail-battle-card" style={{padding:'6px 8px', background:'#f0f4ff', borderRadius:'8px', textAlign:'center'}}>
                     <div className="general-dex-detail-battle-label" style={{fontSize:'9px', color:'#64748b'}}>遭遇等级</div>
                     <div className="general-dex-detail-battle-value" style={{fontSize:'12px', fontWeight:'800', color:'#1565C0'}}>Lv.{gen.teamLevel}</div>
@@ -36977,7 +36988,7 @@ const renderMenu = () => {
                     <div className="general-dex-detail-battle-value" style={{fontSize:'12px', fontWeight:'800', color:'#E65100'}}>{(gen.recruitCost/1000).toFixed(0)}K金</div>
                   </div>
                 </div>
-                <div className="general-dex-detail-footer-note" style={{fontSize:'11px', color:'#64748b', textAlign:'center'}}>在国战地图探索时有概率遭遇，击败后可花费金币招募</div>
+                <div className="general-dex-detail-footer-note" style={{fontSize:'11px', lineHeight:1.5, color:'#cbd5e1', textAlign:'center'}}>评级决定遭遇等级、带队规模、招募费用与国战统率；击败后可花费金币招募</div>
               </div>
               <div className="general-dex-detail-actions" style={{padding:'0 20px 16px', textAlign:'center'}}>
                 <button className="general-dex-detail-close" onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>

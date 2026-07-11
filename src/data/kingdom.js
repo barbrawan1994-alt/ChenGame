@@ -2,7 +2,7 @@
 // 国战系统 - 魏蜀吴晋四国争霸
 // ==========================================
 
-import { SANGUO_GENERALS } from './generals';
+import { hydrateGeneralSnapshot, SANGUO_GENERALS } from './generals';
 import { MANPOWER_RESERVE_CAP } from './kingdomConstants';
 import {
   advanceKingdomPolitics,
@@ -2144,7 +2144,9 @@ export const migrateKingdomWarState = (kw) => {
   next.seasonTitles = uniqueArray(next.seasonTitles);
   next.completedCampaigns = uniqueArray(next.completedCampaigns);
   next.completedHistoricalBattles = uniqueArray(next.completedHistoricalBattles);
-  next.recruitedGenerals = Array.isArray(next.recruitedGenerals) ? next.recruitedGenerals.filter(Boolean) : [];
+  next.recruitedGenerals = Array.isArray(next.recruitedGenerals)
+    ? next.recruitedGenerals.map(hydrateGeneralSnapshot).filter(Boolean)
+    : [];
   next.contestProgress = next.contestProgress && typeof next.contestProgress === 'object' && !Array.isArray(next.contestProgress)
     ? next.contestProgress
     : {};

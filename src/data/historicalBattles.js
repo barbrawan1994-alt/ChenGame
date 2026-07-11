@@ -210,7 +210,7 @@ export const HISTORICAL_BATTLES = [
     waves: [
       { name: '曹军前哨', generalIds: ['wei_xu_huang', 'wei_zhang_he'], minionPool: pool.elite, minionCount: 3, lvl: 70 },
       { name: '夏侯渊防线', generalIds: ['wei_xiahou_yuan', 'wei_cao_ren'], minionPool: pool.elite, minionCount: 3, lvl: 73 },
-      { name: '曹操亲征', generalIds: ['wei_cao_cao', 'wei_sima_yi'], minionPool: pool.legend, minionCount: 2, lvl: 76 },
+      { name: '曹操亲征', generalIds: ['wei_cao_cao', 'wei_zhang_he'], minionPool: pool.legend, minionCount: 2, lvl: 76 },
     ],
     reward: { gold: 20000, tokens: 13, contribution: 55 },
     unlockReq: null,
@@ -293,9 +293,9 @@ export const HISTORICAL_BATTLES = [
     id: 'hb_wuzhang', era: 'era4', name: '五丈原之战', icon: '⭐', lvl: 88, difficulty: 5,
     desc: '鞠躬尽瘁，死而后已', lore: '建兴十二年，诸葛亮第六次北伐，屯兵五丈原。司马懿坚壁不出，诸葛亮积劳成疾，星落秋风五丈原。',
     waves: [
-      { name: '魏军坚守', generalIds: ['wei_zhang_he', 'wei_guo_jia'], minionPool: pool.elite, minionCount: 3, lvl: 86 },
-      { name: '司马懿·龟缩', generalIds: ['wei_sima_yi', 'wei_jia_xu'], minionPool: pool.legend, minionCount: 3, lvl: 89 },
-      { name: '魏军反击', generalIds: ['wei_cao_cao', 'wei_sima_yi', 'wei_dian_wei'], minionPool: pool.legend, minionCount: 2, lvl: 92 },
+      { name: '魏军坚守', generalIds: ['wei_guo_huai', 'wei_xin_pi'], minionPool: pool.elite, minionCount: 3, lvl: 86 },
+      { name: '司马懿坚壁', generalIds: ['jin_sima_yi', 'wei_guo_huai'], minionPool: pool.legend, minionCount: 3, lvl: 89 },
+      { name: '魏军本阵', generalIds: ['jin_sima_yi', 'wei_xin_pi', 'wei_guo_huai'], minionPool: pool.legend, minionCount: 2, lvl: 92 },
     ],
     reward: { gold: 30000, tokens: 18, contribution: 75 },
     unlockReq: null,
@@ -306,7 +306,7 @@ export const HISTORICAL_BATTLES = [
     desc: '马谡失街亭，诸葛泪斩', lore: '诸葛亮第一次北伐，马谡违令于街亭山上扎营。张郃断水围困，蜀军大败，诸葛亮挥泪斩马谡。',
     waves: [
       { name: '张郃先锋', generalIds: ['wei_zhang_he', 'wei_xu_huang'], minionPool: pool.elite, minionCount: 4, lvl: 88 },
-      { name: '魏军围困', generalIds: ['wei_sima_yi', 'wei_cao_ren', 'wei_zhang_liao'], minionPool: pool.legend, minionCount: 2, lvl: 92 },
+      { name: '魏军围困', generalIds: ['wei_zhang_he', 'wei_cao_zhen', 'wei_guo_huai'], minionPool: pool.legend, minionCount: 2, lvl: 92 },
     ],
     reward: { gold: 32000, tokens: 20, contribution: 80 },
     unlockReq: 'hb_wuzhang',
@@ -316,9 +316,9 @@ export const HISTORICAL_BATTLES = [
     id: 'hb_tielongshan', era: 'era4', name: '铁笼山之战', icon: '🦅', lvl: 92, difficulty: 5,
     desc: '姜维最后的北伐', lore: '诸葛亮去世后，姜维继承遗志九伐中原。铁笼山一役，姜维以寡敌众，虽败犹荣，不愧武侯传人。',
     waves: [
-      { name: '魏军前锋', generalIds: ['wei_guo_jia', 'wei_jia_xu'], minionPool: pool.elite, minionCount: 3, lvl: 90 },
-      { name: '邓艾·钟会', generalIds: ['wei_deng_ai', 'wei_zhong_hui'], minionPool: pool.legend, minionCount: 3, lvl: 92 },
-      { name: '司马懿本阵', generalIds: ['wei_sima_yi', 'wei_cao_cao'], minionPool: pool.legend, minionCount: 3, lvl: 95 },
+      { name: '雍凉前锋', generalIds: ['wei_guo_huai', 'wei_chen_tai'], minionPool: pool.elite, minionCount: 3, lvl: 90 },
+      { name: '邓艾主力', generalIds: ['jin_deng_ai', 'wei_chen_tai'], minionPool: pool.legend, minionCount: 3, lvl: 92 },
+      { name: '魏军本阵', generalIds: ['jin_deng_ai', 'wei_guo_huai', 'wei_chen_tai'], minionPool: pool.legend, minionCount: 3, lvl: 95 },
     ],
     reward: { gold: 35000, tokens: 22, contribution: 85 },
     unlockReq: 'hb_wuzhang',
@@ -366,7 +366,7 @@ export const HISTORICAL_BATTLES = [
     waves: [
       { name: '蜀汉群英', generalIds: ['shu_guan_yu', 'shu_zhang_fei', 'shu_zhao_yun', 'shu_huang_zhong'], minionPool: pool.legend, minionCount: 2, lvl: 93 },
       { name: '东吴豪杰', generalIds: ['wu_zhou_yu', 'wu_lu_xun', 'wu_gan_ning', 'wu_sun_ce'], minionPool: pool.legend, minionCount: 2, lvl: 95 },
-      { name: '魏国精锐', generalIds: ['wei_cao_cao', 'wei_sima_yi', 'wei_zhang_liao', 'wei_dian_wei'], minionPool: pool.legend, minionCount: 2, lvl: 97 },
+      { name: '魏晋精锐', generalIds: ['wei_cao_cao', 'jin_sima_yi', 'wei_zhang_liao', 'jin_deng_ai'], minionPool: pool.legend, minionCount: 2, lvl: 97 },
       { name: '飞将吕布', generalIds: ['neu_lv_bu', 'shu_zhuge_liang', 'neu_dong_zhuo'], minionPool: pool.legend, minionCount: 3, lvl: 100 },
     ],
     reward: { gold: 50000, tokens: 25, contribution: 100 },

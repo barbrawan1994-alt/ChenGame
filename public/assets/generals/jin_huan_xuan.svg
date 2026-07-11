@@ -24,10 +24,10 @@
     <circle cx="271" cy="438" r="164" fill="#000" opacity="0.14"/>
     <path d="M40 132 C140 86 244 102 472 52" stroke="#fff" stroke-width="18" opacity="0.08" fill="none"/>
     <path d="M28 398 C168 330 286 348 492 286" stroke="#000" stroke-width="22" opacity="0.1" fill="none"/>
-    <g opacity="0.28">
-      <path d="M416 98 l8 20 21 2 -16 14 5 21 -18 -11 -18 11 5 -21 -16 -14 21 -2Z" fill="#dfe3e8"/>
-      <circle cx="84" cy="288" r="5" fill="#dfe3e8"/>
-      <circle cx="444" cy="244" r="4" fill="#dfe3e8"/>
+    <g opacity="0.48">
+      <path d="M416 98 l8 20 21 2 -16 14 5 21 -18 -11 -18 11 5 -21 -16 -14 21 -2Z" fill="#dce7ff"/>
+      <circle cx="84" cy="288" r="5" fill="#dce7ff"/>
+      <circle cx="444" cy="244" r="4" fill="#dce7ff"/>
     </g>
     <ellipse cx="256" cy="548" rx="190" ry="196" fill="url(#robe)" filter="url(#softShadow)"/>
     <path d="M117 514 C164 410 198 360 256 348 C314 360 348 410 395 514Z" fill="#54308d"/>
@@ -37,13 +37,13 @@
     <path d="M352 398 Q312 430 340 512 H384 Q366 424 310 382Z" fill="#000" opacity="0.16"/>
     <path d="M210 334 Q256 366 302 334 V390 Q256 426 210 390Z" fill="#e6ad78"/>
     <g filter="url(#softShadow)">
-      
+
       <path d="M154 200 Q177 104 256 94 Q335 104 358 200 Q307 175 256 176 Q205 175 154 200Z" fill="#171514" opacity="0.96"/>
       <path d="M170 188 Q196 128 256 120 Q316 128 342 188 Q296 169 256 169 Q216 169 170 188Z" fill="#bda3dd" opacity="0.88"/>
-      <path d="M212 124 Q256 96 300 124 Q286 146 256 150 Q226 146 212 124Z" fill="#aab2bd" opacity="0.92"/>
+      <path d="M212 124 Q256 96 300 124 Q286 146 256 150 Q226 146 212 124Z" fill="#b9c7e7" opacity="0.92"/>
       <path d="M256 106 C238 72 260 44 252 20 C295 55 303 86 274 119Z" fill="#dec5ff" opacity="0.9"/>
-    
-      
+
+
       <ellipse cx="256" cy="228" rx="67" ry="95" fill="#e6ad78"/>
       <path d="M199 218 Q256 242 313 216 Q314 284 256 324 Q198 284 199 218Z" fill="#fff" opacity="0.06"/>
       <ellipse cx="194" cy="238" rx="17" ry="26" fill="#e6ad78" opacity="0.88"/>
@@ -54,12 +54,12 @@
       <path d="M270 234 Q288 224 306 234" stroke="#111827" stroke-width="5" stroke-linecap="round" fill="none"/>
       <path d="M254 236 Q242 270 260 274" stroke="#a56b50" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.55"/>
       <path d="M296 205 L318 244" stroke="#9f5d46" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
-      
+
       <path d="M220 286 C238 274 246 274 256 286 C266 274 276 274 292 286 C278 302 266 304 256 296 C246 304 233 302 220 286Z" fill="#171514" opacity="0.88"/>
-      
-    
+
+
     </g>
-    <circle cx="256" cy="256" r="246" fill="none" stroke="#aab2bd" stroke-width="8" opacity="0.38"/>
+    <circle cx="256" cy="256" r="246" fill="none" stroke="#b9c7e7" stroke-width="8" opacity="0.64"/>
     <circle cx="256" cy="256" r="232" fill="none" stroke="#fff" stroke-width="2" opacity="0.16"/>
   </g>
 </svg>

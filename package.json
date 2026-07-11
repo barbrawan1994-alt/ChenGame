@@ -8,7 +8,7 @@
     "web": "webpack serve --mode development --hot",
     "build": "webpack --mode production",
     "check:regressions": "node scripts/regression-check.cjs",
-    "check:balance": "node scripts/kingdom-balance-check.mjs && node scripts/gang-balance-check.mjs && node scripts/ecology-balance-check.mjs && node --no-warnings scripts/economy-balance-check.mjs",
+    "check:balance": "node scripts/general-data-check.mjs && node scripts/kingdom-balance-check.mjs && node scripts/gang-balance-check.mjs && node scripts/ecology-balance-check.mjs && node --no-warnings scripts/economy-balance-check.mjs",
     "dist": "npm run build && electron-builder",
     "generate-icon": "node scripts/generate-icon.js",
     "generate-general-portraits": "node scripts/generate-general-portraits.mjs"
