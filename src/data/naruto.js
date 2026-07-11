@@ -675,6 +675,39 @@ export const DEFAULT_NARUTO_STATE = {
   storyProgress: {},
 };
 
+export function normalizeNarutoExamProgress(raw) {
+  if (!raw || typeof raw !== 'object' || !['survival', 'forest', 'finals'].includes(raw.phase)) return null;
+  const clampInt = (value, min, max, fallback = min) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.max(min, Math.min(max, Math.floor(parsed))) : fallback;
+  };
+  const survivalWaves = clampInt(raw.survivalWaves, 1, 5, 2);
+  const difficulty = raw.difficulty && typeof raw.difficulty === 'object'
+    ? {
+        waves: clampInt(raw.difficulty.waves, 1, 5, survivalWaves),
+        enemyPerWave: (Array.isArray(raw.difficulty.enemyPerWave) ? raw.difficulty.enemyPerWave : [])
+          .slice(0, 5)
+          .map(count => clampInt(count, 1, 6, 2)),
+        lvMod: clampInt(raw.difficulty.lvMod, 0, 20, 0),
+        finalsExtra: clampInt(raw.difficulty.finalsExtra, 0, 20, 0),
+      }
+    : null;
+  return {
+    phase: raw.phase,
+    startedDate: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.startedDate || '')) ? raw.startedDate : null,
+    survivalWave: clampInt(raw.survivalWave, 0, survivalWaves, 0),
+    survivalWaves,
+    score: clampInt(raw.score, 0, 999999, 0),
+    forestProgress: clampInt(raw.forestProgress, 0, 999, 0),
+    scrolls: {
+      heaven: clampInt(raw.scrolls?.heaven, 0, 1, 0),
+      earth: clampInt(raw.scrolls?.earth, 0, 1, 0),
+    },
+    finalsRound: clampInt(raw.finalsRound, 0, EXAM_FINALS_BRACKETS.length, 0),
+    difficulty,
+  };
+}
+
 export function resolveNarutoStoryStageClear(state, chapters, chapterId, stageIdx) {
   const chapter = (chapters || []).find(entry => entry.id === chapterId);
   const stage = chapter?.stages?.[stageIdx];
