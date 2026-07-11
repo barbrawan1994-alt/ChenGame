@@ -35,7 +35,10 @@ const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.me
 const kwSiegeSource = await readFile(new URL('../src/data/kwSiege.js', import.meta.url), 'utf8');
 const achievements = await loadSourceModule('src/data/achievements.js');
 const kingdom = await loadSourceModule('src/data/kingdom.js', source => source
-  .replace("import { SANGUO_GENERALS } from './generals';", `const SANGUO_GENERALS = ${JSON.stringify(MOCK_GENERALS)};`)
+  .replace(
+    "import { hydrateGeneralSnapshot, SANGUO_GENERALS } from './generals';",
+    `const SANGUO_GENERALS = ${JSON.stringify(MOCK_GENERALS)};\nconst hydrateGeneralSnapshot = general => general;`
+  )
   .replace(
     "import { MANPOWER_RESERVE_CAP } from './kingdomConstants';",
     `const MANPOWER_RESERVE_CAP = ${constants.MANPOWER_RESERVE_CAP};`

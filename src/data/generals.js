@@ -30,52 +30,129 @@ const FACTIONS = ['wei', 'shu', 'wu', 'jin', 'neutral'];
  * @property {number} teamSize
  * @property {number} recruitCost
  * @property {GeneralBonus} bonus
+ * @property {number} historicalScore - 史实贡献评分（55-92），是评级与战斗数据的唯一来源
+ * @property {'ruler'|'strategist'|'governor'|'defender'|'vanguard'|'cultural'} role
  * @property {string} desc
  * @property {string} icon
  */
 
-/** Rarity-based recruit costs (gold). */
-const RECRUIT_COST = {
-  SSR: { min: 80000, max: 150000 },
-  SR: { min: 30000, max: 60000 },
-  R: { min: 10000, max: 25000 },
+/**
+ * 评级依据是历史影响、军政实绩与持续影响，不按阵营强行配额，也不以演义知名度替代史实贡献。
+ * 未列入 SSR / SR 的人物统一进入 R 档，避免新增人物沿用被替换旧人的评级。
+ */
+const HISTORICAL_SSR_NAMES = new Set([
+  // 魏
+  '曹操', '曹丕', '荀彧', '贾诩', '张辽', '曹真',
+  // 蜀
+  '刘备', '诸葛亮', '关羽', '张飞', '赵云', '姜维',
+  // 吴
+  '孙坚', '孙策', '孙权', '周瑜', '鲁肃', '吕蒙', '陆逊', '陆抗',
+  // 晋及两晋南北朝（该阵营覆盖的年代更长，因此人数自然更多）
+  '司马懿', '司马师', '司马昭', '司马炎', '羊祜', '杜预', '王濬', '邓艾',
+  '谢安', '谢玄', '祖逖', '桓温', '陶侃', '王导', '刘裕', '苻坚', '慕容垂', '檀道济',
+  // 群雄
+  '董卓', '袁绍', '张角', '皇甫嵩', '卢植', '刘表',
+]);
+
+const HISTORICAL_SR_NAMES = new Set([
+  // 魏
+  '贾逵', '夏侯惇', '典韦', '许褚', '夏侯渊', '郭嘉', '曹仁', '张郃', '徐晃', '于禁',
+  '庞德', '乐进', '荀攸', '程昱', '满宠', '李典', '曹彰', '刘馥', '傅嘏', '高柔', '赵俨',
+  '文聘', '臧霸', '曹休', '曹叡', '陈群', '刘晔', '郝昭', '田豫', '蒋济', '杜畿', '王基',
+  '毌丘俭', '陈泰', '钟繇', '梁习', '曹洪', '曹纯', '郭淮', '王昶', '牵招',
+  // 蜀
+  '马超', '黄忠', '庞统', '法正', '魏延', '关平', '王平', '黄权', '李严', '徐庶', '马良',
+  '费祎', '董允', '蒋琬', '张嶷', '霍弋', '吴懿', '邓芝', '张翼', '马忠', '罗宪', '霍峻',
+  '陈到', '李恢', '张裔', '刘巴', '傅佥', '句扶', '柳隐',
+  // 吴
+  '甘宁', '太史慈', '黄盖', '周泰', '程普', '凌统', '丁奉', '徐盛', '韩当', '朱然', '诸葛恪',
+  '顾雍', '张昭', '步骘', '贺齐', '全琮', '朱桓', '吕范', '蒋钦', '诸葛瑾', '吕岱', '朱治',
+  '施绩', '孙登', '陶璜', '潘濬', '陆凯', '孙韶', '吾彦',
+  // 晋及两晋南北朝
+  '钟会', '贾充', '张华', '刘琨', '马隆', '庾亮', '王浑', '陈寿', '裴秀', '卫瓘', '石苞',
+  '刘牢之', '温峤', '桓伊', '文鸯', '郗鉴', '桓冲', '谢石', '朱序', '周处', '何无忌',
+  '刘弘', '司马睿', '桓玄',
+  // 群雄
+  '吕布', '袁术', '公孙瓒', '马腾', '颜良', '文丑', '张绣', '刘璋', '张鲁', '韩遂', '陈宫',
+  '高顺', '田丰', '沮授', '张任', '李傕', '张燕', '公孙度', '士燮', '王允', '朱儁', '刘虞', '蹋顿',
+]);
+
+const HISTORICAL_SCORE_OVERRIDES = {
+  曹操: 92, 诸葛亮: 92, 刘备: 89, 孙权: 89, 司马懿: 90, 刘裕: 89,
+  贾逵: 78, 刘馥: 75, 傅嘏: 74, 高柔: 74, 赵俨: 75, 杜畿: 76,
+  陈矫: 69, 梁习: 75, 王观: 69, 吕昭: 68, 黄崇: 66, 张裔: 73,
+  陆景: 65, 诸葛融: 64,
 };
 
-function costFor(rarity, seed) {
-  const { min, max } = RECRUIT_COST[rarity];
-  const t = ((seed * 7919) % 1000) / 1000;
-  return Math.round(min + t * (max - min));
+const GENERAL_ROLE_OVERRIDES = {
+  贾逵: 'defender', 刘馥: 'governor', 傅嘏: 'strategist', 高柔: 'governor', 赵俨: 'strategist',
+  杜畿: 'governor', 陈矫: 'governor', 梁习: 'governor', 王观: 'governor', 吕昭: 'defender',
+  黄崇: 'vanguard', 张裔: 'governor', 陆景: 'defender', 诸葛融: 'defender',
+};
+
+const ROLE_LABELS = {
+  ruler: '统御', strategist: '谋略', governor: '治政', defender: '守备', vanguard: '征战', cultural: '文教',
+};
+
+const inferGeneralRole = (raw) => {
+  if (GENERAL_ROLE_OVERRIDES[raw.name]) return GENERAL_ROLE_OVERRIDES[raw.name];
+  const text = `${raw.title || ''}${raw.desc || ''}`;
+  if (/(帝|君主|国主|建国|立国|统一|诸侯|太子|王$)/.test(text)) return 'ruler';
+  if (/(谋|策|军师|智|运筹|识见|使臣|外交|说客|辩)/.test(text)) return 'strategist';
+  if (/(坚守|镇守|守城|死守|防|城|关|都督|边疆|抗|拒|刺史)/.test(text)) return 'defender';
+  if (/(治|政|法|农|水利|财政|太守|司徒|司空|尚书|丞相|三公)/.test(text)) return 'governor';
+  if (/(文|诗|书法|经学|名士|才女|医|术数)/.test(text)) return 'cultural';
+  return 'vanguard';
+};
+
+const resolveHistoricalRarity = (name) => (
+  HISTORICAL_SSR_NAMES.has(name) ? 'SSR' : HISTORICAL_SR_NAMES.has(name) ? 'SR' : 'R'
+);
+
+const scoreFor = (raw, rarity) => {
+  const ranges = { SSR: [84, 92], SR: [72, 83], R: [55, 71] };
+  const [min, max] = ranges[rarity];
+  const proposed = HISTORICAL_SCORE_OVERRIDES[raw.name] ?? Number(raw.teamLevel) ?? min;
+  return Math.max(min, Math.min(max, Math.round(proposed)));
+};
+
+const teamSizeFor = (score) => (
+  score >= 88 ? 6 : score >= 78 ? 5 : score >= 66 ? 4 : score >= 58 ? 3 : 2
+);
+
+/** Rarity- and score-based recruit costs (gold). */
+const RECRUIT_COST = {
+  SSR: { min: 105000, max: 155000, scoreMin: 84, scoreMax: 92 },
+  SR: { min: 48000, max: 92000, scoreMin: 72, scoreMax: 83 },
+  R: { min: 15000, max: 45000, scoreMin: 55, scoreMax: 71 },
+};
+
+function costFor(rarity, score) {
+  const { min, max, scoreMin, scoreMax } = RECRUIT_COST[rarity];
+  const t = (score - scoreMin) / Math.max(1, scoreMax - scoreMin);
+  return Math.round((min + Math.max(0, Math.min(1, t)) * (max - min)) / 1000) * 1000;
 }
 
-/** SSR bonuses: high reward & nation boost, NO combat stats. */
-function bonusSSR(id) {
-  const h = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return {
-    gold: 4 + (h % 3), exp: 4 + ((h >> 1) % 3), contrib: 8 + (h % 5),
-    territory: 3 + (h % 2), trade: 4 + ((h >> 2) % 3), recruit: 5 + (h % 3),
-  };
-}
-
-function bonusSR(id) {
-  const h = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return {
-    gold: 2 + (h % 3), exp: 2 + ((h >> 1) % 3), contrib: 5 + (h % 4),
-    territory: 2 + (h % 2), trade: 2 + ((h >> 2) % 3), recruit: 3 + (h % 3),
-  };
-}
-
-function bonusR(id) {
-  const h = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return {
-    gold: 1 + (h % 3), exp: 1 + ((h >> 1) % 3), contrib: 2 + (h % 4),
-    territory: 1 + (h % 2), trade: 1 + ((h >> 2) % 2), recruit: 1 + (h % 3),
-  };
-}
-
-function bonusFor(rarity, id) {
-  if (rarity === 'SSR') return bonusSSR(id);
-  if (rarity === 'SR') return bonusSR(id);
-  return bonusR(id);
+/** 奖励加成由评级和人物定位决定，不再用 ID 哈希随机生成。 */
+function bonusFor(rarity, role, score) {
+  const base = {
+    SSR: { gold: 4, exp: 4, contrib: 8, territory: 3, trade: 4, recruit: 5 },
+    SR: { gold: 2, exp: 2, contrib: 5, territory: 2, trade: 2, recruit: 3 },
+    R: { gold: 1, exp: 1, contrib: 2, territory: 1, trade: 1, recruit: 1 },
+  }[rarity];
+  const focus = {
+    ruler: { contrib: 3, recruit: 2, territory: 1 },
+    strategist: { exp: 2, contrib: 2, recruit: 1 },
+    governor: { gold: 2, territory: 1, trade: 3, recruit: 1 },
+    defender: { territory: 2, contrib: 2, exp: 1 },
+    vanguard: { contrib: 3, gold: 1, exp: 1 },
+    cultural: { exp: 3, gold: 1, trade: 1 },
+  }[role];
+  const scoreBonus = score >= 88 ? 1 : 0;
+  return Object.fromEntries(Object.keys(base).map(key => [
+    key,
+    base[key] + (focus[key] || 0) + (scoreBonus && ['contrib', 'territory'].includes(key) ? 1 : 0),
+  ]));
 }
 
 /**
@@ -83,11 +160,26 @@ function bonusFor(rarity, id) {
  * @returns {General}
  */
 function G(raw) {
-  const recruitCost = raw.recruitCost ?? costFor(raw.rarity, raw.id.length + raw.teamLevel);
-  return { ...raw, recruitCost, bonus: bonusFor(raw.rarity, raw.id) };
+  const rarity = resolveHistoricalRarity(raw.name);
+  const historicalScore = scoreFor(raw, rarity);
+  const role = inferGeneralRole(raw);
+  const teamLevel = historicalScore;
+  const teamSize = teamSizeFor(historicalScore);
+  const recruitCost = costFor(rarity, historicalScore);
+  return {
+    ...raw,
+    rarity,
+    historicalScore,
+    role,
+    roleLabel: ROLE_LABELS[role],
+    teamLevel,
+    teamSize,
+    recruitCost,
+    bonus: bonusFor(rarity, role, historicalScore),
+  };
 }
 
-/** 400 generals: 80 per faction (wei/shu/wu/jin/neutral) — SSR / SR / R balanced. */
+/** 400 generals: 80 per faction; rarity distribution follows historical contribution rather than equal quotas. */
 const RAW_GENERALS = [
   // Wei (50) — 6 SSR / 12 SR / 32 R
   G({ id: 'wei_cao_cao', name: '曹操', title: '魏武帝', faction: 'wei', rarity: 'SSR', teamLevel: 88, teamSize: 6, desc: '乱世奸雄，挟天子以令诸侯。', icon: '🦁' }),
@@ -581,6 +673,28 @@ export function getGeneralById(id) {
   return SANGUO_GENERALS.find((g) => g.id === id);
 }
 
+/** Refreshes old save snapshots from the authoritative roster while preserving save-only fields. */
+export function hydrateGeneralSnapshot(savedGeneral) {
+  const canonical = getGeneralById(savedGeneral?.id);
+  if (!canonical) return null;
+  return {
+    ...savedGeneral,
+    id: canonical.id,
+    name: canonical.name,
+    title: canonical.title,
+    faction: canonical.faction,
+    rarity: canonical.rarity,
+    historicalScore: canonical.historicalScore,
+    role: canonical.role,
+    roleLabel: canonical.roleLabel,
+    teamLevel: canonical.teamLevel,
+    teamSize: canonical.teamSize,
+    recruitCost: canonical.recruitCost,
+    bonus: { ...canonical.bonus },
+    icon: canonical.icon,
+  };
+}
+
 /**
  * @param {GeneralFaction} faction
  * @returns {General[]}
@@ -620,7 +734,7 @@ export function generateEnemyGenerals(enemyLevel, enemyFaction) {
     const pick = fPool.length > 0 ? fPool[Math.floor(Math.random() * fPool.length)] : pool.filter(g => !used.has(g.id))[0];
     if (!pick) break;
     used.add(pick.id);
-    result.push({ id: pick.id, name: pick.name, title: pick.title, faction: pick.faction, rarity: pick.rarity, bonus: pick.bonus, icon: pick.icon });
+    result.push({ ...pick, bonus: { ...pick.bonus } });
   }
   return result;
 }
