@@ -12338,7 +12338,44 @@ select:focus-visible,
   transition: opacity 0.2s;
 }
 .hud-enemy {
+  width: min(320px, 36vw);
   box-shadow: 0 8px 24px rgba(127,29,29,0.18), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.battle-enemy-owner {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.battle-enemy-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  margin: 3px 0 2px;
+}
+.battle-enemy-pet-name {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.battle-level-badge {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid rgba(255,255,255,0.36);
+  border-radius: 4px;
+  background: rgba(15,23,42,0.9);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 850;
+  font-style: normal;
+  line-height: 1.25;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.7);
 }
 .hud-card:hover {
   opacity: 0.55;
@@ -12532,6 +12569,9 @@ select:focus-visible,
     min-width: 184px;
     max-width: 240px;
     padding: 9px 10px;
+  }
+  .hud-enemy {
+    width: min(240px, 62vw);
   }
   .hud-card--double {
     min-width: 180px;

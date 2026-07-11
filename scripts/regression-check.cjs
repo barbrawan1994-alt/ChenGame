@@ -108,6 +108,8 @@ const battlesData = loadProjectModule('src/data/battles.js');
 const itemsData = loadProjectModule('src/data/items.js');
 const typesData = loadProjectModule('src/data/types.js');
 const skillsData = loadProjectModule('src/data/skills.js');
+const battleAi = loadProjectModule('src/utils/battleAi.js');
+const livePetFactory = loadProjectModule('src/utils/petFactory.js');
 const guideData = loadProjectModule('src/data/gameGuide.js');
 const statsCalculator = loadProjectModule('src/utils/statsCalculator.js');
 const resonanceData = loadProjectModule('src/data/resonance.js');
@@ -146,6 +148,51 @@ check('精灵工厂会归一化非法、字符串和越界等级', () => {
   assert.equal(petFactory.createPet(1, '25.9', false, false, { preserveSpecies: true }).level, 25);
   assert.equal(petFactory.createPet(1, Number.NaN, false, false, { preserveSpecies: true }).level, 1);
   assert.equal(petFactory.createPet(1, 999, false, false, { preserveSpecies: true }).level, 100);
+});
+
+check('单打敌方目标描述不会被重复包裹成无效目标', () => {
+  const unit = { name: '蜂女王', currentHp: 120 };
+  const descriptor = { unit, idx: 2 };
+  const normalizedDescriptor = battleAi.normalizeCombatTargets(descriptor, 0);
+  assert.equal(normalizedDescriptor.length, 1);
+  assert.equal(normalizedDescriptor[0], descriptor);
+
+  const normalizedUnit = battleAi.normalizeCombatTargets(unit, 3);
+  assert.equal(normalizedUnit.length, 1);
+  assert.equal(normalizedUnit[0].unit, unit);
+  assert.equal(normalizedUnit[0].idx, 3);
+  assert.equal(battleAi.normalizeCombatTargets({ unit: { currentHp: 0 }, idx: 1 }, 0).length, 0);
+});
+
+check('高等级敌方精灵拥有可用的真实技能和完整PP', () => {
+  const enemy = livePetFactory.createPet(570, 86, true, false, { preserveSpecies: true });
+  assert.equal(enemy.name, '格斗猩猩');
+  assert.equal(enemy.level, 86);
+  assert.ok(enemy.moves.length > 0 && enemy.moves.length <= 4);
+  enemy.moves.forEach(move => {
+    assert.ok(move.name && move.name !== '挣扎');
+    assert.ok(move.pp > 0);
+    assert.ok(move.maxPP > 0);
+  });
+});
+
+check('敌方战斗HUD完整显示军团名，不再使用省略号截断', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const hudStart = app.indexOf('{/* 敌方 HUD */}');
+  const hudEnd = app.indexOf('{/* 敌方精灵 */}', hudStart);
+  const enemyHud = app.slice(hudStart, hudEnd);
+  assert.ok(enemyHud.includes('data-testid="enemy-owner-name"'));
+  assert.ok(enemyHud.includes('data-testid="enemy-pet-name"'));
+  assert.ok(enemyHud.includes('data-testid="enemy-level"'));
+  assert.ok(enemyHud.includes("renderSectBadge(e, 'enemy')"));
+  assert.ok(enemyHud.includes("renderTraitBadge(e, 'enemy')"));
+  assert.ok(enemyHud.includes("renderBattleFruitBadge(e, 'enemy')"));
+  assert.ok(enemyHud.includes("renderBattleGeneralsBadge(battle.enemyGenerals, 'enemy')"));
+  assert.ok(enemyHud.includes('data-testid="enemy-gang-badge"'));
+  assert.ok(enemyHud.includes('renderBattleStageRow(e, 0, false)'));
+  assert.equal(enemyHud.includes("textOverflow:'ellipsis'"), false);
+  assert.equal(enemyHud.includes("maxWidth:'160px'"), false);
+  assert.equal((app.match(/className="battle-level-badge"/g) || []).length, 4);
 });
 
 check('钓鱼和捕虫多候选池不会连续返回上一物种', () => {
