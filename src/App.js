@@ -235,6 +235,7 @@ import {
   GENERAL_DRAW_RATES, GENERAL_DRAW_PITY, drawGeneralFromPool,
   FACTION_PORTRAIT_COLORS, getGeneralById, getRandomGeneralForEncounter,
   getGeneralPortrait, generateEnemyGenerals, calcGeneralsTotalBonus,
+  GENERAL_ROSTER_FACTIONS, GENERAL_ROSTER_FACTION_IDS, HISTORICAL_POLITICAL_FACTIONS,
 } from './data/generals';
 import {
   DIPLOMACY_CONFIG,
@@ -242,9 +243,13 @@ import {
   applyDiplomaticAction,
   canFactionAttack,
   getActiveTreaty,
+  getFactionGeneralPower,
   getFactionPoliticalSummary,
+  getHistoricalFactionPoliticalSummaries,
   getFactionRelation,
+  getGeneralInvitationPreview,
   getQunLordSummaries,
+  inviteGeneralToFaction,
 } from './data/kingdomPolitics';
 import { GENERAL_BIOS } from './data/generalBios';
 import {
@@ -5734,7 +5739,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const rg = kingdomWar.recruitedGenerals || [];
         next.kwGenerals = rg.length;
         next.kwSSRGenerals = rg.filter(g => g.rarity === 'SSR').length;
-        next.kwGenFactions = new Set(rg.map(g => g.faction).filter(f => f && f !== 'neutral')).size;
+        next.kwGenFactions = new Set(rg.map(g => g.warCamp).filter(f => ['wei', 'shu', 'wu', 'jin'].includes(f))).size;
         next.kwGenDexTotal = (kingdomWar.collectedGeneralIds || []).length;
         next.kwContribution = kingdomWar.lifetimeContribution || kingdomWar.warContribution || 0;
         next.kwCampaignsCleared = (kingdomWar.completedCampaigns || []).length;
@@ -14739,7 +14744,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       trainerName = `馆主 ${context.gymName || (context.name ? context.name.slice(0,2) : '???')}`;
     }
     // -------------------------------------------------
-    // 9a. 四国名将
+    // 9a. 多势力名将
     // -------------------------------------------------
     else if (type === 'general') {
       const gen = challengeId?.generalData;
@@ -25181,7 +25186,7 @@ const titleSpriteUrls = useMemo(() => {
 // ==========================================
 
 // ==========================================
-// 四国名将图鉴 (独立页面)
+// 多势力名将图鉴 (独立页面)
 // ==========================================
 const renderGeneralDex = () => {
   const kw = kingdomWar || {};
@@ -25189,21 +25194,21 @@ const renderGeneralDex = () => {
   const recruitedIds = new Set(recruited.map(g => g.id));
   const myFac = kw.faction ? FACTIONS[kw.faction] : null;
   const themeColor = myFac?.color || '#B71C1C';
-  const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', jin:'晋', neutral:'群雄' };
-  const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', jin:'#4A148C', neutral:'#616161' };
-  const factionLightColors = { wei:'#42A5F5', shu:'#66BB6A', wu:'#FF7043', jin:'#CE93D8', neutral:'#9E9E9E' };
+  const factionNames = { all:'全部', ...Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(id => [id, GENERAL_ROSTER_FACTIONS[id].shortName])) };
+  const factionColors = Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(id => [id, GENERAL_ROSTER_FACTIONS[id].color]));
+  const factionLightColors = Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(id => [id, GENERAL_ROSTER_FACTIONS[id].lightColor]));
   const rarityNames = { all:'全部', SSR:'SSR 传世', SR:'SR 名将', R:'R 勇将' };
   const bonusLabels = {gold:'金币',exp:'经验',contrib:'贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
   const filteredGens = SANGUO_GENERALS.filter(g => {
-    if (genDexFilter.faction !== 'all' && g.faction !== genDexFilter.faction) return false;
+    if (genDexFilter.faction !== 'all' && g.rosterFaction !== genDexFilter.faction) return false;
     if (genDexFilter.rarity !== 'all' && g.rarity !== genDexFilter.rarity) return false;
-    if (genDexFilter.search && !g.name.includes(genDexFilter.search) && !g.title.includes(genDexFilter.search)) return false;
+    if (genDexFilter.search && !g.name.includes(genDexFilter.search) && !g.title.includes(genDexFilter.search) && !g.historicalFaction.includes(genDexFilter.search)) return false;
     return true;
   });
   const totalR = SANGUO_GENERALS.filter(g => recruitedIds.has(g.id)).length;
   const filteredR = filteredGens.filter(g => recruitedIds.has(g.id)).length;
-  const fStats = ['wei','shu','wu','jin','neutral'].map(f => {
-    const all = SANGUO_GENERALS.filter(g => g.faction === f);
+  const fStats = GENERAL_ROSTER_FACTION_IDS.map(f => {
+    const all = SANGUO_GENERALS.filter(g => g.rosterFaction === f);
     return { f, total: all.length, got: all.filter(g => recruitedIds.has(g.id)).length };
   });
   const draws = kw.generalDraws || 0;
@@ -25219,8 +25224,8 @@ const renderGeneralDex = () => {
           <button className="codex-back" onClick={() => setView(safeBack())}>← 返回</button>
           <div className="codex-title-block">
             <span>Chronicle Hall</span>
-            <h1>五阵营名将图鉴</h1>
-            <p>评级按历史影响、军政实绩与持续贡献评定，各阵营不强求相同配额。</p>
+            <h1>多势力名将图鉴</h1>
+            <p>两晋、刘宋、北魏与十六国分册统计；人物当前效忠与地图联军分开结算。</p>
           </div>
           <div className="codex-hero-count"><b>{filteredR}</b><span>/{filteredGens.length} 当前筛选</span></div>
         </header>
@@ -25239,7 +25244,7 @@ const renderGeneralDex = () => {
           </article>
 
           <article className="codex-panel codex-stat-panel">
-            <div className="codex-panel-head"><span>阵营分布</span><b>{fStats.reduce((s, item) => s + item.got, 0)} 位</b></div>
+            <div className="codex-panel-head"><span>历史势力分布</span><b>{fStats.reduce((s, item) => s + item.got, 0)} 位</b></div>
             <div className="codex-mini-bars">
               {fStats.map(({f, total, got}) => (
                 <div key={f} className="codex-mini-bar" style={{'--bar-color': factionColors[f]}}>
@@ -25271,7 +25276,7 @@ const renderGeneralDex = () => {
 
         <section className="codex-toolbar">
           <div className="codex-chip-row">
-            {['all','wei','shu','wu','jin','neutral'].map(f => (
+            {['all', ...GENERAL_ROSTER_FACTION_IDS].map(f => (
               <button key={f} className={`codex-chip ${genDexFilter.faction === f ? 'active' : ''}`} style={{'--chip-color': factionColors[f] || themeColor}} onClick={() => setGenDexFilter(p => ({...p, faction: p.faction === f ? 'all' : f}))}>{factionNames[f]}</button>
             ))}
             {['all','SSR','SR','R'].map(r => (
@@ -25290,7 +25295,7 @@ const renderGeneralDex = () => {
             const isCollected = (kw.collectedGeneralIds || []).includes(gen.id);
             const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
             const pt = getGeneralPortrait(gen);
-            const facColor = factionColors[gen.faction] || '#666';
+            const facColor = factionColors[gen.rosterFaction] || '#666';
             const bioData = GENERAL_BIOS[gen.id];
             return (
               <button key={gen.id} type="button" onClick={() => setGenDexDetail(gen)} className={`codex-general-card ${isR ? 'is-recruited' : isCollected ? 'is-collected' : 'is-locked'}`} style={{'--card-color': facColor, '--rarity-color': rc.color || '#888'}}>
@@ -25300,7 +25305,7 @@ const renderGeneralDex = () => {
                 <strong>{gen.name}</strong>
                 <p>{gen.title}</p>
                 <div className="codex-card-meta">
-                  <span style={{color: factionLightColors[gen.faction] || '#9E9E9E', fontWeight: 700}}>{gen.historicalFaction || factionNames[gen.faction] || '汉末群雄'}</span>
+                  <span style={{color: factionLightColors[gen.rosterFaction] || '#9E9E9E', fontWeight: 700}}>{gen.historicalFaction || factionNames[gen.rosterFaction] || '汉末群雄'}</span>
                   <span>史评 {gen.historicalScore}</span>
                   {bioData && <span>{bioData.isHistorical ? '正史' : '虚构'}</span>}
                 </div>
@@ -25749,7 +25754,7 @@ const renderMenu = () => {
                 <span>收集</span>
                 <span>进化</span>
                 <span>对战</span>
-                <span>称霸四国</span>
+                <span>逐鹿天下</span>
               </div>
             </figcaption>
           </figure>
@@ -26795,7 +26800,7 @@ const renderMenu = () => {
                 wei: { generals: '张辽、夏侯惇、许褚、典韦', strategy: '铁骑破阵', capital: '洛阳', stronghold: '兵精粮足，铁骑天下' },
                 shu: { generals: '关羽、张飞、赵云、马超', strategy: '仁义为先', capital: '成都', stronghold: '卧龙凤雏，天下归心' },
                 wu: { generals: '周瑜、吕蒙、陆逊、甘宁', strategy: '水战称雄', capital: '建业', stronghold: '江东子弟，破浪乘风' },
-                jin: { generals: '司马懿、邓艾、钟会、羊祜', strategy: '谋定天下', capital: '邺城', stronghold: '深谋远虑，一统山河' },
+                jin: { generals: '谢玄、刘裕、拓跋焘、王猛', strategy: '多朝合纵', capital: '洛阳', stronghold: '政权独立，联军协同' },
               };
               return (<div className="kingdom-faction-select" style={{padding:'0'}}><div className="kingdom-faction-hero" style={{textAlign:'center', padding:'30px 20px 20px'}}><div style={{fontSize:'12px', letterSpacing:'6px', color:'#8B6914', fontWeight:'500', marginBottom:'6px'}}>━━ 群 雄 并 起 ━━</div><div style={{fontSize:'28px', fontWeight:'900', background:'linear-gradient(135deg, #8B4513, #DAA520, #8B4513)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'4px'}}>天下争霸</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'8px'}}>四方势力并立，争夺天下{WAR_MAP_IDS.length}城 · 择一阵营，建功立业</div></div>{(() => { const ban = canRejoinFaction(kw); if (ban.ok) return null; return (<div style={{margin:'0 16px 12px', padding:'12px 14px', borderRadius:'12px', background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.35)', textAlign:'center'}}><div style={{fontSize:'13px', fontWeight:'800', color:'#b91c1c'}}>🏴 叛国流亡禁诏</div><div style={{fontSize:'11px', color:'#64748b', marginTop:'4px', lineHeight:1.5}}>{ban.reason}</div></div>); })()}<div className="kingdom-faction-grid" style={{display:'flex', gap:'12px', padding:'0 12px 20px', alignItems:'stretch'}}>{validFactionIds.map((fid, idx) => { const f = FACTIONS[fid]; const detail = fd[fid] || { generals: '群英荟萃', strategy: f.bonusDesc || '稳扎稳打', capital: f.capital || f.fullName || '未知都城', stronghold: f.motto || '整军待发' }; const gangs = GANG_PRESETS.filter(g => g.faction === fid); return (<div key={fid} className="kingdom-faction-card" style={{'--faction-color': f.color, flex:1, borderRadius:'16px', overflow:'hidden', background:'#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'2px solid transparent', cursor:'pointer', transition:'all 0.35s ease', animation:'popIn 0.5s ease-out '+(0.1+idx*0.12)+'s backwards'}} onClick={() => { const rejoinCheck = canRejoinFaction(kw); if (!rejoinCheck.ok) { showMapToast('❌','叛国禁诏',rejoinCheck.reason,3500); return; } const gangFaction = gang?.gangId ? GANG_PRESETS.find(gg => gg.id === gang.gangId)?.faction : null; if (gangFaction && gangFaction !== fid) { showMapToast('❌','阵营冲突','你当前帮派「'+(GANG_PRESETS.find(gg => gg.id === gang.gangId)?.name || '')+'」属于'+FACTIONS[gangFaction]?.fullName+'，请先退帮再加入其他阵营',3000); return; } setConfirmModal({ title:'⚔️ 选择阵营', msg:'确定加入'+f.fullName+'吗？\n\n👑 主公: '+f.lord+'\n📍 国都: '+detail.capital+'\n💫 国运: '+f.bonusDesc+'\n\n⚠️ 加入后5天内不可叛国，叛国将承受极重惩罚（金币/兵力/名将/战功大幅损失，7天禁诏）', onOk: () => { setKingdomWar(prev => { const terr0 = Object.keys(prev.territories || {}).length > 0 ? prev.territories : initTerritories(); const terr1 = syncContestedTerritoryOwners(prev.contestProgress || {}, terr0); return { ...prev, faction: fid, factionJoinDate: new Date().toISOString(), territories: terr1, lastTick: Date.now(), seasonStartDate: prev.seasonStartDate || new Date().toISOString(), dailyCounts: { ...prev.dailyCounts, resetDate: getLocalDateStr() } }; }); }}); }} onMouseEnter={e => { e.currentTarget.style.transform='translateY(-8px) scale(1.02)'; e.currentTarget.style.boxShadow='0 16px 48px '+f.color+'35'; e.currentTarget.style.borderColor=f.color+'90'; }} onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor='transparent'; }}><div style={{background:'linear-gradient(180deg, '+f.color+', '+f.darkColor+')', padding:'20px 16px 16px', textAlign:'center'}}><div style={{width:'52px', height:'52px', borderRadius:'50%', margin:'0 auto 10px', background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', border:'2px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(0,0,0,0.2)'}}>{f.icon}</div><div style={{fontSize:'20px', fontWeight:'900', color:'#fff', letterSpacing:'3px', textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{f.fullName}</div><div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontStyle:'italic', marginTop:'4px'}}>「{f.motto}」</div></div><div style={{padding:'14px 14px 16px'}}><div style={{fontSize:'12px', color:'#475569', lineHeight:'1.7', marginBottom:'12px', minHeight:'36px'}}>{f.desc}</div><div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>{[['👑 君主', f.lord],['📍 国都', detail.capital],['🎯 战略', detail.strategy]].map(([label, val]) => (<div key={label} style={{display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'7px 10px'}}><span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{label}</span><span style={{fontSize:'12px', fontWeight:'700', color:'#1e293b'}}>{val}</span></div>))}</div><div style={{background:'rgba(0,0,0,0.02)', borderRadius:'8px', padding:'8px 10px', marginBottom:'8px'}}><div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', marginBottom:'3px'}}>⚔️ 名将</div><div style={{fontSize:'11px', fontWeight:'600', color:'#334155'}}>{detail.generals}</div></div><div style={{background:f.color+'10', borderRadius:'8px', padding:'8px 10px', border:'1px solid '+f.color+'20', marginBottom:'8px'}}><div style={{fontSize:'10px', color:f.color, fontWeight:'700', marginBottom:'2px'}}>💫 国运</div><div style={{fontSize:'11px', color:'#475569', fontWeight:'600'}}>{f.bonusDesc}</div></div><div style={{display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'8px'}}>{gangs.map(g => (<span key={g.id} style={{background:'rgba(0,0,0,0.04)', padding:'2px 7px', borderRadius:'12px', fontSize:'10px', color:'#64748b', fontWeight:'500'}}>{g.icon} {g.name}</span>))}</div><div style={{textAlign:'center', paddingTop:'8px', borderTop:'1px solid rgba(0,0,0,0.06)', fontSize:'11px', color:f.color, fontWeight:'600', letterSpacing:'1px'}}>{detail.stronghold}</div></div></div>); })}</div></div>);
             }
@@ -26820,7 +26825,11 @@ const renderMenu = () => {
             const strategicBrief = buildKingdomStrategicBrief(kw, { today, rankIdx, seasonDaysLeft });
             const territorySiegeAttempts = kw.dailyCounts?.resetDate === today ? (kw.dailyCounts?.territorySieges || 0) : 0;
             const maxTerritorySieges = 5;
-            const politicalSummaries = POLITICAL_FACTIONS.map(fid => getFactionPoliticalSummary(kw.politics, SANGUO_GENERALS, fid));
+            const politicalSummaries = POLITICAL_FACTIONS.map(fid => ({
+              ...getFactionPoliticalSummary(kw.politics, SANGUO_GENERALS, fid),
+              power: getFactionGeneralPower(kw.politics, SANGUO_GENERALS, fid),
+            }));
+            const historicalPoliticalSummaries = getHistoricalFactionPoliticalSummaries(kw.politics, SANGUO_GENERALS);
             const qunLordSummaries = getQunLordSummaries(kw.politics, SANGUO_GENERALS);
             const activePoliticalGenerals = politicalSummaries.reduce((sum, item) => sum + item.count, 0);
             const relationLabel = value => value >= 60 ? '亲密' : value >= 20 ? '友善' : value >= 0 ? '中立' : value >= -35 ? '紧张' : '敌对';
@@ -26858,6 +26867,39 @@ const renderMenu = () => {
               kingdomWarRef.current = nextKw;
               setKingdomWar(nextKw);
               showMapToast('🤝', '外交行动', `${result.message}${result.tokenCost ? ` · 令牌-${result.tokenCost}` : ''}`, 3200);
+            };
+            const runGeneralInvitation = (general) => {
+              const currentKw = kingdomWarRef.current;
+              if (!currentKw?.faction) return;
+              if ((currentKw.factionTokens || 0) < DIPLOMACY_CONFIG.invitationCost) {
+                showMapToast('🎖️', '令牌不足', `延揽名将需要 ${DIPLOMACY_CONFIG.invitationCost} 枚阵营令牌`, 2200);
+                return;
+              }
+              const personallyRecruited = (currentKw.recruitedGenerals || []).some(item => item.id === general.id);
+              const result = inviteGeneralToFaction({
+                politics: currentKw.politics,
+                generals: SANGUO_GENERALS,
+                generalId: general.id,
+                targetWarCamp: currentKw.faction,
+                dateKey: getLocalDateStr(),
+                personallyRecruited,
+              });
+              if (!result.ok) {
+                showMapToast('📜', '延揽未成', result.reason, 2600);
+                return;
+              }
+              const nextKw = {
+                ...currentKw,
+                politics: result.politics,
+                factionTokens: Math.max(0, (currentKw.factionTokens || 0) - result.tokenCost),
+                warLog: [...(currentKw.warLog || []).slice(-49), {
+                  time: Date.now(), type: result.succeeded ? 'general_invited' : 'general_invitation_refused',
+                  attacker: currentKw.faction, defender: general.politicalFaction, msg: result.message,
+                }],
+              };
+              kingdomWarRef.current = nextKw;
+              setKingdomWar(nextKw);
+              showMapToast(result.succeeded ? '🤝' : '📜', result.succeeded ? '延揽成功' : '延揽被拒', `${result.message} · 令牌-${result.tokenCost}`, 3400);
             };
 
             const promoChallenge = nextRank ? RANK_PROMOTION_CHALLENGES[nextRank.id] : null;
@@ -27051,6 +27093,7 @@ const renderMenu = () => {
                       </div>
                     </section>
 
+                    <div style={{fontSize:'12px', fontWeight:'800', color:'#334155'}}>战略联军外交</div>
                     <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'10px'}}>
                       {politicalSummaries.map(summary => {
                         const factionInfo = FACTIONS[summary.faction] || { name:'群雄', fullName:'群雄', icon:'🏴', color:'#64748b' };
@@ -27088,6 +27131,46 @@ const renderMenu = () => {
                         );
                       })}
                     </div>
+
+                    <section style={{background:'#fff', borderRadius:'8px', padding:'14px', border:'1px solid #d7dee8'}}>
+                      <div style={{fontSize:'13px', fontWeight:'800', color:'#172033', marginBottom:'4px'}}>真实政权与将领归属</div>
+                      <div style={{fontSize:'10px', color:'#64748b', marginBottom:'10px'}}>城池由战略联军争夺；忠诚、投降、诈降、自立和主副将均按下列真实政权独立计算。联军用将存在协同折损，不再把所有晋系人物直接相加。</div>
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'7px'}}>
+                        {historicalPoliticalSummaries.map(summary => (
+                          <div key={summary.id} style={{padding:'9px', border:`1px solid ${summary.color}35`, borderRadius:'6px', background:`${summary.color}08`}}>
+                            <div style={{display:'flex', justifyContent:'space-between', gap:'6px', color:'#1e293b', fontSize:'11px', fontWeight:'800'}}>
+                              <span>{summary.icon} {summary.name}</span><span>{summary.count}将</span>
+                            </div>
+                            <div style={{fontSize:'10px', color:'#64748b', marginTop:'4px'}}>主将 {summary.commander?.name || '暂无'} · 副将 {summary.deputy?.name || '暂无'}</div>
+                            <div style={{fontSize:'10px', color:'#64748b', marginTop:'2px'}}>统御 {summary.power} · 动摇 {summary.wavering} · 自立 {summary.warlords}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section style={{background:'#fff', borderRadius:'8px', padding:'14px', border:'1px solid #d7dee8'}}>
+                      <div style={{fontSize:'13px', fontWeight:'800', color:'#172033', marginBottom:'4px'}}>南北朝人才延揽</div>
+                      <div style={{fontSize:'10px', color:'#64748b', marginBottom:'10px'}}>刘宋与北魏名将可接受任一战略阵营邀请。忠诚越低越容易成功；已由玩家招募的名将获得显著成功率加成。</div>
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(190px, 1fr))', gap:'7px', maxHeight:'320px', overflowY:'auto'}}>
+                        {SANGUO_GENERALS.filter(general => general.canServeAnyWarCamp).map(general => {
+                          const state = kw.politics?.generals?.[general.id];
+                          const currentFaction = HISTORICAL_POLITICAL_FACTIONS[state?.allegiance] || HISTORICAL_POLITICAL_FACTIONS[general.politicalFaction];
+                          const personallyRecruited = (kw.recruitedGenerals || []).some(item => item.id === general.id);
+                          const preview = getGeneralInvitationPreview({ politics: kw.politics, general, targetWarCamp: kw.faction, personallyRecruited });
+                          return (
+                            <div key={general.id} style={{padding:'9px', border:'1px solid #e2e8f0', borderRadius:'6px', background:'#f8fafc', display:'flex', alignItems:'center', gap:'8px'}}>
+                              <div style={{flex:1, minWidth:0}}>
+                                <div style={{fontSize:'11px', fontWeight:'800', color:'#1e293b'}}>{general.name} <span style={{color:GENERAL_RARITY_CONFIG[general.rarity]?.color}}>{general.rarity}</span></div>
+                                <div style={{fontSize:'9px', color:'#64748b', marginTop:'2px'}}>{currentFaction?.name || general.historicalFaction} · 忠诚 {state?.loyalty ?? '—'}{personallyRecruited ? ' · 已招募' : ''}</div>
+                              </div>
+                              <button type="button" disabled={!preview.ok} title={preview.ok ? `成功率 ${Math.round(preview.chance * 100)}%` : preview.reason} onClick={() => runGeneralInvitation(general)} style={{padding:'6px 8px', border:'1px solid #cbd5e1', borderRadius:'6px', background:preview.ok ? '#fff7ed' : '#e2e8f0', color:preview.ok ? '#9a3412' : '#94a3b8', fontSize:'9px', fontWeight:'800', cursor:preview.ok ? 'pointer' : 'not-allowed', whiteSpace:'nowrap'}}>
+                                {preview.ok ? `延揽 ${Math.round(preview.chance * 100)}%` : '不可延揽'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
 
                     <section style={{background:'#fff', borderRadius:'8px', padding:'14px', border:'1px solid #d7dee8'}}>
                       <div style={{fontSize:'13px', fontWeight:'800', color:'#172033', marginBottom:'8px'}}>群雄诸侯</div>
@@ -27418,9 +27501,9 @@ const renderMenu = () => {
                         </div>
                       );
                     })()}
-                    {/* 五阵营势力对比（含群雄）*/}
+                    {/* 五个地图战略联军对比（含群雄）*/}
                     <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
-                      <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>四方势力对比（含群雄）</div>
+                      <div style={{fontSize:'13px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>五方战略联军对比</div>
                       {ALL_FACTION_IDS.map(fid => {
                         const f = FACTIONS[fid];
                         const cnt = terrCounts[fid] || 0;
@@ -27537,7 +27620,7 @@ const renderMenu = () => {
                     <div style={{display:'grid', gap:'12px'}}>
                       <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                         <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b', marginBottom:'4px'}}>⚔️ 麾下将领 ({recruited.length}/{rank.maxGenerals || MAX_RECRUITED_GENERALS})</div>
-                        <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>在野外遭遇四国名将，击败后可花费金币招募。将领提供奖励加成（金币、经验、贡献等），不影响战斗属性。</div>
+                        <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>在野外遭遇历代多势力名将，击败后可花费金币招募。原属不限制玩家延揽；将领提供奖励加成，不直接修改精灵战斗属性。</div>
                         {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
                           <div style={{display:'flex', flexWrap:'wrap', gap:'6px', padding:'8px 10px', background:'#f8fafc', borderRadius:'10px', border:'1px solid #e2e8f0'}}>
                             <span style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>总加成:</span>
@@ -27551,7 +27634,7 @@ const renderMenu = () => {
                         <div style={{textAlign:'center', padding:'30px', color:'#64748b'}}>
                           <div style={{fontSize:'40px', marginBottom:'10px'}}>⚔️</div>
                           <div style={{fontSize:'13px'}}>尚未招募任何将领</div>
-                          <div style={{fontSize:'11px', marginTop:'4px', color:'#64748b'}}>在野外地图探索时有机会遭遇四国名将</div>
+                          <div style={{fontSize:'11px', marginTop:'4px', color:'#64748b'}}>在野外地图探索时有机会遭遇各历史势力名将</div>
                         </div>
                       ) : (
                         <div style={{display:'grid', gap:'8px'}}>
@@ -27602,31 +27685,31 @@ const renderMenu = () => {
                       <div style={{background:'#fff', borderRadius:'14px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
                         {(() => {
                           const recruitedIds = new Set(recruited.map(g => g.id));
-                          const factionNames = { all:'全部', wei:'魏', shu:'蜀', wu:'吴', jin:'晋', neutral:'群雄' };
-                          const factionColors = { wei:'#1565C0', shu:'#2E7D32', wu:'#E65100', jin:'#4A148C', neutral:'#616161' };
+                          const factionNames = { all:'全部', ...Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(id => [id, GENERAL_ROSTER_FACTIONS[id].shortName])) };
+                          const factionColors = Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(id => [id, GENERAL_ROSTER_FACTIONS[id].color]));
                           const rarityNames = { all:'全部', SSR:'SSR', SR:'SR', R:'R' };
                           const filteredGens = SANGUO_GENERALS.filter(g => {
-                            if (genDexFilter.faction !== 'all' && g.faction !== genDexFilter.faction) return false;
+                            if (genDexFilter.faction !== 'all' && g.rosterFaction !== genDexFilter.faction) return false;
                             if (genDexFilter.rarity !== 'all' && g.rarity !== genDexFilter.rarity) return false;
-                            if (genDexFilter.search && !g.name.includes(genDexFilter.search) && !g.title.includes(genDexFilter.search)) return false;
+                            if (genDexFilter.search && !g.name.includes(genDexFilter.search) && !g.title.includes(genDexFilter.search) && !g.historicalFaction.includes(genDexFilter.search)) return false;
                             return true;
                           });
                           const totalRecruited = SANGUO_GENERALS.filter(g => recruitedIds.has(g.id)).length;
                           const filteredRecruited = filteredGens.filter(g => recruitedIds.has(g.id)).length;
-                          const factionStats = ['wei','shu','wu','jin','neutral'].map(f => {
-                            const all = SANGUO_GENERALS.filter(g => g.faction === f);
+                          const factionStats = GENERAL_ROSTER_FACTION_IDS.map(f => {
+                            const all = SANGUO_GENERALS.filter(g => g.rosterFaction === f);
                             const got = all.filter(g => recruitedIds.has(g.id));
                             return { f, total: all.length, got: got.length };
                           });
                           return (
                             <div>
                               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
-                                <div style={{fontSize:'14px', fontWeight:'800', color:'#1e293b'}}>📖 四国名将图鉴</div>
+                                <div style={{fontSize:'14px', fontWeight:'800', color:'#1e293b'}}>📖 多势力名将图鉴</div>
                                 <div style={{fontSize:'11px', color:'#64748b', fontWeight:'600'}}>{totalRecruited}/{SANGUO_GENERALS.length} 已收集</div>
                               </div>
-                              <div style={{display:'flex', gap:'4px', marginBottom:'10px', background:'#f1f5f9', borderRadius:'8px', padding:'3px'}}>
+                              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(66px, 1fr))', gap:'4px', marginBottom:'10px', background:'#f1f5f9', borderRadius:'8px', padding:'3px'}}>
                                 {factionStats.map(({f, total, got}) => (
-                                  <div key={f} style={{flex:1, textAlign:'center', padding:'8px 4px', borderRadius:'6px', cursor:'pointer',
+                                  <div key={f} style={{textAlign:'center', padding:'8px 4px', borderRadius:'6px', cursor:'pointer',
                                     background: genDexFilter.faction === f ? '#fff' : 'transparent',
                                     border: genDexFilter.faction === f ? '1px solid #e2e8f0' : '1px solid transparent',
                                     boxShadow: genDexFilter.faction === f ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
@@ -27706,7 +27789,7 @@ const renderMenu = () => {
                 {kwTab === 'campaigns' && (
                   <div>
                     <div style={{fontSize:'14px', fontWeight:'700', color:'#1e293b', marginBottom:'12px'}}>⚔️ {myFaction.fullName} · 历史战役</div>
-                    <div style={{fontSize:'11px', color:'#64748b', marginBottom:'16px'}}>与四国名将并肩作战！通关战役可获得大量战功、令牌和金币。</div>
+                    <div style={{fontSize:'11px', color:'#64748b', marginBottom:'16px'}}>与历代名将并肩作战！通关战役可获得大量战功、令牌和金币。</div>
                     <div style={{display:'grid', gap:'12px'}}>
                       {[...KINGDOM_CAMPAIGNS, ...JIN_CAMPAIGNS].filter(c => c.faction === kw.faction).map(campaign => {
                         const isCompleted = (kw.completedCampaigns || []).includes(campaign.id);
@@ -36876,7 +36959,7 @@ const renderMenu = () => {
                 }}>{renderGeneralPortraitFace(gen, pt, pt.surname)}</div>
                 <div style={{marginTop:'12px', fontSize:'22px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}</div>
                 <div style={{fontSize:'12px', color:'rgba(255,255,255,0.7)', marginTop:'4px'}}>{gen.title}</div>
-                <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
+                <div style={{display:'flex', gap:'6px', justifyContent:'center', flexWrap:'wrap', marginTop:'8px'}}>
                   <span style={{fontSize:'10px', fontWeight:'700', color:rc.color, background:rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
                   <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fData?.icon || '📜'}{gen.historicalFaction || fData?.fullName || '汉末群雄'}</span>
                 </div>
@@ -36913,6 +36996,8 @@ const renderMenu = () => {
         const rc = GENERAL_RARITY_CONFIG[gen.rarity] || {};
         const pt = getGeneralPortrait(gen);
         const fLabel = gen.historicalFaction || (gen.faction !== 'neutral' ? FACTIONS[gen.faction]?.fullName : '汉末群雄');
+        const politicalState = kingdomWar?.politics?.generals?.[gen.id];
+        const politicalMeta = HISTORICAL_POLITICAL_FACTIONS[politicalState?.allegiance || gen.politicalFaction];
         const bonusLabelsD = {gold:'金币奖励',exp:'经验奖励',contrib:'国战贡献',territory:'领地防御',trade:'商队收入',recruit:'招募减免'};
         const bioData = GENERAL_BIOS[gen.id];
         const isR = (kingdomWar?.recruitedGenerals || []).some(g => g.id === gen.id);
@@ -36933,9 +37018,10 @@ const renderMenu = () => {
                 }}>{renderGeneralPortraitFace(gen, pt, pt.surname)}</div>
                 <div id="general-dex-detail-title" style={{marginTop:'10px', fontSize:'20px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}{bioData?.courtesy ? ` · 字${bioData.courtesy}` : ''}</div>
                 <div style={{fontSize:'12px', color:'rgba(255,255,255,0.8)', marginTop:'4px'}}>{gen.title}{bioData?.years ? ` (${bioData.years})` : ''}</div>
-                <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
+                <div style={{display:'flex', gap:'6px', justifyContent:'center', flexWrap:'wrap', marginTop:'8px'}}>
                   <span style={{fontSize:'10px', fontWeight:'700', color: rc.color, background: rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
                   <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fLabel}</span>
+                  <span style={{fontSize:'10px', fontWeight:'700', color:'#fff', background:'rgba(0,0,0,0.25)', padding:'2px 8px', borderRadius:'5px'}}>现效忠 {politicalMeta?.name || '未定'}</span>
                   <span style={{fontSize:'10px', fontWeight:'700', color:'#fff', background:'rgba(0,0,0,0.25)', padding:'2px 8px', borderRadius:'5px'}}>史评 {gen.historicalScore} · {gen.roleLabel}</span>
                 </div>
               </div>

@@ -1,4 +1,13 @@
+import {
+  HISTORICAL_POLITICAL_FACTIONS,
+  HISTORICAL_POLITICAL_FACTION_IDS,
+  getPoliticalFactionMeta,
+  getPoliticalFactionWarCamp,
+} from './generalFactions.js';
+
+// Strategic camps own map territory. Individual generals always keep a real historical allegiance.
 export const POLITICAL_FACTIONS = ['wei', 'shu', 'wu', 'jin', 'qun'];
+export const GENERAL_POLITICAL_FACTIONS = HISTORICAL_POLITICAL_FACTION_IDS;
 
 export const QUN_LORDS = Object.freeze([
   { id: 'yuan_shao', name: '河北袁氏', leaderId: 'neu_yuan_shao', icon: '🏯', doctrine: '门生故吏', attack: 1.02, defense: 1.08 },
@@ -50,16 +59,27 @@ export const DIPLOMACY_CONFIG = Object.freeze({
   intrigueChancePerTick: 0.16,
   generalEventCooldownTicks: 8,
   recentEventLimit: 30,
+  invitationCost: 10,
+  invitationCooldownTicks: 6,
 });
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const factionOf = (faction) => faction === 'neutral' ? 'qun' : (POLITICAL_FACTIONS.includes(faction) ? faction : 'qun');
+const normalizePoliticalFaction = (faction, fallback = 'qun') => (
+  HISTORICAL_POLITICAL_FACTION_IDS.includes(faction)
+    ? faction
+    : faction === 'neutral'
+      ? 'qun'
+      : fallback
+);
+const warCampOf = faction => getPoliticalFactionWarCamp(faction);
+const factionLabel = faction => getPoliticalFactionMeta(faction)?.name || faction;
+const defaultFactionForWarCamp = camp => ({ wei: 'wei', shu: 'shu', wu: 'wu', jin: 'western_jin', qun: 'qun' }[camp] || 'qun');
 const hashText = (value) => String(value || '').split('').reduce((hash, char) => ((hash * 33) ^ char.charCodeAt(0)) >>> 0, 2166136261);
 const pairKey = (a, b) => [a, b].sort().join(':');
 const finiteOr = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const qunLordById = id => QUN_LORDS.find(lord => lord.id === id) || null;
 const getHomeQunLordId = (general) => {
-  if (general?.faction !== 'neutral') return null;
+  if (general?.warCamp !== 'qun' && general?.faction !== 'neutral') return null;
   const matched = Object.entries(QUN_LORD_MEMBERS).find(([, ids]) => ids.includes(general.id));
   return matched?.[0] || 'han_court';
 };
@@ -79,7 +99,7 @@ const INITIAL_RELATIONS = {
 
 const makeGeneralState = (general) => {
   const hash = hashText(general.id);
-  const homeFaction = factionOf(general.faction);
+  const homeFaction = normalizePoliticalFaction(general.politicalFaction, defaultFactionForWarCamp(general.warCamp));
   const rarityBase = general.rarity === 'SSR' ? 12 : general.rarity === 'SR' ? 6 : 0;
   const command = Number(general.teamLevel) || 60;
   const homeLordId = getHomeQunLordId(general);
@@ -107,7 +127,7 @@ export const createDefaultKingdomPolitics = (generals = []) => {
     }
   }
   return {
-    version: 2,
+    version: 3,
     worldTick: 0,
     trust: 50,
     relations,
@@ -132,6 +152,7 @@ export const migrateKingdomPolitics = (saved, generals = []) => {
   const base = createDefaultKingdomPolitics(generals);
   const raw = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
   const next = { ...base, ...raw };
+  next.version = 3;
   next.worldTick = Math.max(0, Math.floor(Number(next.worldTick) || 0));
   next.trust = clamp(Math.floor(finiteOr(next.trust, 50)), 0, 100);
   next.relations = { ...base.relations };
@@ -142,16 +163,24 @@ export const migrateKingdomPolitics = (saved, generals = []) => {
   generals.forEach(general => {
     const fallback = base.generals[general.id];
     const current = raw.generals?.[general.id] || {};
+    const legacyHome = current.homeFaction || fallback.homeFaction;
+    const migratedHome = legacyHome === general.faction || legacyHome === 'neutral'
+      ? fallback.homeFaction
+      : normalizePoliticalFaction(legacyHome, fallback.homeFaction);
+    const legacyAllegiance = current.allegiance || migratedHome;
+    const migratedAllegiance = legacyAllegiance === legacyHome || legacyAllegiance === general.faction || legacyAllegiance === 'neutral'
+      ? migratedHome
+      : normalizePoliticalFaction(legacyAllegiance, defaultFactionForWarCamp(legacyAllegiance));
     next.generals[general.id] = {
       ...fallback,
       ...current,
-      homeFaction: factionOf(current.homeFaction || fallback.homeFaction),
-      allegiance: factionOf(current.allegiance || fallback.allegiance),
+      homeFaction: migratedHome,
+      allegiance: migratedAllegiance,
       loyalty: clamp(Math.floor(finiteOr(current.loyalty, fallback.loyalty)), 0, 100),
       ambition: clamp(Math.floor(finiteOr(current.ambition, fallback.ambition)), 0, 100),
       cunning: clamp(Math.floor(finiteOr(current.cunning, fallback.cunning)), 0, 100),
       homeLordId: qunLordById(current.homeLordId)?.id || fallback.homeLordId,
-      lordId: factionOf(current.allegiance || fallback.allegiance) === 'qun'
+      lordId: warCampOf(migratedAllegiance) === 'qun'
         ? (qunLordById(current.lordId)?.id || fallback.homeLordId || 'han_court')
         : null,
       cooldownUntilTick: Math.max(0, Math.floor(Number(current.cooldownUntilTick) || 0)),
@@ -168,13 +197,27 @@ export const migrateKingdomPolitics = (saved, generals = []) => {
     }];
   }));
   const validFaction = value => POLITICAL_FACTIONS.includes(value);
+  const validGeneralFaction = value => HISTORICAL_POLITICAL_FACTION_IDS.includes(value);
   next.treaties = (Array.isArray(raw.treaties) ? raw.treaties : []).filter(treaty => (
     validFaction(treaty?.a) && validFaction(treaty?.b) && treaty.a !== treaty.b && Number(treaty.expiresTick) > next.worldTick
   )).map(treaty => ({ ...treaty, expiresTick: Math.floor(Number(treaty.expiresTick)) }));
   next.coalitions = (Array.isArray(raw.coalitions) ? raw.coalitions : []).filter(coalition => (
     Array.isArray(coalition?.members) && coalition.members.every(validFaction) && validFaction(coalition.target) && Number(coalition.expiresTick) > next.worldTick
   )).map(coalition => ({ ...coalition, members: [...new Set(coalition.members)], expiresTick: Math.floor(Number(coalition.expiresTick)) }));
-  next.plots = (Array.isArray(raw.plots) ? raw.plots : []).filter(plot => plot?.generalId && validFaction(plot.homeFaction) && validFaction(plot.targetFaction));
+  next.plots = (Array.isArray(raw.plots) ? raw.plots : []).map(plot => {
+    const generalState = next.generals[plot?.generalId];
+    if (!generalState) return null;
+    const homeFaction = normalizePoliticalFaction(plot.homeFaction, generalState.homeFaction);
+    const targetFallback = defaultFactionForWarCamp(plot.targetFaction);
+    const targetFaction = normalizePoliticalFaction(plot.targetFaction, targetFallback);
+    if (!validGeneralFaction(homeFaction) || !validGeneralFaction(targetFaction)) return null;
+    return {
+      ...plot,
+      homeFaction,
+      targetFaction,
+      revealTick: Math.max(next.worldTick + 1, Math.floor(Number(plot.revealTick) || next.worldTick + 1)),
+    };
+  }).filter(Boolean);
   next.prestige = Object.fromEntries(POLITICAL_FACTIONS.map(fid => [fid, Math.max(0, Math.floor(Number(raw.prestige?.[fid]) || 0))]));
   next.recentEvents = (Array.isArray(raw.recentEvents) ? raw.recentEvents : []).filter(Boolean).slice(-DIPLOMACY_CONFIG.recentEventLimit);
   next.dailyActionDate = typeof raw.dailyActionDate === 'string' ? raw.dailyActionDate : null;
@@ -183,24 +226,36 @@ export const migrateKingdomPolitics = (saved, generals = []) => {
 };
 
 export const getFactionRelation = (politics, a, b) => {
-  if (!a || !b || a === b) return 100;
-  return clamp(Number(politics?.relations?.[pairKey(a, b)]) || 0, -100, 100);
+  const campA = warCampOf(a);
+  const campB = warCampOf(b);
+  if (!campA || !campB || campA === campB) return 100;
+  return clamp(Number(politics?.relations?.[pairKey(campA, campB)]) || 0, -100, 100);
 };
 
-export const getActiveTreaty = (politics, a, b) => (politics?.treaties || []).find(treaty => (
-  ((treaty.a === a && treaty.b === b) || (treaty.a === b && treaty.b === a))
-  && Number(treaty.expiresTick) > (Number(politics?.worldTick) || 0)
-));
+export const getActiveTreaty = (politics, a, b) => {
+  const campA = warCampOf(a);
+  const campB = warCampOf(b);
+  return (politics?.treaties || []).find(treaty => (
+    ((treaty.a === campA && treaty.b === campB) || (treaty.a === campB && treaty.b === campA))
+    && Number(treaty.expiresTick) > (Number(politics?.worldTick) || 0)
+  ));
+};
 
 export const canFactionAttack = (politics, attacker, defender) => {
-  if (!defender || defender === 'neutral' || defender === attacker) return { ok: true, reason: '' };
-  const treaty = getActiveTreaty(politics, attacker, defender);
+  const attackerCamp = warCampOf(attacker);
+  const defenderCamp = defender === 'neutral' ? 'neutral' : warCampOf(defender);
+  if (!defender || defenderCamp === 'neutral' || defenderCamp === attackerCamp) return { ok: true, reason: '' };
+  const treaty = getActiveTreaty(politics, attackerCamp, defenderCamp);
   if (!treaty) return { ok: true, reason: '' };
   return { ok: false, reason: `与${defender}方的互不侵犯盟约仍有 ${treaty.expiresTick - (politics.worldTick || 0)} 个战略回合` };
 };
 
 export const getFactionPoliticalSummary = (politics, generals, faction) => {
-  const roster = generals.filter(general => politics?.generals?.[general.id]?.allegiance === faction);
+  const isWarCamp = POLITICAL_FACTIONS.includes(faction);
+  const roster = generals.filter(general => {
+    const allegiance = politics?.generals?.[general.id]?.allegiance;
+    return isWarCamp ? warCampOf(allegiance) === faction : allegiance === faction;
+  });
   const scored = roster.map(general => {
     const state = politics.generals[general.id];
     const rarity = general.rarity === 'SSR' ? 1.35 : general.rarity === 'SR' ? 1.16 : 1;
@@ -218,6 +273,13 @@ export const getFactionPoliticalSummary = (politics, generals, faction) => {
     warlords: scored.filter(item => item.state.status === 'warlord').length,
   };
 };
+
+export const getHistoricalFactionPoliticalSummaries = (politics, generals = []) => (
+  HISTORICAL_POLITICAL_FACTION_IDS
+    .map(faction => ({ ...getFactionPoliticalSummary(politics, generals, faction), ...HISTORICAL_POLITICAL_FACTIONS[faction] }))
+    .filter(summary => summary.count > 0)
+    .sort((a, b) => b.power - a.power || a.name.localeCompare(b.name, 'zh-CN'))
+);
 
 export const getQunLordSummaries = (politics, generals = []) => QUN_LORDS.map(lord => {
   const roster = generals.filter(general => {
@@ -246,7 +308,23 @@ export const getQunLordSummaries = (politics, generals = []) => QUN_LORDS.map(lo
 }).sort((a, b) => b.readiness - a.readiness || b.influence - a.influence || a.id.localeCompare(b.id));
 
 export const getFactionGeneralPower = (politics, generals, faction) => {
-  if (faction !== 'qun') return getFactionPoliticalSummary(politics, generals, faction).power;
+  if (faction !== 'qun') {
+    const groupedPower = new Map();
+    generals.forEach(general => {
+      const state = politics?.generals?.[general.id];
+      if (!state || warCampOf(state.allegiance) !== faction) return;
+      const group = getPoliticalFactionMeta(state.allegiance).rosterFaction;
+      const rarity = general.rarity === 'SSR' ? 1.35 : general.rarity === 'SR' ? 1.16 : 1;
+      const score = (Number(general.teamLevel) || 60) * rarity * (0.78 + state.loyalty / 260) / 18;
+      groupedPower.set(group, (groupedPower.get(group) || 0) + score);
+    });
+    // The strongest court commands fully; additional courts lose efficiency to coalition coordination.
+    const commandWeights = [1, 0.85, 0.6, 0.4, 0.3];
+    const groups = [...groupedPower.values()].sort((a, b) => b - a);
+    return Math.min(520, Math.floor(groups.reduce((sum, power, index) => (
+      sum + power * (commandWeights[index] ?? 0.2)
+    ), 0)));
+  }
   const lords = getQunLordSummaries(politics, generals);
   // 群雄不会共享全部兵权：盟主可全额号令本部，只能借调次强诸侯的三成兵力。
   return Math.floor((lords[0]?.readiness || 0) + (lords[1]?.readiness || 0) * 0.3);
@@ -337,6 +415,75 @@ export const applyDiplomaticAction = ({ politics: rawPolitics, generals = [], ac
   return { ok: true, politics, tokenCost, moraleLoss, message };
 };
 
+const invitationTargetFaction = warCamp => defaultFactionForWarCamp(warCamp);
+
+export const getGeneralInvitationPreview = ({ politics, general, targetWarCamp, personallyRecruited = false }) => {
+  const state = politics?.generals?.[general?.id];
+  if (!general?.canServeAnyWarCamp) return { ok: false, reason: '该名将不属于可跨阵营延揽的南北朝人才' };
+  if (!POLITICAL_FACTIONS.includes(targetWarCamp)) return { ok: false, reason: '延揽目标阵营无效' };
+  if (!state || state.status !== 'serving') return { ok: false, reason: '该名将当前处于诈降、割据或其他不可延揽状态' };
+  if (state.cooldownUntilTick > (politics?.worldTick || 0)) return { ok: false, reason: '该名将刚经历政治事件，暂不接受邀请' };
+  const targetFaction = invitationTargetFaction(targetWarCamp);
+  if (state.allegiance === targetFaction) return { ok: false, reason: '该名将已经效忠目标政权' };
+  const sourceCamp = warCampOf(state.allegiance);
+  const relation = getFactionRelation(politics, targetWarCamp, sourceCamp);
+  const rarityPenalty = general.rarity === 'SSR' ? 0.12 : general.rarity === 'SR' ? 0.05 : 0;
+  const chance = clamp(
+    0.42 + (100 - state.loyalty) * 0.003 + Math.max(-0.12, Math.min(0.12, relation / 500))
+      + (personallyRecruited ? 0.25 : 0) - rarityPenalty,
+    0.2,
+    personallyRecruited ? 0.92 : 0.78,
+  );
+  return { ok: true, chance, cost: DIPLOMACY_CONFIG.invitationCost, targetFaction, sourceCamp, loyalty: state.loyalty };
+};
+
+export const inviteGeneralToFaction = ({
+  politics: rawPolitics,
+  generals = [],
+  generalId,
+  targetWarCamp,
+  dateKey,
+  personallyRecruited = false,
+  random = Math.random,
+}) => {
+  const politics = migrateKingdomPolitics(rawPolitics, generals);
+  const general = generals.find(item => item.id === generalId);
+  const preview = getGeneralInvitationPreview({ politics, general, targetWarCamp, personallyRecruited });
+  if (!preview.ok) return preview;
+  const todayCount = politics.dailyActionDate === dateKey ? politics.dailyActionCount : 0;
+  if (todayCount >= DIPLOMACY_CONFIG.maxActionsPerDay) return { ok: false, reason: '今日使节行动次数已用完' };
+
+  politics.dailyActionDate = dateKey;
+  politics.dailyActionCount = todayCount + 1;
+  const state = politics.generals[general.id];
+  const succeeded = random() < preview.chance;
+  let message;
+  if (succeeded) {
+    const previousFaction = state.allegiance;
+    state.allegiance = preview.targetFaction;
+    state.status = 'serving';
+    state.lordId = preview.targetFaction === 'qun' ? (state.homeLordId || 'han_court') : null;
+    state.loyalty = clamp(58 + Math.floor(random() * 17), 0, 100);
+    state.cooldownUntilTick = (politics.worldTick || 0) + DIPLOMACY_CONFIG.invitationCooldownTicks;
+    if (preview.sourceCamp !== targetWarCamp) changeRelation(politics, preview.sourceCamp, targetWarCamp, -5);
+    message = `${general.name}接受延揽，由${factionLabel(previousFaction)}转投${factionLabel(preview.targetFaction)}`;
+  } else {
+    state.loyalty = clamp(state.loyalty + 3, 0, 100);
+    state.cooldownUntilTick = (politics.worldTick || 0) + 2;
+    message = `${general.name}婉拒延揽，仍效忠${factionLabel(state.allegiance)}`;
+  }
+  const event = {
+    tick: politics.worldTick || 0,
+    type: succeeded ? 'general_invited' : 'general_invitation_refused',
+    generalId: general.id,
+    actor: targetWarCamp,
+    target: state.allegiance,
+    message,
+  };
+  addEvent(politics, event);
+  return { ok: true, succeeded, politics, tokenCost: preview.cost, chance: preview.chance, message };
+};
+
 export const getDiplomaticTargetModifier = (politics, attacker, defender, territoryCounts = {}) => {
   if (!defender || defender === 'neutral') return 0;
   if (!canFactionAttack(politics, attacker, defender).ok) return -10000;
@@ -377,15 +524,17 @@ export const advanceKingdomPolitics = ({ politics: rawPolitics, generals = [], t
     const general = generals.find(item => item.id === plot.generalId);
     if (!state || !general) return;
     state.allegiance = plot.homeFaction;
-    state.lordId = plot.homeFaction === 'qun' ? (state.homeLordId || 'han_court') : null;
+    state.lordId = warCampOf(plot.homeFaction) === 'qun' ? (state.homeLordId || 'han_court') : null;
     state.status = 'serving';
     state.loyalty = clamp(state.loyalty + 12, 0, 100);
     state.cooldownUntilTick = tick + DIPLOMACY_CONFIG.generalEventCooldownTicks;
-    manpower[plot.targetFaction] = Math.max(0, manpower[plot.targetFaction] - 36);
-    manpower[plot.homeFaction] += 24;
-    politics.prestige[plot.homeFaction] += 6;
-    changeRelation(politics, plot.homeFaction, plot.targetFaction, -18);
-    const message = `${general.name}诈降计成，在${plot.targetFaction}军中纵火后重归${plot.homeFaction}`;
+    const targetCamp = warCampOf(plot.targetFaction);
+    const homeCamp = warCampOf(plot.homeFaction);
+    manpower[targetCamp] = Math.max(0, manpower[targetCamp] - 36);
+    manpower[homeCamp] += 24;
+    politics.prestige[homeCamp] += 6;
+    changeRelation(politics, homeCamp, targetCamp, -18);
+    const message = `${general.name}诈降计成，在${factionLabel(plot.targetFaction)}军中纵火后重归${factionLabel(plot.homeFaction)}`;
     const event = { tick, type: 'feigned_reveal', generalId: general.id, actor: plot.homeFaction, target: plot.targetFaction, message };
     events.push(event); addEvent(politics, event);
   });
@@ -400,9 +549,11 @@ export const advanceKingdomPolitics = ({ politics: rawPolitics, generals = [], t
   generals.forEach(general => {
     const state = politics.generals[general.id];
     if (!state || state.status === 'feigned') return;
-    const count = territoryCounts[state.allegiance] || 0;
+    const allegianceCamp = warCampOf(state.allegiance);
+    const homeCamp = warCampOf(state.homeFaction);
+    const count = territoryCounts[allegianceCamp] || 0;
     let drift = count <= 2 ? -2 : count >= averageCount + 2 ? 1 : 0;
-    if (state.allegiance !== state.homeFaction && (territoryCounts[state.homeFaction] || 0) > count) drift -= 1;
+    if (state.allegiance !== state.homeFaction && (territoryCounts[homeCamp] || 0) > count) drift -= 1;
     state.loyalty = clamp(state.loyalty + drift, 0, 100);
   });
 
@@ -418,34 +569,37 @@ export const advanceKingdomPolitics = ({ politics: rawPolitics, generals = [], t
     if (general) {
       const state = politics.generals[general.id];
       const source = state.allegiance;
-      const possibleTargets = POLITICAL_FACTIONS.filter(fid => fid !== source && canFactionAttack(politics, source, fid).ok);
-      const strongest = possibleTargets.sort((a, b) => (territoryCounts[b] || 0) - (territoryCounts[a] || 0))[0] || 'qun';
+      const sourceCamp = warCampOf(source);
+      const possibleTargets = POLITICAL_FACTIONS.filter(fid => fid !== sourceCamp && canFactionAttack(politics, sourceCamp, fid).ok);
+      const strongestCamp = possibleTargets.sort((a, b) => (territoryCounts[b] || 0) - (territoryCounts[a] || 0))[0] || 'qun';
       let type = 'defection';
-      let target = strongest;
+      let target = defaultFactionForWarCamp(strongestCamp);
       let message = '';
-      if (state.ambition >= 86 && (territoryCounts[source] || 0) >= 3 && random() < 0.38) {
+      if (state.ambition >= 86 && (territoryCounts[sourceCamp] || 0) >= 3 && random() < 0.38) {
         type = 'warlord'; target = 'qun'; state.status = 'warlord'; state.allegiance = target;
         state.lordId = state.homeLordId || 'han_court';
-        manpower[source] = Math.max(0, manpower[source] - 28); manpower[target] += 22;
-        politics.prestige[source] = Math.max(0, politics.prestige[source] - 5); politics.prestige[target] += 4;
-        message = `${general.name}野心膨胀，率亲兵脱离${source}拥兵自立`;
-      } else if (state.cunning >= 78 && strongest !== source && random() < 0.44) {
-        type = 'feigned_surrender'; target = strongest; state.status = 'feigned'; state.allegiance = target;
-        state.lordId = target === 'qun' ? (selectQunLordForAction(politics, generals, random)?.id || state.homeLordId || 'han_court') : null;
+        manpower[sourceCamp] = Math.max(0, manpower[sourceCamp] - 28); manpower.qun += 22;
+        politics.prestige[sourceCamp] = Math.max(0, politics.prestige[sourceCamp] - 5); politics.prestige.qun += 4;
+        message = `${general.name}野心膨胀，率亲兵脱离${factionLabel(source)}拥兵自立`;
+      } else if (state.cunning >= 78 && strongestCamp !== sourceCamp && random() < 0.44) {
+        type = 'feigned_surrender'; state.status = 'feigned'; state.allegiance = target;
+        state.lordId = strongestCamp === 'qun' ? (selectQunLordForAction(politics, generals, random)?.id || state.homeLordId || 'han_court') : null;
         politics.plots.push({ generalId: general.id, homeFaction: source, targetFaction: target, revealTick: tick + 3 });
-        manpower[source] = Math.max(0, manpower[source] - 12); manpower[target] += 12;
-        message = `${general.name}向${target}献书请降，真意难辨`;
+        manpower[sourceCamp] = Math.max(0, manpower[sourceCamp] - 12); manpower[strongestCamp] += 12;
+        message = `${general.name}向${factionLabel(target)}献书请降，真意难辨`;
       } else {
         state.status = 'serving'; state.allegiance = target;
-        state.lordId = target === 'qun' ? (selectQunLordForAction(politics, generals, random)?.id || state.homeLordId || 'han_court') : null;
-        manpower[source] = Math.max(0, manpower[source] - 20); manpower[target] += 20;
-        const surrender = (territoryCounts[source] || 0) <= 2 || state.loyalty < 22;
+        state.lordId = strongestCamp === 'qun' ? (selectQunLordForAction(politics, generals, random)?.id || state.homeLordId || 'han_court') : null;
+        manpower[sourceCamp] = Math.max(0, manpower[sourceCamp] - 20); manpower[strongestCamp] += 20;
+        const surrender = (territoryCounts[sourceCamp] || 0) <= 2 || state.loyalty < 22;
         type = surrender ? 'surrender' : 'defection';
-        message = surrender ? `${general.name}见${source}大势已去，率部投降${target}` : `${general.name}背弃${source}，转投${target}`;
+        message = surrender
+          ? `${general.name}见${factionLabel(source)}大势已去，率部投降${factionLabel(target)}`
+          : `${general.name}背弃${factionLabel(source)}，转投${factionLabel(target)}`;
       }
       state.loyalty = type === 'feigned_surrender' ? state.loyalty : clamp(48 + Math.floor(random() * 24), 0, 100);
       state.cooldownUntilTick = tick + DIPLOMACY_CONFIG.generalEventCooldownTicks;
-      changeRelation(politics, source, target, -12);
+      changeRelation(politics, sourceCamp, warCampOf(target), -12);
       const event = { tick, type, generalId: general.id, actor: source, target, message };
       events.push(event); addEvent(politics, event);
     }
@@ -470,7 +624,7 @@ export const resetKingdomPoliticsForSeason = (rawPolitics, generals = []) => {
       state.status = 'serving';
       state.allegiance = state.homeFaction;
     }
-    state.lordId = state.allegiance === 'qun' ? (state.homeLordId || state.lordId || 'han_court') : null;
+    state.lordId = warCampOf(state.allegiance) === 'qun' ? (state.homeLordId || state.lordId || 'han_court') : null;
   });
   Object.values(politics.qunLords || {}).forEach(lord => {
     lord.cohesion = clamp(lord.cohesion + 4, 20, 90);

@@ -10,6 +10,9 @@ import { GENERAL_EXPANSION } from '../src/data/generalExpansion.js';
 import { HISTORICAL_BATTLES } from '../src/data/historicalBattles.js';
 import {
   GENERAL_DRAW_RATES,
+  GENERAL_ROSTER_FACTIONS,
+  GENERAL_ROSTER_FACTION_IDS,
+  HISTORICAL_POLITICAL_FACTION_IDS,
   SANGUO_GENERALS,
   hydrateGeneralSnapshot,
 } from '../src/data/generals.js';
@@ -68,19 +71,32 @@ for (const general of SANGUO_GENERALS) {
   assert.ok(general.teamSize >= 2 && general.teamSize <= 6, `${general.name} 携带精灵数量越界`);
   assert.ok(general.role && general.roleLabel, `${general.name} 缺少玩法定位`);
   assert.ok(general.historicalFaction, `${general.name} 缺少历史归属`);
+  assert.ok(GENERAL_ROSTER_FACTION_IDS.includes(general.rosterFaction), `${general.name} 名将录势力无效`);
+  assert.ok(HISTORICAL_POLITICAL_FACTION_IDS.includes(general.politicalFaction), `${general.name} 国战政治势力无效`);
+  assert.ok(['wei', 'shu', 'wu', 'jin', 'qun'].includes(general.warCamp), `${general.name} 地图联军无效`);
 }
 check(true, '所有评级、遭遇等级、队伍规模、招募费和定位均来自同一评分源');
 
-const factionCounts = Object.fromEntries(['wei', 'shu', 'wu', 'jin', 'neutral'].map(faction => [
+const factionCounts = Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(faction => [
   faction,
   Object.fromEntries(['SSR', 'SR', 'R'].map(rarity => [
     rarity,
-    SANGUO_GENERALS.filter(general => general.faction === faction && general.rarity === rarity).length,
+    SANGUO_GENERALS.filter(general => general.rosterFaction === faction && general.rarity === rarity).length,
   ])),
 ]));
 check(new Set(Object.values(factionCounts).map(counts => counts.SSR)).size > 1, '各阵营 SSR 数量不再强制相等');
 check(factionCounts.wei.SSR >= 17 && factionCounts.shu.SSR >= 16 && factionCounts.wu.SSR >= 16, '魏蜀吴 SSR 已按军政实绩重评，不再只有 6/6/8 人');
 console.log('  评级分布:', factionCounts);
+assert.deepEqual(
+  Object.fromEntries(GENERAL_ROSTER_FACTION_IDS.map(faction => [faction, SANGUO_GENERALS.filter(general => general.rosterFaction === faction).length])),
+  { wei: 105, shu: 100, wu: 105, western_jin: 46, eastern_jin: 41, liu_song: 19, northern_wei: 8, sixteen_kingdoms: 10, neutral: 116 },
+);
+check(true, '原晋及南北朝名册已拆为西晋、东晋、刘宋、北魏、十六国，误收的东汉虞诩归回群雄');
+check(SANGUO_GENERALS.every(general => general.historicalFaction !== '晋及南北朝'), '名将卡片不再显示泛化的“晋及南北朝”');
+check(
+  SANGUO_GENERALS.filter(general => ['liu_song', 'northern_wei'].includes(general.rosterFaction)).every(general => general.canServeAnyWarCamp),
+  '刘宋与北魏名将全部允许被任一战略阵营延揽',
+);
 
 check(GENERAL_EXPANSION.length === 150, '新增名单恰为 150 人，总量达到 550');
 for (const raw of GENERAL_EXPANSION) {
@@ -89,7 +105,7 @@ for (const raw of GENERAL_EXPANSION) {
   assert.ok(profile?.source, `${raw.name} 缺少史料来源`);
   assert.ok(profile?.bio?.includes(raw.name), `${raw.name} 传记与姓名不匹配`);
   assert.ok(profile?.years, `${raw.name} 缺少生卒年状态`);
-  assert.equal(SANGUO_GENERALS.find(general => general.id === raw.id)?.historicalFaction, raw.historicalFaction, `${raw.name} 历史归属未进入战斗名将快照`);
+  assert.ok(SANGUO_GENERALS.find(general => general.id === raw.id)?.historicalFaction, `${raw.name} 历史归属未进入战斗名将快照`);
 }
 check(true, '150 位新增人物均有独立简传、事迹、年代状态、历史归属和史料来源');
 
@@ -107,6 +123,10 @@ for (const [id, [name, courtesy, source]] of Object.entries(historicalAccuracyEx
 assert.ok(GENERAL_BIOS.shu_chen_zhi.bio.includes('费祎死后'), '陈祗生平仍含费祎姓名误字');
 assert.ok(GENERAL_BIOS.wu_lu_yan.bio.includes('王濬军'), '陆晏生平未使用王濬的史籍姓名');
 assert.ok(GENERAL_BIOS.neu_liu_xie.bio.includes('李傕、郭汜'), '汉献帝生平仍含李傕姓名误字');
+assert.equal(SANGUO_GENERALS.find(general => general.id === 'jin_he_chong')?.name, '何充', '东晋何充姓名仍使用误字');
+assert.equal(SANGUO_GENERALS.find(general => general.id === 'jin_yu_yi')?.name, '虞诩', '东汉虞诩仍被误写为虞翊');
+assert.equal(SANGUO_GENERALS.find(general => general.id === 'jin_yu_yi')?.historicalFaction, '东汉', '虞诩仍被错误归入晋系');
+assert.equal(SANGUO_GENERALS.find(general => general.id === 'jin_duan_qin')?.historicalFaction, '段部鲜卑', '段钦仍被错误归入后燕或刘琨部');
 check(true, '易混姓名与关键史实用字均锁定为正史写法');
 
 const replacementExpectations = {
@@ -156,6 +176,9 @@ const hydrated = hydrateGeneralSnapshot({
 assert.equal(hydrated.name, '贾逵');
 assert.equal(hydrated.rarity, 'SR');
 assert.equal(hydrated.historicalScore, 78);
+assert.equal(hydrated.rosterFaction, 'wei');
+assert.equal(hydrated.politicalFaction, 'wei');
+assert.equal(hydrated.warCamp, 'wei');
 assert.equal(hydrated.recruitTime, 123);
 check(true, '旧存档名将快照会刷新为权威人物资料，同时保留招募时间');
 
