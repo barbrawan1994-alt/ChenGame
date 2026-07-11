@@ -872,6 +872,21 @@ check('全局提示弹窗在深色主题下保持可读对比度', () => {
   assert.ok(dialog.includes("color: '#eef7ff'"));
 });
 
+check('名将图鉴详情在深色主题下保留清晰的文字层级', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const theme = fs.readFileSync(path.join(root, 'src/styles/spirit-theme.css'), 'utf8');
+  const modalStart = app.indexOf('{/* 名将图鉴详情弹窗 */}');
+  const modal = app.slice(modalStart, app.indexOf('{/* 战斗名将详情弹窗 */}', modalStart));
+  assert.ok(modal.includes('className="general-dex-detail-modal"'));
+  assert.ok(modal.includes('role="dialog"'));
+  assert.ok(modal.includes('className="general-dex-detail-heading"'));
+  assert.ok(modal.includes('className="general-dex-detail-footer-note"'));
+  assert.ok(theme.includes('.general-dex-detail-modal[role="dialog"]'));
+  assert.ok(theme.includes('color: #f6d267 !important'));
+  assert.ok(theme.includes('color: #c7d9d7 !important'));
+  assert.ok(theme.includes('color: #166534 !important'));
+});
+
 check('远征仅奖励真实属性契合，单精灵队伍也可正常派遣', () => {
   const zone = expeditionData.EXPEDITION_ZONES.find(entry => entry.id === 'dark_forest');
   assert.equal(expeditionData.calcExpeditionBonus([{ type: 'FIRE' }], zone), 1);
