@@ -282,7 +282,8 @@ export const EnhancedHPBar = ({ current, max, label }) => {
 export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => {
   const [expanded, setExpanded] = useState(false);
   const allLogs = logs.length > 0 ? logs : (message ? [message] : []);
-  const displayLogs = expanded ? allLogs.slice(1, 13) : allLogs.slice(1, 6);
+  const hasHistory = allLogs.length > 2;
+  const displayLogs = expanded ? allLogs.slice(1, 13) : [];
   const latest = allLogs[0] || '等待行动';
   const classifyLog = (msg) => {
     const text = String(msg || '');
@@ -293,7 +294,7 @@ export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => 
   };
 
   return (
-    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: allLogs.length > 5 ? 'pointer' : 'default' }} onClick={() => { if (allLogs.length > 5) setExpanded(e => !e); }}>
+    <div className="battle-msg-queue" style={{ pointerEvents: 'auto', cursor: hasHistory ? 'pointer' : 'default' }} onClick={() => { if (hasHistory) setExpanded(e => !e); }}>
       <div className={`battle-msg-summary ${classifyLog(latest)}`}>
         <span>本回合</span>
         <strong>{latest}</strong>
@@ -305,7 +306,7 @@ export const EnhancedBattleMessage = ({ message, type = 'info', logs = [] }) => 
           {msg}
         </div>
       ))}
-      {allLogs.length > 5 && <div className="battle-msg-toggle">{expanded ? '▲ 收起历史' : `▼ 展开战斗历史 (${allLogs.length})`}</div>}
+      {hasHistory && <div className="battle-msg-toggle">{expanded ? '▲ 收起历史' : `▼ 展开战斗历史 (${allLogs.length})`}</div>}
     </div>
   );
 };

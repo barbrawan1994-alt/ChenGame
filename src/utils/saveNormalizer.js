@@ -370,6 +370,7 @@ export const normalizeActivitySaveState = (saved, now = Date.now()) => {
   const rawRace = source.raceState && typeof source.raceState === 'object' ? source.raceState : {};
   const raceState = {
     lastDate: normalizeDate(rawRace.lastDate),
+    lastCandyDate: normalizeDate(rawRace.lastCandyDate),
     dailyRaces: safeInt(rawRace.dailyRaces, 0, 5),
     totalWins: safeInt(rawRace.totalWins),
   };

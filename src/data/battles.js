@@ -164,7 +164,7 @@ export const CONTEST_CONFIG = {
     desc: '展示精灵的魅力！策略性选择技能，高分需要技巧和运气！',
     entryFee: 1500,
     tiers: [
-      { min: 220, id: 369, name: '仙子伊布', level: 5, shiny: false, ivs: 3, msg: '🏆 完美演出！全场为你欢呼！' },
+      { min: 190, id: 369, name: '仙子伊布', level: 5, shiny: false, ivs: 3, msg: '🏆 完美演出！全场为你欢呼！' },
       { min: 150, id: 329, name: '樱花女神', level: 5, shiny: false, ivs: 2, msg: '🥇 优胜！最美的精灵归你了！' },
       { min: 80,  id: 61,  name: '星光舞者', level: 5, shiny: false, ivs: 1, msg: '🥈 表现不错！舞姿很优美。' },
       { min: 0,   id: 48,  name: '粉粉球', level: 5, shiny: false, ivs: 0, msg: '🥉 还需要练习哦。' }

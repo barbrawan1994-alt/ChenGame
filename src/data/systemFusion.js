@@ -408,6 +408,17 @@ export function checkAwakeningTier(pet, tierId, ctx = {}) {
   return { ok: false, reason: '未知档位' };
 }
 
+export function applyAwakeningTierToPet(pet, tierId) {
+  if (!pet || !AWAKENING_TIERS[tierId]) return pet;
+  const baseName = (pet.name || '').replace(/^[🌟🍎⚔️✨]+/, '');
+  const prefix = tierId === 'strategic' ? '⚔️🍎🌟' : tierId === 'fruit' ? '🍎🌟' : '🌟';
+  return {
+    ...pet,
+    name: `${prefix}${baseName}`,
+    awakened: tierId === 'normal' ? true : Boolean(pet.awakened),
+  };
+}
+
 export function getAvailableKwPveTasks(badgeCount, completedTaskLog = {}, currentTurn = 0, crisisUnlocks = []) {
   return KINGDOM_PVE_TASKS.filter(task => {
     if (badgeCount < (task.reqBadges || 0)) return false;

@@ -117,6 +117,85 @@ export function pickBlessingOptions(count = 3) {
   return shuffled.slice(0, count);
 }
 
+export function getInfinityTeamReadiness(party, minLevel, requiredCount = 3) {
+  const levels = (party || [])
+    .filter(pet => pet && (pet.currentHp == null || pet.currentHp > 0))
+    .map(pet => Math.max(1, Number(pet.level) || 1))
+    .sort((a, b) => b - a)
+    .slice(0, requiredCount);
+  const averageLevel = levels.length > 0
+    ? levels.reduce((sum, level) => sum + level, 0) / levels.length
+    : 0;
+  const levelFloor = Math.max(1, minLevel - 10);
+  return {
+    eligible: levels.length >= requiredCount
+      && averageLevel >= minLevel
+      && levels[requiredCount - 1] >= levelFloor,
+    averageLevel,
+    levelFloor,
+    readyCount: levels.filter(level => level >= levelFloor).length,
+    requiredCount,
+  };
+}
+
+export function isResumableInfinityRun(run, mode) {
+  return Boolean(
+    run
+    && run.mode === mode
+    && Number(run.floor) > 1
+    && ['selecting', 'buff_select'].includes(run.status)
+  );
+}
+
+export function getAvailableInfinityRewardOptions(
+  run,
+  breathingBuffs,
+  spiritBlessings,
+  { partyNeedsHealing = true } = {},
+) {
+  const buffs = Array.isArray(run?.buffs) ? run.buffs : [];
+  const blessings = Array.isArray(run?.blessings) ? run.blessings : [];
+  const breathing = (breathingBuffs || []).filter(option => {
+    if (!option?.id) return false;
+    if (option.type === 'instant') return partyNeedsHealing;
+    return buffs.filter(id => id === option.id).length < 3;
+  });
+  const spirits = blessings.length >= 6
+    ? []
+    : (spiritBlessings || []).filter(option => option?.id && !blessings.includes(option.id));
+  return { breathing, spirits };
+}
+
+export function pickInfinityRewardOptions(
+  run,
+  breathingBuffs,
+  spiritBlessings,
+  { count = 3, partyNeedsHealing = true, random = Math.random } = {},
+) {
+  const available = getAvailableInfinityRewardOptions(
+    run,
+    breathingBuffs,
+    spiritBlessings,
+    { partyNeedsHealing },
+  );
+  const shuffle = entries => {
+    const result = [...entries];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  };
+  const primary = [
+    ...shuffle(available.breathing).slice(0, 2),
+    ...shuffle(available.spirits).slice(0, 1),
+  ];
+  const used = new Set(primary.map(option => option.id));
+  const fallback = shuffle([...available.breathing, ...available.spirits])
+    .filter(option => !used.has(option.id));
+  return [...primary, ...fallback].slice(0, count);
+}
+
 export function pickSkillMutation() {
   return SKILL_MUTATIONS[Math.floor(Math.random() * SKILL_MUTATIONS.length)];
 }
