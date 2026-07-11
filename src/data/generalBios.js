@@ -1,4 +1,5 @@
 import { SANGUO_GENERALS } from './generals.js';
+import { GENERAL_EXPANSION_BIOS } from './generalExpansion.js';
 
 /** Biographical data for Sanguo generals (三国志 / 三国演义). Keys match generals.js ids. */
 const RAW_GENERAL_BIOS = {
@@ -1848,10 +1849,10 @@ const RAW_GENERAL_BIOS = {
     famous: '苻坚之弟，淝水阵亡',
   },
   jin_duan_qin: {
-    bio: '段钦（？—？），刘琨麾下忠将，坚守并州抗击胡族入侵。',
+    bio: '段钦（生卒年不详），辽西鲜卑段部首领段兰之子、段龛之弟，活跃于十六国时期的北方战局。',
     isHistorical: true,
     years: '?-?',
-    famous: '刘琨麾下，坚守并州',
+    famous: '段部鲜卑宗族将领，参与北方政权角逐',
   },
   jin_zhou_chu: {
     bio: '周处（236—297），字子隐，义兴阳羡人。少年时为乡里三害之一，改过自新后成为名将，后战死疆场。',
@@ -1894,10 +1895,11 @@ const RAW_GENERAL_BIOS = {
     famous: '南渡功臣，辅佐司马睿',
   },
   jin_he_chong: {
-    bio: '贺充（？—？），江东名士，参与南渡辅佐东晋建国。',
+    bio: '何充（292—346），字次道，庐江灊县人。东晋重臣，历任中书令、骠骑将军、录尚书事，晋成帝末受遗诏辅政。',
     isHistorical: true,
-    years: '?-?',
-    famous: '江东名士，南渡佐命',
+    courtesy: '次道',
+    years: '292-346',
+    famous: '受遗诏辅政，长期参与东晋中枢决策',
   },
   jin_zhu_bo: {
     bio: '祝伯（？—？），淝水之战左翼将领，配合谢玄击破前秦军。',
@@ -1912,10 +1914,11 @@ const RAW_GENERAL_BIOS = {
     famous: '五斗米道叛乱，扰乱东晋',
   },
   jin_yu_yi: {
-    bio: '虞翊（？—？），武陵太守。善用奇谋，以"增灶退敌"之计击退叛军。',
+    bio: '虞诩（？—137），字升卿，陈国武平人。东汉名臣，任武都太守时以增灶示众之计迷惑羌军，顺利解围。',
     isHistorical: true,
-    years: '?-?',
-    famous: '增灶退敌，善用奇谋',
+    courtesy: '升卿',
+    years: '?-137',
+    famous: '武都增灶惑敌，击破羌军',
   },
 };
 
@@ -2027,13 +2030,15 @@ const buildBriefProfile = (general) => ({
 export const GENERAL_BIOS = Object.fromEntries(SANGUO_GENERALS.map(general => {
   const fullProfile = RAW_GENERAL_BIOS[general.id];
   const sourcedReplacement = REPLACED_GENERAL_BIOS[general.id];
+  const sourcedExpansion = GENERAL_EXPANSION_BIOS[general.id];
   return [
     general.id,
     {
       ...buildBriefProfile(general),
       ...(fullProfile || {}),
       ...(sourcedReplacement || {}),
-      profileLevel: sourcedReplacement ? 'sourced' : fullProfile ? 'full' : 'brief',
+      ...(sourcedExpansion || {}),
+      profileLevel: sourcedReplacement || sourcedExpansion ? 'sourced' : fullProfile ? 'full' : 'brief',
     },
   ];
 }));

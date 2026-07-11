@@ -13,9 +13,8 @@ const loadSourceModule = async (relativePath, transform = source => source) => {
 };
 
 const constants = await loadSourceModule('src/data/kingdomConstants.js');
-const generalsData = await loadSourceModule('src/data/generals.js');
-const politicsSource = await readFile(new URL('../src/data/kingdomPolitics.js', import.meta.url), 'utf8');
-const politicsModuleUrl = `data:text/javascript;base64,${Buffer.from(politicsSource).toString('base64')}`;
+const generalsData = await import(new URL('../src/data/generals.js', import.meta.url));
+const politicsModuleUrl = new URL('../src/data/kingdomPolitics.js', import.meta.url).href;
 const politics = await import(politicsModuleUrl);
 
 const MOCK_GENERALS = ['wei', 'shu', 'wu', 'jin', 'qun'].flatMap(faction => (
@@ -23,12 +22,15 @@ const MOCK_GENERALS = ['wei', 'shu', 'wu', 'jin', 'qun'].flatMap(faction => (
     id: `${faction}_${index + 1}`,
     name: `${faction.toUpperCase()}将${index + 1}`,
     faction,
+    rosterFaction: faction === 'jin' ? 'western_jin' : faction === 'qun' ? 'neutral' : faction,
+    politicalFaction: faction === 'jin' ? 'western_jin' : faction,
+    warCamp: faction,
     rarity: index < 3 ? 'SSR' : index < 6 ? 'SR' : 'R',
   }))
 ));
 MOCK_GENERALS.push(
-  { id: 'neutral_1', name: '中立将1', faction: 'neutral', rarity: 'SSR' },
-  { id: 'neutral_2', name: '中立将2', faction: 'neutral', rarity: 'SR' },
+  { id: 'neutral_1', name: '中立将1', faction: 'neutral', rosterFaction: 'neutral', politicalFaction: 'qun', warCamp: 'qun', rarity: 'SSR' },
+  { id: 'neutral_2', name: '中立将2', faction: 'neutral', rosterFaction: 'neutral', politicalFaction: 'qun', warCamp: 'qun', rarity: 'SR' },
 );
 const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.meta.url), 'utf8');
@@ -118,6 +120,9 @@ const {
   canFactionAttack,
   createDefaultKingdomPolitics,
   getFactionGeneralPower,
+  getFactionPoliticalSummary,
+  getHistoricalFactionPoliticalSummaries,
+  inviteGeneralToFaction,
   getQunLordSummaries,
   migrateKingdomPolitics,
   resetKingdomPoliticsForSeason,
@@ -1064,21 +1069,26 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
   check(true, `${summaries.join('；')}；300 Tick 共 ${longRunCaptures} 次易主`);
 }
 
-// 22. 名将录扩充必须五方等量、唯一，并完整迁移到国战政治状态。
+// 22. 名将录扩充必须唯一，并完整迁移到国战政治状态。各阵营不按人头强行平分。
 {
-  assert.equal(SANGUO_GENERALS.length, 400);
+  assert.equal(SANGUO_GENERALS.length, 550);
   assert.equal(new Set(SANGUO_GENERALS.map(general => general.id)).size, SANGUO_GENERALS.length);
   assert.equal(new Set(SANGUO_GENERALS.map(general => general.name)).size, SANGUO_GENERALS.length);
-  const factionCounts = Object.fromEntries(['wei', 'shu', 'wu', 'jin', 'neutral'].map(fid => [
+  const factionCounts = Object.fromEntries(['wei', 'shu', 'wu', 'western_jin', 'eastern_jin', 'liu_song', 'northern_wei', 'sixteen_kingdoms', 'neutral'].map(fid => [
     fid,
-    SANGUO_GENERALS.filter(general => general.faction === fid).length,
+    SANGUO_GENERALS.filter(general => general.rosterFaction === fid).length,
   ]));
-  assert.deepEqual(factionCounts, { wei: 80, shu: 80, wu: 80, jin: 80, neutral: 80 });
+  assert.deepEqual(factionCounts, { wei: 105, shu: 100, wu: 105, western_jin: 46, eastern_jin: 41, liu_song: 19, northern_wei: 8, sixteen_kingdoms: 10, neutral: 116 });
   const migrated = migrateKingdomPolitics({ generals: { unknown_general: { allegiance: 'wei' } } }, SANGUO_GENERALS);
-  assert.equal(Object.keys(migrated.generals).length, 400);
+  assert.equal(Object.keys(migrated.generals).length, 550);
   assert.equal(migrated.generals.unknown_general, undefined);
-  assert.equal(new Set(Object.keys(migrated.generals)).size, 400);
-  check(true, '名将录共 400 位不重复人物、五方各 80 人，旧档迁移后每名将恰好进入一个国战阵营');
+  assert.equal(new Set(Object.keys(migrated.generals)).size, 550);
+  assert.equal(migrated.version, 3);
+  assert.equal(getHistoricalFactionPoliticalSummaries(migrated, SANGUO_GENERALS).reduce((sum, item) => sum + item.count, 0), 550);
+  const fullDexAchievement = ACHIEVEMENTS.find(item => item.id === 'kw_gen_dex200');
+  assert.equal(fullDexAchievement.check({ kwGenDexTotal: 549 }), false);
+  assert.equal(fullDexAchievement.check({ kwGenDexTotal: 550 }), true);
+  check(true, '名将录共 550 位不重复人物，晋及南北朝分属真实政权，旧档迁移后每名将恰好进入一个政治阵营');
 }
 
 // 22.1 抽将按稀有度先抽档位，不能因 R 卡数量更多把传世概率稀释到 1% 以下。
@@ -1114,7 +1124,7 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
   const lords = getQunLordSummaries(politicalState, SANGUO_GENERALS);
   assert.equal(lords.length, QUN_LORDS.length);
   assert.ok(lords.every(lord => lord.count > 0 && lord.commander && lord.deputy));
-  assert.equal(lords.reduce((sum, lord) => sum + lord.count, 0), 80);
+  assert.equal(lords.reduce((sum, lord) => sum + lord.count, 0), 116);
   const totalReadiness = lords.reduce((sum, lord) => sum + lord.readiness, 0);
   const confederationPower = getFactionGeneralPower(politicalState, SANGUO_GENERALS, 'qun');
   assert.ok(confederationPower <= (lords[0].readiness + lords[1].readiness * 0.31));
@@ -1220,7 +1230,7 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
   assert.equal(politicalState.generals[spy.id].status, 'serving');
   assert.equal(politicalState.plots.length, 0);
   assert.ok(Object.values(manpower).every(value => Number.isFinite(value) && value >= 0));
-  assert.equal(Object.keys(politicalState.generals).length, 400);
+  assert.equal(Object.keys(politicalState.generals).length, 550);
   const zeroState = migrateKingdomPolitics({
     trust: 0,
     generals: { [spy.id]: { ...politicalState.generals[spy.id], loyalty: 0, ambition: 0, cunning: 0 } },
@@ -1235,6 +1245,53 @@ check(OVEREXTEND_THRESHOLD === 8, `领地达到 ${OVEREXTEND_THRESHOLD} 时进�
   assert.equal(seasonReset.generals[spy.id].status, 'serving');
   assert.equal(seasonReset.generals[spy.id].allegiance, 'wei');
   check(true, '诈降三回合后揭晓且将领不丢失；重大阴谋每回合最多一个、兵力不会变成负数');
+}
+
+// 25.1 真实政权参与国战，晋系联军有协同折损；南北朝人才可被五方延揽。
+{
+  const basePolitics = createDefaultKingdomPolitics(SANGUO_GENERALS);
+  const campPowers = Object.fromEntries(['wei', 'shu', 'wu', 'jin'].map(fid => [
+    fid, getFactionGeneralPower(basePolitics, SANGUO_GENERALS, fid),
+  ]));
+  const powerValues = Object.values(campPowers);
+  assert.ok(Math.max(...powerValues) / Math.min(...powerValues) <= 1.2, `真实政权拆分后联军统御失衡: ${JSON.stringify(campPowers)}`);
+  assert.ok(getFactionGeneralPower(basePolitics, SANGUO_GENERALS, 'jin') < getFactionPoliticalSummary(basePolitics, SANGUO_GENERALS, 'jin').power);
+
+  const oldPolitics = migrateKingdomPolitics({
+    version: 2,
+    worldTick: 1,
+    plots: [{ generalId: 'jin_sima_yi', homeFaction: 'jin', targetFaction: 'shu', revealTick: 4 }],
+    generals: {
+      jin_sima_yi: { homeFaction: 'jin', allegiance: 'shu', loyalty: 70, status: 'feigned' },
+      jin_liu_yu: { homeFaction: 'jin', allegiance: 'wei', loyalty: 50 },
+    },
+  }, SANGUO_GENERALS);
+  assert.equal(oldPolitics.generals.jin_sima_yi.homeFaction, 'wei');
+  assert.equal(oldPolitics.generals.jin_sima_yi.allegiance, 'shu');
+  assert.equal(oldPolitics.plots[0].homeFaction, 'wei');
+  assert.equal(oldPolitics.plots[0].targetFaction, 'shu');
+  assert.equal(oldPolitics.generals.jin_liu_yu.homeFaction, 'liu_song');
+  assert.equal(oldPolitics.generals.jin_liu_yu.allegiance, 'wei');
+
+  const expectedTargets = { wei: 'wei', shu: 'shu', wu: 'wu', jin: 'western_jin', qun: 'qun' };
+  for (const [targetWarCamp, expectedAllegiance] of Object.entries(expectedTargets)) {
+    const result = inviteGeneralToFaction({
+      politics: basePolitics,
+      generals: SANGUO_GENERALS,
+      generalId: 'jin_tuoba_gui',
+      targetWarCamp,
+      dateKey: '2026-07-12',
+      random: () => 0,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.succeeded, true);
+    assert.equal(result.politics.generals.jin_tuoba_gui.allegiance, expectedAllegiance);
+  }
+  const ineligible = inviteGeneralToFaction({
+    politics: basePolitics, generals: SANGUO_GENERALS, generalId: 'jin_sima_yan', targetWarCamp: 'shu', dateKey: '2026-07-12', random: () => 0,
+  });
+  assert.equal(ineligible.ok, false);
+  check(true, `真实政权独立计忠诚与主副将；联军统御 ${JSON.stringify(campPowers)}；刘宋/北魏人才可被五方延揽`);
 }
 
 // 26. 名城结算失败保持原状态，合法胜利也不能一战夺城。

@@ -1,6 +1,15 @@
+import { GENERAL_EXPANSION } from './generalExpansion.js';
+import {
+  GENERAL_ROSTER_FACTIONS,
+  GENERAL_ROSTER_FACTION_IDS,
+  HISTORICAL_POLITICAL_FACTIONS,
+  HISTORICAL_POLITICAL_FACTION_IDS,
+  getPoliticalFactionWarCamp,
+} from './generalFactions.js';
+
 /**
- * Four Kingdoms (四国) generals — recruitment & encounter data for faction-themed RPG.
- * Factions: wei (魏), shu (蜀), wu (吴), jin (晋), neutral (独立/群雄).
+ * Multi-polity historical generals — recruitment & encounter data for faction-themed RPG.
+ * `faction` remains the save-compatible strategic camp; historical identity uses the fields below.
  */
 
 const FACTIONS = ['wei', 'shu', 'wu', 'jin', 'neutral'];
@@ -25,6 +34,10 @@ const FACTIONS = ['wei', 'shu', 'wu', 'jin', 'neutral'];
  * @property {string} name
  * @property {string} title
  * @property {GeneralFaction} faction
+ * @property {string} rosterFaction - 名将录分组
+ * @property {string} politicalFaction - 国战中的真实效忠政权
+ * @property {'wei'|'shu'|'wu'|'jin'|'qun'} warCamp - 地图军事联军
+ * @property {boolean} canServeAnyWarCamp - 是否可被任一战略阵营延揽
  * @property {GeneralRarity} rarity
  * @property {number} teamLevel
  * @property {number} teamSize
@@ -41,12 +54,17 @@ const FACTIONS = ['wei', 'shu', 'wu', 'jin', 'neutral'];
  * 未列入 SSR / SR 的人物统一进入 R 档，避免新增人物沿用被替换旧人的评级。
  */
 const HISTORICAL_SSR_NAMES = new Set([
+  // SSR is reserved for state-shaping rulers and ministers, major-theater commanders,
+  // or figures whose documented decisions produced a decisive strategic result.
   // 魏
-  '曹操', '曹丕', '荀彧', '贾诩', '张辽', '曹真',
+  '曹操', '曹丕', '荀彧', '贾诩', '张辽', '曹真', '夏侯惇', '夏侯渊',
+  '郭嘉', '曹仁', '张郃', '徐晃', '荀攸', '程昱', '满宠', '曹叡', '陈群',
   // 蜀
-  '刘备', '诸葛亮', '关羽', '张飞', '赵云', '姜维',
+  '刘备', '诸葛亮', '关羽', '张飞', '赵云', '姜维', '马超', '黄忠', '庞统',
+  '法正', '魏延', '蒋琬', '费祎', '董允', '黄权', '王平',
   // 吴
-  '孙坚', '孙策', '孙权', '周瑜', '鲁肃', '吕蒙', '陆逊', '陆抗',
+  '孙坚', '孙策', '孙权', '周瑜', '鲁肃', '吕蒙', '陆逊', '陆抗', '甘宁', '太史慈',
+  '顾雍', '张昭', '吕范', '朱然', '程普',
   // 晋及两晋南北朝（该阵营覆盖的年代更长，因此人数自然更多）
   '司马懿', '司马师', '司马昭', '司马炎', '羊祜', '杜预', '王濬', '邓艾',
   '谢安', '谢玄', '祖逖', '桓温', '陶侃', '王导', '刘裕', '苻坚', '慕容垂', '檀道济',
@@ -78,7 +96,14 @@ const HISTORICAL_SR_NAMES = new Set([
 ]);
 
 const HISTORICAL_SCORE_OVERRIDES = {
-  曹操: 92, 诸葛亮: 92, 刘备: 89, 孙权: 89, 司马懿: 90, 刘裕: 89,
+  曹操: 92, 荀彧: 89, 曹丕: 86, 张辽: 86, 贾诩: 85, 曹真: 85,
+  夏侯惇: 84, 夏侯渊: 84, 郭嘉: 84, 曹仁: 85, 张郃: 85, 徐晃: 84, 荀攸: 86,
+  程昱: 84, 满宠: 84, 曹叡: 86, 陈群: 87,
+  诸葛亮: 92, 刘备: 89, 关羽: 88, 张飞: 85, 赵云: 84, 姜维: 84, 马超: 84, 黄忠: 84,
+  庞统: 84, 法正: 85, 魏延: 84, 蒋琬: 86, 费祎: 85, 董允: 85, 黄权: 84, 王平: 84,
+  孙权: 89, 周瑜: 88, 陆逊: 87, 孙策: 85, 吕蒙: 85, 孙坚: 84, 鲁肃: 87, 陆抗: 84,
+  甘宁: 84, 太史慈: 84, 顾雍: 85, 张昭: 86, 吕范: 84, 朱然: 84, 程普: 84,
+  司马懿: 90, 刘裕: 89,
   贾逵: 78, 刘馥: 75, 傅嘏: 74, 高柔: 74, 赵俨: 75, 杜畿: 76,
   陈矫: 69, 梁习: 75, 王观: 69, 吕昭: 68, 黄崇: 66, 张裔: 73,
   陆景: 65, 诸葛融: 64,
@@ -87,14 +112,85 @@ const HISTORICAL_SCORE_OVERRIDES = {
 const GENERAL_ROLE_OVERRIDES = {
   贾逵: 'defender', 刘馥: 'governor', 傅嘏: 'strategist', 高柔: 'governor', 赵俨: 'strategist',
   杜畿: 'governor', 陈矫: 'governor', 梁习: 'governor', 王观: 'governor', 吕昭: 'defender',
-  黄崇: 'vanguard', 张裔: 'governor', 陆景: 'defender', 诸葛融: 'defender',
+  黄崇: 'vanguard', 张裔: 'governor', 董允: 'governor', 陆景: 'defender', 诸葛融: 'defender',
 };
 
 const ROLE_LABELS = {
   ruler: '统御', strategist: '谋略', governor: '治政', defender: '守备', vanguard: '征战', cultural: '文教',
 };
 
+const EASTERN_JIN_ROSTER_NAMES = new Set([
+  '谢安', '谢玄', '祖逖', '桓温', '陶侃', '王导', '庾亮', '刘牢之', '温峤', '桓伊',
+  '苏峻', '司马睿', '郗鉴', '桓冲', '谢石', '谢琰', '朱序', '刘毅', '庾翼', '桓玄',
+  '毛宝', '何无忌', '王羲之', '顾荣', '何充', '祝伯', '孙恩', '王敦', '王舒', '王彬',
+  '王恭', '殷浩', '庾冰', '桓彝', '桓石虔', '桓石民', '桓振', '谢尚', '谢奕', '谢万', '谢朗',
+]);
+const LIU_SONG_ROSTER_NAMES = new Set([
+  '刘裕', '檀道济', '刘道规', '刘敬宣', '檀韶', '檀祗', '王镇恶', '沈田子', '朱龄石',
+  '傅弘之', '毛修之', '到彦之', '沈林子', '谢晦', '徐羡之', '傅亮', '王弘', '王华', '刘穆之',
+]);
+const NORTHERN_WEI_ROSTER_NAMES = new Set(['拓跋珪', '拓跋焘', '崔浩', '长孙嵩', '奚斤', '安颉', '尉眷', '拓跋嗣']);
+const SIXTEEN_KINGDOMS_ROSTER_NAMES = new Set([
+  '慕容垂', '苻坚', '苻融', '段钦', '慕容恪', '慕容德', '慕容农', '王猛', '吕光', '赫连勃勃',
+]);
+const WESTERN_JIN_ROSTER_NAMES = new Set([
+  '司马懿', '司马炎', '羊祜', '杜预', '司马师', '司马昭', '王濬', '邓艾', '钟会', '贾充',
+  '张华', '刘琨', '马隆', '王浑', '陈寿', '裴秀', '荀勖', '卫瓘', '唐彬', '胡奋', '石苞',
+  '王戎', '陆机', '陆云', '王经', '文鸯', '诸葛绪', '杨骏', '司马亮', '司马玮', '司马越',
+  '司马颖', '段灼', '何攀', '王祥', '山涛', '阮籍', '嵇康', '向秀', '王衍', '周处', '陈骞',
+  '周旨', '羊琇', '司马孚', '刘弘',
+]);
+
+const rosterFactionFor = (raw) => {
+  if (raw.id === 'jin_yu_yi') return 'neutral';
+  if (raw.faction !== 'jin') return raw.faction;
+  if (EASTERN_JIN_ROSTER_NAMES.has(raw.name)) return 'eastern_jin';
+  if (LIU_SONG_ROSTER_NAMES.has(raw.name)) return 'liu_song';
+  if (NORTHERN_WEI_ROSTER_NAMES.has(raw.name)) return 'northern_wei';
+  if (SIXTEEN_KINGDOMS_ROSTER_NAMES.has(raw.name)) return 'sixteen_kingdoms';
+  if (WESTERN_JIN_ROSTER_NAMES.has(raw.name)) return 'western_jin';
+  throw new Error(`晋及南北朝名将未配置真实势力: ${raw.id}/${raw.name}`);
+};
+
+const HISTORICAL_FACTION_OVERRIDES = {
+  司马懿: '曹魏/西晋', 司马师: '曹魏/西晋', 司马昭: '曹魏/西晋', 邓艾: '曹魏', 钟会: '曹魏',
+  王经: '曹魏', 诸葛绪: '曹魏', 司马孚: '曹魏/西晋', 文鸯: '曹魏/西晋', 王祥: '曹魏/西晋',
+  山涛: '曹魏/西晋', 石苞: '曹魏/西晋', 陈骞: '曹魏/西晋', 陈寿: '蜀汉/西晋', 陆机: '孙吴/西晋',
+  陆云: '孙吴/西晋', 刘琨: '西晋/东晋', 祖逖: '西晋/东晋', 陶侃: '西晋/东晋', 顾荣: '西晋/东晋',
+  桓玄: '桓楚', 桓振: '桓楚', 孙恩: '孙恩势力', 朱序: '东晋/前秦', 刘裕: '东晋/刘宋',
+  檀道济: '东晋/刘宋', 刘道规: '东晋（刘裕集团）', 刘敬宣: '东晋', 王镇恶: '东晋（刘裕集团）',
+  沈田子: '东晋（刘裕集团）', 朱龄石: '东晋（刘裕集团）', 傅弘之: '东晋/刘宋', 毛修之: '东晋/刘宋/北魏',
+  刘穆之: '东晋（刘裕集团）', 慕容垂: '前燕/后燕', 苻坚: '前秦', 苻融: '前秦', 段钦: '段部鲜卑',
+  慕容恪: '前燕', 慕容德: '后燕/南燕', 慕容农: '后燕', 王猛: '前秦', 吕光: '前秦/后凉',
+  赫连勃勃: '胡夏', 虞诩: '东汉',
+};
+
+const defaultHistoricalFaction = (raw, rosterFaction) => (
+  HISTORICAL_FACTION_OVERRIDES[raw.name]
+  || raw.historicalFaction
+  || ({
+    wei: '曹魏', shu: '蜀汉', wu: '孙吴', western_jin: '西晋', eastern_jin: '东晋',
+    liu_song: '刘宋', northern_wei: '北魏', sixteen_kingdoms: '十六国', neutral: '汉末群雄',
+  }[rosterFaction])
+  || '历史势力'
+);
+
+const POLITICAL_FACTION_OVERRIDES = {
+  司马懿: 'wei', 司马师: 'wei', 司马昭: 'wei', 邓艾: 'wei', 钟会: 'wei', 王经: 'wei', 诸葛绪: 'wei',
+  桓玄: 'huan_chu', 桓振: 'huan_chu', 孙恩: 'sun_en',
+  慕容垂: 'later_yan', 苻坚: 'former_qin', 苻融: 'former_qin', 段钦: 'duan_xianbei',
+  慕容恪: 'former_yan', 慕容德: 'southern_yan', 慕容农: 'later_yan', 王猛: 'former_qin',
+  吕光: 'later_liang', 赫连勃勃: 'hu_xia', 虞诩: 'qun',
+};
+
+const politicalFactionFor = (raw, rosterFaction) => (
+  POLITICAL_FACTION_OVERRIDES[raw.name]
+  || ({ neutral: 'qun', sixteen_kingdoms: null }[rosterFaction])
+  || rosterFaction
+);
+
 const inferGeneralRole = (raw) => {
+  if (raw.role) return raw.role;
   if (GENERAL_ROLE_OVERRIDES[raw.name]) return GENERAL_ROLE_OVERRIDES[raw.name];
   const text = `${raw.title || ''}${raw.desc || ''}`;
   if (/(帝|君主|国主|建国|立国|统一|诸侯|太子|王$)/.test(text)) return 'ruler';
@@ -105,14 +201,15 @@ const inferGeneralRole = (raw) => {
   return 'vanguard';
 };
 
-const resolveHistoricalRarity = (name) => (
-  HISTORICAL_SSR_NAMES.has(name) ? 'SSR' : HISTORICAL_SR_NAMES.has(name) ? 'SR' : 'R'
+const resolveHistoricalRarity = (raw) => (
+  raw.historicalRarity
+  || (HISTORICAL_SSR_NAMES.has(raw.name) ? 'SSR' : HISTORICAL_SR_NAMES.has(raw.name) ? 'SR' : 'R')
 );
 
 const scoreFor = (raw, rarity) => {
   const ranges = { SSR: [84, 92], SR: [72, 83], R: [55, 71] };
   const [min, max] = ranges[rarity];
-  const proposed = HISTORICAL_SCORE_OVERRIDES[raw.name] ?? Number(raw.teamLevel) ?? min;
+  const proposed = raw.historicalScore ?? HISTORICAL_SCORE_OVERRIDES[raw.name] ?? Number(raw.teamLevel) ?? min;
   return Math.max(min, Math.min(max, Math.round(proposed)));
 };
 
@@ -160,18 +257,32 @@ function bonusFor(rarity, role, score) {
  * @returns {General}
  */
 function G(raw) {
-  const rarity = resolveHistoricalRarity(raw.name);
+  const { profile: _profile, historicalRarity: _historicalRarity, ...generalData } = raw;
+  const rarity = resolveHistoricalRarity(raw);
   const historicalScore = scoreFor(raw, rarity);
   const role = inferGeneralRole(raw);
+  const rosterFaction = rosterFactionFor(raw);
+  const politicalFaction = politicalFactionFor(raw, rosterFaction);
+  if (!GENERAL_ROSTER_FACTION_IDS.includes(rosterFaction)) {
+    throw new Error(`名将录势力无效: ${raw.id}/${rosterFaction}`);
+  }
+  if (!HISTORICAL_POLITICAL_FACTION_IDS.includes(politicalFaction)) {
+    throw new Error(`国战政治势力无效: ${raw.id}/${politicalFaction}`);
+  }
   const teamLevel = historicalScore;
   const teamSize = teamSizeFor(historicalScore);
   const recruitCost = costFor(rarity, historicalScore);
   return {
-    ...raw,
+    ...generalData,
     rarity,
     historicalScore,
     role,
     roleLabel: ROLE_LABELS[role],
+    rosterFaction,
+    politicalFaction,
+    warCamp: getPoliticalFactionWarCamp(politicalFaction),
+    canServeAnyWarCamp: rosterFaction === 'liu_song' || rosterFaction === 'northern_wei',
+    historicalFaction: defaultHistoricalFaction(raw, rosterFaction),
     teamLevel,
     teamSize,
     recruitCost,
@@ -179,7 +290,7 @@ function G(raw) {
   };
 }
 
-/** 400 generals: 80 per faction; rarity distribution follows historical contribution rather than equal quotas. */
+/** 550 generals across five gameplay factions; roster and rarity counts follow historical coverage rather than equal quotas. */
 const RAW_GENERALS = [
   // Wei (50) — 6 SSR / 12 SR / 32 R
   G({ id: 'wei_cao_cao', name: '曹操', title: '魏武帝', faction: 'wei', rarity: 'SSR', teamLevel: 88, teamSize: 6, desc: '乱世奸雄，挟天子以令诸侯。', icon: '🦁' }),
@@ -501,17 +612,17 @@ const RAW_GENERALS = [
   G({ id: 'jin_mu_rong_chui', name: '慕容垂', title: '燕主', faction: 'jin', rarity: 'R', teamLevel: 75, teamSize: 4, desc: '十六国名将，败桓温于枋头。', icon: '🐉' }),
   G({ id: 'jin_fu_jian', name: '苻坚', title: '天王', faction: 'jin', rarity: 'R', teamLevel: 76, teamSize: 5, desc: '百万之师淝水惨败。', icon: '💀' }),
   G({ id: 'jin_fu_rong', name: '苻融', title: '阳平公', faction: 'jin', rarity: 'R', teamLevel: 70, teamSize: 4, desc: '苻坚之弟，淝水阵亡。', icon: '😢' }),
-  G({ id: 'jin_duan_qin', name: '段钦', title: '护军', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '刘琨麾下忠将，坚守并州。', icon: '🏰' }),
+  G({ id: 'jin_duan_qin', name: '段钦', title: '段部将领', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '辽西鲜卑段部首领宗族，活跃于十六国乱局。', icon: '🏰' }),
   G({ id: 'jin_zhou_chu', name: '周处', title: '平西将军', faction: 'jin', rarity: 'R', teamLevel: 71, teamSize: 4, desc: '除三害之英雄，战死沙场。', icon: '🐉' }),
   G({ id: 'jin_mao_bao', name: '毛宝', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 66, teamSize: 3, desc: '放龟获救，传奇名将。', icon: '🐢' }),
   G({ id: 'jin_he_wu_ji', name: '何无忌', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 69, teamSize: 4, desc: '北府名将，讨伐桓玄功臣。', icon: '⚔️' }),
   G({ id: 'jin_tan_dao_ji', name: '檀道济', title: '征南将军', faction: 'jin', rarity: 'R', teamLevel: 74, teamSize: 4, desc: '唱筹量沙，三十六计。', icon: '🧮' }),
   G({ id: 'jin_wang_xian_zhi', name: '王羲之', title: '右军将军', faction: 'jin', rarity: 'R', teamLevel: 60, teamSize: 3, desc: '书圣，兰亭序传世。', icon: '✒️' }),
   G({ id: 'jin_gu_rong_zhi', name: '顾荣', title: '散骑常侍', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '南渡功臣，辅佐司马睿。', icon: '🌊' }),
-  G({ id: 'jin_he_chong', name: '贺充', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '江东名士，南渡佐命。', icon: '🎖️' }),
+  G({ id: 'jin_he_chong', name: '何充', title: '骠骑将军', faction: 'jin', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '东晋重臣，辅政持重，参与朝廷中枢决策。', icon: '🎖️' }),
   G({ id: 'jin_zhu_bo', name: '祝伯', title: '将军', faction: 'jin', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '淝水之战左翼将领。', icon: '🏹' }),
   G({ id: 'jin_sun_en', name: '孙恩', title: '乱贼', faction: 'jin', rarity: 'R', teamLevel: 68, teamSize: 4, desc: '五斗米道叛乱，扰乱东晋。', icon: '🌀' }),
-  G({ id: 'jin_yu_yi', name: '虞翊', title: '武陵太守', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '增灶退敌，善用奇谋。', icon: '🔥' }),
+  G({ id: 'jin_yu_yi', name: '虞诩', title: '武都太守', faction: 'jin', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '东汉名臣，以增灶计迷惑羌军并解武都之围。', icon: '🔥' }),
   // Jin expansion-3 (+5)
   G({ id: 'jin_chen_qian', name: '陈骞', title: '大司马', faction: 'jin', rarity: 'SR', teamLevel: 74, teamSize: 4, desc: '西晋开国名将，镇守荆扬。', icon: '🛡️' }),
   G({ id: 'jin_zhou_zhi', name: '周旨', title: '牙门将', faction: 'jin', rarity: 'SR', teamLevel: 72, teamSize: 4, desc: '随杜预奇袭乐乡，截断吴军归路。', icon: '⚔️' }),
@@ -603,9 +714,16 @@ const RAW_GENERALS = [
   G({ id: 'neu_ma_wan', name: '马玩', title: '关中将领', faction: 'neutral', rarity: 'R', teamLevel: 65, teamSize: 3, desc: '关中联军八部将之一，曾拒曹操。', icon: '🏇' }),
   G({ id: 'neu_hou_xuan', name: '侯选', title: '关中将领', faction: 'neutral', rarity: 'R', teamLevel: 64, teamSize: 3, desc: '割据河东，与马超韩遂合兵潼关。', icon: '🛡️' }),
   G({ id: 'neu_lei_bo', name: '雷薄', title: '仲家将领', faction: 'neutral', rarity: 'R', teamLevel: 63, teamSize: 3, desc: '袁术部将，后据山自立。', icon: '⚡' }),
+  ...GENERAL_EXPANSION.map(G),
 ];
 
 export const SANGUO_GENERALS = RAW_GENERALS;
+export {
+  GENERAL_ROSTER_FACTIONS,
+  GENERAL_ROSTER_FACTION_IDS,
+  HISTORICAL_POLITICAL_FACTIONS,
+  HISTORICAL_POLITICAL_FACTION_IDS,
+};
 
 export const GENERAL_RARITY_CONFIG = {
   SSR: {
@@ -683,6 +801,11 @@ export function hydrateGeneralSnapshot(savedGeneral) {
     name: canonical.name,
     title: canonical.title,
     faction: canonical.faction,
+    rosterFaction: canonical.rosterFaction,
+    politicalFaction: canonical.politicalFaction,
+    warCamp: canonical.warCamp,
+    canServeAnyWarCamp: canonical.canServeAnyWarCamp,
+    historicalFaction: canonical.historicalFaction,
     rarity: canonical.rarity,
     historicalScore: canonical.historicalScore,
     role: canonical.role,
@@ -700,7 +823,7 @@ export function hydrateGeneralSnapshot(savedGeneral) {
  * @returns {General[]}
  */
 export function getGeneralsByFaction(faction) {
-  return SANGUO_GENERALS.filter((g) => g.faction === faction);
+  return SANGUO_GENERALS.filter((g) => g.rosterFaction === faction);
 }
 
 export const FACTION_PORTRAIT_COLORS = {
@@ -708,11 +831,16 @@ export const FACTION_PORTRAIT_COLORS = {
   shu: { bg: 'linear-gradient(135deg, #2E7D32, #1B5E20)', border: '#66BB6A', text: '#E8F5E9' },
   wu: { bg: 'linear-gradient(135deg, #E65100, #BF360C)', border: '#FF7043', text: '#FBE9E7' },
   jin: { bg: 'linear-gradient(135deg, #4A148C, #311B92)', border: '#9C27B0', text: '#F3E5F5' },
+  western_jin: { bg: 'linear-gradient(135deg, #6B21A8, #3B0764)', border: '#C084FC', text: '#FAF5FF' },
+  eastern_jin: { bg: 'linear-gradient(135deg, #0F766E, #134E4A)', border: '#5EEAD4', text: '#F0FDFA' },
+  liu_song: { bg: 'linear-gradient(135deg, #B45309, #78350F)', border: '#FBBF24', text: '#FFFBEB' },
+  northern_wei: { bg: 'linear-gradient(135deg, #9F1239, #4C0519)', border: '#FDA4AF', text: '#FFF1F2' },
+  sixteen_kingdoms: { bg: 'linear-gradient(135deg, #4338CA, #312E81)', border: '#A5B4FC', text: '#EEF2FF' },
   neutral: { bg: 'linear-gradient(135deg, #616161, #424242)', border: '#9E9E9E', text: '#F5F5F5' },
 };
 
 export function getGeneralPortrait(general) {
-  const fc = FACTION_PORTRAIT_COLORS[general.faction] || FACTION_PORTRAIT_COLORS.neutral;
+  const fc = FACTION_PORTRAIT_COLORS[general.rosterFaction] || FACTION_PORTRAIT_COLORS[general.faction] || FACTION_PORTRAIT_COLORS.neutral;
   const rc = GENERAL_RARITY_CONFIG[general.rarity] || {};
   const surname = general.name.charAt(0);
   const imageUrl = general.portrait || (general.id ? `/assets/generals/${general.id}.svg` : null);
@@ -724,13 +852,13 @@ export function generateEnemyGenerals(enemyLevel, enemyFaction) {
   const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
   const count = enemyLevel >= 80 ? rand(2, 4) : enemyLevel >= 60 ? rand(1, 3) : rand(0, 2);
   if (count === 0) return [];
-  const fac = ['wei', 'shu', 'wu', 'jin'].includes(enemyFaction) ? enemyFaction : 'neutral';
+  const fac = ['wei', 'shu', 'wu', 'jin'].includes(enemyFaction) ? enemyFaction : 'qun';
   const pool = SANGUO_GENERALS.filter(g => Math.abs(g.teamLevel - enemyLevel) <= 20);
   if (pool.length === 0) return [];
   const result = [];
   const used = new Set();
   for (let i = 0; i < count && i < pool.length; i++) {
-    const fPool = pool.filter(g => !used.has(g.id) && (g.faction === fac || g.faction === 'neutral'));
+    const fPool = pool.filter(g => !used.has(g.id) && (g.warCamp === fac || g.warCamp === 'qun'));
     const pick = fPool.length > 0 ? fPool[Math.floor(Math.random() * fPool.length)] : pool.filter(g => !used.has(g.id))[0];
     if (!pick) break;
     used.add(pick.id);
@@ -781,8 +909,8 @@ export function getRandomGeneralForEncounter(playerLevel, mapFactionOwner, recru
 
   const weights = pool.map((g) => {
     let w = RARITY_WEIGHT[g.rarity] ?? 10;
-    if (g.faction === mapFac) w *= FACTION_WEIGHT_SAME;
-    else if (g.faction === 'neutral') w *= FACTION_WEIGHT_NEUTRAL;
+    if (g.warCamp === (mapFac === 'neutral' ? 'qun' : mapFac)) w *= FACTION_WEIGHT_SAME;
+    else if (g.warCamp === 'qun') w *= FACTION_WEIGHT_NEUTRAL;
     else w *= FACTION_WEIGHT_OTHER;
     const lvlDiff = Math.abs(g.teamLevel - pl);
     w *= Math.max(0.35, 1 - lvlDiff * 0.012);

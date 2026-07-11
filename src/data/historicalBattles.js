@@ -362,7 +362,7 @@ export const HISTORICAL_BATTLES = [
   },
   {
     id: 'hb_unify', era: 'era4', name: '天下一统', icon: '🏆', lvl: 95, difficulty: 5,
-    desc: '终极决战，一统山河', lore: '天下大势，分久必合。魏蜀吴晋四国名将齐聚，最终之战，将决定谁能结束这乱世，开创太平盛世！',
+    desc: '终极决战，一统山河', lore: '天下大势，分久必合。魏、蜀、吴与历代诸朝名将齐聚，最终之战将决定谁能结束乱世、开创太平！',
     waves: [
       { name: '蜀汉群英', generalIds: ['shu_guan_yu', 'shu_zhang_fei', 'shu_zhao_yun', 'shu_huang_zhong'], minionPool: pool.legend, minionCount: 2, lvl: 93 },
       { name: '东吴豪杰', generalIds: ['wu_zhou_yu', 'wu_lu_xun', 'wu_gan_ning', 'wu_sun_ce'], minionPool: pool.legend, minionCount: 2, lvl: 95 },

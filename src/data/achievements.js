@@ -311,12 +311,12 @@ const ACHIEVEMENTS = [
   { id: 'kw_gen_5',         cat: 'SOCIAL',   rarity: 'RARE',      name: '五虎上将',     desc: '同时拥有5位名将',                       check: s => s.kwGenerals >= 5,         reward: { title: '知人善任' } },
   { id: 'kw_gen_max',       cat: 'SOCIAL',   rarity: 'EPIC',      name: '满门英杰',     desc: '名将招募达到上限(12位)',                 check: s => s.kwGenerals >= 12,        reward: { title: '礼贤下士' } },
   { id: 'kw_gen_ssr3',      cat: 'MASTERY',  rarity: 'LEGENDARY', name: '三国鼎立',     desc: '同时拥有3位SSR传世名将',                check: s => s.kwSSRGenerals >= 3,      reward: { title: '天命所归' } },
-  { id: 'kw_gen_allfac',    cat: 'MASTERY',  rarity: 'EPIC',      name: '不分敌我',     desc: '同时拥有来自魏蜀吴晋四国的名将',          check: s => s.kwGenFactions >= 4,      reward: { title: '不分敌我' } },
+  { id: 'kw_gen_allfac',    cat: 'MASTERY',  rarity: 'EPIC',      name: '不分敌我',     desc: '同时拥有来自魏、蜀、吴和诸朝联军的名将',   check: s => s.kwGenFactions >= 4,      reward: { title: '不分敌我' } },
   { id: 'kw_gen_dex30',     cat: 'EXPLORE',  rarity: 'RARE',      name: '名将猎人',     desc: '图鉴中收集过30位不同名将',              check: s => s.kwGenDexTotal >= 30,     reward: { title: '求贤若渴' } },
   { id: 'kw_gen_dex60',     cat: 'EXPLORE',  rarity: 'EPIC',      name: '半壁江山',     desc: '图鉴中收集过60位不同名将',              check: s => s.kwGenDexTotal >= 60,     reward: { title: '伯乐再世' } },
   { id: 'kw_gen_dex100',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '群英荟萃',     desc: '图鉴中收集过100位不同名将',             check: s => s.kwGenDexTotal >= 100,    reward: { title: '群英荟萃' } },
   { id: 'kw_gen_dex150',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '名将如云',     desc: '图鉴中收集过150位不同名将',             check: s => s.kwGenDexTotal >= 150,    reward: { title: '天下英雄' } },
-  { id: 'kw_gen_dex200',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '一统天下名将', desc: '收集全部375位四国名将',                  check: s => s.kwGenDexTotal >= 375,    reward: { title: '千古一帝' }, hidden: true },
+  { id: 'kw_gen_dex200',    cat: 'MASTERY',  rarity: 'LEGENDARY', name: '一统天下名将', desc: '收集全部550位多势力名将',                check: s => s.kwGenDexTotal >= 550,    reward: { title: '千古一帝' }, hidden: true },
 
   // — 历史名战 —
   { id: 'hb_era1',          cat: 'BATTLE',   rarity: 'RARE',      name: '平定黄巾',     desc: '通关群雄割据时代全部8场名战',            check: s => s.hbEra1 >= 8,            reward: { title: '乱世先锋' } },

@@ -1,5 +1,5 @@
 // ==========================================
-// 国战系统 - 魏蜀吴晋四国争霸
+// 国战系统 - 五个地图战略联军争霸；名将政治归属按真实政权独立计算
 // ==========================================
 
 import { hydrateGeneralSnapshot, SANGUO_GENERALS } from './generals';
@@ -44,10 +44,10 @@ export const FACTIONS = {
     bonusDesc: '金币+12%, 经验+5%, 捕获率+3%, 战功+8%',
   },
   jin: {
-    id: 'jin', name: '晋', fullName: '晋国', icon: '🐉',
+    id: 'jin', name: '诸朝', fullName: '两晋南北朝联军', icon: '🐉',
     color: '#4A148C', darkColor: '#311B92', lightColor: '#9C27B0',
-    lord: '司马炎', motto: '天命归晋，一统河山',
-    desc: '继承魏国基业的统一之国，兼具军事智谋与防御体系，生态建设强于他国。',
+    lord: '轮值盟主', motto: '诸朝合纵，共争山河',
+    desc: '由西晋、东晋、刘宋、北魏与十六国诸国组成的战略联军；各政权独立用将，协同出兵存在折损。',
     bonus: { gold: 6, exp: 6, catchRate: 1, contribution: 10, ecoBonus: 5, sanctuaryBonus: 5 },
     bonusDesc: '战功+10%, 金币+6%, 经验+6%, 捕获率+1%, 圣域/生态效率+5%',
   },
@@ -56,7 +56,7 @@ export const FACTIONS = {
     id: 'qun', name: '群雄', fullName: '诸侯群雄', icon: '🏴',
     color: '#6A1B9A', darkColor: '#4A148C', lightColor: '#BA68C8',
     lord: '诸侯', motto: '乱世逐鹿',
-    desc: '吕布袁绍等诸侯联军，在洛阳荆州汉中与四国角力，不享受阵营天赋但会分走占领积分。',
+    desc: '吕布袁绍等诸侯联军，在洛阳荆州汉中与各战略联军角力，不享受阵营天赋但会分走占领积分。',
     bonus: { gold: 0, exp: 0, catchRate: 0, contribution: 0 },
     bonusDesc: '名城争夺 NPC',
   },
@@ -428,7 +428,7 @@ export const DEFAULT_KINGDOM_WAR = {
   currentTurn: 0,
   /** AI各方预备兵力 */
   factionManpower: { wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 },
-  /** 全 400 名将领、外交关系、盟约和计谋状态。 */
+  /** 全 550 名将领、外交关系、盟约和计谋状态。 */
   politics: createDefaultKingdomPolitics(SANGUO_GENERALS),
   /** 加入阵营时间（叛国冷却） */
   factionJoinDate: null,
@@ -1665,8 +1665,8 @@ const normalizeTerritoryGuards = (guards, owner) => {
     if (!rawGuard || typeof rawGuard !== 'object') return;
     const general = generalById.get(String(rawGuard.generalId ?? rawGuard.id ?? ''));
     if (!general) return;
-    const belongsToOwner = general.faction === guardFaction
-      || (guardFaction === 'qun' && general.faction === 'neutral');
+    const belongsToOwner = general.warCamp === guardFaction
+      || (guardFaction === 'qun' && general.warCamp === 'qun');
     const generalKey = String(general.id);
     if (!belongsToOwner || seen.has(generalKey)) return;
     seen.add(generalKey);
