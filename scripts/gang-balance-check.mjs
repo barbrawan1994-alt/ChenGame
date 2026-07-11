@@ -36,6 +36,17 @@ const evaluate = (partyAvgLevel, isOwner = false) => gang.evaluateGangWarTarget(
 
 console.log('=== 帮战目标与收益平衡检查 ===\n');
 
+// 四国静态帮派总战力会进入后台国战国力，不能让单一国家在开局获得隐性碾压优势。
+{
+  const totals = Object.fromEntries(['wei', 'shu', 'wu', 'jin'].map(faction => [
+    faction,
+    gang.GANG_PRESETS.filter(preset => preset.faction === faction).reduce((sum, preset) => sum + preset.power, 0),
+  ]));
+  const values = Object.values(totals);
+  assert.ok(Math.max(...values) / Math.min(...values) <= 1.03, `四国帮派总战力偏差过大: ${JSON.stringify(totals)}`);
+  check(true, `四国帮派总战力保持在 3% 内：${Object.entries(totals).map(([faction, value]) => `${faction}:${value}`).join('、')}`);
+}
+
 // 实战敌队为 enemyLv 到 enemyLv-5，Lv.75 目标的均级应为 72.5。
 {
   const result = evaluate(40);
@@ -86,6 +97,25 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   check(true, '帮战胜率与指挥建议均按存活队伍均级计算，不再计入已阵亡精灵');
 }
 
+// 指挥台必须把剩余次数说清楚；副帮主不能被错误承诺会自动晋升为帮主。
+{
+  const plan = gang.buildGangCommandPlan({
+    gangInfo: gang.GANG_PRESETS[0],
+    gang: { gangId: gang.GANG_PRESETS[0].id, contribution: 5000, personalSkills: {} },
+    dailyCounts: { warCount: 0, taskProgress: {}, taskCompleted: [] },
+    kingdomWar: { faction: gang.GANG_PRESETS[0].faction },
+    partyAvgLevel: 80,
+  });
+  assert.equal(plan.metrics.find(metric => metric.label === '剩余帮战')?.value, `2/${gang.GANG_WAR_CONFIG.maxDaily}`);
+  assert.equal(plan.metrics.some(metric => metric.label === '今日帮战'), false);
+  const overviewStart = appSource.indexOf('{/* 职位晋升提示 */}');
+  const overviewSource = appSource.slice(overviewStart, overviewStart + 2200);
+  assert.ok(overviewStart >= 0);
+  assert.match(overviewSource, /nextRank\.id === 'leader'/);
+  assert.match(overviewSource, /副帮主是普通成员可晋升的最高职位/);
+  check(true, '指挥台明确显示剩余帮战次数，副帮主不会再收到虚假的自动升任帮主提示');
+}
+
 // 全灭、目标失效或已有战斗应在取得帮战锁之前被拦截，避免按钮永久失效。
 {
   const handlerStart = appSource.indexOf('<button disabled={warCount >= GANG_WAR_CONFIG.maxDaily}');
@@ -107,6 +137,30 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   assert.match(startBattleSource, /startBattle blocked: already in battle'\); return false;/);
   assert.match(startBattleSource, /setView\('battle'\);[\s\S]*return true;\s*};\s*$/);
   check(true, '帮战启动前依次校验目标、存活队伍和战斗占用，拒绝启动或初始化异常都会释放并发锁');
+}
+
+// 帮战目标的技能必须进入敌方实战属性，且初始化后的当前 HP 不能高于最终最大 HP。
+{
+  const gangWarStart = appSource.indexOf("else if (type === 'gang_war') {");
+  const gangWarEnd = appSource.indexOf("else if (type === 'kingdom_war') {", gangWarStart);
+  const gangWarSource = appSource.slice(gangWarStart, gangWarEnd);
+  assert.ok(gangWarStart >= 0 && gangWarEnd > gangWarStart);
+  assert.match(gangWarSource, /extraBattleData\.trainerGangBonus = getGangSkillBonus\(targetSkills\);/);
+  assert.match(gangWarSource, /extraBattleData\.trainerGang = \{ id: target\.id/);
+
+  const enemyInitStart = appSource.indexOf('const battleEnemyParty = enemyParty.map');
+  const enemyInitEnd = appSource.indexOf('if (extraBattleData.carryOverParty', enemyInitStart);
+  const enemyInitSource = appSource.slice(enemyInitStart, enemyInitEnd);
+  assert.ok(enemyInitStart >= 0 && enemyInitEnd > enemyInitStart);
+  assert.match(enemyInitSource, /s\._gangBonus = extraBattleData\.trainerGangBonus \|\| \{\};/);
+  assert.match(enemyInitSource, /const finalMaxHp = Math\.max\(1, finalStats\.maxHp\);/);
+  assert.match(enemyInitSource, /enemy\.currentHp = finalMaxHp;/);
+  assert.match(enemyInitSource, /enemy\.maxHp = finalMaxHp;/);
+
+  const statsWrapperStart = appSource.indexOf('function getStats(pet, stages = null, status = null, gangBonusOverride = undefined)');
+  const statsWrapperSource = appSource.slice(statsWrapperStart, statsWrapperStart + 1000);
+  assert.match(statsWrapperSource, /pet\?\.isEnemy \? \(pet\._gangBonus \|\| \{\}\) : undefined/);
+  check(true, '帮战敌方技能会参与攻防、治疗和最大 HP 计算，入场 HP 与 HUD 上限保持一致');
 }
 
 // 金币捐献必须将“帮派状态 + 金币余额”作为一个事务计算，失败时不得产生半完成扣费。

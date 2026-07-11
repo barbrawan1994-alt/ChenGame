@@ -12573,6 +12573,15 @@ select:focus-visible,
   .hud-enemy {
     width: min(240px, 62vw);
   }
+  .enemy-zone-v2:not(.double-mode) {
+    right: 72px !important;
+  }
+  .battle-shared-energy {
+    top: 232px !important;
+  }
+  .battle-control-pill:nth-of-type(4) {
+    display: none;
+  }
   .hud-card--double {
     min-width: 180px;
     max-width: min(280px, 42vw);

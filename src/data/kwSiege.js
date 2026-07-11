@@ -679,8 +679,13 @@ export const runThreePhaseSiege = ({
   }
 
   // === 阶段3：攻城战（单挑后重算守将惩罚与 siege_master 倍率） ===
+  const assaultTerritories = {
+    ...territories,
+    [mapId]: { ...t, strength, guards },
+  };
+  const assaultKw = { ...(kw || {}), morale: currentMorale };
   const assaultCombat = buildSiegeCombatParams({
-    mapId, playerFaction, allocation: alloc, territories, recruitedGenerals, generalIds, kw,
+    mapId, playerFaction, allocation: alloc, territories: assaultTerritories, recruitedGenerals, generalIds, kw: assaultKw,
     external, timeMod, remainingGuards: guards.filter(g => !g.defeated).length,
   });
   const assaultPower = assaultCombat.assaultPower;

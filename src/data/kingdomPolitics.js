@@ -283,7 +283,9 @@ export const applyDiplomaticAction = ({ politics: rawPolitics, generals = [], ac
   } else if (action === 'pact') {
     if (getActiveTreaty(politics, actor, target)) return { ok: false, reason: '双方已有生效中的互不侵犯盟约' };
     if (relation < DIPLOMACY_CONFIG.pactMinRelation) return { ok: false, reason: `关系至少达到 ${DIPLOMACY_CONFIG.pactMinRelation} 才能缔约` };
-    if (politics.treaties.some(treaty => treaty.a === actor || treaty.b === actor)) return { ok: false, reason: '每个国家同时只能维持一份互不侵犯盟约' };
+    if (politics.treaties.some(treaty => (
+      treaty.a === actor || treaty.b === actor || treaty.a === target || treaty.b === target
+    ))) return { ok: false, reason: '缔约双方均只能同时维持一份互不侵犯盟约' };
     tokenCost = DIPLOMACY_CONFIG.pactCost;
     politics.treaties.push({ a: actor, b: target, startedTick: politics.worldTick, expiresTick: politics.worldTick + DIPLOMACY_CONFIG.pactDurationTicks });
     changeRelation(politics, actor, target, 6);
@@ -301,8 +303,10 @@ export const applyDiplomaticAction = ({ politics: rawPolitics, generals = [], ac
     if (!leader || leader === actor || leader === target) return { ok: false, reason: '只有非领跑国家之间才能联合遏制当前霸主' };
     if (relation < 0) return { ok: false, reason: '双方关系至少达到中立才能组成联合阵线' };
     if ((territoryCounts[leader] || 0) < (territoryCounts[actor] || 0) + 2) return { ok: false, reason: '当前领跑优势不足以发动联合遏制' };
+    if (politics.coalitions.some(coalition => (
+      coalition.members.includes(actor) || coalition.members.includes(target)
+    ))) return { ok: false, reason: '缔盟双方已有一方处于联合阵线中' };
     tokenCost = DIPLOMACY_CONFIG.coalitionCost;
-    politics.coalitions = politics.coalitions.filter(coalition => !coalition.members.includes(actor));
     politics.coalitions.push({ members: [actor, target], target: leader, startedTick: politics.worldTick, expiresTick: politics.worldTick + DIPLOMACY_CONFIG.coalitionDurationTicks });
     changeRelation(politics, actor, target, 8);
     changeRelation(politics, actor, leader, -8);

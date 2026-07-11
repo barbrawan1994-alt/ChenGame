@@ -194,7 +194,7 @@ import {
   SEASON_CONFIG, WAR_TICK_CONFIG, DEFAULT_KINGDOM_WAR,
   initTerritories, calcFactionPower, getFactionTerritoryCount,
   executeWarTick, checkSeasonEnd, applySeasonRewards, resetKingdomDailyCounts,
-  KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS, CONTESTED_MAP_IDS,
+  KINGDOM_CAMPAIGNS, CAPITAL_MAP_IDS, CONTESTED_MAP_IDS, CAPITAL_SIEGE_MAX_TERRITORIES,
   getCapitalSiegeTargets, getGarrisonTotal, getFactionTerritoryStats,
   buildKingdomStrategicBrief, generateGarrison, runTerritoryAssault, evaluateTerritoryAssault,
   RANK_PROMOTION_CHALLENGES, RANK_PERK_EFFECTS,
@@ -232,6 +232,7 @@ import {
 } from './data/kwSiege';
 import {
   SANGUO_GENERALS, GENERAL_RARITY_CONFIG, MAX_RECRUITED_GENERALS,
+  GENERAL_DRAW_RATES, GENERAL_DRAW_PITY, drawGeneralFromPool,
   FACTION_PORTRAIT_COLORS, getGeneralById, getRandomGeneralForEncounter,
   getGeneralPortrait, generateEnemyGenerals, calcGeneralsTotalBonus,
 } from './data/generals';
@@ -3195,6 +3196,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const relicFx = getEquippedRelicEffects(relics);
     const resonanceFx = pet ? calcResonanceBonuses(pet, getResonanceContext()) : {};
     const merged = mergeStatEffectMults(relicFx, resonanceFx);
+    const resolvedGangBonus = gangBonusOverride !== undefined
+      ? gangBonusOverride
+      : (pet?.isEnemy ? (pet._gangBonus || {}) : undefined);
     return getStatsRaw(pet, stages, status, {
       currentTitle, gang, housing,
       relicEffects: relicFx,
@@ -3203,7 +3207,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
       gangSkillMult: relicFx.gangSkillMult || 1,
       playerSect: sectPlayer?.playerSect,
       playerSubSect: sectPlayer?.playerSubSect,
-    }, gangBonusOverride);
+    }, resolvedGangBonus);
   }
 
   const getAllOwnedPets = () => [...(party || []), ...(box || [])];
@@ -12430,6 +12434,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             const currentRankIdx = GANG_RANKS.findIndex(r => r.id === rank.id);
             const nextRank = currentRankIdx >= 0 && currentRankIdx < GANG_RANKS.length - 1 ? GANG_RANKS[currentRankIdx + 1] : null;
             if (!nextRank || gang.isOwner) return null;
+            if (nextRank.id === 'leader') {
+              return (
+                <div style={cardStyle}>
+                  <div style={{fontSize:'13px', fontWeight:'bold', marginBottom:'6px'}}>🎯 已达成员最高职位</div>
+                  <div style={{fontSize:'12px', color:'#aaa'}}>副帮主是普通成员可晋升的最高职位；帮主仅属于帮派创建者，不会由帮贡自动晋升。</div>
+                </div>
+              );
+            }
             const canPromote = gang.contribution >= nextRank.minContribution;
             return (
               <div style={cardStyle}>
@@ -12610,7 +12622,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         <div>
           <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'8px'}}>⚔️ 帮战</div>
           <div style={{fontSize:'12px', color:'#aaa', marginBottom:'12px'}}>
-            今日帮战: {warCount}/{GANG_WAR_CONFIG.maxDaily} · {!canWar ? '需达到精英以上才能参与帮战' : '按收益与风险排序，优先打推荐目标'}
+            已挑战 {warCount}/{GANG_WAR_CONFIG.maxDaily} · 剩余 {Math.max(0, GANG_WAR_CONFIG.maxDaily - warCount)} 次 · {!canWar ? '需达到精英以上才能参与帮战' : '按收益与风险排序，优先打推荐目标'}
           </div>
           {canWar && targets.map(({ target, preview }) => {
             const reward = getGangWarReward(target);
@@ -14988,6 +15000,9 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const enemyLv = getGangWarLevel(target);
         trainerName = `[${target.name || '未知帮派'}] 精锐`;
         dropGold = 0;
+        const targetSkills = target.skills || {};
+        extraBattleData.trainerGang = { id: target.id, name: target.name || '未知帮派', icon: target.icon || '🏴', skills: targetSkills };
+        extraBattleData.trainerGangBonus = getGangSkillBonus(targetSkills);
         const pool = target.teamPool && target.teamPool.length > 0 ? target.teamPool : HIGH_TIER_POOL;
         for (let i = 0; i < 6; i++) {
             const eid = pool[i % pool.length];
@@ -15431,7 +15446,12 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     };
 
 
-    const battleEnemyParty = enemyParty.map(p => { const s = initBattleState(p, true); s.isEnemy = true; return s; });
+    const battleEnemyParty = enemyParty.map(p => {
+      const s = initBattleState(p, true);
+      s.isEnemy = true;
+      s._gangBonus = extraBattleData.trainerGangBonus || {};
+      return s;
+    });
     const battlePlayerParty = playerPartyForBattle.map(p => initBattleState(p, false)); 
 
     if (extraBattleData._arenaLevelCap) {
@@ -15443,6 +15463,29 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     if (extraBattleData._arenaHalfHp) {
       battlePlayerParty.forEach(p => { p.currentHp = Math.max(1, Math.floor(getStats(p).maxHp * 0.5)); });
     }
+    battleEnemyParty.forEach((enemy, index) => {
+      const source = enemyParty[index] || {};
+      const sourceCurrentHp = Number(source.currentHp);
+      const sourceMaxHp = Number(source.maxHp);
+      const finalStats = getStats(enemy, enemy.stages, enemy.status);
+      const finalMaxHp = Math.max(1, finalStats.maxHp);
+      const hasExplicitPartialHp = Number.isFinite(sourceCurrentHp)
+        && Number.isFinite(sourceMaxHp)
+        && sourceMaxHp > 0
+        && sourceCurrentHp < sourceMaxHp;
+
+      if (Number.isFinite(sourceCurrentHp) && sourceCurrentHp <= 0) {
+        enemy.currentHp = 0;
+      } else if (hasExplicitPartialHp) {
+        const hpRatio = Math.max(0, Math.min(1, sourceCurrentHp / sourceMaxHp));
+        enemy.currentHp = Math.max(1, Math.floor(finalMaxHp * hpRatio));
+      } else {
+        enemy.currentHp = finalMaxHp;
+      }
+      enemy.maxHp = finalMaxHp;
+      enemy._maxHp = finalMaxHp;
+      enemy._stats = finalStats;
+    });
     if (extraBattleData.carryOverParty && actualType === 'historical_battle') {
       const co = extraBattleData.carryOverParty;
       battlePlayerParty.forEach((p, i) => {
@@ -17713,24 +17756,22 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       if (atMax) { showMapToast('⚠️', '编制已满', `${currentRank.name} 最多 ${maxGen} 位名将`, 1500); return; }
       const availableGens = SANGUO_GENERALS.filter(g => !recruited.some(r => r.id === g.id));
       if (availableGens.length === 0) { showMapToast('ℹ️', '提示', '已收集所有名将！', 2000); return; }
-      const rarityWeights = { R: 48, SR: 18, SSR: 4 };
-      const weighted = availableGens.map(g => ({ g, w: rarityWeights[g.rarity] || 10 }));
-      const totalW = weighted.reduce((s, e) => s + e.w, 0);
-      let roll = Math.random() * totalW;
-      let gen = weighted[0].g;
-      for (const e of weighted) { roll -= e.w; if (roll <= 0) { gen = e.g; break; } }
+      const draw = drawGeneralFromPool(availableGens, currentKw.generalDrawPity || 0);
+      const gen = draw.general;
+      if (!gen) { showMapToast('ℹ️', '提示', '当前没有可招募名将', 2000); return; }
       const ids = new Set(currentKw.collectedGeneralIds || []);
       ids.add(gen.id);
       const nextKw = {
         ...currentKw,
         generalDraws: Math.max(0, currentKw.generalDraws - 1),
+        generalDrawPity: draw.nextPity,
         recruitedGenerals: [...recruited, { id: gen.id, name: gen.name, title: gen.title, faction: gen.faction, rarity: gen.rarity, bonus: gen.bonus, icon: gen.icon }],
         collectedGeneralIds: [...ids],
       };
       kingdomWarRef.current = nextKw;
       flushSync(() => {
         setKingdomWar(nextKw);
-        setGeneralDrawResult({ gen, gotNew: true, alreadyHave: false, atMax: false });
+        setGeneralDrawResult({ gen, gotNew: true, alreadyHave: false, atMax: false, guaranteed: draw.guaranteed });
       });
     } finally {
       window.setTimeout(() => { generalDrawLockRef.current = false; }, 0);
@@ -25211,7 +25252,9 @@ const renderGeneralDex = () => {
           <article className={`codex-panel codex-draw-panel ${draws > 0 ? 'is-ready' : ''}`} onClick={draws > 0 ? doGeneralDraw : undefined}>
             <span>赛季抽将</span>
             <strong>{draws > 0 ? `${draws} 次可用` : '暂无次数'}</strong>
-            <p>{draws > 0 ? '点击抽取新的名将。' : '完成赛季目标后可获得招募机会。'}</p>
+            <p>{draws > 0
+              ? `传世 ${Math.round(GENERAL_DRAW_RATES.SSR * 100)}% · 名将 ${Math.round(GENERAL_DRAW_RATES.SR * 100)}% · ${Math.max(1, GENERAL_DRAW_PITY - (kw.generalDrawPity || 0))} 抽内必得传世`
+              : '完成赛季目标后可获得招募机会，保底进度会保留。'}</p>
           </article>
         </section>
 
@@ -26944,7 +26987,11 @@ const renderMenu = () => {
                     <span style={{fontSize:'28px'}}>{myFaction.icon}</span>
                     <div style={{flex:1}}>
                       <div style={{fontSize:'16px', fontWeight:'800'}}>{myFaction.fullName} · {rank.icon} {rank.name}</div>
-                      <div style={{fontSize:'10px', opacity:0.85}}>战功: {(kw.warContribution||0).toLocaleString()}{nextRank ? ` → ${nextRank.name} (差${(nextRank.minContribution - (kw.warContribution||0)).toLocaleString()})` : ' (最高官职)'}</div>
+                      <div style={{fontSize:'10px', opacity:0.85}}>战功: {(kw.warContribution||0).toLocaleString()}{nextRank
+                        ? (kw.warContribution || 0) >= nextRank.minContribution
+                          ? ` → ${nextRank.name}（战功已达标，待完成晋升条件）`
+                          : ` → ${nextRank.name}（还差 ${(nextRank.minContribution - (kw.warContribution || 0)).toLocaleString()}）`
+                        : ' (最高官职)'}</div>
                     </div>
                     <div style={{textAlign:'right'}}>
                       <div style={{fontSize:'14px', fontWeight:'bold'}}>🎖️ {(kw.factionTokens||0)}</div>
@@ -27215,7 +27262,9 @@ const renderMenu = () => {
                               <span style={{fontSize:'24px'}}>{FACTIONS[strategicBrief.rival.fid]?.icon || '🏴'}</span>
                               <div>
                                 <div style={{fontSize:'13px', color:'#fff', fontWeight:'900'}}>{FACTIONS[strategicBrief.rival.fid]?.fullName || strategicBrief.rival.fid}</div>
-                                <div style={{fontSize:'10px', color:'#94a3b8'}}>领地 {strategicBrief.rival.count} · 驻军 {strategicBrief.rival.totalTroops}</div>
+                                <div style={{fontSize:'10px', color:'#94a3b8'}}>{strategicBrief.rival.fid === 'qun' && strategicBrief.rival.actualCount > strategicBrief.rival.count
+                                  ? `有效兵权 ${strategicBrief.rival.count}城（实际分属 ${strategicBrief.rival.lordCount} 路诸侯、共 ${strategicBrief.rival.actualCount} 城） · 驻军 ${strategicBrief.rival.totalTroops}`
+                                  : `领地 ${strategicBrief.rival.count} · 驻军 ${strategicBrief.rival.totalTroops}`}</div>
                               </div>
                             </div>
                           ) : <div style={{fontSize:'11px', color:'#94a3b8'}}>暂无对手数据</div>}
@@ -27251,6 +27300,8 @@ const renderMenu = () => {
                     {renderDefectionPanel()}
                     {(() => {
                       const grainCap = calcGrainCap(kw);
+                      const currentGrain = Math.max(0, Number(kw.grain) || 0);
+                      const grainOverCap = currentGrain > grainCap;
                       const res = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
                       const timeMod = getBattleTimeModifiers();
                       return (
@@ -27264,9 +27315,10 @@ const renderMenu = () => {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px', marginBottom: '10px' }}>
                             <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>预备兵 {res}/{MANPOWER_RESERVE_CAP}</span>
                             <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>精锐 {kw.eliteTroops || 0}</span>
-                            <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>粮草 {kw.grain || 0}/{grainCap}</span>
+                            <span title={grainOverCap ? '超储粮草可以继续消耗，但每日补给不会增加，次日结算时会回落到当前容量' : '粮草容量由己方领地数量决定'} style={{ background: grainOverCap ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.12)', color: grainOverCap ? '#fde68a' : '#fff', padding: '4px 10px', borderRadius: '8px' }}>粮草 {currentGrain}/{grainCap}{grainOverCap ? '（超储）' : ''}</span>
                             <span style={{ background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: '8px' }}>士气 {kw.morale ?? 100}</span>
                           </div>
+                          {grainOverCap && <div style={{fontSize:'10px', color:'#fde68a', margin:'-3px 0 9px'}}>领地减少后产生的超储仍可用于征兵；每日补给不会继续增加，次日结算会按当前容量收拢。</div>}
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                             <button type="button" onClick={() => handleKingdomRecruit('normal')} style={{ flex: '1 1 120px', padding: '10px', border: 'none', borderRadius: '10px', background: myFaction.color, color: '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>
                               普通征兵 ({RECRUIT_CONFIG.normalCost.gold}金+{RECRUIT_CONFIG.normalCost.grain}粮)
@@ -28232,17 +28284,19 @@ const renderMenu = () => {
 
                       {/* 都城攻防战 */}
                       {(() => {
-                        const siegeTargets = getCapitalSiegeTargets(kw.faction, kw.territories);
-                        if (siegeTargets.length === 0) return null;
+                        const siegeTargets = FACTION_IDS.filter(fid => fid !== kw.faction);
+                        const eligibleCapitalTargets = getCapitalSiegeTargets(kw.faction, kw.territories);
                         return (
                           <div style={{marginTop:'16px'}}>
                             <div style={{fontSize:'14px', fontWeight:'800', color:'#C62828', marginBottom:'10px'}}>🔥 都城攻防战</div>
-                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>敌方阵营领地稀少（≤5城）时可发起高难度攻城；战役启动后无论胜负，该目标都进入 6 小时冷却。</div>
+                            <div style={{fontSize:'11px', color:'#64748b', marginBottom:'10px'}}>先将敌方外围压缩至 {CAPITAL_SIEGE_MAX_TERRITORIES} 城以内，才能发起三波制都城决战；战役启动后无论胜负，该目标都进入 6 小时冷却。</div>
                             {siegeTargets.map(fid => {
                               const ef = FACTIONS[fid];
                               const eCapitalMap = MAPS.find(m => m.id === CAPITAL_MAP_IDS[fid]);
                               const siegeCooldown = kw.lastSiegeTime?.[fid] ? Math.max(0, 6 * 60 * 60 * 1000 - (Date.now() - kw.lastSiegeTime[fid])) : 0;
-                              const canSiege = siegeCooldown <= 0;
+                              const targetTerritoryCount = getFactionTerritoryCount(fid, kw.territories || {});
+                              const targetEligible = eligibleCapitalTargets.includes(fid);
+                              const canSiege = targetEligible && siegeCooldown <= 0;
                               return (
                                 <div key={fid} style={{background:'#fff', borderRadius:'12px', padding:'14px', border:`2px solid ${ef.color}40`, marginBottom:'8px'}}>
                                   <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px'}}>
@@ -28253,7 +28307,10 @@ const renderMenu = () => {
                                     </div>
                                   </div>
                                   <div style={{fontSize:'11px', color:'#475569', marginBottom:'8px'}}>
-                                    攻城胜利奖励: 💰 5000金 · ⭐ 战功+100 · 🎖️ 令牌+20
+                                    {targetEligible
+                                      ? '攻城条件已满足'
+                                      : `外围尚有 ${targetTerritoryCount} 城，需压缩至 ${CAPITAL_SIEGE_MAX_TERRITORIES} 城以内`}
+                                    {' · '}攻城胜利奖励: 💰 5000金 · ⭐ 战功+100 · 🎖️ 令牌+20
                                   </div>
                                   <button disabled={!canSiege} onClick={() => {
                                     const attackPermission = canFactionAttack(kw.politics, kw.faction, fid);
@@ -28301,7 +28358,11 @@ const renderMenu = () => {
                                     width:'100%', fontSize:'13px', padding:'10px 0',
                                     background: canSiege ? '#C62828' : '#94a3b8',
                                   }}>
-                                    {canSiege ? '⚔️ 发起攻城战' : `冷却中 (${Math.ceil(siegeCooldown / 3600000)}h)`}
+                                    {canSiege
+                                      ? '⚔️ 发起攻城战'
+                                      : !targetEligible
+                                        ? `🔒 尚需攻下 ${Math.max(0, targetTerritoryCount - CAPITAL_SIEGE_MAX_TERRITORIES)} 城`
+                                        : `冷却中 (${Math.ceil(siegeCooldown / 3600000)}h)`}
                                   </button>
                                 </div>
                               );
@@ -28318,6 +28379,8 @@ const renderMenu = () => {
                   const fStats = getFactionTerritoryStats(kw.territories);
                   const rankIdx = Math.max(0, MILITARY_RANKS.findIndex(r => r.id === (kw.militaryRank || 'civilian')));
                   const reserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, kw.kwManpowerReserve || 0));
+                  const grainCap = calcGrainCap(kw);
+                  const currentGrain = Math.max(0, Number(kw.grain) || 0);
                   const timeMod = getBattleTimeModifiers();
                   return (
                   <div>
@@ -28335,7 +28398,7 @@ const renderMenu = () => {
                       })}
                     </div>
                     <div style={{fontSize:'11px', opacity:0.7}}>
-                      预备兵 {reserve}/{MANPOWER_RESERVE_CAP} · 精锐 {kw.eliteTroops || 0} · 粮草 {kw.grain || 0}/{calcGrainCap(kw)} · {timeMod.label} · 普通攻城 {territorySiegeAttempts}/{maxTerritorySieges}
+                      预备兵 {reserve}/{MANPOWER_RESERVE_CAP} · 精锐 {kw.eliteTroops || 0} · 粮草 {currentGrain}/{grainCap}{currentGrain > grainCap ? '（超储）' : ''} · {timeMod.label} · 普通攻城 {territorySiegeAttempts}/{maxTerritorySieges}
                     </div>
                   </div>
                   <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px'}}>
@@ -33042,12 +33105,12 @@ const renderMenu = () => {
       : battle.enemyParty?.[battle.enemyActiveIdx];
     if (!p || !e) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', width: '100%', color: '#fff', fontSize: '16px', fontWeight: '600' }}>⏳ 战斗加载中...</div>;
     const pStats = getStats(p);
-    const eStats = getStats(e);
+    const eStats = getStats(e, e.stages, e.status);
     
     const p2 = isDoubleBattle && battle.activeIdxs?.[1] >= 0 ? battle.playerCombatStates?.[battle.activeIdxs[1]] : null;
     const e2 = isDoubleBattle && battle.enemyActiveIdxs?.[1] >= 0 ? battle.enemyParty?.[battle.enemyActiveIdxs[1]] : null;
     const p2Stats = p2 ? getStats(p2) : null;
-    const e2Stats = e2 ? getStats(e2) : null;
+    const e2Stats = e2 ? getStats(e2, e2.stages, e2.status) : null;
     const doubleCurrentPet = isDoubleBattle ? battle.playerCombatStates?.[battle.activeIdxs?.[battle.phase === 'double_input_2' ? 1 : 0]] : null;
     const isDarkMoon = battle.domainRule === 'dark_moon';
     const domainRuleInfo = battle.domainRule ? getSpiritDomainRule(battle.domainRule) : null;
@@ -33694,7 +33757,7 @@ const renderMenu = () => {
             <button className="battle-control-pill" onClick={() => setShowTypeChart(true)} style={{ top: 84 }}>属性表</button>
             <button className="battle-control-pill" onClick={() => setShowKeyHelp(h => !h)} style={{ top: 122, fontSize: '11px' }} title="快捷键: 1-4选技能 R逃跑 A自动">⌨️</button>
             {(battle.sharedPlayerMaxChakra > 0 || battle.sharedPlayerMaxCE > 0) && (
-              <div style={{
+              <div className="battle-shared-energy" style={{
                 position:'absolute', top:100, left:8, right:'auto', zIndex:20, pointerEvents:'none',
                 fontSize:'9px', color:'rgba(255,230,180,0.95)', textAlign:'left',
                 background:'rgba(15,18,28,0.72)', padding:'5px 10px', borderRadius:12,
@@ -34035,9 +34098,9 @@ const renderMenu = () => {
                             {renderStatusBadges(e)}
                         </div>
                         {renderBattleStageRow(e, 0, false)}
-                        <EnhancedHPBar current={e.currentHp} max={eStats.maxHp} label="" />
+                        <EnhancedHPBar current={Math.min(e.currentHp, eStats.maxHp)} max={eStats.maxHp} label="" />
                         <div style={{fontSize:'9px', color:'#888', textAlign:'right', marginTop:'1px'}}>
-                          {isDarkMoon && battle._darkMoonScouted !== true ? 'HP ???' : `HP ${Math.max(0, Math.floor(e.currentHp))}/${eStats.maxHp} (${Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)`}
+                          {isDarkMoon && battle._darkMoonScouted !== true ? 'HP ???' : `HP ${Math.max(0, Math.min(eStats.maxHp, Math.floor(e.currentHp)))}/${eStats.maxHp} (${Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)`}
                         </div>
                         {e.maxCE > 0 && (
                             <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
@@ -34163,9 +34226,9 @@ const renderMenu = () => {
                         {renderBattleFruitBadge(e2, 'enemy', 1)}
                       </div>
                       {renderBattleStageRow(e2, 1, false)}
-                      <EnhancedHPBar current={e2.currentHp} max={e2Stats.maxHp} label="" />
+                      <EnhancedHPBar current={Math.min(e2.currentHp, e2Stats.maxHp)} max={e2Stats.maxHp} label="" />
                       <div style={{fontSize:'10px', color:'#666', textAlign:'right', marginTop:'2px'}}>
-                        HP {Math.max(0, Math.floor(e2.currentHp)).toLocaleString()}/{e2Stats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e2.currentHp / Math.max(1, e2Stats.maxHp)) * 100))}%)
+                        HP {Math.max(0, Math.min(e2Stats.maxHp, Math.floor(e2.currentHp))).toLocaleString()}/{e2Stats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e2.currentHp / Math.max(1, e2Stats.maxHp)) * 100))}%)
                       </div>
                       {e2.maxCE > 0 && (
                         <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'3px'}}>
@@ -36823,7 +36886,9 @@ const renderMenu = () => {
                 ) : (
                   <div style={{fontSize:'13px', fontWeight:'700', color:'#FF5252'}}>将领已满，无法招募</div>
                 )}
+                {dr.guaranteed && <div style={{fontSize:'11px', color:'#fbbf24', marginTop:'5px', fontWeight:'800'}}>本次触发传世保底</div>}
                 <div style={{fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'6px'}}>剩余抽卡次数: {kingdomWar?.generalDraws || 0}</div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'3px'}}>距离传世保底至多 {Math.max(1, GENERAL_DRAW_PITY - (kingdomWar?.generalDrawPity || 0))} 抽</div>
                 <div style={{display:'flex', gap:'8px', marginTop:'12px'}}>
                   {(kingdomWar?.generalDraws || 0) > 0 && (
                     <button onClick={(e) => { e.stopPropagation(); setGeneralDrawResult(null); setTimeout(doGeneralDraw, 100); }}

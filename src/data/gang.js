@@ -78,7 +78,7 @@ export const GANG_PRESETS = [
   // === 蜀国 (4) ===
   {
     id: 'storm_riders', name: '风暴骑士团', icon: '⚡', leader: '姜维',
-    style: '快速成长', level: 4, power: 3200, desc: '追求极速成长的精锐骑士，经验获取遥遥领先', faction: 'shu',
+    style: '快速成长', level: 4, power: 3300, desc: '追求极速成长的精锐骑士，经验获取遥遥领先', faction: 'shu',
     color: '#F57F17',
     perkDesc: '经验+6%, 捕获率+1%',
     members: Array.from({length: 8}, (_, i) => ({
@@ -90,7 +90,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'phoenix_order', name: '凤凰社', icon: '🔥', leader: '诸葛亮',
-    style: '后勤支援', level: 5, power: 3000, desc: '以治愈与补给闻名，商队遍布天下', faction: 'shu',
+    style: '后勤支援', level: 5, power: 3200, desc: '以治愈与补给闻名，商队遍布天下', faction: 'shu',
     color: '#E64A19',
     perkDesc: '商队收入+1500金/日, 金币+4%, 领地防御+2',
     members: Array.from({length: 11}, (_, i) => ({
@@ -102,7 +102,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'wild_pack', name: '野狼帮', icon: '🐺', leader: '马超',
-    style: '野外猎手', level: 4, power: 2800, desc: '野性十足的冒险者，精灵捕获率极高', faction: 'shu',
+    style: '野外猎手', level: 4, power: 3000, desc: '野性十足的冒险者，精灵捕获率极高', faction: 'shu',
     color: '#6D4C41',
     perkDesc: '捕获率+3%, 经验+2%',
     members: Array.from({length: 6}, (_, i) => ({
@@ -114,7 +114,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'white_ear', name: '白耳精锐', icon: '🦅', leader: '赵云',
-    style: '忠义护卫', level: 5, power: 3100, desc: '刘备亲卫白耳兵传承，国战攻防均衡', faction: 'shu',
+    style: '忠义护卫', level: 5, power: 3400, desc: '刘备亲卫白耳兵传承，国战攻防均衡', faction: 'shu',
     color: '#2E7D32',
     perkDesc: '国战贡献+20%, 领地防御+4',
     members: Array.from({length: 11}, (_, i) => ({
@@ -178,7 +178,7 @@ export const GANG_PRESETS = [
   // === 晋国 (4) ===
   {
     id: 'xuanwu_guard', name: '玄武卫', icon: '🐢', leader: '羊祜',
-    style: '铁壁统御', level: 6, power: 3600, desc: '司马家嫡系精锐，统一天下的钢铁意志', faction: 'jin',
+    style: '铁壁统御', level: 6, power: 3300, desc: '司马家嫡系精锐，统一天下的钢铁意志', faction: 'jin',
     color: '#4A148C',
     perkDesc: '领地防御+6, 国战贡献+20%, 贡献+10%',
     members: Array.from({length: 13}, (_, i) => ({
@@ -190,7 +190,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'tianluo_net', name: '天罗网', icon: '🕸️', leader: '贾充',
-    style: '情报操控', level: 5, power: 3100, desc: '遍布天下的情报网络，无人能逃其掌控', faction: 'jin',
+    style: '情报操控', level: 5, power: 2900, desc: '遍布天下的情报网络，无人能逃其掌控', faction: 'jin',
     color: '#311B92',
     perkDesc: '捕获率+2%, 经验+4%, 金币+2%',
     members: Array.from({length: 11}, (_, i) => ({
@@ -202,7 +202,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'longxiang_army', name: '龙骧军', icon: '🐉', leader: '王濬',
-    style: '灭国水师', level: 7, power: 4200, desc: '楼船万里，顺流而下灭东吴的传奇水师', faction: 'jin',
+    style: '灭国水师', level: 7, power: 3800, desc: '楼船万里，顺流而下灭东吴的传奇水师', faction: 'jin',
     color: '#1A237E',
     perkDesc: '国战贡献+30%, 商队收入+1000金/日',
     members: Array.from({length: 15}, (_, i) => ({
@@ -214,7 +214,7 @@ export const GANG_PRESETS = [
   },
   {
     id: 'beifu_elite', name: '北府精锐', icon: '🦁', leader: '谢玄',
-    style: '以少胜多', level: 5, power: 3300, desc: '淝水之战以少胜多，北府兵名震天下', faction: 'jin',
+    style: '以少胜多', level: 5, power: 2900, desc: '淝水之战以少胜多，北府兵名震天下', faction: 'jin',
     color: '#0D47A1',
     perkDesc: '经验+4%, 国战贡献+20%, 领地防御+4',
     members: Array.from({length: 12}, (_, i) => ({
@@ -526,7 +526,7 @@ export const buildGangCommandPlan = ({ gangInfo, gang, dailyCounts, kingdomWar, 
       { label: '帮贡效率', value: `+${bonus.contrib || 0}%` },
       { label: '商队收入', value: `${bonus.trade || 0}/日` },
       { label: '领地防御', value: `+${bonus.territory || 0}` },
-      { label: '今日帮战', value: `${warLeft}/${GANG_WAR_CONFIG.maxDaily}` },
+      { label: '剩余帮战', value: `${warLeft}/${GANG_WAR_CONFIG.maxDaily}` },
       { label: '管理压力', value: `${managementLoad}/100` },
     ],
   };
