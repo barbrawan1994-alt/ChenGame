@@ -16,6 +16,7 @@ import { calculatePetReleaseGold, ensureUniquePetUids, removePetsByUids, removeS
 import { normalizeActivitySaveState, normalizeCoreSaveState, normalizeOperationalSaveState } from './utils/saveNormalizer';
 import { sanitizeImportedPvpTeam } from './utils/pvpImport';
 import { prepareCaughtPet, selectContestSpecies, syncPartyBattleResources } from './utils/contestUtils';
+import { normalizeCombatTargets } from './utils/battleAi';
 import {
   advancePendingLearnMove,
   evolutionConditionMatches,
@@ -3139,8 +3140,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const chooseEnemyCombatAction = (battleState, enemyUnit, targets, opts = {}) => {
     const aiStyle = getEnemyAiStyle(battleState, enemyUnit, opts);
     const scoringOpts = { ...opts, aiStyle };
-    const targetList = (Array.isArray(targets) ? targets : [{ unit: targets, idx: battleState?.activeIdx }])
-      .filter(t => t?.unit && t.unit.currentHp > 0);
+    const targetList = normalizeCombatTargets(targets, battleState?.activeIdx);
     const moves = (enemyUnit?.combatMoves || enemyUnit?.moves || []).filter(m => canUseCombatMove(battleState, enemyUnit, m, 'enemy'));
     if (!enemyUnit || targetList.length === 0 || moves.length === 0) {
       return { move: { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } }, targetIdx: targetList[0]?.idx };
@@ -33641,10 +33641,13 @@ const renderMenu = () => {
                     
                     {/* 敌方 HUD */}
                     <div className={`hud-card hud-enemy ${isDoubleBattle ? 'hud-card--double' : ''}`} style={{marginBottom: '8px'}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'4px', marginBottom:'2px'}}>
-                            <span style={{fontSize: isDoubleBattle ? '11px' : '12px', fontWeight:'bold', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'160px'}}>
-                                {enemyOwnerName ? `${enemyOwnerName} 的 ${e.name}` : e.name}
-                            </span>
+                        {enemyOwnerName && (
+                          <div className="battle-enemy-owner" data-testid="enemy-owner-name">
+                            {enemyOwnerName}
+                          </div>
+                        )}
+                        <div className="battle-enemy-meta">
+                            <span className="battle-enemy-pet-name" data-testid="enemy-pet-name">{e.name}</span>
                             <span style={{fontSize:'11px', color:'#555', flexShrink:0}}>Lv.{e.level}</span>
                             {!isDarkMoon && (
                               <>
@@ -33764,9 +33767,16 @@ const renderMenu = () => {
                 {isDoubleBattle && e2 && (
                   <div className="enemy-zone-v2 double-mode" style={{position:'absolute', top:'2%', left:'1%', display:'flex', flexDirection:'column', alignItems:'flex-start', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
                     <div className="hud-card hud-enemy hud-card--double" style={{marginBottom:'8px'}}>
-                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px', gap:'6px'}}>
-                        <span style={{fontSize:'11px', fontWeight:'bold', whiteSpace:'nowrap'}}>{enemyOwnerName ? `${enemyOwnerName} 的 ${e2.name}` : e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
+                      {enemyOwnerName && (
+                        <div className="battle-enemy-owner" data-testid="enemy-owner-name-secondary">
+                          {enemyOwnerName}
+                        </div>
+                      )}
+                      <div className="battle-enemy-meta">
+                        <span className="battle-enemy-pet-name" data-testid="enemy-pet-name-secondary">{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
                         <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
+                        {!isDarkMoon && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e2.type]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e2.type]?.name || e2.type}</span>}
+                        {!isDarkMoon && e2.secondaryType && e2.secondaryType !== e2.type && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e2.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e2.secondaryType]?.name}</span>}
                       </div>
                       <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px', justifyContent:'flex-end'}}>
                         {e2.isFusedShiny ? (
