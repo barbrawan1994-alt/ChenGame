@@ -36440,11 +36440,11 @@ const renderMenu = () => {
         const bioData = GENERAL_BIOS[gen.id];
         const isR = (kingdomWar?.recruitedGenerals || []).some(g => g.id === gen.id);
         return (
-          <div onClick={() => setGenDexDetail(null)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.6)', zIndex:20000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'}}>
-            <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:'20px', width:'100%', maxWidth:'400px', maxHeight:'90vh', overflow:'auto'}}>
-              <div style={{background: pt.bg, padding:'24px 20px', textAlign:'center', position:'relative'}}>
-                {bioData && <div style={{position:'absolute', top:'10px', left:'12px', fontSize:'10px', fontWeight:'800', color: bioData.isHistorical ? '#4CAF50' : '#FF9800', background:'rgba(0,0,0,0.3)', padding:'3px 8px', borderRadius:'6px'}}>{bioData.isHistorical ? '📜 正史人物' : '📖 演义虚构'}</div>}
-                {isR && <div style={{position:'absolute', top:'10px', right:'12px', fontSize:'10px', fontWeight:'700', color:'#4CAF50', background:'rgba(0,0,0,0.3)', padding:'3px 8px', borderRadius:'6px'}}>⚔️ 已招募</div>}
+          <div className="general-dex-detail-overlay" onClick={() => setGenDexDetail(null)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.6)', zIndex:20000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'}}>
+            <div className="general-dex-detail-modal" role="dialog" aria-modal="true" aria-labelledby="general-dex-detail-title" onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:'20px', width:'100%', maxWidth:'400px', maxHeight:'90vh', overflow:'auto'}}>
+              <div className="general-dex-detail-header" style={{background: pt.bg, padding:'24px 20px', textAlign:'center', position:'relative'}}>
+                {bioData && <div className={`general-dex-detail-origin-badge ${bioData.isHistorical ? 'is-historical' : 'is-fictional'}`} style={{position:'absolute', top:'10px', left:'12px', fontSize:'10px', fontWeight:'800', color: bioData.isHistorical ? '#4CAF50' : '#FF9800', background:'rgba(0,0,0,0.3)', padding:'3px 8px', borderRadius:'6px'}}>{bioData.isHistorical ? '📜 正史人物' : '📖 演义虚构'}</div>}
+                {isR && <div className="general-dex-detail-recruited-badge" style={{position:'absolute', top:'10px', right:'12px', fontSize:'10px', fontWeight:'700', color:'#4CAF50', background:'rgba(0,0,0,0.3)', padding:'3px 8px', borderRadius:'6px'}}>⚔️ 已招募</div>}
                 <div style={{
                   width:'72px', height:'72px', borderRadius:'50%', margin:'0 auto', background:'rgba(255,255,255,0.15)',
                   display:'flex', alignItems:'center', justifyContent:'center',
@@ -36454,59 +36454,59 @@ const renderMenu = () => {
                   boxShadow: gen.rarity === 'SSR' ? '0 0 20px rgba(255,255,255,0.3)' : 'none',
                   overflow:'hidden',
                 }}>{renderGeneralPortraitFace(gen, pt, pt.surname)}</div>
-                <div style={{marginTop:'10px', fontSize:'20px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}{bioData?.courtesy ? ` · 字${bioData.courtesy}` : ''}</div>
+                <div id="general-dex-detail-title" style={{marginTop:'10px', fontSize:'20px', fontWeight:'900', color:'#fff', textShadow:'1px 1px 3px rgba(0,0,0,0.4)'}}>{gen.name}{bioData?.courtesy ? ` · 字${bioData.courtesy}` : ''}</div>
                 <div style={{fontSize:'12px', color:'rgba(255,255,255,0.8)', marginTop:'4px'}}>{gen.title}{bioData?.years ? ` (${bioData.years})` : ''}</div>
                 <div style={{display:'flex', gap:'8px', justifyContent:'center', marginTop:'8px'}}>
                   <span style={{fontSize:'10px', fontWeight:'700', color: rc.color, background: rc.bgColor, padding:'2px 8px', borderRadius:'5px'}}>{rc.label}</span>
                   <span style={{fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.15)', padding:'2px 8px', borderRadius:'5px'}}>{fLabel}</span>
                 </div>
               </div>
-              <div style={{padding:'16px 20px'}}>
+              <div className="general-dex-detail-body" style={{padding:'16px 20px'}}>
                 {/* 历史生平 */}
                 {bioData && (
                   <div style={{marginBottom:'14px'}}>
-                    <div style={{fontSize:'12px', fontWeight:'800', color:'#1e293b', marginBottom:'6px', display:'flex', alignItems:'center', gap:'6px'}}>
+                    <div className="general-dex-detail-heading" style={{fontSize:'12px', fontWeight:'800', color:'#1e293b', marginBottom:'6px', display:'flex', alignItems:'center', gap:'6px'}}>
                       <span>📜 历史生平</span>
                       <span style={{fontSize:'9px', fontWeight:'600', color: bioData.isHistorical ? '#2E7D32' : '#E65100', background: bioData.isHistorical ? '#E8F5E9' : '#FFF3E0', padding:'1px 6px', borderRadius:'4px'}}>{bioData.isHistorical ? '正史记载' : '演义虚构'}</span>
                     </div>
-                    <div style={{fontSize:'12px', color:'#475569', lineHeight:'1.8', padding:'10px 12px', background:'#f8f6f1', borderRadius:'10px', border:'1px solid #e8e3d8', fontFamily:'serif'}}>{bioData.bio}</div>
+                    <div className="general-dex-detail-bio" style={{fontSize:'12px', color:'#475569', lineHeight:'1.8', padding:'10px 12px', background:'#f8f6f1', borderRadius:'10px', border:'1px solid #e8e3d8', fontFamily:'serif'}}>{bioData.bio}</div>
                     {bioData.famous && (
-                      <div style={{marginTop:'8px', padding:'8px 12px', background:'linear-gradient(135deg, #FFF8E1, #FFF3E0)', borderRadius:'8px', border:'1px solid #FFE0B2'}}>
+                      <div className="general-dex-detail-famous" style={{marginTop:'8px', padding:'8px 12px', background:'linear-gradient(135deg, #FFF8E1, #FFF3E0)', borderRadius:'8px', border:'1px solid #FFE0B2'}}>
                         <span style={{fontSize:'10px', fontWeight:'700', color:'#E65100'}}>⭐ 名场面：</span>
                         <span style={{fontSize:'11px', color:'#BF360C', fontWeight:'600'}}>{bioData.famous}</span>
                       </div>
                     )}
                   </div>
                 )}
-                <div style={{fontSize:'12px', color:'#64748b', lineHeight:'1.6', marginBottom:'14px', fontStyle:'italic', padding:'8px', background:'#f1f5f9', borderRadius:'8px'}}>「{gen.desc}」</div>
-                <div style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>将领加成（奖励型）</div>
+                <div className="general-dex-detail-quote" style={{fontSize:'12px', color:'#64748b', lineHeight:'1.6', marginBottom:'14px', fontStyle:'italic', padding:'8px', background:'#f1f5f9', borderRadius:'8px'}}>「{gen.desc}」</div>
+                <div className="general-dex-detail-heading" style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'8px'}}>将领加成（奖励型）</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', marginBottom:'14px'}}>
                   {Object.entries(gen.bonus||{}).filter(([,v])=>v>0).map(([k,v]) => (
-                    <div key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0'}}>
-                      <span style={{fontSize:'10px', color:'#64748b'}}>{bonusLabelsD[k]||k}</span>
-                      <span style={{fontSize:'11px', fontWeight:'800', color: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50'}}>{formatGeneralBonusChip(k, v)}</span>
+                    <div className="general-dex-detail-bonus-card" key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0'}}>
+                      <span className="general-dex-detail-bonus-label" style={{fontSize:'10px', color:'#64748b'}}>{bonusLabelsD[k]||k}</span>
+                      <span className="general-dex-detail-bonus-value" style={{fontSize:'11px', fontWeight:'800', color: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50'}}>{formatGeneralBonusChip(k, v)}</span>
                     </div>
                   ))}
                 </div>
-                <div style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'6px'}}>战斗信息</div>
+                <div className="general-dex-detail-heading" style={{fontSize:'11px', fontWeight:'700', color:'#1e293b', marginBottom:'6px'}}>战斗信息</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'6px', marginBottom:'4px'}}>
-                  <div style={{padding:'6px 8px', background:'#f0f4ff', borderRadius:'8px', textAlign:'center'}}>
-                    <div style={{fontSize:'9px', color:'#64748b'}}>遭遇等级</div>
-                    <div style={{fontSize:'12px', fontWeight:'800', color:'#1565C0'}}>Lv.{gen.teamLevel}</div>
+                  <div className="general-dex-detail-battle-card" style={{padding:'6px 8px', background:'#f0f4ff', borderRadius:'8px', textAlign:'center'}}>
+                    <div className="general-dex-detail-battle-label" style={{fontSize:'9px', color:'#64748b'}}>遭遇等级</div>
+                    <div className="general-dex-detail-battle-value" style={{fontSize:'12px', fontWeight:'800', color:'#1565C0'}}>Lv.{gen.teamLevel}</div>
                   </div>
-                  <div style={{padding:'6px 8px', background:'#f0f4ff', borderRadius:'8px', textAlign:'center'}}>
-                    <div style={{fontSize:'9px', color:'#64748b'}}>携带精灵</div>
-                    <div style={{fontSize:'12px', fontWeight:'800', color:'#1565C0'}}>{gen.teamSize}只</div>
+                  <div className="general-dex-detail-battle-card" style={{padding:'6px 8px', background:'#f0f4ff', borderRadius:'8px', textAlign:'center'}}>
+                    <div className="general-dex-detail-battle-label" style={{fontSize:'9px', color:'#64748b'}}>携带精灵</div>
+                    <div className="general-dex-detail-battle-value" style={{fontSize:'12px', fontWeight:'800', color:'#1565C0'}}>{gen.teamSize}只</div>
                   </div>
-                  <div style={{padding:'6px 8px', background:'#fff8e1', borderRadius:'8px', textAlign:'center'}}>
-                    <div style={{fontSize:'9px', color:'#64748b'}}>招募费用</div>
-                    <div style={{fontSize:'12px', fontWeight:'800', color:'#E65100'}}>{(gen.recruitCost/1000).toFixed(0)}K金</div>
+                  <div className="general-dex-detail-battle-card is-cost" style={{padding:'6px 8px', background:'#fff8e1', borderRadius:'8px', textAlign:'center'}}>
+                    <div className="general-dex-detail-battle-label" style={{fontSize:'9px', color:'#64748b'}}>招募费用</div>
+                    <div className="general-dex-detail-battle-value" style={{fontSize:'12px', fontWeight:'800', color:'#E65100'}}>{(gen.recruitCost/1000).toFixed(0)}K金</div>
                   </div>
                 </div>
-                <div style={{fontSize:'11px', color:'#64748b', textAlign:'center'}}>在国战地图探索时有概率遭遇，击败后可花费金币招募</div>
+                <div className="general-dex-detail-footer-note" style={{fontSize:'11px', color:'#64748b', textAlign:'center'}}>在国战地图探索时有概率遭遇，击败后可花费金币招募</div>
               </div>
-              <div style={{padding:'0 20px 16px', textAlign:'center'}}>
-                <button onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
+              <div className="general-dex-detail-actions" style={{padding:'0 20px 16px', textAlign:'center'}}>
+                <button className="general-dex-detail-close" onClick={() => setGenDexDetail(null)} style={{width:'100%', padding:'10px', fontSize:'13px', fontWeight:'700', color:'#fff', background: (kingdomWar?.faction ? FACTIONS[kingdomWar.faction]?.color : null) || '#4CAF50', border:'none', borderRadius:'10px', cursor:'pointer'}}>关闭</button>
               </div>
             </div>
           </div>

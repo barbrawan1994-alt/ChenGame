@@ -3131,3 +3131,131 @@ textarea {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ---- General chronicle detail: preserve a deliberate dark/light reading hierarchy ---- */
+.spirit-app > .general-dex-detail-overlay {
+  background: rgba(2, 12, 22, 0.82) !important;
+  backdrop-filter: blur(8px) saturate(0.82) !important;
+}
+
+.spirit-app > .general-dex-detail-overlay > .general-dex-detail-modal[role="dialog"] {
+  color: var(--sp-text-primary) !important;
+  background:
+    repeating-linear-gradient(90deg, rgba(140, 225, 198, 0.025) 0 1px, transparent 1px 10px),
+    linear-gradient(160deg, #0d3045, #061a2e 68%) !important;
+  border: 3px solid var(--sp-gold-400) !important;
+  border-radius: var(--sp-radius-md) !important;
+  box-shadow: 8px 8px 0 rgba(2, 12, 22, 0.9), 0 28px 72px rgba(2, 12, 22, 0.58) !important;
+  scrollbar-color: var(--sp-teal-500) rgba(255, 255, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.spirit-app .general-dex-detail-header {
+  border-bottom: 3px solid var(--sp-gold-400);
+}
+
+.spirit-app .general-dex-detail-origin-badge,
+.spirit-app .general-dex-detail-recruited-badge {
+  border: 1px solid currentColor;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.58);
+  text-shadow: 0 1px 1px rgba(2, 12, 22, 0.66);
+}
+
+.spirit-app .general-dex-detail-origin-badge.is-historical,
+.spirit-app .general-dex-detail-recruited-badge {
+  color: #a7f3d0 !important;
+  background: #123d36 !important;
+}
+
+.spirit-app .general-dex-detail-origin-badge.is-fictional {
+  color: #fed7aa !important;
+  background: #5f2e13 !important;
+}
+
+.spirit-app .general-dex-detail-body {
+  color: var(--sp-text-primary) !important;
+}
+
+.spirit-app .general-dex-detail-heading {
+  color: #f6d267 !important;
+  text-shadow: 0 1px 1px rgba(2, 12, 22, 0.7);
+}
+
+.spirit-app .general-dex-detail-bio {
+  color: #334155 !important;
+  background: #fffdf7 !important;
+  border-color: #d9cfbd !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.2);
+}
+
+.spirit-app .general-dex-detail-famous {
+  color: #7c2d12 !important;
+  background: linear-gradient(135deg, #fff8df, #ffedd5) !important;
+  border-color: #fdba74 !important;
+}
+
+.spirit-app .general-dex-detail-quote {
+  color: #d9e8e5 !important;
+  background: rgba(140, 225, 198, 0.08) !important;
+  border: 1px solid rgba(140, 225, 198, 0.28);
+}
+
+.spirit-app .general-dex-detail-bonus-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 2px 2px 0 rgba(2, 12, 22, 0.18);
+}
+
+.spirit-app .general-dex-detail-bonus-label,
+.spirit-app .general-dex-detail-battle-label {
+  color: #415268 !important;
+}
+
+.spirit-app .general-dex-detail-bonus-value {
+  color: #166534 !important;
+}
+
+.spirit-app .general-dex-detail-battle-card {
+  background: #eef4ff !important;
+  border: 1px solid #c7d7ee;
+}
+
+.spirit-app .general-dex-detail-battle-card.is-cost {
+  background: #fff7dc !important;
+  border-color: #efd18a;
+}
+
+.spirit-app .general-dex-detail-battle-value {
+  color: #1459a6 !important;
+}
+
+.spirit-app .general-dex-detail-battle-card.is-cost .general-dex-detail-battle-value {
+  color: #a8320a !important;
+}
+
+.spirit-app .general-dex-detail-footer-note {
+  color: #c7d9d7 !important;
+  line-height: 1.5;
+}
+
+.spirit-app .general-dex-detail-actions {
+  border-top: 1px solid rgba(255, 246, 216, 0.12);
+  padding-top: 14px !important;
+}
+
+.spirit-app > .general-dex-detail-overlay > .general-dex-detail-modal[role="dialog"] .general-dex-detail-close:not(:disabled) {
+  color: var(--sp-paper) !important;
+  background: var(--sp-teal-700) !important;
+  border: 2px solid var(--sp-teal-300) !important;
+  box-shadow: 3px 3px 0 var(--sp-ink-950) !important;
+}
+
+@media (max-width: 520px) {
+  .spirit-app > .general-dex-detail-overlay {
+    padding: 10px !important;
+  }
+
+  .spirit-app > .general-dex-detail-overlay > .general-dex-detail-modal[role="dialog"] {
+    max-height: calc(100dvh - 20px) !important;
+  }
+}
