@@ -6,6 +6,26 @@ import { generateCurseTalent } from '../data/jujutsu';
 import { calcNextExp } from './statsCalculator';
 import { pickSectIdForPet } from '../data/sectSystem';
 
+export function getCharmRank(charm) {
+  if (charm >= 90) return '\u4E07\u4EBA\u8FF7';
+  if (charm >= 75) return '\u4EBA\u6C14\u738B';
+  if (charm >= 50) return '\u53EF\u7231\u9B3C';
+  if (charm >= 25) return '\u5446\u840C';
+  return '\u51F6\u840C';
+}
+
+export function promotePetToShiny(pet) {
+  if (!pet || pet.isShiny) return pet;
+  const charm = Math.min(100, Math.max(0, Number(pet.charm) || 0) + 30);
+  return {
+    ...pet,
+    isShiny: true,
+    sectLevel: Math.max(2, Number(pet.sectLevel) || 1),
+    charm,
+    charmRank: getCharmRank(charm),
+  };
+}
+
 export function getMoveByLevel(type, level) {
   const db = SKILL_DB[type] || SKILL_DB.NORMAL;
   if (!db || db.length === 0) return { name: '\u649E\u51FB', p: 40, t: 'NORMAL', pp: 35, maxPP: 35, acc: 100, category: 'physical' };
@@ -55,7 +75,8 @@ export function getMoveByLevel(type, level) {
  */
 export function createPet(dexId, level, isBoss = false, forceShiny = false, context = {}) {
   const { spouseBonuses = {}, getStatsForPet, preserveSpecies = false } = context;
-  level = Math.min(100, Math.max(1, level));
+  const numericLevel = Number(level);
+  level = Math.min(100, Math.max(1, Number.isFinite(numericLevel) ? Math.floor(numericLevel) : 1));
   let finalId = dexId;
 
   if (!preserveSpecies) {
@@ -130,8 +151,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   const speedRng = Math.floor(Math.random() * 71) + 40;
 
   const sectId = pickSectIdForPet(base);
-  let autoSectLv = isBoss ? Math.floor(level / 10) + 1 : 1;
-  if (isShiny) autoSectLv = Math.max(autoSectLv, 2);
+  const autoSectLv = isBoss ? Math.floor(level / 10) + 1 : 1;
   const sectLevel = Math.max(1, Math.min(10, autoSectLv));
 
   const traitKeys = Object.keys(TRAIT_DB).filter(k => !k.startsWith('ecoguard_'));
@@ -139,15 +159,9 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
 
   const typeBaseCharm = TYPE_CHARM_BASE[base.type] || 30;
   const rngCharm = Math.floor(Math.random() * 21);
-  const shinyBonus = isShiny ? 30 : 0;
   const bossBonus = isBoss ? 20 : 0;
-  const charmVal = Math.min(100, typeBaseCharm + rngCharm + shinyBonus + bossBonus);
-
-  let charmRank = '\u51F6\u840C';
-  if (charmVal >= 90) charmRank = '\u4E07\u4EBA\u8FF7';
-  else if (charmVal >= 75) charmRank = '\u4EBA\u6C14\u738B';
-  else if (charmVal >= 50) charmRank = '\u53EF\u7231\u9B3C';
-  else if (charmVal >= 25) charmRank = '\u5446\u840C';
+  const charmVal = Math.min(100, typeBaseCharm + rngCharm + bossBonus);
+  const charmRank = getCharmRank(charmVal);
 
   const intimacy = 50;
   const curseTalent = generateCurseTalent();
@@ -163,7 +177,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
     equips: [null, null],
     moves: [],
     isBoss,
-    isShiny,
+    isShiny: false,
     ivs,
     evs: {},
     diversityRng,
@@ -228,6 +242,8 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   }
 
   newPet.moves = moves.slice(0, 4);
+
+  if (isShiny) newPet = promotePetToShiny(newPet);
 
   if (getStatsForPet) {
     const stats = getStatsForPet(newPet);

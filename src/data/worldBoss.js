@@ -238,3 +238,36 @@ export function scaleBossHp(boss, badges) {
 export function scaleBossLevel(boss, badges) {
   return Math.min(100, boss.baseLv + Math.max(0, badges - 6) * 2);
 }
+
+export function resolveWorldBossResult(state, boss, bossHp, rawDamage) {
+  const prev = state || DEFAULT_WORLD_BOSS_STATE;
+  const maxHp = Math.max(1, Math.floor(Number(bossHp) || boss?.baseHp || 1));
+  const previousDamage = Math.min(maxHp, Math.max(0, Math.floor(Number(prev.totalDamage) || 0)));
+  const remainingHp = Math.max(0, maxHp - previousDamage);
+  const appliedDamage = Math.min(remainingHp, Math.max(0, Math.floor(Number(rawDamage) || 0)));
+  const totalDamage = previousDamage + appliedDamage;
+  const defeated = totalDamage >= maxHp;
+  const claimed = new Set(Array.isArray(prev.claimedMilestones) ? prev.claimedMilestones : []);
+  const milestones = (boss?.milestones || []).filter(milestone => {
+    const threshold = milestone.dmg >= boss.baseHp ? maxHp : milestone.dmg;
+    return totalDamage >= threshold && !claimed.has(milestone.dmg);
+  });
+  milestones.forEach(milestone => claimed.add(milestone.dmg));
+
+  return {
+    state: {
+      ...prev,
+      attempts: Math.min(WORLD_BOSS_MAX_ATTEMPTS, Math.max(0, Number(prev.attempts) || 0) + 1),
+      totalDamage,
+      defeated,
+      bestDamage: Math.max(0, Number(prev.bestDamage) || 0, appliedDamage),
+      totalBossesDefeated: defeated && !prev.defeated
+        ? Math.max(0, Number(prev.totalBossesDefeated) || 0) + 1
+        : Math.max(0, Number(prev.totalBossesDefeated) || 0),
+      claimedMilestones: [...claimed],
+    },
+    appliedDamage,
+    milestones,
+    defeatedNow: defeated && !prev.defeated,
+  };
+}

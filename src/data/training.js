@@ -13,10 +13,10 @@ export const TRAINING_CAMPS = [
 ];
 
 export const TRAINING_TIERS = [
-  { tier: 1, name: '基础训练',   duration: 10 * 60 * 1000, gain: [1, 2],  cost: 500,   reqBadges: 4 },
-  { tier: 2, name: '强化训练',   duration: 20 * 60 * 1000, gain: [2, 3],  cost: 1500,  reqBadges: 6 },
-  { tier: 3, name: '精英训练',   duration: 40 * 60 * 1000, gain: [3, 5],  cost: 3000,  reqBadges: 8 },
-  { tier: 4, name: '极限训练',   duration: 60 * 60 * 1000, gain: [4, 6],  cost: 5000,  reqBadges: 10 },
+  { tier: 1, name: '基础训练',   duration: 10 * 60 * 1000, gain: [4, 6],   cost: 500,  reqBadges: 4 },
+  { tier: 2, name: '强化训练',   duration: 20 * 60 * 1000, gain: [8, 12],  cost: 1500, reqBadges: 6 },
+  { tier: 3, name: '精英训练',   duration: 40 * 60 * 1000, gain: [14, 18], cost: 3000, reqBadges: 8 },
+  { tier: 4, name: '极限训练',   duration: 60 * 60 * 1000, gain: [20, 26], cost: 5000, reqBadges: 10 },
 ];
 
 export const TRAINING_MAX_EV = 252;
@@ -42,19 +42,36 @@ export const DEFAULT_TRAINING_STATE = {
   lastResetDate: null,
 };
 
-export function calcTrainingGain(pet, camp, tier, badges) {
+const normalizeEv = value => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+};
+
+export function calcTrainingGain(pet, camp, tier, badges, random = Math.random) {
   const [minG, maxG] = tier.gain;
-  let gain = minG + Math.floor(Math.random() * (maxG - minG + 1));
+  const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0));
+  let gain = minG + Math.floor(roll * (maxG - minG + 1));
 
   if (pet.isShiny) gain = Math.floor(gain * 1.2);
   if (pet.intimacy >= 80) gain += 1;
   if (badges >= 10) gain += 1;
 
-  const currentEV = (pet.evs || {})[camp.stat] || 0;
-  const totalEV = Object.values(pet.evs || {}).reduce((s, v) => s + v, 0);
+  const currentEV = normalizeEv((pet.evs || {})[camp.stat]);
+  const totalEV = Object.values(pet.evs || {}).reduce((sum, value) => sum + normalizeEv(value), 0);
 
   gain = Math.min(gain, TRAINING_MAX_EV - currentEV);
   gain = Math.min(gain, TRAINING_TOTAL_MAX_EV - totalEV);
 
   return Math.max(0, gain);
+}
+
+export function settleTrainingPet(pet, camp, tier, badges, random = Math.random) {
+  if (!pet || !camp || !tier) return { ok: false, reason: 'invalid_training', gain: 0, pet };
+  const evs = Object.fromEntries(
+    Object.entries(pet.evs || {}).map(([key, value]) => [key, normalizeEv(value)]),
+  );
+  const gain = calcTrainingGain({ ...pet, evs }, camp, tier, badges, random);
+  if (gain <= 0) return { ok: false, reason: 'ev_cap', gain: 0, pet: { ...pet, evs } };
+  evs[camp.stat] = Math.min(TRAINING_MAX_EV, normalizeEv(evs[camp.stat]) + gain);
+  return { ok: true, reason: null, gain, pet: { ...pet, evs } };
 }

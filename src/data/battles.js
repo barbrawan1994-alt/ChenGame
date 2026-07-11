@@ -314,7 +314,7 @@ export const DUNGEONS = [
     type: 'ragnarok', color: '#4A148C', icon: '⚔️', recLvl: 98,
     rarity: '传说', stars: 5, tier: 4, reqBadges: 13,
     rewards: [
-      { icon: '🌟', text: '保底闪光神兽' },
+      { icon: '🌟', text: '每日首通保底闪光神兽' },
       { icon: '🍬', text: '极限糖果+传说装备' }
     ] },
   { id: 'extreme_trial', name: '极限试炼', desc: '每波随机Debuff (需13徽章)',

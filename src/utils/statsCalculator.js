@@ -8,6 +8,8 @@ import { getGangSkillBonus, getGangSkills } from '../data/gang';
 import { AWAKENING_STAT_MULT, MAX_COMBINED_STAT_MULT } from '../data/resonance';
 import { calcHouseScore, getHousingScoreTier } from '../data/housing';
 
+export const MAX_BATTLE_CRIT_CHANCE = 40;
+
 export function getStageMult(stage) {
   if (!stage) return 1.0;
   const s = Math.max(-6, Math.min(6, stage));
@@ -43,7 +45,8 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
   if (!pet) return { maxHp: 1, p_atk: 1, p_def: 1, s_atk: 1, s_def: 1, spd: 1, crit: 5 };
   const { currentTitle, gang, housing, relicEffects, gangSkillCapBonus, sectEffectMult = 1, gangSkillMult = 1, playerSect, playerSubSect } = context;
   const isPlayerPet = gangBonusOverride === undefined && !pet.isEnemy;
-  const lvl = pet.level || 1;
+  const numericLevel = Number(pet.level);
+  const lvl = Math.min(100, Math.max(1, Number.isFinite(numericLevel) ? numericLevel : 1));
   const growth = 1 + Math.min(2.5, Math.pow(lvl / 100, 0.7) * 3.5);
   const shinyMod = pet.isFusedShiny ? 1.35 : (pet.isShiny ? 1.2 : 1.0);
 
@@ -130,7 +133,8 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
     return val;
   };
 
-  let finalCrit = Math.floor((baseStats.crit || 5) + (ivs.crit || 0) + (evs.crit || 0) + (pet.level * 0.2));
+  const baseCrit = Number(baseStats.crit);
+  let finalCrit = Math.floor((Number.isFinite(baseCrit) ? baseCrit : 5) + (ivs.crit || 0) + (evs.crit || 0) + (lvl * 0.2));
   if (chiefBonus.crit) finalCrit += chiefBonus.crit;
   (pet.equips || []).forEach(equip => {
     if (!equip) return;
@@ -174,7 +178,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
     return val;
   };
 
-  const clampedCrit = Math.min(75, Math.max(0, finalCrit + relicCritBonus));
+  const clampedCrit = Math.min(MAX_BATTLE_CRIT_CHANCE, Math.max(0, finalCrit + relicCritBonus));
   const resPct = (key) => resBonus[key] && resBonus[key] > 1 ? Math.round((resBonus[key] - 1) * 100) : 0;
   const finalPAtk = applyGB(calc(baseStats.p_atk, 'p_atk', 'p_atk'), (gangBonus.atk || 0) + resPct('atk'));
   const finalPDef = Math.floor(applyGB(calc(baseStats.p_def, 'p_def', 'p_def'), (gangBonus.def || 0) + resPct('def')) * relicDefMult);
@@ -192,7 +196,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
     s_atk: capStat(applyAwaken(applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk || 0) + resPct('s_atk'))), baseStats.s_atk),
     s_def: capStat(Math.floor(applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))) * relicDefMult), baseStats.s_def),
     spd: capStat(Math.floor(applyAwaken(applyGB(finalSpd, (gangBonus.spd || 0) + resPct('spd'))) * relicSpdMult), baseStats.spd),
-    crit: Math.min(75, Math.max(0, clampedCrit + (resBonus.critRate || 0))),
+    crit: Math.min(MAX_BATTLE_CRIT_CHANCE, Math.max(0, clampedCrit + (resBonus.critRate || 0))),
     atk: applyAwaken(finalPAtk),
     def: applyAwaken(finalPDef)
   };

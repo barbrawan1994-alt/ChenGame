@@ -11,6 +11,17 @@ export function getDomainRuleId(battleState) {
   return battleState?.domainRule;
 }
 
+export function calcResidualStatusDamage(maxHp, status, options = {}) {
+  const hp = Math.max(1, Number(maxHp) || 1);
+  if (status === 'BRN') return Math.max(1, Math.floor(hp / 16));
+  if (status !== 'PSN') return 0;
+  if (options.badlyPoisoned) {
+    const turns = Math.max(1, Number(options.badlyPoisonedTurns) || 1);
+    return Math.max(1, Math.floor(hp * Math.min(0.25, turns / 16)));
+  }
+  return Math.max(1, Math.floor(hp / 8));
+}
+
 // Fix#15: 双向藤蔓封锁
 export function shouldForestVineBlock(battleState, source) {
   const rule = getSpiritDomainRule(battleState?.domainRule);

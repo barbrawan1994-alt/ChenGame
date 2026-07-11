@@ -17,6 +17,64 @@ export function getPostMoveResolution(party = []) {
 
 const normalizeEnvironmentValue = value => String(value || '').trim().toUpperCase();
 
+export function getGrowthItemTargetLevel(level, item = {}) {
+  const currentLevel = Math.max(1, Math.min(100, Number(level) || 1));
+  if (item.stat === 'level_up') return Math.min(100, currentLevel + 1);
+  if (item.stat === 'level_max') return Math.min(100, currentLevel + 20);
+  return currentLevel;
+}
+
+export function normalizeMaxLevelProgress(pet) {
+  if (!pet || Number(pet.level) < 100) return pet;
+  if (pet.level === 100 && pet.exp === 0 && pet.nextExp === 999999) return pet;
+  return { ...pet, level: 100, exp: 0, nextExp: 999999 };
+}
+
+const isSameMove = (left, right) => Boolean(
+  left && right && (
+    (left.id != null && right.id != null && left.id === right.id)
+    || (left.name && right.name && left.name === right.name)
+  )
+);
+
+export function offerMoveToPet(pet, move) {
+  if (!pet || !move) return { pet, status: 'ignored' };
+  const moves = Array.isArray(pet.moves) ? pet.moves : [];
+  const queuedMoves = [pet.pendingLearnMove, ...(pet.pendingLearnMoves || [])].filter(Boolean);
+  if (moves.some(existing => isSameMove(existing, move)) || queuedMoves.some(existing => isSameMove(existing, move))) {
+    return { pet, status: 'duplicate' };
+  }
+
+  const learnedMove = { ...move, pp: move.maxPP || move.pp || 15 };
+  if (moves.length < 4) {
+    return { pet: { ...pet, moves: [...moves, learnedMove] }, status: 'learned' };
+  }
+  if (!pet.pendingLearnMove) {
+    return { pet: { ...pet, pendingLearnMove: learnedMove }, status: 'pending' };
+  }
+  return {
+    pet: { ...pet, pendingLearnMoves: [...(pet.pendingLearnMoves || []), learnedMove] },
+    status: 'queued',
+  };
+}
+
+export function advancePendingLearnMove(pet) {
+  if (!pet) return pet;
+  const [nextMove = null, ...remainingMoves] = pet.pendingLearnMoves || [];
+  return {
+    ...pet,
+    pendingLearnMove: nextMove,
+    pendingLearnMoves: remainingMoves,
+  };
+}
+
+export function getActiveBattleSlotIndexes(battleState = {}) {
+  const indexes = battleState.isDouble ? battleState.activeIdxs : [battleState.activeIdx];
+  return [...new Set((indexes || [])
+    .map(index => Number(index))
+    .filter(index => Number.isInteger(index) && index >= 0))];
+}
+
 export function evolutionConditionMatches(condition, pet = {}, context = {}) {
   if (!condition) return true;
 

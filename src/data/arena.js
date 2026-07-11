@@ -89,3 +89,107 @@ export function getArenaWeekTypes(date = new Date()) {
   const day = date.getDay();
   return [allowedTypes[day % allowedTypes.length], allowedTypes[(day + 3) % allowedTypes.length]];
 }
+
+export function resolveArenaResult(state, isWin, badgeCount = 0) {
+  const prev = state || DEFAULT_ARENA_STATE;
+  const rank = ARENA_RANKS.find(entry => entry.id === prev.rank) || ARENA_RANKS[0];
+  const rankIdx = ARENA_RANKS.indexOf(rank);
+  const rewards = { gold: 0, titles: [] };
+  const notices = [];
+  const next = {
+    ...prev,
+    rewardsClaimed: [...(prev.rewardsClaimed || [])],
+    wins: Math.max(0, Number(prev.wins) || 0) + (isWin ? 1 : 0),
+    losses: Math.max(0, Number(prev.losses) || 0) + (isWin ? 0 : 1),
+  };
+
+  if (!isWin) {
+    next.winStreak = 0;
+    next.stars = Math.max(0, Number(next.stars) || 0);
+    if (!rank.noDropOnLoss && next.stars > 0) next.stars -= 1;
+    return { state: next, rewards, notices, finalRankIndex: rankIdx };
+  }
+
+  next.winStreak = Math.max(0, Number(next.winStreak) || 0) + 1;
+  next.bestStreak = Math.max(Number(next.bestStreak) || 0, next.winStreak);
+  next.stars = Math.min(rank.maxStars, Math.max(0, Number(next.stars) || 0) + 1);
+
+  const streakBonus = rank.streakBonus?.[next.winStreak];
+  if (streakBonus) {
+    rewards.gold += Math.max(0, Number(streakBonus.gold) || 0);
+    if (streakBonus.title) rewards.titles.push(streakBonus.title);
+    notices.push({ type: 'streak', streak: next.winStreak, gold: Math.max(0, Number(streakBonus.gold) || 0) });
+  }
+
+  const nextRank = ARENA_RANKS[rankIdx + 1];
+  if (next.stars >= rank.maxStars && nextRank) {
+    if (badgeCount < nextRank.reqBadges) {
+      notices.push({ type: 'blocked', rank: nextRank });
+    } else {
+      next.rank = nextRank.id;
+      next.stars = 0;
+      if (nextRank.firstReward && !next.rewardsClaimed.includes(nextRank.id)) {
+        rewards.gold += Math.max(0, Number(nextRank.firstReward.gold) || 0);
+        if (nextRank.firstReward.title) rewards.titles.push(nextRank.firstReward.title);
+        next.rewardsClaimed.push(nextRank.id);
+      }
+      next.seasonBestRank = nextRank.id;
+      notices.push({ type: 'promotion', rank: nextRank });
+    }
+  }
+
+  const rankOrder = ARENA_RANKS.map(entry => entry.id);
+  if (rankOrder.indexOf(next.rank) > rankOrder.indexOf(next.seasonBestRank || 'bronze')) {
+    next.seasonBestRank = next.rank;
+  }
+  return {
+    state: next,
+    rewards: { ...rewards, titles: [...new Set(rewards.titles)] },
+    notices,
+    finalRankIndex: Math.max(0, rankOrder.indexOf(next.rank)),
+  };
+}
+
+export function resolveArenaDailyRefresh(state, today) {
+  const prev = state || DEFAULT_ARENA_STATE;
+  if (!today || prev.lastTicketDate === today) {
+    return { state: prev, seasonReward: null };
+  }
+
+  const now = new Date(`${today}T12:00:00`);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const weekNum = Math.floor(((now - startOfYear) / 86400000 + startOfYear.getDay()) / 7);
+  const ruleIdx = weekNum % ARENA_WEEKLY_RULES.length;
+  const ticketCap = ARENA_DAILY_FREE_TICKETS * 3;
+  const next = {
+    ...prev,
+    tickets: Math.min(ticketCap, Math.max(0, Number(prev.tickets) || 0) + ARENA_DAILY_FREE_TICKETS),
+    lastTicketDate: today,
+    weeklyRule: ARENA_WEEKLY_RULES[ruleIdx]?.id || 'normal',
+    lastRuleDate: today,
+  };
+  let seasonReward = null;
+
+  const seasonStartDay = Date.parse(`${prev.seasonStartDate || ''}T12:00:00Z`);
+  const todayDay = Date.parse(`${today}T12:00:00Z`);
+  if (!Number.isFinite(seasonStartDay)) {
+    next.seasonStartDate = today;
+  } else if (Number.isFinite(todayDay) && Math.floor((todayDay - seasonStartDay) / 86400000) >= 14) {
+    const bestRank = prev.seasonBestRank || prev.rank || 'bronze';
+    const reward = ARENA_SEASON_REWARDS.find(entry => entry.rank === bestRank) || null;
+    seasonReward = reward ? { ...reward, bestRank, season: Math.max(1, Number(prev.season) || 1) } : null;
+    next.season = Math.max(1, Number(prev.season) || 1) + 1;
+    next.seasonStartDate = today;
+    next.seasonBestRank = 'bronze';
+    const rankOrder = ARENA_RANKS.map(entry => entry.id);
+    const curIdx = Math.max(0, rankOrder.indexOf(prev.rank || 'bronze'));
+    next.rank = rankOrder[Math.max(0, curIdx - 2)] || 'bronze';
+    next.stars = 0;
+  }
+
+  const rankOrder = ARENA_RANKS.map(entry => entry.id);
+  if (rankOrder.indexOf(next.rank) > rankOrder.indexOf(next.seasonBestRank || 'bronze')) {
+    next.seasonBestRank = next.rank;
+  }
+  return { state: next, seasonReward };
+}

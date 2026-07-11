@@ -261,7 +261,7 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   const dailyLockCheck = donationSource.indexOf('gangActionLocksRef.current.has(lockKey)');
   const taskRefresh = donationSource.indexOf('getFreshGangDailyCounts');
   const lastPetCheck = donationSource.indexOf('currentParty.length <= 1');
-  const assignedCheck = donationSource.indexOf('const currentlyAssigned');
+  const assignedCheck = donationSource.indexOf('getAssignedPetUids().has(petToGive.uid)');
   const removePet = donationSource.indexOf('removeSinglePetByUid');
   const removalGuard = donationSource.indexOf('if (!removal.removed');
   const lockAcquire = donationSource.indexOf('gangActionLocksRef.current.add(lockKey)');
@@ -272,10 +272,8 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
     assignedCheck > lastPetCheck && removePet > assignedCheck && removalGuard > removePet &&
     lockAcquire > removalGuard && partyCommit > lockAcquire && taskProgress > partyCommit
   );
-  assert.match(donationSource, /trainingState\?\.slots/);
-  assert.match(donationSource, /expeditions\?\.teams/);
-  assert.match(donationSource, /setHousing\([\s\S]{0,180}residents/);
-  assert.match(donationSource, /delete tiers\[petToGive\.uid\]/);
+  assert.match(donationSource, /reclaimRemovedPetAssets\(\[removal\.removed\]\)/);
+  assert.match(donationSource, /clearRemovedPetLinks\(\[petToGive\.uid\]\)/);
   assert.doesNotMatch(donationSource, /prev\.filter\(p => p\.uid !== petToGive\.uid\)/);
   check(true, '精灵上交会复核最新任务和队伍状态，保护占用中的精灵，并在删除成功后原子推进任务');
 }

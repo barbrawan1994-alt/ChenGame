@@ -675,6 +675,28 @@ export const DEFAULT_NARUTO_STATE = {
   storyProgress: {},
 };
 
+export function resolveNarutoStoryStageClear(state, chapters, chapterId, stageIdx) {
+  const chapter = (chapters || []).find(entry => entry.id === chapterId);
+  const stage = chapter?.stages?.[stageIdx];
+  if (!chapter || !stage) return { state, chapter: null, stage: null, firstClear: false, totalCleared: 0 };
+  const storyProgress = { ...(state?.storyProgress || {}) };
+  const chapterProgress = { ...(storyProgress[chapterId] || { stages: [] }) };
+  const clearedStages = Array.isArray(chapterProgress.stages) ? chapterProgress.stages : [];
+  const firstClear = !clearedStages.includes(stageIdx);
+  if (firstClear) chapterProgress.stages = [...clearedStages, stageIdx].sort((a, b) => a - b);
+  if (chapterProgress.stages.length >= chapter.stages.length) chapterProgress.cleared = true;
+  storyProgress[chapterId] = chapterProgress;
+  const totalCleared = Object.values(storyProgress).filter(value => value?.cleared).length;
+  return { state: { ...(state || {}), storyProgress }, chapter, stage, firstClear, totalCleared };
+}
+
+export function getNextBijuuReward(collectedIds, bijuuList = BIJUU_LIST) {
+  const collected = new Set(collectedIds || []);
+  return [...(bijuuList || [])]
+    .sort((a, b) => (a.tails || 0) - (b.tails || 0))
+    .find(bijuu => !collected.has(bijuu.id)) || null;
+}
+
 export const NARUTO_WORLD_BOSSES = [
   {
     id: 'wb_naruto_kurama',

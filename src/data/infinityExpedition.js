@@ -129,5 +129,86 @@ export function applySkillMutation(move, mutation) {
     p: Math.floor((move.p || 40) * (mutation.powerMult || 1)),
     _mutation: mutation.id,
     _mutationDesc: mutation.desc,
+    _infinityOriginalName: move._infinityOriginalName || move.name,
   };
+}
+
+const toRunEntryId = entry => typeof entry === 'string' ? entry : entry?.id;
+
+/** Keep resumable run state JSON-safe, including saves created before run entries used IDs. */
+export function normalizeInfinityRunState(run) {
+  if (!run || typeof run !== 'object') return null;
+  const ids = list => (Array.isArray(list) ? list : []).map(toRunEntryId).filter(Boolean);
+  return {
+    ...run,
+    buffs: ids(run.buffs),
+    blessings: ids(run.blessings),
+    skillMutations: ids(run.skillMutations),
+    buffOptions: run.buffOptions == null ? null : ids(run.buffOptions),
+    tempPartnerId: Number.isFinite(Number(run.tempPartnerId)) ? Number(run.tempPartnerId) : null,
+  };
+}
+
+export function resolveInfinityRunEntries(entries, catalog) {
+  const byId = new Map((catalog || []).map(entry => [entry.id, entry]));
+  return (entries || []).map(toRunEntryId).map(id => byId.get(id)).filter(Boolean);
+}
+
+/** Build a disposable combat roster. Breathing stats and mutations must never touch saved pets. */
+export function buildInfinityBattleParty(party, run, pokedex, breathingBuffs, skillMutations) {
+  const buffDefs = resolveInfinityRunEntries(run?.buffs, breathingBuffs);
+  const mutationDefs = resolveInfinityRunEntries(run?.skillMutations, skillMutations);
+  return (party || []).map(pet => {
+    const clone = {
+      ...pet,
+      customBaseStats: pet.customBaseStats ? { ...pet.customBaseStats } : null,
+      moves: (pet.moves || []).map(move => ({ ...move })),
+    };
+    if (buffDefs.length > 0 && !clone.customBaseStats) {
+      const base = (pokedex || []).find(entry => entry.id === clone.id) || pokedex?.[0] || {};
+      clone.customBaseStats = {
+        hp: base.hp || 50,
+        p_atk: base.atk || 50,
+        p_def: base.def || 50,
+        s_atk: base.atk || 50,
+        s_def: base.def || 50,
+        spd: base.spd || 50,
+        crit: 5,
+      };
+    }
+    buffDefs.forEach(buff => {
+      if (typeof buff.effect === 'function') buff.effect(clone);
+    });
+    if (clone.customBaseStats) {
+      Object.keys(clone.customBaseStats).forEach(key => {
+        clone.customBaseStats[key] = Math.min(999, Number(clone.customBaseStats[key]) || 0);
+      });
+    }
+    mutationDefs.forEach(mutation => {
+      if (clone.moves[0]) clone.moves[0] = applySkillMutation(clone.moves[0], mutation);
+    });
+    clone._infinityBattleClone = true;
+    return clone;
+  });
+}
+
+/** Retain real progression while restoring fields that only exist inside an Infinity run. */
+export function restoreInfinityPartyAfterBattle(permanentParty, progressedParty) {
+  return (permanentParty || []).map((basePet, index) => {
+    const progressed = progressedParty?.[index] || basePet;
+    const restored = { ...progressed };
+    restored.moves = (progressed.moves || basePet.moves || []).map((move, moveIndex) => {
+      if (!move?._mutation && !move?._infinityOriginalName) return { ...move };
+      const originalName = move._infinityOriginalName;
+      const original = (basePet.moves || []).find(candidate => candidate?.name === originalName)
+        || basePet.moves?.[moveIndex];
+      if (!original) return { ...move };
+      return { ...original, pp: Number.isFinite(move.pp) ? move.pp : original.pp };
+    });
+    if (basePet.customBaseStats) restored.customBaseStats = { ...basePet.customBaseStats };
+    else delete restored.customBaseStats;
+    delete restored._infinityBattleClone;
+    delete restored._infinityTempPartner;
+    return restored;
+  });
 }
