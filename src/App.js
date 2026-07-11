@@ -25502,30 +25502,12 @@ const renderMenu = () => {
                 <span>对战</span>
                 <span>称霸四国</span>
               </div>
-              <div className="home-cover-start-panel">
-                <div>
-                  <span>下一段冒险</span>
-                  <strong>{nextObjective}</strong>
-                  <small>{hasSave ? trainingFocus : '选择初始伙伴后开启训练、图鉴与联盟路线'}</small>
-                </div>
-                <button className="home-gate-primary" type="button" onClick={handleStartGame}>
-                  <span className="home-gate-primary-icon">▶</span>
-                  <span>
-                    <strong>{hasSave ? '继续冒险' : '开始冒险'}</strong>
-                    <small>{hasSave ? '读取当前存档' : '建立第一支队伍'}</small>
-                  </span>
-                  <b>›</b>
-                </button>
-              </div>
             </figcaption>
           </figure>
 
           <button className="home-cover-main-start" type="button" onClick={handleStartGame}>
-            <span className="home-cover-main-start-icon">▶</span>
-            <span>
-              <strong>{hasSave ? '继续冒险' : '开始游戏'}</strong>
-              <small>{hasSave ? nextObjective : '登记训练师，选择第一只伙伴'}</small>
-            </span>
+            <span className="home-cover-main-start-icon" aria-hidden="true">▶</span>
+            <strong>开始游戏</strong>
           </button>
 
           <div className="home-gate-lead-strip">

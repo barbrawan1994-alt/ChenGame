@@ -378,7 +378,7 @@ textarea {
   text-transform: uppercase;
 }
 
-.spirit-app :where(.home-gate-primary, .home-cover-main-start) {
+.spirit-app .home-cover-main-start {
   color: var(--sp-white) !important;
   background: linear-gradient(180deg, var(--sp-coral-400), var(--sp-coral-700)) !important;
   border: 3px solid var(--sp-paper) !important;
@@ -2196,7 +2196,6 @@ textarea {
     padding-right: 10px !important;
   }
 
-  .spirit-app .home-gate-primary,
   .spirit-app .home-cover-main-start {
     min-height: 48px;
   }
@@ -2228,7 +2227,7 @@ textarea {
   opacity: 1 !important;
 }
 
-.spirit-app :where(.home-gate-primary, .home-cover-main-start) :where(strong, small, span),
+.spirit-app .home-cover-main-start :where(strong, span),
 .spirit-app :where(.home-gate-entry, .home-cover-system) :where(strong, small, span) {
   color: inherit !important;
   opacity: 1 !important;
