@@ -1,4 +1,5 @@
 const hasUsableUid = uid => uid !== undefined && uid !== null && uid !== '';
+const getUidKey = uid => String(uid);
 
 const createLegacyPetUid = (pet, index, attempt = 0) => {
   const species = String(pet?.id ?? 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -15,18 +16,19 @@ export const ensureUniquePetUids = (pets, uidFactory = createLegacyPetUid) => {
   const seen = new Set();
   return pets.map((pet, index) => {
     if (!pet || typeof pet !== 'object') return pet;
-    if (hasUsableUid(pet.uid) && !seen.has(pet.uid)) {
-      seen.add(pet.uid);
+    const existingKey = hasUsableUid(pet.uid) ? getUidKey(pet.uid) : null;
+    if (existingKey !== null && !seen.has(existingKey)) {
+      seen.add(existingKey);
       return pet;
     }
 
     let attempt = 0;
     let uid = uidFactory(pet, index, attempt);
-    while (!hasUsableUid(uid) || seen.has(uid)) {
+    while (!hasUsableUid(uid) || seen.has(getUidKey(uid))) {
       attempt += 1;
       uid = uidFactory(pet, index, attempt);
     }
-    seen.add(uid);
+    seen.add(getUidKey(uid));
     return { ...pet, uid };
   });
 };
@@ -42,4 +44,29 @@ export const removeSinglePetByUid = (pets, uid) => {
     pets: [...pets.slice(0, index), ...pets.slice(index + 1)],
     removed: pets[index],
   };
+};
+
+export const removePetsByUids = (pets, uids) => {
+  const source = Array.isArray(pets) ? pets : [];
+  const uidSet = new Set((uids || []).filter(hasUsableUid));
+  if (uidSet.size === 0) return { pets: source, removed: [] };
+  const removed = [];
+  const remaining = source.filter(pet => {
+    if (!uidSet.has(pet?.uid)) return true;
+    removed.push(pet);
+    return false;
+  });
+  return { pets: remaining, removed };
+};
+
+export const calculatePetReleaseGold = (pet, options = {}) => {
+  if (!pet) return 0;
+  const legendaryIds = options.legendaryIds || [];
+  const highTierIds = options.highTierIds || [];
+  const level = Math.max(1, Math.min(100, Number(pet.level) || 1));
+  const shinyMultiplier = pet.isShiny || pet.isFusedShiny ? 2 : 1;
+  const rarityMultiplier = legendaryIds.includes(pet.id)
+    ? 3
+    : highTierIds.includes(pet.id) ? 1.5 : 1;
+  return Math.min(5000, Math.floor((level * 30 + 100) * shinyMultiplier * rarityMultiplier));
 };

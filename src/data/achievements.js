@@ -672,6 +672,7 @@ export const DEFAULT_ACH_STATS = {
   fullRockTeam: 0,
   maxDodgesInBattle: 0,
   worldTourComplete: 0,
+  mapCaughtSpecies: {},
   petsAwakened: 0,
   bondingCompleted: 0,
   ecoCrisesCleared: 0,

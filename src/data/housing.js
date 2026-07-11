@@ -350,7 +350,7 @@ export const calcResidentBenefits = (placedFurniture) => {
     }
   }
   hpRegen = Math.floor(hpRegen * hpRegenMult);
-  expBonus = Math.floor(expBonus * expMult);
+  expBonus *= expMult;
   intimacyBonus = Math.floor(intimacyBonus * intimacyMult);
   return { hpRegen, expBonus, intimacyBonus, ceRegen, allStats, ceMaxBonus };
 };

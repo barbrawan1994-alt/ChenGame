@@ -175,7 +175,7 @@ export default React.memo(function GuideScreen({ onBack }) {
             type="search"
             value={query}
             onChange={event => setQuery(event.target.value)}
-            placeholder="搜索进化、捕虫、存档……"
+            placeholder="搜索国战、门派、觉醒……"
             aria-label="搜索游戏说明"
           />
           {query && (
@@ -226,8 +226,8 @@ export default React.memo(function GuideScreen({ onBack }) {
               <section className="gd-hero">
                 <div className="gd-hero-copy">
                   <span className="gd-eyebrow">第一次玩？从这里开始</span>
-                  <h2>先追感叹号，再养一支能互相补位的队伍。</h2>
-                  <p>主线目标、捕捉、技能、进化、活动和存档都整理成了可执行步骤。遇到问题时，直接使用顶部搜索或下方快速排障。</p>
+                  <h2>先追感叹号，再逐步打开完整的冒险体系。</h2>
+                  <p>从捕捉培养、对战副本，到门派帮派、家园婚姻、忍术咒术、果实国战与生态事件，所有已接入系统都按入口、规则、消耗、奖励和解锁条件整理。遇到问题时，直接使用顶部搜索或下方快速排障。</p>
                   <button type="button" onClick={() => goToSection('start', 'core-loop')}>阅读核心玩法 <span>→</span></button>
                 </div>
                 <div className="gd-hero-emblem" aria-hidden="true">

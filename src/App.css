@@ -13603,6 +13603,11 @@ select:focus-visible,
   text-overflow: ellipsis;
 }
 
+.global-message-dialog {
+  background: #0b2f47 !important;
+  border-color: #f2b84b !important;
+}
+
 .home-gate-orbit {
   position: absolute;
   width: min(340px, 86%);
@@ -14439,10 +14444,11 @@ select:focus-visible,
 
 @media (max-width: 1180px) {
   .home-gate-screen {
-    height: auto;
+    height: 100dvh;
     min-height: 100dvh;
     overflow-y: auto;
     align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .home-gate-shell {
@@ -14550,6 +14556,14 @@ select:focus-visible,
 
   .home-gate-team {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home-gate-lead-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-gate-lead-mini > div:last-child {
+    min-width: 0;
   }
 
   .home-gate-entry-grid {
