@@ -183,8 +183,16 @@ check('敌方战斗HUD完整显示军团名，不再使用省略号截断', () =
   const enemyHud = app.slice(hudStart, hudEnd);
   assert.ok(enemyHud.includes('data-testid="enemy-owner-name"'));
   assert.ok(enemyHud.includes('data-testid="enemy-pet-name"'));
+  assert.ok(enemyHud.includes('data-testid="enemy-level"'));
+  assert.ok(enemyHud.includes("renderSectBadge(e, 'enemy')"));
+  assert.ok(enemyHud.includes("renderTraitBadge(e, 'enemy')"));
+  assert.ok(enemyHud.includes("renderBattleFruitBadge(e, 'enemy')"));
+  assert.ok(enemyHud.includes("renderBattleGeneralsBadge(battle.enemyGenerals, 'enemy')"));
+  assert.ok(enemyHud.includes('data-testid="enemy-gang-badge"'));
+  assert.ok(enemyHud.includes('renderBattleStageRow(e, 0, false)'));
   assert.equal(enemyHud.includes("textOverflow:'ellipsis'"), false);
   assert.equal(enemyHud.includes("maxWidth:'160px'"), false);
+  assert.equal((app.match(/className="battle-level-badge"/g) || []).length, 4);
 });
 
 check('钓鱼和捕虫多候选池不会连续返回上一物种', () => {

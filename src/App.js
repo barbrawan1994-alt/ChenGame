@@ -32727,7 +32727,7 @@ const renderMenu = () => {
     const domainRuleInfo = battle.domainRule ? getSpiritDomainRule(battle.domainRule) : null;
     const enemyOwnerName = battle.trainerName || ((battle.isTrainer || battle.isGym || battle.isChallenge || battle.isBoss || battle.isStory) ? '对手训练家' : '');
 
-    const renderBattleStageRow = (pet, slotInParty) => {
+    const renderBattleStageRow = (pet, slotInParty, showPetDetails = true) => {
       if (!pet) return null;
       const st = pet.stages || {};
       const keys = ['p_atk', 'p_def', 's_atk', 's_def', 'spd', 'acc', 'eva', 'crit'];
@@ -32743,14 +32743,14 @@ const renderMenu = () => {
       const pi = typeof slotInParty === 'number' ? (isDoubleBattle ? battle.activeIdxs?.[slotInParty] : battle.activeIdx) : battle.activeIdx;
       const partyPet = typeof pi === 'number' && pi >= 0 ? party[pi] : null;
       return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+        <div data-testid={!showPetDetails ? `enemy-stage-row${slotInParty > 0 ? '-secondary' : ''}` : undefined} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
           {chips.length > 0 && (
             <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ fontSize: '8px', color: '#888' }}>能力</span>
               {chips}
             </div>
           )}
-          {partyPet && (
+          {showPetDetails && partyPet && (
             <button type="button" onClick={() => setViewStatPet(partyPet)} style={{ fontSize: '9px', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(33,150,243,0.45)', background: 'rgba(33,150,243,0.08)', color: '#1565C0', cursor: 'pointer', fontWeight: 700 }}>
               详情
             </button>
@@ -32792,7 +32792,7 @@ const renderMenu = () => {
       const totalBonus = calcGeneralsTotalBonus(generals);
       const bgColor = isPlayer ? 'rgba(76,175,80,0.85)' : 'rgba(255,143,0,0.85)';
       return (
-        <span onClick={(ev) => { ev.stopPropagation(); setBattleGeneralDetail({ generals, side, totalBonus }); }}
+        <span data-testid={`${side}-generals-badge`} onClick={(ev) => { ev.stopPropagation(); setBattleGeneralDetail({ generals, side, totalBonus }); }}
           style={{
             display:'inline-flex', alignItems:'center', gap:'3px',
             background: bgColor, color:'#fff', fontSize:'9px', padding:'1px 6px',
@@ -32848,17 +32848,53 @@ const renderMenu = () => {
         return badges;
     };
 
+    const renderTraitBadge = (pet, side, slot = 0) => {
+        const trait = TRAIT_DB[pet?.trait];
+        if (!trait) return null;
+        const suffix = slot > 0 ? '-secondary' : '';
+        return (
+          <span
+            data-testid={`${side}-trait-badge${suffix}`}
+            title={trait.desc || trait.name}
+            style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background:'rgba(79,70,229,0.22)', color:'#c7d2fe', border:'1px solid rgba(165,180,252,0.38)', fontWeight:'800', whiteSpace:'normal', overflowWrap:'anywhere'}}
+          >
+            特性·{trait.name}
+          </span>
+        );
+    };
+
+    const renderBattleFruitBadge = (pet, side, slot = 0) => {
+        if (!pet?.devilFruit) return null;
+        const fruit = getFruitById(pet.devilFruit);
+        if (!fruit) return null;
+        const suffix = slot > 0 ? '-secondary' : '';
+        return (
+          <span
+            className="fruit-badge"
+            data-testid={`${side}-fruit-badge${suffix}`}
+            title={fruit.desc || fruit.name}
+            onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(fruit); }}
+            style={{background: FRUIT_RARITY_CONFIG[fruit.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'4px', fontWeight:'bold', whiteSpace:'normal', overflowWrap:'anywhere', cursor:'pointer'}}
+          >
+            {fruit.name}{pet.fruitTransformed ? ` (${pet.fruitTurnsLeft})` : ''}
+          </span>
+        );
+    };
+
     // 🔥 门派徽章渲染函数 (胶囊样式 + 点击弹出详情)
-    const renderSectBadge = (pet, side) => {
+    const renderSectBadge = (pet, side, slot = 0) => {
         if (!pet.sectId) return null;
         const s = SECT_DB[pet.sectId];
         if (!s) return null;
         const lv = pet.sectLevel || 1; 
         const effectText = s.effect ? s.effect(lv) : s.desc;
-        const tooltipKey = `${side}_sect`;
+        const tooltipKey = `${side}_${slot}_sect`;
+        const suffix = slot > 0 ? '-secondary' : '';
 
         return (
             <div 
+                data-testid={`${side}-sect-badge${suffix}`}
+                title={`查看${s.name}心法详情`}
                 style={{position: 'relative', display: 'inline-block', marginLeft: '4px', cursor: 'pointer', zIndex: 20}}
                 onClick={(e) => { e.stopPropagation(); setBattleTooltip(prev => prev === tooltipKey ? null : tooltipKey); }}
             >
@@ -32879,10 +32915,11 @@ const renderMenu = () => {
 
     const renderSectTooltipOverlay = () => {
         if (!battleTooltip || !battleTooltip.endsWith('_sect')) return null;
-        const side = battleTooltip.replace('_sect', '');
+        const [side, slotText] = battleTooltip.replace('_sect', '').split('_');
+        const slot = Number(slotText) || 0;
         const pet = side === 'player' 
-            ? battle.playerCombatStates?.[battle.isDouble ? battle.activeIdxs?.[0] : battle.activeIdx]
-            : battle.enemyParty?.[battle.isDouble ? battle.enemyActiveIdxs?.[0] : battle.enemyActiveIdx];
+            ? battle.playerCombatStates?.[battle.isDouble ? battle.activeIdxs?.[slot] : battle.activeIdx]
+            : battle.enemyParty?.[battle.isDouble ? battle.enemyActiveIdxs?.[slot] : battle.enemyActiveIdx];
         if (!pet || !pet.sectId) return null;
         const s = SECT_DB[pet.sectId];
         if (!s) return null;
@@ -33648,7 +33685,7 @@ const renderMenu = () => {
                         )}
                         <div className="battle-enemy-meta">
                             <span className="battle-enemy-pet-name" data-testid="enemy-pet-name">{e.name}</span>
-                            <span style={{fontSize:'11px', color:'#555', flexShrink:0}}>Lv.{e.level}</span>
+                            <span className="battle-level-badge" data-testid="enemy-level">Lv.{e.level}</span>
                             {!isDarkMoon && (
                               <>
                                 <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e.type]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e.type]?.name || e.type}</span>
@@ -33658,10 +33695,20 @@ const renderMenu = () => {
                             {isDarkMoon && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background:'#333', color:'#aaa', fontWeight:'bold'}}>???</span>}
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'3px', flexWrap:'wrap', marginBottom:'3px'}}>
+                            {renderSectBadge(e, 'enemy')}
+                            {renderTraitBadge(e, 'enemy')}
+                            {battle.trainerGang && (
+                              <span data-testid="enemy-gang-badge" onClick={(ev) => { ev.stopPropagation(); setBattleGangDetail({name: battle.trainerGang.name, icon: battle.trainerGang.icon, bonus: battle.trainerGangBonus, side:'enemy'}); }} style={{display:'inline-flex', alignItems:'center', gap:'2px', background:'rgba(220,38,38,0.72)', color:'#fff', fontSize:'9px', padding:'1px 6px', borderRadius:'4px', fontWeight:'bold', whiteSpace:'normal', cursor:'pointer'}}>
+                                {battle.trainerGang.icon}{battle.trainerGang.name}
+                              </span>
+                            )}
+                            {renderBattleGeneralsBadge(battle.enemyGenerals, 'enemy')}
+                            {renderBattleFruitBadge(e, 'enemy')}
                             {!isDarkMoon && (() => { const weakTypes = Object.keys(TYPES || {}).filter(t => { let mod = getTypeMod(t, e.type); if (e.secondaryType && e.secondaryType !== e.type) mod *= getTypeMod(t, e.secondaryType); return mod >= 1.5; }); return weakTypes.length > 0 ? <span style={{fontSize:'8px',padding:'1px 4px',borderRadius:'4px',background:'rgba(244,67,54,0.15)',color:'#EF5350',fontWeight:'700'}}>弱:{weakTypes.slice(0,2).map(t => TYPES[t]?.name || t).join('/')}</span> : null; })()}
                             {(e.isFusedShiny || e.isShiny) && <span style={{fontSize:'7px', padding:'1px 4px', borderRadius:'4px', background: e.isFusedShiny ? '#7B1FA2' : '#FF8F00', color:'#fff', fontWeight:'bold'}}>{e.isFusedShiny ? '🧬异色' : '✨闪光'}</span>}
                             {renderStatusBadges(e)}
                         </div>
+                        {renderBattleStageRow(e, 0, false)}
                         <EnhancedHPBar current={e.currentHp} max={eStats.maxHp} label="" />
                         <div style={{fontSize:'9px', color:'#888', textAlign:'right', marginTop:'1px'}}>
                           {isDarkMoon && battle._darkMoonScouted !== true ? 'HP ???' : `HP ${Math.max(0, Math.floor(e.currentHp))}/${eStats.maxHp} (${Math.min(100, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100))}%)`}
@@ -33774,7 +33821,7 @@ const renderMenu = () => {
                       )}
                       <div className="battle-enemy-meta">
                         <span className="battle-enemy-pet-name" data-testid="enemy-pet-name-secondary">{e2.name} {e2.currentHp <= 0 ? '💀' : ''}</span>
-                        <span style={{fontSize:'11px', fontStyle:'italic', marginLeft:'6px', flexShrink:0, color:'#555'}}>Lv.{e2.level}</span>
+                        <span className="battle-level-badge">Lv.{e2.level}</span>
                         {!isDarkMoon && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e2.type]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e2.type]?.name || e2.type}</span>}
                         {!isDarkMoon && e2.secondaryType && e2.secondaryType !== e2.type && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[e2.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[e2.secondaryType]?.name}</span>}
                       </div>
@@ -33784,14 +33831,12 @@ const renderMenu = () => {
                         ) : e2.isShiny ? (
                           <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
                         ) : null}
-                        {renderSectBadge(e2, 'enemy')}
+                        {renderSectBadge(e2, 'enemy', 1)}
+                        {renderTraitBadge(e2, 'enemy', 1)}
                         {renderStatusBadges(e2)}
-                        {e2.devilFruit && (() => { const df = getFruitById(e2.devilFruit); return df ? (
-                          <span style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
-                            {df.name}{e2.fruitTransformed ? ` (${e2.fruitTurnsLeft})` : ''}
-                          </span>
-                        ) : null; })()}
+                        {renderBattleFruitBadge(e2, 'enemy', 1)}
                       </div>
+                      {renderBattleStageRow(e2, 1, false)}
                       <EnhancedHPBar current={e2.currentHp} max={e2Stats.maxHp} label="" />
                       <div style={{fontSize:'10px', color:'#666', textAlign:'right', marginTop:'2px'}}>
                         HP {Math.max(0, Math.floor(e2.currentHp)).toLocaleString()}/{e2Stats.maxHp.toLocaleString()} ({Math.min(100, Math.round((e2.currentHp / Math.max(1, e2Stats.maxHp)) * 100))}%)
@@ -33892,15 +33937,18 @@ const renderMenu = () => {
                               {isDoubleBattle && battle.doubleSlot === 0 && battle.phase === 'input' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
                               {p.name}
                             </span>
-                            <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{p.level}</span>
+                            <span className="battle-level-badge" data-testid="player-level">Lv.{p.level}</span>
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px'}}>
+                            <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[p.type]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[p.type]?.name || p.type}</span>
+                            {p.secondaryType && p.secondaryType !== p.type && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[p.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[p.secondaryType]?.name}</span>}
                             {p.isFusedShiny ? (
                               <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
                             ) : p.isShiny ? (
                               <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
                             ) : null}
                             {renderSectBadge(p, 'player')}
+                            {renderTraitBadge(p, 'player')}
                             {gang?.gangId && (() => {
                               const gi = getGangInfo();
                               return gi ? (
@@ -33911,11 +33959,7 @@ const renderMenu = () => {
                             })()}
                             {renderBattleGeneralsBadge(battle.playerGenerals, 'player')}
                             {renderStatusBadges(p)}
-                            {p.devilFruit && (() => { const df = getFruitById(p.devilFruit); return df ? (
-                              <span className="fruit-badge" onClick={(ev) => { ev.stopPropagation(); setBattleFruitDetail(df); }} style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', cursor:'pointer'}}>
-                                {df.name}{p.fruitTransformed ? ` (${p.fruitTurnsLeft})` : ''}
-                              </span>
-                            ) : null; })()}
+                            {renderBattleFruitBadge(p, 'player')}
                         </div>
                         {renderBattleStageRow(p, 0)}
 
@@ -33983,21 +34027,20 @@ const renderMenu = () => {
                           {battle.doubleSlot === 1 && battle.phase === 'double_input_2' && <span style={{color:'#FF9800', marginRight:'3px'}}>▶</span>}
                           {p2.name}
                         </span>
-                        <span style={{fontSize:'13px', fontStyle:'italic', marginLeft:'8px', flexShrink:0, color:'#555'}}>Lv.{p2.level}</span>
+                        <span className="battle-level-badge">Lv.{p2.level}</span>
                       </div>
                       <div style={{display:'flex', alignItems:'center', gap:'4px', flexWrap:'wrap', marginBottom:'4px'}}>
+                        <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[p2.type]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[p2.type]?.name || p2.type}</span>
+                        {p2.secondaryType && p2.secondaryType !== p2.type && <span style={{fontSize:'8px', padding:'1px 4px', borderRadius:'4px', background: TYPES[p2.secondaryType]?.color || '#888', color:'#fff', fontWeight:'bold'}}>{TYPES[p2.secondaryType]?.name}</span>}
                         {p2.isFusedShiny ? (
                           <span style={{background:'linear-gradient(135deg,#D500F9,#7B1FA2)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>🧬异色</span>
                         ) : p2.isShiny ? (
                           <span style={{background:'linear-gradient(135deg,#FFD700,#FF6F00)', color:'#fff', fontSize:'8px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap', animation:'shiny-flash 2s infinite'}}>✨闪光</span>
                         ) : null}
-                        {renderSectBadge(p2, 'player')}
+                        {renderSectBadge(p2, 'player', 1)}
+                        {renderTraitBadge(p2, 'player', 1)}
                         {renderStatusBadges(p2)}
-                        {p2.devilFruit && (() => { const df = getFruitById(p2.devilFruit); return df ? (
-                          <span style={{background: FRUIT_RARITY_CONFIG[df.rarity]?.color || '#666', color:'#fff', fontSize:'9px', padding:'1px 5px', borderRadius:'8px', fontWeight:'bold', whiteSpace:'nowrap'}}>
-                            {df.name}{p2.fruitTransformed ? ` (${p2.fruitTurnsLeft})` : ''}
-                          </span>
-                        ) : null; })()}
+                        {renderBattleFruitBadge(p2, 'player', 1)}
                       </div>
                       {renderBattleStageRow(p2, 1)}
                       <EnhancedHPBar current={p2.currentHp} max={p2Stats.maxHp} label="" />

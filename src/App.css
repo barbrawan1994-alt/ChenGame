@@ -12364,6 +12364,19 @@ select:focus-visible,
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
+.battle-level-badge {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid rgba(255,255,255,0.36);
+  border-radius: 4px;
+  background: rgba(15,23,42,0.9);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 850;
+  font-style: normal;
+  line-height: 1.25;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.7);
+}
 .hud-card:hover {
   opacity: 0.55;
 }
