@@ -342,6 +342,30 @@ check('章节最后任务完成后将道馆设为当前主线目标', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(gym)), { kind: 'gym', name: '挑战道馆馆主', x: 28, y: 18 });
 });
 
+check('剧情战败保留任务标记，脚本必败则正常推进', () => {
+  const task = { step: 3, type: 'battle', x: 12, y: 7 };
+  const ordinaryDefeat = progression.resolveStoryBattleOutcome(task, { storyTaskStep: 3, storyTaskX: 12, storyTaskY: 7 }, false);
+  assert.equal(ordinaryDefeat.retry, true);
+  assert.equal(ordinaryDefeat.advance, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(ordinaryDefeat.marker)), { x: 12, y: 7 });
+
+  const scriptedDefeat = progression.resolveStoryBattleOutcome({ ...task, mustLose: true }, {}, false);
+  assert.equal(scriptedDefeat.scriptedDefeat, true);
+  assert.equal(scriptedDefeat.advance, true);
+  assert.equal(scriptedDefeat.nextStep, 4);
+
+  const victory = progression.resolveStoryBattleOutcome(task, {}, true);
+  assert.equal(victory.advance, true);
+  assert.equal(victory.retry, false);
+
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const taskTile = app.slice(app.indexOf('// 4. 剧情任务点'), app.indexOf('// 家具拾取点'));
+  assert.ok(taskTile.includes("if (task.type !== 'battle')"));
+  const defeatFlow = app.slice(app.indexOf('const handleDefeat ='), app.indexOf('// ==========================================', app.indexOf('const handleDefeat =')));
+  assert.ok(defeatFlow.includes("battleType === 'story_task' || battleType === 'story_mid'"));
+  assert.ok(defeatFlow.includes('g[marker.y][marker.x] = storyDefeatResolution.advance ? 2 : 99'));
+});
+
 check('捕虫击倒分支不发奖励，捕获成功只奖励真实捕获对象一次', () => {
   const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
   const koStart = app.indexOf("if (battleSnapshot.type === 'contest_bug')");

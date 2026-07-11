@@ -236,7 +236,7 @@ export const syncContestedTerritoryOwners = (contestProgress, territories) => {
     const t = terr[mid];
     if (!t) continue;
     const owner = resolveContestedMapOwner(prog, t.owner, mid);
-    terr[mid] = { ...t, owner };
+    terr[mid] = { ...t, owner, qunLordId: owner === 'qun' ? (t.qunLordId || 'han_court') : null };
   }
   return terr;
 };
@@ -440,6 +440,68 @@ export const runKwSiegeBattle = ({
     riskLabel: preview.riskLabel,
     counter: preview.counter,
   };
+};
+
+/**
+ * 名城攻城的单一结算入口。任何异常输入都返回 reason，不向调用方泄露半完成状态。
+ */
+export const settleContestSiegeAttempt = ({
+  kw,
+  mapId,
+  allocation,
+  siegeResult,
+  dateKey,
+  maxDailyAttempts = 3,
+  contributionGain = 0,
+  tokenGain = 0,
+}) => {
+  const id = Number(mapId);
+  if (!kw || typeof kw !== 'object') return { ok: false, reason: '国战状态不存在' };
+  if (!CONTESTED_SIEGE_MAP_IDS.includes(id)) return { ok: false, reason: '该目标不是可争夺名城' };
+  if (!['wei', 'shu', 'wu', 'jin'].includes(kw.faction)) return { ok: false, reason: '尚未加入可参战国家' };
+  if (!dateKey || typeof dateKey !== 'string') return { ok: false, reason: '攻城日期无效' };
+  if (!siegeResult || typeof siegeResult.victory !== 'boolean') return { ok: false, reason: '攻城推演没有返回有效结果' };
+
+  const deploy = sumAlloc(normalizeAllocation(allocation));
+  if (deploy < CONTEST_SIEGE_MIN_DEPLOY) return { ok: false, reason: `出征兵力不得少于 ${CONTEST_SIEGE_MIN_DEPLOY}` };
+  const reserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Math.floor(Number(kw.kwManpowerReserve) || 0)));
+  if (deploy > reserve) return { ok: false, reason: `预备兵仅 ${reserve}，不足以结算本次出征` };
+
+  const contestProgress = kw.contestProgress && typeof kw.contestProgress === 'object' && !Array.isArray(kw.contestProgress)
+    ? { ...kw.contestProgress }
+    : {};
+  const attemptKey = `${id}_attempts_${dateKey}`;
+  const attempts = Math.max(0, Math.floor(Number(contestProgress[attemptKey]) || 0));
+  if (attempts >= maxDailyAttempts) return { ok: false, reason: `今日攻城次数已用完（每日 ${maxDailyAttempts} 次）` };
+
+  contestProgress[attemptKey] = attempts + 1;
+  const progress = getContestMapProgress(contestProgress, id);
+  const occupationGain = siegeResult.victory
+    ? clamp(Math.floor(Number(siegeResult.occupationGain) || 0), 0, CONTEST_MAX_OCCUPATION_GAIN)
+    : 0;
+  progress[kw.faction] = Math.max(0, (Number(progress[kw.faction]) || 0) + occupationGain);
+  contestProgress[id] = progress;
+
+  const manpowerLost = Math.min(reserve, clamp(Math.floor(Number(siegeResult.manpowerLost) || 0), 0, deploy));
+  const nextReserve = Math.max(0, reserve - manpowerLost);
+  const safeContribution = Math.max(0, Math.floor(Number(contributionGain) || 0));
+  const safeTokens = Math.max(0, Math.floor(Number(tokenGain) || 0));
+  const territories = syncContestedTerritoryOwners(contestProgress, kw.territories || {});
+  const nextKw = {
+    ...kw,
+    contestProgress,
+    territories,
+    kwManpowerReserve: nextReserve,
+    eliteTroops: Math.min(nextReserve, Math.max(0, Math.floor(Number(kw.eliteTroops) || 0))),
+    warContribution: Math.max(0, Math.floor(Number(kw.warContribution) || 0)) + safeContribution,
+    seasonContribution: Math.max(0, Math.floor(Number(kw.seasonContribution) || 0)) + safeContribution,
+    lifetimeContribution: Math.max(0, Math.floor(Number(kw.lifetimeContribution) || 0)) + safeContribution,
+    factionTokens: Math.max(0, Math.floor(Number(kw.factionTokens) || 0)) + safeTokens,
+    attackBuff: false,
+    actionCounter: Math.max(0, Math.floor(Number(kw.actionCounter) || 0)) + 1,
+    currentTurn: Math.max(0, Math.floor(Number(kw.currentTurn) || 0)) + 1,
+  };
+  return { ok: true, kw: nextKw, occupationGain, manpowerLost, attempt: attempts + 1 };
 };
 
 // ==========================================

@@ -4,6 +4,19 @@
 
 import { SANGUO_GENERALS } from './generals';
 import { MANPOWER_RESERVE_CAP } from './kingdomConstants';
+import {
+  advanceKingdomPolitics,
+  canFactionAttack,
+  createDefaultKingdomPolitics,
+  getDiplomaticTargetModifier,
+  getFactionGeneralPower,
+  getQunLordSummaries,
+  migrateKingdomPolitics,
+  QUN_LORDS,
+  recordQunLordBattle,
+  resetKingdomPoliticsForSeason,
+  selectQunLordForAction,
+} from './kingdomPolitics';
 
 export const FACTIONS = {
   wei: {
@@ -73,6 +86,16 @@ export const WAR_MAP_IDS = [
   204, 205, 206,
   301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314,
 ];
+
+const INITIAL_QUN_MAP_IDS = WAR_MAP_IDS.filter(mapId => INITIAL_TERRITORIES[mapId] === 'qun');
+const getInitialQunLordId = (mapId) => {
+  const index = Math.max(0, INITIAL_QUN_MAP_IDS.indexOf(Number(mapId)));
+  return QUN_LORDS[index % QUN_LORDS.length]?.id || QUN_LORDS[0]?.id || 'han_court';
+};
+const isQunLordId = value => QUN_LORDS.some(lord => lord.id === value);
+const getQunLordTerritoryCount = (lordId, territories) => Object.values(territories || {}).filter(territory => (
+  territory?.owner === 'qun' && territory.qunLordId === lordId
+)).length;
 
 /** 地图相邻关系（影响补给线加成，双向对称） */
 const _adj_raw = {
@@ -362,8 +385,8 @@ export const WAR_TICK_CONFIG = {
   playerKillAttackBonus: 4,
   /** 名城(洛阳/荆州/汉中)不在自动 War Tick 中被 AI 易主，仅由「争夺条 + 攻城」结算同步 */
   aiAggressionBonus: 1.12,
-  /** 每个后台 Tick 仅推进部分非玩家势力，避免与玩家行动联动叠加成高频围攻。 */
-  aiActionsPerTick: 1,
+  /** 每个战略 Tick 推进两国行动；玩家所属国家也由本国军府自主行动。 */
+  aiActionsPerTick: 2,
   /** 同一 Tick 内每个有主阵营最多承受一次进攻，防止离线结算被连续集火。 */
   maxAttacksPerDefenderPerTick: 1,
 };
@@ -404,6 +427,8 @@ export const DEFAULT_KINGDOM_WAR = {
   currentTurn: 0,
   /** AI各方预备兵力 */
   factionManpower: { wei: 400, shu: 400, wu: 400, jin: 400, qun: 300 },
+  /** 全 375 名将领、外交关系、盟约和计谋状态。 */
+  politics: createDefaultKingdomPolitics(SANGUO_GENERALS),
   /** 加入阵营时间（叛国冷却） */
   factionJoinDate: null,
   /** 叛国次数 */
@@ -427,6 +452,7 @@ export const initTerritories = () => {
     const baseTroops = owner === 'neutral' ? 120 : isHighTier ? 100 : 80;
     territories[mapId] = {
       owner,
+      qunLordId: owner === 'qun' ? getInitialQunLordId(mapId) : null,
       strength: isContested ? 80 : baseStrength,
       garrison: generateGarrison(owner === 'neutral' ? 'qun' : owner, baseTroops),
       guards: assignTerritoryGuards(owner === 'neutral' ? 'qun' : owner, isContested ? 80 : baseStrength),
@@ -441,12 +467,14 @@ export const initTerritories = () => {
 };
 
 // 计算阵营国力
-export const calcFactionPower = (factionId, territories, gangPresets, playerFaction, playerAvgLevel, sectBonus = 0) => {
+export const calcFactionPower = (factionId, territories, gangPresets, playerFaction, playerAvgLevel, sectBonus = 0, politics = null, qunLordId = null) => {
   const gangPower = gangPresets
     .filter(g => g.faction === factionId)
     .reduce((sum, g) => sum + (g.power || 0), 0);
 
-  const territoryCount = Object.values(territories).filter(t => t.owner === factionId).length;
+  const territoryCount = factionId === 'qun' && qunLordId
+    ? getQunLordTerritoryCount(qunLordId, territories)
+    : Object.values(territories).filter(t => t.owner === factionId).length;
   const territoryBonus = territoryCount * 200;
 
   let playerBonus = 0;
@@ -454,7 +482,14 @@ export const calcFactionPower = (factionId, territories, gangPresets, playerFact
     playerBonus = 1000 + (playerAvgLevel || 50) * 20 + (sectBonus || 0);
   }
 
-  return gangPower + territoryBonus + playerBonus;
+  const generalPower = politics
+    ? (factionId === 'qun' && qunLordId
+      ? (getQunLordSummaries(politics, SANGUO_GENERALS).find(lord => lord.id === qunLordId)?.readiness || 0)
+      : getFactionGeneralPower(politics, SANGUO_GENERALS, factionId))
+    : 0;
+  // 群雄没有统一国库，只获得有限的诸侯联军基础组织力；不能再把所有诸侯战力相加。
+  const organizationPower = factionId === 'qun' ? 4600 : 0;
+  return gangPower + territoryBonus + playerBonus + generalPower + organizationPower;
 };
 
 // 获取阵营领土数
@@ -949,7 +984,7 @@ export const evaluateTerritoryAssault = ({
   };
 };
 
-const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
+const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction, politics = null, territoryCounts = {}) => {
   const t = territories?.[mapId];
   if (!t || t.owner === attackerFid || CONTESTED_MAP_IDS.includes(Number(mapId))) return -Infinity;
   const defender = t.owner || 'neutral';
@@ -968,11 +1003,12 @@ const scoreAiWarTarget = (attackerFid, mapId, territories, weakestFaction) => {
     ? (t.attackerFaction === attackerFid ? 280 + (Number(t.attackProgress) || 0) * 2 : -140)
     : 0;
   const noise = Math.random() * 14;
-  return vulnerability + strategicValue + supplyScore + underdogIntent + overextendPenalty + ongoingSiege + noise;
+  const diplomaticIntent = getDiplomaticTargetModifier(politics, attackerFid, defender, territoryCounts);
+  return vulnerability + strategicValue + supplyScore + underdogIntent + overextendPenalty + ongoingSiege + diplomaticIntent + noise;
 };
 
 // 执行一次 War Tick — 五方势力（魏蜀吴晋+群雄NPC）都参与攻城
-export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, sectBonus = 0) => {
+export const executeWarTick = (territories, gangPresets, playerFaction, playerAvgLevel, sectBonus = 0, strategic = {}) => {
   const newTerritories = JSON.parse(JSON.stringify(territories || {}));
   const log = [];
   const cfg = WAR_TICK_CONFIG;
@@ -983,6 +1019,16 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     newTerritories[mapId] = normalizeKingdomTerritory(newTerritories[mapId], mapId);
   }
   const weakest = getWeakestFaction(newTerritories);
+  const territoryCounts = Object.fromEntries(ALL_FACTION_IDS.map(fid => [fid, getFactionTerritoryCount(fid, newTerritories)]));
+  const politicsStep = advanceKingdomPolitics({
+    politics: strategic.politics,
+    generals: SANGUO_GENERALS,
+    territoryCounts,
+    factionManpower: strategic.factionManpower || {},
+  });
+  const politics = politicsStep.politics;
+  const factionManpower = politicsStep.factionManpower;
+  politicsStep.events.forEach(event => log.push({ time: Date.now(), ...event }));
 
   // 自然衰减 + 驻军缓慢恢复
   for (const mapId of WAR_MAP_IDS) {
@@ -1014,9 +1060,9 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
     }
   }
 
-  // 后台世界演化每次只推进部分仍有领地的非玩家势力；玩家行动另有 1:1 敌方轮转。
+  // 国家军府独立于玩家行动：所有仍有领地的势力都参与后台演化。
   const activeAttackers = ALL_FACTION_IDS.filter(fid => (
-    fid !== playerFaction && getFactionTerritoryCount(fid, newTerritories) > 0
+    getFactionTerritoryCount(fid, newTerritories) > 0
   ));
   // Fisher-Yates 洗牌后截取本 Tick 行动势力，保证长期参与且避免固定阵营偏置。
   for (let i = activeAttackers.length - 1; i > 0; i -= 1) {
@@ -1028,17 +1074,24 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
   const attacksByDefender = new Map();
   const defenderAttackLimit = Math.max(1, Math.floor(Number(cfg.maxAttacksPerDefenderPerTick) || 1));
   for (const attackerFid of attackFactions) {
+    const eligibleQunLords = attackerFid === 'qun'
+      ? [...new Set(Object.values(newTerritories).filter(t => t.owner === 'qun' && t.qunLordId).map(t => t.qunLordId))]
+      : null;
+    const qunLord = attackerFid === 'qun'
+      ? selectQunLordForAction(politics, SANGUO_GENERALS, Math.random, eligibleQunLords)
+      : null;
     const targets = WAR_MAP_IDS.filter(mid => {
       const t = newTerritories[mid];
       if (!t || t.owner === attackerFid) return false;
       if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
+      if (!canFactionAttack(politics, attackerFid, t.owner).ok) return false;
       if (t.owner !== 'neutral' && (attacksByDefender.get(t.owner) || 0) >= defenderAttackLimit) return false;
       return true;
     });
     if (targets.length === 0) continue;
 
     const scoredTargets = targets
-      .map(mid => ({ mid, score: scoreAiWarTarget(attackerFid, mid, newTerritories, weakest) }))
+      .map(mid => ({ mid, score: scoreAiWarTarget(attackerFid, mid, newTerritories, weakest, politics, territoryCounts) }))
       .sort((a, b) => b.score - a.score);
     const topN = scoredTargets.slice(0, Math.max(2, Math.ceil(scoredTargets.length * 0.3)));
     const targetMapId = topN[Math.floor(Math.random() * topN.length)]?.mid || scoredTargets[0]?.mid;
@@ -1048,11 +1101,13 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
       attacksByDefender.set(defenderFid, (attacksByDefender.get(defenderFid) || 0) + 1);
     }
 
-    const atkPower = attackerFid === 'qun'
-      ? 2500 + Math.floor(Math.random() * 1500)
-      : calcFactionPower(attackerFid, newTerritories, gangPresets, playerFaction, playerAvgLevel, attackerFid === playerFaction ? sectBonus : 0);
+    const atkPower = calcFactionPower(attackerFid, newTerritories, gangPresets, null, 50, 0, politics, qunLord?.id)
+      * (qunLord?.attack || 1);
     const defPower = defenderFid
-      ? calcFactionPower(defenderFid, newTerritories, gangPresets, playerFaction, playerAvgLevel, defenderFid === playerFaction ? sectBonus : 0)
+      ? calcFactionPower(defenderFid, newTerritories, gangPresets, null, 50, 0, politics, target.qunLordId)
+        * (defenderFid === 'qun'
+          ? (getQunLordSummaries(politics, SANGUO_GENERALS).find(lord => lord.id === target.qunLordId)?.defense || 1)
+          : 1)
       : 3000;
 
     const atkGarrison = generateGarrison(attackerFid, Math.floor(60 + Math.random() * 80));
@@ -1083,20 +1138,26 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
       if (siegeState.captured) {
         const oldOwner = target.owner;
         target.owner = attackerFid;
+        target.qunLordId = attackerFid === 'qun' ? (qunLord?.id || getInitialQunLordId(targetMapId)) : null;
         target.strength = cfg.newTerritoryStrength;
         target.garrison = generateGarrison(attackerFid, Math.floor(55 + Math.random() * 36));
         target.guards = assignTerritoryGuards(attackerFid, target.strength);
         target.lastBattleTime = Date.now();
+        politics.prestige[attackerFid] = (politics.prestige[attackerFid] || 0) + 10;
+        if (qunLord) recordQunLordBattle(politics, qunLord.id, { success: true, captured: true });
+        if (oldOwner && politics.prestige[oldOwner] != null) politics.prestige[oldOwner] = Math.max(0, politics.prestige[oldOwner] - 3);
         log.push({
           time: Date.now(), type: 'capture', attacker: attackerFid, defender: oldOwner,
           mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison,
-          msg: `${FACTIONS[attackerFid]?.fullName || '群雄'}历经围城后攻占了${oldOwner === 'neutral' ? '中立领地' : (FACTIONS[oldOwner]?.fullName || '未知') + '的领地'}`,
+          msg: `${qunLord ? qunLord.name : (FACTIONS[attackerFid]?.fullName || '群雄')}历经围城后攻占了${oldOwner === 'neutral' ? '中立领地' : (FACTIONS[oldOwner]?.fullName || '未知') + '的领地'}`,
         });
       } else {
+        politics.prestige[attackerFid] = (politics.prestige[attackerFid] || 0) + 2;
+        if (qunLord) recordQunLordBattle(politics, qunLord.id, { success: true });
         log.push({
           time: Date.now(), type: 'siege_progress', attacker: attackerFid, defender: defenderFid || 'neutral',
           mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison,
-          msg: `${FACTIONS[attackerFid]?.fullName || '群雄'}推进围城：城防${target.strength}、进度${target.attackProgress}/${SIEGE_CONFIG.progressRequired}`,
+          msg: `${qunLord ? qunLord.name : (FACTIONS[attackerFid]?.fullName || '群雄')}推进围城：城防${target.strength}、进度${target.attackProgress}/${SIEGE_CONFIG.progressRequired}`,
         });
       }
     } else {
@@ -1111,6 +1172,7 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
         const lossKey = TROOP_KEYS_K[Math.floor(Math.random() * TROOP_KEYS_K.length)];
         target.garrison[lossKey] = Math.max(0, target.garrison[lossKey] - Math.floor(3 + Math.random() * 5));
       }
+      if (qunLord) recordQunLordBattle(politics, qunLord.id, { success: false });
       log.push({
         time: Date.now(),
         type: 'defend',
@@ -1119,12 +1181,12 @@ export const executeWarTick = (territories, gangPresets, playerFaction, playerAv
         mapId: Number(targetMapId),
         atkTroops: atkGarrison,
         defTroops: defGarrison,
-        msg: `${defenderFid ? (FACTIONS[defenderFid]?.fullName || defenderFid) : '中立势力'}成功抵御了${FACTIONS[attackerFid]?.fullName || '群雄'}的进攻`,
+        msg: `${defenderFid ? (FACTIONS[defenderFid]?.fullName || defenderFid) : '中立势力'}成功抵御了${qunLord ? qunLord.name : (FACTIONS[attackerFid]?.fullName || '群雄')}的进攻`,
       });
     }
   }
 
-  return { territories: newTerritories, log };
+  return { territories: newTerritories, log, politics, factionManpower };
 };
 
 // 检查赛季是否结束并处理
@@ -1137,14 +1199,31 @@ export const checkSeasonEnd = (kw) => {
   if (daysPassed < SEASON_CONFIG.durationDays) return null;
 
   const counts = {};
+  const scores = {};
+  let qunLordScores = [];
   for (const fid of ALL_FACTION_IDS) {
     counts[fid] = getFactionTerritoryCount(fid, kw.territories);
+    const strength = Object.values(kw.territories || {}).filter(t => t.owner === fid).reduce((sum, t) => sum + (Number(t.strength) || 0), 0);
+    if (fid === 'qun') {
+      qunLordScores = QUN_LORDS.map(lord => {
+        const lordTerritories = Object.values(kw.territories || {}).filter(t => t.owner === 'qun' && t.qunLordId === lord.id);
+        const lordStrength = lordTerritories.reduce((sum, t) => sum + (Number(t.strength) || 0), 0);
+        const influence = Number(kw.politics?.qunLords?.[lord.id]?.influence) || 0;
+        return { lordId: lord.id, count: lordTerritories.length, score: lordTerritories.length * 1000 + lordStrength + influence * 4 };
+      }).sort((a, b) => b.score - a.score || a.lordId.localeCompare(b.lordId));
+      // 群雄按最强诸侯本部排名，不能把十路诸侯的土地合并冒充一个国家。
+      scores[fid] = (qunLordScores[0]?.score || 0) + (Number(kw.politics?.prestige?.qun) || 0) * 2;
+    } else {
+      scores[fid] = counts[fid] * 1000 + (Number(kw.politics?.prestige?.[fid]) || 0) * 10 + strength;
+    }
   }
-  const sorted = ALL_FACTION_IDS.slice().sort((a, b) => counts[b] - counts[a]);
+  const sorted = ALL_FACTION_IDS.slice().sort((a, b) => scores[b] - scores[a] || a.localeCompare(b));
 
   return {
     rankings: sorted,
     counts,
+    scores,
+    qunLordScores,
     season: kw.season,
   };
 };
@@ -1175,6 +1254,7 @@ export const applySeasonRewards = (kw, result, rankStatsFn) => {
     grain: Math.floor((kw.grain || 0) * 0.3),
     eliteTroops: 0,
     morale: Math.max(60, Math.floor((kw.morale ?? 100) * 0.8)),
+    politics: resetKingdomPoliticsForSeason(kw.politics, SANGUO_GENERALS),
   };
   newState.eliteTroops = Math.min(
     newState.kwManpowerReserve,
@@ -1606,6 +1686,9 @@ export const normalizeKingdomTerritory = (territory, mapId) => {
   return {
     ...raw,
     owner,
+    qunLordId: owner === 'qun'
+      ? (isQunLordId(raw.qunLordId) ? raw.qunLordId : getInitialQunLordId(mapId))
+      : null,
     strength,
     garrison,
     guards,
@@ -1878,15 +1961,17 @@ const aiFortify = (fid, territories) => {
   return { type: 'fortify', faction: fid, mapId: Number(mid), msg: `${FACTIONS[fid]?.fullName || fid}加固了领地城防` };
 };
 
-const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction, playerAvgLevel) => {
+const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction, playerAvgLevel, politics = null) => {
   const targets = WAR_MAP_IDS.filter(mid => {
     const t = territories[mid];
     if (!t || t.owner === fid) return false;
     if (CONTESTED_MAP_IDS.includes(Number(mid))) return false;
+    if (!canFactionAttack(politics, fid, t.owner).ok) return false;
     return (t.strength ?? 60) <= 70 || (t.contested && t.attackerFaction === fid);
   });
   if (targets.length === 0) return aiFortify(fid, territories);
-  const scored = targets.map(mid => ({ mid, score: scoreAiWarTarget(fid, mid, territories, getWeakestFaction(territories)) }))
+  const territoryCounts = Object.fromEntries(ALL_FACTION_IDS.map(id => [id, getFactionTerritoryCount(id, territories)]));
+  const scored = targets.map(mid => ({ mid, score: scoreAiWarTarget(fid, mid, territories, getWeakestFaction(territories), politics, territoryCounts) }))
     .sort((a, b) => b.score - a.score);
   const targetMapId = scored[0]?.mid;
   if (!targetMapId) return null;
@@ -1894,6 +1979,12 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
   const deploy = Math.min(availableManpower, SIEGE_CONFIG.minDeploy + Math.floor(Math.random() * 81));
   if (deploy < SIEGE_CONFIG.minDeploy) return aiRecruit(fid, territories, factionManpower);
   const target = { ...territories[targetMapId] };
+  const eligibleQunLords = fid === 'qun'
+    ? [...new Set(Object.values(territories).filter(t => t.owner === 'qun' && t.qunLordId).map(t => t.qunLordId))]
+    : null;
+  const qunLord = fid === 'qun'
+    ? selectQunLordForAction(politics, SANGUO_GENERALS, Math.random, eligibleQunLords)
+    : null;
   const defGarrison = target.garrison || generateGarrison(target.owner || 'qun', 60);
   const atkGarrison = generateGarrison(fid, deploy);
   const combat = buildSiegeCombatParams({
@@ -1921,12 +2012,15 @@ const aiAttack = (fid, territories, factionManpower, gangPresets, playerFaction,
   if (siegeState.captured) {
     const oldOwner = target.owner;
     target.owner = fid;
+    target.qunLordId = fid === 'qun' ? (qunLord?.id || getInitialQunLordId(targetMapId)) : null;
     target.strength = WAR_TICK_CONFIG.newTerritoryStrength;
     target.garrison = generateGarrison(fid, Math.floor(45 + Math.random() * 35));
     target.guards = assignTerritoryGuards(fid, target.strength);
     territories[targetMapId] = target;
-    return { type: 'capture', faction: fid, defender: oldOwner, mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison, manpowerLost, msg: `${FACTIONS[fid]?.fullName || fid}历经围城后攻占了${FACTIONS[oldOwner]?.fullName || '中立'}领地` };
+    if (qunLord) recordQunLordBattle(politics, qunLord.id, { success: true, captured: true });
+    return { type: 'capture', faction: fid, defender: oldOwner, mapId: Number(targetMapId), atkTroops: atkGarrison, defTroops: defGarrison, manpowerLost, msg: `${qunLord?.name || FACTIONS[fid]?.fullName || fid}历经围城后攻占了${FACTIONS[oldOwner]?.fullName || '中立'}领地` };
   }
+  if (qunLord) recordQunLordBattle(politics, qunLord.id, { success: assaultVictory });
   territories[targetMapId] = target;
   return {
     type: assaultVictory ? 'siege_progress' : 'attack_fail',
@@ -1946,6 +2040,7 @@ export const executeAllEnemyActions = (kw, gangPresets, playerAvgLevel = 50) => 
   if (!kw?.faction) return { kw, logs: [] };
   const territories = JSON.parse(JSON.stringify(kw.territories || {}));
   const factionManpower = ensureFactionManpower(kw);
+  const politics = migrateKingdomPolitics(kw.politics, SANGUO_GENERALS);
   const logs = [];
   const enemies = ALL_FACTION_IDS.filter(fid => fid !== kw.faction);
   const actionCounter = Math.max(0, Number(kw.actionCounter) || 0);
@@ -1957,7 +2052,7 @@ export const executeAllEnemyActions = (kw, gangPresets, playerAvgLevel = 50) => 
     let result = null;
     if (action === 'recruit') result = aiRecruit(fid, territories, factionManpower);
     else if (action === 'fortify') result = aiFortify(fid, territories);
-    else if (action === 'attack') result = aiAttack(fid, territories, factionManpower, gangPresets, kw.faction, playerAvgLevel);
+    else if (action === 'attack') result = aiAttack(fid, territories, factionManpower, gangPresets, kw.faction, playerAvgLevel, politics);
     if (result) logs.push({ time: Date.now(), ...result });
   }
   for (const mid of WAR_MAP_IDS) {
@@ -1971,7 +2066,7 @@ export const executeAllEnemyActions = (kw, gangPresets, playerAvgLevel = 50) => 
     });
   }
   return {
-    kw: { ...kw, territories, factionManpower },
+    kw: { ...kw, territories, factionManpower, politics },
     logs,
   };
 };
@@ -1981,6 +2076,7 @@ export const migrateKingdomWarState = (kw) => {
   const next = { ...DEFAULT_KINGDOM_WAR, ...saved };
   next.faction = FACTION_IDS.includes(next.faction) ? next.faction : null;
   next.factionManpower = ensureFactionManpower(next);
+  next.politics = migrateKingdomPolitics(next.politics, SANGUO_GENERALS);
   next.kwManpowerReserve = normalizeNonNegativeIntK(next.kwManpowerReserve, 0, MANPOWER_RESERVE_CAP);
   next.eliteTroops = Math.min(
     next.kwManpowerReserve,
@@ -2040,6 +2136,7 @@ export const migrateKingdomWarState = (kw) => {
       const isHighTier = HIGH_TIER_MAP_IDS.includes(Number(mapId));
       terr[mapId] = {
         owner,
+        qunLordId: owner === 'qun' ? getInitialQunLordId(mapId) : null,
         strength: owner === 'neutral' ? 80 : isHighTier ? 75 : 60,
         garrison: generateGarrison(owner === 'neutral' ? 'qun' : owner, isHighTier ? 100 : 80),
         guards: assignTerritoryGuards(owner === 'neutral' ? 'qun' : owner, isHighTier ? 75 : 60),

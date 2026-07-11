@@ -190,3 +190,29 @@ export function getStoryObjective(chapter, currentMapId, storyStep, gymPosition)
 
   return null;
 }
+
+export function resolveStoryBattleOutcome(task, battleState = {}, victory = false) {
+  const scriptedDefeat = Boolean(
+    task?.mustLose
+    || task?.defeatAdvances
+    || task?.scriptedDefeat
+    || task?.outcome === 'defeat'
+    || battleState?.mustLose
+    || battleState?.defeatAdvances
+    || battleState?.scriptedDefeat
+    || battleState?.storyOutcome === 'defeat'
+  );
+  const step = Number.isInteger(Number(battleState?.storyTaskStep))
+    ? Number(battleState.storyTaskStep)
+    : Number(task?.step);
+  const x = Number.isInteger(Number(battleState?.storyTaskX)) ? Number(battleState.storyTaskX) : Number(task?.x);
+  const y = Number.isInteger(Number(battleState?.storyTaskY)) ? Number(battleState.storyTaskY) : Number(task?.y);
+  return {
+    scriptedDefeat,
+    advance: Boolean(victory || scriptedDefeat),
+    retry: Boolean(!victory && !scriptedDefeat),
+    step: Number.isFinite(step) ? step : null,
+    nextStep: Number.isFinite(step) ? step + 1 : null,
+    marker: Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null,
+  };
+}
