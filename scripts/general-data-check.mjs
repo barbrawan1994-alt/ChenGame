@@ -25,6 +25,27 @@ check(new Set(SANGUO_GENERALS.map(general => general.id)).size === SANGUO_GENERA
 check(new Set(SANGUO_GENERALS.map(general => general.name)).size === SANGUO_GENERALS.length, '名将姓名全部唯一');
 check(Object.keys(GENERAL_BIOS).length === SANGUO_GENERALS.length, '400 位名将全部具有传记或史料简表');
 
+const historicalNameAliases = {
+  shu_huang_yueying: '黄氏',
+  shu_fu_tong: '傅肜',
+  wu_da_qiao: '大桥',
+  wu_xiao_qiao: '小桥',
+};
+for (const general of SANGUO_GENERALS) {
+  const bio = GENERAL_BIOS[general.id];
+  const expectedName = historicalNameAliases[general.id] || general.name;
+  assert.ok(bio?.bio?.includes(expectedName), `${general.name} 的传记与当前人物姓名不匹配`);
+  assert.ok(['full', 'sourced', 'brief'].includes(bio?.profileLevel), `${general.name} 的资料等级无效`);
+}
+check(true, '所有人物传记均匹配当前姓名或可靠史籍异名');
+const profileCounts = Object.values(GENERAL_BIOS).reduce((counts, bio) => {
+  counts[bio.profileLevel] = (counts[bio.profileLevel] || 0) + 1;
+  return counts;
+}, {});
+check(profileCounts.full === 269, '269 份既有完整传记正确标记为历史生平');
+check(profileCounts.sourced === 14, '14 位替换人物正确标记为有出处的完整资料');
+check(profileCounts.brief === 117, '117 份简要资料保持史料简表标记，不冒充完整传记');
+
 const portraitHalo = { SSR: '#f7d35a', SR: '#b9c7e7', R: '#aab2bd' };
 for (const general of SANGUO_GENERALS) {
   const portrait = await readFile(new URL(`../public/assets/generals/${general.id}.svg`, import.meta.url), 'utf8');
@@ -83,6 +104,7 @@ for (const [id, [name, courtesy, rarity, role]] of Object.entries(replacementExp
   assert.equal(general.rarity, rarity, `${name} 历史评级错误`);
   assert.equal(general.role, role, `${name} 玩法定位错误`);
   assert.ok(bio?.source, `${name} 缺少史料依据`);
+  assert.equal(bio?.profileLevel, 'sourced', `${name} 未标记为有出处的完整资料`);
 }
 check(true, '14 位替换人物的姓名、表字、传记、出处和评级全部匹配');
 

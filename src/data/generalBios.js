@@ -2024,11 +2024,16 @@ const buildBriefProfile = (general) => ({
 });
 
 /** Every roster entry has a profile; replacement patches win over legacy ID data. */
-export const GENERAL_BIOS = Object.fromEntries(SANGUO_GENERALS.map(general => [
-  general.id,
-  {
-    ...buildBriefProfile(general),
-    ...(RAW_GENERAL_BIOS[general.id] || {}),
-    ...(REPLACED_GENERAL_BIOS[general.id] || {}),
-  },
-]));
+export const GENERAL_BIOS = Object.fromEntries(SANGUO_GENERALS.map(general => {
+  const fullProfile = RAW_GENERAL_BIOS[general.id];
+  const sourcedReplacement = REPLACED_GENERAL_BIOS[general.id];
+  return [
+    general.id,
+    {
+      ...buildBriefProfile(general),
+      ...(fullProfile || {}),
+      ...(sourcedReplacement || {}),
+      profileLevel: sourcedReplacement ? 'sourced' : fullProfile ? 'full' : 'brief',
+    },
+  ];
+}));
