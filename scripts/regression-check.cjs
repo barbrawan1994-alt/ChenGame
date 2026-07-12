@@ -110,6 +110,7 @@ const itemsData = loadProjectModule('src/data/items.js');
 const typesData = loadProjectModule('src/data/types.js');
 const skillsData = loadProjectModule('src/data/skills.js');
 const battleAi = loadProjectModule('src/utils/battleAi.js');
+const combatRules = loadProjectModule('src/utils/combatRules.js');
 const livePetFactory = loadProjectModule('src/utils/petFactory.js');
 const guideData = loadProjectModule('src/data/gameGuide.js');
 const statsCalculator = loadProjectModule('src/utils/statsCalculator.js');
@@ -1483,9 +1484,18 @@ check('领域、缚誓和果实在双打沿用同一战斗快照并按共享资�
   assert.ok(vow.includes('vowCooldowns'));
   assert.ok(fruit.includes('executeDoubleRound(newActions, tempBattle)'));
   assert.ok(fruit.includes("finally"));
-  assert.ok(domain.includes("const isDomainClash = tempBattle.activeDomain?.ownerSide === 'enemy'"));
-  assert.ok(domain.includes('tempBattle.activeDomain = null'));
+  const clash = combatRules.resolveDomainActivation(
+    { name: '敌方领域', ownerSide: 'enemy', turnsLeft: 2, effect: {} },
+    'player',
+    { name: '玩家领域', turns: 3, effect: {} },
+    'FIRE',
+  );
+  assert.equal(clash.isClash, true);
+  assert.equal(clash.activeDomain, null);
+  assert.ok(domain.includes('resolveDomainActivation'));
   assert.ok(domain.includes('双方领域相互抵消'));
+  assert.ok(app.includes('getRegeneratedBattleResource(\n              tempBattle.sharedPlayerChakra'));
+  assert.ok(app.includes('双打以共享池为权威'));
   assert.ok(fruit.includes('unit.fruitUseCount = nextUseCount'));
   assert.ok(fruit.includes('partyRef.current = nextParty'));
   assert.ok(app.includes("['jutsuCooldowns', 'cursedCooldowns', 'vowCooldowns']"));
