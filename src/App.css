@@ -12675,9 +12675,17 @@ select:focus-visible,
     display: none;
   }
   .hud-card--double {
-    min-width: 180px;
-    max-width: min(280px, 42vw);
+    box-sizing: border-box;
+    width: min(176px, 44vw);
+    min-width: 0;
+    max-width: 44vw;
     padding: 7px 8px;
+    overflow: hidden;
+  }
+  .hud-card--double > div:first-child > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .player-zone-v2 .sprite-v2,
   .player-sprite-wrapper .sprite-v2 {
@@ -12692,6 +12700,9 @@ select:focus-visible,
   .double-mode .sprite-v2 {
     max-width: 28vw !important;
     max-height: 28vh !important;
+  }
+  .environment-weather-overlay--battle .environment-sun-disc {
+    display: none !important;
   }
   .battle-log-container {
     width: 96% !important;
