@@ -868,19 +868,24 @@ export function generateEnemyGenerals(enemyLevel, enemyFaction) {
 }
 
 export function calcGeneralsTotalBonus(generals) {
-  const raw = (generals || []).reduce((acc, g) => {
-    if (g.bonus) Object.keys(g.bonus).forEach(k => { acc[k] = (acc[k]||0) + (g.bonus[k]||0); });
-    return acc;
-  }, {});
-  const count = (generals || []).length;
-  if (count > 6) {
-    const diminish = 1 - (count - 6) * 0.06;
-    const mult = Math.max(0.5, diminish);
-    for (const k of Object.keys(raw)) {
-      raw[k] = Math.round(raw[k] * mult);
+  const valuesByBonus = {};
+  for (const general of generals || []) {
+    for (const [key, rawValue] of Object.entries(general?.bonus || {})) {
+      const value = Number(rawValue);
+      if (!Number.isFinite(value) || value <= 0) continue;
+      if (!valuesByBonus[key]) valuesByBonus[key] = [];
+      valuesByBonus[key].push(value);
     }
   }
-  return raw;
+
+  return Object.fromEntries(Object.entries(valuesByBonus).map(([key, values]) => {
+    // The six strongest contributors apply in full. Reserve generals still help,
+    // but at half value, so recruiting a new general can never lower an old bonus.
+    const total = values
+      .sort((a, b) => b - a)
+      .reduce((sum, value, index) => sum + value * (index < 6 ? 1 : 0.5), 0);
+    return [key, Math.round(total)];
+  }));
 }
 
 /**

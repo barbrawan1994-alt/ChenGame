@@ -2144,8 +2144,15 @@ export const migrateKingdomWarState = (kw) => {
   next.seasonTitles = uniqueArray(next.seasonTitles);
   next.completedCampaigns = uniqueArray(next.completedCampaigns);
   next.completedHistoricalBattles = uniqueArray(next.completedHistoricalBattles);
+  const recruitedIds = new Set();
   next.recruitedGenerals = Array.isArray(next.recruitedGenerals)
-    ? next.recruitedGenerals.map(hydrateGeneralSnapshot).filter(Boolean)
+    ? next.recruitedGenerals
+        .map(hydrateGeneralSnapshot)
+        .filter(general => {
+          if (!general || recruitedIds.has(general.id)) return false;
+          recruitedIds.add(general.id);
+          return true;
+        })
     : [];
   next.contestProgress = next.contestProgress && typeof next.contestProgress === 'object' && !Array.isArray(next.contestProgress)
     ? next.contestProgress

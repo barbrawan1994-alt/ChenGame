@@ -52,8 +52,8 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   const result = evaluate(40);
   assert.equal(result.enemyLv, 75);
   assert.equal(result.enemyAvgLevel, 72.5);
-  check(result.winChance === 0.08, `Lv.40 挑战均级 Lv.${result.enemyAvgLevel} 时胜率压到下限 8%`);
-  check(result.riskLabel === '高危', '明显越级目标正确标记为“高危”');
+  check(result.winChance === 0.08, `Lv.40 挑战均级 Lv.${result.enemyAvgLevel} 时等级评分压到下限 8%`);
+  check(result.riskLabel === '严重越级', '明显越级目标正确标记为“严重越级”');
   check(result.preparation.length >= 2, '高危目标给出升级与配队准备建议');
 }
 
@@ -63,8 +63,8 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   const ahead = evaluate(82.5);
   assert.equal(even.winChance, 0.5);
   assert.ok(Math.abs(ahead.winChance - 0.85) < 1e-9);
-  check(even.riskLabel === '胶着', '双方均级一致时预估为 50% 胶着局');
-  check(ahead.riskLabel === '稳胜', '玩家均级高 10 级时预估为 85% 稳胜局');
+  check(even.riskLabel === '等级接近', '双方均级一致时标记为等级接近');
+  check(ahead.riskLabel === '等级大优', '玩家均级高 10 级时标记为等级大优');
 }
 
 // 普通成员不会获得帮派资金，目标排序也不能把无权取得的资金计入收益。
@@ -231,9 +231,10 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   const uiEnd = appSource.indexOf('const renderGangSkills = () => {', uiStart);
   const uiSource = appSource.slice(uiStart, uiEnd);
   assert.ok(uiStart >= 0 && uiEnd > uiStart);
-  assert.match(uiSource, /等级估算 \{Math\.round\(preview\.winChance \* 100\)\}%/);
-  assert.match(uiSource, /非实际胜率/);
-  assert.match(uiSource, /仅按存活队伍等级估算，属性克制、装备与特性会影响实战/);
+  assert.match(uiSource, /等级差 \{preview\.levelDelta >= 0 \? '\+' : ''\}\{preview\.levelDelta\}/);
+  assert.match(uiSource, /等级参考/);
+  assert.match(uiSource, /仅比较存活队伍平均等级；属性、技能、装备、特性与克制决定实战结果/);
+  assert.doesNotMatch(uiSource, /等级估算 \{Math\.round\(preview\.winChance/);
   assert.doesNotMatch(uiSource, />胜率 \{Math\.round\(preview\.winChance/);
 
   const winStart = appSource.indexOf("if (battleSnapshot.type === 'gang_war')");
@@ -265,7 +266,7 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
   const defeatStateCommit = defeatSource.indexOf('setGang(nextGang)');
   assert.ok(defeatRefCommit >= 0 && defeatStateCommit > defeatRefCommit);
   assert.doesNotMatch(defeatSource, /funds\s*:/);
-  check(true, '帮战明确区分等级估算与实际胜率；日上限前置，胜败均只结算一次且帮主资金归属正确');
+  check(true, '帮战只展示等级差参考而不伪装实际胜率；日上限前置，胜败均只结算一次且帮主资金归属正确');
 }
 
 // 旧存档中的缺失/重复 uid 必须被修复，且删除操作只能移除一只精灵。

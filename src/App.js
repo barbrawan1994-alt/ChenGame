@@ -241,6 +241,7 @@ import {
   resolveGeneralDuel,
   syncContestedTerritoryOwners,
   getContestMapProgress,
+  validateSiegeDeployment,
 } from './data/kwSiege';
 import {
   SANGUO_GENERALS, GENERAL_RARITY_CONFIG, MAX_RECRUITED_GENERALS,
@@ -1948,6 +1949,16 @@ const [infinityState, setInfinityState] = useState(() => {
   const [autoSaveIntervalMin, setAutoSaveIntervalMin] = useState([1, 2, 3, 5, 10].includes(Number(savedData.autoSaveIntervalMin)) ? Number(savedData.autoSaveIntervalMin) : 1);
   useEffect(() => {
     if (!autoBattle || !battle || battle.isPvP) return;
+    if (battle.showSwitch && !battle.isDouble) {
+      const active = battle.playerCombatStates?.[battle.activeIdx];
+      if (!active || active.currentHp > 0) return;
+      const replacementIdx = (battle.playerCombatStates || []).findIndex((pet, index) => (
+        index !== battle.activeIdx && pet && pet.currentHp > 0
+      ));
+      if (replacementIdx < 0) return;
+      const timer = setTimeout(() => switchPokemon(replacementIdx), 250);
+      return () => clearTimeout(timer);
+    }
     const isInputPhase = battle.phase === 'input' || battle.phase === 'double_input_2';
     if (!isInputPhase) return;
     const b = battle;
@@ -1992,7 +2003,7 @@ const [infinityState, setInfinityState] = useState(() => {
     if (b.isDouble) setBattle(prev => prev ? { ...prev, targetIdx: enemyIdx } : prev);
     const timer = setTimeout(() => b.isDouble ? executeDoubleTurn(bestIdx, enemyIdx) : executeTurn(bestIdx), 250);
     return () => clearTimeout(timer);
-  }, [autoBattle, battle?.phase, battle?.activeIdx, battle?.enemyActiveIdx, battle?.doubleSlot, battle?.isDouble, battle?.turnCount]); // eslint-disable-line
+  }, [autoBattle, battle?.phase, battle?.showSwitch, battle?.activeIdx, battle?.enemyActiveIdx, battle?.doubleSlot, battle?.isDouble, battle?.turnCount]); // eslint-disable-line
 
   const battleResultHandledRef = useRef(false);
   const kingdomWarRef = useRef(kingdomWar);
@@ -12853,10 +12864,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   <div style={{fontSize:'11px', color:'#aaa'}}>对手等级 ~Lv.{enemyLv} · 奖励 {rewardText}</div>
                   {preview && (
                     <div style={{display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'6px'}}>
-                      <span style={{fontSize:'10px', color:'#86efac', background:'rgba(34,197,94,0.12)', padding:'2px 7px', borderRadius:'999px'}}>等级估算 {Math.round(preview.winChance * 100)}%</span>
-                      <span title="仅按存活队伍等级估算，属性克制、装备与特性会影响实战" style={{fontSize:'10px', color:'#94a3b8', background:'rgba(148,163,184,0.1)', padding:'2px 7px', borderRadius:'999px'}}>非实际胜率</span>
+                      <span style={{fontSize:'10px', color:'#86efac', background:'rgba(34,197,94,0.12)', padding:'2px 7px', borderRadius:'999px'}}>等级差 {preview.levelDelta >= 0 ? '+' : ''}{preview.levelDelta}</span>
+                      <span title="仅比较存活队伍平均等级；属性、技能、装备、特性与克制决定实战结果" style={{fontSize:'10px', color:'#94a3b8', background:'rgba(148,163,184,0.1)', padding:'2px 7px', borderRadius:'999px'}}>等级参考</span>
                       <span style={{fontSize:'10px', color:'#fbbf24', background:'rgba(251,191,36,0.12)', padding:'2px 7px', borderRadius:'999px'}}>{preview.riskLabel}</span>
-                      <span style={{fontSize:'10px', color:'#fca5a5', background:'rgba(239,68,68,0.12)', padding:'2px 7px', borderRadius:'999px'}}>难度 {preview.difficultyScore}</span>
+                      <span style={{fontSize:'10px', color:'#fca5a5', background:'rgba(239,68,68,0.12)', padding:'2px 7px', borderRadius:'999px'}}>等级压力 {preview.difficultyScore}</span>
                       {(preview.advice || []).slice(0, 1).map(tip => <span key={tip} style={{fontSize:'10px', color:'#cbd5e1', background:'rgba(255,255,255,0.07)', padding:'2px 7px', borderRadius:'999px'}}>{tip}</span>)}
                       <span style={{fontSize:'10px', color:'#bae6fd', background:'rgba(56,189,248,0.1)', padding:'2px 7px', borderRadius:'999px'}}>{preview.counterplay}</span>
                       {(preview.preparation || []).slice(0, 1).map(tip => <span key={tip} style={{fontSize:'10px', color:'#ddd6fe', background:'rgba(139,92,246,0.1)', padding:'2px 7px', borderRadius:'999px'}}>{tip}</span>)}
@@ -25505,10 +25516,7 @@ const renderGeneralDex = () => {
     return { f, total: all.length, got: all.filter(g => recruitedIds.has(g.id)).length };
   });
   const draws = kw.generalDraws || 0;
-  const totalBonus = recruited.reduce((acc, g) => {
-    if (g.bonus) Object.keys(g.bonus).forEach(k => { acc[k] = (acc[k]||0) + (g.bonus[k]||0); });
-    return acc;
-  }, {});
+  const totalBonus = calcGeneralsTotalBonus(recruited);
 
   return (
     <div className="screen codex-screen is-general">
@@ -25549,13 +25557,13 @@ const renderGeneralDex = () => {
             </div>
           </article>
 
-          <article className={`codex-panel codex-draw-panel ${draws > 0 ? 'is-ready' : ''}`} onClick={draws > 0 ? doGeneralDraw : undefined}>
+          <button type="button" className={`codex-panel codex-draw-panel ${draws > 0 ? 'is-ready' : ''}`} onClick={doGeneralDraw} disabled={draws <= 0}>
             <span>赛季抽将</span>
             <strong>{draws > 0 ? `${draws} 次可用` : '暂无次数'}</strong>
             <p>{draws > 0
               ? `传世 ${Math.round(GENERAL_DRAW_RATES.SSR * 100)}% · 名将 ${Math.round(GENERAL_DRAW_RATES.SR * 100)}% · ${Math.max(1, GENERAL_DRAW_PITY - (kw.generalDrawPity || 0))} 抽内必得传世`
               : '完成赛季目标后可获得招募机会，保底进度会保留。'}</p>
-          </article>
+          </button>
         </section>
 
         {Object.keys(totalBonus).filter(k => totalBonus[k] > 0).length > 0 && (
@@ -27584,13 +27592,13 @@ const renderMenu = () => {
                   <div style={{display:'grid', gap:'12px'}}>
                     {/* 赛季抽卡提示 */}
                     {(kw.generalDraws || 0) > 0 && (
-                      <div onClick={() => setView('general_dex')} style={{background:`linear-gradient(135deg, ${myFaction.color}, ${myFaction.darkColor || myFaction.color})`, borderRadius:'14px', padding:'14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}>
+                      <button type="button" onClick={() => setView('general_dex')} style={{width:'100%', border:'none', textAlign:'left', background:`linear-gradient(135deg, ${myFaction.color}, ${myFaction.darkColor || myFaction.color})`, borderRadius:'14px', padding:'14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}>
                         <div style={{fontSize:'32px'}}>🎴</div>
                         <div>
                           <div style={{fontSize:'14px', fontWeight:'800', color:'#fff'}}>赛季名将抽卡 x{kw.generalDraws}</div>
                           <div style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', marginTop:'2px'}}>点击前往名将图鉴使用抽卡机会</div>
                         </div>
-                      </div>
+                      </button>
                     )}
                     <div style={{background:`linear-gradient(135deg, ${myFaction.darkColor}, #0f172a 68%, #111827)`, borderRadius:'16px', padding:'16px', color:'#fff', boxShadow:`0 12px 34px ${myFaction.color}24`, border:`1px solid ${myFaction.color}55`}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px', marginBottom:'12px'}}>
@@ -28347,7 +28355,7 @@ const renderMenu = () => {
                         <div style={{ background:'#fff', borderRadius:'16px', maxWidth:'420px', width:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.25)' }} onClick={e => e.stopPropagation()}>
                           <div style={{ padding:'16px', borderBottom:'1px solid #e2e8f0' }}>
                             <div style={{ fontSize:'16px', fontWeight:'800', color:'#0f172a' }}>⚔️ {kwSiegeModal.contestMap.name} · 攻城配置</div>
-                            <div style={{ fontSize:'11px', color:'#64748b', marginTop:'6px' }}>六兵种环形克制：盾→枪→骑→弓→器→奇→盾。请分配共 <strong>{kwSiegeModal.deployCap}</strong> 单位兵力，并最多选择 3 名已招募武将提升统率。</div>
+                            <div style={{ fontSize:'11px', color:'#64748b', marginTop:'6px' }}>六兵种环形克制：盾→枪→骑→弓→器→奇→盾。可分配 <strong>{CONTEST_SIEGE_MIN_DEPLOY}-{kwSiegeModal.deployCap}</strong> 单位兵力，并最多选择 3 名已招募武将提升统率。</div>
                           </div>
                           <div style={{ padding:'14px 16px' }}>
                             {KW_TROOP_TYPES.map(tt => (
@@ -28368,7 +28376,15 @@ const renderMenu = () => {
                               </div>
                             ))}
 	                        <div style={{ fontSize:'11px', color:'#475569', margin:'10px 0' }}>
-	                          已分配 {KW_TROOP_IDS.reduce((s, tid) => s + (kwSiegeModal.allocation[tid] || 0), 0)} / {kwSiegeModal.deployCap}
+	                          已分配 {KW_TROOP_IDS.reduce((s, tid) => s + (kwSiegeModal.allocation[tid] || 0), 0)} / 上限 {kwSiegeModal.deployCap}
+	                          <button type="button" onClick={() => {
+	                            const total = Math.min(kwSiegeModal.deployCap, CONTEST_SIEGE_MIN_DEPLOY);
+	                            const b = Math.floor(total / 6);
+	                            const r = total - b * 6;
+	                            const allocation = {};
+	                            KW_TROOP_IDS.forEach((tid, i) => { allocation[tid] = b + (i < r ? 1 : 0); });
+	                            setKwSiegeModal(prev => prev ? { ...prev, allocation } : prev);
+	                          }} style={{ marginLeft:'10px', padding:'4px 10px', fontSize:'11px', borderRadius:'8px', border:'1px solid #94a3b8', background:'#fff', cursor:'pointer' }}>最低出征</button>
 	                          <button type="button" onClick={() => {
                                 const cap = kwSiegeModal.deployCap;
                                 const b = Math.floor(cap / 6);
@@ -28376,7 +28392,7 @@ const renderMenu = () => {
                                 const allocation = {};
                                 KW_TROOP_IDS.forEach((tid, i) => { allocation[tid] = b + (i < r ? 1 : 0); });
 	                                setKwSiegeModal(prev => prev ? { ...prev, allocation } : prev);
-	                              }} style={{ marginLeft:'10px', padding:'4px 10px', fontSize:'11px', borderRadius:'8px', border:'1px solid #94a3b8', background:'#f8fafc', cursor:'pointer' }}>均分</button>
+	                              }} style={{ marginLeft:'6px', padding:'4px 10px', fontSize:'11px', borderRadius:'8px', border:'1px solid #94a3b8', background:'#f8fafc', cursor:'pointer' }}>均分上限</button>
 	                            </div>
 	                            {(() => {
 	                              const avgLv = party.length ? Math.floor(party.reduce((s, p) => s + (p?.level || 1), 0) / party.length) : 50;
@@ -28456,12 +28472,15 @@ const renderMenu = () => {
                               if (!attackPermission.ok) { showMapToast('🤝', '盟约生效', attackPermission.reason, 2400); return; }
                               const lockKey = `siege:${m.id}`;
                               if (kingdomActionLocksRef.current.has(lockKey)) return;
-                              const alloc = { ...kwSiegeModal.allocation };
-                              const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
-                              if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌', '分配有误', `兵力合计须等于 ${kwSiegeModal.deployCap}`, 2000); return; }
-                              if (sumA < CONTEST_SIEGE_MIN_DEPLOY) { showMapToast('❌', '兵力过少', `至少 ${CONTEST_SIEGE_MIN_DEPLOY} 兵力才可攻城`, 2000); return; }
                               const currentReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, currentKw.kwManpowerReserve || 0));
-                              if (sumA > currentReserve) { showMapToast('❌', '兵力不足', `当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`, 2200); return; }
+                              const deployment = validateSiegeDeployment({
+                                allocation: kwSiegeModal.allocation,
+                                maxDeploy: kwSiegeModal.deployCap,
+                                reserve: currentReserve,
+                                minDeploy: CONTEST_SIEGE_MIN_DEPLOY,
+                              });
+                              if (!deployment.ok) { showMapToast('❌', '分配有误', deployment.reason, 2200); return; }
+                              const alloc = deployment.allocation;
                               const attemptKey = `${m.id}_attempts_${getLocalDateStr()}`;
                               if ((currentKw.contestProgress?.[attemptKey] || 0) >= maxDailyAttempts) { showMapToast('❌', '提示', `今日攻城次数已用完 (每日${maxDailyAttempts}次)`, 1800); return; }
                               const livingSiegeParty = (partyRef.current || []).filter(p => p && (p.currentHp || 0) > 0);
@@ -28955,7 +28974,7 @@ const renderMenu = () => {
                     <div style={{ background:'#fff', borderRadius:'16px', maxWidth:'420px', width:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.25)' }} onClick={e => e.stopPropagation()}>
                       <div style={{ padding:'16px', borderBottom:'1px solid #e2e8f0' }}>
                         <div style={{ fontSize:'16px', fontWeight:'800', color:'#0f172a' }}>⚔️ {kwSiegeModal.targetMapName} · 领地攻城</div>
-                        <div style={{ fontSize:'11px', color:'#64748b', marginTop:'6px' }}>六兵种环形克制：盾→枪→骑→弓→器→奇→盾。分配 <strong>{kwSiegeModal.deployCap}</strong> 单位兵力，选至多3武将。</div>
+                        <div style={{ fontSize:'11px', color:'#64748b', marginTop:'6px' }}>六兵种环形克制：盾→枪→骑→弓→器→奇→盾。可分配 <strong>{SIEGE_CONFIG.minDeploy}-{kwSiegeModal.deployCap}</strong> 单位兵力，选至多3武将。</div>
                       </div>
                       <div style={{ padding:'14px 16px' }}>
                         {KW_TROOP_TYPES.map(tt => (
@@ -28976,15 +28995,23 @@ const renderMenu = () => {
                           </div>
                         ))}
                         <div style={{ fontSize:'11px', color:'#475569', margin:'10px 0' }}>
-                          已分配 {KW_TROOP_IDS.reduce((s, tid) => s + (kwSiegeModal.allocation[tid] || 0), 0)} / {kwSiegeModal.deployCap}
-                          <button type="button" onClick={() => {
+	                          已分配 {KW_TROOP_IDS.reduce((s, tid) => s + (kwSiegeModal.allocation[tid] || 0), 0)} / 上限 {kwSiegeModal.deployCap}
+	                          <button type="button" onClick={() => {
+	                            const total = Math.min(kwSiegeModal.deployCap, SIEGE_CONFIG.minDeploy);
+	                            const b = Math.floor(total / 6);
+	                            const r = total - b * 6;
+	                            const allocation = {};
+	                            KW_TROOP_IDS.forEach((tid, i) => { allocation[tid] = b + (i < r ? 1 : 0); });
+	                            setKwSiegeModal(prev => prev ? { ...prev, allocation } : prev);
+	                          }} style={{ marginLeft:'10px', padding:'4px 10px', fontSize:'11px', borderRadius:'8px', border:'1px solid #94a3b8', background:'#fff', cursor:'pointer' }}>最低出征</button>
+	                          <button type="button" onClick={() => {
                             const cap = kwSiegeModal.deployCap;
                             const b = Math.floor(cap / 6);
                             const r = cap - b * 6;
                             const alloc = {};
                             KW_TROOP_IDS.forEach((tid, i) => { alloc[tid] = b + (i < r ? 1 : 0); });
 	                            setKwSiegeModal(prev => prev ? { ...prev, allocation: alloc } : prev);
-	                          }} style={{ marginLeft:'10px', padding:'4px 10px', fontSize:'11px', borderRadius:'8px', border:'1px solid #94a3b8', background:'#f8fafc', cursor:'pointer' }}>均分</button>
+	                          }} style={{ marginLeft:'6px', padding:'4px 10px', fontSize:'11px', borderRadius:'8px', border:'1px solid #94a3b8', background:'#f8fafc', cursor:'pointer' }}>均分上限</button>
 	                        </div>
 	                        {(() => {
 	                          const preview = evaluateTerritoryAssault({
@@ -29082,11 +29109,15 @@ const renderMenu = () => {
                             if (!attackPermission.ok) { showMapToast('🤝', '盟约生效', attackPermission.reason, 2400); return; }
                             const lockKey = `territory-siege:${mid}`;
                             if (kingdomActionLocksRef.current.has(lockKey)) return;
-                            const alloc = { ...kwSiegeModal.allocation };
-                            const sumA = KW_TROOP_IDS.reduce((s, tid) => s + (alloc[tid] || 0), 0);
-                            if (sumA !== kwSiegeModal.deployCap) { showMapToast('❌','分配有误',`兵力合计须等于 ${kwSiegeModal.deployCap}`,2000); return; }
                             const currentReserve = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, currentKw.kwManpowerReserve || 0));
-                            if (sumA > currentReserve) { showMapToast('❌','兵力不足',`当前预备兵仅 ${currentReserve}，请重新配置攻城兵力`,2200); return; }
+                            const deployment = validateSiegeDeployment({
+                              allocation: kwSiegeModal.allocation,
+                              maxDeploy: kwSiegeModal.deployCap,
+                              reserve: currentReserve,
+                              minDeploy: SIEGE_CONFIG.minDeploy,
+                            });
+                            if (!deployment.ok) { showMapToast('❌','分配有误',deployment.reason,2200); return; }
+                            const alloc = deployment.allocation;
                             const siegeExternal = {
                               ...buildSiegeExternalBonuses(),
                               attackItemMult: currentKw.attackBuff ? TIGER_SEAL_ATTACK_MULT : 1,
@@ -34083,8 +34114,8 @@ const renderMenu = () => {
                             const isFainted = pet.currentHp <= 0;
                             const isActive = battle.isDouble ? (battle.activeIdxs?.includes(idx)) : (idx === battle.activeIdx);
                             return (
-                                <div key={idx} onClick={() => { if(!isActive && !isFainted) switchPokemon(idx); }}
-                                     style={{background: isActive ? '#E3F2FD' : '#f5f7fa', border: isActive ? '2px solid #2196F3' : '2px solid transparent', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', cursor: (isActive || isFainted) ? 'default' : 'pointer', opacity: isFainted ? 0.6 : 1, position: 'relative', transition: '0.2s'}}
+                                <button type="button" key={idx} disabled={isActive || isFainted} onClick={() => switchPokemon(idx)}
+                                     style={{width:'100%', font:'inherit', textAlign:'left', background: isActive ? '#E3F2FD' : '#f5f7fa', border: isActive ? '2px solid #2196F3' : '2px solid transparent', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', cursor: (isActive || isFainted) ? 'default' : 'pointer', opacity: isFainted ? 0.6 : 1, position: 'relative', transition: '0.2s'}}
                                      onMouseOver={e => { if(!isActive && !isFainted) e.currentTarget.style.background = '#fff'; }}
                                      onMouseOut={e => { if(!isActive && !isFainted) e.currentTarget.style.background = '#f5f7fa'; }}
                                 >
@@ -34099,7 +34130,7 @@ const renderMenu = () => {
                                     </div>
                                     {isActive && <div style={{position: 'absolute', top: '5px', right: '5px', fontSize: '11px', background: '#2196F3', color: '#fff', padding: '2px 6px', borderRadius: '4px'}}>当前</div>}
                                     {isFainted && <div style={{position: 'absolute', top: '0', left: '0', right: '0', bottom: '0', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF5252', fontWeight: 'bold', fontSize: '14px'}}>濒死</div>}
-                                </div>
+                                </button>
                             );
                         })}
                     </div>

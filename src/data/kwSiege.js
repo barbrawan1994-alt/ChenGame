@@ -109,6 +109,23 @@ const normalizeWeights = (weights) => Object.fromEntries(KW_TROOP_IDS.map(id => 
 
 const sumAlloc = (a) => KW_TROOP_IDS.reduce((s, id) => s + (a[id] || 0), 0);
 
+export const validateSiegeDeployment = ({
+  allocation,
+  maxDeploy,
+  reserve,
+  minDeploy = CONTEST_SIEGE_MIN_DEPLOY,
+}) => {
+  const normalized = normalizeAllocation(allocation);
+  const deploy = sumAlloc(normalized);
+  const minimum = Math.max(0, Math.floor(Number(minDeploy) || 0));
+  const maximum = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Math.floor(Number(maxDeploy) || 0)));
+  const available = Math.min(MANPOWER_RESERVE_CAP, Math.max(0, Math.floor(Number(reserve) || 0)));
+  if (deploy < minimum) return { ok: false, reason: `出征兵力不得少于 ${minimum}`, allocation: normalized, deploy };
+  if (deploy > maximum) return { ok: false, reason: `本次最多可调 ${maximum} 兵`, allocation: normalized, deploy };
+  if (deploy > available) return { ok: false, reason: `当前预备兵仅 ${available}`, allocation: normalized, deploy };
+  return { ok: true, reason: '', allocation: normalized, deploy };
+};
+
 /** 根据敌方混合兵种计算我方「期望克制倍率」 */
 const expectedCounterMult = (playerAlloc, defWeights) => {
   const safeDefWeights = normalizeWeights(defWeights);

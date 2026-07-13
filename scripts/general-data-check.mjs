@@ -14,8 +14,11 @@ import {
   GENERAL_ROSTER_FACTION_IDS,
   HISTORICAL_POLITICAL_FACTION_IDS,
   SANGUO_GENERALS,
+  calcGeneralsTotalBonus,
   hydrateGeneralSnapshot,
 } from '../src/data/generals.js';
+
+const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
 
 const check = (condition, message) => {
   assert.ok(condition, message);
@@ -181,6 +184,25 @@ assert.equal(hydrated.politicalFaction, 'wei');
 assert.equal(hydrated.warCamp, 'wei');
 assert.equal(hydrated.recruitTime, 123);
 check(true, '旧存档名将快照会刷新为权威人物资料，同时保留招募时间');
+
+const coreGenerals = Array.from({ length: 6 }, (_, index) => ({
+  id: `core_${index}`,
+  bonus: { gold: 4, exp: 2 },
+}));
+const unrelatedReserve = { id: 'reserve_trade', bonus: { trade: 10 } };
+const contributingReserve = { id: 'reserve_gold', bonus: { gold: 2 } };
+const coreBonus = calcGeneralsTotalBonus(coreGenerals);
+const unrelatedBonus = calcGeneralsTotalBonus([...coreGenerals, unrelatedReserve]);
+const expandedBonus = calcGeneralsTotalBonus([...coreGenerals, unrelatedReserve, contributingReserve]);
+assert.equal(unrelatedBonus.gold, coreBonus.gold);
+assert.ok(expandedBonus.gold >= unrelatedBonus.gold);
+assert.deepEqual(
+  calcGeneralsTotalBonus([...coreGenerals, unrelatedReserve, contributingReserve]),
+  calcGeneralsTotalBonus([contributingReserve, unrelatedReserve, ...coreGenerals].reverse()),
+);
+const generalDexSource = appSource.slice(appSource.indexOf('const renderGeneralDex = () => {'), appSource.indexOf('const renderWorldMap = () => {'));
+assert.match(generalDexSource, /const totalBonus = calcGeneralsTotalBonus\(recruited\);/);
+check(true, '名将加成按类型独立递减，新增名将不会降低旧加成且图鉴显示实战数值');
 
 assert.ok(Math.abs(Object.values(GENERAL_DRAW_RATES).reduce((sum, value) => sum + value, 0) - 1) < 1e-9);
 check(true, '抽将概率总和为 100%，且先抽档位、不受各档人数反向加权');

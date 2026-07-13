@@ -405,7 +405,15 @@ export const evaluateGangWarTarget = ({ targetGang, ownGang, kingdomWar, partyAv
   const pressure = partyAvgLevel / Math.max(1, enemyAvgLevel);
   const ownerFundsValue = isOwner ? reward.funds / 180 : 0;
   const rewardScore = Math.round(reward.contribution * 1.4 + ownerFundsValue + enemyLv * 0.35);
-  const riskLabel = winChance >= 0.72 ? '稳胜' : winChance >= 0.56 ? '可战' : winChance >= 0.42 ? '胶着' : '高危';
+  const riskLabel = levelDelta >= 8
+    ? '等级大优'
+    : levelDelta >= 2
+      ? '等级小优'
+      : levelDelta > -2
+        ? '等级接近'
+        : levelDelta > -8
+          ? '等级落后'
+          : '严重越级';
   const difficultyScore = Math.round(clamp((1 - winChance) * 82 + enemyLv * 0.16, 8, 96));
   const preparation = [];
   if (partyAvgLevel < enemyLv - 8) preparation.push(`首发均级建议提升到 Lv.${Math.max(1, enemyLv - 6)} 左右`);
@@ -424,6 +432,7 @@ export const evaluateGangWarTarget = ({ targetGang, ownGang, kingdomWar, partyAv
     enemyAvgLevel,
     reward,
     pressure,
+    levelDelta,
     winChance,
     riskLabel,
     difficultyScore,
