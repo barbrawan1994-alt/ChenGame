@@ -1958,4 +1958,24 @@ check('门派日常跨日不漏奖且江湖事件每周期仅结算一次', () =
   assert.ok(summit.includes('本周已选择'));
 });
 
+check('自动战斗强制换人和名将抽卡入口支持完整键盘交互', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const autoStart = app.indexOf('if (!autoBattle || !battle || battle.isPvP) return;');
+  const autoSource = app.slice(autoStart, autoStart + 4200);
+  assert.ok(autoStart >= 0);
+  assert.ok(autoSource.indexOf('if (battle.showSwitch && !battle.isDouble)') < autoSource.indexOf("const isInputPhase = battle.phase === 'input'"));
+  assert.match(autoSource, /findIndex\(\(pet, index\) =>/);
+  assert.match(autoSource, /switchPokemon\(replacementIdx\)/);
+  assert.match(autoSource, /battle\?\.showSwitch/);
+
+  const switchStart = app.indexOf('// 交换精灵弹窗');
+  const switchSource = app.slice(switchStart, switchStart + 4200);
+  assert.match(switchSource, /<button type="button" key=\{idx\} disabled=\{isActive \|\| isFainted\}/);
+
+  const generalDexStart = app.indexOf('const renderGeneralDex = () => {');
+  const generalDexSource = app.slice(generalDexStart, generalDexStart + 5200);
+  assert.match(generalDexSource, /<button type="button" className=\{`codex-panel codex-draw-panel/);
+  assert.match(app, /<button type="button" onClick=\{\(\) => setView\('general_dex'\)\}/);
+});
+
 console.log(`\nRegression checks passed: ${passed}`);

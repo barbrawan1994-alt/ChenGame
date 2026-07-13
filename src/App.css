@@ -16107,6 +16107,11 @@ select:focus-visible,
   background: linear-gradient(90deg, color-mix(in srgb, var(--bar-color) 50%, transparent), var(--bar-color));
 }
 .codex-draw-panel {
+  width: 100%;
+  appearance: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   user-select: none;
 }
 .codex-draw-panel.is-ready {
