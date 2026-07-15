@@ -59,11 +59,25 @@ const TYPE_NAMES = {
 /** 火影忍术查克拉性质 → 与 CHAKRA_NATURE_MAP 一致的展示用 emoji */
 const JUTSU_NATURE_EMOJI = { FIRE: '🔥', WATER: '💧', LIGHTNING: '⚡', WIND: '🌀', EARTH: '🪨' };
 
-export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, index }) => {
+const FORECAST_CHIP_STYLES = {
+  immune: { background: 'rgba(30,41,59,0.86)', borderColor: 'rgba(203,213,225,0.78)' },
+  ineffective: { background: 'rgba(30,41,59,0.86)', borderColor: 'rgba(203,213,225,0.78)' },
+  resisted: { background: 'rgba(3,105,161,0.8)', borderColor: 'rgba(186,230,253,0.82)' },
+  resist: { background: 'rgba(3,105,161,0.8)', borderColor: 'rgba(186,230,253,0.82)' },
+  neutral: { background: 'rgba(71,85,105,0.8)', borderColor: 'rgba(226,232,240,0.72)' },
+  effective: { background: 'rgba(21,128,61,0.82)', borderColor: 'rgba(187,247,208,0.82)' },
+  super: { background: 'rgba(21,128,61,0.82)', borderColor: 'rgba(187,247,208,0.82)' },
+  status: { background: 'rgba(109,40,217,0.82)', borderColor: 'rgba(221,214,254,0.82)' },
+  change: { background: 'rgba(109,40,217,0.82)', borderColor: 'rgba(221,214,254,0.82)' },
+};
+
+export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, index, forecast }) => {
   const [hovered, setHovered] = useState(false);
 
   const c = TYPE_COLORS[move.t] || '#90A4AE';
   const tName = TYPE_NAMES[move.t] || move.t;
+  const moveNameLength = Array.from(String(move.name || '')).length;
+  const moveNameFontSize = moveNameLength >= 6 ? '12px' : moveNameLength >= 4 ? '14px' : '16px';
   const maxPpCap = move.maxPP ?? move.maxPp ?? 15;
   const ppRatio = maxPpCap > 0 ? Math.max(0, Math.min(1, (move.pp || 0) / maxPpCap)) : 0;
   const ppColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
@@ -73,13 +87,28 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
   const readableDisabledReason = disabledReason
     ? String(disabledReason).replace(/[()]/g, '').replace('CD:', '冷却 ')
     : '';
-  const buttonTitle = [move.name, jutsuTooltipExtra, readableDisabledReason ? `无法使用：${readableDisabledReason}` : '', move.desc].filter(Boolean).join('\n');
+  const forecastA11yLabel = forecast?.a11yLabel ? String(forecast.a11yLabel) : '';
+  const forecastSummary = forecast?.summary ? String(forecast.summary) : '';
+  const descriptionText = forecastSummary && hasDesc
+    ? `${forecastSummary} · ${move.desc}`
+    : forecastSummary || move.desc || '';
+  const hasDescriptionLine = forecast ? Boolean(descriptionText) : Boolean(hasDesc);
+  const forecastChipStyle = FORECAST_CHIP_STYLES[forecast?.kind] || FORECAST_CHIP_STYLES.neutral;
+  const forecastChipTitle = forecast
+    ? [forecast.label, forecast.multiplierLabel, forecast.accuracyLabel].filter(Boolean).join(' · ')
+    : '';
+  const buttonTitle = [move.name, jutsuTooltipExtra, forecastA11yLabel, readableDisabledReason ? `无法使用：${readableDisabledReason}` : '', move.desc].filter(Boolean).join('\n');
+  const buttonAriaLabel = [
+    move.name,
+    forecastA11yLabel,
+    readableDisabledReason ? `无法使用：${readableDisabledReason}` : '',
+  ].filter(Boolean).join('，');
 
   return (
     <button
       title={buttonTitle}
       className="move-btn-v2 move-card-polished"
-      aria-label={`${move.name}${readableDisabledReason ? `，无法使用：${readableDisabledReason}` : ''}`}
+      aria-label={buttonAriaLabel}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => { if (!disabled && onClick) onClick(); }}
@@ -118,10 +147,10 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
         width:'100%', boxSizing:'border-box',
       }}>
         {/* 行1: 技能名 + 属性徽章 + 威力 */}
-        <div style={{display:'flex', alignItems:'center', gap:'8px', width:'100%'}}>
+        <div style={{display:'flex', alignItems:'center', gap:'6px', width:'100%'}}>
           <span style={{
-            fontSize:'16px', fontWeight:'900', color:'#fff',
-            letterSpacing:'0.3px', lineHeight:1.2,
+            fontSize:moveNameFontSize, fontWeight:'900', color:'#fff',
+            letterSpacing:0, lineHeight:1.2,
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             flex:1, minWidth:0,
             textShadow:'0 1px 3px rgba(0,0,0,0.4)',
@@ -136,26 +165,36 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
             }}>{move.isMartialArt ? '武' : move.isFruitMove ? '果' : move.isJutsu ? (move.isBijuu ? '兽' : (jutsuNatureEmoji ? `${jutsuNatureEmoji}忍` : '忍')) : move.isCursed ? '咒' : '装'}</span>
           )}
           <span style={{
-            fontSize:'11px', padding:'2px 8px', borderRadius:'4px', flexShrink:0,
+            fontSize:'11px', padding:'2px 6px', borderRadius:'4px', flexShrink:0,
             background:'rgba(255,255,255,0.25)', color:'#fff', fontWeight:'800',
             lineHeight:'1.4', letterSpacing:'0.5px',
           }}>{tName}</span>
           <span style={{
-            fontSize:'18px', fontWeight:'900', flexShrink:0,
+            fontSize:'16px', fontWeight:'900', flexShrink:0,
             color:'#fff',
-            minWidth:'30px', textAlign:'right',
+            minWidth:'26px', textAlign:'right',
             textShadow:'0 1px 3px rgba(0,0,0,0.3)',
           }}>{(move.p || move.power) > 0 ? (move.p || move.power) : '—'}</span>
         </div>
 
-        {/* 行2: 技能描述 */}
-        {hasDesc && (
+        {/* 行2: 技能预测与描述 */}
+        {hasDescriptionLine && (
           <div style={{
+            display:'flex', alignItems:'center', gap:'5px', minWidth:0,
             fontSize:'12px', lineHeight:'1.4',
             color:'rgba(255,255,255,0.85)',
-            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             textShadow:'0 1px 2px rgba(0,0,0,0.3)',
-          }}>{move.desc}</div>
+          }}>
+            {forecast?.label ? (
+              <span title={forecastChipTitle || forecast.label} style={{
+                fontSize:'10px', padding:'2px 6px', borderRadius:'4px', flexShrink:0,
+                background:forecastChipStyle.background, border:`1px solid ${forecastChipStyle.borderColor}`,
+                color:'#fff', fontWeight:'900', lineHeight:'1.3', whiteSpace:'nowrap',
+                textShadow:'0 1px 2px rgba(0,0,0,0.45)',
+              }}>{forecast.label}</span>
+            ) : null}
+            <span style={{ minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{descriptionText}</span>
+          </div>
         )}
 
         {/* 行3: PP条 + CE消耗 */}

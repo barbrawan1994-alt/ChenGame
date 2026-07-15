@@ -28,10 +28,13 @@
     "files": [
       "dist/**/*",
       "main.js",
+      "preload.js",
+      "save-store.js",
       "assets/icon.png"
     ],
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "assets",
+      "output": "release"
     }
   },
   "dependencies": {

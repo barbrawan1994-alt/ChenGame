@@ -843,7 +843,7 @@ export function getGeneralPortrait(general) {
   const fc = FACTION_PORTRAIT_COLORS[general.rosterFaction] || FACTION_PORTRAIT_COLORS[general.faction] || FACTION_PORTRAIT_COLORS.neutral;
   const rc = GENERAL_RARITY_CONFIG[general.rarity] || {};
   const surname = general.name.charAt(0);
-  const imageUrl = general.portrait || (general.id ? `/assets/generals/${general.id}.svg` : null);
+  const imageUrl = general.portrait || (general.id ? `assets/generals/${general.id}.svg` : null);
   return { surname, imageUrl, bg: fc.bg, border: fc.border, textColor: fc.text, rarityColor: rc.color || '#999', rarityBg: rc.bgColor || '#333' };
 }
 
