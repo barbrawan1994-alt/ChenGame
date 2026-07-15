@@ -71,6 +71,14 @@ export const filterStarterCatalog = (catalog, search = '', type = 'ALL') => {
   });
 };
 
+export const buildBalancedStarterPool = (
+  catalog,
+  { typeBias = {}, minBaseStatTotal = 310, maxBaseStatTotal = 370 } = {},
+) => (catalog || []).filter((pet) => {
+  const total = getStarterBaseStatTotal(pet, typeBias);
+  return total >= minBaseStatTotal && total <= maxBaseStatTotal;
+});
+
 export const sampleDiverseStarters = (catalog, count = 5, previousIds = [], random = Math.random) => {
   if (!Array.isArray(catalog) || catalog.length === 0 || count <= 0) return [];
 

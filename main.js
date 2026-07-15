@@ -1,7 +1,35 @@
 
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { createSaveStore } = require('./save-store');
+
+app.setName('超级精灵');
+const userDataOverride = process.env.CHENGAME_USER_DATA_DIR || process.env.SUPER_SPIRIT_USER_DATA_DIR;
+if (userDataOverride) {
+  app.setPath('userData', path.resolve(userDataOverride));
+}
+
+const saveStore = createSaveStore(app.getPath('userData'));
+
+const registerSaveChannel = (channel, handler) => {
+  ipcMain.on(channel, (event, ...args) => {
+    try {
+      event.returnValue = handler(...args);
+    } catch (error) {
+      event.returnValue = {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Desktop save operation failed',
+      };
+    }
+  });
+};
+
+registerSaveChannel('save:read', () => saveStore.read());
+registerSaveChannel('save:write', raw => saveStore.write(raw));
+registerSaveChannel('save:backup', kind => saveStore.backup(kind));
+registerSaveChannel('save:remove', () => saveStore.remove());
+registerSaveChannel('save:info', () => saveStore.info());
 
 // 🔥🔥🔥 核心修改：加入这行代码，允许自动播放声音 🔥🔥🔥
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -16,7 +44,8 @@ function createWindow() {
     fullscreen: !isDev,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     },
     autoHideMenuBar: true // 隐藏菜单栏，更像游戏
   });

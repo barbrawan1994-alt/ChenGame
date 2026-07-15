@@ -17,6 +17,9 @@ import { normalizeActivitySaveState, normalizeCoreSaveState, normalizeOperationa
 import { sanitizeImportedPvpTeam } from './utils/pvpImport';
 import { prepareCaughtPet, selectContestSpecies, syncPartyBattleResources } from './utils/contestUtils';
 import { normalizeCombatTargets } from './utils/battleAi';
+import { balanceEarlyWildLevel, filterFirstWinWildCandidates } from './utils/wildEncounterBalance';
+import { buildMoveForecast } from './utils/moveForecast';
+import { backupGameSave, readGameSave, removeGameSave, writeGameSave } from './utils/saveStorage';
 import {
   getDomainDamageMultiplier,
   getEffectiveChakraCost,
@@ -76,7 +79,7 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
-import { buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters } from './utils/starterSelection';
+import { buildBalancedStarterPool, buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters } from './utils/starterSelection';
 import { RACE_CONFIG, getMedianSpeed, resolveRaceContest, getRaceReward } from './data/raceBalance';
 import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS, normalizeUnlockedAchievementIds, normalizeAchievementTitles, normalizeCurrentAchievementTitle } from './data/achievements';
 import GAME_GUIDE from './data/gameGuide';
@@ -788,10 +791,15 @@ export default function RPG(props) {
   // =================================================================
   const savedDataRef = useRef(null);
   const saveCorruptedRef = useRef(false);
+  const saveLoadResultRef = useRef(null);
   const battleKeyboardActionRef = useRef(null);
   if (savedDataRef.current === null) {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const loadedSave = readGameSave(SAVE_KEY);
+      saveLoadResultRef.current = loadedSave;
+      if (loadedSave.degraded) console.warn('存档存储已降级', loadedSave.warnings);
+      const raw = loadedSave.raw;
+      if (loadedSave.corrupted && !raw) saveCorruptedRef.current = true;
       if (raw) {
         savedDataRef.current = JSON.parse(raw);
         if (!savedDataRef.current || typeof savedDataRef.current !== 'object' || Array.isArray(savedDataRef.current)) {
@@ -865,10 +873,10 @@ export default function RPG(props) {
       }
     } catch (e) {
       console.error("存档读取失败", e);
-      const rawSave = localStorage.getItem(SAVE_KEY);
+      const rawSave = saveLoadResultRef.current?.raw || null;
       if (rawSave) {
-        try { localStorage.setItem(SAVE_KEY + '_backup', rawSave); } catch(be) {}
-        console.log("已将损坏存档备份至 " + SAVE_KEY + '_backup');
+        const backupResult = backupGameSave(SAVE_KEY, 'corrupt-local');
+        if (backupResult.ok) console.log("已将损坏存档保存为隔离备份");
       }
       savedDataRef.current = {};
       saveCorruptedRef.current = true;
@@ -5336,6 +5344,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const cleanBox = (Array.isArray(box) ? box : []).map(compactSavedPet);
     return {
     saveVersion: CURRENT_SAVE_VERSION,
+    savedAt: Date.now(),
     playTimeMs: getCurrentPlayTimeMs(),
     trainerName, trainerAvatar, gold, party: cleanParty, box: cleanBox, accessories, sectTitles, sectPlayer,
     inventory, mapProgress, caughtDex, completedChallenges, badges, towerFloor, viewedIntros,
@@ -5367,7 +5376,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const persistSave = (silent = false, immediate = false) => {
     const doSave = () => {
       try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(buildSavePayloadRef.current()));
+        const saveResult = writeGameSave(SAVE_KEY, JSON.stringify(buildSavePayloadRef.current()));
+        if (!saveResult.ok) {
+          const details = saveResult.errors?.map(item => item.message).filter(Boolean).join('; ');
+          const saveError = new Error(details || 'No save backend accepted the data');
+          if (/quota|storage.*full|空间不足/i.test(details || '')) saveError.name = 'QuotaExceededError';
+          throw saveError;
+        }
+        if (saveResult.degraded) console.warn('存档保存使用降级后端', saveResult.warnings);
         setHasSave(true);
         if (!silent) { setAutoSaveMsg('存档保存成功'); setTimeout(() => setAutoSaveMsg(''), 2000); }
         return true;
@@ -5396,7 +5412,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const exportSaveData = () => {
     try {
       const serialized = JSON.stringify(buildSavePayloadRef.current(), null, 2);
-      localStorage.setItem(SAVE_KEY, serialized);
+      const saveResult = writeGameSave(SAVE_KEY, serialized);
+      if (!saveResult.ok) throw new Error('无法在导出前同步当前存档');
       const blob = new Blob([serialized], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -5434,10 +5451,21 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           title: '📥 导入存档',
           msg: `将载入训练家「${String(parsed.trainerName || '未命名').slice(0, 8)}」的存档并覆盖当前进度。当前存档会自动保留为备份。`,
           onOk: () => {
-            const currentRaw = localStorage.getItem(SAVE_KEY);
-            if (currentRaw) localStorage.setItem(`${SAVE_KEY}_before_import`, currentRaw);
+            const currentRaw = readGameSave(SAVE_KEY).raw;
+            if (currentRaw) {
+              const backupResult = backupGameSave(SAVE_KEY, 'before-import');
+              if (!backupResult.ok) {
+                showMapToast('❌', '导入失败', '无法备份当前存档，已取消覆盖', 3000);
+                return;
+              }
+            }
             isResettingRef.current = true;
-            localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
+            const importResult = writeGameSave(SAVE_KEY, JSON.stringify({ ...parsed, savedAt: Date.now() }));
+            if (!importResult.ok) {
+              isResettingRef.current = false;
+              showMapToast('❌', '导入失败', '无法写入导入存档', 3000);
+              return;
+            }
             window.location.reload();
           },
         });
@@ -5454,6 +5482,19 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const partyLenRef = useRef(party.length);
   partyLenRef.current = party.length;
   const isResettingRef = useRef(false);
+  const removeStoredSave = (reload = false) => {
+    const result = removeGameSave(SAVE_KEY);
+    if (!result.ok) {
+      console.error('delete save failed', result.errors);
+      showMapToast('❌', '删除失败', '桌面存档未能安全删除，请重试', 3200);
+      return false;
+    }
+    if (reload) {
+      isResettingRef.current = true;
+      window.location.replace(window.location.href);
+    }
+    return true;
+  };
   const [autoSaveMsg, setAutoSaveMsg] = useState('');
   const autoSaveMsgTimerRef = useRef(null);
   useEffect(() => {
@@ -13231,6 +13272,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     excludedIds: [...LEGENDARY_POOL, ...HIGH_TIER_POOL, ...NEW_GOD_IDS, ...FINAL_GOD_IDS],
     typeBias: TYPE_BIAS,
   }), []);
+  const balancedStarterCatalog = useMemo(() => buildBalancedStarterPool(starterCatalog, {
+    typeBias: TYPE_BIAS,
+  }), [starterCatalog]);
 
   const getOrCreateStarterPet = (base) => {
     if (!base?.id) return null;
@@ -13241,7 +13285,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const generateStarterOptions = () => {
-    const recommendations = sampleDiverseStarters(starterCatalog, 5, previousStarterIdsRef.current);
+    const recommendations = sampleDiverseStarters(balancedStarterCatalog, 5, previousStarterIdsRef.current);
     previousStarterIdsRef.current = recommendations.map((base) => base.id);
     setStarterOptions(recommendations.map(getOrCreateStarterPet).filter(Boolean));
   };
@@ -15368,6 +15412,17 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
          }
          let enemyId;
          let level = _.random(context.lvl[0], context.lvl[1]);
+         let balancedEncounterPool = context.exclusivePool
+           ? [...context.pool, ...context.exclusivePool]
+           : [...context.pool];
+         level = balanceEarlyWildLevel({
+           rolledLevel: level,
+           mapId: context.id,
+           badgeCount: badges.length,
+           battlesWon: achStatsRef.current?.battlesWon,
+           partyLevels: (partyRef.current || party).map(pet => pet?.level),
+           mapMinLevel: context.lvl[0],
+         });
          const canMeetLegend = badges.length >= 6;
          const legendRate = badges.length >= 12 ? 0.015 : badges.length >= 10 ? 0.012 : badges.length >= 8 ? 0.008 : 0.005;
          let legendObtainTriggered = false;
@@ -15400,6 +15455,20 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
               if (legendIds.has(pid)) return false;
               return true;
             });
+            const currentParty = partyRef.current || party;
+            const openingPet = currentParty.find(pet => pet?.currentHp > 0) || currentParty[0];
+            const openingMoveTypes = (openingPet?.moves || [])
+              .filter(move => Number(move?.p ?? move?.power) > 0 && move?.t)
+              .map(move => move.t);
+            balancedEncounterPool = filterFirstWinWildCandidates({
+              candidates: fullPool.map(pid => POKEDEX.find(pet => pet.id === pid)).filter(Boolean),
+              mapId: context.id,
+              badgeCount: badges.length,
+              battlesWon: achStatsRef.current?.battlesWon,
+              playerMoveTypes: openingMoveTypes,
+              playerUnit: openingPet,
+              getMultiplier: (attackType, defender) => getMoveTypeMultiplier({ t: attackType }, defender, null),
+            }).map(pet => pet.id);
             const pickWeighted = (pool) => {
               const evt = extraBattleData._ecoEvent;
               const bonusCfg = evt?.effects?.poolBonus
@@ -15424,7 +15493,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             if (context.exclusivePool && Math.random() < 0.08) {
               enemyId = _.sample(context.exclusivePool);
             } else {
-              enemyId = pickWeighted(fullPool);
+              enemyId = pickWeighted(balancedEncounterPool);
             }
          }
          const mapEco = extraBattleData._regionEcology || getMapEcology(context.id);
@@ -15463,7 +15532,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
          };
          enemyParty.push(spawnWildPet(enemyId, level));
          if (isDouble) {
-           const rawPool2 = context.exclusivePool ? [...context.pool, ...context.exclusivePool] : context.pool;
+           const rawPool2 = balancedEncounterPool;
            const seen2 = new Set();
            const fullPool2 = rawPool2.filter(pid => {
              const p = POKEDEX.find(x => x.id === pid);
@@ -15473,7 +15542,14 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
              return true;
            });
            const enemyId2 = _.sample(fullPool2);
-           const level2 = _.random(context.lvl[0], context.lvl[1]);
+           const level2 = balanceEarlyWildLevel({
+             rolledLevel: _.random(context.lvl[0], context.lvl[1]),
+             mapId: context.id,
+             badgeCount: badges.length,
+             battlesWon: achStatsRef.current?.battlesWon,
+             partyLevels: (partyRef.current || party).map(pet => pet?.level),
+             mapMinLevel: context.lvl[0],
+           });
            enemyParty.push(spawnWildPet(enemyId2, level2));
          }
     }
@@ -24534,8 +24610,21 @@ const renderNameInput = () => {
     const baseInfo = POKEDEX.find(d => d.id === p.id) || {};
     return { pet: p, stats, bst: getStarterBaseStatTotal(baseInfo, TYPE_BIAS) };
   };
+  const getStarterRole = (stats) => {
+    const profiles = [
+      { label: '先手型', value: stats.spd },
+      { label: '物攻型', value: stats.p_atk },
+      { label: '特攻型', value: stats.s_atk },
+      { label: '耐久型', value: ((stats.maxHp / 1.6) + stats.p_def + stats.s_def) / 3 },
+    ];
+    return profiles.reduce((best, profile) => profile.value > best.value ? profile : best).label;
+  };
   const starterSummary = starterOptions.map(summarizeStarter);
-  const strongestStarter = starterSummary.reduce((best, item) => !best || item.bst > best.bst ? item : best, null);
+  const toughestStarter = starterSummary.reduce((best, item) => {
+    const durability = item.stats.maxHp + item.stats.p_def + item.stats.s_def;
+    const bestDurability = best ? best.stats.maxHp + best.stats.p_def + best.stats.s_def : -1;
+    return durability > bestDurability ? item : best;
+  }, null);
   const fastestStarter = starterSummary.reduce((best, item) => !best || item.stats.spd > best.stats.spd ? item : best, null);
   const starterTypeOptions = [...new Set(starterCatalog.flatMap((pet) => [pet.type, pet.type2]).filter(Boolean))]
     .sort((a, b) => (TYPES[a]?.name || a).localeCompare(TYPES[b]?.name || b, 'zh-CN'));
@@ -24547,8 +24636,8 @@ const renderNameInput = () => {
   const catalogPreview = starterCatalogPet ? summarizeStarter(starterCatalogPet) : null;
 
   return (
-    <div className="screen starter-lab-screen" style={{'--starter-lab-bg-image': 'url("/assets/spirit-ui-sky-bg.webp")'}}>
-      <img className="starter-lab-bg-art" src="/assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
+    <div className="screen starter-lab-screen" style={{'--starter-lab-bg-image': 'url("assets/spirit-ui-sky-bg.webp")'}}>
+      <img className="starter-lab-bg-art" src="assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
       <div className="starter-lab-sky" aria-hidden="true" />
       <div className="starter-lab-grid" aria-hidden="true" />
       <div className="starter-lab-orbit starter-lab-orbit-a" aria-hidden="true" />
@@ -24628,7 +24717,7 @@ const renderNameInput = () => {
                 {starterView === 'recommended' && (
                   <>
                     <div className="starter-compare-strip" aria-label="候选精灵概览">
-                      {strongestStarter && <span>最高总和 <b>{strongestStarter.pet.name}</b></span>}
+                      {toughestStarter && <span>耐久突出 <b>{toughestStarter.pet.name}</b></span>}
                       {fastestStarter && <span>最快速度 <b>{fastestStarter.pet.name}</b></span>}
                     </div>
                     <button type="button" className="starter-reroll-btn" onClick={() => generateStarterOptions()}>
@@ -24672,7 +24761,7 @@ const renderNameInput = () => {
                 </div>
               ) : (
                 <div className="starter-card-grid">
-                  {starterSummary.map(({ pet: p, stats, bst }, i) => {
+                  {starterSummary.map(({ pet: p, stats }, i) => {
                     const typeConfig = TYPES[p.type] || TYPES.NORMAL;
                     const typeConfig2 = p.secondaryType ? (TYPES[p.secondaryType] || TYPES.NORMAL) : null;
                     const natureName = NATURE_DB[p.nature]?.name || '未知';
@@ -24729,8 +24818,8 @@ const renderNameInput = () => {
                           </span>
 
                           <span className="starter-total-row">
-                            <span>种族值总和</span>
-                            <b>{bst}</b>
+                            <span>战斗倾向</span>
+                            <b>{getStarterRole(stats)}</b>
                           </span>
 
                           <span className="starter-choose-btn">就决定是你了！</span>
@@ -24844,7 +24933,11 @@ const renderNameInput = () => {
               </div>
             )}
 
-            <p className="starter-lab-note">所有候选均为未进化、非传说且适合开局的基础形态；个体数值所见即所得。</p>
+            <p className="starter-lab-note">
+              {starterView === 'recommended'
+                ? '博士推荐会把基础强度控制在相近区间，优先比较属性、速度与攻防倾向。'
+                : '自由选择保留不同成长曲线；低初始强度物种通常更依赖后续进化。'}
+            </p>
           </section>
         ) : (
           <section className="starter-waiting-panel" aria-label="开始流程">
@@ -25891,9 +25984,7 @@ const renderGeneralPortraitFace = (gen, portrait = getGeneralPortrait(gen), fall
 const renderMenu = () => {
   const resetGame = () => {
     setConfirmModal({ title: '⚠️ 删除存档', msg: '确定要删除所有存档并重新开始吗？\n此操作不可恢复！', onOk: () => {
-      isResettingRef.current = true;
-      localStorage.removeItem(SAVE_KEY);
-      window.location.replace(window.location.href);
+      removeStoredSave(true);
     }});
   };
 
@@ -26028,8 +26119,8 @@ const renderMenu = () => {
   ];
 
   return (
-    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark, '--home-gate-bg-image': 'url("/assets/spirit-ui-sky-bg.webp")'}}>
-      <img className="home-gate-bg-art" src="/assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
+    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark, '--home-gate-bg-image': 'url("assets/spirit-ui-sky-bg.webp")'}}>
+      <img className="home-gate-bg-art" src="assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
       <div className="home-gate-sky" aria-hidden="true" />
       <div className="home-gate-terrain" aria-hidden="true" />
       <div className="home-gate-lines" aria-hidden="true" />
@@ -26049,7 +26140,7 @@ const renderMenu = () => {
           </header>
 
           <figure className="home-cover-poster" aria-label="超级精灵封面海报">
-            <img src="/assets/super-spirit-home-cover-bg.png?v=20260709-visual-fix" alt="超级精灵封面：训练师站在竞技场中央，周围环绕多属性精灵" />
+            <img src="assets/super-spirit-home-cover-bg.png?v=20260709-visual-fix" alt="超级精灵封面：训练师站在竞技场中央，周围环绕多属性精灵" />
             <figcaption className="home-cover-overlay">
               <div className="home-cover-badges">
                 <span>收集</span>
@@ -35044,7 +35135,15 @@ const renderMenu = () => {
                             {(() => {
                             const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
                             const activeMoves = skillPet?.combatMoves || [];
-                                const activeEnemy = battle.enemyParty?.[battle.enemyActiveIdx];
+                                const selectedPreviewEnemyIdx = isDoubleBattle
+                                  && Number.isInteger(battle.targetIdx)
+                                  && battle.enemyParty?.[battle.targetIdx]?.currentHp > 0
+                                  ? battle.targetIdx
+                                  : undefined;
+                                const previewEnemyIdx = isDoubleBattle
+                                  ? (selectedPreviewEnemyIdx ?? battle.enemyActiveIdxs?.find(idx => battle.enemyParty?.[idx]?.currentHp > 0) ?? battle.enemyActiveIdx)
+                                  : battle.enemyActiveIdx;
+                                const activeEnemy = battle.enemyParty?.[previewEnemyIdx];
                                 return activeMoves.map((m, i) => {
                                     const cp = isDoubleBattle ? doubleCurrentPet : p;
                                     const effectiveChakraCost = getEffectiveChakraCost(m, battle._resonanceFx || {});
@@ -35066,29 +35165,30 @@ const renderMenu = () => {
                                     } else if ((m.pp || 0) <= 0) {
                                       moveDisabledReason = '(无PP)';
                                     }
-                                    let typeEffTag = '';
-                                    let mod = 1;
-                                    const isSTAB = m.t && (m.t === (skillPet?.type) || m.t === (skillPet?.secondaryType));
-                                    if (activeEnemy && m.p > 0) {
-                                      mod = getTypeMod(m.t || 'NORMAL', activeEnemy.type);
-                                      if (activeEnemy.secondaryType && activeEnemy.secondaryType !== activeEnemy.type) mod *= getTypeMod(m.t || 'NORMAL', activeEnemy.secondaryType);
-                                      if (mod <= 0) typeEffTag = '🔻';
-                                      else if (mod > 1) typeEffTag = '🔺';
-                                    }
-                                    const stabMark = (isSTAB && m.p > 0) ? '★ ' : '';
-                                    const effLabel = `${stabMark}${activeEnemy && m.p > 0 ? `×${Number(mod.toFixed(2))}` : ''}`.trim();
+                                    const movePower = m.p ?? m.power ?? 0;
+                                    const forecastTarget = isSelfTargetingCombatMove(m) ? skillPet : activeEnemy;
+                                    const forecast = buildMoveForecast({
+                                      multiplier: activeEnemy && movePower > 0
+                                        ? getMoveTypeMultiplier(m, activeEnemy, battle)
+                                        : 1,
+                                      power: movePower,
+                                      accuracy: m.acc,
+                                      alwaysHit: m.alwaysHit,
+                                      isStab: movePower > 0 && !!m.t && getUnitTypeList(skillPet).includes(m.t),
+                                      targetName: forecastTarget?.name,
+                                    });
                                     return (
                                     <EnhancedMoveButton
                                         key={i}
+                                        forecast={forecast}
                                         move={{
                                             t: m.t || 'NORMAL',
                                             name: m.name,
-                                            power: m.p || 0,
+                                            power: movePower,
                                             pp: m.pp,
                                         maxPp: m.maxPP || 15,
                                         acc: m.acc,
-                                        effectivenessHint: typeEffTag || undefined,
-                                        desc: effLabel ? `${effLabel}${m.desc ? ' · ' + m.desc : ''}` : (m.desc || ''),
+                                        desc: m.desc || '',
                                         isCursed: m.isCursed,
                                         ceCost: m.ceCost,
                                         isExtra: m.isExtra,
@@ -36949,7 +37049,7 @@ const renderMenu = () => {
             <h3 style={{color:'#f44',margin:'0 0 12px'}}>存档数据损坏</h3>
             <p style={{color:'#aaa',fontSize:14,lineHeight:1.6}}>检测到存档数据解析失败。可能是存储被意外修改或清空。</p>
             <div style={{display:'flex',gap:10,justifyContent:'center',marginTop:20}}>
-              <button onClick={() => { localStorage.removeItem(SAVE_KEY); setShowCorruptWarning(false); }} style={{padding:'10px 20px',borderRadius:8,border:'none',background:'#f44',color:'#fff',cursor:'pointer',fontWeight:'bold'}}>清除并重新开始</button>
+              <button onClick={() => { if (removeStoredSave(false)) setShowCorruptWarning(false); }} style={{padding:'10px 20px',borderRadius:8,border:'none',background:'#f44',color:'#fff',cursor:'pointer',fontWeight:'bold'}}>清除并重新开始</button>
               <button onClick={() => setShowCorruptWarning(false)} style={{padding:'10px 20px',borderRadius:8,border:'1px solid #555',background:'transparent',color:'#aaa',cursor:'pointer'}}>忽略</button>
             </div>
           </div>
@@ -37140,7 +37240,7 @@ const renderMenu = () => {
             </div>
             <div style={{background:'rgba(255,255,255,0.06)',borderRadius:'16px',padding:'16px',marginBottom:'16px'}}>
               <div style={{fontSize:'13px',fontWeight:'700',color:'#ef4444',marginBottom:'12px'}}>⚠️ 危险操作</div>
-              <button onClick={() => setConfirmModal({title:'⚠️ 删除存档',msg:'确定要删除所有存档并重新开始吗？\n此操作不可恢复！',onOk:() => { isResettingRef.current = true; localStorage.removeItem(SAVE_KEY); window.location.replace(window.location.href); }})} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer',marginBottom:'10px'}}>
+              <button onClick={() => setConfirmModal({title:'⚠️ 删除存档',msg:'确定要删除所有存档并重新开始吗？\n此操作不可恢复！',onOk:() => { removeStoredSave(true); }})} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#ef5350',fontSize:'13px',fontWeight:'bold',cursor:'pointer',marginBottom:'10px'}}>
                 🗑️ 删除存档
               </button>
               {IS_ELECTRON && (

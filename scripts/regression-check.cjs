@@ -1,8 +1,15 @@
 const assert = require('assert/strict');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const vm = require('vm');
 const babel = require('@babel/core');
+const {
+  BACKUP_FILENAME,
+  MAX_RAW_BYTES,
+  SAVE_FILENAME,
+  createSaveStore,
+} = require('../save-store');
 
 const root = path.resolve(__dirname, '..');
 
@@ -128,6 +135,9 @@ const raceBalanceData = loadProjectModule('src/data/raceBalance.js');
 const systemFusionData = loadProjectModule('src/data/systemFusion.js');
 const saveNormalizer = loadProjectModule('src/utils/saveNormalizer.js');
 const pvpImport = loadProjectModule('src/utils/pvpImport.js');
+const moveForecast = loadProjectModule('src/utils/moveForecast.js');
+const saveStorage = loadProjectModule('src/utils/saveStorage.js');
+const wildEncounterBalance = loadProjectModule('src/utils/wildEncounterBalance.js');
 
 let passed = 0;
 function check(name, fn) {
@@ -135,6 +145,490 @@ function check(name, fn) {
   passed += 1;
   console.log(`✓ ${name}`);
 }
+
+function withTempDirectory(prefix, fn) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  try {
+    return fn(directory);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function createMockStorage(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  return {
+    getItem: key => values.has(String(key)) ? values.get(String(key)) : null,
+    setItem: (key, value) => values.set(String(key), String(value)),
+    removeItem: key => values.delete(String(key)),
+    snapshot: () => Object.fromEntries(values),
+  };
+}
+
+check('发布资源路径与桌面打包输出保持 file 协议兼容', () => {
+  const template = fs.readFileSync(path.join(root, 'src/index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const generals = fs.readFileSync(path.join(root, 'src/data/generals.js'), 'utf8');
+  const webpackConfig = require(path.join(root, 'webpack.config.js'));
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const gitignore = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
+  const portraitStart = generals.indexOf('export function getGeneralPortrait');
+  const portraitEnd = generals.indexOf('export function generateEnemyGenerals', portraitStart);
+  const portraitSource = generals.slice(portraitStart, portraitEnd);
+
+  assert.ok(template.includes('assets/super-spirit-loading-bg.png'));
+  assert.equal(template.includes('/assets/'), false);
+  assert.ok(app.includes('assets/spirit-ui-sky-bg.webp'));
+  assert.ok(app.includes('assets/super-spirit-home-cover-bg.png'));
+  assert.equal(app.includes('/assets/'), false);
+  assert.ok(portraitStart >= 0 && portraitEnd > portraitStart);
+  assert.ok(portraitSource.includes('`assets/generals/${general.id}.svg`'));
+  assert.equal(portraitSource.includes('/assets/'), false);
+
+  assert.equal(webpackConfig.output?.clean, true);
+  assert.equal(webpackConfig.output?.publicPath, './');
+  assert.equal(packageJson.build?.directories?.output, 'release');
+  assert.ok(packageJson.build?.files?.includes('dist/**/*'));
+  assert.match(gitignore, /(?:^|\n)release(?:\n|$)/);
+});
+
+check('桌面文件存档支持原子写入、滚动备份、损坏隔离与备份恢复', () => {
+  withTempDirectory('chengame-save-store-', directory => {
+    const store = createSaveStore(directory);
+    const firstRaw = JSON.stringify({ savedAt: 100, playTimeMs: 10, slot: 'first' });
+    const secondRaw = JSON.stringify({ savedAt: 200, playTimeMs: 20, slot: 'second' });
+    const savePath = path.join(directory, SAVE_FILENAME);
+    const backupPath = path.join(directory, BACKUP_FILENAME);
+
+    assert.deepEqual(store.read(), {
+      ok: true,
+      raw: null,
+      recovered: false,
+      corrupted: false,
+    });
+
+    const firstWrite = store.write(firstRaw);
+    assert.equal(firstWrite.ok, true);
+    assert.equal(firstWrite.backedUp, false);
+    assert.equal(firstWrite.bytes, Buffer.byteLength(firstRaw, 'utf8'));
+    assert.equal(fs.readFileSync(savePath, 'utf8'), firstRaw);
+
+    const secondWrite = store.write(secondRaw);
+    assert.equal(secondWrite.ok, true);
+    assert.equal(secondWrite.backedUp, true);
+    assert.equal(fs.readFileSync(savePath, 'utf8'), secondRaw);
+    assert.equal(fs.readFileSync(backupPath, 'utf8'), firstRaw);
+
+    fs.writeFileSync(savePath, '{broken json', 'utf8');
+    const corruptRecovery = store.read();
+    assert.equal(corruptRecovery.ok, true);
+    assert.equal(corruptRecovery.raw, firstRaw);
+    assert.equal(corruptRecovery.recovered, true);
+    assert.equal(corruptRecovery.corrupted, true);
+    assert.equal(fs.readFileSync(savePath, 'utf8'), firstRaw);
+    assert.equal(fs.readFileSync(path.join(directory, 'super-spirit-save.quarantine.json'), 'utf8'), '{broken json');
+
+    fs.rmSync(savePath);
+    const missingRecovery = store.read();
+    assert.equal(missingRecovery.ok, true);
+    assert.equal(missingRecovery.raw, firstRaw);
+    assert.equal(missingRecovery.recovered, true);
+    assert.equal(missingRecovery.corrupted, false);
+    assert.equal(fs.readFileSync(savePath, 'utf8'), firstRaw);
+  });
+});
+
+check('桌面文件存档拒绝非法输入并安全管理命名备份与删除', () => {
+  withTempDirectory('chengame-save-validation-', directory => {
+    const store = createSaveStore(directory);
+    const raw = JSON.stringify({ savedAt: 300, slot: 'managed' });
+    store.write(raw);
+
+    const namedBackup = store.backup('before_import');
+    const namedBackupPath = path.join(directory, 'super-spirit-save.before_import.json');
+    assert.deepEqual(namedBackup, {
+      ok: true,
+      kind: 'before_import',
+      bytes: Buffer.byteLength(raw, 'utf8'),
+    });
+    assert.equal(fs.readFileSync(namedBackupPath, 'utf8'), raw);
+    ['../escape', 'UPPER', '', 'a'.repeat(33), null].forEach(kind => {
+      assert.throws(() => store.backup(kind), /safe lowercase token/);
+    });
+
+    assert.throws(() => store.write('{not json'), /valid JSON/);
+    assert.throws(() => store.write('[]'), /top-level object/);
+    assert.throws(() => store.write('null'), /top-level object/);
+    assert.throws(() => store.write(42), /JSON string/);
+    const oversizedRaw = JSON.stringify({ data: 'x'.repeat(MAX_RAW_BYTES) });
+    assert.ok(Buffer.byteLength(oversizedRaw, 'utf8') > MAX_RAW_BYTES);
+    assert.throws(() => store.write(oversizedRaw), /byte limit/);
+
+    fs.writeFileSync(path.join(directory, 'super-spirit-save.quarantine.json'), raw, 'utf8');
+    fs.writeFileSync(path.join(directory, `${SAVE_FILENAME}.tmp`), raw, 'utf8');
+    fs.writeFileSync(path.join(directory, 'unrelated.json'), raw, 'utf8');
+    const removed = store.remove();
+    assert.equal(removed.ok, true);
+    assert.ok(removed.removed >= 3);
+    assert.deepEqual(
+      fs.readdirSync(directory).sort(),
+      ['unrelated.json'],
+    );
+    assert.deepEqual(store.remove(), { ok: true, removed: 0 });
+  });
+});
+
+check('Electron 存档桥固定应用身份、隔离渲染权限并完整打包', () => {
+  const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
+  const preloadSource = fs.readFileSync(path.join(root, 'preload.js'), 'utf8');
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+
+  assert.match(mainSource, /app\.setName\(['"]超级精灵['"]\)/);
+  assert.ok(mainSource.includes('process.env.CHENGAME_USER_DATA_DIR'));
+  assert.ok(mainSource.includes('process.env.SUPER_SPIRIT_USER_DATA_DIR'));
+  assert.match(mainSource, /app\.setPath\(['"]userData['"],\s*path\.resolve\(userDataOverride\)\)/);
+  assert.match(mainSource, /createSaveStore\(app\.getPath\(['"]userData['"]\)\)/);
+  assert.match(mainSource, /preload:\s*path\.join\(__dirname,\s*['"]preload\.js['"]\)/);
+  ['read', 'write', 'backup', 'remove', 'info'].forEach(operation => {
+    assert.ok(mainSource.includes(`registerSaveChannel('save:${operation}'`));
+  });
+  assert.match(mainSource, /nodeIntegration:\s*false/);
+  assert.match(mainSource, /contextIsolation:\s*true/);
+  assert.doesNotMatch(mainSource, /nodeIntegration:\s*true/);
+  assert.doesNotMatch(mainSource, /contextIsolation:\s*false/);
+  assert.doesNotMatch(mainSource, /webSecurity:\s*false|enableRemoteModule:\s*true/);
+
+  let exposedApi = null;
+  const ipcCalls = [];
+  vm.runInNewContext(preloadSource, {
+    require: specifier => {
+      assert.equal(specifier, 'electron');
+      return {
+        contextBridge: {
+          exposeInMainWorld: (name, api) => {
+            assert.equal(name, 'desktopSave');
+            exposedApi = api;
+          },
+        },
+        ipcRenderer: {
+          sendSync: (channel, ...args) => {
+            ipcCalls.push({ channel, args });
+            return { ok: true, channel };
+          },
+        },
+      };
+    },
+  }, { filename: path.join(root, 'preload.js') });
+
+  assert.ok(exposedApi);
+  assert.equal(Object.keys(exposedApi).sort().join(','), 'backup,info,read,remove,write');
+  exposedApi.read();
+  exposedApi.write('{"slot":1}');
+  exposedApi.backup('before_import');
+  exposedApi.remove();
+  exposedApi.info();
+  assert.deepEqual(ipcCalls, [
+    { channel: 'save:read', args: [] },
+    { channel: 'save:write', args: ['{"slot":1}'] },
+    { channel: 'save:backup', args: ['before_import'] },
+    { channel: 'save:remove', args: [] },
+    { channel: 'save:info', args: [] },
+  ]);
+
+  assert.ok(packageJson.build?.files?.includes('preload.js'));
+  assert.ok(packageJson.build?.files?.includes('save-store.js'));
+});
+
+check('统一存档适配器支持浏览器回退并按时间戳与游玩时长仲裁冲突', () => {
+  const key = 'super_spirit_save';
+  const localRaw = JSON.stringify({ savedAt: 200, playTimeMs: 20, slot: 'local' });
+  const storage = createMockStorage({ [key]: localRaw });
+  const browserRead = saveStorage.readGameSave(key, { storage, bridge: null });
+  assert.equal(browserRead.ok, true);
+  assert.equal(browserRead.raw, localRaw);
+  assert.equal(browserRead.source, 'local');
+  assert.equal(browserRead.degraded, false);
+  assert.equal(browserRead.mirrored.local, true);
+  assert.equal(browserRead.mirrored.desktop, null);
+
+  const nextRaw = JSON.stringify({ savedAt: 300, playTimeMs: 30, slot: 'browser-write' });
+  const browserWrite = saveStorage.writeGameSave(key, nextRaw, { storage, bridge: null });
+  assert.equal(browserWrite.ok, true);
+  assert.equal(browserWrite.localOk, true);
+  assert.equal(browserWrite.desktopOk, null);
+  assert.equal(storage.getItem(key), nextRaw);
+
+  const browserBackup = saveStorage.backupGameSave(key, 'manual', { storage, bridge: null });
+  assert.equal(browserBackup.ok, true);
+  assert.equal(browserBackup.localBackupKey, `${key}_manual`);
+  assert.equal(storage.getItem(`${key}_manual`), nextRaw);
+
+  const browserRemove = saveStorage.removeGameSave(key, { storage, bridge: null });
+  assert.equal(browserRemove.ok, true);
+  assert.equal(storage.getItem(key), null);
+
+  const newerSavedAt = saveStorage.selectSaveCandidate(
+    JSON.stringify({ savedAt: 500, playTimeMs: 1, slot: 'newer-local' }),
+    JSON.stringify({ savedAt: 400, playTimeMs: 9999, slot: 'older-desktop' }),
+  );
+  assert.equal(newerSavedAt.source, 'local');
+  assert.equal(JSON.parse(newerSavedAt.raw).slot, 'newer-local');
+
+  const longerPlayTime = saveStorage.selectSaveCandidate(
+    JSON.stringify({ savedAt: 500, playTimeMs: 100, slot: 'short-local' }),
+    JSON.stringify({ savedAt: 500, playTimeMs: 200, slot: 'long-desktop' }),
+  );
+  assert.equal(longerPlayTime.source, 'desktop');
+  assert.equal(JSON.parse(longerPlayTime.raw).slot, 'long-desktop');
+
+  const exactTie = saveStorage.selectSaveCandidate(
+    JSON.stringify({ savedAt: 500, playTimeMs: 200, slot: 'local-tie' }),
+    JSON.stringify({ savedAt: 500, playTimeMs: 200, slot: 'desktop-tie' }),
+  );
+  assert.equal(exactTie.source, 'desktop');
+  assert.equal(JSON.parse(exactTie.raw).slot, 'desktop-tie');
+
+  const validLegacySave = JSON.stringify({ slot: 'valid-legacy-without-ranking-fields' });
+  const validLocalOverCorruptDesktop = saveStorage.selectSaveCandidate(validLegacySave, '{broken json');
+  assert.equal(validLocalOverCorruptDesktop.source, 'local');
+  assert.equal(validLocalOverCorruptDesktop.valid, true);
+
+  const validDesktopOverCorruptLocal = saveStorage.selectSaveCandidate('{broken json', validLegacySave);
+  assert.equal(validDesktopOverCorruptLocal.source, 'desktop');
+  assert.equal(validDesktopOverCorruptLocal.valid, true);
+});
+
+check('统一存档适配器迁移缺失桌面档、镜像权威档并显式报告桥故障', () => {
+  const key = 'super_spirit_save';
+  const localRaw = JSON.stringify({ savedAt: 100, playTimeMs: 10, slot: 'local' });
+  const promotedWrites = [];
+  const promotionStorage = createMockStorage({ [key]: localRaw });
+  const promotionBridge = {
+    read: () => ({ ok: true, raw: null, recovered: false, corrupted: false }),
+    write: raw => {
+      promotedWrites.push(raw);
+      return { ok: true };
+    },
+  };
+  const promotion = saveStorage.readGameSave(key, {
+    storage: promotionStorage,
+    bridge: promotionBridge,
+  });
+  assert.equal(promotion.ok, true);
+  assert.equal(promotion.raw, localRaw);
+  assert.equal(promotion.source, 'local');
+  assert.equal(promotion.migrated, true);
+  assert.equal(promotion.mirrored.desktop, true);
+  assert.deepEqual(promotedWrites, [localRaw]);
+
+  const desktopRaw = JSON.stringify({ savedAt: 200, playTimeMs: 20, slot: 'desktop' });
+  const mirrorStorage = createMockStorage({ [key]: localRaw });
+  const mirror = saveStorage.readGameSave(key, {
+    storage: mirrorStorage,
+    bridge: {
+      read: () => ({ ok: true, raw: desktopRaw, recovered: true, corrupted: false }),
+    },
+  });
+  assert.equal(mirror.ok, true);
+  assert.equal(mirror.raw, desktopRaw);
+  assert.equal(mirror.source, 'desktop');
+  assert.equal(mirror.recovered, true);
+  assert.equal(mirror.conflict, true);
+  assert.equal(mirror.mirrored.local, true);
+  assert.equal(mirrorStorage.getItem(key), desktopRaw);
+
+  const degradedStorage = createMockStorage({ [key]: localRaw });
+  const failedBridge = {
+    read: () => ({ ok: false, error: 'read unavailable' }),
+    write: () => ({ ok: false, error: 'write unavailable' }),
+    backup: () => ({ ok: false, error: 'backup unavailable' }),
+    remove: () => ({ ok: false, error: 'remove unavailable' }),
+  };
+  const degradedRead = saveStorage.readGameSave(key, { storage: degradedStorage, bridge: failedBridge });
+  assert.equal(degradedRead.ok, true);
+  assert.equal(degradedRead.raw, localRaw);
+  assert.equal(degradedRead.source, 'local');
+  assert.equal(degradedRead.degraded, true);
+  assert.ok(degradedRead.warnings.includes('desktop-read-failed'));
+
+  const fallbackRaw = JSON.stringify({ savedAt: 300, playTimeMs: 30, slot: 'fallback' });
+  const degradedWrite = saveStorage.writeGameSave(key, fallbackRaw, {
+    storage: degradedStorage,
+    bridge: failedBridge,
+  });
+  assert.equal(degradedWrite.ok, true);
+  assert.equal(degradedWrite.localOk, true);
+  assert.equal(degradedWrite.desktopOk, false);
+  assert.equal(degradedWrite.degraded, true);
+  assert.equal(degradedStorage.getItem(key), fallbackRaw);
+
+  const degradedBackup = saveStorage.backupGameSave(key, 'manual', {
+    storage: degradedStorage,
+    bridge: failedBridge,
+  });
+  assert.equal(degradedBackup.ok, true);
+  assert.equal(degradedBackup.localOk, true);
+  assert.equal(degradedBackup.desktopOk, false);
+  assert.equal(degradedBackup.degraded, true);
+  assert.equal(degradedStorage.getItem(`${key}_manual`), fallbackRaw);
+
+  const failedRemove = saveStorage.removeGameSave(key, {
+    storage: degradedStorage,
+    bridge: failedBridge,
+  });
+  assert.equal(failedRemove.ok, false);
+  assert.equal(failedRemove.localOk, true);
+  assert.equal(failedRemove.desktopOk, false);
+  assert.equal(failedRemove.degraded, true);
+  assert.ok(failedRemove.warnings.includes('desktop-remove-failed'));
+  assert.equal(degradedStorage.getItem(key), null);
+});
+
+check('App 通过统一接口读写备份删除并为冲突仲裁记录保存时间', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const storageImport = app.match(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/utils\/saveStorage['"]/);
+  assert.ok(storageImport, 'App must import the unified save storage adapter');
+  ['readGameSave', 'writeGameSave', 'backupGameSave', 'removeGameSave'].forEach(name => {
+    assert.match(storageImport[1], new RegExp(`\\b${name}\\b`));
+    assert.match(app, new RegExp(`\\b${name}\\(SAVE_KEY\\b`));
+  });
+
+  const payloadStart = app.indexOf('const buildSavePayload = () => {');
+  const payloadEnd = app.indexOf('const buildSavePayloadRef =', payloadStart);
+  const payloadSource = app.slice(payloadStart, payloadEnd);
+  assert.ok(payloadStart >= 0 && payloadEnd > payloadStart);
+  assert.match(payloadSource, /\bsavedAt:\s*[^,}\n]+/);
+  assert.ok(app.includes('if (loadedSave.corrupted && !raw) saveCorruptedRef.current = true;'));
+
+  const removeStart = app.indexOf('const removeStoredSave = (reload = false) => {');
+  const removeEnd = app.indexOf("const [autoSaveMsg, setAutoSaveMsg]", removeStart);
+  const removeSource = app.slice(removeStart, removeEnd);
+  const reloadGuard = removeSource.indexOf('if (reload) {');
+  assert.ok(removeStart >= 0 && removeEnd > removeStart && reloadGuard >= 0);
+  assert.doesNotMatch(removeSource.slice(0, reloadGuard), /isResettingRef\.current\s*=\s*true/);
+  assert.match(removeSource.slice(reloadGuard), /if \(reload\) \{\s*isResettingRef\.current\s*=\s*true;\s*window\.location\.replace/);
+
+  const directSaveCalls = [...app.matchAll(
+    /localStorage\.(?:getItem|setItem|removeItem)\(\s*(?:SAVE_KEY\b|`\$\{SAVE_KEY\})/g,
+  )];
+  assert.deepEqual(
+    directSaveCalls.map(match => match[0]),
+    [],
+    'SAVE_KEY must not bypass the unified save storage adapter',
+  );
+});
+
+check('招式预测覆盖属性效果、命中规则与可访问文本', () => {
+  const forecast = overrides => moveForecast.buildMoveForecast({
+    multiplier: 1,
+    power: 60,
+    accuracy: 90,
+    targetName: '岩甲兽',
+    ...overrides,
+  });
+
+  [0, -20].forEach(power => {
+    const result = forecast({ power, multiplier: 2 });
+    assert.equal(result.kind, 'status');
+    assert.equal(result.label, '变化');
+    assert.equal(result.multiplierLabel, '');
+    assert.doesNotMatch(result.summary, /倍率|本系/);
+    assert.doesNotMatch(result.a11yLabel, /属性倍率|本系加成/);
+  });
+
+  const effectivenessCases = [
+    { multiplier: 0, kind: 'immune', label: '无效' },
+    { multiplier: 0.5, kind: 'resisted', label: '抵抗' },
+    { multiplier: 1, kind: 'neutral', label: '普通' },
+    { multiplier: 2, kind: 'effective', label: '克制' },
+  ];
+  effectivenessCases.forEach(({ multiplier, kind, label }) => {
+    const result = forecast({ multiplier });
+    assert.equal(result.kind, kind);
+    assert.equal(result.label, label);
+    assert.equal(result.multiplierLabel, `×${multiplier}`);
+    assert.match(result.summary, new RegExp(`倍率 ×${multiplier}`));
+    assert.match(result.a11yLabel, new RegExp(`${label}.*属性倍率 ×${multiplier}`));
+  });
+
+  [
+    { multiplier: 0.001, kind: 'resisted', forbiddenLabel: '×0' },
+    { multiplier: 0.999, kind: 'resisted', forbiddenLabel: '×1' },
+    { multiplier: 1.001, kind: 'effective', forbiddenLabel: '×1' },
+  ].forEach(({ multiplier, kind, forbiddenLabel }) => {
+    const result = forecast({ multiplier });
+    assert.equal(result.kind, kind);
+    assert.notEqual(result.multiplierLabel, forbiddenLabel);
+    assert.ok(result.summary.includes(`倍率 ${result.multiplierLabel}`));
+  });
+
+  [undefined, null, '', 'invalid', -2, Number.NaN, Number.POSITIVE_INFINITY].forEach(multiplier => {
+    const result = forecast({ multiplier });
+    assert.equal(result.kind, 'neutral');
+    assert.equal(result.label, '普通');
+    assert.equal(result.multiplier, 1);
+    assert.equal(result.multiplierLabel, '×1');
+  });
+
+  const checkedHit = forecast({ accuracy: 75 });
+  const alwaysHit = forecast({ alwaysHit: true, accuracy: 35 });
+  const zeroAccuracy = forecast({ accuracy: 0 });
+  assert.equal(checkedHit.accuracyLabel, '75%');
+  assert.match(checkedHit.summary, /命中 75%/);
+  assert.match(checkedHit.a11yLabel, /命中率 75%/);
+  assert.equal(alwaysHit.accuracyLabel, '必中');
+  assert.equal(zeroAccuracy.accuracyLabel, '必中');
+  assert.match(alwaysHit.a11yLabel, /必中/);
+  assert.match(zeroAccuracy.summary, /必中/);
+
+  assert.equal(forecast({ accuracy: 130 }).accuracyLabel, '100%');
+  assert.equal(forecast({ accuracy: -10 }).accuracyLabel, '1%');
+  assert.equal(forecast({ accuracy: 'invalid' }).accuracyLabel, '100%');
+  assert.equal(forecast({ power: 'invalid' }).kind, 'neutral');
+
+  const stab = forecast({ isStab: true, targetName: ' 岩甲兽 ' });
+  const nonStab = forecast({ isStab: false });
+  assert.match(stab.summary, /岩甲兽/);
+  assert.match(stab.summary, /本系/);
+  assert.match(stab.a11yLabel, /岩甲兽/);
+  assert.match(stab.a11yLabel, /本系加成/);
+  assert.match(nonStab.summary, /非本系/);
+  assert.match(nonStab.a11yLabel, /无本系加成/);
+});
+
+check('战斗招式按钮接入统一预测并暴露可访问提示', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const enhancements = fs.readFileSync(path.join(root, 'src/engines/BattleEnhancements.js'), 'utf8');
+  const forecastStart = app.indexOf('const forecast = buildMoveForecast({');
+  const previewStart = app.lastIndexOf('const selectedPreviewEnemyIdx = isDoubleBattle', forecastStart);
+  const forecastBranch = app.slice(previewStart, forecastStart + 1400);
+  const buttonStart = enhancements.indexOf('export const EnhancedMoveButton');
+  const buttonEnd = enhancements.indexOf('export const SkillCastEffect', buttonStart);
+  const buttonSource = enhancements.slice(buttonStart, buttonEnd);
+
+  assert.match(app, /import\s*\{\s*buildMoveForecast\s*\}\s*from\s*['"]\.\/utils\/moveForecast['"]/);
+  assert.ok(forecastStart >= 0);
+  assert.ok(previewStart >= 0 && previewStart < forecastStart);
+  assert.ok(forecastBranch.includes('battle.enemyParty?.[battle.targetIdx]?.currentHp > 0'));
+  assert.ok(forecastBranch.includes('battle.enemyActiveIdxs?.find(idx => battle.enemyParty?.[idx]?.currentHp > 0)'));
+  assert.ok(forecastBranch.includes(': battle.enemyActiveIdx;'));
+  assert.ok(forecastBranch.includes('const activeEnemy = battle.enemyParty?.[previewEnemyIdx]'));
+  assert.ok(forecastBranch.includes('const forecastTarget = isSelfTargetingCombatMove(m) ? skillPet : activeEnemy'));
+  assert.ok(forecastBranch.includes('getMoveTypeMultiplier(m, activeEnemy, battle)'));
+  assert.ok(forecastBranch.includes('isStab: movePower > 0 && !!m.t && getUnitTypeList(skillPet).includes(m.t)'));
+  assert.ok(forecastBranch.includes('targetName: forecastTarget?.name'));
+  assert.match(forecastBranch, /<EnhancedMoveButton[\s\S]*?forecast=\{forecast\}/);
+
+  assert.ok(buttonStart >= 0 && buttonEnd > buttonStart);
+  assert.match(buttonSource, /forecast\?\.a11yLabel[\s\S]*String\(forecast\.a11yLabel\)/);
+  assert.match(buttonSource, /const buttonTitle = \[[^\n]*forecastA11yLabel/);
+  assert.match(buttonSource, /title=\{buttonTitle\}/);
+  assert.match(buttonSource, /const buttonAriaLabel = \[[\s\S]*?forecastA11yLabel[\s\S]*?\]\.filter\(Boolean\)\.join\('，'\)/);
+  assert.match(buttonSource, /aria-label=\{buttonAriaLabel\}/);
+  assert.match(buttonSource, /const forecastChipTitle = forecast[\s\S]*?forecast\.label[\s\S]*?forecast\.multiplierLabel[\s\S]*?forecast\.accuracyLabel/);
+  assert.match(buttonSource, /title=\{forecastChipTitle \|\| forecast\.label\}/);
+  assert.match(buttonSource, />\{forecast\.label\}<\/span>/);
+});
 
 check('活动池 preserveSpecies 保持指定物种，默认创建仍按等级自动进化', () => {
   const originalRandom = Math.random;
@@ -222,6 +716,100 @@ check('初始精灵随机推荐不重复上一批并优先覆盖不同属性', (
   assert.equal(new Set(recommendations.map(pet => pet.id)).size, 5);
   assert.equal(recommendations.some(pet => previousIds.includes(pet.id)), false);
   assert.equal(new Set(recommendations.map(pet => pet.type)).size, 5);
+});
+
+check('博士推荐池限制开局强度差并保留足够属性路线', () => {
+  const excludedIds = [
+    ...battlesData.LEGENDARY_POOL,
+    ...battlesData.HIGH_TIER_POOL,
+    ...battlesData.NEW_GOD_IDS,
+    ...battlesData.FINAL_GOD_IDS,
+  ];
+  const catalog = starterSelection.buildStarterCatalog({
+    pokedex: petsData.POKEDEX,
+    stoneEvolutionRules: petsData.STONE_EVO_RULES,
+    excludedIds,
+    typeBias: typesData.TYPE_BIAS,
+  });
+  const balanced = starterSelection.buildBalancedStarterPool(catalog, {
+    typeBias: typesData.TYPE_BIAS,
+  });
+  const totals = balanced.map(pet => starterSelection.getStarterBaseStatTotal(pet, typesData.TYPE_BIAS));
+
+  assert.ok(balanced.length >= 75);
+  assert.ok(new Set(balanced.map(pet => pet.type)).size >= 18);
+  assert.ok(Math.min(...totals) >= 310);
+  assert.ok(Math.max(...totals) <= 370);
+
+  const recommendations = starterSelection.sampleDiverseStarters(balanced, 5, [], () => 0.25);
+  const recommendationTotals = recommendations.map(pet => starterSelection.getStarterBaseStatTotal(pet, typesData.TYPE_BIAS));
+  assert.equal(recommendations.length, 5);
+  assert.ok(Math.max(...recommendationTotals) - Math.min(...recommendationTotals) <= 60);
+  assert.equal(new Set(recommendations.map(pet => pet.type)).size, 5);
+});
+
+check('微风草原前三胜提供递进式野怪等级保护', () => {
+  const levelFor = overrides => wildEncounterBalance.balanceEarlyWildLevel({
+    rolledLevel: 8,
+    mapId: 1,
+    badgeCount: 0,
+    battlesWon: 0,
+    partyLevels: [5],
+    mapMinLevel: 3,
+    ...overrides,
+  });
+
+  assert.equal(levelFor({}), 4);
+  assert.equal(levelFor({ battlesWon: 1 }), 5);
+  assert.equal(levelFor({ battlesWon: 2, rolledLevel: 3 }), 3);
+  assert.equal(levelFor({ battlesWon: 3 }), 8);
+  assert.equal(levelFor({ badgeCount: 1 }), 8);
+  assert.equal(levelFor({ mapId: 2 }), 8);
+  assert.equal(levelFor({ partyLevels: [], mapMinLevel: 3 }), 3);
+  assert.equal(levelFor({ rolledLevel: 'invalid' }), 1);
+});
+
+check('首胜前的普通野怪至少允许中性输出且不具开场克制', () => {
+  const candidates = [
+    { id: 1, type: 'GRASS' },
+    { id: 2, type: 'NORMAL' },
+    { id: 3, type: 'WATER' },
+  ];
+  const multiplier = (attackType, defender) => {
+    if (attackType === 'FIRE' && defender?.type === 'GRASS') return 1.5;
+    if (attackType === 'FIRE' && defender?.type === 'WATER') return 0.8;
+    if (attackType === 'WATER' && defender?.type === 'FIRE') return 1.5;
+    return 1;
+  };
+  const protectedPool = wildEncounterBalance.filterFirstWinWildCandidates({
+    candidates,
+    mapId: 1,
+    badgeCount: 0,
+    battlesWon: 0,
+    playerMoveTypes: ['FIRE'],
+    playerUnit: { type: 'FIRE' },
+    getMultiplier: multiplier,
+  });
+
+  assert.deepEqual(protectedPool.map(candidate => candidate.id), [1, 2]);
+  assert.equal(wildEncounterBalance.filterFirstWinWildCandidates({
+    candidates,
+    mapId: 1,
+    badgeCount: 0,
+    battlesWon: 1,
+    playerMoveTypes: ['FIRE'],
+    playerUnit: { type: 'FIRE' },
+    getMultiplier: multiplier,
+  }).length, candidates.length);
+  assert.deepEqual(wildEncounterBalance.filterFirstWinWildCandidates({
+    candidates: [{ id: 4, type: 'WATER' }],
+    mapId: 1,
+    badgeCount: 0,
+    battlesWon: 0,
+    playerMoveTypes: ['FIRE'],
+    playerUnit: { type: 'FIRE' },
+    getMultiplier: multiplier,
+  }).map(candidate => candidate.id), [4]);
 });
 
 check('敌方战斗HUD完整显示军团名，不再使用省略号截断', () => {
@@ -1836,7 +2424,10 @@ check('设置页提供可校验的存档导出、导入与覆盖前备份', () =
   assert.ok(saveTools.includes("input.accept = '.json,application/json'"));
   assert.ok(saveTools.includes('file.size > 10 * 1024 * 1024'));
   assert.ok(saveTools.includes('!Array.isArray(parsed.party) || !Array.isArray(parsed.box)'));
-  assert.ok(saveTools.includes('`${SAVE_KEY}_before_import`'));
+  assert.ok(saveTools.includes('const currentRaw = readGameSave(SAVE_KEY).raw'));
+  assert.ok(saveTools.includes("backupGameSave(SAVE_KEY, 'before-import')"));
+  assert.ok(saveTools.includes('if (!backupResult.ok)'));
+  assert.ok(saveTools.indexOf("backupGameSave(SAVE_KEY, 'before-import')") < saveTools.indexOf('writeGameSave(SAVE_KEY, JSON.stringify'));
   assert.ok(app.includes('onClick={exportSaveData}'));
   assert.ok(app.includes('onClick={importSaveData}'));
 });
