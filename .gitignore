@@ -5,3 +5,4 @@ release
 .DS_Store
 **/.DS_Store
 .codebase-memory/
+.netlify/

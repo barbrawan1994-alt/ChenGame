@@ -79,7 +79,9 @@ import { TRAIT_DB, NATURE_DB } from './data/traits';
 import { BALL_ICONS, MED_ICONS, STONE_ICONS, ACC_ICONS, GROWTH_ICONS, TM_COLORS as TM_ICON_COLORS } from './data/itemIcons';
 import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
-import { buildBalancedStarterPool, buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters } from './utils/starterSelection';
+import { buildBalancedStarterPool, buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters, selectCombatBalancedStarters } from './utils/starterSelection';
+import { planTeamRecovery } from './utils/teamRecovery';
+import HomeMenu from './components/HomeMenu';
 import { RACE_CONFIG, getMedianSpeed, resolveRaceContest, getRaceReward } from './data/raceBalance';
 import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS, normalizeUnlockedAchievementIds, normalizeAchievementTitles, normalizeCurrentAchievementTitle } from './data/achievements';
 import GAME_GUIDE from './data/gameGuide';
@@ -116,7 +118,7 @@ import {
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
   KW_EQUIPMENT,
-  ARENA_RANKS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, arenaPreviewSeed, mulberry32, getArenaWeekTypes, resolveArenaResult, resolveArenaDailyRefresh,
+  ARENA_RANKS, ARENA_SEASON_REWARDS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, arenaPreviewSeed, mulberry32, getArenaWeekTypes, resolveArenaResult, resolveArenaDailyRefresh,
   EXPEDITION_ZONES, EXPEDITION_EVENTS, EXPEDITION_BRANCH_EVENTS, DEFAULT_EXPEDITIONS, calcExpeditionBonus, pickExpeditionBranchEvent,
   MINE_ORES, MINE_TILES, MINE_EXCHANGE, MINE_GRID_SIZE, MINE_MAX_ENERGY, MINE_REGEN_INTERVAL, MINE_REQ_BADGES, DEFAULT_MINE_STATE, MINE_DEPTH_MILESTONES, generateMineGrid,
   BOUNTY_TEMPLATES, generateDailyBounties, getMasterChestReward, DEFAULT_BOUNTY_BOARD,
@@ -1947,8 +1949,6 @@ const [infinityState, setInfinityState] = useState(() => {
   const battleSpeedRef = useRef(1);
   useEffect(() => { battleSpeedRef.current = battleSpeed; }, [battleSpeed]);
   const hudEvents = useHudEvents({ party, gold, battle, view });
-  const [menuLeadSpriteErr, setMenuLeadSpriteErr] = useState(false);
-  useEffect(() => { setMenuLeadSpriteErr(false); }, [party[0]?.uid, party[0]?.id]);
   const [postBattleQuickHeal, setPostBattleQuickHeal] = useState(false);
   useEffect(() => { if (view !== 'grid_map') setPostBattleQuickHeal(false); }, [view]);
   useEffect(() => { if (view === 'battle' && !battle) setView('grid_map'); }, [view, battle]);
@@ -2962,9 +2962,13 @@ const [viewStatPet, setViewStatPet] = useState(null);
   // [修正] 初始精灵确认 (初始化新版背包结构)
   // ==========================================
   const confirmStarter = (preGeneratedPet) => {
+    const registeredName = tempName.trim();
+    if (!registeredName || !preGeneratedPet || partyRef.current.length > 0) return;
+    setTrainerName(registeredName);
     // 🔥 关键修改：不再调用 createPet，而是直接使用传进来的对象
     // 只需要更新一下 uid 确保唯一性即可
     const newPet = { ...preGeneratedPet, uid: Date.now() };
+    partyRef.current = [newPet];
     // 2. 初始化玩家状态
     setParty([newPet]);
     setCaughtDex([newPet.id]);
@@ -10101,6 +10105,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return;
     }
     let rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
+    if (badges.length < ARENA_RANKS[0].reqBadges) { showMapToast('🔒', '未解锁', `需要 ${ARENA_RANKS[0].reqBadges} 枚徽章`, 1500); return; }
     if (arenaState.tickets <= 0) { showMapToast('🎫','门票不足',`可花 ${ARENA_TICKET_PRICE.toLocaleString()} 金币购买门票`,1500); return; }
     if (badges.length < rank.reqBadges) {
       const validRank = [...ARENA_RANKS].reverse().find(r => badges.length >= r.reqBadges) || ARENA_RANKS[0];
@@ -10335,12 +10340,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       { id:'race', icon:'🏁', name:'精灵竞速', desc:'速度决定胜负', color:'#00897B', badge: (() => { const td = getLocalDateStr(); return (raceState.lastDate !== td ? 0 : raceState.dailyRaces) < RACE_CONFIG.maxDailyRaces ? 1 : 0; })(), onClick: () => { setActivityCenter(false); if (badges.length < 2) { showMapToast('🔒','未解锁','需要 2 枚徽章',1500); return; } setView('race'); } },
       { id:'infinity', icon:'🏯', name:'无限城', desc:'Roguelike挑战', color:'#6A1B9A', badge: (achStats.maxInfinityFloor || 0) >= 25 ? '🔥' : 0, onClick: () => { setActivityCenter(false); setView('infinity_castle'); } },
     ];
-    const readyEntries = entries.filter(e => !!e.badge);
+    const activityRequirements = { arena: ARENA_RANKS[0].reqBadges, mining: MINE_REQ_BADGES, training: TRAINING_REQ_BADGES, world_boss: WORLD_BOSS_REQ_BADGES, race: 2 };
+    const isActivityLocked = entry => badges.length < (activityRequirements[entry.id] || 0);
+    const readyEntries = entries.filter(e => !!e.badge && !isActivityLocked(e));
     const todayFocus = [
       { label: '轮盘免费', value: freeWheelAvail ? '可用' : `${wheelSpinsLeft} 次余量`, hot: freeWheelAvail },
       { label: '远征归队', value: pendingExpeditions, hot: pendingExpeditions > 0 },
       { label: '赏金奖励', value: unclaimedBounties, hot: unclaimedBounties > 0 },
-      { label: '矿洞能量', value: Math.max(0, Number(mineState.energy) || 0), hot: badges.length >= MINE_REQ_BADGES },
+      { label: '矿洞能量', value: badges.length >= MINE_REQ_BADGES ? Math.max(0, Number(mineState.energy) || 0) : `${MINE_REQ_BADGES} 徽章解锁`, hot: badges.length >= MINE_REQ_BADGES },
     ];
 
     return (
@@ -10368,11 +10375,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           <div className="activity-hub-section-title">日常玩法</div>
           <div className="activity-hub-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
             {entries.map(e => (
-              <button key={e.id} className="activity-hub-card" onClick={e.onClick} style={{'--activity-color': e.color, position:'relative',background:`linear-gradient(135deg,${e.color}22,${e.color}08)`,border:`1px solid ${e.color}40`,borderRadius:'16px',padding:'16px 12px',cursor:'pointer',textAlign:'center',transition:'all 0.2s'}}>
+              <button key={e.id} className="activity-hub-card" aria-disabled={isActivityLocked(e)} onClick={() => {
+                if (isActivityLocked(e)) { showMapToast('🔒', '未解锁', `需要 ${activityRequirements[e.id]} 枚徽章`, 1500); return; }
+                e.onClick();
+              }} style={{'--activity-color': e.color, position:'relative',background:`linear-gradient(135deg,${e.color}22,${e.color}08)`,border:`1px solid ${e.color}40`,borderRadius:'16px',padding:'16px 12px',cursor:'pointer',textAlign:'center',transition:'all 0.2s'}}>
                 <div className="activity-hub-card-icon" style={{fontSize:'32px',marginBottom:'6px'}}>{e.icon}</div>
                 <div className="activity-hub-card-name" style={{fontSize:'14px',fontWeight:'700',color:'#fff'}}>{e.name}</div>
-                <div className="activity-hub-card-desc" style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{e.desc}</div>
-                {!!e.badge && <div className="activity-hub-badge" style={{position:'absolute',top:'6px',right:'6px',minWidth:'20px',height:'20px',borderRadius:'10px',padding:'0 4px',background:'#E53935',color:'#fff',fontSize:'11px',fontWeight:'800',display:'flex',alignItems:'center',justifyContent:'center'}}>{e.id === 'mining' ? `⚡${e.badge}` : (Number(e.badge) > 99 ? '99+' : e.badge)}</div>}
+                <div className="activity-hub-card-desc" style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{isActivityLocked(e) ? `${activityRequirements[e.id]} 枚徽章解锁` : e.desc}</div>
+                {!!e.badge && !isActivityLocked(e) && <div className="activity-hub-badge" style={{position:'absolute',top:'6px',right:'6px',minWidth:'20px',height:'20px',borderRadius:'10px',padding:'0 4px',background:'#E53935',color:'#fff',fontSize:'11px',fontWeight:'800',display:'flex',alignItems:'center',justifyContent:'center'}}>{e.id === 'mining' ? `⚡${e.badge}` : (Number(e.badge) > 99 ? '99+' : e.badge)}</div>}
               </button>
             ))}
           </div>
@@ -10513,20 +10523,29 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const renderArena = () => {
     const rank = ARENA_RANKS.find(r => r.id === arenaState.rank) || ARENA_RANKS[0];
     const rankIdx = ARENA_RANKS.indexOf(rank);
-    const seasonStartMs = arenaState.seasonStartDate ? new Date(arenaState.seasonStartDate).getTime() : NaN;
-    const seasonDaysLeft = Number.isFinite(seasonStartMs) ? Math.max(0, 14 - Math.floor((Date.now() - seasonStartMs) / MS_PER_DAY)) : 14;
     const todayStr = getLocalDateStr();
+    const seasonStartMs = arenaState.seasonStartDate ? new Date(arenaState.seasonStartDate).getTime() : NaN;
+    const seasonDaysLeft = Number.isFinite(seasonStartMs) ? Math.min(14, Math.max(0, 14 - Math.floor((Date.parse(todayStr) - seasonStartMs) / MS_PER_DAY))) : 14;
     const rule = ARENA_WEEKLY_RULES.find(r => r.id === arenaState.weeklyRule) || ARENA_WEEKLY_RULES[0];
     const arenaPreview = (() => {
       const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', todayStr));
       let enemyCount = rank.enemyCount || 3;
       if (rule?.effect === 'solo') enemyCount = 1;
-      const enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 900 && !p.hidden);
+      let enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 900 && !p.hidden);
+      if (rule.effect === 'typeLock') {
+        const weekTypes = getArenaWeekTypes();
+        const typePool = enemyPool.filter(p => weekTypes.includes(p.type) || weekTypes.includes(p.type2));
+        if (typePool.length > 0) enemyPool = typePool;
+      }
       const enemies = [];
       for (let i = 0; i < enemyCount; i++) {
-        const lvl = Math.floor(rank.enemyLvl[0] + rng() * (rank.enemyLvl[1] - rank.enemyLvl[0] + 1));
+        let lvl = Math.floor(rank.enemyLvl[0] + rng() * (rank.enemyLvl[1] - rank.enemyLvl[0] + 1));
+        if (rule.effect === 'levelCap50') lvl = Math.min(50, lvl);
         const dex = enemyPool[Math.floor(rng() * enemyPool.length)] || enemyPool[0];
-        if (dex) enemies.push({ id: dex.id, name: dex.name, emoji: dex.emoji, type: dex.type, type2: dex.type2, level: lvl });
+        if (dex) {
+          const pet = createPet(dex.id, lvl);
+          enemies.push({ id: pet.id, name: pet.name, emoji: pet.emoji, type: pet.type, type2: pet.secondaryType, level: lvl });
+        }
       }
       const enemyTypes = [...new Set(enemies.flatMap(e => [e.type, e.type2].filter(Boolean)))];
       const counterTypes = Object.keys(TYPES || {}).filter(t => enemyTypes.some(et => getTypeMod(t, et) >= 1.5)).slice(0, 4);
@@ -13285,9 +13304,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const generateStarterOptions = () => {
-    const recommendations = sampleDiverseStarters(balancedStarterCatalog, 5, previousStarterIdsRef.current);
+    const candidateBases = sampleDiverseStarters(
+      balancedStarterCatalog,
+      Math.min(30, balancedStarterCatalog.length),
+      previousStarterIdsRef.current,
+    );
+    const candidatePets = candidateBases.map(getOrCreateStarterPet).filter(Boolean);
+    const recommendations = selectCombatBalancedStarters(candidatePets, 5, { getStats });
     previousStarterIdsRef.current = recommendations.map((base) => base.id);
-    setStarterOptions(recommendations.map(getOrCreateStarterPet).filter(Boolean));
+    setStarterOptions(recommendations);
   };
 
    // getMoveByLevel 已前置到 createPet 之前
@@ -13400,6 +13425,45 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
   };
 
+
+  const recoverTeam = () => {
+    const preview = planTeamRecovery(partyRef.current || [], inventoryRef.current || inventory, MEDICINES, getStats);
+    if (!preview.healedPets) {
+      showMapToast('ℹ️', '无需用药', preview.faintedPets ? '濒死伙伴需要活力块或精灵中心救治' : '存活伙伴体力已满，或没有可用伤药', 2000);
+      return;
+    }
+    const describe = plan => Object.entries(plan.used).map(([id, count]) => `${MEDICINES[id].name} ×${count}`).join('、');
+    setConfirmModal({
+      title: '全队治疗',
+      msg: `${preview.healedPets} 位伙伴恢复 ${preview.recoveredHp} HP\n消耗：${describe(preview)}${preview.faintedPets ? `\n${preview.faintedPets} 位濒死伙伴需要单独救治` : ''}`,
+      onOk: () => {
+        const lockKey = 'team-recovery';
+        if (inventoryActionLocksRef.current.has(lockKey)) return;
+        inventoryActionLocksRef.current.add(lockKey);
+        try {
+          const currentInventory = inventoryRef.current || inventory;
+          const plan = planTeamRecovery(partyRef.current || [], currentInventory, MEDICINES, getStats);
+          if (!plan.healedPets) return;
+          // Reconfirm if resources or the party changed while the preview was open.
+          if (JSON.stringify(plan.used) !== JSON.stringify(preview.used) || plan.recoveredHp !== preview.recoveredHp) {
+            recoverTeam();
+            return;
+          }
+          partyRef.current = plan.party;
+          inventoryRef.current = plan.inventory;
+          flushSync(() => { setParty(plan.party); setInventory(plan.inventory); });
+          if (infinityStateRef.current) {
+            const nextRun = { ...infinityStateRef.current, healUsed: true };
+            infinityStateRef.current = nextRun;
+            setInfinityState(nextRun);
+          }
+          showMapToast('💊', '全队治疗', `恢复 ${plan.recoveredHp} HP · ${describe(plan)}`, 2500);
+        } finally {
+          window.setTimeout(() => inventoryActionLocksRef.current.delete(lockKey), 0);
+        }
+      },
+    });
+  };
 
    // [修正] 使用伤药 (适配 inventory.meds)
   const usePotion = (petIdx) => {
@@ -14501,24 +14565,28 @@ const useGrowthItem = (petIndex, itemId) => {
   }, [playerPos, mapGrid, currentMapId, mapProgress, badges, inventory, storyProgress, storyStep, kingdomWar, party]);
 
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (view !== 'grid_map' || shopMode || pcMode || isDialogVisible || fusionMode || teamMode || activityModal || merchantItems) return;
+  const mapInputBlocked = view !== 'grid_map' || shopMode || pcMode || isDialogVisible ||
+    fusionMode || teamMode || activityModal || merchantItems || activityCenter || pvpMode ||
+    ecoPanelOpen || fusionHubOpen || confirmModal || viewStatPet || equipModalOpen ||
+    gymEntryModal || ecoCrisisModal || ecoBranchModal || ecoRouteModal || nonCombatModal ||
+    showKeyHelp || showTypeChart || rebirthData || skillInheritModal || fruitPickModal ||
+    vowModal || partnerModal || bondingModal || relicDropModal || showBattleRecords ||
+    showSeasonRank || showAvatarSelector || messageBox;
+
+  const performMapAction = (action) => {
+      if (mapInputBlocked) return;
       const hasPending = party.some(p => p.pendingLearnMove);
       if (hasPending) {
-        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','s','a','d'].includes(e.key)) {
-           showMapToast('🛑', '无法移动', '有伙伴需要处理新技能，正在跳转...', 2000);
-           setTimeout(() => setView('team'), 600);
-        }
+        showMapToast('🛑', '无法移动', '有伙伴需要处理新技能', 2000);
+        setView('team');
         return;
       }
-      switch(e.key) {
-        case 'ArrowUp': case 'w': case 'W': e.preventDefault(); handleMove(0, -1); break;
-        case 'ArrowDown': case 's': case 'S': e.preventDefault(); handleMove(0, 1); break;
-        case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); handleMove(-1, 0); break;
-        case 'ArrowRight': case 'd': case 'D': e.preventDefault(); handleMove(1, 0); break;
-        case ' ': {
-          e.preventDefault();
+      switch(action) {
+        case 'up': handleMove(0, -1); break;
+        case 'down': handleMove(0, 1); break;
+        case 'left': handleMove(-1, 0); break;
+        case 'right': handleMove(1, 0); break;
+        case 'interact': {
           const px = playerPos.x, py = playerPos.y;
           const facingVectors = {
             up: [0, -1],
@@ -14542,10 +14610,21 @@ const useGrowthItem = (petIndex, itemId) => {
         }
         default: break;
       }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.defaultPrevented || e.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key === ' ' && e.target?.closest?.('button, [role="button"]')) return;
+      const actions = { ArrowUp: 'up', w: 'up', ArrowDown: 'down', s: 'down', ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ' ': 'interact' };
+      const action = actions[e.key] || actions[e.key.toLowerCase()];
+      if (!action || mapInputBlocked) return;
+      e.preventDefault();
+      performMapAction(action);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view, handleMove, shopMode, pcMode, party, isDialogVisible, fusionMode, teamMode, activityModal, merchantItems, playerPos, playerFacing, mapGrid]);
+  }, [performMapAction, mapInputBlocked]);
 
   const handleEventConfirm = () => {
     setEventData(null);
@@ -21519,7 +21598,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         audioRef.current.loop = false; 
     }
     
-    const { enemyParty, mapId, drop, isTrainer, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battleSnapshot;
+    const { enemyParty, mapId, drop, isTrainer, isStory, isChallenge, challengeId, isGym, isBoss, isBounty, type } = battleSnapshot;
 
     finalParty = (finalParty || party).map(p => ({ ...p, fatigue: 0 }));
     if (type === 'infinity') {
@@ -25571,11 +25650,6 @@ const renderNameInput = () => {
   // ==========================================
 
 
-const titleSpriteUrls = useMemo(() => {
-  const ids = [6, 9, 150, 384, 445, 249, 373, 282, 248, 376, 491, 493];
-  return ids.map(id => `${getSpriteUrl({id, type:'NORMAL'})}`);
-}, []);
-
 // ============ 道具 CSS 图标渲染系统 (已提取至 components/ItemIcons.jsx) ============
 
 // ==========================================
@@ -25983,341 +26057,21 @@ const renderGeneralPortraitFace = (gen, portrait = getGeneralPortrait(gen), fall
 
 const renderMenu = () => {
   const resetGame = () => {
-    setConfirmModal({ title: '⚠️ 删除存档', msg: '确定要删除所有存档并重新开始吗？\n此操作不可恢复！', onOk: () => {
+    setConfirmModal({ title: '删除存档', msg: '确定要删除所有存档并重新开始吗？\n此操作不可恢复！', onOk: () => {
       removeStoredSave(true);
     }});
   };
-
-  const gangName = gang?.gangId ? (gang.isOwner ? gang.customGang?.name : GANG_PRESETS.find(g=>g.id===gang.gangId)?.name) : null;
-  const gangIcon = gang?.gangId ? (gang.isOwner ? gang.customGang?.icon : GANG_PRESETS.find(g=>g.id===gang.gangId)?.icon) : null;
-  const playerFaction = kingdomWar?.faction ? FACTIONS[kingdomWar.faction] : null;
-  const playerRank = kingdomWar?.faction ? getMilitaryRank(kingdomWar.warContribution || 0, buildRankStats(kingdomWar)) : null;
-  const myTerrCountMenu = kingdomWar?.faction ? getFactionTerritoryCount(kingdomWar.faction, kingdomWar.territories || {}) : 0;
-  const fc = playerFaction ? {primary: playerFaction.color, dark: playerFaction.darkColor} : {primary:'#c62828', dark:'#7f1d1d'};
-  const titleSprites = titleSpriteUrls;
-  const recruitedCount = (kingdomWar?.recruitedGenerals || []).length;
-  const recruitedGens = kingdomWar?.recruitedGenerals || [];
-  const collectedGenCount = (kingdomWar?.collectedGeneralIds || []).length;
-
-  const ninjaRank = getNinjaRank(narutoState?.examsCompleted || 0);
-  const bijuuCount = (narutoState?.bijuuCollected || []).length;
-  const jutsuCollCount = (narutoState?.jutsuCollection || []).length;
-
-  const leadPet = hasSave && party?.length > 0 ? party[0] : null;
-  const leadPetDex = leadPet ? POKEDEX.find(p => p.id === leadPet.id) : null;
-  const totalPower = hasSave && party ? party.reduce((s, p) => { const st = getStats(p); return s + (p.level || 1) * 10 + (st.p_atk || 50) + (st.s_atk || 50); }, 0) : 0;
-  const dailyTasksDone = hasSave ? Math.min((narutoState?.dailyMissions || 0), 5) : 0;
-  const badgeCount = badges?.length || 0;
-  const leagueUnlocked = storyProgress >= LEAGUE_UNLOCK_STORY_INDEX;
-  const commandStats = [
-    { label: '队伍战力', value: hasSave ? totalPower.toLocaleString() : '待集结', hint: leadPet ? `${leadPet.nickname || leadPetDex?.name || '伙伴'} 领队` : '选择初始伙伴', tone: 'gold' },
-    { label: '徽章进度', value: `${badgeCount}/${MAIN_GYM_BADGE_COUNT}`, hint: badgeCount >= MAIN_GYM_BADGE_COUNT ? '主线徽章已集齐' : '继续挑战道馆', tone: 'blue' },
-    { label: '训练任务', value: `${dailyTasksDone}/5`, hint: dailyTasksDone >= 5 ? '今日已完成' : '完成任务强化队伍', tone: 'green' },
-    { label: '忍术修行', value: ninjaRank?.name || '学员', hint: `${bijuuCount}/9 尾兽，${jutsuCollCount} 忍术`, tone: 'red' },
-  ];
-  const quickEntries = [
-    { key:'pokedex', label:'精灵图鉴', sub:`${caughtDex.length}/${POKEDEX.length}`, icon:'📚' },
-    { key:'skill_dex', label:'技能图鉴', sub:`${allSkills.length} 种`, icon:'⚡' },
-    { key:'fruit_dex', label:'果实图鉴', sub:`${getAllFruits().length} 种`, icon:'🍎' },
-    { key:'jutsu_codex', label:'忍术卷轴', sub:`${JUTSU_DB.length} 种`, icon:'🍥' },
-    { key:'general_dex', label:'名将图鉴', sub:`${collectedGenCount}/${SANGUO_GENERALS.length}`, icon:'📜' },
-    { key:'achievements', label:'成就殿堂', sub:`${Math.round(unlockedAchs.length/ACHIEVEMENTS.length*100)}%`, icon:'🏆' },
-    { key:null, label:'无限城', sub:`最佳 ${achStats.maxInfinityFloor || 0} 层`, icon:'🏯', action: () => {
-      if (!hasSave || !party?.length) { showMapToast('❌', '无法进入', '先开始冒险并组建队伍', 2000); return; }
-      if (party[0].level >= 80) enterInfinityCastle('normal');
-      else if (party[0].level >= 40) enterInfinityCastle('shallow');
-      else showMapToast('⚠️', '等级不足', '浅层需首发 Lv.40+', 2000);
-    } },
-    { key:'guide', label:'冒险指南', sub:'规则说明', icon:'📖' },
-    { key:'settings', label:'系统设置', sub:'选项', icon:'⚙️' },
-    { key:null, label:'重置存档', sub:'重新开始', icon:'🔄', action: resetGame, danger: true },
-  ];
-  const nextObjective = hasSave
-    ? (badgeCount < MAIN_GYM_BADGE_COUNT
-        ? `夺取第 ${badgeCount + 1} 枚徽章`
-        : !leagueUnlocked
-          ? '完成冠军之路主线'
-          : (playerFaction ? `${playerFaction.name} 阵营战线推进` : '挑战终局试炼'))
-    : '建立第一支冒险小队';
-  const homeProgress = hasSave ? Math.min(100, Math.round((badgeCount / Math.max(1, MAIN_GYM_BADGE_COUNT)) * 100)) : 0;
-  const homeTrailSteps = [
-    { label: '初始伙伴', meta: leadPet ? (leadPet.nickname || leadPetDex?.name || '已加入') : '待选择', done: !!leadPet },
-    { label: '徽章征途', meta: `${badgeCount}/${MAIN_GYM_BADGE_COUNT}`, done: badgeCount > 0 },
-    { label: '联盟资格', meta: leagueUnlocked ? '已解锁' : '冠军之路剧情后', done: leagueUnlocked },
-  ];
-  const teamPreview = hasSave && party?.length ? party.slice(0, 6) : [];
-  const petCollectionPct = Math.min(100, Math.round((caughtDex.length / Math.max(1, POKEDEX.length)) * 100));
-  const leadTypeName = TYPES[leadPetDex?.type]?.name || '未知';
-  const leadTypeColor = TYPES[leadPetDex?.type]?.color || '#8fd8ff';
-  const trainingFocus = hasSave
-    ? (dailyTasksDone >= 5 ? '今日训练已完成' : `今日还可完成 ${Math.max(0, 5 - dailyTasksDone)} 项训练`)
-    : '选择初始伙伴后开启训练';
-  const ranchStats = [
-    { label: '图鉴收集', value: `${caughtDex.length}/${POKEDEX.length}`, meta: `${petCollectionPct}%`, tone: 'dex' },
-    { label: '技能库', value: `${allSkills.length}`, meta: '可研习招式', tone: 'skill' },
-    { label: '队伍规模', value: hasSave ? `${party?.length || 0}/6` : '0/6', meta: leadPet ? `${leadTypeName}领队` : '待集结', tone: 'team' },
-  ];
-  const starterGallery = (titleSprites || []).slice(0, 5);
-  const missionCards = [
-    { label: '下一步', value: nextObjective, meta: hasSave ? trainingFocus : '创建存档后开启主线' },
-    { label: '当前资源', value: `${gold.toLocaleString()} 金币`, meta: `累计收益 ${(achStats.totalGoldEarned ?? 0).toLocaleString()}` },
-    { label: '队伍状态', value: hasSave && party?.length ? `${party.length}/6 已集结` : '等待伙伴', meta: leadPet ? `${leadPet.nickname || leadPetDex?.name || '首发伙伴'} 可以出战` : '先选择初始伙伴' },
-  ];
-  const fusionSystems = [
-    {
-      label: '精灵主轴',
-      icon: '🔴',
-      meta: `${caughtDex.length}/${POKEDEX.length} 图鉴 · ${badgeCount}/${MAIN_GYM_BADGE_COUNT} 徽章`,
-      progress: petCollectionPct,
-      tone: 'spirit',
-      action: () => setView('pokedex'),
-    },
-    {
-      label: '忍术修行',
-      icon: '🍥',
-      meta: `${ninjaRank?.name || '忍者学员'} · ${jutsuCollCount}/${JUTSU_DB.length} 卷轴`,
-      progress: Math.min(100, Math.round((jutsuCollCount / Math.max(1, JUTSU_DB.length)) * 100)),
-      tone: 'ninja',
-      action: () => setView('naruto_exam'),
-    },
-    {
-      label: '果实海域',
-      icon: '🍎',
-      meta: `${new Set(fruitInventory || []).size}/${getAllFruits().length} 果实 · 战术变身`,
-      progress: Math.min(100, Math.round((new Set(fruitInventory || []).size / Math.max(1, getAllFruits().length)) * 100)),
-      tone: 'sea',
-      action: () => setView('fruit_dex'),
-    },
-    {
-      label: '三国阵线',
-      icon: playerFaction?.icon || '🛡️',
-      meta: playerFaction ? `${playerFaction.name} · ${myTerrCountMenu} 领地 · ${recruitedCount}/${MAX_RECRUITED_GENERALS} 名将` : '加入阵营后开启国战',
-      progress: kingdomWar?.faction ? Math.min(100, Math.round((myTerrCountMenu / Math.max(1, WAR_MAP_IDS?.length || 38)) * 100)) : 0,
-      tone: 'kingdom',
-      action: () => { setMapTab('kingdom'); setView('world_map'); },
-    },
-    {
-      label: '无限城',
-      icon: '🏯',
-      meta: `最佳 ${achStats.maxInfinityFloor || 0} 层 · 高压爬塔`,
-      progress: Math.min(100, Math.round(((achStats.maxInfinityFloor || 0) / 100) * 100)),
-      tone: 'slayer',
-      action: () => setView('infinity_castle'),
-    },
-    {
-      label: '武侠门派',
-      icon: '🥋',
-      meta: sectPlayer?.playerSect ? `门派 Rank ${sectPlayer.sectRank || 1} · ${(sectPlayer.sectMartialArts || []).length} 武学` : '加入门派后开启心法',
-      progress: sectPlayer?.playerSect ? Math.min(100, Math.round(((sectPlayer.sectRank || 1) / 10) * 100)) : 0,
-      tone: 'wuxia',
-      action: () => setView('sect_summit'),
-    },
-  ];
-  const entryGroups = [
-    { title: '收藏与资料', items: quickEntries.slice(0, 6) },
-    { title: '挑战与系统', items: quickEntries.slice(6) },
-  ];
-
   return (
-    <main className="screen home-gate-screen" id="main-content" style={{'--lead-type': leadTypeColor, '--faction-primary': fc.primary, '--faction-dark': fc.dark, '--home-gate-bg-image': 'url("assets/spirit-ui-sky-bg.webp")'}}>
-      <img className="home-gate-bg-art" src="assets/spirit-ui-sky-bg.webp" alt="" aria-hidden="true" />
-      <div className="home-gate-sky" aria-hidden="true" />
-      <div className="home-gate-terrain" aria-hidden="true" />
-      <div className="home-gate-lines" aria-hidden="true" />
-
-      <div className="home-gate-shell">
-        <section className="home-gate-hero" aria-label="冒险概览">
-          <header className="home-gate-brand">
-            <SuperSpiritIcon className="home-gate-logo" size={62} />
-            <div>
-              <div className="home-gate-version-row">
-                <span>{GAME_EN_NAME}</span>
-                <b>{GAME_VERSION_LABEL}</b>
-              </div>
-              <h1>{GAME_NAME}</h1>
-              <p>精灵收集、徽章挑战与跨体系修行，都从这支队伍开始。</p>
-            </div>
-          </header>
-
-          <figure className="home-cover-poster" aria-label="超级精灵封面海报">
-            <img src="assets/super-spirit-home-cover-bg.png?v=20260709-visual-fix" alt="超级精灵封面：训练师站在竞技场中央，周围环绕多属性精灵" />
-            <figcaption className="home-cover-overlay">
-              <div className="home-cover-badges">
-                <span>收集</span>
-                <span>进化</span>
-                <span>对战</span>
-                <span>逐鹿天下</span>
-              </div>
-            </figcaption>
-          </figure>
-
-          <button className="home-cover-main-start" type="button" onClick={handleStartGame}>
-            <span className="home-cover-main-start-icon" aria-hidden="true">▶</span>
-            <strong>开始游戏</strong>
-          </button>
-
-          <div className="home-gate-lead-strip">
-            <div className="home-gate-lead-mini">
-              <div className="home-gate-lead-mini-art">
-                {leadPet && leadPetDex?.sprite && !menuLeadSpriteErr ? (
-                  <img src={leadPetDex.sprite} alt={leadPetDex?.name || ''} onError={() => setMenuLeadSpriteErr(true)} />
-                ) : (
-                  <span>{leadPetDex?.emoji || leadPet?.emoji || '🔴'}</span>
-                )}
-              </div>
-              <div>
-                <span>当前领队</span>
-                <strong>{leadPet ? (leadPet.nickname || leadPetDex?.name || '未知伙伴') : '等待初始伙伴'}</strong>
-                <small>{leadPet ? `Lv.${leadPet.level || 1} · ${leadTypeName}属性` : '创建存档后展开冒险路线'}</small>
-              </div>
-            </div>
-            <div className="home-cover-system-row" aria-label="玩法体系">
-              {fusionSystems.slice(0, 4).map(sys => (
-                <button type="button" className={`home-cover-system is-${sys.tone}`} key={sys.label} onClick={sys.action}>
-                  <span>{sys.icon}</span>
-                  <strong>{sys.label}</strong>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="home-gate-team" aria-label="当前队伍">
-            {Array.from({ length: 6 }).map((_, idx) => {
-              const pet = teamPreview[idx];
-              const dex = pet ? POKEDEX.find(p => p.id === pet.id) : null;
-              return pet ? (
-                <button
-                  type="button"
-                  className="home-gate-team-slot is-filled"
-                  key={pet.uid || `${pet.id}-${idx}`}
-                  onClick={() => setViewStatPet(pet)}
-                  title={pet.nickname || dex?.name || pet.name}
-                >
-                  {renderAvatar(pet)}
-                  <span>Lv.{pet.level || 1}</span>
-                </button>
-              ) : (
-                <div className="home-gate-team-slot" key={`empty-${idx}`}>+</div>
-              );
-            })}
-          </div>
-
-          <div className="home-gate-mini-grid">
-            {ranchStats.map(stat => (
-              <div className={`home-gate-mini is-${stat.tone}`} key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.meta}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="home-gate-command" aria-label="指挥台">
-          <div className="home-gate-command-top">
-            <div>
-              <span className="home-gate-eyebrow">Command Center</span>
-              <h2>今日指挥台</h2>
-              <p>{hasSave ? '先看队伍状态，再选择最值得推进的路线。' : '首页只保留最重要的第一步，剩下的入口会随冒险展开。'}</p>
-            </div>
-            <div className="home-gate-wallet">
-              <span>金币</span>
-              <strong>{gold.toLocaleString()}</strong>
-            </div>
-          </div>
-
-          <div className="home-gate-stat-grid">
-            {commandStats.map(stat => (
-              <div className={`home-gate-stat is-${stat.tone}`} key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.hint}</small>
-              </div>
-            ))}
-          </div>
-
-          <div className="home-gate-mission-row">
-            {missionCards.map(card => (
-              <div className="home-gate-mission" key={card.label}>
-                <span>{card.label}</span>
-                <strong>{card.value}</strong>
-                <small>{card.meta}</small>
-              </div>
-            ))}
-          </div>
-
-          <section className="home-gate-route">
-            <div className="home-gate-route-head">
-              <div>
-                <span>培养路线</span>
-                <strong>{nextObjective}</strong>
-              </div>
-              <b>{homeProgress}%</b>
-            </div>
-            <div className="home-gate-progress"><span style={{width: `${homeProgress}%`}} /></div>
-            <div className="home-gate-steps">
-              {homeTrailSteps.map(step => (
-                <div className={`home-gate-step ${step.done ? 'is-done' : ''}`} key={step.label}>
-                  <i aria-hidden="true" />
-                  <span>{step.label}</span>
-                  <small>{step.meta}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="home-gate-fusion-board">
-            <div className="home-card-title">
-              <span>体系入口</span>
-              <small>保留多玩法，但降低视觉噪音</small>
-            </div>
-            <div className="home-fusion-grid">
-              {fusionSystems.map(sys => (
-                <button type="button" className={`home-fusion-card is-${sys.tone}`} key={sys.label} onClick={sys.action}>
-                  <span className="home-fusion-icon">{sys.icon}</span>
-                  <span className="home-fusion-copy">
-                    <strong>{sys.label}</strong>
-                    <small>{sys.meta}</small>
-                    <span className="home-fusion-meter"><em style={{width: `${sys.progress}%`}} /></span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="home-gate-war">
-            <div className="home-war-main">
-              <span className="home-war-icon">{playerFaction?.icon || gangIcon || '旗'}</span>
-              <div>
-                <span>势力状态</span>
-                <strong>{playerFaction ? `${playerFaction.name} · ${playerRank?.name || '新兵'}` : (gangName || '尚未加入势力')}</strong>
-                <small>{playerFaction ? `${myTerrCountMenu} 个领地，已招募 ${recruitedCount}/${MAX_RECRUITED_GENERALS} 名将` : '加入阵营或门派后，这里会显示战线进度'}</small>
-              </div>
-            </div>
-            {gangName && <div className="home-gate-gang">{gangIcon} {gangName}</div>}
-          </section>
-
-          <div className="home-gate-entry-board">
-            {entryGroups.map(group => (
-              <section className="home-gate-entry-group" key={group.title}>
-                <h3>{group.title}</h3>
-                <div className="home-gate-entry-grid">
-                  {group.items.map(btn => (
-                    <button className={`home-gate-entry ${btn.danger ? 'is-danger' : ''}`} type="button" key={btn.label} onClick={() => { btn.action ? btn.action() : setView(btn.key); }}>
-                      <span className="home-gate-entry-icon">{btn.icon}</span>
-                      <span>
-                        <strong>{btn.label}</strong>
-                        <small>{btn.sub}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        </section>
-      </div>
-    </main>
+    <HomeMenu
+      hasSave={hasSave}
+      trainerName={trainerName}
+      badgeCount={badges.length}
+      badgeTotal={MAIN_GYM_BADGE_COUNT}
+      location={MAPS.find(map => map.id === currentMapId)?.name || '微风草原'}
+      onStart={handleStartGame}
+      onNavigate={setView}
+      onReset={resetGame}
+    />
   );
 };
 
@@ -26828,7 +26582,14 @@ const renderMenu = () => {
               <article key={m.id} className={`map-card-pro world-region-card ${themeClass} difficulty-${diffTier}`} style={{
                 ...(isLocked ? {filter:'brightness(0.8) saturate(0.7)', cursor:'not-allowed'} : undefined),
                 ...(isContestedActive && !isLocked ? { border: '1px solid rgba(255,200,0,0.3)'} : {}),
-              }} onClick={() => { if (isLocked) showMapToast('🔒', '区域锁定', lockReason, 2000); else enterMap(m.id); }}>
+              }} role="button" tabIndex={0} aria-label={`${isLocked ? '查看解锁条件' : '进入'}：${m.name}`}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+                onClick={() => { if (isLocked) showMapToast('🔒', '区域锁定', lockReason, 2000); else enterMap(m.id); }}>
                 {isContestedActive && !isLocked && (
                   <div style={{position:'absolute', inset:0, borderRadius:'inherit', overflow:'hidden', pointerEvents:'none', zIndex:1}}>
                     <div style={{position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg, transparent, rgba(255,200,0,0.6), transparent)', animation:'warFlash 2s ease-in-out infinite'}} />
@@ -31137,7 +30898,10 @@ const renderMenu = () => {
                     </div>
                 )}
 
-                <button className="btn-close-round" onClick={handleClose}>×</button>
+                <div className="team-modal-tools">
+                  {!usingItem && <button className="team-recovery-btn" onClick={recoverTeam}>全队治疗</button>}
+                  <button className="btn-close-round" aria-label="关闭伙伴列表" onClick={handleClose}>×</button>
+                </div>
             </div>
 
             {/* 2. 精灵列表 (2列网格) */}
@@ -31155,6 +30919,11 @@ const renderMenu = () => {
                     return (
                         <div key={i}
                              className={`team-member-card ${isFainted ? 'fainted' : ''}`}
+                             role="button" tabIndex={0} aria-label={`${usingItem ? '选择' : '查看'} ${p.name}`}
+                             onKeyDown={event => {
+                                 if (event.target !== event.currentTarget) return;
+                                 if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+                             }}
                              style={{borderLeft: `4px solid ${typeConfig.color}`}}
                              onClick={() => {
                                  if (usingItem) handleItemUseOnPet(i);
@@ -31240,22 +31009,7 @@ const renderMenu = () => {
             else setView(safeBack());
         }}>🔙 返回</button>
         <div className="nav-title">我的伙伴 ({party.length}/6)</div>
-        <button className="team-heal-all-btn" onClick={() => {
-          const meds = {...(inventory.meds || {})};
-          let healed = 0;
-          const newParty = party.map(p => {
-            const s = getStats(p); if (p.currentHp >= s.maxHp) return p;
-            const need = s.maxHp - p.currentHp;
-            const potions = [['hyper_potion',200],['super_potion',50],['potion',20]];
-            let remaining = need; const pet = {...p};
-            for (const [key, val] of potions) {
-              while (remaining > 0 && (meds[key]||0) > 0) { pet.currentHp = Math.min(s.maxHp, pet.currentHp + val); remaining = s.maxHp - pet.currentHp; meds[key]--; healed++; }
-            }
-            return pet;
-          });
-          if (healed > 0) { setParty(newParty); setInventory(prev => ({...prev, meds: {...(prev.meds||{}), ...meds}})); showMapToast('💊','全队回复',`使用了 ${healed} 瓶药水`,1500); }
-          else showMapToast('ℹ️','无需治疗','全队HP已满或无药品',1500);
-        }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(76,175,80,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>💊全队</button>
+        <button className="team-heal-all-btn" onClick={recoverTeam} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(76,175,80,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>💊全队</button>
         <button className="team-sort-btn" onClick={() => { const sortModes = ['level', 'power', 'hp']; const nextI = (sortModes.indexOf(teamSortMode || 'level') + 1) % sortModes.length; setTeamSortMode(sortModes[nextI]); setParty(prev => { const sorted = [...prev]; if (sortModes[nextI] === 'power') sorted.sort((a,b) => { const sA = getStats(a); const sB = getStats(b); return (sB.p_atk + sB.s_atk + sB.spd) - (sA.p_atk + sA.s_atk + sA.spd); }); else if (sortModes[nextI] === 'hp') sorted.sort((a,b) => b.currentHp - a.currentHp); else sorted.sort((a,b) => b.level - a.level); return sorted; }); showMapToast('📊','排序',sortModes[nextI]==='power'?'按战力':'按'+(sortModes[nextI]==='hp'?'血量':'等级'),1000); }} style={{fontSize:11,padding:'4px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(33,150,243,0.8)',color:'#fff',fontWeight:700,cursor:'pointer'}}>{teamSortMode==='power'?'⚔️战力':teamSortMode==='hp'?'❤️血量':'📊等级'}</button>
         <button onClick={() => {
           if (badges.length < 5) { showMapToast('🔒', '未解锁', '获得5枚徽章后解锁精灵传承', 1500); return; }
@@ -35736,6 +35490,7 @@ const renderMenu = () => {
               <strong>{tierName}</strong>
               <small>{badgeCount} 枚徽章 · {nextTierNeed ? `距下一阶 ${nextTierLeft} 枚` : '最高阶货架'}</small>
                     </div>
+            <div className="market-nav-list">
             {tabs.map(t=>(
               <button key={t.id} type="button" className={`shop-nav-item market-nav-item ${shopTab===t.id?'active':''}`}
                 style={{padding:'12px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',fontWeight:'600',
@@ -35749,6 +35504,7 @@ const renderMenu = () => {
                 <small>{shelfCounts[t.id] || 0}</small>
                   </button>
             ))}
+            </div>
             <div className="market-wallet">
               <span>持有金币</span>
               <strong>💰 {gold.toLocaleString()}</strong>

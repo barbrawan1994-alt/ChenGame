@@ -2542,6 +2542,57 @@ textarea {
   border-color: #dbeafe !important;
 }
 
+.spirit-app .team-modal-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.desktop-required {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #f4fcff;
+  background: linear-gradient(0deg, rgba(3, 18, 25, 0.85), rgba(3, 18, 25, 0.3)), url('../../public/assets/spirit-ui-sky-bg.webp') center / cover;
+  font-family: 'PingFang SC', sans-serif;
+}
+.desktop-required h1 { font-size: 32px; letter-spacing: 0; margin: 0 0 16px; }
+.desktop-required p { font-size: 16px; margin: 0; }
+
+.spirit-app .team-modal-container {
+  max-height: calc(100dvh - 32px);
+  animation: teamModalEnter 180ms ease-out;
+}
+
+@keyframes teamModalEnter {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.spirit-app .team-recovery-btn {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  background: #86efac;
+  color: #102921;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0;
+}
+
+.spirit-app :where(.world-region-card, .team-member-card):focus-visible {
+  outline: 3px solid #ffd54f;
+  outline-offset: -3px;
+}
+
 .spirit-app .readable-return-btn {
   color: var(--sp-ink-950) !important;
   background: #7dd3fc !important;

@@ -90,6 +90,8 @@ const grade = loadUtility('src/utils/petGrade.js');
 const fusionRules = loadUtility('src/utils/fusionRules.js');
 const petIdentity = loadUtility('src/utils/petIdentity.js');
 const starterSelection = loadUtility('src/utils/starterSelection.js');
+const teamRecovery = loadUtility('src/utils/teamRecovery.js');
+const platformSupport = loadUtility('src/utils/platformSupport.js');
 
 const fakePokedex = [
   { id: 1, name: '幼体', type: 'GRASS', hp: 45, atk: 49, def: 49, evo: 2, evoLvl: 16 },
@@ -165,9 +167,28 @@ function createMockStorage(initial = {}) {
   };
 }
 
+check('游戏主模块没有遗漏导入或超出作用域的标识符', () => {
+  const source = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const ast = babel.parseSync(source, {
+    sourceType: 'module', parserOpts: { plugins: ['jsx'] }, babelrc: false, configFile: false,
+  });
+  const allowed = new Set([
+    ...Object.getOwnPropertyNames(globalThis),
+    'window', 'document', 'navigator', 'ResizeObserver', 'requestIdleCallback',
+  ]);
+  babel.traverse(ast, {
+    Program(scopePath) {
+      const missing = Object.keys(scopePath.scope.globals).filter(name => !allowed.has(name));
+      assert.deepEqual(missing, [], `Unbound identifiers: ${missing.join(', ')}`);
+      scopePath.stop();
+    },
+  });
+});
+
 check('发布资源路径与桌面打包输出保持 file 协议兼容', () => {
   const template = fs.readFileSync(path.join(root, 'src/index.html'), 'utf8');
   const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const home = fs.readFileSync(path.join(root, 'src/components/HomeMenu.js'), 'utf8');
   const generals = fs.readFileSync(path.join(root, 'src/data/generals.js'), 'utf8');
   const webpackConfig = require(path.join(root, 'webpack.config.js'));
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -179,7 +200,8 @@ check('发布资源路径与桌面打包输出保持 file 协议兼容', () => {
   assert.ok(template.includes('assets/super-spirit-loading-bg.png'));
   assert.equal(template.includes('/assets/'), false);
   assert.ok(app.includes('assets/spirit-ui-sky-bg.webp'));
-  assert.ok(app.includes('assets/super-spirit-home-cover-bg.png'));
+  assert.ok(home.includes('assets/super-spirit-home-cover-bg.png'));
+  assert.equal(home.includes('"/assets/'), false);
   assert.equal(app.includes('/assets/'), false);
   assert.ok(portraitStart >= 0 && portraitEnd > portraitStart);
   assert.ok(portraitSource.includes('`assets/generals/${general.id}.svg`'));
@@ -187,6 +209,7 @@ check('发布资源路径与桌面打包输出保持 file 协议兼容', () => {
 
   assert.equal(webpackConfig.output?.clean, true);
   assert.equal(webpackConfig.output?.publicPath, './');
+  assert.equal(webpackConfig.devServer?.devMiddleware?.publicPath, '/');
   assert.equal(packageJson.build?.directories?.output, 'release');
   assert.ok(packageJson.build?.files?.includes('dist/**/*'));
   assert.match(gitignore, /(?:^|\n)release(?:\n|$)/);
@@ -746,6 +769,80 @@ check('博士推荐池限制开局强度差并保留足够属性路线', () => {
   assert.equal(recommendations.length, 5);
   assert.ok(Math.max(...recommendationTotals) - Math.min(...recommendationTotals) <= 60);
   assert.equal(new Set(recommendations.map(pet => pet.type)).size, 5);
+});
+
+check('博士推荐按最终战斗属性收敛同批强度', () => {
+  const candidates = [
+    ['GRASS', 520], ['FIRE', 590], ['WATER', 600], ['ELECTRIC', 606], ['GROUND', 612],
+    ['ICE', 618], ['BUG', 625], ['STEEL', 690], ['FAIRY', 760], ['GHOST', 820],
+  ].map(([type, score], index) => ({
+    id: index + 1,
+    type,
+    stats: { maxHp: score, p_atk: 0, p_def: 0, s_atk: 0, s_def: 0, spd: 0 },
+  }));
+  const selected = starterSelection.selectCombatBalancedStarters(candidates, 5, {
+    getStats: pet => pet.stats,
+    maxSpreadRatio: 0.12,
+    random: () => 0.25,
+  });
+  const scores = selected.map(pet => starterSelection.getStarterCombatScore(pet.stats));
+
+  assert.equal(selected.length, 5);
+  assert.equal(new Set(selected.map(pet => pet.type)).size, 5);
+  assert.ok(Math.max(...scores) / Math.min(...scores) <= 1.12);
+});
+
+check('仅 PC 入口拦截移动设备且保留触屏 Windows 电脑', () => {
+  assert.equal(platformSupport.isMobileDevice({ userAgent: 'Mozilla Android Chrome' }), true);
+  assert.equal(platformSupport.isMobileDevice({ userAgent: 'Mozilla iPhone Safari' }), true);
+  assert.equal(platformSupport.isMobileDevice({ platform: 'MacIntel', maxTouchPoints: 5 }), true);
+  assert.equal(platformSupport.isMobileDevice({ userAgentData: { mobile: true } }), true);
+  assert.equal(platformSupport.isMobileDevice({ platform: 'Win32', maxTouchPoints: 10 }), false);
+  assert.equal(platformSupport.isMobileDevice({ platform: 'MacIntel', maxTouchPoints: 0 }), false);
+});
+
+check('全队治疗遵守真实药效、濒死规则并节省道具价值', () => {
+  const medicines = itemsData.MEDICINES;
+  const plan = (party, meds) => teamRecovery.planTeamRecovery(party, { meds }, medicines, pet => ({ maxHp: pet.maxHp }));
+  const party = [{ uid: 'hurt', currentHp: 65, maxHp: 100, intimacy: 10 }, { uid: 'fainted', currentHp: 0, maxHp: 100 }];
+  const meds = { potion: 5, super_potion: 2, hyper_potion: 1, max_potion: 1, revive: 1 };
+  const result = plan(party, meds);
+  assert.equal(result.party[0].currentHp, 100);
+  assert.equal(result.party[0].intimacy, 11);
+  assert.equal(result.party[1].currentHp, 0);
+  assert.equal(result.used.potion, 1);
+  assert.equal(result.inventory.meds.hyper_potion, 1);
+  assert.equal(result.inventory.meds.revive, 1);
+  assert.equal(result.faintedPets, 1);
+  assert.equal(party[0].currentHp, 65);
+  assert.equal(meds.potion, 5);
+  assert.equal(plan([{ currentHp: 20, maxHp: 100 }], { super_potion: 1 }).recoveredHp, 80);
+  const partial = plan([{ currentHp: 10, maxHp: 100 }, { currentHp: 10, maxHp: 100 }], { potion: 2 });
+  assert.equal(partial.recoveredHp, 70);
+  assert.equal(partial.inventory.meds.potion, 0);
+  assert.equal(partial.party[1].currentHp, 10);
+  assert.equal(plan(result.party, result.inventory.meds).healedPets, 0);
+  const large = plan([{ currentHp: 1, maxHp: 2000 }], meds);
+  assert.equal(large.used.max_potion, 1);
+  assert.equal(large.recoveredHp, 1999);
+});
+
+check('治疗方案与小库存穷举最优解一致', () => {
+  const medicines = itemsData.MEDICINES;
+  for (let need = 1; need <= 300; need += 7) {
+    for (let potion = 0; potion <= 3; potion += 1) {
+      let bestHp = 0, bestCost = 0;
+      for (let p = 0; p <= potion; p += 1) for (let s = 0; s <= 2; s += 1) for (let h = 0; h <= 1; h += 1) {
+        const hp = Math.min(need, p * 35 + s * 80 + h * 200);
+        const cost = p * 50 + s * 150 + h * 400;
+        if (hp > bestHp || (hp === bestHp && cost < bestCost)) { bestHp = hp; bestCost = cost; }
+      }
+      const result = teamRecovery.planTeamRecovery([{ currentHp: 1, maxHp: need + 1 }], { meds: { potion, super_potion: 2, hyper_potion: 1 } }, medicines, p => p);
+      const cost = Object.entries(result.used).reduce((sum, [id, count]) => sum + medicines[id].price * count, 0);
+      assert.equal(result.recoveredHp, bestHp);
+      assert.equal(cost, bestCost);
+    }
+  }
 });
 
 check('微风草原前三胜提供递进式野怪等级保护', () => {
@@ -1670,35 +1767,27 @@ check('门派突破、武学和商店会在最新状态上原子复核资源与�
   assert.equal(shop.includes('new Date().toDateString()'), false);
 });
 
-check('移动主页从顶部开始且浏览器音频等待首次用户手势', () => {
+check('浏览器音频等待首次鼠标或键盘操作', () => {
   const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
-  const css = fs.readFileSync(path.join(root, 'src/App.css'), 'utf8');
   const audioStart = app.indexOf('const [audioUnlocked, setAudioUnlocked]');
   const audioEnd = app.indexOf('const [eventData, setEventData]', audioStart);
   const audioBranch = app.slice(audioStart, audioEnd);
   assert.ok(audioBranch.includes("window.addEventListener('pointerdown', unlockAudio"));
   assert.ok(audioBranch.includes("window.addEventListener('keydown', unlockAudio"));
   assert.ok(audioBranch.includes('if (!audioUnlocked) return;'));
-  const homeCssStart = css.indexOf('Premium home gate redesign');
-  const responsiveHomeStart = css.indexOf('@media (max-width: 1180px)', homeCssStart);
-  const responsiveHome = css.slice(responsiveHomeStart, css.indexOf('@media (max-width: 760px)', responsiveHomeStart));
-  assert.ok(responsiveHome.includes('justify-content: flex-start'));
-  assert.ok(responsiveHome.includes('height: 100dvh'));
 });
 
-check('游戏首页只保留一个无遮挡的开始游戏入口', () => {
+check('游戏首页保留单个主入口并按存档状态继续冒险', () => {
   const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
-  const css = fs.readFileSync(path.join(root, 'src/App.css'), 'utf8');
+  const home = fs.readFileSync(path.join(root, 'src/components/HomeMenu.js'), 'utf8');
   const menuStart = app.indexOf('const renderMenu = () => {');
   const menu = app.slice(menuStart, app.indexOf('const renderWorldMap = () => {', menuStart));
-  const startActions = menu.match(/onClick=\{handleStartGame\}/g) || [];
-  assert.equal(startActions.length, 1);
-  assert.ok(menu.includes('className="home-cover-main-start"'));
-  assert.ok(menu.includes('<strong>开始游戏</strong>'));
-  assert.equal(menu.includes('home-cover-start-panel'), false);
-  assert.equal(menu.includes('继续冒险'), false);
-  assert.equal(css.includes('.home-cover-start-panel'), false);
-  assert.equal(css.includes('.home-gate-primary'), false);
+  assert.ok(menu.includes('onStart={handleStartGame}'));
+  assert.equal((home.match(/onClick=\{onStart\}/g) || []).length, 1);
+  assert.ok(home.includes("hasSave ? '继续冒险' : '开始游戏'"));
+  assert.ok(menu.includes('setConfirmModal('));
+  assert.ok(home.includes("onNavigate('settings')"));
+  assert.ok(home.includes("onNavigate('guide')"));
 });
 
 check('竞技场胜负、徽章拦截与首次晋级奖励为纯且幂等的状态结算', () => {
