@@ -5,11 +5,11 @@
  */
 
 :root {
-  --sp-ink-950: #04111e;
-  --sp-ink-900: #071a2e;
-  --sp-ink-850: #0a2538;
-  --sp-ink-800: #0d3045;
-  --sp-ink-700: #16465a;
+  --sp-ink-950: #111719;
+  --sp-ink-900: #172023;
+  --sp-ink-850: #1d292c;
+  --sp-ink-800: #263337;
+  --sp-ink-700: #35474c;
   --sp-teal-700: #236a69;
   --sp-teal-600: #2b7a78;
   --sp-teal-400: #57c7a5;
@@ -19,24 +19,24 @@
   --sp-coral-400: #ff8277;
   --sp-gold-600: #eaa92f;
   --sp-gold-400: #ffc857;
-  --sp-paper: #fff6d8;
-  --sp-paper-muted: #eadfbf;
-  --sp-white: #fffdf5;
+  --sp-paper: #f4f5ed;
+  --sp-paper-muted: #d8ded5;
+  --sp-white: #f5f7f4;
   --sp-muted: #a9c1c7;
   --sp-danger: #ff6b70;
   --sp-success: #57c78e;
-  --sp-border: rgba(255, 246, 216, 0.28);
+  --sp-border: rgba(217, 232, 221, 0.16);
   --sp-border-strong: rgba(255, 200, 87, 0.68);
-  --sp-panel: rgba(7, 26, 46, 0.94);
-  --sp-panel-raised: rgba(13, 48, 69, 0.96);
-  --sp-panel-soft: rgba(16, 57, 76, 0.78);
-  --sp-shadow: 4px 4px 0 rgba(2, 12, 22, 0.82);
-  --sp-shadow-lg: 7px 7px 0 rgba(2, 12, 22, 0.86);
+  --sp-panel: rgba(23, 32, 35, 0.96);
+  --sp-panel-raised: rgba(38, 51, 55, 0.96);
+  --sp-panel-soft: rgba(38, 51, 55, 0.78);
+  --sp-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  --sp-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.25);
   --sp-ring: 0 0 0 3px rgba(87, 199, 165, 0.28);
   --sp-radius-xs: 5px;
   --sp-radius-sm: 8px;
-  --sp-radius-md: 12px;
-  --sp-radius-lg: 16px;
+  --sp-radius-md: 8px;
+  --sp-radius-lg: 8px;
   --sp-font-body: "Avenir Next", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --sp-font-display: "Arial Rounded MT Bold", "Avenir Next", "PingFang SC", sans-serif;
   --sp-font-pixel: "SFMono-Regular", "Cascadia Mono", "Roboto Mono", monospace;
@@ -115,7 +115,7 @@ textarea {
   mix-blend-mode: soft-light;
 }
 
-.spirit-app > .screen:not(.battle-screen):not(.grid-screen),
+.spirit-app > .screen:not(.battle-screen):not(.grid-screen):not(.activity-screen):not(.housing-screen-redesign),
 .spirit-app > .gd-root {
   position: relative;
   min-height: 100dvh;
@@ -965,7 +965,7 @@ textarea {
   .spirit-view-name_input,
   .spirit-view-merchant,
   .spirit-view-locked
-) > .screen {
+) > .screen:not(.activity-screen) {
   color: var(--sp-white) !important;
   background:
     linear-gradient(180deg, rgba(4, 17, 30, 0.44), rgba(4, 17, 30, 0.86)) !important;
@@ -992,7 +992,7 @@ textarea {
   .spirit-view-name_input,
   .spirit-view-merchant,
   .spirit-view-locked
-) .screen div[style*="border-radius"][style*="padding"][style*="background"] {
+) .screen:not(.activity-screen) div[style*="border-radius"][style*="padding"][style*="background"] {
   background: var(--sp-panel-raised) !important;
   border-color: rgba(255, 246, 216, 0.22) !important;
   box-shadow: 3px 3px 0 rgba(2, 12, 22, 0.62) !important;
@@ -1019,7 +1019,7 @@ textarea {
   .spirit-view-name_input,
   .spirit-view-merchant,
   .spirit-view-locked
-) .screen button:not(:disabled) {
+) .screen:not(.activity-screen) button:not(:disabled) {
   color: var(--sp-white) !important;
   background: var(--sp-teal-700) !important;
   border: 2px solid var(--sp-teal-300) !important;
@@ -1048,7 +1048,7 @@ textarea {
   .spirit-view-name_input,
   .spirit-view-merchant,
   .spirit-view-locked
-) .screen button:disabled {
+) .screen:not(.activity-screen) button:disabled {
   color: var(--sp-text-secondary) !important;
   background: rgba(13, 48, 69, 0.9) !important;
   border: 2px solid rgba(191, 210, 209, 0.55) !important;

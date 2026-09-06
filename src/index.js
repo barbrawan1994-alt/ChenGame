@@ -6,6 +6,7 @@ import './styles/common.css';
 import './styles/enhancements.css';
 import './styles/spirit-theme.css';
 import './styles/battle-controls.css';
+import './styles/activity-screens.css';
 import { isMobileDevice } from './utils/platformSupport';
 
 window.onerror = function(msg, src, line, col, err) {

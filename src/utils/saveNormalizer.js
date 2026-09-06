@@ -2,7 +2,7 @@ import { EXPEDITION_BRANCH_EVENTS, EXPEDITION_ZONES, DEFAULT_EXPEDITIONS } from 
 import { TRAINING_CAMPS, TRAINING_TIERS, TRAINING_MAX_SLOTS, DEFAULT_TRAINING_STATE } from '../data/training';
 import { HOUSE_TYPES, DEFAULT_HOUSING_STATE } from '../data/housing';
 import { CAFE_BUILDING, CAFE_DRINKS, DEFAULT_CAFE_STATE, DRINK_BREW_BASE_MS } from '../data/lycoris';
-import { ARENA_DAILY_FREE_TICKETS, ARENA_RANKS, ARENA_WEEKLY_RULES, DEFAULT_ARENA_STATE } from '../data/arena';
+import { ARENA_RANKS, ARENA_WEEKLY_RULES, DEFAULT_ARENA_STATE } from '../data/arena';
 import { MINE_GRID_SIZE, MINE_MAX_ENERGY, MINE_ORES, MINE_TILES, DEFAULT_MINE_STATE } from '../data/mine';
 import { DEFAULT_BOUNTY_BOARD } from '../data/bountyTemplates';
 import { WORLD_BOSS_MAX_ATTEMPTS, DEFAULT_WORLD_BOSS_STATE } from '../data/worldBoss';
@@ -285,7 +285,7 @@ export const normalizeActivitySaveState = (saved, now = Date.now()) => {
     ...rawArena,
     rank: rank.id,
     stars: safeInt(rawArena.stars, 0, rank.maxStars),
-    tickets: safeInt(rawArena.tickets, DEFAULT_ARENA_STATE.tickets, ARENA_DAILY_FREE_TICKETS * 3),
+    tickets: safeInt(rawArena.tickets, DEFAULT_ARENA_STATE.tickets),
     wins: safeInt(rawArena.wins),
     losses: safeInt(rawArena.losses),
     winStreak: safeInt(rawArena.winStreak),

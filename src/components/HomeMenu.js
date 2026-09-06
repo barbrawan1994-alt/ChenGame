@@ -18,7 +18,7 @@ export default function HomeMenu({ hasSave, trainerName, badgeCount, badgeTotal,
           <div className="home-menu-save">
             <strong>{trainerName || '训练师'}</strong>
             <span><Compass size={14} aria-hidden="true" />{location}</span>
-            <span><Shield size={14} aria-hidden="true" />{badgeCount} / {badgeTotal}</span>
+            <span><Shield size={14} aria-hidden="true" />{badgeCount} 枚徽章</span>
           </div>
         )}
         <button className="home-menu-start" type="button" onClick={onStart}>

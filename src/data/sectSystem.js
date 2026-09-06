@@ -430,9 +430,33 @@ export function generateSectDailyTasks(dateStr, playerSect) {
     picked.push({ ...pool.splice(idx, 1)[0], progress: 0, completed: false, date: dateStr });
   }
   if (playerSect) {
-    picked[0] = { ...picked[0], id: 'sect_challenge', name: `${SECT_DB[playerSect]?.name || '门派'}修行`, desc: '完成1次门派相关挑战' };
+    const challenge = picked.find(task => task.id === 'sect_challenge');
+    if (challenge) {
+      challenge.name = `${SECT_DB[playerSect]?.name || '门派'}修行`;
+      challenge.desc = '完成1次门派相关挑战';
+    }
   }
   return picked;
+}
+
+export function repairSectDailyTasks(tasks = [], dateStr, playerSect) {
+  const repaired = SECT_DAILY_TASK_POOL.map(definition => {
+    const existing = tasks.filter(task => task.id === definition.id && task.date === dateStr);
+    const progress = Math.min(definition.target, Math.max(0, ...existing.map(task => Number(task.progress) || 0)));
+    return {
+      ...definition,
+      ...(playerSect && definition.id === 'sect_challenge' ? {
+        name: `${SECT_DB[playerSect]?.name || '门派'}修行`, desc: '完成1次门派相关挑战',
+      } : {}),
+      progress, completed: existing.some(task => task.completed), date: dateStr,
+    };
+  });
+  const valid = tasks.length === repaired.length && new Set(tasks.map(task => task.id)).size === repaired.length &&
+    repaired.every(task => {
+      const current = tasks.find(entry => entry.id === task.id);
+      return current && Object.entries(task).every(([key, value]) => current[key] === value);
+    });
+  return valid ? tasks : repaired;
 }
 
 export function getActiveJianghuEvent(date = new Date()) {

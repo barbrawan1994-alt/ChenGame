@@ -777,6 +777,25 @@ export function getJutsuMasteryBonus(jutsuId, masteryMap) {
   return getJutsuMasteryLevel(uses).bonus;
 }
 
+export function grantJutsuMasteryReward(state, amount) {
+  const mastery = { ...(state.jutsuMastery || {}) };
+  const known = new Set([...Object.keys(mastery), ...(state.jutsuCollection || []), ...(state.jutsuScrolls || [])]);
+  let candidates = JUTSU_DB.filter(jutsu => known.has(jutsu.id));
+  if (!candidates.length) candidates = JUTSU_DB.filter(jutsu => jutsu.rank === 'D');
+  let remaining = Math.max(0, Math.floor(Number(amount) || 0));
+  const gainedIds = new Set();
+  while (remaining > 0) {
+    const next = candidates.filter(jutsu => (mastery[jutsu.id] || 0) < 100)
+      .sort((a, b) => (mastery[a.id] || 0) - (mastery[b.id] || 0))[0];
+    if (!next) break;
+    mastery[next.id] = (mastery[next.id] || 0) + 1;
+    gainedIds.add(next.id);
+    remaining--;
+  }
+  return { ...state, jutsuMastery: mastery, chakraAffinity: calcChakraAffinity(mastery),
+    jutsuCollection: [...new Set([...(state.jutsuCollection || []), ...gainedIds])] };
+}
+
 // --- 查克拉亲和判定 ---
 export function calcChakraAffinity(masteryMap) {
   if (!masteryMap) return null;

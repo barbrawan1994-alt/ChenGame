@@ -150,6 +150,13 @@ export function resolveArenaResult(state, isWin, badgeCount = 0) {
   };
 }
 
+export function addArenaTickets(state, amount) {
+  const current = Number(state?.tickets);
+  const reward = Number(amount);
+  return { ...state, tickets: (Number.isFinite(current) ? Math.max(0, Math.floor(current)) : 0) +
+    (Number.isFinite(reward) ? Math.max(0, Math.floor(reward)) : 0) };
+}
+
 export function resolveArenaDailyRefresh(state, today) {
   const prev = state || DEFAULT_ARENA_STATE;
   if (!today || prev.lastTicketDate === today) {
@@ -163,7 +170,7 @@ export function resolveArenaDailyRefresh(state, today) {
   const ticketCap = ARENA_DAILY_FREE_TICKETS * 3;
   const next = {
     ...prev,
-    tickets: Math.min(ticketCap, Math.max(0, Number(prev.tickets) || 0) + ARENA_DAILY_FREE_TICKETS),
+    tickets: Math.max(Math.max(0, Number(prev.tickets) || 0), Math.min(ticketCap, Math.max(0, Number(prev.tickets) || 0) + ARENA_DAILY_FREE_TICKETS)),
     lastTicketDate: today,
     weeklyRule: ARENA_WEEKLY_RULES[ruleIdx]?.id || 'normal',
     lastRuleDate: today,

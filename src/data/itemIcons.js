@@ -1,5 +1,6 @@
 // Pure CSS item icon data definitions
 // Consumed by renderItemIcon() in App.js to produce React elements
+import { MEDICINES } from './items';
 
 export const BALL_ICONS = {
   poke:   { top:'linear-gradient(180deg,#FF1744,#D50000)', bottom:'linear-gradient(180deg,#FAFAFA,#E0E0E0)', band:'#333', btn:'radial-gradient(circle,#fff 40%,#ccc 60%,#888)', glow:'rgba(255,23,68,0.3)' },
@@ -14,9 +15,9 @@ export const BALL_ICONS = {
 };
 
 export const MED_ICONS = {
-  potion:       { shape:'bottle', c:'#7C4DFF', cap:'#5E35B1', label:'+20' },
-  super_potion: { shape:'bottle', c:'#FF6D00', cap:'#E65100', label:'+60' },
-  hyper_potion: { shape:'bottle', c:'#E91E63', cap:'#AD1457', label:'+200' },
+  potion:       { shape:'bottle', c:'#7C4DFF', cap:'#5E35B1', label:`+${MEDICINES.potion.val}` },
+  super_potion: { shape:'bottle', c:'#FF6D00', cap:'#E65100', label:`+${MEDICINES.super_potion.val}` },
+  hyper_potion: { shape:'bottle', c:'#E91E63', cap:'#AD1457', label:`+${MEDICINES.hyper_potion.val}` },
   max_potion:   { shape:'bottle', c:'#FFD600', cap:'#F9A825', label:'MAX', shine:true },
   ether:        { shape:'flask',  c:'#29B6F6', cap:'#0288D1', label:'PP' },
   max_ether:    { shape:'flask',  c:'#00BCD4', cap:'#00838F', label:'ALL', shine:true },

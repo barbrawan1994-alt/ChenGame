@@ -1,0 +1,172 @@
+.spirit-app .activity-screen {
+  height: 100dvh;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+  color: #f0f4ef !important;
+  background: #151e20 !important;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.spirit-app .activity-screen *,
+.spirit-app :is(.world-map-screen-redesign, .housing-screen, .codex-shell, .gang-command-screen) * {
+  letter-spacing: 0 !important;
+}
+
+.spirit-app .activity-screen-header,
+.spirit-app .activity-legacy > div:first-child {
+  min-height: 72px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 14px 28px !important;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: #1d2b2d !important;
+  border: 0 !important;
+  border-bottom: 1px solid #354446 !important;
+  box-shadow: none !important;
+}
+
+.activity-screen-header h1 { margin: 0; font-size: 21px; font-weight: 700; }
+.activity-screen-status { margin-left: auto; display: flex; gap: 24px; color: #c3cfc7; font-size: 13px; }
+.activity-screen-status span { display: inline-flex; align-items: center; gap: 7px; }
+.spirit-app .activity-screen .activity-back { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; }
+
+.spirit-app .activity-screen-body,
+.spirit-app .activity-legacy > div:not(:first-child) {
+  width: min(1160px, 100%);
+  box-sizing: border-box;
+  margin-inline: auto;
+  min-height: 0;
+}
+
+.activity-screen-body { flex: 1; overflow: auto; padding: 28px; }
+.spirit-app .activity-legacy > div:last-child { overflow-y: auto; padding: 24px 28px !important; }
+.spirit-app .wheel-screen > div:last-child { justify-content: flex-start !important; }
+.spirit-app .activity-screen h2 { font-size: 16px; font-weight: 700; margin: 0; }
+.spirit-app .activity-screen h3 { font-size: 15px; margin: 0 0 3px; }
+.activity-section-heading { display: flex; justify-content: space-between; align-items: center; margin: 0 0 16px; color: #c3cfc7; }
+.activity-section-heading > span { font-size: 12px; }
+
+.spirit-app .activity-screen button:not(:disabled) {
+  color: #f0f4ef !important;
+  background: #253b38 !important;
+  border: 1px solid #4a6960 !important;
+  box-shadow: none !important;
+  font-size: 13px;
+  min-height: 34px;
+}
+.spirit-app .activity-screen button:hover:not(:disabled) { background: #304c43 !important; }
+.spirit-app .activity-screen button:disabled { opacity: .65 !important; background: #263034 !important; border: 1px solid #414d50 !important; box-shadow: none !important; }
+.spirit-app .activity-screen button.activity-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 18px; background: #40755e !important; border-color: #71a58c !important; font-weight: 700; }
+.spirit-app .activity-screen :is([style*="font-size: 9px"], [style*="font-size: 10px"], [style*="font-size: 11px"]) { font-size: 12px !important; }
+.spirit-app .activity-screen :is([style*="font-size: 12px"], [style*="font-size: 13px"]) { font-size: 13px !important; }
+
+.training-active { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #354446; }
+.training-session { display: grid; grid-template-columns: 220px minmax(100px, 1fr) 144px; gap: 24px; align-items: center; padding: 18px 0 0; }
+.training-session > div:first-child { display: flex; flex-direction: column; }
+.training-session > div:first-child span { color: #b6c6be; font-size: 12px; }
+.training-time { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; font-variant-numeric: tabular-nums; }
+.training-screen progress { appearance: none; height: 5px; width: 100%; accent-color: #7dc6a5; border: 0; border-radius: 2px; overflow: hidden; background: #344247; }
+.training-screen progress::-webkit-progress-bar { background: #344247; }
+.training-screen progress::-webkit-progress-value { background: #7dc6a5; }
+.training-pet-row { display: grid; grid-template-columns: 205px minmax(0, 1fr); align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid #344247; }
+.training-identity { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.training-identity h3 { overflow-wrap: anywhere; }
+.training-identity span { font-size: 12px; color: #b6c6be; }
+.training-avatar { width: 48px; height: 48px; flex-shrink: 0; }
+.training-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.spirit-app .training-stats button { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 10px; text-align: left; background: transparent !important; border: 1px solid transparent !important; }
+.training-stats button > span { color: #bfd1c8; font-size: 12px; }
+.training-stats strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.training-stats small { font-size: 11px; font-weight: 400; color: #9eafa7; }
+.spirit-app .training-screen button[aria-pressed="true"] { border-color: #8cd2ad !important; background: #2e473d !important; }
+.training-plan { grid-column: 1 / -1; padding: 18px 0 0; border-top: 1px dashed #42524e; }
+.training-tier-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.spirit-app .training-tier-options button { padding: 12px; display: flex; flex-direction: column; align-items: flex-start; background: transparent !important; }
+.training-tier-options span { font-size: 12px; color: #bacac1; margin-top: 4px; }
+.training-plan-footer { display: flex; align-items: center; gap: 16px; padding-top: 18px; }
+.training-plan-footer > span:first-child { flex: 1; }
+.training-plan-footer strong { color: #9eddba; }
+.training-plan-footer > span:nth-child(2) { color: #e8bba1; font-size: 12px; }
+
+.wheel-layout { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(300px, .8fr); gap: 60px; align-items: start; padding-block: 18px; }
+.wheel-play { display: flex; align-items: center; flex-direction: column; min-width: 0; }
+.wheel-board { position: relative; width: min(340px, 100%); aspect-ratio: 1; margin: 12px 0 16px; }
+.wheel-disc { position: absolute; inset: 0; border-radius: 50% !important; overflow: hidden; border: 5px solid #d5c9a8; box-sizing: border-box; transition: transform 2.5s cubic-bezier(.17,.67,.12,.99); }
+.wheel-disc > span { position: absolute; transform: translate(-50%, -50%); font-size: 24px; }
+.wheel-pointer { position: absolute; z-index: 1; top: -17px; left: 50%; transform: translateX(-50%); color: #fff5d3; fill: #fff5d3; filter: drop-shadow(0 2px 2px #172221); }
+.wheel-hub { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 62px; height: 62px; display: grid; place-items: center; border: 4px solid #d5c9a8; border-radius: 50% !important; background: #20312d; color: #f2e7c9; }
+.wheel-result-slot { min-height: 54px; display: flex; align-items: center; justify-content: center; text-align: center; color: #c7d4cd; }
+.wheel-result { font-size: 18px; color: #f2d491; }
+.wheel-actions { display: flex; gap: 12px; }
+.wheel-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 6px; }
+.wheel-counts { font-size: 12px; color: #a7bcb1; text-align: center; }
+.wheel-prizes { border-left: 1px solid #354446; padding-left: 32px; }
+.wheel-prize-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 50px; gap: 12px; align-items: center; min-height: 48px; border-top: 1px solid #354446; }
+.wheel-prize-row > span:first-child { font-size: 21px; }
+.wheel-prize-row strong { font-size: 13px; font-weight: 500; }
+.wheel-prize-row > span:last-child { color: #afc1b7; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
+.wheel-prize-row.is-selected strong { color: #f2d491; }
+
+.spirit-app .housing-screen-redesign { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+.spirit-app .housing-hero { flex-shrink: 0; margin-block: 12px !important; padding: 16px 24px !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.spirit-app .housing-hero h1 { font-size: 25px !important; }
+.spirit-app .housing-house-orb { width: 60px !important; height: 60px !important; font-size: 38px !important; background: transparent !important; box-shadow: none !important; }
+.spirit-app .housing-hero-stats > div { background: transparent !important; border: 0 !important; border-left: 1px solid #60706b !important; border-radius: 0 !important; }
+.spirit-app .housing-content { flex: 1; min-height: 0; max-height: none !important; width: min(1200px, 100%); box-sizing: border-box; margin-inline: auto; }
+.spirit-app .housing-tab-bar { flex-shrink: 0; }
+.spirit-app .housing-screen-redesign [role="button"]:focus-visible { outline: 2px solid #94d4b4; outline-offset: 3px; }
+.spirit-app.spirit-view-housing .housing-screen-redesign { background: linear-gradient(#1a2327d9, #182023f5), url('../../public/assets/spirit-alliance-hall-bg.webp') center / cover !important; }
+.spirit-app .housing-screen-redesign::before { display: none; }
+.spirit-app .housing-topbar { box-shadow: none !important; border-radius: 0 !important; border: 0 !important; border-bottom: 1px solid #465550 !important; }
+.spirit-app .housing-house-orb { border: 0 !important; }
+.spirit-app .housing-hero-stats strong { color: #e0e9df !important; }
+.spirit-app .housing-tab-bar button.is-active { background: #36584b !important; color: #e8f0e8 !important; border: 1px solid #89b29b !important; }
+.spirit-app .housing-hero { width: min(1160px, calc(100% - 48px)); box-sizing: border-box; grid-template-columns: 1fr 1fr; border: 0 !important; backdrop-filter: none !important; }
+.spirit-app .housing-hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.spirit-app .housing-tab-bar { width: min(1160px, calc(100% - 48px)); padding: 0 0 10px !important; background: transparent !important; border: 0 !important; border-bottom: 1px solid #465550 !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; }
+.spirit-app .housing-content div[style*="background"] { background: transparent !important; box-shadow: none !important; }
+.spirit-app .housing-content > div { border: 0 !important; padding: 0 !important; }
+.spirit-app .housing-content button { min-height: 34px; padding: 7px 13px; color: #f0f4ef !important; background: #304c43 !important; border: 1px solid #607a6b !important; border-radius: 6px !important; box-shadow: none !important; }
+.housing-progress { appearance: none; display: block; width: 100%; height: 6px; flex: 1; border: 0; border-radius: 3px; overflow: hidden; background: #41534b; accent-color: #95cba7; }
+.housing-progress::-webkit-progress-bar { background: #41534b; }
+.housing-progress::-webkit-progress-value { background: #95cba7; }
+.housing-progress::-moz-progress-bar { background: #95cba7; }
+
+.achievement-notice { position: fixed; right: 24px; bottom: 108px; z-index: 10000; display: grid; grid-template-columns: 32px minmax(0, 1fr) 26px; align-items: start; gap: 12px; width: 330px; max-width: calc(100% - 48px); box-sizing: border-box; padding: 16px; border: 1px solid #80917a; border-radius: 8px; background: #253630; color: #f0f4ef; box-shadow: 0 8px 24px #0004; pointer-events: none; }
+.achievement-notice-icon { font-size: 26px; }
+.achievement-notice strong { display: block; font-size: 15px; margin-top: 3px; }
+.achievement-notice div > span { font-size: 11px; color: #c8d5bd; }
+.achievement-notice p { font-size: 12px; margin: 8px 0 0; color: #eed399; line-height: 1.5; }
+.spirit-app .achievement-notice button { pointer-events: auto; width: 26px; height: 26px; min-width: 0; padding: 0; border: 0 !important; background: transparent !important; color: #ccd8d0 !important; box-shadow: none !important; font-size: 22px; }
+
+.spirit-app .battle-switch-screen .modal-overlay > div { background: #202e2c !important; color: #f0f4ef !important; border: 1px solid #657b6e; border-radius: 8px !important; }
+.spirit-app .battle-switch-screen button { background: #2a3d35 !important; color: #f0f4ef !important; border-radius: 6px !important; }
+.spirit-app .battle-switch-screen [style*="color: rgb"] { color: #d7e2da !important; }
+.spirit-app .battle-switch-screen button > div:last-child[style*="position: absolute"] { position: static !important; align-self: center; margin-left: 6px; padding: 3px !important; background: transparent !important; }
+.spirit-app .battle-switch-screen button > div:nth-child(2) { min-width: 0; }
+.spirit-app .battle-switch-screen button > div:nth-child(2) > div:first-child { flex-wrap: wrap; gap: 4px; }
+
+.spirit-app .arena-rank-summary { display: grid; grid-template-columns: 70px 1fr auto; column-gap: 20px; align-items: center; text-align: left !important; padding: 16px 0 24px !important; border: 0 !important; border-bottom: 1px solid #354446 !important; border-radius: 0 !important; background: transparent !important; }
+.arena-rank-summary > div:first-child { grid-row: 1 / 3; }
+.arena-rank-summary > div:nth-child(3) { grid-column: 3; grid-row: 1 / 3; }
+
+.spirit-app .world-map-hero { padding: 18px 8px !important; margin-bottom: 16px; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.spirit-app .world-map-hero h1 { font-size: 26px !important; }
+.spirit-app .world-map-hero-stats > div { border-radius: 0 !important; border: 0 !important; border-left: 1px solid #60706b !important; background: transparent !important; }
+.spirit-app .world-map-tabs { border-radius: 0 !important; box-shadow: none !important; }
+.dungeon-entry-rule { flex-basis: 100%; line-height: 1.5; }
+
+@media (max-width: 1100px) {
+  .wheel-layout { gap: 28px; }
+  .wheel-prizes { padding-left: 24px; }
+  .activity-screen-body { padding: 22px; }
+  .training-pet-row { grid-template-columns: 175px minmax(0, 1fr); gap: 10px; }
+  .training-stats { gap: 3px; }
+  .spirit-app .training-stats button { padding: 8px 5px; }
+  .training-tier-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
