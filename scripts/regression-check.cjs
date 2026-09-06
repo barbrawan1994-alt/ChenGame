@@ -197,10 +197,10 @@ check('发布资源路径与桌面打包输出保持 file 协议兼容', () => {
   const portraitEnd = generals.indexOf('export function generateEnemyGenerals', portraitStart);
   const portraitSource = generals.slice(portraitStart, portraitEnd);
 
-  assert.ok(template.includes('assets/super-spirit-loading-bg.png'));
+  assert.equal(template.includes('assets/super-spirit-loading-bg.png'), false);
   assert.equal(template.includes('/assets/'), false);
   assert.ok(app.includes('assets/spirit-ui-sky-bg.webp'));
-  assert.ok(home.includes('assets/super-spirit-home-cover-bg.png'));
+  assert.ok(home.includes('assets/super-spirit-home-cover-bg.webp'));
   assert.equal(home.includes('"/assets/'), false);
   assert.equal(app.includes('/assets/'), false);
   assert.ok(portraitStart >= 0 && portraitEnd > portraitStart);

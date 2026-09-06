@@ -5,7 +5,7 @@ import './HomeMenu.css';
 export default function HomeMenu({ hasSave, trainerName, badgeCount, badgeTotal, location, onStart, onNavigate, onReset }) {
   return (
     <main className="home-menu" id="main-content">
-      <img className="home-menu-art" src="assets/super-spirit-home-cover-bg.png?v=20260709-visual-fix" alt="训练师与精灵伙伴站在天空之城的竞技场中" fetchPriority="high" />
+      <img className="home-menu-art" src="assets/super-spirit-home-cover-bg.webp" alt="训练师与精灵伙伴站在天空之城的竞技场中" decoding="async" />
       <div className="home-menu-shade" aria-hidden="true" />
       <header className="home-menu-brand">
         <p>SUPER SPIRIT</p>

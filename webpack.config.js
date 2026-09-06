@@ -16,7 +16,7 @@ module.exports = {
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js',
+    filename: '[name].[contenthash:12].js',
     clean: true,
     publicPath: './',
   },
@@ -38,6 +38,19 @@ module.exports = {
         use: ['style-loader', 'css-loader'],
       },
     ],
+  },
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+      cacheGroups: {
+        gameData: {
+          test: /[\\/]src[\\/]data[\\/]/,
+          name: 'game-data',
+          maxSize: 512 * 1024,
+          enforce: true,
+        },
+      },
+    },
   },
   plugins: [
     new HtmlWebpackPlugin({

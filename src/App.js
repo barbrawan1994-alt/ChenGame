@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
+import { Backpack, ArrowLeftRight, LogOut } from 'lucide-react';
 import _ from 'lodash';
 
 import {
@@ -33933,6 +33934,7 @@ const renderMenu = () => {
     if (battle.isGym) bgClass = 'bg-city'; else if (battle.isChallenge) bgClass = 'bg-cave'; 
     else { const mapInfo = MAPS.find(m => m.id === battle.mapId); if (mapInfo) { switch (mapInfo.type) { case 'water': bgClass = 'bg-water'; break; case 'fire': bgClass = 'bg-fire'; break; case 'ice': bgClass = 'bg-ice'; break; case 'mountain': case 'rock': case 'ground': bgClass = 'bg-cave'; break; case 'city': case 'steel': case 'electric': bgClass = 'bg-city'; break; case 'ghost': case 'dark': bgClass = 'bg-dark'; break; case 'factory': case 'space': bgClass = 'bg-cave'; break; default: bgClass = 'bg-grass'; break; } } }
     const activeCommandPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
+    const commandMoveCount = activeCommandPet?.combatMoves?.length || 0;
     const playerHpPct = Math.min(100, Math.max(0, Math.round((p.currentHp / Math.max(1, pStats.maxHp)) * 100)));
     const enemyHpPct = Math.min(100, Math.max(0, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100)));
     const battleModeLabel = battle.isPvP ? 'PvP' : isDoubleBattle ? '双打' : battle.isTrainer ? '训练家战' : battle.isGym ? '道馆战' : battle.isBoss ? '首领战' : '野外战';
@@ -33988,7 +33990,10 @@ const renderMenu = () => {
 
     // 战斗主场景
     return (
-      <div className="screen battle-screen">
+      <div className="screen battle-screen pc-battle-screen" style={{
+        '--command-height': commandMoveCount <= 4 ? (trainerIntelVisible ? '260px' : '230px') : 'min(390px, 46dvh)',
+        '--compact-command-height': commandMoveCount <= 3 ? '260px' : 'min(390px, 50dvh)',
+      }}>
         {renderEnvironmentOverlay()}
         {battle.activeDomain && (
             <div style={{
@@ -34761,7 +34766,7 @@ const renderMenu = () => {
         </div>
 
         {/* 底部操作栏 */}
-        <div className="battle-panel-v2">
+        <div className="battle-command-deck" aria-label="战斗指令">
             <div className="battle-command-topline">
               <div>
                 <span>{battleModeLabel}</span>
@@ -34807,7 +34812,8 @@ const renderMenu = () => {
               </details>
             )}
             {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'double_input_2') ? (
-              <div className="controls-area-v2">
+              <div className="battle-command-body">
+                <div className="battle-move-pane">
                     {battle.isPvP && (
                         <div style={{textAlign:'center', background: '#2196F3', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
                             🎮 PvP对战 · 对手由AI控制
@@ -34871,21 +34877,13 @@ const renderMenu = () => {
                       }
                       const faster = mySpd > eSpd;
                       const tied = mySpd === eSpd;
-                      return <div style={{textAlign:'center',fontSize:'11px',color:faster?'#4CAF50':tied?'#FF9800':'#F44336',margin:'2px 0',opacity:0.8}}>
+                      return <div className="battle-turn-order" style={{color:faster?'#9de2bf':tied?'#f4d484':'#f7aaa4'}}>
                         {faster ? `⚡先手 (${mySpd} vs ${eSpd})` : tied ? `⚖同速 (${mySpd})` : `🐢后手 (${mySpd} vs ${eSpd})`}
                       </div>;
                     })()}
                     {/* 技能网格 - 占满上方空间 */}
                     {(!isDoubleBattle || battle.pendingDoubleMove === undefined) && (
-                    <div className="moves-grid-v2" style={{
-                      gridTemplateColumns: (() => {
-                        const cnt = (isDoubleBattle ? (doubleCurrentPet || p) : p)?.combatMoves?.length || 0;
-                        if (cnt <= 2) return 'repeat(2, 1fr)';
-                        if (cnt <= 4) return 'repeat(2, 1fr)';
-                        if (cnt <= 6) return 'repeat(3, 1fr)';
-                        return 'repeat(4, 1fr)';
-                      })()
-                    }}>
+                    <div className="battle-move-grid" aria-label="可用技能">
                             {(() => {
                             const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
                             const activeMoves = skillPet?.combatMoves || [];
@@ -34946,6 +34944,7 @@ const renderMenu = () => {
                                         isCursed: m.isCursed,
                                         ceCost: m.ceCost,
                                         isExtra: m.isExtra,
+                                        isFruitMove: m.isFruitMove,
                                         isJutsu: m.isJutsu,
                                         chakraCost: effectiveChakraCost,
                                         isMartialArt: m.isMartialArt,
@@ -34997,7 +34996,7 @@ const renderMenu = () => {
                       );
                       if (availCombos.length === 0) return null;
                       return (
-                        <details style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px', width: '100%' }}>
+                        <details className="battle-combo-options">
                           <summary style={{ fontSize: '11px', color: '#FFD54F', fontWeight: '800', cursor: 'pointer', listStyle: 'none', marginBottom: '6px' }}>
                             🌀 组合忍术（点击展开 · 双方精灵联合施放）
                           </summary>
@@ -35036,19 +35035,20 @@ const renderMenu = () => {
                         </details>
                       );
                     })()}
-                    {/* 底部操作按钮 - 横向排列 */}
+                </div>
+                    {/* 独立操作区，不参与技能网格的高度分配。 */}
                         {!battle.isPvP ? (
-                        <div className="actions-bar-h">
-                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle} title={isDoubleBattle ? '双打模式中无法使用背包' : ''}>背包</button>
-                            <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}>交换</button>
-                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}>逃跑</button>
+                        <div className="battle-action-list" aria-label="其他行动">
+                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle} title={isDoubleBattle ? '双打模式中无法使用背包' : ''}><Backpack size={16} aria-hidden="true" />背包</button>
+                            <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}><ArrowLeftRight size={16} aria-hidden="true" />交换</button>
+                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}><LogOut size={16} aria-hidden="true" />逃跑</button>
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed ? (() => {
                               const minTurn = getFruitMinTurn();
                               const turnOk = battle.turnCount >= minTurn;
                               const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.6;
                               const canUse = turnOk && hpOk;
                               const hint = !turnOk && !hpOk ? `回合≥${minTurn}(还需${minTurn - battle.turnCount}回合) 且 HP<60%` : !turnOk ? `回合≥${minTurn}(还需${minTurn - battle.turnCount}回合)` : 'HP<60%';
-                              return <button className="action-btn-h" style={{background: canUse ? 'linear-gradient(135deg,#D32F2F,#FF6F00)' : 'linear-gradient(135deg,#757575,#9E9E9E)', opacity: canUse ? 1 : 0.7}} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)}>变身{!canUse ? `(${hint})` : ''}</button>;
+                              return <button className="action-btn-h" title={canUse ? '果实变身' : hint} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)}>变身</button>;
                             })() : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return (cp.maxCE > 0 || (cp.maxChakra || 0) > 0) ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; const availableCE = getBattleResourceValue(battle, cp, 'player', 'ce'); return cp.hasDomain && !cp.usedDomain && battle.activeDomain?.ownerSide !== 'player' ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={availableCE < (DOMAINS[cp.domainType]?.ceCost||999)}>{battle.activeDomain?.ownerSide === 'enemy' ? '领域对撞' : '领域'}</button> : null; })()}
@@ -35064,7 +35064,7 @@ const renderMenu = () => {
                             })()}
                             </div>
                         ) : (
-                        <div className="actions-bar-h">
+                        <div className="battle-action-list" aria-label="其他行动">
                             <button className="action-btn-h" style={{background:'#673AB7'}} onClick={() => { const team = battle.playerCombatStates; const available = team.map((p, i) => ({...p, _idx: i})).filter((p, i) => p.currentHp > 0 && i !== battle.activeIdx); setPetPicker({ title: '选择替补精灵', list: available, onSelect: (pet) => { handlePvPInput(1, 'switch', pet._idx); setPetPicker(null); } }); }}>换人</button>
                             </div>
                         )}
