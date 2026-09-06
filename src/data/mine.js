@@ -90,3 +90,54 @@ export function generateMineGrid(depth) {
   }
   return grid;
 }
+
+// Calculate the complete dig before the UI commits it; reward delivery happens afterwards.
+export function resolveMineDig(state, row, col, createGrid = generateMineGrid) {
+  if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 ||
+      row >= MINE_GRID_SIZE || col >= MINE_GRID_SIZE || state.energy <= 0 ||
+      state.revealed.some(cell => cell[0] === row && cell[1] === col)) return { ok: false };
+  const tile = state.grid?.[row]?.[col];
+  if (!MINE_TILES[tile]) return { ok: false };
+  const combo = MINE_ORES[tile] ? (state._lastOre === tile ? (state._comboCount || 0) + 1 : 1) : 0;
+  const amount = MINE_ORES[tile] ? (combo >= 5 ? 3 : combo >= 3 ? 2 : 1) : 0;
+  const next = {
+    ...state,
+    energy: Math.max(0, state.energy - 1 - (MINE_TILES[tile].penalty?.energyCost || 0)),
+    revealed: [...state.revealed, [row, col]],
+    totalMined: (state.totalMined || 0) + 1,
+    minerals: { ...state.minerals },
+    _lastOre: amount ? tile : null,
+    _comboCount: combo,
+  };
+  if (amount) next.minerals[tile] = (next.minerals[tile] || 0) + amount;
+  let milestone = null;
+  const advanced = next.revealed.length === MINE_GRID_SIZE * MINE_GRID_SIZE;
+  if (advanced) {
+    next.depth += 1;
+    next.grid = createGrid(next.depth);
+    next.revealed = [];
+    next._lastOre = null;
+    next._comboCount = 0;
+    milestone = MINE_DEPTH_MILESTONES.find(entry => entry.depth === next.depth) || null;
+    if (milestone?.reward.type === 'mineral') {
+      const { id, amount: rewardAmount } = milestone.reward;
+      next.minerals[id] = (next.minerals[id] || 0) + rewardAmount;
+    }
+  }
+  return { ok: true, state: next, tile, amount, combo, advanced, milestone };
+}
+
+export function resolveMineExchange(state, exchange) {
+  if (!exchange) return { ok: false };
+  if (exchange.reward.type === 'energy' && state.energy >= MINE_MAX_ENERGY) {
+    return { ok: false, reason: 'full' };
+  }
+  const minerals = { ...state.minerals };
+  for (const [ore, cost] of Object.entries(exchange.cost)) {
+    if ((minerals[ore] || 0) < cost) return { ok: false, reason: 'minerals', ore };
+  }
+  for (const [ore, cost] of Object.entries(exchange.cost)) minerals[ore] -= cost;
+  const energy = exchange.reward.type === 'energy'
+    ? Math.min(state.energy + exchange.reward.amount, MINE_MAX_ENERGY) : state.energy;
+  return { ok: true, state: { ...state, minerals, energy } };
+}

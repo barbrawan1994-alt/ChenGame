@@ -1626,7 +1626,7 @@ check('配置驱动副本与灵域保留显式零掉落', () => {
   const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
   assert.ok(app.includes('drop: step.drop ?? 3000'));
   assert.ok(app.includes('drop: domain.reward?.gold ?? 3000'));
-  assert.ok(app.includes('drop: step.drop ?? def.reward?.gold ?? 3000'));
+  assert.ok(app.includes('drop: step.drop ?? 0'));
   assert.equal(app.includes('drop: step.drop || 3000'), false);
   assert.equal(app.includes('drop: domain.reward?.gold || 3000'), false);
   assert.equal(app.includes('drop: step.drop || def.reward?.gold || 3000'), false);
@@ -1869,8 +1869,9 @@ check('矿场满体力兑换会在扣除矿石前终止', () => {
   const start = app.indexOf('const doMineExchange =');
   const end = app.indexOf('const sendExpedition =', start);
   const branch = app.slice(start, end);
-  const guard = branch.indexOf("ex.reward.type === 'energy'");
-  const deduction = branch.indexOf('minerals[ore] -= need');
+  const guard = branch.indexOf("result.reason === 'full'");
+  const deduction = branch.indexOf('mineStateRef.current = result.state');
+  assert.ok(branch.includes('resolveMineExchange(mineStateRef.current, ex)'));
   assert.ok(guard >= 0);
   assert.ok(deduction > guard);
   assert.ok(branch.includes("showMapToast('⚡', '体力已满'"));
@@ -1991,7 +1992,7 @@ check('家园种植、浇水与收获使用同步状态，成熟地块先消费�
   assert.ok(water.includes('housingRef.current = nextHousing'));
   assert.ok(water.includes('waterLog:'));
   assert.ok(harvest.includes('const consumedHousing ='));
-  assert.ok(harvest.indexOf('flushSync(() => setHousing(consumedHousing))') < harvest.indexOf("if (plantDef.category === 'flower'"));
+  assert.ok(harvest.indexOf('flushSync(() => setHousing(consumedHousing))') < harvest.indexOf('if (!plantDef.harvestItem'));
   assert.equal(harvest.includes('newPlots.splice(plotIdx, 1)'), false);
 });
 
@@ -2658,4 +2659,272 @@ check('自动战斗强制换人和名将抽卡入口支持完整键盘交互', (
   assert.match(app, /<button type="button" onClick=\{\(\) => setView\('general_dex'\)\}/);
 });
 
-console.log(`\nRegression checks passed: ${passed}`);
+check('竞技票奖励、跨日补充及重新载入不会吞掉已获得票券', () => {
+  for (const count of [0, 4, 14, 15, 16, 35, 200]) {
+    const state = { ...arenaData.DEFAULT_ARENA_STATE, tickets: count, lastTicketDate: '2026-09-06' };
+    const refreshed = arenaData.resolveArenaDailyRefresh(state, '2026-09-07').state;
+    assert.equal(refreshed.tickets, Math.max(count, Math.min(15, count + 5)));
+    const rewarded = arenaData.addArenaTickets(refreshed, 2);
+    assert.equal(rewarded.tickets, refreshed.tickets + 2);
+    assert.equal(saveNormalizer.normalizeActivitySaveState({ arenaState: rewarded }).arenaState.tickets, rewarded.tickets);
+    assert.equal(arenaData.resolveArenaDailyRefresh(refreshed, '2026-09-07').state.tickets, refreshed.tickets);
+  }
+});
+
+check('矿洞单次挖掘为纯计算，重复地块、陷阱、连锁和层数奖励保持一致', () => {
+  const mine = loadProjectModule('src/data/mine.js');
+  const grid = Array.from({length:6}, () => Array(6).fill('copper'));
+  let state = { ...mine.DEFAULT_MINE_STATE, grid, minerals: {}, energy:25, revealed:[] };
+  const original = JSON.stringify(state);
+  const first = mine.resolveMineDig(state, 0, 0);
+  assert.equal(JSON.stringify(state), original);
+  assert.equal(first.state.energy, 24);
+  assert.equal(first.state.minerals.copper, 1);
+  assert.equal(mine.resolveMineDig(first.state, 0, 0).ok, false);
+  state = first.state;
+  for (let col=1; col<5; col++) state=mine.resolveMineDig(state,0,col).state;
+  assert.equal(state.minerals.copper, 9);
+  const trapGrid = grid.map(row=>[...row]); trapGrid[0][5]='trap_rock';
+  const trapped=mine.resolveMineDig({...state,grid:trapGrid,energy:2},0,5);
+  assert.equal(trapped.state.energy,0);
+  assert.equal(trapped.state._comboCount,0);
+  const revealed=Array.from({length:35},(_,i)=>[Math.floor(i/6),i%6]);
+  const final=mine.resolveMineDig({...state,depth:9,revealed},5,5,()=>grid);
+  assert.equal(final.state.depth,10);
+  assert.equal(final.state.revealed.length,0);
+  assert.equal(final.state.minerals.jade,1);
+  assert.equal(final.milestone.reward.type,'mineral');
+  assert.equal(mine.resolveMineDig(state,-1,0).ok,false);
+  assert.equal(mine.resolveMineDig({...state,energy:0},5,5).ok,false);
+});
+
+check('矿洞兑换在最新状态中核对体力与矿石，满体力不再扣矿', () => {
+  const mine = loadProjectModule('src/data/mine.js');
+  const state = { ...mine.DEFAULT_MINE_STATE, energy: 24, minerals: { jade: 2 } };
+  const exchange = mine.MINE_EXCHANGE.find(entry => entry.id === 'jade_energy');
+  const first = mine.resolveMineExchange(state, exchange);
+  assert.equal(first.ok, true);
+  assert.equal(first.state.energy, 25);
+  assert.equal(first.state.minerals.jade, 1);
+  assert.equal(state.minerals.jade, 2);
+  assert.equal(mine.resolveMineExchange(first.state, exchange).reason, 'full');
+  assert.equal(mine.resolveMineExchange({ ...state, minerals: {} }, exchange).reason, 'minerals');
+});
+
+check('轮盘多次旋转后的指针始终对准实际奖品', () => {
+  const { getWheelStopRotation } = loadUtility('src/utils/activityRules.js');
+  let previous=0;
+  for(let round=0;round<3;round++) for(let index=0;index<9;index++) {
+    const next=getWheelStopRotation(previous,index,9);
+    assert.ok(next-previous>=1800);
+    assert.ok(Math.abs(((next+(index+0.5)*40)%360))<1e-8);
+    previous=next;
+  }
+});
+
+check('特训可用状态区分濒死、占用、每日次数和努力值上限', () => {
+  const { getTrainingAvailability } = loadUtility('src/utils/activityRules.js');
+  const pet={uid:'training',currentHp:30,evs:{hp:20}};
+  assert.equal(getTrainingAvailability(pet),null);
+  assert.equal(getTrainingAvailability({...pet,currentHp:0}),'需要恢复体力');
+  assert.equal(getTrainingAvailability(pet,{slots:[{petUid:pet.uid}]}),'训练中');
+  assert.equal(getTrainingAvailability(pet,{dailyCount:{training:1}}),'今日已训练');
+  assert.equal(getTrainingAvailability(pet,{expeditions:[{petUids:[pet.uid]}]}),'远征中');
+  assert.equal(getTrainingAvailability(pet,{workers:[pet.uid]}),'咖啡厅工作中');
+  assert.equal(getTrainingAvailability({...pet,evs:{hp:252,spd:252,p_def:6}}),'努力值已满');
+});
+
+check('库存稀有种子可免费种植，星辰果实际发放极限糖果且不能重复收获', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const source = app.slice(app.indexOf('const plantSeed ='), app.indexOf('const buyFurnitureFromShop ='));
+  const housingRef = { current: { ...housingData.DEFAULT_HOUSING_STATE, currentHouse: 'cabin', garden: { plots: [], seedInventory: { starfruit: 1 } } } };
+  const goldRef = { current: 1000 };
+  let inventory = { max_candy: 0 };
+  let harvests = 0;
+  const actions = vm.runInNewContext(`${source}; ({ plantSeed, harvestPlant })`, {
+    ...housingData, housingRef, goldRef, housingActionLocksRef: { current: new Set() },
+    marriageRef: { current: {} }, Date, Math: Object.assign(Object.create(Math), { random: () => 0.99 }),
+    showMapToast: () => {}, setHousing: () => {}, setGold: () => {}, flushSync: fn => fn(),
+    setInventory: fn => { inventory = fn(inventory); },
+    updateAchStat: delta => { harvests += delta.gardenHarvests || 0; },
+  });
+  actions.plantSeed('starfruit');
+  assert.equal(goldRef.current, 1000);
+  assert.equal(housingRef.current.garden.seedInventory.starfruit, 0);
+  assert.equal(housingRef.current.garden.plots.length, 1);
+  actions.plantSeed('starfruit');
+  assert.equal(housingRef.current.garden.plots.length, 1);
+  actions.harvestPlant(0);
+  assert.equal(inventory.max_candy, 0);
+  housingRef.current.garden.plots[0].plantedAt -= 301 * 60000;
+  actions.harvestPlant(0);
+  actions.harvestPlant(0);
+  assert.equal(inventory.max_candy, 1);
+  assert.equal(harvests, 1);
+  assert.equal(housingRef.current.garden.plots.length, 0);
+});
+
+check('联盟报名读取主线进度，支线章节不会绕过冠军之路门槛', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const source = app.slice(app.indexOf('const leagueStoryProgress ='), app.indexOf('const startLeagueMatch ='));
+  for (const [storyProgress, mainStoryProgress, activeSideStory, expected] of [[18, 3, 'lycoris', false], [18, 12, 'lycoris', true], [3, 0, null, false], [12, 0, null, true]]) {
+    const leagueRoundRef = { current: 0 };
+    const register = vm.runInNewContext(`${source}; registerLeagueRun`, {
+      storyProgress, mainStoryProgress, activeSideStory, LEAGUE_UNLOCK_STORY_INDEX: 12,
+      partyRef: { current: [{ currentHp: 10 }] }, leagueRoundRef,
+      setLeagueRound: () => {}, setLeagueRunNoDamage: () => {}, showMapToast: () => {},
+    });
+    assert.equal(register(), expected);
+    assert.equal(leagueRoundRef.current, expected ? 1 : 0);
+  }
+});
+
+check('药品图标标注读取实际药效', () => {
+  const {MED_ICONS}=loadProjectModule('src/data/itemIcons.js');
+  const {MEDICINES}=loadProjectModule('src/data/items.js');
+  for(const id of ['potion','super_potion','hyper_potion']) assert.equal(MED_ICONS[id].label,`+${MEDICINES[id].val}`);
+});
+
+check('忍者生存试炼每个段位都能生成合法队伍，包含真实技能与血量', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const source = app.slice(app.indexOf('const startSurvivalWave ='), app.indexOf('const advanceForest ='));
+  for (const level of [15, 50, 100]) for (const wave of [0, 1, 2, 3, 4]) {
+    let started = null;
+    const action = vm.runInNewContext(`${source}; startSurvivalWave`, {
+      narutoExamUI: { phase: 'survival', survivalWave: wave, difficulty: { lvMod: 3, enemyPerWave: [2, 3, 3, 4, 5] } },
+      narutoBattleStartLockRef: { current: false }, battle: null, party: [{ level }],
+      POKEDEX: petsData.POKEDEX, Math,
+      createPet: (id, lvl, boss) => livePetFactory.createPet(id, lvl, boss, false, { getStatsForPet: statsCalculator.getStats }),
+      attemptBattleStart: (label, start) => start(),
+      startBattle: (context, type, meta) => { started = { context, type, meta }; return true; },
+      showMapToast: () => {},
+    });
+    action();
+    assert.equal(started.type, 'naruto_survival');
+    assert.equal(started.context.customParty.length, [2, 3, 3, 4, 5][wave]);
+    for (const pet of started.context.customParty) {
+      assert.ok(pet.level >= level && pet.level <= 100);
+      assert.ok(pet.currentHp > 0 && pet.moves.length > 0);
+      assert.ok(pet.moves.every(move => move.pp > 0 && move.t));
+    }
+  }
+});
+
+check('秘境忍术熟练奖励补足低熟练忍术、重算亲和且不突破单项上限', () => {
+  const initial = { jutsuMastery: { fire_spark: 10 }, jutsuCollection: ['fire_spark'] };
+  const result = narutoData.grantJutsuMasteryReward(initial, 50);
+  assert.equal(initial.jutsuMastery.fire_spark, 10);
+  assert.equal(result.jutsuMastery.fire_spark, 60);
+  assert.equal(result.chakraAffinity, 'FIRE');
+  assert.equal(narutoData.grantJutsuMasteryReward(result, 100).jutsuMastery.fire_spark, 100);
+  const beginner = narutoData.grantJutsuMasteryReward({}, 50);
+  assert.equal(Object.values(beginner.jutsuMastery).reduce((a,b)=>a+b,0), 50);
+  assert.ok(beginner.jutsuCollection.length > 0);
+});
+
+check('门派每日任务不重复，挑战次数及奖励始终来自同一个任务定义', () => {
+  const sect = loadProjectModule('src/data/sectSystem.js');
+  for (let i = 0; i < 100; i++) {
+    const tasks = sect.generateSectDailyTasks('2026-09-07', 1);
+    assert.equal(tasks.length, 5);
+    assert.equal(new Set(tasks.map(task => task.id)).size, 5);
+    for (const task of tasks) {
+      const definition = sect.SECT_DAILY_TASK_POOL.find(entry => entry.id === task.id);
+      for (const key of ['target', 'rep', 'contrib']) assert.equal(task[key], definition[key]);
+    }
+  }
+  const today = '2026-09-07';
+  const valid = sect.generateSectDailyTasks(today, 1);
+  assert.equal(sect.repairSectDailyTasks(valid, today, 1), valid);
+  const wrong = valid.map(task => task.id === 'sect_challenge' ? { ...task, target: 500, progress: 2, rep: 20, contrib: 40 } : task);
+  const repaired = sect.repairSectDailyTasks(wrong, today, 1);
+  const challenge = repaired.find(task => task.id === 'sect_challenge');
+  assert.equal(challenge.target, 1);
+  assert.equal(challenge.progress, 1);
+  assert.equal(challenge.rep, 40);
+  const duplicates = [
+    ...wrong.filter(task => task.id !== 'sect_train'),
+    { ...challenge, progress: 1, completed: true },
+  ];
+  const merged = sect.repairSectDailyTasks(duplicates, today, 1);
+  assert.equal(new Set(merged.map(task => task.id)).size, 5);
+  assert.equal(merged.find(task => task.id === 'sect_challenge').completed, true);
+  assert.equal(merged.find(task => task.id === 'sect_train').progress, 0);
+});
+
+async function checkTurnHandoff() {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const source = app.slice(app.indexOf('const executeTurn ='), app.indexOf('// 双打战斗回合'));
+  for (const enemyFirst of [false, true]) {
+    let playerActs = 0;
+    let enemyActs = 0;
+    let current = { phase: 'input', activeIdx: 0, enemyActiveIdx: 0, turnCount: 0,
+      playerCombatStates: [{ currentHp: 100, spd: enemyFirst ? 10 : 20, combatMoves: [{ name: 'test', p: 40, pp: 5 }] }],
+      enemyParty: [{ currentHp: 100, spd: enemyFirst ? 20 : 10 }],
+    };
+    const errors = [];
+    const action = vm.runInNewContext(`${source}; executeTurn`, {
+      battle: current, party: [], _: { cloneDeep: structuredClone }, Math,
+      setBattle: update => { current = update(current); },
+      getStats: pet => ({ spd: pet.spd }), getEquipEffects: () => [], preSelectEnemyMove: () => null,
+      performAction: async () => { assert.equal(current.phase, 'busy'); playerActs++; return false; },
+      enemyTurn: async (state, deferInput) => {
+        assert.equal(deferInput, true);
+        assert.equal(current.phase, 'busy');
+        enemyActs++;
+      },
+      wait: async () => {}, console: { error: (...args) => errors.push(args) },
+    });
+    await action(0);
+    assert.deepEqual(errors, []);
+    assert.equal(playerActs, 1);
+    assert.equal(enemyActs, 1);
+    assert.equal(current.phase, 'input');
+  }
+  const enemySource = app.slice(app.indexOf('const enemyTurn ='), app.indexOf('// [新增] 属性克制计算'));
+  for (const deferInput of [false, true]) {
+    let current = { phase: 'busy', activeIdx: 0, enemyActiveIdx: 0,
+      playerCombatStates: [{ currentHp: 100 }], enemyParty: [{ currentHp: 100 }],
+      activeDomain: { turnsLeft: 2, ownerSide: 'player', effect: { enemySkipChance: 1 } },
+    };
+    const action = vm.runInNewContext(`${enemySource}; enemyTurn`, {
+      battle: current, wait: async () => {}, addLog: () => {}, auditPlayerHpLoss: () => {}, Math,
+      setBattle: update => { current = update(current); },
+    });
+    await action(current, deferInput);
+    assert.equal(current.phase, deferInput ? 'busy' : 'input');
+    assert.equal(current.turnCount, 1);
+  }
+  passed++;
+  console.log('✓ 单打双方先后手只执行一次，完整回合结束前保持输入锁定');
+}
+
+check('防卡死检测只恢复停止推进的回合，不打断长动画', () => {
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const start = app.lastIndexOf('useEffect(() => {', app.indexOf("const recoverablePhases = new Set"));
+  const source = app.slice(start, app.indexOf('const getRankPerkEffects =', start));
+  let callback;
+  let now = 0;
+  let state = { phase: 'busy', activeIdx: 0, playerCombatStates: [{ currentHp: 50 }] };
+  const progress = { current: 0 };
+  vm.runInNewContext(source, {
+    useEffect: fn => fn(), battle: state, battleProgressAtRef: progress,
+    Date: { now: () => now }, Set, console: { warn: () => {} },
+    setInterval: fn => { callback = fn; }, clearInterval: () => {},
+    setBattle: update => { state = update(state); },
+  });
+  for (let turn = 1; turn <= 4; turn++) {
+    now = turn * 12000;
+    progress.current = now - 1000;
+    callback();
+    assert.equal(state.phase, 'busy');
+  }
+  now += 13000;
+  callback();
+  assert.equal(state.phase, 'input');
+});
+
+checkTurnHandoff().then(() => console.log(`\nRegression checks passed: ${passed}`)).catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

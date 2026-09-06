@@ -82,6 +82,11 @@ import { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS } from './data/skills';
 import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { buildBalancedStarterPool, buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters, selectCombatBalancedStarters } from './utils/starterSelection';
 import { planTeamRecovery } from './utils/teamRecovery';
+import { getWheelStopRotation } from './utils/activityRules';
+import { repairSectDailyTasks } from './data/sectSystem';
+import { resolveMineDig, resolveMineExchange } from './data/mine';
+import TrainingScreen from './components/screens/TrainingScreen';
+import WheelScreen from './components/screens/WheelScreen';
 import HomeMenu from './components/HomeMenu';
 import { RACE_CONFIG, getMedianSpeed, resolveRaceContest, getRaceReward } from './data/raceBalance';
 import ACHIEVEMENTS, { ACH_CATEGORY, ACH_RARITY, DEFAULT_ACH_STATS, normalizeUnlockedAchievementIds, normalizeAchievementTitles, normalizeCurrentAchievementTitle } from './data/achievements';
@@ -119,7 +124,7 @@ import {
   HYAKKI_DUNGEON,
   EXTRA_DUNGEONS,
   KW_EQUIPMENT,
-  ARENA_RANKS, ARENA_SEASON_REWARDS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, arenaPreviewSeed, mulberry32, getArenaWeekTypes, resolveArenaResult, resolveArenaDailyRefresh,
+  ARENA_RANKS, ARENA_SEASON_REWARDS, ARENA_WEEKLY_RULES, ARENA_TICKET_PRICE, ARENA_DAILY_FREE_TICKETS, DEFAULT_ARENA_STATE, arenaPreviewSeed, mulberry32, getArenaWeekTypes, resolveArenaResult, resolveArenaDailyRefresh, addArenaTickets,
   EXPEDITION_ZONES, EXPEDITION_EVENTS, EXPEDITION_BRANCH_EVENTS, DEFAULT_EXPEDITIONS, calcExpeditionBonus, pickExpeditionBranchEvent,
   MINE_ORES, MINE_TILES, MINE_EXCHANGE, MINE_GRID_SIZE, MINE_MAX_ENERGY, MINE_REGEN_INTERVAL, MINE_REQ_BADGES, DEFAULT_MINE_STATE, MINE_DEPTH_MILESTONES, generateMineGrid,
   BOUNTY_TEMPLATES, generateDailyBounties, getMasterChestReward, DEFAULT_BOUNTY_BOARD,
@@ -287,7 +292,7 @@ import {
   CHUNIN_EXAM_PHASES, generateExamQuestions,
   FOREST_EVENTS, EXAM_FINALS_BRACKETS,
   NARUTO_CHALLENGES, DEFAULT_NARUTO_STATE, NARUTO_STORY_CHAPTERS,
-  JUTSU_MASTERY_LEVELS, getJutsuMasteryLevel, getJutsuMasteryBonus, calcChakraAffinity,
+  JUTSU_MASTERY_LEVELS, getJutsuMasteryLevel, getJutsuMasteryBonus, calcChakraAffinity, grantJutsuMasteryReward,
   resolveNarutoStoryStageClear, getNextBijuuReward, normalizeNarutoExamProgress,
 } from './data/naruto';
 
@@ -2041,6 +2046,7 @@ const [infinityState, setInfinityState] = useState(() => {
   const worldBossActiveFightRef = useRef(null);
   const dungeonEntryLockRef = useRef(false);
   const battleSpecialActionLockRef = useRef(false);
+  const battleProgressAtRef = useRef(Date.now());
   const towerStartLockRef = useRef(false);
   const leagueStartLockRef = useRef(false);
   const spiritDomainStartLockRef = useRef(false);
@@ -3535,11 +3541,14 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const ensureSectDailyTasks = () => {
     setSectPlayer(prev => {
       const today = getLocalDateStr();
-      if (prev.sectDailyDate === today && (prev.sectDailyTasks || []).length >= 5) return prev;
+      const sameDay = prev.sectDailyDate === today;
+      const currentTasks = prev.sectDailyTasks || [];
+      const tasks = sameDay ? repairSectDailyTasks(currentTasks, today, prev.playerSect) : generateSectDailyTasks(today, prev.playerSect);
+      if (tasks === currentTasks) return prev;
       return {
         ...prev,
         sectDailyDate: today,
-        sectDailyTasks: generateSectDailyTasks(today, prev.playerSect),
+        sectDailyTasks: tasks,
       };
     });
   };
@@ -3732,10 +3741,9 @@ const [viewStatPet, setViewStatPet] = useState(null);
     const today = getLocalDateStr();
     setSectPlayer(prev => {
       const previousTodayTasks = prev.sectDailyDate === today ? (prev.sectDailyTasks || []) : [];
-      let tasks = prev.sectDailyTasks || [];
-      if (prev.sectDailyDate !== today || tasks.length < 5) {
-        tasks = generateSectDailyTasks(today, prev.playerSect);
-      }
+      let tasks = prev.sectDailyDate === today
+        ? repairSectDailyTasks(previousTodayTasks, today, prev.playerSect)
+        : generateSectDailyTasks(today, prev.playerSect);
       tasks = tasks.map(t => {
         if (t.id !== taskId || t.completed || t.date !== today) return t;
         const progress = Math.min(t.target, (t.progress || 0) + amount);
@@ -5542,11 +5550,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const expeditionsRef = useRef(expeditions);
   expeditionsRef.current = expeditions;
   const [mineState, setMineState] = useState(() => ({ ...DEFAULT_MINE_STATE, ...(savedData.mineState || {}) }));
+  const mineStateRef = useRef(mineState);
+  mineStateRef.current = mineState;
   const [bountyBoard, setBountyBoard] = useState(() => ({ ...DEFAULT_BOUNTY_BOARD, ...(savedData.bountyBoard || {}) }));
   const [luckyWheel, setLuckyWheel] = useState(() => ({ lastFreeDate: '', paidSpins: 0, totalSpins: 0, dailySpinDate: '', dailySpinCount: 0, ...(savedData.luckyWheel || {}) }));
   const luckyWheelRef = useRef(luckyWheel);
   luckyWheelRef.current = luckyWheel;
   const [wheelSpinning, setWheelSpinning] = useState(false);
+  const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelResult, setWheelResult] = useState(null);
   const wheelSpinTimeoutRef = useRef(null);
   const wheelSpinTokenRef = useRef(0);
@@ -5711,7 +5722,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const timer = window.setTimeout(() => persistSaveRef.current(true, true), 0);
     return () => window.clearTimeout(timer);
   }, [narutoState.examPhase, narutoState.examProgress]);
-  const [trainingPicking, setTrainingPicking] = useState(null);
   const [activityCenter, setActivityCenter] = useState(false);
   const [expPicking, setExpPicking] = useState(null);
   const [expSelectedPets, setExpSelectedPets] = useState([]);
@@ -7299,12 +7309,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       housingActionLocksRef.current.add(lockKey);
       try {
       const plant = GARDEN_PLANTS.find(p => p.id === plantId);
-      if (!plant || !plant.seedPrice) return;
+      if (!plant) return;
       const currentHousing = housingRef.current || housing;
       const maxSlots = getGardenSlots(currentHousing.currentHouse);
       const plots = currentHousing.garden?.plots || [];
       if (plots.length >= maxSlots) { showMapToast('❌', '提示', '花园已满！升级住宅可获得更多种植槽。', 1500); return; }
       const seedCount = (currentHousing.garden?.seedInventory || {})[plantId] || 0;
+      if (seedCount <= 0 && plant.seedPrice == null) { showMapToast('🌱', '种子不足', '需要先获得这株植物的种子', 1500); return; }
       if (seedCount <= 0 && goldRef.current < plant.seedPrice) { showMapToast('💰', '金币不足', `需要 ${plant.seedPrice} 金币`, 1500); return; }
       const nextHousing = {
         ...currentHousing,
@@ -7374,13 +7385,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const yieldMult = 1 + spGardenYield;
 
       let rewardMsg = '';
-      if (plantDef.category === 'flower' || plantDef.category === 'rare') {
+      if (!plantDef.harvestItem && (plantDef.category === 'flower' || plantDef.category === 'rare')) {
         const quality = plantDef.rarity === 'LEGENDARY' ? 'LEGENDARY' : plantDef.rarity === 'EPIC' ? 'EPIC' : rollQuality('battle', plantDef.rarity === 'RARE');
         const latestHousing = housingRef.current;
         const nextHousing = { ...latestHousing, furniture: [...(latestHousing.furniture || []), { baseId: 'flower_garden', quality, placed: false, slotIdx: null }] };
         housingRef.current = nextHousing;
         setHousing(nextHousing);
-        rewardMsg = `${plantDef.icon} 装饰花卉 (${FURNITURE_QUALITY[quality]?.name}) +${plantDef.scoreValue || 0}评分`;
+        rewardMsg = `${plantDef.icon} 装饰花卉 (${FURNITURE_QUALITY[quality]?.name}) · 放置后 +${calcHouseScore([{ baseId: 'flower_garden', quality }])}评分`;
       } else if (plantDef.harvestItem) {
         const hi = plantDef.harvestItem;
         const boostedCount = Math.floor((hi.count || 1) * yieldMult);
@@ -7490,7 +7501,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <div>
               <span className="housing-eyebrow">伙伴休整基地</span>
               <h1>{currentHouseDef?.name || '露宿野外'}</h1>
-              <p>安排精灵入住、布置家具、经营花园和咖啡厅，让队伍在冒险之外获得恢复、经验、亲密度与收藏评分。</p>
+              <p>{currentHouseDef ? `${tier.title} · ${residentCount} 位伙伴在家休整` : '冒险归来，总有一处灯火。'}</p>
             </div>
           </div>
           <div className="housing-hero-stats">
@@ -7521,7 +7532,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 <div style={{fontSize:'48px', textAlign:'center'}}>{currentHouseDef?.icon || '🏕️'}</div>
                 <div style={{textAlign:'center', fontWeight:'bold', fontSize:'18px', margin:'8px 0'}}>{currentHouseDef?.name || '露宿野外'}</div>
                 <div style={{textAlign:'center', color:'#888', fontSize:'13px'}}>
-                  {currentHouseDef ? `精灵槽: ${housing.residents.filter(r => r).length}/${currentHouseDef.slots} | 家具槽: ${placedFurniture.length}/${currentHouseDef.furnitureSlots}` : '还没有家呢...去商店看看吧!'}
+                  {currentHouseDef ? `精灵槽: ${housing.residents.filter(r => r).length}/${currentHouseDef.slots} | 家具槽: ${placedFurniture.length}/${currentHouseDef.furnitureSlots}` : <button type="button" onClick={() => setHousingTab('upgrade')}>选购住宅</button>}
                 </div>
               </div>
               <div style={{background:'transparent', borderRadius:'16px', padding:'20px', boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
@@ -7588,7 +7599,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       if (!def) return null;
                       const qual = FURNITURE_QUALITY[f.quality];
                       return (
-                        <div key={idx} style={{background:'transparent', borderRadius:'12px', padding:'10px', border:`2px solid ${qual.color}`, cursor:'pointer', position:'relative'}} onClick={() => removeFurniture(idx)}>
+                        <div key={idx} role="button" tabIndex={0} aria-label={`收回${def.name}`} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeFurniture(idx); } }} style={{background:'transparent', borderRadius:'12px', padding:'10px', border:`2px solid ${qual.color}`, cursor:'pointer', position:'relative'}} onClick={() => removeFurniture(idx)}>
                           <div style={{fontSize:'24px', textAlign:'center'}}>{def.icon}</div>
                           <div style={{fontSize:'11px', fontWeight:'bold', textAlign:'center', marginTop:'4px'}}>{def.name}</div>
                           <div style={{fontSize:'10px', textAlign:'center', color: qual.color, fontWeight:'bold'}}>{qual.name}</div>
@@ -7608,7 +7619,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   if (!def) return null;
                   const qual = FURNITURE_QUALITY[f.quality];
                   return (
-                    <div key={idx} style={{background:'transparent', borderRadius:'12px', padding:'10px', border:'1px solid #eee', cursor:'pointer'}} onClick={() => placeFurniture(idx)}>
+                    <div key={idx} role="button" tabIndex={0} aria-label={`放置${def.name}`} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placeFurniture(idx); } }} style={{background:'transparent', borderRadius:'12px', padding:'10px', border:'1px solid #eee', cursor:'pointer'}} onClick={() => placeFurniture(idx)}>
                       <div style={{fontSize:'24px', textAlign:'center'}}>{def.icon}</div>
                       <div style={{fontSize:'11px', fontWeight:'bold', textAlign:'center', marginTop:'4px'}}>{def.name}</div>
                       <div style={{fontSize:'10px', textAlign:'center', color: qual.color, fontWeight:'bold'}}>{qual.name}</div>
@@ -7654,7 +7665,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           {housingTab === 'shop' && (
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'12px'}}>
               {FURNITURE_DB.filter(f => f.shopPrice).map(def => (
-                <div key={def.id} style={{background:'transparent', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', cursor:'pointer', transition:'background 0.2s, border-color 0.2s, transform 0.2s'}} onClick={() => buyFurnitureFromShop(def)}>
+                <div key={def.id} role="button" tabIndex={0} aria-label={`购买${def.name}`} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); buyFurnitureFromShop(def); } }} style={{background:'transparent', borderRadius:'12px', padding:'14px', boxShadow:'0 2px 10px rgba(0,0,0,0.06)', cursor:'pointer', transition:'background 0.2s, border-color 0.2s, transform 0.2s'}} onClick={() => buyFurnitureFromShop(def)}>
                   <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                     <span style={{fontSize:'28px'}}>{def.icon}</span>
                     <div>
@@ -7766,9 +7777,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                                 <span style={{fontSize:'10px', color:'#aaa'}}>今日已浇</span>
                               )}
                             </div>
-                            <div style={{width:'100%', height:'6px', background:'#e0e0e0', borderRadius:'3px', overflow:'hidden'}}>
-                              <div style={{width:`${progress}%`, height:'100%', background: isReady ? '#4CAF50' : 'linear-gradient(90deg,#81C784,#43A047)', borderRadius:'3px', transition:'width 1s'}} />
-                            </div>
+                            <progress className="housing-progress" aria-label={`${plantDef.name}生长进度`} max={100} value={progress} />
                           </div>
                         );
                       })}
@@ -7779,7 +7788,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                     <div style={{fontWeight:'bold', fontSize:'14px', marginBottom:'4px'}}>种子商店</div>
                     <div style={{fontSize:'11px', color:'#888', marginBottom:'12px'}}>购买种子种植到花园，收获装饰品(加评分)或道具</div>
                     <div style={{display:'flex', flexDirection:'column', gap:'6px'}}>
-                      {GARDEN_PLANTS.filter(p => p.seedPrice !== null).map(plant => {
+                      {GARDEN_PLANTS.filter(p => p.seedPrice !== null || (housing.garden?.seedInventory?.[p.id] || 0) > 0).map(plant => {
                         const plots = housing.garden?.plots || [];
                         const maxSlots = getGardenSlots(housing.currentHouse);
                         const full = plots.length >= maxSlots;
@@ -7793,7 +7802,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                               <div style={{fontWeight:'bold', fontSize:'12px'}}>{plant.name} <span style={{fontSize:'10px', color:rarityColors[plant.rarity]}}>{FURNITURE_QUALITY[plant.rarity]?.name}</span></div>
                               <div style={{fontSize:'10px', color:'#999'}}>{plant.desc} · ⏱{growStr}</div>
                             </div>
-                            {(() => { const seedCt = (housing.garden?.seedInventory || {})[plant.id] || 0; const canAfford = seedCt > 0 || gold >= plant.seedPrice; return <button onClick={() => plantSeed(plant.id)} disabled={full || !canAfford} style={{
+                            {(() => { const seedCt = (housing.garden?.seedInventory || {})[plant.id] || 0; const canAfford = seedCt > 0 || (plant.seedPrice !== null && gold >= plant.seedPrice); return <button onClick={() => plantSeed(plant.id)} disabled={full || !canAfford} style={{
                               padding:'5px 12px', borderRadius:'14px', border:'none', fontSize:'11px', fontWeight:'bold', cursor: full || !canAfford ? 'not-allowed' : 'pointer',
                               background: full || !canAfford ? '#e0e0e0' : 'linear-gradient(135deg,#43A047,#66BB6A)', color: full || !canAfford ? '#999' : '#fff'
                             }}>{full ? '已满' : seedCt > 0 ? `🌱种子×${seedCt}` : `💰${plant.seedPrice}`}</button>; })()}
@@ -7947,7 +7956,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         const base = POKEDEX.find(d => d.id === p.id) || {};
                         const bst = (base.hp||0) + (base.atk||0) + (base.def||0) + (base.spd||0);
                         return (
-                          <div key={uid} onClick={() => assignCafeWorker(p)} style={{
+                          <div key={uid} role="button" tabIndex={0} aria-pressed={isWorking} aria-label={`${isWorking ? '下班' : '安排打工'}${p.name}`} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); assignCafeWorker(p); } }} onClick={() => assignCafeWorker(p)} style={{
                             display:'flex', alignItems:'center', gap:'10px', padding:'10px', borderRadius:'10px', cursor:'pointer',
                             background: isWorking ? '#FFF3E0' : '#f5f5f5', border: isWorking ? '2px solid #FF9800' : '1px solid #eee'
                           }}>
@@ -7980,9 +7989,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                               <span style={{fontSize:'13px', fontWeight:'bold'}}>☕ {brewDrink?.name || '未知'}</span>
                               <span style={{fontSize:'11px', color:'#1565C0'}}>⏱ {remaining > 0 ? `${mins}分${secs}秒` : '即将完成...'}</span>
                             </div>
-                            <div style={{width:'100%', height:'8px', background:'#eee', borderRadius:'4px', overflow:'hidden', marginBottom:'8px'}}>
-                              <div style={{width:`${progress}%`, height:'100%', background:'linear-gradient(90deg,#FF9800,#F44336)', borderRadius:'4px', transition:'width 1s ease'}} />
-                            </div>
+                            <progress className="housing-progress" aria-label="咖啡酿造进度" max={100} value={progress} style={{marginBottom:'8px'}} />
                             <button onClick={cancelBrewing} style={{padding:'4px 12px', borderRadius:'12px', border:'1px solid #e0e0e0', background:'#fafafa', fontSize:'10px', color:'#999', cursor:'pointer'}}>取消酿造</button>
                           </div>
                         );
@@ -8132,9 +8139,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                           const nextMin = nextIdx >= 0 ? MLEVELS[nextIdx] : MLEVELS[MLEVELS.length-1];
                           const pct = nextIdx >= 0 ? Math.min(100, Math.round((aff - curMin) / (nextMin - curMin) * 100)) : 100;
                           return <div style={{marginTop:'4px', display:'flex', alignItems:'center', gap:'6px'}}>
-                            <div style={{flex:1, height:'4px', background:'rgba(255,255,255,0.3)', borderRadius:'2px', overflow:'hidden'}}>
-                              <div style={{width:`${pct}%`, height:'100%', background:'transparent', borderRadius:'2px', transition:'width 0.5s'}} />
-                            </div>
+                            <progress className="housing-progress" aria-label="婚姻亲密进度" max={100} value={pct} />
                             <span style={{fontSize:'10px', opacity:0.8}}>{pct >= 100 ? '已满' : `${aff}/${nextMin}`}</span>
                           </div>;
                         })()}
@@ -8171,9 +8176,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             <span style={{fontSize:'16px'}}>{s.done ? '✅' : s.icon}</span>
                             <div style={{flex:1}}>
                               <div style={{fontSize:'12px', opacity: s.done ? 0.7 : 1}}>{s.desc}</div>
-                              <div style={{width:'100%', height:'4px', background:'rgba(0,0,0,0.2)', borderRadius:'2px', marginTop:'3px'}}>
-                                <div style={{width:`${Math.min(100, s.current / (s.target || 1) * 100)}%`, height:'100%', background: s.done ? '#4CAF50' : '#fff', borderRadius:'2px', transition:'width 0.3s'}} />
-                              </div>
+                              <progress className="housing-progress" aria-label={s.desc} max={s.target || 1} value={Math.min(s.target || 1, s.current)} style={{marginTop:'3px'}} />
                             </div>
                             <span style={{fontSize:'11px', fontWeight:'bold', opacity:0.8}}>{s.current}/{s.target}</span>
                           </div>
@@ -8233,9 +8236,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                             </div>
                             <div style={{fontSize:'12px', color:'#888', marginBottom:'10px'}}>{c.desc}</div>
                             {nextStage && (
-                              <div style={{width:'100%', height:'6px', background:'#eee', borderRadius:'3px', overflow:'hidden', marginBottom:'10px'}}>
-                                <div style={{width:`${Math.min(100, (aff - stage.min) / Math.max(1, nextStage.min - stage.min) * 100)}%`, height:'100%', background:`linear-gradient(90deg,${stage.color},${nextStage.color})`, borderRadius:'3px', transition:'width 0.3s'}} />
-                              </div>
+                              <progress className="housing-progress" aria-label={`${c.name}好感进度`} max={Math.max(1, nextStage.min - stage.min)} value={Math.max(0, aff - stage.min)} style={{marginBottom:'10px'}} />
                             )}
                             <div style={{fontSize:'11px', color:'#aaa', marginBottom:'10px'}}>加成：{c.bonusDesc}</div>
                             <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
@@ -8312,8 +8313,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     { id: 'ether', name: 'PP补剂 ×3', icon: '🧪', color: '#2196F3', weight: 14, action: () => { setInventory(prev => ({...prev, meds:{...prev.meds, ether:(prev.meds.ether||0)+3}})); } },
     { id: 'ball', name: '超级球 ×3', icon: '🔵', color: '#1E88E5', weight: 12, action: () => { setInventory(prev => ({...prev, balls:{...prev.balls, great:(prev.balls.great||0)+3}})); } },
     { id: 'candy', name: '经验糖果', icon: '🍬', color: '#E91E63', weight: 6, action: () => { setInventory(prev => ({...prev, exp_candy:(prev.exp_candy||0)+1})); } },
-    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => ({...prev, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (prev.tickets || 0) + 1)})); } },
-    { id: 'jutsu_scroll', name: '忍术卷轴', icon: '🍥', color: '#FF6F00', weight: 4, action: () => { setGold(g => g + 3000); updateAchStat({ totalGoldEarned: 3000 }); const rj = JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)]; setNarutoState(prev => ({...prev, jutsuScrolls: [...(prev.jutsuScrolls || []), rj.id], jutsuCollection: [...new Set([...(prev.jutsuCollection || []), rj.id])]})); showMapToast('🍥','忍术卷轴',`获得3000金币 + 忍术【${rj.name}】`,1500); } },
+    { id: 'ticket', name: '竞技场门票', icon: '🎫', color: '#9C27B0', weight: 5, action: () => { setArenaState(prev => addArenaTickets(prev, 1)); } },
+    { id: 'jutsu_scroll', name: '忍术卷轴 + 3000 金币', icon: '🍥', color: '#FF6F00', weight: 4, action: () => { setGold(g => g + 3000); updateAchStat({ totalGoldEarned: 3000 }); const rj = JUTSU_DB[Math.floor(Math.random() * JUTSU_DB.length)]; setNarutoState(prev => ({...prev, jutsuScrolls: [...(prev.jutsuScrolls || []), rj.id], jutsuCollection: [...new Set([...(prev.jutsuCollection || []), rj.id])]})); showMapToast('🍥','忍术卷轴',`获得3000金币 + 忍术【${rj.name}】`,1500); } },
   ];
 
   const spinWheel = (isPaid) => {
@@ -8347,6 +8348,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       for (const p of LUCKY_WHEEL_PRIZES) { roll -= p.weight; if (roll <= 0) { picked = p; break; } }
     }
     try {
+      setWheelRotation(previous => getWheelStopRotation(previous, LUCKY_WHEEL_PRIZES.indexOf(picked), LUCKY_WHEEL_PRIZES.length));
       if (isPaid) {
         goldRef.current = Math.max(0, goldRef.current - WHEEL_PAID_SPIN_COST);
         setGold(goldRef.current);
@@ -8384,7 +8386,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   const grantBountyReward = (reward = {}) => {
     if (reward.gold) { setGold(g => g + reward.gold); updateAchStat({ totalGoldEarned: reward.gold }); }
-    if (reward.tickets) setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + (reward.tickets || 0))}));
+    if (reward.tickets) setArenaState(a => addArenaTickets(a, reward.tickets));
   };
 
   const refreshBounties = () => {
@@ -8445,7 +8447,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       updateAchStat({ totalGoldEarned: bonusGold });
     }
     if (bonusTicket > 0) {
-      setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + bonusTicket)}));
+      setArenaState(a => addArenaTickets(a, bonusTicket));
     }
     if (bonusToast) setTimeout(() => showMapToast(...bonusToast), 600);
     showMapToast('🎁', '赏金领取', `获得 ${rewardToGrant.gold || 0} 金币${rewardToGrant.tickets ? ` + ${rewardToGrant.tickets} 竞技票` : ''}`, 2000);
@@ -8471,7 +8473,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return;
     }
     if (chest.gold) setGold(g => g + chest.gold);
-    if (chest.tickets) setArenaState(a => ({...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + chest.tickets)}));
+    if (chest.tickets) setArenaState(a => addArenaTickets(a, chest.tickets));
     if (chest.berries) setInventory(inv => ({...inv, berries: addBerries(inv.berries, 'oran', chest.berries)}));
     showMapToast('🏆', '大师宝箱', `全部完成！${chest.desc}`, 3500);
     updateAchStat({ totalGoldEarned: chest.gold || 0 });
@@ -8512,26 +8514,21 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const startMining = (row, col) => {
-    setMineState(prev => {
-      if (prev.energy <= 0) return prev;
-      if (prev.revealed.some(r => r[0]===row && r[1]===col)) return prev;
-      const tile = prev.grid?.[row]?.[col];
-      if (!tile) return prev;
-      const lastTile = prev._lastOre || null;
-      const comboCount = (tile === lastTile && MINE_ORES[tile]) ? (prev._comboCount || 0) + 1 : (MINE_ORES[tile] ? 1 : 0);
-      const next = {...prev, energy: prev.energy - 1, revealed: [...prev.revealed, [row,col]], totalMined: prev.totalMined + 1, _lastOre: MINE_ORES[tile] ? tile : null, _comboCount: comboCount};
+      const previous = mineStateRef.current;
+      const result = resolveMineDig(previous, row, col);
+      if (!result.ok) return;
+      const { state: next, tile, amount, combo: comboCount, advanced, milestone } = result;
+      mineStateRef.current = next;
+      setMineState(next);
       const t = MINE_TILES[tile];
       if (MINE_ORES[tile]) {
-        let amount = 1;
         let comboMsg = '';
-        if (comboCount >= 3) { amount = 2; comboMsg = ` 🔥${comboCount}连锁x2`; }
-        if (comboCount >= 5) { amount = 3; comboMsg = ` 💎${comboCount}连锁x3`; }
-        next.minerals = {...next.minerals, [tile]: (next.minerals[tile]||0) + amount};
+        if (comboCount >= 3) comboMsg = ` 🔥${comboCount}连锁x${amount}`;
         advanceBounty('mine');
         updateAchStat({ totalMined: 1 });
         showMapToast(t?.icon || '⛏️', '挖到矿石', `${t?.name || tile} +${amount}${comboMsg}`, 1500);
       } else if (tile === 'chest') {
-        const bonus = 1000 + prev.depth * 200;
+        const bonus = 1000 + previous.depth * 200;
         setGold(g => g + bonus);
         updateAchStat({ totalGoldEarned: bonus });
         if (Math.random() < 0.14) {
@@ -8543,24 +8540,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           } else showMapToast('🎁', '宝箱', `获得 ${bonus} 金币！`, 2000);
         } else showMapToast('🎁', '宝箱', `获得 ${bonus} 金币！`, 2000);
       } else if (tile === 'trap_rock') {
-        next.energy = Math.max(0, next.energy - 2);
-        showMapToast('🪨', '碎石陷阱', '失去 2 点体力！', 1500);
+        showMapToast('🪨', '碎石陷阱', '本次挖掘额外消耗 2 点体力', 1500);
       } else if (tile === 'trap_gas') {
-        next.energy = Math.max(0, next.energy - 2);
-        showMapToast('☠️', '毒气陷阱', '失去 2 点体力！', 1500);
+        showMapToast('☠️', '毒气陷阱', '本次挖掘额外消耗 2 点体力', 1500);
       }
-      if (next.revealed.length >= MINE_GRID_SIZE * MINE_GRID_SIZE) {
-        next.depth += 1;
-        next.grid = generateMineGrid(next.depth);
-        next.revealed = [];
-        next._lastOre = null;
-        next._comboCount = 0;
-        const milestone = MINE_DEPTH_MILESTONES.find(m => m.depth === next.depth);
+      if (advanced) {
           if (milestone) {
           const r = milestone.reward;
           let tmToast = '';
           if (r.type === 'gold') { setGold(g => g + r.amount); updateAchStat({ totalGoldEarned: r.amount }); }
-          else if (r.type === 'mineral') { next.minerals = {...next.minerals, [r.id]: (next.minerals[r.id]||0) + r.amount}; }
           else if (r.type === 'accessory') { const acc = sampleWeightedAccessory(true); if (acc) setAccessories(p => [...p, acc]); }
           else if (r.type === 'legacy_stone') { setInventory(prev2 => ({...prev2, legacy_stone: (prev2.legacy_stone||0) + (r.amount||1)})); }
           else if (r.type === 'tm') {
@@ -8573,8 +8561,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           showMapToast('⬇️', '深入', `到达第 ${next.depth} 层！`, 2000);
         }
       }
-      return next;
-    });
   };
 
   const exchangeMineral = (exchangeId) => {
@@ -8595,34 +8581,17 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const doMineExchange = (exIdx) => {
     const ex = MINE_EXCHANGE[exIdx];
     if (!ex) return;
-    if (ex.reward.type === 'energy' && Math.max(0, Number(mineState.energy) || 0) >= MINE_MAX_ENERGY) {
+    const result = resolveMineExchange(mineStateRef.current, ex);
+    if (result.reason === 'full') {
       showMapToast('⚡', '体力已满', '无需消耗矿石恢复体力', 1500);
       return;
     }
-    const missingOre = Object.entries(ex.cost).find(([ore, need]) => (mineState.minerals?.[ore] || 0) < need);
-    if (missingOre) {
-      const [ore] = missingOre;
-      showMapToast('❌','矿石不足',`${MINE_ORES[ore]?.name || ore} 不够`,1500);
+    if (!result.ok) {
+      showMapToast('❌','矿石不足',`${MINE_ORES[result.ore]?.name || '矿石'} 不够`,1500);
       return;
     }
-    let exchanged = false;
-    flushSync(() => setMineState(prev => {
-      const minerals = {...prev.minerals};
-      let nextEnergy = prev.energy;
-      for (const [ore, need] of Object.entries(ex.cost)) {
-        if ((minerals[ore] || 0) < need) return prev;
-      }
-      for (const [ore, need] of Object.entries(ex.cost)) minerals[ore] -= need;
-      if (ex.reward.type === 'energy') {
-        nextEnergy = Math.min((prev.energy || 0) + (ex.reward.amount || 10), MINE_MAX_ENERGY);
-      }
-      exchanged = true;
-      return {...prev, minerals, energy: nextEnergy};
-    }));
-    if (!exchanged) {
-      showMapToast('❌','矿石不足','矿石数量已变化，请重新确认',1500);
-      return;
-    }
+    mineStateRef.current = result.state;
+    setMineState(result.state);
     if (ex.reward.type === 'gold') { setGold(g => g + ex.reward.amount); updateAchStat({ totalGoldEarned: ex.reward.amount }); }
     else if (ex.reward.type === 'item') {
       const rid = ex.reward.id;
@@ -9312,7 +9281,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       name: def.name,
       customParty: enemyParty,
       trainerName: step.enemyName || def.name,
-      drop: step.drop ?? def.reward?.gold ?? 3000,
+      drop: step.drop ?? 0,
       _fusionDungeon: { type, id, clearedKey, isFinalStep },
       ecoBossMechanics: !!step.bossKey,
       bossPhases: step.bossKey ? ECO_LINKED_BOSSES[step.bossKey]?.phases : undefined,
@@ -10080,7 +10049,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     for (const milestone of result.milestones) {
       const reward = milestone.reward || {};
       if (reward.gold) { setGold(g => g + reward.gold); updateAchStat({ totalGoldEarned: reward.gold }); }
-      if (reward.tickets) setArenaState(a => ({ ...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + reward.tickets) }));
+      if (reward.tickets) setArenaState(a => addArenaTickets(a, reward.tickets));
       if (reward.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + reward.exp_candy }));
       if (reward.berries) setInventory(inv => ({ ...inv, berries: addBerries(inv.berries, 'oran', reward.berries) }));
       if (reward.title) setUnlockedTitles(t => [...new Set([...t, reward.title])]);
@@ -10094,7 +10063,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const rewardGold = reward.gold || 2000;
       setGold(g => g + rewardGold);
       if (reward.exp_candy) setInventory(inv => ({ ...inv, exp_candy: (inv.exp_candy || 0) + reward.exp_candy }));
-      if (reward.tickets) setArenaState(a => ({ ...a, tickets: Math.min(ARENA_DAILY_FREE_TICKETS * 3, (a.tickets || 0) + reward.tickets) }));
+      if (reward.tickets) setArenaState(a => addArenaTickets(a, reward.tickets));
       updateAchStat({ worldBossesDefeated: 1, totalGoldEarned: rewardGold });
       showMapToast('🎊', '首领击破！', `${boss.name} 已被击败！获得 ${rewardGold.toLocaleString()}金${reward.exp_candy ? ` + ${reward.exp_candy}经验糖` : ''}${reward.tickets ? ` + ${reward.tickets}竞技票` : ''}`, 4000);
     }
@@ -10555,7 +10524,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return { enemies, counterTypes, hasCounter };
     })();
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d1b1b,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy arena-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{flex:1,textAlign:'center'}}>
@@ -10565,7 +10534,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           <div style={{fontSize:'12px',color:'#FFD700'}}>🎫 {arenaState.tickets}</div>
         </div>
         <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
-          <div style={{textAlign:'center',padding:'24px',background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.08)',marginBottom:'20px'}}>
+          <div className="arena-rank-summary" style={{textAlign:'center',padding:'24px',background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.08)',marginBottom:'20px'}}>
             <div style={{fontSize:'48px',marginBottom:'8px'}}>{rank.icon}</div>
             <div style={{fontSize:'22px',fontWeight:'800',color:rank.color}}>{rank.name}</div>
             <div style={{display:'flex',justifyContent:'center',gap:'6px',marginTop:'8px'}}>
@@ -10634,7 +10603,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 远征探险UI
   const renderExpedition = () => {
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#0d1f0d,#1a2e1a,#0d1f0d)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy expedition-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🗺️ 远征探险</div>
@@ -10739,97 +10708,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // 精灵特训营 — UI渲染
   // ==========================================
-  const renderTraining = () => {
-    const today = getLocalDateStr();
-    const dc = trainingState.lastResetDate === today ? trainingState.dailyCount : {};
-    const safeSlots = Array.isArray(trainingState.slots) ? trainingState.slots : [];
-    const availablePets = party.filter(p => !safeSlots.some(s => s.petUid === p.uid) && !(dc[p.uid] >= 1));
-
-    return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#0d1b2a,#1b2838,#0d1b2a)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <div style={{padding:'16px 20px',background:'linear-gradient(135deg,#1565C0,#0D47A1)',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 20px rgba(21,101,192,0.4)'}}>
-          <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',padding:'8px 16px',borderRadius:'12px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>⬅ 返回</button>
-          <div style={{fontSize:'18px',fontWeight:'900',textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>🏋️ 精灵特训营</div>
-          <div style={{fontSize:'12px',color:'rgba(255,255,255,0.7)'}}>训练位 {safeSlots.length}/{TRAINING_MAX_SLOTS}</div>
-        </div>
-        <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
-          {safeSlots.length > 0 && (
-            <div style={{marginBottom:'16px'}}>
-              <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>⏳ 训练中</div>
-              {safeSlots.map((slot, si) => {
-                const pet = [...party, ...box].find(p => p.uid === slot.petUid);
-                const camp = TRAINING_CAMPS.find(c => c.id === slot.campId);
-                const tier = TRAINING_TIERS[slot.tierIdx];
-                const remaining = Math.max(0, (slot.duration || 1) - (Date.now() - slot.startTime));
-                const remainMin = Math.ceil(remaining / 60000);
-                const elapsed = Date.now() - slot.startTime;
-                const dur = slot.duration || 1;
-                const done = remaining <= 0;
-                const pct = Math.min(100, (elapsed / dur) * 100);
-                return (
-                  <div key={si} style={{padding:'14px',borderRadius:'14px',background:done?'linear-gradient(135deg,rgba(76,175,80,0.15),rgba(76,175,80,0.05))':'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))',border:done?'1px solid rgba(76,175,80,0.3)':'1px solid rgba(255,255,255,0.08)',marginBottom:'8px'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-                      <div style={{fontSize:'14px',fontWeight:'700'}}>{pet?.emoji||'?'} {pet?.name||'未知'} → {camp?.icon} {camp?.name}</div>
-                      <span style={{fontSize:'11px',color:done?'#4CAF50':'rgba(255,255,255,0.4)'}}>{done ? '可领取' : `剩余 ${remainMin} 分钟`}</span>
-                    </div>
-                    <div style={{height:'6px',borderRadius:'3px',background:'rgba(255,255,255,0.1)',overflow:'hidden',marginBottom:'8px'}}>
-                      <div style={{height:'100%',width:`${pct}%`,borderRadius:'3px',background:done?'linear-gradient(90deg,#4CAF50,#66BB6A)':'linear-gradient(90deg,#1565C0,#42A5F5)',transition:'width 1s'}} />
-                    </div>
-                    {done && <button onClick={() => collectTraining(si)} style={{width:'100%',padding:'10px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg,#4CAF50,#2E7D32)',color:'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>🎁 领取训练成果</button>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'8px'}}>📋 选择精灵训练</div>
-          {availablePets.length === 0 && <div style={{textAlign:'center',padding:'20px',color:'rgba(255,255,255,0.3)',fontSize:'13px'}}>当前没有可训练的精灵（已训练/今日次数用尽）</div>}
-          {availablePets.map(pet => {
-            const isPicking = trainingPicking?.uid === pet.uid;
-            return (
-            <div key={pet.uid} style={{padding:'12px',borderRadius:'12px',background:isPicking?'rgba(21,101,192,0.08)':'rgba(255,255,255,0.04)',border:isPicking?'1px solid rgba(21,101,192,0.3)':'1px solid rgba(255,255,255,0.06)',marginBottom:'8px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-                <div style={{fontSize:'14px',fontWeight:'700'}}>{pet.emoji} {pet.name} <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Lv.{pet.level}</span></div>
-                {!isPicking && <button onClick={() => setTrainingPicking({uid:pet.uid,campId:null,tierIdx:0})} disabled={safeSlots.length >= TRAINING_MAX_SLOTS} style={{padding:'6px 14px',borderRadius:'8px',border:'none',background:safeSlots.length>=TRAINING_MAX_SLOTS?'rgba(255,255,255,0.05)':'linear-gradient(135deg,#1565C0,#0D47A1)',color:'#fff',fontSize:'11px',fontWeight:'700',cursor:safeSlots.length>=TRAINING_MAX_SLOTS?'not-allowed':'pointer'}}>训练</button>}
-              </div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:'4px',marginBottom:'8px'}}>
-                {TRAINING_CAMPS.filter(c => badges.length >= c.reqBadges).map(camp => {
-                  const currentEV = (pet.evs || {})[camp.stat] || 0;
-                  const isSelected = isPicking && trainingPicking.campId === camp.id;
-                  return (
-                    <div key={camp.id} onClick={() => isPicking ? setTrainingPicking(p=>({...p,campId:camp.id})) : null} style={{flex:'1',minWidth:'75px',padding:'6px',borderRadius:'8px',background:isSelected?`${camp.color}30`:`${camp.color}10`,border:isSelected?`2px solid ${camp.color}`:`1px solid ${camp.color}20`,textAlign:'center',cursor:isPicking?'pointer':'default',transition:'all 0.2s'}}>
-                      <div style={{fontSize:'16px'}}>{camp.icon}</div>
-                      <div style={{fontSize:'10px',color:camp.color,fontWeight:'700'}}>{camp.name.replace('训练场','')}</div>
-                      <div style={{height:'3px',borderRadius:'2px',background:'rgba(255,255,255,0.06)',margin:'3px 0',overflow:'hidden'}}>
-                        <div style={{height:'100%',width:`${Math.min(100, Math.round(currentEV/TRAINING_MAX_EV*100))}%`,background:camp.color,borderRadius:'2px'}}/>
-                      </div>
-                      <div style={{fontSize:'9px',color:'rgba(255,255,255,0.4)'}}>{currentEV}/{TRAINING_MAX_EV}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              {isPicking && (
-                <div>
-                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'6px'}}>选择训练强度:</div>
-                  <div style={{display:'flex',gap:'4px',flexWrap:'wrap',marginBottom:'8px'}}>
-                    {TRAINING_TIERS.filter(t => badges.length >= t.reqBadges).map((tier, ti) => (
-                      <button key={ti} onClick={() => setTrainingPicking(p=>({...p,tierIdx:ti}))} style={{flex:1,padding:'8px',borderRadius:'8px',border:trainingPicking.tierIdx===ti?'2px solid #1565C0':'1px solid rgba(255,255,255,0.1)',background:trainingPicking.tierIdx===ti?'rgba(21,101,192,0.2)':'rgba(255,255,255,0.04)',color:'#fff',fontSize:'11px',fontWeight:'600',cursor:'pointer'}}>
-                        {tier.name}<br/><span style={{fontSize:'9px',color:'rgba(255,255,255,0.4)'}}>{tier.cost}💰 {tier.duration/60000}分</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{display:'flex',gap:'6px'}}>
-                    <button onClick={() => { if (!trainingPicking.campId) { showMapToast('❌','提示','请先选择训练项目',1500); return; } startTraining(pet.uid, trainingPicking.campId, trainingPicking.tierIdx); setTrainingPicking(null); }} disabled={!trainingPicking.campId} style={{flex:1,padding:'10px',borderRadius:'10px',border:'none',background:trainingPicking.campId?'linear-gradient(135deg,#1565C0,#0D47A1)':'rgba(255,255,255,0.05)',color:trainingPicking.campId?'#fff':'rgba(255,255,255,0.3)',fontSize:'13px',fontWeight:'700',cursor:trainingPicking.campId?'pointer':'not-allowed'}}>🏋️ 开始训练</button>
-                    <button onClick={() => setTrainingPicking(null)} style={{padding:'10px 16px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'rgba(255,255,255,0.5)',fontSize:'12px',cursor:'pointer'}}>取消</button>
-                  </div>
-                </div>
-              )}
-            </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+  const renderTraining = () => (
+    <TrainingScreen party={party} box={box} training={trainingState} expeditions={expeditions.teams}
+      workers={cafe.workers || []} badges={badges.length} gold={gold} today={getLocalDateStr()}
+      onBack={() => setView(safeBack())} onStart={startTraining} onCollect={collectTraining} renderAvatar={renderAvatar} />
+  );
 
   // ==========================================
   // 世界Boss — UI渲染
@@ -10850,7 +10733,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const hoursToReset = Math.max(0, Math.ceil((midnight.getTime() - Date.now()) / 3600000));
 
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a0000,#2d0a0a,#1a0000)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy world-boss-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'16px 20px',background:'linear-gradient(135deg,#B71C1C,#880E4F)',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 20px rgba(183,28,28,0.4)'}}>
           <button onClick={() => setView(safeBack())} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',padding:'8px 16px',borderRadius:'12px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>⬅ 返回</button>
           <div style={{fontSize:'18px',fontWeight:'900',textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>👹 世界首领</div>
@@ -11031,25 +10914,13 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const baseLv = Math.max(...party.map(p => p.level || 1));
     const waveLvMod = wave * 5 + diff.lvMod;
     const enemyCount = diff.enemyPerWave?.[wave] || (wave === 0 ? 2 : 3);
-    const enemyPool = POKEDEX.filter(pd => pd.tier >= 3 && pd.tier <= 5);
+    const enemyPool = POKEDEX.filter(pd => pd.id > 0 && !pd.hidden && (pd.hp || pd.atk) >= 70);
     const enemies = [];
     for (let i = 0; i < enemyCount; i++) {
       const base = enemyPool[Math.floor(Math.random() * enemyPool.length)];
       if (!base) continue;
       const lvl = Math.min(100, baseLv + waveLvMod + Math.floor(Math.random() * 5));
-      const stats = base.baseStats || {};
-      const hp = Math.floor(((stats.hp || 50) * 2 * lvl / 100 + lvl + 10));
-      enemies.push({
-        id: base.id, name: base.name, type: base.type, type2: base.type2,
-        level: lvl, currentHp: hp, isWild: false,
-        moves: ((base.learnset || []).filter(m => m.lv <= lvl).slice(-4).map(m => ({
-          name: m.name, p: m.p || 50, pp: m.pp || 15, maxPP: m.pp || 15,
-          t: m.type || base.type, effect: m.effect,
-        }))).concat(
-          (base.learnset || []).length === 0 ? [{ name: '突击', p: 50, pp: 20, maxPP: 20, t: base.type || 'NORMAL' }] : []
-        ),
-        trait: base.traits?.[0] || null, nature: 'adamant',
-      });
+      enemies.push(createPet(base.id, lvl, true));
     }
     if (enemies.length === 0) { showMapToast('❌','错误','无法生成对手',1500); return; }
     narutoBattleStartLockRef.current = true;
@@ -11857,8 +11728,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const medianSpeed = getMedianSpeed(partySpeeds);
 
     const startRace = (petIdx) => {
-      const pet = party[petIdx];
+      const pet = (partyRef.current || []).find(candidate => candidate.uid === party[petIdx]?.uid);
       if (!pet) return;
+      if (pet.currentHp <= 0) { showMapToast('❤️', '无法参赛', '伙伴需要先恢复体力', 1800); return; }
       if (raceRunningRef.current) return;
       const latestRace = raceStateRef.current || {};
       const latestRacesUsed = latestRace.lastDate === today ? Math.max(0, Number(latestRace.dailyRaces) || 0) : 0;
@@ -11880,10 +11752,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
         const rId = POKEDEX[Math.floor(Math.random() * Math.min(POKEDEX.length, 200 + badges.length * 50))];
         const rivalPet = createPet(rId?.id || 1, rLv, true);
         rivals.push({
-          name: rId?.name || rivalPet.name || '未知精灵',
+          name: rivalPet.name || '未知精灵',
           baseSpeed: getStats(rivalPet).spd,
-          level: rLv,
-          type: rId?.type || rivalPet.type || 'NORMAL',
+          level: rivalPet.level,
+          type: rivalPet.type || 'NORMAL',
         });
       }
 
@@ -11924,7 +11796,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     };
 
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#004D40,#00695C,#004D40)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy race-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>{ setView(safeBack()); setRaceResult(null); }} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🏁 精灵竞速赛</div>
@@ -11942,7 +11814,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                   const stats = getStats(pet);
                   const tc = TYPES[pet.type] || TYPES.NORMAL;
                   return (
-                    <button key={pet.uid || pet.id || i} onClick={() => startRace(i)} disabled={!canRace} style={{
+                    <button key={pet.uid || pet.id || i} onClick={() => startRace(i)} disabled={!canRace || pet.currentHp <= 0} style={{
                       background:`linear-gradient(135deg,${tc.color}30,${tc.color}10)`,border:`1px solid ${tc.color}50`,
                       borderRadius:'14px',padding:'14px',cursor: canRace ? 'pointer' : 'default',opacity: canRace ? 1 : 0.5,textAlign:'center',color:'#fff'
                     }}>
@@ -11950,7 +11822,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       <div style={{fontWeight:'bold',fontSize:'13px'}}>{pet.name}</div>
                       <div style={{fontSize:'11px',color:tc.color,marginTop:'2px'}}>⚡ 速度 {stats.spd}</div>
                       <div style={{fontSize:'10px',color:'rgba(255,255,255,0.45)',marginTop:'3px'}}>
-                        {stats.spd >= medianSpeed * 1.12 ? '优势明显' : stats.spd >= medianSpeed ? '具备竞争力' : '速度偏慢'}
+                        {pet.currentHp <= 0 ? '需要恢复体力' : stats.spd >= medianSpeed * 1.12 ? '优势明显' : stats.spd >= medianSpeed ? '具备竞争力' : '速度偏慢'}
                       </div>
                     </button>
                   );
@@ -12008,7 +11880,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const grid = mineState.grid || [];
     const energyPct = Math.min(100, Math.max(0, mineState.energy / Math.max(1, MINE_MAX_ENERGY) * 100));
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a1209,#2d2015,#1a1209)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy mining-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
@@ -12081,7 +11953,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const today = getLocalDateStr();
     const isToday = bountyBoard.date === today;
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a1400,#2d2200,#1a1400)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy bounty-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>📋 赏金任务</div>
@@ -12127,62 +11999,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   // 幸运轮盘UI
-  const renderLuckyWheel = () => {
-    const today = getLocalDateStr();
-    const daySpinCnt = luckyWheel.dailySpinDate === today ? (luckyWheel.dailySpinCount || 0) : 0;
-    const spinsLeft = Math.max(0, 3 - daySpinCnt);
-    const freeAvail = luckyWheel.lastFreeDate !== today && daySpinCnt < 3;
-    const paidSpinAvail = daySpinCnt < 3;
-    const sliceAngle = 360 / LUCKY_WHEEL_PRIZES.length;
-    return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a0033,#2d1b63,#1a0033)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
-          <button onClick={()=>{setView(safeBack());setWheelResult(null);}} style={{...actBtnSecondary}}>⬅ 返回</button>
-          <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🎡 幸运轮盘</div>
-          <div/>
-        </div>
-        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px'}}>
-          <div style={{position:'relative',width:'280px',height:'280px',marginBottom:'24px'}}>
-            <div style={{
-              width:'100%',height:'100%',borderRadius:'50%',
-              background:`conic-gradient(${LUCKY_WHEEL_PRIZES.map((p,i) => `${p.color} ${i*sliceAngle}deg ${(i+1)*sliceAngle}deg`).join(',')})`,
-              animation: wheelSpinning ? 'spin 2.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
-              border:'4px solid rgba(255,255,255,0.2)',boxShadow:'0 0 40px rgba(128,0,255,0.3)',
-            }}>
-              {LUCKY_WHEEL_PRIZES.map((p,i) => {
-                const angle = (i + 0.5) * sliceAngle;
-                const rad = angle * Math.PI / 180;
-                const x = 50 + 32 * Math.sin(rad);
-                const y = 50 - 32 * Math.cos(rad);
-                return <div key={i} style={{position:'absolute',left:`${x}%`,top:`${y}%`,transform:'translate(-50%,-50%)',fontSize:'20px',textShadow:'0 1px 3px rgba(0,0,0,0.5)'}}>{p.icon}</div>;
-              })}
-            </div>
-            <div style={{position:'absolute',top:'-12px',left:'50%',transform:'translateX(-50%)',fontSize:'24px',zIndex:1,filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'}}>🔻</div>
-          </div>
-          {wheelResult && !wheelSpinning && (
-            <div style={{textAlign:'center',padding:'16px 24px',borderRadius:'16px',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',marginBottom:'16px',animation:'slideDown 0.3s ease'}}>
-              <div style={{fontSize:'24px',marginBottom:'4px'}}>{wheelResult.icon}</div>
-              <div style={{fontSize:'16px',fontWeight:'700',color:'#FFD700'}}>{wheelResult.name}</div>
-            </div>
-          )}
-          <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>累计抽奖: {luckyWheel.totalSpins || 0}次 · 保底: 还需{((10 - ((luckyWheel.totalSpins || 0) % 10)) % 10) || 10}次触发</div>
-          <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',marginBottom:'8px'}}>今日转盘剩余 {spinsLeft}/3 次（含免费与付费）</div>
-          <div style={{display:'flex',gap:'12px'}}>
-            <button onClick={()=>{setWheelResult(null);spinWheel(false);}} disabled={!freeAvail||wheelSpinning} style={{padding:'14px 28px',borderRadius:'14px',border:'none',background:freeAvail&&!wheelSpinning?'linear-gradient(135deg,#7B1FA2,#4A148C)':'rgba(255,255,255,0.05)',color:freeAvail?'#fff':'rgba(255,255,255,0.3)',fontSize:'14px',fontWeight:'800',cursor:freeAvail&&!wheelSpinning?'pointer':'not-allowed',boxShadow:freeAvail?'0 4px 15px rgba(123,31,162,0.3)':'none'}}>{freeAvail?'🎰 免费转一次':(daySpinCnt>=3?'今日次数已满':'今日已转')}</button>
-            <button onClick={()=>{setWheelResult(null);spinWheel(true);}} disabled={wheelSpinning||gold<1000||!paidSpinAvail} style={{padding:'14px 28px',borderRadius:'14px',border:'1px solid rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.1)',color:'#FFD700',fontSize:'14px',fontWeight:'700',cursor:!wheelSpinning&&gold>=1000&&paidSpinAvail?'pointer':'not-allowed'}}>💰 1000金币</button>
-          </div>
-          <div style={{marginTop:'24px',display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:'8px',maxWidth:'320px'}}>
-            {LUCKY_WHEEL_PRIZES.map(p => (
-              <div key={p.id} style={{textAlign:'center',padding:'8px 4px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}>
-                <div style={{fontSize:'18px'}}>{p.icon}</div>
-                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>{p.name}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const renderLuckyWheel = () => (
+    <WheelScreen wheel={luckyWheel} prizes={LUCKY_WHEEL_PRIZES} today={getLocalDateStr()}
+      spinning={wheelSpinning} rotation={wheelRotation} result={wheelResult} gold={gold}
+      onSpin={paid => { setWheelResult(null); spinWheel(paid); }}
+      onBack={() => { setView(safeBack()); setWheelResult(null); }} />
+  );
 
   // renderGuide 已提取至 GuideScreen.js
 
@@ -12370,8 +12192,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // ==========================================
   // [修复] 战斗联盟界面 (修复了未解锁状态的语法错误)
   // ==========================================
+  const leagueStoryProgress = activeSideStory ? mainStoryProgress : storyProgress;
   const registerLeagueRun = () => {
-    if (storyProgress < LEAGUE_UNLOCK_STORY_INDEX) {
+    if (leagueStoryProgress < LEAGUE_UNLOCK_STORY_INDEX) {
       showMapToast('ℹ️', '提示', '需通关【冠军之路】剧情后解锁战斗联盟', 2000);
       return false;
     }
@@ -12397,7 +12220,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const renderLeague = () => {
-    const isUnlocked = storyProgress >= 12;
+    const isUnlocked = leagueStoryProgress >= LEAGUE_UNLOCK_STORY_INDEX;
 
     const rounds = [
         { id: 1, name: '16强赛', icon: '⚔️', teamSize: 4, level: 85, desc: '4只精灵 · Lv.85' },
@@ -12435,7 +12258,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'28px', marginBottom:'6px'}}>🔒</div>
               <div style={{fontSize:'15px', fontWeight:'bold', color:'#FFB74D'}}>联盟尚未开放</div>
               <div style={{fontSize:'12px', color:'rgba(255,255,255,0.5)', marginTop:'6px'}}>需完成第12章【冠军之路】主线剧情后解锁</div>
-              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>当前进度: 第{Math.min(storyProgress + 1, 13)}章 / 13章（主线）</div>
+              <div style={{fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'4px'}}>当前进度: 第{Math.min(leagueStoryProgress + 1, 13)}章 / 13章（主线）</div>
                 </div>
           )}
 
@@ -12520,7 +12343,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
 
                 {leagueRound === 0 ? (
-                    <button onClick={registerLeagueRun} style={{
+                    <button onClick={registerLeagueRun} disabled={!isUnlocked} style={{
                 width:'100%', padding:'16px', borderRadius:'25px', border:'none',
                 background: isUnlocked ? 'linear-gradient(135deg, #FFD700, #FFA000)' : 'linear-gradient(135deg, #555, #777)',
                 color: isUnlocked ? '#1a1a2e' : '#aaa', fontSize:'16px', fontWeight:'900',
@@ -16658,7 +16481,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             if (tempBattle.playerCombatStates[tempBattle.activeIdx]?.volatiles) tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.flinched = false;
             if (tempBattle.enemyParty[tempBattle.enemyActiveIdx]?.volatiles) tempBattle.enemyParty[tempBattle.enemyActiveIdx].volatiles.flinched = false;
             await wait(1200);
-            await enemyTurn(tempBattle);
+            await enemyTurn(tempBattle, true);
           } else if (enemyDied || playerDiedFromSelfDmg) {
             tempBattle.turnCount = (tempBattle.turnCount || 0) + 1;
             syncBattleState({ turnCount: tempBattle.turnCount });
@@ -16666,7 +16489,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         } else {
           // 敌人先手
           await wait(800);
-          await enemyTurn(tempBattle);
+          await enemyTurn(tempBattle, true);
           const playerDiedFromEnemy = tempBattle.playerCombatStates[tempBattle.activeIdx]?.currentHp <= 0;
           if (playerDiedFromEnemy) {
             return;
@@ -18064,7 +17887,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   useEffect(() => {
     const recoverablePhases = new Set(['busy', 'anim']);
     if (!battle || !recoverablePhases.has(battle.phase)) return;
-    const timer = setTimeout(() => {
+    battleProgressAtRef.current = Date.now();
+    const timer = setInterval(() => {
+      // Long multi-hit animations are still making progress and must finish first.
+      if (Date.now() - battleProgressAtRef.current < 12000) return;
       setBattle(prev => {
         if (!prev || !recoverablePhases.has(prev.phase)) return prev;
         console.warn('Battle phase stuck, auto-recovering to input');
@@ -18073,7 +17899,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         return { ...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: needSwitch };
       });
     }, 12000);
-    return () => clearTimeout(timer);
+    return () => clearInterval(timer);
   }, [battle?.phase, battle?.turnCount]);
 
   const getRankPerkEffects = (kw) => {
@@ -18745,7 +18571,9 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     // ==========================================
   // [修改] 敌人回合 (含被动特性与天气结算)
   // ==========================================
-  const enemyTurn = async (currentBattleState = null) => {
+  const enemyTurn = async (currentBattleState = null, deferInput = false) => {
+   // A full player turn may still have its slower action to resolve.
+   const inputPhase = deferInput ? 'busy' : 'input';
    let state = currentBattleState || battle;
    let turnPlayerHpSnapshot = state?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
    try {
@@ -18794,7 +18622,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             await wait(800);
             state.turnCount = (state.turnCount || 0) + 1;
             state._enemySpecialActionCooldown = Math.max(0, (state._enemySpecialActionCooldown || 0) - 1);
-            setBattle(prev => ({ ...prev, phase: 'input', turnCount: (state.turnCount), _enemySpecialActionCooldown: state._enemySpecialActionCooldown }));
+            setBattle(prev => ({ ...prev, phase: inputPhase, turnCount: (state.turnCount), _enemySpecialActionCooldown: state._enemySpecialActionCooldown }));
             return;
         }
     }
@@ -18844,7 +18672,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             enemyActiveIdx: betterIdx,
             enemyParty: state.enemyParty.map(e => ({...e})),
             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-            phase: 'input',
+            phase: inputPhase,
             turnCount: state.turnCount,
             _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
           }));
@@ -18890,7 +18718,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         state.turnCount = (state.turnCount || 0) + 1;
         setBattle(prev => ({
           ...prev,
-          phase: 'input',
+          phase: inputPhase,
           turnCount: state.turnCount,
           playerCombatStates: state.playerCombatStates.map(p => ({...p})),
           enemyParty: state.enemyParty.map(e => ({...e})),
@@ -18928,7 +18756,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             setAnimEffect(null);
 
             setBattle(prev => ({
-              ...prev, phase: 'input',
+              ...prev, phase: inputPhase,
               turnCount: (prev?.turnCount || 0) + 1,
               playerCombatStates: state.playerCombatStates.map(p => ({...p})),
               enemyParty: state.enemyParty.map(e => ({...e})),
@@ -18969,7 +18797,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           setAnimEffect(null);
 
           setBattle(prev => ({
-            ...prev, phase: 'input',
+            ...prev, phase: inputPhase,
             turnCount: (prev?.turnCount || 0) + 1,
             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
             enemyParty: state.enemyParty.map(e => ({...e})),
@@ -19023,7 +18851,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             setAnimEffect(null);
 
             setBattle(prev => ({
-              ...prev, phase: 'input',
+              ...prev, phase: inputPhase,
               turnCount: (prev?.turnCount || 0) + 1,
               playerCombatStates: state.playerCombatStates.map(p => ({...p})),
               enemyParty: state.enemyParty.map(e => ({...e})),
@@ -19070,7 +18898,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         await wait(1000);
         setAnimEffect(null);
         setBattle(prev => ({
-	          ...prev, phase: 'input',
+	          ...prev, phase: inputPhase,
 	          turnCount: (prev?.turnCount || 0) + 1,
 	          sharedEnemyCE: state.sharedEnemyCE ?? prev?.sharedEnemyCE,
 	          sharedEnemyChakra: state.sharedEnemyChakra ?? prev?.sharedEnemyChakra,
@@ -19146,7 +18974,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             return;
           }
           setBattle(prev => ({
-            ...prev, phase: 'input', enemyComboUsed: true,
+            ...prev, phase: inputPhase, enemyComboUsed: true,
             turnCount: (prev?.turnCount || 0) + 1,
             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
             enemyParty: state.enemyParty.map(e => ({...e})),
@@ -19526,7 +19354,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 	          activeDomain: state.activeDomain ? {...state.activeDomain} : null,
           activeWeather: state.activeWeather ? {...state.activeWeather} : prev?.activeWeather,
           isolateTurns: state.isolateTurns || 0,
-          phase: 'input',
+          phase: inputPhase,
           turnCount: (state.turnCount || prev?.turnCount || 0) + 1,
           _enemySpecialActionCooldown: Math.max(0, (state._enemySpecialActionCooldown || 0) - 1),
           _playerTookDamage: state._playerTookDamage || prev?._playerTookDamage || playerTookDamageRef.current,
@@ -19549,7 +19377,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     }
    } catch (e) {
       console.error("Enemy Turn Error:", e);
-      setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : null);
+      setBattle(prev => prev ? ({ ...prev, phase: inputPhase }) : null);
     } finally {
       auditPlayerHpLoss(state, turnPlayerHpSnapshot);
     }
@@ -23255,18 +23083,21 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         showMapToast('⚔️', '阶段通过', `${def?.name || id} — 进入下一阶段`, 2500);
         updateBattleWinStats(goldGain);
         setBattle(null);
-        setView('world_map');
+        setView('grid_map');
+        setFusionHubOpen(true);
         return;
       }
       if ((fusionStateRef.current[clearedKey] || []).includes(id)) {
         ecoActionLocksRef.current.delete(fusionLockKey);
         setBattle(null);
-        setView('world_map');
+        setView('grid_map');
+        setFusionHubOpen(true);
         return;
       }
       commitFusionState(prev => ({ ...prev, [clearedKey]: [...new Set([...(prev[clearedKey] || []), id])], [`${type}_progress_${id}`]: undefined }));
       const fusionRewardGold = def?.reward?.gold || 0;
       if (fusionRewardGold) setGold(g => g + fusionRewardGold);
+      if (def?.reward?.jutsuMastery) commitNarutoState(prev => grantJutsuMasteryReward(prev, def.reward.jutsuMastery));
       if (def?.reward?.title) unlockTitle(def.reward.title);
       if (def?.reward?.item) {
         const cat = BALLS[def.reward.item] ? 'balls' : def.reward.item.includes('stone') ? 'stones' : 'meds';
@@ -23279,7 +23110,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       showMapToast('✨', '秘境副本通关', def?.name || id, 3500);
       ecoActionLocksRef.current.delete(fusionLockKey);
       setBattle(null);
-      setView('world_map');
+      setView('grid_map');
+      setFusionHubOpen(true);
       return;
     }
     if (battleSnapshot.type === 'eco_crisis' && battleSnapshot.ecoCrisis) {
@@ -24066,7 +23898,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const skipActions = (battle.activeIdxs || []).map(idx => ({ moveIdx: -1, activeIdx: idx }));
         await executeDoubleRound(skipActions);
       } else {
-        setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev);
         await enemyTurn();
       }
     }
@@ -24578,7 +24409,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
 
   const addLog = (msg) => setBattle(prev => prev ? ({...prev, logs: [msg, ...(prev.logs||[])].slice(0, 20)}) : prev);
-  const wait = (ms) => new Promise(r => setTimeout(r, Math.max(50, Math.floor(ms / Math.max(0.25, battleSpeedRef.current)))));
+  const wait = (ms) => {
+    battleProgressAtRef.current = Date.now();
+    return new Promise(resolve => setTimeout(() => {
+      battleProgressAtRef.current = Date.now();
+      resolve();
+    }, Math.max(50, Math.floor(ms / Math.max(0.25, battleSpeedRef.current)))));
+  };
   const safeGrowthItem = () => { const pool = GROWTH_ITEMS.filter(i => i.id !== 'max_candy'); return pool.length > 0 ? _.sample(pool) : { id: 'exp_candy', name: '经验糖果', emoji: '🍬' }; };
 
   const forgetMove = (moveIndex) => {
@@ -26388,7 +26225,7 @@ const renderMenu = () => {
           </div>
           <div className="world-map-hero-stats" aria-label="冒险概览">
             <div><strong>{badges.length}</strong><span>徽章</span></div>
-            <div><strong>{clearedMapCount}/{MAPS.length}</strong><span>区域</span></div>
+            <div><strong>{clearedMapCount}/{MAPS.filter(m => m.badge).length}</strong><span>道馆通关</span></div>
             <div><strong>Lv.{leadLevel}</strong><span>首发</span></div>
             <div><strong>{alivePartyCount}/{party.length || 0}</strong><span>存活</span></div>
           </div>
@@ -26756,6 +26593,7 @@ const renderMenu = () => {
                   {tierDungeons.map(d => {
                     const req = d.reqBadges || 0;
                     const isLocked = badges.length < req;
+                    const tagRule = d.tagRestriction ? checkTagRestriction(party, d.tagRestriction) : null;
                     const cd = dungeonCooldowns[d.id];
                     const isCooling = cd && cd.count >= 3 && (Date.now() - cd.lastTime) < 5 * 60 * 1000;
                     const coolRemainMs = isCooling ? Math.max(0, 5 * 60 * 1000 - (Date.now() - cd.lastTime)) : 0;
@@ -26763,7 +26601,9 @@ const renderMenu = () => {
                     const coolRemainSec = Math.ceil((coolRemainMs % 60000) / 1000);
                     const coolRemain = coolRemainMin > 0 ? `${coolRemainMin}分${coolRemainSec}秒` : `${coolRemainSec}秒`;
                     return (
-                      <div key={d.id} onClick={() => !isLocked && !isCooling && enterDungeon(d)}
+                      <div key={d.id} role="button" tabIndex={isLocked || isCooling ? -1 : 0} aria-disabled={isLocked || isCooling}
+                        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (!isLocked && !isCooling) enterDungeon(d); } }}
+                        onClick={() => !isLocked && !isCooling && enterDungeon(d)}
                         style={{
                           position:'relative', borderRadius:'16px', cursor: (isLocked || isCooling) ? 'not-allowed' : 'pointer',
                           background: isLocked ? '#f5f5f5' : isCooling ? '#FFFDE7' : '#fff',
@@ -26803,6 +26643,7 @@ const renderMenu = () => {
                                   {d.restriction === 'solo_run' ? '单挑' : d.restriction === 'entry_fee' ? '需门票' : d.restriction === 'lucky_nature' ? '幸运性格' : '特殊'}
                                 </span>
                               )}
+                              {tagRule && <span className="dungeon-entry-rule" style={{fontSize:'12px', color:tagRule.allowed ? '#b6c6be' : '#f3b6a0'}}>{tagRule.reason || tagRule.rule?.hint}</span>}
                               {d.rewards && d.rewards.slice(0,2).map((r,i) => (
                                 <span key={i} style={{fontSize:'9px', color:'#666', background:'#f5f5f5', padding:'1px 5px', borderRadius:'4px'}}>{r.icon} {r.text}</span>
                               ))}
@@ -32208,7 +32049,7 @@ const renderMenu = () => {
       const itemNameMap = { great:'高级精灵球', ultra:'超级精灵球', master:'大师球', fire_stone:'火之石', water_stone:'水之石', thunder_stone:'雷之石', leaf_stone:'叶之石', moon_stone:'月之石', sun_stone:'日之石', ice_stone:'冰之石', dawn_stone:'觉醒之石', dusk_stone:'暗之石', shiny_stone:'光之石' };
       if (reward.gold) parts.push(`${reward.gold.toLocaleString()} 金`);
       if (reward.item) parts.push(`${itemNameMap[reward.item] || reward.item} x${reward.itemCount || 1}`);
-      if (reward.jutsuMastery) parts.push(`忍术熟练 +${reward.jutsuMastery}`);
+      if (reward.jutsuMastery) parts.push(`忍术熟练 +${reward.jutsuMastery}（优先补足低熟练忍术）`);
       if (reward.title) parts.push(`称号「${reward.title}」`);
       return parts.length ? parts.join(' · ') : '特殊资源';
     };
@@ -33951,7 +33792,7 @@ const renderMenu = () => {
     // 交换精灵弹窗
     if (battle.showSwitch) {
       return (
-        <div className="screen battle-screen">
+        <div className="screen battle-screen battle-switch-screen">
             <div className="modal-overlay" style={{background:'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex:200, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                 <div style={{width: 'min(500px, 92vw)', background: '#fff', borderRadius: '20px', padding: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', maxHeight:'85vh', overflowY:'auto'}}>
                     <div style={{fontSize: '18px', fontWeight: 'bold', marginBottom: '15px', textAlign: 'center', color: '#333'}}>选择出战伙伴</div>
@@ -37655,39 +37496,19 @@ const renderMenu = () => {
       })()}
 
       {/* 成就解锁通知 */}
-      {achNotification && (() => {
+      {achNotification && view !== 'battle' && (() => {
         const ach = achNotification;
         const rar = ACH_RARITY[ach.rarity] || { color: '#888', name: '未知' };
         const cat = ACH_CATEGORY[ach.cat] || { icon: '🏆', name: '成就' };
         const rewardParts = formatAchievementReward(ach.reward);
         return (
-          <div onClick={() => setAchNotification(null)} style={{
-            position:'fixed', inset:0, zIndex:10000, cursor:'pointer',
-            background:`radial-gradient(circle at 50% 40%, ${rar.color}22 0%, rgba(5,5,15,0.92) 55%, rgba(0,0,0,0.96) 100%)`,
-            backdropFilter:'blur(8px)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            animation:'fadeIn 0.35s ease-out',
-          }}>
-            <div style={{
-              textAlign:'center', padding:'32px 28px', maxWidth:'420px',
-              border:`2px solid ${rar.color}66`, borderRadius:'24px',
-              background:`linear-gradient(145deg, rgba(20,15,45,0.95), rgba(30,20,55,0.92))`,
-              boxShadow:`0 0 60px ${rar.color}44, 0 20px 80px rgba(0,0,0,0.6)`,
-              transform:'scale(1)', animation:'achSlideIn 0.5s cubic-bezier(.22,1,.36,1)',
-            }} onClick={e => e.stopPropagation()}>
-              <div style={{fontSize:'56px', marginBottom:'12px', filter:`drop-shadow(0 0 20px ${rar.color}88)`}}>{cat?.icon || '🏆'}</div>
-              <div style={{fontSize:'11px', color:rar.color, fontWeight:'800', letterSpacing:'4px', marginBottom:'8px'}}>成就解锁 {'★'.repeat(rar.stars)}</div>
-              <div style={{fontSize:'22px', fontWeight:'900', color:'#fff', marginBottom:'10px', textShadow:'0 2px 12px rgba(0,0,0,0.5)'}}>{ach.name}</div>
-              <div style={{fontSize:'13px', color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:'12px'}}>{ach.desc}</div>
-              {rewardParts.length > 0 && (
-                <div style={{fontSize:'13px', color:'#FFD700', fontWeight:'800', marginBottom:'16px', lineHeight:1.6}}>
-                  {rewardParts.slice(0, 4).join(' · ')}
-                </div>
-              )}
-              <button type="button" onClick={() => { setAchNotification(null); setView('achievements'); }} style={{padding:'12px 28px', borderRadius:'14px', border:'none', background:`linear-gradient(135deg, ${rar.color}, ${rar.color}99)`, color:'#fff', fontWeight:'800', fontSize:'14px', cursor:'pointer', boxShadow:`0 4px 20px ${rar.color}55`}}>查看成就</button>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'12px'}}>点击背景关闭</div>
+          <aside className="achievement-notice" role="status" aria-live="polite">
+            <span className="achievement-notice-icon" aria-hidden="true">{cat?.icon || '🏆'}</span>
+            <div><span>成就解锁 · {rar.name}</span><strong>{ach.name}</strong>
+              {rewardParts.length > 0 && <p>{rewardParts.slice(0, 4).join(' · ')}</p>}
             </div>
-          </div>
+            <button type="button" aria-label="关闭成就通知" title="关闭成就通知" onClick={() => setAchNotification(null)}>×</button>
+          </aside>
         );
       })()}
       {/* 自动存档提示 */}
