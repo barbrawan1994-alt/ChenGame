@@ -5,6 +5,7 @@ import './App.css';
 import './styles/common.css';
 import './styles/enhancements.css';
 import './styles/spirit-theme.css';
+import { isMobileDevice } from './utils/platformSupport';
 
 window.onerror = function(msg, src, line, col, err) {
   document.getElementById('root').innerHTML =
@@ -64,4 +65,8 @@ class ErrorBoundary extends React.Component {
 
 const container = document.getElementById('root');
 const root = createRoot(container);
-root.render(React.createElement(ErrorBoundary, null, React.createElement(RPG)));
+root.render(isMobileDevice(navigator)
+  ? React.createElement('main', { className: 'desktop-required' },
+      React.createElement('h1', null, '超级精灵'),
+      React.createElement('p', null, '请使用电脑浏览器打开游戏。'))
+  : React.createElement(ErrorBoundary, null, React.createElement(RPG)));

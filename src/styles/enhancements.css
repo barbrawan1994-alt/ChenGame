@@ -1348,8 +1348,18 @@ button:active, [role="button"]:active, .clickable:active {
   display: flex !important;
   flex-direction: column !important;
   gap: 4px;
+  width: auto !important;
+  min-width: 0;
   background:
     linear-gradient(180deg, #10131c, #182332 52%, #241914) !important;
+}
+
+.market-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .market-brand {

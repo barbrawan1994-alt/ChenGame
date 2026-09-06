@@ -1,0 +1,111 @@
+.spirit-app .home-menu {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100dvh;
+  min-height: 600px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  box-sizing: border-box;
+  padding: 52px 40px 22px;
+  color: #fffdf5;
+  background: #16282d;
+  letter-spacing: 0;
+}
+
+.home-menu-art,
+.home-menu-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.home-menu-art { z-index: -2; object-fit: cover; object-position: center 52%; }
+.home-menu-shade {
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(8, 25, 32, 0.36), transparent 30%, transparent 56%, rgba(8, 23, 27, 0.6) 80%, #09191f);
+}
+.home-menu-brand { text-align: center; }
+.home-menu-brand p { margin: 0 0 10px; font: 600 12px/1.4 'Avenir Next', sans-serif; color: #fff8dc; }
+.spirit-app .home-menu-brand h1 {
+  margin: 0;
+  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-size: 72px;
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: #fff8dc;
+  text-shadow: 0 3px 0 #315b60, 0 8px 24px rgba(8, 25, 32, 0.65);
+}
+.home-menu-title-rule { width: 160px; height: 1px; margin: 22px auto 0; background: rgba(255, 248, 220, 0.6); position: relative; }
+.home-menu-title-rule span { position: absolute; width: 7px; height: 7px; background: #ffe4a1; transform: translate(-50%, -3px) rotate(45deg); }
+.home-menu-play { align-self: end; width: min(440px, 100%); text-align: center; margin-bottom: 34px; }
+.home-menu-save {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-shadow: 0 2px 6px #071b22;
+  font-variant-numeric: tabular-nums;
+}
+.home-menu-save strong { max-width: 180px; overflow-wrap: anywhere; font-weight: 600; }
+.home-menu-save span { display: inline-flex; align-items: center; gap: 6px; color: #d6e6df; }
+.spirit-app .home-menu-start {
+  width: 100%;
+  height: 60px;
+  padding: 0 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  border-radius: 4px;
+  border: 1px solid #ffe8a6;
+  background: #f4d484;
+  color: #223b37;
+  box-shadow: 0 4px 0 #9b793a, 0 10px 32px rgba(7, 23, 26, 0.32);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: background 160ms, transform 160ms;
+}
+.spirit-app .home-menu-start:hover { background: #ffe8af; transform: translateY(-2px); }
+.spirit-app .home-menu-start:active { transform: translateY(1px); }
+.home-menu-links { display: flex; justify-content: center; gap: 26px; margin-top: 26px; }
+.spirit-app .home-menu-links button,
+.spirit-app .home-menu-footer button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #d2e0df;
+  font-size: 12px;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: color 160ms;
+}
+.spirit-app .home-menu-links button:hover,
+.spirit-app .home-menu-footer button:hover { color: #ffe4a1; }
+.home-menu-footer { width: 100%; display: flex; align-items: center; justify-content: space-between; height: 28px; color: #9bb1b2; font-size: 10px; }
+.home-menu-footer b { margin-left: 10px; font-weight: 400; }
+.spirit-app .home-menu-footer button { width: 28px; height: 28px; }
+@media (max-height: 760px) {
+  .spirit-app .home-menu { padding-top: 28px; }
+  .spirit-app .home-menu-brand h1 { font-size: 58px; }
+  .home-menu-title-rule { margin-top: 16px; }
+  .home-menu-play { margin-bottom: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spirit-app .home-menu button { transition: none; }
+}

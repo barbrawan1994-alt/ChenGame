@@ -108,3 +108,51 @@ export const sampleDiverseStarters = (catalog, count = 5, previousIds = [], rand
 
   return selected.slice(0, count);
 };
+
+export const getStarterCombatScore = (stats = {}) => (
+  ['maxHp', 'p_atk', 'p_def', 's_atk', 's_def', 'spd']
+    .reduce((sum, key) => sum + Math.max(0, Number(stats[key]) || 0), 0)
+);
+
+export const selectCombatBalancedStarters = (
+  candidates,
+  count = 5,
+  { getStats, maxSpreadRatio = 0.12, random = Math.random } = {},
+) => {
+  if (!Array.isArray(candidates) || candidates.length === 0 || count <= 0) return [];
+  if (typeof getStats !== 'function') return sampleDiverseStarters(candidates, count, [], random);
+
+  const scored = candidates
+    .map((pet) => ({ pet, score: getStarterCombatScore(getStats(pet)) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => a.score - b.score);
+  if (scored.length <= count) return scored.map(({ pet }) => pet);
+
+  let left = 0;
+  let bestBand = null;
+  for (let right = 0; right < scored.length; right += 1) {
+    while (left < right && scored[right].score > scored[left].score * (1 + maxSpreadRatio)) left += 1;
+    const band = scored.slice(left, right + 1);
+    if (band.length < count) continue;
+    const typeCount = new Set(band.map(({ pet }) => pet.type || 'NORMAL')).size;
+    if (!bestBand || typeCount > bestBand.typeCount || (typeCount === bestBand.typeCount && band.length > bestBand.items.length)) {
+      bestBand = { items: band, typeCount };
+    }
+  }
+
+  if (!bestBand) {
+    let tightest = scored.slice(0, count);
+    let tightestRatio = tightest[tightest.length - 1].score / tightest[0].score;
+    for (let start = 1; start <= scored.length - count; start += 1) {
+      const window = scored.slice(start, start + count);
+      const ratio = window[window.length - 1].score / window[0].score;
+      if (ratio < tightestRatio) {
+        tightest = window;
+        tightestRatio = ratio;
+      }
+    }
+    bestBand = { items: tightest, typeCount: new Set(tightest.map(({ pet }) => pet.type || 'NORMAL')).size };
+  }
+
+  return sampleDiverseStarters(bestBand.items.map(({ pet }) => pet), count, [], random);
+};

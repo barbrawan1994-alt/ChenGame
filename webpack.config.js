@@ -46,6 +46,7 @@ module.exports = {
     new CopyPublicAssetsPlugin(),
   ],
   devServer: {
+    devMiddleware: { publicPath: '/' },
     static: [
       { directory: path.join(__dirname, 'dist') },
       { directory: path.join(__dirname, 'public') },
