@@ -71,28 +71,16 @@ const FORECAST_CHIP_STYLES = {
   change: { background: 'rgba(109,40,217,0.82)', borderColor: 'rgba(221,214,254,0.82)' },
 };
 
-export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, index, forecast }) => {
-  const [hovered, setHovered] = useState(false);
-
+export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, forecast }) => {
   const c = TYPE_COLORS[move.t] || '#90A4AE';
   const tName = TYPE_NAMES[move.t] || move.t;
-  const moveNameLength = Array.from(String(move.name || '')).length;
-  const moveNameFontSize = moveNameLength >= 6 ? '12px' : moveNameLength >= 4 ? '14px' : '16px';
   const maxPpCap = move.maxPP ?? move.maxPp ?? 15;
-  const ppRatio = maxPpCap > 0 ? Math.max(0, Math.min(1, (move.pp || 0) / maxPpCap)) : 0;
-  const ppColor = ppRatio > 0.5 ? '#4CAF50' : ppRatio > 0.2 ? '#FF9800' : '#F44336';
-  const hasDesc = move.desc && move.desc.length > 0;
-  const jutsuNatureEmoji = move.isJutsu && move.nature ? (JUTSU_NATURE_EMOJI[move.nature] || '') : '';
-  const jutsuTooltipExtra = jutsuNatureEmoji ? `${jutsuNatureEmoji} 忍术` : '';
+  const pp = Math.max(0, move.pp || 0);
   const readableDisabledReason = disabledReason
     ? String(disabledReason).replace(/[()]/g, '').replace('CD:', '冷却 ')
     : '';
   const forecastA11yLabel = forecast?.a11yLabel ? String(forecast.a11yLabel) : '';
-  const forecastSummary = forecast?.summary ? String(forecast.summary) : '';
-  const descriptionText = forecastSummary && hasDesc
-    ? `${forecastSummary} · ${move.desc}`
-    : forecastSummary || move.desc || '';
-  const hasDescriptionLine = forecast ? Boolean(descriptionText) : Boolean(hasDesc);
+  const jutsuTooltipExtra = move.isJutsu && move.nature ? (JUTSU_NATURE_EMOJI[move.nature] || '') : '';
   const forecastChipStyle = FORECAST_CHIP_STYLES[forecast?.kind] || FORECAST_CHIP_STYLES.neutral;
   const forecastChipTitle = forecast
     ? [forecast.label, forecast.multiplierLabel, forecast.accuracyLabel].filter(Boolean).join(' · ')
@@ -103,148 +91,42 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, in
     forecastA11yLabel,
     readableDisabledReason ? `无法使用：${readableDisabledReason}` : '',
   ].filter(Boolean).join('，');
+  const category = move.isMartialArt ? '武学' : move.isFruitMove ? '果实' : move.isJutsu ? '忍术' : move.isCursed ? '咒术' : move.isExtra ? '装备' : '';
 
   return (
     <button
+      type="button"
       title={buttonTitle}
-      className="move-btn-v2 move-card-polished"
+      className="battle-move-button"
       aria-label={buttonAriaLabel}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       onClick={() => { if (!disabled && onClick) onClick(); }}
       disabled={disabled}
-      style={{
-        width:'100%', height:'100%', boxSizing:'border-box',
-        background: disabled
-          ? 'linear-gradient(135deg, #2d3748, #1a202c)'
-          : `linear-gradient(135deg, ${c}dd, ${c}99)`,
-        border: 'none',
-        borderRadius:'10px', padding:'0',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        position:'relative', overflow:'hidden',
-        transition:'transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease',
-        transform: hovered && !disabled ? 'translateY(-2px) scale(1.01)' : 'none',
-        filter: hovered && !disabled ? 'brightness(1.1)' : 'none',
-        boxShadow: hovered && !disabled
-          ? `0 8px 24px ${c}50`
-          : `0 3px 10px rgba(0,0,0,0.35)`,
-        display:'flex', flexDirection:'column', alignItems:'stretch',
-        textAlign:'left',
-      }}
+      style={{ '--move-accent': c }}
     >
-      {/* 左侧高亮条 */}
-      <div style={{
-        position:'absolute', left:0, top:0, bottom:0, width:'4px',
-        background:'rgba(255,255,255,0.5)',
-        borderRadius:'10px 0 0 10px',
-      }} />
-
-      {/* 主内容 */}
-      <div style={{
-        flex:1, display:'flex', flexDirection:'column', justifyContent:'center',
-        padding:'8px 14px 7px 14px', gap:'4px', minHeight:0, overflow:'hidden',
-        width:'100%', boxSizing:'border-box',
-      }}>
-        {/* 行1: 技能名 + 属性徽章 + 威力 */}
-        <div style={{display:'flex', alignItems:'center', gap:'6px', width:'100%'}}>
-          <span style={{
-            fontSize:moveNameFontSize, fontWeight:'900', color:'#fff',
-            letterSpacing:0, lineHeight:1.2,
-            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-            flex:1, minWidth:0,
-            textShadow:'0 1px 3px rgba(0,0,0,0.4)',
-          }}>{move.name}</span>
-          {move.effectivenessHint ? (
-            <span style={{ fontSize: '14px', flexShrink: 0, lineHeight: 1 }} title="相对当前目标的属性效果">{move.effectivenessHint}</span>
-          ) : null}
-          {(move.isCursed || move.isExtra || move.isJutsu || move.isMartialArt || move.isFruitMove) && (
-            <span style={{
-              fontSize:'11px', padding:'2px 6px', borderRadius:'4px', flexShrink:0,
-              background: move.isMartialArt ? 'rgba(198,40,40,0.5)' : move.isFruitMove ? 'rgba(255,152,0,0.5)' : 'rgba(0,0,0,0.3)', color:'#fff', fontWeight:'700', lineHeight:'1.4',
-            }}>{move.isMartialArt ? '武' : move.isFruitMove ? '果' : move.isJutsu ? (move.isBijuu ? '兽' : (jutsuNatureEmoji ? `${jutsuNatureEmoji}忍` : '忍')) : move.isCursed ? '咒' : '装'}</span>
-          )}
-          <span style={{
-            fontSize:'11px', padding:'2px 6px', borderRadius:'4px', flexShrink:0,
-            background:'rgba(255,255,255,0.25)', color:'#fff', fontWeight:'800',
-            lineHeight:'1.4', letterSpacing:'0.5px',
-          }}>{tName}</span>
-          <span style={{
-            fontSize:'16px', fontWeight:'900', flexShrink:0,
-            color:'#fff',
-            minWidth:'26px', textAlign:'right',
-            textShadow:'0 1px 3px rgba(0,0,0,0.3)',
-          }}>{(move.p || move.power) > 0 ? (move.p || move.power) : '—'}</span>
-        </div>
-
-        {/* 行2: 技能预测与描述 */}
-        {hasDescriptionLine && (
-          <div style={{
-            display:'flex', alignItems:'center', gap:'5px', minWidth:0,
-            fontSize:'12px', lineHeight:'1.4',
-            color:'rgba(255,255,255,0.85)',
-            textShadow:'0 1px 2px rgba(0,0,0,0.3)',
-          }}>
-            {forecast?.label ? (
-              <span title={forecastChipTitle || forecast.label} style={{
-                fontSize:'10px', padding:'2px 6px', borderRadius:'4px', flexShrink:0,
-                background:forecastChipStyle.background, border:`1px solid ${forecastChipStyle.borderColor}`,
-                color:'#fff', fontWeight:'900', lineHeight:'1.3', whiteSpace:'nowrap',
-                textShadow:'0 1px 2px rgba(0,0,0,0.45)',
-              }}>{forecast.label}</span>
-            ) : null}
-            <span style={{ minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{descriptionText}</span>
-          </div>
-        )}
-
-        {/* 行3: PP条 + CE消耗 */}
-        <div style={{display:'flex', alignItems:'center', gap:'8px', marginTop:'3px', width:'100%'}}>
-          <div style={{
-            flex:1, height:'6px', borderRadius:'3px',
-            background:'rgba(0,0,0,0.25)', overflow:'hidden',
-          }}>
-            <div style={{
-              width:`${ppRatio * 100}%`, height:'100%', borderRadius:'3px',
-              background:'linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7))',
-              transition:'width 0.3s',
-            }} />
-          </div>
-          <span style={{
-            fontSize:'12px', fontWeight:'800', flexShrink:0, lineHeight:1,
-            color:'rgba(255,255,255,0.9)',
-            textShadow:'0 1px 2px rgba(0,0,0,0.3)',
-          }}>{move.pp <= 1 && move.pp > 0 && !move.isCursed ? '⚠' : ''}{Math.max(0, move.pp || 0)}/{maxPpCap}</span>
-          {move.isCursed && move.ceCost > 0 && (
-            <span style={{
-              fontSize:'11px', color:'#fff', fontWeight:'700', flexShrink:0,
-              background:'rgba(0,0,0,0.3)', padding:'2px 6px', borderRadius:'4px',
-            }}>咒{move.ceCost}</span>
-          )}
-          {move.isJutsu && move.chakraCost > 0 && (
-            <span style={{
-              fontSize:'11px', color:'#fff', fontWeight:'700', flexShrink:0,
-              background:'rgba(0,0,0,0.3)', padding:'2px 6px', borderRadius:'4px',
-            }}>🍥{move.chakraCost}</span>
-          )}
-          {move.isMartialArt && move.momentumCost > 0 && (
-            <span style={{
-              fontSize:'11px', color:'#fff', fontWeight:'700', flexShrink:0,
-              background:'rgba(198,40,40,0.4)', padding:'2px 6px', borderRadius:'4px',
-            }}>⚔️{move.momentumCost}</span>
-          )}
-        </div>
-        {disabled && readableDisabledReason ? (
-          <div style={{ fontSize: '11px', color: '#FCA5A5', marginTop: '2px', lineHeight: 1.2, fontWeight: 800 }}>无法使用 · {readableDisabledReason}</div>
+      <span className="battle-move-heading">
+        <strong className="battle-move-name">{move.name}</strong>
+        <span className="battle-move-type">{tName}</span>
+      </span>
+      <span className="battle-move-stats">
+        <span>威力 <b>{(move.p ?? move.power ?? 0) > 0 ? (move.p ?? move.power) : '-'}</b></span>
+        <span className={pp <= 1 ? 'is-low' : ''}>PP <b>{pp}/{maxPpCap}</b></span>
+        {category && <span className="battle-move-category">{category}</span>}
+      </span>
+      <span className="battle-move-forecast">
+        {forecast?.label ? (
+          <span className="battle-move-effect" title={forecastChipTitle || forecast.label}
+            style={{ background: forecastChipStyle.background, borderColor: forecastChipStyle.borderColor }}>{forecast.label}</span>
         ) : null}
-      </div>
-
-      {/* hover 光效 */}
-      {hovered && !disabled && (
-        <div style={{
-          position:'absolute', inset:0, pointerEvents:'none', borderRadius:'12px',
-          background:`radial-gradient(ellipse at 30% 20%, ${c}20 0%, transparent 55%)`,
-        }} />
-      )}
+        <span>{[forecast?.multiplierLabel, forecast?.accuracyLabel].filter(Boolean).join(' · ')}</span>
+      </span>
+      <span className="battle-move-note">
+        {disabled && readableDisabledReason ? <span className="battle-move-unavailable">{readableDisabledReason}</span> : (
+          <span>{move.desc || forecast?.targetName || ''}</span>
+        )}
+        {move.isCursed && move.ceCost > 0 && <b>咒力 {move.ceCost}</b>}
+        {move.isJutsu && move.chakraCost > 0 && <b>查克拉 {move.chakraCost}</b>}
+        {move.isMartialArt && move.momentumCost > 0 && <b>气势 {move.momentumCost}</b>}
+      </span>
     </button>
   );
 };
