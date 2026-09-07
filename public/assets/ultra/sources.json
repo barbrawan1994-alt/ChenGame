@@ -1,0 +1,470 @@
+{
+  "checkedAt": "2026-09-07",
+  "manifest": [
+    {
+      "id": "ultraman",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/ultraman_thumb.png",
+      "bytes": 10942
+    },
+    {
+      "id": "zoffy",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/zoffy_thumb.png",
+      "bytes": 13156
+    },
+    {
+      "id": "seven",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/seven.png",
+      "bytes": 14894
+    },
+    {
+      "id": "jack",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/jack_thumb.png",
+      "bytes": 13774
+    },
+    {
+      "id": "ace",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/ace_thumb.png",
+      "bytes": 13492
+    },
+    {
+      "id": "father",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/father.png",
+      "bytes": 15706
+    },
+    {
+      "id": "taro",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/tarou.png",
+      "bytes": 14804
+    },
+    {
+      "id": "mother",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/mother_thumb.png",
+      "bytes": 16952
+    },
+    {
+      "id": "leo",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/leo.png",
+      "bytes": 16208
+    },
+    {
+      "id": "astra",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/astra_thumb.png",
+      "bytes": 14424
+    },
+    {
+      "id": "king",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/king.png",
+      "bytes": 15488
+    },
+    {
+      "id": "joneus",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/joneus_thumb.png",
+      "bytes": 11848
+    },
+    {
+      "id": "80",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/80_thumb.png",
+      "bytes": 12582
+    },
+    {
+      "id": "yullian",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/yullian_thumb.png",
+      "bytes": 12666
+    },
+    {
+      "id": "tiga",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/tiga.png",
+      "bytes": 13898
+    },
+    {
+      "id": "dyna",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/dyna_thumb.png",
+      "bytes": 11518
+    },
+    {
+      "id": "gaia",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/gaia-1.png",
+      "bytes": 12550
+    },
+    {
+      "id": "agul",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/agul_thumb.png",
+      "bytes": 12046
+    },
+    {
+      "id": "neos",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/neos_thumb.png",
+      "bytes": 11726
+    },
+    {
+      "id": "seven21",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/ultraseven21_thumb.png",
+      "bytes": 12538
+    },
+    {
+      "id": "nice",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/nice_thumb.png",
+      "bytes": 12246
+    },
+    {
+      "id": "cosmos",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/cosmos_thumb.png",
+      "bytes": 10756
+    },
+    {
+      "id": "justice",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/justice_thumb.png",
+      "bytes": 14390
+    },
+    {
+      "id": "nexus",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/nexus_thumb.png",
+      "bytes": 13030
+    },
+    {
+      "id": "max",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/max_thumb.png",
+      "bytes": 15614
+    },
+    {
+      "id": "xenon",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/zenon_thumb.png",
+      "bytes": 15162
+    },
+    {
+      "id": "mebius",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/mebius_thumb.png",
+      "bytes": 12864
+    },
+    {
+      "id": "hikari",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/hikari_thumb.png",
+      "bytes": 14308
+    },
+    {
+      "id": "zero",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/zero_thumb.png",
+      "bytes": 15820
+    },
+    {
+      "id": "ginga",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/ginga-1.png",
+      "bytes": 16184
+    },
+    {
+      "id": "victory",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/victory_thumb.png",
+      "bytes": 14152
+    },
+    {
+      "id": "x",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/x_thumb.png",
+      "bytes": 15028
+    },
+    {
+      "id": "orb",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/orb_thumb.png",
+      "bytes": 13296
+    },
+    {
+      "id": "geed",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/geed-1.png",
+      "bytes": 14028
+    },
+    {
+      "id": "rosso",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/rosso_thumb.png",
+      "bytes": 18136
+    },
+    {
+      "id": "blu",
+      "source": "https://m-78.jp/wp-content/uploads/2018/04/bull-1.png",
+      "bytes": 14912
+    },
+    {
+      "id": "grigio",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/grigio_thumb.png",
+      "bytes": 17248
+    },
+    {
+      "id": "taiga",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/taiga_thumb.png",
+      "bytes": 17004
+    },
+    {
+      "id": "titas",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/titas_thumb.png",
+      "bytes": 15538
+    },
+    {
+      "id": "fuma",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/fuma_thumb.png",
+      "bytes": 12944
+    },
+    {
+      "id": "z",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/z_thumb.png",
+      "bytes": 13944
+    },
+    {
+      "id": "trigger",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/trigger_thumb-1.png",
+      "bytes": 8068
+    },
+    {
+      "id": "decker",
+      "source": "https://m-78.jp/wp-content/uploads/2022/03/decker_thumb-1.png",
+      "bytes": 12584
+    },
+    {
+      "id": "dinas",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4438
+    },
+    {
+      "id": "blazar",
+      "source": "https://m-78.jp/wp-content/uploads/2023/04/blazar-chara-icon.png",
+      "bytes": 14154
+    },
+    {
+      "id": "arc",
+      "source": "https://m-78.jp/wp-content/uploads/2024/04/アーク_サムネイルアイコン.jpg",
+      "bytes": 8640
+    },
+    {
+      "id": "omega",
+      "source": "https://m-78.jp/wp-content/uploads/2025/04/omega-icon.png",
+      "bytes": 14298
+    },
+    {
+      "id": "teo",
+      "source": "https://m-78.jp/wp-content/uploads/2026/04/icon-teo.jpg",
+      "bytes": 6812
+    },
+    {
+      "id": "scott",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/scott.png",
+      "bytes": 11696
+    },
+    {
+      "id": "chuck",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/chuck.png",
+      "bytes": 15434
+    },
+    {
+      "id": "beth",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/bes-1.png",
+      "bytes": 16610
+    },
+    {
+      "id": "great",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/great_thumb.png",
+      "bytes": 11572
+    },
+    {
+      "id": "powered",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/powered_thumb.png",
+      "bytes": 11430
+    },
+    {
+      "id": "zearth",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/zearth_thumb.png",
+      "bytes": 11506
+    },
+    {
+      "id": "legend",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/legend_thumb.png",
+      "bytes": 14972
+    },
+    {
+      "id": "noa",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4362
+    },
+    {
+      "id": "next",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 3790
+    },
+    {
+      "id": "saga",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/saga.png",
+      "bytes": 26500
+    },
+    {
+      "id": "ginga_victory",
+      "source": "https://m-78.jp/wp-content/uploads/2017/09/ginga-victory-1.png",
+      "bytes": 16682
+    },
+    {
+      "id": "ruebe",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 3824
+    },
+    {
+      "id": "gruebe",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4738
+    },
+    {
+      "id": "reiga",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4434
+    },
+    {
+      "id": "ribut",
+      "source": "https://m-78.jp/wp-content/uploads/2021/03/ribut_thumb.png",
+      "bytes": 11732
+    },
+    {
+      "id": "regulos",
+      "source": "https://m-78.jp/wp-content/uploads/2022/03/reglos-chara-icon.png",
+      "bytes": 16436
+    },
+    {
+      "id": "boy",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4370
+    },
+    {
+      "id": "sora",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 3828
+    },
+    {
+      "id": "rising",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4696
+    },
+    {
+      "id": "shin",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4394
+    },
+    {
+      "id": "elet",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 3810
+    },
+    {
+      "id": "loto",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4608
+    },
+    {
+      "id": "amia",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4408
+    },
+    {
+      "id": "belial",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4168
+    },
+    {
+      "id": "tregear",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4252
+    },
+    {
+      "id": "evil_tiga",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4200
+    },
+    {
+      "id": "tiga_dark",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4250
+    },
+    {
+      "id": "camilla",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4208
+    },
+    {
+      "id": "darramb",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4270
+    },
+    {
+      "id": "hudra",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4164
+    },
+    {
+      "id": "zagi",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4098
+    },
+    {
+      "id": "faust",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4154
+    },
+    {
+      "id": "mephisto",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4254
+    },
+    {
+      "id": "mephisto_zwei",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4314
+    },
+    {
+      "id": "chaos",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4188
+    },
+    {
+      "id": "shadow",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4260
+    },
+    {
+      "id": "dark_lops",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4256
+    },
+    {
+      "id": "ginga_dark",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4274
+    },
+    {
+      "id": "ultraman_dark",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4298
+    },
+    {
+      "id": "seven_dark",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4290
+    },
+    {
+      "id": "trigger_dark",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4298
+    },
+    {
+      "id": "carmeara",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4270
+    },
+    {
+      "id": "darrgon",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4250
+    },
+    {
+      "id": "hudram",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4220
+    },
+    {
+      "id": "evil_trigger",
+      "source": "Original stylized archive emblem; not a canonical character portrait",
+      "bytes": 4272
+    }
+  ]
+}

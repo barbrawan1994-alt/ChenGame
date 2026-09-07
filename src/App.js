@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { Backpack, ArrowLeftRight, LogOut } from 'lucide-react';
+import { Backpack, ArrowLeftRight, LogOut, Sparkles } from 'lucide-react';
 import _ from 'lodash';
 
 import {
@@ -53,6 +53,9 @@ import { renderBallCSS, renderMedCSS, renderStoneCSS, renderAccCSS, renderGrowth
 import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
 import { HudEventFeed, useHudEvents } from './hooks/useHudEvents';
+import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_TRIALS } from './data/ultra';
+import { normalizeUltraState, assignUltraContract, clearUltraUnit, getUltraTransformBlock, activateUltra, endUltra, settleUltraRound, completeUltraTrial } from './utils/ultraRules';
+const UltraScreen = React.lazy(() => import(/* webpackChunkName: "ultra-screen" */ './components/screens/UltraScreen'));
 
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
@@ -685,7 +688,7 @@ const hydrateSavedPet = (pet) => {
   delete hydrated.combatMoves;
   delete hydrated.stages;
   delete hydrated.volatiles;
-  return hydrated;
+  return clearUltraUnit(hydrated);
 };
 
 const hydrateSavedPetCollections = (party, box) => {
@@ -737,7 +740,7 @@ const compactSavedPet = (pet) => {
     volatiles,
     _stats,
     ...clean
-  } = pet;
+  } = clearUltraUnit(pet);
   const base = POKEDEX.find(p => p.id === clean.id);
   if (base) {
     STATIC_PET_SAVE_KEYS.forEach(key => {
@@ -1516,6 +1519,8 @@ const [pendingTask, setPendingTask] = useState(null);
 
   const generatePetVisual = (pet) => {
     if (!pet) return null;
+    if (pet.ultraTransformed && ULTRA_BY_ID[pet.ultraHeroId]) return { type: 'image', url: ULTRA_BY_ID[pet.ultraHeroId].portrait, emoji: pet.emoji };
+    if (pet.ultraTrialArt) return { type: 'image', url: pet.ultraTrialArt, emoji: pet.emoji };
     const imgUrl = imageMap[pet.id];
     if (imgUrl) {
       return { type: 'image', url: imgUrl, emoji: pet.emoji };
@@ -2613,6 +2618,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
   // 4. 战斗中使用药品 (消耗回合)
   const useBattleItem = async (itemKey, category) => {
+    if (battle?.type === 'ultra_trial') return;
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2' && !battle.showSwitch) || battleSpecialActionLockRef.current) return;
     battleSpecialActionLockRef.current = true;
     try {
@@ -3078,6 +3084,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
   const canUseCombatMove = (battleState, unit, move, source = 'player') => {
     if (!move) return false;
+    if (move.isUltraFinisher) return !!unit?.ultraTransformed && unit.ultraTurnsLeft > 0 && move.pp > 0;
     if (move.isCursed) {
       return getBattleResourceValue(battleState, unit, source, 'ce') >= (move.ceCost || 0)
         && (move.pp === undefined || move.pp > 0)
@@ -5352,7 +5359,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 };
 
   const buildSavePayload = () => {
-    const cleanParty = (Array.isArray(party) ? party : []).map(compactSavedPet);
+    const savedParty = battle?.type === 'ultra_trial' ? battle._ultraPartySnapshot : party;
+    const cleanParty = (Array.isArray(savedParty) ? savedParty : []).map(compactSavedPet);
     const cleanBox = (Array.isArray(box) ? box : []).map(compactSavedPet);
     return {
     saveVersion: CURRENT_SAVE_VERSION,
@@ -5377,7 +5385,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
     battleRecords,
     relics, guardianScore, guardianMilestonesClaimed,
-    sanctuaryState, bondingProgress, ecoCrisisRoutes, fusionState,
+    sanctuaryState, bondingProgress, ecoCrisisRoutes, fusionState, ultraState: ultraStateRef.current,
     mapGridCache: compactMapGridCache(mapGridCacheRef.current),
   };};
 
@@ -5593,6 +5601,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   bondingProgressRef.current = bondingProgress;
   const bondingActionLocksRef = useRef(new Set());
   const [ecoCrisisRoutes, setEcoCrisisRoutes] = useState(() => savedData.ecoCrisisRoutes || {});
+  const [ultraState, setUltraState] = useState(() => normalizeUltraState(savedData.ultraState));
+  const ultraStateRef = useRef(ultraState);
+  const ultraTrialStartLockRef = useRef(false);
+  const ultraTrialActiveRef = useRef(false);
+  const [ultraResult, setUltraResult] = useState(null);
+  const commitUltraState = next => {
+    if (battle && !battleResultHandledRef.current) return;
+    const normalized = normalizeUltraState(next);
+    ultraStateRef.current = normalized;
+    setUltraState(normalized);
+    setTimeout(() => persistSaveRef.current(true), 0);
+  };
   const [fusionState, setFusionState] = useState(() => {
     const defaultFS = { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null, generalFragments: {}, kingdomTaskCooldowns: {} };
     if (!savedData.fusionState) return defaultFS;
@@ -5740,6 +5760,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   ]), []);
 
   const updateAchStat = useCallback((updates) => {
+    if (ultraTrialActiveRef.current) return;
     const prev = achStatsRef.current || {};
     const next = { ...prev };
     for (const [k, v] of Object.entries(updates)) {
@@ -10331,6 +10352,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const unclaimedBounties = bountyBoard.date === today ? bountyBoard.quests.filter(q => q.completed && !q.claimed).length : 0;
 
     const entries = [
+      { id:'ultra', icon:<Sparkles size={25} />, name:'光之羁绊', desc:'奥特曼图鉴与试炼', color:'#c34a5c', badge:0, onClick: () => { setActivityCenter(false); setView('ultra'); } },
       { id:'arena', icon:'🏟️', name:'竞技场', desc:'段位排位赛', color:'#E53935', badge: arenaState.tickets, onClick: () => { setActivityCenter(false); setView('arena'); } },
       { id:'expedition', icon:'🗺️', name:'远征探险', desc:'派遣队伍探险', color:'#2E7D32', badge: pendingExpeditions, onClick: () => { setActivityCenter(false); setView('expedition'); } },
       { id:'mining', icon:'⛏️', name:'矿洞挖掘', desc:'挖矿收集矿石', color:'#795548', badge: Math.max(0, Number(mineState.energy) || 0), onClick: () => { setActivityCenter(false); if (badges.length < MINE_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${MINE_REQ_BADGES} 枚徽章`,1500); return; } if (!mineState.grid || mineState.grid.length === 0) setMineState(prev => ({...prev, grid: generateMineGrid(prev.depth || 1)})); setView('mining'); } },
@@ -10847,6 +10869,65 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   // 🍥 火影忍者 — 忍者试炼 · 尾兽化 · 段位
   // ==========================================
 
+  const executeUltraTransform = () => {
+    if (!battle || battleSpecialActionLockRef.current) return;
+    const slot = battle.phase === 'double_input_2' ? 1 : 0;
+    const index = battle.isDouble ? (battle.activeIdxs?.[slot] ?? battle.activeIdx) : battle.activeIdx;
+    const reason = getUltraTransformBlock(battle, battle.playerCombatStates?.[index]);
+    if (reason) { showMapToast('', '光之契约', reason, 1800); return; }
+    battleSpecialActionLockRef.current = true;
+    try { flushSync(() => setBattle(activateUltra(battle, index))); }
+    finally { window.setTimeout(() => { battleSpecialActionLockRef.current = false; }, 0); }
+  };
+
+  const startUltraTrial = eraId => {
+    if (ultraTrialStartLockRef.current || (battle && !battleResultHandledRef.current)) return;
+    const era = ULTRA_ERAS.find(item => item.id === eraId);
+    const currentParty = partyRef.current || [];
+    if (!era || !currentParty.some(pet => pet.currentHp > 0)) return;
+    if (eraId === 'newgen' && currentParty.filter(pet => pet.currentHp > 0).length < 2) { showMapToast('', '双打试炼', '需要两名存活伙伴', 1800); return; }
+    const base = POKEDEX.find(pet => pet.type === era.type) || POKEDEX[0];
+    const opponent = createPet(base.id, era.level);
+    Object.assign(opponent, { name: era.boss, nickname: era.boss, type: era.type, secondaryType: null, type2: null,
+      trait: 'none', nature:'docile', isEnemy: true, isBoss: true, devilFruit: null, bijuu: null, equips: [], sectId:0, sectLevel:0, intimacy:0,
+      isShiny:false, isFusedShiny:false, awakened:false, ivs:{}, evs:{}, cursedTechnique:null, hasDomain:false, equippedBerry:null,
+      customBaseStats: { hp: 100, p_atk: 62, s_atk: 62, p_def: 60, s_def: 60, spd: 50, crit: 0 },
+      moves: ULTRA_TRIALS[eraId].moves.map(move => ({ ...move, category:move.category || (move.p > 0 ? 'special' : 'status'), acc:100, pp:move.p > 0 ? 20 : 4, maxPP:move.p > 0 ? 20 : 4 })),
+    });
+    opponent.currentHp = getStats(opponent).maxHp;
+    ultraTrialStartLockRef.current = true;
+    ultraTrialActiveRef.current = true;
+    let accepted = false;
+    try {
+      const customParty = eraId === 'newgen' ? [opponent, { ..._.cloneDeep(opponent), uid:`${opponent.uid}_escort`, name:'加拉特隆·护卫机', nickname:'加拉特隆·护卫机', customBaseStats:{ ...opponent.customBaseStats, hp:65, p_atk:50, s_atk:50 } }] : [opponent];
+      const started = startBattle({ customParty, isDouble:eraId === 'newgen', name: era.name, _ultraTrial: eraId, _ultraPartySnapshot: _.cloneDeep(currentParty) }, 'ultra_trial');
+      accepted = !!started;
+      if (started) setUltraResult(null);
+    } finally {
+      if (!accepted) ultraTrialActiveRef.current = false;
+      window.setTimeout(() => { ultraTrialStartLockRef.current = false; }, 0);
+    }
+  };
+
+  const finishUltraTrial = (snapshot, won) => {
+    ultraTrialActiveRef.current = false;
+    if (won) {
+      const result = completeUltraTrial(ultraStateRef.current, snapshot._ultraTrial);
+      ultraStateRef.current = result.state;
+      setUltraState(result.state);
+    }
+    if (snapshot._ultraPartySnapshot) {
+      partyRef.current = _.cloneDeep(snapshot._ultraPartySnapshot);
+      setParty(partyRef.current);
+    }
+    pendingJutsuWinForBountyRef.current = false;
+    setUltraResult({ eraId: snapshot._ultraTrial, won });
+    setAnimEffect(null);
+    setBattle(null);
+    setView('ultra');
+    setTimeout(() => persistSaveRef.current(true), 0);
+  };
+
   const executeBijuuTransform = () => {
     if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2') || battleSpecialActionLockRef.current) return;
     const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
@@ -10855,8 +10936,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     if (!player || !player.bijuuData || player.bijuuUsed || player.bijuuTransformed) {
       showMapToast('❌','无法变身','没有尾兽或已使用过',1500); return;
     }
-    if (player.fruitTransformed) {
-      showMapToast('❌','状态冲突','恶魔果实变身中无法尾兽化',1500); return;
+    if (player.fruitTransformed || player.ultraTransformed) {
+      showMapToast('❌','状态冲突','果实或光之变身中无法尾兽化',1500); return;
     }
     const chakraCost = Math.floor(player.maxChakra * BIJUU_TRANSFORM_COST_PCT);
     const sharedChakra = (battle.sharedPlayerMaxChakra || 0) > 0 ? (battle.sharedPlayerChakra || 0) : (player.chakra || 0);
@@ -14686,6 +14767,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const isSpiritDomain = actualType === 'spirit_domain';
     const isEcoCrisis = actualType === 'eco_crisis';
     const isStory = actualType === 'story_mid' || actualType === 'story_task';
+    const isUltraTrial = actualType === 'ultra_trial';
     const isTrainer = actualType === 'trainer' || actualType === 'general' || actualType === 'historical_battle' || actualType === 'challenge' || isGym || isSpiritDomain || isEcoCrisis || isStory || actualType === 'league' || actualType === 'pvp' || actualType === 'sect_challenge' || actualType === 'gang_war' || actualType === 'kingdom_war' || actualType === 'kw_campaign' || actualType === 'capital_siege' || actualType === 'arena' || actualType === 'naruto_story' || actualType === 'naruto_exam' || actualType === 'naruto_survival' || actualType === 'tower' || actualType === 'elemental_trial' || actualType === 'sect_realm' || actualType.startsWith('eclipse_');
     
     let enemyParty = [];
@@ -14694,6 +14776,11 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const baseGold = Math.max(200, 200 + (mapIdx >= 0 ? mapIdx * 80 : 0));
     let dropGold = context?.drop ?? baseGold;
     let extraBattleData = {};
+    if (isUltraTrial) {
+      extraBattleData._ultraTrial = context._ultraTrial;
+      extraBattleData._ultraPartySnapshot = context._ultraPartySnapshot;
+      extraBattleData.isTrainer = true;
+    }
     if (context?.dungeonId) extraBattleData.dungeonId = context.dungeonId;
     if (context?.rushName) extraBattleData.rushName = context.rushName;
     if (context?.name) extraBattleData.battleName = context.name;
@@ -14739,7 +14826,11 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     // -------------------------------------------------
     // 1. PvP 对战
     // -------------------------------------------------
-    if (type === 'pvp') {
+    if (isUltraTrial) {
+        enemyParty = _.cloneDeep(context.customParty || []);
+        trainerName = context.name;
+        dropGold = 0;
+    } else if (type === 'pvp') {
         enemyParty = (context.customParty || []).map(p => {
             const safeId = Number(p.id);
             const baseInfo = POKEDEX.find(d => d.id === safeId) || {};
@@ -15493,7 +15584,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       enemyParty.forEach(p => {
         if (!p.devilFruit) p.devilFruit = getRandomFruit(p.level, 'trainer');
       });
-    } else if (actualType !== 'contest_bug') {
+    } else if (actualType !== 'contest_bug' && !isUltraTrial) {
       enemyParty.forEach(p => {
         if (!p.devilFruit && Math.random() < 0.3) {
           p.devilFruit = getRandomFruit(p.level, 'wild');
@@ -15563,7 +15654,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             return null;
         }).filter(Boolean);
         
-        let combatMoves = [...(p.moves || []), ...equipMoves].map(m => ({
+        let combatMoves = [...(p.moves || []).filter(move => !move.isUltraFinisher), ...equipMoves].map(m => ({
             ...m,
             pp: m.maxPP || m.maxPp || m.pp || 5
         }));
@@ -15615,7 +15706,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         // 火影忍术注入
         const jutsuMoves = [];
         const nRank = isEnemy ? getEnemyNinjaRank(p.level) : getNinjaRank(narutoState?.examsCompleted || 0);
-        if (nRank && nRank.id !== 'academy' && p.level >= 30) {
+        if (nRank && nRank.id !== 'academy' && p.level >= 30 && !(isUltraTrial && isEnemy)) {
           const petNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === p.type);
           const natureKey = petNature ? petNature[0] : null;
           const jutsuPool = natureKey ? getJutsuByNature(natureKey) : JUTSU_DB.filter(j => !j.nature);
@@ -15642,7 +15733,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const maxChakra = getUnlockedBattleResourceMax(potentialMaxChakra, jutsuMoves.length > 0 || !!bijuuData);
 
         return {
-            ...p,
+            ...assignUltraContract(p, ultraStateRef.current, actualType, isEnemy),
+            ultraTrialArt: isUltraTrial && isEnemy ? `assets/ultra/kaiju-${context._ultraTrial}.webp` : null,
             equippedBerry: p.equippedBerry ?? null,
             combatMoves: [...combatMoves, ...cursedMoves, ...jutsuMoves],
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
@@ -16564,7 +16656,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
                     const martialMoves = (cs.combatMoves || []).filter(m => m.isMartialArt);
                     const jutsuMoves = (cs.combatMoves || []).filter(m => m.isJutsu);
                     const fruitMoves = (cs.combatMoves || []).filter(m => m.isFruitMove);
-                    const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves, ...jutsuMoves, ...fruitMoves];
+                    const ultraMoves = (cs.combatMoves || []).filter(m => m.isUltraFinisher && cs.ultraTransformed);
+                    const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves, ...jutsuMoves, ...fruitMoves, ...ultraMoves];
 
                     return {
                         ...cs,
@@ -16624,6 +16717,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     } catch (e) {
         console.error("Battle Error:", e);
         setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
+    } finally {
+        setBattle(prev => settleUltraRound(prev));
     }
   };
 
@@ -17375,7 +17470,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
         _partyMinHp: tempBattle._partyMinHp || prev._partyMinHp,
         };
-        return expireTranscendenceBoost(next);
+        return settleUltraRound(expireTranscendenceBoost(next));
       });
       auditPlayerHpLoss(tempBattle);
 
@@ -18495,8 +18590,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       if (side === 'player') showMapToast('❌','条件不足',`HP需低于60%才能变身（当前${Math.round((curHp / Math.max(1, maxHp)) * 100)}%）`,2000);
       return;
     }
-    if (side === 'player' && unit.bijuuTransformed) {
-      showMapToast('❌','状态冲突','尾兽化中无法使用恶魔果实',1500); return;
+    if (side === 'player' && (unit.bijuuTransformed || unit.ultraTransformed)) {
+      showMapToast('❌','状态冲突','尾兽或光之变身中无法使用恶魔果实',1500); return;
     }
     const fruit = getFruitById(unit.devilFruit);
     if (!fruit) return;
@@ -19061,7 +19156,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           const martialMoves2 = (cs.combatMoves || []).filter(m => m.isMartialArt);
           const jutsuMoves2 = (cs.combatMoves || []).filter(m => m.isJutsu);
           const fruitMoves2 = (cs.combatMoves || []).filter(m => m.isFruitMove);
-          const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves2, ...jutsuMoves2, ...fruitMoves2];
+          const ultraMoves = (cs.combatMoves || []).filter(m => m.isUltraFinisher && cs.ultraTransformed);
+          const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves2, ...jutsuMoves2, ...fruitMoves2, ...ultraMoves];
           return {
             ...cs,
             level: updatedPet.level,
@@ -19404,6 +19500,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       setBattle(prev => prev ? ({ ...prev, phase: inputPhase }) : null);
     } finally {
       auditPlayerHpLoss(state, turnPlayerHpSnapshot);
+      if (!deferInput) setBattle(prev => settleUltraRound(prev));
     }
   };
 
@@ -19591,7 +19688,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     if (!battleState && !battle) return false;
     if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
     const playerHpSnapshot = battleState?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
+    let ultraFinisherSpent = false;
+    let ultraActor = attacker;
     try {
+    if (move.isUltraFinisher && !canUseCombatMove(battleState, attacker, move, source)) return false;
     if (attacker.currentHp <= 0) return false;
     if (defender.currentHp <= 0) return false;
     if (!attacker.stages) attacker.stages = { ...DEFAULT_BATTLE_STAGES };
@@ -19612,6 +19712,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     
     const atkState = source === 'player' ? battleState.playerCombatStates[atkIdx] : battleState.enemyParty[atkIdx];
     const defState = source === 'player' ? battleState.enemyParty[defIdx] : battleState.playerCombatStates[defIdx];
+    ultraActor = atkState;
 
     // 0. 畏缩判定
     if (atkState.volatiles?.flinched) {
@@ -19782,7 +19883,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         if (!atkState.jutsuCooldowns) atkState.jutsuCooldowns = {};
         atkState.jutsuCooldowns[move.jutsuId || move.name] = 2;
         addLog(`🍥 消耗 ${effectiveChakraCost} 查克拉 (剩余${atkState.chakra})`);
-        if (source === 'player' && move.jutsuId && !move.isBijuu) {
+        if (source === 'player' && move.jutsuId && !move.isBijuu && battleState.type !== 'ultra_trial') {
           const masteryMult = getEquippedRelicEffects(relics).jutsuMasteryMult || 1;
           const masteryGain = masteryMult >= 1.15 && Math.random() < 0.25 ? 2 : 1;
           commitNarutoState(prev => {
@@ -19816,6 +19917,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         }
     }
     const tryLeppaBerry = (unit, state, moveUsed) => {
+      if (moveUsed?.isUltraFinisher) return;
       const bid = state?.equippedBerry;
       if (!bid || bid !== 'leppa' || !moveUsed) return;
       const lb = BERRIES.leppa;
@@ -19825,6 +19927,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       state.equippedBerry = null;
       if (unit) unit.equippedBerry = null;
     };
+    ultraFinisherSpent = !!move.isUltraFinisher;
     tryLeppaBerry(attacker, atkState, move);
     if (move.effect?.type !== 'PROTECT') {
       if (!atkState.volatiles) atkState.volatiles = {};
@@ -19833,7 +19936,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
     // 2. 技能施放与命中
     addLog(source === 'enemy' ? `⚔️ 对手 ${attacker.name} 使用 ${move.name}` : `${attacker.name} 使用 ${move.name}`);
-    if (source === 'player' && move.t) advanceBounty('use_type_move', move.t);
+    if (source === 'player' && move.t && battleState.type !== 'ultra_trial') advanceBounty('use_type_move', move.t);
     await wait(1000);
 
     // 守住逻辑 (移到显示技能名之后)
@@ -21097,6 +21200,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
     return isDead;
     } finally {
+      if (ultraFinisherSpent) {
+        endUltra(ultraActor);
+        if (attacker !== ultraActor) endUltra(attacker);
+      }
       auditPlayerHpLoss(battleState, playerHpSnapshot);
     }
   };
@@ -21107,6 +21214,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   const processDefeatedEnemy = (deadEnemy, currentParty, finalBattleState) => { 
   
     const bState = finalBattleState || battle;
+    if (bState?.type === 'ultra_trial') return { newParty: currentParty.map((pet, index) => ({ ...pet, currentHp: bState.playerCombatStates[index]?.currentHp ?? pet.currentHp })), logMsg: `击败${deadEnemy.name}！`, hasPendingSkill: false, activeDidLevelUp: false, activeDidEvolve: false };
     const baseExp = calcBattleBaseExp(deadEnemy.level, {
       isTrainer: bState.isTrainer,
       isBounty: bState.isBounty,
@@ -21416,6 +21524,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
          auditPlayerHpLoss(battleSnapshot);
          battleResultHandledRef.current = true;
          if (battleSnapshot._weatherOverride) setWeather('CLEAR');
+         if (battleSnapshot.type === 'ultra_trial') { finishUltraTrial(battleSnapshot, true); return; }
          if (battleSnapshot?.battleObjective && !checkBattleObjectiveMet(battleSnapshot)) {
            const block = shouldBlockStandardWin(battleSnapshot);
            battleResultHandledRef.current = false;
@@ -23449,6 +23558,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     if (battleResultHandledRef.current) return;
     battleResultHandledRef.current = true;
     if (battle?._weatherOverride) setWeather('CLEAR');
+    if (battle?.type === 'ultra_trial') { finishUltraTrial(battle, false); return; }
     addLog("所有伙伴都倒下了...");
     const battleSnap = battle ? { ...battle } : null;
     if (battleSnap) {
@@ -33388,6 +33498,10 @@ const renderMenu = () => {
             badges.push(<span key="fruit-active" style={{...badgeBase, background: 'linear-gradient(135deg,#6A1B9A,#AB47BC)', boxShadow: '0 0 8px rgba(171,71,188,0.5)', animation: 'vow-pulse 1.5s infinite'}}>🍎变身中({unit.fruitTurnsLeft})</span>);
         }
 
+        if (unit.ultraTransformed && unit.ultraTurnsLeft > 0) {
+            badges.push(<span key="ultra-active" data-testid="ultra-timer" title="光能耗尽或必杀出手后解除变身" style={{...badgeBase, background: unit.ultraTurnsLeft === 1 ? '#ab3549' : '#286657', whiteSpace:'normal'}}><Sparkles size={11} />{ULTRA_BY_ID[unit.ultraHeroId]?.name} · 光能 {unit.ultraTurnsLeft}</span>);
+        }
+
         return badges;
     };
 
@@ -33917,7 +34031,7 @@ const renderMenu = () => {
           </div>
         )}
 
-        <div className={`battle-stage-v2 ${bgClass}`} style={{position:'relative'}}>
+        <div className={`battle-stage-v2 ${bgClass} ${isDoubleBattle ? 'battle-stage-double' : ''}`} style={{position:'relative'}}>
             <button className="battle-control-pill" onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{ top: 8 }}>⏩ {battleSpeed}x</button>
             <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title="自动战斗：开启后AI自动选择最优技能出招" style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
             <button className="battle-control-pill" onClick={() => setShowTypeChart(true)} style={{ top: 84 }}>属性表</button>
@@ -34310,7 +34424,7 @@ const renderMenu = () => {
                         if (ix !== undefined) setBattle(prev => prev ? { ...prev, targetIdx: ix } : null);
                       } : undefined}
                     >
-                        {(battle.isTrainer || battle.isGym || battle.isChallenge || battle.isBoss) && (
+                        {battle.type !== 'ultra_trial' && (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isBoss) && (
                             <div style={{
                                 position: 'absolute', bottom: '-10px', right: isDoubleBattle ? '-40px' : '-70px', zIndex: 0, opacity: 0.55, width: isDoubleBattle ? 140 : 200, height: isDoubleBattle ? 140 : 200,
                                 filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.4))', pointerEvents: 'none'
@@ -34367,7 +34481,7 @@ const renderMenu = () => {
                 {/* 1b. 敌方区域2 (左上角, 仅双打) */}
                 {/* ========================================== */}
                 {isDoubleBattle && e2 && (
-                  <div className="enemy-zone-v2 double-mode" style={{position:'absolute', top:'2%', left:'1%', display:'flex', flexDirection:'column', alignItems:'flex-start', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
+                  <div className="enemy-zone-v2 double-mode battle-slot-secondary" style={{position:'absolute', top:'2%', left:'1%', display:'flex', flexDirection:'column', alignItems:'flex-start', zIndex:5, opacity: e2.currentHp <= 0 ? 0.4 : 1}}>
                     <div className="hud-card hud-enemy hud-card--double" style={{marginBottom:'8px'}}>
                       {enemyOwnerName && (
                         <div className="battle-enemy-owner" data-testid="enemy-owner-name-secondary">
@@ -34566,7 +34680,7 @@ const renderMenu = () => {
                 {/* 2b. 我方区域2 (右下角, 仅双打) */}
                 {/* ========================================== */}
                 {isDoubleBattle && p2 && (
-                  <div className="player-zone-v2 double-mode" style={{position:'absolute', bottom:'4%', right:'2%', display:'flex', flexDirection:'column', alignItems:'flex-end', zIndex:5, opacity: p2.currentHp <= 0 ? 0.4 : 1}}>
+                  <div className="player-zone-v2 double-mode battle-slot-secondary" style={{position:'absolute', bottom:'4%', right:'2%', display:'flex', flexDirection:'column', alignItems:'flex-end', zIndex:5, opacity: p2.currentHp <= 0 ? 0.4 : 1}}>
                     <div className={`sprite-wrapper player-sprite-wrapper ${p2.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position:'relative', marginBottom:'6px'}}>
                       <div className="battle-platform battle-platform-player" />
                       <div style={{transform:'scaleX(-1)'}}>
@@ -34826,6 +34940,7 @@ const renderMenu = () => {
                                         ceCost: m.ceCost,
                                         isExtra: m.isExtra,
                                         isFruitMove: m.isFruitMove,
+                                        isUltraFinisher: m.isUltraFinisher,
                                         isJutsu: m.isJutsu,
                                         chakraCost: effectiveChakraCost,
                                         isMartialArt: m.isMartialArt,
@@ -34920,10 +35035,11 @@ const renderMenu = () => {
                     {/* 独立操作区，不参与技能网格的高度分配。 */}
                         {!battle.isPvP ? (
                         <div className="battle-action-list" aria-label="其他行动">
-                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle} title={isDoubleBattle ? '双打模式中无法使用背包' : ''}><Backpack size={16} aria-hidden="true" />背包</button>
+                            <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle || battle.type === 'ultra_trial'} title={battle.type === 'ultra_trial' ? '模拟试炼禁用道具' : isDoubleBattle ? '双打模式中无法使用背包' : ''}><Backpack size={16} aria-hidden="true" />背包</button>
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}><ArrowLeftRight size={16} aria-hidden="true" />交换</button>
-                            <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}><LogOut size={16} aria-hidden="true" />逃跑</button>
-                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed ? (() => {
+                            {battle.type === 'ultra_trial' && <button type="button" className="action-btn-h" onClick={handleDefeat}><LogOut size={16} />结束试炼</button>}
+                            {battle.type !== 'ultra_trial' && <button className="action-btn-h btn-run" onClick={handleRun} disabled={battle.isTrainer || battle.isGym || battle.isChallenge || battle.isStory || battle.isPvP || battle.isBoss || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'gang_war' || battle.type === 'kingdom_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'league' || battle.type === 'spirit_domain' || battle.type === 'eco_crisis' || !!battle.dungeonId}><LogOut size={16} aria-hidden="true" />逃跑</button>}
+                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed && !cp.ultraTransformed && !cp.bijuuTransformed ? (() => {
                               const minTurn = getFruitMinTurn();
                               const turnOk = battle.turnCount >= minTurn;
                               const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.6;
@@ -34934,7 +35050,8 @@ const renderMenu = () => {
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return (cp.maxCE > 0 || (cp.maxChakra || 0) > 0) ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; const availableCE = getBattleResourceValue(battle, cp, 'player', 'ce'); return cp.hasDomain && !cp.usedDomain && battle.activeDomain?.ownerSide !== 'player' ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={availableCE < (DOMAINS[cp.domainType]?.ceCost||999)}>{battle.activeDomain?.ownerSide === 'enemy' ? '领域对撞' : '领域'}</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.maxCE > 0 && !cp.activeVow ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#1A237E,#42A5F5)'}} onClick={() => setVowModal(true)}>缚誓</button> : null; })()}
-                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; const available = getBattleResourceValue(battle, cp, 'player', 'chakra'); const cost = Math.floor((cp.maxChakra || 1) * BIJUU_TRANSFORM_COST_PCT); return cp.bijuuData && !cp.bijuuUsed && !cp.bijuuTransformed && !cp.fruitTransformed ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#FF6F00,#FF8F00)', opacity: available >= cost ? 1 : 0.5}} onClick={executeBijuuTransform} disabled={available < cost}>🦊尾兽化</button> : null; })()}
+                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; const available = getBattleResourceValue(battle, cp, 'player', 'chakra'); const cost = Math.floor((cp.maxChakra || 1) * BIJUU_TRANSFORM_COST_PCT); return cp.bijuuData && !cp.bijuuUsed && !cp.bijuuTransformed && !cp.fruitTransformed && !cp.ultraTransformed ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#FF6F00,#FF8F00)', opacity: available >= cost ? 1 : 0.5}} onClick={executeBijuuTransform} disabled={available < cost}>🦊尾兽化</button> : null; })()}
+                            {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; if (!cp.ultraHeroId) return null; const reason = getUltraTransformBlock(battle, cp); return <button type="button" className="action-btn-h" style={{background:cp.ultraTransformed ? '#286657' : '#91394c'}} disabled={!!reason} title={reason || `${ULTRA_BY_ID[cp.ultraHeroId]?.name} · 三回合光能，必杀后解除`} onClick={executeUltraTransform}><Sparkles size={15} />{cp.ultraTransformed ? `光能 ${cp.ultraTurnsLeft}` : battle.ultraUsed ? '光能已用' : '光之变身'}</button>; })()}
                             {!isDoubleBattle && (() => {
                               const ap = battle.playerCombatStates?.[battle.activeIdx];
                               const hasPartner = ap?.partnerId && battle.playerCombatStates?.find(pp => (pp.uid || pp.id) === ap.partnerId && pp.currentHp > 0);
@@ -36786,6 +36903,7 @@ const renderMenu = () => {
       {view === 'bounty' && renderBountyBoard()}
       {view === 'lucky_wheel' && renderLuckyWheel()}
       {view === 'training' && renderTraining()}
+      {view === 'ultra' && <React.Suspense fallback={<div className="screen" role="status">光之档案读取中...</div>}><UltraScreen state={ultraState} party={party} result={ultraResult} onChange={commitUltraState} onTrial={startUltraTrial} onBack={() => setView('grid_map')} /></React.Suspense>}
       {view === 'world_boss' && renderWorldBoss()}
       {view === 'race' && renderRace()}
       {view === 'naruto_exam' && renderNarutoExam()}

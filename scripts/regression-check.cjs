@@ -2856,23 +2856,26 @@ check('门派每日任务不重复，挑战次数及奖励始终来自同一个�
 async function checkTurnHandoff() {
   const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
   const source = app.slice(app.indexOf('const executeTurn ='), app.indexOf('// 双打战斗回合'));
-  for (const enemyFirst of [false, true]) {
+  const { settleUltraRound } = require('./helpers/project-harness.cjs').load('src/utils/ultraRules.js');
+  for (const enemyFirst of [false, true]) for (const ultra of [false, true]) {
     let playerActs = 0;
     let enemyActs = 0;
-    let current = { phase: 'input', activeIdx: 0, enemyActiveIdx: 0, turnCount: 0,
-      playerCombatStates: [{ currentHp: 100, spd: enemyFirst ? 10 : 20, combatMoves: [{ name: 'test', p: 40, pp: 5 }] }],
+    let current = { phase: 'input', activeIdx: 0, enemyActiveIdx: 0, turnCount: 3,
+      playerCombatStates: [{ currentHp: 100, spd: enemyFirst ? 10 : 20, combatMoves: [{ name: 'test', p: 40, pp: 5 }], ...(ultra ? { ultraTransformed:true, ultraTurnsLeft:1, ultraExpiresAt:4 } : {}) }],
       enemyParty: [{ currentHp: 100, spd: enemyFirst ? 20 : 10 }],
     };
     const errors = [];
     const action = vm.runInNewContext(`${source}; executeTurn`, {
-      battle: current, party: [], _: { cloneDeep: structuredClone }, Math,
+      battle: current, party: [], _: { cloneDeep: structuredClone }, Math, settleUltraRound,
       setBattle: update => { current = update(current); },
       getStats: pet => ({ spd: pet.spd }), getEquipEffects: () => [], preSelectEnemyMove: () => null,
-      performAction: async () => { assert.equal(current.phase, 'busy'); playerActs++; return false; },
+      performAction: async (actor) => { assert.equal(current.phase, 'busy'); if (ultra) assert.equal(actor.ultraTransformed,true,'Last round buff survives until a slower player acts'); playerActs++; return false; },
       enemyTurn: async (state, deferInput) => {
         assert.equal(deferInput, true);
         assert.equal(current.phase, 'busy');
         enemyActs++;
+        state.turnCount++;
+        current = { ...current, turnCount:state.turnCount };
       },
       wait: async () => {}, console: { error: (...args) => errors.push(args) },
     });
@@ -2881,6 +2884,7 @@ async function checkTurnHandoff() {
     assert.equal(playerActs, 1);
     assert.equal(enemyActs, 1);
     assert.equal(current.phase, 'input');
+    if (ultra) assert.equal(current.playerCombatStates[0].ultraTransformed, false);
   }
   const enemySource = app.slice(app.indexOf('const enemyTurn ='), app.indexOf('// [新增] 属性克制计算'));
   for (const deferInput of [false, true]) {
@@ -2889,7 +2893,7 @@ async function checkTurnHandoff() {
       activeDomain: { turnsLeft: 2, ownerSide: 'player', effect: { enemySkipChance: 1 } },
     };
     const action = vm.runInNewContext(`${enemySource}; enemyTurn`, {
-      battle: current, wait: async () => {}, addLog: () => {}, auditPlayerHpLoss: () => {}, Math,
+      battle: current, wait: async () => {}, addLog: () => {}, auditPlayerHpLoss: () => {}, Math, settleUltraRound,
       setBattle: update => { current = update(current); },
     });
     await action(current, deferInput);

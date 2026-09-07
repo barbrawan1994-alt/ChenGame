@@ -7,7 +7,52 @@
   height: 100% !important;
   min-height: 0;
   box-sizing: border-box;
+  container-type: size;
 }
+.spirit-app .pc-battle-screen .double-mode .sprite-v2 {
+  width: 80px;
+  height: 80px;
+  max-width: 160px;
+  max-height: 160px;
+}
+@supports (width: 1cqh) {
+  .spirit-app .pc-battle-screen .double-mode .sprite-v2 {
+    width: clamp(56px, 18cqh, 160px);
+    height: clamp(56px, 18cqh, 160px);
+  }
+}
+.spirit-app .pc-battle-screen .double-mode .battle-platform { width: 130px; height: 40px; }
+.spirit-app .battle-stage-double .double-mode {
+  inset: 0 !important;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.spirit-app .battle-stage-double .double-mode > .hud-card {
+  position: absolute;
+  width: 240px;
+  max-width: 25%;
+  max-height: 40%;
+  overflow: auto;
+  margin: 0 !important;
+  pointer-events: auto;
+}
+.spirit-app .battle-stage-double .enemy-zone-v2 > .hud-card { top: 10px; right: 86px; }
+.spirit-app .battle-stage-double .enemy-zone-v2.battle-slot-secondary > .hud-card { left: 14px; right: auto; }
+.spirit-app .battle-stage-double .player-zone-v2 > .hud-card { bottom: 16px; left: 14px; }
+.spirit-app .battle-stage-double .player-zone-v2.battle-slot-secondary > .hud-card { left: auto; right: 24px; }
+.spirit-app .battle-stage-double .double-mode > .sprite-wrapper {
+  position: absolute !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+.spirit-app .battle-stage-double .enemy-zone-v2 > .sprite-wrapper { top: 38%; left: 61%; }
+.spirit-app .battle-stage-double .enemy-zone-v2.battle-slot-secondary > .sprite-wrapper { left: 39%; }
+.spirit-app .battle-stage-double .player-zone-v2 > .sprite-wrapper { top: 64%; left: 39%; }
+.spirit-app .battle-stage-double .player-zone-v2.battle-slot-secondary > .sprite-wrapper { left: 61%; }
+.spirit-app .battle-stage-double .battle-log-container { width: 46% !important; }
+.spirit-app .battle-stage-double .battle-shared-energy { top: 46px !important; left: 50% !important; max-width: 36% !important; transform: translateX(-50%); }
 .battle-command-deck {
   position: relative;
   z-index: 200;

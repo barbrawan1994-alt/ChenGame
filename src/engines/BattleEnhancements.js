@@ -91,7 +91,7 @@ export const EnhancedMoveButton = ({ move, onClick, disabled, disabledReason, fo
     forecastA11yLabel,
     readableDisabledReason ? `无法使用：${readableDisabledReason}` : '',
   ].filter(Boolean).join('，');
-  const category = move.isMartialArt ? '武学' : move.isFruitMove ? '果实' : move.isJutsu ? '忍术' : move.isCursed ? '咒术' : move.isExtra ? '装备' : '';
+  const category = move.isUltraFinisher ? '光之必杀' : move.isMartialArt ? '武学' : move.isFruitMove ? '果实' : move.isJutsu ? '忍术' : move.isCursed ? '咒术' : move.isExtra ? '装备' : '';
 
   return (
     <button
