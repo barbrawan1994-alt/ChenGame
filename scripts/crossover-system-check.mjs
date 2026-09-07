@@ -175,10 +175,11 @@ check(appSource.includes("attemptBattleStart('门派秘境'"), '门派秘境使�
 check(appSource.includes('_chiefTrialTokenReserved: tokenReserved'), '掌门令在进入战斗前预留并可在初始化失败时退还');
 check(appSource.includes('const advanced = currentStep === stepIdx'), '门派秘境战斗按期望步骤幂等结算');
 check(appSource.includes('sectRealmCompletionLocksRef.current.has(lockKey)'), '门派秘境最终奖励具有独立防重锁');
-check(appSource.includes("resolveDomainActivation(state.activeDomain, 'enemy'"), '敌方领域逻辑已接入双向领域对撞规则');
-check(appSource.includes('双方领域相互抵消'), '领域对撞明确消耗双方领域并向玩家反馈代价');
+const commandSource = fs.readFileSync(new URL('../src/utils/crossoverCommands.js', import.meta.url), 'utf8');
+check(commandSource.includes('resolveDomainActivation(battle.activeDomain,side'), '双方领域动作统一调用双向对撞规则');
+check(commandSource.includes('与对方领域相互抵消'), '领域对撞明确消耗双方领域并向玩家反馈代价');
 check(!appSource.includes('_refundPP') && !appSource.includes('_ppBeforeUse'), '守住、结界和属性免疫不再只退还普通技能PP');
-check(appSource.includes('unit.fruitUseCount = nextUseCount'), '恶魔果实变身次数写回战斗快照避免战后丢失');
+check(commandSource.includes('unit.fruitUseCount =') && appSource.includes('recordBattleFruitUse(atkState)'), '恶魔果实变身次数写回战斗快照避免战后丢失');
 check(appSource.includes('examProgress: examRun'), '火影日试炼在开始时同步持久化续跑进度');
 check(appSource.includes("if (!started) {\n            showMapToast('⚠️', '报名失败'"), '活动启动失败不会提交报名费和冷却');
 check(appSource.includes('battle-tactical-intel'), '训练家战术、压力、覆盖和追加目标在战斗中可查看');

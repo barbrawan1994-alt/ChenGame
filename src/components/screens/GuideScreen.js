@@ -6,6 +6,7 @@ import GAME_GUIDE, {
   GUIDE_UNLOCKS,
 } from '../../data/gameGuide';
 import { GAME_NAME, GAME_VERSION_LABEL } from '../../data/constants';
+import '../../styles/guide-reading.css';
 
 const arrayText = value => (Array.isArray(value) ? value.join(' ') : value || '');
 
@@ -329,7 +330,7 @@ export default React.memo(function GuideScreen({ onBack }) {
                 {category.sections.map((section, index) => {
                   const sectionKey = `${category.id}-${section.id}`;
                   const defaultOpen = normalizedQuery ? true : index === 0;
-                  const open = normalizedQuery || (expanded[sectionKey] ?? defaultOpen);
+                  const open = expanded[sectionKey] ?? defaultOpen;
                   return (
                     <GuideSection
                       key={section.id}

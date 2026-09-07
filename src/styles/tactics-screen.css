@@ -1,0 +1,38 @@
+.spirit-app .tactics-screen { display:flex; flex-direction:column; color:#e4ebe1; background:#182a25; padding:24px; box-sizing:border-box; overflow:auto; }
+.tactics-screen * { box-sizing:border-box; letter-spacing:0; }
+.tactics-header { display:flex; align-items:center; gap:16px; border-bottom:1px solid #536d5c; padding-bottom:20px; }
+.tactics-header h1 { margin:4px 0 0; font-size:26px; }
+.tactics-header span { color:#adbbae; font-size:12px; }
+.tactics-screen button { font:inherit; color:inherit; cursor:pointer; }
+.tactics-header button { display:flex; align-items:center; gap:8px; min-height:38px; padding:8px; border:1px solid #627c69; border-radius:4px; background:transparent; }
+.tactics-header button:last-child { margin-left:auto; font-size:12px; }
+.tactics-layout { display:grid; grid-template-columns:200px minmax(280px,1fr) 270px; min-height:0; flex:1; gap:26px; padding-top:24px; }
+.tactics-roster { display:flex; flex-direction:column; gap:8px; overflow:auto; }
+.tactics-roster button { display:flex; gap:14px; text-align:left; align-items:center; padding:10px 8px; border:1px solid transparent; border-radius:4px; background:transparent; }
+.tactics-roster button[aria-pressed=true] { border-color:#9ec6a9; background:#2a4434; }
+.tactics-roster button>span:last-child { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.tactics-roster strong { font-size:14px; overflow-wrap:anywhere; }
+.tactics-roster small { font-size:11px; color:#a9bda9; }
+.tactics-pet-art { width:52px; height:58px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.tactics-pet-art img { max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated; }
+.tactics-preparation,.tactics-style { min-width:0; overflow:auto; scrollbar-width:thin; }
+.tactics-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.tactics-section-heading h2 { font-size:17px; margin:0; }
+.tactics-section-heading span { font-size:11px; color:#c1b499; }
+.prepared-jutsu-slots { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:22px; }
+.prepared-jutsu-slots label { display:flex; flex-direction:column; gap:7px; font-size:11px; color:#c3cdbd; }
+.tactics-screen select,.tactics-screen input { width:100%; min-height:40px; color:#f0eddf; background:#273e31; border:1px solid #677e65; border-radius:4px; padding:8px; font:inherit; font-size:12px; }
+.tactics-jutsu-list { margin-top:10px; }
+.tactics-jutsu-row { display:flex; gap:12px; align-items:center; padding:14px 0; border-bottom:1px solid #3d5143; }
+.jutsu-rank { width:25px; color:#d8b56d; font-size:18px; }
+.tactics-jutsu-row>div { flex:1; }
+.tactics-jutsu-row strong { font-size:13px; }
+.tactics-jutsu-row p { color:#aabcac; font-size:12px; line-height:1.6; margin:5px 0 0; }
+.tactics-locked { padding:30px 0; font-size:13px; color:#c2bfa8; }
+.breathing-style-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:24px; }
+.breathing-style-list button { display:flex; flex-direction:column; gap:6px; min-height:62px; padding:10px; text-align:left; background:transparent; border:1px solid #4f695a; border-radius:4px; font-size:12px; }
+.breathing-style-list button[aria-pressed=true] { border-color:#a3d7cf; background:#29423c; }
+.breathing-style-list small { font-size:10px; color:#a8b9ac; }
+.breathing-style-list button:disabled { opacity:.45; cursor:not-allowed; }
+.tactics-ultra-link { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:44px; background:#493137; border:1px solid #a17981; border-radius:4px; font-size:12px !important; }
+@media (max-width:1100px) { .spirit-app .tactics-screen { padding:16px; } .tactics-layout { grid-template-columns:160px minmax(240px,1fr) 230px; gap:18px; } }
