@@ -2309,7 +2309,7 @@ check('训练与远征互斥并按同步槽位、金币和每日次数提交', (
   assert.ok(expedition.includes('trainingStateRef.current'));
   assert.ok(expedition.includes('cafeRef.current?.workers'));
   assert.ok(expedition.includes('badges.length < zone.reqBadges'));
-  assert.ok(expedition.includes('.slice(0, 3)'));
+  assert.ok(expedition.includes('newUids.length !== petIds.length || newUids.length > 3'));
   assert.ok(expedition.includes('startedToday: dailyCount + 1'));
   assert.ok(training.includes('goldRef.current < tier.cost'));
   assert.ok(training.includes('expeditionsRef.current?.teams'));
