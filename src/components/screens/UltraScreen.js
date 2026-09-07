@@ -3,6 +3,9 @@ import { ArrowLeft, Search, Shield, Sparkles, Swords, Check, Lock, ChevronRight,
 import { ULTRA_HEROES, ULTRA_BY_ID, ULTRA_ERAS, ULTRA_ROLES } from '../../data/ultra';
 import { getUltraForm, isUltraUnlocked } from '../../utils/ultraRules';
 import { getUltraTrial, getUltraTrialBlock } from '../../utils/ultraTrials';
+import { KAIJU_STYLES } from '../../data/kaiju';
+import { KAIJU_TRIAL_ROUTES } from '../../data/kaijuTrials';
+import KaijuDex from './KaijuDex';
 import './UltraScreen.css';
 
 export default function UltraScreen({ state, party, badges = [], onChange, onTrial, onBack, result }) {
@@ -14,6 +17,7 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
   const [trialHeroId, setTrialHeroId] = useState(result?.heroId || 'zoffy');
   const [trialEra, setTrialEra] = useState(result?.eraId || 'showa');
   const [showRules, setShowRules] = useState(false);
+  const [trialRoute,setTrialRoute]=useState(result?.route || 0);
   const hero = ULTRA_BY_ID[selected] || ULTRA_HEROES[0];
   const form = getUltraForm(hero.id, formId);
   const role = ULTRA_ROLES[form.role];
@@ -21,7 +25,7 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
   const host = party.find(pet => pet.uid === state.hostUid);
   const available = ULTRA_HEROES.filter(item => isUltraUnlocked(state, item.id)).length;
   const heroes = useMemo(() => ULTRA_HEROES.filter(item => (!era || item.era === era) && `${item.name} ${item.id} ${item.year}`.toLowerCase().includes(query.toLowerCase().trim())), [era, query]);
-  const trial = getUltraTrial(trialHeroId,party);
+  const trial = getUltraTrial(trialHeroId,party,trialRoute);
   const trialBlock = getUltraTrialBlock(trial,state,party,badges.length);
   const trialHeroes = ULTRA_HEROES.filter(item=>item.era===trialEra);
   const selectHero = item => { setSelected(item.id); setFormId(item.id === state.heroId ? state.formId : item.forms[0].id); };
@@ -31,12 +35,12 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
     <header className="ultra-header">
       <button type="button" className="ultra-icon-button" onClick={onBack} aria-label="返回游戏" title="返回游戏"><ArrowLeft size={20} /></button>
       <div><span className="ultra-eyebrow">ULTRA CHRONICLE</span><h1>光之羁绊</h1></div>
-      <nav aria-label="光之羁绊页签"><button type="button" aria-pressed={tab === 'heroes'} onClick={() => setTab('heroes')}>奥特曼图鉴</button><button type="button" aria-pressed={tab === 'trials'} onClick={() => setTab('trials')}>星际试炼</button></nav>
+      <nav aria-label="光之羁绊页签"><button type="button" aria-pressed={tab === 'heroes'} onClick={() => setTab('heroes')}>奥特曼图鉴</button><button type="button" aria-pressed={tab === 'kaiju'} onClick={() => setTab('kaiju')}>怪兽图鉴</button><button type="button" aria-pressed={tab === 'trials'} onClick={() => setTab('trials')}>星际试炼</button></nav>
       <span className="ultra-count">契约 {available} / {ULTRA_HEROES.length}</span>
       <button type="button" className="ultra-icon-button" onClick={() => setShowRules(!showRules)} aria-label="查看战斗规则" title="战斗规则" aria-expanded={showRules}><CircleHelp size={19} /></button>
     </header>
     {showRules && <aside className="ultra-rules"><strong>光之契约</strong><span>每队每场一次；首回合结束后可变身，持续三回合，换人继续计时。必杀出手后结束，失手也消耗。与果实、尾兽变身互斥。竞技场、PvP、捕虫大会禁用。所有角色与形态共用同一能力预算。</span></aside>}
-    {tab === 'heroes' ? <div className="ultra-workspace">
+    {tab === 'kaiju' ? <KaijuDex progress={state.kaiju}/> : tab === 'heroes' ? <div className="ultra-workspace">
       <aside className="ultra-era-nav" aria-label="时代筛选">
         <button type="button" aria-pressed={!era} onClick={() => setEra('')}>全部角色<span>{ULTRA_HEROES.length}</span></button>
         {ULTRA_ERAS.map(item => <button type="button" key={item.id} aria-pressed={era === item.id} onClick={() => setEra(item.id)}><span>{item.name}<small>{item.subtitle}</small></span><span>{ULTRA_HEROES.filter(h => h.era === item.id).length}</span></button>)}
@@ -72,20 +76,21 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
         {trialHeroes.map(item=>{const details=getUltraTrial(item.id,party);return <button type="button" key={item.id} aria-pressed={trialHeroId===item.id} onClick={()=>setTrialHeroId(item.id)}><img src={item.portrait} width="42" height="42" alt="" loading="lazy"/><div><strong>{item.name}</strong><small>{details.tier.name} · Lv.{details.level}</small></div>{state.trialWins.includes(item.id) ? <Check size={17}/> : <ChevronRight size={17}/>}</button>;})}
       </aside>
       <main className="ultra-chapter">
-        <div className="ultra-chapter-art ultra-trial-opponents"><img src={`assets/ultra/kaiju-${trial.era.id}.webp`} alt={trial.era.boss} width="280" height="280" /><img src={trial.hero.portrait} alt={trial.hero.name} width="280" height="280" /></div>
-        <div className="ultra-chapter-copy"><span className="ultra-eyebrow">{trial.era.name} / {trial.tier.name}</span><h2>{trial.hero.name} · 契约试炼</h2><p>{trial.era.intro}</p>
+        <div className="ultra-chapter-art ultra-trial-opponents">{trial.monsters.map(monster=><img key={monster.id} src={monster.portrait} alt={monster.name} width="280" height="280"/>)}<img src={trial.hero.portrait} alt={trial.hero.name} width="280" height="280" /></div>
+        <div className="ultra-chapter-copy"><span className="ultra-eyebrow">{trial.era.name} / {trial.tier.name}</span><h2>{trial.hero.name} · 契约试炼</h2>
+          <label className="ultra-field">挑战路线<select aria-label="挑战路线" value={trialRoute} onChange={event=>setTrialRoute(Number(event.target.value))}>{KAIJU_TRIAL_ROUTES.map((name,index)=><option value={index} key={name}>{name}</option>)}</select></label>
           <dl>
             <div><dt>唯一解锁奖励</dt><dd>{trial.hero.name} · 1 位{isUltraUnlocked(state,trial.hero.id) ? '（已拥有）' : ''}</dd></div>
             <div><dt>敌方等级</dt><dd>Lv.{trial.level} · 最低 Lv.{trial.minLevel}，跟随队伍最高等级 +{trial.tier.levelBonus}，上限100</dd></div>
             <div><dt>出战阵容</dt><dd>队伍中前3名存活伙伴 · 至少2名 · 均需 Lv.{trial.minLevel}</dd></div>
-            <div><dt>对手</dt><dd>{trial.era.boss} 与 {trial.hero.name}投影 · {trial.isDouble ? '双打' : '连续单打，不中途恢复'}</dd></div>
+            <div><dt>对手</dt><dd>{trial.monsters.map(monster=>monster.name).join('、')} 与 {trial.hero.name}投影 · {trial.isDouble ? '双打' : '连续单打，不中途恢复'}</dd></div>
             <div><dt>挑战门槛</dt><dd>{trial.tier.badges}枚徽章 · {trial.tier.wins}位不同角色首通{trial.prerequisites.length>0 && ` · 前置：${trial.prerequisites.map(id=>ULTRA_BY_ID[id].name).join('、')}`}</dd></div>
             <div><dt>结算</dt><dd>战后恢复原队伍 · 禁用道具 · 无经验金币 · 重复胜利不增加首通数</dd></div>
-            <div className="ultra-trial-tactic"><dt>{trial.tactic.name}</dt><dd>{trial.tactic.hint}投影每4回合循环，第3回合准备必杀；怪兽在第4回合使用重击。行动仍受控制与资源约束。</dd></div>
+            <div className="ultra-trial-tactic"><dt>投影 · {trial.tactic.name}</dt><dd>{trial.tactic.hint}投影第3回合准备必杀，每4回合循环；怪兽各按自身节奏行动，双打错开强攻轮次。</dd><div className="ultra-trial-monsters">{trial.monsters.map(monster=><p key={monster.id}><strong>{monster.name} · {KAIJU_STYLES[monster.style].name}</strong><br/>{KAIJU_STYLES[monster.style].hint}</p>)}</div></div>
           </dl>
           {result?.heroId === trial.hero.id && <p className={`ultra-result ${result.won ? 'is-win' : ''}`} role="status">{result.won ? result.newlyUnlocked ? `${trial.hero.name}的契约已解锁。其他角色需要各自通过试炼。` : `${trial.hero.name}试炼通过。` : '挑战未通过，没有解锁角色。调整队伍与行动安排后再来。'}</p>}
           {trialBlock && <p className="ultra-trial-block" role="status">{trialBlock}</p>}
-          <button type="button" className="ultra-primary" title={trialBlock} disabled={!!trialBlock} onClick={() => onTrial(trial.hero.id)}><Swords size={18} />{state.trialWins.includes(trial.hero.id) ? '重温试炼' : '开始试炼'}</button>
+          <button type="button" className="ultra-primary" title={trialBlock} disabled={!!trialBlock} onClick={() => onTrial(trial.hero.id,trialRoute)}><Swords size={18} />{state.trialWins.includes(trial.hero.id) ? '重温试炼' : '开始试炼'}</button>
         </div>
       </main>
     </div>}

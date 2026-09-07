@@ -1,0 +1,1982 @@
+{
+  "gomess": {
+    "requested": "Gomess",
+    "title": "Gomess",
+    "pageId": 2477,
+    "url": "https://ultra.fandom.com/wiki/Gomess",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/12/Gomess_movie_I.png/revision/latest/scale-to-width-down/261?cb=20150204152556",
+    "file": "gomess.webp"
+  },
+  "litra": {
+    "requested": "Litra",
+    "title": "Litra",
+    "pageId": 3526,
+    "url": "https://ultra.fandom.com/wiki/Litra",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/6c/Ultr_Q_Ltr.png/revision/latest/scale-to-width-down/384?cb=20121121124030",
+    "file": "litra.webp"
+  },
+  "peguila": {
+    "requested": "Peguila",
+    "title": "Peguila",
+    "pageId": 2883,
+    "url": "https://ultra.fandom.com/wiki/Peguila",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/69/Pegulia_Emage.png/revision/latest/scale-to-width-down/142?cb=20240324140059",
+    "file": "peguila.webp"
+  },
+  "garamon": {
+    "requested": "Garamon",
+    "title": "Garamon",
+    "pageId": 3713,
+    "url": "https://ultra.fandom.com/wiki/Garamon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7e/Garamon_removebg.png/revision/latest/scale-to-width-down/272?cb=20220418050014",
+    "file": "garamon.webp"
+  },
+  "kanegon": {
+    "requested": "Kanegon",
+    "title": "Kanegon",
+    "pageId": 3734,
+    "url": "https://ultra.fandom.com/wiki/Kanegon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/01/Kanegon_Info.png/revision/latest/scale-to-width-down/182?cb=20190224170829",
+    "file": "kanegon.webp"
+  },
+  "pagos": {
+    "requested": "Pagos",
+    "title": "Pagos",
+    "pageId": 3837,
+    "url": "https://ultra.fandom.com/wiki/Pagos",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8d/Pagos_Render.png/revision/latest/scale-to-width-down/376?cb=20190815202803",
+    "file": "pagos.webp"
+  },
+  "namegon": {
+    "requested": "Namegon",
+    "title": "Namegon",
+    "pageId": 3530,
+    "url": "https://ultra.fandom.com/wiki/Namegon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/75/Namegon_HD_1.png/revision/latest/scale-to-width-down/281?cb=20230711090306",
+    "file": "namegon.webp"
+  },
+  "goga": {
+    "requested": "Goga",
+    "title": "Goga",
+    "pageId": 9356,
+    "url": "https://ultra.fandom.com/wiki/Goga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c4/Goga_render.png/revision/latest/scale-to-width-down/381?cb=20201205162322",
+    "file": "goga.webp"
+  },
+  "bostang": {
+    "requested": "Bostang",
+    "title": "Bostang",
+    "pageId": 7256,
+    "url": "https://ultra.fandom.com/wiki/Bostang",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/12/Bostang_render.png/revision/latest/scale-to-width-down/384?cb=20200626224309",
+    "file": "bostang.webp"
+  },
+  "bemular": {
+    "requested": "Bemular",
+    "title": "Bemular",
+    "pageId": 67940,
+    "url": "https://ultra.fandom.com/wiki/Bemular",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/08/Bemlar.png/revision/latest/scale-to-width-down/239?cb=20150728123945",
+    "file": "bemular.webp"
+  },
+  "baltan": {
+    "requested": "Alien Baltan",
+    "title": "Alien Baltan",
+    "pageId": 2075,
+    "url": "https://ultra.fandom.com/wiki/Alien_Baltan",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/be/OriginalBaltan.png/revision/latest/scale-to-width-down/185?cb=20190922074851",
+    "file": "baltan.webp"
+  },
+  "neronga": {
+    "requested": "Neronga",
+    "title": "Neronga",
+    "pageId": 2129,
+    "url": "https://ultra.fandom.com/wiki/Neronga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b2/Neronga_Render.png/revision/latest/scale-to-width-down/340?cb=20200827015350",
+    "file": "neronga.webp"
+  },
+  "ragon": {
+    "requested": "Ragon",
+    "title": "Ragon",
+    "pageId": 2131,
+    "url": "https://ultra.fandom.com/wiki/Ragon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/0b/Ultra_Zone_Ragon_render.png/revision/latest/scale-to-width-down/192?cb=20201030055058",
+    "file": "ragon.webp"
+  },
+  "gesura": {
+    "requested": "Gesura",
+    "title": "Guesra",
+    "pageId": 2136,
+    "url": "https://ultra.fandom.com/wiki/Guesra",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1e/Guesra_render.png/revision/latest/scale-to-width-down/329?cb=20200628052319",
+    "file": "gesura.webp"
+  },
+  "antlar": {
+    "requested": "Antlar",
+    "title": "Antlar",
+    "pageId": 2137,
+    "url": "https://ultra.fandom.com/wiki/Antlar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/af/Antlar_movie_I.png/revision/latest/scale-to-width-down/338?cb=20200803043734",
+    "file": "antlar.webp"
+  },
+  "red_king": {
+    "requested": "Red King",
+    "title": "Red King",
+    "pageId": 2180,
+    "url": "https://ultra.fandom.com/wiki/Red_King",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/ff/Red_King_Info.png/revision/latest/scale-to-width-down/226?cb=20210919022616",
+    "file": "red_king.webp"
+  },
+  "chandlar": {
+    "requested": "Chandlar",
+    "title": "Chandlar",
+    "pageId": 2499,
+    "url": "https://ultra.fandom.com/wiki/Chandlar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/ba/Chandlar_Emage.png/revision/latest/scale-to-width-down/312?cb=20240804031746",
+    "file": "chandlar.webp"
+  },
+  "magular": {
+    "requested": "Magular",
+    "title": "Magular",
+    "pageId": 2152,
+    "url": "https://ultra.fandom.com/wiki/Magular",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e5/Magula.png/revision/latest/scale-to-width-down/311?cb=20200906043331",
+    "file": "magular.webp"
+  },
+  "gabora": {
+    "requested": "Gabora",
+    "title": "Gabora",
+    "pageId": 2462,
+    "url": "https://ultra.fandom.com/wiki/Gabora",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b8/Gabora_Emage.png/revision/latest/scale-to-width-down/327?cb=20251223184332",
+    "file": "gabora.webp"
+  },
+  "gavadon": {
+    "requested": "Gavadon",
+    "title": "Gavadon",
+    "pageId": 3343,
+    "url": "https://ultra.fandom.com/wiki/Gavadon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/ca/Gavadon_%28A%29.png/revision/latest/scale-to-width-down/384?cb=20131117063551",
+    "file": "gavadon.webp"
+  },
+  "bullton": {
+    "requested": "Bullton",
+    "title": "Bullton",
+    "pageId": 2140,
+    "url": "https://ultra.fandom.com/wiki/Bullton",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/23/Reiwa_Bullton.png/revision/latest?cb=20200620071103",
+    "file": "bullton.webp"
+  },
+  "zarab": {
+    "requested": "Alien Zarab",
+    "title": "Alien Zarab",
+    "pageId": 2133,
+    "url": "https://ultra.fandom.com/wiki/Alien_Zarab",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/06/Zarab-removebg.png/revision/latest/scale-to-width-down/204?cb=20211123061250",
+    "file": "zarab.webp"
+  },
+  "aboras": {
+    "requested": "Aboras",
+    "title": "Aboras",
+    "pageId": 2463,
+    "url": "https://ultra.fandom.com/wiki/Aboras",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/ab/Aboras_Render.png/revision/latest/scale-to-width-down/318?cb=20211231141510",
+    "file": "aboras.webp"
+  },
+  "banila": {
+    "requested": "Banila",
+    "title": "Banila",
+    "pageId": 2464,
+    "url": "https://ultra.fandom.com/wiki/Banila",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/6e/Banlia_side_view.png/revision/latest/scale-to-width-down/262?cb=20240621031618",
+    "file": "banila.webp"
+  },
+  "hydra": {
+    "requested": "Hydra",
+    "title": "Hydra",
+    "pageId": 3214,
+    "url": "https://ultra.fandom.com/wiki/Hydra",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/9d/Hydra.png/revision/latest/scale-to-width-down/316?cb=20191004205904",
+    "file": "hydra.webp"
+  },
+  "kemular": {
+    "requested": "Kemular",
+    "title": "Kemular",
+    "pageId": 2503,
+    "url": "https://ultra.fandom.com/wiki/Kemular",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/96/Kemular-removebg.png/revision/latest/scale-to-width-down/384?cb=20230405142949",
+    "file": "kemular.webp"
+  },
+  "telesdon": {
+    "requested": "Telesdon",
+    "title": "Telesdon",
+    "pageId": 2446,
+    "url": "https://ultra.fandom.com/wiki/Telesdon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/ab/Telesdon_data.png/revision/latest/scale-to-width-down/288?cb=20150729062850",
+    "file": "telesdon.webp"
+  },
+  "jamila": {
+    "requested": "Jamila",
+    "title": "Jamila",
+    "pageId": 2144,
+    "url": "https://ultra.fandom.com/wiki/Jamila",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/ac/Jamila_Info.png/revision/latest/scale-to-width-down/149?cb=20200813011323",
+    "file": "jamila.webp"
+  },
+  "gubila": {
+    "requested": "Gubila",
+    "title": "Gubila",
+    "pageId": 3465,
+    "url": "https://ultra.fandom.com/wiki/Gubila",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f9/Gubila.png/revision/latest?cb=20200908193430",
+    "file": "gubila.webp"
+  },
+  "dorako": {
+    "requested": "Dorako",
+    "title": "Dorako",
+    "pageId": 2438,
+    "url": "https://ultra.fandom.com/wiki/Dorako",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/04/Dorako_movie.png/revision/latest/scale-to-width-down/332?cb=20191219020241",
+    "file": "dorako.webp"
+  },
+  "gomora": {
+    "requested": "Gomora",
+    "title": "Gomora",
+    "pageId": 2031,
+    "url": "https://ultra.fandom.com/wiki/Gomora",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/bd/Gomora.png/revision/latest/scale-to-width-down/300?cb=20201021042313",
+    "file": "gomora.webp"
+  },
+  "dada": {
+    "requested": "Dada",
+    "title": "Dada",
+    "pageId": 2374,
+    "url": "https://ultra.fandom.com/wiki/Dada",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/98/Dada_Movie_%282%29.png/revision/latest/scale-to-width-down/261?cb=20200312034206",
+    "file": "dada.webp"
+  },
+  "goldon": {
+    "requested": "Goldon",
+    "title": "Goldon",
+    "pageId": 3434,
+    "url": "https://ultra.fandom.com/wiki/Goldon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8d/Goldon_render.png/revision/latest/scale-to-width-down/384?cb=20200628055210",
+    "file": "goldon.webp"
+  },
+  "keronia": {
+    "requested": "Keronia",
+    "title": "Keronia",
+    "pageId": 2376,
+    "url": "https://ultra.fandom.com/wiki/Keronia",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/01/Keronia_HD_001.png/revision/latest/scale-to-width-down/282?cb=20231124033242",
+    "file": "keronia.webp"
+  },
+  "zumbolar": {
+    "requested": "Zumbolar",
+    "title": "Zumbolar",
+    "pageId": 2461,
+    "url": "https://ultra.fandom.com/wiki/Zumbolar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/20/Zambolar.png/revision/latest/scale-to-width-down/384?cb=20180722210952",
+    "file": "zumbolar.webp"
+  },
+  "mefilas": {
+    "requested": "Alien Mefilas",
+    "title": "Alien Mefilas",
+    "pageId": 2485,
+    "url": "https://ultra.fandom.com/wiki/Alien_Mefilas",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/32/Alien_Mephilas.png/revision/latest/scale-to-width-down/244?cb=20191004004725",
+    "file": "mefilas.webp"
+  },
+  "skydon": {
+    "requested": "Skydon",
+    "title": "Skydon",
+    "pageId": 3207,
+    "url": "https://ultra.fandom.com/wiki/Skydon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b7/Skydon%28figure%29.png/revision/latest/scale-to-width-down/384?cb=20190815171740",
+    "file": "skydon.webp"
+  },
+  "seabozu": {
+    "requested": "Seabozu",
+    "title": "Seabozu",
+    "pageId": 2347,
+    "url": "https://ultra.fandom.com/wiki/Seabozu",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/75/Seabozu%281%29.png/revision/latest/scale-to-width-down/233?cb=20180505000649",
+    "file": "seabozu.webp"
+  },
+  "zaragas": {
+    "requested": "Zaragas",
+    "title": "Zaragas",
+    "pageId": 2518,
+    "url": "https://ultra.fandom.com/wiki/Zaragas",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d6/Zaragas-removebg.png/revision/latest/scale-to-width-down/306?cb=20211225083649",
+    "file": "zaragas.webp"
+  },
+  "geronimon": {
+    "requested": "Geronimon",
+    "title": "Geronimon",
+    "pageId": 2536,
+    "url": "https://ultra.fandom.com/wiki/Geronimon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/71/Geronimon-XPLUS-removebg-preview.png/revision/latest/scale-to-width-down/272?cb=20200828031739",
+    "file": "geronimon.webp"
+  },
+  "keylla": {
+    "requested": "Keylla",
+    "title": "Keylla",
+    "pageId": 3493,
+    "url": "https://ultra.fandom.com/wiki/Keylla",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/05/Keylla_removebg.png/revision/latest/scale-to-width-down/236?cb=20220121113433",
+    "file": "keylla.webp"
+  },
+  "saigo": {
+    "requested": "Saigo",
+    "title": "Saigo",
+    "pageId": 3497,
+    "url": "https://ultra.fandom.com/wiki/Saigo",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/78/Saigo_render.png/revision/latest/scale-to-width-down/384?cb=20200917022114",
+    "file": "saigo.webp"
+  },
+  "zetton": {
+    "requested": "Zetton",
+    "title": "Zetton",
+    "pageId": 2125,
+    "url": "https://ultra.fandom.com/wiki/Zetton",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/25/Zetton.png/revision/latest/scale-to-width-down/233?cb=20181220224456",
+    "file": "zetton.webp"
+  },
+  "eleking": {
+    "requested": "Eleking",
+    "title": "Eleking",
+    "pageId": 2436,
+    "url": "https://ultra.fandom.com/wiki/Eleking",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d0/Galaxy_Eleking.png/revision/latest/scale-to-width-down/243?cb=20190314210819",
+    "file": "eleking.webp"
+  },
+  "miclas": {
+    "requested": "Miclas",
+    "title": "Miclas",
+    "pageId": 2489,
+    "url": "https://ultra.fandom.com/wiki/Miclas",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/fe/Ultraseven_Showa_Miclas_render.png/revision/latest/scale-to-width-down/182?cb=20220916031216",
+    "file": "miclas.webp"
+  },
+  "windom": {
+    "requested": "Windom",
+    "title": "Windom",
+    "pageId": 2310,
+    "url": "https://ultra.fandom.com/wiki/Windom",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1f/Ultraseven_Showa_Windom_render.png/revision/latest/scale-to-width-down/177?cb=20220913140300",
+    "file": "windom.webp"
+  },
+  "agira": {
+    "requested": "Agira",
+    "title": "Agira",
+    "pageId": 2498,
+    "url": "https://ultra.fandom.com/wiki/Agira",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/65/Agira_lgnds.png/revision/latest/scale-to-width-down/314?cb=20200710150645",
+    "file": "agira.webp"
+  },
+  "metron": {
+    "requested": "Alien Metron",
+    "title": "Alien Metron",
+    "pageId": 2201,
+    "url": "https://ultra.fandom.com/wiki/Alien_Metron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e0/Alien_Metron_Fixed.png/revision/latest/scale-to-width-down/273?cb=20210313181738",
+    "file": "metron.webp"
+  },
+  "king_joe": {
+    "requested": "King Joe",
+    "title": "King Joe",
+    "pageId": 2173,
+    "url": "https://ultra.fandom.com/wiki/King_Joe",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/0c/Ultraseven_King_Joe_render.png/revision/latest/scale-to-width-down/302?cb=20210912181515",
+    "file": "king_joe.webp"
+  },
+  "guts": {
+    "requested": "Alien Guts",
+    "title": "Alien Guts",
+    "pageId": 2074,
+    "url": "https://ultra.fandom.com/wiki/Alien_Guts",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/3a/Alien_Guts_old.png/revision/latest/scale-to-width-down/210?cb=20191130072551",
+    "file": "guts.webp"
+  },
+  "pandon": {
+    "requested": "Pandon",
+    "title": "Pandon",
+    "pageId": 2505,
+    "url": "https://ultra.fandom.com/wiki/Pandon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2e/Pandon_fll.png/revision/latest/scale-to-width-down/221?cb=20191126001436",
+    "file": "pandon.webp"
+  },
+  "gandar": {
+    "requested": "Gandar",
+    "title": "Gandar",
+    "pageId": 4405,
+    "url": "https://ultra.fandom.com/wiki/Gandar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/36/Gandar.jpg/revision/latest/scale-to-width-down/299?cb=20120321000609",
+    "file": "gandar.webp"
+  },
+  "narse": {
+    "requested": "Narse",
+    "title": "Nurse",
+    "pageId": 3246,
+    "url": "https://ultra.fandom.com/wiki/Nurse",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/cc/Nurse.png/revision/latest?cb=20200919200018",
+    "file": "narse.webp"
+  },
+  "dino_tank": {
+    "requested": "Dino-Tank",
+    "title": "Dino-Tank",
+    "pageId": 3770,
+    "url": "https://ultra.fandom.com/wiki/Dino-Tank",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1a/Dinosaur_tank_render_by_supersamyoshi_decd2fc.png/revision/latest/scale-to-width-down/384?cb=20221121004508",
+    "file": "dino_tank.webp"
+  },
+  "guyros": {
+    "requested": "Guyros",
+    "title": "Guyros",
+    "pageId": 6693,
+    "url": "https://ultra.fandom.com/wiki/Guyros",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/67/Guyros.png/revision/latest/scale-to-width-down/265?cb=20200516181838",
+    "file": "guyros.webp"
+  },
+  "crazygon": {
+    "requested": "Crazygon",
+    "title": "Crazygon",
+    "pageId": 4077,
+    "url": "https://ultra.fandom.com/wiki/Crazygon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/78/Crazygon_Info.png/revision/latest/scale-to-width-down/384?cb=20191211035036",
+    "file": "crazygon.webp"
+  },
+  "petero": {
+    "requested": "Petero",
+    "title": "Petero",
+    "pageId": 4288,
+    "url": "https://ultra.fandom.com/wiki/Petero",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/9a/Petero-removebg.png/revision/latest/scale-to-width-down/317?cb=20220602061509",
+    "file": "petero.webp"
+  },
+  "dancan": {
+    "requested": "Dancan",
+    "title": "Dancan",
+    "pageId": 9103,
+    "url": "https://ultra.fandom.com/wiki/Dancan",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/10/DANCAN_II.jpg/revision/latest/scale-to-width-down/350?cb=20181229010420",
+    "file": "dancan.webp"
+  },
+  "rigger": {
+    "requested": "Rigger",
+    "title": "Rigger",
+    "pageId": 3847,
+    "url": "https://ultra.fandom.com/wiki/Rigger",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/55/Rigger_render.png/revision/latest/scale-to-width-down/384?cb=20200923020504",
+    "file": "rigger.webp"
+  },
+  "giradorus": {
+    "requested": "Giradorus",
+    "title": "Giradorus",
+    "pageId": 3520,
+    "url": "https://ultra.fandom.com/wiki/Giradorus",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/04/Giradorus_info.png/revision/latest/scale-to-width-down/384?cb=20201210172224",
+    "file": "giradorus.webp"
+  },
+  "gabura": {
+    "requested": "Gabura",
+    "title": "Gabura",
+    "pageId": 3774,
+    "url": "https://ultra.fandom.com/wiki/Gabura",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/02/Gabura_Render.png/revision/latest/scale-to-width-down/384?cb=20181013155017",
+    "file": "gabura.webp"
+  },
+  "annon": {
+    "requested": "Annon",
+    "title": "Annon",
+    "pageId": 3604,
+    "url": "https://ultra.fandom.com/wiki/Annon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/74/Annon_WOWOW.png/revision/latest/scale-to-width-down/384?cb=20131212145314",
+    "file": "annon.webp"
+  },
+  "chibull": {
+    "requested": "Alien Chibull",
+    "title": "Alien Chibull",
+    "pageId": 3276,
+    "url": "https://ultra.fandom.com/wiki/Alien_Chibull",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/95/AlienChibuRender.png/revision/latest/scale-to-width-down/326?cb=20191007063728",
+    "file": "chibull.webp"
+  },
+  "icarus": {
+    "requested": "Alien Icarus",
+    "title": "Alien Icarus",
+    "pageId": 3270,
+    "url": "https://ultra.fandom.com/wiki/Alien_Icarus",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/dd/Alien_Icarus-removebg.png/revision/latest/scale-to-width-down/187?cb=20230405094832",
+    "file": "icarus.webp"
+  },
+  "gudon": {
+    "requested": "Gudon",
+    "title": "Gudon",
+    "pageId": 2665,
+    "url": "https://ultra.fandom.com/wiki/Gudon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e9/Gudon-removebg.png/revision/latest/scale-to-width-down/382?cb=20220805054019",
+    "file": "gudon.webp"
+  },
+  "twintail": {
+    "requested": "Twin Tail",
+    "title": "Twin Tail",
+    "pageId": 3392,
+    "url": "https://ultra.fandom.com/wiki/Twin_Tail",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/87/Twin_Tail_movie.png/revision/latest/scale-to-width-down/262?cb=20251118190651",
+    "file": "twintail.webp"
+  },
+  "bemstar": {
+    "requested": "Bemstar",
+    "title": "Bemstar",
+    "pageId": 2497,
+    "url": "https://ultra.fandom.com/wiki/Bemstar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/db/Bemstar_movie_I.png/revision/latest/scale-to-width-down/287?cb=20200523165307",
+    "file": "bemstar.webp"
+  },
+  "nackle": {
+    "requested": "Alien Nackle",
+    "title": "Alien Nackle",
+    "pageId": 3357,
+    "url": "https://ultra.fandom.com/wiki/Alien_Nackle",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/df/Alien_Nackle_Old.png/revision/latest/scale-to-width-down/224?cb=20230731051625",
+    "file": "nackle.webp"
+  },
+  "black_king": {
+    "requested": "Black King",
+    "title": "Black King",
+    "pageId": 2393,
+    "url": "https://ultra.fandom.com/wiki/Black_King",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a0/Ultrmn_Glxy_lgnds_blck_kng.png/revision/latest/scale-to-width-down/295?cb=20200617034618",
+    "file": "black_king.webp"
+  },
+  "alien_bat": {
+    "requested": "Alien Bat",
+    "title": "Alien Bat",
+    "pageId": 2717,
+    "url": "https://ultra.fandom.com/wiki/Alien_Bat",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e4/Battyy.png/revision/latest/scale-to-width-down/268?cb=20200804001338",
+    "file": "alien_bat.webp"
+  },
+  "takkong": {
+    "requested": "Takkong",
+    "title": "Takkong",
+    "pageId": 3362,
+    "url": "https://ultra.fandom.com/wiki/Takkong",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8f/Takkong_Reiwa_Suit.png/revision/latest/scale-to-width-down/346?cb=20191229062022",
+    "file": "takkong.webp"
+  },
+  "arstron": {
+    "requested": "Arstron",
+    "title": "Arstron",
+    "pageId": 2165,
+    "url": "https://ultra.fandom.com/wiki/Arstron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8f/Arstron_movie_i.png/revision/latest/scale-to-width-down/255?cb=20191130060355",
+    "file": "arstron.webp"
+  },
+  "detton": {
+    "requested": "Detton",
+    "title": "Detton",
+    "pageId": 3367,
+    "url": "https://ultra.fandom.com/wiki/Detton",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/09/Detton.png/revision/latest/scale-to-width-down/330?cb=20130623142235",
+    "file": "detton.webp"
+  },
+  "seamons": {
+    "requested": "Seamons",
+    "title": "Seamons",
+    "pageId": 3831,
+    "url": "https://ultra.fandom.com/wiki/Seamons",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c1/Seamons_HD_050.png/revision/latest/scale-to-width-down/384?cb=20240626160100",
+    "file": "seamons.webp"
+  },
+  "seagorath": {
+    "requested": "Seagorath",
+    "title": "Seagorath",
+    "pageId": 2453,
+    "url": "https://ultra.fandom.com/wiki/Seagorath",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/47/Seagorasrender.png/revision/latest/scale-to-width-down/246?cb=20180125020008",
+    "file": "seagorath.webp"
+  },
+  "beacon": {
+    "requested": "Beacon",
+    "title": "Beacon",
+    "pageId": 4981,
+    "url": "https://ultra.fandom.com/wiki/Beacon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c7/Beacon_Info.png/revision/latest/scale-to-width-down/246?cb=20200221174943",
+    "file": "beacon.webp"
+  },
+  "vacuumon": {
+    "requested": "Vacuumon",
+    "title": "Vacuumon",
+    "pageId": 4986,
+    "url": "https://ultra.fandom.com/wiki/Vacuumon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b2/Vacuumon2.png/revision/latest?cb=20120418053018",
+    "file": "vacuumon.webp"
+  },
+  "ace_killer": {
+    "requested": "Ace Killer",
+    "title": "Ace Killer",
+    "pageId": 2753,
+    "url": "https://ultra.fandom.com/wiki/Ace_Killer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/02/Ace_Killerr.png/revision/latest/scale-to-width-down/190?cb=20200316170302",
+    "file": "ace_killer.webp"
+  },
+  "verokron": {
+    "requested": "Verokron",
+    "title": "Verokron",
+    "pageId": 2988,
+    "url": "https://ultra.fandom.com/wiki/Verokron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7f/Verokron_movie_I.png/revision/latest/scale-to-width-down/264?cb=20200804213117",
+    "file": "verokron.webp"
+  },
+  "bakishim": {
+    "requested": "Vakishim",
+    "title": "Vakishim",
+    "pageId": 2615,
+    "url": "https://ultra.fandom.com/wiki/Vakishim",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/4b/Vakishimm.png/revision/latest/scale-to-width-down/240?cb=20200216070402",
+    "file": "bakishim.webp"
+  },
+  "doragory": {
+    "requested": "Doragory",
+    "title": "Doragory",
+    "pageId": 2661,
+    "url": "https://ultra.fandom.com/wiki/Doragory",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/0c/Doragory_movie_I.png/revision/latest/scale-to-width-down/229?cb=20200531010850",
+    "file": "doragory.webp"
+  },
+  "baraba": {
+    "requested": "Baraba",
+    "title": "Baraba",
+    "pageId": 3241,
+    "url": "https://ultra.fandom.com/wiki/Baraba",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5a/Varava_render.png/revision/latest/scale-to-width-down/231?cb=20230314112113",
+    "file": "baraba.webp"
+  },
+  "yapool": {
+    "requested": "Yapool",
+    "title": "Yapool",
+    "pageId": 3687,
+    "url": "https://ultra.fandom.com/wiki/Yapool",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/9f/Yapool_Full.png/revision/latest/scale-to-width-down/264?cb=20220413022840",
+    "file": "yapool.webp"
+  },
+  "hipporit": {
+    "requested": "Alien Hipporit",
+    "title": "Alien Hipporit",
+    "pageId": 2890,
+    "url": "https://ultra.fandom.com/wiki/Alien_Hipporit",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/38/Alien_Hipporit-removebg.png/revision/latest/scale-to-width-down/214?cb=20230313084626",
+    "file": "hipporit.webp"
+  },
+  "aribunta": {
+    "requested": "Aribunta",
+    "title": "Aribunta",
+    "pageId": 4585,
+    "url": "https://ultra.fandom.com/wiki/Aribunta",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a1/Aribunta.png/revision/latest/scale-to-width-down/267?cb=20221119142847",
+    "file": "aribunta.webp"
+  },
+  "lunaticks": {
+    "requested": "Lunaticks",
+    "title": "Lunaticks",
+    "pageId": 3238,
+    "url": "https://ultra.fandom.com/wiki/Lunaticks",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/61/Lunaticks_movie_I.png/revision/latest/scale-to-width-down/315?cb=20200711074253",
+    "file": "lunaticks.webp"
+  },
+  "jumboking": {
+    "requested": "Jumbo King",
+    "title": "Jumbo King",
+    "pageId": 4446,
+    "url": "https://ultra.fandom.com/wiki/Jumbo_King",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/77/Jumbo_King_HD_0001.png/revision/latest/scale-to-width-down/384?cb=20240422100048",
+    "file": "jumboking.webp"
+  },
+  "tyrant": {
+    "requested": "Tyrant",
+    "title": "Tyrant",
+    "pageId": 2460,
+    "url": "https://ultra.fandom.com/wiki/Tyrant",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/3a/Tyrant_info.png/revision/latest/scale-to-width-down/292?cb=20191214021604",
+    "file": "tyrant.webp"
+  },
+  "birdon": {
+    "requested": "Birdon",
+    "title": "Birdon",
+    "pageId": 2619,
+    "url": "https://ultra.fandom.com/wiki/Birdon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/98/Birdon_movie_II.png/revision/latest/scale-to-width-down/332?cb=20181111222242",
+    "file": "birdon.webp"
+  },
+  "astromons": {
+    "requested": "Astromons",
+    "title": "Astromons",
+    "pageId": 2251,
+    "url": "https://ultra.fandom.com/wiki/Astromons",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/86/Astromons_removebg.png/revision/latest/scale-to-width-down/340?cb=20211229040635",
+    "file": "astromons.webp"
+  },
+  "mukadender": {
+    "requested": "Mukadender",
+    "title": "Mukadender",
+    "pageId": 2707,
+    "url": "https://ultra.fandom.com/wiki/Mukadender",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8d/Mukadender-removebg.png/revision/latest/scale-to-width-down/384?cb=20220701080826",
+    "file": "mukadender.webp"
+  },
+  "temperor": {
+    "requested": "Alien Temperor",
+    "title": "Alien Temperor",
+    "pageId": 2588,
+    "url": "https://ultra.fandom.com/wiki/Alien_Temperor",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/57/Alien_Temperor_old.png/revision/latest/scale-to-width-down/313?cb=20191130182201",
+    "file": "temperor.webp"
+  },
+  "mururoa": {
+    "requested": "Mururoa",
+    "title": "Mururoa",
+    "pageId": 8558,
+    "url": "https://ultra.fandom.com/wiki/Mururoa",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/04/Mururoa_HD_003.png/revision/latest/scale-to-width-down/269?cb=20231207163303",
+    "file": "mururoa.webp"
+  },
+  "mochiron": {
+    "requested": "Mochiron",
+    "title": "Mochiron",
+    "pageId": 8555,
+    "url": "https://ultra.fandom.com/wiki/Mochiron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f3/Mochiron_render.png/revision/latest/scale-to-width-down/213?cb=20240129230147",
+    "file": "mochiron.webp"
+  },
+  "motokureron": {
+    "requested": "Motokureron",
+    "title": "Motokureron",
+    "pageId": 8561,
+    "url": "https://ultra.fandom.com/wiki/Motokureron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2d/Motokureon.png/revision/latest/scale-to-width-down/269?cb=20230123223209",
+    "file": "motokureron.webp"
+  },
+  "maguma": {
+    "requested": "Alien Magma",
+    "title": "Alien Magma",
+    "pageId": 3416,
+    "url": "https://ultra.fandom.com/wiki/Alien_Magma",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a1/Alein_Magma_info.png/revision/latest/scale-to-width-down/286?cb=20201012012116",
+    "file": "maguma.webp"
+  },
+  "satan_beetle": {
+    "requested": "Satan Beetle",
+    "title": "Satan Beetle",
+    "pageId": 3420,
+    "url": "https://ultra.fandom.com/wiki/Satan_Beetle",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/31/Satan_Beetle%281%29.png/revision/latest/scale-to-width-down/267?cb=20200919200948",
+    "file": "satan_beetle.webp"
+  },
+  "ron": {
+    "requested": "Ron",
+    "title": "Ron",
+    "pageId": 3266,
+    "url": "https://ultra.fandom.com/wiki/Ron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/24/Don.png/revision/latest/scale-to-width-down/312?cb=20200501012936",
+    "file": "ron.webp"
+  },
+  "nova": {
+    "requested": "Nova",
+    "title": "Nova",
+    "pageId": 2670,
+    "url": "https://ultra.fandom.com/wiki/Nova",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f5/Novaa.png/revision/latest/scale-to-width-down/315?cb=20200521215626",
+    "file": "nova.webp"
+  },
+  "black_end": {
+    "requested": "Black End",
+    "title": "Black End",
+    "pageId": 3383,
+    "url": "https://ultra.fandom.com/wiki/Black_End",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/3f/Black_End-removebg.png/revision/latest/scale-to-width-down/384?cb=20230313083622",
+    "file": "black_end.webp"
+  },
+  "black_terrina": {
+    "requested": "Black Terrina",
+    "title": "Black Terrina",
+    "pageId": 4194,
+    "url": "https://ultra.fandom.com/wiki/Black_Terrina",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/85/Black-Terrina.jpg/revision/latest/scale-to-width-down/384?cb=20140511163400",
+    "file": "black_terrina.webp"
+  },
+  "absorb_a": {
+    "requested": "Absorba",
+    "title": "Absorba",
+    "pageId": 4219,
+    "url": "https://ultra.fandom.com/wiki/Absorba",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7b/Absorba_render.png/revision/latest/scale-to-width-down/384?cb=20230124120955",
+    "file": "absorb_a.webp"
+  },
+  "crescent": {
+    "requested": "Crescent",
+    "title": "Crescent",
+    "pageId": 4051,
+    "url": "https://ultra.fandom.com/wiki/Crescent",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/36/Cresent.png/revision/latest/scale-to-width-down/255?cb=20171220162958",
+    "file": "crescent.webp"
+  },
+  "gymaira": {
+    "requested": "Gymaira",
+    "title": "Gymaira",
+    "pageId": 3040,
+    "url": "https://ultra.fandom.com/wiki/Gymaira",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7a/Gymaira_modern_render.png/revision/latest/scale-to-width-down/380?cb=20190815202955",
+    "file": "gymaira.webp"
+  },
+  "hoe": {
+    "requested": "Hoe",
+    "title": "Hoe",
+    "pageId": 3978,
+    "url": "https://ultra.fandom.com/wiki/Hoe",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/dd/Hoe_Movie_I.png/revision/latest/scale-to-width-down/261?cb=20200707190215",
+    "file": "hoe.webp"
+  },
+  "noiseler": {
+    "requested": "Noiseler",
+    "title": "Noiseler",
+    "pageId": 6756,
+    "url": "https://ultra.fandom.com/wiki/Noiseler",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ef/Noiseler_Info.png/revision/latest/scale-to-width-down/305?cb=20200715051103",
+    "file": "noiseler.webp"
+  },
+  "zandrias": {
+    "requested": "Zandrias",
+    "title": "Zandrias",
+    "pageId": 2736,
+    "url": "https://ultra.fandom.com/wiki/Zandrias",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e6/ZANDRIAS_II.jpg/revision/latest/scale-to-width-down/384?cb=20170528032834",
+    "file": "zandrias.webp"
+  },
+  "gazera": {
+    "requested": "Gazera",
+    "title": "Gazera",
+    "pageId": 14704,
+    "url": "https://ultra.fandom.com/wiki/Gazera",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/62/Gazera_Render.png/revision/latest/scale-to-width-down/266?cb=20181015044404",
+    "file": "gazera.webp"
+  },
+  "plazma": {
+    "requested": "Plazma",
+    "title": "Plazma",
+    "pageId": 2739,
+    "url": "https://ultra.fandom.com/wiki/Plazma",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/6c/Plazma_HD.jpg/revision/latest/scale-to-width-down/295?cb=20260831165325",
+    "file": "plazma.webp"
+  },
+  "minazma": {
+    "requested": "Minazma",
+    "title": "Minazma",
+    "pageId": 2738,
+    "url": "https://ultra.fandom.com/wiki/Minazma",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/37/Minazma_HD.jpg/revision/latest/scale-to-width-down/295?cb=20260831165356",
+    "file": "minazma.webp"
+  },
+  "golza": {
+    "requested": "Golza",
+    "title": "Golza",
+    "pageId": 2327,
+    "url": "https://ultra.fandom.com/wiki/Golza",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/33/Ultraman_Tiga_Golza_bright_infobox_render.png/revision/latest/scale-to-width-down/256?cb=20260315001502",
+    "file": "golza.webp"
+  },
+  "melba": {
+    "requested": "Melba",
+    "title": "Melba",
+    "pageId": 3798,
+    "url": "https://ultra.fandom.com/wiki/Melba",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/79/Melba.png/revision/latest/scale-to-width-down/299?cb=20150803075547",
+    "file": "melba.webp"
+  },
+  "gakuma": {
+    "requested": "Gakuma",
+    "title": "Gakuma",
+    "pageId": 3410,
+    "url": "https://ultra.fandom.com/wiki/Gakuma",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/47/Gakuma_HD_21.png/revision/latest/scale-to-width-down/384?cb=20240914101339",
+    "file": "gakuma.webp"
+  },
+  "gobunyu": {
+    "requested": "Gobnu",
+    "title": "Gobnu",
+    "pageId": 5871,
+    "url": "https://ultra.fandom.com/wiki/Gobnu",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1b/Gobnu_HD.png/revision/latest/scale-to-width-down/272?cb=20230420190951",
+    "file": "gobunyu.webp"
+  },
+  "gagi": {
+    "requested": "Gagi",
+    "title": "Gagi",
+    "pageId": 3679,
+    "url": "https://ultra.fandom.com/wiki/Gagi",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e5/Gagi.jpg/revision/latest/scale-to-width-down/299?cb=20111222073540",
+    "file": "gagi.webp"
+  },
+  "gazort": {
+    "requested": "Gazort",
+    "title": "Gazort",
+    "pageId": 5443,
+    "url": "https://ultra.fandom.com/wiki/Gazort",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/0a/Gazort_1996_render.png/revision/latest/scale-to-width-down/291?cb=20260217072017",
+    "file": "gazort.webp"
+  },
+  "reicubas": {
+    "requested": "Reicubas",
+    "title": "Reicubas",
+    "pageId": 4443,
+    "url": "https://ultra.fandom.com/wiki/Reicubas",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c6/Reigubas%28F%29.png/revision/latest/scale-to-width-down/384?cb=20200807021957",
+    "file": "reicubas.webp"
+  },
+  "ligatron": {
+    "requested": "Ligatron",
+    "title": "Ligatron",
+    "pageId": 4066,
+    "url": "https://ultra.fandom.com/wiki/Ligatron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5b/Ligatron_HD_005.png/revision/latest/scale-to-width-down/294?cb=20231205130834",
+    "file": "ligatron.webp"
+  },
+  "gatanothor": {
+    "requested": "Gatanothor",
+    "title": "Gatanothor",
+    "pageId": 4267,
+    "url": "https://ultra.fandom.com/wiki/Gatanothor",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a8/GatanothorInfo.png/revision/latest/scale-to-width-down/384?cb=20191023012337",
+    "file": "gatanothor.webp"
+  },
+  "zoiger": {
+    "requested": "Zoiger",
+    "title": "Zoiger",
+    "pageId": 4690,
+    "url": "https://ultra.fandom.com/wiki/Zoiger",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5b/Zoiger_HD_007.jpg/revision/latest/scale-to-width-down/321?cb=20231205133511",
+    "file": "zoiger.webp"
+  },
+  "goldras": {
+    "requested": "Goldras",
+    "title": "Goldras",
+    "pageId": 2520,
+    "url": "https://ultra.fandom.com/wiki/Goldras",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7c/Goldras_Info.png/revision/latest/scale-to-width-down/244?cb=20210824200435",
+    "file": "goldras.webp"
+  },
+  "silvergon": {
+    "requested": "Silvergon",
+    "title": "Silvergon",
+    "pageId": 2338,
+    "url": "https://ultra.fandom.com/wiki/Silvergon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/dc/Silvergon_Full.png/revision/latest/scale-to-width-down/250?cb=20200419020016",
+    "file": "silvergon.webp"
+  },
+  "gatano_hell": {
+    "requested": "Sukunaoni",
+    "title": "Sukunaoni",
+    "pageId": 5891,
+    "url": "https://ultra.fandom.com/wiki/Sukunaoni",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d2/Sukunaoni_HD_002.png/revision/latest/scale-to-width-down/286?cb=20231221032146",
+    "file": "gatano_hell.webp"
+  },
+  "enomena": {
+    "requested": "Enomena",
+    "title": "Enomena",
+    "pageId": 5058,
+    "url": "https://ultra.fandom.com/wiki/Enomena",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/61/Enomena.png/revision/latest/scale-to-width-down/229?cb=20200907004323",
+    "file": "enomena.webp"
+  },
+  "obiko": {
+    "requested": "Obiko",
+    "title": "Obiko",
+    "pageId": 22953,
+    "url": "https://ultra.fandom.com/wiki/Obiko",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ef/Obiko_HD.png/revision/latest/scale-to-width-down/333?cb=20230420191113",
+    "file": "obiko.webp"
+  },
+  "leilan": {
+    "requested": "Leilons",
+    "title": "Leilons",
+    "pageId": 3849,
+    "url": "https://ultra.fandom.com/wiki/Leilons",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/41/Leilons_HD_001.png/revision/latest/scale-to-width-down/384?cb=20231123014531",
+    "file": "leilan.webp"
+  },
+  "gobnu_d": {
+    "requested": "Deban",
+    "title": "Deban",
+    "pageId": 5059,
+    "url": "https://ultra.fandom.com/wiki/Deban",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f3/Deban_Full.png/revision/latest/scale-to-width-down/290?cb=20200907004223",
+    "file": "gobnu_d.webp"
+  },
+  "gueran": {
+    "requested": "Geozark",
+    "title": "Geozark",
+    "pageId": 5502,
+    "url": "https://ultra.fandom.com/wiki/Geozark",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/11/Geozark_HD_070.png/revision/latest/scale-to-width-down/384?cb=20240813102048",
+    "file": "gueran.webp"
+  },
+  "guardie": {
+    "requested": "Guardie",
+    "title": "Guardie",
+    "pageId": 3299,
+    "url": "https://ultra.fandom.com/wiki/Guardie",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2d/Guardie_HD_041.png/revision/latest/scale-to-width-down/252?cb=20240316060631",
+    "file": "guardie.webp"
+  },
+  "deathfacer": {
+    "requested": "Deathfacer",
+    "title": "Deathfacer",
+    "pageId": 7890,
+    "url": "https://ultra.fandom.com/wiki/Deathfacer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/ca/Deathfacer_render.png/revision/latest/scale-to-width-down/233?cb=20180526061352",
+    "file": "deathfacer.webp"
+  },
+  "mons_ahgar": {
+    "requested": "Mons-Ahgar",
+    "title": "Mons-Ahgar",
+    "pageId": 3432,
+    "url": "https://ultra.fandom.com/wiki/Mons-Ahgar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5a/Mons-Ahgar-removebg.png/revision/latest/scale-to-width-down/304?cb=20221119064702",
+    "file": "mons_ahgar.webp"
+  },
+  "sphere": {
+    "requested": "Sphere",
+    "title": "Sphere",
+    "pageId": 4123,
+    "url": "https://ultra.fandom.com/wiki/Sphere",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/ac/Sphire_Info.png/revision/latest/scale-to-width-down/384?cb=20191027144521",
+    "file": "sphere.webp"
+  },
+  "geomos": {
+    "requested": "Geomos",
+    "title": "Geomos",
+    "pageId": 8610,
+    "url": "https://ultra.fandom.com/wiki/Geomos",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/16/Geomos_HD_0001.png/revision/latest/scale-to-width-down/384?cb=20240814171805",
+    "file": "geomos.webp"
+  },
+  "neosas": {
+    "requested": "Neosaurus",
+    "title": "Neosaurus",
+    "pageId": 3764,
+    "url": "https://ultra.fandom.com/wiki/Neosaurus",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/25/Neosaurus_removebg.png/revision/latest/scale-to-width-down/350?cb=20211220141749",
+    "file": "neosas.webp"
+  },
+  "garak": {
+    "requested": "Garaon",
+    "title": "Garaon",
+    "pageId": 3828,
+    "url": "https://ultra.fandom.com/wiki/Garaon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/02/Garaon_HD_001.png/revision/latest/scale-to-width-down/322?cb=20240814171211",
+    "file": "garak.webp"
+  },
+  "kokakuchu": {
+    "requested": "Kokakuchu",
+    "title": "Kokakucho",
+    "pageId": 6745,
+    "url": "https://ultra.fandom.com/wiki/Kokakucho",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d8/Kokakucho_HD_1.png/revision/latest/scale-to-width-down/384?cb=20230214143423",
+    "file": "kokakuchu.webp"
+  },
+  "gob": {
+    "requested": "C.O.V.",
+    "title": "C.O.V.",
+    "pageId": 3231,
+    "url": "https://ultra.fandom.com/wiki/C.O.V.",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ed/COV.png/revision/latest/scale-to-width-down/290?cb=20181231030207",
+    "file": "gob.webp"
+  },
+  "pazuzu": {
+    "requested": "Pazuzu",
+    "title": "Pazuzu",
+    "pageId": 6879,
+    "url": "https://ultra.fandom.com/wiki/Pazuzu",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c1/Pazuzu.png/revision/latest/scale-to-width-down/279?cb=20191209063657",
+    "file": "pazuzu.webp"
+  },
+  "gan_q": {
+    "requested": "Gan-Q",
+    "title": "Gan-Q",
+    "pageId": 2829,
+    "url": "https://ultra.fandom.com/wiki/Gan-Q",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/40/Gan_Q.png/revision/latest/scale-to-width-down/287?cb=20190627014038",
+    "file": "gan_q.webp"
+  },
+  "reelen": {
+    "requested": "Mizunoeno Dragon",
+    "title": "Mizunoeno Dragon",
+    "pageId": 9936,
+    "url": "https://ultra.fandom.com/wiki/Mizunoeno_Dragon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/48/Mizunoeno_Dragon_Info.png/revision/latest/scale-to-width-down/384?cb=20200928011407",
+    "file": "reelen.webp"
+  },
+  "alguros": {
+    "requested": "Alguros",
+    "title": "Alguros",
+    "pageId": 2410,
+    "url": "https://ultra.fandom.com/wiki/Alguros",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/82/Alguros-removebg.png/revision/latest/scale-to-width-down/213?cb=20221219024346",
+    "file": "alguros.webp"
+  },
+  "zogu": {
+    "requested": "Zog",
+    "title": "Zog",
+    "pageId": 7458,
+    "url": "https://ultra.fandom.com/wiki/Zog",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/fb/Zog1stForm.png/revision/latest/scale-to-width-down/384?cb=20220120140547",
+    "file": "zogu.webp"
+  },
+  "mezzard": {
+    "requested": "Mezard",
+    "title": "Mezard",
+    "pageId": 4903,
+    "url": "https://ultra.fandom.com/wiki/Mezard",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/29/Mezard_HD_1.png/revision/latest/scale-to-width-down/384?cb=20230926140021",
+    "file": "mezzard.webp"
+  },
+  "gomenos": {
+    "requested": "Gomenos",
+    "title": "Gomenos",
+    "pageId": 15742,
+    "url": "https://ultra.fandom.com/wiki/Gomenos",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1a/Gomenos.png/revision/latest/scale-to-width-down/361?cb=20200702231356",
+    "file": "gomenos.webp"
+  },
+  "tsuchikera": {
+    "requested": "Tsuchikera",
+    "title": "Tsuchikera",
+    "pageId": 26669,
+    "url": "https://ultra.fandom.com/wiki/Tsuchikera",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/58/Tsuchikera-removebg.png/revision/latest/scale-to-width-down/308?cb=20220606040910",
+    "file": "tsuchikera.webp"
+  },
+  "king_of_mons": {
+    "requested": "King of Mons",
+    "title": "King of Mons",
+    "pageId": 4074,
+    "url": "https://ultra.fandom.com/wiki/King_of_Mons",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/4f/King_of_Monzu.png/revision/latest/scale-to-width-down/351?cb=20200917224014",
+    "file": "king_of_mons.webp"
+  },
+  "basiliss": {
+    "requested": "Basiliss",
+    "title": "Basiliss",
+    "pageId": 4692,
+    "url": "https://ultra.fandom.com/wiki/Basiliss",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/52/Bajiris.png/revision/latest/scale-to-width-down/377?cb=20200920172112",
+    "file": "basiliss.webp"
+  },
+  "sculla": {
+    "requested": "Sculla",
+    "title": "Sculla",
+    "pageId": 7037,
+    "url": "https://ultra.fandom.com/wiki/Sculla",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/07/Scyllaa.png/revision/latest/scale-to-width-down/384?cb=20200920172553",
+    "file": "sculla.webp"
+  },
+  "mizar": {
+    "requested": "Mimos",
+    "title": "Mimos",
+    "pageId": 3126,
+    "url": "https://ultra.fandom.com/wiki/Mimos",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f9/Mimos.png/revision/latest/scale-to-width-down/311?cb=20211212025009",
+    "file": "mizar.webp"
+  },
+  "pedoleon": {
+    "requested": "Pedoleon",
+    "title": "Pedoleon",
+    "pageId": 5202,
+    "url": "https://ultra.fandom.com/wiki/Pedoleon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7c/Pedoleon_HD_071.png/revision/latest/scale-to-width-down/384?cb=20241003160443",
+    "file": "pedoleon.webp"
+  },
+  "galberos": {
+    "requested": "Galberos",
+    "title": "Galberos",
+    "pageId": 2506,
+    "url": "https://ultra.fandom.com/wiki/Galberos",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/10/Galberos_move_I.png/revision/latest/scale-to-width-down/261?cb=20150303053705",
+    "file": "galberos.webp"
+  },
+  "the_one": {
+    "requested": "The One",
+    "title": "Beast the One",
+    "pageId": 2049,
+    "url": "https://ultra.fandom.com/wiki/Beast_the_One",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/91/Beast_the_One_render.png/revision/latest/scale-to-width-down/263?cb=20200730042154",
+    "file": "the_one.webp"
+  },
+  "nosferu": {
+    "requested": "Nosferu",
+    "title": "Nosferu",
+    "pageId": 3760,
+    "url": "https://ultra.fandom.com/wiki/Nosferu",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/65/Nosferu-render.png/revision/latest/scale-to-width-down/259?cb=20211206145553",
+    "file": "nosferu.webp"
+  },
+  "kutuura": {
+    "requested": "Kutuura",
+    "title": "Kutuura",
+    "pageId": 4283,
+    "url": "https://ultra.fandom.com/wiki/Kutuura",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/3f/Kutuura_render.png/revision/latest/scale-to-width-down/384?cb=20230319072654",
+    "file": "kutuura.webp"
+  },
+  "megaflash": {
+    "requested": "Mega Flash",
+    "title": "Mega Flash",
+    "pageId": 4632,
+    "url": "https://ultra.fandom.com/wiki/Mega_Flash",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/08/Mega-Flash_removebg.png/revision/latest/scale-to-width-down/281?cb=20211206055421",
+    "file": "megaflash.webp"
+  },
+  "if": {
+    "requested": "IF",
+    "title": "IF",
+    "pageId": 3583,
+    "url": "https://ultra.fandom.com/wiki/IF",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2a/IF_HD_02.jpg/revision/latest/scale-to-width-down/295?cb=20260831163552",
+    "file": "if.webp"
+  },
+  "lagoras": {
+    "requested": "Lagoras",
+    "title": "Lagoras",
+    "pageId": 4054,
+    "url": "https://ultra.fandom.com/wiki/Lagoras",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/31/Lagorass_I.png/revision/latest/scale-to-width-down/299?cb=20200801044732",
+    "file": "lagoras.webp"
+  },
+  "grangon": {
+    "requested": "Grangon",
+    "title": "Grangon",
+    "pageId": 3851,
+    "url": "https://ultra.fandom.com/wiki/Grangon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7e/Grangn_transparent.png/revision/latest/scale-to-width-down/384?cb=20200801044419",
+    "file": "grangon.webp"
+  },
+  "shamad": {
+    "requested": "Alien Shamer",
+    "title": "Alien Shamer",
+    "pageId": 5413,
+    "url": "https://ultra.fandom.com/wiki/Alien_Shamer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/69/Alien_Shamer_Render.png/revision/latest/scale-to-width-down/247?cb=20180928073007",
+    "file": "shamad.webp"
+  },
+  "geronga": {
+    "requested": "Geronga",
+    "title": "Geronga",
+    "pageId": 3446,
+    "url": "https://ultra.fandom.com/wiki/Geronga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/41/Thumbnail.jpg/revision/latest?cb=20111210182055",
+    "file": "geronga.webp"
+  },
+  "chaos_header": {
+    "requested": "Chaos Header",
+    "title": "Chaos Header",
+    "pageId": 7743,
+    "url": "https://ultra.fandom.com/wiki/Chaos_Header",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/26/Ultrmn_Csms_Chs_Orgnsm.png/revision/latest/scale-to-width-down/384?cb=20210514003246",
+    "file": "chaos_header.webp"
+  },
+  "golmede": {
+    "requested": "Golmede",
+    "title": "Golmede",
+    "pageId": 3250,
+    "url": "https://ultra.fandom.com/wiki/Golmede",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/98/Golmede_HD_0001.png/revision/latest/scale-to-width-down/350?cb=20241228202659",
+    "file": "golmede.webp"
+  },
+  "lidorius": {
+    "requested": "Lidorias",
+    "title": "Lidorias",
+    "pageId": 4237,
+    "url": "https://ultra.fandom.com/wiki/Lidorias",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d3/Lidorias_Info.png/revision/latest/scale-to-width-down/247?cb=20191121022400",
+    "file": "lidorius.webp"
+  },
+  "bolgils": {
+    "requested": "Bolgils",
+    "title": "Bolgils",
+    "pageId": 3796,
+    "url": "https://ultra.fandom.com/wiki/Bolgils",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/70/Bolgils_HD_011.png/revision/latest/scale-to-width-down/292?cb=20241122113702",
+    "file": "bolgils.webp"
+  },
+  "gloker": {
+    "requested": "Gloker",
+    "title": "Gloker",
+    "pageId": 4938,
+    "url": "https://ultra.fandom.com/wiki/Gloker",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/49/Fb_-_groker_mother_1.jpg/revision/latest/scale-to-width-down/384?cb=20120401103116",
+    "file": "gloker.webp"
+  },
+  "sandros": {
+    "requested": "Sandros",
+    "title": "Sandros",
+    "pageId": 5267,
+    "url": "https://ultra.fandom.com/wiki/Sandros",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7b/Sandros_render.png/revision/latest/scale-to-width-down/353?cb=20200628213319",
+    "file": "sandros.webp"
+  },
+  "inpelaizer": {
+    "requested": "Inpelaizer",
+    "title": "Inpelaizer",
+    "pageId": 2791,
+    "url": "https://ultra.fandom.com/wiki/Inpelaizer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ea/Inpelaizer.png/revision/latest/scale-to-width-down/291?cb=20190602020902",
+    "file": "inpelaizer.webp"
+  },
+  "empera": {
+    "requested": "Alien Empera",
+    "title": "Alien Empera",
+    "pageId": 9099,
+    "url": "https://ultra.fandom.com/wiki/Alien_Empera",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d8/Alien_Empera.png/revision/latest/scale-to-width-down/263?cb=20201013150558",
+    "file": "empera.webp"
+  },
+  "reflect": {
+    "requested": "Alien Reflect",
+    "title": "Alien Reflect",
+    "pageId": 4913,
+    "url": "https://ultra.fandom.com/wiki/Alien_Reflect",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f0/Alien_Reflect_movie_I.png/revision/latest/scale-to-width-down/331?cb=20200601022509",
+    "file": "reflect.webp"
+  },
+  "deathrem": {
+    "requested": "Deathrem",
+    "title": "Deathrem",
+    "pageId": 28383,
+    "url": "https://ultra.fandom.com/wiki/Deathrem",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/6c/Deathrem.png/revision/latest/scale-to-width-down/251?cb=20150912102543",
+    "file": "deathrem.webp"
+  },
+  "grozam": {
+    "requested": "Grozam",
+    "title": "Grozam",
+    "pageId": 28385,
+    "url": "https://ultra.fandom.com/wiki/Grozam",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/dd/Grozam.png/revision/latest/scale-to-width-down/240?cb=20191129003854",
+    "file": "grozam.webp"
+  },
+  "gigantic": {
+    "requested": "Belyudra",
+    "title": "Belyudra",
+    "pageId": 3057,
+    "url": "https://ultra.fandom.com/wiki/Belyudra",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a4/Beryudora.png/revision/latest/scale-to-width-down/280?cb=20200205031143",
+    "file": "gigantic.webp"
+  },
+  "legionoid": {
+    "requested": "Legionoid",
+    "title": "Legionoid",
+    "pageId": 3897,
+    "url": "https://ultra.fandom.com/wiki/Legionoid",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/29/LegionoidDrillrender.png/revision/latest/scale-to-width-down/237?cb=20191227183012",
+    "file": "legionoid.webp"
+  },
+  "bitstar": {
+    "requested": "Beatstar",
+    "title": "Beatstar",
+    "pageId": 4185,
+    "url": "https://ultra.fandom.com/wiki/Beatstar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2b/Beatstar_Info.png/revision/latest/scale-to-width-down/151?cb=20200319034020",
+    "file": "bitstar.webp"
+  },
+  "lugiel": {
+    "requested": "Dark Lugiel",
+    "title": "Dark Lugiel",
+    "pageId": 22378,
+    "url": "https://ultra.fandom.com/wiki/Dark_Lugiel",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e4/Dark_Lugiel-removebg.png/revision/latest/scale-to-width-down/201?cb=20221218033821",
+    "file": "lugiel.webp"
+  },
+  "five_king": {
+    "requested": "Five King",
+    "title": "Five King",
+    "pageId": 47828,
+    "url": "https://ultra.fandom.com/wiki/Five_King",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1b/Five_King_info.png/revision/latest/scale-to-width-down/285?cb=20260330164536",
+    "file": "five_king.webp"
+  },
+  "eteldummy": {
+    "requested": "Etelgar",
+    "title": "Etelgar",
+    "pageId": 53577,
+    "url": "https://ultra.fandom.com/wiki/Etelgar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/ff/Etelgar_Info.png/revision/latest/scale-to-width-down/263?cb=20200707014613",
+    "file": "eteldummy.webp"
+  },
+  "demaga": {
+    "requested": "Demaaga",
+    "title": "Demaaga",
+    "pageId": 62369,
+    "url": "https://ultra.fandom.com/wiki/Demaaga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/79/Demaaga_2023.png/revision/latest/scale-to-width-down/270?cb=20230916111333",
+    "file": "demaga.webp"
+  },
+  "greeza": {
+    "requested": "Greeza",
+    "title": "Greeza",
+    "pageId": 71625,
+    "url": "https://ultra.fandom.com/wiki/Greeza",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5f/Greeza_render_I.png/revision/latest/scale-to-width-down/155?cb=20201001192221",
+    "file": "greeza.webp"
+  },
+  "gargorgon": {
+    "requested": "Gargorgon",
+    "title": "Gargorgon",
+    "pageId": 66340,
+    "url": "https://ultra.fandom.com/wiki/Gargorgon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/92/Gargorgon.png/revision/latest/scale-to-width-down/356?cb=20230728040505",
+    "file": "gargorgon.webp"
+  },
+  "zaigorg": {
+    "requested": "Zaigorg",
+    "title": "Zaigorg",
+    "pageId": 73807,
+    "url": "https://ultra.fandom.com/wiki/Zaigorg",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1b/ZaigorgRender.png/revision/latest/scale-to-width-down/342?cb=20200328031344",
+    "file": "zaigorg.webp"
+  },
+  "houlinga": {
+    "requested": "Houlinga",
+    "title": "Houlinga",
+    "pageId": 68490,
+    "url": "https://ultra.fandom.com/wiki/Houlinga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/07/Houlinga_Cropped.jpg/revision/latest/scale-to-width-down/384?cb=20260522223927",
+    "file": "houlinga.webp"
+  },
+  "maga_orochi": {
+    "requested": "Maga-Orochi",
+    "title": "Maga-Orochi",
+    "pageId": 79497,
+    "url": "https://ultra.fandom.com/wiki/Maga-Orochi",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/04/Maga_Orochi.png/revision/latest/scale-to-width-down/304?cb=20170209050016",
+    "file": "maga_orochi.webp"
+  },
+  "galactron": {
+    "requested": "Galactron",
+    "title": "Galactron",
+    "pageId": 86963,
+    "url": "https://ultra.fandom.com/wiki/Galactron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/bb/Galaccc.png/revision/latest/scale-to-width-down/366?cb=20191106023408",
+    "file": "galactron.webp"
+  },
+  "zeppandon": {
+    "requested": "Zeppandon",
+    "title": "Zeppandon",
+    "pageId": 86982,
+    "url": "https://ultra.fandom.com/wiki/Zeppandon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/95/Zeppandon_Info.png/revision/latest/scale-to-width-down/357?cb=20200718041140",
+    "file": "zeppandon.webp"
+  },
+  "skull_gomora": {
+    "requested": "Skull Gomora",
+    "title": "Skull Gomora",
+    "pageId": 109721,
+    "url": "https://ultra.fandom.com/wiki/Skull_Gomora",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e3/Skull_Gomora_render_2.png/revision/latest/scale-to-width-down/353?cb=20200917142452",
+    "file": "skull_gomora.webp"
+  },
+  "thunder_killer": {
+    "requested": "Thunder Killer",
+    "title": "Thunder Killer",
+    "pageId": 109751,
+    "url": "https://ultra.fandom.com/wiki/Thunder_Killer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b3/IMG_1043.jpeg/revision/latest/scale-to-width-down/284?cb=20170924063011",
+    "file": "thunder_killer.webp"
+  },
+  "pedanium_zetton": {
+    "requested": "Pedanium Zetton",
+    "title": "Pedanium Zetton",
+    "pageId": 109787,
+    "url": "https://ultra.fandom.com/wiki/Pedanium_Zetton",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c7/Ultraman_Geed_Pedanium_Zetton_render.png/revision/latest/scale-to-width-down/278?cb=20200917142824",
+    "file": "pedanium_zetton.webp"
+  },
+  "zegan": {
+    "requested": "Zegun",
+    "title": "Zegun",
+    "pageId": 117902,
+    "url": "https://ultra.fandom.com/wiki/Zegun",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2c/IMG_1064.JPG/revision/latest/scale-to-width-down/372?cb=20171007091344",
+    "file": "zegan.webp"
+  },
+  "gillvalis": {
+    "requested": "Gillvalis",
+    "title": "Gillvalis",
+    "pageId": 126647,
+    "url": "https://ultra.fandom.com/wiki/Gillvalis",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ed/Gilivalis_render.png/revision/latest/scale-to-width-down/356?cb=20200727013119",
+    "file": "gillvalis.webp"
+  },
+  "horoboros": {
+    "requested": "Horoboros",
+    "title": "Horoboros",
+    "pageId": 137597,
+    "url": "https://ultra.fandom.com/wiki/Horoboros",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/84/HoroborusQuadrupedRender.png/revision/latest/scale-to-width-down/288?cb=20180908041808",
+    "file": "horoboros.webp"
+  },
+  "leugocyte": {
+    "requested": "Leugocyte",
+    "title": "Leugocyte",
+    "pageId": 141327,
+    "url": "https://ultra.fandom.com/wiki/Leugocyte",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e3/U163_Cosmo_Eater_Reugosite.png/revision/latest/scale-to-width-down/265?cb=20190314115427",
+    "file": "leugocyte.webp"
+  },
+  "hellberus": {
+    "requested": "Hellberus",
+    "title": "Hellberus",
+    "pageId": 149756,
+    "url": "https://ultra.fandom.com/wiki/Hellberus",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/dc/Hellberus_Render.png/revision/latest/scale-to-width-down/247?cb=20190831010855",
+    "file": "hellberus.webp"
+  },
+  "segmeger": {
+    "requested": "Segmeger",
+    "title": "Segmeger",
+    "pageId": 149758,
+    "url": "https://ultra.fandom.com/wiki/Segmeger",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e7/Segmeger_remove_1.png/revision/latest/scale-to-width-down/287?cb=20211201133536",
+    "file": "segmeger.webp"
+  },
+  "night_fang": {
+    "requested": "Night Fang",
+    "title": "Night Fang",
+    "pageId": 149760,
+    "url": "https://ultra.fandom.com/wiki/Night_Fang",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d3/Night_Fang_Render_VX.png/revision/latest/scale-to-width-down/374?cb=20190820005945",
+    "file": "night_fang.webp"
+  },
+  "gymaira2": {
+    "requested": "Gorothunder",
+    "title": "Gorothunder",
+    "pageId": 153072,
+    "url": "https://ultra.fandom.com/wiki/Gorothunder",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7e/Gorothunder.png/revision/latest/scale-to-width-down/286?cb=20191109071134",
+    "file": "gymaira2.webp"
+  },
+  "grimd": {
+    "requested": "Grimdo",
+    "title": "Grimdo",
+    "pageId": 157365,
+    "url": "https://ultra.fandom.com/wiki/Grimdo",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/29/Grimdo.png/revision/latest/scale-to-width-down/269?cb=20200428005945",
+    "file": "grimd.webp"
+  },
+  "genegarg": {
+    "requested": "Genegarg",
+    "title": "Genegarg",
+    "pageId": 160161,
+    "url": "https://ultra.fandom.com/wiki/Genegarg",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/72/Genegarg_info.png/revision/latest/scale-to-width-down/373?cb=20210120061718",
+    "file": "genegarg.webp"
+  },
+  "barossa": {
+    "requested": "Alien Barossa",
+    "title": "Alien Barossa",
+    "pageId": 165119,
+    "url": "https://ultra.fandom.com/wiki/Alien_Barossa",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/bb/Ultraman_Z_Alien_Barossa_render.png/revision/latest/scale-to-width-down/268?cb=20200816164521",
+    "file": "barossa.webp"
+  },
+  "destrudos": {
+    "requested": "Destrudos",
+    "title": "Ultroid Zero",
+    "pageId": 168557,
+    "url": "https://ultra.fandom.com/wiki/Ultroid_Zero",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/59/UltroidZeroPoseRender.png/revision/latest/scale-to-width-down/221?cb=20221128033817",
+    "file": "destrudos.webp"
+  },
+  "celebro": {
+    "requested": "Celebro",
+    "title": "Celebro",
+    "pageId": 161214,
+    "url": "https://ultra.fandom.com/wiki/Celebro",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/36/Ultraman_Z_Celebro_render.png/revision/latest/scale-to-width-down/384?cb=20200916132554",
+    "file": "celebro.webp"
+  },
+  "death_drago": {
+    "requested": "Deathdrago",
+    "title": "Deathdrago",
+    "pageId": 174504,
+    "url": "https://ultra.fandom.com/wiki/Deathdrago",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a3/Ultraman_Trigger_Deathdrago_render.png/revision/latest/scale-to-width-down/328?cb=20210821051622",
+    "file": "death_drago.webp"
+  },
+  "golba": {
+    "requested": "Golba",
+    "title": "Golba",
+    "pageId": 174088,
+    "url": "https://ultra.fandom.com/wiki/Golba",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/0a/Golba_profile_render.png/revision/latest/scale-to-width-down/256?cb=20210711160035",
+    "file": "golba.webp"
+  },
+  "metso_ga": {
+    "requested": "Metsu-Orga",
+    "title": "Metsu-Orga",
+    "pageId": 176996,
+    "url": "https://ultra.fandom.com/wiki/Metsu-Orga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/08/Metsu_Orga_render_2.png/revision/latest/scale-to-width-down/366?cb=20211106043138",
+    "file": "metso_ga.webp"
+  },
+  "neomegas": {
+    "requested": "Neomegas",
+    "title": "Neomegas",
+    "pageId": 184370,
+    "url": "https://ultra.fandom.com/wiki/Neomegas",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/2f/Ultraman_Decker_Neomegas.jpg/revision/latest/scale-to-width-down/299?cb=20220917015711",
+    "file": "neomegas.webp"
+  },
+  "terraphaser": {
+    "requested": "Terraphaser",
+    "title": "Terraphaser",
+    "pageId": 184348,
+    "url": "https://ultra.fandom.com/wiki/Terraphaser",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f1/Ultraman_Decker_Terraphaser_render_3.png/revision/latest/scale-to-width-down/273?cb=20220924174152",
+    "file": "terraphaser.webp"
+  },
+  "bazanga": {
+    "requested": "Bazanga",
+    "title": "Bazanga",
+    "pageId": 195609,
+    "url": "https://ultra.fandom.com/wiki/Bazanga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e1/Bazanga.png/revision/latest/scale-to-width-down/384?cb=20230709064008",
+    "file": "bazanga.webp"
+  },
+  "gedos": {
+    "requested": "Gedos",
+    "title": "Gedos",
+    "pageId": 196059,
+    "url": "https://ultra.fandom.com/wiki/Gedos",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5d/GedosProfile_%28Cropped%29.png/revision/latest/scale-to-width-down/384?cb=20240907000125",
+    "file": "gedos.webp"
+  },
+  "taganular": {
+    "requested": "Taganular",
+    "title": "Taganular",
+    "pageId": 196096,
+    "url": "https://ultra.fandom.com/wiki/Taganular",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/07/TaganularProfile.jpg/revision/latest/scale-to-width-down/256?cb=20240907001144",
+    "file": "taganular.webp"
+  },
+  "leviera": {
+    "requested": "Leviera",
+    "title": "Leviera",
+    "pageId": 197120,
+    "url": "https://ultra.fandom.com/wiki/Leviera",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ee/LevieraProfile_%28Cropped%29.png/revision/latest/scale-to-width-down/344?cb=20240907001623",
+    "file": "leviera.webp"
+  },
+  "dorgo": {
+    "requested": "Dorgo",
+    "title": "Dorgo",
+    "pageId": 197606,
+    "url": "https://ultra.fandom.com/wiki/Dorgo",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ee/DorgoProfile_%28Cropped%29.png/revision/latest/scale-to-width-down/384?cb=20240907001812",
+    "file": "dorgo.webp"
+  },
+  "nijikagachi": {
+    "requested": "Nijikagachi",
+    "title": "Nijikagachi",
+    "pageId": 199202,
+    "url": "https://ultra.fandom.com/wiki/Nijikagachi",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/53/NijikagachiProfile_%28Cropped%29.png/revision/latest/scale-to-width-down/295?cb=20240907002111",
+    "file": "nijikagachi.webp"
+  },
+  "gebalga": {
+    "requested": "Gebalga",
+    "title": "Gebalga",
+    "pageId": 201189,
+    "url": "https://ultra.fandom.com/wiki/Gebalga",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/56/Gebalga_HD.png/revision/latest/scale-to-width-down/323?cb=20230923044643",
+    "file": "gebalga.webp"
+  },
+  "deltandal": {
+    "requested": "Deltandal",
+    "title": "Deltandal",
+    "pageId": 203262,
+    "url": "https://ultra.fandom.com/wiki/Deltandal",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b5/Deltandal_Miscellaneous_002.png/revision/latest/scale-to-width-down/384?cb=20231017105528",
+    "file": "deltandal.webp"
+  },
+  "zugugan": {
+    "requested": "Zugugan",
+    "title": "Zugugan",
+    "pageId": 205690,
+    "url": "https://ultra.fandom.com/wiki/Zugugan",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/83/Zugugan_HD_007.png/revision/latest/scale-to-width-down/384?cb=20231202022719",
+    "file": "zugugan.webp"
+  },
+  "varallon": {
+    "requested": "Varallon",
+    "title": "Varallon",
+    "pageId": 207389,
+    "url": "https://ultra.fandom.com/wiki/Varallon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/3d/VarallonProfile.jpg/revision/latest/scale-to-width-down/256?cb=20240907003242",
+    "file": "varallon.webp"
+  },
+  "shagon": {
+    "requested": "Shagong",
+    "title": "Shagong",
+    "pageId": 220530,
+    "url": "https://ultra.fandom.com/wiki/Shagong",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/35/Shagong_hd_.png/revision/latest/scale-to-width-down/256?cb=20241226014619",
+    "file": "shagon.webp"
+  },
+  "livyjira": {
+    "requested": "Livyjira",
+    "title": "Livyjira",
+    "pageId": 222212,
+    "url": "https://ultra.fandom.com/wiki/Livyjira",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1e/Livyjira_Cropped.jpg/revision/latest/scale-to-width-down/384?cb=20250711020333",
+    "file": "livyjira.webp"
+  },
+  "nezudron": {
+    "requested": "Nezutron",
+    "title": "Nezutron",
+    "pageId": 221695,
+    "url": "https://ultra.fandom.com/wiki/Nezutron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/dd/Nezutron_profile_.jpg/revision/latest/scale-to-width-down/267?cb=20240727103645",
+    "file": "nezudron.webp"
+  },
+  "homger": {
+    "requested": "Homger",
+    "title": "Homger",
+    "pageId": 223229,
+    "url": "https://ultra.fandom.com/wiki/Homger",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/40/Homger_Cropped.jpg/revision/latest/scale-to-width-down/384?cb=20250711015555",
+    "file": "homger.webp"
+  },
+  "givas": {
+    "requested": "Givas",
+    "title": "Givas",
+    "pageId": 224237,
+    "url": "https://ultra.fandom.com/wiki/Givas",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/9b/Givas_01.png/revision/latest/scale-to-width-down/265?cb=20240921025559",
+    "file": "givas.webp"
+  },
+  "zadime": {
+    "requested": "Zadime",
+    "title": "Zadime",
+    "pageId": 225008,
+    "url": "https://ultra.fandom.com/wiki/Zadime",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/60/Zadime_HD_002.png/revision/latest/scale-to-width-down/256?cb=20241012022815",
+    "file": "zadime.webp"
+  },
+  "todora": {
+    "requested": "Todola",
+    "title": "Todola",
+    "pageId": 6781,
+    "url": "https://ultra.fandom.com/wiki/Todola",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/be/Todora_render.png/revision/latest/scale-to-width-down/384?cb=20200626230840",
+    "file": "todora.webp"
+  },
+  "jirass": {
+    "requested": "Jirahs",
+    "title": "Jirahs",
+    "pageId": 2190,
+    "url": "https://ultra.fandom.com/wiki/Jirahs",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/9a/Jirahs-removebg.png/revision/latest/scale-to-width-down/269?cb=20220919122448",
+    "file": "jirass.webp"
+  },
+  "gigas": {
+    "requested": "Guigass",
+    "title": "Guigass",
+    "pageId": 3492,
+    "url": "https://ultra.fandom.com/wiki/Guigass",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e7/Reiwa_Gigass.png/revision/latest/scale-to-width-down/233?cb=20200704014012",
+    "file": "gigas.webp"
+  },
+  "woo": {
+    "requested": "Woo (Kaiju)",
+    "title": "Woo (Kaiju)",
+    "pageId": 2469,
+    "url": "https://ultra.fandom.com/wiki/Woo_(Kaiju)",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a4/Woo_Strange_Render.png/revision/latest/scale-to-width-down/288?cb=20230223204144",
+    "file": "woo.webp"
+  },
+  "giron": {
+    "requested": "Star Bem Gyeron",
+    "title": "Star Bem Gyeron",
+    "pageId": 3701,
+    "url": "https://ultra.fandom.com/wiki/Star_Bem_Gyeron",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/7d/Gyeron_5.jpg/revision/latest/scale-to-width-down/330?cb=20140126194754",
+    "file": "giron.webp"
+  },
+  "sadora": {
+    "requested": "Sadolar",
+    "title": "Sadolar",
+    "pageId": 2863,
+    "url": "https://ultra.fandom.com/wiki/Sadolar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b2/Sadola_movie_I.png/revision/latest/scale-to-width-down/329?cb=20200520035005",
+    "file": "sadora.webp"
+  },
+  "priz_ma": {
+    "requested": "Pris-Ma",
+    "title": "Pris-Ma",
+    "pageId": 3516,
+    "url": "https://ultra.fandom.com/wiki/Pris-Ma",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/50/Priz_Ma.png/revision/latest/scale-to-width-down/384?cb=20200906041119",
+    "file": "priz_ma.webp"
+  },
+  "drombo": {
+    "requested": "Dorobon",
+    "title": "Dorobon",
+    "pageId": 3334,
+    "url": "https://ultra.fandom.com/wiki/Dorobon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b8/Dorobon_I.png/revision/latest/scale-to-width-down/258?cb=20141205103144",
+    "file": "drombo.webp"
+  },
+  "giras": {
+    "requested": "Giras Brothers",
+    "title": "Giras Brothers",
+    "pageId": 3216,
+    "url": "https://ultra.fandom.com/wiki/Giras_Brothers",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e5/Red_Giras_and_Black_Giras_HD.png/revision/latest/scale-to-width-down/384?cb=20230910182926",
+    "file": "giras.webp"
+  },
+  "purs": {
+    "requested": "Pressure",
+    "title": "Pressure",
+    "pageId": 7939,
+    "url": "https://ultra.fandom.com/wiki/Pressure",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/ca/Pressure-removebg.png/revision/latest/scale-to-width-down/295?cb=20221006043555",
+    "file": "purs.webp"
+  },
+  "salamandora": {
+    "requested": "Saramandora",
+    "title": "Saramandora",
+    "pageId": 2772,
+    "url": "https://ultra.fandom.com/wiki/Saramandora",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/07/Saramandora_Info.png/revision/latest/scale-to-width-down/312?cb=20200521045600",
+    "file": "salamandora.webp"
+  },
+  "kyrieloid": {
+    "requested": "Kyrieloid",
+    "title": "Kyrieloid",
+    "pageId": 5434,
+    "url": "https://ultra.fandom.com/wiki/Kyrieloid",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/97/Kyrieloid_Data.png/revision/latest/scale-to-width-down/214?cb=20210712055323",
+    "file": "kyrieloid.webp"
+  },
+  "algona": {
+    "requested": "Apatee",
+    "title": "Apatee",
+    "pageId": 4177,
+    "url": "https://ultra.fandom.com/wiki/Apatee",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e6/Apatee_HD_011.png/revision/latest/scale-to-width-down/257?cb=20240119064806",
+    "file": "algona.webp"
+  },
+  "blitzblotz": {
+    "requested": "Blitz-Blotz",
+    "title": "Blitz-Blotz",
+    "pageId": 13711,
+    "url": "https://ultra.fandom.com/wiki/Blitz-Blotz",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/90/Blitz-Blotz_HD_042.png/revision/latest/scale-to-width-down/273?cb=20250816153353",
+    "file": "blitzblotz.webp"
+  },
+  "ifrit": {
+    "requested": "Izac",
+    "title": "Izac",
+    "pageId": 11126,
+    "url": "https://ultra.fandom.com/wiki/Izac",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c4/Izac_HD_1.png/revision/latest/scale-to-width-down/384?cb=20230825183128",
+    "file": "ifrit.webp"
+  },
+  "gorugolem": {
+    "requested": "Golgolem",
+    "title": "Golgolem",
+    "pageId": 3762,
+    "url": "https://ultra.fandom.com/wiki/Golgolem",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/27/Golgolem-remove.png/revision/latest/scale-to-width-down/352?cb=20211206040401",
+    "file": "gorugolem.webp"
+  },
+  "bajuan": {
+    "requested": "Bugbuzun",
+    "title": "Bugbuzun",
+    "pageId": 5155,
+    "url": "https://ultra.fandom.com/wiki/Bugbuzun",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e0/Bugbuzun.png/revision/latest/scale-to-width-down/318?cb=20200806230158",
+    "file": "bajuan.webp"
+  },
+  "bogar": {
+    "requested": "Bogarl",
+    "title": "Bogarl",
+    "pageId": 4509,
+    "url": "https://ultra.fandom.com/wiki/Bogarl",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/81/Bogarl_HD_0001.png/revision/latest/scale-to-width-down/321?cb=20240422093709",
+    "file": "bogar.webp"
+  },
+  "dinozaur": {
+    "requested": "Dinozole",
+    "title": "Dinozole",
+    "pageId": 2227,
+    "url": "https://ultra.fandom.com/wiki/Dinozole",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/ae/Dinozaur_HD_0001.png/revision/latest/scale-to-width-down/384?cb=20240422094938",
+    "file": "dinozaur.webp"
+  },
+  "shepardon": {
+    "requested": "Shepherdon",
+    "title": "Shepherdon",
+    "pageId": 45673,
+    "url": "https://ultra.fandom.com/wiki/Shepherdon",
+    "image": "https://static.wikia.nocookie.net/ultra/images/2/24/Pngshepee.png/revision/latest/scale-to-width-down/331?cb=20170305132518",
+    "file": "shepardon.webp"
+  },
+  "cherubim": {
+    "title": "宇宙凶険怪獣 ケルビム",
+    "url": "https://m-78.jp/character/z_37",
+    "image": "https://m-78.jp/wp-content/uploads/2024/01/ゼット_37_ケルビム_thumb.jpg",
+    "requested": "Cherubim",
+    "file": "cherubim.webp"
+  },
+  "satan_delos": {
+    "title": "惑星破壊神 サタンデロス",
+    "url": "https://m-78.jp/character/trigger_10",
+    "image": "https://m-78.jp/wp-content/uploads/2024/01/トリガー_10_サタンデロス_thumb.jpg",
+    "requested": "Satan Delos",
+    "file": "satan_delos.webp"
+  },
+  "megalothor": {
+    "title": "邪神 メガロゾーア",
+    "url": "https://m-78.jp/character/trigger_30",
+    "image": "https://m-78.jp/wp-content/uploads/2024/01/トリガー_32_邪神メガロゾーア第一形態_thumb-2.jpg",
+    "requested": "Megalothor",
+    "file": "megalothor.webp"
+  },
+  "mother_sphere": {
+    "title": "マザースフィアザウルス",
+    "url": "https://m-78.jp/character/decker_mother_sphere_zaurus",
+    "image": "https://m-78.jp/wp-content/uploads/2023/01/thumb_decker_mother_sphere_zaurus.jpg",
+    "requested": "Mother Spheresaurus",
+    "file": "mother_sphere.webp"
+  },
+  "woola": {
+    "requested": "Woola",
+    "title": "Woola",
+    "pageId": 155955,
+    "url": "https://ultra.fandom.com/wiki/Woola",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d2/Woola_render.png/revision/latest/scale-to-width-down/384?cb=20200815045306",
+    "file": "woola.webp"
+  },
+  "grigio_bone": {
+    "requested": "Grigio",
+    "title": "Grigio",
+    "pageId": 134521,
+    "url": "https://ultra.fandom.com/wiki/Grigio",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/aa/GrigioRender.png/revision/latest/scale-to-width-down/284?cb=20180726043243",
+    "file": "grigio_bone.webp"
+  }
+}

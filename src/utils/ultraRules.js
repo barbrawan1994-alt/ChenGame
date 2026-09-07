@@ -1,5 +1,6 @@
 import { ULTRA_BY_ID, ULTRA_HEROES, ULTRA_ROLES, ULTRA_STARTERS, ULTRA_DURATION, ULTRA_MIN_TURN } from '../data/ultra';
 import { getBurstBlock } from './battleTactics';
+import { normalizeKaijuProgress } from './kaijuRules';
 
 export function normalizeUltraState(raw) {
   const validIds = values => [...new Set((Array.isArray(values) ? values : []).filter(id=>typeof id==='string' && ULTRA_BY_ID[id]?.id===id))];
@@ -8,7 +9,7 @@ export function normalizeUltraState(raw) {
   const unlockedHeroIds = validIds([...ULTRA_STARTERS,...legacy,...validIds(raw?.unlockedHeroIds),...trialWins]);
   const heroId = unlockedHeroIds.includes(raw?.heroId) ? raw.heroId : 'tiga';
   const hero = ULTRA_BY_ID[heroId];
-  return { version: 2, unlockedHeroIds, trialWins, heroId, formId: hero.forms.some(form => form.id === raw?.formId) ? raw.formId : hero.forms[0].id, hostUid: ['string', 'number'].includes(typeof raw?.hostUid) ? raw.hostUid : null };
+  return { version: 2, unlockedHeroIds, trialWins, heroId, formId: hero.forms.some(form => form.id === raw?.formId) ? raw.formId : hero.forms[0].id, hostUid: ['string', 'number'].includes(typeof raw?.hostUid) ? raw.hostUid : null, kaiju:normalizeKaijuProgress(raw?.kaiju) };
 }
 
 export function isUltraUnlocked(state, heroId) {

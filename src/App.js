@@ -63,6 +63,8 @@ import { HudEventFeed, useHudEvents } from './hooks/useHudEvents';
 import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_TRIALS } from './data/ultra';
 import { normalizeUltraState, assignUltraContract, clearUltraUnit, getUltraTransformBlock, activateUltra, endUltra, settleUltraRound, completeUltraTrial, getUltraStatMultiplier } from './utils/ultraRules';
 import { getUltraTrial, getUltraTrialBlock, buildUltraTrialParty, getUltraTrialAction } from './utils/ultraTrials';
+import { KAIJU_RANKS, KAIJU_STYLES } from './data/kaiju';
+import { buildKaijuUnit, getKaijuEncounterPool, rollKaijuEncounter, recordKaijuBattle, getKaijuReward, getKaijuExpMultiplier } from './utils/kaijuRules';
 const UltraScreen = React.lazy(() => import(/* webpackChunkName: "ultra-screen" */ './components/screens/UltraScreen'));
 const TacticsScreen = React.lazy(() => import(/* webpackChunkName: "tactics-screen" */ './components/screens/TacticsScreen'));
 
@@ -5628,6 +5630,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setUltraState(normalized);
     setTimeout(() => persistSaveRef.current(true), 0);
   };
+  const recordKaijuProgress = (enemies, options) => {
+    const current = ultraStateRef.current;
+    const next = {...current,kaiju:recordKaijuBattle(current.kaiju,enemies,options)};
+    ultraStateRef.current=next;
+    setUltraState(next);
+  };
   const [fusionState, setFusionState] = useState(() => {
     const defaultFS = { generalTacticId: null, jutsuRealmsCleared: [], fruitTrialsCleared: [], sectRealmsCleared: [], battlefieldsCleared: [], calamitiesParticipated: [], kingdomTasksDone: [], crisisUnlocks: [], ecoBranchTaken: false, awakeningTiers: {}, canyonChapter: null, ghostChapter: null, sealChapter: null, fruitClues: [], playerStyle: { main: null, sub: null, breathingStyle: 'water' }, kwPosition: null, generalFragments: {}, kingdomTaskCooldowns: {} };
     if (!savedData.fusionState) return defaultFS;
@@ -10900,10 +10908,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     finally { window.setTimeout(() => { battleSpecialActionLockRef.current = false; }, 0); }
   };
 
-  const startUltraTrial = heroId => {
+  const startUltraTrial = (heroId,route=0) => {
     if (ultraTrialStartLockRef.current || (battle && !battleResultHandledRef.current)) return;
     const currentParty = partyRef.current || [];
-    const trial = getUltraTrial(heroId,currentParty);
+    const trial = getUltraTrial(heroId,currentParty,route);
     const reason = getUltraTrialBlock(trial,ultraStateRef.current,currentParty,badges.length);
     if (reason) { showMapToast('', '契约试炼', reason, 2200); return; }
     const customParty = buildUltraTrialParty(trial,{createPet,pokedex:POKEDEX,getStats});
@@ -10913,7 +10921,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     let accepted = false;
     try {
       const started = startBattle({ customParty, isDouble:trial.isDouble, name:`${trial.hero.name}·契约试炼`,
-        _ultraTrial:heroId,_ultraTrialEra:trial.era.id,_ultraTrialRunId:runId,
+        _ultraTrial:heroId,_ultraTrialEra:trial.era.id,_ultraTrialRunId:runId,_ultraTrialRoute:trial.route,
         _playerParty:_.cloneDeep(currentParty.filter(pet=>pet.currentHp>0).slice(0,trial.partyLimit)),
         _ultraPartySnapshot:_.cloneDeep(currentParty) }, 'ultra_trial');
       accepted = !!started;
@@ -10927,6 +10935,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const finishUltraTrial = (snapshot, won) => {
     if (!ultraTrialActiveRef.current || snapshot._ultraTrialRunId!==ultraTrialActiveRef.current) return;
     ultraTrialActiveRef.current = false;
+    recordKaijuProgress(snapshot.enemyParty,{defeated:true});
     won = !!won && snapshot.enemyParty?.length>0 && snapshot.enemyParty.every(unit=>unit.currentHp<=0);
     let result = null;
     if (won) {
@@ -10939,7 +10948,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       setParty(partyRef.current);
     }
     pendingJutsuWinForBountyRef.current = false;
-    setUltraResult({ heroId:snapshot._ultraTrial,eraId:snapshot._ultraTrialEra,won,firstClear:result?.firstClear,newlyUnlocked:result?.newlyUnlocked });
+    setUltraResult({ heroId:snapshot._ultraTrial,eraId:snapshot._ultraTrialEra,route:snapshot._ultraTrialRoute,won,firstClear:result?.firstClear,newlyUnlocked:result?.newlyUnlocked });
     setAnimEffect(null);
     setBattleImpact(null);
     setBattle(null);
@@ -14803,6 +14812,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       extraBattleData._ultraTrial = context._ultraTrial;
       extraBattleData._ultraTrialEra = context._ultraTrialEra;
       extraBattleData._ultraTrialRunId = context._ultraTrialRunId;
+      extraBattleData._ultraTrialRoute = context._ultraTrialRoute;
       extraBattleData._ultraPartySnapshot = context._ultraPartySnapshot;
       extraBattleData.isTrainer = true;
     }
@@ -15486,6 +15496,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
            }
          }
          if (!legendObtainTriggered && canMeetLegend && Math.random() < legendRate) {
+            legendObtainTriggered = true;
             enemyId = _.sample(LEGENDARY_POOL);
             const mapMaxLvl = context.lvl ? context.lvl[1] : 70;
             level = mapMaxLvl + _.random(1, 10);
@@ -15573,8 +15584,21 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
            }
            return wildPet;
          };
-         enemyParty.push(spawnWildPet(enemyId, level));
-         if (isDouble) {
+         const naturalMap=MAPS.find(map=>map.id===context.id && map.pool===context.pool);
+         const kaijuOptions={map:naturalMap,badgeCount:badges.length,party:partyRef.current || party,level,
+           weather,timePhase,progress:ultraStateRef.current.kaiju,isDouble};
+         const kaijuEligible=actualType==='wild' && !isBoss && !context.dungeonId && !context.battleObjective
+           && !legendObtainTriggered && !forceGuardian && getKaijuEncounterPool(kaijuOptions).length>0;
+         const kaijuEncounter=kaijuEligible ? rollKaijuEncounter(kaijuOptions) : null;
+         extraBattleData._kaijuEligible=kaijuEligible;
+         if(kaijuEncounter) {
+           enemyParty=kaijuEncounter.ids.map((id,slot)=>buildKaijuUnit(id,kaijuEncounter.level,{createPet,pokedex:POKEDEX,getStats,slot}));
+           extraBattleData._kaijuEncounter=true;
+           extraBattleData._kaijuReward=getKaijuReward(enemyParty);
+           dropGold=Math.floor(dropGold*extraBattleData._kaijuReward.goldMult);
+           trainerName=kaijuEncounter.rift ? '异星裂隙 · 怪兽遭遇' : '区域异动 · 怪兽遭遇';
+         } else enemyParty.push(spawnWildPet(enemyId, level));
+         if (isDouble && !kaijuEncounter) {
            const rawPool2 = balancedEncounterPool;
            const seen2 = new Set();
            const fullPool2 = rawPool2.filter(pid => {
@@ -15611,7 +15635,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       });
     } else if (actualType !== 'contest_bug' && !isUltraTrial) {
       enemyParty.forEach(p => {
-        if (!p.devilFruit && Math.random() < 0.3) {
+        if (!p.kaijuId && !p.devilFruit && Math.random() < 0.3) {
           p.devilFruit = getRandomFruit(p.level, 'wild');
         }
       });
@@ -15723,7 +15747,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         // 火影忍术注入
         const jutsuMoves = [];
         const nRank = isEnemy ? getEnemyNinjaRank(p.level) : getNinjaRank(narutoState?.examsCompleted || 0);
-        if (nRank && nRank.id !== 'academy' && p.level >= 30 && !(isUltraTrial && isEnemy)) {
+        if (nRank && nRank.id !== 'academy' && p.level >= 30 && !(isEnemy && (isUltraTrial || p.kaijuId))) {
           const petNature = Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === p.type);
           const natureKey = petNature ? petNature[0] : null;
           const jutsuPool = natureKey ? getJutsuByNature(natureKey) : JUTSU_DB.filter(j => !j.nature);
@@ -15751,7 +15775,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
         return {
             ...assignUltraContract(p, ultraStateRef.current, actualType, isEnemy),
-            ultraTrialArt: isUltraTrial && isEnemy ? p.trialPortrait : null,
+            ultraTrialArt: isEnemy && (isUltraTrial || p.kaijuId) ? p.trialPortrait : null,
             equippedBerry: p.equippedBerry ?? null,
             combatMoves: [...combatMoves, ...cursedMoves, ...jutsuMoves, ...(!isEnemy && actualType !== 'pvp' ? buildBreathingMoves(fusionState.playerStyle?.breathingStyle || 'water', badges.length, fusionState.crisisUnlocks) : [])],
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
@@ -15938,6 +15962,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       if (directive) extraBattleData.battleDirective = directive;
     }
     const battleOpenLogs = [];
+    if(extraBattleData._kaijuEncounter) {
+      battleOpenLogs.push('怪兽精英战：无法捕捉，可撤退。战胜全部对手后领取额外掉落。');
+      enemyParty.forEach(unit=>battleOpenLogs.push(`${unit.name} / ${KAIJU_RANKS[unit.kaijuRank].name}：${KAIJU_STYLES[unit.kaijuStyle].hint}`));
+    }
     if (resonanceFxBattle.transcendence) battleOpenLogs.push(`✨ 终极共鸣发动！${activePetData?.name || '精灵'} 获得首回合超越爆发！`);
     if (extraBattleData.trainerTactic) {
       battleOpenLogs.push(`🎯 对手战术：${extraBattleData.trainerTactic.name} - ${extraBattleData.trainerTactic.desc}`);
@@ -16040,6 +16068,9 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       ...extraBattleData,
     };
     initBattleSectState(battleObj, sectPlayer);
+    if(battleEnemyParty.some(unit=>unit.kaijuId) || extraBattleData._kaijuEligible) {
+      recordKaijuProgress(battleEnemyParty,{wild:!!extraBattleData._kaijuEncounter,eligible:!!extraBattleData._kaijuEligible});
+    }
     setBattle(battleObj);
     
     setShowBallMenu(false);
@@ -20087,7 +20118,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const baseExp = calcBattleBaseExp(deadEnemy.level, {
       isTrainer: bState.isTrainer,
       isBounty: bState.isBounty,
-    });
+    }) * getKaijuExpMultiplier(deadEnemy);
     
     let levelUpLog = '';
     let hasPendingSkill = false;
@@ -20394,6 +20425,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
          battleResultHandledRef.current = true;
          if (battleSnapshot._weatherOverride) setWeather('CLEAR');
          if (battleSnapshot.type === 'ultra_trial') { finishUltraTrial(battleSnapshot, true); return; }
+         if (battleSnapshot._kaijuEncounter) {
+           if (!battleSnapshot.enemyParty?.length || battleSnapshot.enemyParty.some(unit=>unit.currentHp>0)) { battleResultHandledRef.current=false; return; }
+           recordKaijuProgress(battleSnapshot.enemyParty,{defeated:true});
+         }
          if (battleSnapshot?.battleObjective && !checkBattleObjectiveMet(battleSnapshot)) {
            const block = shouldBlockStandardWin(battleSnapshot);
            battleResultHandledRef.current = false;
@@ -20519,7 +20554,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const rankExpMultEst = (rankBattlePerk.battleExpMult || 1) * (rankBattlePerk.allBonusMult || 1);
     enemyParty.forEach(e => {
       const bExp = Math.floor(
-        calcBattleBaseExp(e.level, { isTrainer, isBounty })
+        calcBattleBaseExp(e.level, { isTrainer, isBounty }) * getKaijuExpMultiplier(e)
         * (1 + (gangExpBonusEst + kwExpBonusEst + kwExpBuffEst + genExpBonusEst) / 100)
         * rankExpMultEst
         * (relicFxWin.expMult || 1)
@@ -20582,6 +20617,15 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     }
 
     const extraDrops = [];
+    if(battleSnapshot._kaijuEncounter && battleSnapshot._kaijuReward) {
+      const reward=battleSnapshot._kaijuReward;
+      setInventory(prev=>({...prev,berries:addBerries(prev.berries,reward.berry,reward.berryCount),
+        ...(reward.vitamin ? {[reward.vitamin]:(prev[reward.vitamin] || 0)+1} : {}),
+        ...(reward.stone ? {stones:{...prev.stones,[reward.stone]:(prev.stones?.[reward.stone] || 0)+1}} : {})}));
+      extraDrops.push(`怪兽战利品：${BERRIES[reward.berry].name} x${reward.berryCount}`);
+      if(reward.vitamin) extraDrops.push(`${GROWTH_ITEMS.find(item=>item.id===reward.vitamin)?.name} x1`);
+      if(reward.stone) extraDrops.push(`${EVO_STONES[reward.stone].name} x1`);
+    }
     const directiveStatus = getBattleDirectiveStatus(battleSnapshot, finalParty);
     if (directiveStatus.directive) {
       if (directiveStatus.completed) {
@@ -20782,7 +20826,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       recordDungeonCompletion(battleSnapshot.dungeonId);
     }
     
-    const defeatedIsGod = (battleSnapshot.enemyParty || []).some(e => LEGENDARY_POOL?.includes(e.id) || NEW_GOD_IDS?.includes(e.id) || FINAL_GOD_IDS?.includes(e.id));
+    const defeatedIsGod = (battleSnapshot.enemyParty || []).some(e => !e.kaijuId && (LEGENDARY_POOL?.includes(e.id) || NEW_GOD_IDS?.includes(e.id) || FINAL_GOD_IDS?.includes(e.id)));
     if (defeatedIsGod) {
       const playerHasCosmic = updatedParty.some(p => p.type === 'COSMIC' || p.secondaryType === 'COSMIC');
       if (playerHasCosmic) updateAchStat({ cosmicGodKills: 1 });
@@ -22430,6 +22474,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     if (battle?.type === 'ultra_trial') { finishUltraTrial(battle, false); return; }
     addLog("所有伙伴都倒下了...");
     const battleSnap = battle ? { ...battle } : null;
+    if(battleSnap?._kaijuEncounter) recordKaijuProgress(battleSnap.enemyParty,{defeated:true});
     if (battleSnap) {
       const turnCount = battleSnap.turnCount || 0;
       const lead = party?.[0];
@@ -22654,6 +22699,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         // --- 成功 ---
         addLog("🏃💨 成功逃跑了！");
         const escapeBattleSnap = { ...battle };
+        if(escapeBattleSnap._kaijuEncounter) recordKaijuProgress(escapeBattleSnap.enemyParty,{defeated:true});
         setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
         await wait(800);
 
@@ -22760,6 +22806,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     battleSpecialActionLockRef.current = true;
     try {
     setShowBallMenu(false);
+    if(battle._kaijuEncounter || battle.enemyParty?.some(unit=>unit.kaijuId)) return addLog('怪兽无法使用精灵球捕捉，击败后收录讨伐档案。');
     if (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isPvP || battle.isStory || battle.isBoss || battle.type === 'kingdom_war' || battle.type === 'gang_war' || battle.type === 'capital_siege' || battle.type === 'infinity' || battle.type === 'boss_rush' || battle.type === 'boss' || battle.type === 'world_boss' || battle.type === 'arena' || battle.type === 'league' || battle.type === 'tower' || battle.type === 'elemental_trial' || battle.type === 'naruto_story' || battle.type === 'naruto_exam' || battle.type === 'calamity' || battle.dungeonId) return addLog("该战斗中无法捕捉！");
     const isWarBall = ballType === 'war';
     if (isWarBall) {
@@ -32360,6 +32407,7 @@ const renderMenu = () => {
             badges.push(<span key="ultra-active" data-testid="ultra-timer" title="光能耗尽或必杀出手后解除变身" style={{...badgeBase, background: unit.ultraTurnsLeft === 1 ? '#ab3549' : '#286657', whiteSpace:'normal'}}><Sparkles size={11} />{ULTRA_BY_ID[unit.ultraHeroId]?.name} · 光能 {unit.ultraTurnsLeft}</span>);
         }
 
+        if(unit.kaijuId) badges.push(<span key="kaiju" title={KAIJU_STYLES[unit.kaijuStyle]?.hint} style={{...badgeBase,background:'#803f43'}}>{KAIJU_RANKS[unit.kaijuRank]?.name} · {KAIJU_STYLES[unit.kaijuStyle]?.name}</span>);
         return badges;
     };
 
@@ -33514,7 +33562,8 @@ const renderMenu = () => {
             <div className="ball-menu-card" onClick={e => e.stopPropagation()}>
               <div className="bag-header"><div className={`bag-tab ${battleBagTab==='balls'?'active':''}`} onClick={()=>setBattleBagTab('balls')} style={{display:'flex',alignItems:'center',gap:4}}>{renderBallCSS('poke',16)} 精灵球</div><div className={`bag-tab ${battleBagTab==='meds'?'active':''}`} onClick={()=>setBattleBagTab('meds')} style={{display:'flex',alignItems:'center',gap:4}}>{renderMedCSS('potion',16)} 药品</div><div className={`bag-tab ${battleBagTab==='berries'?'active':''}`} onClick={()=>setBattleBagTab('berries')} style={{display:'flex',alignItems:'center',gap:4}}><span style={{fontSize:14}}>🍇</span> 树果</div></div>
               <div className="bag-list-area">
-                {battleBagTab === 'balls' && (
+                {battleBagTab === 'balls' && battle._kaijuEncounter && <div className="empty-hint">怪兽无法捕捉 · 击败后收录讨伐档案</div>}
+                {battleBagTab === 'balls' && !battle._kaijuEncounter && (
                   <>
                     {Object.keys(inventory.balls || {}).filter(k => (inventory.balls||{})[k] > 0).length === 0 && (kingdomWar?.warBalls || 0) <= 0 && <div className="empty-hint">没有可用的精灵球</div>}
                     {Object.keys(inventory.balls || {}).map(type => { const count = (inventory.balls||{})[type]; if (count <= 0) return null; const ball = BALLS[type]; if (!ball) return null; const catchTargetIdx = battle?.isDouble ? (battle?.targetIdx ?? battle?.enemyActiveIdxs?.find(idx => battle?.enemyParty?.[idx]?.currentHp > 0) ?? battle?.enemyActiveIdx) : battle?.enemyActiveIdx; const enemy = battle?.enemyParty?.[catchTargetIdx]; const catchPct = enemy ? Math.min(100, Math.round(calculateCatchRate(type, enemy) * 100)) : 0; const catchColor = catchPct >= 60 ? '#4CAF50' : catchPct >= 30 ? '#FF9800' : '#F44336'; return ( <div key={type} className="bag-list-item" onClick={() => handleCatch(type)}><div className="item-icon-box">{renderBallCSS(type, 32)}</div><div className="item-info-box"><div className="item-name">{ball.name}{enemy && <span style={{fontSize:'10px',marginLeft:'6px',color:catchColor,fontWeight:700}}>{type==='master'?'必捕':catchPct+'%'}</span>}</div><div className="item-desc">{ball.desc}{battle?.isDouble && enemy ? ` · 目标：${enemy.name}` : ''}</div></div><div className="item-count">x{count}</div></div> ); })}
