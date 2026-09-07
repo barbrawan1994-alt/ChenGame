@@ -62,6 +62,7 @@ import GuideScreen from './components/screens/GuideScreen';
 import { HudEventFeed, useHudEvents } from './hooks/useHudEvents';
 import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_TRIALS } from './data/ultra';
 import { normalizeUltraState, assignUltraContract, clearUltraUnit, getUltraTransformBlock, activateUltra, endUltra, settleUltraRound, completeUltraTrial, getUltraStatMultiplier } from './utils/ultraRules';
+import { getUltraTrial, getUltraTrialBlock, buildUltraTrialParty, getUltraTrialAction } from './utils/ultraTrials';
 const UltraScreen = React.lazy(() => import(/* webpackChunkName: "ultra-screen" */ './components/screens/UltraScreen'));
 const TacticsScreen = React.lazy(() => import(/* webpackChunkName: "tactics-screen" */ './components/screens/TacticsScreen'));
 
@@ -10899,27 +10900,22 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     finally { window.setTimeout(() => { battleSpecialActionLockRef.current = false; }, 0); }
   };
 
-  const startUltraTrial = eraId => {
+  const startUltraTrial = heroId => {
     if (ultraTrialStartLockRef.current || (battle && !battleResultHandledRef.current)) return;
-    const era = ULTRA_ERAS.find(item => item.id === eraId);
     const currentParty = partyRef.current || [];
-    if (!era || !currentParty.some(pet => pet.currentHp > 0)) return;
-    if (eraId === 'newgen' && currentParty.filter(pet => pet.currentHp > 0).length < 2) { showMapToast('', '双打试炼', '需要两名存活伙伴', 1800); return; }
-    const base = POKEDEX.find(pet => pet.type === era.type) || POKEDEX[0];
-    const opponent = createPet(base.id, era.level);
-    Object.assign(opponent, { name: era.boss, nickname: era.boss, type: era.type, secondaryType: null, type2: null,
-      trait: 'none', nature:'docile', isEnemy: true, isBoss: true, devilFruit: null, bijuu: null, equips: [], sectId:0, sectLevel:0, intimacy:0,
-      isShiny:false, isFusedShiny:false, awakened:false, ivs:{}, evs:{}, cursedTechnique:null, hasDomain:false, equippedBerry:null,
-      customBaseStats: { hp: 100, p_atk: 62, s_atk: 62, p_def: 60, s_def: 60, spd: 50, crit: 0 },
-      moves: ULTRA_TRIALS[eraId].moves.map(move => ({ ...move, category:move.category || (move.p > 0 ? 'special' : 'status'), acc:100, pp:move.p > 0 ? 20 : 4, maxPP:move.p > 0 ? 20 : 4 })),
-    });
-    opponent.currentHp = getStats(opponent).maxHp;
+    const trial = getUltraTrial(heroId,currentParty);
+    const reason = getUltraTrialBlock(trial,ultraStateRef.current,currentParty,badges.length);
+    if (reason) { showMapToast('', '契约试炼', reason, 2200); return; }
+    const customParty = buildUltraTrialParty(trial,{createPet,pokedex:POKEDEX,getStats});
+    const runId = `${heroId}:${customParty[0].uid}`;
     ultraTrialStartLockRef.current = true;
-    ultraTrialActiveRef.current = true;
+    ultraTrialActiveRef.current = runId;
     let accepted = false;
     try {
-      const customParty = eraId === 'newgen' ? [opponent, { ..._.cloneDeep(opponent), uid:`${opponent.uid}_escort`, name:'加拉特隆·护卫机', nickname:'加拉特隆·护卫机', customBaseStats:{ ...opponent.customBaseStats, hp:65, p_atk:50, s_atk:50 } }] : [opponent];
-      const started = startBattle({ customParty, isDouble:eraId === 'newgen', name: era.name, _ultraTrial: eraId, _ultraPartySnapshot: _.cloneDeep(currentParty) }, 'ultra_trial');
+      const started = startBattle({ customParty, isDouble:trial.isDouble, name:`${trial.hero.name}·契约试炼`,
+        _ultraTrial:heroId,_ultraTrialEra:trial.era.id,_ultraTrialRunId:runId,
+        _playerParty:_.cloneDeep(currentParty.filter(pet=>pet.currentHp>0).slice(0,trial.partyLimit)),
+        _ultraPartySnapshot:_.cloneDeep(currentParty) }, 'ultra_trial');
       accepted = !!started;
       if (started) setUltraResult(null);
     } finally {
@@ -10929,9 +10925,12 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const finishUltraTrial = (snapshot, won) => {
+    if (!ultraTrialActiveRef.current || snapshot._ultraTrialRunId!==ultraTrialActiveRef.current) return;
     ultraTrialActiveRef.current = false;
+    won = !!won && snapshot.enemyParty?.length>0 && snapshot.enemyParty.every(unit=>unit.currentHp<=0);
+    let result = null;
     if (won) {
-      const result = completeUltraTrial(ultraStateRef.current, snapshot._ultraTrial);
+      result = completeUltraTrial(ultraStateRef.current, snapshot._ultraTrial);
       ultraStateRef.current = result.state;
       setUltraState(result.state);
     }
@@ -10940,8 +10939,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       setParty(partyRef.current);
     }
     pendingJutsuWinForBountyRef.current = false;
-    setUltraResult({ eraId: snapshot._ultraTrial, won });
+    setUltraResult({ heroId:snapshot._ultraTrial,eraId:snapshot._ultraTrialEra,won,firstClear:result?.firstClear,newlyUnlocked:result?.newlyUnlocked });
     setAnimEffect(null);
+    setBattleImpact(null);
     setBattle(null);
     setView('ultra');
     setTimeout(() => persistSaveRef.current(true), 0);
@@ -14801,6 +14801,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     let extraBattleData = {};
     if (isUltraTrial) {
       extraBattleData._ultraTrial = context._ultraTrial;
+      extraBattleData._ultraTrialEra = context._ultraTrialEra;
+      extraBattleData._ultraTrialRunId = context._ultraTrialRunId;
       extraBattleData._ultraPartySnapshot = context._ultraPartySnapshot;
       extraBattleData.isTrainer = true;
     }
@@ -15749,7 +15751,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
         return {
             ...assignUltraContract(p, ultraStateRef.current, actualType, isEnemy),
-            ultraTrialArt: isUltraTrial && isEnemy ? `assets/ultra/kaiju-${context._ultraTrial}.webp` : null,
+            ultraTrialArt: isUltraTrial && isEnemy ? p.trialPortrait : null,
             equippedBerry: p.equippedBerry ?? null,
             combatMoves: [...combatMoves, ...cursedMoves, ...jutsuMoves, ...(!isEnemy && actualType !== 'pvp' ? buildBreathingMoves(fusionState.playerStyle?.breathingStyle || 'water', badges.length, fusionState.crisisUnlocks) : [])],
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
@@ -16504,12 +16506,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       return {move,targetIdx:saved.targetIdx};
     }
     const isHardBattle = !!(state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss);
-    let choice = chooseEnemyCombatAction(state,enemy,targets,{isHardBattle});
+    const trialChoice = getUltraTrialAction(state,enemy,targets,move=>canUseCombatMove(state,enemy,move,'enemy'));
+    let choice = trialChoice || chooseEnemyCombatAction(state,enemy,targets,{isHardBattle});
     const hpRatio = enemy.currentHp/Math.max(1,getStats(enemy).maxHp);
     const ce = getBattleResourceValue(state,enemy,'enemy','ce');
     const chakra = getBattleResourceValue(state,enemy,'enemy','chakra');
     const specials = [];
-    if (!(state._enemySpecialActionCooldown>0)) {
+    if (!trialChoice && !(state._enemySpecialActionCooldown>0)) {
       if (isHardBattle && !state.isDouble && (state.turnCount || 0)>=3 && !state.partnerComboUsed?.enemy) {
         const partner = state.enemyParty.find(unit=>(unit.uid || unit.id)===enemy.partnerId && unit.currentHp>getStats(unit).maxHp*0.15);
         const command = buildPartnerCommand(enemy,partner,partner && getComboMove(enemy,partner),getBondLevel(enemy.bondPoints || 0));
@@ -18581,7 +18584,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       const labels = {PROTECT:'防御',BUFF:'强化',DEBUFF:'削弱',HEAL:'回复',DOMAIN:'领域展开',TRANSFORM:'形态觉醒',CONFUSION:'混乱',BRN:'灼伤',PSN:'中毒',PAR:'麻痹',SLP:'睡眠',FRZ:'冻结'};
       if (!data || !labels[data.type]) return;
       const ownTarget = data.target===source;
-      setBattleImpact({id:++battleImpactSequenceRef.current,source,target:data.target,atkSlot:_dCtx?.atkSlot || 0,defSlot:ownTarget ? _dCtx?.atkSlot || 0 : _dCtx?.defSlot || 0,type:move.t,kind:data.type==='PROTECT' ? 'guard' : data.type==='HEAL' ? 'heal' : data.type==='DOMAIN' || data.type==='TRANSFORM' ? 'aura' : 'support',label:data.label || labels[data.type],damage:0});
+      setBattleImpact({id:++battleImpactSequenceRef.current,source,target:data.target,atkSlot:_dCtx?.atkSlot || 0,defSlot:ownTarget ? _dCtx?.atkSlot || 0 : _dCtx?.defSlot || 0,type:move.t,kind:data.type==='PROTECT' ? 'guard' : data.type==='HEAL' ? 'heal' : data.type==='DOMAIN' || data.type==='TRANSFORM' ? 'aura' : 'support',label:data.label || labels[data.type],damage:0,castPortrait:move.isUltraFinisher ? ULTRA_BY_ID[attacker.ultraHeroId]?.portrait : undefined});
     };
 
     const atkIdx = source === 'player' ? battleState.activeIdx : battleState.enemyActiveIdx;
@@ -19603,7 +19606,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           addLog(`协同追击！${attacker.name} 兑现了 ${defender.name} 的破绽。`);
         }
         if (!isImmune && !isDodged && !equipDodged) {
-          setBattleImpact({id:++battleImpactSequenceRef.current,source,target:source==='player' ? 'enemy' : 'player',atkSlot:_dCtx?.atkSlot || 0,defSlot:_dCtx?.defSlot || 0,type:move.t,kind:move.isUltraFinisher ? 'beam' : move.isBreathing || move.isMartialArt ? 'slash' : category==='special' ? 'projectile' : 'impact',damage:actualPrimaryDamage,critical:isCrit && landedDamagingHit,opening:openingReady && landedDamagingHit,guarded:wasGuarded});
+          setBattleImpact({id:++battleImpactSequenceRef.current,source,target:source==='player' ? 'enemy' : 'player',atkSlot:_dCtx?.atkSlot || 0,defSlot:_dCtx?.defSlot || 0,type:move.t,kind:move.isUltraFinisher ? 'beam' : move.isBreathing || move.isMartialArt ? 'slash' : category==='special' ? 'projectile' : 'impact',damage:actualPrimaryDamage,critical:isCrit && landedDamagingHit,opening:openingReady && landedDamagingHit,guarded:wasGuarded,castPortrait:move.isUltraFinisher ? ULTRA_BY_ID[attacker.ultraHeroId]?.portrait : undefined});
           _setAnim({type:move.t,target:source==='player' ? 'enemy' : 'player',isCrit,isHit:landedDamagingHit});
         }
         if (source === 'player' && landedDamagingHit) {
@@ -35333,7 +35336,7 @@ const renderMenu = () => {
       {view === 'bounty' && renderBountyBoard()}
       {view === 'lucky_wheel' && renderLuckyWheel()}
       {view === 'training' && renderTraining()}
-      {view === 'ultra' && <React.Suspense fallback={<div className="screen" role="status">光之档案读取中...</div>}><UltraScreen state={ultraState} party={party} result={ultraResult} onChange={commitUltraState} onTrial={startUltraTrial} onBack={() => setView('grid_map')} /></React.Suspense>}
+      {view === 'ultra' && <React.Suspense fallback={<div className="screen" role="status">光之档案读取中...</div>}><UltraScreen state={ultraState} party={party} badges={badges} result={ultraResult} onChange={commitUltraState} onTrial={startUltraTrial} onBack={() => setView('grid_map')} /></React.Suspense>}
       {view === 'tactics' && <React.Suspense fallback={<div className="screen" role="status">编成读取中...</div>}><TacticsScreen party={party} narutoState={narutoState} fusionState={fusionState} badges={badges} renderAvatar={renderAvatar} onBack={()=>setView('grid_map')} onUltra={()=>setView('ultra')} onGuide={()=>setView('guide')} onBreathing={selectBreathingStyle} onPrepare={(uid,ids)=>{const next=partyRef.current.map(pet=>pet.uid===uid ? {...pet,preparedJutsu:ids} : pet);partyRef.current=next;setParty(next);}}/></React.Suspense>}
       {view === 'world_boss' && renderWorldBoss()}
       {view === 'race' && renderRace()}
