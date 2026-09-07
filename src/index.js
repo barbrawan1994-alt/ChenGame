@@ -1,12 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import RPG from './App';
-import './App.css';
-import './styles/common.css';
-import './styles/enhancements.css';
-import './styles/spirit-theme.css';
-import './styles/battle-controls.css';
-import './styles/activity-screens.css';
+import GameBootstrap from './components/GameBootstrap';
 import { isMobileDevice } from './utils/platformSupport';
 
 window.onerror = function(msg, src, line, col, err) {
@@ -79,4 +73,4 @@ root.render(React.createElement(StartupReady, null, isMobileDevice(navigator)
   ? React.createElement('main', { className: 'desktop-required' },
       React.createElement('h1', null, '超级精灵'),
       React.createElement('p', null, '请使用电脑浏览器打开游戏。'))
-  : React.createElement(ErrorBoundary, null, React.createElement(RPG))));
+  : React.createElement(ErrorBoundary, null, React.createElement(GameBootstrap))));

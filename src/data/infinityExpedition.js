@@ -18,27 +18,27 @@ export const INFINITY_ROUTE_TYPES = [
     healPct: 0.3,
   },
   {
-    id: 'spirit_event', name: '精灵事件', icon: '🐾', desc: '遭遇野生精灵，可获得额外经验和金币',
-    rewardGold: 3000, rewardExpMult: 1.5,
+    id: 'spirit_event', name: '精灵事件', icon: '🐾', desc: '一只精灵临时同行，队伍有空位时参加下场战斗',
+    tempPartner: true,
   },
   {
     id: 'eco_event', name: '生态异变', icon: '🌿', desc: '生态事件，通过挑战获得额外奖励',
     rewardMult: 1.2, risk: 0.2, triggerBattle: true,
   },
   {
-    id: 'eco_puzzle', name: '生态解谜', icon: '🧩', desc: '用精灵能力解开机关',
+    id: 'eco_puzzle', name: '生态解谜', icon: '🧩', desc: '调查机关，获得800金币',
     rewardMult: 1.15, puzzleBonus: true,
   },
   {
-    id: 'bonding', name: '结契事件', icon: '💫', desc: '遭遇可结契野生精灵',
-    tempPartner: true, bondingEvent: true,
+    id: 'bonding', name: '羁绊事件', icon: '💫', desc: '首发伙伴亲密度+10',
+    bondingEvent: true,
   },
   {
     id: 'sanctuary_rest', name: '圣域休息', icon: '🏡', desc: '恢复生命并大幅缓解疲劳',
     healPct: 0.4,
   },
   {
-    id: 'training', name: '技能训练', icon: '📜', desc: '强化一个技能',
+    id: 'training', name: '技能训练', icon: '📜', desc: '解锁一种技能变异；全部解锁后恢复全队PP',
     skillMutation: true,
   },
   {
@@ -48,17 +48,17 @@ export const INFINITY_ROUTE_TYPES = [
 ];
 
 export const SPIRIT_BLESSINGS = [
-  { id: 'burn_spread', name: '灼烧扩散', icon: '🔥', desc: '火系技能附带15%灼烧扩散', typeBoost: 'FIRE', effect: 'burnSpread' },
+  { id: 'burn_spread', name: '灼烧扩散', icon: '🔥', desc: '火系技能命中后15%概率灼伤目标', typeBoost: 'FIRE', effect: 'burnSpread' },
   { id: 'heal_shield', name: '治愈护盾', icon: '💚', desc: '治疗技能同时给予10%护盾', effect: 'healShield' },
   { id: 'control_energy', name: '掌控能量', icon: '⚡', desc: '控制敌人时回复5%咒力/查克拉', effect: 'controlRegen' },
   { id: 'small_evasion', name: '灵动身形', icon: '💨', desc: '小型精灵闪避+8%', tag: 'small', effect: 'evasionUp' },
   { id: 'rain_double', name: '雨幕回响', icon: '🌧️', desc: '雨天水系技能额外触发一次（30%威力）', typeBoost: 'WATER', effect: 'rainDouble' },
-  { id: 'vine_mutate', name: '藤蔓变异', icon: '🌿', desc: '草系技能30%概率附加束缚', typeBoost: 'GRASS', effect: 'vineBind' },
+  { id: 'vine_mutate', name: '藤蔓变异', icon: '🌿', desc: '草系技能命中后30%概率阻断目标下次行动', typeBoost: 'GRASS', effect: 'vineBind' },
   { id: 'crit_chain', name: '暴击连锁', icon: '💥', desc: '暴击后下招威力+20%', effect: 'critChain' },
   { id: 'endure_once', name: '不屈意志', icon: '🛡️', desc: '每场战斗一次致死留1HP', effect: 'endureOnce' },
-  { id: 'tide_echo', name: '潮汐回响', icon: '🌊', desc: '水系治疗额外生成10%护盾', typeBoost: 'WATER', effect: 'healShield', shieldPct: 0.1 },
+  { id: 'tide_echo', name: '潮汐回响', icon: '🌊', desc: '水系精灵治疗后生成10%护盾，与治愈护盾不叠加', typeBoost: 'WATER', effect: 'healShield', shieldPct: 0.1 },
   { id: 'forest_symbiosis', name: '森林共生', icon: '🌳', desc: '木系技能后回复全队3%HP', typeBoost: 'GRASS', effect: 'grassHealTeam' },
-  { id: 'thunder_chain', name: '雷鸣连锁', icon: '⚡', desc: '雷系攻击35%概率弹射', typeBoost: 'ELECTRIC', effect: 'electricChain' },
+  { id: 'thunder_chain', name: '雷鸣连锁', icon: '⚡', desc: '雷系攻击35%概率提高30%伤害', typeBoost: 'ELECTRIC', effect: 'electricChain' },
   { id: 'shadow_ambush', name: '暗影蓄谋', icon: '🌑', desc: '暗系精灵未行动时叠加10%伤害', typeBoost: 'DARK', effect: 'darkAmbush' },
   { id: 'starlight_guard', name: '星光庇护', icon: '⭐', desc: '光系技能清除一个负面状态', typeBoost: 'FAIRY', effect: 'lightCleanse' },
   { id: 'large_wall', name: '巨兽压阵', icon: '🦣', desc: '巨型精灵受伤后给队友8%护盾', tag: 'large', effect: 'largeWall' },
@@ -80,9 +80,9 @@ export const SPIRIT_BLESSINGS = [
 ];
 
 export const SKILL_MUTATIONS = [
-  { id: 'range', name: '范围化', suffix: '·蔓延', powerMult: 0.85, desc: '变为范围攻击' },
+  { id: 'range', name: '扩幅', suffix: '·扩幅', powerMult: 1.05, desc: '技能威力提高5%' },
   { id: 'lifesteal', name: '吸血', suffix: '·吸血', powerMult: 0.9, desc: '造成伤害的20%转化为HP' },
-  { id: 'seed_bomb', name: '爆裂种子', suffix: '·爆裂', powerMult: 1.1, desc: '附加延迟爆炸伤害' },
+  { id: 'seed_bomb', name: '爆裂种子', suffix: '·爆裂', powerMult: 1.1, desc: '技能威力提高10%' },
   { id: 'silence', name: '沉默', suffix: '·沉默', powerMult: 0.8, desc: '15%概率使目标下回合无法行动' },
 ];
 
@@ -110,10 +110,14 @@ export function pickRouteOptions(floor, count = 3) {
   return picked;
 }
 
+export const IMPLEMENTED_SPIRIT_BLESSINGS = ['crit_chain', 'endure_once', 'burn_spread', 'vine_mutate', 'thunder_chain', 'ice_frost', 'ground_fortify', 'heal_shield', 'tide_echo'];
+
 export function pickBlessingOptions(count = 3) {
-  const implemented = ['crit_chain', 'endure_once', 'burn_spread', 'vine_mutate', 'thunder_chain', 'ice_frost', 'ground_fortify', 'heal_shield', 'tide_echo'];
-  const pool = SPIRIT_BLESSINGS.filter(b => implemented.includes(b.id));
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const shuffled = SPIRIT_BLESSINGS.filter(b => IMPLEMENTED_SPIRIT_BLESSINGS.includes(b.id));
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return shuffled.slice(0, count);
 }
 
@@ -162,7 +166,7 @@ export function getAvailableInfinityRewardOptions(
   });
   const spirits = blessings.length >= 6
     ? []
-    : (spiritBlessings || []).filter(option => option?.id && !blessings.includes(option.id));
+    : (spiritBlessings || []).filter(option => IMPLEMENTED_SPIRIT_BLESSINGS.includes(option?.id) && !blessings.includes(option.id));
   return { breathing, spirits };
 }
 
@@ -201,11 +205,11 @@ export function pickSkillMutation() {
 }
 
 export function applySkillMutation(move, mutation) {
-  if (!move || !mutation) return move;
+  if (!move || !mutation || !(move.p > 0) || move._mutation) return move;
   return {
     ...move,
     name: `${move.name}${mutation.suffix || ''}`,
-    p: Math.floor((move.p || 40) * (mutation.powerMult || 1)),
+    p: Math.min(250, Math.max(1, Math.floor(move.p * (mutation.powerMult || 1)))),
     _mutation: mutation.id,
     _mutationDesc: mutation.desc,
     _infinityOriginalName: move._infinityOriginalName || move.name,
@@ -215,10 +219,10 @@ export function applySkillMutation(move, mutation) {
 const toRunEntryId = entry => typeof entry === 'string' ? entry : entry?.id;
 
 /** Keep resumable run state JSON-safe, including saves created before run entries used IDs. */
-export function normalizeInfinityRunState(run) {
+export function normalizeInfinityRunState(run, breathingBuffs = [], options = {}) {
   if (!run || typeof run !== 'object') return null;
   const ids = list => (Array.isArray(list) ? list : []).map(toRunEntryId).filter(Boolean);
-  return {
+  const normalized = {
     ...run,
     buffs: ids(run.buffs),
     blessings: ids(run.blessings),
@@ -226,6 +230,25 @@ export function normalizeInfinityRunState(run) {
     buffOptions: run.buffOptions == null ? null : ids(run.buffOptions),
     tempPartnerId: Number.isFinite(Number(run.tempPartnerId)) ? Number(run.tempPartnerId) : null,
   };
+  if (breathingBuffs.length) {
+    normalized.blessings = [...new Set(normalized.blessings)].filter(id => IMPLEMENTED_SPIRIT_BLESSINGS.includes(id));
+    normalized.skillMutations = [...new Set(normalized.skillMutations)].filter(id => SKILL_MUTATIONS.some(m => m.id === id));
+  }
+  if (normalized.status === 'buff_select' && breathingBuffs.length) {
+    const available = getAvailableInfinityRewardOptions(normalized, breathingBuffs, SPIRIT_BLESSINGS, options);
+    const validIds = new Set([...available.breathing, ...available.spirits].map(b => b.id));
+    normalized.buffOptions = [...new Set(normalized.buffOptions || [])].filter(id => validIds.has(id));
+    if (!normalized.buffOptions.length) normalized.buffOptions = pickInfinityRewardOptions(normalized, breathingBuffs, SPIRIT_BLESSINGS, options).map(b => b.id);
+    if (!normalized.buffOptions.length) {
+      normalized.floor += 1;
+      normalized.status = 'selecting';
+      normalized.floorModifier = null;
+      normalized.routeOptions = pickRouteOptions(normalized.floor);
+      normalized.tempPartnerId = null;
+      normalized.bestFloor = Math.max(normalized.bestFloor || 0, normalized.floor);
+    }
+  }
+  return normalized;
 }
 
 export function resolveInfinityRunEntries(entries, catalog) {
@@ -236,7 +259,7 @@ export function resolveInfinityRunEntries(entries, catalog) {
 /** Build a disposable combat roster. Breathing stats and mutations must never touch saved pets. */
 export function buildInfinityBattleParty(party, run, pokedex, breathingBuffs, skillMutations) {
   const buffDefs = resolveInfinityRunEntries(run?.buffs, breathingBuffs);
-  const mutationDefs = resolveInfinityRunEntries(run?.skillMutations, skillMutations);
+  const mutationDefs = resolveInfinityRunEntries([...new Set((run?.skillMutations || []).map(toRunEntryId))], skillMutations);
   return (party || []).map(pet => {
     const clone = {
       ...pet,
@@ -263,8 +286,10 @@ export function buildInfinityBattleParty(party, run, pokedex, breathingBuffs, sk
         clone.customBaseStats[key] = Math.min(999, Number(clone.customBaseStats[key]) || 0);
       });
     }
-    mutationDefs.forEach(mutation => {
-      if (clone.moves[0]) clone.moves[0] = applySkillMutation(clone.moves[0], mutation);
+    const attackSlots = clone.moves.map((move, i) => move.p > 0 ? i : -1).filter(i => i >= 0);
+    mutationDefs.forEach((mutation, i) => {
+      const slot = attackSlots[i];
+      if (slot != null) clone.moves[slot] = applySkillMutation(clone.moves[slot], mutation);
     });
     clone._infinityBattleClone = true;
     return clone;

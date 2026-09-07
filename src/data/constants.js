@@ -1,5 +1,5 @@
 /** v15.0 — 存档键名保留 V17 历史前缀；当前 saveVersion = 34（见 App.js buildSavePayload）。 */
-export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED'; 
+export { SAVE_KEY } from '../utils/saveKey.js';
 export const GAME_NAME = '超级精灵';
 export const GAME_EN_NAME = 'Super Spirit';
 export const GAME_VERSION = '15.0';

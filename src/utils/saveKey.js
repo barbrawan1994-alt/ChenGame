@@ -1,0 +1,1 @@
+export const SAVE_KEY = 'DREAM_RPG_LEGEND_V17_FIXED';

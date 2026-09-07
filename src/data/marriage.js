@@ -17,9 +17,10 @@ export const MARRIAGE_LEVELS = [
   { level: 3, name: '灵魂伴侣', min: 8000, bonusMult: 1.20 },
 ];
 
-export const getAffectionStage = (val) => {
+export const getAffectionStage = (val, isMarried = false) => {
+  if (isMarried) return AFFECTION_STAGES.find(s => s.id === 'married');
   let stage = AFFECTION_STAGES[0];
-  for (const s of AFFECTION_STAGES) { if (val >= s.min) stage = s; }
+  for (const s of AFFECTION_STAGES) { if (s.id !== 'married' && val >= s.min) stage = s; }
   return stage;
 };
 
@@ -38,7 +39,7 @@ export const MARRIAGE_CANDIDATES = [
     favoriteGifts: ['seed', 'berry'],
     hatedGifts: ['poison'],
     bonus: { gardenYield: 0.3, seedQuality: 1 },
-    bonusDesc: '花园产出+30%，种子品质提升',
+    bonusDesc: '花园产出+30%，收获花卉品质提升1档',
     unlockCondition: null,
     dialogues: {
       stranger: [
@@ -223,7 +224,7 @@ export const MARRIAGE_CANDIDATES = [
     favoriteGifts: ['ball', 'rare'],
     hatedGifts: ['common'],
     bonus: { dropQuality: 1 },
-    bonusDesc: '宝箱/装备掉落品质+1档',
+    bonusDesc: '饰品掉落更偏向高品质',
     unlockCondition: { badges: 6 },
     dialogues: {
       stranger: [
@@ -260,7 +261,7 @@ export const MARRIAGE_CANDIDATES = [
     favoriteGifts: ['gem', 'accessory'],
     hatedGifts: ['dirt'],
     bonus: { furnitureQuality: 1, homeScore: 0.15 },
-    bonusDesc: '家具品质概率提升，家园评分+15%',
+    bonusDesc: '家具品质提升1档，家具评分+15%',
     unlockCondition: { houseType: 'house' },
     dialogues: {
       stranger: [
@@ -454,7 +455,7 @@ export const PROPOSAL_QUESTS = {
   xingchen: {
     name: '星辰的占卜',
     steps: [
-      { id: 'catch_pokemon', desc: '捕捉3只不同的精灵', type: 'catch', target: 3, icon: '🔮' },
+      { id: 'catch_pokemon', desc: '捕捉3只不同的精灵', type: 'catch', target: 3, unique: true, icon: '🔮' },
       { id: 'win_battles', desc: '在星辰的注视下赢得5场战斗', type: 'battle_win', target: 5, icon: '⚔️' },
       { id: 'brew_drinks', desc: '在咖啡厅酿造5杯饮品', type: 'brew', target: 5, icon: '☕' },
     ],
@@ -520,20 +521,31 @@ export const DEFAULT_MARRIAGE_STATE = {
   pendingPropose: null,
 };
 
+export const getGiftPreference = (candidate, item) => {
+  const tags = new Set([item.category, ...(item.tags || [])]);
+  const matches = key => tags.has(key) || (GIFT_CATEGORY_MAP[key] || []).some(alias => (item.name || '').includes(alias));
+  if ((candidate.favoriteGifts || []).some(matches)) return 'favorite';
+  if ((candidate.hatedGifts || []).some(matches)) return 'hated';
+  return 'neutral';
+};
+
 export const getSpouseBonus = (candidate, marriageLevel) => {
   if (!candidate) return {};
   const ml = MARRIAGE_LEVELS.find(l => l.level === marriageLevel) || MARRIAGE_LEVELS[0];
   const mult = ml.bonusMult;
   const bonus = { ...candidate.bonus };
   for (const key of Object.keys(bonus)) {
-    if (typeof bonus[key] === 'number') bonus[key] *= mult;
+    if (typeof bonus[key] !== 'number') continue;
+    if (key === 'brewCooldown' || key === 'shinyRate') bonus[key] = 1 + (bonus[key] - 1) * mult;
+    else if (['freeReroll', 'seedQuality', 'dropQuality', 'furnitureQuality', 'ivBoost', 'ivBase'].includes(key)) bonus[key] = Math.floor(bonus[key] * mult);
+    else bonus[key] *= mult;
   }
   if (!bonus.intimacyBoost) bonus.intimacyBoost = 0.1 * mult;
   if (!bonus.cafeGoldBase) bonus.cafeGoldBase = 0.1 * mult;
   return bonus;
 };
 
-export const getDailyGift = (candidate, marriageLevel) => {
+export const getDailyGift = (candidate, marriageLevel, random = Math.random) => {
   if (!candidate) return null;
   const ml = MARRIAGE_LEVELS.find(l => l.level === marriageLevel) || MARRIAGE_LEVELS[0];
   const gifts = [
@@ -548,5 +560,17 @@ export const getDailyGift = (candidate, marriageLevel) => {
   if (ml.level >= 3) {
     gifts.push({ type: 'growth', item: 'vit_hp', amount: 1, text: `💊 ${candidate.name}给你买了维他命` });
   }
-  return gifts[Math.floor(Math.random() * gifts.length)];
+  return gifts[Math.floor(random() * gifts.length)];
+};
+
+export const getSpouseBonusesForState = (marriage) => {
+  if (!marriage?.spouse) return {};
+  const candidate = MARRIAGE_CANDIDATES.find(c => c.id === marriage.spouse);
+  return getSpouseBonus(candidate, getMarriageLevel(marriage.affections?.[marriage.spouse] || 0).level);
+};
+
+export const getSpouseRerollCost = (marriage, pet, today) => {
+  const limit = getSpouseBonusesForState(marriage).freeReroll || 0;
+  const used = marriage?.freeRerollDate === today ? (marriage.freeRerollsUsed || 0) : 0;
+  return used < limit ? 0 : pet?.isShiny ? 2 : 1;
 };

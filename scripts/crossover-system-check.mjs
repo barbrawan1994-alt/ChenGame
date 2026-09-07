@@ -158,12 +158,13 @@ const breathing = [
   { id: 'def', effect: () => {} },
   { id: 'heal', type: 'instant' },
 ];
-const spirits = [{ id: 'spirit-a', effect: 'a' }, { id: 'spirit-b', effect: 'b' }];
-const saturatedRun = { buffs: ['atk', 'atk', 'atk'], blessings: ['spirit-a'] };
+const spirits = [{ id: 'crit_chain', effect: 'crit_chain' }, { id: 'endure_once', effect: 'endure_once' }, { id: 'unimplemented' }];
+const saturatedRun = { buffs: ['atk', 'atk', 'atk'], blessings: ['crit_chain'] };
 const available = getAvailableInfinityRewardOptions(saturatedRun, breathing, spirits, { partyNeedsHealing: false });
 check(!available.breathing.some(option => option.id === 'atk'), '满三层呼吸法不会再次进入奖励池');
 check(!available.breathing.some(option => option.id === 'heal'), '满血时不会出现无效即时治疗');
-check(!available.spirits.some(option => option.id === 'spirit-a'), '已拥有的灵契祝福不会重复出现');
+check(!available.spirits.some(option => option.id === 'crit_chain'), '已拥有的灵契祝福不会重复出现');
+check(!available.spirits.some(option => option.id === 'unimplemented'), '尚未接入战斗的祝福不会进入奖励池');
 const options = pickInfinityRewardOptions(saturatedRun, breathing, spirits, { random: makeRandom(9), partyNeedsHealing: false });
 check(options.length === 2 && new Set(options.map(option => option.id)).size === options.length, '无限城奖励只包含有效且不重复的选项');
 

@@ -134,7 +134,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
   const baseShinyRate = 0.01 * (spBs.shinyRate || 1);
   const isShiny = forceShiny || (!isBoss && Math.random() < baseShinyRate);
 
-  const ivBoost = isBoss ? 0 : (spBs.ivBoost || 0);
+  const ivBoost = isBoss ? 0 : Math.max(0, Math.floor((spBs.ivBoost || 0) + (spBs.ivBase || 0)));
   const randIV = () => Math.min(31, Math.floor(Math.random() * 32) + ivBoost);
   const ivs = {
     hp: randIV(), p_atk: randIV(), p_def: randIV(),

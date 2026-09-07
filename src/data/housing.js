@@ -23,7 +23,7 @@ export const FURNITURE_QUALITY = {
   LEGENDARY: { name: '传说', color: '#FFAA00', statMult: 3.0, weight: 1 },
 };
 
-export const rollQuality = (source = 'pickup', isBoss = false) => {
+export const rollQuality = (source = 'pickup', isBoss = false, qualityBoost = 0) => {
   const keys = Object.keys(FURNITURE_QUALITY);
   const quals = keys.map(k => FURNITURE_QUALITY[k]);
 
@@ -40,7 +40,7 @@ export const rollQuality = (source = 'pickup', isBoss = false) => {
   let roll = Math.random() * total;
   for (let i = 0; i < keys.length; i++) {
     roll -= weights[i];
-    if (roll <= 0) return keys[i];
+    if (roll <= 0) return keys[Math.min(keys.length - 1, i + Math.max(0, Math.floor(qualityBoost)))];
   }
   return 'COMMON';
 };
@@ -312,7 +312,7 @@ export const getHousingScoreTier = (score) => {
   return current;
 };
 
-export const calcHouseScore = (placedFurniture) => {
+export const calcHouseScore = (placedFurniture, scoreBonus = 0) => {
   let score = 0;
   for (const f of placedFurniture) {
     const def = FURNITURE_DB.find(d => d.id === f.baseId);
@@ -321,7 +321,7 @@ export const calcHouseScore = (placedFurniture) => {
     const baseScore = def.baseEffect.scoreBonus || (def.category === 'DECO' ? 5 : 2);
     score += Math.floor(baseScore * qual.statMult);
   }
-  return score;
+  return Math.floor(score * (1 + Math.max(0, scoreBonus)));
 };
 
 export const calcResidentBenefits = (placedFurniture) => {

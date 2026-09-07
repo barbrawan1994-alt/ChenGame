@@ -78,6 +78,8 @@
 }
 .spirit-app .home-menu-start:hover { background: #ffe8af; transform: translateY(-2px); }
 .spirit-app .home-menu-start:active { transform: translateY(1px); }
+.spirit-app .home-menu button:disabled { cursor: wait; opacity: 0.7; transform: none; }
+.home-menu-load-error { margin: 16px 0 0; color: #ffe2d6; font-size: 13px; line-height: 1.5; }
 .home-menu-links { display: flex; justify-content: center; gap: 26px; margin-top: 26px; }
 .spirit-app .home-menu-links button,
 .spirit-app .home-menu-footer button {

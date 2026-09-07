@@ -159,9 +159,9 @@ export const ECO_CRISES = [
     branches: ['fight', 'soothe', 'relocate'],
     branchPrompt: '岩甲犀因巢穴被挖穿而暴走。你选择帮助哪一方？',
     routes: [
-      { id: 'help_merchant', name: '保护矿场', difficulty: 'easy', ecoDelta: { stability: 5, pollution: 10 }, varDelta: { mineStability: 15, rhinoTrust: -25, kwArsenal: 10, ecoValue: -10 } },
+      { id: 'help_merchant', name: '保护矿场', difficulty: 'easy', ecoDelta: { stability: 5, pollution: 10 }, varDelta: { mineStability: 15, rhinoTrust: -25, kwArsenal: 10, ecoValue: -10 }, branchVarDeltas: { fight: { relicAwakening: 20, rhinoTrust: -15 } } },
       { id: 'help_beasts', name: '保护岩甲犀', difficulty: 'medium', ecoDelta: { stability: 20, diversity: 10 }, reqTypes: ['GROUND', 'ROCK'], varDelta: { rhinoTrust: 35, mineStability: -15, kwArsenal: -10, ecoValue: 15 } },
-      { id: 'mediate', name: '调停双方', difficulty: 'hard', ecoDelta: { stability: 25, pollution: -10 }, reqTypes: ['GROUND', 'FAIRY'], varDelta: { rhinoTrust: 20, mineStability: 10, ecoValue: 10, blackMarket: -5 } },
+      { id: 'mediate', name: '调停双方', difficulty: 'hard', ecoDelta: { stability: 25, pollution: -10 }, reqTypes: ['GROUND', 'FAIRY'], varDelta: { rhinoTrust: 20, mineStability: 10, ecoValue: 10, blackMarket: -5 }, branchVarDeltas: { soothe: { blackMarket: -15 }, relocate: { blackMarket: -15 } } },
     ],
     bossModifiers: [
       { condition: 'branch:relocate', effect: 'bossMult:0.8, skipMechanic:rage' },
@@ -212,7 +212,7 @@ export const ECO_CRISES = [
     routes: [
       { id: 'purify_path', name: '净化路线', difficulty: 'hard', ecoDelta: { spirit: 15, pollution: -15 }, reqTypes: ['FAIRY', 'LIGHT'], varDelta: { ghostPollution: -15, lightCoverage: 15, villagerMorale: 10 } },
       { id: 'soothe_path', name: '安抚路线', difficulty: 'medium', ecoDelta: { stability: 20, diversity: 10 }, reqTypes: ['FAIRY', 'NORMAL'], varDelta: { villagerMorale: 20, sectTension: -10, ghostPollution: -5 } },
-      { id: 'shadow_path', name: '影月路线', difficulty: 'medium', ecoDelta: { spirit: 10, stability: -5 }, reqTypes: ['DARK', 'GHOST'], varDelta: { nightIntensity: 15, ghostPollution: 10, sectTension: 15 } },
+      { id: 'shadow_path', name: '影月路线', difficulty: 'medium', ecoDelta: { spirit: 10, stability: -5 }, reqTypes: ['DARK', 'GHOST'], varDelta: { nightIntensity: 15, ghostPollution: 10, sectTension: 15 }, branchVarDeltas: { fight: { ghostPollution: 15 } } },
     ],
     bossModifiers: [
       { condition: 'branch:heal', effect: 'bossMult:0.82, skipMechanic:blood_mist' },
@@ -293,7 +293,7 @@ export const ECO_CRISES = [
     branchPrompt: '灾厄核心即将冲破国土结界。你选择全力封印、削弱再封，还是协调国家资源？',
     routes: [
       { id: 'full_seal', name: '全力封印', difficulty: 'hard', ecoDelta: { spirit: 10, stability: 15 }, reqTypes: ['PSYCHIC', 'FAIRY'], varDelta: { sealIntegrity: 20, chakraReserve: -10, calamityPower: -5 } },
-      { id: 'weaken_first', name: '削弱再封', difficulty: 'medium', ecoDelta: { stability: 10, pollution: 5 }, reqTypes: ['FIGHT', 'FIRE'], varDelta: { calamityPower: -15, civilianSafety: -5, chakraReserve: 5 } },
+      { id: 'weaken_first', name: '削弱再封', difficulty: 'medium', ecoDelta: { stability: 10, pollution: 5 }, reqTypes: ['FIGHT', 'FIRE'], varDelta: { calamityPower: -15, civilianSafety: -5, chakraReserve: 5 }, branchVarDeltas: { fight: { calamityPower: 40, sealIntegrity: -25 } } },
       { id: 'nation_coord', name: '国家协调', difficulty: 'medium', ecoDelta: { stability: 20 }, reqTypes: ['STEEL', 'GROUND'], varDelta: { nationCoord: 20, relicDecode: 10, sealIntegrity: 5 } },
     ],
     bossModifiers: [
