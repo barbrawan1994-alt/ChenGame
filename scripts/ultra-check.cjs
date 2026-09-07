@@ -4,6 +4,7 @@ const path = require('path');
 const { load, bindAppFunctions } = require('./helpers/project-harness.cjs');
 const { createCombatHarness } = require('./longrun-combat-check.cjs');
 const u = load('src/utils/ultraRules.js');
+const trials = load('src/utils/ultraTrials.js');
 const { ULTRA_HEROES, ULTRA_ERAS, ULTRA_ROLES, ULTRA_STARTERS, ULTRA_TRIALS } = load('src/data/ultra.js');
 
 async function run() {
@@ -12,7 +13,7 @@ async function run() {
   const base = createPet(1, 45, false, false, { getStatsForPet: d.getStatsRaw, preserveSpecies: true });
   Object.assign(base, { uid: 'host', trait: 'none', nature: 'docile', sectId: 0, equips: [], stages: { ...d.DEFAULT_BATTLE_STAGES }, volatiles: {}, status: null, isShiny: false, customBaseStats: { hp: 100, p_atk: 60, s_atk: 60, p_def: 60, s_def: 60, spd: 60, crit: 0 } });
   base.currentHp = d.getStatsRaw(base).maxHp;
-  const allCleared = { cleared: ULTRA_ERAS.map(era => era.id), hostUid: 'host' };
+  const allCleared = { version:2,trialWins:ULTRA_HEROES.map(hero=>hero.id),hostUid:'host' };
   const battleFor = (hero, form, extra = {}) => {
     const actor = u.assignUltraContract(structuredClone(base), { ...allCleared, heroId: hero.id, formId: form.id }, 'wild');
     const target = { ...structuredClone(base), uid: 'target', isEnemy: true, combatMoves: [], currentHp: 2000 };
@@ -27,14 +28,42 @@ async function run() {
     assert.ok(u.getUltraForm(state.heroId, state.formId));
   }
   let state = u.normalizeUltraState();
-  for (const era of ULTRA_ERAS) {
-    const first = u.completeUltraTrial(state, era.id);
+  for (const hero of ULTRA_HEROES) {
+    const before=state.unlockedHeroIds.length;
+    const first = u.completeUltraTrial(state, hero.id);
     assert.ok(first.firstClear);
-    const repeat = u.completeUltraTrial(first.state, era.id);
+    assert.equal(first.state.unlockedHeroIds.length-before,ULTRA_STARTERS.includes(hero.id) ? 0 : 1,'Only the challenged hero is unlocked');
+    const repeat = u.completeUltraTrial(first.state, hero.id);
     assert.equal(repeat.firstClear, false);
     state = repeat.state;
   }
   assert.ok(ULTRA_HEROES.every(hero => u.isUltraUnlocked(state, hero.id)));
+  assert.deepEqual(u.normalizeUltraState(state),state,'Normalization is idempotent');
+  const legacy=u.normalizeUltraState({cleared:['showa'],heroId:'zoffy',hostUid:'host'});
+  assert.ok(u.isUltraUnlocked(legacy,'zoffy'));
+  assert.equal(legacy.trialWins.length,0,'Legacy era clears do not count as individual trial wins');
+  assert.equal(u.completeUltraTrial(u.normalizeUltraState(),'showa').firstClear,false,'An era cannot grant new contracts');
+  for(const invalid of [undefined,null,'unknown','__proto__']) assert.equal(u.completeUltraTrial(state,invalid).firstClear,false);
+  let progression=u.normalizeUltraState();
+  const qualified=[{level:90,currentHp:100},{level:90,currentHp:100},{level:90,currentHp:100}];
+  for(let pass=0;pass<ULTRA_HEROES.length;pass++) {
+    const next=ULTRA_HEROES.find(hero=>!progression.trialWins.includes(hero.id) && !trials.getUltraTrialBlock(trials.getUltraTrial(hero.id,qualified),progression,qualified,8));
+    assert.ok(next,'Every hero has a reachable prerequisite route');progression=u.completeUltraTrial(progression,next.id).state;
+  }
+  for(const hero of ULTRA_HEROES) {
+    const trial=trials.getUltraTrial(hero.id,qualified);
+    assert.ok(trial.level>=92 && trial.level<=100);
+    assert.ok(trials.getUltraTrialBlock(trial,progression,qualified,0));
+    assert.ok(trials.getUltraTrialBlock(trial,progression,[qualified[0]],8));
+    const opponents=trials.buildUltraTrialParty(trial,{createPet:(id,level)=>createPet(id,level,false,false,{getStatsForPet:d.getStatsRaw}),pokedex:d.POKEDEX,getStats:d.getStatsRaw});
+    assert.equal(opponents.length,2);assert.equal(opponents[1].trialPortrait,hero.portrait);
+    assert.notEqual(opponents[0].moves,opponents[1].moves);
+    const projection={...opponents[1],combatMoves:opponents[1].moves};
+    for(let round=0;round<8;round++) {
+      const action=trials.getUltraTrialAction({type:'ultra_trial',turnCount:round},projection,[{idx:0,unit:qualified[0]}],move=>move.pp>0);
+      assert.equal(action.move,projection.combatMoves[projection.trialSequence[round%4]]);
+    }
+  }
   for (const role of Object.values(ULTRA_ROLES)) assert.ok(Object.values(role.stats).reduce((sum, n) => sum + n - 1, 0) <= .40001);
 
   const equipment = [null, ...d.ACCESSORY_DB, ...d.RANDOM_EQUIP_DB];
@@ -136,26 +165,26 @@ async function run() {
   const timers = [], starts = [], saves = [];
   const trialParty = [structuredClone(base), { ...structuredClone(base), uid:'second', currentHp:1 }];
   const flow = bindAppFunctions(['startUltraTrial', 'finishUltraTrial'], {
-    ...d, ULTRA_ERAS, ULTRA_TRIALS, completeUltraTrial:u.completeUltraTrial, _:require('lodash'),
+    ...d, ...trials, ULTRA_ERAS, ULTRA_TRIALS, completeUltraTrial:u.completeUltraTrial, _:require('lodash'),badges:[1,2,3,4,5,6,7,8],
     battle:null, partyRef:{current:trialParty}, battleResultHandledRef:{current:false},
     ultraTrialStartLockRef:{current:false}, ultraTrialActiveRef:{current:false},
     ultraStateRef:{current:u.normalizeUltraState()}, pendingJutsuWinForBountyRef:{current:false},
     createPet:(id, level)=>createPet(id, level, false, false, {getStatsForPet:d.getStatsRaw}), getStats:d.getStatsRaw,
     window:{setTimeout:fn=>timers.push(fn)}, setTimeout:fn=>timers.push(fn),
-    setUltraResult:()=>{}, setUltraState:()=>{}, setParty:()=>{}, setView:()=>{}, setAnimEffect:()=>{},
+    setUltraResult:()=>{}, setUltraState:()=>{}, setParty:()=>{}, setView:()=>{}, setAnimEffect:()=>{},setBattleImpact:()=>{},
     setBattle:value=>{flow.battle=value;}, showMapToast:()=>{}, persistSaveRef:{current:()=>saves.push(true)},
     startBattle:(context,type)=>{ starts.push({context,type}); return true; },
   });
   const flush = () => { while(timers.length)timers.shift()(); };
-  flow.startUltraTrial('newgen');
-  flow.startUltraTrial('newgen');
+  flow.startUltraTrial('ginga');
+  flow.startUltraTrial('ginga');
   assert.equal(starts.length,1,'Rapid trial start must not create two battles');
   assert.equal(starts[0].context.isDouble,true);
   assert.equal(starts[0].context.customParty.length,2);
   const [boss, escort] = starts[0].context.customParty;
-  assert.ok(d.getStatsRaw(escort).maxHp < d.getStatsRaw(boss).maxHp,'Escort has lower maximum HP after initialization');
+  assert.ok(d.getStatsRaw(escort).maxHp > d.getStatsRaw(boss).maxHp,'Hero projection is stronger than the first guardian');
   assert.notEqual(boss.moves,escort.moves,'Double enemies must not share PP state');
-  assert.equal(flow.ultraTrialActiveRef.current,true);
+  assert.equal(flow.ultraTrialActiveRef.current,starts[0].context._ultraTrialRunId);
   const snapshot=starts[0].context._ultraPartySnapshot;
   trialParty[0].currentHp=0;
   assert.ok(snapshot[0].currentHp>0,'Trial snapshot must survive combat mutations');
@@ -163,15 +192,20 @@ async function run() {
   assert.equal(flow.partyRef.current[0].currentHp,snapshot[0].currentHp);
   assert.equal(flow.partyRef.current[1].currentHp,1);
   assert.equal(flow.ultraTrialActiveRef.current,false);
-  assert.equal(flow.ultraStateRef.current.cleared.length,0,'A loss cannot unlock contracts');
-  flow.finishUltraTrial({...starts[0].context},true);flush();
-  assert.equal(flow.ultraStateRef.current.cleared.join(','),'newgen');
+  assert.equal(flow.ultraStateRef.current.trialWins.length,0,'A loss cannot unlock contracts');
+  flow.finishUltraTrial({...starts[0].context,enemyParty:[{currentHp:0}]},true);flush();
+  assert.equal(flow.ultraStateRef.current.trialWins.length,0,'A stale victory after exit cannot unlock contracts');
+  flow.startUltraTrial('ginga');flush();
+  flow.finishUltraTrial({...starts[1].context,enemyParty:[{currentHp:0},{currentHp:0}]},true);flush();
+  assert.equal(flow.ultraStateRef.current.trialWins.join(','),'ginga');
+  assert.equal(flow.ultraStateRef.current.unlockedHeroIds.length,ULTRA_STARTERS.length+1);
   assert.ok(saves.length>=2);
   flow.partyRef.current=[{...base,currentHp:1}];
-  flow.startUltraTrial('newgen');
-  assert.equal(starts.length,1,'Double trial requires two living partners');
+  flow.startUltraTrial('ginga');
+  assert.equal(starts.length,2,'Double trial requires two living partners');
+  flow.partyRef.current=snapshot;
   flow.startBattle=()=>false;
-  flow.startUltraTrial('showa');flush();
+  flow.startUltraTrial('zoffy');flush();
   assert.equal(flow.ultraTrialActiveRef.current,false,'Rejected battle must restore achievement tracking');
   console.log(JSON.stringify({ suite: 'ultra', heroes: ULTRA_HEROES.length, forms, cases, equipment: equipment.length - 1, weather: weather.length, officialPortraits: 58 }));
 }

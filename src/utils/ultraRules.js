@@ -1,16 +1,18 @@
-import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_ROLES, ULTRA_STARTERS, ULTRA_DURATION, ULTRA_MIN_TURN } from '../data/ultra';
+import { ULTRA_BY_ID, ULTRA_HEROES, ULTRA_ROLES, ULTRA_STARTERS, ULTRA_DURATION, ULTRA_MIN_TURN } from '../data/ultra';
 import { getBurstBlock } from './battleTactics';
 
 export function normalizeUltraState(raw) {
-  const cleared = [...new Set((Array.isArray(raw?.cleared) ? raw.cleared : []).filter(id => ULTRA_ERAS.some(era => era.id === id)))];
-  const unlocked = id => ULTRA_STARTERS.includes(id) || cleared.includes(ULTRA_BY_ID[id]?.era);
-  const heroId = ULTRA_BY_ID[raw?.heroId] && unlocked(raw.heroId) ? raw.heroId : 'tiga';
+  const validIds = values => [...new Set((Array.isArray(values) ? values : []).filter(id=>typeof id==='string' && ULTRA_BY_ID[id]?.id===id))];
+  const trialWins = validIds(raw?.trialWins);
+  const legacy = raw?.version>=2 ? [] : ULTRA_HEROES.filter(hero=>Array.isArray(raw?.cleared) && raw.cleared.includes(hero.era)).map(hero=>hero.id);
+  const unlockedHeroIds = validIds([...ULTRA_STARTERS,...legacy,...validIds(raw?.unlockedHeroIds),...trialWins]);
+  const heroId = unlockedHeroIds.includes(raw?.heroId) ? raw.heroId : 'tiga';
   const hero = ULTRA_BY_ID[heroId];
-  return { version: 1, cleared, heroId, formId: hero.forms.some(form => form.id === raw?.formId) ? raw.formId : hero.forms[0].id, hostUid: ['string', 'number'].includes(typeof raw?.hostUid) ? raw.hostUid : null };
+  return { version: 2, unlockedHeroIds, trialWins, heroId, formId: hero.forms.some(form => form.id === raw?.formId) ? raw.formId : hero.forms[0].id, hostUid: ['string', 'number'].includes(typeof raw?.hostUid) ? raw.hostUid : null };
 }
 
 export function isUltraUnlocked(state, heroId) {
-  return !!ULTRA_BY_ID[heroId] && (ULTRA_STARTERS.includes(heroId) || (state?.cleared || []).includes(ULTRA_BY_ID[heroId].era));
+  return ULTRA_BY_ID[heroId]?.id===heroId && (state?.version===2 && Array.isArray(state.unlockedHeroIds) ? state.unlockedHeroIds : normalizeUltraState(state).unlockedHeroIds).includes(heroId);
 }
 
 export function getUltraForm(heroId, formId) {
@@ -85,8 +87,9 @@ export function settleUltraRound(battle) {
   }) };
 }
 
-export function completeUltraTrial(state, eraId) {
+export function completeUltraTrial(state, heroId) {
   const normalized = normalizeUltraState(state);
-  if (!ULTRA_ERAS.some(era => era.id === eraId) || normalized.cleared.includes(eraId)) return { state: normalized, firstClear: false };
-  return { state: { ...normalized, cleared: [...normalized.cleared, eraId] }, firstClear: true };
+  if (typeof heroId!=='string' || ULTRA_BY_ID[heroId]?.id!==heroId || normalized.trialWins.includes(heroId)) return { state: normalized, firstClear: false, newlyUnlocked:false };
+  const newlyUnlocked = !normalized.unlockedHeroIds.includes(heroId);
+  return { state: { ...normalized, trialWins:[...normalized.trialWins,heroId],unlockedHeroIds:newlyUnlocked ? [...normalized.unlockedHeroIds,heroId] : normalized.unlockedHeroIds }, firstClear: true, newlyUnlocked };
 }

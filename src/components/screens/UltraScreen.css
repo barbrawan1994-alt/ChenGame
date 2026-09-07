@@ -79,5 +79,12 @@
 .ultra-chapter-copy .ultra-primary { max-width:280px; }
 .ultra-result { border-left:2px solid #cf6f7f; padding:10px 15px; background:#38282c; }
 .ultra-result.is-win { border-color:#85c89c; background:#203a2b; }
+.ultra-trial-progress { color:#aabdb0; font-size:12px; padding:0 10px 12px; }
+.ultra-chapter-list>button img { flex:0 0 42px; width:42px; height:42px; object-fit:cover; border-radius:3px; }
+.ultra-chapter-list>button { padding:14px 8px; gap:12px; }
+.ultra-chapter-list>button strong { overflow-wrap:anywhere; }
+.ultra-trial-opponents { display:flex; gap:28px; justify-content:center; }
+.ultra-trial-opponents img { width:calc(50% - 14px); max-width:280px; object-fit:contain; }
+.ultra-chapter-copy .ultra-trial-block { color:#f3bc9d; font-size:12px; }
 @media (max-width:1100px) { .ultra-workspace { grid-template-columns:155px minmax(240px,1fr) 250px; } .ultra-catalog { padding:18px; } .ultra-hero-grid { gap:10px; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); } .ultra-header { gap:12px; padding:12px 18px; } .ultra-header nav { margin-left:4px; } .ultra-detail-portrait { height:180px; } .ultra-detail-copy { padding:16px; } }
 @media (max-height:740px) { .ultra-header { min-height:66px; padding-top:10px; padding-bottom:10px; } .ultra-detail-portrait { height:145px; } .ultra-detail h2 { font-size:22px; margin-bottom:12px; } .ultra-detail-copy { padding:14px 18px; } .ultra-field { margin:12px 0; } .ultra-technique { padding:12px 0; } .ultra-chapter-art { height:160px; } }

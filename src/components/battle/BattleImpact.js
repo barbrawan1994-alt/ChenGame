@@ -6,7 +6,7 @@ const COLORS = {FIRE:'#ff886d',WATER:'#9ce5f3',ELECTRIC:'#ffe48b',GRASS:'#9cdeb2
 function locateSprite(stage, side, slot, bounds) {
   const selector = `.${side}-zone-v2${slot===1 ? '.battle-slot-secondary' : ':not(.battle-slot-secondary)'} .sprite-v2`;
   const rect = stage.querySelector(selector)?.getBoundingClientRect();
-  return rect ? {x:rect.left+rect.width/2-bounds.left,y:rect.top+rect.height/2-bounds.top,size:Math.max(64,rect.width)} : {x:bounds.width*(side==='enemy' ? .65 : .35),y:bounds.height*(side==='enemy' ? .35 : .65),size:100};
+  return rect ? {x:rect.left+rect.width/2-bounds.left,y:rect.top+rect.height/2-bounds.top,width:rect.width,height:rect.height,size:Math.max(64,rect.width)} : {x:bounds.width*(side==='enemy' ? .65 : .35),y:bounds.height*(side==='enemy' ? .35 : .65),width:100,height:100,size:100};
 }
 
 export default function BattleImpact({ event, reduced = false }) {
@@ -24,6 +24,11 @@ export default function BattleImpact({ event, reduced = false }) {
     ctx.scale(ratio,ratio);
     const origin = locateSprite(stage,event.source,event.atkSlot || 0,bounds);
     const target = locateSprite(stage,event.target,event.defSlot || 0,bounds);
+    const sourceSprite = stage.querySelector(`.${event.source}-zone-v2${event.atkSlot===1 ? '.battle-slot-secondary' : ':not(.battle-slot-secondary)'} .sprite-v2`);
+    const originalVisibility = sourceSprite?.style.visibility || '';
+    const restoreSource = () => { if (sourceSprite) sourceSprite.style.visibility = originalVisibility; };
+    const portrait = event.castPortrait ? new Image() : null;
+    if (portrait) portrait.src = event.castPortrait;
     canvas.dataset.targetX = String(Math.round(target.x));
     canvas.dataset.targetY = String(Math.round(target.y));
     canvas.dataset.targetSide = event.target;
@@ -41,7 +46,13 @@ export default function BattleImpact({ event, reduced = false }) {
     const draw = now => {
       const progress = Math.min(1,(now-started)/lifetime);
       ctx.clearRect(0,0,bounds.width,bounds.height);
-      if (progress>=1) return;
+      if (progress>=1) { restoreSource(); return; }
+      // Keep the casting portrait through the effect after gameplay consumes the form.
+      if (portrait?.complete && portrait.naturalWidth>0) {
+        if (sourceSprite) sourceSprite.style.visibility = 'hidden';
+        ctx.globalAlpha = 1;
+        ctx.drawImage(portrait,origin.x-origin.width/2,origin.y-origin.height/2,origin.width,origin.height);
+      }
       const impact = Math.max(0,Math.min(1,(progress-.15)/.7));
       const scale = Math.min(1.4,target.size/100);
       if (!quiet) {
@@ -129,7 +140,7 @@ export default function BattleImpact({ event, reduced = false }) {
       frame=requestAnimationFrame(draw);
     };
     frame=requestAnimationFrame(draw);
-    return ()=>{cancelAnimationFrame(frame);ctx.clearRect(0,0,bounds.width,bounds.height);};
+    return ()=>{cancelAnimationFrame(frame);restoreSource();ctx.clearRect(0,0,bounds.width,bounds.height);};
   },[event,reduced]);
   return <canvas ref={canvasRef} className="battle-impact-canvas" data-testid="battle-impact" aria-hidden="true" />;
 }
