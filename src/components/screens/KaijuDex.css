@@ -1,0 +1,23 @@
+.kaiju-workspace { grid-template-columns:180px minmax(240px,1fr) 300px; }
+.kaiju-filters .ultra-field { margin:14px 8px 4px; }
+.kaiju-progress { display:grid; grid-template-columns:18px 1fr; gap:14px 8px; margin-top:auto; padding:28px 10px 4px; color:#9ccab1; font-size:11px; }
+.kaiju-progress strong { display:block; color:#edf1ed; margin-top:5px; font-size:16px; font-variant-numeric:tabular-nums; }
+.kaiju-status { display:flex; flex-wrap:wrap; gap:16px; margin:-4px 0 20px; border-bottom:1px solid var(--ultra-line); }
+.kaiju-status button { background:none; color:var(--ultra-muted); border:0; border-bottom:2px solid transparent; padding:8px 0 10px; font-size:11px; }
+.kaiju-status button[aria-pressed=true] { color:#f2e4e6; border-bottom-color:var(--ultra-red); }
+.kaiju-grid { grid-template-columns:repeat(auto-fill,minmax(125px,1fr)); }
+.kaiju-grid .ultra-hero img { object-fit:contain; background:#e2e8e4; }
+.kaiju-detail .ultra-detail-portrait { height:240px; background:#e2e8e4; }
+.kaiju-detail .ultra-detail-portrait img { object-fit:contain; object-position:center; }
+.kaiju-detail h2 { font-size:24px; margin-bottom:14px; }
+.kaiju-labels { display:flex; flex-wrap:wrap; gap:8px 12px; color:#cf9aa3; font-size:11px; margin-bottom:18px; }
+.kaiju-labels span+span { color:#a4b9ae; }
+.kaiju-detail section { margin-top:18px; }
+.kaiju-detail h3 { display:flex; align-items:center; gap:8px; color:#c5d9cd; font-size:12px; margin:0 0 8px; }
+.kaiju-detail p { font-size:11px; line-height:1.9; color:#a8b9af; margin:6px 0; }
+.ultra-trial-opponents img { width:calc(33.333% - 19px); }
+.ultra-trial-monsters { display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:12px; }
+.ultra-trial-monsters p { margin:0; font-size:12px; line-height:1.8; color:#b3c8bc; flex:1 1 220px; }
+.ultra-trial-monsters strong { color:#ecdadc; }
+@media(max-width:1100px) { .kaiju-workspace { grid-template-columns:150px minmax(240px,1fr) 260px; } .kaiju-grid { grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); } .kaiju-detail .ultra-detail-portrait { height:200px; } .ultra-header nav button { padding:10px; } }
+@media(max-height:740px) { .kaiju-detail .ultra-detail-portrait { height:165px; } }

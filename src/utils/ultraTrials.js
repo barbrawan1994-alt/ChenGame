@@ -1,11 +1,14 @@
-import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_TRIALS, ULTRA_ROLES } from '../data/ultra';
+import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_HEROES, ULTRA_ROLES } from '../data/ultra';
 import { ULTRA_TRIAL_TIERS, ULTRA_TRIAL_PREREQUISITES, ULTRA_TRIAL_ROLES } from '../data/ultraTrials';
+import { KAIJU, KAIJU_BY_ID } from '../data/kaiju';
+import { ULTRA_NEMESES } from '../data/kaijuTrials';
+import { buildKaijuUnit, getKaijuAction } from './kaijuRules';
 import { cloneDeep } from 'lodash';
 
 const LEGENDARY = ['king','noa','legend','saga','reiga','zagi'];
 const MASTERS = ['father','mother','zero','belial','tregear','ginga_victory','ruebe','gruebe','nexus'];
 
-export function getUltraTrial(heroId, party = []) {
+export function getUltraTrial(heroId, party = [], route = 0) {
   const hero = ULTRA_BY_ID[heroId];
   if (!hero?.id) return null;
   const era = ULTRA_ERAS.find(item=>item.id===hero.era);
@@ -13,8 +16,15 @@ export function getUltraTrial(heroId, party = []) {
   const tier = ULTRA_TRIAL_TIERS[tierIndex];
   const minLevel = Math.max(tier.minLevel,30+ULTRA_ERAS.indexOf(era)*5);
   const strongest = Math.max(1,...party.map(pet=>Number.isFinite(pet.level) ? pet.level : 1));
+  const routeIndex=[0,1,2].includes(route) ? route : 0;
+  const heroIndex=ULTRA_HEROES.findIndex(item=>item.id===hero.id);
+  const pool=KAIJU.filter(item=>item.era===hero.era);
+  const eraPool=pool.length ? pool : KAIJU.filter(item=>item.rank>0);
+  const first=routeIndex===0 && KAIJU_BY_ID[ULTRA_NEMESES[hero.id]] ? KAIJU_BY_ID[ULTRA_NEMESES[hero.id]] : eraPool[(heroIndex*7+routeIndex*13)%eraPool.length];
+  const supports=KAIJU.filter(item=>item.id!==first.id && item.style!==first.style);
+  const second=supports[(heroIndex*11+routeIndex*37)%supports.length];
   return {hero,era,tier,tierIndex,minLevel,level:Math.min(100,Math.max(minLevel,strongest+tier.levelBonus)),
-    isDouble:hero.era==='newgen',partyLimit:3,prerequisites:ULTRA_TRIAL_PREREQUISITES[hero.id] || [],
+    monsters:[first,second],route:routeIndex,isDouble:hero.era==='newgen' || routeIndex===2,partyLimit:3,prerequisites:ULTRA_TRIAL_PREREQUISITES[hero.id] || [],
     tactic:ULTRA_TRIAL_ROLES[hero.role],};
 }
 
@@ -33,36 +43,37 @@ export function getUltraTrialBlock(trial, state, party, badgeCount) {
 
 export function buildUltraTrialParty(trial, {createPet,pokedex,getStats}) {
   const {hero,era,tier,tierIndex,level}=trial;
-  const create = (projection) => {
-    const type = projection ? ULTRA_ROLES[hero.role].type : era.type;
+  const create = () => {
+    const type = ULTRA_ROLES[hero.role].type;
     const base = pokedex.find(pet=>pet.type===type) || pokedex[0];
     const unit = createPet(base.id,level);
-    const role = projection ? hero.role : era.role;
+    const role = hero.role;
     const tactic = ULTRA_TRIAL_ROLES[role];
     const opening = {name:tactic.name,t:'NORMAL',p:0,category:'status',effect:cloneDeep(tactic.effect),pp:6};
-    const attacks = projection ? [
+    const attacks = [
       {name:role==='striker' ? '格斗连击' : '光能脉冲',t:type,p:85+tierIndex*5,category:role==='striker' ? 'physical' : 'special'},
       {name:'光刃突破',t:'FIGHT',p:80+tierIndex*5,category:'physical'},
-    ] : ULTRA_TRIALS[era.id].moves.filter(move=>move.p>0).map(move=>({...cloneDeep(move),p:move.p+15+tierIndex*5}));
-    const signature = {name:projection ? hero.forms[0].finisher : `${era.boss}·终结冲击`,t:type,p:110+tierIndex*10,category:role==='striker' ? 'physical' : 'special',
+    ];
+    const signature = {name:hero.forms[0].finisher,t:type,p:110+tierIndex*10,category:role==='striker' ? 'physical' : 'special',
       ...(role==='healer' ? {p:0,category:'status',effect:{type:'HEAL',val:0.3,target:'self'},pp:3} : {})};
-    const name = projection ? `${hero.name}·试炼投影` : era.boss;
+    const name = `${hero.name}·试炼投影`;
     Object.assign(unit,{name,nickname:name,type,secondaryType:null,type2:null,trait:'none',nature:'docile',isEnemy:true,isBoss:true,
       devilFruit:null,bijuu:null,equips:[],sectId:0,sectLevel:0,intimacy:0,isShiny:false,isFusedShiny:false,awakened:false,
       ivs:{},evs:{},cursedTechnique:null,hasDomain:false,equippedBerry:null,
-      trialPortrait:projection ? hero.portrait : `assets/ultra/kaiju-${era.id}.webp`,
-      trialSequence:projection ? [2,0,3,1] : [0,2,1,3],
-      customBaseStats:{hp:Math.round(tier.hp*(projection ? 1.2 : 1)),p_atk:tier.attack,s_atk:tier.attack,
+      trialPortrait:hero.portrait,
+      trialSequence:[2,0,3,1],
+      customBaseStats:{hp:tier.hp,p_atk:tier.attack,s_atk:tier.attack,
         p_def:tier.defense,s_def:tier.defense,spd:role==='swift' ? 105 : role==='guardian' ? 62 : 78,crit:0},
       moves:[...attacks,opening,signature].map(move=>({...move,category:move.category || 'special',acc:100,pp:move.pp || 20,maxPP:move.pp || 20})),
     });
     unit.currentHp=getStats(unit).maxHp;
     return unit;
   };
-  return [create(false),create(true)];
+  return [...trial.monsters.map((monster,slot)=>buildKaijuUnit(monster.id,level,{createPet,pokedex,getStats,tier,slot})),create()];
 }
 
 export function getUltraTrialAction(battle, enemy, targets, canUse) {
+  if(enemy.kaijuId)return getKaijuAction(battle,enemy,targets,canUse);
   if (battle.type!=='ultra_trial' || !enemy.trialSequence?.length) return null;
   const index=enemy.trialSequence[(battle.turnCount || 0)%enemy.trialSequence.length];
   const move=enemy.combatMoves[index];

@@ -56,9 +56,9 @@ async function run() {
     assert.ok(trials.getUltraTrialBlock(trial,progression,qualified,0));
     assert.ok(trials.getUltraTrialBlock(trial,progression,[qualified[0]],8));
     const opponents=trials.buildUltraTrialParty(trial,{createPet:(id,level)=>createPet(id,level,false,false,{getStatsForPet:d.getStatsRaw}),pokedex:d.POKEDEX,getStats:d.getStatsRaw});
-    assert.equal(opponents.length,2);assert.equal(opponents[1].trialPortrait,hero.portrait);
+    assert.equal(opponents.length,3);assert.equal(opponents[2].trialPortrait,hero.portrait);
     assert.notEqual(opponents[0].moves,opponents[1].moves);
-    const projection={...opponents[1],combatMoves:opponents[1].moves};
+    const projection={...opponents[2],combatMoves:opponents[2].moves};
     for(let round=0;round<8;round++) {
       const action=trials.getUltraTrialAction({type:'ultra_trial',turnCount:round},projection,[{idx:0,unit:qualified[0]}],move=>move.pp>0);
       assert.equal(action.move,projection.combatMoves[projection.trialSequence[round%4]]);
@@ -171,7 +171,7 @@ async function run() {
     ultraStateRef:{current:u.normalizeUltraState()}, pendingJutsuWinForBountyRef:{current:false},
     createPet:(id, level)=>createPet(id, level, false, false, {getStatsForPet:d.getStatsRaw}), getStats:d.getStatsRaw,
     window:{setTimeout:fn=>timers.push(fn)}, setTimeout:fn=>timers.push(fn),
-    setUltraResult:()=>{}, setUltraState:()=>{}, setParty:()=>{}, setView:()=>{}, setAnimEffect:()=>{},setBattleImpact:()=>{},
+    setUltraResult:()=>{}, setUltraState:()=>{}, setParty:()=>{}, setView:()=>{}, setAnimEffect:()=>{},setBattleImpact:()=>{},recordKaijuProgress:()=>{},
     setBattle:value=>{flow.battle=value;}, showMapToast:()=>{}, persistSaveRef:{current:()=>saves.push(true)},
     startBattle:(context,type)=>{ starts.push({context,type}); return true; },
   });
@@ -180,8 +180,8 @@ async function run() {
   flow.startUltraTrial('ginga');
   assert.equal(starts.length,1,'Rapid trial start must not create two battles');
   assert.equal(starts[0].context.isDouble,true);
-  assert.equal(starts[0].context.customParty.length,2);
-  const [boss, escort] = starts[0].context.customParty;
+  assert.equal(starts[0].context.customParty.length,3);
+  const [boss, ,escort] = starts[0].context.customParty;
   assert.ok(d.getStatsRaw(escort).maxHp > d.getStatsRaw(boss).maxHp,'Hero projection is stronger than the first guardian');
   assert.notEqual(boss.moves,escort.moves,'Double enemies must not share PP state');
   assert.equal(flow.ultraTrialActiveRef.current,starts[0].context._ultraTrialRunId);
