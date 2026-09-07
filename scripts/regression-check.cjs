@@ -1472,7 +1472,7 @@ check('闪光晋升统一补齐魅力和门派奖励且不会重复叠加', () =
   const directRebirthStart = app.indexOf('const useRebirthPill =');
   const directRebirthEnd = app.indexOf('const getSpouseBonuses =', directRebirthStart);
   const directRebirthBranch = app.slice(directRebirthStart, directRebirthEnd);
-  assert.ok(directRebirthBranch.includes('const cost = pet.isShiny ? 2 : 1'));
+  assert.ok(directRebirthBranch.includes('const cost = getSpouseRerollCost(marriageRef.current, pet, getLocalDateStr())'));
   assert.ok(directRebirthBranch.includes('rebirth_pill: currentStock - cost'));
   assert.ok(directRebirthBranch.includes('inventoryActionLocksRef.current.has(lockKey)'));
   assert.ok(directRebirthBranch.includes('partyRef.current = newParty'));
@@ -1783,9 +1783,10 @@ check('游戏首页保留单个主入口并按存档状态继续冒险', () => {
   const menuStart = app.indexOf('const renderMenu = () => {');
   const menu = app.slice(menuStart, app.indexOf('const renderWorldMap = () => {', menuStart));
   assert.ok(menu.includes('onStart={handleStartGame}'));
-  assert.equal((home.match(/onClick=\{onStart\}/g) || []).length, 1);
+  assert.equal((home.match(/className="home-menu-start"/g) || []).length, 1);
   assert.ok(home.includes("hasSave ? '继续冒险' : '开始游戏'"));
-  assert.ok(menu.includes('setConfirmModal('));
+  assert.ok(menu.includes('onReset={resetGame}'));
+  assert.ok(app.includes("setConfirmModal({ title: '删除存档'"));
   assert.ok(home.includes("onNavigate('settings')"));
   assert.ok(home.includes("onNavigate('guide')"));
 });

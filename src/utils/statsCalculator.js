@@ -166,7 +166,7 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
   const relicCritBonus = relic.critBonus || 0;
   const rawAwakenMult = pet.awakened ? AWAKENING_STAT_MULT * (isPlayerPet ? (relicEffects?.awakenedStatsMult || 1) : 1) : 1;
   const awakenMult = Math.min(MAX_COMBINED_STAT_MULT, rawAwakenMult);
-  const hsScore = isPlayerPet && typeof calcHouseScore === 'function' ? calcHouseScore((housing?.furniture || []).filter(f => f.placed)) : 0;
+  const hsScore = isPlayerPet && typeof calcHouseScore === 'function' ? calcHouseScore((housing?.furniture || []).filter(f => f.placed), context.homeScoreBonus || 0) : 0;
   const hsTier = isPlayerPet && typeof getHousingScoreTier === 'function' ? getHousingScoreTier(hsScore) : null;
   const housingAllStats = hsTier?.buff?.allStats || 0;
   const intimacyAllStatsMult = isPlayerPet && (pet.intimacy || 0) >= 230 ? 1.05 : 1.0;

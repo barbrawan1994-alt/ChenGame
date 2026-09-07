@@ -75,7 +75,7 @@ export const INITIAL_TERRITORIES = {
   103: 'qun', 104: 'qun', 105: 'qun', 106: 'qun', 107: 'qun', 108: 'qun', 109: 'qun',
   204: 'neutral', 205: 'neutral', 206: 'neutral',
   301: 'qun', 302: 'qun', 303: 'jin', 304: 'wei', 305: 'shu', 306: 'wu',
-  307: 'qun', 308: 'jin', 309: 'wei', 310: 'shu', 311: 'wu', 312: 'qun', 313: 'jin', 314: 'qun',
+  307: 'qun', 308: 'jin', 309: 'wei', 310: 'shu', 311: 'wu', 312: 'qun', 313: 'wu', 314: 'qun',
 };
 
 // 参战地图ID列表（全地图争夺，排除副本100-102与首都201-207）
@@ -1250,7 +1250,7 @@ export const checkSeasonEnd = (kw) => {
 };
 
 export const applySeasonRewards = (kw, result, rankStatsFn) => {
-  if (!kw.faction) return kw;
+  if (!kw.faction || !result || result.season !== kw.season || !result.rankings?.includes(kw.faction)) return kw;
   const playerRank = result.rankings.indexOf(kw.faction) + 1;
   const reward = SEASON_CONFIG.rewards[playerRank] || SEASON_CONFIG.rewards[3];
   const newContribution = Math.floor(kw.warContribution * SEASON_CONFIG.contributionCarryover);

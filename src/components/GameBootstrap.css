@@ -1,0 +1,5 @@
+.bootstrap-shell { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.bootstrap-shell *, .bootstrap-shell *::before, .bootstrap-shell *::after { box-sizing: border-box; }
+.bootstrap-shell button { font-family: inherit; }
+.bootstrap-shell button:focus-visible { outline: 2px solid #fff8dc; outline-offset: 5px; }
+.desktop-required { min-height: 100dvh; display: grid; align-content: center; justify-items: center; padding: 32px; background: #09191f; color: #fff8dc; font-family: sans-serif; }
