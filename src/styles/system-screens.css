@@ -1,0 +1,98 @@
+.spirit-app .ninja-overview-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  grid-template-areas: 'rank stats' 'start codex' 'phases phases' 'bijuu bijuu' 'challenges challenges';
+  gap: 20px 28px;
+  align-content: start;
+}
+.ninja-rank { grid-area: rank; }
+.ninja-stats { grid-area: stats; align-items: stretch; }
+.ninja-start-action { grid-area: start; min-height: 44px; }
+.ninja-codex-action { grid-area: codex; }
+.ninja-phases { grid-area: phases; }
+.ninja-bijuu { grid-area: bijuu; }
+.ninja-challenges { grid-area: challenges; }
+.spirit-app .ninja-overview :is(.ninja-stats, .ninja-phases) > div {
+  padding: 14px 10px !important;
+  border-radius: 6px !important;
+  background: #202c2e !important;
+  border: 1px solid #3b494a !important;
+  min-width: 0;
+}
+.spirit-app .ninja-stats { flex-direction: column; gap: 6px !important; }
+.spirit-app .ninja-stats > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 12px !important; }
+.spirit-app .ninja-bijuu, .spirit-app .ninja-challenges { padding-top: 20px; border-top: 1px solid #3b494a; }
+.ninja-bijuu-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.spirit-app .ninja-bijuu-item { display: grid !important; grid-template-columns: 30px minmax(0, 1fr); align-content: start; min-height: 70px; }
+.spirit-app .ninja-bijuu-item > button { grid-column: 2; justify-self: start; white-space: normal !important; }
+.spirit-app .ninja-overview :is([style*="255, 255, 255, 0.2"], [style*="255, 255, 255, 0.3"], [style*="255, 255, 255, 0.4"]) { color: #b5c3bf !important; }
+.spirit-app .ninja-overview button { border-radius: 6px !important; }
+.expedition-reward-note { font-size: 13px; color: #b5c3bf; line-height: 1.7; margin: 0 0 18px; }
+.expedition-pet-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.expedition-pet-options button { text-align: left; padding: 9px 12px; border-radius: 6px; min-width: 0; }
+.expedition-pet-options strong, .expedition-pet-options span { display: block; overflow-wrap: anywhere; }
+.expedition-pet-options span { color: #bac6c1; font-size: 12px; margin-top: 3px; }
+.spirit-app .expedition-pet-options button[aria-pressed="true"] { background: #34584b !important; border-color: #8bc5a7 !important; }
+
+.spirit-app .market-console {
+  --market-accent: #86bba1 !important;
+  color: #ecf1ee;
+  background: #1b2224 !important;
+  border: 1px solid #465451 !important;
+  border-radius: 8px !important;
+  letter-spacing: 0;
+}
+.spirit-app .market-console * { letter-spacing: 0 !important; }
+.spirit-app .market-console .market-sidebar { background: #192021 !important; border-radius: 0 !important; border-right: 1px solid #35433f !important; }
+.spirit-app .market-console .shop-content-area { background: #20282a !important; }
+.spirit-app .market-console .market-brand small { color: #a8b8b2; }
+.spirit-app .market-console .market-shelf-hero { padding: 0 0 16px !important; border: 0 !important; border-bottom: 1px solid #40504a !important; border-radius: 0 !important; background: transparent !important; }
+.spirit-app .market-console .market-shelf-icon { background: #293b34; border-color: #465d51; }
+.spirit-app .market-console :is(.market-shelf-title strong, .market-item-name) { color: #edf3ef; }
+.spirit-app .market-console :is(.market-shelf-title small, .market-unlock-note, .market-item-desc) { color: #b2c1bb !important; }
+.spirit-app .market-console :is(.market-shelf-title b, .market-price) { color: #e6ca85; font-variant-numeric: tabular-nums; }
+.spirit-app .market-console .market-item-card { background: #27312f !important; border: 1px solid #465550 !important; border-top: 2px solid #729685 !important; box-shadow: none !important; transform: none !important; min-height: 276px; gap: 8px; padding-top: 22px !important; }
+.spirit-app .market-console .market-item-card:hover { border-color: #84ae98 !important; }
+.spirit-app .market-console .market-item-desc { display: block; min-height: 38px; overflow: visible; overflow-wrap: anywhere; }
+.spirit-app .market-console .market-owned { color: #8fcfb0; }
+.spirit-app .market-console .market-item-tag { top: 5px; right: 5px; border-radius: 3px; }
+.spirit-app .market-console .market-price { min-height: 34px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.spirit-app .market-console .market-qty-stepper { background: #192522; border-color: #40574a; }
+.spirit-app .market-console .market-qty-stepper :is(button, span) { color: #e6f0e9; }
+.spirit-app .market-console .market-qty-stepper button { background: #2c3e35; border-color: #4a6554; display: grid; place-items: center; }
+.spirit-app .market-console .market-qty-stepper button.is-max { color: #e6ca85; background: #3f3c2c; border-color: #706548; }
+.spirit-app .market-console .market-buy-btn { color: #f2f7f3 !important; background: #3c6c53 !important; border: 1px solid #739f84 !important; box-shadow: none !important; }
+.spirit-app .market-console .market-type-filters button { padding: 5px 10px; border-radius: 4px; background: transparent; color: #bdcbc3; border: 1px solid #4b6154; }
+.spirit-app .market-console .market-type-filters button[aria-pressed="true"] { background: #3e664d; color: #fff; border-color: #83ae90; }
+.spirit-app .market-console button:disabled { opacity: .45; cursor: not-allowed !important; }
+.spirit-app .market-console .market-unique-card { min-height: 220px; }
+.spirit-app .world-story-section { margin: 0 20px 16px; padding: 0 0 18px; border-bottom: 1px solid #4b615c; }
+.world-story-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.spirit-app .world-story-card { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 10px; align-content: start; text-align: left; padding: 12px !important; border-radius: 6px !important; background: #213331 !important; border: 1px solid #4a6660 !important; box-shadow: none !important; transform: none !important; }
+.world-story-card > div:first-child { grid-row: span 2; }
+.spirit-app .world-story-card > div:nth-child(2) { color: #eef4ec !important; font-size: 14px !important; }
+.spirit-app .world-story-card > div:nth-child(3) { color: #b9c9c2 !important; font-size: 12px !important; line-height: 1.6; }
+.spirit-app .world-story-card:not(:disabled):hover { border-color: #a2c0a5 !important; background: #2c4740 !important; }
+.spirit-app .world-story-card:disabled { cursor: default !important; opacity: .6 !important; }
+.spirit-app .world-naruto-journey { margin: 0 20px 16px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #4b615c; }
+.spirit-app .world-naruto-journey > div { margin-bottom: 0 !important; color: #e2bd89 !important; }
+.spirit-app .world-naruto-journey > button { border-radius: 6px !important; background: #435c48 !important; border: 1px solid #859a75 !important; box-shadow: none !important; transform: none !important; }
+.spirit-app .world-dungeon-heading { border-bottom: 1px solid #49665e; background: #263c36; border-radius: 0; }
+.spirit-app :is(.world-dungeon-card, .world-challenge-card) { background: #233631 !important; border: 1px solid #48635a !important; border-radius: 6px !important; box-shadow: none !important; transform: none !important; }
+.spirit-app :is(.world-dungeon-card, .world-challenge-card):hover { border-color: #94b99f !important; }
+.spirit-app :is(.world-dungeon-card, .world-challenge-card, .world-story-card):focus-visible { outline: 2px solid #eed598; outline-offset: 3px; }
+.spirit-app .world-dungeon-icon { background: #30483e !important; border-right: 1px solid #496657; }
+.world-dungeon-title, .world-challenge-title { color: #edf3ed; overflow-wrap: anywhere; }
+.world-dungeon-desc, .world-challenge-desc { color: #b5c6bb; overflow-wrap: anywhere; }
+.spirit-app .world-challenge-summary { background: #23332f !important; border-radius: 0 !important; border-bottom: 1px solid #53665a; }
+.spirit-app .world-challenge-summary [style*="color: rgb(100, 116, 139)"], .spirit-app .world-challenge-summary [style*="color: rgb(71, 85, 105)"] { color: #b8c9bf !important; }
+.spirit-app .world-challenge-section-heading > span { color: #cbd8cf !important; }
+.spirit-app .world-challenge-section-heading > span:last-child { color: #cfdbd2 !important; background: #3b5143 !important; }
+.spirit-app .world-dungeon-meta > span { background: #30463b !important; color: #c6d8c9 !important; font-size: 11px !important; }
+.spirit-app .world-dungeon-meta > .dungeon-entry-rule { color: #e3c49b !important; background: transparent !important; }
+.spirit-app :is(.market-console, .ninja-overview, .expedition-screen) button:focus-visible { outline: 2px solid #eed598 !important; outline-offset: 3px; }
+@media (max-width: 1100px) {
+  .spirit-app .ninja-overview-body { gap: 16px; grid-template-columns: minmax(0, 1fr) 280px; }
+  .ninja-bijuu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spirit-app .market-console { grid-template-columns: 174px minmax(0, 1fr) !important; }
+}

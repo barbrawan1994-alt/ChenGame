@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { Backpack, ArrowLeftRight, LogOut, Sparkles, Shield, Zap, WandSparkles } from 'lucide-react';
+import { Backpack, ArrowLeftRight, LogOut, Sparkles, Shield, Zap, WandSparkles, Minus, Plus, ChevronsUp } from 'lucide-react';
 import _ from 'lodash';
 
 import {
@@ -29,7 +29,8 @@ import { getCombatFamily, mergeBattleGrowth } from './utils/battleTactics';
 import { buildDomainCommand, buildVowCommand, canUseCrossoverCommand, applyCrossoverCommand, applyFruitTransform } from './utils/crossoverCommands';
 import { buildCampaignParty } from './utils/campaignBattle';
 import { getInfinityDamageMultiplier, applyInfinityHealingShield, applyInfinityHitEffects } from './utils/infinityCombat';
-import { buildSkillTmCatalog, buildMoveFromTm } from './utils/skillTms';
+import { buildSkillTmCatalog, buildMoveFromTm, getMapShopTMs } from './utils/skillTms';
+import { countOwnedAccessory } from './utils/shopRules';
 import { backupGameSave, readGameSave, removeGameSave, writeGameSave } from './utils/saveStorage';
 import {
   getDomainDamageMultiplier,
@@ -100,6 +101,8 @@ import { POKEDEX, STONE_EVO_RULES } from './data/pets';
 import { buildBalancedStarterPool, buildStarterCatalog, filterStarterCatalog, getStarterBaseStatTotal, sampleDiverseStarters, selectCombatBalancedStarters } from './utils/starterSelection';
 import { planTeamRecovery } from './utils/teamRecovery';
 import { getWheelStopRotation } from './utils/activityRules';
+import { FISHING_REACTION_MS, FISHING_MAX_RETRIES, resolveBeautyAppeal } from './utils/contestRules';
+import { FishingScreen, BeautyScreen } from './components/screens/ContestScreens';
 import { repairSectDailyTasks } from './data/sectSystem';
 import { resolveMineDig, resolveMineExchange } from './data/mine';
 import TrainingScreen from './components/screens/TrainingScreen';
@@ -2399,7 +2402,24 @@ const [viewStatPet, setViewStatPet] = useState(null);
   const [pvpMode, setPvpMode] = useState(false); 
   const [pvpCodeInput, setPvpCodeInput] = useState('');
   const [activeContest, setActiveContest] = useState(null);
-  const [fishingState, setFishingState] = useState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' });
+  const [fishingState, setFishingStateValue] = useState({ status: 'idle', fish: null, weight: 0, msg: '', retries: 0 });
+  const fishingStateRef = useRef(fishingState);
+  const fishingCastRef = useRef(0);
+  const fishingTimersRef = useRef([]);
+  const setFishingState = update => {
+    const next = typeof update === 'function' ? update(fishingStateRef.current) : update;
+    fishingStateRef.current = next;
+    setFishingStateValue(next);
+  };
+  const cancelFishingCast = () => {
+    fishingCastRef.current += 1;
+    fishingTimersRef.current.forEach(timer => clearTimeout(timer));
+    fishingTimersRef.current = [];
+  };
+  useEffect(() => {
+    if (view !== 'fishing_game') cancelFishingCast();
+    return () => cancelFishingCast();
+  }, [view]);
   const lastFishingSpeciesRef = useRef(null);
   const lastBugContestSpeciesRef = useRef(null);
   const [evoAnim, setEvoAnim] = useState(null); // { oldPet, newPet, targetIdx, step: 0-3 }
@@ -2410,7 +2430,13 @@ const [viewStatPet, setViewStatPet] = useState(null);
     evolutionFinishRef.current = null;
     setEvoAnim(payload);
   };
-  const [beautyState, setBeautyState] = useState({ round: 1, appeal: 0, history: [], log: [] });
+  const [beautyState, setBeautyStateValue] = useState({ round: 1, appeal: 0, history: [], log: [] });
+  const beautyStateRef = useRef(beautyState);
+  const setBeautyState = update => {
+    const next = typeof update === 'function' ? update(beautyStateRef.current) : update;
+    beautyStateRef.current = next;
+    setBeautyStateValue(next);
+  };
   const [activityModal, setActivityModal] = useState(null);
   const activityStartLockRef = useRef(false);
   const contestRewardLockRef = useRef(false);
@@ -5071,6 +5097,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
                     partyRef.current = np;
                     inventoryRef.current = confirmedInventory;
                     flushSync(() => { setParty(np); setInventory(confirmedInventory); });
+                    if (marriageRef.current?.pendingPropose) updateQuestProgress(marriageRef.current.pendingPropose, 'level_up', usedCount);
                     const evolutionHint = refreshedPet.canEvolve ? '，并出现了进化征兆' : '';
                     showMapToast('🍬', '批量升级', `${refreshedPet.name} Lv.${oldLv} → Lv.${refreshedPet.level}${evolutionHint}（糖果x${usedCount}，亲密度+${intimacyGain}）`, 3000);
                     setUsingItem(null);
@@ -5157,6 +5184,10 @@ const [viewStatPet, setViewStatPet] = useState(null);
         partyRef.current = newParty;
         inventoryRef.current = nextInventory;
         flushSync(() => { setParty(newParty); setInventory(nextInventory); });
+        const levelsGained = refreshedPet.level - currentParty[petIdx].level;
+        if (actionItem.category === 'growth' && levelsGained > 0 && marriageRef.current?.pendingPropose) {
+          updateQuestProgress(marriageRef.current.pendingPropose, 'level_up', levelsGained);
+        }
         showMapToast('✅', '使用成功', msg, 2000);
 
         if (usingItem.category === 'growth' && refreshedPet.pendingLearnMove) {
@@ -8718,8 +8749,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const alreadySent = new Set((currentExpeditions.teams || []).flatMap(t => t.petUids || []));
     const trainingUids = new Set((trainingStateRef.current?.slots || []).map(slot => slot.petUid));
     const cafeUids = new Set(cafeRef.current?.workers || []);
-    const newUids = uniqueUids.filter(uid => !alreadySent.has(uid) && !trainingUids.has(uid) && !cafeUids.has(uid)).slice(0, 3);
-    if (newUids.length === 0) { showMapToast('❌','提示','所选精灵正在训练、远征、咖啡厅打工或已不在仓库中',1800); return; }
+    const newUids = uniqueUids.filter(uid => !alreadySent.has(uid) && !trainingUids.has(uid) && !cafeUids.has(uid));
+    if (newUids.length !== petIds.length || newUids.length > 3) { showMapToast('❌','无法派遣','请选择1至3只存活且未被训练、远征或咖啡厅占用的伙伴',1800); return false; }
     const branchEvent = pickExpeditionBranchEvent();
     const nextExpeditions = {
       ...currentExpeditions,
@@ -8730,6 +8761,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     expeditionsRef.current = nextExpeditions;
     setExpeditions(nextExpeditions);
     showMapToast('🗺️', '出发', `探险队前往${zone.name}！`, 2000);
+    return true;
     } finally {
       window.setTimeout(() => expeditionClaimLocksRef.current.delete(lockKey), 0);
     }
@@ -8739,6 +8771,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const current = expeditionsRef.current;
     const team = current?.teams?.[teamIdx];
     if (!team || team.branchResolved) return;
+    if (Date.now() - team.startTime < team.duration * 0.4) return;
     const lockKey = `branch:${team.zoneId}:${team.startTime}`;
     if (expeditionClaimLocksRef.current.has(lockKey)) return;
     expeditionClaimLocksRef.current.add(lockKey);
@@ -9861,7 +9894,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     msg.push(eventText);
     if (team.branchChoice) {
       const event = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
-      msg.push(`${event?.title || '探险'}: ${team.branchChoice.label}${bonusMult < baseBonusMult ? ' (受阻)' : ''}`);
+      msg.push(`${event?.title || '探险'}: ${team.branchChoice.label}${team.branchFailed ? ' (受阻)' : ''}`);
     }
 
     for (let i = 0; i < rewardCount; i++) {
@@ -9877,7 +9910,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       if (picked.type === 'gold') { const lo = Math.min(picked.min || 0, picked.max || 0); const hi = Math.max(picked.min || 0, picked.max || 0); const amt = Math.floor(_.random(lo, hi) * bonusMult); setGold(g => g + amt); updateAchStat({ totalGoldEarned: amt }); msg.push(`💰 ${amt}金币`); }
       else if (picked.type === 'med') { setInventory(p => ({...p, meds:{...p.meds, [picked.id]:(p.meds[picked.id]||0)+picked.count}})); msg.push(`🧪 ${MEDICINES[picked.id]?.name || picked.id} x${picked.count}`); }
       else if (picked.type === 'stone') { setInventory(p => ({...p, stones:{...p.stones, [picked.id]:(p.stones[picked.id]||0)+picked.count}})); msg.push(`💎 进化石 x${picked.count}`); }
-      else if (picked.type === 'mineral') { const mCount = Math.floor(picked.count * bonusMult); setMineState(ms => ({...ms, minerals:{...ms.minerals, [picked.id]:(ms.minerals[picked.id]||0)+mCount}})); msg.push(`${MINE_ORES[picked.id]?.icon||'⛏️'} ${MINE_ORES[picked.id]?.name||picked.id} x${mCount}`); }
+      else if (picked.type === 'mineral') { const mCount = Math.max(1, Math.floor(picked.count * bonusMult)); setMineState(ms => ({...ms, minerals:{...ms.minerals, [picked.id]:(ms.minerals[picked.id]||0)+mCount}})); msg.push(`${MINE_ORES[picked.id]?.icon||'⛏️'} ${MINE_ORES[picked.id]?.name||picked.id} x${mCount}`); }
       else if (picked.type === 'tm') {
         const tmMaxTier = badges.length < 3 ? 2 : badges.length < 6 ? 3 : 4;
         const tm = sampleWeightedTM(ALL_SKILL_TMS, tmMaxTier);
@@ -9905,7 +9938,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       }
       else msg.push('稀有物品');
     }
-    if (bonusMult > 1.0) msg.push(`⭐ 属性加成 x${bonusMult.toFixed(1)}`);
+    if (bonusMult !== 1) msg.push(`金币、矿石、树果倍率 ×${bonusMult.toFixed(2)}`);
     showMapToast('🎁', '探险归来', msg.join(' | '), 4000);
     addGlobalLog(`🗺️ 探险队从${zone.name}归来: ${msg.slice(1).join(', ')}`);
     advanceBounty('expedition');
@@ -10679,12 +10712,15 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
   // 远征探险UI
   const renderExpedition = () => {
+    const assignedUids = getAssignedPetUids();
+    const dailyRemaining = Math.max(0, 6 - (expeditions.lastDate === getLocalDateStr() ? expeditions.startedToday || 0 : 0));
+    const atCapacity = expeditions.teams.length >= 3 || dailyRemaining === 0;
     return (
       <div className="screen activity-screen activity-legacy expedition-screen" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🗺️ 远征探险</div>
-          <div style={{fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>队伍 {expeditions.teams.length}/3 · 不影响出战</div>
+          <div style={{fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>队伍 {expeditions.teams.length}/3 · 今日剩余 {dailyRemaining}/6 · 不影响出战</div>
         </div>
         <div style={{flex:1,overflowY:'auto',padding:'20px'}}>
           {expeditions.teams.length > 0 && (
@@ -10698,7 +10734,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                 const done = remaining <= 0;
                 const pct = Math.min(100, Math.floor(elapsed / Math.max(1, team.duration) * 100));
                 const branchEvent = EXPEDITION_BRANCH_EVENTS.find(e => e.id === team.branchEventId);
-                const teamPets = (team.petUids || []).map(uid => party.find(p => p.uid === uid)).filter(Boolean);
+                const teamPets = (team.petUids || []).map(uid => [...party, ...box].find(p => p.uid === uid)).filter(Boolean);
                 const typeBonus = calcExpeditionBonus(teamPets, zone);
                 const needsBranch = !team.branchResolved && pct >= 40 && branchEvent;
                 return (
@@ -10707,7 +10743,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       <div style={{fontSize:'14px',fontWeight:'700'}}>{zone?.icon} {zone?.name || '未知'}</div>
                       <span style={{fontSize:'11px',color:done?'#4CAF50':needsBranch?'#FF9800':'#FFD700',fontWeight:'600'}}>{done ? '可领取' : needsBranch ? '待决策' : `剩余 ${remainMin} 分钟 · ${pct}%`}</span>
                     </div>
-                    {typeBonus > 1 && <div style={{fontSize:'10px',color:'#81C784',marginBottom:'6px'}}>属性契合 ×{typeBonus.toFixed(1)}</div>}
+                    <div style={{fontSize:'12px',color:'#c3cfc7',marginBottom:'6px'}}>{teamPets.map(pet => pet.nickname || pet.name).join(' · ')}</div>
+                    {typeBonus > 1 && <div style={{fontSize:'10px',color:'#81C784',marginBottom:'6px'}}>金币、矿石、树果属性契合 ×{typeBonus.toFixed(2)}</div>}
                     <div style={{height:'4px',borderRadius:'2px',background:'rgba(255,255,255,0.1)',overflow:'hidden',marginBottom:'8px'}}>
                       <div style={{width:`${pct}%`,height:'100%',background:done?'#4CAF50':needsBranch?'#FF9800':'#FFD700',borderRadius:'2px',transition:'width 1s'}}/>
                     </div>
@@ -10718,7 +10755,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                         <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
                           {branchEvent.choices.map(ch => (
                             <button key={ch.id} onClick={() => resolveExpeditionBranch(ti, ch.id)} style={{padding:'8px 10px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:'11px',textAlign:'left',cursor:'pointer'}}>
-                              <strong>{ch.label}</strong> <span style={{opacity:0.65}}>{ch.desc}</span>
+                              <strong>{ch.label}</strong> <span style={{opacity:0.8}}>金币、矿石、树果 ×{ch.rewardMult} · {ch.failChance ? `${Math.round(ch.failChance * 100)}%受阻，受阻时改为×0.5` : '无风险'}</span>
                             </button>
                           ))}
                         </div>
@@ -10732,6 +10769,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             </div>
           )}
           <div style={{fontSize:'13px',fontWeight:'700',color:'rgba(255,255,255,0.6)',marginBottom:'10px'}}>🌍 探险区域</div>
+          <p className="expedition-reward-note">每队带回1至2项战利品。属性契合与分支倍率只影响金币、矿石和树果，矿石每项至少1份。</p>
           {EXPEDITION_ZONES.filter(z => badges.length >= z.reqBadges).map(zone => (
             <div key={zone.id} style={{padding:'14px',borderRadius:'14px',background:`linear-gradient(135deg,${zone.color}15,transparent)`,border:`1px solid ${zone.color}30`,marginBottom:'10px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
@@ -10741,19 +10779,23 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'10px'}}>{zone.desc}</div>
               {expPicking === zone.id ? (
                 <div>
-                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'6px'}}>选择派遣精灵（最多3只）:</div>
-                  <div style={{display:'flex',flexWrap:'wrap',gap:'4px',marginBottom:'8px'}}>
-                    {party.map((p,pi) => (
-                      <button key={pi} onClick={()=>setExpSelectedPets(prev=>prev.includes(pi)?prev.filter(x=>x!==pi):[...prev,pi].slice(0,3))} style={{padding:'4px 8px',borderRadius:'8px',fontSize:'11px',border:expSelectedPets.includes(pi)?'1px solid #4CAF50':'1px solid rgba(255,255,255,0.1)',background:expSelectedPets.includes(pi)?'rgba(76,175,80,0.2)':'rgba(255,255,255,0.05)',color:'#fff',cursor:'pointer',fontWeight:'600'}}>{p.emoji||'?'} {p.name?.slice(0,4)}</button>
-                    ))}
+                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.5)',marginBottom:'6px'}}>派遣伙伴 {expSelectedPets.length}/3 · 契合属性：{zone.bonusTypes.map(type => TYPES[type]?.name || '全部').join('、')}</div>
+                  <div className="expedition-pet-options">
+                    {party.map((p,pi) => {
+                      const selected = expSelectedPets.includes(pi);
+                      const reason = p.currentHp <= 0 ? '需要恢复体力' : assignedUids.has(p.uid) ? '正在执行其他任务' : !selected && expSelectedPets.length >= 3 ? '队伍已选满' : '';
+                      return <button type="button" key={p.uid} aria-pressed={selected} disabled={!!reason} title={reason || p.nickname || p.name} onClick={()=>setExpSelectedPets(prev=>prev.includes(pi)?prev.filter(x=>x!==pi):[...prev,pi])}>
+                        <strong>{p.nickname || p.name}</strong><span>{reason || `Lv.${p.level} · ${TYPES[p.type]?.name || p.type}${selected ? ' · 已选' : ''}`}</span>
+                      </button>;
+                    })}
                   </div>
                   <div style={{display:'flex',gap:'6px'}}>
-                    <button onClick={()=>{sendExpedition(zone.id, expSelectedPets.map(i=>party[i]).filter(Boolean));setExpPicking(null);setExpSelectedPets([]);}} disabled={expSelectedPets.length===0||expeditions.teams.length>=3} style={{flex:1,padding:'8px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg,#2E7D32,#1B5E20)',color:'#fff',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🚀 出发</button>
+                    <button onClick={()=>{if(sendExpedition(zone.id, expSelectedPets.map(i=>party[i]).filter(Boolean))){setExpPicking(null);setExpSelectedPets([]);}}} disabled={expSelectedPets.length===0||atCapacity} style={{flex:1,padding:'8px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg,#2E7D32,#1B5E20)',color:'#fff',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🚀 出发</button>
                     <button onClick={()=>{setExpPicking(null);setExpSelectedPets([]);}} style={{padding:'8px 14px',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'rgba(255,255,255,0.5)',fontSize:'12px',cursor:'pointer'}}>取消</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={()=>{if(expeditions.teams.length>=3){showMapToast('❌','队伍已满','最多3支',1500);return;}setExpPicking(zone.id);setExpSelectedPets([]);}} disabled={expeditions.teams.length>=3} style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',background:expeditions.teams.length>=3?'rgba(255,255,255,0.05)':'linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05))',color:expeditions.teams.length>=3?'rgba(255,255,255,0.3)':'#fff',fontSize:'12px',fontWeight:'600',cursor:expeditions.teams.length>=3?'not-allowed':'pointer'}}>📤 派遣队伍</button>
+                <button onClick={()=>{setExpPicking(zone.id);setExpSelectedPets([]);}} disabled={atCapacity} style={{width:'100%',padding:'8px',borderRadius:'8px',fontSize:'12px',fontWeight:'600'}}>{dailyRemaining === 0 ? '今日次数已用完' : expeditions.teams.length >= 3 ? '派遣队伍已满' : '📤 派遣队伍'}</button>
               )}
             </div>
           ))}
@@ -11031,8 +11073,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const currentNaruto = narutoStateRef.current;
     const currentParty = partyRef.current || party;
     if (narutoActionLocksRef.current.has(`exam:${today}`)) return;
+    if (badges.length < 3) { showMapToast('🔒','试炼未解锁','需要3枚徽章',1500); return; }
     if (currentNaruto.lastExamDate === today) { showMapToast('❌','冷却中','今日已参加过试炼',1500); return; }
-    if (currentParty.length < 3) { showMapToast('❌','队伍不足','至少需要3只精灵',1500); return; }
+    if (currentParty.filter(pet => pet.currentHp > 0).length < 3) { showMapToast('❌','队伍不足','至少需要3只存活精灵',1500); return; }
     narutoActionLocksRef.current.add(`exam:${today}`);
     const rank = getNinjaRank(currentNaruto.examsCompleted || 0);
     const diff = getExamDifficulty(rank);
@@ -11569,9 +11612,10 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
 
     const narutoLocked = badges.length < 3;
+    const examBlockReason = narutoLocked ? '需要3枚徽章' : !canExam ? '今日已参加 · 明日再来' : party.filter(pet => pet.currentHp > 0).length < 3 ? '需要3只存活伙伴' : '';
 
     return (
-      <div className="screen" style={{background:'linear-gradient(135deg,#1a0a00,#2d1500,#1a0a00)',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div className="screen activity-screen activity-legacy ninja-overview" style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{...actHeaderStyle,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <button onClick={()=>setView(safeBack())} style={{...actBtnSecondary}}>⬅ 返回</button>
           <div style={{fontSize:'16px',letterSpacing:'2px',fontWeight:'800'}}>🍥 忍者系统</div>
@@ -11583,9 +11627,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             <span style={{fontSize:'13px',color:'#FFB74D',fontWeight:'700'}}>需要获得 <span style={{color:'#FF6F00'}}>3 枚徽章</span> 才能使用忍者系统（当前 {badges.length}/3）</span>
           </div>
         )}
-        <div style={{flex:1,overflow:'auto',padding:'20px',display:'flex',flexDirection:'column',gap:'16px',...(narutoLocked ? {pointerEvents:'none',opacity:0.6,filter:'grayscale(0.3)'} : {})}}>
+        <div className="ninja-overview-body" style={{flex:1,overflow:'auto',padding:'20px'}}>
           {/* 段位信息 */}
-          <div style={{padding:'20px',borderRadius:'16px',background:'linear-gradient(145deg,rgba(255,111,0,0.12),rgba(255,143,0,0.06))',border:'1px solid rgba(255,111,0,0.2)'}}>
+          <div className="ninja-rank">
             <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'12px'}}>
               <div style={{fontSize:'36px'}}>{rank.icon}</div>
               <div>
@@ -11608,14 +11652,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </div>
 
           {/* 尾兽收集 */}
-          <div style={{padding:'16px',borderRadius:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <div className="ninja-bijuu">
             <div style={{fontSize:'14px',fontWeight:'700',marginBottom:'10px',color:'#FF8A80'}}>🦊 尾兽图鉴 ({(narutoState.bijuuCollected || []).length}/9)</div>
-            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+            <div className="ninja-bijuu-grid">
               {BIJUU_LIST.map(b => {
                 const has = (narutoState.bijuuCollected || []).includes(b.id);
                 const natureInfo = b.nature ? CHAKRA_NATURE_MAP[b.nature] : null;
                 return (
-                  <div key={b.id} style={{padding:'10px 12px',borderRadius:'10px',
+                  <div key={b.id} className="ninja-bijuu-item" style={{padding:'10px 12px',borderRadius:'8px',
                     background: has ? 'rgba(255,138,128,0.08)' : 'rgba(255,255,255,0.02)',
                     border: `1px solid ${has ? 'rgba(255,138,128,0.2)' : 'rgba(255,255,255,0.05)'}`,
                     display:'flex',alignItems:'center',gap:'10px'}}>
@@ -11632,7 +11676,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
                       </div>}
                     </div>
                     {has && party[0] && (
-                      <button type="button" onClick={() => bindBijuuToLead(b)} disabled={party[0]?.bijuu?.id === b.id}
+                      <button type="button" onClick={() => bindBijuuToLead(b)} disabled={narutoLocked || party[0]?.bijuu?.id === b.id}
                         style={{padding:'6px 10px',borderRadius:'8px',border:'1px solid rgba(255,138,128,0.3)',background:party[0]?.bijuu?.id === b.id?'rgba(76,175,80,0.15)':'rgba(255,138,128,0.1)',color:party[0]?.bijuu?.id === b.id?'#81C784':'#FFAB91',fontSize:'10px',cursor:party[0]?.bijuu?.id === b.id?'default':'pointer',whiteSpace:'nowrap'}}>
                         {party[0]?.bijuu?.id === b.id ? '已与首发结契' : '与首发结契'}
                       </button>
@@ -11644,7 +11688,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </div>
 
           {/* 查克拉亲和 & 试炼统计 */}
-          <div style={{display:'flex',gap:'10px'}}>
+          <div className="ninja-stats" style={{display:'flex',gap:'10px'}}>
             <div style={{flex:1,padding:'14px',borderRadius:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
               <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'4px'}}>查克拉亲和</div>
               <div style={{fontSize:'14px',fontWeight:'700',color:'#FFB74D'}}>{(() => { const aff = calcChakraAffinity(narutoState.jutsuMastery); return aff ? `${CHAKRA_NATURE_MAP[aff]?.icon} ${CHAKRA_NATURE_MAP[aff]?.name}` : '尚未确定'; })()}</div>
@@ -11660,7 +11704,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </div>
 
           {/* 忍术图鉴入口 */}
-          <button type="button" onClick={() => setView('jutsu_codex')}
+          <button type="button" className="ninja-codex-action" onClick={() => setView('jutsu_codex')}
             style={{padding:'14px',borderRadius:'14px',border:'1px solid rgba(255,152,0,0.2)',
               background:'linear-gradient(145deg,rgba(255,111,0,0.08),rgba(255,143,0,0.04))',
               color:'#FFB74D',fontSize:'14px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
@@ -11668,30 +11712,25 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
           </button>
 
           {/* 开始试炼 */}
-          <button type="button" onClick={startChuninExam} disabled={!canExam || party.length < 3}
-            style={{padding:'16px',borderRadius:'16px',border:'none',
-              background: canExam && party.length >= 3 ? 'linear-gradient(135deg,#FF6F00,#FF8F00)' : 'rgba(255,255,255,0.05)',
-              color: canExam && party.length >= 3 ? '#fff' : 'rgba(255,255,255,0.3)',
-              fontSize:'16px',fontWeight:'800',cursor: canExam && party.length >= 3 ? 'pointer' : 'not-allowed',
-              boxShadow: canExam ? '0 4px 20px rgba(255,111,0,0.3)' : 'none'}}>
-            {canExam ? '🍥 开始忍者试炼' : '今日已参加 · 明日再来'}
+          <button type="button" className="ninja-start-action activity-primary" onClick={startChuninExam} disabled={!!examBlockReason}>
+            {examBlockReason || '开始忍者试炼'}
           </button>
 
           {/* 三阶段说明 */}
-          <div style={{display:'flex',gap:'10px'}}>
+          <div className="ninja-phases" style={{display:'flex',gap:'10px'}}>
             {CHUNIN_EXAM_PHASES.map(ph => (
               <div key={ph.id} style={{flex:1,padding:'12px',borderRadius:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',textAlign:'center'}}>
                 <div style={{fontSize:'22px',marginBottom:'6px'}}>{ph.icon}</div>
                 <div style={{fontSize:'12px',fontWeight:'700',marginBottom:'4px'}}>{ph.name}</div>
-                <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)'}}>{ph.desc}</div>
+                <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)'}}>{ph.id === 'survival' ? `连续${getExamDifficulty(rank).waves}波战斗，波间不恢复HP` : ph.desc}</div>
               </div>
             ))}
           </div>
 
           {/* 忍术挑战 */}
-          <div style={{padding:'16px',borderRadius:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <div className="ninja-challenges">
             <div style={{fontSize:'14px',fontWeight:'700',marginBottom:'12px'}}>⚔️ 火影挑战试炼</div>
-            <button type="button" onClick={() => setView('naruto_story')} style={{padding:'12px 14px',borderRadius:'12px',border:'1px solid rgba(255,152,0,0.25)',background:'linear-gradient(145deg,rgba(255,111,0,0.12),rgba(255,143,0,0.06))',color:'#FFB74D',fontSize:'13px',fontWeight:'700',cursor:'pointer',width:'100%',marginBottom:'12px'}}>📜 火影主线剧情 ({NARUTO_STORY_CHAPTERS.filter(ch => (narutoState?.storyProgress || {})[ch.id]?.cleared).length}/{NARUTO_STORY_CHAPTERS.length}章)</button>
+            <button type="button" disabled={narutoLocked} onClick={() => setView('naruto_story')} style={{padding:'12px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:'700',width:'100%',marginBottom:'12px'}}>📜 火影主线剧情 ({NARUTO_STORY_CHAPTERS.filter(ch => (narutoState?.storyProgress || {})[ch.id]?.cleared).length}/{NARUTO_STORY_CHAPTERS.length}章)</button>
             <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
               {NARUTO_CHALLENGES.map(ch => {
                 const unlocked = badges.length >= ch.badgeReq;
@@ -23086,148 +23125,17 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     }));
   };
    // 🔥 [美化] 钓鱼小游戏
-  const renderFishingGame = () => {
-    const { status, fish, weight, msg } = fishingState;
-    return (
-      <div className="screen" style={{
-          background: 'linear-gradient(180deg, #0288D1 0%, #01579B 100%)', 
-          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-          position: 'relative', overflow: 'hidden'
-      }}>
-        {/* 水波纹背景 */}
-        <div style={{position:'absolute', inset:0, opacity:0.1, backgroundImage:'radial-gradient(circle, #fff 2px, transparent 2.5px)', backgroundSize:'30px 30px'}}></div>
-        
-        <div style={{display:'flex', alignItems:'center', padding:'12px 16px', background:'rgba(0,0,0,0.3)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.1)', position:'relative', zIndex:10}}>
-            <button onClick={() => { contestRewardLockRef.current = false; setActiveContest(null); setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '' }); setView(safeBack()); }} style={{background:'none', border:'none', color:'#fff', fontSize:'15px', cursor:'pointer', padding:'4px 8px'}}>← 退出</button>
-            <div style={{flex:1, textAlign:'center', fontSize:'18px', fontWeight:800, color:'#fff'}}>🎣 钓鱼大赛</div>
-        </div>
-
-        <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', width:'100%', zIndex:5}} onClick={reelIn}>
-            {/* 状态指示器 */}
-            <div style={{
-                width:'200px', height:'200px', borderRadius:'50%', 
-                background: status==='bite' ? 'rgba(255,82,82,0.2)' : 'rgba(255,255,255,0.1)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                border: status==='bite' ? '4px solid #FF5252' : '4px solid rgba(255,255,255,0.3)',
-                animation: status==='waiting' ? 'pulse 2s infinite' : (status==='bite' ? 'shake 0.5s infinite' : 'none'),
-                marginBottom: '30px', transition: '0.3s'
-            }}>
-                <div style={{fontSize:'80px'}}>
-                    {status === 'idle' && '🚣'}
-                    {status === 'waiting' && '🌊'}
-                    {status === 'bite' && '❗️'}
-                    {status === 'success' && '🐟'}
-                    {status === 'fail' && '💨'}
-                </div>
-            </div>
-
-            {/* 提示文字 */}
-            <div style={{textAlign:'center', color:'#fff', fontSize:'20px', fontWeight:'bold', textShadow:'0 2px 4px rgba(0,0,0,0.3)', minHeight:'60px'}}>
-                {status === 'idle' && "点击按钮抛竿"}
-                {status === 'waiting' && "耐心等待..."}
-                {status === 'bite' && <span style={{color:'#FF5252', fontSize:'24px'}}>有鱼上钩！快收杆！</span>}
-                {status === 'fail' && <div>{msg}<br/><button onClick={(e)=>{e.stopPropagation(); const retries = fishingState.retries || 0; if (retries >= 2) { showMapToast('🎣', '次数用尽', '本轮钓鱼机会已用完', 1500); return; } setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '', retries: retries + 1 }); }} style={{marginTop:'10px', padding:'8px 20px', borderRadius:'20px', border:'none', cursor:'pointer', background:'linear-gradient(90deg,#0288D1,#0277BD)', color:'#fff'}}>{(fishingState.retries||0) >= 2 ? '已无重试机会' : `再试一次 (${2-(fishingState.retries||0)}次)`}</button></div>}
-                
-                {status === 'success' && (
-                    <div style={{animation:'popIn 0.5s'}}>
-                        <div style={{fontSize:'16px', color:'#81D4FA'}}>🎉 钓到了！</div>
-                        <div style={{background:'rgba(0,0,0,0.3)', padding:'15px', borderRadius:'12px', marginTop:'10px', display:'flex', alignItems:'center', gap:'15px'}}>
-                            <div style={{fontSize:'40px'}}>{renderAvatar(fish)}</div>
-                            <div style={{textAlign:'left'}}>
-                                <div style={{fontSize:'18px', color:'#fff'}}>{fish.name}</div>
-                                <div style={{fontSize:'14px', color:'#FFD700'}}>{weight} kg</div>
-                            </div>
-                        </div>
-                        {/* 🔥 这里的 onClick 已经更新为调用新版 grantContestReward */}
-                        <button onClick={(e) => { e.stopPropagation(); grantContestReward(CONTEST_CONFIG.fishing, parseFloat(weight), fish); }} 
-                            style={{marginTop:'20px', padding:'12px 40px', borderRadius:'30px', border:'none', background:'linear-gradient(90deg, #FFC107, #FF9800)', color:'#fff', fontWeight:'bold', cursor:'pointer', fontSize:'16px', boxShadow:'0 4px 10px rgba(0,0,0,0.3)'}}>
-                            提交成绩
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* 操作按钮 */}
-            {status === 'idle' && (
-                <button onClick={(e)=>{e.stopPropagation(); castRod();}} style={{
-                    marginTop:'40px', width:'80px', height:'80px', borderRadius:'50%', border:'4px solid #fff', 
-                    background:'#FF9800', color:'#fff', fontWeight:'bold', fontSize:'14px', cursor:'pointer',
-                    boxShadow:'0 10px 20px rgba(0,0,0,0.3)'
-                }}>
-                    抛竿
-                </button>
-            )}
-        </div>
-      </div>
-    );
-  };
+  const renderFishingGame = () => <FishingScreen state={fishingState} tiers={CONTEST_CONFIG.fishing.tiers}
+    candidates={CONTEST_CONFIG.fishing.pool.map(id => POKEDEX.find(pet => pet.id === id)).filter(Boolean)}
+    renderAvatar={renderAvatar} onCast={castRod} onReel={reelIn} onRetry={retryFishing}
+    onSubmit={() => grantContestReward(CONTEST_CONFIG.fishing, Number(fishingState.weight), fishingState.fish)}
+    onBack={() => { cancelFishingCast(); setActiveContest(null); setView(safeBack()); }} />;
 
   // 🔥 [美化] 选美大赛
-  const renderBeautyContest = () => {
-    const { pet } = activeContest;
-    const { round, appeal, log } = beautyState;
-    const isFinished = round > 5;
-    
-    return (
-      <div className="screen" style={{background: '#263238', display:'flex', flexDirection:'column'}}>
-        {/* 舞台背景 */}
-        <div style={{position:'absolute', inset:0, background:'radial-gradient(circle at 50% 0%, #880E4F 0%, #263238 70%)'}}></div>
-        {/* 聚光灯 */}
-        <div style={{position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'300px', height:'600px', background:'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 80%)', clipPath:'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)', pointerEvents:'none'}}></div>
-
-        <div style={{zIndex:10, background:'rgba(0,0,0,0.4)', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', flexShrink:0, height:'60px', borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
-            <button onClick={() => { contestRewardLockRef.current = false; setActiveContest(null); setView(safeBack()); }} style={{color:'#e2e8f0', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'6px 14px', borderRadius:'20px', fontWeight:'600', fontSize:'13px', cursor:'pointer'}}>⬅ 退出</button>
-            <div style={{fontSize:'16px', fontWeight:'800', color:'#fff', letterSpacing:'2px'}}>🎀 华丽大赛</div>
-            <div style={{width:60}}/>
-        </div>
-
-        <div style={{flex:1, padding:'20px', display:'flex', flexDirection:'column', alignItems:'center', zIndex:5, position:'relative'}}>
-            {/* 魅力热度条 */}
-            <div style={{width:'100%', maxWidth:'300px', background:'rgba(0,0,0,0.5)', height:'20px', borderRadius:'10px', overflow:'hidden', marginBottom:'20px', border:'1px solid #555'}}>
-                <div style={{width:`${Math.min(100, appeal/2)}%`, height:'100%', background:'linear-gradient(90deg, #F48FB1, #E91E63)', transition:'width 0.5s'}}></div>
-            </div>
-            <div style={{color:'#F48FB1', fontWeight:'bold', fontSize:'18px', marginBottom:'10px'}}>💖 魅力值: {appeal}</div>
-
-            {/* 精灵展示 */}
-            <div style={{fontSize:'100px', animation:'bounce 2s infinite', filter:'drop-shadow(0 10px 20px rgba(0,0,0,0.5))'}}>
-                {renderAvatar(pet)}
-            </div>
-            <div style={{color:'#fff', marginTop:'10px', fontSize:'14px', opacity:0.8}}>{isFinished ? "表演结束！" : `Round ${round} / 5`}</div>
-            
-            {/* 技能卡片区 */}
-            {!isFinished ? (
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px', width:'100%', marginTop:'30px'}}>
-                    {(pet.moves || []).map((m, i) => (
-                        <button key={i} onClick={() => performAppeal(m)} style={{
-                            padding:'15px', borderRadius:'12px', border:'none', 
-                            background: 'rgba(255,255,255,0.1)', backdropFilter:'blur(5px)',
-                            color: TYPES[m.t]?.color || '#fff', borderLeft:`4px solid ${TYPES[m.t]?.color}`,
-                            fontWeight:'bold', cursor:'pointer', textAlign:'left',
-                            boxShadow:'0 4px 10px rgba(0,0,0,0.2)'
-                        }}
-                        className="hover-bg-light"
-                        >
-                            <div style={{fontSize:'14px'}}>{m.name}</div>
-                            <div style={{fontSize:'10px', color:'#aaa', marginTop:'4px'}}>展示 {TYPES[m.t]?.name} 魅力</div>
-                        </button>
-                    ))}
-                </div>
-            ) : (
-                // 🔥 这里的 onClick 已经更新为调用新版 grantContestReward
-                <button onClick={() => grantContestReward(CONTEST_CONFIG.beauty, appeal, pet)} 
-                    style={{marginTop:'40px', padding:'15px 50px', borderRadius:'30px', border:'none', background:'linear-gradient(90deg, #E91E63, #C2185B)', color:'#fff', fontWeight:'bold', fontSize:'18px', cursor:'pointer', boxShadow:'0 0 20px #E91E63'}}>
-                    查看结果
-                </button>
-            )}
-
-            {/* 日志 */}
-            <div style={{marginTop:'auto', width:'100%', height:'100px', overflowY:'auto', background:'rgba(0,0,0,0.5)', borderRadius:'10px', padding:'10px', fontSize:'11px', color:'#ccc'}}>
-                {log.map((l, i) => <div key={`bl_${i}_${l.length}_${l.charCodeAt(0)||0}`} style={{marginBottom:'4px'}}>{l}</div>)}
-            </div>
-        </div>
-      </div>
-    );
-  };
+  const renderBeautyContest = () => activeContest?.pet ? <BeautyScreen state={beautyState} pet={activeContest.pet}
+    tiers={CONTEST_CONFIG.beauty.tiers} types={TYPES} renderAvatar={renderAvatar} onAppeal={performAppeal}
+    onSubmit={() => grantContestReward(CONTEST_CONFIG.beauty, beautyState.appeal, activeContest.pet)}
+    onBack={() => { setActiveContest(null); setView(safeBack()); }} /> : null;
 
   // 🔥 [新增] 通用活动结算界面
   const renderResultModal = () => {
@@ -23344,8 +23252,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       const currentInventory = inventoryRef.current || inventory;
       if (type === 'tm' && (currentInventory.tms?.[id]||0) > 0) { showMapToast('❌', '购买失败', '每本技能书只能购买一次', 1500); return; }
       if (type === 'acc') {
-        const getAccId = (acc) => typeof acc === 'string' ? acc : acc?.id;
-        const alreadyOwned = accessoriesRef.current.filter(a => getAccId(a) === id).length + (partyRef.current || []).reduce((s,p) => s + ((p.equips||[]).filter(e => getAccId(e) === id).length), 0);
+        const alreadyOwned = countOwnedAccessory(id, accessoriesRef.current, [...(partyRef.current || []), ...(boxRef.current || [])]);
         if (alreadyOwned > 0) { showMapToast('❌', '购买失败', '每种饰品只能购买一个', 1500); return; }
       }
       if (type === 'stone' && !EVO_STONES[id]) { showMapToast('❌', '错误', '无效的进化石', 1500); return; }
@@ -25318,34 +25225,35 @@ const renderMenu = () => {
           const activeChIdx = hasActive && activeLine ? storyProgress - activeLine.startIdx + 1 : 0;
 
           return (
-            <div style={{margin:'0 20px 16px', padding:'16px 20px', background:'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.10))', borderRadius:'16px', border:'1px solid rgba(139,92,246,0.2)'}}>
+            <div className="world-story-section">
               <div style={{fontSize:'14px', fontWeight:'700', color:'#6366f1', marginBottom:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
                 <span style={{fontSize:'18px'}}>📜</span>
                 {allDone ? '全部支线已通关！' : hasActive && activeLine ? (
                   <span style={{display:'flex', alignItems:'center', gap:'8px'}}>
                     {`进行中：${activeLine.icon} ${activeLine.name}（${activeChIdx}/${activeLine.chapters}）`}
-                    <span onClick={() => {
+                    <button type="button" onClick={() => {
                       setSideStoryStates(prev => ({...prev, [activeSideStory]: { progress: storyProgress, step: storyStep }}));
                       setStoryProgress(mainStoryProgress);
                       setStoryStep(mainStoryStep);
                       setActiveSideStory(null);
                     }} style={{fontSize:'11px', padding:'3px 10px', background:'rgba(239,68,68,0.12)', color:'#ef4444', borderRadius:'8px', cursor:'pointer', fontWeight:'600'}}>
                       返回主线
-                    </span>
+                    </button>
                   </span>
                 ) : '支线剧情'}
               </div>
               {!hasActive && (
-                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'10px'}}>
+                <div className="world-story-grid">
                   {availableLines.map(line => {
                     const done = completedSideStories.has(line.id);
                     const hasSave = sideStoryStates[line.id];
-                    const isNotReady = line.id === 'naruto' || line.id === 'sanguo';
+                    const isNotReady = line.isSanguoArc;
                     return (
-                      <div key={line.id}
+                      <button type="button" className="world-story-card" key={line.id} disabled={done || isNotReady}
                         onClick={() => {
                           if (done) return;
-                          if (isNotReady) { showMapToast('🔒', '即将开放', `${line.name}支线即将开放，敬请期待！`, 2500); return; }
+                          if (isNotReady) return;
+                          if (line.isNarutoArc) { setView('naruto_story'); return; }
                           setMainStoryProgress(storyProgress);
                           setMainStoryStep(storyStep);
                           setActiveSideStory(line.id);
@@ -25375,9 +25283,9 @@ const renderMenu = () => {
                         <div style={{fontSize:'24px', marginBottom:'6px'}}>{done ? '✅' : hasSave ? '▶️' : line.icon}</div>
                         <div style={{fontSize:'13px', fontWeight:'700', color: done ? '#999' : '#1e293b'}}>{line.name}</div>
                         <div style={{fontSize:'11px', color: done ? '#bbb' : '#64748b', marginTop:'2px'}}>
-                          {done ? '已通关' : hasSave ? `继续 · 第${hasSave.progress - line.startIdx + 1}/${line.chapters}章` : `${line.chapters}章 · ${line.desc}`}
+                          {done ? '已通关' : isNotReady ? '尚未开放' : line.isNarutoArc ? `${NARUTO_STORY_CHAPTERS.filter(ch => (narutoState?.storyProgress || {})[ch.id]?.cleared).length}/${NARUTO_STORY_CHAPTERS.length}章` : hasSave ? `继续 · 第${hasSave.progress - line.startIdx + 1}/${line.chapters}章` : `${line.chapters}章 · ${line.desc}`}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -25392,7 +25300,7 @@ const renderMenu = () => {
           const total = NARUTO_STORY_CHAPTERS.length;
           const hasNew = NARUTO_STORY_CHAPTERS.some(ch => badges.length >= ch.badgeReq && !(narutoState?.storyProgress || {})[ch.id]?.cleared);
           return (
-            <div style={{margin:'0 20px 16px', padding:'16px 20px', background:'linear-gradient(135deg, rgba(255,111,0,0.12), rgba(255,87,34,0.10))', borderRadius:'16px', border:'1px solid rgba(255,111,0,0.2)'}}>
+            <div className="world-naruto-journey">
               <div style={{fontSize:'14px', fontWeight:'700', color:'#FF6F00', marginBottom:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
                 <span style={{fontSize:'18px'}}>🍥</span>
                 {cleared >= total ? '忍界传说 · 全章通关！' : `忍界传说 · 火影主线剧情 (${cleared}/${total})`}
@@ -25620,7 +25528,7 @@ const renderMenu = () => {
         </div>
 
         {/* --- 秘境探险 --- */}
-        <div style={{display: mapTab==='dungeons'?'block':'none', padding:'0 4px', paddingBottom:'40px'}}>
+        <div className="world-dungeons" style={{display: mapTab==='dungeons'?'block':'none', padding:'0 4px', paddingBottom:'40px'}}>
           {[
             { tier: 1, title: '初阶秘境', subtitle: '适合刚起步的训练师', gradient: 'linear-gradient(135deg, #43A047, #66BB6A)', icon: '🌿' },
             { tier: 2, title: '进阶秘境', subtitle: '实力经受考验的舞台', gradient: 'linear-gradient(135deg, #1976D2, #42A5F5)', icon: '⚔️' },
@@ -25635,7 +25543,7 @@ const renderMenu = () => {
             if (tierDungeons.length === 0) return null;
             return (
               <div key={tierGroup.tier} style={{marginBottom:'24px'}}>
-                <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 18px', background: tierGroup.gradient, borderRadius:'16px', position:'relative', overflow:'hidden'}}>
+                <div className="world-dungeon-heading" style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', padding:'12px 18px', position:'relative', overflow:'hidden'}}>
                   <div style={{position:'absolute', right:'-10px', top:'-10px', fontSize:'60px', opacity:0.12, pointerEvents:'none'}}>{tierGroup.icon}</div>
                   <span style={{fontSize:'28px', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'}}>{tierGroup.icon}</span>
                   <div>
@@ -25655,7 +25563,7 @@ const renderMenu = () => {
                     const coolRemainSec = Math.ceil((coolRemainMs % 60000) / 1000);
                     const coolRemain = coolRemainMin > 0 ? `${coolRemainMin}分${coolRemainSec}秒` : `${coolRemainSec}秒`;
                     return (
-                      <div key={d.id} role="button" tabIndex={isLocked || isCooling ? -1 : 0} aria-disabled={isLocked || isCooling}
+                      <div className="world-dungeon-card" key={d.id} role="button" tabIndex={isLocked || isCooling ? -1 : 0} aria-disabled={isLocked || isCooling}
                         onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (!isLocked && !isCooling) enterDungeon(d); } }}
                         onClick={() => !isLocked && !isCooling && enterDungeon(d)}
                         style={{
@@ -25670,7 +25578,7 @@ const renderMenu = () => {
                         onMouseOut={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= isLocked ? 'none' : `0 4px 20px ${d.color}15`; }}
                       >
                         <div style={{display:'flex', alignItems:'stretch'}}>
-                          <div style={{
+                          <div className="world-dungeon-icon" style={{
                             width:'56px', minHeight:'100%', background:`linear-gradient(180deg, ${d.color}, ${d.color}cc)`,
                             display:'flex', alignItems:'center', justifyContent:'center', fontSize:'26px', flexShrink:0,
                             position:'relative', overflow:'hidden'
@@ -25680,15 +25588,15 @@ const renderMenu = () => {
                           </div>
                           <div style={{flex:1, padding:'12px 14px'}}>
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
-                              <span style={{fontSize:'14px', fontWeight:'700', color: isLocked ? '#999' : '#333'}}>{d.name}</span>
+                              <span className="world-dungeon-title" style={{fontSize:'14px', fontWeight:'700'}}>{d.name}</span>
                               <div style={{display:'flex', gap:'4px', alignItems:'center'}}>
                                 <span style={{fontSize:'10px', color: d.color, letterSpacing:'1px'}}>{'★'.repeat(d.stars || 1)}</span>
                                 {isLocked && <span style={{fontSize:'16px'}}>🔒</span>}
                                 {isCooling && <span style={{fontSize:'9px', color:'#FF9800', background:'#FFF8E1', padding:'1px 5px', borderRadius:'4px'}}>⏰ {coolRemain}</span>}
                               </div>
                             </div>
-                            <div style={{fontSize:'11px', color:'#888', lineHeight:'1.3', marginBottom:'6px'}}>{d.desc}</div>
-                            <div style={{display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap'}}>
+                            <div className="world-dungeon-desc" style={{fontSize:'12px', lineHeight:'1.5', marginBottom:'8px'}}>{d.desc}</div>
+                            <div className="world-dungeon-meta" style={{display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap'}}>
                               <span style={{fontSize:'10px', fontWeight:'700', color:'#fff', background: d.color, padding:'2px 7px', borderRadius:'4px'}}>Lv.{d.recLvl}+</span>
                               {party[0] && <span style={{fontSize:'9px', fontWeight:'600', color: party[0].level >= d.recLvl ? '#4caf50' : '#e53935', background: party[0].level >= d.recLvl ? '#E8F5E9' : '#FFEBEE', padding:'1px 5px', borderRadius:'4px'}}>你Lv.{party[0].level}</span>}
                               {req > 0 && <span style={{fontSize:'10px', color: isLocked ? '#e53935' : '#4caf50', fontWeight:'600'}}>🏅{req}徽章</span>}
@@ -25714,7 +25622,7 @@ const renderMenu = () => {
         </div>
 
         {/* --- 图鉴试炼塔 --- */}
-        <div style={{display: mapTab==='challenges'?'block':'none', paddingBottom:'40px'}}>
+        <div className="world-challenges" style={{display: mapTab==='challenges'?'block':'none', paddingBottom:'40px'}}>
           {(() => {
             const currentCaught = caughtDex.length;
             const allChallenges = [...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES];
@@ -25737,7 +25645,8 @@ const renderMenu = () => {
               const tc = tier.color;
 
               return (
-                <div key={c.id}
+                <div className="world-challenge-card" key={c.id} role="button" tabIndex={isUnlocked ? 0 : -1} aria-disabled={!isUnlocked}
+                  onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => {
                     if (!isUnlocked) return;
                     if (section.isDouble && party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打试炼需要至少2只存活精灵！', 1500); return; }
@@ -25763,14 +25672,14 @@ const renderMenu = () => {
                         border: isCleared ? `2px solid ${tc}50` : `1px solid ${tc}20`,
                         boxShadow: isCleared ? `0 2px 8px ${tc}20` : 'none',
                       }}>
-                        {isCleared ? <span style={{fontSize:'22px'}}>🏆</span> : bossInfo ? <div style={{transform:'scale(0.7)'}}>{renderAvatar(bossInfo)}</div> : <span style={{fontSize:'18px', opacity:0.4}}>?</span>}
+                        {isCleared ? <span style={{fontSize:'22px'}}>🏆</span> : bossInfo ? <div style={{width:'36px',height:'36px'}}>{renderAvatar(bossInfo)}</div> : <span style={{fontSize:'18px', opacity:0.4}}>?</span>}
                       </div>
                       <div style={{flex:1, minWidth:0}}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'6px'}}>
-                          <div style={{fontSize:'13px', fontWeight:'700', color: isUnlocked ? '#1e293b' : '#a0aec0', lineHeight:'1.3', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{c.title}</div>
+                          <div className="world-challenge-title" style={{fontSize:'14px', fontWeight:'700', lineHeight:'1.4'}}>{c.title}</div>
                           <span style={{fontSize:'9px', fontWeight:'700', color:'#fff', background: isCleared ? `linear-gradient(135deg, ${tc}, ${tc}cc)` : tc, padding:'2px 7px', borderRadius:'6px', flexShrink:0, letterSpacing:'0.5px', boxShadow: `0 1px 3px ${tc}30`}}>{tier.name}</span>
                         </div>
-                        <div style={{fontSize:'10px', color:'#64748b', marginTop:'3px', lineHeight:'1.4', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{c.desc}</div>
+                        <div className="world-challenge-desc" style={{fontSize:'12px', marginTop:'3px', lineHeight:'1.5'}}>{c.desc}</div>
                         <div style={{fontSize:'10px', color: isUnlocked ? tc : '#64748b', marginTop:'2px', fontWeight:'600'}}>Lv.{c.bossLvl} {isCleared ? <span style={{color:'#22c55e'}}>| ✅ 已通关</span> : <span style={{ color: tc }}>| 需 {c.req} 只</span>}</div>
                       </div>
                     </div>
@@ -25788,9 +25697,8 @@ const renderMenu = () => {
             };
 
             return (<>
-              <div style={{margin:'0 0 24px', padding:'20px 24px', background:'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%)', borderRadius:'20px', color:'#fff', position:'relative', overflow:'hidden'}}>
+              <div className="world-challenge-summary" style={{margin:'0 0 24px', padding:'20px 24px', background:'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%)', borderRadius:'20px', color:'#fff', position:'relative', overflow:'hidden'}}>
                 <div style={{position:'absolute', top:'-30px', right:'-10px', fontSize:'120px', opacity:0.04, pointerEvents:'none', transform:'rotate(-15deg)'}}>🏆</div>
-                <div style={{position:'absolute', bottom:'-20px', left:'30px', width:'80px', height:'80px', background:'radial-gradient(circle, rgba(251,191,36,0.15), transparent)', borderRadius:'50%', pointerEvents:'none'}} />
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px'}}>
                   <div>
                     <div style={{fontSize:'10px', color:'#64748b', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px'}}>COLLECTION PROGRESS</div>
@@ -25819,7 +25727,7 @@ const renderMenu = () => {
 
               {sectionConfigs.map(section => section.data.length > 0 && (
                 <div key={section.key} style={{marginBottom:'24px'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px', padding:'0 4px'}}>
+                  <div className="world-challenge-section-heading" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px', padding:'0 4px'}}>
                     <div style={{width:'4px', height:'24px', background: section.gradient, borderRadius:'2px'}} />
                     <span style={{fontSize:'15px', fontWeight:'800', color:'#1e293b'}}>{section.icon} {section.label}</span>
                     <span style={{fontSize:'11px', color:'#64748b', fontWeight:'500'}}>{section.data.length} 座</span>
@@ -28197,7 +28105,10 @@ const renderMenu = () => {
     const expPercent = leader ? Math.min(100, (leader.exp / Math.max(1, leader.nextExp)) * 100) : 0;
     const currentWeatherKeyLocal = mapWeathers[currentMapId] || 'CLEAR';
     const weatherInfo = WEATHERS ? WEATHERS[currentWeatherKeyLocal] : null;
-    const nextMapObjective = MAPS[Math.min(badges.length, Math.max(0, MAPS.length - 1))] || MAPS[0];
+    const badgeMaps = MAPS.filter(map => map.badge);
+    const nextMapObjective = badgeMaps.find(map => !badges.includes(map.badge));
+    const mainBadgeCount = MAPS.slice(0, MAIN_GYM_BADGE_COUNT).filter(map => badges.includes(map.badge)).length;
+    const collectedBadgeCount = badgeMaps.filter(map => badges.includes(map.badge)).length;
     const reserveParty = party.slice(1);
     const reservePreview = reserveParty.slice(0, 5);
     const reserveHiddenCount = Math.max(0, reserveParty.length - reservePreview.length);
@@ -28312,19 +28223,18 @@ const renderMenu = () => {
         <div className="panel-card" style={{padding:'12px', background:'rgba(20,16,8,0.7)', borderRadius:'14px', boxShadow:'none', border:'1px solid rgba(212,168,83,0.25)'}}>
           <div style={{fontSize:'10px', color:'#d4a853', fontWeight:'700', marginBottom:'5px', letterSpacing:'1px'}}>🏆 当前目标</div>
           <div style={{fontSize:'12px', fontWeight:'700', color:'#e8f3ff'}}>
-            {badges.length < 13 ? (
-              <>收集徽章: <span style={{color:'#2196F3'}}>{badges.length} / 13</span> (主线)</>
-            ) : badges.length < 20 ? (
-              <span style={{color:'#E91E63'}}>🔥 挑战冠军联盟！ <span style={{color:'#7fa8c8', fontSize:'10px'}}>({badges.length}枚)</span></span>
+            {mainBadgeCount < MAIN_GYM_BADGE_COUNT ? (
+              <>主线徽章: <span style={{color:'#8ce1c6'}}>{mainBadgeCount} / {MAIN_GYM_BADGE_COUNT}</span></>
+            ) : nextMapObjective ? (
+              <span>进阶徽章 · {collectedBadgeCount} / {badgeMaps.length}</span>
             ) : (
               <span style={{color:'#FFD700'}}>🏅 全部徽章已收集！</span>
             )}
           </div>
           <div style={{marginTop:'8px', padding:'8px 10px', borderRadius:'10px', background:'rgba(212,168,83,0.15)', border:'1px solid rgba(212,168,83,0.2)', fontSize:'11px', lineHeight:1.55, color:'#b8d0e8'}}>
-            下一步：前往 <strong style={{color:'#e8f3ff'}}>{nextMapObjective?.name || '冒险地图'}</strong>
-            {nextMapObjective?.lvl ? ` · 推荐 Lv.${nextMapObjective.lvl[0]}-${nextMapObjective.lvl[1]}` : ''}
+            {nextMapObjective ? <>下一站：<strong style={{color:'#e8f3ff'}}>{nextMapObjective.name}</strong>{nextMapObjective.lvl ? ` · 推荐 Lv.${nextMapObjective.lvl[0]}-${nextMapObjective.lvl[1]}` : ''}</> : '可挑战冠军联盟、契约试炼与无限城深层。'}
             <br />
-            奖励重点：徽章推进、图鉴发现、金币与成长材料。
+            图鉴收集 · 队伍养成 · 高阶挑战
           </div>
         </div>
       </div>
@@ -30864,7 +30774,6 @@ const renderMenu = () => {
   // 1. 捕虫大赛 - 开始
   const startBugContest = () => {
     contestRewardLockRef.current = false;
-    lastBugContestSpeciesRef.current = null;
     setActiveContest({ id: 'bug' });
     const started = encounterNextBug();
     if (!started) setActiveContest(null);
@@ -30886,80 +30795,66 @@ const renderMenu = () => {
 
   // 2. 钓鱼大赛 - 开始
   const startFishing = () => {
+    cancelFishingCast();
     contestRewardLockRef.current = false;
-    lastFishingSpeciesRef.current = null;
     setActiveContest({ id: 'fishing' });
     setFishingState({ status: 'idle', timer: 0, target: null, fish: null, weight: 0, msg: '', retries: 0 });
     setView('fishing_game');
     return true;
   };
 
+  const retryFishing = () => {
+    const current = fishingStateRef.current;
+    if (current.status !== 'fail' || (current.retries || 0) >= FISHING_MAX_RETRIES) return;
+    cancelFishingCast();
+    setFishingState({ status: 'idle', fish: null, weight: 0, msg: '', retries: (current.retries || 0) + 1 });
+  };
+
   // 2.1 钓鱼 - 抛竿
   const castRod = () => {
-    if (fishingState.status !== 'idle') return;
-    
+    if (activeContest?.id !== 'fishing' || fishingStateRef.current.status !== 'idle') return;
+    cancelFishingCast();
+    const castId = fishingCastRef.current;
     setFishingState(prev => ({ ...prev, status: 'waiting', msg: '等待咬钩...' }));
-    
-    // 随机等待 2~5 秒
-    const waitTime = _.random(2000, 5000);
-    
-    setTimeout(() => {
-        // 只有还在 waiting 状态才触发咬钩
-        setFishingState(prev => {
-            if (prev.status === 'waiting') {
-                // 咬钩后，给 0.6 秒反应时间
-                setTimeout(() => {
-                    setFishingState(curr => {
-                        if (curr.status === 'bite') {
-                            return { ...curr, status: 'fail', msg: '鱼跑掉了...' };
-                        }
-                        return curr;
-                    });
-                }, 600);
-                return { ...prev, status: 'bite', msg: '❗️ 咬钩了！快提竿！' };
-            }
-            return prev;
-        });
-    }, waitTime);
+    const biteTimer = setTimeout(() => {
+      if (fishingCastRef.current !== castId || fishingStateRef.current.status !== 'waiting') return;
+      setFishingState(prev => ({ ...prev, status: 'bite', biteDeadline: Date.now() + FISHING_REACTION_MS, msg: '咬钩了！' }));
+      const escapeTimer = setTimeout(() => {
+        if (fishingCastRef.current === castId && fishingStateRef.current.status === 'bite') {
+          setFishingState(prev => ({ ...prev, status: 'fail', msg: '鱼跑掉了' }));
+        }
+      }, FISHING_REACTION_MS);
+      fishingTimersRef.current.push(escapeTimer);
+    }, _.random(2000, 5000));
+    fishingTimersRef.current.push(biteTimer);
   };
 
   // 2.2 钓鱼 - 提竿 (体重与鱼种/徽章挂钩)
   const reelIn = () => {
-    const { status } = fishingState;
-    
-    if (status === 'waiting') {
-        setFishingState(prev => ({ ...prev, status: 'fail', msg: '提竿太早了！吓跑了鱼。' }));
-    } 
-    else if (status === 'bite') {
-        const pool = CONTEST_CONFIG.fishing.pool;
-        const fishId = selectContestSpecies(pool, lastFishingSpeciesRef.current);
-        lastFishingSpeciesRef.current = fishId;
-        const progressMult = 1 + badges.length * 0.15;
-        const weightTable = { 7: 15, 24: 35, 26: 55, 173: 90 };
-        let baseWeight = weightTable[fishId] || 20;
-        baseWeight *= progressMult;
-        const weight = (Math.random() * baseWeight * 0.7 + baseWeight * 0.1).toFixed(1);
-        
-        const mapInfo = MAPS.find(m => m.id === currentMapId);
-        const fishLvl = mapInfo ? mapInfo.lvl : [5, 15];
-        const fish = createPet(fishId, _.random(fishLvl[0], fishLvl[1]), false, false, { preserveSpecies: true });
-        
-        setFishingState(prev => ({ 
-            ...prev, 
-            status: 'success', 
-            fish: fish, 
-            weight: weight, 
-            msg: '成功钓起！' 
-        }));
+    const current = fishingStateRef.current;
+    if (activeContest?.id !== 'fishing' || !['waiting', 'bite'].includes(current.status)) return;
+    cancelFishingCast();
+    if (current.status === 'waiting' || Date.now() >= current.biteDeadline) {
+      setFishingState(prev => ({ ...prev, status: 'fail', msg: current.status === 'waiting' ? '提竿太早了' : '鱼跑掉了' }));
+      return;
     }
+    const fishId = selectContestSpecies(CONTEST_CONFIG.fishing.pool, lastFishingSpeciesRef.current);
+    lastFishingSpeciesRef.current = fishId;
+    const progressMult = 1 + badges.length * 0.15;
+    const baseWeight = ({ 7: 15, 24: 35, 26: 55, 173: 90 }[fishId] || 20) * progressMult;
+    const weight = (Math.random() * baseWeight * 0.7 + baseWeight * 0.1).toFixed(1);
+    const fishLvl = MAPS.find(map => map.id === currentMapId)?.lvl || [5, 15];
+    const fish = createPet(fishId, _.random(fishLvl[0], fishLvl[1]), false, false, { preserveSpecies: true });
+    setFishingState(prev => ({ ...prev, status: 'success', fish, weight, msg: '成功钓起' }));
   };
 
   // 3. 华丽大赛 - 开始
   const startBeautyContest = () => {
     const currentParty = partyRef.current || party;
-    if (currentParty.length === 0) return false;
+    const performer = currentParty.find(pet => pet.currentHp > 0);
+    if (!performer) return false;
     contestRewardLockRef.current = false;
-    const pet = { ...currentParty[0] };
+    const pet = { ...performer, moves: (performer.moves || []).map(move => ({ ...move })) };
     if (!pet.moves || pet.moves.length === 0) {
       const fallbackMoves = [
         { name: '亮相', power: 0, p: 0, pp: 20, acc: 100, t: pet.type || 'NORMAL', category: 'status' },
@@ -30975,43 +30870,11 @@ const renderMenu = () => {
   };
 
   // 3.1 华丽大赛 - 表演
-  const performAppeal = (move) => {
-    const { round, appeal, log, history } = beautyState;
-    if (round > 5) return;
-
-    let score = 0;
-    let msg = "";
-
-    if (move.p === 0) score += 25;
-    else if (move.p <= 60) score += 15;
-    else score += 8;
-
-    if (['FAIRY', 'WATER', 'ICE', 'GRASS', 'LIGHT', 'COSMIC', 'SOUND', 'TIME'].includes(move.t)) {
-        score += 8;
-        msg = `✨ ${move.name} 非常华丽！`;
-    } else {
-        msg = `使用了 ${move.name}。`;
-    }
-
-    // 连续使用同一招会扣分
-    if (history && history.length > 0 && history[history.length - 1] === move.name) {
-        score -= 10;
-        msg += " (重复使用，观众感到无聊！)";
-    }
-
-    const rng = _.random(-8, 10);
-    score += rng;
-    if (rng > 7) msg += " 观众反应热烈！";
-    else if (rng < -5) msg += " 观众反应冷淡...";
-    score = Math.max(0, score);
-
-    // 更新状态
-    setBeautyState(prev => ({
-        round: prev.round + 1,
-        appeal: prev.appeal + score,
-        history: [...prev.history, move.name],
-        log: [`Round ${prev.round}: ${msg} (+${score})`, ...prev.log]
-    }));
+  const performAppeal = move => {
+    if (activeContest?.id !== 'beauty') return;
+    const actualMove = activeContest.pet.moves.find(item => item.name === move?.name);
+    if (!actualMove) return;
+    setBeautyState(resolveBeautyAppeal(beautyStateRef.current, actualMove));
   };
 
    // 🔴 训练家战术室（跨体系 PVE 构筑规划）
@@ -31560,7 +31423,7 @@ const renderMenu = () => {
       const currentParty = partyRef.current || [];
       if (currentParty.length === 0) return '队伍中没有精灵';
       if (activityModal === 'bug' && !currentParty.some(p => (p?.currentHp || 0) > 0)) return '队伍已全员战斗不能，请先治疗';
-      if (activityModal === 'beauty' && !currentParty[0]) return '华丽大赛需要队首精灵参赛';
+      if (activityModal === 'beauty' && !currentParty.some(pet => pet.currentHp > 0)) return '华丽大赛需要存活的精灵参赛';
       return '';
     };
     const startBlockReason = getStartBlockReason();
@@ -33843,33 +33706,7 @@ const renderMenu = () => {
     };
     const availMedsAll = Object.values(MEDICINES).filter(m => m.mapTier <= tier);
     const availMedIds = availMedsAll.map(m => m.id);
-    const shopTMs = ALL_SKILL_TMS.filter(t=>t.shopSell);
-    const getMapShopTMs = (mapId, tierLevel) => {
-      const eligible = shopTMs.filter(t => t.tier <= tierLevel);
-      if (eligible.length <= 8) return eligible.map(t => t.id);
-      const selected = [];
-      const pool = [...eligible];
-      let seed = mapId * 2654435761;
-      const nextSeed = () => { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed; };
-      const typeGroups = {};
-      pool.forEach(t => { if (!typeGroups[t.type]) typeGroups[t.type] = []; typeGroups[t.type].push(t); });
-      const usedIds = new Set();
-      Object.values(typeGroups).forEach(group => {
-        if (selected.length < 8 && group.length > 0) {
-          const pick = group[nextSeed() % group.length];
-          selected.push(pick);
-          usedIds.add(pick.id);
-        }
-      });
-      const remaining = pool.filter(t => !usedIds.has(t.id));
-      while (selected.length < 8 && remaining.length > 0) {
-        const idx = nextSeed() % remaining.length;
-        selected.push(remaining[idx]);
-        remaining.splice(idx, 1);
-      }
-      return selected.map(t => t.id);
-    };
-    const availTMs = getMapShopTMs(currentMapId || 1, tier);
+    const availTMs = getMapShopTMs(ALL_SKILL_TMS, currentMapId || 1, tier);
     const growthByTier = {
       1: [],
       2: ['vit_hp','vit_patk','vit_pdef','exp_candy'],
@@ -33891,7 +33728,9 @@ const renderMenu = () => {
     const availBerryIds = Object.values(BERRIES).filter(b => b.mapTier <= tier).map(b => b.id);
     const availGrowth = growthByTier[tier];
     const availAcc = accByTier[tier];
-    const filteredShopTmIds = availTMs.filter(tmId => !shopTMFilter || ((ALL_SKILL_TMS.find(t => t.id === tmId)?.type || 'NORMAL') === shopTMFilter));
+    const shelfTypes = new Set(availTMs.map(id => ALL_SKILL_TMS.find(tm => tm.id === id)?.type));
+    const activeShopTMFilter = shelfTypes.has(shopTMFilter) ? shopTMFilter : null;
+    const filteredShopTmIds = availTMs.filter(tmId => !activeShopTMFilter || ((ALL_SKILL_TMS.find(t => t.id === tmId)?.type || 'NORMAL') === activeShopTMFilter));
     const pagedShopTmIds = filteredShopTmIds.slice(0, shopTmsVisibleCount);
     const nextTierNeed = tier === 1 ? 3 : tier === 2 ? 6 : tier === 3 ? 9 : null;
     const nextTierLeft = nextTierNeed ? Math.max(0, nextTierNeed - badgeCount) : 0;
@@ -33933,10 +33772,10 @@ const renderMenu = () => {
           {buyType === 'cursed' && <div className="market-owned">持有: {(inventory.cursed || {})[key] || 0}</div>}
           <div className="market-price">{count > 1 ? `💰 ${unitPrice.toLocaleString()} × ${count} = ${totalPrice.toLocaleString()}金` : `💰 ${totalPrice.toLocaleString()}金`}</div>
           <div className="market-qty-stepper">
-            <button type="button" onClick={()=>updateBuyCount(key,-1)}>-</button>
+            <button type="button" aria-label={`减少${name}购买数量`} title="减少数量" disabled={count <= 1} onClick={()=>updateBuyCount(key,-1)}><Minus size={14}/></button>
             <span>{count}</span>
-            <button type="button" onClick={()=>updateBuyCount(key,1)}>+</button>
-            <button type="button" className="is-max" onClick={()=>{const maxAfford=Math.min(99,Math.floor(gold/unitPrice));if(maxAfford>0)setBuyCounts(p=>({...p,[key]:maxAfford}))}}>MAX</button>
+            <button type="button" aria-label={`增加${name}购买数量`} title="增加数量" disabled={count >= 99} onClick={()=>updateBuyCount(key,1)}><Plus size={14}/></button>
+            <button type="button" className="is-max" aria-label={`${name}最大可购数量`} title="最大可购数量（最多99）" disabled={gold < unitPrice} onClick={()=>{const maxAfford=Math.min(99,Math.floor(gold/unitPrice));if(maxAfford>0)setBuyCounts(p=>({...p,[key]:maxAfford}))}}><ChevronsUp size={15}/></button>
                     </div>
           <button onClick={()=>buyItemPro(key,unitPrice,buyType)} disabled={gold < totalPrice}
             className="market-buy-btn"
@@ -34007,10 +33846,10 @@ const renderMenu = () => {
               </div>
             </div>
             {shopTab==='tms' && (
-              <div style={{display:'flex',gap:'4px',flexWrap:'wrap',marginBottom:'10px'}}>
-                <button onClick={()=>setShopTMFilter(null)} style={{padding:'4px 10px',borderRadius:'14px',border:'1px solid '+(shopTMFilter===null?'#FF6F00':'#ddd'),background:shopTMFilter===null?'#FF6F00':'#fff',color:shopTMFilter===null?'#fff':'#666',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>全部</button>
-                {Object.entries(TYPES).filter(([k])=>k!=='GOD').map(([k,v])=>(
-                  <button key={k} onClick={()=>setShopTMFilter(k)} style={{padding:'4px 10px',borderRadius:'14px',border:'1px solid '+(shopTMFilter===k?v.color||'#FF6F00':'#ddd'),background:shopTMFilter===k?v.color||'#FF6F00':'#fff',color:shopTMFilter===k?'#fff':'#666',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>{v.name||k}</button>
+              <div className="market-type-filters" style={{display:'flex',gap:'4px',flexWrap:'wrap',marginBottom:'10px'}}>
+                <button aria-pressed={activeShopTMFilter === null} onClick={()=>setShopTMFilter(null)}>全部</button>
+                {Object.entries(TYPES).filter(([k])=>shelfTypes.has(k)).map(([k,v])=>(
+                  <button key={k} aria-pressed={activeShopTMFilter === k} onClick={()=>setShopTMFilter(k)}>{v.name||k}</button>
                 ))}
               </div>
             )}
@@ -34041,7 +33880,7 @@ const renderMenu = () => {
                 const typeColor = TYPES[tm.type]?.color||'#888';
                 const displayPrice = tm.price;
                         return (
-                  <div key={tmId} style={{
+                  <div className="market-item-card market-unique-card" key={tmId} style={{
                     background: alreadyOwned?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg, #ffffff, #f8f9ff)',borderRadius:'16px',
                     padding:'18px 14px 14px',display:'flex',flexDirection:'column',alignItems:'center',
                     textAlign:'center',border:alreadyOwned?'1px solid #ccc':`1px solid #e8eaf6`,position:'relative',
@@ -34053,13 +33892,13 @@ const renderMenu = () => {
                     <span style={{position:'absolute',top:'-6px',right:'8px',background:tierTagColor,color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>{tierLabel}</span>
                     <span style={{ position:'absolute', top:'-6px', left:'8px', background:'#FF6F00', color:'#fff', fontSize:'9px', padding:'2px 8px', borderRadius:'8px', fontWeight:'700', zIndex:1 }}>限购1</span>
                     <div style={{fontSize:'36px',marginBottom:'8px',filter:alreadyOwned?'grayscale(1)':'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{renderTMCSS(tm.type||'NORMAL',36)}</div>
-                    <div style={{fontSize:'13px',fontWeight:'800',color:alreadyOwned?'#999':'#1a1a2e',marginBottom:'3px'}}>{tm.name}</div>
-                    <div title={`${TYPES[tm.type]?.name||''} · 威力${tm.p}`} style={{fontSize:'11px',color:'#888',height:'28px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'28px',marginBottom:'8px'}}>{TYPES[tm.type]?.name||''} · 威力{tm.p}</div>
-                    <div style={{fontSize:'14px',fontWeight:'900',color:alreadyOwned?'#aaa':'#F57C00',marginBottom:'10px'}}>💰 {displayPrice.toLocaleString()}</div>
+                    <div className="market-item-name">{tm.name}</div>
+                    <div className="market-item-desc">{TYPES[tm.type]?.name||''} · 威力{tm.p}</div>
+                    <div className="market-price">💰 {displayPrice.toLocaleString()}</div>
                     {alreadyOwned?(
-                      <div style={{width:'100%',padding:'8px',borderRadius:'10px',background:'#e0e0e0',color:'#999',fontWeight:'700',fontSize:'12px',textAlign:'center'}}>✅ 已拥有</div>
+                      <div className="market-owned">已拥有</div>
                     ):(
-                      <button onClick={()=>buyItemPro(tm.id,displayPrice,'tm')} disabled={gold<displayPrice}
+                      <button className="market-buy-btn" onClick={()=>buyItemPro(tm.id,displayPrice,'tm')} disabled={gold<displayPrice}
                         style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=displayPrice?'pointer':'not-allowed',
                           background:gold>=displayPrice?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
                           color:gold>=displayPrice?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=displayPrice?'0 3px 8px rgba(0,0,0,0.15)':'none'
@@ -34093,9 +33932,9 @@ const renderMenu = () => {
               })}
               {shopTab==='accessories' && availAcc.map(accId=>{
                 const acc=ACCESSORY_DB.find(a=>a.id===accId); if(!acc) return null;
-                const accOwned = accessories.filter(a=>a===accId).length + party.reduce((s,p)=>s+((p.equips||[]).filter(e=>e===accId).length),0);
+                const accOwned = countOwnedAccessory(accId, accessories, [...party, ...box]);
                         return (
-                  <div key={accId} style={{
+                  <div className="market-item-card market-unique-card" key={accId} style={{
                     background:accOwned>0?'linear-gradient(145deg,#f0f0f0,#e8e8e8)':'linear-gradient(145deg,#ffffff,#f8f9ff)',borderRadius:'16px',
                     padding:'18px 14px 14px',display:'flex',flexDirection:'column',alignItems:'center',
                     textAlign:'center',border:accOwned>0?'1px solid #ccc':'1px solid #e8eaf6',position:'relative',
@@ -34106,13 +33945,13 @@ const renderMenu = () => {
                   onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}>
                     <span style={{position:'absolute',top:'-6px',left:'8px',background:'#FF6F00',color:'#fff',fontSize:'9px',padding:'2px 8px',borderRadius:'8px',fontWeight:'700'}}>限购1</span>
                     <div style={{fontSize:'36px',marginBottom:'8px',filter:accOwned>0?'grayscale(1)':'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'}}>{renderAccCSS(acc.id,36)||<span style={{fontSize:30}}>{acc.icon}</span>}</div>
-                    <div style={{fontSize:'13px',fontWeight:'800',color:accOwned>0?'#999':'#1a1a2e',marginBottom:'3px'}}>{acc.name}</div>
-                    <div title={acc.desc} style={{fontSize:'11px',color:'#888',height:'28px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'28px',marginBottom:'8px'}}>{acc.desc}</div>
-                    <div style={{fontSize:'14px',fontWeight:'900',color:accOwned>0?'#aaa':'#F57C00',marginBottom:'10px'}}>💰 {acc.price.toLocaleString()}</div>
+                    <div className="market-item-name">{acc.name}</div>
+                    <div className="market-item-desc">{acc.desc}</div>
+                    <div className="market-price">💰 {acc.price.toLocaleString()}</div>
                     {accOwned>0?(
-                      <div style={{width:'100%',padding:'8px',borderRadius:'10px',background:'#e0e0e0',color:'#999',fontWeight:'700',fontSize:'12px',textAlign:'center'}}>✅ 已拥有</div>
+                      <div className="market-owned">已拥有</div>
                     ):(
-                      <button onClick={()=>buyItemPro(acc.id,acc.price,'acc')} disabled={gold<acc.price}
+                      <button className="market-buy-btn" onClick={()=>buyItemPro(acc.id,acc.price,'acc')} disabled={gold<acc.price}
                         style={{width:'100%',padding:'8px',borderRadius:'10px',border:'none',fontWeight:'700',fontSize:'12px',cursor:gold>=acc.price?'pointer':'not-allowed',
                           background:gold>=acc.price?`linear-gradient(135deg, ${tierColor}, ${tierColor}cc)`:'#ccc',
                           color:gold>=acc.price?'#fff':'#999',transition:'all 0.2s',boxShadow:gold>=acc.price?'0 3px 8px rgba(0,0,0,0.15)':'none'
