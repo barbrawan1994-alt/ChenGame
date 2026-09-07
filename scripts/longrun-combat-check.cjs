@@ -1,7 +1,7 @@
 const assert = require('assert/strict');
 const { createLoader, loadAppImports, bindAppDependencyTree, seededRandom } = require('./helpers/project-harness.cjs');
 
-function createCombatHarness(random = seededRandom(90412)) {
+function createCombatHarness(random = seededRandom(90412), options = {}) {
   const math = Object.assign(Object.create(Math), { random });
   const loader = createLoader({ Math: math });
   const d = loadAppImports(loader);
@@ -13,16 +13,20 @@ function createCombatHarness(random = seededRandom(90412)) {
     battle: null, weather: 'SUNNY', timePhase: 'DAY', party: [], gang: {}, kingdomWar: {},
     relics: { owned: [], equipped: [] }, narutoState: { jutsuMastery: {} }, arenaState: {},
     infinityStateRef: { current: null },
+    partyRef: { current: [] }, setParty: noop,
     playerTookDamageRef: { current: false },
     sectPlayer: {}, fusionState: {}, fusionStateRef: { current: {} },
     badges: [], housing: {}, currentTitle: '',
     currentMapId: 1, regionEcology: {}, sanctuaryState: {}, box: [],
     setBattle: update => { c.battle = typeof update === 'function' ? update(c.battle) : update; },
-    setAnimEffect: noop, addLog: noop, wait: async () => {}, setTimeout: noop,
+    setAnimEffect: noop, setComboUsedThisBattle:noop, addLog: noop, wait: async () => {}, setTimeout: noop,
+    setBattleImpact: noop, battleImpactSequenceRef:{current:0},
     advanceBounty: noop, updateAchStat: noop, handleDefeat: noop,
     handleWinRef: { current: noop }, commitNarutoState: noop,
+    ...options.globals,
   };
-  c = bindAppDependencyTree(['performAction'], globals);
+  for (const name of options.functions || []) if (!Object.hasOwn(options.globals || {},name)) delete globals[name];
+  c = bindAppDependencyTree(options.functions || ['performAction'], globals);
   return { c, d, loader };
 }
 
@@ -31,6 +35,7 @@ async function run() {
   const { createPet } = loader('src/utils/petFactory.js');
   const pools = {
     standard: Object.entries(d.SKILL_DB).flatMap(([type, moves]) => moves.map(move => ({ ...move, t: move.t || type }))),
+    breathing: [...loader('src/utils/battleTactics.js').buildBreathingMoves('water',6).slice(0,1),...Object.keys(d.BREATHING_TECHNIQUES || loader('src/data/battleTactics.js').BREATHING_TECHNIQUES).map(id=>loader('src/utils/battleTactics.js').buildBreathingMoves(id,6,['breathing_unlock'])[1])],
     status: d.STATUS_SKILLS_DB,
     secondaryEffects: d.SIDE_EFFECT_SKILLS,
     awakening: Object.values(d.AWAKENING_MOVES),

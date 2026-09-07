@@ -2156,13 +2156,11 @@ check('领域、缚誓和果实在双打沿用同一战斗快照并按共享资�
   const domain = app.slice(app.indexOf('const executeDomainExpansion ='), app.indexOf('const executeBindingVow ='));
   const vow = app.slice(app.indexOf('const executeBindingVow ='), app.indexOf('const executeDevilFruit ='));
   const fruit = app.slice(app.indexOf('const executeDevilFruit ='), app.indexOf('const enemyTurn ='));
-  assert.ok(domain.includes('battleSpecialActionLockRef.current'));
-  assert.ok(domain.includes('executeDoubleRound(newActions, tempBattle)'));
-  assert.ok(vow.includes('tempBattle.sharedPlayerCE'));
-  assert.ok(vow.includes('executeDoubleRound(newActions, tempBattle)'));
-  assert.ok(vow.includes('vowCooldowns'));
-  assert.ok(fruit.includes('executeDoubleRound(newActions, tempBattle)'));
-  assert.ok(fruit.includes("finally"));
+  assert.ok(domain.includes('executeTurn(command)'));
+  assert.ok(vow.includes('executeTurn(command)'));
+  assert.ok(fruit.includes("isBattleCommand:true,effect:{type:'BATTLE_FRUIT'"));
+  const commands = fs.readFileSync(path.join(root, 'src/utils/crossoverCommands.js'), 'utf8');
+  assert.ok(commands.includes('unit.vowCooldowns'));
   const clash = combatRules.resolveDomainActivation(
     { name: '敌方领域', ownerSide: 'enemy', turnsLeft: 2, effect: {} },
     'player',
@@ -2171,12 +2169,12 @@ check('领域、缚誓和果实在双打沿用同一战斗快照并按共享资�
   );
   assert.equal(clash.isClash, true);
   assert.equal(clash.activeDomain, null);
-  assert.ok(domain.includes('resolveDomainActivation'));
-  assert.ok(domain.includes('双方领域相互抵消'));
+  assert.ok(commands.includes('resolveDomainActivation'));
+  assert.ok(commands.includes('unit.usedDomain = true'));
   assert.ok(app.includes('getRegeneratedBattleResource(\n              tempBattle.sharedPlayerChakra'));
   assert.ok(app.includes('双打以共享池为权威'));
-  assert.ok(fruit.includes('unit.fruitUseCount = nextUseCount'));
-  assert.ok(fruit.includes('partyRef.current = nextParty'));
+  assert.ok(commands.includes('unit.fruitUseCount ='));
+  assert.ok(app.includes('partyRef.current = nextParty'));
   assert.ok(app.includes("['jutsuCooldowns', 'cursedCooldowns', 'vowCooldowns']"));
 });
 
@@ -2867,6 +2865,9 @@ async function checkTurnHandoff() {
     const errors = [];
     const action = vm.runInNewContext(`${source}; executeTurn`, {
       battle: current, party: [], _: { cloneDeep: structuredClone }, Math, settleUltraRound,
+      battleRoundLockRef:{current:false}, beginBattleRound:()=>{}, getBattleCommand:()=>null,
+      canUseCombatMove:()=>true, getBattleActionPriority:()=>0, getBattleActionSpeed:(_state,pet)=>pet.spd,
+      settleSingleRound:async state=>{ state.turnCount++; current=settleUltraRound({...state,phase:'input'}); },
       setBattle: update => { current = update(current); },
       getStats: pet => ({ spd: pet.spd }), getEquipEffects: () => [], preSelectEnemyMove: () => null,
       performAction: async (actor) => { assert.equal(current.phase, 'busy'); if (ultra) assert.equal(actor.ultraTransformed,true,'Last round buff survives until a slower player acts'); playerActs++; return false; },
@@ -2874,8 +2875,6 @@ async function checkTurnHandoff() {
         assert.equal(deferInput, true);
         assert.equal(current.phase, 'busy');
         enemyActs++;
-        state.turnCount++;
-        current = { ...current, turnCount:state.turnCount };
       },
       wait: async () => {}, console: { error: (...args) => errors.push(args) },
     });
@@ -2894,11 +2893,13 @@ async function checkTurnHandoff() {
     };
     const action = vm.runInNewContext(`${enemySource}; enemyTurn`, {
       battle: current, wait: async () => {}, addLog: () => {}, auditPlayerHpLoss: () => {}, Math, settleUltraRound,
+      beginBattleRound:()=>{}, getPlannedEnemyAction:()=>({move:{p:40}}), performAction:async()=>{},
+      settleSingleRound:async state=>{ current={...state,phase:'input',turnCount:(state.turnCount || 0)+1}; },
       setBattle: update => { current = update(current); },
     });
     await action(current, deferInput);
     assert.equal(current.phase, deferInput ? 'busy' : 'input');
-    assert.equal(current.turnCount, 1);
+    assert.equal(current.turnCount || 0, deferInput ? 0 : 1);
   }
   passed++;
   console.log('✓ 单打双方先后手只执行一次，完整回合结束前保持输入锁定');
@@ -2913,7 +2914,7 @@ check('防卡死检测只恢复停止推进的回合，不打断长动画', () =
   let state = { phase: 'busy', activeIdx: 0, playerCombatStates: [{ currentHp: 50 }] };
   const progress = { current: 0 };
   vm.runInNewContext(source, {
-    useEffect: fn => fn(), battle: state, battleProgressAtRef: progress,
+    useEffect: fn => fn(), battle: state, battleProgressAtRef: progress, battleRoundLockRef:{current:false},
     Date: { now: () => now }, Set, console: { warn: () => {} },
     setInterval: fn => { callback = fn; }, clearInterval: () => {},
     setBattle: update => { state = update(state); },

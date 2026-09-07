@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { Backpack, ArrowLeftRight, LogOut, Sparkles } from 'lucide-react';
+import { Backpack, ArrowLeftRight, LogOut, Sparkles, Shield, Zap, WandSparkles } from 'lucide-react';
 import _ from 'lodash';
 
 import {
@@ -20,6 +20,13 @@ import { prepareCaughtPet, selectContestSpecies, syncPartyBattleResources } from
 import { normalizeCombatTargets } from './utils/battleAi';
 import { balanceEarlyWildLevel, filterFirstWinWildCandidates } from './utils/wildEncounterBalance';
 import { buildMoveForecast } from './utils/moveForecast';
+import { BATTLE_TACTICS, BATTLE_CHARGE, BATTLE_GUARD } from './data/battleTactics';
+import { selectPreparedJutsu, buildBreathingMoves, getCrossoverMultiplier, getBurstBlock, spendTeamBurst, hasTacticalOpening, recordTacticalSetup, snapshotTacticalTarget, applyBattleCharge, applyTacticalGuard, consumeTacticalGuard, getBattleCommand, getEnemyNinjaRank } from './utils/battleTactics';
+import { resolveTeamAction, buildPartnerCommand } from './utils/teamActions';
+import BattleImpact from './components/battle/BattleImpact';
+import BattleTacticsBar, { CombatFamilyTabs, TacticalStatus } from './components/battle/BattleTacticsBar';
+import { getCombatFamily, mergeBattleGrowth } from './utils/battleTactics';
+import { buildDomainCommand, buildVowCommand, canUseCrossoverCommand, applyCrossoverCommand, applyFruitTransform } from './utils/crossoverCommands';
 import { buildCampaignParty } from './utils/campaignBattle';
 import { getInfinityDamageMultiplier, applyInfinityHealingShield, applyInfinityHitEffects } from './utils/infinityCombat';
 import { buildSkillTmCatalog, buildMoveFromTm } from './utils/skillTms';
@@ -54,8 +61,9 @@ import SkillDexScreen from './components/screens/SkillDexScreen';
 import GuideScreen from './components/screens/GuideScreen';
 import { HudEventFeed, useHudEvents } from './hooks/useHudEvents';
 import { ULTRA_BY_ID, ULTRA_ERAS, ULTRA_TRIALS } from './data/ultra';
-import { normalizeUltraState, assignUltraContract, clearUltraUnit, getUltraTransformBlock, activateUltra, endUltra, settleUltraRound, completeUltraTrial } from './utils/ultraRules';
+import { normalizeUltraState, assignUltraContract, clearUltraUnit, getUltraTransformBlock, activateUltra, endUltra, settleUltraRound, completeUltraTrial, getUltraStatMultiplier } from './utils/ultraRules';
 const UltraScreen = React.lazy(() => import(/* webpackChunkName: "ultra-screen" */ './components/screens/UltraScreen'));
+const TacticsScreen = React.lazy(() => import(/* webpackChunkName: "tactics-screen" */ './components/screens/TacticsScreen'));
 
 // ThreeMap 和 NativePetDesigner 已移除，使用2D地图和emoji渲染
 // 导入引擎系统
@@ -1147,7 +1155,7 @@ export default function RPG(props) {
 // 2. [新增] 天气生成算法 (根据地图类型决定天气权重)
 const generateWeatherForMap = (mapType) => {
     const rand = Math.random();
-    
+
     // 极寒冻土: 50%雪, 40%晴, 10%雨(冻雨)
     if (mapType === 'ice') return rand < 0.5 ? 'SNOW' : (rand < 0.9 ? 'CLEAR' : 'RAIN');
     
@@ -2044,6 +2052,7 @@ const [infinityState, setInfinityState] = useState(() => {
   const worldBossActiveFightRef = useRef(null);
   const dungeonEntryLockRef = useRef(false);
   const battleSpecialActionLockRef = useRef(false);
+  const battleRoundLockRef = useRef(false);
   const battleProgressAtRef = useRef(Date.now());
   const towerStartLockRef = useRef(false);
   const leagueStartLockRef = useRef(false);
@@ -2243,6 +2252,10 @@ const [infinityState, setInfinityState] = useState(() => {
 
   const [eventData, setEventData] = useState(null);
   const [animEffect, setAnimEffect] = useState(null);
+  const [battleImpact, setBattleImpact] = useState(null);
+  const battleImpactSequenceRef = useRef(0);
+  const [battleMoveFamily, setBattleMoveFamily] = useState('basic');
+  const [reducedBattleEffects, setReducedBattleEffects] = useState(!!savedData.reducedBattleEffects);
   const [showBallMenu, setShowBallMenu] = useState(false);
 
   // 技能学习状态
@@ -3084,6 +3097,7 @@ const [viewStatPet, setViewStatPet] = useState(null);
 
   const canUseCombatMove = (battleState, unit, move, source = 'player') => {
     if (!move) return false;
+    if (move.isBattleCommand) return canUseCrossoverCommand(battleState, unit, move, source, getBattleResourceValue(battleState, unit, source, 'ce'));
     if (move.isUltraFinisher) return !!unit?.ultraTransformed && unit.ultraTurnsLeft > 0 && move.pp > 0;
     if (move.isCursed) {
       return getBattleResourceValue(battleState, unit, source, 'ce') >= (move.ceCost || 0)
@@ -5380,7 +5394,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     arenaState, expeditions, mineState, bountyBoard, luckyWheel,
     trainingState, worldBossState, raceState, narutoState,
     spiritDomainsCleared, ecoCrisisState, ecoCrisisChoices, regionEcology, observationLog,
-    savedMapId: currentMapId, savedPlayerPos: sanitizeSavedPlayerPos(playerPos), savedPlayerFacing: playerFacing, battleSpeed,
+    savedMapId: currentMapId, savedPlayerPos: sanitizeSavedPlayerPos(playerPos), savedPlayerFacing: playerFacing, battleSpeed, reducedBattleEffects,
     autoSaveIntervalMin,
     isMuted, weatherTypesSet: Array.from(weatherTypesSet),
     battleRecords,
@@ -10353,6 +10367,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
 
     const entries = [
       { id:'ultra', icon:<Sparkles size={25} />, name:'光之羁绊', desc:'奥特曼图鉴与试炼', color:'#c34a5c', badge:0, onClick: () => { setActivityCenter(false); setView('ultra'); } },
+      { id:'tactics', icon:<Shield size={25}/>, name:'战术编成', desc:'忍术准备与呼吸流派', color:'#81b89b', badge:0, onClick:()=>{setActivityCenter(false);setView('tactics');} },
       { id:'arena', icon:'🏟️', name:'竞技场', desc:'段位排位赛', color:'#E53935', badge: arenaState.tickets, onClick: () => { setActivityCenter(false); setView('arena'); } },
       { id:'expedition', icon:'🗺️', name:'远征探险', desc:'派遣队伍探险', color:'#2E7D32', badge: pendingExpeditions, onClick: () => { setActivityCenter(false); setView('expedition'); } },
       { id:'mining', icon:'⛏️', name:'矿洞挖掘', desc:'挖矿收集矿石', color:'#795548', badge: Math.max(0, Number(mineState.energy) || 0), onClick: () => { setActivityCenter(false); if (badges.length < MINE_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${MINE_REQ_BADGES} 枚徽章`,1500); return; } if (!mineState.grid || mineState.grid.length === 0) setMineState(prev => ({...prev, grid: generateMineGrid(prev.depth || 1)})); setView('mining'); } },
@@ -10876,7 +10891,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const reason = getUltraTransformBlock(battle, battle.playerCombatStates?.[index]);
     if (reason) { showMapToast('', '光之契约', reason, 1800); return; }
     battleSpecialActionLockRef.current = true;
-    try { flushSync(() => setBattle(activateUltra(battle, index))); }
+    try {
+      flushSync(() => setBattle(activateUltra(battle, index)));
+      setBattleImpact({id:++battleImpactSequenceRef.current,source:'player',target:'player',atkSlot:slot,defSlot:slot,type:'LIGHT',kind:'aura',label:'光之变身',damage:0});
+      setBattleMoveFamily('burst');
+    }
     finally { window.setTimeout(() => { battleSpecialActionLockRef.current = false; }, 0); }
   };
 
@@ -10933,6 +10952,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
     const currentIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
     const player = battle.playerCombatStates?.[currentIdx];
+    if (getBurstBlock(battle)) { showMapToast('', '爆发机会已用尽', getBurstBlock(battle), 1800); return; }
     if (!player || !player.bijuuData || player.bijuuUsed || player.bijuuTransformed) {
       showMapToast('❌','无法变身','没有尾兽或已使用过',1500); return;
     }
@@ -10946,6 +10966,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     battleSpecialActionLockRef.current = true;
     const next = _.cloneDeep(battle);
+    spendTeamBurst(next, 'player', 'bijuu');
     const p = next.playerCombatStates[currentIdx];
     const remaining = Math.max(0, sharedChakra - chakraCost);
     if ((next.sharedPlayerMaxChakra || 0) > 0) next.sharedPlayerChakra = remaining;
@@ -10960,6 +10981,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     next.logs = [...(next.logs || []), `🦊 ${p.name} 发动了尾兽化——${p.bijuuData.name}！`];
     flushSync(() => setBattle(next));
     updateAchStat({ bijuuTransforms: 1 });
+    setBattleImpact({id:++battleImpactSequenceRef.current,source:'player',target:'player',atkSlot:_dSlot,defSlot:_dSlot,type:'FIRE',kind:'aura',label:'尾兽化',damage:0});
+    setBattleMoveFamily('burst');
     window.setTimeout(() => { battleSpecialActionLockRef.current = false; }, 0);
   };
 
@@ -15638,14 +15661,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     if (activeIdx === -1) { showMapToast('⚠️', '全员战斗不能', '请先前往精灵中心治疗', 2500); setView(safeBack()); return false; }
 
        // 初始化战斗状态的辅助函数
-    const getEnemyNinjaRank = (level) => {
-      if (level >= 70) return NINJA_RANKS.find(r => r.id === 'kage');
-      if (level >= 55) return NINJA_RANKS.find(r => r.id === 'jonin');
-      if (level >= 40) return NINJA_RANKS.find(r => r.id === 'chunin');
-      if (level >= 25) return NINJA_RANKS.find(r => r.id === 'genin');
-      return NINJA_RANKS[0];
-    };
-
     const initBattleState = (p, isEnemy = false) => {
         const equipMoves = (p.equips || []).map(equip => {
             if (equip && typeof equip === 'object' && equip.extraSkill) {
@@ -15717,7 +15732,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           const allowedJutsuRanks = levelRanks.filter(r => ninjaAllowed.includes(r));
           const poolByRank = jutsuPool.filter(j => !j.rank || allowedJutsuRanks.includes(j.rank));
           const available = poolByRank.filter(j => !j.isKekkei || p.level >= 65);
-          const picked = available.sort(() => Math.random() - 0.5).slice(0, maxJutsu);
+          const picked = isEnemy ? available.sort(() => Math.random() - 0.5).slice(0, maxJutsu) : selectPreparedJutsu(p, narutoState);
           picked.forEach(j => {
             jutsuMoves.push({
               ...j, name: j.name, p: j.p, pp: j.pp, maxPP: j.pp,
@@ -15736,7 +15751,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             ...assignUltraContract(p, ultraStateRef.current, actualType, isEnemy),
             ultraTrialArt: isUltraTrial && isEnemy ? `assets/ultra/kaiju-${context._ultraTrial}.webp` : null,
             equippedBerry: p.equippedBerry ?? null,
-            combatMoves: [...combatMoves, ...cursedMoves, ...jutsuMoves],
+            combatMoves: [...combatMoves, ...cursedMoves, ...jutsuMoves, ...(!isEnemy && actualType !== 'pvp' ? buildBreathingMoves(fusionState.playerStyle?.breathingStyle || 'water', badges.length, fusionState.crisisUnlocks) : [])],
             stages: { p_atk:0, p_def:0, s_atk:0, s_def:0, spd:0, acc:0, eva:0, crit:0 },
             
             // ▼▼▼ [修复] 进战斗时，自动清除“混乱”状态 (因为它本应是临时的) ▼▼▼
@@ -16436,289 +16451,155 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const player = state.playerCombatStates?.[state.activeIdx];
     const enemy = state.enemyParty?.[state.enemyActiveIdx];
     if (!player || !enemy || enemy.currentHp <= 0 || player.currentHp <= 0) return null;
-    const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
-    return chooseEnemyCombatAction(state, enemy, { unit: player, idx: state.activeIdx }, { isHardBattle }).move;
+    return getPlannedEnemyAction(state, enemy, [{unit:player,idx:state.activeIdx}]).move;
   };
+
+  const getBattleActionPriority = (unit, move) => (move?.priority || 0) + (unit?.trait === 'prankster' && !(move?.p>0) && move?.cat!=='physical' ? 1 : 0) + (unit?.fruitFirstStrike ? 0.5 : 0);
+
+  const getBattleActionSpeed = (state, unit, side) => {
+    let speed = getStats(unit,unit.stages,unit.status).spd;
+    const domain = state.activeDomain;
+    if (state._arenaSpeedBoost) speed *= 1.5;
+    if (domain?.turnsLeft>0) speed *= domain.ownerSide===side ? (domain.effect?.spdBoost || 1) : (domain.effect?.enemySpdDown || 1);
+    return speed;
+  };
+
+  const beginBattleRound = (state) => {
+    if (state._startedRound === (state.turnCount || 0)) return;
+    state._startedRound = state.turnCount || 0;
+    const player = state.playerCombatStates[state.activeIdx];
+    const enemy = state.enemyParty[state.enemyActiveIdx];
+    if (!player || !enemy) return;
+    if (state.domainRule) {
+      const indexes = state.isDouble ? state.activeIdxs || [] : [state.activeIdx];
+      for (const index of indexes) {
+        const unit = state.playerCombatStates[index];
+        if (unit?.currentHp>0) processDomainTurnStart(state,unit,enemy,addLog,getStats);
+      }
+    }
+    if (state._echoRecoilPending) applyMirrorEchoRecoil(state,player,addLog,getStats);
+  };
+
+  const settleHeldRecovery = (units) => {
+    for (const unit of units) {
+      if (!unit || unit.currentHp<=0) continue;
+      const percent = getEquipEffects(unit).reduce((sum,effect)=>sum + (effect.id==='heal_turn' ? effect.val || 0 : effect.id==='type_heal' ? effect.healVal || 0 : 0),0);
+      const maxHp = getStats(unit).maxHp;
+      const heal = Math.min(maxHp-unit.currentHp, Math.floor(maxHp*percent));
+      if (heal>0) { unit.currentHp += heal; addLog(`${unit.name} 的饰品恢复了 ${heal} HP。`); }
+    }
+  };
+
+  const recordBattleFruitUse = (unit) => {
+    const nextParty = partyRef.current.map(pet=>pet.uid===unit.uid ? {...pet,fruitUseCount:Math.max(Number(pet.fruitUseCount) || 0,unit.fruitUseCount)} : pet);
+    partyRef.current = nextParty;
+    setParty(nextParty);
+  };
+
+  const getPlannedEnemyAction = (state, enemy, targets) => {
+    const index = state.enemyParty.indexOf(enemy);
+    const saved = state.enemyPlansTurn === (state.turnCount || 0) ? state.enemyPlans?.[index] : null;
+    if (saved && saved.uid === enemy.uid) {
+      const move = saved.moveIndex>=0 ? enemy.combatMoves[saved.moveIndex] : _.cloneDeep(saved.move);
+      return {move,targetIdx:saved.targetIdx};
+    }
+    const isHardBattle = !!(state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss);
+    let choice = chooseEnemyCombatAction(state,enemy,targets,{isHardBattle});
+    const hpRatio = enemy.currentHp/Math.max(1,getStats(enemy).maxHp);
+    const ce = getBattleResourceValue(state,enemy,'enemy','ce');
+    const chakra = getBattleResourceValue(state,enemy,'enemy','chakra');
+    const specials = [];
+    if (!(state._enemySpecialActionCooldown>0)) {
+      if (isHardBattle && !state.isDouble && (state.turnCount || 0)>=3 && !state.partnerComboUsed?.enemy) {
+        const partner = state.enemyParty.find(unit=>(unit.uid || unit.id)===enemy.partnerId && unit.currentHp>getStats(unit).maxHp*0.15);
+        const command = buildPartnerCommand(enemy,partner,partner && getComboMove(enemy,partner),getBondLevel(enemy.bondPoints || 0));
+        if (command && hpRatio>0.15) specials.push(command);
+      }
+      const domain = buildDomainCommand(DOMAINS[enemy.domainType],enemy.domainType);
+      if (hpRatio<0.5 && domain && canUseCombatMove(state,enemy,domain,'enemy')) specials.push(domain);
+      const fruit = getFruitById(enemy.devilFruit);
+      if (fruit && hpRatio<=0.6 && (state.turnCount || 0)>=3 && !getBurstBlock(state,'enemy')) specials.push({id:'enemy_fruit',name:`${fruit.name}觉醒`,p:0,t:enemy.type,pp:99,acc:0,isBattleCommand:true,effect:{type:'BATTLE_FRUIT',target:'self'}});
+      if (!enemy.activeVow && enemy.maxCE>0) {
+        const vow = BINDING_VOWS.find(item=>item.id===(hpRatio<0.5 ? 'vow_power' : 'vow_speed'));
+        const command = buildVowCommand(vow);
+        if (command && canUseCombatMove(state,enemy,command,'enemy')) specials.push(command);
+      }
+      if ((enemy.maxCE>0 && ce<enemy.maxCE*0.3) || (enemy.maxChakra>0 && chakra<enemy.maxChakra*0.3)) specials.push(getBattleCommand(-2));
+      if (isHardBattle && !state.isDouble && hpRatio<0.3) {
+        const target = targets[0]?.unit;
+        const types = getUnitOffensiveTypeList(target);
+        const backup = state.enemyParty.findIndex((unit,i)=>i!==index && unit.currentHp>getStats(unit).maxHp*0.5 && types.every(type=>getMoveTypeMultiplier({t:type},unit,state)<=1));
+        if (backup>=0) specials.push({id:'enemy_switch',name:`换上${state.enemyParty[backup].name}`,p:0,t:'NORMAL',pp:99,acc:0,priority:3,isBattleCommand:true,effect:{type:'BATTLE_SWITCH',target:'self',index:backup}});
+      }
+    }
+    if (specials.length && Math.random()<(isHardBattle ? 0.38 : 0.16)) choice = {...choice,move:specials[Math.floor(Math.random()*specials.length)]};
+    if (state.domainRule==='mirror_lake') {
+      const echo = getMirrorLakeMove(state);
+      if (echo?.p>0) choice = {...choice,move:{...echo,isMirrorEcho:true}};
+    }
+    if (state.enemyPlansTurn !== (state.turnCount || 0)) state.enemyPlans = {};
+    state.enemyPlansTurn = state.turnCount || 0;
+    state.enemyPlans = {...state.enemyPlans,[index]:{uid:enemy.uid,moveIndex:enemy.combatMoves.indexOf(choice.move),move:_.cloneDeep(choice.move),targetIdx:choice.targetIdx}};
+    return choice;
+  };
+
+  useEffect(() => {
+    if (!battle || battle.isPvP || !['input','double_input_2'].includes(battle.phase)) return;
+    const enemyIndexes = battle.isDouble ? battle.enemyActiveIdxs : [battle.enemyActiveIdx];
+    if (battle.enemyPlansTurn===(battle.turnCount || 0) && enemyIndexes.every(index=>battle.enemyPlans?.[index]?.uid===battle.enemyParty[index]?.uid)) return;
+    const planned = _.cloneDeep(battle);
+    const targets = (battle.isDouble ? battle.activeIdxs : [battle.activeIdx]).map(index=>({unit:planned.playerCombatStates[index],idx:index})).filter(item=>item.unit?.currentHp>0);
+    for (const index of enemyIndexes) {
+      const unit = planned.enemyParty[index];
+      if (!unit || unit.currentHp<=0 || !targets.length) continue;
+      const choice = getPlannedEnemyAction(planned,unit,targets);
+      if (choice.move.ceCost) planned.sharedEnemyCE = Math.max(0,(planned.sharedEnemyCE || 0)-choice.move.ceCost);
+      if (choice.move.chakraCost) planned.sharedEnemyChakra = Math.max(0,(planned.sharedEnemyChakra || 0)-choice.move.chakraCost);
+    }
+    setBattle(prev=>prev===battle ? {...prev,enemyPlans:planned.enemyPlans,enemyPlansTurn:planned.enemyPlansTurn} : prev);
+  },[battle]);
 
   // ==========================================
   const executeTurn = async (moveIdx) => {
-  if (!battle) return;
-  if (battle.isDouble) return executeDoubleTurn(moveIdx);
-  if (battle.phase !== 'input') return;
-  const activeState = battle.playerCombatStates?.[battle.activeIdx];
-  if (!activeState || activeState.currentHp <= 0) return;
-    setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
-
+    if (!battle) return;
+    if (battle.isDouble) return executeDoubleTurn(moveIdx);
+    if (battle.phase!=='input' || battleRoundLockRef.current) return;
+    const unit = battle.playerCombatStates[battle.activeIdx];
+    if (!unit || unit.currentHp<=0) return;
+    const chosen = getBattleCommand(moveIdx) || unit.combatMoves?.[moveIdx];
+    const exhausted = !(unit.combatMoves || []).some(move=>canUseCombatMove(battle,unit,move));
+    const move = chosen?.isBattleCommand || !exhausted ? chosen : {name:'挣扎',p:20,t:'NORMAL',cat:'physical',acc:100,pp:99,effect:{recoil:0.25}};
+    if (!move || !canUseCombatMove(battle,unit,move)) return;
+    battleRoundLockRef.current = true;
+    setBattle(prev=>prev ? {...prev,phase:'busy'} : prev);
+    const state = _.cloneDeep(battle);
+    state.phase = 'busy';
     try {
-        // 这是一个深拷贝，PP 是在这里扣除的
-        let tempBattle = _.cloneDeep(battle); 
-       const tempPlayerState = tempBattle.playerCombatStates[battle.activeIdx];
-        const move = tempPlayerState.combatMoves?.[moveIdx];
-        const normalMoves = (tempPlayerState.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu && !m.isMartialArt);
-        const allNormalPPZero = normalMoves.length === 0 || normalMoves.every(m => m.pp <= 0);
-        const cursedMoves = (tempPlayerState.combatMoves || []).filter(m => m.isCursed);
-        const allCursedUnusable = cursedMoves.length === 0 || cursedMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
-        const jutsuMoves = (tempPlayerState.combatMoves || []).filter(m => m.isJutsu);
-        const allJutsuUnusable = jutsuMoves.length === 0 || jutsuMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
-        const martialMoves = (tempPlayerState.combatMoves || []).filter(m => m.isMartialArt);
-        const allMartialUnusable = martialMoves.length === 0 || martialMoves.every(m => !canUseCombatMove(tempBattle, tempPlayerState, m, 'player'));
-        const allMovesExhausted = allNormalPPZero && allCursedUnusable && allJutsuUnusable && allMartialUnusable;
-        let useStruggle = false;
-        if (!move && !allMovesExhausted) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
-        if (allMovesExhausted) {
-            useStruggle = true;
-        } else if (move?.isCursed) {
-            if ((tempPlayerState.cursedCooldowns?.[move.id || move.name] || 0) > 0) {
-                showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.cursedCooldowns[move.id || move.name]} 回合冷却`, 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-            const availableCE = (tempBattle.sharedPlayerMaxCE || 0) > 0 ? (tempBattle.sharedPlayerCE || 0) : (tempPlayerState.cursedEnergy || 0);
-            if (availableCE < (move.ceCost || 0)) {
-                showMapToast('❌', '提示', '咒力不足！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-            if (move.pp !== undefined && move.pp <= 0) {
-                showMapToast('❌', '提示', '咒术PP耗尽！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-        } else if (move?.isMartialArt && !useStruggle) {
-            const mcost = move.momentumCost || 0;
-            if (mcost > 0 && (tempBattle._sectMomentum || 0) < mcost) {
-                showMapToast('❌', '气势不足', `需要 ${mcost} 点气势`, 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-            if (move.pp !== undefined && move.pp <= 0) {
-                showMapToast('❌', '提示', '武学PP耗尽！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-        } else if (move?.isJutsu && !useStruggle) {
-            if ((tempPlayerState.jutsuCooldowns?.[move.jutsuId || move.name] || 0) > 0) {
-                showMapToast('❌', '冷却中', `${move.name} 还需 ${tempPlayerState.jutsuCooldowns[move.jutsuId || move.name]} 回合冷却`, 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-            const availableChakra = (tempBattle.sharedPlayerMaxChakra || 0) > 0 ? (tempBattle.sharedPlayerChakra || 0) : (tempPlayerState.chakra || 0);
-            const effectiveChakraCost = getEffectiveChakraCost(move, tempBattle._resonanceFx || {});
-            if (effectiveChakraCost > 0 && availableChakra < effectiveChakraCost) {
-                showMapToast('❌', '提示', '查克拉不足！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-            if (move.pp !== undefined && move.pp <= 0) {
-                showMapToast('❌', '提示', '忍术PP耗尽！', 1500);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-            }
-        } else if (!move?.isCursed && (move?.pp <= 0)) {
-             useStruggle = true;
-        } else if (!move) {
-             setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return;
-        }
-        const player = tempPlayerState;
-        const enemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
-        if (!player || !enemy) { setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); return; }
-        const actualMove = useStruggle ? { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, effect: { recoil: 0.25 } } : move;
-
-        let playerSpd = getStats(player, player.stages, player.status).spd;
-        let enemySpd = getStats(enemy, enemy.stages, enemy.status).spd;
-        if (tempBattle._arenaSpeedBoost || battle?._arenaSpeedBoost) { playerSpd = Math.floor(playerSpd * 1.5); enemySpd = Math.floor(enemySpd * 1.5); }
-        const domSpd = tempBattle.activeDomain || battle?.activeDomain;
-        if (domSpd && domSpd.turnsLeft > 0 && domSpd.effect) {
-          const playerIsOwner = domSpd.ownerSide === 'player';
-          if (playerIsOwner) {
-            if (domSpd.effect.spdBoost) playerSpd = Math.floor(playerSpd * domSpd.effect.spdBoost);
-            if (domSpd.effect.enemySpdDown) enemySpd = Math.floor(enemySpd * domSpd.effect.enemySpdDown);
-          } else {
-            if (domSpd.effect.spdBoost) enemySpd = Math.floor(enemySpd * domSpd.effect.spdBoost);
-            if (domSpd.effect.enemySpdDown) playerSpd = Math.floor(playerSpd * domSpd.effect.enemySpdDown);
-          }
-        }
-        const preSelectedEnemy = preSelectEnemyMove(tempBattle);
-        tempBattle._enemySelectedMove = preSelectedEnemy;
-        let playerMovePriority = actualMove.priority || 0;
-        if (player.trait === 'prankster' && (!actualMove.p || actualMove.p === 0) && actualMove.cat !== 'physical') playerMovePriority += 1;
-        let enemyMovePriority = (preSelectedEnemy?.priority) || 0;
-        if (enemy.trait === 'prankster' && preSelectedEnemy && (!preSelectedEnemy.p || preSelectedEnemy.p === 0) && preSelectedEnemy.cat !== 'physical') enemyMovePriority += 1;
-        const priorityFx = getEquipEffects(party[battle.activeIdx] || {}).find(fx => fx.id === 'priority');
-        const playerHasPriority = player.fruitFirstStrike || (priorityFx && Math.random() < (priorityFx.val || 0.08));
-        const enemyHasPriority = enemy.fruitFirstStrike;
-        let playerFirst;
-        if (playerMovePriority !== enemyMovePriority) {
-          playerFirst = playerMovePriority > enemyMovePriority;
-        } else if (playerHasPriority && !enemyHasPriority) {
-          playerFirst = true;
-        } else if (!playerHasPriority && enemyHasPriority) {
-          playerFirst = false;
-        } else {
-          playerFirst = playerSpd > enemySpd || (playerSpd === enemySpd && Math.random() < 0.5);
-        }
-
-        let enemyDied = false;
-        let playerDiedFromSelfDmg = false;
-
-        const syncBattleState = (extra = {}) => {
-          setBattle(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              playerCombatStates: tempBattle.playerCombatStates.map(p => ({...p})),
-              enemyParty: tempBattle.enemyParty.map(e => ({...e})),
-              _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage,
-              _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
-              _playerSwitched: tempBattle._playerSwitched || prev._playerSwitched,
-              _sectMomentum: tempBattle._sectMomentum ?? prev._sectMomentum,
-              _enemySpecialActionCooldown: tempBattle._enemySpecialActionCooldown ?? prev._enemySpecialActionCooldown,
-              ...extra,
-            };
-          });
-        };
-
-        const domSkip = tempBattle.activeDomain;
-        const playerSuppressed = domSkip && domSkip.turnsLeft > 0 && domSkip.ownerSide === 'enemy' && domSkip.effect?.enemySkipChance && Math.random() < domSkip.effect.enemySkipChance;
-        if (playerSuppressed) {
-          addLog(`🌀 ${player.name} 被敌方领域压制，无法行动！`);
-          await wait(800);
-        }
-
-        if (playerFirst) {
-          // 玩家先手
-          enemyDied = !playerSuppressed && await performAction(player, enemy, actualMove, 'player', tempBattle);
-          if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
-            queueMirrorEcho(tempBattle, actualMove);
-          }
-          syncBattleState();
-          {
-            const pcs = tempBattle.playerCombatStates[tempBattle.activeIdx];
-            playerDiedFromSelfDmg = !!(pcs && (pcs.currentHp <= 0 || pcs._diedFromDot || pcs._diedFromConfusion));
-            if (pcs) { delete pcs._diedFromDot; delete pcs._diedFromConfusion; }
-          }
-
-          if (!enemyDied && !playerDiedFromSelfDmg) {
-            if (actualMove.effect?.type !== 'PROTECT') {
-              if (tempBattle.playerCombatStates[tempBattle.activeIdx]?.volatiles) tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.protected = false;
-            }
-            if (tempBattle.playerCombatStates[tempBattle.activeIdx]?.volatiles) tempBattle.playerCombatStates[tempBattle.activeIdx].volatiles.flinched = false;
-            if (tempBattle.enemyParty[tempBattle.enemyActiveIdx]?.volatiles) tempBattle.enemyParty[tempBattle.enemyActiveIdx].volatiles.flinched = false;
-            await wait(1200);
-            await enemyTurn(tempBattle, true);
-          } else if (enemyDied || playerDiedFromSelfDmg) {
-            tempBattle.turnCount = (tempBattle.turnCount || 0) + 1;
-            syncBattleState({ turnCount: tempBattle.turnCount });
-          }
-        } else {
-          // 敌人先手
-          await wait(800);
-          await enemyTurn(tempBattle, true);
-          const playerDiedFromEnemy = tempBattle.playerCombatStates[tempBattle.activeIdx]?.currentHp <= 0;
-          if (playerDiedFromEnemy) {
-            return;
-          }
-          const enemyDiedDuringOwnTurn = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx]?.currentHp <= 0;
-          if (enemyDiedDuringOwnTurn) {
-            return;
-          }
-          // 玩家后手 - 重新获取当前活跃敌人(可能被训练家AI换过)
-          const currentEnemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
-          if (!currentEnemy) { syncBattleState({ phase: 'input' }); return; }
-          enemyDied = !playerSuppressed && await performAction(player, currentEnemy, actualMove, 'player', tempBattle);
-          if (tempBattle.domainRule === 'mirror_lake' && actualMove?.p > 0) {
-            queueMirrorEcho(tempBattle, actualMove);
-          }
-          syncBattleState({ phase: 'busy', enemyActiveIdx: tempBattle.enemyActiveIdx });
-          {
-            const pcs = tempBattle.playerCombatStates[tempBattle.activeIdx];
-            playerDiedFromSelfDmg = !!(pcs && (pcs.currentHp <= 0 || pcs._diedFromDot || pcs._diedFromConfusion));
-            if (pcs) { delete pcs._diedFromDot; delete pcs._diedFromConfusion; }
-          }
-        }
-
-        // 结算
-        if (enemyDied) {
-            await wait(800);
-            const defeatedEnemy = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx] || enemy;
-            const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(defeatedEnemy, party, tempBattle);
-            
-            // 更新全局队伍
-            setParty(newParty); 
-             addLog(logMsg);
-	            
-	            setBattle(prev => {
-	                if (!prev?.playerCombatStates) return prev;
-	                const updatedCombatStates = prev.playerCombatStates.map((cs, i) => {
-                    const updatedPet = newParty[i];
-                    if (!updatedPet) return cs;
-                    
-                    const equipMoves = (updatedPet.equips || []).map(equip => {
-                        if (equip && typeof equip === 'object' && equip.extraSkill) {
-                            return { ...equip.extraSkill, isExtra: true };
-                        }
-                        return null;
-                    }).filter(Boolean);
-
-                    const cursedMoves = (cs.combatMoves || []).filter(m => m.isCursed);
-                    const martialMoves = (cs.combatMoves || []).filter(m => m.isMartialArt);
-                    const jutsuMoves = (cs.combatMoves || []).filter(m => m.isJutsu);
-                    const fruitMoves = (cs.combatMoves || []).filter(m => m.isFruitMove);
-                    const ultraMoves = (cs.combatMoves || []).filter(m => m.isUltraFinisher && cs.ultraTransformed);
-                    const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves, ...jutsuMoves, ...fruitMoves, ...ultraMoves];
-
-                    return {
-                        ...cs,
-                        level: updatedPet.level,
-                        currentHp: updatedPet.currentHp, 
-                        exp: updatedPet.exp,
-                        nextExp: updatedPet.nextExp,
-                        name: updatedPet.name,
-                        moves: updatedPet.moves,
-                        combatMoves: newCombatMoves,
-                        canEvolve: updatedPet.canEvolve,
-                        pendingLearnMove: updatedPet.pendingLearnMove,
-                    };
-                });
-                return {
-                    ...prev,
-                    playerCombatStates: updatedCombatStates,
-                    enemyParty: tempBattle.enemyParty.map(e => ({...e})),
-                };
-            });
-            if (activeDidLevelUp) {
-                setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
-                await wait(1200); setAnimEffect(null);
-            }
-
-	            const nextEnemyIdx = tempBattle.enemyParty.findIndex((p, i) => i !== tempBattle.enemyActiveIdx && p.currentHp > 0);
-	            if (nextEnemyIdx !== -1) {
-	                setBattle(prev => prev ? ({
-	                    ...prev, enemyActiveIdx: nextEnemyIdx, phase: 'anim', 
-	                    logs: [`对手派出了 ${prev.enemyParty?.[nextEnemyIdx]?.name || tempBattle.enemyParty[nextEnemyIdx]?.name}!`, ...(prev.logs || [])]
-	                }) : prev);
-                await triggerShinyAnim('enemy', tempBattle.enemyParty[nextEnemyIdx]);
-                await wait(1000);
-                setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev); 
-          } else {
-            await wait(1000);
-                pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
-                handleWin(newParty, tempBattle);
-            }
-        } else if (!enemyDied && playerDiedFromSelfDmg) {
-          const aliveIdx = tempBattle.playerCombatStates.findIndex((p, i) => i !== tempBattle.activeIdx && p.currentHp > 0);
-          if (aliveIdx >= 0) {
-            addLog(`${tempBattle.playerCombatStates[tempBattle.activeIdx]?.name || '你的精灵'} 因反伤倒下了！`);
-            if (tempBattle.isDouble) {
-              const newIdxs = (tempBattle.activeIdxs || []).filter(idx => tempBattle.playerCombatStates[idx]?.currentHp > 0);
-              setBattle(prev => prev ? ({ ...prev, activeIdxs: newIdxs.length > 0 ? newIdxs : [aliveIdx], phase: 'input' }) : null);
-            } else {
-              setBattle(prev => prev ? ({ ...prev, showSwitch: true, phase: 'input' }) : null);
-            }
-          } else {
-            await handleDefeat();
-          } 
-        } else if (!enemyDied && !playerDiedFromSelfDmg) {
-          setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-        }
-
-    } catch (e) {
-        console.error("Battle Error:", e);
-        setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
+      beginBattleRound(state);
+      const player = state.playerCombatStates[state.activeIdx];
+      const enemy = state.enemyParty[state.enemyActiveIdx];
+      if (!enemy || player.currentHp<=0 || enemy.currentHp<=0) { await settleSingleRound(state); return; }
+      const actualMove = getBattleCommand(moveIdx) || (exhausted ? {...move} : player.combatMoves[moveIdx]);
+      const enemyMove = preSelectEnemyMove(state);
+      const priorities = [getBattleActionPriority(player,actualMove),getBattleActionPriority(enemy,enemyMove)];
+      const speeds = [getBattleActionSpeed(state,player,'player'),getBattleActionSpeed(state,enemy,'enemy')];
+      const playerFirst = priorities[0]!==priorities[1] ? priorities[0]>priorities[1] : speeds[0]!==speeds[1] ? speeds[0]>speeds[1] : Math.random()<0.5;
+      const playerAction = async () => {
+        const target = state.enemyParty[state.enemyActiveIdx];
+        if (player.currentHp<=0 || !target || target.currentHp<=0) return;
+        await performAction(player,target,actualMove,'player',state);
+        if (state.domainRule==='mirror_lake' && actualMove.p>0) queueMirrorEcho(state,actualMove);
+      };
+      if (playerFirst) { await playerAction(); if (!state._objectiveWinPending) await enemyTurn(state,true); }
+      else { await enemyTurn(state,true); if (!state._objectiveWinPending) await playerAction(); }
+      if (state._objectiveWinPending) return;
+      setBattle(prev=>prev ? {...prev,...state,logs:prev.logs,phase:'busy'} : prev);
+      await settleSingleRound(state);
+    } catch (error) {
+      console.error('Battle Error:',error);
+      setBattle(prev=>prev ? {...prev,phase:'input'} : prev);
     } finally {
-        setBattle(prev => settleUltraRound(prev));
+      battleRoundLockRef.current = false;
     }
   };
 
@@ -16750,7 +16631,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       return;
     }
 
-    let move = p.combatMoves?.[moveIdx];
+    let move = getBattleCommand(moveIdx) || p.combatMoves?.[moveIdx];
+    if (move?.isBattleCommand && !canUseCombatMove(battle,p,move)) return;
     const normalMovesD = (p.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu && !m.isMartialArt);
     const allNormalPPZeroD = normalMovesD.length === 0 || normalMovesD.every(m => m.pp <= 0);
     const sharedCEForDouble = getBattleResourceValue(battle, p, 'player', 'ce');
@@ -16761,7 +16643,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const allJutsuUnusableD = jutsuMovesD.length === 0 || jutsuMovesD.every(m => !canUseCombatMove(battle, p, m, 'player'));
     const martialMovesD = (p.combatMoves || []).filter(m => m.isMartialArt);
     const allMartialUnusableD = martialMovesD.length === 0 || martialMovesD.every(m => !canUseCombatMove(battle, p, m, 'player'));
-    const allMovesExhaustedD = allNormalPPZeroD && allCursedUnusableD && allJutsuUnusableD && allMartialUnusableD;
+    const allMovesExhaustedD = !move?.isBattleCommand && allNormalPPZeroD && allCursedUnusableD && allJutsuUnusableD && allMartialUnusableD;
     if (!move && !allMovesExhaustedD) return;
     let useStruggleD = false;
     if (allMovesExhaustedD) useStruggleD = true;
@@ -16823,10 +16705,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   };
 
   const executeDoubleRound = async (playerActions, stateOverride = null) => {
+    if (battleRoundLockRef.current) return;
+    battleRoundLockRef.current = true;
     try {
       let tempBattle = _.cloneDeep(stateOverride || battle);
       tempBattle.phase = 'busy';
       tempBattle.doubleActions = playerActions;
+      beginBattleRound(tempBattle);
 
       // --- 双打共享能量池：同步所有出战精灵到共享池值 ---
       let poolChk = tempBattle.sharedPlayerChakra || 0;
@@ -16848,109 +16733,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         }
       }
 
-      const comboAction = playerActions?.find(a => a.comboJutsuId);
-      if (comboAction) {
-        const combo = COMBO_JUTSU_LIST.find(c => c.id === comboAction.comboJutsuId);
-        const slot0 = tempBattle.activeIdxs?.[0];
-        const slot1 = tempBattle.activeIdxs?.[1];
-        const pet0 = tempBattle.playerCombatStates?.[slot0];
-        const pet1 = tempBattle.playerCombatStates?.[slot1];
-        const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
-        if (
-          combo &&
-          pet0 &&
-          pet1 &&
-          isComboJutsuAvailableInDouble(combo, {
-            pet0,
-            pet1,
-            ninjaRankId: nrk.id,
-            party,
-            availableChakra: tempBattle.sharedPlayerChakra,
-            chakraCostMult: tempBattle._resonanceFx?.chakraCostMult || 1,
-          })
-        ) {
-          const totalCost = getEffectiveChakraCost(combo, tempBattle._resonanceFx || {});
-          poolChk = Math.max(0, (tempBattle.sharedPlayerChakra || pet0.chakra || 0) - totalCost);
-          tempBattle.sharedPlayerChakra = poolChk;
-          for (const pIdx of tempBattle.activeIdxs || []) {
-            const ps = tempBattle.playerCombatStates?.[pIdx];
-            if (ps) ps.chakra = Math.min(ps.maxChakra || 0, poolChk);
-          }
-
-          addLog(`🌀 ${pet0.name} 和 ${pet1.name} 发动组合忍术 —— ${combo.name}！`);
-          showMapToast('🌀', '组合忍术', combo.name, 2000);
-          const animNature = CHAKRA_NATURE_MAP[combo.natures?.[0]]?.gameType || combo.natures?.[0] || 'PSYCHIC';
-          setAnimEffect({ type: animNature, target: 'enemy' });
-          await wait(1200);
-
-          const tRaw = comboAction.targetEnemyIdx ?? (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
-          const targetIdx = tRaw !== undefined ? tRaw : 0;
-          const target = tempBattle.enemyParty?.[targetIdx];
-
-          if (combo.power > 0 && target && target.currentHp > 0) {
-            const _natKey = combo.natures?.[0];
-            if (_natKey) {
-              const nature = CHAKRA_NATURE_MAP[_natKey];
-              const comboMove = {
-                name: combo.name,
-                p: combo.power,
-                t: nature?.gameType || 'PSYCHIC',
-                cat: combo.cat || 'special',
-                acc: 95,
-                pp: 99,
-                isComboJutsu: true,
-                effect: combo.effect || null,
-              };
-              const s0 = getStats(pet0, pet0.stages, pet0.status);
-              const s1 = getStats(pet1, pet1.stages, pet1.status);
-              const phys = combo.cat === 'physical';
-              const attacker = phys
-                ? ((s0.p_atk || 0) >= (s1.p_atk || 0) ? pet0 : pet1)
-                : ((s0.s_atk || 0) >= (s1.s_atk || 0) ? pet0 : pet1);
-              const defAnimSlot = (tempBattle.enemyActiveIdxs || []).indexOf(targetIdx);
-              const atkPetIdx = tempBattle.playerCombatStates.indexOf(attacker);
-              const atkAnimSlot = (tempBattle.activeIdxs || []).indexOf(atkPetIdx);
-              tempBattle._doubleAnimCtx = { atkSlot: atkAnimSlot >= 0 ? atkAnimSlot : 0, defSlot: defAnimSlot >= 0 ? defAnimSlot : 0, source: 'player' };
-              tempBattle.activeIdx = atkPetIdx;
-              tempBattle.enemyActiveIdx = targetIdx;
-              await performAction(attacker, target, comboMove, 'player', tempBattle);
-              setAnimEffect(null);
-              await wait(400);
-            } else {
-              addLog('组合忍术数据异常: 缺少属性');
-            }
-          } else if (combo.id === 'sealing' && target && target.currentHp > 0) {
-            const dmg = Math.floor(target.currentHp * 0.3);
-            target.currentHp = Math.max(1, target.currentHp - dmg);
-            addLog(`${combo.name} 封印了 ${target.name}，造成 ${dmg} 点伤害！`);
-          } else if (combo.id === 'medical') {
-            [pet0, pet1].forEach((p) => {
-              const maxHp = getStats(p, p.stages, p.status).maxHp || p.currentHp;
-              const heal = Math.floor(maxHp * 0.3);
-              p.currentHp = Math.min(maxHp, p.currentHp + heal);
-              addLog(`💚 ${p.name} 恢复了 ${heal} HP！`);
-            });
-          } else if (combo.id === 'genjutsu') {
-            for (const eIdx of tempBattle.enemyActiveIdxs || []) {
-              const e = tempBattle.enemyParty?.[eIdx];
-              if (e && e.currentHp > 0 && !e.status) {
-                e.status = 'SLP';
-                if (!e.volatiles) e.volatiles = {};
-                e.volatiles.sleepTurns = 2;
-                addLog(`${e.name} 陷入了沉睡！`);
-              }
-            }
-          } else if (combo.id === 'barrier') {
-            [pet0, pet1].forEach((p) => {
-              if (!p.volatiles) p.volatiles = {};
-              p.volatiles.comboBarrierTurns = 2;
-              p.volatiles.protected = true;
-              addLog(`🛡️ ${p.name} 获得了四紫炎阵的保护！`);
-            });
-          }
-          setAnimEffect(null);
-        }
-      }
+      const comboAction = playerActions?.find(action => action.comboJutsuId);
 
       const actions = [];
 
@@ -16977,13 +16760,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         return s;
       };
       playerActions.forEach((action, slotIdx) => {
-        if (!action || action.moveIdx < 0) return;
+        if (!action || (action.moveIdx < 0 && !getBattleCommand(action.moveIdx))) return;
         const pIdx = action.activeIdx;
         const pet = tempBattle.playerCombatStates?.[pIdx];
         if (!pet || pet.currentHp <= 0) return;
         pet.chakra = Math.min(pet.maxChakra || 0, poolChk);
         pet.cursedEnergy = Math.min(pet.maxCE || 0, poolCE);
-        let move = (pet.combatMoves || [])[action.moveIdx];
+        let move = getBattleCommand(action.moveIdx) || (pet.combatMoves || [])[action.moveIdx];
         const normD = (pet.combatMoves || []).filter(m => !m.isCursed && !m.isJutsu && !m.isMartialArt);
         const allNormEmptyD = normD.length === 0 || normD.every(m => m.pp <= 0);
         const curseD = (pet.combatMoves || []).filter(m => m.isCursed);
@@ -16992,7 +16775,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const allJutsuBadD = jutsuD.length === 0 || jutsuD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
         const martD = (pet.combatMoves || []).filter(m => m.isMartialArt);
         const allMartBadD = martD.length === 0 || martD.every(m => !canUseCombatMove(tempBattle, pet, m, 'player'));
-        const allExD = allNormEmptyD && allCurseBadD && allJutsuBadD && allMartBadD;
+        const allExD = !move?.isBattleCommand && allNormEmptyD && allCurseBadD && allJutsuBadD && allMartBadD;
         if (allExD || (!move?.isCursed && !move?.isJutsu && move?.pp <= 0)) {
           move = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } };
         }
@@ -17003,13 +16786,22 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         actions.push({ side: 'player', petIdx: pIdx, move, speed: spd, targetIdx: targetEnemyIdx, slotIdx, unit: pet });
       });
 
+      if (comboAction) {
+        const combo = COMBO_JUTSU_LIST.find(item => item.id === comboAction.comboJutsuId);
+        const participantIdxs = [...(tempBattle.activeIdxs || [])].slice(0, 2);
+        const [pet0, pet1] = participantIdxs.map(index => tempBattle.playerCombatStates[index]);
+        if (combo && isComboJutsuAvailableInDouble(combo, {pet0,pet1,ninjaRankId:getNinjaRank(narutoState?.examsCompleted || 0).id,party,availableChakra:tempBattle.sharedPlayerChakra,chakraCostMult:tempBattle._resonanceFx?.chakraCostMult || 1})) {
+          actions.push({side:'player',combo,participantIdxs,petIdx:participantIdxs[0],targetIdx:comboAction.targetEnemyIdx ?? tempBattle.enemyActiveIdxs[0],move:{p:combo.power || 0,priority:0},speed:Math.min(...[pet0,pet1].map(pet=>applyDoubleDomainSpeed(getStats(pet,pet.stages,pet.status).spd,true)))});
+        }
+      }
+
       (tempBattle.enemyActiveIdxs || []).forEach((eIdx, slotIdx) => {
         const enemy = tempBattle.enemyParty?.[eIdx];
         if (!enemy || enemy.currentHp <= 0) return;
         const spd = applyDoubleDomainSpeed(getStats(enemy, enemy.stages, enemy.status).spd, false);
         const alivePlayerIdxs = (tempBattle.activeIdxs || []).filter(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
         if (alivePlayerIdxs.length === 0) return;
-        const choice = chooseEnemyCombatAction(
+        const choice = getPlannedEnemyAction(
           tempBattle,
           enemy,
           alivePlayerIdxs.map(i => ({ unit: tempBattle.playerCombatStates[i], idx: i })),
@@ -17020,7 +16812,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         actions.push({ side: 'enemy', petIdx: eIdx, move: chosenMove, speed: spd, targetIdx: chosenTarget, slotIdx, unit: enemy });
       });
 
-      actions.forEach(a => { a._tieBreak = Math.random(); a._priority = a.move?.priority || 0; if (a.unit?.trait === 'prankster' && a.move && (!a.move.p || a.move.p === 0) && a.move.cat !== 'physical') a._priority += 1; });
+      actions.forEach(a => { a._tieBreak = Math.random(); a._priority = a.combo ? 0 : getBattleActionPriority(a.unit,a.move); });
       actions.sort((a, b) => {
         if (a._priority !== b._priority) return b._priority - a._priority;
         const diff = (b.speed || 0) - (a.speed || 0);
@@ -17029,13 +16821,20 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       });
 
       for (const action of actions) {
+        if (action.combo) {
+          await resolveTeamAction(tempBattle, action, {getStats,checkReady:checkBattleActionReady,performAction,addLog,feedback:async (unit,label,kind)=>{
+            setBattleImpact({id:++battleImpactSequenceRef.current,source:'player',target:'player',atkSlot:0,defSlot:tempBattle.activeIdxs.indexOf(tempBattle.playerCombatStates.indexOf(unit)),type:kind==='heal' ? 'HEAL' : 'LIGHT',kind,label,damage:0});
+            await wait(600);
+          }});
+          setBattle(prev => prev ? ({...prev,playerCombatStates:tempBattle.playerCombatStates.map(p=>({...p})),enemyParty:tempBattle.enemyParty.map(p=>({...p})),sharedPlayerChakra:tempBattle.sharedPlayerChakra}) : prev);
+          continue;
+        }
         let attacker, defender, resolvedDefIdx;
         if (action.side === 'player') {
           attacker = tempBattle.playerCombatStates?.[action.petIdx];
           let tIdx = action.targetIdx;
           if (!tempBattle.enemyParty?.[tIdx] || tempBattle.enemyParty[tIdx].currentHp <= 0) {
             tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
-            if (tIdx === undefined) tIdx = (tempBattle.enemyParty || []).findIndex(e => e.currentHp > 0);
           }
           if (tIdx === undefined || tIdx < 0) continue;
           defender = tempBattle.enemyParty[tIdx];
@@ -17047,7 +16846,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           let tIdx = action.targetIdx;
           if (!tempBattle.playerCombatStates?.[tIdx] || tempBattle.playerCombatStates[tIdx].currentHp <= 0) {
             tIdx = (tempBattle.activeIdxs || []).find(i => tempBattle.playerCombatStates?.[i]?.currentHp > 0);
-            if (tIdx === undefined) tIdx = (tempBattle.playerCombatStates || []).findIndex(p => p.currentHp > 0);
           }
           if (tIdx === undefined || tIdx < 0) continue;
           defender = tempBattle.playerCombatStates[tIdx];
@@ -17067,27 +16865,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         await wait(400);
 
         await performAction(attacker, defender, action.move, side, tempBattle);
+        if (tempBattle._objectiveWinPending) return;
 
-        if (side === 'player' && tempBattle.isDouble && Math.random() < 0.04) {
-          const baseDmg = tempBattle._lastPlayerMoveDmg || 0;
-          if (baseDmg > 0) {
-            const mateIdx = (tempBattle.activeIdxs || []).find(i => i !== action.petIdx && tempBattle.playerCombatStates?.[i]?.currentHp > 0);
-            if (mateIdx !== undefined) {
-              let tIdx = action.targetIdx;
-              const ep = tempBattle.enemyParty?.[tIdx];
-              if (!ep || ep.currentHp <= 0) tIdx = (tempBattle.enemyActiveIdxs || []).find(i => tempBattle.enemyParty?.[i]?.currentHp > 0);
-              const tgt = tIdx !== undefined ? tempBattle.enemyParty?.[tIdx] : null;
-              const tgtState = tgt ? (tempBattle.enemyParty?.[tIdx]) : null;
-              const tgtVol = tgtState?.volatiles;
-              if (tgt && tgt.currentHp > 0 && !(tgtVol?.protected) && !(tempBattle.battleObjective === 'capture_alive' && tgt.currentHp <= Math.floor(getStats(tgt).maxHp * 0.15))) {
-                const sync = Math.max(1, Math.floor(baseDmg * 0.15));
-                tgt.currentHp = Math.max(tempBattle.battleObjective === 'capture_alive' ? 1 : 0, tgt.currentHp - sync);
-                showMapToast('⚡', '协同攻击', '队友追加了一次攻击！', 1500);
-                addLog(`⚡ 协同追击对 ${tgt.name} 造成额外 ${sync} 伤害！`);
-              }
-            }
-          }
-        }
 
         setBattle(prev => ({
           ...prev,
@@ -17102,6 +16881,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       }
 
       const doubleHard = !!(tempBattle.isTrainer || tempBattle.isGym || tempBattle.isChallenge || tempBattle.isStory || tempBattle.isBoss);
+      settleHeldRecovery([...(tempBattle.activeIdxs || []).map(index=>tempBattle.playerCombatStates[index]),...(tempBattle.enemyActiveIdxs || []).map(index=>tempBattle.enemyParty[index])]);
       for (const pIdx of (tempBattle.activeIdxs || [])) {
         const ps = tempBattle.playerCombatStates?.[pIdx];
         if (ps && ps.currentHp > 0) {
@@ -17217,17 +16997,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         }
       }
 
-      // 双打灵域：每个玩家精灵只与第一个敌方精灵处理一次（避免N×M重复触发）
-      if (tempBattle.domainRule) {
-        const eSlot0 = (tempBattle.enemyActiveIdxs || [])[0];
-        const de0 = tempBattle.enemyParty?.[eSlot0];
-        if (de0) {
-          for (const pSlot of (tempBattle.activeIdxs || [])) {
-            const dp = tempBattle.playerCombatStates?.[pSlot];
-            if (dp && dp.currentHp > 0) processDomainTurnStart(tempBattle, dp, de0, addLog, getStats);
-          }
-        }
-      }
       // 双打Boss机制：每回合只调用一次（取第一个玩家和第一个敌方）
       if ((tempBattle.type === 'world_boss' || tempBattle.ecoBossMechanics)) {
         const eSlot = (tempBattle.enemyActiveIdxs || [])[0];
@@ -17466,6 +17235,9 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         pendingDoubleMove: undefined,
         phase: 'input',
         turnCount: (prev.turnCount || 0) + 1,
+        enemyPlans: null,
+        _enemySpecialActionCooldown: Math.max(0,(tempBattle._enemySpecialActionCooldown || 0)-1),
+        burstUsed: tempBattle.burstUsed,
         _playerTookDamage: tempBattle._playerTookDamage || prev._playerTookDamage || playerTookDamageRef.current,
         _playerDirectAttack: tempBattle._playerDirectAttack || prev._playerDirectAttack,
         _partyMinHp: tempBattle._partyMinHp || prev._partyMinHp,
@@ -17477,112 +17249,15 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     } catch (e) {
       console.error("Double Battle Error:", e);
       setBattle(prev => prev ? ({ ...prev, phase: 'input', doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined }) : null);
+    } finally {
+      battleRoundLockRef.current = false;
     }
   };
 
   // ==========================================
   // 蓄力 (消耗一回合, 回复咒力+查克拉)
   // ==========================================
-  const executeChargeCE = async () => {
-    if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2')) return;
-    if (battle.isDouble) {
-      const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
-      const currentIdx = battle.activeIdxs?.[currentSlot];
-      if (currentIdx === undefined) return;
-      const ceAmt = CURSED_ENERGY_CONFIG.chargeAction;
-      const ckAmt = CHAKRA_CONFIG.chargeAmount;
-      const chargeAction = { moveIdx: -2, activeIdx: currentIdx, isChargeCE: true };
-      const newActions = [...(battle.doubleActions || [])];
-      newActions[currentSlot] = chargeAction;
-      const nextBattle = _.cloneDeep(battle);
-      const ps = nextBattle.playerCombatStates?.[currentIdx];
-      if (ps) {
-        const parts = [];
-        const useSharedCE = (nextBattle.sharedPlayerMaxCE || 0) > 0;
-        const useSharedChk = (nextBattle.sharedPlayerMaxChakra || 0) > 0;
-        if (useSharedCE) {
-          nextBattle.sharedPlayerCE = Math.min(nextBattle.sharedPlayerMaxCE, (nextBattle.sharedPlayerCE || 0) + ceAmt);
-          for (const i of (nextBattle.activeIdxs || [])) {
-            const p = nextBattle.playerCombatStates?.[i];
-            if (p) p.cursedEnergy = Math.min(p.maxCE || 0, nextBattle.sharedPlayerCE);
-          }
-          parts.push(`+${ceAmt}咒力`);
-        } else if (ps.maxCE > 0) {
-          ps.cursedEnergy = Math.min(ps.maxCE, (ps.cursedEnergy || 0) + ceAmt);
-          parts.push(`+${ceAmt}咒力`);
-        }
-        if (useSharedChk) {
-          nextBattle.sharedPlayerChakra = Math.min(nextBattle.sharedPlayerMaxChakra, (nextBattle.sharedPlayerChakra || 0) + ckAmt);
-          for (const i of (nextBattle.activeIdxs || [])) {
-            const p = nextBattle.playerCombatStates?.[i];
-            if (p) p.chakra = Math.min(p.maxChakra || 0, nextBattle.sharedPlayerChakra);
-          }
-          parts.push(`+${ckAmt}查克拉`);
-        } else if ((ps.maxChakra || 0) > 0) {
-          ps.chakra = Math.min(ps.maxChakra, (ps.chakra || 0) + ckAmt);
-          parts.push(`+${ckAmt}查克拉`);
-        }
-        addLog(`⚡ ${ps.name} 集中精神蓄力! (${parts.join(', ')})`);
-      }
-      const secondIdx = nextBattle.activeIdxs?.[1];
-      const secondPet = secondIdx >= 0 ? nextBattle.playerCombatStates?.[secondIdx] : null;
-      const waitForSecondSlot = currentSlot === 0 && nextBattle.activeIdxs?.length > 1 && secondPet && secondPet.currentHp > 0;
-      const battleAfterCharge = {
-        ...nextBattle,
-        phase: waitForSecondSlot ? 'double_input_2' : 'busy',
-        doubleSlot: waitForSecondSlot ? 1 : nextBattle.doubleSlot,
-        doubleActions: newActions,
-      };
-      setBattle(battleAfterCharge);
-      const _slotAnim = (battle.activeIdxs || []).indexOf(currentIdx);
-      setTimeout(() => {
-        setAnimEffect({ type: 'CHARGE_CE', target: 'player', slot: _slotAnim >= 0 ? _slotAnim : 0 });
-        setTimeout(() => setAnimEffect(null), 450);
-      }, 0);
-      if (waitForSecondSlot) return;
-      await executeDoubleRound(newActions, battleAfterCharge);
-      return;
-    }
-    setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
-    try {
-	        let tempBattle = _.cloneDeep(battle);
-	        const player = tempBattle.playerCombatStates[battle.activeIdx];
-	        const parts = [];
-	        if (player.maxCE > 0) {
-	          if ((tempBattle.sharedPlayerMaxCE || 0) > 0) {
-	            tempBattle.sharedPlayerCE = Math.min(tempBattle.sharedPlayerMaxCE, (tempBattle.sharedPlayerCE || 0) + CURSED_ENERGY_CONFIG.chargeAction);
-	            player.cursedEnergy = Math.min(player.maxCE, tempBattle.sharedPlayerCE);
-	          } else {
-	            player.cursedEnergy = Math.min(player.maxCE, (player.cursedEnergy || 0) + CURSED_ENERGY_CONFIG.chargeAction);
-	          }
-	          parts.push(`+${CURSED_ENERGY_CONFIG.chargeAction}咒力`);
-	        }
-	        if ((player.maxChakra || 0) > 0) {
-	          if ((tempBattle.sharedPlayerMaxChakra || 0) > 0) {
-	            tempBattle.sharedPlayerChakra = Math.min(tempBattle.sharedPlayerMaxChakra, (tempBattle.sharedPlayerChakra || 0) + CHAKRA_CONFIG.chargeAmount);
-	            player.chakra = Math.min(player.maxChakra, tempBattle.sharedPlayerChakra);
-	          } else {
-	            player.chakra = Math.min(player.maxChakra, (player.chakra || 0) + CHAKRA_CONFIG.chargeAmount);
-	          }
-	          parts.push(`+${CHAKRA_CONFIG.chargeAmount}查克拉`);
-	        }
-        addLog(`⚡ ${player.name} 集中精神蓄力! (${parts.join(', ')})`);
-        setAnimEffect({ type: 'BUFF', target: 'player' });
-        await wait(800);
-        setAnimEffect(null);
-        setBattle(prev => ({
-	            ...prev,
-	            playerCombatStates: tempBattle.playerCombatStates,
-	            sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
-	            sharedPlayerChakra: tempBattle.sharedPlayerChakra ?? prev.sharedPlayerChakra,
-	        }));
-        await wait(500);
-        await enemyTurn(tempBattle);
-    } catch (e) {
-        console.error("Charge CE Error:", e);
-        setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-    }
-  };
+  const executeChargeCE = () => executeTurn(-2);
 
   // ==========================================
   const getBackToMapView = () => mapGrid.length > 0 ? 'grid_map' : 'world_map';
@@ -17627,7 +17302,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
   const canUseCombo = (battle) => {
     if (!isPartnerSystemUnlocked()) return false;
-    if (!battle || comboUsedThisBattle) return false;
+    if (!battle || battle.isDouble || comboUsedThisBattle || battle.partnerComboUsed?.player) return false;
     if ((battle.turnCount || 0) < 3) return false;
     const activePet = battle.playerCombatStates?.[battle.activeIdx];
     if (!activePet?.partnerId) return false;
@@ -17647,127 +17322,11 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   };
 
   const executeComboAttack = async () => {
-    if (!battle || battle.phase !== 'input') return;
-    if (battle.isDouble) { showMapToast('❌', '提示', '双打模式下无法使用协作技！', 1500); return; }
-    const activePet = battle.playerCombatStates[battle.activeIdx];
-    if (!activePet?.partnerId) return;
-    const partnerIdx = battle.playerCombatStates.findIndex(p => (p.uid || p.id) === activePet.partnerId && p.currentHp > 0);
-    if (partnerIdx < 0) return;
-    const partner = battle.playerCombatStates[partnerIdx];
-    const bl = getBondLevel(activePet.bondPoints || 0);
-    if (!bl) return;
-
-    setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
-    try {
-      let tempBattle = _.cloneDeep(battle);
-      const p = tempBattle.playerCombatStates[battle.activeIdx];
-      const pt = tempBattle.playerCombatStates[partnerIdx];
-      const e = tempBattle.enemyParty?.[tempBattle.enemyActiveIdx];
-      if (!e || e.currentHp <= 0) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return; }
-      const combo = getComboMove(p, pt);
-
-      const basePower = combo.power * bl.powerMult * 0.8;
-      const power = Math.floor(basePower);
-      const pStats = getStats(p);
-      const ptStats = getStats(pt);
-      const eStats = getStats(e);
-
-      const hpCostP = Math.floor(pStats.maxHp * 0.15);
-      const hpCostPt = Math.floor(ptStats.maxHp * 0.15);
-      p.currentHp = Math.max(1, p.currentHp - hpCostP);
-      pt.currentHp = Math.max(1, pt.currentHp - hpCostPt);
-      addLog(`💔 ${p.name} 消耗 ${hpCostP} HP，${pt.name} 消耗 ${hpCostPt} HP 发动协作！`);
-
-      const atk = combo.cat === 'special' ? pStats.s_atk : pStats.p_atk;
-      const def = Math.max(1, combo.cat === 'special' ? eStats.s_def : eStats.p_def);
-      const stab = (combo.type === p.type || combo.type === p.secondaryType || combo.type === pt.type || combo.type === pt.secondaryType) ? 1.5 : 1;
-      let typeMod = getTypeMod(combo.type, e.type);
-      if (e.secondaryType && e.secondaryType !== e.type) typeMod *= getTypeMod(combo.type, e.secondaryType);
-      if (typeMod === 0) {
-        addLog(`🤝 ${p.name} 和 ${pt.name} 尝试协作技——【${combo.name}】！但对 ${e.name} 没有效果...`);
-        setBattle(prev => ({
-          ...prev,
-          playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
-          enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
-          phase: 'busy',
-        }));
-        await wait(800);
-        await enemyTurn(tempBattle);
-        return;
-      }
-      const critRate = Math.min(0.4, Math.max(0.05, (pStats.crit || 0) / 100 + 0.0625));
-      const isCrit = combo.effect?.crit || Math.random() < critRate;
-      const critMult = isCrit ? 1.5 : 1;
-      const pLevelBase = p.level * 0.8 + 5;
-      const pPowerFactor = power * 0.5 + 10;
-      const pStatFactor = Math.pow(atk / Math.max(1, def), 0.65);
-      let dmg = Math.max(1, Math.floor((pLevelBase + pPowerFactor) * pStatFactor * stab * typeMod * critMult * (0.85 + Math.random() * 0.15)));
-
-      addLog(`🤝 ${p.name} 和 ${pt.name} 发动协作技——【${combo.name}】！(Lv${bl.tier})`);
-      if (isCrit) addLog(`💥 暴击！`);
-      e.currentHp = Math.max(0, e.currentHp - dmg);
-      addLog(`💥 ${combo.name} 造成 ${dmg} 点伤害！`);
-
-      if (combo.effect) {
-        if (!e.status && combo.effect.burn && Math.random() < combo.effect.burn) { e.status = 'BRN'; addLog(`🔥 ${e.name} 被灼伤了！`); }
-        if (!e.status && combo.effect.paralyze && Math.random() < combo.effect.paralyze) { e.status = 'PAR'; addLog(`⚡ ${e.name} 被麻痹了！`); }
-        if (!e.status && combo.effect.freeze && Math.random() < combo.effect.freeze) { e.status = 'FRZ'; addLog(`🧊 ${e.name} 被冻结了！`); }
-        if (!e.status && combo.effect.poison && Math.random() < combo.effect.poison) { e.status = 'PSN'; addLog(`☠️ ${e.name} 中毒了！`); }
-        if (combo.effect.confuse && Math.random() < combo.effect.confuse) { e.volatiles = { ...(e.volatiles || {}), confused: 3 }; addLog(`😵 ${e.name} 陷入混乱！`); }
-        if (combo.effect.healPercent) { const heal = Math.floor(pStats.maxHp * combo.effect.healPercent); p.currentHp = Math.min(pStats.maxHp, p.currentHp + heal); addLog(`💚 ${p.name} 恢复了 ${heal} HP！`); }
-        if (combo.effect.atkUp) { p.stages = { ...(p.stages || {}), p_atk: Math.min(6, (p.stages?.p_atk || 0) + combo.effect.atkUp) }; }
-        if (combo.effect.spAtkUp) { p.stages = { ...(p.stages || {}), s_atk: Math.min(6, (p.stages?.s_atk || 0) + combo.effect.spAtkUp) }; }
-        if (combo.effect.spdUp) { p.stages = { ...(p.stages || {}), spd: Math.min(6, (p.stages?.spd || 0) + combo.effect.spdUp) }; }
-        if (combo.effect.defUp) { p.stages = { ...(p.stages || {}), p_def: Math.min(6, (p.stages?.p_def || 0) + combo.effect.defUp) }; }
-        if (combo.effect.defDown) { e.stages = { ...(e.stages || {}), p_def: Math.max(-6, (e.stages?.p_def || 0) - combo.effect.defDown) }; }
-        if (combo.effect.spdDown) { e.stages = { ...(e.stages || {}), spd: Math.max(-6, (e.stages?.spd || 0) - combo.effect.spdDown) }; }
-        if (combo.effect.cureStatus) { p.status = null; addLog(`✨ ${p.name} 的状态异常被清除了！`); }
-      }
-
-      updateAchStat({ comboAttacks: 1 });
-      setComboUsedThisBattle(true);
-
-      tempBattle.playerCombatStates[battle.activeIdx] = p;
-      tempBattle.playerCombatStates[partnerIdx] = pt;
-      tempBattle.enemyParty[tempBattle.enemyActiveIdx] = e;
-
-      setBattle(prev => ({
-        ...prev,
-        playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
-        enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
-        phase: 'busy',
-      }));
-      await wait(800);
-      if (e.currentHp <= 0) {
-        const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(e, party, tempBattle);
-        setParty(newParty);
-        addLog(logMsg);
-        if (activeDidLevelUp) {
-          setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
-          await wait(1000);
-          setAnimEffect(null);
-        }
-        const nextEnemyIdx = tempBattle.enemyParty.findIndex((ep, i) => i !== tempBattle.enemyActiveIdx && ep.currentHp > 0);
-        if (nextEnemyIdx !== -1) {
-          setBattle(prev => prev ? ({
-            ...prev,
-            playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
-            enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
-            enemyActiveIdx: nextEnemyIdx,
-            phase: 'input',
-            logs: [`对手派出了 ${tempBattle.enemyParty[nextEnemyIdx].name}!`, ...(prev.logs || [])],
-          }) : null);
-        } else {
-          pendingJutsuWinForBountyRef.current = !!tempBattle._lastBattleWinWithJutsu;
-          handleWin(newParty, tempBattle);
-        }
-        return;
-      }
-      await enemyTurn(tempBattle);
-    } catch (err) {
-      console.error("Combo Attack Error:", err);
-      setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-    }
+    if (!battle || battle.phase!=='input' || !canUseCombo(battle)) return;
+    const unit = battle.playerCombatStates[battle.activeIdx];
+    const partner = battle.playerCombatStates.find(pet=>(pet.uid || pet.id)===unit.partnerId && pet.currentHp>0);
+    const command = buildPartnerCommand(unit,partner,getComboMove(unit,partner),getBondLevel(unit.bondPoints || 0));
+    if (command) await executeTurn(command);
   };
 
   // 咖啡厅系统 - 打工产出
@@ -18010,6 +17569,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     const timer = setInterval(() => {
       // Long multi-hit animations are still making progress and must finish first.
       if (Date.now() - battleProgressAtRef.current < 12000) return;
+      if (battleRoundLockRef.current) return;
       setBattle(prev => {
         if (!prev || !recoverablePhases.has(prev.phase)) return prev;
         console.warn('Battle phase stuck, auto-recovering to input');
@@ -18388,827 +17948,51 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   // 咒术系统 - 领域展开
   // ==========================================
 
-  const executeDomainExpansion = async () => {
-    if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2') || battleSpecialActionLockRef.current) return;
-    const entryPhase = battle.phase;
-    const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
-    const domainIdx = battle.isDouble
-      ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx)
-      : battle.activeIdx;
-    const state = battle.playerCombatStates[domainIdx];
-    const domainDef = DOMAINS[state.domainType];
-    if (!domainDef) { showMapToast('❌','无法展开','该精灵无法展开领域!',1500); return; }
-    if (state.usedDomain) { showMapToast('❌','已使用','本场战斗已使用过领域展开!',1500); return; }
-    if (getBattleResourceValue(battle, state, 'player', 'ce') < domainDef.ceCost) { showMapToast('❌','咒力不足',`需要 ${domainDef.ceCost} CE`,1500); return; }
-    if (battle.activeDomain?.ownerSide === 'player') { showMapToast('❌','领域冲突','你的领域已在展开中!',1500); return; }
-
-    battleSpecialActionLockRef.current = true;
-    setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
-    try {
-        let tempBattle = _.cloneDeep(battle);
-        const player = tempBattle.playerCombatStates[domainIdx];
-        const domainResolution = resolveDomainActivation(tempBattle.activeDomain, 'player', domainDef, state.domainType);
-        const isDomainClash = domainResolution.isClash;
-        if ((tempBattle.sharedPlayerMaxCE || 0) > 0) {
-          tempBattle.sharedPlayerCE = Math.max(0, (tempBattle.sharedPlayerCE || 0) - domainDef.ceCost);
-        } else {
-          player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - domainDef.ceCost);
-        }
-        player.usedDomain = true;
-        tempBattle.activeDomain = domainResolution.activeDomain;
-        if (isDomainClash) {
-          const enemyDomainName = domainResolution.opposingDomainName;
-          addLog(`💥 ${player.name} 以「${domainDef.name}」对撞「${enemyDomainName}」！`);
-          addLog('⚖️ 双方领域相互抵消，本次领域使用机会与咒力均已消耗。');
-        } else {
-          addLog(`🌀 ${player.name} 展开领域——${domainDef.name}!`);
-          addLog(`📖 ${domainDef.desc}`);
-        }
-        const achUpdate = { domainsUsed: 1 };
-        if (isDomainClash) achUpdate.domainClash = 1;
-        updateAchStat(achUpdate);
-        setAnimEffect({ type: 'DOMAIN', target: 'player' });
-        await wait(1500);
-        setAnimEffect(null);
-        setBattle(prev => ({
-            ...prev,
-            playerCombatStates: tempBattle.playerCombatStates,
-            activeDomain: tempBattle.activeDomain,
-            sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
-        }));
-        await wait(500);
-        if (battle.isDouble) {
-          const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
-          const domainAction = { moveIdx: -3, activeIdx: domainIdx, isDomain: true };
-          const newActions = [...(battle.doubleActions || [])];
-          newActions[currentSlot] = domainAction;
-          if (currentSlot === 0 && battle.activeIdxs?.length > 1) {
-            const secondIdx = battle.activeIdxs[1];
-            const secondPet = battle.playerCombatStates[secondIdx];
-            if (secondPet && secondPet.currentHp > 0) {
-              setBattle(prev => prev ? ({ ...prev, phase: 'double_input_2', doubleSlot: 1, doubleActions: newActions }) : prev);
-              return;
-            }
-          }
-          await executeDoubleRound(newActions, tempBattle);
-        } else {
-          await enemyTurn(tempBattle);
-        }
-    } catch (e) {
-        console.error("Domain Error:", e);
-        setBattle(prev => prev ? ({ ...prev, phase: entryPhase }) : prev);
-    } finally {
-        battleSpecialActionLockRef.current = false;
-    }
+  const executeDomainExpansion = () => {
+    if (!battle || !['input','double_input_2'].includes(battle.phase)) return;
+    const index = battle.isDouble ? battle.activeIdxs[battle.phase==='double_input_2' ? 1 : 0] : battle.activeIdx;
+    const unit = battle.playerCombatStates[index];
+    const command = buildDomainCommand(DOMAINS[unit?.domainType], unit?.domainType);
+    if (command && canUseCombatMove(battle, unit, command)) return executeTurn(command);
   };
 
   // ==========================================
   // 咒术系统 - 缚誓
   // ==========================================
-  const executeBindingVow = async (vowId) => {
-    if (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2') || battleSpecialActionLockRef.current) return;
-    const vow = BINDING_VOWS.find(v => v.id === vowId);
-    if (!vow) return;
-    const entryPhase = battle.phase;
-    const _dSlot = battle.phase === 'double_input_2' ? 1 : 0;
-    const vowIdx = battle.isDouble ? (battle.activeIdxs?.[_dSlot] ?? battle.activeIdx) : battle.activeIdx;
-    const currentPlayer = battle.playerCombatStates?.[vowIdx];
-    if (!currentPlayer || currentPlayer.activeVow) return;
-    const cooldownLeft = currentPlayer.vowCooldowns?.[vow.id] || 0;
-    if (cooldownLeft > 0) { showMapToast('❌', '冷却中', `${vow.name} 还需 ${cooldownLeft} 回合`, 1500); return; }
-    if (vow.ceCost && getBattleResourceValue(battle, currentPlayer, 'player', 'ce') < vow.ceCost) {
-      showMapToast('❌', '咒力不足', `需要 ${vow.ceCost} CE`, 1500);
-      return;
-    }
-
-    battleSpecialActionLockRef.current = true;
-    setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
-    try {
-        let tempBattle = _.cloneDeep(battle);
-        const player = tempBattle.playerCombatStates[vowIdx];
-
-        if (vow.ceCost) {
-            if ((tempBattle.sharedPlayerMaxCE || 0) > 0) {
-              tempBattle.sharedPlayerCE = Math.max(0, (tempBattle.sharedPlayerCE || 0) - vow.ceCost);
-            } else {
-              player.cursedEnergy = Math.max(0, (player.cursedEnergy || 0) - vow.ceCost);
-            }
-            addLog(`🔮 消耗 ${vow.ceCost} 咒力`);
-        }
-        updateAchStat({ vowsUsed: 1 });
-        if (vow.sacrifice.hpPercent) {
-            const cost = Math.floor(getStats(player).maxHp * vow.sacrifice.hpPercent);
-            player.currentHp = Math.max(1, player.currentHp - cost);
-            markPlayerTookDamage(battle);
-            addLog(`📜 ${player.name} 献出 ${cost} HP!`);
-        }
-        if (vow.sacrifice.cePercent) {
-            const available = (tempBattle.sharedPlayerMaxCE || 0) > 0 ? (tempBattle.sharedPlayerCE || 0) : (player.cursedEnergy || 0);
-            const cost = Math.floor(available * vow.sacrifice.cePercent);
-            if ((tempBattle.sharedPlayerMaxCE || 0) > 0) tempBattle.sharedPlayerCE = Math.max(0, available - cost);
-            player.cursedEnergy = Math.max(0, available - cost);
-            addLog(`🔮 额外燃烧 ${cost} 咒力!`);
-        }
-
-        if (vow.sacrifice.noSwitch) {
-            addLog(`📜 ${player.name} 缚誓: ${vow.sacrifice.turns}回合内无法换人!`);
-        }
-        if (vow.sacrifice.defMult && vow.sacrifice.defMult < 1) {
-            addLog(`📜 ${player.name} 缚誓代价: 防御降低至${vow.sacrifice.defMult * 100}%!`);
-        }
-        if (vow.reward?.spdMult && vow.reward.spdMult > 0) {
-            const spdBoost = Math.min(6, Math.max(0, Math.round(Math.log2(vow.reward.spdMult) * 4)));
-            if (!player.stages) player.stages = { ...DEFAULT_BATTLE_STAGES };
-            player.stages.spd = Math.min(6, (player.stages.spd || 0) + spdBoost);
-            addLog(`📜 缚誓效果: ${player.name} 速度大幅提升!`);
-        }
-
-        player.activeVow = JSON.parse(JSON.stringify({ ...vow, turnsLeft: vow.reward?.turns || 3, side: 'player' }));
-        player.vowUsed = true;
-        player.vowCooldowns = { ...(player.vowCooldowns || {}), [vow.id]: (vow.cooldown || 0) + 1 };
-        addLog(`📜 [我方] ${player.name} 立下缚誓——${vow.name}!`);
-        addLog(`📖 ${vow.desc}`);
-        setAnimEffect({ type: 'BUFF', target: 'player' });
-        await wait(1000);
-        setAnimEffect(null);
-
-        setBattle(prev => ({
-            ...prev,
-            playerCombatStates: tempBattle.playerCombatStates,
-            sharedPlayerCE: tempBattle.sharedPlayerCE ?? prev.sharedPlayerCE,
-        }));
-        await wait(500);
-        if (battle.isDouble) {
-          const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
-          const vowAction = { moveIdx: -4, activeIdx: vowIdx, isVow: true };
-          const newActions = [...(battle.doubleActions || [])];
-          newActions[currentSlot] = vowAction;
-          if (currentSlot === 0 && battle.activeIdxs?.length > 1) {
-            const secondIdx = battle.activeIdxs[1];
-            const secondPet = battle.playerCombatStates[secondIdx];
-            if (secondPet && secondPet.currentHp > 0) {
-              setBattle(prev => prev ? ({ ...prev, phase: 'double_input_2', doubleSlot: 1, doubleActions: newActions }) : prev);
-              return;
-            }
-          }
-          await executeDoubleRound(newActions, tempBattle);
-        } else {
-          await enemyTurn(tempBattle);
-        }
-    } catch (e) {
-        console.error("Vow Error:", e);
-        setBattle(prev => prev ? ({ ...prev, phase: entryPhase }) : prev);
-    } finally {
-        battleSpecialActionLockRef.current = false;
-    }
+  const executeBindingVow = (vowId) => {
+    if (!battle || !['input','double_input_2'].includes(battle.phase)) return;
+    const index = battle.isDouble ? battle.activeIdxs[battle.phase==='double_input_2' ? 1 : 0] : battle.activeIdx;
+    const unit = battle.playerCombatStates[index];
+    const command = buildVowCommand(BINDING_VOWS.find(vow=>vow.id===vowId));
+    if (command && canUseCombatMove(battle,unit,command)) return executeTurn(command);
   };
 
     // ==========================================
   // 恶魔果实变身
   // ==========================================
-  const executeDevilFruit = async (side = 'player', battleStateOverride = null) => {
-    if (side === 'player' && (!battle || (battle.phase !== 'input' && battle.phase !== 'double_input_2') || battleSpecialActionLockRef.current)) return;
-    const entryPhase = battle?.phase || 'input';
-    const tempBattle = battleStateOverride || _.cloneDeep(battle);
-    const _dSlot = (battle?.phase === 'double_input_2') ? 1 : 0;
-    const playerIdx = tempBattle.isDouble && side === 'player'
-      ? (tempBattle.activeIdxs?.[_dSlot] ?? tempBattle.activeIdx)
-      : tempBattle.activeIdx;
-    const unit = side === 'player'
-      ? tempBattle.playerCombatStates[playerIdx]
-      : tempBattle.enemyParty[tempBattle.enemyActiveIdx];
-
-    if (!unit || !unit.devilFruit || unit.fruitUsed || unit.fruitTransformed) return;
-    const fruitMinTurn = getFruitTransformMinTurn(getEquippedRelicEffects(relics));
-    if (side === 'player' && (tempBattle.turnCount || 0) < fruitMinTurn) {
-      showMapToast('⚠️', '无法变身', `需要第 ${fruitMinTurn} 回合后才能变身（还需 ${fruitMinTurn - (tempBattle.turnCount || 0)} 回合）`, 2000);
-      return;
-    }
-    const maxHp = getStats(unit)?.maxHp || unit.currentHp || 100;
-    const curHp = unit.currentHp != null ? unit.currentHp : maxHp;
-    if (curHp > maxHp * 0.6) {
-      if (side === 'player') showMapToast('❌','条件不足',`HP需低于60%才能变身（当前${Math.round((curHp / Math.max(1, maxHp)) * 100)}%）`,2000);
-      return;
-    }
-    if (side === 'player' && (unit.bijuuTransformed || unit.ultraTransformed)) {
-      showMapToast('❌','状态冲突','尾兽或光之变身中无法使用恶魔果实',1500); return;
-    }
-    const fruit = getFruitById(unit.devilFruit);
-    if (!fruit) return;
-
-    if (side === 'player') {
-      battleSpecialActionLockRef.current = true;
-      setBattle(prev => prev ? ({ ...prev, phase: 'busy' }) : prev);
-    }
-
-    try {
-    unit.fruitTransformed = true;
-    unit.fruitUsed = true;
-    const fruitResonance = side === 'player' ? getActiveResonanceForPet(unit) : {};
-    unit.fruitTurnsLeft = Math.max(2, (fruit.duration || 3) + (fruitResonance.fruitDurationBonus || 0));
-    unit.fruitEffects = { ...fruit.transform };
-
-    if (fruit.transform.hpMult) {
-      const stats = getStats(unit);
-      const bonus = Math.floor(stats.maxHp * (fruit.transform.hpMult - 1));
-      unit.currentHp = Math.min(unit.currentHp + bonus, Math.floor(stats.maxHp * fruit.transform.hpMult));
-    }
-
-    if (fruit.transformMove) {
-      unit.combatMoves = (unit.combatMoves || []).filter(m => !m.isFruitMove);
-      unit.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
-    }
-
-    if (fruit.transform.cureStatus && unit.status) {
-      addLog(`${unit.name} 的状态异常被果实之力治愈了！`);
-      unit.status = null;
-    }
-
-    addLog(`${unit.name} 吃下了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
-    if (side === 'player') {
-      updateAchStat({ fruitTransforms: 1 });
-      const petUid = unit.uid;
-      if (petUid) {
-        const savedPet = [...(partyRef.current || []), ...(boxRef.current || [])].find(p => p.uid === petUid);
-        const nextUseCount = Math.max(Number(unit.fruitUseCount) || 0, Number(savedPet?.fruitUseCount) || 0) + 1;
-        unit.fruitUseCount = nextUseCount;
-        const syncUseCount = list => list.map(p => p.uid === petUid
-          ? { ...p, fruitUseCount: Math.max(Number(p.fruitUseCount) || 0, nextUseCount) }
-          : p);
-        const nextParty = syncUseCount(partyRef.current || []);
-        const nextBox = syncUseCount(boxRef.current || []);
-        partyRef.current = nextParty;
-        boxRef.current = nextBox;
-        setParty(nextParty);
-        setBox(nextBox);
-      }
-    }
-    setAnimEffect({ type: 'TRANSFORM', target: side === 'player' ? 'player' : 'enemy' });
-    await wait(1500);
-    setAnimEffect(null);
-
-    if (fruit.transform.firstStrike) {
-      unit.fruitFirstStrike = true;
-      addLog(`⚡ ${unit.name} 获得了先手行动权！`);
-    }
-
-    if (side === 'player') {
-      setBattle(prev => ({
-        ...prev,
-        playerCombatStates: tempBattle.playerCombatStates.map(pp => ({...pp})),
-        enemyParty: tempBattle.enemyParty.map(ee => ({...ee})),
-      }));
-      await wait(500);
-      if (battle.isDouble) {
-        const currentSlot = battle.phase === 'double_input_2' ? 1 : 0;
-        const fruitAction = { moveIdx: -5, activeIdx: playerIdx, isFruit: true };
-        const newActions = [...(battle.doubleActions || [])];
-        newActions[currentSlot] = fruitAction;
-        if (currentSlot === 0 && battle.activeIdxs?.length > 1) {
-          const secondIdx = battle.activeIdxs[1];
-          const secondPet = battle.playerCombatStates[secondIdx];
-          if (secondPet && secondPet.currentHp > 0) {
-            setBattle(prev => prev ? ({ ...prev, phase: 'double_input_2', doubleSlot: 1, doubleActions: newActions }) : prev);
-            return tempBattle;
-          }
-        }
-        await executeDoubleRound(newActions, tempBattle);
-      } else {
-        await enemyTurn(tempBattle);
-      }
-    }
-    return tempBattle;
-    } catch (error) {
-      console.error('Devil Fruit Error:', error);
-      if (side === 'player') setBattle(prev => prev ? ({ ...prev, phase: entryPhase }) : prev);
-      return null;
-    } finally {
-      if (side === 'player') battleSpecialActionLockRef.current = false;
-    }
+  const executeDevilFruit = async () => {
+    if (!battle || !['input','double_input_2'].includes(battle.phase)) return;
+    const index = battle.isDouble ? battle.activeIdxs[battle.phase==='double_input_2' ? 1 : 0] : battle.activeIdx;
+    const unit = battle.playerCombatStates[index];
+    const fruit = getFruitById(unit?.devilFruit);
+    if (!fruit || getBurstBlock(battle) || unit.fruitTransformed || unit.bijuuTransformed || unit.ultraTransformed) return;
+    const minTurn = getFruitTransformMinTurn(getEquippedRelicEffects(relics));
+    if ((battle.turnCount || 0)<minTurn || unit.currentHp>getStats(unit).maxHp*0.6) return;
+    return executeTurn({id:'fruit_transform',name:`${fruit.name}觉醒`,p:0,t:unit.type,pp:99,acc:0,isBattleCommand:true,effect:{type:'BATTLE_FRUIT',target:'self'}});
   };
 
     // ==========================================
   // [修改] 敌人回合 (含被动特性与天气结算)
   // ==========================================
-  const enemyTurn = async (currentBattleState = null, deferInput = false) => {
-   // A full player turn may still have its slower action to resolve.
-   const inputPhase = deferInput ? 'busy' : 'input';
-   let state = currentBattleState || battle;
-   let turnPlayerHpSnapshot = state?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
-   try {
-    await wait(500);
-
-    state = currentBattleState || battle;
-    turnPlayerHpSnapshot = state?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
-    if (!state) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); return; }
-    const player = state.playerCombatStates?.[state.activeIdx];
-    const enemy = state.enemyParty?.[state.enemyActiveIdx];
-    if (!player || !enemy) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : null); return; }
-
-    if (enemy.currentHp <= 0 || player.currentHp <= 0) {
-      if (player.currentHp <= 0) {
-        const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
-        if (hasAlive) {
-          setBattle(prev => prev ? ({...prev, showSwitch: true, phase: 'input'}) : null);
-        } else {
-          await handleDefeat();
-        }
-      } else {
-        setBattle(prev => prev ? ({...prev, phase: 'input'}) : null);
-      }
-      return;
-    }
-
-    // Fix#1: 灵域试炼回合开始处理（火灼、风眼、藤蔓回血）
-    if (state.domainRule) {
-      processDomainTurnStart(state, player, enemy, addLog, getStats);
-      if (player.currentHp <= 0) {
-        await handleDefeat(); return;
-      }
-    }
-
-    // Fix#7: 镜湖大招反伤
-    if (state._echoRecoilPending) {
-      const echoKilled = applyMirrorEchoRecoil(state, player, addLog, getStats);
-      if (echoKilled) { await handleDefeat(); return; }
-    }
-
-    // 领域 enemySkipChance
-    const dom = state.activeDomain;
-    if (dom && dom.turnsLeft > 0 && dom.ownerSide === 'player' && dom.effect?.enemySkipChance) {
-        if (Math.random() < dom.effect.enemySkipChance) {
-            addLog(`🌀 ${enemy.name} 被领域压制，无法行动!`);
-            await wait(800);
-            state.turnCount = (state.turnCount || 0) + 1;
-            state._enemySpecialActionCooldown = Math.max(0, (state._enemySpecialActionCooldown || 0) - 1);
-            setBattle(prev => ({ ...prev, phase: inputPhase, turnCount: (state.turnCount), _enemySpecialActionCooldown: state._enemySpecialActionCooldown }));
-            return;
-        }
-    }
-
-    const isHardBattle = state.isTrainer || state.isGym || state.isChallenge || state.isStory || state.isBoss;
-    const canUseSpecialAiAction = (state._enemySpecialActionCooldown || 0) <= 0;
-    const markEnemySpecialAction = (turns = 1) => {
-      state._enemySpecialActionCooldown = Math.max(state._enemySpecialActionCooldown || 0, turns);
-    };
-
-    // 训练家AI换精灵：血量低于30%且有存活后备时，按战术决定是否换人
-    if (canUseSpecialAiAction && isHardBattle && !state.isDouble && state.enemyParty.length > 1) {
-      const enemyHpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
-      const aiTacticId = state.trainerTactic?.id || 'balanced';
-      const switchChance = aiTacticId === 'deep_roster' ? 0.42
-        : aiTacticId === 'aggressive' ? 0.18
-        : aiTacticId === 'sturdy' ? 0.24
-        : 0.3;
-      if (enemyHpRatio < 0.3 && Math.random() < switchChance) {
-        const playerAttackTypes = getUnitOffensiveTypeList(player);
-        const switchCandidates = state.enemyParty.map((e, i) => {
-          if (i === state.enemyActiveIdx || e.currentHp <= 0) return false;
-          const eHpRatio = e.currentHp / Math.max(1, getStats(e).maxHp);
-          const threat = playerAttackTypes.reduce((best, atkType) => {
-            return Math.max(best, getMoveTypeMultiplier({ t: atkType }, e, state));
-          }, 1);
-          return { idx: i, hpRatio: eHpRatio, threat };
-        }).filter(c => c && c.hpRatio > 0.5 && c.threat <= 1.0)
-          .sort((a, b) => (a.threat - b.threat) || (b.hpRatio - a.hpRatio));
-        const betterIdx = switchCandidates[0]?.idx ?? -1;
-        if (betterIdx >= 0) {
-          addLog(`对手收回了 ${enemy.name}，换上了 ${state.enemyParty[betterIdx].name}!`);
-          state.enemyActiveIdx = betterIdx;
-          const newEnemy = state.enemyParty[betterIdx];
-          if (newEnemy?.trait === 'intimidate') {
-            player.stages.p_atk = Math.max(-6, (player.stages.p_atk || 0) - 1);
-            addLog(`${newEnemy.name} 的威吓使 ${player.name} 的攻击下降了！`);
-          }
-          if (player.trait === 'intimidate') {
-            newEnemy.stages.p_atk = Math.max(-6, (newEnemy.stages.p_atk || 0) - 1);
-            addLog(`${player.name} 的威吓使 ${newEnemy.name} 的攻击下降了！`);
-          }
-          markEnemySpecialAction(1);
-          state.turnCount = (state.turnCount || 0) + 1;
-          setBattle(prev => ({
-            ...prev,
-            enemyActiveIdx: betterIdx,
-            enemyParty: state.enemyParty.map(e => ({...e})),
-            playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-            phase: inputPhase,
-            turnCount: state.turnCount,
-            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-          }));
-          await wait(1000);
-          return;
-        }
-      }
-    }
-
-    // AI: 一次性战术反扑。让中后期训练家有临场变化，但消耗敌方回合避免数值失控。
-    if (canUseSpecialAiAction && !state.isDouble && !state._enemyTacticalCounterUsed && (state.type === 'trainer' || state.isGym || state.isChallenge)) {
-      const enemyMaxHp = Math.max(1, getStats(enemy).maxHp);
-      const enemyHpRatio = enemy.currentHp / enemyMaxHp;
-      const pressureLevel = Math.max(0, Math.min(2, state.trainerPressure?.level || 0));
-      const aiTacticId = state.trainerTactic?.id || 'balanced';
-      const counterChance = Math.min(0.42, 0.16 + pressureLevel * 0.07 + (state.isGym || state.isChallenge ? 0.08 : 0));
-      if ((state.turnCount || 0) >= 2 && enemyHpRatio > 0 && enemyHpRatio <= 0.5 && Math.random() < counterChance) {
-        if (!enemy.stages) enemy.stages = { ...DEFAULT_BATTLE_STAGES };
-        state._enemyTacticalCounterUsed = true;
-        markEnemySpecialAction(1);
-        let logText = '重新调整了战术';
-        if (aiTacticId === 'aggressive' || aiTacticId === 'ace_focus') {
-          const eStats = getStats(enemy, enemy.stages, enemy.status);
-          const atkKey = (eStats.s_atk || 0) > (eStats.p_atk || 0) ? 's_atk' : 'p_atk';
-          enemy.stages[atkKey] = Math.min(6, (enemy.stages[atkKey] || 0) + 1);
-          if (pressureLevel >= 2) enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + 1);
-          logText = pressureLevel >= 2 ? '压上王牌节奏，攻击与速度提升' : '集中火力，攻击提升';
-        } else if (aiTacticId === 'sturdy') {
-          const heal = Math.max(1, Math.floor(enemyMaxHp * 0.12));
-          enemy.currentHp = Math.min(enemyMaxHp, enemy.currentHp + heal);
-          enemy.stages.p_def = Math.min(6, (enemy.stages.p_def || 0) + 1);
-          enemy.stages.s_def = Math.min(6, (enemy.stages.s_def || 0) + 1);
-          logText = `稳住阵脚，回复 ${heal} HP 并提升防御`;
-        } else {
-          enemy.stages.p_def = Math.min(6, (enemy.stages.p_def || 0) + 1);
-          enemy.stages.s_def = Math.min(6, (enemy.stages.s_def || 0) + 1);
-          logText = '改为防守反击，双防提升';
-        }
-        addLog(`📣 ${enemy.name} ${logText}！`);
-        setAnimEffect({ type: 'BUFF', target: 'enemy' });
-        await wait(1000);
-        setAnimEffect(null);
-        state.turnCount = (state.turnCount || 0) + 1;
-        setBattle(prev => ({
-          ...prev,
-          phase: inputPhase,
-          turnCount: state.turnCount,
-          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-          enemyParty: state.enemyParty.map(e => ({...e})),
-          _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-          _enemyTacticalCounterUsed: true,
-        }));
-        return;
-      }
-    }
-
-    // AI: 尝试展开领域 (Boss有50%几率，其他20%几率)
-    const enemyAvailableCE = (state.sharedEnemyMaxCE || 0) > 0 ? (state.sharedEnemyCE || 0) : (enemy.cursedEnergy || 0);
-    if (canUseSpecialAiAction && enemy.hasDomain && !enemy.usedDomain && state.activeDomain?.ownerSide !== 'enemy' &&
-        enemyAvailableCE >= (DOMAINS[enemy.domainType]?.ceCost || 999) &&
-        enemy.currentHp < getStats(enemy).maxHp * 0.5) {
-        const chance = (state.isBoss || state.isChallenge) ? 0.35 : 0.16;
-        if (Math.random() < chance) {
-            const domDef = DOMAINS[enemy.domainType];
-            const remainingCE = Math.max(0, enemyAvailableCE - domDef.ceCost);
-            if ((state.sharedEnemyMaxCE || 0) > 0) state.sharedEnemyCE = remainingCE;
-            enemy.cursedEnergy = remainingCE;
-            enemy.usedDomain = true;
-            markEnemySpecialAction(2);
-            const domainResolution = resolveDomainActivation(state.activeDomain, 'enemy', domDef, enemy.domainType);
-            state.activeDomain = domainResolution.activeDomain;
-            if (domainResolution.isClash) {
-              addLog(`💥 ${enemy.name} 以「${domDef.name}」对撞「${domainResolution.opposingDomainName}」！`);
-              addLog('⚖️ 双方领域相互抵消，敌方的领域机会与咒力均已消耗。');
-            } else {
-              addLog(`🌀 ${enemy.name} 展开领域——${domDef.name}!`);
-              addLog(`📖 ${domDef.desc}`);
-            }
-            setAnimEffect({ type: 'DOMAIN', target: 'enemy' });
-            await wait(1500);
-            setAnimEffect(null);
-
-            setBattle(prev => ({
-              ...prev, phase: inputPhase,
-              turnCount: (prev?.turnCount || 0) + 1,
-              playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-              enemyParty: state.enemyParty.map(e => ({...e})),
-              activeDomain: state.activeDomain,
-              sharedEnemyCE: state.sharedEnemyCE ?? prev.sharedEnemyCE,
-              _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-            }));
-            return;
-        }
-    }
-
-    // AI: 尝试果实变身 (回合≥3 且 HP<60%，与玩家果实变身条件一致)
-    if (canUseSpecialAiAction && enemy.devilFruit && !enemy.fruitUsed && !enemy.fruitTransformed
-        && (state.turnCount || 0) >= 3
-        && enemy.currentHp <= getStats(enemy).maxHp * 0.6) {
-      const transformChance = isHardBattle ? 0.45 : 0.25;
-      if (Math.random() < transformChance) {
-        const fruit = getFruitById(enemy.devilFruit);
-        if (fruit) {
-          enemy.fruitTransformed = true;
-          enemy.fruitUsed = true;
-          markEnemySpecialAction(1);
-          enemy.fruitTurnsLeft = Math.max(2, fruit.duration || 3);
-          enemy.fruitEffects = { ...fruit.transform };
-          if (fruit.transform.hpMult) {
-            const stats = getStats(enemy);
-            const bonus = Math.floor(stats.maxHp * (fruit.transform.hpMult - 1));
-            enemy.currentHp = Math.min(enemy.currentHp + bonus, Math.floor(stats.maxHp * fruit.transform.hpMult));
-          }
-          if (fruit.transformMove) {
-            enemy.combatMoves = (enemy.combatMoves || []).filter(m => !m.isFruitMove);
-            enemy.combatMoves.push({ ...fruit.transformMove, isFruitMove: true });
-          }
-          if (fruit.transform.firstStrike) { enemy.fruitFirstStrike = true; }
-          addLog(`${enemy.name} 发动了 ${fruit.name}，果实变身！[${FRUIT_CATEGORY_NAMES[fruit.category]}]`);
-          setAnimEffect({ type: 'TRANSFORM', target: 'enemy' });
-          await wait(1500);
-          setAnimEffect(null);
-
-          setBattle(prev => ({
-            ...prev, phase: inputPhase,
-            turnCount: (prev?.turnCount || 0) + 1,
-            playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-            enemyParty: state.enemyParty.map(e => ({...e})),
-            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-          }));
-          return;
-        }
-      }
-    }
-
-    // --- AI: 缚誓决策 ---
-    if (canUseSpecialAiAction && !enemy.activeVow && enemy.maxCE > 0 && enemyAvailableCE >= 15) {
-      const vowChance = isHardBattle ? 0.18 : 0.05;
-      if (Math.random() < vowChance) {
-        const hpRatio = enemy.currentHp / Math.max(1, getStats(enemy).maxHp);
-        const affordableVows = BINDING_VOWS.filter(v => enemyAvailableCE >= (v.ceCost || 0) && (enemy.vowCooldowns?.[v.id] || 0) <= 0);
-        if (affordableVows.length > 0) {
-          let chosenVow = null;
-          if (hpRatio < 0.35 && affordableVows.find(v => v.id === 'vow_power')) {
-            chosenVow = affordableVows.find(v => v.id === 'vow_power');
-          } else if (hpRatio > 0.6 && affordableVows.find(v => v.id === 'vow_speed')) {
-            chosenVow = affordableVows.find(v => v.id === 'vow_speed');
-          } else if (hpRatio < 0.5 && affordableVows.find(v => v.id === 'vow_burn')) {
-            chosenVow = affordableVows.find(v => v.id === 'vow_burn');
-          } else {
-            chosenVow = _.sample(affordableVows);
-          }
-          if (chosenVow) {
-            let remainingCE = Math.max(0, enemyAvailableCE - (chosenVow.ceCost || 0));
-            if (chosenVow.sacrifice.hpPercent) {
-              const cost = Math.floor(getStats(enemy).maxHp * chosenVow.sacrifice.hpPercent);
-              enemy.currentHp = Math.max(1, enemy.currentHp - cost);
-            }
-            if (chosenVow.sacrifice.cePercent) {
-              const cost = Math.floor(remainingCE * chosenVow.sacrifice.cePercent);
-              remainingCE = Math.max(0, remainingCE - cost);
-            }
-            if ((state.sharedEnemyMaxCE || 0) > 0) state.sharedEnemyCE = remainingCE;
-            enemy.cursedEnergy = remainingCE;
-            if (chosenVow.reward.spdMult && chosenVow.reward.spdMult > 0) {
-              const spdBoost = Math.min(6, Math.max(0, Math.round(Math.log2(chosenVow.reward.spdMult) * 4)));
-              enemy.stages.spd = Math.min(6, (enemy.stages.spd || 0) + spdBoost);
-            }
-            enemy.activeVow = JSON.parse(JSON.stringify({ ...chosenVow, turnsLeft: chosenVow.reward.turns, side: 'enemy' }));
-            enemy.vowCooldowns = { ...(enemy.vowCooldowns || {}), [chosenVow.id]: (chosenVow.cooldown || 0) + 1 };
-            markEnemySpecialAction(1);
-            addLog(`📜 [敌方] ${enemy.name} 立下缚誓——${chosenVow.name}!`);
-            addLog(`📖 ${chosenVow.desc}`);
-            setAnimEffect({ type: 'BUFF', target: 'enemy' });
-            await wait(1200);
-            setAnimEffect(null);
-
-            setBattle(prev => ({
-              ...prev, phase: inputPhase,
-              turnCount: (prev?.turnCount || 0) + 1,
-              playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-              enemyParty: state.enemyParty.map(e => ({...e})),
-              sharedEnemyCE: state.sharedEnemyCE ?? prev.sharedEnemyCE,
-              _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-            }));
-            return;
-          }
-        }
-      }
-    }
-
-    // --- AI: 蓄力决策 (CE或查克拉不足时) ---
-    const needCECharge = enemy.maxCE > 0 && (enemy.cursedEnergy || 0) < enemy.maxCE * 0.3;
-    const needChakraCharge = (enemy.maxChakra || 0) > 0 && (enemy.chakra || 0) < (enemy.maxChakra || 0) * 0.3;
-    if (canUseSpecialAiAction && (needCECharge || needChakraCharge) && !enemy.activeVow) {
-      const hasUsableDamageMove = (enemy.combatMoves || enemy.moves || []).some(m => (m.p || 0) > 0 && canUseCombatMove(state, enemy, m, 'enemy'));
-      const chargeChance = hasUsableDamageMove ? (isHardBattle ? 0.12 : 0.05) : (isHardBattle ? 0.55 : 0.25);
-      if (Math.random() < chargeChance) {
-        const parts = [];
-	        if (enemy.maxCE > 0) {
-	          const ceGain = CURSED_ENERGY_CONFIG.chargeAction;
-	          if ((state.sharedEnemyMaxCE || 0) > 0) {
-	            state.sharedEnemyCE = Math.min(state.sharedEnemyMaxCE, (state.sharedEnemyCE || 0) + ceGain);
-	            enemy.cursedEnergy = Math.min(enemy.maxCE, state.sharedEnemyCE);
-	          } else {
-	            enemy.cursedEnergy = Math.min(enemy.maxCE, (enemy.cursedEnergy || 0) + ceGain);
-	          }
-	          parts.push(`+${ceGain}咒力`);
-	        }
-	        if ((enemy.maxChakra || 0) > 0) {
-	          const ckGain = CHAKRA_CONFIG.chargeAmount;
-	          if ((state.sharedEnemyMaxChakra || 0) > 0) {
-	            state.sharedEnemyChakra = Math.min(state.sharedEnemyMaxChakra, (state.sharedEnemyChakra || 0) + ckGain);
-	            enemy.chakra = Math.min(enemy.maxChakra, state.sharedEnemyChakra);
-	          } else {
-	            enemy.chakra = Math.min(enemy.maxChakra, (enemy.chakra || 0) + ckGain);
-	          }
-	          parts.push(`+${ckGain}查克拉`);
-	        }
-        markEnemySpecialAction(1);
-        addLog(`⚡ ${enemy.name} 集中精神蓄力! (${parts.join(', ')})`);
-        setAnimEffect({ type: 'CHARGE_CE', target: 'enemy' });
-        await wait(1000);
-        setAnimEffect(null);
-        setBattle(prev => ({
-	          ...prev, phase: inputPhase,
-	          turnCount: (prev?.turnCount || 0) + 1,
-	          sharedEnemyCE: state.sharedEnemyCE ?? prev?.sharedEnemyCE,
-	          sharedEnemyChakra: state.sharedEnemyChakra ?? prev?.sharedEnemyChakra,
-	          enemyParty: state.enemyParty.map(e => ({...e})),
-	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-	        }));
-        return;
-      }
-    }
-
-    // --- AI: 协作技决策 ---
-    if (canUseSpecialAiAction && !state.enemyComboUsed && (state.turnCount || 0) >= 3 && enemy.partnerId && isHardBattle) {
-      const enemyPartnerIdx = state.enemyParty.findIndex(ep => (ep.uid || ep.id) === enemy.partnerId && ep.currentHp > 0);
-      if (enemyPartnerIdx >= 0) {
-        const eBl = getBondLevel(enemy.bondPoints || 0);
-        if (eBl && Math.random() < 0.2) {
-          const ePt = state.enemyParty[enemyPartnerIdx];
-          const eCombo = getComboMove(enemy, ePt);
-          const ePower = Math.floor(eCombo.power * eBl.powerMult * 0.8);
-          const eStats = getStats(enemy);
-          const ePtStats = getStats(ePt);
-          const pStats = getStats(player);
-
-          const eHpCost = Math.floor(eStats.maxHp * 0.15);
-          const ePtHpCost = Math.floor(ePtStats.maxHp * 0.15);
-          enemy.currentHp = Math.max(1, enemy.currentHp - eHpCost);
-          ePt.currentHp = Math.max(1, ePt.currentHp - ePtHpCost);
-
-          const eAtk = eCombo.cat === 'special' ? eStats.s_atk : eStats.p_atk;
-          const pDef = Math.max(1, eCombo.cat === 'special' ? pStats.s_def : pStats.p_def);
-          const eStab = (eCombo.type === enemy.type || eCombo.type === enemy.secondaryType || eCombo.type === ePt.type || eCombo.type === ePt.secondaryType) ? 1.5 : 1;
-          let eTypeMod = getTypeMod(eCombo.type, player.type);
-          if (player.secondaryType && player.secondaryType !== player.type) eTypeMod *= getTypeMod(eCombo.type, player.secondaryType);
-          const eIsCrit = eCombo.effect?.crit || Math.random() < 0.1;
-          const eCritMult = eIsCrit ? 1.5 : 1;
-          const eLevelBase = enemy.level * 0.8 + 5;
-          const ePowerFactor = ePower * 0.5 + 10;
-          const eStatFactor = Math.pow(eAtk / Math.max(1, pDef), 0.65);
-          let eDmg = Math.max(1, Math.floor((eLevelBase + ePowerFactor) * eStatFactor * eStab * eTypeMod * eCritMult * (0.85 + Math.random() * 0.15)));
-
-          addLog(`🤝 [敌方] ${enemy.name} 和 ${ePt.name} 发动协作技——【${eCombo.name}】！`);
-          if (eIsCrit) addLog(`💥 暴击！`);
-          player.currentHp = Math.max(0, player.currentHp - eDmg);
-          markPlayerTookDamage(state);
-          addLog(`💥 ${eCombo.name} 对 ${player.name} 造成 ${eDmg} 点伤害！`);
-
-          if (eCombo.effect) {
-            if (eCombo.effect.burn && Math.random() < eCombo.effect.burn && !player.status) { player.status = 'BRN'; addLog(`🔥 ${player.name} 被灼伤了！`); }
-            if (eCombo.effect.paralyze && Math.random() < eCombo.effect.paralyze && !player.status) { player.status = 'PAR'; addLog(`⚡ ${player.name} 被麻痹了！`); }
-            if (eCombo.effect.freeze && Math.random() < eCombo.effect.freeze && !player.status) { player.status = 'FRZ'; addLog(`🧊 ${player.name} 被冻结了！`); }
-            if (eCombo.effect.poison && Math.random() < eCombo.effect.poison && !player.status) { player.status = 'PSN'; addLog(`☠️ ${player.name} 中毒了！`); }
-            if (eCombo.effect.defDown) { player.stages = { ...(player.stages || {}), p_def: Math.max(-6, (player.stages?.p_def || 0) - eCombo.effect.defDown) }; }
-            if (eCombo.effect.spdDown) { player.stages = { ...(player.stages || {}), spd: Math.max(-6, (player.stages?.spd || 0) - eCombo.effect.spdDown) }; }
-          }
-
-          state.enemyComboUsed = true;
-          markEnemySpecialAction(1);
-          if (player.currentHp <= 0) {
-            const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
-            if (hasAlive) {
-              setBattle(prev => ({
-                ...prev, showSwitch: true, phase: 'input', enemyComboUsed: true,
-                turnCount: (prev?.turnCount || 0) + 1,
-                playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-                enemyParty: state.enemyParty.map(e => ({...e})),
-                _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-                logs: [`${player.name} 倒下了!`, ...(prev?.logs || [])],
-              }));
-            } else {
-              await handleDefeat();
-            }
-            return;
-          }
-          setBattle(prev => ({
-            ...prev, phase: inputPhase, enemyComboUsed: true,
-            turnCount: (prev?.turnCount || 0) + 1,
-            playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-            enemyParty: state.enemyParty.map(e => ({...e})),
-            _enemySpecialActionCooldown: state._enemySpecialActionCooldown,
-          }));
-          await wait(800);
-          return;
-        }
-      }
-    }
-
-    let enemyMove = state._enemySelectedMove || null;
-    state._enemySelectedMove = null;
-    if (state.domainRule === 'mirror_lake' || getSpiritDomainRule(state.domainRule)?.id === 'mirror_lake') {
-      const echoMove = getMirrorLakeMove(state);
-      if (echoMove?.p > 0) {
-        enemyMove = echoMove;
-        addLog(`🪞 镜湖回声！${enemy.name} 复制了【${echoMove.name}】！`);
-        if (state._echoQueue?.length) state._echoQueue.shift();
-      }
-    } else if (enemyMove) {
-      // 使用executeTurn预选的技能以保持优先级判定一致
-      if (!canUseCombatMove(state, enemy, enemyMove, 'enemy')) {
-        enemyMove = null;
-      }
-    }
-    if (!enemyMove) {
-      enemyMove = chooseEnemyCombatAction(state, enemy, { unit: player, idx: state.activeIdx }, { isHardBattle }).move;
-    }
-
-    if (!enemyMove) {
-        enemyMove = { name: '挣扎', p: 20, t: 'NORMAL', cat: 'physical', acc: 100, pp: 99, maxPP: 99, effect: { recoil: 0.25 } }; 
-    }
-    
-    let playerDied = await performAction(enemy, player, enemyMove, 'enemy', state);
-
-    const activeEnemyAfter = state.enemyParty[state.enemyActiveIdx];
-    if (activeEnemyAfter) {
-      delete activeEnemyAfter._diedFromDot;
-      delete activeEnemyAfter._diedFromConfusion;
-    }
-    if (!playerDied && state.enemyParty[state.enemyActiveIdx]?.currentHp <= 0) {
-      await wait(800);
-      const defeatedEnemy = state.enemyParty[state.enemyActiveIdx];
-      const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(defeatedEnemy, party, state);
-      setParty(newParty);
-      addLog(logMsg);
-      setBattle(prev => {
-        if (!prev?.playerCombatStates) return prev;
-        const updatedCombatStates = prev.playerCombatStates.map((cs, i) => {
-          const updatedPet = newParty[i];
-          if (!updatedPet) return cs;
-          const equipMoves = (updatedPet.equips || []).map(equip => {
-            if (equip && typeof equip === 'object' && equip.extraSkill) {
-              return { ...equip.extraSkill, isExtra: true };
-            }
-            return null;
-          }).filter(Boolean);
-          const cursedMoves = (cs.combatMoves || []).filter(m => m.isCursed);
-          const martialMoves2 = (cs.combatMoves || []).filter(m => m.isMartialArt);
-          const jutsuMoves2 = (cs.combatMoves || []).filter(m => m.isJutsu);
-          const fruitMoves2 = (cs.combatMoves || []).filter(m => m.isFruitMove);
-          const ultraMoves = (cs.combatMoves || []).filter(m => m.isUltraFinisher && cs.ultraTransformed);
-          const newCombatMoves = [...updatedPet.moves, ...equipMoves, ...cursedMoves, ...martialMoves2, ...jutsuMoves2, ...fruitMoves2, ...ultraMoves];
-          return {
-            ...cs,
-            level: updatedPet.level,
-            currentHp: updatedPet.currentHp,
-            exp: updatedPet.exp,
-            nextExp: updatedPet.nextExp,
-            name: updatedPet.name,
-            moves: updatedPet.moves,
-            combatMoves: newCombatMoves,
-            canEvolve: updatedPet.canEvolve,
-            pendingLearnMove: updatedPet.pendingLearnMove,
-          };
-        });
-        return {
-          ...prev,
-          playerCombatStates: updatedCombatStates,
-          enemyParty: state.enemyParty.map(e => ({...e})),
-        };
-      });
-      if (activeDidLevelUp) {
-        setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
-        await wait(1200); setAnimEffect(null);
-      }
-      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i !== state.enemyActiveIdx && p.currentHp > 0);
-      if (nextEnemyIdx !== -1) {
-        setBattle(prev => prev ? ({
-          ...prev,
-          enemyActiveIdx: nextEnemyIdx,
-          phase: 'anim',
-          logs: [`对手派出了 ${prev.enemyParty?.[nextEnemyIdx]?.name || state.enemyParty[nextEnemyIdx]?.name}!`, ...(prev.logs || [])],
-        }) : prev);
-        await triggerShinyAnim('enemy', state.enemyParty[nextEnemyIdx]);
-        const newEnm = state.enemyParty[nextEnemyIdx];
-        if (newEnm?.trait === 'intimidate') {
-          player.stages.p_atk = Math.max(-6, (player.stages.p_atk || 0) - 1);
-          addLog(`${newEnm.name} 的威吓使 ${player.name} 的攻击下降了！`);
-        }
-        if (player.trait === 'intimidate') {
-          newEnm.stages.p_atk = Math.max(-6, (newEnm.stages.p_atk || 0) - 1);
-          addLog(`${player.name} 的威吓使 ${newEnm.name} 的攻击下降了！`);
-        }
-        await wait(1000);
-        setBattle(prev => prev ? ({ ...prev, phase: 'input' }) : prev);
-      } else {
-        await wait(1000);
-        pendingJutsuWinForBountyRef.current = !!state._lastBattleWinWithJutsu;
-        handleWin(newParty, state);
-      }
-      return;
-    }
-
+  const settleSingleRound = async (state) => {
+    if (!state || state._objectiveWinPending) return;
+    const player = state.playerCombatStates[state.activeIdx];
+    const enemy = state.enemyParty[state.enemyActiveIdx];
+    if (!player || !enemy) return;
+    if (state._settledTurn === (state.turnCount || 0)) return;
+    state._settledTurn = state.turnCount || 0;
+    let playerDied = player.currentHp <= 0;
+    try {
     // ▼▼▼ [新增] 回合结束特性结算 (加速) ▼▼▼
     const processPassive = async (unit, side) => {
         if (unit.currentHp <= 0) return;
@@ -19225,6 +18009,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     };
     await processPassive(player, 'player');
     await processPassive(enemy, 'enemy');
+    settleHeldRecovery([player,enemy]);
 
     if ((state.type === 'world_boss' || state.ecoBossMechanics) && enemy.currentHp > 0) {
       const wbData = state.worldBoss || (state.bossPhases ? { phases: state.bossPhases } : null);
@@ -19290,6 +18075,19 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     [...playerExpLogs, ...enemyExpLogs].forEach(l => addLog(l));
     tickBattleCooldowns(player);
     tickBattleCooldowns(enemy);
+    for (const [unit, side] of [[player,'player'],[enemy,'enemy']]) {
+      if (unit.currentHp>0 && unit.maxChakra>0) {
+        const rank = side==='player' ? getNinjaRank(narutoState?.examsCompleted || 0) : getEnemyNinjaRank(unit.level);
+        const rankRegen = {genin:1,chunin:2,jonin:3,kage:5}[rank.id] || 0;
+        const regen = Math.floor((CHAKRA_CONFIG.regenPerTurn + rankRegen)*(side==='player' ? getEquippedRelicEffects(relics).chakraRegenMult || 1 : 1));
+        applyBattleCharge(state,unit,side,0,regen);
+      }
+      if (unit.bijuuTransformed && unit.bijuuTurnsLeft>0 && --unit.bijuuTurnsLeft<=0) {
+        unit.bijuuTransformed = false;
+        unit.combatMoves = unit.combatMoves.filter(move=>!move.isBijuu);
+        addLog(`${unit.name} 的尾兽化结束了。`);
+      }
+    }
 
 	    // 咒力自然恢复
 	    [player, enemy].forEach((u, idx) => {
@@ -19325,7 +18123,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         if (eff.healPerTurn > 0) {
             const owner = dom.ownerSide === 'player' ? player : enemy;
             const heal = Math.floor(getStats(owner).maxHp * eff.healPerTurn);
-            owner.currentHp = Math.min(getStats(owner).maxHp, owner.currentHp + heal);
+            if (owner.currentHp>0) owner.currentHp = Math.min(getStats(owner).maxHp, owner.currentHp + heal);
             addLog(`🌀 领域效果: ${owner.name} 恢复了 ${heal} HP!`);
         }
         if (dom.turnsLeft <= 0) {
@@ -19396,111 +18194,83 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         }
 	    });
 
-	    if (enemy.currentHp <= 0) {
-	      await wait(500);
-	      const defeatedEnemy = state.enemyParty[state.enemyActiveIdx];
-	      const { newParty, logMsg, activeDidLevelUp } = processDefeatedEnemy(defeatedEnemy, party, state);
-	      setParty(newParty);
-	      addLog(logMsg);
-	      if (activeDidLevelUp) {
-	        setAnimEffect({ type: 'LEVEL_UP', target: 'player' });
-	        await wait(1000); setAnimEffect(null);
-	      }
-	      const nextEnemyIdx = state.enemyParty.findIndex((p, i) => i !== state.enemyActiveIdx && p.currentHp > 0);
-	      if (nextEnemyIdx !== -1) {
-	        setBattle(prev => prev ? ({
-	          ...prev,
-	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-	          enemyParty: state.enemyParty.map(e => ({...e})),
-	          enemyActiveIdx: nextEnemyIdx,
-	          phase: 'input',
-	          logs: [`对手派出了 ${state.enemyParty[nextEnemyIdx].name}!`, ...(prev?.logs || [])],
-	        }) : null);
-	      } else {
-	        pendingJutsuWinForBountyRef.current = !!state._lastBattleWinWithJutsu;
-	        handleWin(newParty, state);
-	      }
-	      return;
-	    }
-
-	    if (playerDied || player.currentHp <= 0) {
-       await wait(500);
-       const hasAlive = state.playerCombatStates.some(p => p.currentHp > 0);
-       if (hasAlive) {
-         if (state.isDouble) {
-           const newIdxs = (state.activeIdxs || []).filter(idx => state.playerCombatStates[idx]?.currentHp > 0);
-           const backupIdx = state.playerCombatStates.findIndex(p => p.currentHp > 0);
-           setBattle(prev => ({
-             ...prev,
-             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-             enemyParty: state.enemyParty.map(e => ({...e})),
-             activeDomain: state.activeDomain,
-             activeIdxs: newIdxs.length > 0 ? newIdxs : [backupIdx],
-             phase: 'input',
-             logs: [`${player.name} 倒下了!`, ...(prev?.logs || [])],
-           }));
-         } else {
-           setBattle(prev => ({
-             ...prev,
-             playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-             enemyParty: state.enemyParty.map(e => ({...e})),
-             activeDomain: state.activeDomain,
-             showSwitch: true, phase: 'input',
-             logs: [`${player.name} 倒下了!`, ...(prev?.logs || [])],
-           }));
-         }
-       } else {
-         await handleDefeat();
-       }
-    } else {
-      if (state.enemyParty[state.enemyActiveIdx]?.volatiles) state.enemyParty[state.enemyActiveIdx].volatiles.protected = false;
-      if (state.isolateTurns > 0) state.isolateTurns--;
-      if (state.domainRule === 'wind_tower' || getSpiritDomainRule(state.domainRule)?.id === 'wind_tower') {
+      if (state.domainRule === 'wind_tower' && player.currentHp>0 && enemy.currentHp>0) {
         const follow = processWindTowerFollowUp(state, player, enemy, null, addLog, getStats);
-        if (follow) {
-          await wait(500);
-          await performAction(follow.faster, follow.slower, follow.followMove, follow.fasterSide, state);
-        }
+        if (follow) await performAction(follow.faster,follow.slower,follow.followMove,follow.fasterSide,state);
       }
-      setBattle(prev => prev ? ({
-          ...prev, 
-	          playerCombatStates: state.playerCombatStates.map(p => ({...p})),
-	          enemyParty: state.enemyParty.map(e => ({...e})),
-	          enemyActiveIdx: state.enemyActiveIdx,
-	          sharedPlayerCE: state.sharedPlayerCE ?? prev?.sharedPlayerCE,
-	          sharedPlayerChakra: state.sharedPlayerChakra ?? prev?.sharedPlayerChakra,
-	          sharedEnemyCE: state.sharedEnemyCE ?? prev?.sharedEnemyCE,
-	          sharedEnemyChakra: state.sharedEnemyChakra ?? prev?.sharedEnemyChakra,
-	          activeDomain: state.activeDomain ? {...state.activeDomain} : null,
-          activeWeather: state.activeWeather ? {...state.activeWeather} : prev?.activeWeather,
-          isolateTurns: state.isolateTurns || 0,
-          phase: inputPhase,
-          turnCount: (state.turnCount || prev?.turnCount || 0) + 1,
-          _enemySpecialActionCooldown: Math.max(0, (state._enemySpecialActionCooldown || 0) - 1),
-          _playerTookDamage: state._playerTookDamage || prev?._playerTookDamage || playerTookDamageRef.current,
-          _playerDirectAttack: state._playerDirectAttack || prev?._playerDirectAttack,
-          _purifyProgress: state._purifyProgress ?? prev?._purifyProgress,
-          _protectHp: state._protectHp ?? prev?._protectHp,
-          _protectMaxHp: state._protectMaxHp ?? prev?._protectMaxHp,
-          battleObjective: state.battleObjective || prev?.battleObjective,
-          objectiveTurns: state.objectiveTurns || prev?.objectiveTurns,
-      }) : prev);
-      if (state.battleObjective && checkBattleObjectiveMet(state)) {
-        const winParty = state.playerCombatStates.map((p, i) => {
-          const uid = p?.uid;
-          const partyPet = uid ? party.find(pp => pp.uid === uid) : party[i];
-          return { ...(partyPet || party[i] || {}), ...p };
-        });
-        if (handleWinRef.current) await handleWinRef.current(winParty, state);
+      state.turnCount = (state.turnCount || 0)+1;
+      state.enemyPlans = null;
+      state.isolateTurns = Math.max(0,(state.isolateTurns || 0)-1);
+      state._enemySpecialActionCooldown = Math.max(0,(state._enemySpecialActionCooldown || 0)-1);
+      for (const unit of [player,enemy]) if (unit.volatiles) {
+        unit.volatiles.protected = false;
+        unit.volatiles.flinched = false;
+      }
+      Object.assign(state,settleUltraRound(state));
+
+      if (state.playerCombatStates.every(unit=>unit.currentHp<=0)) {
+        setBattle(prev=>prev ? {...prev,...state,logs:prev.logs} : prev);
+        await handleDefeat();
         return;
       }
-    }
-   } catch (e) {
-      console.error("Enemy Turn Error:", e);
-      setBattle(prev => prev ? ({ ...prev, phase: inputPhase }) : null);
+      if (enemy.currentHp<=0 && !enemy._rewarded) {
+        enemy._rewarded = true;
+        const result = processDefeatedEnemy(enemy,partyRef.current,state);
+        partyRef.current = result.newParty;
+        setParty(result.newParty);
+        addLog(result.logMsg);
+        state.playerCombatStates = state.playerCombatStates.map((unit,index)=>mergeBattleGrowth(unit,result.newParty[index]));
+        if (result.activeDidLevelUp) {
+          setAnimEffect({type:'LEVEL_UP',target:'player'});
+          await wait(600);
+          setAnimEffect(null);
+        }
+        const nextIndex = state.enemyParty.findIndex(unit=>unit.currentHp>0);
+        if (nextIndex<0) {
+          pendingJutsuWinForBountyRef.current = !!state._lastBattleWinWithJutsu;
+          await handleWin(result.newParty,state);
+          return;
+        }
+        state.enemyActiveIdx = nextIndex;
+        const next = state.enemyParty[nextIndex];
+        const active = state.playerCombatStates[state.activeIdx];
+        addLog(`对手派出了 ${next.name}！`);
+        if (active.currentHp>0) {
+          if (next.trait==='intimidate') active.stages.p_atk = Math.max(-6,(active.stages.p_atk || 0)-1);
+          if (active.trait==='intimidate') next.stages.p_atk = Math.max(-6,(next.stages.p_atk || 0)-1);
+        }
+        await triggerShinyAnim('enemy',next);
+      }
+      state.showSwitch = state.playerCombatStates[state.activeIdx].currentHp<=0;
+      state.phase = 'input';
+      setBattle(prev=>prev ? {...prev,...state,logs:prev.logs} : prev);
+      if (state.battleObjective && checkBattleObjectiveMet(state) && handleWinRef.current) {
+        state._objectiveWinPending = true;
+        const winParty = state.playerCombatStates.map((unit,index)=>({...partyRef.current[index],...unit}));
+        await handleWinRef.current(winParty,state);
+      }
     } finally {
-      auditPlayerHpLoss(state, turnPlayerHpSnapshot);
-      if (!deferInput) setBattle(prev => settleUltraRound(prev));
+      auditPlayerHpLoss(state);
+    }
+  };
+
+
+  const enemyTurn = async (currentBattleState = null, deferInput = false) => {
+    const state = currentBattleState || _.cloneDeep(battle);
+    if (!state) return;
+    try {
+      beginBattleRound(state);
+      const enemy = state.enemyParty[state.enemyActiveIdx];
+      const player = state.playerCombatStates[state.activeIdx];
+      if (!enemy || !player || enemy.currentHp<=0 || player.currentHp<=0) return;
+      const choice = getPlannedEnemyAction(state,enemy,[{unit:player,idx:state.activeIdx}]);
+      await performAction(enemy,player,choice.move,'enemy',state);
+      setBattle(prev=>prev ? {...prev,...state,logs:prev.logs,phase:'busy'} : prev);
+    } catch (error) {
+      console.error('Enemy Turn Error:',error);
+    } finally {
+      if (!deferInput) await settleSingleRound(state);
+      auditPlayerHpLoss(state);
     }
   };
 
@@ -19684,36 +18454,15 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
      // ==========================================
   // [核心修复] 战斗行动逻辑 (含特性/亲密度/天气/时间判定)
   // ==========================================
-  const performAction = async (attacker, defender, move, source, battleState) => {
-    if (!battleState && !battle) return false;
-    if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
-    const playerHpSnapshot = battleState?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
-    let ultraFinisherSpent = false;
-    let ultraActor = attacker;
-    try {
-    if (move.isUltraFinisher && !canUseCombatMove(battleState, attacker, move, source)) return false;
-    if (attacker.currentHp <= 0) return false;
-    if (defender.currentHp <= 0) return false;
-    if (!attacker.stages) attacker.stages = { ...DEFAULT_BATTLE_STAGES };
-    if (!defender.stages) defender.stages = { ...DEFAULT_BATTLE_STAGES };
-    if (!battleState?.isDouble) setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
-
-    const _dCtx = battleState?._doubleAnimCtx;
-    const _setAnim = _dCtx
-      ? (animData) => {
-          if (!animData) { setAnimEffect(null); return; }
-          const slot = (animData.target === _dCtx.source) ? _dCtx.atkSlot : _dCtx.defSlot;
-          setAnimEffect({ ...animData, slot: slot >= 0 ? slot : 0 });
-        }
-      : setAnimEffect;
-
-    const atkIdx = source === 'player' ? battleState.activeIdx : battleState.enemyActiveIdx;
-    const defIdx = source === 'player' ? battleState.enemyActiveIdx : battleState.activeIdx;
-    
-    const atkState = source === 'player' ? battleState.playerCombatStates[atkIdx] : battleState.enemyParty[atkIdx];
-    const defState = source === 'player' ? battleState.enemyParty[defIdx] : battleState.playerCombatStates[defIdx];
-    ultraActor = atkState;
-
+  const checkBattleActionReady = async (attacker, defender, move, source, battleState, _setAnim = setAnimEffect) => {
+    if (!attacker || attacker.currentHp <= 0) return false;
+    const atkState = attacker;
+    atkState.volatiles = atkState.volatiles || {};
+    const domain = battleState.activeDomain;
+    if (domain?.turnsLeft>0 && domain.ownerSide!==source && Math.random()<(domain.effect?.enemySkipChance || 0)) {
+      addLog(`${attacker.name} 被领域压制，无法行动。`);
+      return false;
+    }
     // 0. 畏缩判定
     if (atkState.volatiles?.flinched) {
       atkState.volatiles.flinched = false;
@@ -19799,6 +18548,66 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         }
     }
 
+    return true;
+  };
+
+  const performAction = async (attacker, defender, move, source, battleState, options = {}) => {
+    if (!battleState && !battle) return false;
+    if (!attacker || !defender || !move) { setBattle(prev => prev ? ({...prev, phase: 'input'}) : prev); return false; }
+    const playerHpSnapshot = battleState?.playerCombatStates?.map(p => p?.currentHp ?? 0) ?? null;
+    let ultraFinisherSpent = false;
+    let ultraActor = attacker;
+    const tacticalBefore = snapshotTacticalTarget(defender);
+    let actionSpent = false;
+    let breathingFocused = false;
+    try {
+    if (move.isUltraFinisher && !canUseCombatMove(battleState, attacker, move, source)) return false;
+    if (attacker.currentHp <= 0) return false;
+    if (defender.currentHp <= 0) return false;
+    if (!attacker.stages) attacker.stages = { ...DEFAULT_BATTLE_STAGES };
+    if (!defender.stages) defender.stages = { ...DEFAULT_BATTLE_STAGES };
+    if (!battleState?.isDouble) setBattle(prev => prev ? ({ ...prev, phase: 'anim' }) : prev);
+
+    const _dCtx = battleState?._doubleAnimCtx;
+    const setActionAnim = _dCtx
+      ? (animData) => {
+          if (!animData) { setAnimEffect(null); return; }
+          const slot = (animData.target === _dCtx.source) ? _dCtx.atkSlot : _dCtx.defSlot;
+          setAnimEffect({ ...animData, slot: slot >= 0 ? slot : 0 });
+        }
+      : setAnimEffect;
+    const _setAnim = (data) => {
+      setActionAnim(data);
+      const labels = {PROTECT:'防御',BUFF:'强化',DEBUFF:'削弱',HEAL:'回复',DOMAIN:'领域展开',TRANSFORM:'形态觉醒',CONFUSION:'混乱',BRN:'灼伤',PSN:'中毒',PAR:'麻痹',SLP:'睡眠',FRZ:'冻结'};
+      if (!data || !labels[data.type]) return;
+      const ownTarget = data.target===source;
+      setBattleImpact({id:++battleImpactSequenceRef.current,source,target:data.target,atkSlot:_dCtx?.atkSlot || 0,defSlot:ownTarget ? _dCtx?.atkSlot || 0 : _dCtx?.defSlot || 0,type:move.t,kind:data.type==='PROTECT' ? 'guard' : data.type==='HEAL' ? 'heal' : data.type==='DOMAIN' || data.type==='TRANSFORM' ? 'aura' : 'support',label:data.label || labels[data.type],damage:0});
+    };
+
+    const atkIdx = source === 'player' ? battleState.activeIdx : battleState.enemyActiveIdx;
+    const defIdx = source === 'player' ? battleState.enemyActiveIdx : battleState.activeIdx;
+
+    const atkState = source === 'player' ? battleState.playerCombatStates[atkIdx] : battleState.enemyParty[atkIdx];
+    const defState = source === 'player' ? battleState.enemyParty[defIdx] : battleState.playerCombatStates[defIdx];
+    ultraActor = atkState;
+
+    if (!options.actionGatePassed && !(await checkBattleActionReady(attacker, defender, move, source, battleState, _setAnim))) return false;
+
+    if (move.isPartnerCombo) {
+      const units = source==='player' ? battleState.playerCombatStates : battleState.enemyParty;
+      const partner = units.find(unit=>(unit.uid || unit.id)===move.partnerUid);
+      if (battleState.isDouble || (battleState.turnCount || 0)<3 || battleState.partnerComboUsed?.[source] || !partner || partner===attacker || partner.currentHp<=getStats(partner).maxHp*.15 || attacker.currentHp<=getStats(attacker).maxHp*.15) {
+        addLog(`${move.name} 中断：伙伴或体力条件不足。`);
+        return false;
+      }
+      if (!(await checkBattleActionReady(partner,defender,move,source,battleState,_setAnim))) return false;
+      for (const unit of [attacker,partner]) unit.currentHp -= Math.floor(getStats(unit).maxHp*.15);
+      battleState.partnerComboUsed = {...battleState.partnerComboUsed,[source]:true};
+      if (source==='player') { setComboUsedThisBattle(true); updateAchStat({comboAttacks:1}); }
+      else battleState._enemySpecialActionCooldown = 3;
+      addLog(`${attacker.name} 与 ${partner.name} 各消耗15%最大HP发动协作。`);
+    }
+
     const useSharedResource = !!battleState && (source === 'player'
       ? ((battleState.sharedPlayerMaxCE || 0) > 0 || (battleState.sharedPlayerMaxChakra || 0) > 0)
       : ((battleState.sharedEnemyMaxCE || 0) > 0 || (battleState.sharedEnemyMaxChakra || 0) > 0));
@@ -19820,7 +18629,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       }
     };
 
-    if (move.isCursed) {
+    if (move.isBattleCommand) {
+      if (!canUseCrossoverCommand(battleState, atkState, move, source, getShared('ce'))) {
+        addLog(`${move.name} 无法执行：条件或资源已经变化。`);
+        return false;
+      }
+      if (move.ceCost) setShared('ce', getShared('ce') - move.ceCost);
+    } else if (move.isCursed) {
         const cCd = atkState.cursedCooldowns?.[move.id || move.name] || 0;
         if (cCd > 0) {
             addLog(`${attacker.name} 的 ${move.name} 冷却中(还需${cCd}回合)！`);
@@ -19928,6 +18743,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       if (unit) unit.equippedBerry = null;
     };
     ultraFinisherSpent = !!move.isUltraFinisher;
+    actionSpent = true;
+    if (source==='enemy' && move.isMirrorEcho) {
+      if (battleState._echoQueue?.length) battleState._echoQueue.shift();
+      addLog(`镜湖回声：${attacker.name} 复制了 ${move.name}。`);
+    }
+    breathingFocused = !!(move.isBreathing && move.p > 0 && atkState.volatiles?.breathingFocus > 0);
+    if (breathingFocused) atkState.volatiles.breathingFocus--;
     tryLeppaBerry(attacker, atkState, move);
     if (move.effect?.type !== 'PROTECT') {
       if (!atkState.volatiles) atkState.volatiles = {};
@@ -19941,13 +18763,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
     // 守住逻辑 (移到显示技能名之后)
     const isAttackOrDebuff = move.p > 0 || (move.effect && move.effect.target !== 'self' && move.effect.type !== 'BUFF');
-    if (move.p > 0 && (defState.volatiles?.comboBarrierTurns || 0) > 0) {
-        addLog(`🛡️ ${defender.name} 的结界挡下了伤害！`);
-        _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' });
-        await wait(1200);
-        _setAnim(null);
-        return false;
-    }
     if (defState.volatiles?.protected && isAttackOrDebuff) {
         addLog(`✋ ${defender.name} 守住了攻击!`); 
         _setAnim({ type: 'PROTECT', target: source === 'player' ? 'enemy' : 'player' }); 
@@ -20031,7 +18846,49 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             addLog(`🪞 ${defender.name} 的魔法反射把变化技反弹了！`);
         }
 
-        if (eff.type === 'BUFF' || eff.type === 'DEBUFF') {
+        if (eff.type === 'BATTLE_DOMAIN' || eff.type === 'BATTLE_VOW') {
+            applyCrossoverCommand(battleState, atkState, move, source, {getStats,addLog,updateAchStat});
+            if (source==='enemy') battleState._enemySpecialActionCooldown = 3;
+            _setAnim({type:eff.type === 'BATTLE_DOMAIN' ? 'DOMAIN' : 'BUFF',target:source});
+        }
+        else if (eff.type === 'BATTLE_FRUIT') {
+            const fruit = getFruitById(atkState.devilFruit);
+            const durationBonus = source==='player' ? getActiveResonanceForPet(atkState).fruitDurationBonus || 0 : 0;
+            if (applyFruitTransform(battleState,atkState,source,fruit,getStats(atkState).maxHp,durationBonus)) {
+              addLog(`${attacker.name} 发动 ${fruit.name}，消耗了队伍本场爆发机会。`);
+              if (source==='player') updateAchStat({fruitTransforms:1});
+              if (source==='player' && battleState.type!=='ultra_trial') recordBattleFruitUse(atkState);
+              if (source==='enemy') battleState._enemySpecialActionCooldown = 3;
+              _setAnim({type:'TRANSFORM',target:source});
+            } else addLog(`${attacker.name} 的果实觉醒条件已改变，本次无法变身。`);
+        }
+        else if (eff.type === 'BATTLE_SWITCH' && source === 'enemy') {
+            const next = battleState.enemyParty[eff.index];
+            if (next?.currentHp>0) {
+              battleState.enemyActiveIdx = eff.index;
+              battleState._enemySpecialActionCooldown = 3;
+              addLog(`对手换上了 ${next.name}。`);
+              if (next.trait==='intimidate') defender.stages.p_atk = Math.max(-6,(defender.stages.p_atk || 0)-1);
+              if (defender.trait==='intimidate') next.stages.p_atk = Math.max(-6,(next.stages.p_atk || 0)-1);
+            }
+        }
+        else if (eff.type === 'BREATH_FOCUS') {
+            atkState.volatiles.breathingFocus = BATTLE_TACTICS.breathingFocusUses;
+            applyTacticalGuard(atkState, battleState, BATTLE_TACTICS.breathingGuardReduction);
+            addLog(`${attacker.name} 全集中：本回合抵御一次攻击，下两次呼吸斩技增伤25%。`);
+            _setAnim({type:'BUFF',target:source});
+        }
+        else if (eff.type === 'TACTICAL_GUARD') {
+            applyTacticalGuard(atkState, battleState);
+            addLog(`${attacker.name} 防御：本回合下一次直接伤害降低50%。`);
+            _setAnim({type:'PROTECT',target:source});
+        }
+        else if (eff.type === 'BATTLE_CHARGE') {
+            const restored = applyBattleCharge(battleState, atkState, source, CURSED_ENERGY_CONFIG.chargeAction, CHAKRA_CONFIG.chargeAmount);
+            addLog(`${attacker.name} 凝神蓄力：${restored.join('，') || '能量已满'}。`);
+            _setAnim({type:'BUFF',target:source});
+        }
+        else if (eff.type === 'BUFF' || eff.type === 'DEBUFF') {
             const delta = eff.type === 'BUFF' ? eff.val : -eff.val;
             const statName = eff.stat;
             if (!targetState.stages) targetState.stages = {};
@@ -20136,12 +18993,12 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             const previousHp = attacker.currentHp;
             attacker.currentHp = Math.min(healMaxHp, attacker.currentHp + healAmount);
             if (source === 'player' && battleState.type === 'infinity') applyInfinityHealingShield(infinityStateRef.current?.blessings || [], move, attacker, healMaxHp, attacker.currentHp - previousHp);
-            addLog(`${attacker.name} 恢复了 ${healAmount} 体力!`);
+            addLog(`${attacker.name} 恢复了 ${attacker.currentHp - previousHp} 体力!`);
             if (eff.cureStatus && atkState.status) {
               addLog(`🌸 ${attacker.name} 的异常状态被治愈了！`);
               atkState.status = null; attacker.status = null;
             }
-            _setAnim({ type: 'HEAL', target: targetSide });
+            _setAnim({ type: 'HEAL', target: targetSide, label:`+${attacker.currentHp - previousHp}` });
         }
         else if (eff.type === 'OHKO') {
             if (defender.isBoss) {
@@ -20199,9 +19056,11 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const pvpNoPower = battleState.isPvP ? stripGangCombatBonus(getGangSkillBonus(getGangSkills(gang, getGangSkillCapBonus(kingdomWar)), getEquippedRelicEffects(relics).gangSkillMult || 1)) : undefined;
         const atkGB = source === 'player' ? (battleState.isPvP ? pvpNoPower : undefined) : enemyGB;
         const defGB = source === 'player' ? enemyGB : (battleState.isPvP ? pvpNoPower : undefined);
-        const statsAtk = getStats(attacker, atkState.stages, atkState.status, atkGB); 
+        const statsAtk = getStats(attacker.ultraTransformed ? {...attacker,ultraTransformed:false} : attacker, atkState.stages, atkState.status, atkGB);
         const statsDef = getStats(defender, defState.stages, defState.status, defGB);
         const category = getMoveCategory(move.t, move);
+        const crossoverMultipliers = [Math.pow(getUltraStatMultiplier(atkState, category === 'physical' ? 'p_atk' : 's_atk'), 0.65)];
+        if (breathingFocused) crossoverMultipliers.push(1 + BATTLE_TACTICS.breathingFocusBonus);
         let atkVal = category === 'physical' ? statsAtk.p_atk : statsAtk.s_atk;
         let defVal = category === 'physical' ? statsDef.p_def : statsDef.s_def;
         const synM = battleState.teamSynergyMult || 1;
@@ -20224,8 +19083,9 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const atkFE = atkState.fruitTransformed ? atkState.fruitEffects : null;
         const _defFE = defState.fruitTransformed ? defState.fruitEffects : null;
         if (atkFE) {
-          if (category === 'physical' && atkFE.atkMult) atkVal = Math.floor(atkVal * atkFE.atkMult);
-          if (category === 'special' && atkFE.sAtkMult) atkVal = Math.floor(atkVal * atkFE.sAtkMult);
+          const fruitAtk = category === 'physical' ? atkFE.atkMult : atkFE.sAtkMult;
+          if (fruitAtk > 1) crossoverMultipliers.push(Math.pow(fruitAtk, 0.65));
+          else if (fruitAtk > 0) atkVal *= fruitAtk;
         }
         if (_defFE) {
           if (category === 'physical' && _defFE.defMult) defVal = Math.floor(defVal * _defFE.defMult);
@@ -20248,6 +19108,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         critChance = Math.max(baseCritMin, Math.min(MAX_BATTLE_CRIT_CHANCE, critChance));
         if (defender.trait === 'shell_armor') critChance = 0;
         if (Math.random() * 100 < critChance) isCrit = true;
+        if (move.isPartnerCombo && move.effect?.crit && defender.trait!=='shell_armor') isCrit = true;
 
         if (isCrit && defState?.stages) {
           const defKey = category === 'physical' ? 'p_def' : 's_def';
@@ -20297,10 +19158,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
         // 果实变身增伤
         if (atkFE) {
-          if (atkFE.movePowerBoost) rawDmg *= (1 + atkFE.movePowerBoost);
-          if (atkFE.typeBoost && atkFE.typeBoost[move.t]) rawDmg *= atkFE.typeBoost[move.t];
+          if (atkFE.movePowerBoost) crossoverMultipliers.push(1 + atkFE.movePowerBoost);
+          if (atkFE.typeBoost && atkFE.typeBoost[move.t]) crossoverMultipliers.push(atkFE.typeBoost[move.t]);
           if (atkFE.convertNormalTo && move.t === 'NORMAL') {
-            rawDmg *= 1.3;
+            crossoverMultipliers.push(1.3);
           }
           if (atkFE.fixedDmgPercent && move.p > 0 && typeMod !== 0) {
             const fixedBonus = Math.floor(getStats(defender).maxHp * atkFE.fixedDmgPercent);
@@ -20320,11 +19181,13 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         if (move.t === 'DARK' && auraUnits.some(u => u?.trait === 'dark_aura')) rawDmg *= 1.33;
 
         // 领域展开攻防加成
-        rawDmg *= getDomainDamageMultiplier(
+        const domainDamageMult = getDomainDamageMultiplier(
           battleState.activeDomain,
           source,
           source === 'player' ? 'enemy' : 'player',
         );
+        if (domainDamageMult > 1) crossoverMultipliers.push(domainDamageMult);
+        else rawDmg *= domainDamageMult;
 
         // 暗暗果实: 取消对手果实效果
         if (atkFE && atkFE.cancelEnemyFruit && defState.fruitTransformed) {
@@ -20363,8 +19226,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         const vow = atkState.activeVow;
         if (vow && vow.turnsLeft > 0) {
             let vowConsumed = false;
-            if (vow.reward.atkMult) { rawDmg *= vow.reward.atkMult; vowConsumed = true; }
-            if (vow.reward.nextMovePower) { rawDmg *= vow.reward.nextMovePower; vowConsumed = true; }
+            if (vow.reward.atkMult) { crossoverMultipliers.push(vow.reward.atkMult); vowConsumed = true; }
+            if (vow.reward.nextMovePower) { crossoverMultipliers.push(vow.reward.nextMovePower); vowConsumed = true; }
             if (vowConsumed) vow.turnsLeft = 0;
         }
         const defVow = defState.activeVow;
@@ -20376,7 +19239,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         }
 
         if (move.isCursed && atkState.cursedBoost) {
-            rawDmg *= (1 + atkState.cursedBoost);
+            crossoverMultipliers.push(1 + atkState.cursedBoost);
         }
 
         // Fix#13: 无限城祝福效果
@@ -20393,16 +19256,16 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
         // 忍术加成 (忍者段位 + 精通)
         if (move.isJutsu) {
-            const nrk = getNinjaRank(narutoState?.examsCompleted || 0);
+            const nrk = source === 'player' ? getNinjaRank(narutoState?.examsCompleted || 0) : getEnemyNinjaRank(attacker.level);
             const jutsuBonus = nrk?.id === 'kage' ? 0.15 : nrk?.id === 'jonin' ? 0.10 : nrk?.id === 'chunin' ? 0.06 : nrk?.id === 'genin' ? 0.03 : 0;
-            if (jutsuBonus > 0) rawDmg *= (1 + jutsuBonus);
-            const masteryBonus = getJutsuMasteryBonus(move.jutsuId, narutoState?.jutsuMastery);
-            if (masteryBonus > 0) rawDmg *= (1 + masteryBonus);
+            if (jutsuBonus > 0) crossoverMultipliers.push(1 + jutsuBonus);
+            const masteryBonus = source === 'player' ? getJutsuMasteryBonus(move.jutsuId, narutoState?.jutsuMastery) : 0;
+            if (masteryBonus > 0) crossoverMultipliers.push(1 + masteryBonus);
             // 查克拉亲和加成
             if (source === 'player' && narutoState?.chakraAffinity) {
               const jutsuNature = move.nature || move.type;
               if (jutsuNature && jutsuNature === narutoState.chakraAffinity) {
-                rawDmg = Math.ceil(rawDmg * 1.02);
+                crossoverMultipliers.push(1.02);
               }
             }
             // 查克拉属性克制加成
@@ -20413,7 +19276,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
                 .map(t => Object.entries(CHAKRA_NATURE_MAP).find(([, v]) => v.gameType === t))
                 .find(defNature => defNature && CHAKRA_NATURE_MAP[jutsuNature?.[0]]?.strongVs === defNature[0]);
               if (jutsuNature && natureMatch) {
-                rawDmg *= 1.15;
+                crossoverMultipliers.push(1.15);
                 addLog(`${attacker.name} 的忍术属性克制了对手！`);
               }
             }
@@ -20421,13 +19284,16 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             if (source === 'player' && battleState?.type === 'arena' && (arenaState?.weeklyRule === 'jutsu' || battleState?._arenaJutsuBoost)) {
               const arnk = nrk?.id || 'academy';
               const arenaJutsuPct = arnk === 'kage' ? 0.15 : arnk === 'jonin' ? 0.12 : arnk === 'chunin' ? 0.08 : 0.05;
-              rawDmg *= (1 + arenaJutsuPct);
+              crossoverMultipliers.push(1 + arenaJutsuPct);
             }
         }
         // 尾兽化攻击加成
         if (atkState.bijuuTransformed && atkState.bijuuData) {
-            rawDmg *= (atkState.bijuuData.transform?.atk || 1.0);
+            crossoverMultipliers.push(atkState.bijuuData.transform?.atk || 1.0);
         }
+        const openingReady = hasTacticalOpening(defState, battleState, attacker, move);
+        if (openingReady) crossoverMultipliers.push(1 + BATTLE_TACTICS.openingBonus);
+        rawDmg *= getCrossoverMultiplier(crossoverMultipliers);
 
         // 特性修正
         if (['overgrow','blaze','torrent','swarm'].includes(attacker.trait)) {
@@ -20578,6 +19444,32 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
         if (isDodged && source === 'enemy' && battleState) gainSectMomentum(battleState, SECT_MOMENTUM_PER_DODGE);
 
+        const damageBeforeGuard = dmg;
+        dmg = consumeTacticalGuard(defState, battleState, dmg);
+        if (dmg < damageBeforeGuard) addLog(`${defender.name} 的防御化解了 ${damageBeforeGuard - dmg} 伤害。`);
+        if (dmg > 0 && (defState.volatiles?.comboBarrierTurns || 0) > 0) {
+          dmg = Math.max(1, Math.floor(dmg * 0.5));
+          defState.volatiles.comboBarrierTurns = 0;
+          addLog(`${defender.name} 的联合结界减半伤害后破碎。`);
+        }
+        const wasGuarded = dmg < damageBeforeGuard;
+        if (dmg > 0 && (defender._starShield || 0) > 0) {
+          const shieldDmg = applyStarShieldDamage(defender, move, dmg, battleState);
+          if (shieldDmg < dmg) {
+            addLog(defender._starShield <= 0 ? `✨ 星海护盾破碎！` : `✨ 护盾吸收 ${(dmg - shieldDmg).toLocaleString()} 伤害`);
+          }
+          dmg = shieldDmg;
+        }
+        if (dmg > 0 && (defender._ecoShield || 0) > 0) {
+          const absorbed = Math.min(defender._ecoShield, dmg);
+          defender._ecoShield -= absorbed;
+          dmg -= absorbed;
+          if (absorbed > 0) addLog(`🌿 生态护盾吸收 ${absorbed.toLocaleString()} 伤害`);
+        }
+        if (dmg > 0 && (defender._sectShield || 0) > 0) {
+          dmg = applySectShieldAbsorb(defender, dmg, addLog);
+        }
+
         let survivalMsg = null;
         if (defender.trait === 'sturdy' && defender.currentHp === statsDef.maxHp && dmg >= defender.currentHp) {
             dmg = defender.currentHp - 1;
@@ -20603,23 +19495,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
               dmg = defender.currentHp - 1;
             }
           }
-        }
-
-        if (dmg > 0 && (defender._starShield || 0) > 0) {
-          const shieldDmg = applyStarShieldDamage(defender, move, dmg, battleState);
-          if (shieldDmg < dmg) {
-            addLog(defender._starShield <= 0 ? `✨ 星海护盾破碎！` : `✨ 护盾吸收 ${(dmg - shieldDmg).toLocaleString()} 伤害`);
-          }
-          dmg = shieldDmg;
-        }
-        if (dmg > 0 && (defender._ecoShield || 0) > 0) {
-          const absorbed = Math.min(defender._ecoShield, dmg);
-          defender._ecoShield -= absorbed;
-          dmg -= absorbed;
-          if (absorbed > 0) addLog(`🌿 生态护盾吸收 ${absorbed.toLocaleString()} 伤害`);
-        }
-        if (dmg > 0 && (defender._sectShield || 0) > 0) {
-          dmg = applySectShieldAbsorb(defender, dmg, addLog);
         }
 
         defender.currentHp = Math.max(0, defender.currentHp - dmg);
@@ -20723,6 +19598,14 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
         const actualPrimaryDamage = Math.max(0, (defender._preHitHp ?? defender.currentHp) - defender.currentHp);
         const landedDamagingHit = !isImmune && !isDodged && !equipDodged && actualPrimaryDamage > 0;
+        if (landedDamagingHit && openingReady) {
+          delete defState.volatiles.tacticalOpening;
+          addLog(`协同追击！${attacker.name} 兑现了 ${defender.name} 的破绽。`);
+        }
+        if (!isImmune && !isDodged && !equipDodged) {
+          setBattleImpact({id:++battleImpactSequenceRef.current,source,target:source==='player' ? 'enemy' : 'player',atkSlot:_dCtx?.atkSlot || 0,defSlot:_dCtx?.defSlot || 0,type:move.t,kind:move.isUltraFinisher ? 'beam' : move.isBreathing || move.isMartialArt ? 'slash' : category==='special' ? 'projectile' : 'impact',damage:actualPrimaryDamage,critical:isCrit && landedDamagingHit,opening:openingReady && landedDamagingHit,guarded:wasGuarded});
+          _setAnim({type:move.t,target:source==='player' ? 'enemy' : 'player',isCrit,isHit:landedDamagingHit});
+        }
         if (source === 'player' && landedDamagingHit) {
           if (battleState.type === 'infinity') {
             const immuneStatuses = getEquipEffects(defender).filter(fx => fx.id === 'status_immune').map(fx => fx.val);
@@ -21041,7 +19924,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
             }
         }
 
-        if (!isDead && move.effect && move.p > 0) {
+        if (!isDead && landedDamagingHit && move.effect && move.p > 0) {
              const eff = move.effect;
              const defSide = source === 'player' ? 'enemy' : 'player';
              const atkSideStr = source === 'player' ? 'player' : 'enemy';
@@ -21161,24 +20044,6 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         atkState.activeVow = null;
     }
 
-    // 4a. 饰品回合恢复
-    if (!isDead) {
-      [attacker, defender].forEach(unit => {
-        if (unit.currentHp <= 0) return;
-        const eFx = getEquipEffects(unit);
-        let healPct = 0;
-        eFx.forEach(fx => {
-          if (fx.id === 'heal_turn') healPct += fx.val;
-          if (fx.id === 'type_heal') healPct += fx.healVal;
-        });
-        if (healPct > 0) {
-          const mHp = getStats(unit).maxHp;
-          const h = Math.floor(mHp * healPct);
-          unit.currentHp = Math.min(mHp, unit.currentHp + h);
-          addLog(`🌙 ${unit.name} 的饰品恢复了 ${h} HP`);
-        }
-      });
-    }
 
     if (battleState && source === 'player' && move?.isJutsu) {
       battleState._usedJutsuThisBattle = true;
@@ -21200,6 +20065,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
 
     return isDead;
     } finally {
+      if (actionSpent && recordTacticalSetup(defender, tacticalBefore, battleState, attacker, move)) addLog(`${defender.name} 露出破绽，可由另一体系或双打伙伴追击。`);
       if (ultraFinisherSpent) {
         endUltra(ultraActor);
         if (attacker !== ultraActor) endUltra(attacker);
@@ -23876,19 +22742,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
         x.handlePvPInput(1, 'move', i);
         return;
       }
-      if (b.isDouble) {
-        const aliveEnemies = (b.enemyActiveIdxs || []).filter((idx) => b.enemyParty?.[idx]?.currentHp > 0);
-        if (aliveEnemies.length > 1) {
-          const defT = aliveEnemies[0];
-          x.setBattle((prev) => (prev ? { ...prev, pendingDoubleMove: i, targetIdx: defT } : null));
-        } else if (aliveEnemies.length === 1) {
-          void x.executeDoubleTurn(i, aliveEnemies[0]);
-        } else {
-          void x.executeTurn(i);
-        }
-        return;
-      }
-      void x.executeTurn(i);
+      const button = document.querySelectorAll('.battle-move-grid .battle-move-button')[i];
+      if (button && !button.disabled) button.click();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -33647,257 +32502,6 @@ const renderMenu = () => {
       TRANSFORM:'vfx-transform'
     };
 
-    const renderEnhancedVfx = (type, target) => {
-      if (!type) return null;
-      const cls = VFX_MAP[type] || 'vfx-normal';
-
-      const screenFlash = {
-        FIRE:'rgba(255,107,53,0.25)', WATER:'rgba(79,195,247,0.2)', ELECTRIC:'rgba(255,214,0,0.35)',
-        ICE:'rgba(179,229,252,0.25)', DRAGON:'rgba(255,180,0,0.3)', PSYCHIC:'rgba(244,143,177,0.2)',
-        GHOST:'rgba(126,87,194,0.25)', GOD:'rgba(255,213,79,0.35)', DOMAIN:'rgba(255,213,79,0.3)',
-        FIGHT:'rgba(255,112,67,0.2)', FAIRY:'rgba(248,187,208,0.2)',
-        COSMIC:'rgba(49,27,146,0.3)', SOUND:'rgba(77,208,225,0.2)',
-        TIME:'rgba(126,87,194,0.3)', CHAOS:'rgba(183,28,28,0.3)',
-        WIND:'rgba(178,235,242,0.2)', LIGHT:'rgba(255,249,196,0.25)',
-      }[type];
-
-      const pos = {
-        top: target === 'enemy' ? '30%' : '50%',
-        left: target === 'enemy' ? '60%' : '40%'
-      };
-      const tc = battle?.turnCount || 0;
-      const det = (i, salt = 0) => ((i * 7919 + tc * 1301 + salt) % 100) / 100;
-
-      const mkSparks = (n, distMin, distMax, szMin, szMax) => {
-        const out = [];
-        for (let i = 0; i < n; i++) {
-          const seed = ((i * 7 + 13) % 100) / 100;
-          const a = (360/n)*i + seed*25;
-          const d = distMin + seed*(distMax-distMin);
-          const szSeed = ((i * 11 + 3) % 100) / 100;
-          out.push(<div key={`s${i}`} className="vfx-spark" style={{
-            '--tx':`${Math.cos(a*Math.PI/180)*d}px`, '--ty':`${Math.sin(a*Math.PI/180)*d}px`,
-            '--sz':`${szMin+szSeed*(szMax-szMin)}px`, '--d':`${i*0.04}s`
-          }}/>);
-        }
-        return out;
-      };
-      const mkRays = (n) => Array.from({length:n},(_,i)=>(
-        <div key={`r${i}`} className="vfx-ray" style={{transform:`rotate(${(360/n)*i}deg)`, animationDelay:`${i*0.03}s`}}/>
-      ));
-      const mkRings = (n) => Array.from({length:n},(_,i)=>(
-        <div key={`rn${i}`} className="vfx-ring" style={{animationDelay:`${i*0.12}s`}}/>
-      ));
-
-      let inner;
-      switch(type) {
-        case 'FIRE': {
-          const flames = Array.from({length:14},(_,i)=>{
-            const x = -40+((i*7+5)%14)/14*80; const sz = 8+((i*11+3)%14)/14*16;
-            return <div key={`fl${i}`} className="vfx-flame" style={{'--fx':`${x}px`,'--fsz':`${sz}px`,'--fd':`${i*0.06}s`}}/>;
-          });
-          inner = <>{flames}<div className="vfx-core"/>{mkRings(2)}<div className="vfx-sparks">{mkSparks(12,50,100,4,10)}</div></>;
-          break;
-        }
-        case 'WATER': {
-          const ripples = Array.from({length:5},(_,i)=>(
-            <div key={`wp${i}`} className="vfx-ripple" style={{animationDelay:`${i*0.15}s`}}/>
-          ));
-          const drops = Array.from({length:10},(_,i)=>{
-            const x = -60+((i*13+7)%10)/10*120;
-            return <div key={`wd${i}`} className="vfx-waterdrop" style={{'--wx':`${x}px`,'--wd':`${i*0.05}s`}}/>;
-          });
-          inner = <>{ripples}{drops}<div className="vfx-core"/></>;
-          break;
-        }
-        case 'GRASS': {
-          const leaves = Array.from({length:12},(_,i)=>{
-            const a = (360/12)*i; const d = 40+((i*7+5)%12)/12*70;
-            return <div key={`lf${i}`} className="vfx-leaf" style={{
-              '--lx':`${Math.cos(a*Math.PI/180)*d}px`,'--ly':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--lr':`${((i*37)%360)}deg`,'--ld':`${i*0.06}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{mkRings(2)}{leaves}<div className="vfx-trail"/></>;
-          break;
-        }
-        case 'ELECTRIC': {
-          const bolts = Array.from({length:6},(_,i)=>{
-            const a = (360/6)*i;
-            return <div key={`bl${i}`} className="vfx-bolt" style={{transform:`rotate(${a}deg)`,'--bd':`${i*0.08}s`}}/>;
-          });
-          inner = <>{bolts}<div className="vfx-core"/><div className="vfx-sparks">{mkSparks(16,30,110,3,7)}</div></>;
-          break;
-        }
-        case 'ICE': {
-          const crystals = Array.from({length:8},(_,i)=>{
-            const a = (360/8)*i; const d = 30 + det(i, 11) * 50;
-            return <div key={`ic${i}`} className="vfx-crystal" style={{
-              '--cx':`${Math.cos(a*Math.PI/180)*d}px`,'--cy':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--cr':`${a}deg`,'--cd':`${i*0.07}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{crystals}{mkRings(3)}<div className="vfx-frost-overlay"/></>;
-          break;
-        }
-        case 'FIGHT': {
-          const impacts = Array.from({length:3},(_,i)=>(
-            <div key={`im${i}`} className="vfx-impact-burst" style={{animationDelay:`${i*0.15}s`,'--isc':`${1+i*0.5}`}}/>
-          ));
-          inner = <><div className="vfx-core"/>{impacts}<div className="vfx-sparks">{mkSparks(14,40,90,6,12)}</div><div className="vfx-rays">{mkRays(12)}</div></>;
-          break;
-        }
-        case 'DRAGON': {
-          const spirals = Array.from({length:10},(_,i)=>{
-            const a = (360/10)*i;
-            return <div key={`ds${i}`} className="vfx-spiral" style={{
-              '--sa':`${a}deg`,'--sd':`${i*0.05}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{mkRings(3)}<div className="vfx-rays">{mkRays(10)}</div>{spirals}<div className="vfx-sparks">{mkSparks(14,50,120,5,10)}</div></>;
-          break;
-        }
-        case 'GHOST': {
-          const wisps = Array.from({length:6},(_,i)=>{
-            const a = (360/6)*i; const d = 40 + det(i, 17) * 40;
-            return <div key={`wi${i}`} className="vfx-wisp" style={{
-              '--wx':`${Math.cos(a*Math.PI/180)*d}px`,'--wy':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--wd':`${i*0.12}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{wisps}<div className="vfx-shadow-pulse"/></>;
-          break;
-        }
-        case 'PSYCHIC': {
-          const orbits = Array.from({length:6},(_,i)=>(
-            <div key={`po${i}`} className="vfx-psy-orbit" style={{'--pa':`${(360/6)*i}deg`,'--pd':`${i*0.1}s`}}/>
-          ));
-          inner = <><div className="vfx-core"/>{mkRings(3)}{orbits}<div className="vfx-psy-wave"/></>;
-          break;
-        }
-        case 'POISON': {
-          const bubbles = Array.from({length:10},(_,i)=>{
-            const x = -50 + det(i, 19) * 100; const sz = 6 + det(i, 23) * 14;
-            return <div key={`pb${i}`} className="vfx-poison-bubble" style={{
-              '--bx':`${x}px`,'--bsz':`${sz}px`,'--bd':`${i*0.08}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{bubbles}<div className="vfx-toxic-mist"/></>;
-          break;
-        }
-        case 'FAIRY': {
-          const stars = Array.from({length:12},(_,i)=>{
-            const a = (360/12)*i; const d = 30 + det(i, 29) * 70;
-            return <div key={`fs${i}`} className="vfx-fairy-star" style={{
-              '--fx':`${Math.cos(a*Math.PI/180)*d}px`,'--fy':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--fr':`${det(i, 31) * 360}deg`,'--fd':`${i*0.06}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{mkRings(2)}{stars}</>;
-          break;
-        }
-        case 'HEAL': case 'BUFF': {
-          const hearts = Array.from({length:8},(_,i)=>{
-            const x = -40 + det(i, 37) * 80;
-            return <div key={`hh${i}`} className="vfx-heal-particle" style={{
-              '--hx':`${x}px`,'--hd':`${i*0.1}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{hearts}{mkRings(2)}<div className="vfx-heal-aura"/></>;
-          break;
-        }
-        case 'GROUND': {
-          const debris = Array.from({length:10},(_,i)=>{
-            const x = -60 + det(i, 41) * 120; const sz = 6 + det(i, 43) * 12;
-            return <div key={`gd${i}`} className="vfx-debris" style={{'--dx':`${x}px`,'--dsz':`${sz}px`,'--dd':`${i*0.05}s`}}/>;
-          });
-          inner = <><div className="vfx-core"/><div className="vfx-quake-line"/>{debris}{mkRings(2)}</>;
-          break;
-        }
-        case 'ROCK': {
-          const rocks = Array.from({length:8},(_,i)=>{
-            const a = (360/8)*i; const d = 30 + det(i, 47) * 50; const sz = 8 + det(i, 53) * 14;
-            return <div key={`rk${i}`} className="vfx-rock-shard" style={{
-              '--rx':`${Math.cos(a*Math.PI/180)*d}px`,'--ry':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--rsz':`${sz}px`,'--rd':`${i*0.05}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{rocks}<div className="vfx-sparks">{mkSparks(8,40,80,6,10)}</div></>;
-          break;
-        }
-        case 'FLYING': {
-          const gusts = Array.from({length:5},(_,i)=>(
-            <div key={`gw${i}`} className="vfx-gust" style={{animationDelay:`${i*0.12}s`,'--gy':`${-20+i*10}px`}}/>
-          ));
-          inner = <><div className="vfx-core"/>{gusts}<div className="vfx-sparks">{mkSparks(8,40,90,3,6)}</div></>;
-          break;
-        }
-        case 'STEEL': {
-          const shards = Array.from({length:8},(_,i)=>{
-            const a = (360/8)*i; const d = 40 + det(i, 59) * 50;
-            return <div key={`ss${i}`} className="vfx-steel-shard" style={{
-              '--sx':`${Math.cos(a*Math.PI/180)*d}px`,'--sy':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--sr':`${a}deg`,'--sd':`${i*0.06}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{mkRings(3)}{shards}</>;
-          break;
-        }
-        case 'DARK': {
-          const shadows = Array.from({length:8},(_,i)=>{
-            const a = (360/8)*i; const d = 30 + det(i, 61) * 50;
-            return <div key={`dk${i}`} className="vfx-dark-tendril" style={{
-              '--dtx':`${Math.cos(a*Math.PI/180)*d}px`,'--dty':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--dtd':`${i*0.08}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/><div className="vfx-dark-vortex"/>{shadows}</>;
-          break;
-        }
-        case 'BUG': {
-          const bugs = Array.from({length:10},(_,i)=>{
-            const a = (360/10)*i; const d = 35 + det(i, 67) * 55;
-            return <div key={`bg${i}`} className="vfx-bug-mote" style={{
-              '--bx':`${Math.cos(a*Math.PI/180)*d}px`,'--by':`${Math.sin(a*Math.PI/180)*d}px`,
-              '--bd':`${i*0.06}s`
-            }}/>;
-          });
-          inner = <><div className="vfx-core"/>{bugs}{mkRings(2)}</>;
-          break;
-        }
-        case 'GOD': case 'EVOLUTION': case 'LEVEL_UP': case 'DOMAIN': {
-          const godRays = Array.from({length:16},(_,i)=>(
-            <div key={`gr${i}`} className="vfx-ray" style={{transform:`rotate(${(360/16)*i}deg)`,animationDelay:`${i*0.02}s`}}/>
-          ));
-          inner = <><div className="vfx-core"/>{mkRings(4)}<div className="vfx-rays">{godRays}</div><div className="vfx-sparks">{mkSparks(18,40,130,4,10)}</div></>;
-          break;
-        }
-        case 'TRANSFORM': {
-          const spirals = Array.from({length:12},(_,i)=>(
-            <div key={`ts${i}`} className="vfx-spiral" style={{animationDelay:`${i*0.08}s`, transform:`rotate(${(360/12)*i}deg) translateX(60px)`}}/>
-          ));
-          inner = <><div className="vfx-core" style={{background:'radial-gradient(circle, #FF6F00, #D32F2F)', width:60,height:60}}/>{mkRings(3)}{spirals}<div className="vfx-sparks">{mkSparks(16,50,120,5,10)}</div></>;
-          break;
-        }
-        default: {
-          inner = <><div className="vfx-core"/>{mkRings(3)}<div className="vfx-rays">{mkRays(8)}</div><div className="vfx-sparks">{mkSparks(10,50,100,4,8)}</div><div className="vfx-trail"/></>;
-          break;
-        }
-      }
-      
-      return (
-        <>
-          {screenFlash && <div className="vfx-screen-flash" style={{background: screenFlash}} />}
-          <div className={`vfx-impact-container ${cls}`} style={{
-            position:'absolute', ...pos,
-            transform:'translate(-50%,-50%)',
-            zIndex:100, pointerEvents:'none'
-          }}>
-            {inner}
-          </div>
-        </>
-      );
-    };
     const getTrainerAvatar = (name) => {
       if (battle.generalEncounter) {
         const gen = battle.generalEncounter;
@@ -33930,6 +32534,7 @@ const renderMenu = () => {
     else { const mapInfo = MAPS.find(m => m.id === battle.mapId); if (mapInfo) { switch (mapInfo.type) { case 'water': bgClass = 'bg-water'; break; case 'fire': bgClass = 'bg-fire'; break; case 'ice': bgClass = 'bg-ice'; break; case 'mountain': case 'rock': case 'ground': bgClass = 'bg-cave'; break; case 'city': case 'steel': case 'electric': bgClass = 'bg-city'; break; case 'ghost': case 'dark': bgClass = 'bg-dark'; break; case 'factory': case 'space': bgClass = 'bg-cave'; break; default: bgClass = 'bg-grass'; break; } } }
     const activeCommandPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
     const commandMoveCount = activeCommandPet?.combatMoves?.length || 0;
+    const visibleMoveFamily = activeCommandPet?.combatMoves?.some(move=>getCombatFamily(move)===battleMoveFamily) ? battleMoveFamily : getCombatFamily(activeCommandPet?.combatMoves?.[0]);
     const playerHpPct = Math.min(100, Math.max(0, Math.round((p.currentHp / Math.max(1, pStats.maxHp)) * 100)));
     const enemyHpPct = Math.min(100, Math.max(0, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100)));
     const battleModeLabel = battle.isPvP ? 'PvP' : isDoubleBattle ? '双打' : battle.isTrainer ? '训练家战' : battle.isGym ? '道馆战' : battle.isBoss ? '首领战' : '野外战';
@@ -33985,9 +32590,9 @@ const renderMenu = () => {
 
     // 战斗主场景
     return (
-      <div className="screen battle-screen pc-battle-screen" style={{
-        '--command-height': commandMoveCount <= 4 ? (trainerIntelVisible ? '260px' : '230px') : 'min(390px, 46dvh)',
-        '--compact-command-height': commandMoveCount <= 3 ? '260px' : 'min(390px, 50dvh)',
+      <div className={`screen battle-screen pc-battle-screen ${reducedBattleEffects ? 'reduce-battle-motion' : ''}`} style={{
+        '--command-height': 'min(350px, 48dvh)',
+        '--compact-command-height': 'min(330px, 50dvh)',
       }}>
         {renderEnvironmentOverlay()}
         {battle.activeDomain && (
@@ -34032,6 +32637,8 @@ const renderMenu = () => {
         )}
 
         <div className={`battle-stage-v2 ${bgClass} ${isDoubleBattle ? 'battle-stage-double' : ''}`} style={{position:'relative'}}>
+            <BattleImpact event={battleImpact} reduced={reducedBattleEffects}/>
+            <button type="button" className="battle-control-pill" style={{top:160}} onClick={()=>setReducedBattleEffects(value=>!value)} aria-pressed={!reducedBattleEffects} aria-label="战斗特效" title={reducedBattleEffects ? '特效：精简' : '特效：完整'}><WandSparkles size={16}/></button>
             <button className="battle-control-pill" onClick={() => setBattleSpeed(s => s >= 3 ? 1 : s + 1)} title="点击切换战斗速度 (1x/2x/3x)" style={{ top: 8 }}>⏩ {battleSpeed}x</button>
             <button className={autoBattle ? 'battle-control-pill is-on' : 'battle-control-pill'} onClick={() => setAutoBattle(a => !a)} title="自动战斗：开启后AI自动选择最优技能出招" style={{ top: 46 }}>{autoBattle ? '自动中' : '自动'}</button>
             <button className="battle-control-pill" onClick={() => setShowTypeChart(true)} style={{ top: 84 }}>属性表</button>
@@ -34067,168 +32674,7 @@ const renderMenu = () => {
             
             <div className="battle-scene-layer" style={{width: '100%', height: '100%', position: 'relative'}}>
                 
-                {/* ====== 竞技场地面 ====== */}
-                <div className="battle-arena-floor" />
-                <div className="battle-arena-line" />
-
-                {/* ====== 环境光柱 ====== */}
-                {[
-                  {l:'8%', w:60, h:'70%', t:0, rot:-4, delay:0},
-                  {l:'35%', w:80, h:'80%', t:0, rot:2, delay:2},
-                  {l:'65%', w:50, h:'65%', t:0, rot:-1, delay:4},
-                  {l:'88%', w:70, h:'75%', t:0, rot:3, delay:1},
-                ].map((b,i) => (
-                  <div key={`beam${i}`} className="battle-light-beam" style={{
-                    left:b.l, top:b.t, width:b.w, height:b.h,
-                    animationDelay:`${b.delay}s`, transform:`rotate(${b.rot}deg)`
-                  }} />
-                ))}
-
-                {/* ====== 远景 - 云朵 + 星光 ====== */}
-                <div style={{position:'absolute', top:0, left:0, width:'100%', height:'35%', pointerEvents:'none', zIndex:1, opacity:0.45}}>
-                    {[{l:'5%',t:'5%',w:130,h:42,dur:20},{l:'25%',t:'12%',w:100,h:32,dur:25},{l:'50%',t:'4%',w:120,h:38,dur:18},{l:'78%',t:'10%',w:90,h:30,dur:22}].map((c,i) => (
-                        <div key={i} style={{position:'absolute', left:c.l, top:c.t, width:c.w, height:c.h,
-                            background:'radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.6), transparent 70%)',
-                            borderRadius:'50%', filter:'blur(4px)',
-                            animation:`float ${c.dur}s ease-in-out infinite`, animationDelay:`${i*2}s`
-                        }} />
-                    ))}
-                </div>
-
-                {/* ====== 中景装饰物 (根据地形类型) ====== */}
-                {(() => {
-                  const terrainDecorations = {
-                    'bg-grass': [
-                      <div key="tree1" style={{position:'absolute', bottom:'38%', left:'40%', zIndex:3, pointerEvents:'none', opacity:0.5}}>
-                        <div style={{width:8, height:35, background:'linear-gradient(180deg, #795548, #5D4037)', borderRadius:'2px', margin:'0 auto'}} />
-                        <div style={{width:40, height:30, background:'radial-gradient(ellipse, #66BB6A 40%, #43A047 70%, transparent)', borderRadius:'50%', marginTop:-8, marginLeft:-16}} />
-                      </div>,
-                      <div key="tree2" style={{position:'absolute', bottom:'42%', right:'38%', zIndex:3, pointerEvents:'none', opacity:0.4, transform:'scale(0.8)'}}>
-                        <div style={{width:6, height:28, background:'linear-gradient(180deg, #795548, #5D4037)', borderRadius:'2px', margin:'0 auto'}} />
-                        <div style={{width:35, height:25, background:'radial-gradient(ellipse, #81C784 40%, #4CAF50 70%, transparent)', borderRadius:'50%', marginTop:-6, marginLeft:-14}} />
-                      </div>,
-                      <div key="bush1" className="battle-flora" style={{bottom:'30%', left:'32%', width:20, height:14, background:'radial-gradient(ellipse, rgba(76,175,80,0.6), transparent)', borderRadius:'50%', opacity:0.5}} />,
-                      <div key="bush2" className="battle-flora" style={{bottom:'28%', right:'30%', width:16, height:10, background:'radial-gradient(ellipse, rgba(102,187,106,0.5), transparent)', borderRadius:'50%', opacity:0.4}} />,
-                      <div key="flower1" className="battle-flora" style={{bottom:'33%', left:'52%', opacity:0.6}}>
-                        <div style={{width:6, height:6, background:'#E91E63', borderRadius:'50%', boxShadow:'0 0 4px rgba(233,30,99,0.4)'}} />
-                      </div>,
-                      <div key="flower2" className="battle-flora" style={{bottom:'36%', left:'60%', opacity:0.5}}>
-                        <div style={{width:5, height:5, background:'#FFC107', borderRadius:'50%', boxShadow:'0 0 3px rgba(255,193,7,0.4)'}} />
-                      </div>,
-                      <div key="rock1" className="battle-rock" style={{bottom:'26%', left:'45%', width:22, height:14, opacity:0.35}} />,
-                      <div key="rock2" className="battle-rock" style={{bottom:'32%', right:'42%', width:16, height:10, opacity:0.25, borderRadius:'40% 55% 35% 60%'}} />,
-                    ],
-                    'bg-fire': [
-                      <div key="lava1" className="battle-rock" style={{bottom:'28%', left:'35%', width:30, height:18, opacity:0.4, background:'linear-gradient(145deg, #4E342E, #3E2723)', boxShadow:'inset -2px -3px 4px rgba(0,0,0,0.4), 0 0 10px rgba(255,87,34,0.2)'}} />,
-                      <div key="lava2" className="battle-rock" style={{bottom:'34%', right:'35%', width:24, height:14, opacity:0.35, background:'linear-gradient(145deg, #5D4037, #4E342E)', boxShadow:'inset -2px -3px 4px rgba(0,0,0,0.4), 0 0 8px rgba(255,152,0,0.15)'}} />,
-                      <div key="crack1" style={{position:'absolute', bottom:'25%', left:'42%', width:40, height:2, background:'linear-gradient(90deg, transparent, rgba(255,87,34,0.5), rgba(255,152,0,0.6), rgba(255,87,34,0.5), transparent)', zIndex:3, pointerEvents:'none', filter:'blur(1px)'}} />,
-                      <div key="crack2" style={{position:'absolute', bottom:'30%', left:'55%', width:25, height:2, background:'linear-gradient(90deg, transparent, rgba(255,87,34,0.4), transparent)', zIndex:3, pointerEvents:'none', filter:'blur(1px)', transform:'rotate(30deg)'}} />,
-                      <div key="glow" style={{position:'absolute', bottom:'20%', left:'48%', width:60, height:30, background:'radial-gradient(ellipse, rgba(255,87,34,0.15), transparent)', zIndex:2, pointerEvents:'none'}} />,
-                    ],
-                    'bg-water': [
-                      <div key="coral1" style={{position:'absolute', bottom:'32%', left:'38%', width:18, height:25, background:'linear-gradient(to top, #E91E63, #F48FB1)', borderRadius:'40% 60% 50% 50%', opacity:0.3, zIndex:3, pointerEvents:'none'}} />,
-                      <div key="coral2" style={{position:'absolute', bottom:'28%', right:'36%', width:14, height:20, background:'linear-gradient(to top, #FF9800, #FFCC80)', borderRadius:'50% 40% 60% 50%', opacity:0.25, zIndex:3, pointerEvents:'none'}} />,
-                      <div key="seaweed1" style={{position:'absolute', bottom:'26%', left:'50%', width:4, height:30, background:'linear-gradient(to top, #2E7D32, #66BB6A)', borderRadius:'2px', opacity:0.3, zIndex:3, pointerEvents:'none', animation:'float 5s ease-in-out infinite'}} />,
-                      <div key="seaweed2" style={{position:'absolute', bottom:'24%', left:'56%', width:3, height:24, background:'linear-gradient(to top, #388E3C, #81C784)', borderRadius:'2px', opacity:0.25, zIndex:3, pointerEvents:'none', animation:'float 7s ease-in-out infinite', animationDelay:'1s'}} />,
-                      <div key="caustics" style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', background:'radial-gradient(ellipse at 40% 50%, rgba(255,255,255,0.05), transparent 30%), radial-gradient(ellipse at 60% 40%, rgba(255,255,255,0.04), transparent 25%)', zIndex:2, pointerEvents:'none', animation:'float 10s ease-in-out infinite'}} />,
-                    ],
-                    'bg-cave': [
-                      <div key="crystal1" style={{position:'absolute', bottom:'32%', left:'40%', zIndex:3, pointerEvents:'none', opacity:0.5}}>
-                        <div style={{width:6, height:22, background:'linear-gradient(180deg, #CE93D8, #9C27B0)', borderRadius:'2px 2px 0 0', transform:'rotate(-8deg)', boxShadow:'0 0 8px rgba(156,39,176,0.3)'}} />
-                      </div>,
-                      <div key="crystal2" style={{position:'absolute', bottom:'30%', left:'44%', zIndex:3, pointerEvents:'none', opacity:0.4}}>
-                        <div style={{width:5, height:16, background:'linear-gradient(180deg, #B39DDB, #7B1FA2)', borderRadius:'2px 2px 0 0', transform:'rotate(5deg)', boxShadow:'0 0 6px rgba(123,31,162,0.3)'}} />
-                      </div>,
-                      <div key="crystal3" style={{position:'absolute', bottom:'35%', right:'38%', zIndex:3, pointerEvents:'none', opacity:0.45}}>
-                        <div style={{width:7, height:20, background:'linear-gradient(180deg, #E1BEE7, #AB47BC)', borderRadius:'2px 2px 0 0', transform:'rotate(-3deg)', boxShadow:'0 0 10px rgba(171,71,188,0.4)'}} />
-                      </div>,
-                      <div key="stalag1" className="battle-rock" style={{bottom:'26%', left:'34%', width:20, height:25, opacity:0.3, background:'linear-gradient(180deg, #616161, #424242)', borderRadius:'30% 30% 50% 50%'}} />,
-                      <div key="stalag2" className="battle-rock" style={{bottom:'28%', right:'32%', width:16, height:18, opacity:0.25, background:'linear-gradient(180deg, #757575, #424242)', borderRadius:'35% 40% 45% 50%'}} />,
-                    ],
-                    'bg-city': [
-                      <div key="sign1" style={{position:'absolute', bottom:'35%', left:'42%', zIndex:3, pointerEvents:'none', opacity:0.3}}>
-                        <div style={{width:3, height:20, background:'#757575', margin:'0 auto'}} />
-                        <div style={{width:20, height:12, background:'linear-gradient(135deg, #42A5F5, #1E88E5)', borderRadius:'2px', marginTop:-1}} />
-                      </div>,
-                      <div key="cone1" style={{position:'absolute', bottom:'28%', right:'40%', zIndex:3, pointerEvents:'none', opacity:0.25}}>
-                        <div style={{width:0, height:0, borderLeft:'6px solid transparent', borderRight:'6px solid transparent', borderBottom:'16px solid #FF9800', margin:'0 auto'}} />
-                        <div style={{width:16, height:3, background:'#FF9800', borderRadius:'1px'}} />
-                      </div>,
-                      <div key="manhole" style={{position:'absolute', bottom:'24%', left:'50%', width:30, height:8, background:'radial-gradient(ellipse, rgba(100,100,100,0.3), transparent)', borderRadius:'50%', zIndex:3, pointerEvents:'none'}} />,
-                    ],
-                  };
-                  return terrainDecorations[bgClass] || terrainDecorations['bg-grass'] || [];
-                })()}
-
-                {/* ====== 环境粒子系统 ====== */}
-                {(() => {
-                  const particleConfig = {
-                    'bg-grass': { cls:'battle-leaf', count:6, colors:['#66BB6A','#43A047','#81C784','#A5D6A7'] },
-                    'bg-fire': { cls:'battle-ember', count:8, colors:['#FF5722','#FF9800','#FFC107','#FF6D00'] },
-                    'bg-water': { cls:'battle-bubble', count:6, colors:[] },
-                    'bg-cave': { cls:'battle-sparkle', count:10, colors:['#CE93D8','#E1BEE7','#AB47BC','#fff'] },
-                    'bg-city': { cls:'battle-dust-particle', count:5, colors:['rgba(200,200,200,0.5)','rgba(180,180,180,0.4)'] },
-                    'bg-ice': { cls:'battle-sparkle', count:8, colors:['#90CAF9','#E3F2FD','#64B5F6','#BBDEFB'] },
-                    'bg-dark': { cls:'battle-sparkle', count:6, colors:['#CE93D8','#7E57C2','#B39DDB','#9575CD'] },
-                  };
-                  const cfg = particleConfig[bgClass] || particleConfig['bg-grass'];
-                  const seededPos = (seed) => ((seed * 9301 + 49297) % 233280) / 233280;
-                  return Array.from({length: cfg.count}, (_, i) => {
-                    const left = 15 + seededPos(i * 7 + 1) * 70;
-                    const bottom = 15 + seededPos(i * 13 + 3) * 50;
-                    const size = 3 + seededPos(i * 17 + 5) * 6;
-                    const dur = 4 + seededPos(i * 23 + 7) * 8;
-                    const delay = seededPos(i * 31 + 11) * 6;
-                    const color = cfg.colors.length > 0 ? cfg.colors[i % cfg.colors.length] : undefined;
-                    return <div key={`ptc${i}`} className={cfg.cls} style={{
-                      left:`${left}%`, bottom:`${bottom}%`,
-                      width: size, height: cfg.cls === 'battle-leaf' ? size * 1.5 : size,
-                      animationDuration:`${dur}s`, animationDelay:`${delay}s`,
-                      ...(color ? {background: cfg.cls !== 'battle-bubble' ? color : undefined} : {})
-                    }} />;
-                  });
-                })()}
-
-                {/* ====== 中景光点 (通用) ====== */}
-                {Array.from({length: 8}, (_, i) => {
-                  const left = 20 + ((i * 7919 + 3571) % 61);
-                  const top = 20 + ((i * 6133 + 2477) % 51);
-                  const size = 2 + ((i * 4397) % 4);
-                  const dur = 3 + ((i * 5153) % 6);
-                  return <div key={`spk${i}`} className="battle-sparkle" style={{
-                    left:`${left}%`, top:`${top}%`, width:size, height:size,
-                    animationDuration:`${dur}s`, animationDelay:`${i * 0.8}s`
-                  }} />;
-                })}
-
-                {/* ====== 战场地面 - 渐变色底面 ====== */}
-                    <div style={{
-                    position:'absolute', bottom:0, left:0, width:'100%', height:'45%',
-                    background: bgClass.includes('fire') ? 'linear-gradient(180deg, transparent 0%, rgba(255,87,34,0.12) 20%, rgba(183,28,28,0.2) 100%)'
-                      : bgClass.includes('water') ? 'linear-gradient(180deg, transparent 0%, rgba(33,150,243,0.12) 20%, rgba(21,101,192,0.2) 100%)'
-                      : bgClass.includes('cave') ? 'linear-gradient(180deg, transparent 0%, rgba(121,85,72,0.12) 20%, rgba(62,39,35,0.25) 100%)'
-                      : bgClass.includes('ice') ? 'linear-gradient(180deg, transparent 0%, rgba(144,202,249,0.15) 20%, rgba(100,181,246,0.2) 100%)'
-                      : bgClass.includes('dark') ? 'linear-gradient(180deg, transparent 0%, rgba(69,39,160,0.12) 20%, rgba(49,27,146,0.2) 100%)'
-                      : 'linear-gradient(180deg, transparent 0%, rgba(76,175,80,0.12) 20%, rgba(56,142,60,0.25) 100%)',
-                    pointerEvents:'none', zIndex:2
-                }}>
-                    <div style={{position:'absolute', top:0, left:0, width:'100%', height:2,
-                        background:'linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.3) 50%, transparent 90%)'}} />
-                </div>
-
-                {/* ====== 对战能量连线 ====== */}
-                <div className="battle-energy-link" />
-
-                {/* ====== 光晕装饰 ====== */}
-                <div style={{
-                    position:'absolute', top:0, left:0, width:'100%', height:'100%',
-                    pointerEvents:'none', zIndex:1, opacity:0.4,
-                    background:`
-                        radial-gradient(ellipse at 15% 30%, rgba(255,255,255,0.12) 0%, transparent 40%),
-                        radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.08) 0%, transparent 40%),
-                        radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 50%)
-                    `
-                }} />
+                <img className="battle-backdrop" src="assets/spirit-ui-sky-bg.webp" alt="" />
 
                 {/* ====== 双打：天气 / 领域 / 回合等顶栏（单行 flex 换行，避免重叠） ====== */}
                 {isDoubleBattle && (
@@ -34263,7 +32709,7 @@ const renderMenu = () => {
                         </span>
                       </div>
                     )}
-                    <div title="双打战斗：每回合两只精灵各选一个技能" style={{
+                    <div className="battle-double-indicator" title="双打战斗：每回合两只精灵各选一个技能" style={{
                       background:'linear-gradient(135deg, rgba(255,152,0,0.92), rgba(255,87,34,0.88))',
                       padding:'4px 12px', borderRadius:14, border:'1px solid rgba(255,255,255,0.25)',
                       color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:6
@@ -34316,29 +32762,6 @@ const renderMenu = () => {
                 </div>
                 )}
 
-                {/* ====== 中央对战标记 ====== */}
-                <div style={{
-                  position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)',
-                  zIndex:3, pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center'
-                }}>
-                  {/* 能量涟漪 */}
-                    <div style={{
-                    width:80, height:80, borderRadius:'50%',
-                    border:'1px solid rgba(255,255,255,0.08)',
-                    boxShadow:'0 0 30px rgba(255,255,255,0.03), inset 0 0 20px rgba(255,255,255,0.02)',
-                    animation:'battle-glow 6s ease-in-out infinite', opacity:0.6
-                  }}>
-                    <div style={{
-                      width:'100%', height:'100%', borderRadius:'50%',
-                      background:'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%)',
-                    }} />
-                  </div>
-                  {/* 交叉射线 */}
-                  <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%) rotate(-20deg)', width:160, height:1,
-                    background:'linear-gradient(90deg, transparent, rgba(76,175,80,0.15), rgba(255,255,255,0.1), rgba(244,67,54,0.15), transparent)', filter:'blur(1px)'}} />
-                  <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%) rotate(20deg)', width:160, height:1,
-                    background:'linear-gradient(90deg, transparent, rgba(76,175,80,0.12), rgba(255,255,255,0.08), rgba(244,67,54,0.12), transparent)', filter:'blur(1px)'}} />
-                </div>
                 
                 {/* ========================================== */}
                 {/* 1. 敌方区域 (右上角 / 双打时偏右) */}
@@ -34375,7 +32798,7 @@ const renderMenu = () => {
                             {renderBattleFruitBadge(e, 'enemy')}
                             {!isDarkMoon && (() => { const weakTypes = Object.keys(TYPES || {}).filter(t => { let mod = getTypeMod(t, e.type); if (e.secondaryType && e.secondaryType !== e.type) mod *= getTypeMod(t, e.secondaryType); return mod >= 1.5; }); return weakTypes.length > 0 ? <span style={{fontSize:'8px',padding:'1px 4px',borderRadius:'4px',background:'rgba(244,67,54,0.15)',color:'#EF5350',fontWeight:'700'}}>弱:{weakTypes.slice(0,2).map(t => TYPES[t]?.name || t).join('/')}</span> : null; })()}
                             {(e.isFusedShiny || e.isShiny) && <span style={{fontSize:'7px', padding:'1px 4px', borderRadius:'4px', background: e.isFusedShiny ? '#7B1FA2' : '#FF8F00', color:'#fff', fontWeight:'bold'}}>{e.isFusedShiny ? '🧬异色' : '✨闪光'}</span>}
-                            {renderStatusBadges(e)}
+                            {renderStatusBadges(e)}<TacticalStatus unit={e} turn={battle.turnCount || 0}/>
                         </div>
                         {renderBattleStageRow(e, 0, false)}
                         <EnhancedHPBar current={Math.min(e.currentHp, eStats.maxHp)} max={eStats.maxHp} label="" />
@@ -34421,8 +32844,16 @@ const renderMenu = () => {
                       onClick={isDoubleBattle ? () => {
                         if (battle.pendingDoubleMove === undefined || e.currentHp <= 0) return;
                         const ix = battle.enemyActiveIdxs?.[0];
-                        if (ix !== undefined) setBattle(prev => prev ? { ...prev, targetIdx: ix } : null);
+                        if (ix !== undefined) {
+                          const moveIndex = battle.pendingDoubleMove;
+                          setBattle(prev => prev ? { ...prev, pendingDoubleMove:undefined, targetIdx:ix } : null);
+                          executeDoubleTurn(moveIndex,ix);
+                        }
                       } : undefined}
+                      role={isDoubleBattle && battle.pendingDoubleMove!==undefined ? 'button' : undefined}
+                      tabIndex={isDoubleBattle && battle.pendingDoubleMove!==undefined ? 0 : undefined}
+                      aria-label={isDoubleBattle ? `选择目标 ${e.name}` : undefined}
+                      onKeyDown={event=>{if(event.key==='Enter' || event.key===' ') {event.preventDefault();event.currentTarget.click();}}}
                     >
                         {battle.type !== 'ultra_trial' && (battle.isTrainer || battle.isGym || battle.isChallenge || battle.isBoss) && (
                             <div style={{
@@ -34442,7 +32873,7 @@ const renderMenu = () => {
                                     GSAPAnimations.petEntry(el, 0.2);
                                 }
                             }}
-                            className={`sprite-v2 ${e.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && (!isDoubleBattle || animEffect?.slot === 0 || animEffect?.slot === undefined) && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                            className={`sprite-v2 ${e.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.isHit && animEffect?.target==='enemy' && (!isDoubleBattle || animEffect?.slot === 0 || animEffect?.slot === undefined) && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
                             style={{
                                 filter: ['BALL_WOBBLE','CATCH_SUCCESS'].includes(animEffect?.type)
                                   ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.2)) brightness(2) saturate(0.3)' 
@@ -34461,19 +32892,8 @@ const renderMenu = () => {
                             }}>
                             {renderAvatar(e, true)}
                         </div>
-                        {/* 技能释放特效 */}
-                        {animEffect && animEffect.target === 'enemy' && animEffect.type !== 'SHINY_ENTRY' && ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE'].includes(animEffect.type) && (
-                            <SkillCastEffect
-                                type={animEffect.type}
-                                x={window.innerWidth * 0.8}
-                                y={window.innerHeight * 0.2}
-                                onComplete={() => {}}
-                            />
-                        )}
-
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'enemy' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'enemy' && !['THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect.type) && renderEnhancedVfx(animEffect.type, 'enemy')}
                     </div>
                 </div>
 
@@ -34502,7 +32922,7 @@ const renderMenu = () => {
                         ) : null}
                         {renderSectBadge(e2, 'enemy', 1)}
                         {renderTraitBadge(e2, 'enemy', 1)}
-                        {renderStatusBadges(e2)}
+                        {renderStatusBadges(e2)}<TacticalStatus unit={e2} turn={battle.turnCount || 0}/>
                         {renderBattleFruitBadge(e2, 'enemy', 1)}
                       </div>
                       {renderBattleStageRow(e2, 1, false)}
@@ -34542,11 +32962,19 @@ const renderMenu = () => {
                       onClick={() => {
                         if (battle.pendingDoubleMove === undefined || e2.currentHp <= 0) return;
                         const ix = battle.enemyActiveIdxs?.[1];
-                        if (ix !== undefined) setBattle(prev => prev ? { ...prev, targetIdx: ix } : null);
+                        if (ix !== undefined) {
+                          const moveIndex = battle.pendingDoubleMove;
+                          setBattle(prev => prev ? { ...prev, pendingDoubleMove:undefined, targetIdx:ix } : null);
+                          executeDoubleTurn(moveIndex,ix);
+                        }
                       }}
+                      role={battle.pendingDoubleMove!==undefined ? 'button' : undefined}
+                      tabIndex={battle.pendingDoubleMove!==undefined ? 0 : undefined}
+                      aria-label={`选择目标 ${e2.name}`}
+                      onKeyDown={event=>{if(event.key==='Enter' || event.key===' ') {event.preventDefault();event.currentTarget.click();}}}
                     >
                       <div className="battle-platform battle-platform-enemy" />
-                      <div className={`sprite-v2 ${e2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='enemy' && animEffect?.slot === 1 && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
+                      <div className={`sprite-v2 ${e2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.isHit && animEffect?.target==='enemy' && animEffect?.slot === 1 && !['SHINY_ENTRY','THROW_BALL','BALL_WOBBLE','CATCH_SUCCESS','CATCH_FAIL'].includes(animEffect?.type) ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
                         style={{filter: e2.isFusedShiny ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)' : e2.isShiny ? 'drop-shadow(0 0 5px rgba(255,215,0,0.5))' : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))'}}>
                         {renderAvatar(e2, true)}
                       </div>
@@ -34571,7 +32999,7 @@ const renderMenu = () => {
                                      GSAPAnimations.petEntry(el, 0);
                                  }
                              }}
-                             className={`sprite-v2 ${p.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && (!isDoubleBattle || animEffect?.slot === 0 || animEffect?.slot === undefined) && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`} 
+                             className={`sprite-v2 ${p.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.isHit && animEffect?.target==='player' && (!isDoubleBattle || animEffect?.slot === 0 || animEffect?.slot === undefined) && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
                              style={{
                                  filter: p.isFusedShiny
                                    ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)'
@@ -34587,7 +33015,6 @@ const renderMenu = () => {
 
                         {/* 特效层 */}
                         {animEffect?.type === 'SHINY_ENTRY' && animEffect?.target === 'player' && <RenderShinyStars />}
-                        {animEffect && animEffect.target === 'player' && renderEnhancedVfx(animEffect.type, 'player')}
                         {/* 技能释放特效 */}
                         {animEffect && animEffect.target === 'player' && animEffect.type !== 'SHINY_ENTRY' && ['FIRE', 'WATER', 'GRASS', 'ELECTRIC', 'ICE'].includes(animEffect.type) && (
                             <SkillCastEffect
@@ -34627,7 +33054,7 @@ const renderMenu = () => {
                               ) : null;
                             })()}
                             {renderBattleGeneralsBadge(battle.playerGenerals, 'player')}
-                            {renderStatusBadges(p)}
+                            {renderStatusBadges(p)}<TacticalStatus unit={p} turn={battle.turnCount || 0}/>
                             {renderBattleFruitBadge(p, 'player')}
                         </div>
                         {renderBattleStageRow(p, 0)}
@@ -34684,7 +33111,7 @@ const renderMenu = () => {
                     <div className={`sprite-wrapper player-sprite-wrapper ${p2.fruitTransformed ? 'fruit-transformed' : ''}`} style={{position:'relative', marginBottom:'6px'}}>
                       <div className="battle-platform battle-platform-player" />
                       <div style={{transform:'scaleX(-1)'}}>
-                        <div className={`sprite-v2 ${p2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.target==='player' && animEffect?.slot === 1 && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
+                        <div className={`sprite-v2 ${p2.currentHp <= 0 ? 'anim-faint' : 'anim-idle-float'} ${animEffect?.isHit && animEffect?.target==='player' && animEffect?.slot === 1 && animEffect?.type !== 'SHINY_ENTRY' ? (animEffect?.isCrit ? 'anim-shake-crit anim-hit-flash' : 'anim-shake anim-hit-flash') : ''}`}
                           style={{filter: p2.isFusedShiny ? 'drop-shadow(0 0 5px rgba(213,0,249,0.5)) hue-rotate(150deg)' : p2.isShiny ? 'drop-shadow(0 0 5px rgba(255,215,0,0.5))' : 'drop-shadow(0 8px 12px rgba(0,0,0,0.2))'}}>
                           {renderAvatar(p2)}
                         </div>
@@ -34708,7 +33135,7 @@ const renderMenu = () => {
                         ) : null}
                         {renderSectBadge(p2, 'player', 1)}
                         {renderTraitBadge(p2, 'player', 1)}
-                        {renderStatusBadges(p2)}
+                        {renderStatusBadges(p2)}<TacticalStatus unit={p2} turn={battle.turnCount || 0}/>
                         {renderBattleFruitBadge(p2, 'player', 1)}
                       </div>
                       {renderBattleStageRow(p2, 1)}
@@ -34762,10 +33189,11 @@ const renderMenu = () => {
 
         {/* 底部操作栏 */}
         <div className="battle-command-deck" aria-label="战斗指令">
+            <BattleTacticsBar battle={battle} onUndo={()=>setBattle(prev=>prev && prev.phase==='double_input_2' ? {...prev,phase:'input',doubleSlot:0,doubleActions:[],pendingDoubleMove:undefined} : prev)}/>
             <div className="battle-command-topline">
               <div>
                 <span>{battleModeLabel}</span>
-                <strong>R{battle.turnCount || 1}</strong>
+                <strong>R{(battle.turnCount || 0)+1}</strong>
               </div>
               <div>
                 <span>行动</span>
@@ -34809,18 +33237,19 @@ const renderMenu = () => {
             {(battle.phase === 'input' || battle.phase === 'input_p1' || battle.phase === 'double_input_2') ? (
               <div className="battle-command-body">
                 <div className="battle-move-pane">
+                    <CombatFamilyTabs moves={activeCommandPet?.combatMoves || []} family={visibleMoveFamily} onChange={setBattleMoveFamily}/>
                     {battle.isPvP && (
                         <div style={{textAlign:'center', background: '#2196F3', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
                             🎮 PvP对战 · 对手由AI控制
                         </div>
                     )}
                     {isDoubleBattle && (
-                        <div style={{textAlign:'center', background:'linear-gradient(135deg,#FF9800,#FF5722)', color:'#fff', fontWeight:'bold', padding:'5px 8px', fontSize:'12px', flexShrink:0, borderRadius:'8px', margin:'0 0 6px', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px'}}>
-                          <span>⚔️ 双打</span>
-                          <span style={{background:'rgba(255,255,255,0.25)', padding:'2px 10px', borderRadius:'10px', fontSize:'11px'}}>
+                        <div className="battle-double-step">
+                          <span>指令 {battle.phase==='double_input_2' ? '2' : '1'}/2</span>
+                          <span>
                             {battle.pendingDoubleMove !== undefined
-                              ? '🎯 点选场上敌方精灵以确认攻击目标（或下方红色按钮）'
-                              : (battle.phase === 'double_input_2' ? `🔶 选择 ${doubleCurrentPet?.name || p2?.name || '?'} 的技能` : `🔷 选择 ${doubleCurrentPet?.name || p?.name || '?'} 的技能`)}
+                              ? '攻击目标待确认'
+                              : doubleCurrentPet?.name || p?.name}
                           </span>
                         </div>
                     )}
@@ -34828,7 +33257,7 @@ const renderMenu = () => {
                     {isDoubleBattle && battle.pendingDoubleMove !== undefined && (() => {
                       const aliveEnemies = (battle.enemyActiveIdxs || []).filter(idx => battle.enemyParty?.[idx]?.currentHp > 0);
                       return (
-                        <div style={{display:'flex', gap:'8px', justifyContent:'center', margin:'0 0 8px', flexWrap:'wrap'}}>
+                        <div className="battle-target-options" style={{display:'flex', gap:'8px', justifyContent:'center', margin:'0 0 8px', flexWrap:'wrap'}}>
                           {aliveEnemies.map(eIdx => {
                             const ep = battle.enemyParty[eIdx];
                             return (
@@ -34892,6 +33321,7 @@ const renderMenu = () => {
                                   : battle.enemyActiveIdx;
                                 const activeEnemy = battle.enemyParty?.[previewEnemyIdx];
                                 return activeMoves.map((m, i) => {
+                                    if (getCombatFamily(m)!==visibleMoveFamily) return null;
                                     const cp = isDoubleBattle ? doubleCurrentPet : p;
                                     const effectiveChakraCost = getEffectiveChakraCost(m, battle._resonanceFx || {});
                                     let moveDisabledReason = '';
@@ -35035,6 +33465,7 @@ const renderMenu = () => {
                     {/* 独立操作区，不参与技能网格的高度分配。 */}
                         {!battle.isPvP ? (
                         <div className="battle-action-list" aria-label="其他行动">
+                            <button type="button" className="action-btn-h" onClick={()=>executeTurn(-10)} title="优先级+2，本回合下一次直接伤害减半"><Shield size={16}/>防御</button>
                             <button className="action-btn-h btn-catch" onClick={() => { setShowBallMenu(true); setBattleBagTab('balls'); }} disabled={isDoubleBattle || battle.type === 'ultra_trial'} title={battle.type === 'ultra_trial' ? '模拟试炼禁用道具' : isDoubleBattle ? '双打模式中无法使用背包' : ''}><Backpack size={16} aria-hidden="true" />背包</button>
                             <button className="action-btn-h btn-switch" onClick={() => setBattle(prev => ({...prev, showSwitch: true}))} disabled={p.activeVow?.sacrifice?.noSwitch || isDoubleBattle} title={isDoubleBattle ? '双打模式中无法交换' : ''}><ArrowLeftRight size={16} aria-hidden="true" />交换</button>
                             {battle.type === 'ultra_trial' && <button type="button" className="action-btn-h" onClick={handleDefeat}><LogOut size={16} />结束试炼</button>}
@@ -35042,10 +33473,10 @@ const renderMenu = () => {
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return cp.devilFruit && !cp.fruitUsed && !cp.fruitTransformed && !cp.ultraTransformed && !cp.bijuuTransformed ? (() => {
                               const minTurn = getFruitMinTurn();
                               const turnOk = battle.turnCount >= minTurn;
-                              const hpOk = cp.currentHp < getStats(cp, cp.stages).maxHp * 0.6;
-                              const canUse = turnOk && hpOk;
-                              const hint = !turnOk && !hpOk ? `回合≥${minTurn}(还需${minTurn - battle.turnCount}回合) 且 HP<60%` : !turnOk ? `回合≥${minTurn}(还需${minTurn - battle.turnCount}回合)` : 'HP<60%';
-                              return <button className="action-btn-h" title={canUse ? '果实变身' : hint} onClick={() => canUse ? executeDevilFruit('player') : showMapToast('⚠️', '无法变身', hint, 2000)}>变身</button>;
+                              const hpOk = cp.currentHp <= getStats(cp, cp.stages).maxHp * 0.6;
+                              const canUse = turnOk && hpOk && !getBurstBlock(battle);
+                              const hint = getBurstBlock(battle) || (!turnOk ? `需完成${minTurn}回合，HP不高于60%` : 'HP不高于60%');
+                              return <button className="action-btn-h" title={canUse ? '果实觉醒' : hint} disabled={!canUse} onClick={executeDevilFruit}>果实觉醒</button>;
                             })() : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; return (cp.maxCE > 0 || (cp.maxChakra || 0) > 0) ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#7B1FA2,#E040FB)'}} onClick={executeChargeCE}>蓄力</button> : null; })()}
                             {(() => { const cp = isDoubleBattle ? (doubleCurrentPet || p) : p; const availableCE = getBattleResourceValue(battle, cp, 'player', 'ce'); return cp.hasDomain && !cp.usedDomain && battle.activeDomain?.ownerSide !== 'player' ? <button className="action-btn-h" style={{background:'linear-gradient(135deg,#BF360C,#FF6D00)'}} onClick={executeDomainExpansion} disabled={availableCE < (DOMAINS[cp.domainType]?.ceCost||999)}>{battle.activeDomain?.ownerSide === 'enemy' ? '领域对撞' : '领域'}</button> : null; })()}
@@ -35069,8 +33500,7 @@ const renderMenu = () => {
                 </div>
             ) : (
                 <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px'}}>
-                    <span style={{color:'rgba(255,255,255,0.5)', fontWeight:'bold', fontSize:'16px', letterSpacing:'1px'}}>{battle.phase === 'busy' ? '回合结算中…' : battle.phase === 'anim' ? '动画播放中…' : battle.showSwitch ? '请选择替补精灵…' : '处理中…'}</span>
-                    <button className="battle-stuck-recover-btn" style={{padding:'10px 22px', background:'linear-gradient(180deg,#B45309,#92400E)', color:'#fff7ed', border:'1px solid rgba(255,255,255,0.28)', borderRadius:'12px', cursor:'pointer', fontSize:'14px', fontWeight:800, marginTop:8, minHeight:42, letterSpacing:'0.5px', textShadow:'0 1px 2px rgba(0,0,0,0.35)'}} onClick={() => { setBattle(prev => { if (!prev) return null; const activePet = prev.playerCombatStates?.[prev.activeIdx]; const needSwitch = activePet && activePet.currentHp <= 0 && prev.playerCombatStates.some(p => p.currentHp > 0); return {...prev, phase: 'input', pvpBusy: false, doubleSlot: 0, doubleActions: [], pendingDoubleMove: undefined, showSwitch: needSwitch}; }); }}>回合卡住时恢复输入</button>
+                    <span role="status" style={{color:'#b8c5c7', fontWeight:600, fontSize:13, letterSpacing:0}}>{battle.phase === 'busy' ? '行动结算中' : battle.phase === 'anim' ? '行动进行中' : battle.showSwitch ? '等待替补' : '处理中'}</span>
                 </div>
             )}
         </div> 
@@ -36904,6 +35334,7 @@ const renderMenu = () => {
       {view === 'lucky_wheel' && renderLuckyWheel()}
       {view === 'training' && renderTraining()}
       {view === 'ultra' && <React.Suspense fallback={<div className="screen" role="status">光之档案读取中...</div>}><UltraScreen state={ultraState} party={party} result={ultraResult} onChange={commitUltraState} onTrial={startUltraTrial} onBack={() => setView('grid_map')} /></React.Suspense>}
+      {view === 'tactics' && <React.Suspense fallback={<div className="screen" role="status">编成读取中...</div>}><TacticsScreen party={party} narutoState={narutoState} fusionState={fusionState} badges={badges} renderAvatar={renderAvatar} onBack={()=>setView('grid_map')} onUltra={()=>setView('ultra')} onGuide={()=>setView('guide')} onBreathing={selectBreathingStyle} onPrepare={(uid,ids)=>{const next=partyRef.current.map(pet=>pet.uid===uid ? {...pet,preparedJutsu:ids} : pet);partyRef.current=next;setParty(next);}}/></React.Suspense>}
       {view === 'world_boss' && renderWorldBoss()}
       {view === 'race' && renderRace()}
       {view === 'naruto_exam' && renderNarutoExam()}

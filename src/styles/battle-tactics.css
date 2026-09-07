@@ -1,0 +1,85 @@
+.battle-impact-canvas { position:absolute; inset:0; width:100%; height:100%; z-index:60; pointer-events:none; }
+.battle-backdrop { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 60%; opacity:.68; pointer-events:none; }
+.spirit-app .pc-battle-screen > .battle-stage-v2 { border:0 !important; border-radius:0 !important; box-shadow:none !important; background:#253635 !important; }
+.spirit-app .pc-battle-screen .hud-card { background:rgba(23,35,35,.94) !important; border:1px solid #657c75 !important; border-radius:6px !important; box-shadow:0 6px 20px #0004 !important; backdrop-filter:none; }
+.spirit-app .pc-battle-screen .hud-enemy { border-top:2px solid #d48c8a !important; }
+.spirit-app .pc-battle-screen .hud-player { border-top:2px solid #9cccb5 !important; }
+.spirit-app .pc-battle-screen .sprite-v2 { animation:none; transition:filter 120ms; }
+.spirit-app .pc-battle-screen .anim-idle-float { animation:combat-breathe 5s ease-in-out infinite; }
+.spirit-app .pc-battle-screen .anim-shake,.spirit-app .pc-battle-screen .anim-shake-crit { animation:combat-hit 180ms ease-out; }
+.spirit-app .pc-battle-screen .battle-platform { opacity:.65; box-shadow:none; border:1px solid #b5c7b865; }
+.spirit-app .pc-battle-screen .battle-command-deck { background:#172523; border-top:1px solid #7c9186; }
+.spirit-app .pc-battle-screen .battle-control-pill { background:#243733 !important; border:1px solid #728b7d !important; border-radius:4px !important; box-shadow:none !important; }
+.battle-tactics-bar { display:flex; align-items:center; gap:12px; min-height:34px; padding:4px 14px; border-bottom:1px solid #3e5249; box-sizing:border-box; font-size:11px; }
+.battle-intents { display:flex; flex:1; gap:20px; min-width:0; }
+.battle-intent { display:flex; align-items:center; gap:6px; min-width:0; color:#c4a5a0; }
+.battle-intent strong { color:#f1dcd4; font-weight:600; }
+.battle-intent small { color:#c2c9c2; font-size:10px; border-left:1px solid #546456; padding-left:6px; }
+.battle-intent span,.battle-intent strong,.battle-intent small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.battle-burst-status { display:flex; gap:5px; align-items:center; flex-shrink:0; color:#efcb82; }
+.battle-burst-status.spent { color:#a4aca2; }
+.battle-queued-action { display:flex; align-items:center; gap:6px; color:#b0d6c2; }
+.battle-queued-action button { width:26px; height:26px; padding:4px; background:transparent; color:#dce7db; border:1px solid #657c70; border-radius:4px; cursor:pointer; }
+.combat-family-tabs { display:flex; gap:4px; min-height:30px; overflow-x:auto; scrollbar-width:thin; }
+.combat-family-tabs button { display:flex; gap:7px; align-items:center; color:#b6c1bd; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; padding:5px 12px; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; }
+.combat-family-tabs button[aria-selected=true] { color:var(--family-color); border-bottom-color:var(--family-color); background:#ffffff07; }
+.combat-family-tabs button span { color:#a9b4ad; font-size:10px; font-variant-numeric:tabular-nums; }
+.tactical-status { display:inline-flex; align-items:center; gap:3px; padding:1px 4px; border:1px solid; border-radius:3px; font-size:10px; line-height:14px; }
+.tactical-status.opening { color:#f2b29f; border-color:#966659; }
+.tactical-status.focus { color:#a4dfd7; border-color:#648b83; }
+.tactical-status.guard { color:#c9d9c7; border-color:#71846b; }
+.spirit-app .pc-battle-screen .battle-move-button { background:#22352f !important; border-color:#52695c !important; }
+.spirit-app .pc-battle-screen .battle-move-button:hover:not(:disabled) { background:#30483c !important; }
+.spirit-app .pc-battle-screen .battle-action-list .action-btn-h { background:#2c3d35 !important; border-color:#667b6b !important; }
+.spirit-app .pc-battle-screen .battle-shared-energy { border-radius:4px !important; box-shadow:none !important; background:#1c2c27eb !important; }
+@keyframes combat-breathe { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
+@keyframes combat-hit { 20% { transform:translateX(-4px); filter:brightness(1.35); } 65% { transform:translateX(3px); } 100% { transform:translateX(0); } }
+@media (max-height:720px) { .battle-tactics-bar { min-height:30px; padding-top:2px; padding-bottom:2px; } .battle-command-body { padding-top:6px; gap:8px; } .battle-intent span { max-width:70px; } }
+@media (prefers-reduced-motion:reduce) { .spirit-app .pc-battle-screen *, .spirit-app .pc-battle-screen *::before,.spirit-app .pc-battle-screen *::after { animation:none !important; transition:none !important; } }
+.spirit-app .pc-battle-screen.reduce-battle-motion * { animation:none !important; transition:none !important; }
+
+/* Battle positions use the arena height, independent of HUD content. */
+.spirit-app .pc-battle-screen .battle-scene-layer { overflow:hidden; }
+.spirit-app .pc-battle-screen .enemy-zone-v2,
+.spirit-app .pc-battle-screen .player-zone-v2 { inset:0 !important; width:100%; height:100%; pointer-events:none; }
+.spirit-app .pc-battle-screen .sprite-wrapper { position:absolute !important; margin:0 !important; transform:translate(-50%,-50%); pointer-events:auto; }
+.spirit-app .pc-battle-screen .enemy-zone-v2 > .sprite-wrapper { left:69%; top:55%; }
+.spirit-app .pc-battle-screen .player-zone-v2 > .sprite-wrapper { left:31%; top:62%; }
+.spirit-app .pc-battle-screen .sprite-v2 { width:210px; height:210px; max-width:22cqw; max-height:none; }
+@supports (height:1cqh) {
+  .spirit-app .pc-battle-screen .sprite-v2 { width:min(260px,40cqh); height:min(260px,40cqh); }
+}
+.spirit-app .pc-battle-screen .sprite-v2 img { object-fit:contain !important; }
+.spirit-app .pc-battle-screen .sprite-v2::after { display:none; }
+.spirit-app .pc-battle-screen .battle-platform { width:110%; height:18%; bottom:-4%; }
+.spirit-app .pc-battle-screen .hud-card { position:absolute; width:264px; min-width:0; max-width:27%; max-height:36%; overflow:auto; margin:0 !important; padding:9px 11px; box-sizing:border-box; pointer-events:auto; background:#20292def !important; border-color:#657779 !important; scrollbar-width:thin; }
+.spirit-app .pc-battle-screen .player-zone-v2 > .hud-card { left:18px; top:16px; bottom:auto; }
+.spirit-app .pc-battle-screen .enemy-zone-v2 > .hud-card { right:86px; top:16px; }
+.spirit-app .pc-battle-screen .battle-shared-energy { top:auto !important; bottom:14px; left:18px !important; max-width:23% !important; transform:none; }
+.spirit-app .pc-battle-screen .battle-log-container { width:44% !important; bottom:12px !important; }
+.spirit-app .pc-battle-screen .battle-msg-item { background:#20292df2 !important; border:1px solid #718085 !important; border-radius:4px !important; box-shadow:none !important; }
+.spirit-app .pc-battle-screen .battle-command-deck { background:#1d2528; border-color:#748381; }
+.spirit-app .pc-battle-screen .battle-move-button { background:#293438 !important; border-color:#526266 !important; border-left-color:var(--move-accent) !important; }
+.spirit-app .pc-battle-screen .battle-move-button:hover:not(:disabled) { background:#354349 !important; }
+.spirit-app .pc-battle-screen .battle-action-list .action-btn-h { background:#303b3d !important; border-color:#667773 !important; }
+.spirit-app .battle-stage-double .double-mode .sprite-v2 { width:min(160px,25cqh); height:min(160px,25cqh); }
+.spirit-app .battle-stage-double .enemy-zone-v2 > .sprite-wrapper { left:62%; top:37%; }
+.spirit-app .battle-stage-double .enemy-zone-v2.battle-slot-secondary > .sprite-wrapper { left:38%; }
+.spirit-app .battle-stage-double .player-zone-v2 > .sprite-wrapper { left:38%; top:68%; }
+.spirit-app .battle-stage-double .player-zone-v2.battle-slot-secondary > .sprite-wrapper { left:62%; }
+.spirit-app .battle-stage-double .double-mode > .hud-card { width:232px; max-width:25%; max-height:39%; }
+.spirit-app .battle-stage-double .player-zone-v2 > .hud-card { top:auto; bottom:42px; }
+.spirit-app .battle-stage-double .player-zone-v2.battle-slot-secondary > .hud-card { left:auto; right:86px; }
+.spirit-app .battle-stage-double .enemy-zone-v2.battle-slot-secondary > .hud-card { left:18px; right:auto; }
+.spirit-app .battle-stage-double .battle-shared-energy { bottom:auto; top:48px !important; left:50% !important; max-width:35% !important; transform:translateX(-50%); }
+.battle-double-step { display:flex; gap:12px; align-items:center; min-height:24px; padding:2px 4px; color:#bad3d8; font-size:12px; border-bottom:1px solid #44565a; }
+.battle-double-step > span:first-child { color:#e1bc83; }
+.spirit-app .pc-battle-screen .battle-double-indicator { background:#253c40 !important; border-radius:4px !important; border-color:#69959b !important; }
+.spirit-app .pc-battle-screen .battle-target-options button { border-radius:4px !important; background:#423638 !important; border:1px solid #b28688 !important; box-shadow:none !important; }
+.spirit-app .pc-battle-screen .sprite-wrapper { border-radius:4px !important; box-shadow:none !important; }
+@media (max-height:720px) {
+  .spirit-app .pc-battle-screen .hud-card { padding:6px 8px; max-height:38%; }
+  .spirit-app .pc-battle-screen .sprite-v2 { width:37cqh; height:37cqh; }
+  .spirit-app .battle-stage-double .double-mode .sprite-v2 { width:23cqh; height:23cqh; }
+  .spirit-app .battle-stage-double .double-mode > .hud-card { max-height:37%; }
+}

@@ -79,8 +79,13 @@ export function getQueuedDoubleMoveResourceCost(battleState, kind) {
   const action = battleState.doubleActions?.[0];
   if (!action || action.moveIdx === undefined || action.moveIdx < 0) return 0;
   const actor = battleState.playerCombatStates?.[action.activeIdx];
-  const move = actor?.combatMoves?.[action.moveIdx];
-  if (kind === 'ce' && move?.isCursed) return finiteNonNegative(move.ceCost);
+  const move = action.moveIdx?.isBattleCommand ? action.moveIdx : actor?.combatMoves?.[action.moveIdx];
+  if (kind === 'ce' && (move?.isCursed || move?.isBattleCommand)) {
+    const cost = finiteNonNegative(move.ceCost);
+    const sacrifice = Math.min(1,finiteNonNegative(move.effect?.vow?.sacrifice?.cePercent));
+    const available = finiteNonNegative(battleState.sharedPlayerCE ?? actor?.cursedEnergy);
+    return cost + Math.floor(Math.max(0,available-cost)*sacrifice);
+  }
   if (kind === 'chakra' && move?.isJutsu) {
     return getEffectiveChakraCost(move, battleState._resonanceFx || {});
   }
