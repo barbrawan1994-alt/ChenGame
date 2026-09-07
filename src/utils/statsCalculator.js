@@ -7,6 +7,7 @@ import { calcSectResonanceBonus } from '../data/sectSystem';
 import { getGangSkillBonus, getGangSkills } from '../data/gang';
 import { AWAKENING_STAT_MULT, MAX_COMBINED_STAT_MULT } from '../data/resonance';
 import { calcHouseScore, getHousingScoreTier } from '../data/housing';
+import { getUltraStatMultiplier } from './ultraRules';
 
 export const MAX_BATTLE_CRIT_CHANCE = 40;
 
@@ -189,15 +190,16 @@ export function getStats(pet, stages = null, status = null, context = {}, gangBo
     const cap = isHp ? Math.max(999, base * 8) : Math.max(500, base * 6);
     return Math.min(cap, v);
   };
+  const ultraStat = (value, key) => capStat(Math.floor(value * getUltraStatMultiplier(pet, key)), baseStats[key]);
   return {
     maxHp: capStat(applyAwaken(applyGB(calc(baseStats.hp, 'hp', 'hp', true), (gangBonus.hp || 0) + resPct('hp'))), baseStats.hp, true),
-    p_atk: capStat(applyAwaken(finalPAtk), baseStats.p_atk),
-    p_def: capStat(applyAwaken(finalPDef), baseStats.p_def),
-    s_atk: capStat(applyAwaken(applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk || 0) + resPct('s_atk'))), baseStats.s_atk),
-    s_def: capStat(Math.floor(applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))) * relicDefMult), baseStats.s_def),
-    spd: capStat(Math.floor(applyAwaken(applyGB(finalSpd, (gangBonus.spd || 0) + resPct('spd'))) * relicSpdMult), baseStats.spd),
+    p_atk: ultraStat(applyAwaken(finalPAtk), 'p_atk'),
+    p_def: ultraStat(applyAwaken(finalPDef), 'p_def'),
+    s_atk: ultraStat(applyAwaken(applyGB(calc(baseStats.s_atk, 's_atk', 's_atk'), (gangBonus.s_atk || 0) + resPct('s_atk'))), 's_atk'),
+    s_def: ultraStat(Math.floor(applyAwaken(applyGB(calc(baseStats.s_def, 's_def', 's_def'), (gangBonus.s_def || 0) + resPct('s_def'))) * relicDefMult), 's_def'),
+    spd: ultraStat(Math.floor(applyAwaken(applyGB(finalSpd, (gangBonus.spd || 0) + resPct('spd'))) * relicSpdMult), 'spd'),
     crit: Math.min(MAX_BATTLE_CRIT_CHANCE, Math.max(0, clampedCrit + (resBonus.critRate || 0))),
-    atk: applyAwaken(finalPAtk),
-    def: applyAwaken(finalPDef)
+    atk: ultraStat(applyAwaken(finalPAtk), 'p_atk'),
+    def: ultraStat(applyAwaken(finalPDef), 'p_def')
   };
 }
