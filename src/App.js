@@ -11651,6 +11651,14 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
             )}
           </div>
 
+          <button type="button" className="ninja-start-action activity-primary" onClick={startChuninExam} disabled={!!examBlockReason}>
+            {examBlockReason || '开始忍者试炼'}
+          </button>
+          <button type="button" className="ninja-codex-action" onClick={() => setView('jutsu_codex')}
+            style={{padding:'14px',borderRadius:'6px',fontSize:'14px',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
+            📖 忍术图鉴 <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>({JUTSU_DB.length}种忍术)</span>
+          </button>
+
           {/* 尾兽收集 */}
           <div className="ninja-bijuu">
             <div style={{fontSize:'14px',fontWeight:'700',marginBottom:'10px',color:'#FF8A80'}}>🦊 尾兽图鉴 ({(narutoState.bijuuCollected || []).length}/9)</div>
@@ -11702,19 +11710,6 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
               <div style={{fontSize:'14px',fontWeight:'700',color:'#FFB74D'}}>{Object.keys(narutoState.jutsuMastery || {}).length}种</div>
             </div>
           </div>
-
-          {/* 忍术图鉴入口 */}
-          <button type="button" className="ninja-codex-action" onClick={() => setView('jutsu_codex')}
-            style={{padding:'14px',borderRadius:'14px',border:'1px solid rgba(255,152,0,0.2)',
-              background:'linear-gradient(145deg,rgba(255,111,0,0.08),rgba(255,143,0,0.04))',
-              color:'#FFB74D',fontSize:'14px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
-            📖 忍术图鉴 <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>({JUTSU_DB.length}种忍术)</span>
-          </button>
-
-          {/* 开始试炼 */}
-          <button type="button" className="ninja-start-action activity-primary" onClick={startChuninExam} disabled={!!examBlockReason}>
-            {examBlockReason || '开始忍者试炼'}
-          </button>
 
           {/* 三阶段说明 */}
           <div className="ninja-phases" style={{display:'flex',gap:'10px'}}>
