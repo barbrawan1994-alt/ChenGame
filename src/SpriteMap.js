@@ -1,3 +1,5 @@
+import { SPIRIT_ARTWORK } from './data/spiritArtwork';
+
 const SPRITE_CDNS = [
   'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/',
   'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/',
@@ -469,6 +471,10 @@ function buildUniqueSpriteSources() {
 
 const UNIQUE_SPRITE_SOURCES = buildUniqueSpriteSources();
 
+export function getPokemonArtworkId(id) {
+  return SPIRIT_ARTWORK[id] || UNIQUE_SPRITE_SOURCES[id]?.natdex || null;
+}
+
 const TYPE_FALLBACK = {
   NORMAL: [133, 143, 242, 289, 474],
   FIRE: [4, 37, 77, 255, 257],
@@ -511,7 +517,7 @@ export function getSpriteUrl(pet) {
 
 export function getSpriteFallbackUrls(pet) {
   if (!pet) return [];
-  if (pet.id >= 905 && pet.id <= 1000) return [`assets/spirits/${pet.id}.webp`, `assets/spirits/${pet.id}.svg`];
+  if (SPIRIT_ARTWORK[pet.id]) return [`assets/spirits/${pet.id}.webp`, ...SPRITE_CDNS.map(cdn=>pokemonSpriteUrl(SPIRIT_ARTWORK[pet.id],cdn))];
   const uniqueSource = UNIQUE_SPRITE_SOURCES[pet.id];
   if (uniqueSource?.kind === 'pokemon') {
     const urls = SPRITE_CDNS.map(cdn => pokemonSpriteUrl(uniqueSource.natdex, cdn));

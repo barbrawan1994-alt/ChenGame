@@ -7358,8 +7358,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const territories = { ...(nextKingdom.territories || {}) };
       const owned = WAR_MAP_IDS.filter(mid => territories[mid]?.owner === nextKingdom.faction);
       if (owned.length > 0) {
-        const mid = owned.reduce((best, id) => ((territories[id]?.strength || 100) < (territories[best]?.strength || 100) ? id : best), owned[0]);
-        territories[mid] = { ...territories[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (territories[mid].strength || 50) + task.territoryStrength) };
+        const mid = owned.reduce((best, id) => ((territories[id]?.strength ?? 100) < (territories[best]?.strength ?? 100) ? id : best), owned[0]);
+        territories[mid] = { ...territories[mid], strength: Math.min(WAR_TICK_CONFIG.maxStrength, (territories[mid].strength ?? 50) + task.territoryStrength) };
         nextKingdom.territories = territories;
       }
     }
@@ -23802,7 +23802,7 @@ const renderMenu = () => {
       {view === 'training' && renderTraining()}
       {view === 'ultra' && <React.Suspense fallback={<div className="screen" role="status">光之档案读取中...</div>}><UltraScreen state={ultraState} party={party} badges={badges} result={ultraResult} onChange={commitUltraState} onTrial={startUltraTrial} onBack={() => setView('grid_map')} /></React.Suspense>}
       {view === 'kaiju' && <React.Suspense fallback={<div className="screen" role="status">怪兽档案读取中...</div>}><KaijuScreen progress={ultraState.kaiju} raids={ultraState.raids} party={party} badges={badges} gold={gold} today={getLocalDateStr()} initialTab={kaijuTab} result={raidResult} onRaid={startKaijuRaid} onBack={()=>setView('grid_map')}/></React.Suspense>}
-      {view === 'tactics' && <React.Suspense fallback={<div className="screen" role="status">编成读取中...</div>}><TacticsScreen party={party} narutoState={narutoState} fusionState={fusionState} ultraState={ultraState} badges={badges} renderAvatar={renderAvatar} onBack={()=>setView('grid_map')} onUltra={()=>{setUltraResult(null);setView('ultra');}} onGuide={()=>setView('guide')} onInspect={setViewStatPet} onEquip={openEquipModal} onTraining={()=>setView('training')} onRecall={recallSpeciesMove} onReorder={(uid,delta)=>{if(battle && !battleResultHandledRef.current)return;const next=[...partyRef.current];const from=next.findIndex(p=>p.uid===uid),to=from+delta;if(from<0 || to<0 || to>=next.length)return;[next[from],next[to]]=[next[to],next[from]];partyRef.current=next;setParty(next);}} onBreathing={selectBreathingStyle} onPrepare={(uid,ids)=>{const next=partyRef.current.map(pet=>pet.uid===uid ? {...pet,preparedJutsu:ids} : pet);partyRef.current=next;setParty(next);}}/></React.Suspense>}
+      {view === 'tactics' && <React.Suspense fallback={<div className="screen" role="status">编成读取中...</div>}><TacticsScreen party={party} narutoState={narutoState} fusionState={fusionState} ultraState={ultraState} badges={badges} getMoveCategory={getMoveCategory} renderAvatar={renderAvatar} onBack={()=>setView('grid_map')} onUltra={()=>{setUltraResult(null);setView('ultra');}} onGuide={()=>setView('guide')} onInspect={setViewStatPet} onEquip={openEquipModal} onTraining={()=>setView('training')} onRecall={recallSpeciesMove} onReorder={(uid,delta)=>{if(battle && !battleResultHandledRef.current)return;const next=[...partyRef.current];const from=next.findIndex(p=>p.uid===uid),to=from+delta;if(from<0 || to<0 || to>=next.length)return;[next[from],next[to]]=[next[to],next[from]];partyRef.current=next;setParty(next);}} onBreathing={selectBreathingStyle} onPrepare={(uid,ids)=>{const next=partyRef.current.map(pet=>pet.uid===uid ? {...pet,preparedJutsu:ids} : pet);partyRef.current=next;setParty(next);}}/></React.Suspense>}
       {view === 'world_boss' && renderWorldBoss()}
       {view === 'race' && renderRace()}
       {view === 'naruto_exam' && renderNarutoExam()}

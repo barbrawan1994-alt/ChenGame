@@ -1,4 +1,8 @@
 .raid-workspace{display:grid;grid-template-columns:230px minmax(320px,1fr) 230px;min-height:0;flex:1;overflow:hidden;color:#253a34;background:#f4f7f5}
+.raid-workspace .ultra-chapter-list{background:#edf2ee}
+.raid-workspace .ultra-chapter-list button{color:#365044;border-color:#c8d5cd;background:#f9fbf9}
+.raid-workspace .ultra-chapter-list button.active{color:#194d36;background:#d7e8dc;border-color:#73a487}
+.raid-workspace .ultra-chapter-list :is(small,span){color:#526b5e}
 .raid-briefing{overflow-y:auto;min-width:0;border-inline:1px solid #d5dfda}
 .raid-boss-art{display:flex;align-items:center;gap:24px;padding:24px;background:#e2e8e4}
 .raid-boss-art>img{width:180px;height:180px;object-fit:contain;mix-blend-mode:multiply}

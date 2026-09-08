@@ -16,17 +16,30 @@ assert.equal(new Set(KAIJU.map(x=>sources[x.id].pageId || sources[x.id].url)).si
 assert.equal(new Set(KAIJU.map(x=>crypto.createHash('sha256').update(fs.readFileSync(`public/${x.portrait}`)).digest('hex'))).size,400);
 assert.equal(Object.keys(manifest).length,96);
 assert.equal(new Set(Object.values(manifest).map(x=>x.sha256)).size,96);
+const reserved=new Set(Array.from({length:904},(_,i)=>sprite.getSpriteFallbackUrls({id:i+1})).flat().map(url=>Number(url.match(/\/(\d+)\.png$/)?.[1])).filter(Boolean));
+assert.equal(new Set(Object.values(manifest).map(x=>x.nationalDex)).size,96);
 for(let id=905;id<=1000;id++){
-  for(const url of sprite.getSpriteFallbackUrls({id}))assert.ok(url.startsWith(`assets/spirits/${id}.`));
+  const nationalDex=sprite.getPokemonArtworkId(id);
+  assert.equal(nationalDex,manifest[id].nationalDex);
+  assert.ok(!reserved.has(nationalDex),`Spirit ${id} reuses earlier Pokemon artwork`);
+  const urls=sprite.getSpriteFallbackUrls({id});
+  assert.equal(urls[0],`assets/spirits/${id}.webp`);
+  assert.ok(urls.slice(1).every(url=>url.endsWith(`/${nationalDex}.png`)));
   const bytes=fs.readFileSync(`public/${sprite.getSpriteUrl({id})}`);
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),manifest[id].sha256);
 }
 const newSave=u.normalizeUltraState();
 assert.equal(newSave.deviceIds.length,0);
+for(const invalid of [true,1,'save',[]])assert.equal(u.normalizeUltraState(invalid).deviceIds.length,0);
 const legacy=u.normalizeUltraState({version:2,heroId:'leo',trialWins:['leo'],unlockedHeroIds:['leo'],hostUid:'host'});
 assert.ok(legacy.deviceIds.includes('device_leo'));
 assert.deepEqual(u.normalizeUltraState(legacy),legacy);
 assert.equal(ULTRA_DEVICES.length,93);
+for(const key of ['id','name','modelId','portrait'])assert.equal(new Set(ULTRA_DEVICES.map(device=>device[key])).size,93,`Unique device ${key}`);
+assert.equal(new Set(ULTRA_DEVICES.map(device=>crypto.createHash('sha256').update(fs.readFileSync(`public/${device.portrait}`)).digest('hex'))).size,93,'Unique device image contents');
+assert.equal(ULTRA_DEVICES.filter(device=>device.sourceLabel==='原创设计').length,44);
+const originals=require('../public/assets/ultra-devices/originals.json');
+assert.equal(new Set(Object.values(originals).map(item=>item.silhouette)).size,44,'Distinct original silhouettes');
 for(const device of ULTRA_DEVICES){
   const result=u.completeUltraTrial(newSave,device.heroId);
   assert.equal(result.state.deviceIds.join(','),device.id);
@@ -87,4 +100,35 @@ assert.equal(f.goldRef.current,50000-raid.stake+raid.gold);assert.equal(inventor
 assert.equal(inventory.meds[raid.vitamin],undefined,'Vitamins must be usable from the growth inventory');
 f.finishUltraTrial(snapshot,true);assert.equal(inventory[raid.vitamin],1,'No duplicate settlement');
 const before=f.goldRef.current;f.startBattle=()=>false;f.startKaijuRaid(raid.id);flush();assert.equal(f.goldRef.current,before);
+const fusion=load('src/data/systemFusion.js');
+assert.ok(!fusion.getAvailableKwPveTasks(10,{kw_escort_grain:0},1).some(task=>task.id==='kw_escort_grain'));
+assert.ok(fusion.getAvailableKwPveTasks(10,{kw_purify_border:0},10).some(task=>task.id==='kw_build_sanctuary'),'Turn zero completion satisfies prerequisites');
+const owned=d.WAR_MAP_IDS.slice(0,2),taskTimers=[];
+const taskFlow=bindAppFunctions(['buildRankStats','completeKingdomPveTask'],{...d,
+  badges:Array(10).fill(1),kingdomActionLocksRef:{current:new Set()},goldRef:{current:10000},
+  fusionStateRef:{current:{kingdomTasksDone:[],kingdomTaskCooldowns:{}}},
+  kingdomWarRef:{current:{...d.DEFAULT_KINGDOM_WAR,faction:'shu',currentTurn:0,kwManpowerReserve:100,territories:{[owned[0]]:{owner:'shu',strength:1},[owned[1]]:{owner:'shu',strength:0}}}},
+  ecoCrisisState:{cleared:[]},sanctuaryState:{facilities:{}},showMapToast:()=>{},setKingdomWar:()=>{},setGold:()=>{},updateAchStat:()=>{},
+  flushSync:fn=>fn(),window:{setTimeout:fn=>taskTimers.push(fn)},
+  commitFusionState:fn=>{taskFlow.fusionStateRef.current=fn(taskFlow.fusionStateRef.current);},
+});
+taskFlow.completeKingdomPveTask('kw_repair_wall');taskFlow.completeKingdomPveTask('kw_repair_wall');
+assert.equal(taskFlow.kingdomWarRef.current.territories[owned[1]].strength,2,'Repair starts at zero without inventing durability');
+assert.equal(taskFlow.kingdomWarRef.current.territories[owned[0]].strength,1,'Repair targets weakest territory');
+assert.equal(taskFlow.goldRef.current,11500,'One repair reward per action');
+taskTimers.forEach(fn=>fn());taskFlow.completeKingdomPveTask('kw_repair_wall');
+assert.equal(taskFlow.goldRef.current,11500,'Turn zero completion keeps its cooldown');
 console.log(JSON.stringify({species:400,uniqueSpiritArt:96,devices:93,raids:8,penaltyAndRewards:true,trainingAndEggPools:true}));
+async function checkDeviceFrames(){
+  const sharp=require('sharp');
+  for(const device of ULTRA_DEVICES){
+    const {data,info}=await sharp(`public/${device.portrait}`).removeAlpha().raw().toBuffer({resolveWithObject:true});
+    assert.equal(info.width,384);assert.equal(info.height,384);
+    for(const [x,y] of [[0,0],[383,0],[0,383],[383,383]]){
+      const pixel=data.subarray((y*384+x)*3,(y*384+x)*3+3);
+      assert.ok([16,24,21].every((channel,i)=>Math.abs(pixel[i]-channel)<=3),`${device.id}: inconsistent background`);
+    }
+  }
+  console.log('PASS 93 device frames share the same dark background');
+}
+checkDeviceFrames().catch(error=>{console.error(error);process.exitCode=1;});
