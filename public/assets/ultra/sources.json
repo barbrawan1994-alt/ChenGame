@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-07",
+  "checkedAt": "2026-09-08",
   "manifest": [
     {
       "id": "ultraman",
@@ -218,8 +218,9 @@
     },
     {
       "id": "dinas",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4438
+      "source": "https://static.wikia.nocookie.net/ultra/images/9/9f/Ultraman_Dinas_Info.png/revision/latest?cb=20230305132515",
+      "bytes": 13582,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Dinas"
     },
     {
       "id": "blazar",
@@ -278,13 +279,15 @@
     },
     {
       "id": "noa",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4362
+      "source": "https://static.wikia.nocookie.net/ultra/images/f/f8/Ultraman_Noa_Info.png/revision/latest?cb=20201002040422",
+      "bytes": 15416,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Noa"
     },
     {
       "id": "next",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 3790
+      "source": "https://static.wikia.nocookie.net/ultra/images/0/0c/Nextjunisrender.png/revision/latest?cb=20200518030847",
+      "bytes": 16032,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_the_Next"
     },
     {
       "id": "saga",
@@ -298,18 +301,21 @@
     },
     {
       "id": "ruebe",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 3824
+      "source": "https://static.wikia.nocookie.net/ultra/images/f/fc/Ultramah_ruebe_render_by_zer0stylinx-dcom9ov.png/revision/latest?cb=20230731231848",
+      "bytes": 15284,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Ruebe"
     },
     {
       "id": "gruebe",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4738
+      "source": "https://static.wikia.nocookie.net/ultra/images/f/f6/Img_top_chara_08.png/revision/latest?cb=20200426181206",
+      "bytes": 12120,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Gruebe"
     },
     {
       "id": "reiga",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4434
+      "source": "https://static.wikia.nocookie.net/ultra/images/3/33/Reiga_Info.png/revision/latest?cb=20200614022200",
+      "bytes": 15008,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Reiga"
     },
     {
       "id": "ribut",
@@ -323,148 +329,181 @@
     },
     {
       "id": "boy",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4370
+      "source": "https://static.wikia.nocookie.net/ultra/images/a/a0/Ultraman_Boy.png/revision/latest?cb=20140925134905",
+      "bytes": 16256,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Boy"
     },
     {
       "id": "sora",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 3828
+      "source": "https://static.wikia.nocookie.net/ultra/images/4/44/Stage_Sora.png/revision/latest?cb=20190831010743",
+      "bytes": 8548,
+      "page": "https://ultra.fandom.com/wiki/Sora"
     },
     {
       "id": "rising",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4696
+      "source": "https://static.wikia.nocookie.net/ultra/images/a/a3/Ultraman_Rising_HD_040.png/revision/latest?cb=20240615100913",
+      "bytes": 15158,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_(Ultraman%3A_Rising)"
     },
     {
       "id": "shin",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4394
+      "source": "https://static.wikia.nocookie.net/ultra/images/4/48/Shin_Ultraman_rises_render.png/revision/latest?cb=20220414134143",
+      "bytes": 13248,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_(Shin_Ultraman)"
     },
     {
       "id": "elet",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 3810
+      "source": "https://static.wikia.nocookie.net/ultra/images/f/f0/U40_Elek.png/revision/latest?cb=20230506094047",
+      "bytes": 13056,
+      "page": "https://ultra.fandom.com/wiki/Elek"
     },
     {
       "id": "loto",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4608
+      "source": "https://static.wikia.nocookie.net/ultra/images/7/79/U40_Loto.png/revision/latest?cb=20230506093629",
+      "bytes": 14536,
+      "page": "https://ultra.fandom.com/wiki/Loto"
     },
     {
       "id": "amia",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4408
+      "source": "https://static.wikia.nocookie.net/ultra/images/5/5a/AmiaRender.png/revision/latest?cb=20230506094719",
+      "bytes": 11660,
+      "page": "https://ultra.fandom.com/wiki/Amia"
     },
     {
       "id": "belial",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4168
+      "source": "https://static.wikia.nocookie.net/ultra/images/2/2c/Ultraman_Belial_infobox.png/revision/latest?cb=20200104204021",
+      "bytes": 16006,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Belial"
     },
     {
       "id": "tregear",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4252
+      "source": "https://static.wikia.nocookie.net/ultra/images/9/91/TregearTaigaSeries.png/revision/latest?cb=20230801014856",
+      "bytes": 12916,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Tregear"
     },
     {
       "id": "evil_tiga",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4200
+      "source": "https://static.wikia.nocookie.net/ultra/images/8/88/Evil_Tiga_Full.png/revision/latest?cb=20191106041823",
+      "bytes": 11812,
+      "page": "https://ultra.fandom.com/wiki/Evil_Tiga"
     },
     {
       "id": "tiga_dark",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4250
+      "source": "https://static.wikia.nocookie.net/ultra/images/9/9d/Ultraman_Tiga_Tiga_Dark_Render_4.png/revision/latest?cb=20201008203951",
+      "bytes": 13288,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Tiga_(character)",
+      "file": "File:Ultraman Tiga Tiga Dark Render 4.png"
     },
     {
       "id": "camilla",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4208
+      "source": "https://static.wikia.nocookie.net/ultra/images/0/01/CamearraFull.png/revision/latest?cb=20191101033644",
+      "bytes": 13154,
+      "page": "https://ultra.fandom.com/wiki/Camearra"
     },
     {
       "id": "darramb",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4270
+      "source": "https://static.wikia.nocookie.net/ultra/images/2/21/Darramb.png/revision/latest?cb=20200812230557",
+      "bytes": 13868,
+      "page": "https://ultra.fandom.com/wiki/Darramb"
     },
     {
       "id": "hudra",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4164
+      "source": "https://static.wikia.nocookie.net/ultra/images/e/e9/Hudra.png/revision/latest?cb=20200812230549",
+      "bytes": 13128,
+      "page": "https://ultra.fandom.com/wiki/Hudra"
     },
     {
       "id": "zagi",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4098
+      "source": "https://static.wikia.nocookie.net/ultra/images/7/7f/Dark_Zagi_Full.png/revision/latest?cb=20191106042058",
+      "bytes": 10666,
+      "page": "https://ultra.fandom.com/wiki/Dark_Zagi"
     },
     {
       "id": "faust",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4154
+      "source": "https://static.wikia.nocookie.net/ultra/images/0/0d/Dark_Faust_Render.png/revision/latest?cb=20161001020828",
+      "bytes": 13562,
+      "page": "https://ultra.fandom.com/wiki/Dark_Faust"
     },
     {
       "id": "mephisto",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4254
+      "source": "https://static.wikia.nocookie.net/ultra/images/7/7b/Dark_Mephisto_Render.png/revision/latest?cb=20200319065247",
+      "bytes": 15002,
+      "page": "https://ultra.fandom.com/wiki/Dark_Mephisto"
     },
     {
       "id": "mephisto_zwei",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4314
+      "source": "https://static.wikia.nocookie.net/ultra/images/4/44/Dark_Mephisto_Zwei_render_2.png/revision/latest?cb=20260324181451",
+      "bytes": 15948,
+      "page": "https://ultra.fandom.com/wiki/Dark_Mephisto_(Zwei)"
     },
     {
       "id": "chaos",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4188
+      "source": "https://static.wikia.nocookie.net/ultra/images/4/4a/Chaos_Ultraman_data.png/revision/latest?cb=20200903183641",
+      "bytes": 17216,
+      "page": "https://ultra.fandom.com/wiki/Chaos_Header",
+      "file": "File:Chaos Ultraman data.png"
     },
     {
       "id": "shadow",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4260
+      "source": "https://static.wikia.nocookie.net/ultra/images/8/87/Ultraman_Zearth_2_04.png/revision/latest?cb=20230413131654",
+      "bytes": 14356,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_Shadow"
     },
     {
       "id": "dark_lops",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4256
+      "source": "https://static.wikia.nocookie.net/ultra/images/6/67/Darklops_Zero_Info.png/revision/latest?cb=20201022213037",
+      "bytes": 14580,
+      "page": "https://ultra.fandom.com/wiki/Darklops_Zero"
     },
     {
       "id": "ginga_dark",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4274
+      "source": "https://static.wikia.nocookie.net/ultra/images/e/e4/Dark_Lugiel-removebg.png/revision/latest?cb=20221218033821",
+      "bytes": 15222,
+      "page": "https://ultra.fandom.com/wiki/Dark_Lugiel"
     },
     {
       "id": "ultraman_dark",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4298
+      "source": "https://static.wikia.nocookie.net/ultra/images/e/ec/Ultraman_ginga_ultraman_dark_render_by_zer0stylinx-dazd9z9.png/revision/latest?cb=20170304212922",
+      "bytes": 15272,
+      "page": "https://ultra.fandom.com/wiki/Ultraman_(character)",
+      "file": "File:Ultraman ginga ultraman dark render by zer0stylinx-dazd9z9.png"
     },
     {
       "id": "seven_dark",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4290
+      "source": "https://static.wikia.nocookie.net/ultra/images/0/01/Ultraseven_Dark_I.png/revision/latest?cb=20190804022206",
+      "bytes": 5042,
+      "page": "https://ultra.fandom.com/wiki/Ultraseven_(character)",
+      "file": "File:Ultraseven Dark I.png"
     },
     {
       "id": "trigger_dark",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4298
+      "source": "https://static.wikia.nocookie.net/ultra/images/c/cb/TriggerDark.png/revision/latest?cb=20211002143144",
+      "bytes": 16488,
+      "page": "https://ultra.fandom.com/wiki/Trigger_Dark"
     },
     {
       "id": "carmeara",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4270
+      "source": "https://static.wikia.nocookie.net/ultra/images/b/bf/Carmeara_render_3.png/revision/latest?cb=20220115135020",
+      "bytes": 21392,
+      "page": "https://ultra.fandom.com/wiki/Carmeara"
     },
     {
       "id": "darrgon",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4250
+      "source": "https://static.wikia.nocookie.net/ultra/images/9/9e/Darrgon_render_4.png/revision/latest?cb=20230723072132",
+      "bytes": 18200,
+      "page": "https://ultra.fandom.com/wiki/Darrgon"
     },
     {
       "id": "hudram",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4220
+      "source": "https://static.wikia.nocookie.net/ultra/images/3/33/Hudram_render_5.png/revision/latest?cb=20220115135513",
+      "bytes": 16564,
+      "page": "https://ultra.fandom.com/wiki/Hudram"
     },
     {
       "id": "evil_trigger",
-      "source": "Original stylized archive emblem; not a canonical character portrait",
-      "bytes": 4272
+      "source": "https://static.wikia.nocookie.net/ultra/images/7/7e/EvilTriggerPoseRender.png/revision/latest?cb=20221127155348",
+      "bytes": 13282,
+      "page": "https://ultra.fandom.com/wiki/Evil_Trigger"
     }
   ]
 }

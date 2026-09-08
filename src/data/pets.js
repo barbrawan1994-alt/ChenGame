@@ -1,3 +1,5 @@
+import { NEW_PETS_900 } from './petExpansion';
+
 // ==========================================
 // [更新] 基础图鉴 (已为30只弱势精灵添加了强力进化链)
 // ==========================================
@@ -1482,7 +1484,7 @@ const ALL_SOURCE_DATA = [
     ...FINAL_GODS, ...STONE_EVO_PETS, ...TIME_WEATHER_PETS,
     UNIQUE_REWARD_PET, ...CRYSTAL_PETS, ...NEW_PETS_500, ...PETS_600,
     ...GODS_610, ...DIGIMON_PETS, ...EXTRA_PETS_700, ...SANGUO_PETS,
-    ...NEW_PETS_800
+    ...NEW_PETS_800, ...NEW_PETS_900
 ];
 const MAX_DEX_ID = Math.max(...ALL_SOURCE_DATA.map(p => p.id), 900);
 for(let i=1; i<=MAX_DEX_ID; i++) {

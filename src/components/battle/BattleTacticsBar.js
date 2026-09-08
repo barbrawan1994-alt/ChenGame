@@ -1,12 +1,13 @@
 import React from 'react';
 import { Crosshair, Undo2, Shield, Zap, Swords } from 'lucide-react';
 import { COMBAT_FAMILIES } from '../../data/battleTactics';
-import { getCombatFamily, getBattleCommand, getBurstBlock } from '../../utils/battleTactics';
+import { getBattleCommand, getBurstBlock } from '../../utils/battleTactics';
+import { getCombatMoveGroup } from '../../utils/combatMoveMenu';
 
 export function CombatFamilyTabs({moves,family,onChange}) {
-  const available=COMBAT_FAMILIES.filter(item=>moves.some(move=>getCombatFamily(move)===item.id));
-  if(available.length<2) return null;
-  return <div className="combat-family-tabs" role="tablist" aria-label="招式体系">{available.map(item=><button type="button" key={item.id} role="tab" aria-selected={family===item.id} onClick={()=>onChange(item.id)} style={{'--family-color':item.color}}>{item.name}<span>{moves.filter(move=>getCombatFamily(move)===item.id).length}</span></button>)}</div>;
+  const groups = [...COMBAT_FAMILIES.slice(0, 1), { id: 'equipment', name: '装备', color: '#d9bc81' }, ...COMBAT_FAMILIES.slice(1)];
+  const available = [{ id: 'all', name: '全部', color: '#eef3ed' }, ...groups.filter(item => moves.some(move => getCombatMoveGroup(move) === item.id))];
+  return <div className="combat-family-tabs" role="tablist" aria-label="招式体系">{available.map(item=><button type="button" key={item.id} role="tab" aria-selected={family===item.id} onClick={()=>onChange(item.id)} style={{'--family-color':item.color}}>{item.name}<span>{item.id === 'all' ? moves.length : moves.filter(move=>getCombatMoveGroup(move)===item.id).length}</span></button>)}</div>;
 }
 
 export function TacticalStatus({unit,turn}) {

@@ -1,4 +1,6 @@
 export const TRAINER_NAMES = ['小智', '小霞', '捕虫少年', '短裤小子', '精英训练师', '火箭队手下', '阿金', '希罗娜', '大吾', '赤红', 'N', '露西', '短裙少女', '登山大叔', '钓鱼佬', '超能力者', '空手道王', '暴走族', '研究员', '富家少爷', '双子星'];
+import { SPIRIT_TRIALS } from './petExpansion.js';
+
 export const CHALLENGES = [
   { id: 'c1', title: '闪光伊布的试炼', desc: '初级训练师的入门战',
     req: 5, boss: 125, bossLvl: 15, teamSize: 3, rewardId: 125,
@@ -57,6 +59,7 @@ export const CHALLENGES = [
   { id: 'c18', title: '创世之巅', desc: '800精灵图鉴大师的最终证明',
     req: 760, boss: 800, bossLvl: 100, teamSize: 6, rewardId: 800,
     bg: 'linear-gradient(135deg, #000000 0%, #FFD700 50%, #000000 100%)', color: '#FFD700' },
+  ...SPIRIT_TRIALS,
 ];
 
 export const ATTR_CHALLENGES = [

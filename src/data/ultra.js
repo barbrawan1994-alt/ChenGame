@@ -132,7 +132,8 @@ const CHARACTERS = [
   ['chaos', '卡欧斯奥特曼', 'shadow', 'balanced', '卡欧斯日珥射线', 2002],
   ['shadow', '夏德奥特曼', 'shadow', 'guardian', '夏德射线', 1997],
   ['dark_lops', '黑暗洛普斯赛罗', 'shadow', 'beam', '黑暗洛普斯射线', 2010],
-  ['ginga_dark', '黑暗银河', 'shadow', 'beam', '黑暗银河射击', 2013],
+  // Keep the saved contract ID while correcting the original misidentified character.
+  ['ginga_dark', '黑暗路基艾尔', 'shadow', 'beam', '黑暗路基艾尔射击', 2013],
   ['ultraman_dark', '黑暗奥特曼', 'shadow', 'balanced', '黑暗斯派修姆光线', 2013],
   ['seven_dark', '黑暗赛文', 'shadow', 'swift', '黑暗集束射线', 2013],
   ['trigger_dark', '黑暗特利迦', 'shadow', 'striker', '黑暗哉佩利敖光线', 2021],

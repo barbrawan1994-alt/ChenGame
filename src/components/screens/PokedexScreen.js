@@ -4,6 +4,9 @@ import { MAPS } from '../../data';
 import { POKEDEX } from '../../data/pets';
 import { TYPE_BIAS } from '../../data/types';
 import { TYPES } from '../../data/types';
+import { PET_TACTICS, SPIRIT_TRIALS } from '../../data/petExpansion';
+import { getSpeciesLearnedMoves } from '../../utils/speciesMoves';
+import './PokedexScreen.css';
 
 export default function PokedexScreen({
   box,
@@ -51,7 +54,7 @@ export default function PokedexScreen({
       const _debouncedDexTerm = dexSearchTerm;
       if (!_debouncedDexTerm) return true;
       const term = _debouncedDexTerm.toLowerCase();
-      return p.name.toLowerCase().includes(term) || String(p.id).includes(term);
+      return p.name.toLowerCase().includes(term) || String(p.id).includes(term) || (PET_TACTICS[p.tactic]?.name || '').includes(term);
     });
 
     const DEX_PAGE_SIZE = 60;
@@ -73,7 +76,7 @@ export default function PokedexScreen({
       { key: 'p10', need: Math.floor(POKEDEX.length * 0.1), text: `10% (${Math.floor(POKEDEX.length * 0.1)}种): 金币1000` },
       { key: 'p25', need: Math.floor(POKEDEX.length * 0.25), text: '25%: 稀有球×5' },
       { key: 'p50', need: Math.floor(POKEDEX.length * 0.5), text: '50%: 大师球×1' },
-      { key: 'p100', need: POKEDEX.length - 1, text: '99.9%: 传说称号+始源混沌神(收集899种后自动获得)' },
+      { key: 'p100', need: POKEDEX.length - 1, text: `登记${POKEDEX.length - 1}种: 传说称号+始源混沌神` },
     ];
     const claimDexMilestone = (m) => {
       if (dexMilestoneClaimed[m.key]) { showMapToast('ℹ️', '已领取', '该档奖励已领取过', 1500); return; }
@@ -238,6 +241,8 @@ export default function PokedexScreen({
                 const spawnMaps = MAPS.filter(m => m.pool && m.pool.includes(selectedPet.id));
                 const isGod = (selectedPet.id >= 601 && selectedPet.id <= 610) || (selectedPet.id >= 691 && selectedPet.id <= 700);
                 let howToGet = [];
+                const trial = SPIRIT_TRIALS.find(item => item.id === selectedPet.challengeId);
+                if (trial) howToGet.push(`挑战塔「${trial.title}」首通奖励 · 收集${trial.req}种 · 对手Lv.${trial.bossLvl}${trial.isDouble ? ' · 双打' : ''}`);
                 if (preEvo) howToGet.push(`由 ${preEvo.name}(#${preEvo.id}) ${preEvo.evoLvl ? `Lv.${preEvo.evoLvl}` : '使用进化石'}进化`);
                 if (spawnMaps.length > 0) howToGet.push(`野外出没: ${spawnMaps.map(m => m.name).join('、')}`);
                 if (isGod) howToGet.push('神兽 — 第6章后高级地图稀有遭遇');
@@ -275,7 +280,7 @@ export default function PokedexScreen({
                     }}>{TYPES[selectedPet.type2]?.name}</div>}
                     </div>
                   </div>
-                  {selectedPet.desc && <div style={{width:'100%', padding:'12px 30px 0', textAlign:'center'}}>
+                  {selectedPet.desc && !selectedPet.tactic && <div style={{width:'100%', padding:'12px 30px 0', textAlign:'center'}}>
                     <div style={{fontSize:'12px', color:'#888', fontStyle:'italic', lineHeight:1.5}}>"{selectedPet.desc}"</div>
                   </div>}
                   <div style={{
@@ -292,11 +297,6 @@ export default function PokedexScreen({
                       ))}
                     </div>
                   </div>
-                  <button onClick={() => setSelectedDexId(null)} style={{
-                    padding: '8px 32px', borderRadius: '20px', border: 'none',
-                    background: tc, color: '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
-                    opacity: 0.8
-                  }}>关闭</button>
                 </>
                 );
               })() : null}
@@ -516,7 +516,13 @@ export default function PokedexScreen({
                   );
               })()}
 
-              {caughtDex.includes(selectedPet.id) && <button 
+              {selectedPet.tactic && <section className="dex-tactics">
+                <strong>{PET_TACTICS[selectedPet.tactic]?.name}</strong>
+                <p>{PET_TACTICS[selectedPet.tactic]?.tip}</p>
+                <strong>成长招式</strong>
+                <div className="dex-learnset">{getSpeciesLearnedMoves(selectedPet, 100).map((move, i) => <div key={`${move.id}-${i}`}><span>Lv.{selectedPet.learnset[i].level}</span>{move.name}</div>)}</div>
+              </section>}
+              <button
                 onClick={() => setSelectedDexId(null)} 
                 style={{
                   width: '85%', padding: '12px', background: '#F5F7FA', border: 'none', borderRadius: '12px',
@@ -527,7 +533,7 @@ export default function PokedexScreen({
                 onMouseOut={(e) => e.target.style.background = '#F5F7FA'}
               >
                 关闭
-              </button>}
+              </button>
 
             </div>
           </div>

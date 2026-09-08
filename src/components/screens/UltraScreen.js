@@ -59,7 +59,7 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
         </div>
       </main>
       <aside className="ultra-detail" key={hero.id}>
-        <div className="ultra-detail-portrait"><img src={hero.portrait} alt={hero.source ? hero.name : `${hero.name}档案徽记`} width="280" height="280" /><span>{hero.source ? String(ULTRA_HEROES.indexOf(hero) + 1).padStart(3, '0') : '档案徽记'}</span></div>
+        <div className="ultra-detail-portrait"><img src={hero.portrait} alt={hero.name} width="280" height="280" /><span>{String(ULTRA_HEROES.indexOf(hero) + 1).padStart(3, '0')}</span></div>
         <div className="ultra-detail-copy"><span className="ultra-eyebrow">{ULTRA_ERAS.find(item => item.id === hero.era)?.name} / {hero.year}</span><h2>{hero.name}</h2>
           <label className="ultra-field">战斗形态<select aria-label="战斗形态" value={form.id} onChange={event => setFormId(event.target.value)}>{hero.forms.map(item => <option key={item.id} value={item.id}>{item.name} · {ULTRA_ROLES[item.role].name}</option>)}</select></label>
           <div className="ultra-technique"><Sparkles size={17} /><div><small>专属必杀 / {role.name}</small><strong>{form.finisher}</strong><span>{role.power ? `威力 ${role.power} · 命中 100 · PP 1` : '恢复自身 30% HP · PP 1'}</span></div></div>

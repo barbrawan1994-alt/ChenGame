@@ -774,4 +774,9 @@ const injectNewSkillsV18 = () => {
 };
 injectNewSkillsV18();
 
+// Stable references used by species learnsets, independent of array ordering.
+Object.entries(SKILL_DB).forEach(([type, moves]) => moves.forEach(move => {
+  if (!move.id) move.id = `${type}:${move.name}`;
+}));
+
 export { SKILL_DB, STATUS_SKILLS_DB, SIDE_EFFECT_SKILLS, ADVANCED_SKILLS, NEW_SKILLS_V17, NEW_SKILLS_V18 };
