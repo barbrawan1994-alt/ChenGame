@@ -1,0 +1,100 @@
+// Original vector creatures, rasterized to transparent WebP for all gameplay surfaces.
+const fs=require('fs');
+const path=require('path');
+const crypto=require('crypto');
+const sharp=require('sharp');
+const {load,root}=require('./helpers/project-harness.cjs');
+const {NEW_PETS_900}=load('src/data/petExpansion.js');
+const dir=path.join(root,'public/assets/spirits');
+const palettes=[['#66b992','#e8ba57'],['#94c7ac','#f6dc9a'],['#76bdc6','#eee9d8'],['#809099','#edaa6c'],['#d2b876','#62bbb6'],['#7bbbd2','#efd4cb'],['#afcbd5','#ecca72'],['#7191d3','#f1c769'],['#89ab8b','#c5acd0'],['#68b3c8','#f2f0d8'],['#f0b6c5','#a4cab0'],['#87c9d2','#cfddf3'],['#e79577','#f2d476'],['#7aad9b','#d89ab9'],['#81bcb0','#dcc797'],['#7b98ad','#b0dacf'],['#dfa773','#74bbcc'],['#a4bba0','#e5bc7c'],['#869aba','#efd98a'],['#83b9ca','#cca9d3'],['#969bb7','#e6b3b0'],['#b8b68c','#82c2c0'],['#a7b5b8','#e1bd74'],['#c2c994','#e9c988']];
+const p=(d,c)=>`<path d="${d}" fill="${c}"/>`;
+const e=(x,y,rx,ry,c)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"/>`;
+const line=d=>p(d,'none');
+const eye=(x,y)=>e(x,y,7,10,'#253b40')+e(x-2,y-3,2,3,'#fff');
+const face=(x=160,y=150)=>eye(x-20,y)+eye(x+20,y)+line(`M${x-7} ${y+18}q7 6 14 0`);
+const leaf=(x,y,a,c)=>`<g transform="translate(${x} ${y}) rotate(${a})">${p('M0 0Q-45 -50 0 -96Q43 -49 0 0Z',c)}${line('M0 0V-75')}</g>`;
+const crystal=(x,y,h,c)=>p(`M${x} ${y-h}l22 ${h*.45}v${h*.55}l-22 16-22-16v-${h*.55}Z`,c)+line(`M${x} ${y-h}V${y+16}m-22-${h*.55+16}l22 12 22-12`);
+const wing=(side,s,c)=>`<g transform="translate(${side===1?320:0} 0) scale(${side===1?-1:1} 1)">${p(`M137 166Q${72-s*8} ${64-s*8} 34 ${86-s*10}L55 151 35 157 75 186 63 202Q111 211 140 197Z`,c)}</g>`;
+const feet=(c)=>p('M128 229l-24 28h40l3-29m35 0 5 29h40l-27-29',c);
+function art(kind,s,a,b){
+  const big=1+s*.16;
+  const body=(rx=48,ry=62)=>e(160,180,rx+s*4,ry+s*3,a)+e(154,191,rx*.62,ry*.55,b);
+  const crown=()=>Array.from({length:s+1},(_,i)=>leaf(142+i*17,107,-30+i*25,b)).join('');
+  const bird=(long=false)=>wing(0,s,a)+wing(1,s,a)+feet(b)+p(`M190 221Q245 225 266 ${245-s*26}L216 270 180 239Z`,b)+body(44,long?67:54)+e(160,131,42,36,a)+face(160,127)+p('M153 143l20 0-10 14Z',b)+crown();
+  const moth=()=>wing(0,s,b)+wing(1,s,b)+e(160,177,25+s*2,66,a)+e(160,117,34,29,a)+face(160,115)+line('M146 91Q116 42 103 76M174 91Q205 42 218 76');
+  const shell=()=>p(`M72 199Q52 111 102 91Q130 48 160 95Q191 48 219 91Q268 115 247 199Z`,a)+line('M160 95V198M102 91L132 196M219 91L188 196')+e(160,214,91,32,b)+e(160,199,42,27,'#f0f4e9')+face(160,192);
+  const knight=()=>feet(b)+p('M120 146L88 239 160 222 232 239 200 146Z',b)+p('M115 123h90l-6 75-39 38-39-38Z',a)+e(160,106,36,30,a)+p('M126 103l34-12 34 12-13 23h-42Z',b)+eye(146,109)+eye(174,109)+crown();
+  const rod=(x,c)=>line(`M${x} 80V253`)+crystal(x,88,38,c);
+  switch(kind){
+    case 0:return bird()+e(160,205,15+s*3,19,b)+line('M148 214h24');
+    case 1:return s===0 ? e(118,209,42,31,a)+e(165,194,42,35,b)+e(200,160,37,36,a)+face(196,150)+leaf(209,132,25,b) : s===1 ? p('M160 70Q241 137 206 222L160 254 114 222Q78 137 160 70Z',a)+line('M108 147l108 45M105 184l102 40')+face(160,128) : moth()+leaf(160,169,0,b);
+    case 2:return feet(b)+p(`M193 215Q298 166 235 ${102-s*14}Q296 122 285 208Q267 262 180 237Z`,a)+body(45,50)+p('M113 141L100 65 147 100 172 100 221 65 207 150Z',a)+e(160,141,45,32,a)+face(160,135)+p('M119 172l80 10-3 16-83-7Z',b);
+    case 3:return feet(a)+p('M95 140l15-44 101 0 18 44-20 82-103 0Z',a)+face(160,127)+e(160,207,74,32,b)+p('M86 207v25q75 56 148 0v-25q-74 55-148 0Z',a)+line('M93 170L68 129m159 41 25-44')+crown();
+    case 4:return p('M99 77h122v27q-8 35-45 60 37 27 45 65v22H99v-22q8-38 45-65-37-25-45-60Z',a)+p('M114 223l46-38 46 38Z',b)+e(160,134,29,22,b)+face(160,127)+line('M94 76h132M94 252h132')+rod(253,b);
+    case 5:return shell()+(s>0 ? leaf(86,217,-60,b)+leaf(234,217,60,b) : '');
+    case 6:return knight()+p(`M87 153l-44 21 10 ${65+s*7} 34 22 35-22 5-${65+s*7}Z`,b)+crystal(86,216,46,a)+rod(240,b);
+    case 7:return e(160,169,72+s*8,24,'none')+e(160,171,41+s*9,52,a)+face(160,158)+crystal(98,92,38,b)+p('M202 205l42 45-8-50Z',b)+`<g transform="rotate(-35 160 170)">${e(160,170,117,29,'none')}</g>`;
+    case 8:return leaf(133,204,-28,a)+leaf(193,217,32,a)+p('M127 241l8-113 31-16 25 13 5 116Z',b)+face(161,162)+e(159,106,40,15,a)+Array.from({length:3+s},(_,i)=>e(160,192+i*9,3,3,'#273e3b')).join('');
+    case 9:return bird(true)+p('M151 147l48 7-41 13Z',b);
+    case 10:return leaf(119,207,-64,a)+leaf(204,210,63,a)+p('M92 224Q84 196 112 174Q106 113 145 108Q183 70 201 121Q243 136 222 179Q250 224 207 242Q141 273 92 224Z',a)+face()+e(160,213,28,20,b)+crown();
+    case 11:return p('M115 80h90l9 42 23 106H82l25-106Z',a)+e(160,151,39,42,b)+face(160,151)+line('M160 111v40l21 20')+crystal(160,76,39,b)+e(160,236,69,12,b);
+    case 12:return bird()+p(`M133 225q-48 48-66 20 21-4 21-40-37 24-50 6 39-23 30-${58+s*13} 24 22 37 56Z`,b);
+    case 13:return leaf(111,225,-80,a)+leaf(206,217,69,a)+line('M158 248q-27-65 13-99')+Array.from({length:5+s},(_,i)=>leaf(164,145,i*360/(5+s),i%2?a:b)).join('')+e(164,148,33,32,b)+face(164,146);
+    case 14:return feet(b)+body(39,60)+e(160,120,36,31,a)+face(160,119)+p(`M121 160Q58 126 52 ${186-s*8}L93 194 132 179M198 160q66-34 70 24l-45 10-35-15Z`,b)+p('M121 113l74-8v17l-73 8Z',b)+line('M202 119l43 18-5-33');
+    case 15:return feet(a)+p('M87 149l37-42h78l34 45-17 71-59 32-61-32Z',a)+e(160,166,40,40,b)+face(160,161)+`<g transform="rotate(-25 160 174)">${e(160,174,118,38,'none')}</g>`+crystal(161,85,30,b);
+    case 16:return feet(b)+p('M195 206q85-79 87-15-1 24-50 38',a)+body(40,50)+e(129,104,29,34,a)+e(191,104,29,34,a)+e(160,133,44,35,a)+face(160,127)+p('M178 197l57-74 17 15-52 77Z',b)+e(149,215,36,29,b)+line('M143 223l99-88');
+    case 17:return leaf(94,219,-58,a)+leaf(230,224,65,a)+p('M89 224l17-76 18-34 70-10 32 46 14 74-73 33Z',a)+face(164,150)+e(157,215,38,22,b)+rod(252,b);
+    case 18:return line('M160 92V58q65-18 66 33')+p('M117 107h86l21 109-64 39-64-39Z',a)+p('M133 127h55l10 68-38 28-39-28Z',b)+face(160,156)+e(160,245,50,13,a)+p('M108 160l-49 31 33 12M213 160l48 31-33 12Z',b);
+    case 19:return p('M120 235q-62 22-69-16 34 4 45-47-18-63 42-89 98-24 116 69 13 61-41 89Z',a)+e(171,167,52,63,b)+face(170,146)+crystal(167,97,40,a)+p('M218 169l58 25-53 22Z',b);
+    case 20:return p('M129 106q26-39 62 0l35 133-49-13-23 29-35-18-28 9Z',a)+face(161,126)+p('M112 178l-57 31 42 27 42-39M202 178l47 22-25 36-43-40Z',b)+e(168,186,25,20,b)+line('M150 190h36M179 188v-28');
+    case 21:return p('M126 241q-94-16-71-71 32-77 169-51-88 0-85 61 5 41 94 27-36 49-107 34Z',a)+e(160,157,40,34,b)+face(160,150)+p(`M122 129Q${83-s*12} 78 189 ${71-s*10}L153 115Z`,b);
+    case 22:return feet(b)+p('M110 105l-18 32 18 24-17 38 28 32 31-10 31 10 32-22-6-39 22-26-19-39-38 10-26-23Z',a)+e(160,162,47,50,b)+face(160,152)+line('M160 122v44l24 23')+rod(251,b);
+    case 23:return knight()+leaf(103,166,-60,a)+leaf(215,166,60,a)+e(159,197,17,19,b)+line('M146 205h26')+rod(247,b);
+    case 24:return shell()+p('M64 155q-29-39-15-72 6 30 39 34M238 155q33-41 19-73-9 30-39 36Z',b)+line('M67 105l195 2M68 120l193 2');
+    case 25:return moth()+p('M81 227L225 90 239 103 95 239Z',a)+line('M89 187l117-69M110 217l109-79');
+    case 26:return p('M84 247l23-83 54-61 60 60 19 84Z',a)+e(162,120,33,31,b)+face(162,115)+p('M81 112l78-59 79 59Z',b)+rod(69,a);
+    case 27:return p('M62 249V145h33v-44h35v44h25V76h40v69h30v-40h31v144Z',a)+p('M62 249l96-75 98 75Z',b)+face(158,211)+crystal(175,70,32,b);
+    case 28:return wing(0,2,b)+feet(a)+p('M165 115l50 102-63 27-54-29Z',a)+e(168,103,31,28,b)+face(168,102)+p('M138 78l16-32 24 19 24-10-5 42Z',a)+line('M189 163l63-29');
+    case 29:return feet(b)+body(35,54)+p('M121 129l40-70 49 76Z',a)+face(163,117)+crystal(81,219,113,b)+crystal(242,213,80,b);
+    case 30:return p('M94 136h132l-12 94-52 24-55-24Z',a)+e(160,138,66,15,b)+face(160,176)+p('M122 125q-30-35 12-80-7 41 25 46 7-44 35-48-17 28 9 46l-19 38Z',b)+feet(a);
+    case 31:return knight()+p('M53 144l36-37 53 55-31 35Z',b)+p('M208 168l-11-60 65-4 4 64Z',b)+line('M215 123h37M216 138h37');
+    case 32:return bird(true)+crystal(80,201,43,b)+p('M185 176l37 36-48 6Z',b);
+    case 33:return p('M219 73Q118 78 130 161q-2 57 91 85-119 37-135-63-20-99 133-110Z',a)+p('M155 135l31-28 15 43-22 54-38-14Z',b)+face(168,155)+crystal(248,149,33,b);
+    case 34:return moth()+p('M146 126h28l15 89-29 35-29-35Z',a)+crystal(250,211,100,b);
+    case 35:return p('M95 254l29-116 61-14 47 130Z',a)+e(156,126,38,29,b)+face(156,121)+p('M112 103l5-31h80l5 30Z',a)+e(237,217,33,40,b)+leaf(237,175,20,a);
+    case 36:return p('M97 248l15-112 88-2 30 113-66-27Z',a)+e(156,114,38,27,b)+face(156,110)+p('M107 96l27-47 58 9 19 36Z',a)+rod(69,b)+p('M198 187l55-12 0 30-48 6Z',b);
+    case 37:return knight()+p('M53 221l26-89 41 13-12 71Z',b)+e(82,174,25,31,a)+line('M82 150v27l14 6')+rod(245,b);
+    case 38:return Array.from({length:7},(_,i)=>leaf(160,151,i*51,a)).join('')+p('M118 177l42-61 46 70-44 65Z',b)+face(160,171)+crystal(252,235,41,a);
+    case 39:return p('M94 260l22-151 88 0 27 151Z',a)+p('M130 105l-19-53 20-7 23 60M175 105l14-68 19 3-10 68Z',b)+p('M118 179l-54-8 3-55 20-1 3 32 33 3M209 208l54-18-1-61-18-1-4 42-30 8Z',b)+face(162,152)+line('M128 223h68');
+    case 40:return wing(0,2,a)+wing(1,2,a)+p('M103 245l21-118 70 0 25 118Z',a)+face(160,141)+e(161,90,42,19,b)+line('M160 89v-37M113 191l104-29M121 208l93-29')+crystal(160,229,34,b);
+    case 41:return knight()+rod(65,b)+p('M219 120l23-17 22 18-7 34h-29Z',b)+line('M245 154v84')+e(245,243,19,10,a)+leaf(163,88,0,b);
+    case 42:return wing(0,2,b)+wing(1,2,b)+p('M120 235l22-84-22-35 20-40 47 7 16 37-23 28 39 81-40-13-35 25Z',a)+face(164,112)+p('M141 233l-23 47 41-27 39 20-10-43Z',b);
+    case 43:return knight()+e(85,147,48,48,'none')+line('M85 102v47l25 20')+p('M214 92l29-29 16 26-32 86-18-10Z',b)+line('M212 164l-31 73');
+    case 44:return crystal(160,207,140,a)+crystal(86,188,83,b)+crystal(237,193,97,b)+p('M118 215l-29 44 72-28 57 35-20-55Z',a)+face(160,153);
+    case 45:return p('M53 167l76-22 28-89 36 83 79 44-83 39-30 57-38-58Z',a)+p('M123 153l39-34 31 44-13 56-41-13Z',b)+face(159,166)+crystal(83,106,28,b)+crystal(240,112,40,b);
+    case 46:return feet(b)+body(63,48)+p('M111 125l-24-54 51 25 46 0 50-31-20 74Z',a)+e(161,137,56,35,a)+face(161,132)+leaf(128,99,-30,b)+leaf(188,96,33,b)+p('M217 220q69-11 56-61-23 36-57 29Z',b);
+    case 47:return wing(0,2,a)+wing(1,2,a)+p('M180 245q93 24 90-46-22 29-49 4l-9-56-24-41-42-18-30 40 22 24-16 63-21 43 47-10 27-32Z',a)+p('M126 102l-7-46 29 32 19-10 28-31-6 50Z',b)+eye(150,116)+p('M114 124l-31 17 47 9Z',b)+e(163,185,27,30,b)+line('M139 180h46M139 193h46')+feet(a);
+    default:throw new Error(`Missing design ${kind}`);
+  }
+}
+async function main(){
+  fs.mkdirSync(dir,{recursive:true});const manifest={};const thumbs=[];
+  for(const pet of NEW_PETS_900){
+    const family=pet.familyId ? (pet.familyId-905)/3 : 24+pet.id-977;
+    const stage=pet.familyId ? pet.id-pet.familyId : 2;
+    const [a,b]=palettes[family%palettes.length];
+    const scale=[0.72,0.86,1][stage];
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320"><ellipse cx="160" cy="280" rx="83" ry="12" fill="#496d6422"/><g transform="translate(${160*(1-scale)} ${274*(1-scale)}) scale(${scale})" stroke="#304a49" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">${art(family,stage,a,b)}</g></svg>`;
+    fs.writeFileSync(path.join(dir,`${pet.id}.svg`),svg);
+    const buffer=await sharp(Buffer.from(svg)).webp({quality:92}).toBuffer();
+    fs.writeFileSync(path.join(dir,`${pet.id}.webp`),buffer);
+    manifest[pet.id]={name:pet.name,family:pet.familyId || pet.id,stage,source:'original-vector',sha256:crypto.createHash('sha256').update(buffer).digest('hex')};
+    const thumb=await sharp(buffer).resize(128,128).png().toBuffer();
+    const label=Buffer.from(`<svg width="128" height="22"><text x="64" y="16" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#304a49">${pet.id}</text></svg>`);
+    const index=pet.id-905;thumbs.push({input:thumb,left:(index%12)*128,top:Math.floor(index/12)*150},{input:label,left:(index%12)*128,top:Math.floor(index/12)*150+128});
+  }
+  fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+  await sharp({create:{width:1536,height:1200,channels:4,background:'#f1f5f2'}}).composite(thumbs).webp({quality:90}).toFile('/tmp/spirit-art-contact.webp');
+  console.log(`Built ${Object.keys(manifest).length} original spirit portraits`);
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

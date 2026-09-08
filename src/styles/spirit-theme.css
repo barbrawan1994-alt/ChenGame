@@ -115,7 +115,7 @@ textarea {
   mix-blend-mode: soft-light;
 }
 
-.spirit-app > .screen:not(.battle-screen):not(.grid-screen):not(.activity-screen):not(.housing-screen-redesign):not(.ultra-screen),
+.spirit-app > .screen:not(.battle-screen):not(.grid-screen):not(.activity-screen):not(.housing-screen-redesign):not(.ultra-screen):not(.team-preparation),
 .spirit-app > .gd-root {
   position: relative;
   min-height: 100dvh;

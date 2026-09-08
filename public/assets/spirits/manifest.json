@@ -1,0 +1,674 @@
+{
+  "905": {
+    "name": "铃芽雀",
+    "family": 905,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "908cb25a3905bd7df8196bfa6c0fc417cfd1daa731fa1a24e2b4b14a8ac5a127"
+  },
+  "906": {
+    "name": "回音林雀",
+    "family": 905,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "7d49ebb27cc53d7d3153f123724dd692d11111f3ee59bb7caf2fdb6d653d8749"
+  },
+  "907": {
+    "name": "森铃乐师",
+    "family": 905,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "1e731bdc90eb614364e6b2fabbc623e517df0e19b1906ff4ce0c6f14315faa7d"
+  },
+  "908": {
+    "name": "药绒虫",
+    "family": 908,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "1e13e65f922471eb3b22e0b6d48e9d93dd195635c2f274195c5b7c13d1de0d49"
+  },
+  "909": {
+    "name": "露药蛹",
+    "family": 908,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "eaed1f21aa2dd30832ca7b46364d8244eb988b5f8ed2f18f44d9a3b9855abc00"
+  },
+  "910": {
+    "name": "甘露灵蛾",
+    "family": 908,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "b1276f5b2130d74481252f47e420a059b1c342678d55e363cbbdeb8d729eb207"
+  },
+  "911": {
+    "name": "轻羽狸",
+    "family": 911,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "a1f425f5e55a0d40ae61ca5bf9df6cb36c6eb369a4b387eb619ef6c381ea1faf"
+  },
+  "912": {
+    "name": "巡风狸",
+    "family": 911,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "d8f42f8287f7e999443b23e09261e266cf29e1811a904b6cdf388d0f3c717075"
+  },
+  "913": {
+    "name": "逐风游侠",
+    "family": 911,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "f9f4a28f2b0abced47e163bb49cc5c3c701411630906b473fd22df991dc9b26b"
+  },
+  "914": {
+    "name": "石鼓童",
+    "family": 914,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "f169e49516287abf988289f646ab1dd72c819c2f3c59816b4ef0a18159c23d1a"
+  },
+  "915": {
+    "name": "震岩鼓手",
+    "family": 914,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "6b15f417a66e76737942e22beeeb8dfc0f80b2bddbe91d8ae743510f72456626"
+  },
+  "916": {
+    "name": "磐音卫士",
+    "family": 914,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "04c9c0c90e3e7412a230eea6bee009a1e776b785eadec4248ec352d0eb4b7d54"
+  },
+  "917": {
+    "name": "砂针灵",
+    "family": 917,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "a5852fe83f13901f6635e98ecbdb631898a885a0d8b59077c91bec0924681105"
+  },
+  "918": {
+    "name": "刻砂使",
+    "family": 917,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "234c7e8a7866b91ccdeaa4d15116fa3e2d26f600adfe71bbae9a0583a00fbeaf"
+  },
+  "919": {
+    "name": "流沙计时官",
+    "family": 917,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "f174208750fc7b82907faa79ec35ecf880289bf7eb7b7e67198abc90ac10f6dd"
+  },
+  "920": {
+    "name": "泉心贝",
+    "family": 920,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "f73ecb5eccaedeaa183c29ca4d691d4ff0deba1c5c7a75ad6d071a3f0648c96c"
+  },
+  "921": {
+    "name": "清泉蚌",
+    "family": 920,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "0cec1b06a37903ee43d4f6dab64dbddf3f687df5fbea3011a5fd28b6226974ca"
+  },
+  "922": {
+    "name": "溯泉医者",
+    "family": 920,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "b6826c4b0907a47f03f0ca14b94f1d92719661a2c93314fd27988e26e0f0b14c"
+  },
+  "923": {
+    "name": "镜铆灵",
+    "family": 923,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "ee9ff0d9e8b05ad905d983e6a5df05754c7e1835a70560b5387a07ccf2c7eb61"
+  },
+  "924": {
+    "name": "明镜铠",
+    "family": 923,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "7ba7547f5f599da6d38ec078ff418907f9b4f5bf734dc3b1dbd8f2f59404d154"
+  },
+  "925": {
+    "name": "折光盾卫",
+    "family": 923,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "3ddf57e2fcc33c71d15217c33dce2e0f4f9fd0ae2ebaafbf38f49fa072c46c96"
+  },
+  "926": {
+    "name": "星火团",
+    "family": 926,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "d3d8943d1c0004776e8b64d4c4a5c0e889fe45d1ff11499bdfe573b5fb6a9278"
+  },
+  "927": {
+    "name": "磁星灵",
+    "family": 926,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "b973f625e3b88276b3af2ddcc5294a21e69ec0cea13cc1fec99aeb26f18d0eba"
+  },
+  "928": {
+    "name": "轨道巡游者",
+    "family": 926,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "c71cd535d277421950fd1e22cbb63198da6da234990e3772d81863e8b16dd2fb"
+  },
+  "929": {
+    "name": "雾笛苗",
+    "family": 929,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "02dde102982697fb81944078df4c241b480fe69ab43a59dc8016b4cabd4c9dc8"
+  },
+  "930": {
+    "name": "毒簧灵",
+    "family": 929,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "4af07b601d18033c4ac91e11593d07af5f48d769768fbe02750b7f38a8c65ac0"
+  },
+  "931": {
+    "name": "瘴音指挥",
+    "family": 929,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "0615ab1ad19336c99984da2ffb032fee95d6e6fca77550d993bc0b2e91c1898d"
+  },
+  "932": {
+    "name": "潮羽雏",
+    "family": 932,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "4bb3acf28e6c921b563621a689152959c1d3563440da858cc6fc94397c7e919c"
+  },
+  "933": {
+    "name": "涡流鹭",
+    "family": 932,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "06ec69e5ec6b874b14d80ad4bb12060d9625bceadca229c096b94add132e3883"
+  },
+  "934": {
+    "name": "御潮风使",
+    "family": 932,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "de4633d527ef9dee9c728e3a05594f6f88cbb841e3e19c27aeb290fd9cc9fbd4"
+  },
+  "935": {
+    "name": "糖露团",
+    "family": 935,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "c799d78d457524bd0d95c52e4cf92b899dad9a7b9284bdae809311632a82f71e"
+  },
+  "936": {
+    "name": "蜜露灵",
+    "family": 935,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "7a883605ca61a2f14b158fc2eba041e6864bbbdd114d44c32e12aed4808a86cc"
+  },
+  "937": {
+    "name": "甜露圣使",
+    "family": 935,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "b1487436bdffe1c2b186bbe5eeb47ba54810e73723730ef03ad61f103f27edac"
+  },
+  "938": {
+    "name": "霜刻灵",
+    "family": 938,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "9c0a8cf2efd6984a9049b28621ee92c89aced7d84f8d3e9a3378c3e80400f9cb"
+  },
+  "939": {
+    "name": "冰钟使",
+    "family": 938,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "b4f41a220fa69f5cb98ad25e736ad1f5ac17787cd0e83fd007d369c248c06c5a"
+  },
+  "940": {
+    "name": "寒钟守望",
+    "family": 938,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "885ac3eaabd52cbbc3e23670ed0cf0a22a5b52eebc1ad677132a0faf673a368e"
+  },
+  "941": {
+    "name": "烛芯鸟",
+    "family": 941,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "d5440a7a9c4c63d0ac049e53d97e837572d0ca64854db2aa647c8cec67ad02cc"
+  },
+  "942": {
+    "name": "暖辉鸦",
+    "family": 941,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "0b451626d1d3dcaa72800d7b592f319013a22fa846bfff558f57aa88d5c5e41b"
+  },
+  "943": {
+    "name": "朝焰明使",
+    "family": 941,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "c32117e70cc54f7ccec675aeb8f366ccf0f28a28822dd44917fe5e5b312b0083"
+  },
+  "944": {
+    "name": "裂芽种",
+    "family": 944,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "bd30baa41c7a67c2f7679742ae165ba316daec25db4b635c335b71db5c079e4b"
+  },
+  "945": {
+    "name": "失序藤",
+    "family": 944,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "72ce9d8b22cf2e6f2cc1d0fc57ebbbee4b88578e72edd93e1ea8a480d9bc00cb"
+  },
+  "946": {
+    "name": "悖生花冠",
+    "family": 944,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "5bb832d20c58d11337878507e7dd8b724eb973c3c2baaa56915d5e3bd4870b25"
+  },
+  "947": {
+    "name": "风拳童",
+    "family": 947,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "0de7af3840284f773990817500cf78539c0d2c226ed94e1b29a313fd2fd85d9e"
+  },
+  "948": {
+    "name": "岚步客",
+    "family": 947,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "a9a37c4b96b4e89800b9d84bc61e1a204a9e58707b5c85c61a4badcfe8858e79"
+  },
+  "949": {
+    "name": "流岚武师",
+    "family": 947,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "696f722762adfd902c3542aee1cc22f085adf6decadaa87862a4f7d49d1f8be7"
+  },
+  "950": {
+    "name": "星铆球",
+    "family": 950,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "5bbc4c237b0f1954e46222ba16bb67d5d2824bcf1d230b99cd44c371e5a7b997"
+  },
+  "951": {
+    "name": "环轨甲",
+    "family": 950,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "afb183aa83814dfb3d7b9b265fca828f3678f758b3f7d50221fea6a85517f06d"
+  },
+  "952": {
+    "name": "天穹重卫",
+    "family": 950,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "546d58513b0d4bdf8ddcaebcf9c36980dfb408d50b2a9b8dbcb43a2b27ce346e"
+  },
+  "953": {
+    "name": "电拨鼠",
+    "family": 953,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "9e9c04a50f46926f454242a9a1d566972f2f41053328976ea8ae9ad843f9d91d"
+  },
+  "954": {
+    "name": "弧弦手",
+    "family": 953,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "f65d9c0461d65eef9846604522747cd0562562a630c15b54cf25e16f003934f6"
+  },
+  "955": {
+    "name": "雷弦演奏家",
+    "family": 953,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "2d717174d6c83f51464c693816ad17e57d08bc0f636efa348cd175cfce803821"
+  },
+  "956": {
+    "name": "泥药团",
+    "family": 956,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "c409a35db2b91f6484f20196bea1a41d226c16102da039c3801ca1c3a5f5def5"
+  },
+  "957": {
+    "name": "岩药童",
+    "family": 956,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "2c1bcb7dd3af200adaec8531265f5c7e86e4279dd5fa79dbace48596dfcd805a"
+  },
+  "958": {
+    "name": "厚土药师",
+    "family": 956,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "b37cd3f9f4aef3612ee9e42466445cd8993228a0a3448965c3941377c428f582"
+  },
+  "959": {
+    "name": "暮灯灵",
+    "family": 959,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "4c06ce6c546ab0994509eb833e8f9b74e7df61fe2c0b3a82c9cc0e6ae66bcd9b"
+  },
+  "960": {
+    "name": "幽光巡使",
+    "family": 959,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "f54ab9790b53806f4ee4978261eb120cf9ce91a6ded0fc07ac68c60730f02416"
+  },
+  "961": {
+    "name": "灯夜司仪",
+    "family": 959,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "f0423c7bdae6cb50a8f192ad660a91b777fa89d5c31cdca7250663ef41939f2e"
+  },
+  "962": {
+    "name": "潮星卵",
+    "family": 962,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "abe59c7b866dc0867fb73af20fb9d041a10941065bc2e2f9517f695924e71267"
+  },
+  "963": {
+    "name": "浮星水灵",
+    "family": 962,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "02016ccb81b5332754e2275ff699d0be2d8b5ba1c2110de4c7829f45323678f0"
+  },
+  "964": {
+    "name": "星潮引路者",
+    "family": 962,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "663fa2de485b15706690d377ac5304ba517a33142bf5b2c64c012058f4ec8203"
+  },
+  "965": {
+    "name": "墨拍灵",
+    "family": 965,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "f10f221c6b2077da47d1926203b3803062b887c05b606f862dd97ed4119d51da"
+  },
+  "966": {
+    "name": "夜奏使",
+    "family": 965,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "870f5ee26e867f9dfdf792dd607f180cabbe10247cdbf32da666c042a254724f"
+  },
+  "967": {
+    "name": "静夜咏者",
+    "family": 965,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "6845520debf8307bef1f4da003efd0890cf51d3e97f931fdf079b46e99ed5054"
+  },
+  "968": {
+    "name": "旋砂团",
+    "family": 968,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "3298a93eb2512766424dcd31d85d171810e903f2044175e433f079035901772f"
+  },
+  "969": {
+    "name": "风沙侍",
+    "family": 968,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "8f8924c3912a7d83a3c849cbacec5a41e17f843517b4717f3c76b2002be91b07"
+  },
+  "970": {
+    "name": "沙岚斥候",
+    "family": 968,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "cfbbfac3a659c63f8a05887ccfee14bacc04cec19274a29ce4657e40bdae90a9"
+  },
+  "971": {
+    "name": "齿轮秒针",
+    "family": 971,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "eb82331f240067627920436e631b0aa82bc9c3837f9eabe116c713419a689138"
+  },
+  "972": {
+    "name": "巡刻机",
+    "family": 971,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "6e364957164b81b8a48cd1c0f2b74f20e9c8b3c83e02ab9a207b9076c5b6e27f"
+  },
+  "973": {
+    "name": "纪时校准官",
+    "family": 971,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "14b8d5c458c742320e9b7908d7043ec6ac3da70e0ea0c35715abe75c4ddea3ab"
+  },
+  "974": {
+    "name": "祝芽灵",
+    "family": 974,
+    "stage": 0,
+    "source": "original-vector",
+    "sha256": "951482dea545412659199f656e2e8f1a9361772a1fa8d765fa5e48b69eaee387"
+  },
+  "975": {
+    "name": "祈铃使",
+    "family": 974,
+    "stage": 1,
+    "source": "original-vector",
+    "sha256": "2464bdcb5fce0ac8277d7fde33ab53feef7932025c58c7c50c4ee220617c7a30"
+  },
+  "976": {
+    "name": "和鸣守誓者",
+    "family": 974,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "e4417e58bf0e5a121a8d47a7dde29dfb7380920a4d1167c083f1b5489316b91c"
+  },
+  "977": {
+    "name": "潮汐调律师",
+    "family": 977,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "1b8cf40b9e53f8af433f48ea41d3fcaa8e4ee7eaa5e13947abba30cd7a61033b"
+  },
+  "978": {
+    "name": "霞光织者",
+    "family": 978,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "e8f16342b2445fdf031367ad4407ba9937ee1f1d0dda762c919f46e1a1d092ad"
+  },
+  "979": {
+    "name": "雾岭药客",
+    "family": 979,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "b890a97af5a58e01991e56a8ce6069486b63c0fe889fbb973607b1859dd5fe79"
+  },
+  "980": {
+    "name": "星砂堡垒",
+    "family": 980,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "afc6ebdb3be1193103654368918867f02b5c01814954c494e312bfdf8a3de399"
+  },
+  "981": {
+    "name": "逆拍舞者",
+    "family": 981,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "436e8f67a07bf8f535df6453cdb7ad2a7a798e01ff14d92b7d84b4e9c11965ef"
+  },
+  "982": {
+    "name": "熵晶猎手",
+    "family": 982,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "4836b21589dce6b17e0a552bf56f8f71389bc4d5be4017b359f611f9d150d3b7"
+  },
+  "983": {
+    "name": "青焰药炉",
+    "family": 983,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "2c2da1911d5b8cb2bb9f6a5a61ad69ef1b24f41334042140c968ae7975c9bba4"
+  },
+  "984": {
+    "name": "破阵铿锵",
+    "family": 984,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "86972c398fc557f7219713421510524b0a35003cd60312b1c92060a0d7f6a73a"
+  },
+  "985": {
+    "name": "霁雪信使",
+    "family": 985,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "bdeaa23e9959760f596e1fb160ad80dac503c8c73f54e6472c9b2b43dc764713"
+  },
+  "986": {
+    "name": "月蚀潜影",
+    "family": 986,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "0980a17e7a8d278ab0671618580b0dace9d3df934ea00604389768c6e8253b88"
+  },
+  "987": {
+    "name": "照夜萤将",
+    "family": 987,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "a4a1f7826b0387cdb7262c96d2bc3aa391d4096f05f128cedc1def26dff83707"
+  },
+  "988": {
+    "name": "镇瘴医灵",
+    "family": 988,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "d44c9a3c64126277ae8a8f3a2b77f05d34d7e1ab4c6ef3af761a43e470bf1469"
+  },
+  "989": {
+    "name": "寂音判官",
+    "family": 989,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "c94c216e522a521776739bdaeeda024f040985814b03da2929689a83eeb1c942"
+  },
+  "990": {
+    "name": "晨钟誓卫",
+    "family": 990,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "65714b2ac743e249c54725bbc4db72116f78ba475599193534d88e98b25e9abf"
+  },
+  "991": {
+    "name": "裂隙花使",
+    "family": 991,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "72171d5b99ed40174f92c71528564db0f81092a6dd8b75983cc86e213a553e4d"
+  },
+  "992": {
+    "name": "珊瑚风塔",
+    "family": 992,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "d804b2e68f4428413ce3b0962d6f323eae6859ae68bcb55c678ced95f00c8c70"
+  },
+  "993": {
+    "name": "万籁协奏者",
+    "family": 993,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "03dec536ce59100377045720c4872485b6e407949f2f5d9881b1b4d55e36f828"
+  },
+  "994": {
+    "name": "生命守灯人",
+    "family": 994,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "7942d77f80e3c38a872088dfbd6fdd8f4244beb2f2893f1f78a00efafa8334b2"
+  },
+  "995": {
+    "name": "长风逐日者",
+    "family": 995,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "550c9b697b6b33805cf3b0d795e0334f70ee978cae563ded0ce12ffb4b9e1797"
+  },
+  "996": {
+    "name": "断轮裁时者",
+    "family": 996,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "b3fbb2c99e607e51c8e44d9485e6130d0833fdb21ea3af9c44bae481088092b5"
+  },
+  "997": {
+    "name": "零界棱镜",
+    "family": 997,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "80ba477ee9dca2dc2dbcb3d8522fd7842b85ef076560b4536ce45f72f25219f6"
+  },
+  "998": {
+    "name": "极夜星航者",
+    "family": 998,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "90e3f8b3f8d0fdd8283a112386c1ff2783979619351d132799b272d7921b143c"
+  },
+  "999": {
+    "name": "净世誓约兽",
+    "family": 999,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "97e59b441bee317a3e051e27145550bc633093377f4ad6aae53d83895fcd40a9"
+  },
+  "1000": {
+    "name": "千律合鸣龙",
+    "family": 1000,
+    "stage": 2,
+    "source": "original-vector",
+    "sha256": "24d7420e7dafcbf12fc9e2859b5ac16d3e9f61988a4371b11a1e9abfd0fd212b"
+  }
+}

@@ -144,7 +144,7 @@ export function calcExpeditionBonus(teamPets, zone) {
   const matchCount = teamPets.filter(p => {
     if (!p) return false;
     if (isAllType) return true;
-    return zone.bonusTypes.includes(p.type) || zone.bonusTypes.includes(p.secondaryType);
+    return [p.type,p.secondaryType,p.type2].some(type=>zone.bonusTypes.includes(type));
   }).length;
   const maxMatches = isAllType ? Math.min(matchCount, 3) : matchCount;
   if (maxMatches <= 0) return 1.0;

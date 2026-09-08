@@ -500,6 +500,7 @@ const TYPE_FALLBACK = {
 
 export function getSpriteUrl(pet) {
   if (!pet) return null;
+  if (pet.id >= 905 && pet.id <= 1000) return `assets/spirits/${pet.id}.webp`;
   const uniqueSource = UNIQUE_SPRITE_SOURCES[pet.id];
   if (uniqueSource) return uniqueSource.url;
 
@@ -510,6 +511,7 @@ export function getSpriteUrl(pet) {
 
 export function getSpriteFallbackUrls(pet) {
   if (!pet) return [];
+  if (pet.id >= 905 && pet.id <= 1000) return [`assets/spirits/${pet.id}.webp`, `assets/spirits/${pet.id}.svg`];
   const uniqueSource = UNIQUE_SPRITE_SOURCES[pet.id];
   if (uniqueSource?.kind === 'pokemon') {
     const urls = SPRITE_CDNS.map(cdn => pokemonSpriteUrl(uniqueSource.natdex, cdn));

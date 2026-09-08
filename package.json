@@ -15,6 +15,7 @@
     "check:kaiju": "node scripts/kaiju-check.cjs",
     "check:battle": "node scripts/battle-tactics-check.cjs",
     "check:spirits": "node scripts/spirit-expansion-check.cjs",
+    "check:integration": "node scripts/integration-check.cjs",
     "check:balance": "node scripts/general-data-check.mjs && node scripts/kingdom-balance-check.mjs && node scripts/gang-balance-check.mjs && node scripts/ecology-balance-check.mjs && node --no-warnings scripts/economy-balance-check.mjs && node --no-warnings scripts/crossover-system-check.mjs",
     "dist": "npm run build && electron-builder",
     "generate-icon": "node scripts/generate-icon.js",

@@ -4,7 +4,7 @@ import { executeTurn as executeKingdomTurn } from './data/kingdomWar';
 const CombatMetricsScreen = lazyScreen(() => import(/* webpackChunkName: "combat-metrics" */ './components/screens/CombatMetricsScreen'));
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { Sparkles, Shield } from 'lucide-react';
+import { Sparkles, Shield, Swords } from 'lucide-react';
 import _ from 'lodash';
 
 import { shouldForestVineBlock, shouldGravitySkip, calcFireHeatPPExtra, applyStarShieldDamage, calcResidualStatusDamage, processDomainTurnStart, processBossMechanicsTurnEnd, getBossRageMult, getMirrorLakeMove, queueMirrorEcho, processWindTowerFollowUp, isDarkMoonHidden, canDarkMoonScout, applyMirrorEchoRecoil, applyParasiteHealRedirect, checkMirrorCloneReflect } from './utils/pveBattleRules';
@@ -12,6 +12,8 @@ import { shouldForestVineBlock, shouldGravitySkip, calcFireHeatPPExtra, applySta
 import { getStats as getStatsRaw, getStageMult, calcNextExp, calcBattleBaseExp, MAX_BATTLE_CRIT_CHANCE } from './utils/statsCalculator';
 import { createPet as createPetRaw, getCharmRank, getMoveByLevel, promotePetToShiny } from './utils/petFactory';
 import { getSpeciesLearnedMoves } from './utils/speciesMoves';
+import { getExpeditionEggPool } from './utils/speciesAvailability';
+import { getUnlockedFusionSystems, getUnlockedCrossSystems } from './data';
 import { canUseAsFusionMaterial, getFusionShinyChance } from './utils/fusionRules';
 import { calculatePetReleaseGold, ensureUniquePetUids, removePetsByUids, removeSinglePetByUid } from './utils/petIdentity';
 import { normalizeActivitySaveState, normalizeCoreSaveState, normalizeOperationalSaveState } from './utils/saveNormalizer';
@@ -58,7 +60,10 @@ import { getUltraTrial, getUltraTrialBlock, buildUltraTrialParty, getUltraTrialA
 import { KAIJU_RANKS, KAIJU_STYLES } from './data/kaiju';
 import { buildKaijuUnit, getKaijuEncounterPool, rollKaijuEncounter, recordKaijuBattle, getKaijuReward, getKaijuExpMultiplier } from './utils/kaijuRules';
 const UltraScreen = React.lazy(() => import(/* webpackChunkName: "ultra-screen" */ './components/screens/UltraScreen'));
-const TacticsScreen = React.lazy(() => import(/* webpackChunkName: "tactics-screen" */ './components/screens/TacticsScreen'));
+const KaijuScreen = React.lazy(() => import(/* webpackChunkName: "kaiju-screen" */ './components/screens/KaijuScreen'));
+import { KAIJU_RAID_BY_ID } from './data/kaijuRaids';
+import { buildRaidParty, getRaidBlock, getRaidReward } from './utils/kaijuRaids';
+const TacticsScreen = React.lazy(() => import(/* webpackChunkName: "tactics-screen" */ './components/screens/TeamPreparationScreen'));
 
 const TrainerCardScreen = lazyScreen(() => import(/* webpackChunkName: "screen-trainercard" */ './components/screens/TrainerCardScreen'));
 const PCScreen = lazyScreen(() => import(/* webpackChunkName: "screen-pc" */ './components/screens/PCScreen'));
@@ -1364,6 +1369,7 @@ const [pendingTask, setPendingTask] = useState(null);
     if (!pet) return null;
     if (pet.ultraTransformed && ULTRA_BY_ID[pet.ultraHeroId]) return { type: 'image', url: ULTRA_BY_ID[pet.ultraHeroId].portrait, emoji: pet.emoji };
     if (pet.ultraTrialArt) return { type: 'image', url: pet.ultraTrialArt, emoji: pet.emoji };
+    if (pet.id >= 905 && pet.id <= 1000) return {type:'image',url:getSpriteUrl(pet),emoji:pet.emoji};
     const imgUrl = imageMap[pet.id];
     if (imgUrl) {
       return { type: 'image', url: imgUrl, emoji: pet.emoji };
@@ -1387,7 +1393,7 @@ const [pendingTask, setPendingTask] = useState(null);
     const visual = generatePetVisual(pet, variant);
     
     if (visual.type === 'image' || visual.type === 'pixel') {
-      const fallbackUrls = getSpriteFallbackUrls(pet);
+      const fallbackUrls = [visual.url, ...getSpriteFallbackUrls(pet).filter(url=>url!==visual.url)];
       const tc = TYPES[pet.type]?.color || '#999';
       const isDigimon = visual.url && visual.url.includes('digi-api.com');
       return (
@@ -1399,7 +1405,7 @@ const [pendingTask, setPendingTask] = useState(null);
           minHeight: variant === 'portrait' ? '1.4em' : '1em',
           aspectRatio: variant === 'portrait' ? '2 / 3' : '1 / 1',
         }}>
-          <img 
+          <img key={visual.url}
             src={visual.url} 
             alt={pet.name} 
             className={visual.type === 'pixel' ? 'pet-avatar-pixel' : (isDigimon ? 'pet-avatar-img pet-avatar-digimon' : 'pet-avatar-img')}
@@ -5033,6 +5039,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   const ultraTrialStartLockRef = useRef(false);
   const ultraTrialActiveRef = useRef(false);
   const [ultraResult, setUltraResult] = useState(null);
+  const [raidResult, setRaidResult] = useState(null);
+  const [kaijuTab, setKaijuTab] = useState('dex');
   const commitUltraState = next => {
     if (battle && !battleResultHandledRef.current) return;
     const normalized = normalizeUltraState(next);
@@ -7607,18 +7615,21 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
   };
 
   const selectGeneralTactic = (tacticId) => {
+    if (!GENERAL_PVE_TACTICS[tacticId] || !getUnlockedFusionSystems(badges.length).includes('general_tactic')) return;
     setFusionState(prev => ({ ...prev, generalTacticId: tacticId }));
     const t = GENERAL_PVE_TACTICS[tacticId];
     showMapToast(t?.icon || '🏇', '将魂战术', `已装备 ${t?.name || tacticId} 的 PVE 战术`, 2500);
   };
 
   const selectPlayerStyle = (mainId, subId) => {
+    if (!PLAYER_STYLES[mainId] || (subId && (!PLAYER_STYLES[subId] || subId===mainId))) return;
     setFusionState(prev => ({ ...prev, playerStyle: { ...(prev.playerStyle || {}), main: mainId, sub: subId === undefined ? prev.playerStyle?.sub : subId } }));
     const s = PLAYER_STYLES[mainId];
     showMapToast(s?.icon || '🧑', '主修流派', `已设 ${s?.name || mainId}`, 2500);
   };
 
   const selectBreathingStyle = (breathingId) => {
+    if (!BREATHING_PVE_STYLES[breathingId] || badges.length<6) return;
     const advanced = ['insect', 'mist', 'sun', 'moon'];
     if (advanced.includes(breathingId) && !(fusionState.crisisUnlocks || []).includes('breathing_unlock')) {
       showMapToast('🔒', '未解锁', '需完成鬼雾山「完整净化」结局', 2500);
@@ -7626,10 +7637,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
     setFusionState(prev => ({ ...prev, playerStyle: { ...(prev.playerStyle || {}), breathingStyle: breathingId } }));
     const b = BREATHING_PVE_STYLES[breathingId];
-    showMapToast(b?.icon || '⚔️', '呼吸法战术', `已选 ${b?.name || breathingId}（PVE效率）`, 2500);
+    showMapToast(b?.icon || '⚔️', '呼吸法', `已选 ${b?.name || breathingId}`, 2500);
   };
 
   const selectKwPosition = (posId) => {
+    if (!KINGDOM_POSITIONS.some(pos=>pos.id===posId) || !getUnlockedCrossSystems(badges.length).includes('kw_positions')) return;
     setFusionState(prev => ({ ...prev, kwPosition: posId }));
     const p = KINGDOM_POSITIONS.find(x => x.id === posId);
     showMapToast(p?.icon || '🏰', '国战职位', `已设 ${p?.name || posId}`, 2500);
@@ -8026,9 +8038,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       else if (picked.type === 'accessory_shard' || picked.type === 'accessory') { const acc = sampleWeightedAccessory(false); if (acc) { setAccessories(p => [...p, acc]); msg.push(`💍 饰品 ${acc.name || '饰品'}`); } }
       else if (picked.type === 'egg' || picked.type === 'shiny_egg') {
         const eggLvCap = picked.level || (20 + badges.length * 8);
-        const legendIds = (LEGEND_OBTAIN_RULES || []).map(r => r.petId);
-        const eligiblePool = POKEDEX.filter(p => (p.lvl || p.level || 1) <= eggLvCap && p.id <= 900 && !p.hidden && !legendIds.includes(p.id));
-        const eggSpecies = eligiblePool.length > 0 ? eligiblePool[Math.floor(Math.random() * eligiblePool.length)] : POKEDEX[Math.floor(Math.random() * Math.min(100, POKEDEX.length))];
+        const eligiblePool = getExpeditionEggPool(POKEDEX,MAPS,LEGEND_OBTAIN_RULES,zone,eggLvCap);
+        const eggSpecies = eligiblePool[Math.floor(Math.random() * eligiblePool.length)];
         if (eggSpecies) {
           const baseSteps = picked.type === 'shiny_egg' ? 150 : 300;
           const newEgg = { speciesId: eggSpecies.id, name: eggSpecies.name, stepsLeft: baseSteps, isShiny: picked.type === 'shiny_egg', hatchLevel: Math.min(100, Math.max(1, Math.floor((picked.level || 20) * 0.8))) };
@@ -8153,6 +8164,9 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       return;
     }
 
+    const oldMaxHp = getStats(pet).maxHp;
+    const newMaxHp = getStats(settlement.pet).maxHp;
+    settlement.pet.currentHp = pet.currentHp > 0 ? Math.min(newMaxHp,pet.currentHp + Math.max(0,newMaxHp-oldMaxHp)) : 0;
     const applySettlement = candidate => candidate.uid === claimedSlot.petUid ? settlement.pet : candidate;
     const nextParty = currentParty.map(applySettlement);
     const nextBox = currentBox.map(applySettlement);
@@ -8321,7 +8335,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', getLocalDateStr()));
     let enemyCount = rank.enemyCount || 3;
     if (ruleEffect === 'solo') enemyCount = 1;
-    let enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 900 && !p.hidden);
+    let enemyPool = POKEDEX.filter(p => p.id > 0 && !p.hidden);
     if (ruleEffect === 'typeLock') {
       const weekTypes = getArenaWeekTypes();
       const typePool = enemyPool.filter(p => weekTypes.includes(p.type) || weekTypes.includes(p.type2));
@@ -8514,8 +8528,8 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     const unclaimedBounties = bountyBoard.date === today ? bountyBoard.quests.filter(q => q.completed && !q.claimed).length : 0;
 
     const entries = [
-      { id:'ultra', icon:<Sparkles size={25} />, name:'光之羁绊', desc:'奥特曼图鉴与试炼', color:'#c34a5c', badge:0, onClick: () => { setActivityCenter(false); setView('ultra'); } },
-      { id:'tactics', icon:<Shield size={25}/>, name:'战术编成', desc:'忍术准备与呼吸流派', color:'#81b89b', badge:0, onClick:()=>{setActivityCenter(false);setView('tactics');} },
+      { id:'kaiju_raids', icon:<Swords size={25} />, name:'灾厄讨伐', desc:'强敌讨伐与首胜奖励', color:'#c34a5c', badge:0, onClick: () => { setActivityCenter(false); setRaidResult(null); setKaijuTab('raids'); setView('kaiju'); } },
+      { id:'joint_adventure', icon:<Shield size={25}/>, name:'联合冒险', desc:'秘境、海域与古战场', color:'#81b89b', badge:0, onClick:()=>{setActivityCenter(false);setFusionHubTab('jutsu');setFusionHubOpen(true);} },
       { id:'arena', icon:'🏟️', name:'竞技场', desc:'段位排位赛', color:'#E53935', badge: arenaState.tickets, onClick: () => { setActivityCenter(false); setView('arena'); } },
       { id:'expedition', icon:'🗺️', name:'远征探险', desc:'派遣队伍探险', color:'#2E7D32', badge: pendingExpeditions, onClick: () => { setActivityCenter(false); setView('expedition'); } },
       { id:'mining', icon:'⛏️', name:'矿洞挖掘', desc:'挖矿收集矿石', color:'#795548', badge: Math.max(0, Number(mineState.energy) || 0), onClick: () => { setActivityCenter(false); if (badges.length < MINE_REQ_BADGES) { showMapToast('🔒','未解锁',`需要 ${MINE_REQ_BADGES} 枚徽章`,1500); return; } if (!mineState.grid || mineState.grid.length === 0) setMineState(prev => ({...prev, grid: generateMineGrid(prev.depth || 1)})); setView('mining'); } },
@@ -8717,7 +8731,7 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
       const rng = mulberry32(arenaPreviewSeed(rank.id, rule?.id || 'normal', todayStr));
       let enemyCount = rank.enemyCount || 3;
       if (rule?.effect === 'solo') enemyCount = 1;
-      let enemyPool = POKEDEX.filter(p => p.id > 0 && p.id <= 900 && !p.hidden);
+      let enemyPool = POKEDEX.filter(p => p.id > 0 && !p.hidden);
       if (rule.effect === 'typeLock') {
         const weekTypes = getArenaWeekTypes();
         const typePool = enemyPool.filter(p => weekTypes.includes(p.type) || weekTypes.includes(p.type2));
@@ -9080,6 +9094,33 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     }
   };
 
+  const startKaijuRaid = raidId => {
+    if (ultraTrialStartLockRef.current || (battle && !battleResultHandledRef.current)) return;
+    const raid = KAIJU_RAID_BY_ID[raidId];
+    const currentParty = partyRef.current || [];
+    const reason = getRaidBlock(raid,currentParty,badges.length,goldRef.current);
+    if (reason) { showMapToast('', '灾厄讨伐', reason, 2200); return; }
+    const customParty = buildRaidParty(raid,{createPet,pokedex:POKEDEX,getStats});
+    const runId = `raid:${raid.id}:${customParty[0].uid}`;
+    ultraTrialStartLockRef.current = true;
+    ultraTrialActiveRef.current = runId;
+    let accepted = false;
+    try {
+      accepted = !!startBattle({customParty,isDouble:raid.double,name:raid.title,
+        _kaijuRaid:raid.id,_ultraTrialRunId:runId,
+        _playerParty:_.cloneDeep(currentParty.filter(pet=>pet.currentHp>0).slice(0,4)),
+        _ultraPartySnapshot:_.cloneDeep(currentParty)},'ultra_trial');
+      if (accepted) {
+        goldRef.current -= raid.stake;
+        flushSync(()=>{setGold(goldRef.current);setRaidResult(null);});
+        persistSaveRef.current(true);
+      }
+    } finally {
+      if (!accepted) ultraTrialActiveRef.current = false;
+      window.setTimeout(()=>{ultraTrialStartLockRef.current=false;},0);
+    }
+  };
+
   const finishUltraTrial = (snapshot, won) => {
     if (!ultraTrialActiveRef.current || snapshot._ultraTrialRunId!==ultraTrialActiveRef.current) return;
     ultraTrialActiveRef.current = false;
@@ -9087,7 +9128,18 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     won = !!won && snapshot.enemyParty?.length>0 && snapshot.enemyParty.every(unit=>unit.currentHp<=0);
     combatMetrics.finish(snapshot, won ? 'win' : 'loss');
     let result = null;
-    if (won) {
+    const raid = KAIJU_RAID_BY_ID[snapshot._kaijuRaid];
+    if (won && raid) {
+      result = getRaidReward(ultraStateRef.current.raids,raid,getLocalDateStr());
+      const next = {...ultraStateRef.current,raids:result.state};
+      ultraStateRef.current = next;
+      setUltraState(next);
+      goldRef.current += raid.stake + result.gold;
+      setGold(goldRef.current);
+      if (result.gold) updateAchStat({totalGoldEarned:result.gold});
+      setInventory(p=>({...p,berries:addBerries(p.berries,'sitrus',result.berries),
+        ...(result.vitamin ? {[result.vitamin]:(p[result.vitamin]||0)+1} : {})}));
+    } else if (won) {
       result = completeUltraTrial(ultraStateRef.current, snapshot._ultraTrial);
       ultraStateRef.current = result.state;
       setUltraState(result.state);
@@ -9101,7 +9153,11 @@ const RadarChart = ({ stats, color = '#2196F3', size = 140, textColor = "rgba(25
     setAnimEffect(null);
     setBattleImpact(null);
     setBattle(null);
-    setView('ultra');
+    if (raid) {
+      setRaidResult({raidId:raid.id,won,gold:result?.gold || 0});
+      setKaijuTab('raids');
+      setView('kaiju');
+    } else setView('ultra');
     setTimeout(() => persistSaveRef.current(true), 0);
   };
 
@@ -11504,6 +11560,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     let extraBattleData = {};
     if (isUltraTrial) {
       extraBattleData._ultraTrial = context._ultraTrial;
+      extraBattleData._kaijuRaid = context._kaijuRaid;
       extraBattleData._ultraTrialEra = context._ultraTrialEra;
       extraBattleData._ultraTrialRunId = context._ultraTrialRunId;
       extraBattleData._ultraTrialRoute = context._ultraTrialRoute;
@@ -20109,6 +20166,24 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   };
   const safeGrowthItem = () => { const pool = GROWTH_ITEMS.filter(i => i.id !== 'max_candy'); return pool.length > 0 ? _.sample(pool) : { id: 'exp_candy', name: '经验糖果', emoji: '🍬' }; };
 
+  const recallSpeciesMove = (uid,moveId) => {
+    if (battle && !battleResultHandledRef.current) return;
+    const index = partyRef.current.findIndex(pet=>pet.uid===uid);
+    const pet = partyRef.current[index];
+    if (!pet || pet.pendingLearnMove) return;
+    const move = getSpeciesLearnedMoves(POKEDEX.find(species=>species.id===pet.id),pet.level).find(item=>item.id===moveId);
+    if (!move || pet.moves.some(known=>known.id===move.id || (known.name===move.name && known.t===move.t))) return;
+    if (goldRef.current < 300) {showMapToast('','金币不足','回忆技能需要 300 金币',1800);return;}
+    if (pet.moves.length<4) {
+      const next=partyRef.current.map(unit=>unit.uid===uid ? {...unit,moves:[...unit.moves,move]} : unit);
+      goldRef.current-=300;partyRef.current=next;
+      flushSync(()=>{setGold(goldRef.current);setParty(next);});
+      setTimeout(()=>persistSaveRef.current(true),0);
+    } else {
+      setLearningPetIdx(index);setPendingMove({...move,_recallCost:300,_returnView:'tactics'});setView('move_forget');
+    }
+  };
+
   const forgetMove = (moveIndex) => {
     if (learningPetIdx === null || !pendingMove) return;
     const moveToLearn = pendingMove;
@@ -20120,6 +20195,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     inventoryActionLocksRef.current.add(lockKey);
     try {
       const currentInventory = inventoryRef.current || inventory;
+      if (moveIndex >= 0 && moveToLearn._recallCost && goldRef.current < moveToLearn._recallCost) {showMapToast('','金币不足','回忆技能需要 300 金币',1800);return;}
       if (moveIndex >= 0 && moveToLearn._tmId && ((currentInventory.tms || {})[moveToLearn._tmId] || 0) <= 0) {
         showMapToast('📦', '技能书不足', '这本技能书已经被使用，请放弃本次学习', 2000);
         return;
@@ -20132,13 +20208,15 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           toastMessage = `${nextPet.name} 放弃 [${moveToLearn.name}]`;
         } else {
           const oldMoveName = nextPet.moves[moveIndex]?.name || '未知技能';
-          nextPet.moves[moveIndex] = moveToLearn;
+          const {_recallCost,_returnView,...learned} = moveToLearn;
+          nextPet.moves[moveIndex] = learned;
           toastMessage = `${nextPet.name}：${oldMoveName} → ${moveToLearn.name}`;
         }
         nextPet = advancePendingLearnMove(nextPet);
         return nextPet;
       });
       partyRef.current = updatedParty;
+      if (moveIndex >= 0 && moveToLearn._recallCost) {goldRef.current-=moveToLearn._recallCost;setGold(goldRef.current);}
       if (moveIndex >= 0 && moveToLearn._tmId) {
         const nextInventory = {
           ...currentInventory,
@@ -20155,7 +20233,8 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       const resolution = getPostMoveResolution(updatedParty);
       setLearningPetIdx(resolution.pendingIndex);
       setPendingMove(resolution.pendingMove);
-      setView(resolution.view);
+      setView(moveToLearn._returnView && !resolution.pendingMove && resolution.view!=='team' ? moveToLearn._returnView : resolution.view);
+      setTimeout(()=>persistSaveRef.current(true),0);
       if (resolution.view === 'team') {
         setTimeout(() => showMapToast('✨', '可以进化', '技能处理完成，伙伴的进化入口仍然保留。', 2600), 50);
       }
@@ -21848,7 +21927,7 @@ const renderMenu = () => {
               { id: 'team', icon: '🛡️', label: '伙伴', action: () => setTeamMode(true) },
               { id: 'shop', icon: '🛍️', label: '商店', action: () => setShopMode(true) },
               { id: 'fusion', icon: '🧬', label: '融合', action: () => setFusionMode(true) },
-              { id: 'fusion_hub', icon: '🔴', label: '战术室', action: () => setFusionHubOpen(true) },
+              { id: 'fusion_hub', icon: <Shield size={20}/>, label: '战术室', action: () => setView('tactics') },
               { id: 'bag', icon: '🎒', label: '背包' },
               { id: 'pvp', icon: '⚔️', label: '对战', action: () => setPvpMode(true) },
               { id: 'league', icon: '🏆', label: '联盟' },
@@ -21856,6 +21935,8 @@ const renderMenu = () => {
               { id: 'card', icon: '📋', label: '资料', action: () => setView('trainer_card') },
               { id: 'achievements', icon: '🏅', label: '成就', action: () => setView('achievements') },
               { id: 'pokedex', icon: '📖', label: '图鉴', action: () => setView('pokedex') },
+              { id: 'ultra', icon: <Sparkles size={20}/>, label: '奥特曼', action: () => {setUltraResult(null);setView('ultra');} },
+              { id: 'kaiju', icon: <Shield size={20}/>, label: '怪兽', action: () => {setRaidResult(null);setKaijuTab('dex');setView('kaiju');} },
               { id: 'fruit_dex', icon: '🍎', label: '果实', action: () => setView('fruit_dex') },
               { id: 'naruto', icon: '🍥', label: '忍者', action: () => setView('naruto_exam') },
               { id: 'jutsu_codex', icon: '📖', label: '忍术', action: () => setView('jutsu_codex') },
@@ -21870,7 +21951,7 @@ const renderMenu = () => {
               { id: 'settings', icon: '⚙️', label: '设置', action: () => setView('settings') },
             ].map(btn => {
               const growthIds = ['team','shop','fusion','fusion_hub','bag','pc','fruit_dex','naruto','jutsu_codex','skill_dex','activity','gang','housing'];
-              const infoIds = ['card','achievements','pokedex','general_dex','guide'];
+              const infoIds = ['card','achievements','pokedex','ultra','kaiju','general_dex','guide'];
               const systemIds = ['keyhelp','settings'];
               const dockGroup = growthIds.includes(btn.id) ? 'growth' : infoIds.includes(btn.id) ? 'info' : systemIds.includes(btn.id) ? 'system' : 'explore';
               const startsGroup = ['team','card','keyhelp'].includes(btn.id);
@@ -22259,7 +22340,7 @@ const renderMenu = () => {
   };
 
    // 🔴 训练家战术室（跨体系 PVE 构筑规划）
-  const renderFusionHub = () => <FusionHubScreen {...{ badges, completeKingdomPveTask, fusionHubOpen, fusionHubTab, fusionState, getLocalDateStr, narutoState, participateCalamity, party, selectBreathingStyle, selectGeneralTactic, selectKwPosition, selectPlayerStyle, setFusionHubOpen, setFusionHubTab, setFusionState, showMapToast, startFusionDungeon }} />;
+  const renderFusionHub = () => <FusionHubScreen {...{ badges, completeKingdomPveTask, fusionHubOpen, fusionHubTab, fusionState, getLocalDateStr, participateCalamity, party, selectGeneralTactic, selectKwPosition, selectPlayerStyle, setFusionHubOpen, setFusionHubTab, startFusionDungeon,kingdomWar,ecoCrisisState,sanctuaryState,gold }} onTactics={()=>{setFusionHubOpen(false);setView('tactics');}} />;
 
    // 🔥 [美化] 报名弹窗 (含排行榜)
   const renderActivityModal = () => {
@@ -23720,7 +23801,8 @@ const renderMenu = () => {
       {view === 'lucky_wheel' && renderLuckyWheel()}
       {view === 'training' && renderTraining()}
       {view === 'ultra' && <React.Suspense fallback={<div className="screen" role="status">光之档案读取中...</div>}><UltraScreen state={ultraState} party={party} badges={badges} result={ultraResult} onChange={commitUltraState} onTrial={startUltraTrial} onBack={() => setView('grid_map')} /></React.Suspense>}
-      {view === 'tactics' && <React.Suspense fallback={<div className="screen" role="status">编成读取中...</div>}><TacticsScreen party={party} narutoState={narutoState} fusionState={fusionState} badges={badges} renderAvatar={renderAvatar} onBack={()=>setView('grid_map')} onUltra={()=>setView('ultra')} onGuide={()=>setView('guide')} onBreathing={selectBreathingStyle} onPrepare={(uid,ids)=>{const next=partyRef.current.map(pet=>pet.uid===uid ? {...pet,preparedJutsu:ids} : pet);partyRef.current=next;setParty(next);}}/></React.Suspense>}
+      {view === 'kaiju' && <React.Suspense fallback={<div className="screen" role="status">怪兽档案读取中...</div>}><KaijuScreen progress={ultraState.kaiju} raids={ultraState.raids} party={party} badges={badges} gold={gold} today={getLocalDateStr()} initialTab={kaijuTab} result={raidResult} onRaid={startKaijuRaid} onBack={()=>setView('grid_map')}/></React.Suspense>}
+      {view === 'tactics' && <React.Suspense fallback={<div className="screen" role="status">编成读取中...</div>}><TacticsScreen party={party} narutoState={narutoState} fusionState={fusionState} ultraState={ultraState} badges={badges} renderAvatar={renderAvatar} onBack={()=>setView('grid_map')} onUltra={()=>{setUltraResult(null);setView('ultra');}} onGuide={()=>setView('guide')} onInspect={setViewStatPet} onEquip={openEquipModal} onTraining={()=>setView('training')} onRecall={recallSpeciesMove} onReorder={(uid,delta)=>{if(battle && !battleResultHandledRef.current)return;const next=[...partyRef.current];const from=next.findIndex(p=>p.uid===uid),to=from+delta;if(from<0 || to<0 || to>=next.length)return;[next[from],next[to]]=[next[to],next[from]];partyRef.current=next;setParty(next);}} onBreathing={selectBreathingStyle} onPrepare={(uid,ids)=>{const next=partyRef.current.map(pet=>pet.uid===uid ? {...pet,preparedJutsu:ids} : pet);partyRef.current=next;setParty(next);}}/></React.Suspense>}
       {view === 'world_boss' && renderWorldBoss()}
       {view === 'race' && renderRace()}
       {view === 'naruto_exam' && renderNarutoExam()}

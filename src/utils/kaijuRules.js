@@ -88,7 +88,8 @@ export function buildKaijuUnit(kaijuId,level,{createPet,pokedex,getStats,tier=nu
 
 export function getKaijuAction(battle,enemy,targets,canUse) {
   if(!enemy.kaijuId || !enemy.trialSequence?.length)return null;
-  const sequence=enemy.trialSequence;
+  const wounded=enemy.raidProfile && enemy.currentHp/(enemy.maxHp || enemy._maxHp || 1)<=enemy.raidProfile.phaseHp;
+  const sequence=wounded ? enemy.raidProfile.phaseSequence : enemy.trialSequence;
   const turn=(battle.turnCount || 0)+(enemy.kaijuSlot || 0);
   let index=sequence[turn%sequence.length];
   if(index===2 && enemy.kaijuStyle==='drain' && enemy.currentHp>(enemy.maxHp || enemy._maxHp || 1)*0.5) index=0;
