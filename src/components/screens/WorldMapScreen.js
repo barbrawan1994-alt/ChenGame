@@ -962,7 +962,7 @@ export default function WorldMapScreen({
                   onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => {
                     if (!isUnlocked) return;
-                    if (section.isDouble && party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打试炼需要至少2只存活精灵！', 1500); return; }
+                    if ((section.isDouble || c.isDouble) && party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打试炼需要至少2只存活精灵！', 1500); return; }
                     startBattle(null, 'challenge', c.id);
                   }}
                   style={{
@@ -993,7 +993,7 @@ export default function WorldMapScreen({
                           <span style={{fontSize:'9px', fontWeight:'700', color:'#fff', background: isCleared ? `linear-gradient(135deg, ${tc}, ${tc}cc)` : tc, padding:'2px 7px', borderRadius:'6px', flexShrink:0, letterSpacing:'0.5px', boxShadow: `0 1px 3px ${tc}30`}}>{tier.name}</span>
                         </div>
                         <div className="world-challenge-desc" style={{fontSize:'12px', marginTop:'3px', lineHeight:'1.5'}}>{c.desc}</div>
-                        <div style={{fontSize:'10px', color: isUnlocked ? tc : '#64748b', marginTop:'2px', fontWeight:'600'}}>Lv.{c.bossLvl} {isCleared ? <span style={{color:'#22c55e'}}>| ✅ 已通关</span> : <span style={{ color: tc }}>| 需 {c.req} 只</span>}</div>
+                        <div style={{fontSize:'10px', color: isUnlocked ? tc : '#64748b', marginTop:'2px', fontWeight:'600'}}>Lv.{c.bossLvl}{c.isDouble ? ' · 双打' : ' · 单打'} {isCleared ? <span style={{color:'#22c55e'}}>| ✅ 已通关</span> : <span style={{ color: tc }}>| 需 {c.req} 只</span>}</div>
                       </div>
                     </div>
                     <div style={{display:'flex', alignItems:'center', gap:'8px'}}>

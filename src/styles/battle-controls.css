@@ -114,7 +114,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: 116px;
   align-content: start;
   gap: 8px;
@@ -197,7 +197,23 @@
 @media (max-width: 1150px) {
   .spirit-app .pc-battle-screen { grid-template-rows: minmax(0, 1fr) minmax(0, var(--compact-command-height)); }
   .battle-command-body { grid-template-columns: minmax(0, 1fr) 172px; gap: 10px; }
-  .battle-move-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .battle-move-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.battle-move-pagination { display: flex; align-items: center; gap: 8px; min-height: 26px; font-size: 11px; color: #b3c7c0; }
+.battle-move-pagination > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.battle-move-pagination button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; background: #21383b; border: 1px solid #4a6461; border-radius: 4px; color: #edf3eb; cursor: pointer; }
+.battle-move-pagination button:disabled { opacity: .35; cursor: default; }
+.battle-move-pagination output { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+.battle-move-pane .combat-family-tabs { flex-wrap: wrap; overflow: visible; }
+.battle-move-pane .combat-family-tabs button { flex-shrink: 0; padding-left: 8px; padding-right: 8px; }
+@media (max-width: 1150px) {
+  .battle-move-stats { gap: 5px; font-size: 11px; }
+  .battle-move-category { font-size: 9px; }
+  .spirit-app .battle-move-button { padding-left: 8px; padding-right: 8px; }
+}
+@media (max-height: 720px) {
+  .battle-command-deck .battle-command-body { padding-bottom: 6px; }
+  .battle-move-pane { gap: 3px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .spirit-app .battle-move-button { transition: none; }

@@ -5,6 +5,7 @@ import { SKILL_DB } from '../data/skills';
 import { generateCurseTalent } from '../data/jujutsu';
 import { calcNextExp } from './statsCalculator';
 import { pickSectIdForPet } from '../data/sectSystem';
+import { getSpeciesStartingMoves } from './speciesMoves';
 
 export function getCharmRank(charm) {
   if (charm >= 90) return '\u4E07\u4EBA\u8FF7';
@@ -241,7 +242,7 @@ export function createPet(dexId, level, isBoss = false, forceShiny = false, cont
     }
   }
 
-  newPet.moves = moves.slice(0, 4);
+  newPet.moves = base.learnset?.length ? getSpeciesStartingMoves(base, level) : moves.slice(0, 4);
 
   if (isShiny) newPet = promotePetToShiny(newPet);
 

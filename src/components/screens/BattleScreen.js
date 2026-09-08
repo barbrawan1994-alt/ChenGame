@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeftRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeftRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Backpack } from 'lucide-react';
 import { BALLS } from '../../data/items';
 import BattleImpact from '../../components/battle/BattleImpact';
@@ -18,7 +18,7 @@ import { FACTION_PORTRAIT_COLORS } from '../../data/generals';
 import { FRUIT_RARITY_CONFIG } from '../../data/devilfruits';
 import { GENERAL_RARITY_CONFIG } from '../../data/generals';
 import { getBurstBlock } from '../../utils/battleTactics';
-import { getCombatFamily } from '../../utils/battleTactics';
+import { getCombatMoveGroup, getCombatMovePage } from '../../utils/combatMoveMenu';
 import { getEffectiveChakraCost } from '../../utils/combatRules';
 import { getFruitById } from '../../data/devilfruits';
 import { getGangSkillBonus } from '../../data/gang';
@@ -119,6 +119,10 @@ export default function BattleScreen({
   useBattleItem,
   weather
 }) {
+    const [movePageState, setMovePageState] = useState({ key: '', page: 0 });
+    const commandedIndex = battle?.isDouble ? battle.activeIdxs?.[battle.phase === 'double_input_2' ? 1 : 0] : battle?.activeIdx;
+    const commandedUid = battle?.playerCombatStates?.[commandedIndex]?.uid;
+    useEffect(() => { setMovePageState({ key: '', page: 0 }); }, [commandedUid, battleMoveFamily, battle?.phase]);
     if (!battle) { return null; }
     if (!Array.isArray(battle.playerCombatStates) || !Array.isArray(battle.enemyParty)) {
       return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', width: '100%', color: '#fff', fontSize: '16px', fontWeight: '600' }}>⏳ 战斗状态恢复中...</div>;
@@ -444,7 +448,10 @@ export default function BattleScreen({
     else { const mapInfo = MAPS.find(m => m.id === battle.mapId); if (mapInfo) { switch (mapInfo.type) { case 'water': bgClass = 'bg-water'; break; case 'fire': bgClass = 'bg-fire'; break; case 'ice': bgClass = 'bg-ice'; break; case 'mountain': case 'rock': case 'ground': bgClass = 'bg-cave'; break; case 'city': case 'steel': case 'electric': bgClass = 'bg-city'; break; case 'ghost': case 'dark': bgClass = 'bg-dark'; break; case 'factory': case 'space': bgClass = 'bg-cave'; break; default: bgClass = 'bg-grass'; break; } } }
     const activeCommandPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
     const commandMoveCount = activeCommandPet?.combatMoves?.length || 0;
-    const visibleMoveFamily = activeCommandPet?.combatMoves?.some(move=>getCombatFamily(move)===battleMoveFamily) ? battleMoveFamily : getCombatFamily(activeCommandPet?.combatMoves?.[0]);
+    const visibleMoveFamily = battleMoveFamily === 'all' || activeCommandPet?.combatMoves?.some(move=>getCombatMoveGroup(move)===battleMoveFamily) ? battleMoveFamily : 'all';
+    const movePageKey = `${activeCommandPet?.uid}:${visibleMoveFamily}:${commandMoveCount}:${battle.phase}`;
+    const movePage = getCombatMovePage(activeCommandPet?.combatMoves, visibleMoveFamily, movePageState.key === movePageKey ? movePageState.page : 0);
+    const setMovePage = page => setMovePageState({ key: movePageKey, page });
     const playerHpPct = Math.min(100, Math.max(0, Math.round((p.currentHp / Math.max(1, pStats.maxHp)) * 100)));
     const enemyHpPct = Math.min(100, Math.max(0, Math.round((e.currentHp / Math.max(1, eStats.maxHp)) * 100)));
     const battleModeLabel = battle.isPvP ? 'PvP' : isDoubleBattle ? '双打' : battle.isTrainer ? '训练家战' : battle.isGym ? '道馆战' : battle.isBoss ? '首领战' : '野外战';
@@ -1148,6 +1155,12 @@ export default function BattleScreen({
               <div className="battle-command-body">
                 <div className="battle-move-pane">
                     <CombatFamilyTabs moves={activeCommandPet?.combatMoves || []} family={visibleMoveFamily} onChange={setBattleMoveFamily}/>
+                    <nav className="battle-move-pagination" aria-label="技能分页">
+                      <span>{activeCommandPet?.name} · {movePage.total} 个招式</span>
+                      <button type="button" aria-label="上一页技能" title="上一页技能" disabled={movePage.page === 0} onClick={() => setMovePage(movePage.page - 1)}><ChevronLeft size={16}/></button>
+                      <output aria-live="polite">{movePage.page + 1} / {movePage.pages}</output>
+                      <button type="button" aria-label="下一页技能" title="下一页技能" disabled={movePage.page === movePage.pages - 1} onClick={() => setMovePage(movePage.page + 1)}><ChevronRight size={16}/></button>
+                    </nav>
                     {battle.isPvP && (
                         <div style={{textAlign:'center', background: '#2196F3', color:'#fff', fontWeight:'bold', padding:'4px', fontSize:'11px', flexShrink: 0, borderRadius:'6px', margin:'0 0 4px'}}>
                             🎮 PvP对战 · 对手由AI控制
@@ -1219,8 +1232,6 @@ export default function BattleScreen({
                     {(!isDoubleBattle || battle.pendingDoubleMove === undefined) && (
                     <div className="battle-move-grid" aria-label="可用技能">
                             {(() => {
-                            const skillPet = isDoubleBattle ? (doubleCurrentPet || p) : p;
-                            const activeMoves = skillPet?.combatMoves || [];
                                 const selectedPreviewEnemyIdx = isDoubleBattle
                                   && Number.isInteger(battle.targetIdx)
                                   && battle.enemyParty?.[battle.targetIdx]?.currentHp > 0
@@ -1230,8 +1241,7 @@ export default function BattleScreen({
                                   ? (selectedPreviewEnemyIdx ?? battle.enemyActiveIdxs?.find(idx => battle.enemyParty?.[idx]?.currentHp > 0) ?? battle.enemyActiveIdx)
                                   : battle.enemyActiveIdx;
                                 const activeEnemy = battle.enemyParty?.[previewEnemyIdx];
-                                return activeMoves.map((m, i) => {
-                                    if (getCombatFamily(m)!==visibleMoveFamily) return null;
+                                return movePage.entries.map(({ move: m, index: i }, visibleIndex) => {
                                     const cp = isDoubleBattle ? doubleCurrentPet : p;
                                     const effectiveChakraCost = getEffectiveChakraCost(m, battle._resonanceFx || {});
                                     let moveDisabledReason = '';
@@ -1253,7 +1263,7 @@ export default function BattleScreen({
                                       moveDisabledReason = '(无PP)';
                                     }
                                     const movePower = m.p ?? m.power ?? 0;
-                                    const forecastTarget = isSelfTargetingCombatMove(m) ? skillPet : activeEnemy;
+                                    const forecastTarget = isSelfTargetingCombatMove(m) ? activeCommandPet : activeEnemy;
                                     const forecast = buildMoveForecast({
                                       multiplier: activeEnemy && movePower > 0
                                         ? getMoveTypeMultiplier(m, activeEnemy, battle)
@@ -1261,7 +1271,7 @@ export default function BattleScreen({
                                       power: movePower,
                                       accuracy: m.acc,
                                       alwaysHit: m.alwaysHit,
-                                      isStab: movePower > 0 && !!m.t && getUnitTypeList(skillPet).includes(m.t),
+                                      isStab: movePower > 0 && !!m.t && getUnitTypeList(activeCommandPet).includes(m.t),
                                       targetName: forecastTarget?.name,
                                     });
                                     return (
@@ -1307,7 +1317,7 @@ export default function BattleScreen({
                                         }}
                                     disabled={!canUseCombatMove(battle, cp, m, 'player')}
                                         disabledReason={moveDisabledReason}
-                                        index={i}
+                                        index={visibleIndex}
                                     />
                                 ); });
                             })()}

@@ -167,6 +167,7 @@ async function run() {
   const flow = bindAppFunctions(['startUltraTrial', 'finishUltraTrial'], {
     ...d, ...trials, ULTRA_ERAS, ULTRA_TRIALS, completeUltraTrial:u.completeUltraTrial, _:require('lodash'),badges:[1,2,3,4,5,6,7,8],
     battle:null, partyRef:{current:trialParty}, battleResultHandledRef:{current:false},
+    combatMetrics:{finish:()=>{}},
     ultraTrialStartLockRef:{current:false}, ultraTrialActiveRef:{current:false},
     ultraStateRef:{current:u.normalizeUltraState()}, pendingJutsuWinForBountyRef:{current:false},
     createPet:(id, level)=>createPet(id, level, false, false, {getStatsForPet:d.getStatsRaw}), getStats:d.getStatsRaw,

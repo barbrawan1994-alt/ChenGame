@@ -11,6 +11,7 @@ import { shouldForestVineBlock, shouldGravitySkip, calcFireHeatPPExtra, applySta
 
 import { getStats as getStatsRaw, getStageMult, calcNextExp, calcBattleBaseExp, MAX_BATTLE_CRIT_CHANCE } from './utils/statsCalculator';
 import { createPet as createPetRaw, getCharmRank, getMoveByLevel, promotePetToShiny } from './utils/petFactory';
+import { getSpeciesLearnedMoves } from './utils/speciesMoves';
 import { canUseAsFusionMaterial, getFusionShinyChance } from './utils/fusionRules';
 import { calculatePetReleaseGold, ensureUniquePetUids, removePetsByUids, removeSinglePetByUid } from './utils/petIdentity';
 import { normalizeActivitySaveState, normalizeCoreSaveState, normalizeOperationalSaveState } from './utils/saveNormalizer';
@@ -2092,7 +2093,7 @@ const [infinityState, setInfinityState] = useState(() => {
   const [animEffect, setAnimEffect] = useState(null);
   const [battleImpact, setBattleImpact] = useState(null);
   const battleImpactSequenceRef = useRef(0);
-  const [battleMoveFamily, setBattleMoveFamily] = useState('basic');
+  const [battleMoveFamily, setBattleMoveFamily] = useState('all');
   const [reducedBattleEffects, setReducedBattleEffects] = useState(!!savedData.reducedBattleEffects);
   const [showBallMenu, setShowBallMenu] = useState(false);
 
@@ -11637,6 +11638,10 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
     else if (actualType === 'challenge') {
       const challenge = [...CHALLENGES, ...ATTR_CHALLENGES, ...DOUBLE_CHALLENGES, ...JJK_CHALLENGES].find(c => c.id === challengeId);
       if (!challenge) { showMapToast('❌', '提示', '挑战数据未找到', 1500); return false; }
+      if (challenge.guardIds && new Set(caughtDex).size < challenge.req) {
+        showMapToast('🔒', '试炼未解锁', `需要登记${challenge.req}种精灵`, 2000);
+        return false;
+      }
       if (challenge.isDouble) {
         if (party.filter(p => p.currentHp > 0).length < 2) { showMapToast('⚠️', '提示', '双打试炼需要至少2只存活精灵！', 1500); return false; }
         isDouble = true;
@@ -11647,10 +11652,14 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
       else if (challenge.bossLvl >= 75) bossPet.customStatMult = 1.1;
       enemyParty.push(bossPet);
       const targetSize = challenge.teamSize || 6;
-      const validChallengePets = POKEDEX.filter(p => !p.hidden);
+      const validChallengePets = challenge.guardIds
+        ? challenge.guardIds.map(id => POKEDEX.find(p => p.id === id)).filter(Boolean)
+        : POKEDEX.filter(p => !p.hidden);
       while (enemyParty.length < targetSize) {
         if (validChallengePets.length === 0) break;
-        const randomDex = validChallengePets[Math.floor(Math.random() * validChallengePets.length)];
+        const randomDex = challenge.guardIds
+          ? validChallengePets[(enemyParty.length - 1) % validChallengePets.length]
+          : validChallengePets[Math.floor(Math.random() * validChallengePets.length)];
         const minionLvl = Math.max(10, challenge.bossLvl - _.random(3, 10));
         const minion = createPet(randomDex.id, minionLvl, true);
         if (challenge.bossLvl >= 85) minion.customStatMult = 1.1;
@@ -16912,7 +16921,15 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
           levelUpLog += ` (✨进化征兆!)`;
         }
 
-        if (pet.level % 5 === 0) {
+        const species = POKEDEX.find(entry => entry.id === pet.id);
+        if (species?.learnset?.length) {
+          for (const newMove of getSpeciesLearnedMoves(species, pet.level, pet.level - 1)) {
+            const offered = offerMoveToPet(pet, newMove);
+            pet = offered.pet;
+            if (offered.status === 'pending' || offered.status === 'queued') hasPendingSkill = true;
+            if (isActive && offered.status === 'learned') levelUpLog += ` 学会[${newMove.name}]`;
+          }
+        } else if (pet.level % 5 === 0) {
           const secType = pet.secondaryType || pet.type2;
           const moveType = (pet.level % 10 === 0 && secType && secType !== pet.type) ? secType : pet.type;
           const newMove = getMoveByLevel(moveType, pet.level);
@@ -20150,7 +20167,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
   const renderMoveForget = () => {
     const p = party[learningPetIdx];
     if (!p) return <div className="screen" style={{background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><div>数据加载中...<button className="readable-return-btn" onClick={() => setView(safeBack())} style={{marginLeft:12,padding:'6px 16px',borderRadius:8,border:'none',background:'#4fc3f7',color:'#fff',cursor:'pointer'}}>返回</button></div></div>;
-    const getMoveCategory = (m) => m.p > 0 ? (m.category === 'special' ? '特殊' : '物理') : '变化';
+    const getLearnMoveCategory = (m) => m.p > 0 ? (getMoveCategory(m.t, m) === 'special' ? '特殊' : '物理') : '变化';
     return (
       <div className="screen" style={{background: 'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 3000}}>
         <div className="glass-panel" style={{width:'90%', maxWidth:'420px', padding:'20px', color:'#333'}}>
@@ -20161,7 +20178,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
               <div style={{fontWeight:'900', fontSize:'18px', marginBottom:4}}>{pendingMove.name}</div>
               <div style={{fontSize:'12px', display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap'}}>
                 <span style={{background:TYPES[pendingMove.t]?.color || '#888', color:'#fff', padding:'1px 8px', borderRadius:4, fontSize:11}}>{TYPES[pendingMove.t]?.name || '???'}</span>
-                <span>{getMoveCategory(pendingMove)}</span>
+                <span>{getLearnMoveCategory(pendingMove)}</span>
                 <span>威力: {pendingMove.p || '-'}</span>
                 <span>PP: {pendingMove.pp || pendingMove.maxPP || 15}</span>
               </div>
@@ -20176,7 +20193,7 @@ const grantContestReward = (config, score, subjectPet = null, options = {}) => {
                   <span style={{fontWeight:'bold'}}>{m.name}</span>
                   <div style={{display:'flex', gap:6, fontSize:11, color:'#888'}}>
                     <span style={{background:TYPES[m.t]?.color || '#888', color:'#fff', padding:'0 6px', borderRadius:3}}>{TYPES[m.t]?.name || '???'}</span>
-                    <span>{getMoveCategory(m)}</span>
+                    <span>{getLearnMoveCategory(m)}</span>
                     <span>威力:{m.p || '-'}</span>
                     <span>PP:{m.pp}/{m.maxPP || 15}</span>
                   </div>

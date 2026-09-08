@@ -110,6 +110,7 @@ const fakeSkills = {
   NORMAL: [{ name: '撞击', p: 40, pp: 35, acc: 100 }],
 };
 const petFactory = loadUtility('src/utils/petFactory.js', {
+  './speciesMoves': loadProjectModule('src/utils/speciesMoves.js'),
   '../data/pets': { POKEDEX: fakePokedex },
   '../data/traits': { NATURE_DB: { hardy: { exp: 1 } }, TRAIT_DB: { brave: {} } },
   '../data/types': { TYPE_CHARM_BASE: { GRASS: 30 } },
@@ -651,9 +652,9 @@ check('战斗招式按钮接入统一预测并暴露可访问提示', () => {
   assert.ok(forecastBranch.includes('battle.enemyActiveIdxs?.find(idx => battle.enemyParty?.[idx]?.currentHp > 0)'));
   assert.ok(forecastBranch.includes(': battle.enemyActiveIdx;'));
   assert.ok(forecastBranch.includes('const activeEnemy = battle.enemyParty?.[previewEnemyIdx]'));
-  assert.ok(forecastBranch.includes('const forecastTarget = isSelfTargetingCombatMove(m) ? skillPet : activeEnemy'));
+  assert.ok(forecastBranch.includes('const forecastTarget = isSelfTargetingCombatMove(m) ? activeCommandPet : activeEnemy'));
   assert.ok(forecastBranch.includes('getMoveTypeMultiplier(m, activeEnemy, battle)'));
-  assert.ok(forecastBranch.includes('isStab: movePower > 0 && !!m.t && getUnitTypeList(skillPet).includes(m.t)'));
+  assert.ok(forecastBranch.includes('isStab: movePower > 0 && !!m.t && getUnitTypeList(activeCommandPet).includes(m.t)'));
   assert.ok(forecastBranch.includes('targetName: forecastTarget?.name'));
   assert.match(forecastBranch, /<EnhancedMoveButton[\s\S]*?forecast=\{forecast\}/);
 

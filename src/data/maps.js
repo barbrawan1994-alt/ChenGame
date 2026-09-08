@@ -1,3 +1,5 @@
+import { NEW_PETS_900 } from './petExpansion';
+
 // ==========================================
 // [新增] 时间与天气配置
 // ==========================================
@@ -350,6 +352,8 @@ const EARLY_POOL_BLOCKLIST = new Set([
   684, 685, 686, 687, 689, 690, 701, 702, 706, 707, 711, 712, 734, 747, 750,
 ]);
 MAPS.forEach((map) => {
+  const arrivals = NEW_PETS_900.filter(pet => pet.habitatMapId === map.id && (!pet.familyId || pet.id === pet.familyId));
+  if (arrivals.length) map.pool = [...new Set([...(map.pool || []), ...arrivals.map(pet => pet.id)])];
   if ([1, 2, 3, 4, 5, 6].includes(map.id)) {
     map.pool = (map.pool || []).filter(id => !EARLY_POOL_BLOCKLIST.has(id));
   }
@@ -376,7 +380,7 @@ export const LEGEND_OBTAIN_RULES = [
   { petId: 897, name: '虹光凤凰', method: 'ecology', requirement: '将彩虹之桥的所有生态指标提升至80%以上', mapId: 107, ecoThreshold: 80 },
   { petId: 898, name: '深渊吞噬者', method: 'world_boss', requirement: '世界Boss·深渊之主击败后低概率获得（5%）', dropRate: 0.05 },
   { petId: 899, name: '永劫时龙', method: 'fusion', requirement: '使用时空裂隙兽(806)+深渊裂龙(815)在创世神殿融合', materials: [806, 815], mapId: 109 },
-  { petId: 900, name: '始源混沌神', method: 'collection', requirement: '收集全部904只精灵后自动获得（图鉴完成奖励）', dexCount: 904 },
+  { petId: 900, name: '始源混沌神', method: 'collection', requirement: '登记999种精灵后，在图鉴领取完成奖励', dexCount: 999 },
   // 中强精灵特殊获取
   { petId: 820, name: '原初混沌', method: 'infinity_floor', requirement: '无限城挑战达到第30层，击败混沌领域Boss', floor: 30 },
   { petId: 810, name: '纪元守卫', method: 'story_boss', requirement: '完成时空主线后在遗迹工厂隐藏房间发现', badge: 8, mapId: 3 },

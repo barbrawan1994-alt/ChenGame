@@ -5,7 +5,7 @@ const SPRITE_CDNS = [
 const SPRITE_BASE = SPRITE_CDNS[0];
 const SPRITE_EXT = '.png';
 const DIGIMON_BASE = 'https://digi-api.com/images/digimon/w/';
-const MAX_GAME_PET_ID = 904;
+const MAX_GAME_PET_ID = 1000;
 const MAX_POKEMON_ARTWORK_ID = 1025;
 
 const ID_TO_DIGIMON = {
