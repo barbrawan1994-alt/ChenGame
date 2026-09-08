@@ -1,0 +1,394 @@
+{
+  "beta_capsule": {
+    "name": "贝塔魔棒",
+    "title": "Beta Capsule",
+    "pageId": 5656,
+    "url": "https://ultra.fandom.com/wiki/Beta_Capsule",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/94/Beta_Capsule.png/revision/latest/scale-to-width-down/296?cb=20191124185251",
+    "file": "beta_capsule.webp"
+  },
+  "ultra_eye": {
+    "name": "奥特眼镜",
+    "title": "Ultra Eye",
+    "pageId": 7025,
+    "url": "https://ultra.fandom.com/wiki/Ultra_Eye",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/56/Ultra_Eye_Info.png/revision/latest/scale-to-width-down/500?cb=20191124191321",
+    "file": "ultra_eye.webp"
+  },
+  "ultra_rings": {
+    "name": "奥特戒指",
+    "title": "Ultra Rings",
+    "pageId": 11849,
+    "url": "https://ultra.fandom.com/wiki/Ultra_Rings",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a6/Ultra_Rings.png/revision/latest/scale-to-width-down/383?cb=20200217083053",
+    "file": "ultra_rings.webp"
+  },
+  "ultra_badge": {
+    "name": "奥特徽章",
+    "title": "Ultra Badge",
+    "pageId": 7280,
+    "url": "https://ultra.fandom.com/wiki/Ultra_Badge",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c2/Ultra_Badge.png/revision/latest/scale-to-width-down/414?cb=20191016031101",
+    "file": "ultra_badge.webp"
+  },
+  "leo_ring": {
+    "name": "狮子之瞳",
+    "title": "Leo Ring",
+    "pageId": 15051,
+    "url": "https://ultra.fandom.com/wiki/Leo_Ring",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/08/Leo_Ring.png/revision/latest/scale-to-width-down/372?cb=20131024102916",
+    "file": "leo_ring.webp"
+  },
+  "beam_flasher": {
+    "name": "闪光之星",
+    "title": "Beam Flasher",
+    "pageId": 38492,
+    "url": "https://ultra.fandom.com/wiki/Beam_Flasher",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/4a/Beam_Flasher_Render.png/revision/latest/scale-to-width-down/499?cb=20250513175946",
+    "file": "beam_flasher.webp"
+  },
+  "bright_stick": {
+    "name": "光明棒",
+    "title": "Bright Stick",
+    "pageId": 15054,
+    "url": "https://ultra.fandom.com/wiki/Bright_Stick",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/fc/Bright_Stick_HD.png/revision/latest/scale-to-width-down/455?cb=20250513180100",
+    "file": "bright_stick.webp"
+  },
+  "sparklence": {
+    "name": "神光棒",
+    "title": "Sparklence",
+    "pageId": 7177,
+    "url": "https://ultra.fandom.com/wiki/Sparklence",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/fc/Spark_Lens_shut.png/revision/latest/scale-to-width-down/340?cb=20191124182235",
+    "file": "sparklence.webp"
+  },
+  "lieflasher": {
+    "name": "闪光剑",
+    "title": "Lieflasher",
+    "pageId": 7159,
+    "url": "https://ultra.fandom.com/wiki/Lieflasher",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/fd/Reflshere.png/revision/latest?cb=20191122030712",
+    "file": "lieflasher.webp"
+  },
+  "esplender": {
+    "name": "蓝宝锥",
+    "title": "Esplender",
+    "pageId": 7283,
+    "url": "https://ultra.fandom.com/wiki/Esplender",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a9/Esplndr.png/revision/latest?cb=20191122014757",
+    "file": "esplender.webp"
+  },
+  "agulater": {
+    "name": "蓝宝镯",
+    "title": "Agulater",
+    "pageId": 12211,
+    "url": "https://ultra.fandom.com/wiki/Agulater",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b5/Agulater.png/revision/latest/scale-to-width-down/413?cb=20191122015028",
+    "file": "agulater.webp"
+  },
+  "estrellar": {
+    "name": "埃斯特雷勒",
+    "title": "Estrellar",
+    "pageId": 15167,
+    "url": "https://ultra.fandom.com/wiki/Estrellar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/55/Estraller.jpg/revision/latest?cb=20130427170805",
+    "file": "estrellar.webp"
+  },
+  "nice_dreamer": {
+    "name": "纳伊斯梦幻之星",
+    "title": "Nice Dreamer",
+    "pageId": 32627,
+    "url": "https://ultra.fandom.com/wiki/Nice_Dreamer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/cb/Nice_Dreamer.png/revision/latest/scale-to-width-down/340?cb=20180901131650",
+    "file": "nice_dreamer.webp"
+  },
+  "cosmo_pluck": {
+    "name": "日月同辉",
+    "title": "Cosmo Pluck",
+    "pageId": 13963,
+    "url": "https://ultra.fandom.com/wiki/Cosmo_Pluck",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/e7/Cosmo_Pluck.png/revision/latest/scale-to-width-down/337?cb=20191122030533",
+    "file": "cosmo_pluck.webp"
+  },
+  "just_lancer": {
+    "name": "正义之石",
+    "title": "Just Lancer",
+    "pageId": 13944,
+    "url": "https://ultra.fandom.com/wiki/Just_Lancer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/07/Just_Lancer.png/revision/latest/scale-to-width-down/500?cb=20180901140312",
+    "file": "just_lancer.webp"
+  },
+  "evoltruster": {
+    "name": "进化信赖者",
+    "title": "Evoltruster",
+    "pageId": 15278,
+    "url": "https://ultra.fandom.com/wiki/Evoltruster",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/5b/Evoltruster.png/revision/latest/scale-to-width-down/312?cb=20191122030205",
+    "file": "evoltruster.webp"
+  },
+  "max_spark": {
+    "name": "麦克斯火花",
+    "title": "Max Spark",
+    "pageId": 8269,
+    "url": "https://ultra.fandom.com/wiki/Max_Spark",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1a/Max_Spark.png/revision/latest/scale-to-width-down/165?cb=20200306002804",
+    "file": "max_spark.webp"
+  },
+  "mebius_brace": {
+    "name": "梦比优斯气息",
+    "title": "Mebius Brace",
+    "pageId": 7378,
+    "url": "https://ultra.fandom.com/wiki/Mebius_Brace",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d3/Mebius_Brace.png/revision/latest?cb=20191122035317",
+    "file": "mebius_brace.webp"
+  },
+  "knight_brace": {
+    "name": "骑士气息",
+    "title": "Knight Brace",
+    "pageId": 15225,
+    "url": "https://ultra.fandom.com/wiki/Knight_Brace",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1c/KnightBrace.png/revision/latest/scale-to-width-down/449?cb=20191122035424",
+    "file": "knight_brace.webp"
+  },
+  "zero_eye": {
+    "name": "赛罗眼镜",
+    "title": "Ultra Zero Eye",
+    "pageId": 108439,
+    "url": "https://ultra.fandom.com/wiki/Ultra_Zero_Eye",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/f2/Ultra_Zero_Eye_Info.png/revision/latest/scale-to-width-down/500?cb=20200605023828",
+    "file": "zero_eye.webp"
+  },
+  "ginga_spark": {
+    "name": "银河火花",
+    "title": "Ginga Spark",
+    "pageId": 15035,
+    "url": "https://ultra.fandom.com/wiki/Ginga_Spark",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/1c/GingaHenshinFull.gif/revision/latest?cb=20211006140326",
+    "file": "ginga_spark.webp"
+  },
+  "victory_lancer": {
+    "name": "维克特利圣枪",
+    "title": "Victory Lancer",
+    "pageId": 41630,
+    "url": "https://ultra.fandom.com/wiki/Victory_Lancer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c9/Victory_Lancer.png/revision/latest/scale-to-width-down/257?cb=20190309005642",
+    "file": "victory_lancer.webp"
+  },
+  "x_devizer": {
+    "name": "艾克斯终端",
+    "title": "X Devizer",
+    "pageId": 60576,
+    "url": "https://ultra.fandom.com/wiki/X_Devizer",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/aa/XDeviser.png/revision/latest?cb=20200821011811",
+    "file": "x_devizer.webp"
+  },
+  "orb_ring": {
+    "name": "欧布圆环",
+    "title": "Orb Ring",
+    "pageId": 79150,
+    "url": "https://ultra.fandom.com/wiki/Orb_Ring",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ef/Orb_Ring.png/revision/latest/scale-to-width-down/352?cb=20210819215502",
+    "file": "orb_ring.webp"
+  },
+  "riser": {
+    "name": "捷德升华器",
+    "title": "Riser",
+    "pageId": 109190,
+    "url": "https://ultra.fandom.com/wiki/Riser",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8c/RiserRender.png/revision/latest/scale-to-width-down/443?cb=20190214074352",
+    "file": "riser.webp"
+  },
+  "gyro": {
+    "name": "罗布回旋闪光",
+    "title": "Gyro",
+    "pageId": 134097,
+    "url": "https://ultra.fandom.com/wiki/Gyro",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/61/Gyro.png/revision/latest/scale-to-width-down/500?cb=20190913043748",
+    "file": "gyro.webp"
+  },
+  "taiga_spark": {
+    "name": "泰迦火花",
+    "title": "Taiga Spark",
+    "pageId": 147658,
+    "url": "https://ultra.fandom.com/wiki/Taiga_Spark",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/72/Taiga_Spark.png/revision/latest/scale-to-width-down/455?cb=20191226173017",
+    "file": "taiga_spark.webp"
+  },
+  "z_riser": {
+    "name": "泽塔升华器",
+    "title": "Z Riser",
+    "pageId": 161200,
+    "url": "https://ultra.fandom.com/wiki/Z_Riser",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/8f/Ultra_Z_Riser_render.png/revision/latest/scale-to-width-down/500?cb=20200524162733",
+    "file": "z_riser.webp"
+  },
+  "guts_sparklence": {
+    "name": "胜利神光棒",
+    "title": "GUTS Sparklence",
+    "pageId": 172099,
+    "url": "https://ultra.fandom.com/wiki/GUTS_Sparklence",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/53/GUTSSparklence.png/revision/latest/scale-to-width-down/500?cb=20210416094953",
+    "file": "guts_sparklence.webp"
+  },
+  "d_flasher": {
+    "name": "奥特D闪光剑",
+    "title": "Ultra D Flasher",
+    "pageId": 182470,
+    "url": "https://ultra.fandom.com/wiki/Ultra_D_Flasher",
+    "image": "https://static.wikia.nocookie.net/ultra/images/6/6b/UltraDFlasherClosed.png/revision/latest/scale-to-width-down/293?cb=20220622050559",
+    "file": "d_flasher.webp"
+  },
+  "blazar_brace": {
+    "name": "布莱泽手镯",
+    "title": "Blazar Brace",
+    "pageId": 195533,
+    "url": "https://ultra.fandom.com/wiki/Blazar_Brace",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/12/BlazarBrace.png/revision/latest/scale-to-width-down/432?cb=20230421031207",
+    "file": "blazar_brace.webp"
+  },
+  "arc_ariser": {
+    "name": "亚刻觉醒器",
+    "title": "Arc Ariser",
+    "pageId": 215775,
+    "url": "https://ultra.fandom.com/wiki/Arc_Ariser",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/eb/ArcAriser_Prop.png/revision/latest/scale-to-width-down/500?cb=20240825085345",
+    "file": "arc_ariser.webp"
+  },
+  "omega_slugger": {
+    "name": "欧米伽头镖",
+    "title": "Omega Slugger",
+    "pageId": 231314,
+    "url": "https://ultra.fandom.com/wiki/Omega_Slugger",
+    "image": "https://static.wikia.nocookie.net/ultra/images/1/14/OmegaSluggerClosed.png/revision/latest/scale-to-width-down/421?cb=20250706153755",
+    "file": "omega_slugger.webp"
+  },
+  "teo_crystar": {
+    "name": "TEO晶体",
+    "title": "Teo Crystar",
+    "pageId": 239787,
+    "url": "https://ultra.fandom.com/wiki/Teo_Crystar",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d8/Teo_Crystar.png/revision/latest/scale-to-width-down/500?cb=20260416230005",
+    "file": "teo_crystar.webp"
+  },
+  "delta_plasma": {
+    "name": "三角吊坠",
+    "title": "Delta Plasma",
+    "pageId": 8137,
+    "url": "https://ultra.fandom.com/wiki/Delta_Plasma",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c9/Delta-Plasma_Info.png/revision/latest/scale-to-width-down/400?cb=20191124191549",
+    "file": "delta_plasma.webp"
+  },
+  "pikari_brush": {
+    "name": "皮卡力牙刷",
+    "title": "Pikari Brush",
+    "pageId": 15180,
+    "url": "https://ultra.fandom.com/wiki/Pikari_Brush",
+    "image": "https://static.wikia.nocookie.net/ultra/images/0/06/Pikari_Brusher_profile_pic.png/revision/latest/scale-to-width-down/324?cb=20200604055711",
+    "file": "pikari_brush.webp"
+  },
+  "fusion_brace": {
+    "name": "奥特融合手镯",
+    "title": "Ultra Fusion Brace",
+    "pageId": 51489,
+    "url": "https://ultra.fandom.com/wiki/Ultra_Fusion_Brace",
+    "image": "https://static.wikia.nocookie.net/ultra/images/f/fd/Ultra_Fusion_Bracelet.png/revision/latest/scale-to-width-down/500?cb=20180718131650",
+    "file": "fusion_brace.webp"
+  },
+  "tregear_eye": {
+    "name": "托雷基亚之眼",
+    "title": "Tregear Eye",
+    "pageId": 147813,
+    "url": "https://ultra.fandom.com/wiki/Tregear_Eye",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/9f/DXTregearEye.png/revision/latest/scale-to-width-down/500?cb=20200629213201",
+    "file": "tregear_eye.webp"
+  },
+  "darkevolver": {
+    "name": "黑暗进化者",
+    "title": "Darkevolver",
+    "pageId": 15241,
+    "url": "https://ultra.fandom.com/wiki/Darkevolver",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d9/Dark_Evolver_Full.png/revision/latest/scale-to-width-down/500?cb=20191120042040",
+    "file": "darkevolver.webp"
+  },
+  "dark_spark": {
+    "name": "黑暗火花",
+    "title": "Dark Spark",
+    "pageId": 19511,
+    "url": "https://ultra.fandom.com/wiki/Dark_Spark",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/93/Dark_Spark.png/revision/latest?cb=20180603124543",
+    "file": "dark_spark.webp"
+  },
+  "dark_dummy_spark": {
+    "name": "黑暗虚拟火花",
+    "title": "Dark Dummy Spark",
+    "pageId": 17363,
+    "url": "https://ultra.fandom.com/wiki/Dark_Dummy_Spark",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/58/Dark_Dummy_Spark_rendered.png/revision/latest/scale-to-width-down/225?cb=20180901134437",
+    "file": "dark_dummy_spark.webp"
+  },
+  "shin_capsule": {
+    "name": "贝塔魔棒·新",
+    "title": "Beta Capsule",
+    "pageId": 5656,
+    "url": "https://ultra.fandom.com/wiki/Beta_Capsule",
+    "image": "https://static.wikia.nocookie.net/ultra/images/9/97/Beta_Capsule_Shin.png/revision/latest?cb=20250331083025",
+    "file": "shin_capsule.webp"
+  },
+  "black_sparklence": {
+    "name": "黑暗神光棒",
+    "title": "Sparklence",
+    "pageId": 7177,
+    "url": "https://ultra.fandom.com/wiki/Sparklence",
+    "image": "https://static.wikia.nocookie.net/ultra/images/b/b8/Black_Spark_Lens_Full.png/revision/latest?cb=20210825011303",
+    "file": "black_sparklence.webp"
+  },
+  "camilla_sparklence": {
+    "name": "卡蜜拉神光棒",
+    "title": "Sparklence",
+    "pageId": 7177,
+    "url": "https://ultra.fandom.com/wiki/Sparklence",
+    "image": "https://static.wikia.nocookie.net/ultra/images/a/a3/Camearra_Spark_Lens.png/revision/latest?cb=20210825010159",
+    "file": "camilla_sparklence.webp"
+  },
+  "grigio_gyro": {
+    "name": "罗布回旋闪光·格丽乔",
+    "title": "Gyro",
+    "pageId": 134097,
+    "url": "https://ultra.fandom.com/wiki/Gyro",
+    "image": "https://static.wikia.nocookie.net/ultra/images/3/3e/Gyro_%28Saki%29.png/revision/latest?cb=20191122015702",
+    "file": "grigio_gyro.webp"
+  },
+  "trigger_dark_sparklence": {
+    "name": "黑暗胜利神光棒",
+    "title": "GUTS Sparklence",
+    "pageId": 172099,
+    "url": "https://ultra.fandom.com/wiki/GUTS_Sparklence",
+    "image": "https://static.wikia.nocookie.net/ultra/images/7/71/TriggerBlackSparklence.png/revision/latest?cb=20211101065809",
+    "file": "trigger_dark_sparklence.webp"
+  },
+  "flash_prism": {
+    "name": "闪光棱镜",
+    "title": "Beta Capsule",
+    "pageId": 5656,
+    "url": "https://ultra.fandom.com/wiki/Beta_Capsule",
+    "image": "https://static.wikia.nocookie.net/ultra/images/d/d3/Flash_Prism_HD.png/revision/latest?cb=20250331082919",
+    "file": "flash_prism.webp"
+  },
+  "saga_brace": {
+    "name": "赛迦手镯",
+    "title": "Ultimate Bracelet",
+    "pageId": 239680,
+    "url": "https://ultra.fandom.com/wiki/Ultimate_Bracelet",
+    "image": "https://static.wikia.nocookie.net/ultra/images/e/ec/Saga_Brace.png/revision/latest?cb=20200926045033",
+    "file": "saga_brace.webp"
+  },
+  "new_generation_eye": {
+    "name": "新世代眼镜",
+    "title": "New Generation Eye",
+    "pageId": 158331,
+    "url": "https://ultra.fandom.com/wiki/New_Generation_Eye",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/c8/New_Gen_Eye.png/revision/latest/scale-to-width-down/500?cb=20200124192351",
+    "file": "new_generation_eye.webp"
+  }
+}

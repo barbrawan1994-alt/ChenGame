@@ -21,7 +21,7 @@ async function run() {
   };
   assert.equal(new Set(ULTRA_HEROES.map(hero => hero.id)).size, ULTRA_HEROES.length);
   assert.equal(ULTRA_HEROES.filter(hero => hero.source).length, 58, 'Complete official directory');
-  assert.equal(ULTRA_HEROES.filter(hero => u.isUltraUnlocked(u.normalizeUltraState(), hero.id)).length, ULTRA_STARTERS.length);
+  assert.equal(ULTRA_HEROES.filter(hero => u.isUltraUnlocked(u.normalizeUltraState(), hero.id)).length, 0, 'New saves collect devices through trials');
   for (const raw of [null, {}, { cleared: 'showa', heroId: '__proto__' }, { cleared: [null, 'showa', 'showa', 'unknown'], formId: 'unknown' }]) {
     const state = u.normalizeUltraState(raw);
     assert.ok(ULTRA_HEROES.some(hero => hero.id === state.heroId));
@@ -32,7 +32,7 @@ async function run() {
     const before=state.unlockedHeroIds.length;
     const first = u.completeUltraTrial(state, hero.id);
     assert.ok(first.firstClear);
-    assert.equal(first.state.unlockedHeroIds.length-before,ULTRA_STARTERS.includes(hero.id) ? 0 : 1,'Only the challenged hero is unlocked');
+    assert.equal(first.state.unlockedHeroIds.length-before,1,'Only the challenged hero device is unlocked');
     const repeat = u.completeUltraTrial(first.state, hero.id);
     assert.equal(repeat.firstClear, false);
     state = repeat.state;
@@ -199,7 +199,7 @@ async function run() {
   flow.startUltraTrial('ginga');flush();
   flow.finishUltraTrial({...starts[1].context,enemyParty:[{currentHp:0},{currentHp:0}]},true);flush();
   assert.equal(flow.ultraStateRef.current.trialWins.join(','),'ginga');
-  assert.equal(flow.ultraStateRef.current.unlockedHeroIds.length,ULTRA_STARTERS.length+1);
+  assert.equal(flow.ultraStateRef.current.unlockedHeroIds.length,1);
   assert.ok(saves.length>=2);
   flow.partyRef.current=[{...base,currentHp:1}];
   flow.startUltraTrial('ginga');

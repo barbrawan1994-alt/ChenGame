@@ -35,6 +35,7 @@ const ACHIEVEMENTS = [
   { id: 'catch_700',       cat: 'COLLECTION', rarity: 'EPIC',      name: '三国收藏家',   desc: '图鉴中记录700种精灵',         check: s => s.dexCount >= 700,      reward: { title: '三国收藏家' } },
   { id: 'dex_800',         cat: 'COLLECTION', rarity: 'LEGENDARY', name: '图鉴完成者',   desc: '图鉴中记录800种精灵',          check: s => s.dexCount >= 800,      reward: { title: '图鉴大师' } },
   { id: 'dex_900',         cat: 'COLLECTION', rarity: 'LEGENDARY', name: '终极图鉴大师', desc: '收集904种精灵（含结契精灵）！', check: s => s.dexCount >= 904,      reward: { title: '终极图鉴大师' } },
+  { id: 'dex_1000', cat: 'COLLECTION', rarity: 'LEGENDARY', name: '千灵共鸣', desc: '收集全部1000种精灵。', check: s => s.dexCount >= 1000, reward: {title:'千灵共鸣'} },
   { id: 'catch_shiny',     cat: 'COLLECTION', rarity: 'RARE',      name: '闪光猎人',     desc: '捕捉一只闪光精灵',            check: s => s.shinyCaught >= 1 },
   { id: 'catch_5_shiny',   cat: 'COLLECTION', rarity: 'EPIC',      name: '闪光收藏家',   desc: '捕捉5只闪光精灵',             check: s => s.shinyCaught >= 5,     reward: { title: '闪光大师' } },
   { id: 'catch_legend',    cat: 'COLLECTION', rarity: 'EPIC',      name: '神兽降临',     desc: '捕捉一只神兽',                check: s => s.legendCaught >= 1 },

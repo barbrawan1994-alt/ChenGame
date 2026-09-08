@@ -21,6 +21,8 @@ export const TRAINING_TIERS = [
 
 export const TRAINING_MAX_EV = 252;
 export const TRAINING_TOTAL_MAX_EV = 510;
+export const TRAINING_EV_STATS = ['hp','p_atk','p_def','s_atk','s_def','spd'];
+export const getTrainingTotalEV = pet => TRAINING_EV_STATS.reduce((sum,stat)=>sum+normalizeEv(pet?.evs?.[stat]),0);
 export const TRAINING_MAX_SLOTS = 2;
 export const TRAINING_REQ_BADGES = 4;
 
@@ -57,7 +59,7 @@ export function calcTrainingGain(pet, camp, tier, badges, random = Math.random) 
   if (badges >= 10) gain += 1;
 
   const currentEV = normalizeEv((pet.evs || {})[camp.stat]);
-  const totalEV = Object.values(pet.evs || {}).reduce((sum, value) => sum + normalizeEv(value), 0);
+  const totalEV = getTrainingTotalEV(pet);
 
   gain = Math.min(gain, TRAINING_MAX_EV - currentEV);
   gain = Math.min(gain, TRAINING_TOTAL_MAX_EV - totalEV);

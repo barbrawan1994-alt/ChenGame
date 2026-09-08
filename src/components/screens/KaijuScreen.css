@@ -1,0 +1,11 @@
+.raid-workspace{display:grid;grid-template-columns:230px minmax(320px,1fr) 230px;min-height:0;flex:1;overflow:hidden;color:#253a34;background:#f4f7f5}
+.raid-briefing{overflow-y:auto;min-width:0;border-inline:1px solid #d5dfda}
+.raid-boss-art{display:flex;align-items:center;gap:24px;padding:24px;background:#e2e8e4}
+.raid-boss-art>img{width:180px;height:180px;object-fit:contain;mix-blend-mode:multiply}
+.raid-boss-art h2{font-size:24px;line-height:1.35;margin:8px 0;letter-spacing:0}
+.raid-boss-art p,.raid-copy p{line-height:1.7}
+.raid-copy{padding:20px 24px}.raid-copy h3,.raid-dispatch h3{font-size:16px;margin:12px 0}
+.raid-enemies{display:flex;flex-wrap:wrap;gap:16px;padding-block:14px}.raid-enemies>div{display:flex;align-items:center;gap:8px;font-size:13px}.raid-enemies small{display:block;color:#597167;margin-top:5px}.raid-enemies img{object-fit:contain;border-radius:4px}
+.raid-terms{margin:0}.raid-terms>div{display:grid;grid-template-columns:84px 1fr;gap:12px;padding:12px 0;border-top:1px solid #d9e3de;font-size:13px;line-height:1.65}.raid-terms dt{font-weight:700}.raid-terms dd{margin:0}
+.raid-dispatch{overflow-y:auto;padding:22px 18px;font-size:13px;line-height:1.7}.raid-dispatch hr{border:0;border-top:1px solid #d5dfda;margin:20px 0}.raid-reward{font-size:22px;color:#23624b}.raid-result{padding:12px 0;border-block:1px solid #b5c9be}.raid-dispatch .ultra-primary{margin-top:16px}
+@media(max-width:1150px){.raid-workspace{grid-template-columns:190px minmax(300px,1fr) 196px}.raid-boss-art{gap:14px;padding:16px}.raid-boss-art>img{width:128px;height:128px}.raid-boss-art h2{font-size:20px}.raid-copy{padding:16px}}

@@ -1,3 +1,4 @@
+import { EXTRA_KAIJU } from './kaijuExpansion.js';
 // Species only: alternate forms, generations and hero projections do not add dex entries.
 // Combat affinities and habitats below are adaptations for this game's world.
 export const KAIJU_ORIGINS = {
@@ -285,7 +286,7 @@ const SPECIES = [
   ['zadime','扎迪姆','Zadime','arc','DARK','trickster',2,['space','ghost'],'空间断裂'],
 ];
 
-export const KAIJU = SPECIES.map(([id,name,wiki,origin,type,style,rank,habitats,signature],index)=>({
+export const KAIJU = [...SPECIES, ...EXTRA_KAIJU].map(([id,name,wiki,origin,type,style,rank,habitats,signature],index)=>({
   id,name,wiki,origin,series:KAIJU_ORIGINS[origin][0],era:KAIJU_ORIGINS[origin][1],year:KAIJU_ORIGINS[origin][2],
   type,style,rank,habitats,signature,number:index+1,portrait:`assets/kaiju/${id}.webp`,
 }));

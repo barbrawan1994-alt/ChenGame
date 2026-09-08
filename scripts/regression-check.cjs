@@ -2729,7 +2729,7 @@ check('矿洞兑换在最新状态中核对体力与矿石，满体力不再扣�
 });
 
 check('轮盘多次旋转后的指针始终对准实际奖品', () => {
-  const { getWheelStopRotation } = loadUtility('src/utils/activityRules.js');
+  const { getWheelStopRotation } = loadProjectModule('src/utils/activityRules.js');
   let previous=0;
   for(let round=0;round<3;round++) for(let index=0;index<9;index++) {
     const next=getWheelStopRotation(previous,index,9);
@@ -2740,7 +2740,7 @@ check('轮盘多次旋转后的指针始终对准实际奖品', () => {
 });
 
 check('特训可用状态区分濒死、占用、每日次数和努力值上限', () => {
-  const { getTrainingAvailability } = loadUtility('src/utils/activityRules.js');
+  const { getTrainingAvailability } = loadProjectModule('src/utils/activityRules.js');
   const pet={uid:'training',currentHp:30,evs:{hp:20}};
   assert.equal(getTrainingAvailability(pet),null);
   assert.equal(getTrainingAvailability({...pet,currentHp:0}),'需要恢复体力');
