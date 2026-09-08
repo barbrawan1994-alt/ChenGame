@@ -424,9 +424,9 @@ export function getAvailableKwPveTasks(badgeCount, completedTaskLog = {}, curren
     if (badgeCount < (task.reqBadges || 0)) return false;
     if (task.requiresUnlock && !crisisUnlocks.includes(task.requiresUnlock)) return false;
     if (task.requiresCrisis && !crisisUnlocks.includes(task.requiresCrisis)) return false;
-    if (task.prereq?.length && !task.prereq.every(pid => completedTaskLog[pid])) return false;
+    if (task.prereq?.length && !task.prereq.every(pid => Object.prototype.hasOwnProperty.call(completedTaskLog, pid))) return false;
     const lastDone = completedTaskLog[task.id];
-    if (lastDone && task.cooldownTurns && (currentTurn - lastDone) < task.cooldownTurns) return false;
+    if (lastDone !== undefined && task.cooldownTurns && (currentTurn - lastDone) < task.cooldownTurns) return false;
     return true;
   });
 }

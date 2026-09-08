@@ -5,6 +5,7 @@ import { getUltraDevice, ULTRA_DEVICE_BY_ID } from '../data/ultraDevices';
 import { normalizeRaidProgress } from './kaijuRaids';
 
 export function normalizeUltraState(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = null;
   const validIds = values => [...new Set((Array.isArray(values) ? values : []).filter(id=>typeof id==='string' && ULTRA_BY_ID[id]?.id===id))];
   const trialWins = validIds(raw?.trialWins);
   const legacy = raw?.version>=2 ? [] : ULTRA_HEROES.filter(hero=>Array.isArray(raw?.cleared) && raw.cleared.includes(hero.era)).map(hero=>hero.id);

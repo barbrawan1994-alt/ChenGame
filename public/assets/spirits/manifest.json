@@ -1,674 +1,482 @@
 {
   "905": {
-    "name": "铃芽雀",
-    "family": 905,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "908cb25a3905bd7df8196bfa6c0fc417cfd1daa731fa1a24e2b4b14a8ac5a127"
+    "nationalDex": 519,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/519.png",
+    "sha256": "2defc8716a7e6307eb2b2eec64208938cba956db04cc3eb73c7ddd6d5a58e22f"
   },
   "906": {
-    "name": "回音林雀",
-    "family": 905,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "7d49ebb27cc53d7d3153f123724dd692d11111f3ee59bb7caf2fdb6d653d8749"
+    "nationalDex": 520,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/520.png",
+    "sha256": "5ee17dece1926d0262ffdfd8057a2163f5d390ca93ea82037a7d67d5992f605d"
   },
   "907": {
-    "name": "森铃乐师",
-    "family": 905,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "1e731bdc90eb614364e6b2fabbc623e517df0e19b1906ff4ce0c6f14315faa7d"
+    "nationalDex": 581,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/581.png",
+    "sha256": "d9160700f6a750075a852c63c4d93c67068e4b16d7be5278624d064fca8049a6"
   },
   "908": {
-    "name": "药绒虫",
-    "family": 908,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "1e13e65f922471eb3b22e0b6d48e9d93dd195635c2f274195c5b7c13d1de0d49"
+    "nationalDex": 664,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/664.png",
+    "sha256": "8577146750c6676f2e26479f9f5d35277ee38b361a969b939c05bb01ab427bfe"
   },
   "909": {
-    "name": "露药蛹",
-    "family": 908,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "eaed1f21aa2dd30832ca7b46364d8244eb988b5f8ed2f18f44d9a3b9855abc00"
+    "nationalDex": 665,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/665.png",
+    "sha256": "579de2f62e659006e3aa4853a1cca9c773932bf61d0f46c878dc33089f7f106c"
   },
   "910": {
-    "name": "甘露灵蛾",
-    "family": 908,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "b1276f5b2130d74481252f47e420a059b1c342678d55e363cbbdeb8d729eb207"
+    "nationalDex": 666,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/666.png",
+    "sha256": "402c99feb8b7e22e4e9c07aa0b65c76b7a7b7947e2698bb7d809d08c0df3fd4f"
   },
   "911": {
-    "name": "轻羽狸",
-    "family": 911,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "a1f425f5e55a0d40ae61ca5bf9df6cb36c6eb369a4b387eb619ef6c381ea1faf"
+    "nationalDex": 506,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/506.png",
+    "sha256": "d00c908add58c4f2a2ba2832c2a2bfdf525fc79f2362beaebdc47b8d059eb754"
   },
   "912": {
-    "name": "巡风狸",
-    "family": 911,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "d8f42f8287f7e999443b23e09261e266cf29e1811a904b6cdf388d0f3c717075"
+    "nationalDex": 507,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/507.png",
+    "sha256": "43693eab595b7c197dddc3d540c40badeb0c771e619662136cf2434827d9e3f5"
   },
   "913": {
-    "name": "逐风游侠",
-    "family": 911,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "f9f4a28f2b0abced47e163bb49cc5c3c701411630906b473fd22df991dc9b26b"
+    "nationalDex": 508,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/508.png",
+    "sha256": "ac076463713d0472005114e2e01674e6bd148ab39be071ec2f84705850752ee2"
   },
   "914": {
-    "name": "石鼓童",
-    "family": 914,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "f169e49516287abf988289f646ab1dd72c819c2f3c59816b4ef0a18159c23d1a"
+    "nationalDex": 532,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/532.png",
+    "sha256": "75aff0ca647feab70dfd191299223bbbc0d2be2f7c3d23f4bcca7fe6c1529bde"
   },
   "915": {
-    "name": "震岩鼓手",
-    "family": 914,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "6b15f417a66e76737942e22beeeb8dfc0f80b2bddbe91d8ae743510f72456626"
+    "nationalDex": 533,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/533.png",
+    "sha256": "cc16c27e5fd5e9e7009cc5905d4374cacca6b1b1eb65d3eff5b26b0bb7ba47cb"
   },
   "916": {
-    "name": "磐音卫士",
-    "family": 914,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "04c9c0c90e3e7412a230eea6bee009a1e776b785eadec4248ec352d0eb4b7d54"
+    "nationalDex": 623,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/623.png",
+    "sha256": "45b30f8b62649062a98a9836a40bb1d013f318007de34025f685f6b4630f2b5a"
   },
   "917": {
-    "name": "砂针灵",
-    "family": 917,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "a5852fe83f13901f6635e98ecbdb631898a885a0d8b59077c91bec0924681105"
+    "nationalDex": 529,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/529.png",
+    "sha256": "28c446e46eeaa23ac2c217a3fc46b41a44307136678496d0b951420c2945d346"
   },
   "918": {
-    "name": "刻砂使",
-    "family": 917,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "234c7e8a7866b91ccdeaa4d15116fa3e2d26f600adfe71bbae9a0583a00fbeaf"
+    "nationalDex": 660,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/660.png",
+    "sha256": "b534ed466b3d5f4a37d8a1b4ec6139f6d2232bf925087c162983ff3fdf2af880"
   },
   "919": {
-    "name": "流沙计时官",
-    "family": 917,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "f174208750fc7b82907faa79ec35ecf880289bf7eb7b7e67198abc90ac10f6dd"
+    "nationalDex": 618,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/618.png",
+    "sha256": "6bd1846dc28fc6d93eccdd345f083d992e2961cf29d46711d578e33b2dbb7ae4"
   },
   "920": {
-    "name": "泉心贝",
-    "family": 920,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "f73ecb5eccaedeaa183c29ca4d691d4ff0deba1c5c7a75ad6d071a3f0648c96c"
+    "nationalDex": 501,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/501.png",
+    "sha256": "2a48d071fc3abec79b0f2376b96e9ff94855e0f180b50b1d9720786474cfe7c2"
   },
   "921": {
-    "name": "清泉蚌",
-    "family": 920,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "0cec1b06a37903ee43d4f6dab64dbddf3f687df5fbea3011a5fd28b6226974ca"
+    "nationalDex": 502,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/502.png",
+    "sha256": "1d7766333bede424181d030e7df3f1792e0888b64afd13621bc8fd636727fb82"
   },
   "922": {
-    "name": "溯泉医者",
-    "family": 920,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "b6826c4b0907a47f03f0ca14b94f1d92719661a2c93314fd27988e26e0f0b14c"
+    "nationalDex": 503,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/503.png",
+    "sha256": "c4ddcfe87b4953b947007dd01bb66056e30aedd69be4806a0dfdce706c0ebf9b"
   },
   "923": {
-    "name": "镜铆灵",
-    "family": 923,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "ee9ff0d9e8b05ad905d983e6a5df05754c7e1835a70560b5387a07ccf2c7eb61"
+    "nationalDex": 679,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/679.png",
+    "sha256": "98ce5f3087165356a05a4eb2b698efce16bc5e10aa85864b57b12307110642d1"
   },
   "924": {
-    "name": "明镜铠",
-    "family": 923,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "7ba7547f5f599da6d38ec078ff418907f9b4f5bf734dc3b1dbd8f2f59404d154"
+    "nationalDex": 680,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/680.png",
+    "sha256": "213a9de645789ae12d95051439f2c61767b2ef5cbbaebb4344cf53d940ddd30f"
   },
   "925": {
-    "name": "折光盾卫",
-    "family": 923,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "3ddf57e2fcc33c71d15217c33dce2e0f4f9fd0ae2ebaafbf38f49fa072c46c96"
+    "nationalDex": 1000,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1000.png",
+    "sha256": "b00888a12a8f0216b32a93c94242e98a73e48bc5e7d3d0ee391f3eb7c2666bfe"
   },
   "926": {
-    "name": "星火团",
-    "family": 926,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "d3d8943d1c0004776e8b64d4c4a5c0e889fe45d1ff11499bdfe573b5fb6a9278"
+    "nationalDex": 694,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/694.png",
+    "sha256": "400e44716e83c09fedcbdf7c0df4798e255e0cd51a13bca8b27c56f10518c008"
   },
   "927": {
-    "name": "磁星灵",
-    "family": 926,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "b973f625e3b88276b3af2ddcc5294a21e69ec0cea13cc1fec99aeb26f18d0eba"
+    "nationalDex": 922,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/922.png",
+    "sha256": "f957a4c4e858b2dbab2d6e170337c77fa3695bd2568a101a0f315682e015d29b"
   },
   "928": {
-    "name": "轨道巡游者",
-    "family": 926,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "c71cd535d277421950fd1e22cbb63198da6da234990e3772d81863e8b16dd2fb"
+    "nationalDex": 923,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/923.png",
+    "sha256": "c72118dec81ee942c0a4acae0c143787372765a49a1c3108471477c451914f8c"
   },
   "929": {
-    "name": "雾笛苗",
-    "family": 929,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "02dde102982697fb81944078df4c241b480fe69ab43a59dc8016b4cabd4c9dc8"
+    "nationalDex": 535,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/535.png",
+    "sha256": "9ee44c784edec09148c154830b5162bdb95548527d57cf6813da2e68f0f2cabc"
   },
   "930": {
-    "name": "毒簧灵",
-    "family": 929,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "4af07b601d18033c4ac91e11593d07af5f48d769768fbe02750b7f38a8c65ac0"
+    "nationalDex": 536,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/536.png",
+    "sha256": "0c1b0d3bbcb44a15786d261e0c9bfca1209da863719255d6a6a029984efe1a5d"
   },
   "931": {
-    "name": "瘴音指挥",
-    "family": 929,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "0615ab1ad19336c99984da2ffb032fee95d6e6fca77550d993bc0b2e91c1898d"
+    "nationalDex": 537,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/537.png",
+    "sha256": "c8d1742fd2c358ab228f462a52127f1e11aff9e5d36765e45e72d806f734e4af"
   },
   "932": {
-    "name": "潮羽雏",
-    "family": 932,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "4bb3acf28e6c921b563621a689152959c1d3563440da858cc6fc94397c7e919c"
+    "nationalDex": 912,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/912.png",
+    "sha256": "87f8d9292a1e939fe9fd56f57195fb549791befb16a6bb2394bedc024387aa84"
   },
   "933": {
-    "name": "涡流鹭",
-    "family": 932,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "06ec69e5ec6b874b14d80ad4bb12060d9625bceadca229c096b94add132e3883"
+    "nationalDex": 913,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/913.png",
+    "sha256": "a8584d4a07628ecc34f46ffe1e21364efe4e9933016f834361f7793ecc6934a5"
   },
   "934": {
-    "name": "御潮风使",
-    "family": 932,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "de4633d527ef9dee9c728e3a05594f6f88cbb841e3e19c27aeb290fd9cc9fbd4"
+    "nationalDex": 730,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/730.png",
+    "sha256": "233a592977666ba3a694b593f40fc40948c7ce6b002d58c0c1a08cc0014845a0"
   },
   "935": {
-    "name": "糖露团",
-    "family": 935,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "c799d78d457524bd0d95c52e4cf92b899dad9a7b9284bdae809311632a82f71e"
+    "nationalDex": 926,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/926.png",
+    "sha256": "b00193f3885f1841b85fa710ee9c62ac3a906be132d3b7e4ec2d6b00ec1fc12f"
   },
   "936": {
-    "name": "蜜露灵",
-    "family": 935,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "7a883605ca61a2f14b158fc2eba041e6864bbbdd114d44c32e12aed4808a86cc"
+    "nationalDex": 927,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/927.png",
+    "sha256": "49d0f89e745021cc666a69c5833dde91c5ed8685254f51bd8056cf6ebd8720c3"
   },
   "937": {
-    "name": "甜露圣使",
-    "family": 935,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "b1487436bdffe1c2b186bbe5eeb47ba54810e73723730ef03ad61f103f27edac"
+    "nationalDex": 685,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/685.png",
+    "sha256": "bb27df21b726111651582a931fa9b948a232ed7c6c83549d65f9d06727887973"
   },
   "938": {
-    "name": "霜刻灵",
-    "family": 938,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "9c0a8cf2efd6984a9049b28621ee92c89aced7d84f8d3e9a3378c3e80400f9cb"
+    "nationalDex": 698,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/698.png",
+    "sha256": "9b92c601263884ac7e99f9b557f05b2914965d29961519a8afef097f0776e97c"
   },
   "939": {
-    "name": "冰钟使",
-    "family": 938,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "b4f41a220fa69f5cb98ad25e736ad1f5ac17787cd0e83fd007d369c248c06c5a"
+    "nationalDex": 699,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/699.png",
+    "sha256": "73393cebeefd2f462bd591f903eeb984f37ccd717e2b83426c6c95cba083952d"
   },
   "940": {
-    "name": "寒钟守望",
-    "family": 938,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "885ac3eaabd52cbbc3e23670ed0cf0a22a5b52eebc1ad677132a0faf673a368e"
+    "nationalDex": 975,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/975.png",
+    "sha256": "918efb5e65b1ee718b4a1fca152fae8136830231455f3d13d448f026fa96be50"
   },
   "941": {
-    "name": "烛芯鸟",
-    "family": 941,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "d5440a7a9c4c63d0ac049e53d97e837572d0ca64854db2aa647c8cec67ad02cc"
+    "nationalDex": 498,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/498.png",
+    "sha256": "72b74a32a62788f78883b3acd2a18fbe5eb92f4005ea097d2784432624713dfe"
   },
   "942": {
-    "name": "暖辉鸦",
-    "family": 941,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "0b451626d1d3dcaa72800d7b592f319013a22fa846bfff558f57aa88d5c5e41b"
+    "nationalDex": 499,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/499.png",
+    "sha256": "6dd135ce7d63038684b8afa85ebed00934d2380c40ce2911a920b96eefd729cb"
   },
   "943": {
-    "name": "朝焰明使",
-    "family": 941,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "c32117e70cc54f7ccec675aeb8f366ccf0f28a28822dd44917fe5e5b312b0083"
+    "nationalDex": 514,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/514.png",
+    "sha256": "12169473b90897201bdf57c6a9f9831170420e529c5ef0a68137e4752cb05dd9"
   },
   "944": {
-    "name": "裂芽种",
-    "family": 944,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "bd30baa41c7a67c2f7679742ae165ba316daec25db4b635c335b71db5c079e4b"
+    "nationalDex": 840,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/840.png",
+    "sha256": "327fd0f2099c81b79477756caaad25e651d7972ffa5b84fb5714d518ac218f76"
   },
   "945": {
-    "name": "失序藤",
-    "family": 944,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "72ce9d8b22cf2e6f2cc1d0fc57ebbbee4b88578e72edd93e1ea8a480d9bc00cb"
+    "nationalDex": 841,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/841.png",
+    "sha256": "47f05a6a929f6a9af9f99903d81358b0c2f6f7fe7a5a25c9bcae5105ac711e27"
   },
   "946": {
-    "name": "悖生花冠",
-    "family": 944,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "5bb832d20c58d11337878507e7dd8b724eb973c3c2baaa56915d5e3bd4870b25"
+    "nationalDex": 842,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/842.png",
+    "sha256": "8780d67a7e0ef86a5a7506e90af62cae240e4bf9b05a1f2b868d6143630a4a5f"
   },
   "947": {
-    "name": "风拳童",
-    "family": 947,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "0de7af3840284f773990817500cf78539c0d2c226ed94e1b29a313fd2fd85d9e"
+    "nationalDex": 619,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/619.png",
+    "sha256": "0656d2f76e5611321f91bd67d17bc0aa66809b12cf1d5280c5a238aa574afca7"
   },
   "948": {
-    "name": "岚步客",
-    "family": 947,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "a9a37c4b96b4e89800b9d84bc61e1a204a9e58707b5c85c61a4badcfe8858e79"
+    "nationalDex": 620,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/620.png",
+    "sha256": "c3056a0e41b43dea42cef2ac26c1c5acab4ee308e53c7252261c508eac8d6aaa"
   },
   "949": {
-    "name": "流岚武师",
-    "family": 947,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "696f722762adfd902c3542aee1cc22f085adf6decadaa87862a4f7d49d1f8be7"
+    "nationalDex": 903,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/903.png",
+    "sha256": "2580417f1a4351a8fa4fa380daa740a72a2c681df72579ef65b104b70396469a"
   },
   "950": {
-    "name": "星铆球",
-    "family": 950,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "5bbc4c237b0f1954e46222ba16bb67d5d2824bcf1d230b99cd44c371e5a7b997"
+    "nationalDex": 878,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/878.png",
+    "sha256": "3f3801cf99faa752b35f9ddabbd73876fa5a75b693d99ff15505366337d73efb"
   },
   "951": {
-    "name": "环轨甲",
-    "family": 950,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "afb183aa83814dfb3d7b9b265fca828f3678f758b3f7d50221fea6a85517f06d"
+    "nationalDex": 965,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/965.png",
+    "sha256": "fe6b1a000f8091c4b9bfb1263c751fe6b59a753fc77ac249b80d8d7351ceb2ef"
   },
   "952": {
-    "name": "天穹重卫",
-    "family": 950,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "546d58513b0d4bdf8ddcaebcf9c36980dfb408d50b2a9b8dbcb43a2b27ce346e"
+    "nationalDex": 966,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/966.png",
+    "sha256": "198df66b1b228b8ab40430e43dba1aab0ce28d9c33d22bf6172574e8ba54bcff"
   },
   "953": {
-    "name": "电拨鼠",
-    "family": 953,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "9e9c04a50f46926f454242a9a1d566972f2f41053328976ea8ae9ad843f9d91d"
+    "nationalDex": 819,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/819.png",
+    "sha256": "b9e7f5c51a724736d032ed87888877d8a3eaa2f77ad80fe77a68ebcd9bb03676"
   },
   "954": {
-    "name": "弧弦手",
-    "family": 953,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "f65d9c0461d65eef9846604522747cd0562562a630c15b54cf25e16f003934f6"
+    "nationalDex": 820,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/820.png",
+    "sha256": "b25015db3efcf70c734f4c926a1327e9255dbb13e110071aad1fda2c8adbbb3e"
   },
   "955": {
-    "name": "雷弦演奏家",
-    "family": 953,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "2d717174d6c83f51464c693816ad17e57d08bc0f636efa348cd175cfce803821"
+    "nationalDex": 695,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/695.png",
+    "sha256": "434c3521829f6ede3ffc157a0fd77a7f2c25f2c14e0e5fd4cf4c4e2948e63581"
   },
   "956": {
-    "name": "泥药团",
-    "family": 956,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "c409a35db2b91f6484f20196bea1a41d226c16102da039c3801ca1c3a5f5def5"
+    "nationalDex": 932,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/932.png",
+    "sha256": "c61aa848b8a16c82a11877324455ebdab171ec833d3138216a7e12bde0824c4b"
   },
   "957": {
-    "name": "岩药童",
-    "family": 956,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "2c1bcb7dd3af200adaec8531265f5c7e86e4279dd5fa79dbace48596dfcd805a"
+    "nationalDex": 933,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/933.png",
+    "sha256": "22f47cfd0b7d9b00ce14652beb244e96875079945fe26d0a558857619a4a380d"
   },
   "958": {
-    "name": "厚土药师",
-    "family": 956,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "b37cd3f9f4aef3612ee9e42466445cd8993228a0a3448965c3941377c428f582"
+    "nationalDex": 934,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/934.png",
+    "sha256": "2cbf3b85066acf5d06398c6c168bc9eb0a649d6d34c697d6a1f0563068f371bc"
   },
   "959": {
-    "name": "暮灯灵",
-    "family": 959,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "4c06ce6c546ab0994509eb833e8f9b74e7df61fe2c0b3a82c9cc0e6ae66bcd9b"
+    "nationalDex": 971,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/971.png",
+    "sha256": "a51d2963db4a85ea483fbf437d106fd715ac6543e018727fd05b486434adc541"
   },
   "960": {
-    "name": "幽光巡使",
-    "family": 959,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "f54ab9790b53806f4ee4978261eb120cf9ce91a6ded0fc07ac68c60730f02416"
+    "nationalDex": 972,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/972.png",
+    "sha256": "aef96daea3f4c74053d0ad74fcbdbee353c59fbd0626a326dd795a4c52e2516e"
   },
   "961": {
-    "name": "灯夜司仪",
-    "family": 959,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "f0423c7bdae6cb50a8f192ad660a91b777fa89d5c31cdca7250663ef41939f2e"
+    "nationalDex": 987,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/987.png",
+    "sha256": "47adb35c098da1330c8ae9739e31a80495b02524dc9e18f2ab0ef9a22253fb1f"
   },
   "962": {
-    "name": "潮星卵",
-    "family": 962,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "abe59c7b866dc0867fb73af20fb9d041a10941065bc2e2f9517f695924e71267"
+    "nationalDex": 564,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/564.png",
+    "sha256": "32a45b4ef3e1dc0a8bfec4d1d012ebf42208ea54521351e7c7b2dca32fe2060e"
   },
   "963": {
-    "name": "浮星水灵",
-    "family": 962,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "02016ccb81b5332754e2275ff699d0be2d8b5ba1c2110de4c7829f45323678f0"
+    "nationalDex": 565,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/565.png",
+    "sha256": "46cf468362d93b97ba057f0d18c7c42520c8f2a747d604e2a7095dcb2c6ca4ce"
   },
   "964": {
-    "name": "星潮引路者",
-    "family": 962,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "663fa2de485b15706690d377ac5304ba517a33142bf5b2c64c012058f4ec8203"
+    "nationalDex": 964,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/964.png",
+    "sha256": "4cfeeb2f8c365c28765b2967831752ccf854d6ca7f183f1ed26b66e6fecbe5af"
   },
   "965": {
-    "name": "墨拍灵",
-    "family": 965,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "f10f221c6b2077da47d1926203b3803062b887c05b606f862dd97ed4119d51da"
+    "nationalDex": 942,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/942.png",
+    "sha256": "1d3df2fa5454938efa68e5e5d359f6bc76dff1a176cbd7e992a1ad5bfb655812"
   },
   "966": {
-    "name": "夜奏使",
-    "family": 965,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "870f5ee26e867f9dfdf792dd607f180cabbe10247cdbf32da666c042a254724f"
+    "nationalDex": 943,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/943.png",
+    "sha256": "d7eb060462f783f88be99396fc3eeec17fedff94528d3f4a8cb11866bebf58d3"
   },
   "967": {
-    "name": "静夜咏者",
-    "family": 965,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "6845520debf8307bef1f4da003efd0890cf51d3e97f931fdf079b46e99ed5054"
+    "nationalDex": 862,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/862.png",
+    "sha256": "a8d3b1fd299c27dfd3ecc948eb15fbfabfe9a13fefcc8a7c5550a96ae49e1ebe"
   },
   "968": {
-    "name": "旋砂团",
-    "family": 968,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "3298a93eb2512766424dcd31d85d171810e903f2044175e433f079035901772f"
+    "nationalDex": 329,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/329.png",
+    "sha256": "5c284505d8631a19588056fb93699315da5575defc5d88529bcd565a97a8930e"
   },
   "969": {
-    "name": "风沙侍",
-    "family": 968,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "8f8924c3912a7d83a3c849cbacec5a41e17f843517b4717f3c76b2002be91b07"
+    "nationalDex": 566,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/566.png",
+    "sha256": "649d8258d5a2f7ebd356712977779a92396b1d9a16de0a8759491178e846de9d"
   },
   "970": {
-    "name": "沙岚斥候",
-    "family": 968,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "cfbbfac3a659c63f8a05887ccfee14bacc04cec19274a29ce4657e40bdae90a9"
+    "nationalDex": 567,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/567.png",
+    "sha256": "2569b704fcf309f75bd8ee61d5e7bf520f55007596c922967a869e2210253ba4"
   },
   "971": {
-    "name": "齿轮秒针",
-    "family": 971,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "eb82331f240067627920436e631b0aa82bc9c3837f9eabe116c713419a689138"
+    "nationalDex": 957,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/957.png",
+    "sha256": "ed5cadd612dcfac52991b9a2777aff7de2824fc57f3b8ad1d84fc23d6566ef07"
   },
   "972": {
-    "name": "巡刻机",
-    "family": 971,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "6e364957164b81b8a48cd1c0f2b74f20e9c8b3c83e02ab9a207b9076c5b6e27f"
+    "nationalDex": 958,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/958.png",
+    "sha256": "b70333b606cf9c8c2591231901686f3d113ea70fc8d81cdca5c20c4c897ee2c9"
   },
   "973": {
-    "name": "纪时校准官",
-    "family": 971,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "14b8d5c458c742320e9b7908d7043ec6ac3da70e0ea0c35715abe75c4ddea3ab"
+    "nationalDex": 959,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/959.png",
+    "sha256": "5c5a4994719343612e459492baabbf5528086017931a21d74a1a7ba2c17f0329"
   },
   "974": {
-    "name": "祝芽灵",
-    "family": 974,
-    "stage": 0,
-    "source": "original-vector",
-    "sha256": "951482dea545412659199f656e2e8f1a9361772a1fa8d765fa5e48b69eaee387"
+    "nationalDex": 650,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/650.png",
+    "sha256": "764b1385efde024c9e3b97ee232bdeb7b253d092886610b8be455e495c1357ef"
   },
   "975": {
-    "name": "祈铃使",
-    "family": 974,
-    "stage": 1,
-    "source": "original-vector",
-    "sha256": "2464bdcb5fce0ac8277d7fde33ab53feef7932025c58c7c50c4ee220617c7a30"
+    "nationalDex": 651,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/651.png",
+    "sha256": "8e6d4cce03857a74cad0de8a4eeeac414ecc0044d19a23ad34fe5d2124473bd7"
   },
   "976": {
-    "name": "和鸣守誓者",
-    "family": 974,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "e4417e58bf0e5a121a8d47a7dde29dfb7380920a4d1167c083f1b5489316b91c"
+    "nationalDex": 652,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/652.png",
+    "sha256": "91c38159529cf68e12efd96fa5f7db83d30a6ef23f9c3749046e23fc3e9eea14"
   },
   "977": {
-    "name": "潮汐调律师",
-    "family": 977,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "1b8cf40b9e53f8af433f48ea41d3fcaa8e4ee7eaa5e13947abba30cd7a61033b"
+    "nationalDex": 402,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/402.png",
+    "sha256": "aa869d677ec2fa9f1de26a44f86e12404b2e88415e8339cffb5a51577a20a34e"
   },
   "978": {
-    "name": "霞光织者",
-    "family": 978,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "e8f16342b2445fdf031367ad4407ba9937ee1f1d0dda762c919f46e1a1d092ad"
+    "nationalDex": 918,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/918.png",
+    "sha256": "3e657fd4c87a003b4e7d7b48fce17c8d2317a7f703ab06716c0c0aa328ba3ca3"
   },
   "979": {
-    "name": "雾岭药客",
-    "family": 979,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "b890a97af5a58e01991e56a8ce6069486b63c0fe889fbb973607b1859dd5fe79"
+    "nationalDex": 683,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/683.png",
+    "sha256": "2357d31699c80975ca82a15db3b8bc301f9d17000e0c8b5f9677f9b8250ff236"
   },
   "980": {
-    "name": "星砂堡垒",
-    "family": 980,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "afc6ebdb3be1193103654368918867f02b5c01814954c494e312bfdf8a3de399"
+    "nationalDex": 805,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/805.png",
+    "sha256": "9e4fab51e54ea6689a528772dfc0b7221c5bed65c6dce96c43b62399c4ab79d6"
   },
   "981": {
-    "name": "逆拍舞者",
-    "family": 981,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "436e8f67a07bf8f535df6453cdb7ad2a7a798e01ff14d92b7d84b4e9c11965ef"
+    "nationalDex": 866,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/866.png",
+    "sha256": "fb6e37d603de2dfb9381133ea4fd8f9581afa032f6c1fa7af6add4200b0cbf1e"
   },
   "982": {
-    "name": "熵晶猎手",
-    "family": 982,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "4836b21589dce6b17e0a552bf56f8f71389bc4d5be4017b359f611f9d150d3b7"
+    "nationalDex": 1006,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1006.png",
+    "sha256": "afb2ab347563d9b0c2b9b07a824cf201b40b999228fc3d80d745097cc3720fb1"
   },
   "983": {
-    "name": "青焰药炉",
-    "family": 983,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "2c2da1911d5b8cb2bb9f6a5a61ad69ef1b24f41334042140c968ae7975c9bba4"
+    "nationalDex": 1013,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1013.png",
+    "sha256": "7f87125ff58def2a6c82331c3ef9553df6d2e3fc0291c2fd5430ba2791e46286"
   },
   "984": {
-    "name": "破阵铿锵",
-    "family": 984,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "86972c398fc557f7219713421510524b0a35003cd60312b1c92060a0d7f6a73a"
+    "nationalDex": 870,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/870.png",
+    "sha256": "110052a154579ddd30672f3766c6b284ce75322f52d59b624d1c0fc5e2f9783b"
   },
   "985": {
-    "name": "霁雪信使",
-    "family": 985,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "bdeaa23e9959760f596e1fb160ad80dac503c8c73f54e6472c9b2b43dc764713"
+    "nationalDex": 962,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/962.png",
+    "sha256": "74b17f9061cee1d460d0710d0b184d3a565b7de9aac6a9701bb70239eeacbd09"
   },
   "986": {
-    "name": "月蚀潜影",
-    "family": 986,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "0980a17e7a8d278ab0671618580b0dace9d3df934ea00604389768c6e8253b88"
+    "nationalDex": 687,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/687.png",
+    "sha256": "bdfc0d55c95c0b5185f376065166ae90f03dcf7e91225a04765f40ee00b1a1de"
   },
   "987": {
-    "name": "照夜萤将",
-    "family": 987,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "a4a1f7826b0387cdb7262c96d2bc3aa391d4096f05f128cedc1def26dff83707"
+    "nationalDex": 589,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/589.png",
+    "sha256": "ca146dab79247e3ed921aa82af95748e44a7ac212889de03747d511b6b38c428"
   },
   "988": {
-    "name": "镇瘴医灵",
-    "family": 988,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "d44c9a3c64126277ae8a8f3a2b77f05d34d7e1ab4c6ef3af761a43e470bf1469"
+    "nationalDex": 691,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/691.png",
+    "sha256": "33456629eb262b4d6b81e29797e77a06f404a2180154f1510cffacbaf7eb6266"
   },
   "989": {
-    "name": "寂音判官",
-    "family": 989,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "c94c216e522a521776739bdaeeda024f040985814b03da2929689a83eeb1c942"
+    "nationalDex": 630,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/630.png",
+    "sha256": "cb137831e0cdb9332db00409afe0888070c65905bde6bf7265c4f63861310bb1"
   },
   "990": {
-    "name": "晨钟誓卫",
-    "family": 990,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "65714b2ac743e249c54725bbc4db72116f78ba475599193534d88e98b25e9abf"
+    "nationalDex": 1022,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1022.png",
+    "sha256": "df3f8a25faa8e4b4b3627c3be0e96d0bc7637abd2efaa22593b8d71fdf8ff4b7"
   },
   "991": {
-    "name": "裂隙花使",
-    "family": 991,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "72171d5b99ed40174f92c71528564db0f81092a6dd8b75983cc86e213a553e4d"
+    "nationalDex": 905,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/905.png",
+    "sha256": "cf0a2f0f3a8826b976a0b6bc0852be2984fe628d0ac5000745a7b5d2b27e2a69"
   },
   "992": {
-    "name": "珊瑚风塔",
-    "family": 992,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "d804b2e68f4428413ce3b0962d6f323eae6859ae68bcb55c678ced95f00c8c70"
+    "nationalDex": 558,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/558.png",
+    "sha256": "eb8a3bd99188c07e08b22aae2aa4e1d1c0ad005b2b932f99ab58736445286e33"
   },
   "993": {
-    "name": "万籁协奏者",
-    "family": 993,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "03dec536ce59100377045720c4872485b6e407949f2f5d9881b1b4d55e36f828"
+    "nationalDex": 648,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/648.png",
+    "sha256": "a1e7e4563c019d8a3c025bbc1185d81b02d3c9cf6aabd63114987c2696d29129"
   },
   "994": {
-    "name": "生命守灯人",
-    "family": 994,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "7942d77f80e3c38a872088dfbd6fdd8f4244beb2f2893f1f78a00efafa8334b2"
+    "nationalDex": 1017,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1017.png",
+    "sha256": "edb472c2c1b001ce75a80d6aa3d4ac0f5647329bb40dd6aa68b9792a2ded9e5d"
   },
   "995": {
-    "name": "长风逐日者",
-    "family": 995,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "550c9b697b6b33805cf3b0d795e0334f70ee978cae563ded0ce12ffb4b9e1797"
+    "nationalDex": 643,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/643.png",
+    "sha256": "887b636aa1a05a8ed035a4d4e70eb7ba5235bd8330023a895a904f8538898d15"
   },
   "996": {
-    "name": "断轮裁时者",
-    "family": 996,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "b3fbb2c99e607e51c8e44d9485e6130d0833fdb21ea3af9c44bae481088092b5"
+    "nationalDex": 1014,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1014.png",
+    "sha256": "941521eb23ea8d4f977887dafa31d2ae3123661e37ee19891519126951071077"
   },
   "997": {
-    "name": "零界棱镜",
-    "family": 997,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "80ba477ee9dca2dc2dbcb3d8522fd7842b85ef076560b4536ce45f72f25219f6"
+    "nationalDex": 649,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/649.png",
+    "sha256": "fa35880bba3ef0a26e2b4dc444383f2a7b493ddc08b6c5b577d1769ddfd1ae26"
   },
   "998": {
-    "name": "极夜星航者",
-    "family": 998,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "90e3f8b3f8d0fdd8283a112386c1ff2783979619351d132799b272d7921b143c"
+    "nationalDex": 1024,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1024.png",
+    "sha256": "783aa92f8c016e201d5f1f8cefe0ea89afb893600ce19975b6d7d5cba7bd171c"
   },
   "999": {
-    "name": "净世誓约兽",
-    "family": 999,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "97e59b441bee317a3e051e27145550bc633093377f4ad6aae53d83895fcd40a9"
+    "nationalDex": 640,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/640.png",
+    "sha256": "74f40421c330d5b55dc16a8dc047620658bcd3205e156246de79b91c7a973069"
   },
   "1000": {
-    "name": "千律合鸣龙",
-    "family": 1000,
-    "stage": 2,
-    "source": "original-vector",
-    "sha256": "24d7420e7dafcbf12fc9e2859b5ac16d3e9f61988a4371b11a1e9abfd0fd212b"
+    "nationalDex": 1021,
+    "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1021.png",
+    "sha256": "0fb3f326e50114f5568d98aa14fba35489e1963408e491e6b96699b67f570360"
   }
 }

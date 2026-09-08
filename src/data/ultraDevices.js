@@ -1,13 +1,14 @@
 import { ULTRA_HEROES } from './ultra';
+import { ULTRA_DEVICE_DESIGNS } from './ultraDeviceDesigns';
 
-// A real prop can have multiple collectible attunements; ownership remains per hero.
+// Every hero owns one distinct prop. Shared canonical props get explicit original alternatives.
 export const ULTRA_DEVICE_MODELS = [
   ['beta_capsule','贝塔魔棒','Beta Capsule'],
   ['shin_capsule','贝塔魔棒·新','Beta Capsule','Beta Capsule Shin.png'],
   ['ultra_eye','奥特眼镜','Ultra Eye'],
   ['ultra_rings','奥特戒指','Ultra Rings'],
   ['ultra_badge','奥特徽章','Ultra Badge'],
-  ['leo_ring','狮子之瞳','Leo Ring'],
+  ['leo_ring','狮子之瞳','Leo Ring','Leo ring (1).jpg'],
   ['beam_flasher','闪光之星','Beam Flasher'],
   ['bright_stick','光明棒','Bright Stick'],
   ['sparklence','神光棒','Sparklence'],
@@ -16,7 +17,7 @@ export const ULTRA_DEVICE_MODELS = [
   ['lieflasher','闪光剑','Lieflasher'],
   ['esplender','蓝宝锥','Esplender'],
   ['agulater','蓝宝镯','Agulater'],
-  ['estrellar','埃斯特雷勒','Estrellar'],
+  ['estrellar','埃斯特雷勒','Estrellar','Estraller.png'],
   ['nice_dreamer','纳伊斯梦幻之星','Nice Dreamer'],
   ['cosmo_pluck','日月同辉','Cosmo Pluck'],
   ['just_lancer','正义之石','Just Lancer'],
@@ -25,7 +26,7 @@ export const ULTRA_DEVICE_MODELS = [
   ['mebius_brace','梦比优斯气息','Mebius Brace'],
   ['knight_brace','骑士气息','Knight Brace'],
   ['zero_eye','赛罗眼镜','Ultra Zero Eye'],
-  ['ginga_spark','银河火花','Ginga Spark'],
+  ['ginga_spark','银河火花','Ginga Spark','GingaSpark.png'],
   ['victory_lancer','维克特利圣枪','Victory Lancer'],
   ['x_devizer','艾克斯终端','X Devizer'],
   ['orb_ring','欧布圆环','Orb Ring'],
@@ -43,7 +44,7 @@ export const ULTRA_DEVICE_MODELS = [
   ['teo_crystar','TEO晶体','Teo Crystar'],
   ['delta_plasma','三角吊坠','Delta Plasma'],
   ['flash_prism','闪光棱镜','Beta Capsule','Flash Prism HD.png'],
-  ['pikari_brush','皮卡力牙刷','Pikari Brush'],
+  ['pikari_brush','皮卡力牙刷','Pikari Brush','Pikari brusher 2.jpg'],
   ['fusion_brace','奥特融合手镯','Ultra Fusion Brace'],
   ['saga_brace','赛迦手镯','Ultimate Bracelet','Saga_Brace.png'],
   ['new_generation_eye','新世代眼镜','New Generation Eye'],
@@ -68,13 +69,15 @@ const HERO_MODEL = {
   ultraman_dark:'dark_dummy_spark',seven_dark:'dark_dummy_spark',
 };
 export const ULTRA_DEVICES = ULTRA_HEROES.map(hero=>{
-  const replica=!HERO_MODEL[hero.id];
-  const model=MODELS[HERO_MODEL[hero.id] || 'ginga_spark'];
+  const design=ULTRA_DEVICE_DESIGNS[hero.id];
+  const model=design ? {id:`original_${hero.id}`,name:design[0],portrait:`assets/ultra-devices/original-${hero.id}.webp`} : MODELS[HERO_MODEL[hero.id]];
+  if(!model)throw new Error(`Missing unique transformation device: ${hero.id}`);
   return {
     id:`device_${hero.id}`,heroId:hero.id,modelId:model.id,
-    name:replica ? `${model.name}·${hero.name}共鸣` : model.name,
-    replica,portrait:model.portrait,
-    note:replica ? '银河火花实物造型；本角色的共鸣契约为游戏改编，单独挑战收集。' : `${hero.name}使用的${model.name}，通过该角色的专属试炼收集。`,
+    name:model.name,replica:!!design,portrait:model.portrait,
+    sourceLabel:design ? '原创设计' : '原作道具',
+    sourceUrl:design ? null : `https://ultra.fandom.com/wiki/${encodeURIComponent(model.wiki.replaceAll(' ','_'))}`,
+    note:design ? `${hero.name}专属原创道具：${design[3]}。通过该角色试炼获得。` : `${hero.name}使用的${model.name}，通过该角色的专属试炼收集。`,
   };
 });
 export const ULTRA_DEVICE_BY_ID = Object.fromEntries(ULTRA_DEVICES.map(device=>[device.id,device]));

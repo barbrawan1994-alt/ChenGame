@@ -1,0 +1,354 @@
+{
+  "zoffy": {
+    "name": "星勋指挥章",
+    "silhouette": "six-star",
+    "description": "六星胸章与中央指挥晶核",
+    "file": "original-zoffy.webp",
+    "source": "Original game prop illustration",
+    "sha256": "2314eea7c3bf492f99c3b1651d8d6f7d2a81ada6afd63f4d3aa007185876d4c0"
+  },
+  "jack": {
+    "name": "归途光轮",
+    "silhouette": "open-cuff",
+    "description": "断环腕箍与横向归途光轨",
+    "file": "original-jack.webp",
+    "source": "Original game prop illustration",
+    "sha256": "063d4914ad30dd64693538f3fdfe13147ecc5e4a20f8b55baa6af6f6b16ddcc4"
+  },
+  "father": {
+    "name": "苍穹之角",
+    "silhouette": "horn-relic",
+    "description": "双角承托的厚重水晶权印",
+    "file": "original-father.webp",
+    "source": "Original game prop illustration",
+    "sha256": "822c4767f87d791a4e302cd5064d17e1b097dce67abef3eb29ca530c64f291e7"
+  },
+  "mother": {
+    "name": "银叶生命笛",
+    "silhouette": "flute",
+    "description": "银叶音孔与生命能量长笛",
+    "file": "original-mother.webp",
+    "source": "Original game prop illustration",
+    "sha256": "c9867357e4d7eef0ddc33f8046dffc11c0b381995a8ec83f2f364292078d482d"
+  },
+  "astra": {
+    "name": "赤链星锁",
+    "silhouette": "chain-lock",
+    "description": "不对称链环与红色星锁",
+    "file": "original-astra.webp",
+    "source": "Original game prop illustration",
+    "sha256": "a8586dc54a2682295772a6391ce7bf334f0d8d9552748495018c15c032ec98ad"
+  },
+  "king": {
+    "name": "王冠天仪",
+    "silhouette": "crown",
+    "description": "五峰王冠与悬置天仪晶体",
+    "file": "original-king.webp",
+    "source": "Original game prop illustration",
+    "sha256": "824d0d3739e9bf3a88483a0c9c9f7b41116950a7d905700563c549145e32d466"
+  },
+  "yullian": {
+    "name": "晨露花冠",
+    "silhouette": "flower",
+    "description": "花瓣冠饰包围晨露晶滴",
+    "file": "original-yullian.webp",
+    "source": "Original game prop illustration",
+    "sha256": "f3fafeeab838800a488776db31f4a9d6282238b392c7936fa5b2cbf24f43f3ab"
+  },
+  "seven21": {
+    "name": "双轨光镜",
+    "silhouette": "visor",
+    "description": "双轨镜架与上下折叠光翼",
+    "file": "original-seven21.webp",
+    "source": "Original game prop illustration",
+    "sha256": "ecfa8fb7544f521bf50f978a0114b1db7303427703f492dddf410d17d353231e"
+  },
+  "xenon": {
+    "name": "三极星仪",
+    "silhouette": "triad",
+    "description": "三角支架与三枚独立晶核",
+    "file": "original-xenon.webp",
+    "source": "Original game prop illustration",
+    "sha256": "e8448b7c6ce67b4c91320b9006a0c162cecac04316acda309f24472b360f478e"
+  },
+  "blu": {
+    "name": "潮汐罗盘",
+    "silhouette": "compass",
+    "description": "开合海蓝罗盘与潮汐指针",
+    "file": "original-blu.webp",
+    "source": "Original game prop illustration",
+    "sha256": "8b98bd63de2a040675d2c78df7fedbee0805cd2544e11e1412f860f1dd6f9a85"
+  },
+  "titas": {
+    "name": "贤者力铠",
+    "silhouette": "gauntlet",
+    "description": "方形护拳与层叠重甲",
+    "file": "original-titas.webp",
+    "source": "Original game prop illustration",
+    "sha256": "50858c8c52a0141069f116db3138cf39c769a902d93eace8c0d2ddcf28ed922b"
+  },
+  "fuma": {
+    "name": "风遁羽扇",
+    "silhouette": "fan",
+    "description": "非对称五叶折扇与风刃轴",
+    "file": "original-fuma.webp",
+    "source": "Original game prop illustration",
+    "sha256": "839fe45ace237b763560b6a8dcf8d998fa61287c726cdd6fb4b4b3fb0070a4bb"
+  },
+  "dinas": {
+    "name": "灵兽音叉",
+    "silhouette": "tuning-fork",
+    "description": "双叉共振器与收束声波晶核",
+    "file": "original-dinas.webp",
+    "source": "Original game prop illustration",
+    "sha256": "45256b1be40a64fbbb0549211fd206fb0ffa054da1c6f8e1e19d8092663b130e"
+  },
+  "scott": {
+    "name": "赤空飞翼",
+    "silhouette": "swept-wing",
+    "description": "后掠飞翼形掌握器",
+    "file": "original-scott.webp",
+    "source": "Original game prop illustration",
+    "sha256": "f9ef2b41c4df84f647d898233a7430f124ef53dc6587cee33169662ff19c4564"
+  },
+  "chuck": {
+    "name": "地平测距仪",
+    "silhouette": "binocular",
+    "description": "双筒测距器与桥形把手",
+    "file": "original-chuck.webp",
+    "source": "Original game prop illustration",
+    "sha256": "438228a1676b8e62ad2d052ef8be92830c6db47fbff2de1439d6527346a554be"
+  },
+  "beth": {
+    "name": "流星耳坠",
+    "silhouette": "earpiece",
+    "description": "弯月耳挂与双流星坠饰",
+    "file": "original-beth.webp",
+    "source": "Original game prop illustration",
+    "sha256": "a314842c2e0fb01a154273c4bcbed5f40559873b823e4c3b0cf855d985245910"
+  },
+  "legend": {
+    "name": "极光双生轮",
+    "silhouette": "double-ring",
+    "description": "错位双轮与交汇极光晶体",
+    "file": "original-legend.webp",
+    "source": "Original game prop illustration",
+    "sha256": "b02032dfbbd780a9868803076e895dcd1057dea06b7e49e628ebcc197cbf6284"
+  },
+  "noa": {
+    "name": "天翼共鸣器",
+    "silhouette": "feather-wings",
+    "description": "向上展开的多层银翼",
+    "file": "original-noa.webp",
+    "source": "Original game prop illustration",
+    "sha256": "b6bb6e163e53bfcb30a3f80624954d953fef1deab93c0bc810fc473bc6357ecd"
+  },
+  "next": {
+    "name": "初光胚石",
+    "silhouette": "seed",
+    "description": "纵向分裂的原初种子晶石",
+    "file": "original-next.webp",
+    "source": "Original game prop illustration",
+    "sha256": "d9a306c5650811906690b00e6b979ac2460b562bf4bfa6b3c3803601904725c5"
+  },
+  "ruebe": {
+    "name": "双极合流仪",
+    "silhouette": "hourglass",
+    "description": "红蓝双极沙漏结构",
+    "file": "original-ruebe.webp",
+    "source": "Original game prop illustration",
+    "sha256": "683d8b47fa02303bfed5e844ed67a2a86d336f76c2f7a8f324ec6c3338c9ebcb"
+  },
+  "gruebe": {
+    "name": "三源天球仪",
+    "silhouette": "orrery",
+    "description": "三条交叉轨道环与悬浮核心",
+    "file": "original-gruebe.webp",
+    "source": "Original game prop illustration",
+    "sha256": "261e767a314655935fdcb909a6014a51e7683dc0a510bc680e01e0b81bf03470"
+  },
+  "ribut": {
+    "name": "疾风救援盾",
+    "silhouette": "kite-shield",
+    "description": "锐角救援盾与中轴滑动握柄",
+    "file": "original-ribut.webp",
+    "source": "Original game prop illustration",
+    "sha256": "bea0d73214d1c32979731773a5de661e27021773baf33eb244b7ebd2a33d669b"
+  },
+  "regulos": {
+    "name": "幻兽拳印",
+    "silhouette": "claw-seal",
+    "description": "三爪拳印与双侧拳法刻纹",
+    "file": "original-regulos.webp",
+    "source": "Original game prop illustration",
+    "sha256": "0b3e5ed33834446f3b8f27b715f6a70716c5fac8bc743fb91667f23fb0ebbadb"
+  },
+  "boy": {
+    "name": "启明星拨盘",
+    "silhouette": "dial",
+    "description": "圆角学习拨盘与四枚异形按钮",
+    "file": "original-boy.webp",
+    "source": "Original game prop illustration",
+    "sha256": "d6edc40fdb6c0c8e0b7751ba7d12e7d219951d0f036cf57a3433dbef4c9f0d68"
+  },
+  "sora": {
+    "name": "星语调律琴",
+    "silhouette": "lyre",
+    "description": "U形银琴框与五根光弦",
+    "file": "original-sora.webp",
+    "source": "Original game prop illustration",
+    "sha256": "0e5ad8d918a1a82ae1f62f9c494c173811208c2af32190eafb1c875b0a7b46be"
+  },
+  "rising": {
+    "name": "湾岸跃迁球",
+    "silhouette": "capsule-ball",
+    "description": "分瓣跃迁球与环状红色轨迹",
+    "file": "original-rising.webp",
+    "source": "Original game prop illustration",
+    "sha256": "23ee2347a0ecc9fd1639272abfc2ddcf26f83f92de90bf1a3d1088f231d7bb5f"
+  },
+  "elet": {
+    "name": "雷霆短锤",
+    "silhouette": "hammer",
+    "description": "斜切双头短锤与绝缘柄",
+    "file": "original-elet.webp",
+    "source": "Original game prop illustration",
+    "sha256": "381c34f7e637f1d7dcfd80da183571515b25c404a8f5383aa3454db59e50b339"
+  },
+  "loto": {
+    "name": "群峰立方",
+    "silhouette": "cube",
+    "description": "悬置立方核心与石质框架",
+    "file": "original-loto.webp",
+    "source": "Original game prop illustration",
+    "sha256": "5b9e40f4c0ec7b3fdd9407a627d37f667c4185bffada5e43329f9dc9a4d40bde"
+  },
+  "amia": {
+    "name": "星愿结晶簪",
+    "silhouette": "hairpin",
+    "description": "细长银簪与叠层花形晶体",
+    "file": "original-amia.webp",
+    "source": "Original game prop illustration",
+    "sha256": "3f3b713263451230550300cca1bed0cc033869465478039cc8c10577e3a70580"
+  },
+  "belial": {
+    "name": "暴君棘杖",
+    "silhouette": "thorn-staff",
+    "description": "弯曲棘杖与红黑裂隙核心",
+    "file": "original-belial.webp",
+    "source": "Original game prop illustration",
+    "sha256": "96a424c853f53524f5d7fa576e23c5dc0a0971a95949a98e999c8497326f32dd"
+  },
+  "evil_tiga": {
+    "name": "反相光棱",
+    "silhouette": "inverted-prism",
+    "description": "倒三角棱镜与偏移能量桥",
+    "file": "original-evil_tiga.webp",
+    "source": "Original game prop illustration",
+    "sha256": "ba14d61f6be29e576ea68fdc7f7e90f699acd80f94f7a6685ac8c1815d10092f"
+  },
+  "darramb": {
+    "name": "地裂重锚",
+    "silhouette": "anchor",
+    "description": "厚重双齿锚形握器",
+    "file": "original-darramb.webp",
+    "source": "Original game prop illustration",
+    "sha256": "d6d6a8bed895e0e7216e3585850a8a9d6ab7f1ade53105554abc0ac6c519a406"
+  },
+  "hudra": {
+    "name": "幽风折刃",
+    "silhouette": "sickle",
+    "description": "折叠镰翼与纤长风刃",
+    "file": "original-hudra.webp",
+    "source": "Original game prop illustration",
+    "sha256": "9f4d5a4b6371c2a681beb9b79d3ae5cab3ba88d3a24284ee833c59c2611289fa"
+  },
+  "zagi": {
+    "name": "赤渊脊冠",
+    "silhouette": "spine",
+    "description": "倒刺脊骨与赤色竖瞳晶核",
+    "file": "original-zagi.webp",
+    "source": "Original game prop illustration",
+    "sha256": "ae5f60c5626cb508f21dc421f92d2eca7010796d15a013ab2e477c5c56af1df7"
+  },
+  "faust": {
+    "name": "幻面双契",
+    "silhouette": "mask",
+    "description": "左右错位面具与双契晶片",
+    "file": "original-faust.webp",
+    "source": "Original game prop illustration",
+    "sha256": "e0d195e4aac6aedfd0a04d0f72a7b695b99066821ce8e55aea3322f8a7d41f1c"
+  },
+  "mephisto_zwei": {
+    "name": "蚀光双刃",
+    "silhouette": "twin-blade",
+    "description": "相对双刃与蚀光中轴",
+    "file": "original-mephisto_zwei.webp",
+    "source": "Original game prop illustration",
+    "sha256": "e26c0e44f0fb9c0511caff247a41da985320167d6e537cbef75abd69ba3ceb96"
+  },
+  "chaos": {
+    "name": "混沌螺旋匣",
+    "silhouette": "helix",
+    "description": "双螺旋围合的多彩能量匣",
+    "file": "original-chaos.webp",
+    "source": "Original game prop illustration",
+    "sha256": "63009ea7583a02c01e8367d4bcc5c1b3e44604101c33a21451b2ef3b4d5dd223"
+  },
+  "shadow": {
+    "name": "暗影六棱",
+    "silhouette": "hex-lantern",
+    "description": "闭合六棱提灯与窄光窗",
+    "file": "original-shadow.webp",
+    "source": "Original game prop illustration",
+    "sha256": "2afc83c3aa6e8276f56694beacf394e3a8324111811cafee71685b206a3c1eea"
+  },
+  "dark_lops": {
+    "name": "独眼观测器",
+    "silhouette": "monocular",
+    "description": "单目瞄具与侧向双翼传感器",
+    "file": "original-dark_lops.webp",
+    "source": "Original game prop illustration",
+    "sha256": "13b4b7972742470d9dcbc15740ef6523aaf754436772f3be8ad79371c476b126"
+  },
+  "seven_dark": {
+    "name": "夜幕折光镜",
+    "silhouette": "split-lens",
+    "description": "三片分离镜面与尖角夜幕镜架",
+    "file": "original-seven_dark.webp",
+    "source": "Original game prop illustration",
+    "sha256": "fa752328e884989d4a8f70ce692af329a607824af8d04cdf8db6f5f17afa464e"
+  },
+  "carmeara": {
+    "name": "魅影绶鞭",
+    "silhouette": "ribbon",
+    "description": "盘绕绶带与水晶鞭柄",
+    "file": "original-carmeara.webp",
+    "source": "Original game prop illustration",
+    "sha256": "d46d1ea456d641ca300b9f2c481db664571c5654f143105e178510e98536f59e"
+  },
+  "darrgon": {
+    "name": "刚力崩山环",
+    "silhouette": "knuckle",
+    "description": "四孔刚力指铠与山形护边",
+    "file": "original-darrgon.webp",
+    "source": "Original game prop illustration",
+    "sha256": "5cf0b7c18ca3d5ffc8cc8ee63cd305a8c8b03fbe92d23f962940f29b26d1a1e7"
+  },
+  "hudram": {
+    "name": "迅影羽刃",
+    "silhouette": "rapier",
+    "description": "单翼护手与狭长折叠刃",
+    "file": "original-hudram.webp",
+    "source": "Original game prop illustration",
+    "sha256": "c70150bb8629c0382ce9dc4608eed434a54c45035f704696f3a6552515174a1a"
+  },
+  "evil_trigger": {
+    "name": "逆光三叉晶",
+    "silhouette": "trident",
+    "description": "反转三叉结构与偏光黑晶",
+    "file": "original-evil_trigger.webp",
+    "source": "Original game prop illustration",
+    "sha256": "d788e8de7f25764fa6d63a15e1678cc933426aeee77189f1f36f37cd983edc92"
+  }
+}

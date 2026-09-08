@@ -17,22 +17,25 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
   const [trialHeroId, setTrialHeroId] = useState(result?.heroId || 'zoffy');
   const [trialEra, setTrialEra] = useState(result?.eraId || 'showa');
   const [showRules, setShowRules] = useState(false);
+  const [collection,setCollection]=useState('all');
+  const [hostUid,setHostUid]=useState(state.hostUid);
   const [trialRoute,setTrialRoute]=useState(result?.route || 0);
   const hero = ULTRA_BY_ID[selected] || ULTRA_HEROES[0];
   const form = getUltraForm(hero.id, formId);
   const device = getUltraDevice(hero.id);
   const role = ULTRA_ROLES[form.role];
   const unlocked = isUltraUnlocked(state, hero.id);
-  const host = party.find(pet => pet.uid === state.hostUid);
+  const host = party.find(pet => pet.uid === hostUid);
+  const equippedHost = party.find(pet=>pet.uid===state.hostUid);
   const available = ULTRA_HEROES.filter(item => isUltraUnlocked(state, item.id)).length;
-  const heroes = useMemo(() => ULTRA_HEROES.filter(item => (!era || item.era === era) && `${item.name} ${item.id} ${item.year}`.toLowerCase().includes(query.toLowerCase().trim())), [era, query]);
+  const heroes = useMemo(() => ULTRA_HEROES.filter(item => (!era || item.era === era) && (collection==='all' || isUltraUnlocked(state,item.id)===(collection==='owned')) && `${item.name} ${item.id} ${item.year} ${getUltraDevice(item.id).name}`.toLowerCase().includes(query.toLowerCase().trim())), [era, query, collection, state]);
   const trial = getUltraTrial(trialHeroId,party,trialRoute);
   const trialBlock = getUltraTrialBlock(trial,state,party,badges.length);
   const trialHeroes = ULTRA_HEROES.filter(item=>item.era===trialEra);
   const selectHero = item => { setSelected(item.id); setFormId(item.id === state.heroId ? state.formId : item.forms[0].id); };
-  const contractMatches = state.heroId === hero.id && state.formId === form.id && host;
+  const contractMatches = state.heroId === hero.id && state.formId === form.id && host && state.hostUid===host.uid;
 
-  return <section className="screen ultra-screen" aria-label="光之羁绊">
+  return <section className={`screen ultra-screen ${tab==='devices' ? 'ultra-device-view' : ''}`} aria-label="光之羁绊">
     <header className="ultra-header">
       <button type="button" className="ultra-icon-button" onClick={onBack} aria-label="返回游戏" title="返回游戏"><ArrowLeft size={20} /></button>
       <div><span className="ultra-eyebrow">ULTRA CHRONICLE</span><h1>光之羁绊</h1></div>
@@ -45,16 +48,17 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
       <aside className="ultra-era-nav" aria-label="时代筛选">
         <button type="button" aria-pressed={!era} onClick={() => setEra('')}>全部角色<span>{ULTRA_HEROES.length}</span></button>
         {ULTRA_ERAS.map(item => <button type="button" key={item.id} aria-pressed={era === item.id} onClick={() => setEra(item.id)}><span>{item.name}<small>{item.subtitle}</small></span><span>{ULTRA_HEROES.filter(h => h.era === item.id).length}</span></button>)}
-        <div className="ultra-active-contract"><Shield size={18} /><span>已装配变身器<strong>{isUltraUnlocked(state,state.heroId) ? getUltraDevice(state.heroId).name : '未装配'}</strong><small>{host?.nickname || host?.name || '尚未选择宿主'}</small></span></div>
+        <div className="ultra-active-contract"><Shield size={18} /><span>已装配变身器<strong>{equippedHost && isUltraUnlocked(state,state.heroId) ? getUltraDevice(state.heroId).name : '未装配'}</strong><small>{equippedHost?.nickname || equippedHost?.name || '尚未选择宿主'}</small></span></div>
       </aside>
       <main className="ultra-catalog">
-        <div className="ultra-catalog-toolbar"><h2>{ULTRA_ERAS.find(item => item.id === era)?.name || '群星图鉴'} <span>{heroes.length}</span></h2><label className="ultra-search"><Search size={16} /><input aria-label="搜索奥特曼" placeholder="搜索角色" value={query} onChange={event => { setQuery(event.target.value); if (event.target.value) setEra(''); }} /></label></div>
+        <div className="ultra-catalog-toolbar"><h2>{ULTRA_ERAS.find(item => item.id === era)?.name || '群星图鉴'} <span>{heroes.length}</span></h2><label className="ultra-search"><Search size={16} /><input aria-label="搜索角色或变身器" placeholder="角色或变身器" value={query} onChange={event => { setQuery(event.target.value); if (event.target.value) setEra(''); }} /></label></div>
+        <div className="ultra-collection-filter" aria-label="收藏状态">{[['all','全部'],['owned','已收集'],['missing','未获得']].map(([id,label])=><button key={id} aria-pressed={collection===id} onClick={()=>setCollection(id)}>{label}</button>)}</div>
         <div className="ultra-hero-grid">
           {heroes.map(item => <button key={item.id} type="button" className={`ultra-hero ${selected === item.id ? 'is-selected' : ''}`} aria-pressed={selected === item.id} aria-label={`${item.name}${isUltraUnlocked(state, item.id) ? '，可契约' : '，未解锁'}`} onClick={() => selectHero(item)}>
             <img src={tab === 'devices' ? getUltraDevice(item.id).portrait : item.portrait} alt={tab === 'devices' ? getUltraDevice(item.id).name : item.name} loading="lazy" decoding="async" width="160" height="160" />
             <span className="ultra-hero-year">{item.year}</span>
             <span className="ultra-hero-lock">{isUltraUnlocked(state, item.id) ? state.heroId === item.id && <Check size={14} /> : <Lock size={13} />}</span>
-          <strong>{tab === 'devices' ? getUltraDevice(item.id).name : item.name}</strong><small>{tab === 'devices' ? `${item.name} · ${isUltraUnlocked(state,item.id) ? '已收集' : '未获得'}` : `${ULTRA_ROLES[item.role].name}${item.forms.length > 1 ? ` · ${item.forms.length} 形态` : ''}`}</small>
+          <strong>{tab === 'devices' ? getUltraDevice(item.id).name : item.name}</strong><small>{tab === 'devices' ? `${item.name} · ${isUltraUnlocked(state,item.id) ? '已收集' : '未获得'}` : `${ULTRA_ROLES[item.role].name}${item.forms.length > 1 ? ` · ${item.forms.length} 形态` : ''}`}</small>{tab==='devices' && <span className={`ultra-device-label ${getUltraDevice(item.id).replica ? 'is-original' : ''}`}>{getUltraDevice(item.id).sourceLabel}</span>}
           </button>)}
           {!heroes.length && <p className="ultra-empty">未找到对应角色</p>}
         </div>
@@ -62,12 +66,12 @@ export default function UltraScreen({ state, party, badges = [], onChange, onTri
       <aside className="ultra-detail" key={hero.id}>
         <div className="ultra-detail-portrait"><img src={tab === 'devices' ? device.portrait : hero.portrait} alt={tab === 'devices' ? device.name : hero.name} width="280" height="280" /><span>{String(ULTRA_HEROES.indexOf(hero) + 1).padStart(3, '0')}</span></div>
         <div className="ultra-detail-copy"><span className="ultra-eyebrow">{ULTRA_ERAS.find(item => item.id === hero.era)?.name} / {hero.year}</span><h2>{hero.name}</h2>
-          <div className="ultra-technique"><img src={device.portrait} alt={device.name} width="48" height="48" style={{objectFit:'contain',borderRadius:4}}/><div><small>{device.replica ? '银河火花共鸣 · 游戏改编' : '专属变身器'}</small><strong>{device.name}</strong><span>{unlocked ? '已收集 · 永久持有' : `获取：${hero.name}专属试炼`}</span><span className="ultra-device-source">图像：{device.wiki} 实物资料</span>{tab === 'devices' && <span>{device.note}</span>}</div></div>
+          <div className="ultra-technique"><img src={device.portrait} alt={device.name} width="48" height="48"/><div><small>{device.sourceLabel}</small><strong>{device.name}</strong><span>{unlocked ? '已收集 · 永久持有' : `获取：${hero.name}专属试炼`}</span>{tab === 'devices' && <span>{device.note}</span>}</div></div>
           <label className="ultra-field">战斗形态<select aria-label="战斗形态" value={form.id} onChange={event => setFormId(event.target.value)}>{hero.forms.map(item => <option key={item.id} value={item.id}>{item.name} · {ULTRA_ROLES[item.role].name}</option>)}</select></label>
           <div className="ultra-technique"><Sparkles size={17} /><div><small>专属必杀 / {role.name}</small><strong>{form.finisher}</strong><span>{role.power ? `威力 ${role.power} · 命中 100 · PP 1` : '恢复自身 30% HP · PP 1'}</span></div></div>
           <dl className="ultra-stat-list">{Object.entries(role.stats).map(([key, value]) => <div key={key}><dt>{{ p_atk: '物攻', s_atk: '特攻', p_def: '物防', s_def: '特防', spd: '速度' }[key]}</dt><dd>+{Math.round((value - 1) * 100)}%</dd></div>)}</dl>
-          <label className="ultra-field">契约宿主<select aria-label="契约宿主" value={host?.uid ?? ''} onChange={event => onChange({ ...state, hostUid: party.find(pet => String(pet.uid) === event.target.value)?.uid ?? null })}><option value="">选择队伍伙伴</option>{party.map(pet => <option key={pet.uid} value={pet.uid}>{pet.nickname || pet.name} · Lv.{pet.level}</option>)}</select></label>
-          {unlocked ? <button type="button" className="ultra-primary" disabled={!host || !!contractMatches} onClick={() => onChange({ ...state, heroId: hero.id, formId: form.id })}>{contractMatches ? <Check size={17} /> : <Shield size={17} />}{contractMatches ? '变身器已装配' : '装配变身器'}</button> : <button type="button" className="ultra-primary" onClick={() => { setTrialHeroId(hero.id); setTrialEra(hero.era); setTab('trials'); }}><Lock size={16} />挑战获取变身器<ChevronRight size={16} /></button>}
+          <label className="ultra-field">契约宿主<select aria-label="契约宿主" value={host?.uid ?? ''} onChange={event => setHostUid(party.find(pet=>String(pet.uid)===event.target.value)?.uid ?? null)}><option value="">选择队伍伙伴</option>{party.map(pet => <option key={pet.uid} value={pet.uid}>{pet.nickname || pet.name} · Lv.{pet.level}</option>)}</select></label>
+          {unlocked ? <button type="button" className="ultra-primary" disabled={!host || !!contractMatches} onClick={() => onChange({ ...state, heroId: hero.id, formId: form.id, hostUid:host.uid })}>{contractMatches ? <Check size={17} /> : <Shield size={17} />}{contractMatches ? '变身器已装配' : '装配变身器'}</button> : <button type="button" className="ultra-primary" onClick={() => { setTrialHeroId(hero.id); setTrialEra(hero.era); setTab('trials'); }}><Lock size={16} />挑战获取变身器<ChevronRight size={16} /></button>}
           <p className="ultra-detail-note">{unlocked ? '战斗中使用变身器 · 3 回合 · 全队每场 1 次' : `完成「${hero.name}」专属试炼后获得`}</p>
         </div>
       </aside>

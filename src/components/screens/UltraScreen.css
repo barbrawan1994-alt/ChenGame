@@ -88,3 +88,17 @@
 .ultra-chapter-copy .ultra-trial-block { color:#f3bc9d; font-size:12px; }
 @media (max-width:1100px) { .ultra-workspace { grid-template-columns:155px minmax(240px,1fr) 250px; } .ultra-catalog { padding:18px; } .ultra-hero-grid { gap:10px; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); } .ultra-header { gap:12px; padding:12px 18px; } .ultra-header nav { margin-left:4px; } .ultra-detail-portrait { height:180px; } .ultra-detail-copy { padding:16px; } }
 @media (max-height:740px) { .ultra-header { min-height:66px; padding-top:10px; padding-bottom:10px; } .ultra-detail-portrait { height:145px; } .ultra-detail h2 { font-size:22px; margin-bottom:12px; } .ultra-detail-copy { padding:14px 18px; } .ultra-field { margin:12px 0; } .ultra-technique { padding:12px 0; } .ultra-chapter-art { height:160px; } }
+.ultra-collection-filter { display:flex; gap:16px; margin:-5px 0 20px; border-bottom:1px solid var(--ultra-line); }
+.ultra-collection-filter button { background:none; color:#a9b9ae; padding:8px 2px; font-size:12px; border:0; border-bottom:2px solid transparent; border-radius:0; }
+.ultra-collection-filter button[aria-pressed=true] { color:#e2eee7; border-color:#8cb9a3; }
+.ultra-device-view .ultra-hero-grid { grid-template-columns:repeat(auto-fill,minmax(156px,1fr)); gap:16px; }
+.ultra-device-view .ultra-hero img,.ultra-device-view .ultra-detail-portrait,.ultra-device-view .ultra-detail-portrait img { background:#101815; object-fit:contain; }
+.ultra-device-view .ultra-hero strong { min-height:47px; font-size:14px; padding:12px 12px 0; }
+.ultra-device-view .ultra-hero small { min-height:35px; padding-inline:12px; font-size:11px; line-height:1.6; }
+.ultra-device-label { display:block; margin:10px 12px 0; color:#a6c8bc; font-size:10px; }
+.ultra-device-label.is-original { color:#dfbf8a; }
+.ultra-technique>img { flex:0 0 48px; width:48px; height:48px; object-fit:contain; border-radius:4px; background:#101815; }
+.ultra-technique>div { min-width:0; }
+.ultra-technique span { display:block; line-height:1.7; }
+.spirit-app .ultra-header nav button { border-radius:0; }
+@media(max-width:1150px){.ultra-device-view .ultra-hero-grid { grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); } .ultra-device-view .ultra-catalog-toolbar { flex-wrap:wrap; } .ultra-device-view .ultra-search { width:100%;max-width:none; } }

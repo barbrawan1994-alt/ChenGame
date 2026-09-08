@@ -35,8 +35,9 @@
     "name": "狮子之瞳",
     "title": "Leo Ring",
     "pageId": 15051,
+    "imageFile": "Leo ring (1).jpg",
     "url": "https://ultra.fandom.com/wiki/Leo_Ring",
-    "image": "https://static.wikia.nocookie.net/ultra/images/0/08/Leo_Ring.png/revision/latest/scale-to-width-down/372?cb=20131024102916",
+    "image": "https://static.wikia.nocookie.net/ultra/images/8/88/Leo_ring_%281%29.jpg/revision/latest?cb=20131024094250",
     "file": "leo_ring.webp"
   },
   "beam_flasher": {
@@ -91,8 +92,9 @@
     "name": "埃斯特雷勒",
     "title": "Estrellar",
     "pageId": 15167,
+    "imageFile": "Estraller.png",
     "url": "https://ultra.fandom.com/wiki/Estrellar",
-    "image": "https://static.wikia.nocookie.net/ultra/images/5/55/Estraller.jpg/revision/latest?cb=20130427170805",
+    "image": "https://static.wikia.nocookie.net/ultra/images/4/49/Estraller.png/revision/latest?cb=20180901135723",
     "file": "estrellar.webp"
   },
   "nice_dreamer": {
@@ -163,8 +165,9 @@
     "name": "银河火花",
     "title": "Ginga Spark",
     "pageId": 15035,
+    "imageFile": "GingaSpark.png",
     "url": "https://ultra.fandom.com/wiki/Ginga_Spark",
-    "image": "https://static.wikia.nocookie.net/ultra/images/1/1c/GingaHenshinFull.gif/revision/latest?cb=20211006140326",
+    "image": "https://static.wikia.nocookie.net/ultra/images/c/cc/GingaSpark.png/revision/latest?cb=20200217042908",
     "file": "ginga_spark.webp"
   },
   "victory_lancer": {
@@ -283,8 +286,9 @@
     "name": "皮卡力牙刷",
     "title": "Pikari Brush",
     "pageId": 15180,
+    "imageFile": "Pikari brusher 2.jpg",
     "url": "https://ultra.fandom.com/wiki/Pikari_Brush",
-    "image": "https://static.wikia.nocookie.net/ultra/images/0/06/Pikari_Brusher_profile_pic.png/revision/latest/scale-to-width-down/324?cb=20200604055711",
+    "image": "https://static.wikia.nocookie.net/ultra/images/5/53/Pikari_brusher_2.jpg/revision/latest?cb=20130825105606",
     "file": "pikari_brush.webp"
   },
   "fusion_brace": {
@@ -331,6 +335,7 @@
     "name": "贝塔魔棒·新",
     "title": "Beta Capsule",
     "pageId": 5656,
+    "imageFile": "Beta Capsule Shin.png",
     "url": "https://ultra.fandom.com/wiki/Beta_Capsule",
     "image": "https://static.wikia.nocookie.net/ultra/images/9/97/Beta_Capsule_Shin.png/revision/latest?cb=20250331083025",
     "file": "shin_capsule.webp"
@@ -339,6 +344,7 @@
     "name": "黑暗神光棒",
     "title": "Sparklence",
     "pageId": 7177,
+    "imageFile": "Black_Spark_Lens_Full.png",
     "url": "https://ultra.fandom.com/wiki/Sparklence",
     "image": "https://static.wikia.nocookie.net/ultra/images/b/b8/Black_Spark_Lens_Full.png/revision/latest?cb=20210825011303",
     "file": "black_sparklence.webp"
@@ -347,6 +353,7 @@
     "name": "卡蜜拉神光棒",
     "title": "Sparklence",
     "pageId": 7177,
+    "imageFile": "Camearra Spark Lens.png",
     "url": "https://ultra.fandom.com/wiki/Sparklence",
     "image": "https://static.wikia.nocookie.net/ultra/images/a/a3/Camearra_Spark_Lens.png/revision/latest?cb=20210825010159",
     "file": "camilla_sparklence.webp"
@@ -355,6 +362,7 @@
     "name": "罗布回旋闪光·格丽乔",
     "title": "Gyro",
     "pageId": 134097,
+    "imageFile": "Gyro_(Saki).png",
     "url": "https://ultra.fandom.com/wiki/Gyro",
     "image": "https://static.wikia.nocookie.net/ultra/images/3/3e/Gyro_%28Saki%29.png/revision/latest?cb=20191122015702",
     "file": "grigio_gyro.webp"
@@ -363,6 +371,7 @@
     "name": "黑暗胜利神光棒",
     "title": "GUTS Sparklence",
     "pageId": 172099,
+    "imageFile": "TriggerBlackSparklence.png",
     "url": "https://ultra.fandom.com/wiki/GUTS_Sparklence",
     "image": "https://static.wikia.nocookie.net/ultra/images/7/71/TriggerBlackSparklence.png/revision/latest?cb=20211101065809",
     "file": "trigger_dark_sparklence.webp"
@@ -371,6 +380,7 @@
     "name": "闪光棱镜",
     "title": "Beta Capsule",
     "pageId": 5656,
+    "imageFile": "Flash Prism HD.png",
     "url": "https://ultra.fandom.com/wiki/Beta_Capsule",
     "image": "https://static.wikia.nocookie.net/ultra/images/d/d3/Flash_Prism_HD.png/revision/latest?cb=20250331082919",
     "file": "flash_prism.webp"
@@ -379,6 +389,7 @@
     "name": "赛迦手镯",
     "title": "Ultimate Bracelet",
     "pageId": 239680,
+    "imageFile": "Saga_Brace.png",
     "url": "https://ultra.fandom.com/wiki/Ultimate_Bracelet",
     "image": "https://static.wikia.nocookie.net/ultra/images/e/ec/Saga_Brace.png/revision/latest?cb=20200926045033",
     "file": "saga_brace.webp"
