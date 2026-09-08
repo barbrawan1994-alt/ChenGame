@@ -11,7 +11,8 @@ const source = await readFile(sourceUrl, 'utf8');
 const gang = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const petIdentitySource = await readFile(new URL('../src/utils/petIdentity.js', import.meta.url), 'utf8');
 const petIdentity = await import(`data:text/javascript;base64,${Buffer.from(petIdentitySource).toString('base64')}`);
-const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
+const gangScreenSource = await readFile(new URL('../src/components/screens/GangScreen.js', import.meta.url), 'utf8');
+const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8') + gangScreenSource;
 
 const check = (condition, message) => {
   assert.ok(condition, message);
@@ -88,8 +89,8 @@ console.log('=== 帮战目标与收益平衡检查 ===\n');
 
 // 帮战预估只计算存活精灵，避免高等级阵亡成员虚高胜率。
 {
-  const renderGangStart = appSource.indexOf('const renderGang = () => {');
-  const renderGangSource = appSource.slice(renderGangStart, renderGangStart + 2200);
+  const renderGangStart = gangScreenSource.indexOf('const livingPartyForGang');
+  const renderGangSource = gangScreenSource.slice(renderGangStart, renderGangStart + 2200);
   assert.ok(renderGangStart >= 0);
   assert.match(renderGangSource, /const livingPartyForGang = party\.filter\(p => p && \(p\.currentHp \|\| 0\) > 0\);/);
   assert.match(renderGangSource, /livingPartyForGang\.reduce/);

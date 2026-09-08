@@ -55,15 +55,19 @@ function appFunctionSource(name) {
 }
 
 function loadAppImports(loader = load) {
-  const source = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
-  const ast = babel.parseSync(source, { sourceType: 'module', parserOpts: { plugins: ['jsx'] }, babelrc: false, configFile: false });
   const values = {};
+  const files = ['src/App.js', ...fs.readdirSync(path.join(root, 'src/components/screens')).filter(name => name.endsWith('.js')).map(name => `src/components/screens/${name}`)];
+  for (const file of files) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  const ast = babel.parseSync(source, { sourceType: 'module', parserOpts: { plugins: ['jsx'] }, babelrc: false, configFile: false });
   for (const node of ast.program.body) {
-    if (node.type !== 'ImportDeclaration' || !/^\.\/(data|utils)(\/|$)/.test(node.source.value)) continue;
-    const exports = loader(path.resolve(root, 'src', node.source.value));
+    if (node.type !== 'ImportDeclaration' || !/^(?:\.\.\/|\.\/)+(data|utils)(\/|$)/.test(node.source.value)) continue;
+    const exports = loader(path.resolve(root, path.dirname(file), node.source.value));
     for (const specifier of node.specifiers) {
+      if (Object.hasOwn(values, specifier.local.name)) continue;
       values[specifier.local.name] = specifier.type === 'ImportDefaultSpecifier' ? exports.default : specifier.type === 'ImportNamespaceSpecifier' ? exports : exports[specifier.imported.name];
     }
+  }
   }
   return values;
 }

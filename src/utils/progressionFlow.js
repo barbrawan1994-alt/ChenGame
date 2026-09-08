@@ -179,7 +179,7 @@ export function getStoryObjective(chapter, currentMapId, storyStep, gymPosition)
 
   const tasks = chapter.tasks || [];
   const maxStep = tasks.reduce((max, candidate) => Math.max(max, candidate.step ?? -1), -1);
-  if (tasks.length > 0 && storyStep > maxStep) {
+  if (!chapter.isSanguo && tasks.length > 0 && storyStep > maxStep) {
     return {
       kind: 'gym',
       name: '挑战道馆馆主',

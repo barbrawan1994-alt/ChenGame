@@ -2444,3 +2444,23 @@ export const SANGUO_STORY = [
     reward: { gold: 50000, items: [{ id: 'hyper_potion', count: 20 }] }
   }
 ];
+
+export const MAIN_STORY_FINAL_INDEX = STORY_SCRIPT.length - 1;
+
+// 三国地图没有道馆；每章的具名主将是独立终战，胜利后直接结算章节。
+export const PLAYABLE_STORY_SCRIPT = [...STORY_SCRIPT, ...SANGUO_STORY.map(chapter => {
+  const lastBattle = [...chapter.tasks].reverse().find(task => task.eliteParty);
+  const level = Math.min(100, Math.max(...lastBattle.eliteParty.map(pet => pet.level)) + 2);
+  return {
+    ...chapter,
+    tasks: [...chapter.tasks, {
+      step: chapter.tasks.length, x: 28, y: 16, type: 'battle', emoji: '⚔️',
+      name: chapter.midEvent.name, enemyId: chapter.midEvent.enemyId, chapterFinal: true,
+      text: `${chapter.midEvent.name}已在阵前。此战将决定本章战局。`,
+      eliteParty: [
+        { id: chapter.midEvent.enemyId, level },
+        ...lastBattle.eliteParty.slice(0, 2).map(pet => ({ ...pet, level: Math.max(1, level - 2) })),
+      ],
+    }],
+  };
+})];

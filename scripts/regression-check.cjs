@@ -13,6 +13,14 @@ const {
 
 const root = path.resolve(__dirname, '..');
 
+function readGameplaySource() {
+  const screens = path.join(root, 'src/components/screens');
+  return fs.readFileSync(path.join(root, 'src/App.js'), 'utf8') + '\n'
+    + fs.readdirSync(screens).filter(name => name.endsWith('.js'))
+      .map(name => fs.readFileSync(path.join(screens, name), 'utf8')).join('\n');
+}
+
+
 function loadUtility(relativePath, globals = {}) {
   const filename = path.join(root, relativePath);
   const source = fs.readFileSync(filename, 'utf8');
@@ -168,7 +176,9 @@ function createMockStorage(initial = {}) {
 }
 
 check('游戏主模块没有遗漏导入或超出作用域的标识符', () => {
-  const source = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const files = ['src/App.js', ...fs.readdirSync(path.join(root, 'src/components/screens')).filter(name => name.endsWith('.js')).map(name => `src/components/screens/${name}`)];
+  for (const file of files) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
   const ast = babel.parseSync(source, {
     sourceType: 'module', parserOpts: { plugins: ['jsx'] }, babelrc: false, configFile: false,
   });
@@ -179,15 +189,19 @@ check('游戏主模块没有遗漏导入或超出作用域的标识符', () => {
   babel.traverse(ast, {
     Program(scopePath) {
       const missing = Object.keys(scopePath.scope.globals).filter(name => !allowed.has(name));
-      assert.deepEqual(missing, [], `Unbound identifiers: ${missing.join(', ')}`);
+      assert.deepEqual(missing, [], `${file}: Unbound identifiers: ${missing.join(', ')}`);
       scopePath.stop();
     },
   });
+  }
 });
 
 check('发布资源路径与桌面打包输出保持 file 协议兼容', () => {
   const template = fs.readFileSync(path.join(root, 'src/index.html'), 'utf8');
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8')
+    + fs.readdirSync(path.join(root, 'src/components/screens')).filter(name => name.endsWith('.js'))
+      .map(name => fs.readFileSync(path.join(root, 'src/components/screens', name), 'utf8')).join('\n');
+  const battleScreen = fs.readFileSync(path.join(root, 'src/components/screens/BattleScreen.js'), 'utf8');
   const home = fs.readFileSync(path.join(root, 'src/components/HomeMenu.js'), 'utf8');
   const generals = fs.readFileSync(path.join(root, 'src/data/generals.js'), 'utf8');
   const webpackConfig = require(path.join(root, 'webpack.config.js'));
@@ -508,7 +522,7 @@ check('统一存档适配器迁移缺失桌面档、镜像权威档并显式报�
 });
 
 check('App 通过统一接口读写备份删除并为冲突仲裁记录保存时间', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const storageImport = app.match(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/utils\/saveStorage['"]/);
   assert.ok(storageImport, 'App must import the unified save storage adapter');
   ['readGameSave', 'writeGameSave', 'backupGameSave', 'removeGameSave'].forEach(name => {
@@ -620,16 +634,17 @@ check('招式预测覆盖属性效果、命中规则与可访问文本', () => {
 });
 
 check('战斗招式按钮接入统一预测并暴露可访问提示', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
+  const battleScreen = fs.readFileSync(path.join(root, 'src/components/screens/BattleScreen.js'), 'utf8');
   const enhancements = fs.readFileSync(path.join(root, 'src/engines/BattleEnhancements.js'), 'utf8');
-  const forecastStart = app.indexOf('const forecast = buildMoveForecast({');
-  const previewStart = app.lastIndexOf('const selectedPreviewEnemyIdx = isDoubleBattle', forecastStart);
-  const forecastBranch = app.slice(previewStart, forecastStart + 1400);
+  const forecastStart = battleScreen.indexOf('const forecast = buildMoveForecast({');
+  const previewStart = battleScreen.lastIndexOf('const selectedPreviewEnemyIdx = isDoubleBattle', forecastStart);
+  const forecastBranch = battleScreen.slice(previewStart, forecastStart + 1400);
   const buttonStart = enhancements.indexOf('export const EnhancedMoveButton');
   const buttonEnd = enhancements.indexOf('export const SkillCastEffect', buttonStart);
   const buttonSource = enhancements.slice(buttonStart, buttonEnd);
 
-  assert.match(app, /import\s*\{\s*buildMoveForecast\s*\}\s*from\s*['"]\.\/utils\/moveForecast['"]/);
+  assert.match(battleScreen, /import\s*\{\s*buildMoveForecast\s*\}\s*from\s*['"]\.\.\/\.\.\/utils\/moveForecast['"]/);
   assert.ok(forecastStart >= 0);
   assert.ok(previewStart >= 0 && previewStart < forecastStart);
   assert.ok(forecastBranch.includes('battle.enemyParty?.[battle.targetIdx]?.currentHp > 0'));
@@ -910,10 +925,12 @@ check('首胜前的普通野怪至少允许中性输出且不具开场克制', (
 });
 
 check('敌方战斗HUD完整显示军团名，不再使用省略号截断', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
-  const hudStart = app.indexOf('{/* 敌方 HUD */}');
-  const hudEnd = app.indexOf('{/* 敌方精灵 */}', hudStart);
-  const enemyHud = app.slice(hudStart, hudEnd);
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8')
+    + fs.readFileSync(path.join(root, 'src/components/screens/BattleScreen.js'), 'utf8');
+  const battleScreen = fs.readFileSync(path.join(root, 'src/components/screens/BattleScreen.js'), 'utf8');
+  const hudStart = battleScreen.indexOf('{/* 敌方 HUD */}');
+  const hudEnd = battleScreen.indexOf('{/* 敌方精灵 */}', hudStart);
+  const enemyHud = battleScreen.slice(hudStart, hudEnd);
   assert.ok(enemyHud.includes('data-testid="enemy-owner-name"'));
   assert.ok(enemyHud.includes('data-testid="enemy-pet-name"'));
   assert.ok(enemyHud.includes('data-testid="enemy-level"'));
@@ -925,7 +942,7 @@ check('敌方战斗HUD完整显示军团名，不再使用省略号截断', () =
   assert.ok(enemyHud.includes('renderBattleStageRow(e, 0, false)'));
   assert.equal(enemyHud.includes("textOverflow:'ellipsis'"), false);
   assert.equal(enemyHud.includes("maxWidth:'160px'"), false);
-  assert.equal((app.match(/className="battle-level-badge"/g) || []).length, 4);
+  assert.equal((battleScreen.match(/className="battle-level-badge"/g) || []).length, 4);
 });
 
 check('钓鱼和捕虫多候选池不会连续返回上一物种', () => {
@@ -1046,7 +1063,7 @@ check('剧情战败保留任务标记，脚本必败则正常推进', () => {
   assert.equal(victory.advance, true);
   assert.equal(victory.retry, false);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const taskTile = app.slice(app.indexOf('// 4. 剧情任务点'), app.indexOf('// 家具拾取点'));
   assert.ok(taskTile.includes("if (task.type !== 'battle')"));
   const defeatFlow = app.slice(app.indexOf('const handleDefeat ='), app.indexOf('// ==========================================', app.indexOf('const handleDefeat =')));
@@ -1055,7 +1072,7 @@ check('剧情战败保留任务标记，脚本必败则正常推进', () => {
 });
 
 check('捕虫击倒分支不发奖励，捕获成功只奖励真实捕获对象一次', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const koStart = app.indexOf("if (battleSnapshot.type === 'contest_bug')");
   const normalWinStart = app.indexOf('// 延迟持久化继续使用本次结算快照', koStart);
   assert.ok(koStart >= 0 && normalWinStart > koStart, '未找到捕虫击倒专用分支');
@@ -1072,7 +1089,7 @@ check('捕虫击倒分支不发奖励，捕获成功只奖励真实捕获对象�
 });
 
 check('活动逃跑、主动退出与重复结算都有状态保护', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
 
   const runStart = app.indexOf('const handleRun = async () =>');
   const runEnd = app.indexOf('battleKeyboardActionRef.current', runStart);
@@ -1109,7 +1126,7 @@ check('活动逃跑、主动退出与重复结算都有状态保护', () => {
 });
 
 check('道馆主线目标具备地图感叹号与高优先级样式', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const css = fs.readFileSync(path.join(root, 'src/App.css'), 'utf8');
   assert.ok(app.includes('gym-quest-bubble'));
   assert.ok(app.includes("storyObjective?.kind === 'gym'"));
@@ -1160,7 +1177,7 @@ check('分支进化按当前环境选择目标，普通条件仍回退默认目�
   assert.equal(night.ready, true);
   assert.equal(night.targetId, 52);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const manualStart = app.indexOf('const handleManualEvolve =');
   const manualEnd = app.indexOf('const startLearningMove =', manualStart);
   const manualBranch = app.slice(manualStart, manualEnd);
@@ -1201,7 +1218,8 @@ check('进化队列无变化保持原引用，有变化才返回新数组', () =
 });
 
 check('进化石来源不会被陈旧 isEvolved 标记提前阻挡，详情说明以图鉴为准', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8')
+    + fs.readFileSync(path.join(root, 'src/components/screens/PetDetailModalScreen.js'), 'utf8');
   const stoneStart = app.indexOf("if (usingItem.category === 'stone')");
   const stoneEnd = app.indexOf('// --- 药品逻辑', stoneStart);
   assert.ok(stoneStart >= 0 && stoneEnd > stoneStart, '未找到进化石处理分支');
@@ -1214,7 +1232,7 @@ check('进化石来源不会被陈旧 isEvolved 标记提前阻挡，详情说�
 });
 
 check('批量经验糖只刷新进化资格，不直接篡改物种身份', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const batchStart = app.indexOf("title: '🍬 批量使用经验糖果'");
   const batchEnd = app.indexOf('const oldLv = pet.level;', batchStart);
   assert.ok(batchStart >= 0 && batchEnd > batchStart, '未找到批量经验糖处理分支');
@@ -1421,7 +1439,7 @@ check('两套成长入口共享等级上限，神奇糖果不会从详情页直�
     { level: 100, exp: 0, nextExp: 999999 },
   );
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const detailStart = app.indexOf('const useGrowthItem =');
   const detailEnd = app.indexOf('const setLeader =', detailStart);
   const detailBranch = app.slice(detailStart, detailEnd);
@@ -1461,7 +1479,7 @@ check('闪光晋升统一补齐魅力和门派奖励且不会重复叠加', () =
   assert.equal(shiny.sectLevel, 2);
   assert.equal(petFactory.promotePetToShiny(shiny), shiny);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('promotePetToShiny(wildPet)'));
   assert.ok(app.includes('const shouldBeShiny = wasShiny ||'));
   assert.equal(
@@ -1501,7 +1519,7 @@ check('融合概率有明确上限，融合体不能递归融合或参与传承'
   assert.ok(Math.abs(fusionRules.getFusionShinyChance({ level: 1 }, { level: 1 }) - 0.152) < 1e-9);
   assert.equal(fusionRules.getFusionShinyChance({ level: 100, isShiny: true }, { level: 100, isShiny: true }), 0.5);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('!canUseAsFusionMaterial(p1) || !canUseAsFusionMaterial(p2)'));
   assert.ok(app.includes('!p.isFusion && !p.isFusedShiny'));
   assert.ok(app.includes('const fusionCharm ='));
@@ -1521,7 +1539,7 @@ check('属性面板与实战共用40%暴击上限，满PP与0PP显示不再混�
   assert.equal(statsCalculator.MAX_BATTLE_CRIT_CHANCE, 40);
   assert.equal(stats.crit, 40);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('Math.min(MAX_BATTLE_CRIT_CHANCE, critChance)'));
   assert.ok(app.includes('PP: {m.pp ?? 20}'));
   assert.equal(app.includes('PP: {m.pp||20}'), false);
@@ -1584,7 +1602,7 @@ check('双打倒下的出战精灵按50%系数获得经验，旧档经验字段�
     [3],
   );
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const expStart = app.indexOf('const processDefeatedEnemy =');
   const expEnd = app.indexOf('const enterInfinityCastle =', expStart);
   const expBranch = app.slice(expStart, expEnd);
@@ -1608,14 +1626,14 @@ check('单打与双打共用平衡后的灼伤、中毒和剧毒伤害', () => {
   assert.equal(pveBattleRules.calcResidualStatusDamage(160, 'PSN', { badlyPoisoned: true, badlyPoisonedTurns: 8 }), 40);
   assert.equal(pveBattleRules.calcResidualStatusDamage(160, 'PAR'), 0);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.equal((app.match(/calcResidualStatusDamage\(/g) || []).length, 2);
   assert.equal(app.includes("unit.status !== 'BRN' && unit.status !== 'PSN'"), true);
   assert.equal(app.includes("s.status === 'BRN' || s.status === 'PSN'"), true);
 });
 
 check('所有战斗入口保留显式零金币配置，不会回退为默认掉落', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const battleInit = app.slice(app.indexOf('const startBattle ='), app.indexOf('const startTowerChallenge ='));
   assert.equal(/context(?:\?\.)?\.drop\s*\|\|/.test(battleInit), false);
   assert.ok((battleInit.match(/context(?:\?\.)?\.drop\s*\?\?/g) || []).length >= 8);
@@ -1623,7 +1641,7 @@ check('所有战斗入口保留显式零金币配置，不会回退为默认掉�
 });
 
 check('配置驱动副本与灵域保留显式零掉落', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('drop: step.drop ?? 3000'));
   assert.ok(app.includes('drop: domain.reward?.gold ?? 3000'));
   assert.ok(app.includes('drop: step.drop ?? 0'));
@@ -1633,7 +1651,7 @@ check('配置驱动副本与灵域保留显式零掉落', () => {
 });
 
 check('带锁战斗入口在返回失败或抛错时恢复入口状态', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const helper = app.slice(app.indexOf('const attemptBattleStart ='), app.indexOf('const markPlayerTookDamage ='));
   const spirit = app.slice(app.indexOf('const startSpiritDomainBattle ='), app.indexOf('const completeSpiritDomain ='));
   const fusion = app.slice(app.indexOf('const startFusionDungeon ='), app.indexOf('const participateCalamity ='));
@@ -1656,7 +1674,7 @@ check('带锁战斗入口在返回失败或抛错时恢复入口状态', () => {
 });
 
 check('地图尺寸观察器驱动响应式重算并在离开地图时释放', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const sizing = app.slice(app.indexOf('const mapViewportRef ='), app.indexOf('const mapGridCacheRef ='));
   const viewport = app.slice(app.indexOf('<div className="grid-viewport-v2 map-viewport-frame"'), app.indexOf('const VIEW_COLS'));
   assert.ok(sizing.includes('const observer = new ResizeObserver(updateSize)'));
@@ -1668,7 +1686,7 @@ check('地图尺寸观察器驱动响应式重算并在离开地图时释放', (
 });
 
 check('全局提示弹窗在深色主题下保持可读对比度', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const dialogStart = app.indexOf('{/* 全局消息弹窗 */}');
   const dialog = app.slice(dialogStart, dialogStart + 2000);
   assert.ok(dialog.includes('className="global-message-dialog"'));
@@ -1677,7 +1695,7 @@ check('全局提示弹窗在深色主题下保持可读对比度', () => {
 });
 
 check('名将图鉴详情在深色主题下保留清晰的文字层级', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const theme = fs.readFileSync(path.join(root, 'src/styles/spirit-theme.css'), 'utf8');
   const modalStart = app.indexOf('{/* 名将图鉴详情弹窗 */}');
   const modal = app.slice(modalStart, app.indexOf('{/* 战斗名将详情弹窗 */}', modalStart));
@@ -1699,7 +1717,7 @@ check('远征仅奖励真实属性契合，单精灵队伍也可正常派遣', (
     { type: 'GRASS' }, { type: 'BUG' }, { type: 'POISON' },
   ], zone) > expeditionData.calcExpeditionBonus([{ type: 'GRASS' }], zone));
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const sendStart = app.indexOf('const sendExpedition =');
   const sendEnd = app.indexOf('const resolveExpeditionBranch =', sendStart);
   const sendBranch = app.slice(sendStart, sendEnd);
@@ -1742,7 +1760,7 @@ check('训练档位成长有效，异常旧档EV会归一化且不会突破总�
 });
 
 check('后台与退出存档强制同步，并始终使用最新渲染快照', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('buildSavePayloadRef.current = buildSavePayload'));
   assert.ok(app.includes('JSON.stringify(buildSavePayloadRef.current())'));
   assert.ok(app.includes("persistSaveRef.current(true, true)"));
@@ -1753,7 +1771,7 @@ check('后台与退出存档强制同步，并始终使用最新渲染快照', (
 });
 
 check('门派突破、武学和商店会在最新状态上原子复核资源与限购', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const xinfa = app.slice(app.indexOf('const upgradePlayerXinfa ='), app.indexOf('const learnSectMartialArt ='));
   const martial = app.slice(app.indexOf('const learnSectMartialArt ='), app.indexOf('const buyFromSectShop ='));
   const shop = app.slice(app.indexOf('const buyFromSectShop ='), app.indexOf('const advanceSectDaily ='));
@@ -1768,7 +1786,7 @@ check('门派突破、武学和商店会在最新状态上原子复核资源与�
 });
 
 check('浏览器音频等待首次鼠标或键盘操作', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const audioStart = app.indexOf('const [audioUnlocked, setAudioUnlocked]');
   const audioEnd = app.indexOf('const [eventData, setEventData]', audioStart);
   const audioBranch = app.slice(audioStart, audioEnd);
@@ -1778,7 +1796,7 @@ check('浏览器音频等待首次鼠标或键盘操作', () => {
 });
 
 check('游戏首页保留单个主入口并按存档状态继续冒险', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const home = fs.readFileSync(path.join(root, 'src/components/HomeMenu.js'), 'utf8');
   const menuStart = app.indexOf('const renderMenu = () => {');
   const menu = app.slice(menuStart, app.indexOf('const renderWorldMap = () => {', menuStart));
@@ -1843,7 +1861,7 @@ check('竞技场每日刷新按自然日结算赛季，奖杯进入独立饰品�
   assert.equal(repeated.state, settled.state);
   assert.equal(repeated.seasonReward, null);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const refreshStart = app.indexOf('const refreshArenaDaily =');
   const refreshEnd = app.indexOf('useEffect(() => {', refreshStart);
   const refreshBranch = app.slice(refreshStart, refreshEnd);
@@ -1853,7 +1871,7 @@ check('竞技场每日刷新按自然日结算赛季，奖杯进入独立饰品�
 });
 
 check('幸运轮盘严格限制每日3次并在动画前完成加锁与奖励结算', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf('const spinWheel =');
   const end = app.indexOf('const grantBountyReward =', start);
   const branch = app.slice(start, end);
@@ -1866,7 +1884,7 @@ check('幸运轮盘严格限制每日3次并在动画前完成加锁与奖励结
 });
 
 check('矿场满体力兑换会在扣除矿石前终止', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf('const doMineExchange =');
   const end = app.indexOf('const sendExpedition =', start);
   const branch = app.slice(start, end);
@@ -1904,7 +1922,7 @@ check('世界首领伤害封顶、里程碑和首次击杀奖励状态只结算�
 });
 
 check('世界首领入口校验战斗启动，结算不再依赖异步临时字段', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf('const startWorldBossFight =');
   const resultStart = app.indexOf('const handleWorldBossResult =', start);
   const resultEnd = app.indexOf('const startArenaFight =', resultStart);
@@ -1922,7 +1940,7 @@ check('世界首领入口校验战斗启动，结算不再依赖异步临时字�
 });
 
 check('竞速使用权威金币和每日次数结算，平速排序保持传递性', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf('const startRace =');
   const end = app.indexOf('return (', start);
   const branch = app.slice(start, end);
@@ -1978,12 +1996,12 @@ check('家园训练家具保留经验百分比并折算为有效的被动经验'
   ]);
   assert.ok(setBenefits.expBonus > benefits.expBonus);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('Math.floor((ben.expBonus || 0) * 100)'));
 });
 
 check('家园种植、浇水与收获使用同步状态，成熟地块先消费后发奖励', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const plant = app.slice(app.indexOf('const plantSeed ='), app.indexOf('const waterPlant ='));
   const water = app.slice(app.indexOf('const waterPlant ='), app.indexOf('const harvestPlant ='));
   const harvest = app.slice(app.indexOf('const harvestPlant ='), app.indexOf('const buyFurnitureFromShop ='));
@@ -1998,7 +2016,7 @@ check('家园种植、浇水与收获使用同步状态，成熟地块先消费�
 });
 
 check('住宅、家具、求婚、婚礼与咖啡厅在确认后重新校验权威资源', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const house = app.slice(app.indexOf('const _doBuyHouse ='), app.indexOf('const placeFurniture ='));
   const furniture = app.slice(app.indexOf('const _doBuyFurniture ='), app.indexOf('return (', app.indexOf('const _doBuyFurniture =')));
   const propose = app.slice(app.indexOf('const handlePropose ='), app.indexOf('const cancelPropose ='));
@@ -2017,7 +2035,7 @@ check('住宅、家具、求婚、婚礼与咖啡厅在确认后重新校验权�
 });
 
 check('咖啡厅清理失效工人且首位工人不会领取空档期离线收益', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const tick = app.slice(app.indexOf('const cafeTick ='), app.indexOf('useEffect(() => {', app.indexOf('const cafeTick =')));
   const assign = app.slice(app.indexOf('const assignCafeWorker ='), app.indexOf('const getTodayStr ='));
   assert.ok(tick.includes('const validIds = new Set'));
@@ -2028,7 +2046,7 @@ check('咖啡厅清理失效工人且首位工人不会领取空档期离线收�
 });
 
 check('咖啡厅待领取饮品会再次复核每日上限且不提前扣费', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const claim = app.slice(app.indexOf('const claimBrewedDrink ='), app.indexOf('const isDrinkUnlocked ='));
   assert.ok(claim.includes('const used = counts[drink.id] || 0'));
   assert.ok(claim.includes('if (used >= drink.dailyLimit)'));
@@ -2066,7 +2084,7 @@ check('无限城运行状态可序列化，呼吸法和技能变异只作用于�
 });
 
 check('无限城入口、商人和首次奖励使用同步锁及持久领取记录', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const buff = app.slice(app.indexOf('const selectInfinityBuff ='), app.indexOf('const selectInfinityRoute ='));
   const route = app.slice(app.indexOf('const selectInfinityRoute ='), app.indexOf('const [pendingTask'));
   const start = app.slice(app.indexOf('const startInfinityBattle ='), app.indexOf('const handleWin ='));
@@ -2115,7 +2133,7 @@ check('火影日试炼进度可安全持久化并拒绝过期或损坏状态', (
   assert.deepEqual(Array.from(valid.difficulty.enemyPerWave), [2, 3, 6]);
   assert.equal(narutoData.normalizeNarutoExamProgress({ phase: 'bad' }), null);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('examProgress: examRun'));
   assert.ok(app.includes('normalizeNarutoExamProgress(narutoState.examProgress)'));
   assert.ok(app.includes('examPhase: null, examProgress: null'));
@@ -2140,7 +2158,7 @@ check('训练家战术室按徽章渐进解锁且跨体系叠加不突破硬上�
 });
 
 check('忍者试炼和尾兽化使用同步入口、双打标记及共享查克拉', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const story = app.slice(app.indexOf('const startStoryBattle ='), app.indexOf('const handleStoryWin ='));
   const finals = app.slice(app.indexOf('const startFinalsRound ='), app.indexOf('const startStoryBattle ='));
   const bijuu = app.slice(app.indexOf('const executeBijuuTransform ='), app.indexOf('const bindBijuuToLead ='));
@@ -2152,7 +2170,7 @@ check('忍者试炼和尾兽化使用同步入口、双打标记及共享查克�
 });
 
 check('领域、缚誓和果实在双打沿用同一战斗快照并按共享资源结算', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const domain = app.slice(app.indexOf('const executeDomainExpansion ='), app.indexOf('const executeBindingVow ='));
   const vow = app.slice(app.indexOf('const executeBindingVow ='), app.indexOf('const executeDevilFruit ='));
   const fruit = app.slice(app.indexOf('const executeDevilFruit ='), app.indexOf('const enemyTurn ='));
@@ -2179,7 +2197,7 @@ check('领域、缚誓和果实在双打沿用同一战斗快照并按共享资�
 });
 
 check('恶魔果实装备通过权威背包执行原子交换', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const assign = app.slice(app.indexOf('const assignDevilFruitToPartyPet ='), app.indexOf('const awakenPet ='));
   assert.ok(assign.includes('fruitInventoryRef.current'));
   assert.ok(assign.includes('fruitAssignmentLocksRef.current.has(lockKey)'));
@@ -2189,7 +2207,7 @@ check('恶魔果实装备通过权威背包执行原子交换', () => {
 });
 
 check('成就奖励先写同步领取集合，同帧重复检查不会重复发奖', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const branch = app.slice(app.indexOf('const checkAchievements ='), app.indexOf('const syncAchStats ='));
   assert.ok(branch.includes('const unlockedIds = new Set(unlockedAchsRef.current'));
   assert.ok(branch.includes('unlockedIds.add(ach.id)'));
@@ -2205,7 +2223,7 @@ check('交换、存取与放生按 UID 原子结算并保护训练远征精灵',
   assert.equal(petIdentity.calculatePetReleaseGold(pets[1], { legendaryIds: [99] }), 5000);
   assert.equal(petIdentity.calculatePetReleaseGold({ level: 10, id: 1 }), 400);
 
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const trade = app.slice(app.indexOf('const executeDailyPetTrade ='), app.indexOf('const renderActivityCenter ='));
   const transfer = app.slice(app.indexOf('const depositPokemon ='), app.indexOf('const settleBoxPetRelease ='));
   const release = app.slice(app.indexOf('const settleBoxPetRelease ='), app.indexOf('const updateBuyCount ='));
@@ -2236,7 +2254,7 @@ check('旧存档跨类型重复 UID 会按占用系统的字符串键全局去�
 });
 
 check('塔、联赛与灵域入口使用战斗锁，灵域金币只结算一次', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const tower = app.slice(app.indexOf('const startTowerChallenge ='), app.indexOf('const startElementalTrial ='));
   const league = app.slice(app.indexOf('const registerLeagueRun ='), app.indexOf('const renderLeague ='));
   const spirit = app.slice(app.indexOf('const startSpiritDomainBattle ='), app.indexOf('const applyChapterStepProgress ='));
@@ -2252,7 +2270,7 @@ check('塔、联赛与灵域入口使用战斗锁，灵域金币只结算一次'
 });
 
 check('主线终章、求婚探索、结契与国战任务使用幂等进度', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const story = app.slice(app.indexOf('// ★★★ 剧情推进逻辑'), app.indexOf('const rankBattlePerk'));
   const proposal = app.slice(app.indexOf('const updateQuestProgress ='), app.indexOf('const handlePropose ='));
   const bonding = app.slice(app.indexOf('const advanceBondingStep ='), app.indexOf('const upgradeSanctuaryFacility ='));
@@ -2268,7 +2286,7 @@ check('主线终章、求婚探索、结契与国战任务使用幂等进度', (
 });
 
 check('商店、融合与装备在权威资源上原子提交', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const shop = app.slice(app.indexOf('const doBuyItemPro ='), app.indexOf('const addLog ='));
   const fusion = app.slice(app.indexOf('const handleFusion ='), app.indexOf('const renderFusion'));
   const equip = app.slice(app.indexOf('const handleEquipAccessory ='), app.indexOf('// ==========================================', app.indexOf('const handleEquipAccessory =')));
@@ -2284,7 +2302,7 @@ check('商店、融合与装备在权威资源上原子提交', () => {
 });
 
 check('连战只在完整结束时记副本通关，并保留专属后续敌人池', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const completion = app.slice(app.indexOf('const recordDungeonCompletion ='), app.indexOf('const formatAchievementReward ='));
   const dungeon = app.slice(app.indexOf('const isChainedDungeonWave ='), app.indexOf('const avgEnemyLv ='));
   assert.ok(completion.includes('achStatsRef.current'));
@@ -2302,7 +2320,7 @@ check('连战只在完整结束时记副本通关，并保留专属后续敌人�
 });
 
 check('训练与远征互斥并按同步槽位、金币和每日次数提交', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const expedition = app.slice(app.indexOf('const sendExpedition ='), app.indexOf('const getMapEcology ='));
   const training = app.slice(app.indexOf('const startTraining ='), app.indexOf('const collectTraining ='));
   assert.ok(expedition.includes('expeditionsRef.current'));
@@ -2408,7 +2426,7 @@ check('旧存档派遣状态按权威槽位、UID、时长和分支奖励归一�
 });
 
 check('咖啡厅派工与住家收益遵守跨系统占用状态', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const assigned = app.slice(app.indexOf('const getAssignedPetUids ='), app.indexOf('const reclaimRemovedPetAssets ='));
   const cafe = app.slice(app.indexOf('const assignCafeWorker ='), app.indexOf('const getTodayStr ='));
   const housingTick = app.slice(app.indexOf('// 家园系统：每900秒结算一次入住收益'), app.indexOf('// C. UI状态同步'));
@@ -2423,7 +2441,7 @@ check('咖啡厅派工与住家收益遵守跨系统占用状态', () => {
 });
 
 check('名将招募与国战任务在同步国战快照上一次性提交', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const draw = app.slice(app.indexOf('const doGeneralDraw ='), app.indexOf('const buyCafe ='));
   const task = app.slice(app.indexOf('const completeKingdomPveTask ='), app.indexOf('const startFusionDungeon ='));
   assert.ok(draw.includes('generalDrawLockRef.current'));
@@ -2437,14 +2455,14 @@ check('名将招募与国战任务在同步国战快照上一次性提交', () =
 });
 
 check('国战胜利扣减驻军时保留零兵种语义，不会凭空补兵', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const branch = app.slice(app.indexOf('// 9b. 国战胜利'), app.indexOf('// 9c.', app.indexOf('// 9b. 国战胜利')));
   assert.ok(branch.includes('(t.garrison[rk] ?? 0) - Math.floor'));
   assert.equal(branch.includes('(t.garrison[rk] || 5) - Math.floor'), false);
 });
 
 check('帮派精灵上交保护所有占用并返还随身资产', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf('{/* 上交精灵 */}');
   const donation = app.slice(start, app.indexOf('const renderGangWar =', start));
   assert.ok(donation.includes('getAssignedPetUids()'));
@@ -2453,7 +2471,7 @@ check('帮派精灵上交保护所有占用并返还随身资产', () => {
 });
 
 check('遗物、生态里程碑与国战日收先占位再发奖励', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const relic = app.slice(app.indexOf('const equipRelic ='), app.indexOf('const getResonanceContext ='));
   const incomeStart = app.indexOf("const lockKey = `daily-income:${today}`");
   const income = app.slice(incomeStart, app.indexOf('}}', incomeStart) + 2);
@@ -2470,14 +2488,14 @@ check('遗物、生态里程碑与国战日收先占位再发奖励', () => {
 });
 
 check('旧地图缓存的未知字符回退为普通地块而不是 NaN', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const hydrate = app.slice(app.indexOf('const hydrateMapGridCache ='), app.indexOf('const compactSavedPet ='));
   assert.ok(hydrate.includes('Number.isFinite(numericTile) ? numericTile : 2'));
   assert.equal(hydrate.includes('Number(char) ?? 2'), false);
 });
 
 check('有效移动始终扣除孵化步数并保留工厂生成的唯一 UID', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const movement = app.slice(app.indexOf('// 核心：移动交互与事件触发逻辑'), app.indexOf('// 2. 障碍物', app.indexOf('// 核心：移动交互与事件触发逻辑')));
   assert.ok(movement.includes('setInventory(prev => ({ ...prev, eggs: workingEggs }))'));
   assert.equal(movement.includes('workingEggs.length !== curEggs.length'), false);
@@ -2486,7 +2504,7 @@ check('有效移动始终扣除孵化步数并保留工厂生成的唯一 UID', 
 });
 
 check('确认弹窗先关闭当前层再执行，并阻止双击重复动作', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const modal = app.slice(app.indexOf('{confirmModal && ('), app.indexOf('{/* 道馆入口', app.indexOf('{confirmModal && (')));
   assert.ok(modal.includes('confirmActionLockRef.current'));
   assert.ok(modal.indexOf('setConfirmModal(null)') < modal.indexOf('try { action?.(); }'));
@@ -2494,7 +2512,7 @@ check('确认弹窗先关闭当前层再执行，并阻止双击重复动作', (
 });
 
 check('圣域升级与旅行商人复核权威金币并使用动作锁', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const sanctuary = app.slice(app.indexOf('const upgradeSanctuaryFacility ='), app.indexOf('const completeKingdomPveTask ='));
   const merchant = app.slice(app.indexOf("{view === 'merchant' && merchantItems && ("), app.indexOf("{view === 'battle'", app.indexOf("{view === 'merchant' && merchantItems && (")));
   assert.ok(sanctuary.includes('sanctuaryActionLocksRef.current.has(lockKey)'));
@@ -2507,7 +2525,7 @@ check('圣域升级与旅行商人复核权威金币并使用动作锁', () => {
 });
 
 check('设置页提供可校验的存档导出、导入与覆盖前备份', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const saveTools = app.slice(app.indexOf('const exportSaveData ='), app.indexOf('const persistSaveRef ='));
   assert.ok(saveTools.includes("new Blob([serialized], { type: 'application/json' })"));
   assert.ok(saveTools.includes("input.accept = '.json,application/json'"));
@@ -2522,13 +2540,13 @@ check('设置页提供可校验的存档导出、导入与覆盖前备份', () =
 });
 
 check('首徽章速通成就使用持久游玩时长而不是缺失时间戳', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('speedrunFirstBadge: getCurrentPlayTimeMs() <= 2 * 60 * 60 * 1000 ? 1 : 0'));
   assert.equal(app.includes('savedDataRef.current?._startTime'), false);
 });
 
 check('赏金、世界旅行、树果反杀与五倒一清场成就均接入真实事件', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   assert.ok(app.includes('updateAchStat({ bountiesCompleted: 1 })'));
   assert.ok(app.includes('catchAchUpdates.mapCaughtSpecies = previous =>'));
   assert.ok(app.includes('next.worldTourComplete = explorableMapIds.length > 0'));
@@ -2538,7 +2556,7 @@ check('赏金、世界旅行、树果反杀与五倒一清场成就均接入真�
 });
 
 check('精灵详情页门派突破复核 UID、当前等级和权威金币', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf('const upgradeSect = () =>');
   const branch = app.slice(start, app.indexOf('return (', start));
   assert.ok(branch.includes('sectActionLocksRef.current.has(lockKey)'));
@@ -2548,7 +2566,7 @@ check('精灵详情页门派突破复核 UID、当前等级和权威金币', () 
 });
 
 check('名将招募与活动报名在确认时复核名额、价格、冷却和金币', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const recruit = app.slice(app.indexOf("const lockKey = `recruit-general:${gen.id}`"), app.indexOf('// 9a-3. 历史名战'));
   const activity = app.slice(app.indexOf('const handleStart = () =>', app.indexOf('const renderActivityModal')), app.indexOf('return (', app.indexOf('const handleStart = () =>', app.indexOf('const renderActivityModal'))));
   assert.ok(recruit.includes('kingdomWarRef.current'));
@@ -2574,7 +2592,7 @@ check('华丽大赛最高奖励在五回合规则内可达但仍要求接近完�
 });
 
 check('活动中心入口不会再叠加全局消息弹窗遮挡活动卡片', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.indexOf("{ id: 'activity', icon: '🎪'");
   const branch = app.slice(start, app.indexOf("{ id: 'gang'", start));
   assert.ok(branch.includes('setActivityCenter(true)'));
@@ -2582,7 +2600,7 @@ check('活动中心入口不会再叠加全局消息弹窗遮挡活动卡片', (
 });
 
 check('战斗与场外即时道具按同步库存原子消耗并持久化亲密度', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const battleItems = app.slice(app.indexOf('const useBattleItem ='), app.indexOf('const confirmStarter ='));
   const fieldItems = app.slice(app.indexOf('const useBerry ='), app.indexOf('const useGrowthItem ='));
   const tm = app.slice(app.indexOf('const useTM ='), app.indexOf('const useBattleItem ='));
@@ -2621,10 +2639,10 @@ check('战斗与场外即时道具按同步库存原子消耗并持久化亲密�
 });
 
 check('门派日常跨日不漏奖且江湖事件每周期仅结算一次', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const daily = app.slice(app.indexOf('const advanceSectDaily ='), app.indexOf('const claimAllSectDaily ='));
   const event = app.slice(app.indexOf('const handleJianghuEventChoice ='), app.indexOf('const startChiefTrial ='));
-  const summit = app.slice(app.indexOf('const renderSectSummit ='), app.indexOf('const renderSectTeamModal ='));
+  const summit = fs.readFileSync(path.join(root, 'src/components/screens/SectSummitScreen.js'), 'utf8');
   assert.ok(app.includes('cycle: Number.isInteger(entry?.cycle)'));
   assert.ok(daily.includes('previousTodayTasks'));
   assert.ok(daily.includes('`${t.date}:${t.id}`'));
@@ -2639,7 +2657,7 @@ check('门派日常跨日不漏奖且江湖事件每周期仅结算一次', () =
 });
 
 check('自动战斗强制换人和名将抽卡入口支持完整键盘交互', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const autoStart = app.indexOf('if (!autoBattle || !battle || battle.isPvP) return;');
   const autoSource = app.slice(autoStart, autoStart + 4200);
   assert.ok(autoStart >= 0);
@@ -2652,8 +2670,7 @@ check('自动战斗强制换人和名将抽卡入口支持完整键盘交互', (
   const switchSource = app.slice(switchStart, switchStart + 4200);
   assert.match(switchSource, /<button type="button" key=\{idx\} disabled=\{isActive \|\| isFainted\}/);
 
-  const generalDexStart = app.indexOf('const renderGeneralDex = () => {');
-  const generalDexSource = app.slice(generalDexStart, generalDexStart + 5200);
+  const generalDexSource = fs.readFileSync(path.join(root, 'src/components/screens/GeneralDexScreen.js'), 'utf8');
   assert.match(generalDexSource, /<button type="button" className=\{`codex-panel codex-draw-panel/);
   assert.match(app, /<button type="button" onClick=\{\(\) => setView\('general_dex'\)\}/);
 });
@@ -2734,7 +2751,7 @@ check('特训可用状态区分濒死、占用、每日次数和努力值上限'
 });
 
 check('库存稀有种子可免费种植，星辰果实际发放极限糖果且不能重复收获', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const source = app.slice(app.indexOf('const plantSeed ='), app.indexOf('const buyFurnitureFromShop ='));
   const housingRef = { current: { ...housingData.DEFAULT_HOUSING_STATE, currentHouse: 'cabin', garden: { plots: [], seedInventory: { starfruit: 1 } } } };
   const goldRef = { current: 1000 };
@@ -2764,7 +2781,7 @@ check('库存稀有种子可免费种植，星辰果实际发放极限糖果且�
 });
 
 check('联盟报名读取主线进度，支线章节不会绕过冠军之路门槛', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const source = app.slice(app.indexOf('const leagueStoryProgress ='), app.indexOf('const startLeagueMatch ='));
   for (const [storyProgress, mainStoryProgress, activeSideStory, expected] of [[18, 3, 'lycoris', false], [18, 12, 'lycoris', true], [3, 0, null, false], [12, 0, null, true]]) {
     const leagueRoundRef = { current: 0 };
@@ -2785,7 +2802,7 @@ check('药品图标标注读取实际药效', () => {
 });
 
 check('忍者生存试炼每个段位都能生成合法队伍，包含真实技能与血量', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const source = app.slice(app.indexOf('const startSurvivalWave ='), app.indexOf('const advanceForest ='));
   for (const level of [15, 50, 100]) for (const wave of [0, 1, 2, 3, 4]) {
     let started = null;
@@ -2852,7 +2869,7 @@ check('门派每日任务不重复，挑战次数及奖励始终来自同一个�
 });
 
 async function checkTurnHandoff() {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const source = app.slice(app.indexOf('const executeTurn ='), app.indexOf('// 双打战斗回合'));
   const { settleUltraRound } = require('./helpers/project-harness.cjs').load('src/utils/ultraRules.js');
   for (const enemyFirst of [false, true]) for (const ultra of [false, true]) {
@@ -2865,6 +2882,7 @@ async function checkTurnHandoff() {
     const errors = [];
     const action = vm.runInNewContext(`${source}; executeTurn`, {
       battle: current, party: [], _: { cloneDeep: structuredClone }, Math, settleUltraRound,
+      combatMetrics: { command: () => {} },
       battleRoundLockRef:{current:false}, beginBattleRound:()=>{}, getBattleCommand:()=>null,
       canUseCombatMove:()=>true, getBattleActionPriority:()=>0, getBattleActionSpeed:(_state,pet)=>pet.spd,
       settleSingleRound:async state=>{ state.turnCount++; current=settleUltraRound({...state,phase:'input'}); },
@@ -2906,7 +2924,7 @@ async function checkTurnHandoff() {
 }
 
 check('防卡死检测只恢复停止推进的回合，不打断长动画', () => {
-  const app = fs.readFileSync(path.join(root, 'src/App.js'), 'utf8');
+  const app = readGameplaySource();
   const start = app.lastIndexOf('useEffect(() => {', app.indexOf("const recoverablePhases = new Set"));
   const source = app.slice(start, app.indexOf('const getRankPerkEffects =', start));
   let callback;
