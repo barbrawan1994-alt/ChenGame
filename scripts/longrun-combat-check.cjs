@@ -4,7 +4,7 @@ const { createLoader, loadAppImports, bindAppDependencyTree, seededRandom } = re
 function createCombatHarness(random = seededRandom(90412), options = {}) {
   const math = Object.assign(Object.create(Math), { random });
   const loader = createLoader({ Math: math });
-  const d = loadAppImports(loader);
+  const d = { ...loader('src/data/index.js'), ...loadAppImports(loader) };
   let c;
   const noop = () => {};
   const globals = {
@@ -15,6 +15,7 @@ function createCombatHarness(random = seededRandom(90412), options = {}) {
     infinityStateRef: { current: null },
     partyRef: { current: [] }, setParty: noop,
     playerTookDamageRef: { current: false },
+    combatMetrics: { command: noop, start: noop, finish: noop },
     sectPlayer: {}, fusionState: {}, fusionStateRef: { current: {} },
     badges: [], housing: {}, currentTitle: '',
     currentMapId: 1, regionEcology: {}, sanctuaryState: {}, box: [],
@@ -42,7 +43,7 @@ async function run() {
     fruit: Object.values(d.DEVIL_FRUITS).map(f => f.transformMove).filter(Boolean),
     jutsu: d.JUTSU_DB.map(j => ({ ...j, t: d.CHAKRA_NATURE_MAP[j.nature]?.gameType || 'NORMAL', isJutsu: true, jutsuId: j.id })),
     cursed: [...Object.values(d.TYPE_TECHNIQUES), ...d.COMMON_TECHNIQUES, ...Object.values(d.GOD_TECHNIQUES)].map(move => ({ ...move, isCursed: true, t: move.t || move.moveType || 'NORMAL', pp: move.pp || 15 })),
-    martial: Object.values(loader('src/data/sectSystem.js').SECT_MARTIAL_ARTS).flat().map(art => d.buildMartialMove(art.id)),
+    martial: Object.values(loader('src/data/sectSystem.js').SECT_MARTIAL_ARTS).flat().map(art => loader('src/utils/sectLogic.js').buildMartialMove(art.id)),
     tm: d.buildSkillTmCatalog(d.TMS, d.SKILL_DB).map(d.buildMoveFromTm),
     comboJutsu: d.COMBO_JUTSU_LIST.filter(j => j.power > 0).map(j => ({ name: j.name, p: j.power, t: d.CHAKRA_NATURE_MAP[j.natures[0]]?.gameType || 'PSYCHIC', cat: j.cat || 'special', acc: 95, pp: 99, isComboJutsu: true, effect: j.effect || null })),
   };

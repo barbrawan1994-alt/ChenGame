@@ -168,7 +168,8 @@ check(!available.spirits.some(option => option.id === 'unimplemented'), '尚未�
 const options = pickInfinityRewardOptions(saturatedRun, breathing, spirits, { random: makeRandom(9), partyNeedsHealing: false });
 check(options.length === 2 && new Set(options.map(option => option.id)).size === options.length, '无限城奖励只包含有效且不重复的选项');
 
-const appSource = fs.readFileSync(new URL('../src/App.js', import.meta.url), 'utf8');
+const appSource = fs.readFileSync(new URL('../src/App.js', import.meta.url), 'utf8')
+  + fs.readFileSync(new URL('../src/components/screens/BattleScreen.js', import.meta.url), 'utf8');
 check(appSource.includes("attemptBattleStart('门派首席挑战'"), '门派首席挑战使用统一启动事务');
 check(appSource.includes("attemptBattleStart('掌门试炼'"), '掌门试炼使用统一启动事务');
 check(appSource.includes("attemptBattleStart('门派秘境'"), '门派秘境使用统一启动事务');

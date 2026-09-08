@@ -200,7 +200,7 @@ assert.deepEqual(
   calcGeneralsTotalBonus([...coreGenerals, unrelatedReserve, contributingReserve]),
   calcGeneralsTotalBonus([contributingReserve, unrelatedReserve, ...coreGenerals].reverse()),
 );
-const generalDexSource = appSource.slice(appSource.indexOf('const renderGeneralDex = () => {'), appSource.indexOf('const renderWorldMap = () => {'));
+const generalDexSource = await readFile(new URL('../src/components/screens/GeneralDexScreen.js', import.meta.url), 'utf8');
 assert.match(generalDexSource, /const totalBonus = calcGeneralsTotalBonus\(recruited\);/);
 check(true, '名将加成按类型独立递减，新增名将不会降低旧加成且图鉴显示实战数值');
 

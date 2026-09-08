@@ -9,6 +9,7 @@
     "build": "webpack --mode production",
     "check:regressions": "node scripts/regression-check.cjs",
     "check:systems": "node scripts/system-audit-check.cjs",
+    "check:followups": "node scripts/audit-followups-check.cjs",
     "check:longrun": "node scripts/longrun-check.cjs",
     "check:ultra": "node scripts/ultra-check.cjs",
     "check:kaiju": "node scripts/kaiju-check.cjs",

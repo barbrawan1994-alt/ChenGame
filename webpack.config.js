@@ -45,7 +45,7 @@ module.exports = {
       cacheGroups: {
         gameData: {
           test: /[\\/]src[\\/]data[\\/]/,
-          name: 'game-data',
+          name: false,
           maxSize: 512 * 1024,
           enforce: true,
         },

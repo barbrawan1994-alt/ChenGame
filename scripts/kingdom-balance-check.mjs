@@ -32,7 +32,8 @@ MOCK_GENERALS.push(
   { id: 'neutral_1', name: '中立将1', faction: 'neutral', rosterFaction: 'neutral', politicalFaction: 'qun', warCamp: 'qun', rarity: 'SSR' },
   { id: 'neutral_2', name: '中立将2', faction: 'neutral', rosterFaction: 'neutral', politicalFaction: 'qun', warCamp: 'qun', rarity: 'SR' },
 );
-const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8');
+const appSource = await readFile(new URL('../src/App.js', import.meta.url), 'utf8')
+  + await readFile(new URL('../src/components/screens/WorldMapScreen.js', import.meta.url), 'utf8');
 const kingdomSource = await readFile(new URL('../src/data/kingdom.js', import.meta.url), 'utf8');
 const kwSiegeSource = await readFile(new URL('../src/data/kwSiege.js', import.meta.url), 'utf8');
 const achievements = await loadSourceModule('src/data/achievements.js');

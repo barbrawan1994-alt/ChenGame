@@ -56,14 +56,14 @@ function run() {
   console.log(JSON.stringify({ suite: 'story', combinations, reports, unreachable }, null, 2));
   assert.deepEqual(unreachable, [], 'Configured endings unreachable through actual route and step handlers');
 
-  const { STORY_SCRIPT, SANGUO_STORY } = load('src/data/story.js');
+  const { PLAYABLE_STORY_SCRIPT } = load('src/data/story.js');
   const { resolveStoryBattleOutcome } = load('src/utils/progressionFlow.js');
   const { POKEDEX } = load('src/data/pets.js');
   const dexIds = new Set(POKEDEX.map(p => p.id));
   const seen = new Set();
   let battleOutcomes = 0;
   let tasks = 0;
-  for (const chapter of [...STORY_SCRIPT, ...SANGUO_STORY]) {
+  for (const chapter of PLAYABLE_STORY_SCRIPT) {
     const key = `${chapter.mapId}:${chapter.title}`;
     if (seen.has(key)) continue;
     seen.add(key);

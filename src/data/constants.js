@@ -77,7 +77,7 @@ export const SIDE_STORY_LINES = [
   { id: 'sect',    name: '门派风云篇',  icon: '⚔️', startIdx: 26, endIdx: 34, chapters: 9, unlockBadges: 8, desc: '三十门派与厌晚的史诗篇章' },
   { id: 'crossworld', name: '异界征途篇', icon: '🌍', startIdx: 35, endIdx: 52, chapters: 18, unlockBadges: 13, desc: '次元裂隙降临，跨越七界的史诗冒险' },
   { id: 'naruto', name: '火影忍者篇', icon: '🍥', startIdx: 0, endIdx: 19, chapters: 20, unlockBadges: 5, desc: '踏上忍者之路，从学院到影级的忍道传说', isNarutoArc: true },
-  { id: 'sanguo', name: '三国志篇', icon: '⚔️', startIdx: 0, endIdx: 11, chapters: 12, unlockBadges: 13, desc: '群雄与历代诸朝交锋，体验英雄史诗征途', isSanguoArc: true },
+  { id: 'sanguo', name: '三国志篇', icon: '⚔️', startIdx: 53, endIdx: 64, chapters: 12, unlockBadges: 13, desc: '从群雄会盟到天下归一，挑战十二位章节主将', isSanguoArc: true },
 ];
 
 export const BREATHING_BUFFS = [
