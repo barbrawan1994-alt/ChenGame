@@ -30,29 +30,10 @@ async function main() {
   for (const [id, title] of Object.entries(pages)) {
     const entry = data.manifest.find(item => item.id === id);
     if (entry?.page && (!formFiles[id] || entry.file === formFiles[id]) && !process.argv.includes('--refresh')) continue;
-    // Pageimages often returns a bust/icon. Resolve the page's image list first
-    // and prefer transparent full-body render files when the wiki provides one.
-    const params = new URLSearchParams({ action: 'query', titles: title, redirects: '1', prop: 'images', imlimit: 'max', format: 'json' });
+    const params = new URLSearchParams({ action: 'query', titles: title, redirects: '1', prop: 'pageimages', piprop: 'original', format: 'json' });
     const response = JSON.parse(get(`https://ultra.fandom.com/api.php?${params}`));
     const page = Object.values(response.query.pages)[0];
-    let source;
-    const candidates = (page.images || []).map(item => item.title)
-      .filter(file => /\.(png|webp)$/i.test(file))
-      .filter(file => !/(logo|title|icon|screenshot|episode|card|poster|toy|figu|photo|battle|attack|beam|gif)/i.test(file))
-      .sort((a, b) => {
-        const score = file => (/(full|render|standing|body|profile|character|suit)/i.test(file) ? 10 : 0) - (/(head|bust|close|face)/i.test(file) ? 8 : 0);
-        return score(b) - score(a);
-      });
-    for (const candidate of candidates.slice(0, 12)) {
-      const query = new URLSearchParams({ action: 'query', titles: candidate, prop: 'imageinfo', iiprop: 'url|size', iiurlwidth: '640', format: 'json' });
-      const file = Object.values(JSON.parse(get(`https://ultra.fandom.com/api.php?${query}`)).query.pages)[0];
-      const info = file.imageinfo?.[0];
-      if (info?.url && info.width >= 180 && info.height >= 240) { source = info.url; break; }
-    }
-    if (!source) {
-      const fallback = new URLSearchParams({ action: 'query', titles: title, redirects: '1', prop: 'pageimages', piprop: 'original', format: 'json' });
-      source = Object.values(JSON.parse(get(`https://ultra.fandom.com/api.php?${fallback}`)).query.pages)[0].original?.source;
-    }
+    let source = page.original?.source;
     if (formFiles[id]) {
       const query = new URLSearchParams({ action: 'query', titles: formFiles[id], prop: 'imageinfo', iiprop: 'url', format: 'json' });
       const file = Object.values(JSON.parse(get(`https://ultra.fandom.com/api.php?${query}`)).query.pages)[0];

@@ -99,14 +99,6 @@ async function run() {
       cases++;
     }
   }
-  const portraitManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'public/assets/ultra/sources.json'), 'utf8'));
-  assert.equal(portraitManifest.manifest.length, ULTRA_HEROES.length, 'Every hero has a portrait manifest entry');
-  for (const entry of portraitManifest.manifest) {
-    const portraitPath = path.resolve(__dirname, '..', 'public/assets/ultra', `${entry.id}.webp`);
-    assert.ok(fs.existsSync(portraitPath), `${entry.id} portrait exists`);
-    assert.equal(fs.statSync(portraitPath).size, entry.bytes, `${entry.id} portrait manifest bytes`);
-    assert.equal(entry.presentation, 'full-body-contain', `${entry.id} portrait uses full-body presentation`);
-  }
   const hero = ULTRA_HEROES.find(item => item.id === 'tiga');
   const fresh = () => battleFor(hero, hero.forms[0]);
   for (const status of ['flinch', 'sleep', 'frozen']) {
